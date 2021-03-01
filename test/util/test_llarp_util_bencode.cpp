@@ -6,11 +6,11 @@
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
-using TestBuffer = std::vector< byte_t >;
+using TestBuffer = std::vector<byte_t>;
 
-template < typename Result >
+template <typename Result>
 struct TestReadData
 {
   TestBuffer buffer;
@@ -18,15 +18,15 @@ struct TestReadData
   Result result;
 };
 
-using TestReadInt    = TestReadData< uint64_t >;
-using TestReadString = TestReadData< std::string >;
+using TestReadInt = TestReadData<uint64_t>;
+using TestReadString = TestReadData<std::string>;
 
-template < typename Result >
+template <typename Result>
 std::ostream&
-operator<<(std::ostream& os, const TestReadData< Result >& d)
+operator<<(std::ostream& os, const TestReadData<Result>& d)
 {
   os << "buf = [ ";
-  for(auto x : d.buffer)
+  for (auto x : d.buffer)
   {
     os << x << " ";
   }
@@ -37,33 +37,16 @@ operator<<(std::ostream& os, const TestReadData< Result >& d)
   return os;
 }
 
-struct ReadInt : public ::testing::TestWithParam< TestReadInt >
-{
-};
-
-TEST_P(ReadInt, readInt)
-{
-  auto d = GetParam();
-
-  llarp_buffer_t buffer(d.buffer);
-
-  uint64_t result = 0;
-  bool rc         = bencode_read_integer(&buffer, &result);
-
-  EXPECT_EQ(rc, d.rc);
-  EXPECT_EQ(result, d.result);
-}
-
-static constexpr byte_t i     = 'i';
-static constexpr byte_t e     = 'e';
-static constexpr byte_t zero  = '0';
-static constexpr byte_t one   = '1';
-static constexpr byte_t two   = '2';
-static constexpr byte_t f     = 'f';
-static constexpr byte_t z     = 'z';
+static constexpr byte_t i = 'i';
+static constexpr byte_t e = 'e';
+static constexpr byte_t zero = '0';
+static constexpr byte_t one = '1';
+static constexpr byte_t two = '2';
+static constexpr byte_t f = 'f';
+static constexpr byte_t z = 'z';
 static constexpr byte_t colon = ':';
 
-static const TestReadInt testReadInt[] = {
+std::vector<TestReadInt> testReadInt{
     // good cases
     {{i, 0, e}, true, 0},
     {{i, zero, e}, true, 0},
@@ -80,28 +63,20 @@ static const TestReadInt testReadInt[] = {
     {{z}, false, 0},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, ReadInt,
-                         ::testing::ValuesIn(testReadInt));
-
-struct ReadStr : public ::testing::TestWithParam< TestReadString >
+TEST_CASE("Read int", "[bencode]")
 {
-};
-
-TEST_P(ReadStr, readStr)
-{
-  auto d = GetParam();
+  auto d = GENERATE(from_range(testReadInt));
 
   llarp_buffer_t buffer(d.buffer);
 
-  llarp_buffer_t result;
-  bool rc = bencode_read_string(&buffer, &result);
+  uint64_t result = 0;
+  bool rc = bencode_read_integer(&buffer, &result);
 
-  EXPECT_EQ(rc, d.rc);
-  EXPECT_EQ(result.sz, d.result.size());
-  EXPECT_EQ(std::string(result.base, result.base + result.sz), d.result);
+  CHECK(rc == d.rc);
+  CHECK(result == d.result);
 }
 
-static const TestReadString testReadStr[] = {
+std::vector<TestReadString> testReadStr{
     // good cases
     {{one, colon, 'a'}, true, "a"},
     {{one, colon, 'b'}, true, "b"},
@@ -118,10 +93,21 @@ static const TestReadString testReadStr[] = {
     {{colon, colon}, false, ""},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, ReadStr,
-                         ::testing::ValuesIn(testReadStr));
+TEST_CASE("Read str", "[bencode]")
+{
+  auto d = GENERATE(from_range(testReadStr));
 
-template < typename Input >
+  llarp_buffer_t buffer(d.buffer);
+
+  llarp_buffer_t result;
+  bool rc = bencode_read_string(&buffer, &result);
+
+  CHECK(rc == d.rc);
+  CHECK(result.sz == d.result.size());
+  CHECK(std::string(result.base, result.base + result.sz) == d.result);
+}
+
+template <typename Input>
 struct TestWriteData
 {
   Input input;
@@ -130,62 +116,39 @@ struct TestWriteData
   std::string output;
 };
 
-using TestWriteByteString = TestWriteData< std::string >;
-using TestWriteInt        = TestWriteData< uint64_t >;
+using TestWriteByteString = TestWriteData<std::string>;
+using TestWriteInt = TestWriteData<uint64_t>;
 
-struct WriteByteStr : public ::testing::TestWithParam< TestWriteByteString >
-{
-};
+static constexpr size_t MAX_1 = static_cast<size_t>(std::numeric_limits<int16_t>::max()) + 1;
 
-TEST_P(WriteByteStr, writeByte)
-{
-  auto d = GetParam();
-
-  std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer(backingBuffer);
-
-  bool rc = bencode_write_bytestring(&buffer, d.input.data(), d.input.size());
-
-  ASSERT_EQ(rc, d.rc);
-  ASSERT_EQ(std::string(buffer.base, buffer.cur), d.output);
-}
-
-static constexpr size_t MAX_1 =
-    static_cast< size_t >(std::numeric_limits< int16_t >::max()) + 1;
-
-static const TestWriteByteString testWriteByteString[] = {
+std::vector<TestWriteByteString> testWriteByteString{
     // good cases
     {"abacus", 100, true, "6:abacus"},
     {"  abacus", 100, true, "8:  abacus"},
     {"", 100, true, "0:"},
     {std::string("\0\0\0", 3), 100, true, std::string("3:\0\0\0", 5)},
-    {std::string(MAX_1, 'a'), MAX_1 + 100, true,
+    {std::string(MAX_1, 'a'),
+     MAX_1 + 100,
+     true,
      std::to_string(MAX_1) + std::string(":") + std::string(MAX_1, 'a')},
     // bad cases
     {"a", 1, false, ""},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, WriteByteStr,
-                         ::testing::ValuesIn(testWriteByteString));
-
-struct WriteInt : public ::testing::TestWithParam< TestWriteInt >
+TEST_CASE("Write byte str", "[bencode]")
 {
-};
+  auto d = GENERATE(from_range(testWriteByteString));
 
-TEST_P(WriteInt, writeInt)
-{
-  auto d = GetParam();
-
-  std::vector< byte_t > backingBuffer(d.bufferSize, 0);
+  std::vector<byte_t> backingBuffer(d.bufferSize, 0);
   llarp_buffer_t buffer(backingBuffer);
 
-  bool rc = bencode_write_uint64(&buffer, d.input);
+  bool rc = bencode_write_bytestring(&buffer, d.input.data(), d.input.size());
 
-  ASSERT_EQ(rc, d.rc);
-  ASSERT_EQ(std::string(buffer.base, buffer.cur), d.output);
+  REQUIRE(rc == d.rc);
+  REQUIRE(std::string(buffer.base, buffer.cur) == d.output);
 }
 
-static const TestWriteInt testWriteInt[] = {
+std::vector<TestWriteInt> testWriteInt{
     // Good cases
     {0, 100, true, "i0e"},
     {1234, 100, true, "i1234e"},
@@ -194,59 +157,62 @@ static const TestWriteInt testWriteInt[] = {
     {1234567, 3, false, ""},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, WriteInt,
-                        ::testing::ValuesIn(testWriteInt));
-
-struct WriteIntValues : public ::testing::TestWithParam< uint64_t >
+TEST_CASE("Write int", "[bencode]")
 {
-};
+  auto d = GENERATE(from_range(testWriteInt));
 
-TEST_P(WriteIntValues, anyvalue)
+  std::vector<byte_t> backingBuffer(d.bufferSize, 0);
+  llarp_buffer_t buffer(backingBuffer);
+
+  bool rc = bencode_write_uint64(&buffer, d.input);
+
+  REQUIRE(rc == d.rc);
+  REQUIRE(std::string(buffer.base, buffer.cur) == d.output);
+}
+
+TEST_CASE("Write int values", "[bencode]")
 {
   // test we can encode any uint64_t into a buffer.
-  uint64_t val = GetParam();
+  uint64_t val = GENERATE(
+      std::numeric_limits<uint64_t>::min(),
+      std::numeric_limits<uint64_t>::max(),
+      std::numeric_limits<uint64_t>::max() / 2,
+      std::numeric_limits<uint64_t>::max() / 3);
 
-  std::vector< byte_t > backingBuffer(100, 0);
+  std::vector<byte_t> backingBuffer(100, 0);
 
   {
     llarp_buffer_t buffer(backingBuffer);
 
     bool rc = bencode_write_uint64(&buffer, val);
-    ASSERT_TRUE(rc);
+    REQUIRE(rc);
   }
 
   {
     uint64_t result = 0;
     llarp_buffer_t buffer(backingBuffer);
     bool rc = bencode_read_integer(&buffer, &result);
-    ASSERT_TRUE(rc);
-    ASSERT_EQ(result, val);
+    REQUIRE(rc);
+    REQUIRE(result == val);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    TestBencode, WriteIntValues,
-    ::testing::Values(std::numeric_limits< uint64_t >::min(),
-                      std::numeric_limits< uint64_t >::max(),
-                      std::numeric_limits< uint64_t >::max() / 2,
-                      std::numeric_limits< uint64_t >::max() / 3));
-
-TEST(TestBencode, good_uint64_entry)
+TEST_CASE("Bencode: good uint64 entry", "[bencode]")
 {
-  std::vector< byte_t > backingBuffer(100, 0);
+  std::vector<byte_t> backingBuffer(100, 0);
   llarp_buffer_t buffer(backingBuffer);
 
-  ASSERT_TRUE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
+  REQUIRE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
 
-  ASSERT_EQ(std::string(buffer.base, buffer.cur), "1:vi0e");
+  REQUIRE(std::string(buffer.base, buffer.cur) == "1:vi0e");
 }
 
-TEST(TestBencode, bad_uint64_entry)
+TEST_CASE("Bencode: bad uint64 entry", "[bencode]")
 {
-  std::vector< byte_t > otherBuffer(1, 0);
+  std::vector<byte_t> otherBuffer(1, 0);
   llarp_buffer_t buffer(otherBuffer);
 
-  ASSERT_FALSE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
+  REQUIRE_FALSE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
 }
 
 struct ValueData
@@ -259,172 +225,139 @@ struct ValueData
 
 struct ListTestData
 {
-  std::vector< ValueData > list;
+  std::vector<ValueData> list;
   size_t bufferSize;
   std::string result;
 };
 
-struct ListTest : public ::testing::TestWithParam< ListTestData >
-{
-};
-
-TEST_P(ListTest, list)
-{
-  auto d = GetParam();
-
-  std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer(backingBuffer);
-
-  ASSERT_TRUE(bencode_start_list(&buffer));
-
-  for(const auto& x : d.list)
-  {
-    if(x.isString)
-    {
-      ASSERT_TRUE(bencode_write_bytestring(&buffer, x.theString.data(),
-                                           x.theString.size()));
-    }
-    else
-    {
-      ASSERT_TRUE(bencode_write_uint64(&buffer, x.theInt));
-    }
-  }
-
-  ASSERT_TRUE(bencode_end(&buffer));
-
-  ASSERT_EQ(std::string(buffer.base, buffer.cur), d.result);
-}
-
-ListTestData listTestData[] = {
+std::vector<ListTestData> listTestData{
     {{}, 100, "le"},
     {{{"", 0, true}}, 100, "l0:e"},
     {{{"", 0, false}}, 100, "li0ee"},
     {{{"", 0, false}, {"", 0, true}}, 100, "li0e0:e"},
     {{{"", 123, false}, {"abc", 0, true}}, 100, "li123e3:abce"},
-    {{{"", 123, false}, {"abc", 0, true}, {"abc", 0, true}},
-     100,
-     "li123e3:abc3:abce"},
+    {{{"", 123, false}, {"abc", 0, true}, {"abc", 0, true}}, 100, "li123e3:abc3:abce"},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, ListTest,
-                         ::testing::ValuesIn(listTestData));
+TEST_CASE("List test", "[bencode]")
+{
+  auto d = GENERATE(from_range(listTestData));
+
+  std::vector<byte_t> backingBuffer(d.bufferSize, 0);
+  llarp_buffer_t buffer(backingBuffer);
+
+  REQUIRE(bencode_start_list(&buffer));
+
+  for (const auto& x : d.list)
+  {
+    if (x.isString)
+    {
+      REQUIRE(bencode_write_bytestring(&buffer, x.theString.data(), x.theString.size()));
+    }
+    else
+    {
+      REQUIRE(bencode_write_uint64(&buffer, x.theInt));
+    }
+  }
+
+  REQUIRE(bencode_end(&buffer));
+
+  REQUIRE(std::string(buffer.base, buffer.cur) == d.result);
+}
 
 struct DictTestData
 {
-  std::vector< std::pair< char, ValueData > > list;
+  std::vector<std::pair<char, ValueData>> list;
   size_t bufferSize;
   std::string result;
 };
 
-struct DictTest : public ::testing::TestWithParam< DictTestData >
-{
-};
-
-TEST_P(DictTest, dict)
-{
-  auto d = GetParam();
-
-  std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer(backingBuffer);
-
-  ASSERT_TRUE(bencode_start_dict(&buffer));
-
-  for(const auto& x : d.list)
-  {
-    ASSERT_TRUE(bencode_write_bytestring(&buffer, &x.first, 1));
-    if(x.second.isString)
-    {
-      ASSERT_TRUE(bencode_write_bytestring(&buffer, x.second.theString.data(),
-                                           x.second.theString.size()));
-    }
-    else
-    {
-      ASSERT_TRUE(bencode_write_uint64(&buffer, x.second.theInt));
-    }
-  }
-
-  ASSERT_TRUE(bencode_end(&buffer));
-
-  ASSERT_EQ(std::string(buffer.base, buffer.cur), d.result);
-}
-
-DictTestData dictTestData[] = {
+std::vector<DictTestData> dictTestData{
     {{}, 100, "de"},
     {{{'a', {"", 0, true}}}, 100, "d1:a0:e"},
     {{{'b', {"", 0, false}}}, 100, "d1:bi0ee"},
     {{{'c', {"", 0, false}}, {'d', {"", 0, true}}}, 100, "d1:ci0e1:d0:e"},
-    {{{'e', {"", 123, false}}, {'f', {"abc", 0, true}}},
-     100,
-     "d1:ei123e1:f3:abce"},
-    {{{'a', {"", 123, false}},
-      {'b', {"abc", 0, true}},
-      {'c', {"abc", 0, true}}},
+    {{{'e', {"", 123, false}}, {'f', {"abc", 0, true}}}, 100, "d1:ei123e1:f3:abce"},
+    {{{'a', {"", 123, false}}, {'b', {"abc", 0, true}}, {'c', {"abc", 0, true}}},
      100,
      "d1:ai123e1:b3:abc1:c3:abce"},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, DictTest,
-                         ::testing::ValuesIn(dictTestData));
+TEST_CASE("Dict test", "[bencode]")
+{
+  auto d = GENERATE(from_range(dictTestData));
+
+  std::vector<byte_t> backingBuffer(d.bufferSize, 0);
+  llarp_buffer_t buffer(backingBuffer);
+
+  REQUIRE(bencode_start_dict(&buffer));
+
+  for (const auto& x : d.list)
+  {
+    REQUIRE(bencode_write_bytestring(&buffer, &x.first, 1));
+    if (x.second.isString)
+    {
+      REQUIRE(
+          bencode_write_bytestring(&buffer, x.second.theString.data(), x.second.theString.size()));
+    }
+    else
+    {
+      REQUIRE(bencode_write_uint64(&buffer, x.second.theInt));
+    }
+  }
+
+  REQUIRE(bencode_end(&buffer));
+
+  REQUIRE(std::string(buffer.base, buffer.cur) == d.result);
+}
 
 struct ReadData
 {
   std::string input;
-  std::vector< std::string > output;
+  std::vector<std::string> output;
 };
 
-struct DictReadTest : public ::testing::TestWithParam< ReadData >
-{
-};
+std::vector<ReadData> dictReadData{
+    {"de", {}}, {"d1:a0:e", {"a", ""}}, {"d1:be", {"b"}}, {"d1:b2:23e", {"b", "23"}}};
 
-TEST_P(DictReadTest, readtest)
+TEST_CASE("Read dict", "[bencode]")
 {
-  auto d = GetParam();
+  auto d = GENERATE(from_range(dictReadData));
 
-  byte_t* input =
-      const_cast< byte_t* >(reinterpret_cast< const byte_t* >(d.input.data()));
+  byte_t* input = const_cast<byte_t*>(reinterpret_cast<const byte_t*>(d.input.data()));
 
   llarp_buffer_t buffer(input, input, d.input.size());
 
-  std::vector< std::string > result;
+  std::vector<std::string> result;
 
-  ASSERT_TRUE(llarp::bencode_read_dict(
+  REQUIRE(llarp::bencode_read_dict(
       [&](llarp_buffer_t*, llarp_buffer_t* key) {
-        if(key)
+        if (key)
         {
           result.emplace_back(key->base, key->base + key->sz);
         }
         return true;
       },
       &buffer));
-  ASSERT_EQ(result, d.output);
+  REQUIRE(result == d.output);
 }
 
-ReadData dictReadData[] = {{"de", {}},
-                           {"d1:a0:e", {"a", ""}},
-                           {"d1:be", {"b"}},
-                           {"d1:b2:23e", {"b", "23"}}};
+std::vector<ReadData> listReadData{
+    {"le", {}}, {"l1:ae", {"a"}}, {"l1:be", {"b"}}, {"l1:b2:23e", {"b", "23"}}};
 
-INSTANTIATE_TEST_SUITE_P(TestBencode, DictReadTest,
-                         ::testing::ValuesIn(dictReadData));
-
-struct ListReadTest : public ::testing::TestWithParam< ReadData >
+TEST_CASE("Read list", "[bencode]")
 {
-};
+  auto d = GENERATE(from_range(listReadData));
 
-TEST_P(ListReadTest, readtest)
-{
-  auto d = GetParam();
-
-  byte_t* input =
-      const_cast< byte_t* >(reinterpret_cast< const byte_t* >(d.input.data()));
+  byte_t* input = const_cast<byte_t*>(reinterpret_cast<const byte_t*>(d.input.data()));
 
   llarp_buffer_t buffer(input, input, d.input.size());
 
-  std::vector< std::string > result;
+  std::vector<std::string> result;
 
-  ASSERT_TRUE(llarp::bencode_read_list(
+  REQUIRE(llarp::bencode_read_list(
       [&](llarp_buffer_t* b, bool cont) {
-        if(cont)
+        if (cont)
         {
           llarp_buffer_t tmp;
           bencode_read_string(b, &tmp);
@@ -433,18 +366,12 @@ TEST_P(ListReadTest, readtest)
         return true;
       },
       &buffer));
-  ASSERT_EQ(result, d.output);
+  REQUIRE(result == d.output);
 }
 
-ReadData listReadData[] = {
-    {"le", {}}, {"l1:ae", {"a"}}, {"l1:be", {"b"}}, {"l1:b2:23e", {"b", "23"}}};
-
-INSTANTIATE_TEST_SUITE_P(TestBencode, ListReadTest,
-                         ::testing::ValuesIn(listReadData));
-
-TEST(TestBencode, ReadDictEmptyBuffer)
+TEST_CASE("Read dict to empty buffer", "[bencode]")
 {
   llarp_buffer_t buf((byte_t*)nullptr, 0);
-  ASSERT_FALSE(llarp::bencode_read_dict(
-      [](llarp_buffer_t*, llarp_buffer_t*) { return true; }, &buf));
+  REQUIRE_FALSE(
+      llarp::bencode_read_dict([](llarp_buffer_t*, llarp_buffer_t*) { return true; }, &buf));
 }

@@ -9,12 +9,12 @@
 
 #include <string>
 #include <test_util.hpp>
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 using namespace ::llarp;
 using namespace ::testing;
 
-struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
+struct KeyManagerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
 {
   // paranoid file guards for anything KeyManager might touch
   test::FileGuard m_rcFileGuard;
@@ -27,8 +27,7 @@ struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       , m_encFileGuard(our_enc_key_filename)
       , m_transportFileGuard(our_transport_key_filename)
       , m_identFileGuard(our_identity_filename)
-  {
-  }
+  {}
 
   /// generate a valid "rc.signed" file
   bool
@@ -39,10 +38,10 @@ struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   }
 };
 
-TEST_F(KeyManagerTest, TestBackupFileByMoving_MovesExistingFiles)
+TEST_CASE_METHOD(KeyManagerTest, "Backup file by moving moves existing files")
 {
   fs::path p = test::randFilename();
-  ASSERT_FALSE(fs::exists(p));
+  REQUIRE_FALSE(fs::exists(p));
 
   // touch file
   std::fstream f;
@@ -51,33 +50,33 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_MovesExistingFiles)
 
   KeyManager::backupFileByMoving(p.string());
 
-  ASSERT_FALSE(fs::exists(p));
+  REQUIRE_FALSE(fs::exists(p));
 
   fs::path moved = p.string() + ".0.bak";
 
-  ASSERT_TRUE(fs::exists(moved));
+  REQUIRE(fs::exists(moved));
 
   test::FileGuard guard(moved);
 };
 
-TEST_F(KeyManagerTest, TestBackupFileByMoving_DoesntTouchNonExistentFiles)
+TEST_CASE_METHOD(KeyManagerTest, "Backup file by moving doesnt touch non existent files")
 {
   fs::path p = test::randFilename();
-  ASSERT_FALSE(fs::exists(p));
+  REQUIRE_FALSE(fs::exists(p));
 
   KeyManager::backupFileByMoving(p.string());
 
-  ASSERT_FALSE(fs::exists(p));
+  REQUIRE_FALSE(fs::exists(p));
 
   fs::path moved = p.string() + ".0.bak";
 
-  ASSERT_FALSE(fs::exists(moved));
+  REQUIRE_FALSE(fs::exists(moved));
 }
 
-TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
+TEST_CASE_METHOD(KeyManagerTest, "Backup file by moving fails if backup names are exausted")
 {
   fs::path base = test::randFilename();
-  ASSERT_FALSE(fs::exists(base));
+  REQUIRE_FALSE(fs::exists(base));
 
   // touch file
   {
@@ -93,9 +92,9 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
   guards.reserve(numBackupNames);
 
   // generate backup files foo.0.bak through foo.9.bak
-  for (uint32_t i=0; i<numBackupNames; ++i)
+  for (uint32_t i = 0; i < numBackupNames; ++i)
   {
-    fs::path p = base.string() +"."+ std::to_string(i) +".bak";
+    fs::path p = base.string() + "." + std::to_string(i) + ".bak";
 
     std::fstream f;
     f.open(p.string(), std::ios::out);
@@ -103,49 +102,48 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
 
     guards.emplace_back(p);
 
-    ASSERT_TRUE(fs::exists(p));
+    REQUIRE(fs::exists(p));
   }
 
-  ASSERT_FALSE(KeyManager::backupFileByMoving(base.string()));
-
+  REQUIRE_FALSE(KeyManager::backupFileByMoving(base.string()));
 };
 
-TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
+TEST_CASE_METHOD(KeyManagerTest, "Initialize makes keyfiles")
 {
   llarp::Config conf{fs::current_path()};
   conf.Load();
 
   KeyManager keyManager;
-  ASSERT_TRUE(keyManager.initialize(conf, true, true));
+  REQUIRE(keyManager.initialize(conf, true, true));
 
   // KeyManager doesn't generate RC file, but should generate others
-  ASSERT_FALSE(fs::exists(our_rc_filename));
+  REQUIRE_FALSE(fs::exists(our_rc_filename));
 
-  ASSERT_TRUE(fs::exists(our_enc_key_filename));
-  ASSERT_TRUE(fs::exists(our_transport_key_filename));
-  ASSERT_TRUE(fs::exists(our_identity_filename));
+  REQUIRE(fs::exists(our_enc_key_filename));
+  REQUIRE(fs::exists(our_transport_key_filename));
+  REQUIRE(fs::exists(our_identity_filename));
 }
 
-TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
+TEST_CASE_METHOD(KeyManagerTest, "Initialize respects gen flag")
 {
   llarp::Config conf{fs::current_path()};
   conf.Load();
-  
+
   KeyManager keyManager;
-  ASSERT_FALSE(keyManager.initialize(conf, false, true));
+  REQUIRE_FALSE(keyManager.initialize(conf, false, true));
 
   // KeyManager shouldn't have touched any files without (genIfAbsent == true)
-  ASSERT_FALSE(fs::exists(our_rc_filename));
-  ASSERT_FALSE(fs::exists(our_enc_key_filename));
-  ASSERT_FALSE(fs::exists(our_transport_key_filename));
-  ASSERT_FALSE(fs::exists(our_identity_filename));
+  REQUIRE_FALSE(fs::exists(our_rc_filename));
+  REQUIRE_FALSE(fs::exists(our_enc_key_filename));
+  REQUIRE_FALSE(fs::exists(our_transport_key_filename));
+  REQUIRE_FALSE(fs::exists(our_identity_filename));
 }
 
-TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
+TEST_CASE_METHOD(KeyManagerTest, "Initialize detects bad rc file")
 {
   llarp::Config conf{fs::current_path()};
   conf.Load();
-  
+
   conf.lokid.whitelistRouters = false;
 
   std::fstream f;
@@ -154,26 +152,25 @@ TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
   f.close();
 
   KeyManager keyManager;
-  ASSERT_TRUE(keyManager.initialize(conf, true, true));
-  ASSERT_TRUE(keyManager.needBackup());
+  REQUIRE(keyManager.initialize(conf, true, true));
+  REQUIRE(keyManager.needBackup());
 
-  ASSERT_TRUE(fs::exists(our_enc_key_filename));
-  ASSERT_TRUE(fs::exists(our_transport_key_filename));
-  ASSERT_TRUE(fs::exists(our_identity_filename));
+  REQUIRE(fs::exists(our_enc_key_filename));
+  REQUIRE(fs::exists(our_transport_key_filename));
+  REQUIRE(fs::exists(our_identity_filename));
 
   // test that keys are sane
   SecretKey key;
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(our_enc_key_filename));
-  ASSERT_FALSE(key.IsZero());
+  REQUIRE(key.LoadFromFile(our_enc_key_filename));
+  REQUIRE_FALSE(key.IsZero());
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(our_transport_key_filename));
-  ASSERT_FALSE(key.IsZero());
+  REQUIRE(key.LoadFromFile(our_transport_key_filename));
+  REQUIRE_FALSE(key.IsZero());
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(our_identity_filename));
-  ASSERT_FALSE(key.IsZero());
+  REQUIRE(key.LoadFromFile(our_identity_filename));
+  REQUIRE_FALSE(key.IsZero());
 }
-

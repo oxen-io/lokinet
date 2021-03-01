@@ -2,7 +2,7 @@
 #include <service/tag.hpp>
 #include <test_util.hpp>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 #include <gmock/gmock.h>
 
 using namespace llarp;
@@ -13,13 +13,11 @@ using llarp::test::makeBuf;
 using Val_t = llarp::service::Tag;
 
 // Mock implementation of TX.
-struct TestTx final : public dht::TX< dht::Key_t, Val_t >
+struct TestTx : public dht::TX<dht::Key_t, Val_t>
 {
-  TestTx(const dht::TXOwner& asker, const dht::Key_t& k,
-         dht::AbstractContext* p)
-      : dht::TX< dht::Key_t, Val_t >(asker, k, p)
-  {
-  }
+  TestTx(const dht::TXOwner& asker, const dht::Key_t& k, dht::AbstractContext* p)
+      : dht::TX<dht::Key_t, Val_t>(asker, k, p)
+  {}
 
   MOCK_CONST_METHOD1(Validate, bool(const Val_t&));
 
@@ -28,18 +26,23 @@ struct TestTx final : public dht::TX< dht::Key_t, Val_t >
   MOCK_METHOD0(SendReply, void());
 };
 
-struct TestDhtTx : public Test
+struct TestDhtTx
 {
   dht::TXOwner asker;
   dht::Key_t m_key;
   TestTx tx;
 
   TestDhtTx() : tx(asker, m_key, nullptr)
+  {}
+
+  ~TestDhtTx()
   {
+    CHECK(Mock::VerifyAndClearExpectations(&tx));
   }
 };
 
-TEST_F(TestDhtTx, on_found)
+// TODO: sections?
+TEST_CASE_METHOD(TestDhtTx, "on_found", "[dht]")
 {
   // Concerns
   // - Validate returns true
@@ -48,7 +51,7 @@ TEST_F(TestDhtTx, on_found)
   // - Repeated call on failure
   // - Repeated call on success after failure
 
-  const auto key = makeBuf< dht::Key_t >(0x00);
+  const auto key = makeBuf<dht::Key_t>(0x00);
   Val_t val("good value");
 
   // Validate returns true
@@ -57,19 +60,19 @@ TEST_F(TestDhtTx, on_found)
 
     tx.OnFound(key, val);
 
-    ASSERT_THAT(tx.peersAsked, Contains(key));
-    ASSERT_THAT(tx.valuesFound, Contains(val));
+    REQUIRE(tx.peersAsked.count(key) > 0);
+    REQUIRE_THAT(tx.valuesFound, Catch::VectorContains(val));
   }
 
   // Repeated call on success
   {
     EXPECT_CALL(tx, Validate(val)).WillOnce(Return(true));
     tx.OnFound(key, val);
-    ASSERT_THAT(tx.peersAsked, Contains(key));
-    ASSERT_THAT(tx.valuesFound, Contains(val));
+    REQUIRE(tx.peersAsked.count(key) > 0);
+    REQUIRE_THAT(tx.valuesFound, Catch::VectorContains(val));
   }
 
-  const auto key1 = makeBuf< dht::Key_t >(0x01);
+  const auto key1 = makeBuf<dht::Key_t>(0x01);
   Val_t badVal("bad value");
 
   // Validate returns false
@@ -78,8 +81,8 @@ TEST_F(TestDhtTx, on_found)
 
     tx.OnFound(key1, badVal);
 
-    ASSERT_THAT(tx.peersAsked, Contains(key1));
-    ASSERT_THAT(tx.valuesFound, Not(Contains(badVal)));
+    REQUIRE(tx.peersAsked.count(key1) > 0);
+    REQUIRE_THAT(tx.valuesFound, !Catch::VectorContains(badVal));
   }
 
   // Repeated call on failure
@@ -88,8 +91,8 @@ TEST_F(TestDhtTx, on_found)
 
     tx.OnFound(key1, badVal);
 
-    ASSERT_THAT(tx.peersAsked, Contains(key1));
-    ASSERT_THAT(tx.valuesFound, Not(Contains(badVal)));
+    REQUIRE(tx.peersAsked.count(key1) > 0);
+    REQUIRE_THAT(tx.valuesFound, !Catch::VectorContains(badVal));
   }
 
   // Repeated call on success after failure
@@ -98,8 +101,7 @@ TEST_F(TestDhtTx, on_found)
 
     tx.OnFound(key1, badVal);
 
-    ASSERT_THAT(tx.peersAsked, Contains(key1));
-    ASSERT_THAT(tx.valuesFound, Contains(badVal));
+    REQUIRE(tx.peersAsked.count(key1) > 0);
+    REQUIRE_THAT(tx.valuesFound, Catch::VectorContains(badVal));
   }
 }
-

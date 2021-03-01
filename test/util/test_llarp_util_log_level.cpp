@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 #include <util/logging/loglevel.hpp>
 #include <util/logging/logger.hpp>
 #include <config/config.hpp>
@@ -8,58 +8,49 @@ using TestString = std::string;
 struct TestParseLog
 {
   TestString input;
-  std::optional< llarp::LogLevel > level;
+  std::optional<llarp::LogLevel> level;
 };
 
-struct LogLevelTest : public ::testing::TestWithParam< TestParseLog >
-{
-};
+std::vector<TestParseLog> testParseLog{// bad cases
+                                       {"bogus", {}},
+                                       {"BOGUS", {}},
+                                       {"", {}},
+                                       {" ", {}},
+                                       // good cases
+                                       {"info", llarp::eLogInfo},
+                                       {"infO", llarp::eLogInfo},
+                                       {"iNfO", llarp::eLogInfo},
+                                       {"InfO", llarp::eLogInfo},
+                                       {"INFO", llarp::eLogInfo},
+                                       {"debug", llarp::eLogDebug},
+                                       {"warn", llarp::eLogWarn},
+                                       {"error", llarp::eLogError},
+                                       {"none", llarp::eLogNone}};
 
-TEST_P(LogLevelTest, parseLevel)
+TEST_CASE("parseLevel")
 {
-  const auto data  = GetParam();
+  const auto data = GENERATE(from_range(testParseLog));
   const auto maybe = llarp::LogLevelFromString(data.input);
-  EXPECT_EQ(maybe, data.level);
+  CHECK(maybe == data.level);
 }
 
-static const TestParseLog testParseLog[] = {
-    // bad cases
-    {"bogus", {}},
-    {"BOGUS", {}},
-    {"", {}},
-    {" ", {}},
-    // good cases
-    {"info", llarp::eLogInfo},
-    {"infO", llarp::eLogInfo},
-    {"iNfO", llarp::eLogInfo},
-    {"InfO", llarp::eLogInfo},
-    {"INFO", llarp::eLogInfo},
-    {"debug", llarp::eLogDebug},
-    {"warn", llarp::eLogWarn},
-    {"error", llarp::eLogError},
-    {"none", llarp::eLogNone}};
-
-INSTANTIATE_TEST_SUITE_P(TestLogConfig, LogLevelTest,
-                         ::testing::ValuesIn(testParseLog));
-
-TEST_F(LogLevelTest, TestLogLevelToName)
+TEST_CASE("TestLogLevelToName")
 {
-  EXPECT_EQ("Trace", LogLevelToName(llarp::eLogTrace));
-  EXPECT_EQ("Debug", LogLevelToName(llarp::eLogDebug));
-  EXPECT_EQ("Info", LogLevelToName(llarp::eLogInfo));
-  EXPECT_EQ("Warn", LogLevelToName(llarp::eLogWarn));
-  EXPECT_EQ("Error", LogLevelToName(llarp::eLogError));
-  EXPECT_EQ("None", LogLevelToName(llarp::eLogNone));
-  EXPECT_EQ("???", LogLevelToName( (llarp::LogLevel)99999 ));
+  CHECK("Trace" == LogLevelToName(llarp::eLogTrace));
+  CHECK("Debug" == LogLevelToName(llarp::eLogDebug));
+  CHECK("Info" == LogLevelToName(llarp::eLogInfo));
+  CHECK("Warn" == LogLevelToName(llarp::eLogWarn));
+  CHECK("Error" == LogLevelToName(llarp::eLogError));
+  CHECK("None" == LogLevelToName(llarp::eLogNone));
+  CHECK("???" == LogLevelToName((llarp::LogLevel)99999));
 }
 
-TEST_F(LogLevelTest, TestLogLevelToString)
+TEST_CASE("TestLogLevelToString")
 {
-  EXPECT_EQ("TRC", LogLevelToString(llarp::eLogTrace));
-  EXPECT_EQ("DBG", LogLevelToString(llarp::eLogDebug));
-  EXPECT_EQ("NFO", LogLevelToString(llarp::eLogInfo));
-  EXPECT_EQ("WRN", LogLevelToString(llarp::eLogWarn));
-  EXPECT_EQ("ERR", LogLevelToString(llarp::eLogError));
-  EXPECT_EQ("???", LogLevelToString(llarp::eLogNone));
+  CHECK("TRC" == LogLevelToString(llarp::eLogTrace));
+  CHECK("DBG" == LogLevelToString(llarp::eLogDebug));
+  CHECK("NFO" == LogLevelToString(llarp::eLogInfo));
+  CHECK("WRN" == LogLevelToString(llarp::eLogWarn));
+  CHECK("ERR" == LogLevelToString(llarp::eLogError));
+  CHECK("???" == LogLevelToString(llarp::eLogNone));
 }
-

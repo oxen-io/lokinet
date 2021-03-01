@@ -2,19 +2,19 @@
 
 #include <optional>
 #include <vector>
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 using namespace llarp::thread;
 
 void
 generation(QueueManager& manager, uint32_t pushIndex, uint32_t popIndex)
 {
-  ASSERT_GE(pushIndex, popIndex);
-  ASSERT_LE(pushIndex - popIndex, manager.capacity());
+  REQUIRE(pushIndex >= popIndex);
+  REQUIRE(pushIndex - popIndex <= manager.capacity());
 
-  for(uint32_t i = 0; i < popIndex; ++i)
+  for (uint32_t i = 0; i < popIndex; ++i)
   {
-    uint32_t gen   = 0;
+    uint32_t gen = 0;
     uint32_t index = 0;
 
     (void)manager.reservePushIndex(gen, index);
@@ -22,20 +22,20 @@ generation(QueueManager& manager, uint32_t pushIndex, uint32_t popIndex)
 
     auto result = manager.reservePopIndex(gen, index);
 
-    ASSERT_EQ(result, QueueReturn::Success);
-    ASSERT_EQ(index, i % manager.capacity());
+    REQUIRE(result == QueueReturn::Success);
+    REQUIRE(index == i % manager.capacity());
 
     manager.commitPopIndex(gen, index);
   }
 
-  for(uint32_t i = popIndex; i < pushIndex; ++i)
+  for (uint32_t i = popIndex; i < pushIndex; ++i)
   {
-    uint32_t gen   = 0;
+    uint32_t gen = 0;
     uint32_t index = 0;
 
     auto result = manager.reservePushIndex(gen, index);
-    ASSERT_EQ(result, QueueReturn::Success);
-    ASSERT_EQ(index, i % manager.capacity());
+    REQUIRE(result == QueueReturn::Success);
+    REQUIRE(index == i % manager.capacity());
 
     manager.commitPushIndex(gen, index);
   }
@@ -46,24 +46,23 @@ class IntQueue
  private:
   QueueManager manager;
 
-  std::vector< int > data;
+  std::vector<int> data;
 
  public:
   IntQueue(const IntQueue&) = delete;
 
   explicit IntQueue(size_t capacity) : manager(capacity), data(capacity, 0)
-  {
-  }
+  {}
 
   ~IntQueue() = default;
 
   bool
   tryPushBack(int value)
   {
-    uint32_t gen   = 0;
+    uint32_t gen = 0;
     uint32_t index = 0;
 
-    if(manager.reservePushIndex(gen, index) == QueueReturn::Success)
+    if (manager.reservePushIndex(gen, index) == QueueReturn::Success)
     {
       data[index] = value;
       manager.commitPushIndex(gen, index);
@@ -75,13 +74,13 @@ class IntQueue
     }
   }
 
-  std::optional< int >
+  std::optional<int>
   tryPopFront()
   {
-    uint32_t gen   = 0;
+    uint32_t gen = 0;
     uint32_t index = 0;
 
-    if(manager.reservePopIndex(gen, index) == QueueReturn::Success)
+    if (manager.reservePopIndex(gen, index) == QueueReturn::Success)
     {
       int result = data[index];
       manager.commitPopIndex(gen, index);
@@ -114,14 +113,12 @@ struct QueueData
   QueueManager::AtomicIndex m_pushIndex;  // Index in the buffer that the next
                                           // element will be added to.
 
-  char m_pushPadding[QueueManager::Alignment
-                     - sizeof(QueueManager::AtomicIndex)];
+  char m_pushPadding[QueueManager::Alignment - sizeof(QueueManager::AtomicIndex)];
 
   QueueManager::AtomicIndex m_popIndex;  // Index in the buffer that the next
                                          // element will be removed from.
 
-  char
-      m_popPadding[QueueManager::Alignment - sizeof(QueueManager::AtomicIndex)];
+  char m_popPadding[QueueManager::Alignment - sizeof(QueueManager::AtomicIndex)];
 
   const size_t m_capacity;  // max size of the manager.
 
@@ -133,11 +130,10 @@ struct QueueData
   std::uint32_t* m_states;  // Array of index states.
 };
 
-static_assert(sizeof(QueueData) == sizeof(QueueManager),
-              "QueueData not updated");
+static_assert(sizeof(QueueData) == sizeof(QueueManager), "QueueData not updated");
 
 static constexpr uint32_t GENERATION_COUNT_SHIFT = 0x2;
-static constexpr uint32_t ELEMENT_STATE_MASK     = 0x3;
+static constexpr uint32_t ELEMENT_STATE_MASK = 0x3;
 
 struct QueueIntrospection
 {
@@ -146,9 +142,8 @@ struct QueueIntrospection
 
  public:
   QueueIntrospection(const QueueManager& manager)
-      : data(reinterpret_cast< const QueueData* >(&manager))
-  {
-  }
+      : data(reinterpret_cast<const QueueData*>(&manager))
+  {}
 
   uint32_t
   pushIndex() const
@@ -183,8 +178,7 @@ struct QueueIntrospection
   ElementState
   elementState(uint32_t index) const
   {
-    return static_cast< ElementState >(data->m_states[index]
-                                       & ELEMENT_STATE_MASK);
+    return static_cast<ElementState>(data->m_states[index] & ELEMENT_STATE_MASK);
   }
 
   uint32_t
@@ -209,175 +203,161 @@ struct QueueIntrospection
 void
 adjustGeneration(QueueManager& manager, uint32_t gen)
 {
-  QueueData* data = reinterpret_cast< QueueData* >(&manager);
+  QueueData* data = reinterpret_cast<QueueData*>(&manager);
 
   auto capacity = manager.capacity();
 
-  for(size_t i = 0; i < capacity; ++i)
+  for (size_t i = 0; i < capacity; ++i)
   {
     data->m_states[i] = gen << GENERATION_COUNT_SHIFT;
   }
 
-  *reinterpret_cast< QueueManager::AtomicIndex* >(&data->m_pushIndex) =
-      (gen * capacity);
-  *reinterpret_cast< QueueManager::AtomicIndex* >(&data->m_popIndex) =
-      (gen * capacity);
+  *reinterpret_cast<QueueManager::AtomicIndex*>(&data->m_pushIndex) = (gen * capacity);
+  *reinterpret_cast<QueueManager::AtomicIndex*>(&data->m_popIndex) = (gen * capacity);
 }
 
 void
-dirtyGenerate(QueueManager& manager, uint32_t pushCombinedIndex,
-              uint32_t popCombinedIndex)
+dirtyGenerate(QueueManager& manager, uint32_t pushCombinedIndex, uint32_t popCombinedIndex)
 {
-  ASSERT_GE(pushCombinedIndex, popCombinedIndex);
-  ASSERT_LE(pushCombinedIndex - popCombinedIndex, manager.capacity());
+  REQUIRE(pushCombinedIndex >= popCombinedIndex);
+  REQUIRE(pushCombinedIndex - popCombinedIndex <= manager.capacity());
 
   uint32_t capacity = manager.capacity();
 
-  uint32_t start =
-      static_cast< uint32_t >(popCombinedIndex / manager.capacity());
+  uint32_t start = static_cast<uint32_t>(popCombinedIndex / manager.capacity());
 
   adjustGeneration(manager, start);
-  generation(manager, pushCombinedIndex - (start * capacity),
-             popCombinedIndex - (start * capacity));
+  generation(
+      manager, pushCombinedIndex - (start * capacity), popCombinedIndex - (start * capacity));
 }
 
-TEST(TestQueueManager, SimpleUsage)
+TEST_CASE("Simple usage")
 {
   IntQueue queue(2);
 
   bool rc = queue.tryPushBack(1);
-  ASSERT_TRUE(rc);
+  REQUIRE(rc);
 
   rc = queue.tryPushBack(2);
-  ASSERT_TRUE(rc);
+  REQUIRE(rc);
 
   rc = queue.tryPushBack(3);
-  ASSERT_FALSE(rc);
+  REQUIRE_FALSE(rc);
 
-  ASSERT_EQ(2u, queue.size());
+  REQUIRE(2u == queue.size());
 
   auto result = queue.tryPopFront();
 
-  ASSERT_TRUE(result);
-  ASSERT_EQ(1, *result);
+  REQUIRE(result);
+  REQUIRE(1 == *result);
 }
 
-class BasicFunctionality : public ::testing::TestWithParam< uint32_t >
+TEST_CASE("Push")
 {
-};
-
-TEST_P(BasicFunctionality, Push)
-{
-  uint32_t val = GetParam();
+  uint32_t val = GENERATE(range(1u, 100u));
 
   QueueManager manager(val);
 
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
-  for(uint32_t i = 0; i < val; ++i)
+  for (uint32_t i = 0; i < val; ++i)
   {
-    ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-    ASSERT_EQ(i, index);
-    ASSERT_EQ(0u, gen);
-    ASSERT_EQ(i, manager.size() - 1);
+    REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+    REQUIRE(i == index);
+    REQUIRE(0u == gen);
+    REQUIRE(i == manager.size() - 1);
     manager.commitPushIndex(gen, index);
   }
 
-  ASSERT_EQ(QueueReturn::QueueFull, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(val, manager.size());
+  REQUIRE(QueueReturn::QueueFull == manager.reservePushIndex(gen, index));
+  REQUIRE(val == manager.size());
 }
 
-TEST_P(BasicFunctionality, AcquiringPopIndex)
+TEST_CASE("Basic functionality, acquiringPopIndex")
 {
-  uint32_t capacity = GetParam();
+  uint32_t capacity = GENERATE(range(1u, 100u));
 
   QueueManager manager(capacity);
 
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
-  for(uint32_t g = 0; g < 3; ++g)
+  for (uint32_t g = 0; g < 3; ++g)
   {
-    for(uint32_t idx = 0; idx < capacity; ++idx)
+    for (uint32_t idx = 0; idx < capacity; ++idx)
     {
-      ASSERT_EQ(QueueReturn::QueueEmpty, manager.reservePopIndex(gen, index));
+      REQUIRE(QueueReturn::QueueEmpty == manager.reservePopIndex(gen, index));
 
-      ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-      ASSERT_EQ(g, gen);
-      ASSERT_EQ(index, idx);
-      ASSERT_EQ(1u, manager.size());
+      REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+      REQUIRE(g == gen);
+      REQUIRE(index == idx);
+      REQUIRE(1u == manager.size());
 
       manager.commitPushIndex(gen, index);
-      ASSERT_EQ(1u, manager.size());
+      REQUIRE(1u == manager.size());
 
-      ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
-      ASSERT_EQ(g, gen);
-      ASSERT_EQ(index, idx);
-      ASSERT_EQ(0u, manager.size());
+      REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
+      REQUIRE(g == gen);
+      REQUIRE(index == idx);
+      REQUIRE(0u == manager.size());
 
       manager.commitPopIndex(gen, index);
-      ASSERT_EQ(0u, manager.size());
+      REQUIRE(0u == manager.size());
     }
   }
 }
 
-TEST_P(BasicFunctionality, pushIndex)
+TEST_CASE("Basic functionality, pushIndex")
 {
-  uint32_t capacity = GetParam();
+  uint32_t capacity = GENERATE(range(1u, 100u));
 
   QueueManager manager(capacity);
 
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 
   uint32_t generation = 0;
-  uint32_t index      = 0;
+  uint32_t index = 0;
 
   // Fill the queue
-  for(uint32_t idx = 0; idx < capacity; ++idx)
+  for (uint32_t idx = 0; idx < capacity; ++idx)
   {
     manager.reservePushIndex(generation, index);
     manager.commitPushIndex(generation, index);
   }
 
-  ASSERT_EQ(capacity, manager.size());
+  REQUIRE(capacity == manager.size());
 
-  for(uint32_t gen = 0; gen < 3; ++gen)
+  for (uint32_t gen = 0; gen < 3; ++gen)
   {
-    for(uint32_t idx = 0; idx < capacity; ++idx)
+    for (uint32_t idx = 0; idx < capacity; ++idx)
     {
-      ASSERT_EQ(QueueReturn::QueueFull,
-                manager.reservePushIndex(generation, index));
+      REQUIRE(QueueReturn::QueueFull == manager.reservePushIndex(generation, index));
 
-      ASSERT_EQ(QueueReturn::Success,
-                manager.reservePopIndex(generation, index));
+      REQUIRE(QueueReturn::Success == manager.reservePopIndex(generation, index));
 
-      ASSERT_EQ(generation, gen);
-      ASSERT_EQ(index, idx);
-      ASSERT_EQ(capacity - 1, manager.size());
+      REQUIRE(generation == gen);
+      REQUIRE(index == idx);
+      REQUIRE(capacity - 1 == manager.size());
 
       manager.commitPopIndex(generation, index);
-      ASSERT_EQ(capacity - 1, manager.size());
+      REQUIRE(capacity - 1 == manager.size());
 
-      ASSERT_EQ(QueueReturn::Success,
-                manager.reservePushIndex(generation, index));
+      REQUIRE(QueueReturn::Success == manager.reservePushIndex(generation, index));
 
-      ASSERT_EQ(generation, gen + 1);
-      ASSERT_EQ(index, idx);
-      ASSERT_EQ(manager.size(), capacity);
+      REQUIRE(generation == gen + 1);
+      REQUIRE(index == idx);
+      REQUIRE(manager.size() == capacity);
 
       manager.commitPushIndex(generation, index);
-      ASSERT_EQ(manager.size(), capacity);
+      REQUIRE(manager.size() == capacity);
     }
   }
 }
-
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerBasic, BasicFunctionality,
-                         ::testing::Range(1u, 100u));
 
 // Potential issues:
 // - That pushing an element at the max combined index will push the next
@@ -389,51 +369,49 @@ INSTANTIATE_TEST_SUITE_P(TestQueueManagerBasic, BasicFunctionality,
 // - That reservePopIndexForClear and abortPushIndexReservation clear the
 // correct element and increment push/pop
 
-TEST(TestQueueManagerMaxCombinedIndex, PushAtMax)
+TEST_CASE("Push at max")
 {
   QueueManager manager(1);
 
   QueueIntrospection state{manager};
 
-  const uint32_t MAX_COMBINED_INDEX =
-      std::numeric_limits< uint32_t >::max() >> 2;
-  const uint32_t MAX_GENERATION = std::numeric_limits< uint32_t >::max() >> 2;
+  const uint32_t MAX_COMBINED_INDEX = std::numeric_limits<uint32_t>::max() >> 2;
+  const uint32_t MAX_GENERATION = std::numeric_limits<uint32_t>::max() >> 2;
 
   const uint32_t maxGeneration = QueueIntrospection(manager).maxGen();
-  const uint32_t maxCombinedIndex =
-      QueueIntrospection(manager).maxCombinedIndex();
+  const uint32_t maxCombinedIndex = QueueIntrospection(manager).maxCombinedIndex();
 
-  ASSERT_EQ(maxGeneration, MAX_GENERATION);
-  ASSERT_EQ(maxCombinedIndex, MAX_COMBINED_INDEX);
+  REQUIRE(maxGeneration == MAX_GENERATION);
+  REQUIRE(maxCombinedIndex == MAX_COMBINED_INDEX);
 
   dirtyGenerate(manager, MAX_COMBINED_INDEX, MAX_COMBINED_INDEX);
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
-  ASSERT_EQ(0u, manager.size());
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(MAX_GENERATION, gen);
-  ASSERT_EQ(0u, index);
+  REQUIRE(0u == manager.size());
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+  REQUIRE(MAX_GENERATION == gen);
+  REQUIRE(0u == index);
   manager.commitPushIndex(gen, index);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
-  ASSERT_EQ(MAX_GENERATION, gen);
-  ASSERT_EQ(0u, index);
+  REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
+  REQUIRE(MAX_GENERATION == gen);
+  REQUIRE(0u == index);
   manager.commitPopIndex(gen, index);
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(0u, gen);
-  ASSERT_EQ(0u, index);
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+  REQUIRE(0u == gen);
+  REQUIRE(0u == index);
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(1u == manager.size());
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
-  ASSERT_EQ(0u, gen);
-  ASSERT_EQ(0u, index);
+  REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
+  REQUIRE(0u == gen);
+  REQUIRE(0u == index);
   manager.commitPopIndex(gen, index);
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 }
 
 struct CombinedIndexData
@@ -451,13 +429,43 @@ operator<<(std::ostream& os, CombinedIndexData d)
   return os;
 }
 
-class PopAtMax : public ::testing::TestWithParam< CombinedIndexData >
-{
-};
+std::vector<CombinedIndexData> PopAtMaxData{// Capacity 2 queues for a couple generations
+                                            {2, 1, 0},
+                                            {2, 2, 0},
+                                            {2, 2, 1},
+                                            {2, 2, 2},
+                                            {2, 3, 1},
+                                            {2, 3, 2},
+                                            {2, 3, 3},
+                                            {2, 4, 2},
+                                            {2, 4, 3},
+                                            {2, 4, 4},
 
-TEST_P(PopAtMax, PopAtMax)
+                                            // Capacity 3 queues for a couple generations
+                                            {3, 2, 0},
+                                            {3, 3, 0},
+                                            {3, 3, 1},
+                                            {3, 3, 2},
+                                            {3, 3, 3},
+                                            {3, 4, 1},
+                                            {3, 4, 2},
+                                            {3, 4, 3},
+                                            {3, 4, 4},
+                                            {3, 5, 2},
+                                            {3, 5, 3},
+                                            {3, 5, 4},
+                                            {3, 5, 5},
+
+                                            // Capacity 7 queue
+                                            {7, 6, 0},
+                                            {7, 7, 0},
+                                            {7, 7, 6},
+                                            {7, 13, 7},
+                                            {7, 14, 7}};
+
+TEST_CASE("Pop at max")
 {
-  const auto& d = GetParam();
+  const auto& d = GENERATE(from_range(PopAtMaxData));
 
   QueueManager manager(d.capacity);
 
@@ -466,144 +474,62 @@ TEST_P(PopAtMax, PopAtMax)
 
   adjustGeneration(manager, MAX_GEN);
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
   // Push and pop elements up until the pop-index.
 
-  for(size_t j = 0; j < d.popIndex; ++j)
+  for (size_t j = 0; j < d.popIndex; ++j)
   {
     uint32_t INDEX = j % d.capacity;
-    uint32_t GEN   = (MAX_GEN + j / d.capacity) % NUM_GEN;
+    uint32_t GEN = (MAX_GEN + j / d.capacity) % NUM_GEN;
 
-    ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-    ASSERT_EQ(INDEX, index);
-    ASSERT_EQ(GEN, gen);
+    REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+    REQUIRE(INDEX == index);
+    REQUIRE(GEN == gen);
     manager.commitPushIndex(gen, index);
-    ASSERT_EQ(1u, manager.size());
+    REQUIRE(1u == manager.size());
 
-    ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
+    REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
 
-    ASSERT_EQ(INDEX, index);
-    ASSERT_EQ(GEN, gen);
+    REQUIRE(INDEX == index);
+    REQUIRE(GEN == gen);
     manager.commitPopIndex(gen, index);
-    ASSERT_EQ(0u, manager.size());
+    REQUIRE(0u == manager.size());
   }
 
   // Push elements up to the push index
 
-  for(size_t j = d.popIndex; j < d.pushIndex; ++j)
+  for (size_t j = d.popIndex; j < d.pushIndex; ++j)
   {
     uint32_t INDEX = j % d.capacity;
-    uint32_t GEN   = (MAX_GEN + j / d.capacity) % NUM_GEN;
+    uint32_t GEN = (MAX_GEN + j / d.capacity) % NUM_GEN;
 
-    ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+    REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-    ASSERT_EQ(INDEX, index);
-    ASSERT_EQ(GEN, gen);
+    REQUIRE(INDEX == index);
+    REQUIRE(GEN == gen);
     manager.commitPushIndex(gen, index);
-    ASSERT_EQ(j - d.popIndex + 1, manager.size());
+    REQUIRE(j - d.popIndex + 1 == manager.size());
   }
 
   // Pop elements until the queue is empty.
 
-  for(size_t j = d.popIndex; j < d.pushIndex; ++j)
+  for (size_t j = d.popIndex; j < d.pushIndex; ++j)
   {
     uint32_t INDEX = j % d.capacity;
-    uint32_t GEN   = (MAX_GEN + j / d.capacity) % NUM_GEN;
+    uint32_t GEN = (MAX_GEN + j / d.capacity) % NUM_GEN;
 
-    ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
+    REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
 
-    ASSERT_EQ(INDEX, index);
-    ASSERT_EQ(GEN, gen);
+    REQUIRE(INDEX == index);
+    REQUIRE(GEN == gen);
     manager.commitPopIndex(gen, index);
-    ASSERT_EQ(d.pushIndex - j - 1, manager.size());
+    REQUIRE(d.pushIndex - j - 1 == manager.size());
   }
 }
 
-CombinedIndexData PopAtMaxData[] =
-    {  // Capacity 2 queues for a couple generations
-        {2, 1, 0},
-        {2, 2, 0},
-        {2, 2, 1},
-        {2, 2, 2},
-        {2, 3, 1},
-        {2, 3, 2},
-        {2, 3, 3},
-        {2, 4, 2},
-        {2, 4, 3},
-        {2, 4, 4},
-
-        // Capacity 3 queues for a couple generations
-        {3, 2, 0},
-        {3, 3, 0},
-        {3, 3, 1},
-        {3, 3, 2},
-        {3, 3, 3},
-        {3, 4, 1},
-        {3, 4, 2},
-        {3, 4, 3},
-        {3, 4, 4},
-        {3, 5, 2},
-        {3, 5, 3},
-        {3, 5, 4},
-        {3, 5, 5},
-
-        // Capacity 7 queue
-        {7, 6, 0},
-        {7, 7, 0},
-        {7, 7, 6},
-        {7, 13, 7},
-        {7, 14, 7}};
-
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, PopAtMax,
-                         ::testing::ValuesIn(PopAtMaxData));
-
-class ReservePop : public ::testing::TestWithParam< CombinedIndexData >
-{
-};
-
-TEST_P(ReservePop, ReservePopIndexForClear)
-{
-  const auto& d = GetParam();
-
-  QueueManager manager(d.capacity);
-  const uint32_t NUM_GEN = QueueManager::numGenerations(d.capacity);
-  const uint32_t MAX_GEN = NUM_GEN - 1;
-
-  adjustGeneration(manager, MAX_GEN);
-
-  generation(manager, d.pushIndex, d.popIndex);
-
-  // Pop elements until the queue is empty
-
-  uint32_t endGeneration = 0;
-  uint32_t endIndex      = 0;
-  uint32_t gen           = 0;
-  uint32_t index         = 0;
-
-  ASSERT_EQ(QueueReturn::Success,
-            manager.reservePushIndex(endGeneration, endIndex));
-
-  for(uint32_t j = d.popIndex; j < d.pushIndex; ++j)
-  {
-    uint32_t INDEX = j % d.capacity;
-    uint32_t GEN   = (MAX_GEN + j / d.capacity) % NUM_GEN;
-
-    ASSERT_TRUE(
-        manager.reservePopForClear(gen, index, endGeneration, endIndex));
-
-    ASSERT_EQ(INDEX, index);
-    ASSERT_EQ(GEN, gen);
-    manager.commitPopIndex(gen, index);
-  }
-
-  ASSERT_FALSE(manager.reservePopForClear(gen, index, endGeneration, endIndex));
-  manager.abortPushIndexReservation(endGeneration, endIndex);
-  ASSERT_EQ(0u, manager.size());
-}
-
-CombinedIndexData ReservePopIndexForClearData[] = {
+std::vector<CombinedIndexData> ReservePopIndexForClearData{
     // Capacity 2 queues for a couple generations
     {2, 1, 0},
     {2, 2, 1},
@@ -631,8 +557,43 @@ CombinedIndexData ReservePopIndexForClearData[] = {
     {7, 13, 7},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, ReservePop,
-                         ::testing::ValuesIn(ReservePopIndexForClearData));
+TEST_CASE("Reserve pop index for clear")
+{
+  const auto& d = GENERATE(from_range(ReservePopIndexForClearData));
+
+  QueueManager manager(d.capacity);
+  const uint32_t NUM_GEN = QueueManager::numGenerations(d.capacity);
+  const uint32_t MAX_GEN = NUM_GEN - 1;
+
+  adjustGeneration(manager, MAX_GEN);
+
+  generation(manager, d.pushIndex, d.popIndex);
+
+  // Pop elements until the queue is empty
+
+  uint32_t endGeneration = 0;
+  uint32_t endIndex = 0;
+  uint32_t gen = 0;
+  uint32_t index = 0;
+
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(endGeneration, endIndex));
+
+  for (uint32_t j = d.popIndex; j < d.pushIndex; ++j)
+  {
+    uint32_t INDEX = j % d.capacity;
+    uint32_t GEN = (MAX_GEN + j / d.capacity) % NUM_GEN;
+
+    REQUIRE(manager.reservePopForClear(gen, index, endGeneration, endIndex));
+
+    REQUIRE(INDEX == index);
+    REQUIRE(GEN == gen);
+    manager.commitPopIndex(gen, index);
+  }
+
+  REQUIRE_FALSE(manager.reservePopForClear(gen, index, endGeneration, endIndex));
+  manager.abortPushIndexReservation(endGeneration, endIndex);
+  REQUIRE(0u == manager.size());
+}
 
 struct CircularDifferenceData
 {
@@ -646,30 +607,15 @@ std::ostream&
 operator<<(std::ostream& os, CircularDifferenceData d)
 {
   os << "[ minuend = " << d.minuend << " subtrahend = " << d.subtrahend
-     << " maxSize = " << d.maxSize << " expectedValue = " << d.expectedValue
-     << " ]";
+     << " maxSize = " << d.maxSize << " expectedValue = " << d.expectedValue << " ]";
   return os;
 }
 
-class CircularDifference
-    : public ::testing::TestWithParam< CircularDifferenceData >
-{
-};
-
-TEST_P(CircularDifference, difference)
-{
-  const auto& data = GetParam();
-
-  ASSERT_EQ(data.expectedValue,
-            QueueManager::circularDifference(data.minuend, data.subtrahend,
-                                             data.maxSize));
-}
-
-constexpr uint32_t OUR_INT32_MAX    = std::numeric_limits< int32_t >::max();
-constexpr uint32_t OUR_INT32_MAX_1  = OUR_INT32_MAX + 1;
+constexpr uint32_t OUR_INT32_MAX = std::numeric_limits<int32_t>::max();
+constexpr uint32_t OUR_INT32_MAX_1 = OUR_INT32_MAX + 1;
 constexpr int32_t OUR_INT32_MAX_DIV = OUR_INT32_MAX_1 / 2;
 
-CircularDifferenceData circularDifferenceData[] = {
+std::vector<CircularDifferenceData> circularDifferenceData{
     // capacity 1
     {0, 0, 1, 0},
 
@@ -715,62 +661,53 @@ CircularDifferenceData circularDifferenceData[] = {
     {0, 180, 360, -180},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, CircularDifference,
-                         ::testing::ValuesIn(circularDifferenceData));
-
-class NumGenerations : public ::testing::TestWithParam< uint32_t >
+TEST_CASE("Circular difference")
 {
-};
+  const auto& data = GENERATE(from_range(circularDifferenceData));
 
-TEST_P(NumGenerations, generations)
-{
-  uint32_t capacity = GetParam();
-  uint32_t numGen   = QueueManager::numGenerations(capacity);
-
-  static const uint32_t MAX_ELEMENT_STATE_GEN =
-      std::numeric_limits< uint32_t >::max() >> 2;
-
-  static const uint32_t MAX_COMBINED_INDEX =
-      std::numeric_limits< uint32_t >::max() >> 1;
-
-  ASSERT_GE(numGen, 2u);
-  ASSERT_TRUE(MAX_ELEMENT_STATE_GEN == numGen - 1
-              || ((numGen * capacity - 1 <= MAX_COMBINED_INDEX)
-                  && ((numGen + 1) * capacity - 1 > MAX_COMBINED_INDEX)));
+  REQUIRE(
+      data.expectedValue
+      == QueueManager::circularDifference(data.minuend, data.subtrahend, data.maxSize));
 }
 
-uint32_t GenerationData[] = {1,
-                             2,
-                             3,
-                             4,
-                             15,
-                             16,
-                             17,
-                             QueueManager::MAX_CAPACITY - 1,
-                             QueueManager::MAX_CAPACITY};
+std::vector<uint32_t> GenerationData{
+    1, 2, 3, 4, 15, 16, 17, QueueManager::MAX_CAPACITY - 1, QueueManager::MAX_CAPACITY};
 
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, NumGenerations,
-                         ::testing::ValuesIn(GenerationData));
-
-TEST(TestQueueManager, abortPushIndexReservation)
+TEST_CASE("Num generations")
 {
-  uint32_t genA   = 0;
-  uint32_t genB   = 0;
+  uint32_t capacity = GENERATE(from_range(GenerationData));
+  uint32_t numGen = QueueManager::numGenerations(capacity);
+
+  static const uint32_t MAX_ELEMENT_STATE_GEN = std::numeric_limits<uint32_t>::max() >> 2;
+
+  static const uint32_t MAX_COMBINED_INDEX = std::numeric_limits<uint32_t>::max() >> 1;
+
+  REQUIRE(numGen >= 2u);
+  REQUIRE(
+      ((MAX_ELEMENT_STATE_GEN == numGen - 1)
+       || ((numGen * capacity - 1 <= MAX_COMBINED_INDEX)
+           && ((numGen + 1) * capacity - 1 > MAX_COMBINED_INDEX))));
+}
+
+TEST_CASE("Abort push index reservation")
+{
+  uint32_t genA = 0;
+  uint32_t genB = 0;
   uint32_t indexA = 0;
   uint32_t indexB = 0;
 
   QueueManager manager(1);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(genA, indexA));
-  ASSERT_NE(QueueReturn::Success, manager.reservePushIndex(genA, indexA));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(genA, indexA));
+  REQUIRE(QueueReturn::Success != manager.reservePushIndex(genA, indexA));
 
   manager.abortPushIndexReservation(genA, indexA);
 
-  ASSERT_EQ(0u, manager.size());
+  REQUIRE(0u == manager.size());
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(genB, indexB));
-  ASSERT_EQ(genA + 1, genB);
-  ASSERT_EQ(indexA, indexB);
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(genB, indexB));
+  REQUIRE(genA + 1 == genB);
+  REQUIRE(indexA == indexB);
 }
 
 struct AbortData
@@ -785,66 +722,11 @@ std::ostream&
 operator<<(std::ostream& os, AbortData d)
 {
   os << "[ capacity = " << d.capacity << " pushIndex = " << d.pushIndex
-     << " popIndex = " << d.popIndex << " expectedClears = " << d.expectedClears
-     << " ]";
+     << " popIndex = " << d.popIndex << " expectedClears = " << d.expectedClears << " ]";
   return os;
 }
 
-class AbortPush : public ::testing::TestWithParam< AbortData >
-{
-};
-
-TEST_P(AbortPush, abortPush)
-{
-  const auto& data = GetParam();
-
-  QueueManager manager(data.capacity);
-
-  generation(manager, data.pushIndex, data.popIndex);
-
-  const uint32_t END_GENERATION = data.pushIndex / data.capacity;
-  const uint32_t END_INDEX      = data.pushIndex % data.capacity;
-
-  uint32_t gen   = 0;
-  uint32_t index = 0;
-
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(END_GENERATION, gen);
-  ASSERT_EQ(END_INDEX, index);
-
-  for(uint32_t i = 0; i < data.expectedClears; ++i)
-  {
-    ASSERT_TRUE(
-        manager.reservePopForClear(gen, index, END_GENERATION, END_INDEX));
-
-    ASSERT_EQ((data.popIndex + i) / data.capacity, gen);
-    ASSERT_EQ((data.popIndex + i) % data.capacity, index);
-
-    manager.commitPopIndex(gen, index);
-  }
-
-  ASSERT_FALSE(
-      manager.reservePopForClear(gen, index, END_GENERATION, END_INDEX));
-
-  manager.abortPushIndexReservation(END_GENERATION, END_INDEX);
-
-  // Verify the queue is now empty, and the current push index has changed
-
-  ASSERT_EQ(0u, manager.size());
-  for(uint32_t i = 0; i < data.capacity; ++i)
-  {
-    ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-    ASSERT_EQ(i + 1, manager.size());
-
-    ASSERT_EQ(END_GENERATION * data.capacity + END_INDEX + i + 1,
-              gen * data.capacity + index);
-  }
-
-  ASSERT_NE(QueueReturn::Success, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(data.capacity, manager.size());
-}
-
-AbortData abortData[] = {
+std::vector<AbortData> abortData{
     {1, 0, 0, 0},
 
     // Capacity 2 queues for a couple generations
@@ -879,8 +761,52 @@ AbortData abortData[] = {
     {7, 24, 18, 6},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, AbortPush,
-                         ::testing::ValuesIn(abortData));
+TEST_CASE("Abort push")
+{
+  const auto& data = GENERATE(from_range(abortData));
+
+  QueueManager manager(data.capacity);
+
+  generation(manager, data.pushIndex, data.popIndex);
+
+  const uint32_t END_GENERATION = data.pushIndex / data.capacity;
+  const uint32_t END_INDEX = data.pushIndex % data.capacity;
+
+  uint32_t gen = 0;
+  uint32_t index = 0;
+
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+  REQUIRE(END_GENERATION == gen);
+  REQUIRE(END_INDEX == index);
+
+  for (uint32_t i = 0; i < data.expectedClears; ++i)
+  {
+    REQUIRE(manager.reservePopForClear(gen, index, END_GENERATION, END_INDEX));
+
+    REQUIRE((data.popIndex + i) / data.capacity == gen);
+    REQUIRE((data.popIndex + i) % data.capacity == index);
+
+    manager.commitPopIndex(gen, index);
+  }
+
+  REQUIRE_FALSE(manager.reservePopForClear(gen, index, END_GENERATION, END_INDEX));
+
+  manager.abortPushIndexReservation(END_GENERATION, END_INDEX);
+
+  // Verify the queue is now empty, and the current push index has changed
+
+  REQUIRE(0u == manager.size());
+  for (uint32_t i = 0; i < data.capacity; ++i)
+  {
+    REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+    REQUIRE(i + 1 == manager.size());
+
+    REQUIRE(END_GENERATION * data.capacity + END_INDEX + i + 1 == gen * data.capacity + index);
+  }
+
+  REQUIRE(QueueReturn::Success != manager.reservePushIndex(gen, index));
+  REQUIRE(data.capacity == manager.size());
+}
 
 // Testing reservePopForClear
 // - Failure is returned when the head of the queue is the same as the given end
@@ -889,85 +815,85 @@ INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, AbortPush,
 // not the given end generation and index
 // - We do not clear an index reserved for popping
 
-TEST(TestQueueManagerReserve, Capacity1)
+TEST_CASE("Capacity 1")
 {
   // It is not possible to clear a pop index when the capacity is 1.
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
   // Random values to verify we didn't change them.
-  uint32_t resultGen   = 1024;
+  uint32_t resultGen = 1024;
   uint32_t resultIndex = 1023;
 
   QueueManager manager(1);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_FALSE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE_FALSE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
 
-  ASSERT_EQ(1024u, resultGen);
-  ASSERT_EQ(1023u, resultIndex);
+  REQUIRE(1024u == resultGen);
+  REQUIRE(1023u == resultIndex);
 
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(1u == manager.size());
 }
 
-TEST(TestQueueManagerReserve, Capacity2)
+TEST_CASE("Capacity 2")
 {
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
   // Random values to verify we didn't change them.
-  uint32_t resultGen   = 1024;
+  uint32_t resultGen = 1024;
   uint32_t resultIndex = 1023;
 
   QueueManager manager(2);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_FALSE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE_FALSE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
 
-  ASSERT_EQ(1024u, resultGen);
-  ASSERT_EQ(1023u, resultIndex);
+  REQUIRE(1024u == resultGen);
+  REQUIRE(1023u == resultIndex);
   manager.commitPushIndex(gen, index);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_TRUE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
-  ASSERT_EQ(0u, resultGen);
-  ASSERT_EQ(0u, resultIndex);
+  REQUIRE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE(0u == resultGen);
+  REQUIRE(0u == resultIndex);
   manager.commitPopIndex(resultGen, resultIndex);
 
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_TRUE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
-  ASSERT_EQ(0u, resultGen);
-  ASSERT_EQ(1u, resultIndex);
+  REQUIRE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE(0u == resultGen);
+  REQUIRE(1u == resultIndex);
   manager.commitPopIndex(resultGen, resultIndex);
   manager.commitPushIndex(gen, index);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_TRUE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
-  ASSERT_EQ(1u, resultGen);
-  ASSERT_EQ(0u, resultIndex);
+  REQUIRE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE(1u == resultGen);
+  REQUIRE(0u == resultIndex);
   manager.commitPopIndex(resultGen, resultIndex);
   manager.commitPushIndex(gen, index);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_TRUE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
-  ASSERT_EQ(1u, resultGen);
-  ASSERT_EQ(1u, resultIndex);
+  REQUIRE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE(1u == resultGen);
+  REQUIRE(1u == resultIndex);
   manager.commitPopIndex(resultGen, resultIndex);
   manager.commitPushIndex(gen, index);
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
 
-  ASSERT_TRUE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
-  ASSERT_EQ(2u, resultGen);
-  ASSERT_EQ(0u, resultIndex);
+  REQUIRE(manager.reservePopForClear(resultGen, resultIndex, gen, index));
+  REQUIRE(2u == resultGen);
+  REQUIRE(0u == resultIndex);
   manager.commitPopIndex(resultGen, resultIndex);
   manager.commitPushIndex(gen, index);
 }
@@ -984,43 +910,11 @@ std::ostream&
 operator<<(std::ostream& os, ReserveData d)
 {
   os << "[ capacity = " << d.capacity << " pushIndex = " << d.pushIndex
-     << " popIndex = " << d.popIndex << " expectedClears = " << d.expectedClears
-     << " ]";
+     << " popIndex = " << d.popIndex << " expectedClears = " << d.expectedClears << " ]";
   return os;
 }
-class Reserve : public ::testing::TestWithParam< ReserveData >
-{
-};
 
-TEST_P(Reserve, clear)
-{
-  const auto& data = GetParam();
-  QueueManager manager(data.capacity);
-
-  generation(manager, data.pushIndex, data.popIndex);
-
-  const uint32_t endGen = data.pushIndex / data.capacity;
-  const uint32_t endIdx = data.pushIndex % data.capacity;
-
-  uint32_t gen   = 0;
-  uint32_t index = 0;
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(endGen, gen);
-  ASSERT_EQ(endIdx, index);
-
-  for(unsigned int j = 0; j < data.expectedClears; ++j)
-  {
-    ASSERT_TRUE(manager.reservePopForClear(gen, index, endGen, endIdx));
-    ASSERT_EQ((data.popIndex + j) / data.capacity, gen);
-    ASSERT_EQ((data.popIndex + j) % data.capacity, index);
-    manager.commitPopIndex(gen, index);
-  }
-  ASSERT_FALSE(manager.reservePopForClear(gen, index, endGen, endIdx));
-  manager.commitPushIndex(endGen, endIdx);
-  ASSERT_EQ(1u, manager.size());
-}
-
-ReserveData reserveData[] = {
+std::vector<ReserveData> reserveData{
     {1, 0, 0, 0},
 
     // Capacity 2 queues for a couple generations
@@ -1055,72 +949,97 @@ ReserveData reserveData[] = {
     {7, 24, 18, 6},
 };
 
-INSTANTIATE_TEST_SUITE_P(TestQueueManagerReserve, Reserve,
-                         ::testing::ValuesIn(reserveData));
+TEST_CASE("Reserve, clear")
+{
+  const auto& data = GENERATE(from_range(reserveData));
+  QueueManager manager(data.capacity);
 
-TEST(TestQueueManager, Enabled)
+  generation(manager, data.pushIndex, data.popIndex);
+
+  const uint32_t endGen = data.pushIndex / data.capacity;
+  const uint32_t endIdx = data.pushIndex % data.capacity;
+
+  uint32_t gen = 0;
+  uint32_t index = 0;
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
+  REQUIRE(endGen == gen);
+  REQUIRE(endIdx == index);
+
+  for (unsigned int j = 0; j < data.expectedClears; ++j)
+  {
+    REQUIRE(manager.reservePopForClear(gen, index, endGen, endIdx));
+    REQUIRE((data.popIndex + j) / data.capacity == gen);
+    REQUIRE((data.popIndex + j) % data.capacity == index);
+    manager.commitPopIndex(gen, index);
+  }
+  REQUIRE_FALSE(manager.reservePopForClear(gen, index, endGen, endIdx));
+  manager.commitPushIndex(endGen, endIdx);
+  REQUIRE(1u == manager.size());
+}
+
+TEST_CASE("Enabled")
 {
   QueueManager manager(3);
 
-  ASSERT_TRUE(manager.enabled());
+  REQUIRE(manager.enabled());
 
-  uint32_t gen   = 0;
+  uint32_t gen = 0;
   uint32_t index = 0;
 
   // Insert 2 elements.
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(1u == manager.size());
 
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(2u, manager.size());
+  REQUIRE(2u == manager.size());
 
   // Disable the queue.
   manager.disable();
-  ASSERT_FALSE(manager.enabled());
+  REQUIRE_FALSE(manager.enabled());
 
   // Test that attempting to push fails.
-  ASSERT_EQ(QueueReturn::QueueDisabled, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(2u, manager.size());
+  REQUIRE(QueueReturn::QueueDisabled == manager.reservePushIndex(gen, index));
+  REQUIRE(2u == manager.size());
 
   // Test that attempting to pop succeeds.
-  ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
   manager.commitPopIndex(gen, index);
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(1u == manager.size());
 
   // Test that attempting to push still fails.
-  ASSERT_EQ(QueueReturn::QueueDisabled, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(QueueReturn::QueueDisabled == manager.reservePushIndex(gen, index));
+  REQUIRE(1u == manager.size());
 
   // Disable the queue a second time, and verify that has no effect.
   manager.disable();
-  ASSERT_FALSE(manager.enabled());
+  REQUIRE_FALSE(manager.enabled());
 
   // Test that attempting to push still fails.
-  ASSERT_EQ(QueueReturn::QueueDisabled, manager.reservePushIndex(gen, index));
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(QueueReturn::QueueDisabled == manager.reservePushIndex(gen, index));
+  REQUIRE(1u == manager.size());
 
   // Enable the queue.
   manager.enable();
-  ASSERT_TRUE(manager.enabled());
+  REQUIRE(manager.enabled());
 
   // Test that attempting to push succeeds.
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(2u, manager.size());
+  REQUIRE(2u == manager.size());
 
   // Test that attempting to pop succeeds.
-  ASSERT_EQ(QueueReturn::Success, manager.reservePopIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePopIndex(gen, index));
   manager.commitPopIndex(gen, index);
-  ASSERT_EQ(1u, manager.size());
+  REQUIRE(1u == manager.size());
 
   // Enable the queue a second time, and verify that has no effect.
   manager.enable();
-  ASSERT_TRUE(manager.enabled());
+  REQUIRE(manager.enabled());
 
   // Test that attempting to push succeeds.
-  ASSERT_EQ(QueueReturn::Success, manager.reservePushIndex(gen, index));
+  REQUIRE(QueueReturn::Success == manager.reservePushIndex(gen, index));
   manager.commitPushIndex(gen, index);
-  ASSERT_EQ(2u, manager.size());
+  REQUIRE(2u == manager.size());
 }
