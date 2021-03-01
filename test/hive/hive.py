@@ -68,8 +68,8 @@ class RouterHive(object):
     config.network.enableProfiling = False
     config.network.endpointType = 'null'
 
-    config.links.addInboundLink("lo", AF_INET, port);
-    config.links.setOutboundLink("lo", AF_INET, port + 10000);
+    config.links.addInboundLink("lo", AF_INET, port)
+    config.links.setOutboundLink("lo", AF_INET, 0)
 
     # config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
     if index == 0:
@@ -90,9 +90,9 @@ class RouterHive(object):
     config = pyllarp.Config(dirname)
     config.Load(None, False);
 
-    port = index + 50000
     tunname = "lokihive%d" % index
 
+    config.paths.netmask = 0
     config.router.dataDir = dirname
     config.router.netid = self.netid
     config.router.blockBogons = False
@@ -100,7 +100,7 @@ class RouterHive(object):
     config.network.enableProfiling = False
     config.network.endpointType = 'null'
 
-    config.links.setOutboundLink("lo", AF_INET, port + 10000);
+    config.links.setOutboundLink("lo", AF_INET, 0);
 
     # config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
