@@ -222,6 +222,10 @@ namespace llarp
       return m_Pending.size();
     }
 
+    // Returns the file description of the UDP server, if available.
+    std::optional<int>
+    GetUDPFD() const;
+
    private:
     const SecretKey& m_RouterEncSecret;
 

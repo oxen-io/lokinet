@@ -1326,7 +1326,7 @@ namespace llarp
         continue;
 
 #if defined(ANDROID)
-      m_OutboundUDPSocket = link->GetUDPSocket();
+      m_OutboundUDPSocket = link->GetUDPFD().value_or(-1);
 #endif
       _linkManager.AddLink(std::move(link), false);
       return true;

@@ -66,6 +66,16 @@ namespace llarp::uv
     bool
     send(const SockAddr& dest, const llarp_buffer_t& buf) override;
 
+    std::optional<int>
+    file_descriptor() override
+    {
+#ifndef _WIN32
+      if (int fd = handle->fd(); fd >= 0)
+        return fd;
+#endif
+      return std::nullopt;
+    }
+
     void
     close() override;
 

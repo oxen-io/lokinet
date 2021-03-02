@@ -25,6 +25,14 @@ namespace llarp
     virtual void
     close() = 0;
 
+    // Returns the file descriptor of the socket, if available.  This generally exists only after
+    // listen() has been called, and never exists on Windows.
+    virtual std::optional<int>
+    file_descriptor()
+    {
+      return std::nullopt;
+    }
+
     // Base class destructor
     virtual ~UDPHandle() = default;
 

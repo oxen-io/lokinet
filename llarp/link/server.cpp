@@ -489,4 +489,10 @@ namespace llarp
     return true;
   }
 
+  std::optional<int>
+  ILinkLayer::GetUDPFD() const
+  {
+    return m_udp->file_descriptor();
+  }
+
 }  // namespace llarp
