@@ -27,11 +27,11 @@ android {
         targetSdkVersion 28
         minSdkVersion 23
         versionCode 1
-        versionName '0.8.0'
+        versionName '0.8.3'
         externalNativeBuild {
             cmake {
                 // targets "lokinet-android"
-                arguments "-DWITH_LTO=OFF", "-DCXXOPTS_BUILD_TESTS=OFF","-DWITH_TESTS=OFF", "-DCMAKE_CROSSCOMPILING=ON", "-DNATIVE_BUILD=OFF", "-DANDROID=ON", "-DANDROID_STL=c++_static",  "-DBUILD_STATIC_DEPS=ON", "-DBUILD_SHARED_LIBS=OFF", "-DSTATIC_LINK=ON", "-DDOWNLOAD_UV=FORCE", "-DANDROID_ARM_MODE=arm"
+                arguments "-DWITH_LTO=OFF", "-DCXXOPTS_BUILD_TESTS=OFF","-DWITH_TESTS=OFF", "-DCMAKE_CROSSCOMPILING=ON", "-DNATIVE_BUILD=OFF", "-DANDROID=ON", "-DANDROID_STL=c++_static",  "-DBUILD_STATIC_DEPS=ON", "-DBUILD_SHARED_LIBS=OFF", "-DSTATIC_LINK=ON", "-DANDROID_ARM_MODE=arm", "-DFORCE_OXENMQ_SUBMODULE=ON"
                 cppFlags "-std=c++17"
                 abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
                 // abiFilters 'armeabi-v7a'

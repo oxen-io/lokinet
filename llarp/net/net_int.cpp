@@ -12,6 +12,13 @@ namespace llarp
   }
 
   template <>
+  nuint16_t
+  ToNet(huint16_t h)
+  {
+    return xhtons(h);
+  }
+
+  template <>
   nuint32_t
   ToNet(huint32_t h)
   {

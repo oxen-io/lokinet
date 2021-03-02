@@ -33,7 +33,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".LokinetService"
+        <service android:name=".LokinetDaemon"
              android:enabled="true"
              android:exported="true"
             android:permission="android.permission.BIND_VPN_SERVICE">

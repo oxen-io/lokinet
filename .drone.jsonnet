@@ -62,8 +62,30 @@ local debian_pipeline(name, image,
         }
     ],
 };
-
-// windows cross compile on alpine linux
+local apk_builder(name, image, extra_cmds=[], allow_fail=true) = {
+    kind: 'pipeline',
+    type: 'docker',
+    name: name,
+    platform: {arch: "amd64"},
+    trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+    steps: [
+        submodules,
+        {
+            name: 'build',
+            image: image,
+            [if allow_fail then "failure"]: "ignore",
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
+            commands: [
+                "cd android",
+                "rm -f local.properties",
+                "echo 'sdk.dir=/usr/lib/android-sdk' >> local.properties",
+                "echo 'ndk.dir=/usr/lib/android-ndk' >> local.properties",
+                "GRADLE_USER_HOME=/cache/gradle gradle --no-daemon assembleDebug",
+            ] + extra_cmds
+        }
+    ]
+};
+// windows cross compile on debian
 local windows_cross_pipeline(name, image,
         arch='amd64',
         build_type='Release',
@@ -155,6 +177,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
     ]
 };
 
+
 // Macos build
 local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra_cmds=[], allow_fail=false) = {
     kind: 'pipeline',
@@ -223,6 +246,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                         '../contrib/ci/drone-check-static-libs.sh',
                         'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh'
                     ]),
+    // android apk builder
+    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=anrdoid ../contrib/ci/drone-static-upload.sh']),
     
     // Windows builds (x64)
     windows_cross_pipeline("Windows (amd64)", docker_base+'debian-win32-cross',

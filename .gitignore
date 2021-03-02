@@ -40,9 +40,6 @@ vsproject/
 .vs
 
 daemon.ini
-lokinet-win32.exe
-lokinet
-lokinet.exe
 
 
 .gradle/

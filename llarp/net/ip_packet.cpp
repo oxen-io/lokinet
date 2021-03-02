@@ -124,8 +124,8 @@ namespace llarp
       return ExpandV4Lan(srcv4());
     }
 
-    static uint16_t
-    ipchksum(const byte_t* buf, size_t sz, uint32_t sum = 0)
+    uint16_t
+    ipchksum(const byte_t* buf, size_t sz, uint32_t sum)
     {
       while (sz > 1)
       {

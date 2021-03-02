@@ -224,6 +224,9 @@ namespace llarp
     void
     Override(std::string section, std::string key, std::string value);
 
+    void
+    AddDefault(std::string section, std::string key, std::string value);
+
    private:
     /// Load (initialize) a default config.
     ///
@@ -242,6 +245,7 @@ namespace llarp
     void
     LoadOverrides();
 
+    std::vector<std::array<std::string, 3>> m_Additional;
     ConfigParser m_Parser;
     const fs::path m_DataDir;
   };

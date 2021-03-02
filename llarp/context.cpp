@@ -190,6 +190,15 @@ namespace llarp
     llarp::LogDebug("free logic");
     logic.reset();
   }
+
+#if defined(ANDROID)
+  int
+  Context::GetUDPSocket()
+  {
+    return router->GetOutboundUDPSocket();
+  }
+#endif
+
 }  // namespace llarp
 
 extern "C"

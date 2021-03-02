@@ -10,6 +10,8 @@
 #include <messages/discard.hpp>
 #include <util/time.hpp>
 
+#include <net/net_if.hpp>
+
 #undef LOG_TAG
 #define LOG_TAG __FILE__
 
