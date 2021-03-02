@@ -28,7 +28,6 @@
 
 namespace llarp
 {
-  class Logic;
   struct AbstractRouter;
   struct LR_CommitMessage;
 

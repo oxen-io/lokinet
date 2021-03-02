@@ -2,7 +2,6 @@
 
 #include "llarp.h"
 #include "llarp.hpp"
-#include "util/thread/logic.hpp"
 #include "util/str.hpp"
 #include "router/abstractrouter.hpp"
 
@@ -73,13 +72,13 @@ namespace tooling
   RouterHive::StopRouters()
   {
     llarp::LogInfo("Signalling all routers to stop");
-    for (auto [routerId, ctx] : relays)
+    for (auto& [routerId, ctx] : relays)
     {
-      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
+        ctx->mainloop->call([ctx=ctx]() { ctx->HandleSignal(SIGINT); });
     }
-    for (auto [routerId, ctx] : clients)
+    for (auto& [routerId, ctx] : clients)
     {
-      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
+      ctx->mainloop->call([ctx=ctx]() { ctx->HandleSignal(SIGINT); });
     }
 
     llarp::LogInfo("Waiting on routers to be stopped");
@@ -149,8 +148,8 @@ namespace tooling
   void
   RouterHive::VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit)
   {
-    // TODO: this should be called from each router's appropriate Logic thread, e.g.:
-    //     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
+    // TODO: this should be called from each router's appropriate Loop, e.g.:
+    //     ctx->mainloop->call([visit, ctx]() { visit(ctx); });
     // however, this causes visit calls to be deferred
     visit(ctx);
   }
@@ -172,18 +171,18 @@ namespace tooling
   std::vector<size_t>
   RouterHive::RelayConnectedRelays()
   {
-    std::lock_guard<std::mutex> guard{routerMutex};
+    std::lock_guard guard{routerMutex};
     std::vector<size_t> results;
     results.resize(relays.size());
     std::mutex results_lock;
 
     size_t i = 0;
     size_t done_count = 0;
-    for (auto [routerId, ctx] : relays)
+    for (auto& [routerId, ctx] : relays)
     {
-      LogicCall(ctx->logic, [&, i, ctx]() {
+      ctx->mainloop->call([&, i, ctx=ctx]() {
         size_t count = ctx->router->NumberOfConnectedRouters();
-        std::lock_guard<std::mutex> guard{results_lock};
+        std::lock_guard guard{results_lock};
         results[i] = count;
         done_count++;
       });
@@ -194,7 +193,7 @@ namespace tooling
     {
       size_t read_done_count = 0;
       {
-        std::lock_guard<std::mutex> guard{results_lock};
+        std::lock_guard guard{results_lock};
         read_done_count = done_count;
       }
       if (read_done_count == relays.size())

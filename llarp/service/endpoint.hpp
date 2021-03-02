@@ -18,7 +18,6 @@
 #include <service/lookup.hpp>
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
-#include <util/thread/logic.hpp>
 #include <service/endpoint_types.hpp>
 
 #include <service/auth.hpp>
@@ -136,10 +135,10 @@ namespace llarp
       void
       ResetInternalState() override;
 
-      /// logic (via router)
+      /// loop (via router)
       /// use when sending any data on a path
-      const std::shared_ptr<llarp::Logic>&
-      Logic();
+      const EventLoop_ptr&
+      Loop();
 
       AbstractRouter*
       Router();

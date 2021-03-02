@@ -21,7 +21,6 @@
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
 #include <service/protocol.hpp>
-#include <util/thread/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
 #include <util/meta/memfn.hpp>
@@ -719,13 +718,13 @@ namespace llarp
     {
       if (not msg->foundRCs.empty())
       {
-        for (auto rc : msg->foundRCs)
+        for (auto& rc : msg->foundRCs)
         {
-          Router()->QueueWork([rc = std::move(rc), logic = Router()->logic(), self = this, msg]() {
+          Router()->QueueWork([this, rc, msg]() mutable {
             bool valid = rc.Verify(llarp::time_now_ms());
-            LogicCall(logic, [self, valid, rc = std::move(rc), msg]() {
-              self->Router()->nodedb()->PutIfNewer(rc);
-              self->HandleVerifyGotRouter(msg, rc.pubkey, valid);
+            Router()->loop()->call([this, valid, rc = std::move(rc), msg] {
+              Router()->nodedb()->PutIfNewer(rc);
+              HandleVerifyGotRouter(msg, rc.pubkey, valid);
             });
           });
         }
@@ -920,8 +919,7 @@ namespace llarp
     {
       if (m_RecvQueue.full() || m_RecvQueue.empty())
       {
-        auto self = this;
-        LogicCall(m_router->logic(), [self]() { self->FlushRecvData(); });
+        m_router->loop()->call([this] { FlushRecvData(); });
       }
       m_RecvQueue.pushBack(std::move(ev));
     }
@@ -990,7 +988,7 @@ namespace llarp
       }
       else
       {
-        Router()->logic()->Call([h = std::move(hook)] {
+        Router()->loop()->call([h = std::move(hook)] {
           h({AuthResultCode::eAuthAccepted, "OK"});
         });
       }
@@ -1072,7 +1070,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (not frame.AsyncDecryptAndVerify(Router()->logic(), p, m_Identity, this))
+      if (not frame.AsyncDecryptAndVerify(Router()->loop(), p, m_Identity, this))
       {
         // send reset convo tag message
         ProtocolFrame f;
@@ -1509,10 +1507,10 @@ namespace llarp
       return m_state->m_Router;
     }
 
-    const std::shared_ptr<llarp::Logic>&
-    Endpoint::Logic()
+    const EventLoop_ptr&
+    Endpoint::Loop()
     {
-      return Router()->logic();
+      return Router()->loop();
     }
 
     void

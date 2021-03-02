@@ -7,7 +7,6 @@
 #include <net/sock_addr.hpp>
 #include <router_contact.hpp>
 #include <util/status.hpp>
-#include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
 #include <config/key_manager.hpp>
 
@@ -132,7 +131,7 @@ namespace llarp
     TryEstablishTo(RouterContact rc);
 
     bool
-    Start(const std::shared_ptr<llarp::Logic>& l);
+    Start(const EventLoop_ptr& loop);
 
     virtual void
     Stop();

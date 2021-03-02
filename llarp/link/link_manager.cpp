@@ -121,12 +121,12 @@ namespace llarp
   }
 
   bool
-  LinkManager::StartLinks(Logic_ptr logic)
+  LinkManager::StartLinks(const EventLoop_ptr& loop)
   {
     LogInfo("starting ", outboundLinks.size(), " outbound links");
     for (const auto& link : outboundLinks)
     {
-      if (!link->Start(logic))
+      if (!link->Start(loop))
       {
         LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
@@ -139,7 +139,7 @@ namespace llarp
       LogInfo("starting ", inboundLinks.size(), " inbound links");
       for (const auto& link : inboundLinks)
       {
-        if (!link->Start(logic))
+        if (!link->Start(loop))
         {
           LogWarn("Link ", link->Name(), " failed to start");
           return false;

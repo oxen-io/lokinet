@@ -6,7 +6,6 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 #include <util/str.hpp>
-#include <util/thread/logic.hpp>
 
 #ifdef _WIN32
 #include <dbghelp.h>
@@ -69,7 +68,7 @@ void
 handle_signal(int sig)
 {
   if (ctx)
-    LogicCall(ctx->logic, std::bind(&llarp::Context::HandleSignal, ctx.get(), sig));
+    ctx->loop->call([sig] { ctx->HandleSignal(sig); });
   else
     std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }

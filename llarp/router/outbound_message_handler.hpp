@@ -3,7 +3,7 @@
 
 #include <router/i_outbound_message_handler.hpp>
 
-#include <util/thread/logic.hpp>
+#include <ev/ev.hpp>
 #include <util/thread/queue.hpp>
 #include <path/path_types.hpp>
 #include <router_id.hpp>
@@ -19,7 +19,6 @@ namespace llarp
 {
   struct ILinkManager;
   struct I_RCLookupHandler;
-  class Logic;
   enum class SessionResult;
 
   struct OutboundMessageHandler final : public IOutboundMessageHandler
@@ -43,7 +42,7 @@ namespace llarp
     ExtractStatus() const override;
 
     void
-    Init(ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, std::shared_ptr<Logic> logic);
+    Init(ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, EventLoop_ptr loop);
 
    private:
     using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
@@ -139,7 +138,7 @@ namespace llarp
 
     ILinkManager* _linkManager;
     I_RCLookupHandler* _lookupHandler;
-    std::shared_ptr<Logic> _logic;
+    EventLoop_ptr _loop;
 
     util::ContentionKiller m_Killer;
 

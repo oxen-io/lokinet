@@ -8,7 +8,6 @@
 #include <router/i_rc_lookup_handler.hpp>
 #include <link/i_link_manager.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
 #include <util/status.hpp>
 #include <crypto/crypto.hpp>
@@ -163,16 +162,16 @@ namespace llarp
       ILinkManager* linkManager,
       I_RCLookupHandler* rcLookup,
       Profiling* profiler,
-      std::shared_ptr<Logic> logic,
+      EventLoop_ptr loop,
       WorkerFunc_t dowork)
   {
     _router = router;
     _linkManager = linkManager;
     _rcLookup = rcLookup;
-    _logic = logic;
+    _loop = std::move(loop);
     _nodedb = router->nodedb();
     _profiler = profiler;
-    work = dowork;
+    work = std::move(dowork);
   }
 
   void
@@ -226,8 +225,7 @@ namespace llarp
     }
     if (ShouldConnectTo(router))
     {
-      auto fn = std::bind(&OutboundSessionMaker::DoEstablish, this, router);
-      LogicCall(_logic, fn);
+      _loop->call([this, router] { DoEstablish(router); });
     }
   }
 
@@ -348,8 +346,7 @@ namespace llarp
 
     for (const auto& callback : movedCallbacks)
     {
-      auto func = std::bind(callback, router, type);
-      LogicCall(_logic, func);
+      _loop->call([callback, router, type] { return callback(router, type); });
     }
 
     {

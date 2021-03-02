@@ -11,8 +11,7 @@ namespace tooling
   struct HiveRouter : public llarp::Router
   {
     explicit HiveRouter(
-        llarp::EventLoop_ptr netloop,
-        std::shared_ptr<llarp::Logic> logic,
+        llarp::EventLoop_ptr loop,
         std::shared_ptr<llarp::vpn::Platform> vpnPlatform,
         RouterHive* hive);
 

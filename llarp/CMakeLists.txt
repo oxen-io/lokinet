@@ -19,7 +19,6 @@ add_library(lokinet-util
   util/mem.cpp
   util/printer.cpp
   util/str.cpp
-  util/thread/logic.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp
   util/time.cpp

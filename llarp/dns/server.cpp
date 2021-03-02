@@ -1,19 +1,18 @@
 #include <dns/server.hpp>
 #include <dns/dns.hpp>
 #include <crypto/crypto.hpp>
-#include <util/thread/logic.hpp>
 #include <array>
 #include <utility>
 #include <ev/udp_handle.hpp>
 
 namespace llarp::dns
 {
-  PacketHandler::PacketHandler(Logic_ptr logic, IQueryHandler* h)
-      : m_QueryHandler{h}, m_Logic{std::move(logic)}
+  PacketHandler::PacketHandler(EventLoop_ptr loop, IQueryHandler* h)
+      : m_QueryHandler{h}, m_Loop{std::move(loop)}
   {}
 
-  Proxy::Proxy(EventLoop_ptr loop, Logic_ptr logic, IQueryHandler* h)
-      : PacketHandler{logic, h}, m_Loop(std::move(loop))
+  Proxy::Proxy(EventLoop_ptr loop, IQueryHandler* h)
+      : PacketHandler{loop, h}, m_Loop(std::move(loop))
   {
     m_Server =
         m_Loop->udp([this](UDPHandle&, SockAddr a, OwnedBuffer buf) { HandlePacket(a, a, buf); });
@@ -65,7 +64,7 @@ namespace llarp::dns
     };
 
     m_UnboundResolver =
-        std::make_shared<UnboundResolver>(m_Logic, std::move(replyFunc), std::move(failFunc));
+        std::make_shared<UnboundResolver>(m_Loop, std::move(replyFunc), std::move(failFunc));
     if (not m_UnboundResolver->Init())
     {
       llarp::LogError("Failed to initialize upstream DNS resolver.");

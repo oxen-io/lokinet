@@ -52,7 +52,6 @@ struct llarp_ev_pkt_pipe;
 
 namespace llarp
 {
-  class Logic;
   struct SockAddr;
   struct UDPHandle;
 
@@ -99,17 +98,13 @@ namespace llarp
 
   // this (nearly!) abstract base class
   // is overriden for each platform
-  struct EventLoop
-  //      : std::enable_shared_from_this<EventLoop> // FIXME: do I actually need shared_from_this()?
+  class EventLoop
   {
+   public:
     // Runs the event loop. This does not return until sometime after `stop()` is called (and so
     // typically you want to run this in its own thread).
-    void
-    run(Logic& logic);
-
-    // Actually runs the underlying implementation event loop; called by run().
     virtual void
-    run_loop() = 0;
+    run() = 0;
 
     virtual bool
     running() const = 0;
@@ -120,14 +115,89 @@ namespace llarp
       return llarp::time_now_ms();
     }
 
-    virtual void
-    stopped()
-    {}
+    // Calls a function/lambda/etc.  If invoked from within the event loop itself this calls the
+    // given lambda immediately; otherwise it passes it to `call_soon()` to be queued to run at the
+    // next event loop iteration.
+    template <typename Callable> void call(Callable&& f) {
+      if (inEventLoop())
+        f();
+      else
+        call_soon(std::forward<Callable>(f));
+    }
 
-    // Adds a timer to the event loop; should only be called from the logic thread (and so is
-    // typically scheduled via a call to Logic::call_later()).
+    // Queues a function to be called on the next event loop cycle and triggers it to be called as
+    // soon as possible; can be called from any thread.  Note that, unlike `call()`, this queues the
+    // job even if called from the event loop thread itself and so you *usually* want to use
+    // `call()` instead.
     virtual void
-    call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) = 0;
+    call_soon(std::function<void(void)> f) = 0;
+
+    // Adds a timer to the event loop to invoke the given callback after a delay.
+    virtual void
+    call_later(llarp_time_t delay_ms, std::function<void(void)> callback) = 0;
+
+    // Created a repeated timer that fires ever `repeat` time unit.  Lifetime of the event
+    // is tied to `owner`: callbacks will be invoked so long as `owner` remains alive, but
+    // the first time it repeats after `owner` has been destroyed the internal timer object will
+    // be destroyed and no more callbacks will be invoked.
+    //
+    // Intended to be used as:
+    //
+    //     loop->call_every(100ms, weak_from_this(), [this] { some_func(); });
+    //
+    // Alternative, when shared_from_this isn't available for a type, you can use a local member
+    // shared_ptr (or even create a simple one, for more fine-grained control) to tie the lifetime:
+    //
+    //     m_keepalive = std::make_shared<int>(42);
+    //     loop->call_every(100ms, m_keepalive, [this] { some_func(); });
+    //
+    template <typename Callable> // Templated so that the compiler can inline the call
+    void
+    call_every(llarp_time_t repeat, std::weak_ptr<void> owner, Callable f)
+    {
+      auto repeater = make_repeater();
+      auto& r = *repeater; // reference *before* we pass ownership into the lambda below
+      r.start(
+          repeat,
+          [repeater = std::move(repeater), owner = std::move(owner), f = std::move(f)]() mutable {
+            if (auto ptr = owner.lock())
+              f();
+            else
+              repeater.reset();  // Trigger timer removal on tied object destruction (we should be the only thing holding
+                                 // the repeater; ideally it would be a unique_ptr, but
+                                 // std::function says nuh-uh).
+          });
+    }
+
+    // Wraps a lambda with a lambda that triggers it to be called via loop->call()
+    // when invoked.  E.g.:
+    //
+    //     auto x = loop->make_caller([] (int a) { std::cerr << a; });
+    //     x(42);
+    //     x(99);
+    //
+    // will schedule two calls of the inner lambda (with different arguments) in the event loop.
+    // Arguments are forwarded to the inner lambda (allowing moving arguments into it).
+    template <typename Callable>
+    auto
+    make_caller(Callable f)
+    {
+      return [this, f = std::move(f)](auto&&... args) {
+        if (inEventLoop())
+          return f(std::forward<decltype(args)>(args)...);
+
+        // This shared pointer in a pain in the ass but needed because this lambda is going into a
+        // std::function that only accepts copyable lambdas.  I *want* to simply capture:
+        // args=std::make_tuple(std::forward<decltype(args)>(args)...) but that fails if any given
+        // arguments aren't copyable (because of std::function).  Dammit.
+        auto args_tuple_ptr = std::make_shared<std::tuple<std::decay_t<decltype(args)>...>>(
+            std::forward<decltype(args)>(args)...);
+        call_soon([f, args = std::move(args_tuple_ptr)]() mutable {
+          // Moving away the tuple args here is okay because this lambda will only be invoked once
+          std::apply(f, std::move(*args));
+        });
+      };
+    }
 
     virtual bool
     add_network_interface(
@@ -146,14 +216,7 @@ namespace llarp
     virtual std::shared_ptr<UDPHandle>
     udp(UDPReceiveFunc on_recv) = 0;
 
-    /// give this event loop a logic thread for calling
-    virtual void
-    set_logic(const std::shared_ptr<llarp::Logic>& logic) = 0;
-
     virtual ~EventLoop() = default;
-
-    virtual void
-    call_soon(std::function<void(void)> f) = 0;
 
     /// set the function that is called once per cycle the flush all the queues
     virtual void
@@ -167,7 +230,7 @@ namespace llarp
     make_waker(std::function<void()> callback) = 0;
 
     // Initializes a new repeated task object. Note that the task is not actually added to the event
-    // loop until you call start() on the returned object.  Typically invoked via Logic::call_every.
+    // loop until you call start() on the returned object.  Typically invoked via call_every.
     virtual std::shared_ptr<EventLoopRepeater>
     make_repeater() = 0;
 
@@ -177,7 +240,7 @@ namespace llarp
 
     // Returns true if called from within the event loop thread, false otherwise.
     virtual bool
-    inEventLoopThread() const = 0;
+    inEventLoop() const = 0;
   };
 
   using EventLoop_ptr = std::shared_ptr<EventLoop>;

@@ -20,8 +20,6 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  class Logic;
-
   namespace path
   {
     /// forward declare
@@ -127,7 +125,7 @@ namespace llarp
 
       bool
       AsyncDecryptAndVerify(
-          std::shared_ptr<Logic> logic,
+              EventLoop_ptr loop,
           path::Path_ptr fromPath,
           const Identity& localIdent,
           Endpoint* handler,

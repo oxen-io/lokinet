@@ -36,11 +36,11 @@ namespace llarp::dns
   }
 
   UnboundResolver::UnboundResolver(
-      std::shared_ptr<Logic> logic, ReplyFunction reply, FailFunction fail)
+      EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
-      , replyFunc(logic->make_caller(std::move(reply)))
-      , failFunc(logic->make_caller(std::move(fail)))
+      , replyFunc(loop->make_caller(std::move(reply)))
+      , failFunc(loop->make_caller(std::move(fail)))
   {}
 
   // static callback

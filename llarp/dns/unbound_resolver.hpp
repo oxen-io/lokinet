@@ -7,7 +7,6 @@
 #include <queue>
 
 #include <ev/ev.hpp>
-#include <util/thread/logic.hpp>
 
 #include <dns/message.hpp>
 
@@ -37,7 +36,7 @@ namespace llarp::dns
     Reset();
 
    public:
-    UnboundResolver(std::shared_ptr<Logic> logic, ReplyFunction replyFunc, FailFunction failFunc);
+    UnboundResolver(EventLoop_ptr loop, ReplyFunction replyFunc, FailFunction failFunc);
 
     static void
     Callback(void* data, int err, ub_result* result);

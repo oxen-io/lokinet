@@ -113,11 +113,11 @@ namespace llarp
 
   void
   OutboundMessageHandler::Init(
-      ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, std::shared_ptr<Logic> logic)
+      ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, EventLoop_ptr loop)
   {
     _linkManager = linkManager;
     _lookupHandler = lookupHandler;
-    _logic = logic;
+    _loop = std::move(loop);
 
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
@@ -184,8 +184,8 @@ namespace llarp
   {
     if (callback)
     {
-      auto f = std::bind(callback, status);
-      LogicCall(_logic, [self = this, f]() { self->m_Killer.TryAccess(f); });
+      auto f = [f=std::move(callback), status] { f(status); };
+      _loop->call([this, f=std::move(f)] { m_Killer.TryAccess(f); });
     }
   }
 

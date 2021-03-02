@@ -4,7 +4,6 @@
 #include <dns/message.hpp>
 #include <ev/ev.hpp>
 #include <net/net.hpp>
-#include <util/thread/logic.hpp>
 #include <dns/unbound_resolver.hpp>
 
 #include <unordered_map>
@@ -32,9 +31,7 @@ namespace llarp
     class PacketHandler : public std::enable_shared_from_this<PacketHandler>
     {
      public:
-      using Logic_ptr = std::shared_ptr<Logic>;
-
-      explicit PacketHandler(Logic_ptr logic, IQueryHandler* handler);
+      explicit PacketHandler(EventLoop_ptr loop, IQueryHandler* handler);
 
       virtual ~PacketHandler() = default;
 
@@ -67,15 +64,14 @@ namespace llarp
       IQueryHandler* const m_QueryHandler;
       std::set<IpAddress> m_Resolvers;
       std::shared_ptr<UnboundResolver> m_UnboundResolver;
-      Logic_ptr m_Logic;
+      EventLoop_ptr m_Loop;
     };
 
     // Proxying DNS handler that listens on a UDP port for proper DNS requests.
     class Proxy : public PacketHandler
     {
      public:
-      using Logic_ptr = std::shared_ptr<Logic>;
-      explicit Proxy(EventLoop_ptr loop, Logic_ptr logic, IQueryHandler* handler);
+      explicit Proxy(EventLoop_ptr loop, IQueryHandler* handler);
 
       bool
       Start(SockAddr localaddr, std::vector<IpAddress> resolvers) override;

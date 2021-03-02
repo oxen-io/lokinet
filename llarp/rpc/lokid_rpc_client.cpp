@@ -8,7 +8,6 @@
 #include <nlohmann/json.hpp>
 
 #include <util/time.hpp>
-#include <util/thread/logic.hpp>
 
 namespace llarp
 {
@@ -57,7 +56,7 @@ namespace llarp
           [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
           [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
             llarp::LogWarn("Failed to connect to lokid: ", f);
-            LogicCall(self->m_Router->logic(), [self, url]() { self->ConnectAsync(url); });
+            self->m_Router->loop()->call([self, url]() { self->ConnectAsync(url); });
           });
     }
 
@@ -170,7 +169,7 @@ namespace llarp
         return;
       }
       // inform router about the new list
-      LogicCall(m_Router->logic(), [r = m_Router, nodeList = std::move(nodeList)]() mutable {
+      m_Router->loop()->call([r = m_Router, nodeList = std::move(nodeList)]() mutable {
         r->SetRouterWhitelist(std::move(nodeList));
       });
     }
@@ -252,7 +251,7 @@ namespace llarp
                 LogError("failed to parse response from lns lookup: ", ex.what());
               }
             }
-            LogicCall(r->logic(), [resultHandler, maybe]() { resultHandler(maybe); });
+            r->loop()->call([resultHandler, maybe=std::move(maybe)]() { resultHandler(std::move(maybe)); });
           },
           req.dump());
     }

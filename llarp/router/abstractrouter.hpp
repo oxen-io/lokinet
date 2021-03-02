@@ -29,7 +29,6 @@ namespace oxenmq
 namespace llarp
 {
   class NodeDB;
-  class Logic;
   struct Config;
   struct RouterID;
   struct ILinkMessage;
@@ -101,9 +100,6 @@ namespace llarp
     virtual const std::shared_ptr<rpc::LokidRpcClient>&
     RpcClient() const = 0;
 
-    virtual const std::shared_ptr<Logic>&
-    logic() const = 0;
-
     virtual llarp_dht_context*
     dht() const = 0;
 
@@ -135,7 +131,7 @@ namespace llarp
     routerProfiling() = 0;
 
     virtual const EventLoop_ptr&
-    netloop() const = 0;
+    loop() const = 0;
 
     /// call function in crypto worker
     virtual void QueueWork(std::function<void(void)>) = 0;

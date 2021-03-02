@@ -341,11 +341,11 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(const std::shared_ptr<Logic>& logic)
+  ILinkLayer::Start(const EventLoop_ptr& loop)
   {
     // Tie the lifetime of this repeater to this arbitrary shared_ptr:
-    m_repeater_keepalive = std::make_shared<int>(42);
-    logic->call_every(LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
+    m_repeater_keepalive = std::make_shared<int>(0);
+    loop->call_every(LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
     return true;
   }
 

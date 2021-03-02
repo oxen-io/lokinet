@@ -2,7 +2,6 @@
 #define LLARP_EV_LIBUV_HPP
 #include <ev/ev.hpp>
 #include "udp_handle.hpp"
-#include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
 #include <util/meta/memfn.hpp>
 
@@ -20,29 +19,27 @@ namespace llarp::uv
   class UVWakeup;
   class UVRepeater;
 
-  struct Loop final : public llarp::EventLoop
+  class Loop final : public llarp::EventLoop
   {
+   public:
     using Callback = std::function<void()>;
 
     Loop(size_t queue_size);
 
     void
-    run_loop() override;
+    run() override;
 
     bool
     running() const override;
 
     void
-    call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) override;
+    call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void
     tick_event_loop();
 
     void
     stop() override;
-
-    void
-    stopped() override;
 
     bool
     add_ticker(std::function<void(void)> ticker) override;
@@ -51,12 +48,6 @@ namespace llarp::uv
     add_network_interface(
         std::shared_ptr<llarp::vpn::NetworkInterface> netif,
         std::function<void(llarp::net::IPPacket)> handler) override;
-
-    void
-    set_logic(const std::shared_ptr<llarp::Logic>& l) override
-    {
-      l->SetQueuer([this](std::function<void()> f) { call_soon(std::move(f)); });
-    }
 
     void
     call_soon(std::function<void(void)> f) override;
@@ -79,7 +70,7 @@ namespace llarp::uv
     std::function<void(void)> PumpLL;
 
     bool
-    inEventLoopThread() const override;
+    inEventLoop() const override;
 
    private:
     std::shared_ptr<uvw::Loop> m_Impl;

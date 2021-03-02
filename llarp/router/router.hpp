@@ -35,7 +35,6 @@
 #include <util/mem.hpp>
 #include <util/status.hpp>
 #include <util/str.hpp>
-#include <util/thread/logic.hpp>
 #include <util/time.hpp>
 
 #include <functional>
@@ -86,12 +85,6 @@ namespace llarp
     RpcClient() const override
     {
       return m_lokidRpcClient;
-    }
-
-    const std::shared_ptr<Logic>&
-    logic() const override
-    {
-      return _logic;
     }
 
     llarp_dht_context*
@@ -161,9 +154,9 @@ namespace llarp
     }
 
     const EventLoop_ptr&
-    netloop() const override
+    loop() const override
     {
-      return _netloop;
+      return _loop;
     }
 
     vpn::Platform*
@@ -180,8 +173,7 @@ namespace llarp
 
     std::optional<SockAddr> _ourAddress;
 
-    EventLoop_ptr _netloop;
-    std::shared_ptr<Logic> _logic;
+    EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
     exit::Context _exitContext;
@@ -325,8 +317,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) override;
 
     explicit Router(
-        EventLoop_ptr netloop,
-        std::shared_ptr<Logic> logic,
+        EventLoop_ptr loop,
         std::shared_ptr<vpn::Platform> vpnPlatform);
 
     ~Router() override;

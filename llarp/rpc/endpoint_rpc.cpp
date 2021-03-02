@@ -29,7 +29,7 @@ namespace llarp::rpc
         },
         [self = shared_from_this()](oxenmq::ConnectionID, std::string_view fail) {
           LogWarn("failed to connect to endpoint auth server: ", fail);
-          self->m_Endpoint->Logic()->call_later(1s, [self] { self->Start(); });
+          self->m_Endpoint->Loop()->call_later(1s, [self] { self->Start(); });
         });
   }
 
@@ -44,11 +44,10 @@ namespace llarp::rpc
       std::shared_ptr<llarp::service::ProtocolMessage> msg,
       std::function<void(service::AuthResult)> hook)
   {
-    assert(m_Endpoint->Logic()->inLogicThread());
     service::ConvoTag tag = msg->tag;
     m_PendingAuths.insert(tag);
     const auto from = msg->sender.Addr();
-    auto reply = m_Endpoint->Logic()->make_caller([this, tag, hook](service::AuthResult result) {
+    auto reply = m_Endpoint->Loop()->make_caller([this, tag, hook](service::AuthResult result) {
       m_PendingAuths.erase(tag);
       hook(result);
     });

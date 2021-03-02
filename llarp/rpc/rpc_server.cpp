@@ -1,6 +1,5 @@
 #include "rpc_server.hpp"
 #include <router/route_poker.hpp>
-#include <util/thread/logic.hpp>
 #include <constants/version.hpp>
 #include <nlohmann/json.hpp>
 #include <net/ip_range.hpp>
@@ -106,7 +105,7 @@ namespace llarp::rpc
         .add_request_command(
             "status",
             [&](oxenmq::Message& msg) {
-              LogicCall(m_Router->logic(), [defer = msg.send_later(), r = m_Router]() {
+              m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
                 std::string data;
                 if (r->IsRunning())
                 {
@@ -158,7 +157,7 @@ namespace llarp::rpc
                   reply(CreateJSONError("no action taken"));
                   return;
                 }
-                LogicCall(r->logic(), [r, endpoint, kills, reply]() {
+                r->loop()->call([r, endpoint, kills, reply]() {
                   auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
                   if (ep == nullptr)
                   {
@@ -236,8 +235,7 @@ namespace llarp::rpc
                 {
                   endpoint = endpoint_itr->get<std::string>();
                 }
-                LogicCall(
-                    r->logic(), [map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
+                r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
                       auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
                       if (ep == nullptr)
                       {
@@ -274,6 +272,7 @@ namespace llarp::rpc
                                 }
                                 ctx->AsyncSendAuth(
                                     [onGoodResult, reply](service::AuthResult result) {
+                                      // TODO: refactor this code.  We are 5 lambdas deep here!
                                       if (result.code != service::AuthResultCode::eAuthAccepted)
                                       {
                                         reply(CreateJSONError(result.reason));

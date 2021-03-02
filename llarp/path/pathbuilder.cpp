@@ -7,7 +7,6 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
-#include <util/thread/logic.hpp>
 #include <tooling/path_event.hpp>
 
 #include <functional>
@@ -28,7 +27,7 @@ namespace llarp
     size_t idx = 0;
     AbstractRouter* router = nullptr;
     WorkerFunc_t work;
-    std::shared_ptr<Logic> logic;
+    EventLoop_ptr loop;
     LR_CommitMessage LRCM;
 
     void
@@ -97,21 +96,21 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        LogicCall(logic, std::bind(result, shared_from_this()));
+        loop->call([self = shared_from_this()] { self->result(self); });
       }
       else
       {
         // next hop
-        work(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
+        work([self = shared_from_this()] { self->GenerateNextKey(); });
       }
     }
 
     /// Generate all keys asynchronously and call handler when done
     void
-    AsyncGenerateKeys(Path_t p, std::shared_ptr<Logic> l, WorkerFunc_t worker, Handler func)
+    AsyncGenerateKeys(Path_t p, EventLoop_ptr l, WorkerFunc_t worker, Handler func)
     {
       path = p;
-      logic = l;
+      loop = std::move(l);
       result = func;
       work = worker;
 
@@ -119,7 +118,7 @@ namespace llarp
       {
         LRCM.frames[i].Randomize();
       }
-      work(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
+      work([self = shared_from_this()] { self->GenerateNextKey(); });
     }
   };
 
@@ -393,7 +392,7 @@ namespace llarp
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(
           path,
-          m_router->logic(),
+          m_router->loop(),
           [r = m_router](auto func) { r->QueueWork(std::move(func)); },
           &PathBuilderKeysGenerated);
     }

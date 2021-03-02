@@ -3,7 +3,6 @@
 #include <router/abstractrouter.hpp>
 #include <routing/path_transfer_message.hpp>
 #include <service/endpoint.hpp>
-#include <util/thread/logic.hpp>
 #include <utility>
 #include <unordered_set>
 
@@ -29,7 +28,7 @@ namespace llarp
     {
       if (m_SendQueue.empty() or m_SendQueue.full())
       {
-        LogicCall(m_Endpoint->Logic(), [this] { FlushUpstream(); });
+        m_Endpoint->Loop()->call([this] { FlushUpstream(); });
       }
       m_SendQueue.pushBack(std::make_pair(
           std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));

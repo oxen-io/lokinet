@@ -18,7 +18,6 @@
 
 namespace llarp
 {
-  class Logic;
   struct AbstractRouter;
   struct LR_CommitMessage;
   struct RelayDownstreamMessage;
@@ -147,8 +146,8 @@ namespace llarp
         }
       };
 
-      std::shared_ptr<Logic>
-      logic();
+      const EventLoop_ptr&
+      loop();
 
       AbstractRouter*
       Router();

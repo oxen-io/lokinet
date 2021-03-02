@@ -18,7 +18,6 @@
 #include <service/outbound_context.hpp>
 #include <service/name.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 #include <rpc/endpoint_rpc.hpp>
 
@@ -48,7 +47,7 @@ namespace llarp
       TunEndpoint* const m_Endpoint;
 
       explicit DnsInterceptor(AbstractRouter* router, TunEndpoint* ep)
-          : dns::PacketHandler{router->logic(), ep}, m_Endpoint{ep} {};
+          : dns::PacketHandler{router->loop(), ep}, m_Endpoint{ep} {};
 
       void
       SendServerMessageBufferTo(
@@ -97,7 +96,7 @@ namespace llarp
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
-        , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
+        , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
       m_PacketRouter.reset(
           new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
@@ -121,7 +120,7 @@ namespace llarp
           HandleGotUserPacket(std::move(pkt));
       });
 #else
-      m_Resolver = std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this);
+      m_Resolver = std::make_shared<dns::Proxy>(r->loop(), this);
 #endif
     }
 
@@ -838,9 +837,8 @@ namespace llarp
       m_IfName = m_NetIf->IfName();
       LogInfo(Name(), " got network interface ", m_IfName);
 
-      auto netloop = Router()->netloop();
-      if (not netloop->add_network_interface(
-              m_NetIf, [&](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
+      if (not Router()->loop()->add_network_interface(
+              m_NetIf, [this](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
       {
         LogError(Name(), " failed to add network interface");
         return false;
@@ -853,7 +851,7 @@ namespace llarp
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
 
-      netloop->add_ticker([&]() { Flush(); });
+      Router()->loop()->add_ticker([this] { Flush(); });
 
       if (m_OnUp)
       {

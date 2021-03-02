@@ -1,7 +1,6 @@
 #include <ev/ev.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
-#include <util/thread/logic.hpp>
 
 #include <cstddef>
 #include <cstring>
@@ -17,13 +16,4 @@ namespace llarp
   {
     return std::make_shared<llarp::uv::Loop>(queueLength);
   }
-
-  void
-  EventLoop::run(Logic& logic)
-  {
-    run_loop();
-    logic.clear_event_loop();
-    stopped();
-  }
-
 }  // namespace llarp

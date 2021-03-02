@@ -7,6 +7,7 @@
 #include <dht/context.hpp>
 #include <ev/ev.hpp>
 #include <ev/vpnio.hpp>
+#include <memory>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <service/context.hpp>
@@ -25,7 +26,10 @@ namespace llarp
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
-    return logic && LogicCall(logic, f);
+    if (!loop)
+        return false;
+    loop->call(std::move(f));
+    return true;
   }
 
   void
@@ -35,8 +39,6 @@ namespace llarp
       throw std::runtime_error("Config already exists");
 
     config = std::move(conf);
-
-    logic = std::make_shared<Logic>();
 
     nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname}.string();
   }
@@ -62,19 +64,16 @@ namespace llarp
 
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    if (mainloop == nullptr)
+    if (!loop)
     {
       auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
-      mainloop = EventLoop::create(jobQueueSize);
+      loop = EventLoop::create(jobQueueSize);
     }
-    logic->set_event_loop(mainloop.get());
-
-    mainloop->set_logic(logic);
 
     crypto = std::make_shared<sodium::CryptoLibSodium>();
     cryptoManager = std::make_shared<CryptoManager>(crypto.get());
 
-    router = makeRouter(mainloop, logic);
+    router = makeRouter(loop);
 
     nodedb = std::make_shared<NodeDB>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
@@ -84,9 +83,10 @@ namespace llarp
   }
 
   std::shared_ptr<AbstractRouter>
-  Context::makeRouter(std::shared_ptr<EventLoop> netloop, std::shared_ptr<Logic> logic)
+  Context::makeRouter(const EventLoop_ptr& loop)
   {
-    return std::make_shared<Router>(netloop, logic, makeVPNPlatform());
+    return std::static_pointer_cast<AbstractRouter>(
+            std::make_shared<Router>(loop, makeVPNPlatform()));
   }
 
   std::shared_ptr<vpn::Platform>
@@ -117,7 +117,7 @@ namespace llarp
     // run net io thread
     llarp::LogInfo("running mainloop");
 
-    mainloop->run(*logic);
+    loop->run();
     if (closeWaiter)
     {
       closeWaiter->set_value();
@@ -188,8 +188,8 @@ namespace llarp
     llarp::LogDebug("free router");
     router.reset();
 
-    llarp::LogDebug("free logic");
-    logic.reset();
+    llarp::LogDebug("free loop");
+    loop.reset();
   }
 
 #if defined(ANDROID)

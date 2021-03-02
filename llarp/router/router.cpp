@@ -47,11 +47,10 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 namespace llarp
 {
   Router::Router(
-      EventLoop_ptr netloop, std::shared_ptr<Logic> l, std::shared_ptr<vpn::Platform> vpnPlatform)
+      EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
       , m_lmq(std::make_shared<oxenmq::OxenMQ>())
-      , _netloop(std::move(netloop))
-      , _logic(std::move(l))
+      , _loop(std::move(loop))
       , _vpnPlatform(std::move(vpnPlatform))
       , paths(this)
       , _exitContext(this)
@@ -364,7 +363,7 @@ namespace llarp
     if (_onDown)
       _onDown();
     LogInfo("closing router");
-    _netloop->stop();
+    _loop->stop();
     _running.store(false);
   }
 
@@ -563,19 +562,19 @@ namespace llarp
     LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _logic);
+    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,
         &_rcLookupHandler,
         &_routerProfiling,
-        _logic,
+        _loop,
         util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
-        _logic,
+        _loop,
         util::memFn(&AbstractRouter::QueueWork, this),
         &_linkManager,
         &_hiddenServiceContext,
@@ -603,7 +602,7 @@ namespace llarp
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
-          netloop(),
+          loop(),
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
@@ -618,7 +617,7 @@ namespace llarp
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
-      if (!server->Configure(netloop(), key, af, port))
+      if (!server->Configure(loop(), key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
@@ -1059,7 +1058,7 @@ namespace llarp
       }
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_logic))
+    if (!_linkManager.StartLinks(_loop))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1120,11 +1119,11 @@ namespace llarp
 
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
-    _netloop->add_ticker([this] { PumpLL(); });
+    _loop->add_ticker([this] { PumpLL(); });
 #else
-    _netloop->set_pump_function([this] { PumpLL(); });
+    _loop->set_pump_function([this] { PumpLL(); });
 #endif
-    _logic->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
+    _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1161,7 +1160,7 @@ namespace llarp
   {
     StopLinks();
     nodedb()->SaveToDisk();
-    _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
+    _loop->call_later(200ms, [this] { AfterStopLinks(); });
   }
 
   void
@@ -1208,7 +1207,7 @@ namespace llarp
     _exitContext.Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
-    _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));
+    _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
 
   bool
@@ -1299,7 +1298,7 @@ namespace llarp
   {
     auto link = iwp::NewOutboundLink(
         m_keyManager,
-        netloop(),
+        loop(),
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
@@ -1324,7 +1323,7 @@ namespace llarp
 
     for (const auto af : {AF_INET, AF_INET6})
     {
-      if (not link->Configure(netloop(), "*", af, m_OutboundPort))
+      if (not link->Configure(loop(), "*", af, m_OutboundPort))
         continue;
 
 #if defined(ANDROID)

@@ -121,13 +121,10 @@ namespace llarp
     {
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayDownstreamMessage> msgs;
-        do
+        while (auto maybe = self->m_DownstreamGather.tryPopFront())
         {
-          auto maybe = self->m_DownstreamGather.tryPopFront();
-          if (not maybe)
-            break;
-          msgs.emplace_back(*maybe);
-        } while (true);
+          msgs.push_back(*maybe);
+        }
         self->HandleAllDownstream(std::move(msgs), r);
       };
       for (auto& ev : *msgs)
@@ -147,12 +144,12 @@ namespace llarp
             info.downstream);
         if (m_DownstreamGather.full())
         {
-          LogicCall(r->logic(), flushIt);
+          r->loop()->call(flushIt);
         }
         if (m_DownstreamGather.enabled())
           m_DownstreamGather.pushBack(msg);
       }
-      LogicCall(r->logic(), flushIt);
+      r->loop()->call(flushIt);
     }
 
     void
@@ -160,13 +157,10 @@ namespace llarp
     {
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayUpstreamMessage> msgs;
-        do
+        while (auto maybe = self->m_UpstreamGather.tryPopFront())
         {
-          auto maybe = self->m_UpstreamGather.tryPopFront();
-          if (not maybe)
-            break;
-          msgs.emplace_back(*maybe);
-        } while (true);
+          msgs.push_back(*maybe);
+        }
         self->HandleAllUpstream(std::move(msgs), r);
       };
       for (auto& ev : *msgs)
@@ -179,12 +173,12 @@ namespace llarp
         msg.X = buf;
         if (m_UpstreamGather.full())
         {
-          LogicCall(r->logic(), flushIt);
+          r->loop()->call(flushIt);
         }
         if (m_UpstreamGather.enabled())
           m_UpstreamGather.pushBack(msg);
       }
-      LogicCall(r->logic(), flushIt);
+      r->loop()->call(flushIt);
     }
 
     void
@@ -488,8 +482,7 @@ namespace llarp
     void
     TransitHop::QueueDestroySelf(AbstractRouter* r)
     {
-      auto func = std::bind(&TransitHop::SetSelfDestruct, shared_from_this());
-      LogicCall(r->logic(), func);
+      r->loop()->call([self = shared_from_this()] { self->SetSelfDestruct(); });
     }
   }  // namespace path
 }  // namespace llarp

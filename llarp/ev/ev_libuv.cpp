@@ -3,7 +3,6 @@
 #include <memory>
 #include <thread>
 #include <type_traits>
-#include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
 
 #include <cstring>
@@ -130,11 +129,14 @@ namespace llarp::uv
   }
 
   void
-  Loop::run_loop()
+  Loop::run()
   {
     llarp::LogTrace("Loop::run_loop()");
     m_EventLoopThreadID = std::this_thread::get_id();
     m_Impl->run();
+    m_Impl->close();
+    m_Impl.reset();
+    llarp::LogInfo("we have stopped");
   }
 
   void
@@ -150,23 +152,37 @@ namespace llarp::uv
         std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv)));
   }
 
-  // TODO: replace this one-shot timer mechanism with a repeated timer, because most likely
-  // everything using this is repeating scheduling itself all the time and would be better served by
-  // a repeating uv_timer.
-  void
-  Loop::call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback)
-  {
-    llarp::LogTrace("Loop::call_after_delay()");
-#ifdef TESTNET_SPEED
-    delay_ms *= TESTNET_SPEED;
-#endif
-    auto timer = m_Impl->resource<uvw::TimerHandle>();
+  static void setup_oneshot_timer(uvw::Loop& loop, llarp_time_t delay, std::function<void()> callback) {
+    auto timer = loop.resource<uvw::TimerHandle>();
     timer->on<uvw::TimerEvent>([f = std::move(callback)](const auto&, auto& timer) {
       f();
       timer.stop();
       timer.close();
     });
-    timer->start(delay_ms, 0ms);
+    timer->start(delay, 0ms);
+  }
+
+  void
+  Loop::call_later(llarp_time_t delay_ms, std::function<void(void)> callback)
+  {
+    llarp::LogTrace("Loop::call_after_delay()");
+#ifdef TESTNET_SPEED
+    delay_ms *= TESTNET_SPEED;
+#endif
+
+    if (inEventLoop())
+      setup_oneshot_timer(*m_Impl, delay_ms, std::move(callback));
+    else
+    {
+      call_soon([this, f = std::move(callback), target_time = time_now() + delay_ms] {
+        // Recalculate delay because it may have taken some time to get ourselves into the logic thread
+        auto updated_delay = target_time - time_now();
+        if (updated_delay <= 0ms)
+          f(); // Timer already expired!
+        else
+          setup_oneshot_timer(*m_Impl, updated_delay, std::move(f));
+      });
+    }
   }
 
   void
@@ -174,6 +190,9 @@ namespace llarp::uv
   {
     if (m_Run)
     {
+      if (not inEventLoop())
+        return call_soon([this] { stop(); });
+
       llarp::LogInfo("stopping event loop");
       m_Impl->walk([](auto&& handle) {
         if constexpr (!std::is_pointer_v<std::remove_reference_t<decltype(handle)>>)
@@ -181,19 +200,9 @@ namespace llarp::uv
       });
       llarp::LogDebug("Closed all handles, stopping the loop");
       m_Impl->stop();
-    }
-    m_Run.store(false);
-  }
 
-  void
-  Loop::stopped()
-  {
-    if (m_Impl)
-    {
-      m_Impl->close();
-      m_Impl.reset();
+      m_Run.store(false);
     }
-    llarp::LogInfo("we have stopped");
   }
 
   bool
@@ -248,9 +257,8 @@ namespace llarp::uv
       m_WakeUp->send();
       return;
     }
-    const bool inEventLoop = *m_EventLoopThreadID == std::this_thread::get_id();
 
-    if (inEventLoop and m_LogicCalls.full())
+    if (inEventLoop() and m_LogicCalls.full())
     {
       FlushLogic();
     }
@@ -333,7 +341,7 @@ namespace llarp::uv
   }
 
   bool
-  Loop::inEventLoopThread() const
+  Loop::inEventLoop() const
   {
     return m_EventLoopThreadID and *m_EventLoopThreadID == std::this_thread::get_id();
   }
