@@ -100,7 +100,7 @@ namespace llarp
     {
       m_PacketRouter.reset(
           new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
-#if ANDROID
+#ifdef ANDROID
       m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);
@@ -111,11 +111,10 @@ namespace llarp
         const SockAddr raddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
         const SockAddr laddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
 
-        std::vector<byte_t> buf;
-        buf.resize(pkt.sz - (udp_header_size + ip_header_size));
-        std::copy_n(ptr + udp_header_size, buf.size(), buf.data());
+        OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
+        std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());
         if (m_Resolver->ShouldHandlePacket(laddr, raddr, buf))
-          m_Resolver->HandlePacket(laddr, raddr, std::move(buf));
+          m_Resolver->HandlePacket(laddr, raddr, buf);
         else
           HandleGotUserPacket(std::move(pkt));
       });

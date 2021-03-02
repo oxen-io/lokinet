@@ -19,7 +19,7 @@
 #include <util/logging/logger.hpp>
 #include <util/str.hpp>
 
-#if ANDROID
+#ifdef ANDROID
 #include <android/ifaddrs.h>
 #else
 #ifndef _WIN32

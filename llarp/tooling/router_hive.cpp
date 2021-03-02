@@ -74,11 +74,11 @@ namespace tooling
     llarp::LogInfo("Signalling all routers to stop");
     for (auto& [routerId, ctx] : relays)
     {
-      ctx->mainloop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
+      ctx->loop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
     }
     for (auto& [routerId, ctx] : clients)
     {
-      ctx->mainloop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
+      ctx->loop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
     }
 
     llarp::LogInfo("Waiting on routers to be stopped");
@@ -149,7 +149,7 @@ namespace tooling
   RouterHive::VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit)
   {
     // TODO: this should be called from each router's appropriate Loop, e.g.:
-    //     ctx->mainloop->call([visit, ctx]() { visit(ctx); });
+    //     ctx->loop->call([visit, ctx]() { visit(ctx); });
     // however, this causes visit calls to be deferred
     visit(ctx);
   }
@@ -180,7 +180,7 @@ namespace tooling
     size_t done_count = 0;
     for (auto& [routerId, ctx] : relays)
     {
-      ctx->mainloop->call([&, i, ctx = ctx]() {
+      ctx->loop->call([&, i, ctx = ctx]() {
         size_t count = ctx->router->NumberOfConnectedRouters();
         std::lock_guard guard{results_lock};
         results[i] = count;
