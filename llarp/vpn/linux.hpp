@@ -91,6 +91,10 @@ namespace llarp::vpn
       const auto sz = read(m_fd, pkt.buf, sizeof(pkt.buf));
       if (sz >= 0)
         pkt.sz = std::min(sz, ssize_t{sizeof(pkt.buf)});
+      else if (errno == EAGAIN || errno == EWOULDBLOCK)
+        pkt.sz = 0;
+      else
+        throw std::error_code{errno, std::system_category()};
       return pkt;
     }
 

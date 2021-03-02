@@ -76,21 +76,6 @@ namespace llarp
       return m_state->Configure(conf);
     }
 
-    llarp_ev_loop_ptr
-    Endpoint::EndpointNetLoop()
-    {
-      if (m_state->m_IsolatedNetLoop)
-        return m_state->m_IsolatedNetLoop;
-
-      return Router()->netloop();
-    }
-
-    bool
-    Endpoint::NetworkIsIsolated() const
-    {
-      return m_state->m_IsolatedLogic.get() != nullptr && m_state->m_IsolatedNetLoop != nullptr;
-    }
-
     bool
     Endpoint::HasPendingPathToService(const Address& addr) const
     {
@@ -652,20 +637,6 @@ namespace llarp
       m_OnReady = nullptr;
     }
 
-    void
-    Endpoint::IsolatedNetworkMainLoop()
-    {
-      m_state->m_IsolatedNetLoop = llarp_make_ev_loop();
-      m_state->m_IsolatedLogic = std::make_shared<llarp::Logic>();
-      if (SetupNetworking())
-        llarp_ev_loop_run_single_process(m_state->m_IsolatedNetLoop, m_state->m_IsolatedLogic);
-      else
-      {
-        m_state->m_IsolatedNetLoop.reset();
-        m_state->m_IsolatedLogic.reset();
-      }
-    }
-
     std::optional<std::vector<RouterContact>>
     Endpoint::GetHopsForBuild()
     {
@@ -1019,7 +990,9 @@ namespace llarp
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook({AuthResultCode::eAuthAccepted, "OK"}); });
+        Router()->logic()->Call([h = std::move(hook)] {
+          h({AuthResultCode::eAuthAccepted, "OK"});
+        });
       }
     }
 
@@ -1099,7 +1072,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (not frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
+      if (not frame.AsyncDecryptAndVerify(Router()->logic(), p, m_Identity, this))
       {
         // send reset convo tag message
         ProtocolFrame f;
@@ -1342,14 +1315,7 @@ namespace llarp
         }
       };
 
-      if (NetworkIsIsolated())
-      {
-        LogicCall(EndpointLogic(), epPump);
-      }
-      else
-      {
-        epPump();
-      }
+      epPump();
       auto router = Router();
       // TODO: locking on this container
       for (const auto& item : m_state->m_RemoteSessions)
@@ -1537,22 +1503,16 @@ namespace llarp
           || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }
 
-    std::shared_ptr<Logic>
-    Endpoint::RouterLogic()
-    {
-      return Router()->logic();
-    }
-
-    std::shared_ptr<Logic>
-    Endpoint::EndpointLogic()
-    {
-      return m_state->m_IsolatedLogic ? m_state->m_IsolatedLogic : Router()->logic();
-    }
-
     AbstractRouter*
     Endpoint::Router()
     {
       return m_state->m_Router;
+    }
+
+    const std::shared_ptr<llarp::Logic>&
+    Endpoint::Logic()
+    {
+      return Router()->logic();
     }
 
     void

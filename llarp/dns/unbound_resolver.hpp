@@ -18,8 +18,9 @@
 namespace llarp::dns
 {
   using ReplyFunction =
-      std::function<void(SockAddr resolver, SockAddr source, std::vector<byte_t> buf)>;
-  using FailFunction = std::function<void(SockAddr resolver, SockAddr source, Message msg)>;
+      std::function<void(const SockAddr& resolver, const SockAddr& source, OwnedBuffer buf)>;
+  using FailFunction =
+      std::function<void(const SockAddr& resolver, const SockAddr& source, Message msg)>;
 
   class UnboundResolver : public std::enable_shared_from_this<UnboundResolver>
   {

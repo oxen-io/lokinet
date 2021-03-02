@@ -2,7 +2,7 @@
 #define LLARP_DNS_SERVER_HPP
 
 #include <dns/message.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <net/net.hpp>
 #include <util/thread/logic.hpp>
 #include <dns/unbound_resolver.hpp>
@@ -14,8 +14,9 @@ namespace llarp
   namespace dns
   {
     /// handler of dns query hooking
-    struct IQueryHandler
+    class IQueryHandler
     {
+     public:
       virtual ~IQueryHandler() = default;
 
       /// return true if we should hook this message
@@ -27,10 +28,11 @@ namespace llarp
       HandleHookedDNSMessage(Message query, std::function<void(Message)> sendReply) = 0;
     };
 
-    struct PacketHandler : public std::enable_shared_from_this<PacketHandler>
+    // Base class for DNS lookups
+    class PacketHandler : public std::enable_shared_from_this<PacketHandler>
     {
+     public:
       using Logic_ptr = std::shared_ptr<Logic>;
-      using Buffer_t = std::vector<uint8_t>;
 
       explicit PacketHandler(Logic_ptr logic, IQueryHandler* handler);
 
@@ -46,18 +48,18 @@ namespace llarp
       Restart();
 
       void
-      HandlePacket(SockAddr resolver, SockAddr from, Buffer_t buf);
+      HandlePacket(const SockAddr& resolver, const SockAddr& from, llarp_buffer_t buf);
 
       bool
-      ShouldHandlePacket(SockAddr to, SockAddr from, Buffer_t buf) const;
+      ShouldHandlePacket(const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) const;
 
      protected:
       virtual void
-      SendServerMessageBufferTo(SockAddr from, SockAddr to, Buffer_t buf) = 0;
+      SendServerMessageBufferTo(const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) = 0;
 
      private:
       void
-      HandleUpstreamFailure(SockAddr from, SockAddr to, Message msg);
+      HandleUpstreamFailure(const SockAddr& from, const SockAddr& to, Message msg);
 
       bool
       SetupUnboundResolver(std::vector<IpAddress> resolvers);
@@ -68,27 +70,24 @@ namespace llarp
       Logic_ptr m_Logic;
     };
 
-    struct Proxy : public PacketHandler
+    // Proxying DNS handler that listens on a UDP port for proper DNS requests.
+    class Proxy : public PacketHandler
     {
+     public:
       using Logic_ptr = std::shared_ptr<Logic>;
-      explicit Proxy(llarp_ev_loop_ptr loop, Logic_ptr logic, IQueryHandler* handler);
+      explicit Proxy(EventLoop_ptr loop, Logic_ptr logic, IQueryHandler* handler);
 
       bool
       Start(SockAddr localaddr, std::vector<IpAddress> resolvers) override;
 
-      using Buffer_t = std::vector<uint8_t>;
-
      protected:
       void
-      SendServerMessageBufferTo(SockAddr from, SockAddr to, Buffer_t buf) override;
+      SendServerMessageBufferTo(
+          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override;
 
      private:
-      static void
-      HandleUDP(llarp_udp_io*, const SockAddr&, ManagedBuffer);
-
-     private:
-      llarp_udp_io m_Server;
-      llarp_ev_loop_ptr m_Loop;
+      std::shared_ptr<UDPHandle> m_Server;
+      EventLoop_ptr m_Loop;
     };
   }  // namespace dns
 }  // namespace llarp

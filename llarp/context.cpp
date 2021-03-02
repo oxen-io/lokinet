@@ -1,5 +1,6 @@
 #include <llarp.hpp>
 #include <constants/version.hpp>
+#include <constants/evloop.hpp>
 
 #include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
@@ -64,7 +65,7 @@ namespace llarp
     if (mainloop == nullptr)
     {
       auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
-      mainloop = llarp_make_ev_loop(jobQueueSize);
+      mainloop = EventLoop::create(jobQueueSize);
     }
     logic->set_event_loop(mainloop.get());
 
@@ -116,7 +117,7 @@ namespace llarp
     // run net io thread
     llarp::LogInfo("running mainloop");
 
-    llarp_ev_loop_run_single_process(mainloop, logic);
+    mainloop->run(*logic);
     if (closeWaiter)
     {
       closeWaiter->set_value();

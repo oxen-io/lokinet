@@ -1,7 +1,7 @@
 #ifndef LLARP_IP_HPP
 #define LLARP_IP_HPP
 
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <net/net.hpp>
 #include <util/buffer.hpp>
 #include <util/time.hpp>
@@ -109,8 +109,6 @@ struct ipv6_header
 #include <service/protocol_type.hpp>
 #include <utility>
 
-struct llarp_ev_loop;
-
 namespace llarp
 {
   namespace net
@@ -143,25 +141,25 @@ namespace llarp
 
       struct PutTime
       {
-        llarp_ev_loop_ptr loop;
-        PutTime(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
+        EventLoop_ptr loop;
+        PutTime(EventLoop_ptr evloop) : loop(std::move(evloop))
         {}
         void
         operator()(IPPacket& pkt) const
         {
-          pkt.timestamp = llarp_ev_loop_time_now_ms(loop);
+          pkt.timestamp = loop->time_now();
         }
       };
 
       struct GetNow
       {
-        llarp_ev_loop_ptr loop;
-        GetNow(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
+        EventLoop_ptr loop;
+        GetNow(EventLoop_ptr evloop) : loop(std::move(evloop))
         {}
         llarp_time_t
         operator()() const
         {
-          return llarp_ev_loop_time_now_ms(loop);
+          return loop->time_now();
         }
       };
 

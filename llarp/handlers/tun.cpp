@@ -39,26 +39,31 @@ namespace llarp
     }
     constexpr size_t udp_header_size = 8;
 
-    struct DnsHandler : public dns::PacketHandler
+    // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
+    // Android where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible because of OS
+    // restrictions, but a tun interface *is* available.
+    class DnsInterceptor : public dns::PacketHandler
     {
+     public:
       TunEndpoint* const m_Endpoint;
 
-      explicit DnsHandler(AbstractRouter* router, TunEndpoint* ep)
+      explicit DnsInterceptor(AbstractRouter* router, TunEndpoint* ep)
           : dns::PacketHandler{router->logic(), ep}, m_Endpoint{ep} {};
 
       void
-      SendServerMessageBufferTo(SockAddr from, SockAddr to, std::vector<byte_t> buf) override
+      SendServerMessageBufferTo(
+          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override
       {
         net::IPPacket pkt;
 
-        if (buf.size() + 28 > sizeof(pkt.buf))
+        if (buf.sz + 28 > sizeof(pkt.buf))
           return;
 
         auto* hdr = pkt.Header();
         pkt.buf[1] = 0;
         hdr->version = 4;
         hdr->ihl = 5;
-        hdr->tot_len = htons(buf.size() + 28);
+        hdr->tot_len = htons(buf.sz + 28);
         hdr->protocol = 0x11;  // udp
         hdr->ttl = 64;
         hdr->frag_off = htons(0b0100000000000000);
@@ -72,11 +77,11 @@ namespace llarp
         ptr += 2;
         htobe16buf(ptr, to.getPort());
         ptr += 2;
-        htobe16buf(ptr, buf.size() + udp_header_size);
+        htobe16buf(ptr, buf.sz + udp_header_size);
         ptr += 2;
         htobe16buf(ptr, uint16_t{0});  // checksum
         ptr += 2;
-        std::copy_n(buf.data(), buf.size(), ptr);
+        std::copy_n(buf.base, buf.sz, ptr);
 
         /// queue ip packet write
         const IpAddress remoteIP{from};
@@ -84,7 +89,7 @@ namespace llarp
 
         hdr->check = 0;
         hdr->check = net::ipchksum(pkt.buf, 20);
-        pkt.sz = 28 + buf.size();
+        pkt.sz = 28 + buf.sz;
         m_Endpoint->HandleWriteIPPacket(
             pkt.ConstBuffer(), net::ExpandV4(remoteIP.toIP()), net::ExpandV4(localIP.toIP()), 0);
       }
@@ -97,7 +102,7 @@ namespace llarp
       m_PacketRouter.reset(
           new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
 #if ANDROID
-      m_Resolver = std::make_shared<DnsHandler>(r, this);
+      m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);
 

@@ -29,7 +29,7 @@ namespace llarp
     {
       if (m_SendQueue.empty() or m_SendQueue.full())
       {
-        LogicCall(m_Endpoint->RouterLogic(), [self = this]() { self->FlushUpstream(); });
+        LogicCall(m_Endpoint->Logic(), [this] { FlushUpstream(); });
       }
       m_SendQueue.pushBack(std::make_pair(
           std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
@@ -97,14 +97,13 @@ namespace llarp
       m->sender = m_Endpoint->GetIdentity().pub;
       m->tag = f->T;
       m->PutBuffer(payload);
-      auto self = this;
-      m_Endpoint->Router()->QueueWork([f, m, shared, path, self]() {
-        if (not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
+      m_Endpoint->Router()->QueueWork([f, m, shared, path, this] {
+        if (not f->EncryptAndSign(*m, shared, m_Endpoint->GetIdentity()))
         {
-          LogError(self->m_Endpoint->Name(), " failed to sign message");
+          LogError(m_Endpoint->Name(), " failed to sign message");
           return;
         }
-        self->Send(f, path);
+        Send(f, path);
       });
     }
 

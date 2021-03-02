@@ -47,6 +47,10 @@ if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
 endif()
 
+add_library(uvw INTERFACE)
+target_include_directories(uvw INTERFACE ${PROJECT_SOURCE_DIR}/external/uvw/src)
+target_link_libraries(uvw INTERFACE libuv)
+
 add_library(lokinet-platform
 # for networking
   ev/ev.cpp
@@ -63,7 +67,7 @@ add_library(lokinet-platform
   vpn/platform.cpp
 )
 
-target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs libuv)
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs uvw)
 
 
 if (ANDROID)
@@ -81,7 +85,6 @@ endif()
 
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
-    ev/ev_libuv.cpp
     win32/win32_inet.c
     win32/win32_intrnl.c)
 

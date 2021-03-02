@@ -5,7 +5,7 @@
 namespace tooling
 {
   HiveRouter::HiveRouter(
-      llarp_ev_loop_ptr netloop,
+      llarp::EventLoop_ptr netloop,
       std::shared_ptr<llarp::Logic> logic,
       std::shared_ptr<llarp::vpn::Platform> plat,
       RouterHive* hive)

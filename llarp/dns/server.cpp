@@ -4,31 +4,19 @@
 #include <util/thread/logic.hpp>
 #include <array>
 #include <utility>
+#include <ev/udp_handle.hpp>
 
 namespace llarp::dns
 {
-  static std::vector<byte_t>
-  MessageToBuffer(Message msg)
-  {
-    std::array<byte_t, 1500> tmp = {{0}};
-    llarp_buffer_t buf{tmp};
-    if (not msg.Encode(&buf))
-      throw std::runtime_error("cannot encode dns message");
-    std::vector<byte_t> pkt;
-    pkt.resize(buf.cur - buf.base);
-    std::copy_n(tmp.data(), pkt.size(), pkt.data());
-    return pkt;
-  }
   PacketHandler::PacketHandler(Logic_ptr logic, IQueryHandler* h)
-      : m_QueryHandler{h}, m_Logic{logic}
+      : m_QueryHandler{h}, m_Logic{std::move(logic)}
   {}
 
-  Proxy::Proxy(llarp_ev_loop_ptr loop, Logic_ptr logic, IQueryHandler* h)
+  Proxy::Proxy(EventLoop_ptr loop, Logic_ptr logic, IQueryHandler* h)
       : PacketHandler{logic, h}, m_Loop(std::move(loop))
   {
-    m_Server.user = this;
-    m_Server.tick = nullptr;
-    m_Server.recvfrom = &HandleUDP;
+    m_Server =
+        m_Loop->udp([this](UDPHandle&, SockAddr a, OwnedBuffer buf) { HandlePacket(a, a, buf); });
   }
 
   void
@@ -43,23 +31,7 @@ namespace llarp::dns
   {
     if (not PacketHandler::Start(addr, std::move(resolvers)))
       return false;
-    return (llarp_ev_add_udp(m_Loop, &m_Server, addr) == 0);
-  }
-
-  static Proxy::Buffer_t
-  CopyBuffer(const llarp_buffer_t& buf)
-  {
-    std::vector<byte_t> msgbuf(buf.sz);
-    std::copy_n(buf.base, buf.sz, msgbuf.data());
-    return msgbuf;
-  }
-
-  void
-  Proxy::HandleUDP(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
-  {
-    Buffer_t msgbuf = CopyBuffer(buf.underlying);
-    auto self = static_cast<Proxy*>(u->user);
-    self->HandlePacket(from, from, std::move(msgbuf));
+    return m_Server->listen(addr);
   }
 
   void
@@ -81,21 +53,15 @@ namespace llarp::dns
   bool
   PacketHandler::SetupUnboundResolver(std::vector<IpAddress> resolvers)
   {
-    auto failFunc = [self = weak_from_this()](SockAddr from, SockAddr to, Message msg) {
-      auto this_ptr = self.lock();
-      if (this_ptr)
-      {
-        this_ptr->SendServerMessageBufferTo(from, to, MessageToBuffer(std::move(msg)));
-      }
+    auto failFunc = [self = weak_from_this()](
+                        const SockAddr& from, const SockAddr& to, Message msg) {
+      if (auto this_ptr = self.lock())
+        this_ptr->SendServerMessageBufferTo(from, to, msg.ToBuffer());
     };
 
-    auto replyFunc = [self = weak_from_this()](
-                         SockAddr from, SockAddr to, std::vector<byte_t> buf) {
-      auto this_ptr = self.lock();
-      if (this_ptr)
-      {
-        this_ptr->SendServerMessageBufferTo(from, to, std::move(buf));
-      }
+    auto replyFunc = [self = weak_from_this()](auto&&... args) {
+      if (auto this_ptr = self.lock())
+        this_ptr->SendServerMessageBufferTo(std::forward<decltype(args)>(args)...);
     };
 
     m_UnboundResolver =
@@ -121,26 +87,24 @@ namespace llarp::dns
   }
 
   void
-  Proxy::SendServerMessageBufferTo(SockAddr, SockAddr to, Buffer_t buf)
+  Proxy::SendServerMessageBufferTo(const SockAddr&, const SockAddr& to, llarp_buffer_t buf)
   {
-    if (llarp_ev_udp_sendto(&m_Server, to, buf) < 0)
+    if (!m_Server->send(to, buf))
       llarp::LogError("dns reply failed");
   }
 
   bool
-  PacketHandler::ShouldHandlePacket(SockAddr to, SockAddr from, Buffer_t buf) const
+  PacketHandler::ShouldHandlePacket(
+      const SockAddr& to, [[maybe_unused]] const SockAddr& from, llarp_buffer_t buf) const
   {
-    (void)from;
-
     MessageHeader hdr;
-    llarp_buffer_t pkt{buf};
-    if (not hdr.Decode(&pkt))
+    if (not hdr.Decode(&buf))
     {
       return false;
     }
 
     Message msg{hdr};
-    if (not msg.Decode(&pkt))
+    if (not msg.Decode(&buf))
     {
       return false;
     }
@@ -156,18 +120,17 @@ namespace llarp::dns
   }
 
   void
-  PacketHandler::HandlePacket(SockAddr resolver, SockAddr from, Buffer_t buf)
+  PacketHandler::HandlePacket(const SockAddr& resolver, const SockAddr& from, llarp_buffer_t buf)
   {
     MessageHeader hdr;
-    llarp_buffer_t pkt{buf};
-    if (not hdr.Decode(&pkt))
+    if (not hdr.Decode(&buf))
     {
       llarp::LogWarn("failed to parse dns header from ", from);
       return;
     }
 
     Message msg(hdr);
-    if (not msg.Decode(&pkt))
+    if (not msg.Decode(&buf))
     {
       llarp::LogWarn("failed to parse dns message from ", from);
       return;
@@ -186,7 +149,7 @@ namespace llarp::dns
         // yea it is, let's turn off DoH because god is dead.
         msg.AddNXReply();
         // press F to pay respects
-        SendServerMessageBufferTo(resolver, from, MessageToBuffer(std::move(msg)));
+        SendServerMessageBufferTo(resolver, from, msg.ToBuffer());
         return;
       }
     }
@@ -194,7 +157,7 @@ namespace llarp::dns
     if (m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
     {
       auto reply = [self = shared_from_this(), to = from, resolver](dns::Message msg) {
-        self->SendServerMessageBufferTo(resolver, to, MessageToBuffer(std::move(msg)));
+        self->SendServerMessageBufferTo(resolver, to, msg.ToBuffer());
       };
       if (!m_QueryHandler->HandleHookedDNSMessage(std::move(msg), reply))
       {
@@ -206,7 +169,7 @@ namespace llarp::dns
       // no upstream resolvers
       // let's serv fail it
       msg.AddServFail();
-      SendServerMessageBufferTo(resolver, from, MessageToBuffer(std::move(msg)));
+      SendServerMessageBufferTo(resolver, from, msg.ToBuffer());
     }
     else
     {

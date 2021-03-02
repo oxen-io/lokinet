@@ -11,6 +11,7 @@
 #include <util/time.hpp>
 
 #include <net/net_if.hpp>
+#include "ev/ev.hpp"
 
 #undef LOG_TAG
 #define LOG_TAG __FILE__
@@ -38,11 +39,11 @@ struct IWPLinkContext
   llarp::LinkLayer_ptr link;
   std::shared_ptr<llarp::KeyManager> keyManager;
   llarp::LinkMessageParser m_Parser;
-  llarp_ev_loop_ptr m_Loop;
+  llarp::EventLoop_ptr m_Loop;
   /// is the test done on this context ?
   bool gucci = false;
 
-  IWPLinkContext(std::string_view addr, llarp_ev_loop_ptr loop)
+  IWPLinkContext(std::string_view addr, llarp::EventLoop_ptr loop)
       : localAddr{std::move(addr)}
       , keyManager{std::make_shared<llarp::KeyManager>()}
       , m_Parser{nullptr}
@@ -104,7 +105,7 @@ struct IWPLinkContext
         },
         // timeout handler
         [&](llarp::ILinkSession*) {
-          llarp_ev_loop_stop(m_Loop);
+          m_Loop->stop();
           FAIL("session timeout");
         },
         // session closed handler
@@ -150,8 +151,9 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   llarp::LogSilencer shutup;
   // set up event loop
   auto logic = std::make_shared<llarp::Logic>();
-  auto loop = llarp_make_ev_loop();
+  auto loop = llarp::EventLoop::create();
   loop->set_logic(logic);
+  logic->set_event_loop(loop.get());
 
   llarp::LogContext::Instance().Initialize(
       llarp::eLogDebug, llarp::LogType::File, "stdout", "unit test", [loop](auto work) {
@@ -175,7 +177,7 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   auto endIfDone = [initiator, recipiant, loop, logic]() {
     if (initiator->gucci and recipiant->gucci)
     {
-      LogicCall(logic, [loop]() { llarp_ev_loop_stop(loop); });
+      LogicCall(logic, [loop] { loop->stop(); });
     }
   };
   // function to start test and give logic to unit test
@@ -186,12 +188,12 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   };
 
   // function to end test immediately
-  auto endTest = [logic, loop]() { LogicCall(logic, [loop]() { llarp_ev_loop_stop(loop); }); };
+  auto endTest = [logic, loop]() { LogicCall(logic, [loop] { loop->stop(); }); };
 
   loop->call_after_delay(
       std::chrono::duration_cast<llarp_time_t>(timeout), []() { FAIL("test timeout"); });
   test(start, endIfDone, endTest, initiator, recipiant);
-  llarp_ev_loop_run_single_process(loop, logic);
+  loop->run(*logic);
   llarp::RouterContact::BlockBogons = oldBlockBogons;
 }
 

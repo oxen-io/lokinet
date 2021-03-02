@@ -24,35 +24,12 @@ namespace llarp
     m_Queue = std::move(q);
   }
 
-  uint32_t
+  void
   Logic::call_later(llarp_time_t timeout, std::function<void(void)> func)
   {
-    auto loop = m_Loop;
-    if (loop != nullptr)
-    {
-      return loop->call_after_delay(timeout, func);
-    }
-    return 0;
-  }
-
-  void
-  Logic::cancel_call(uint32_t id)
-  {
-    auto loop = m_Loop;
-    if (loop != nullptr)
-    {
-      loop->cancel_delayed_call(id);
-    }
-  }
-
-  void
-  Logic::remove_call(uint32_t id)
-  {
-    auto loop = m_Loop;
-    if (loop != nullptr)
-    {
-      loop->cancel_delayed_call(id);
-    }
+    Call([this, timeout, f = std::move(func)]() mutable {
+      m_Loop->call_after_delay(timeout, std::move(f));
+    });
   }
 
   void

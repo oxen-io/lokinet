@@ -129,3 +129,23 @@ operator==(const llarp_buffer_t& buff, const char* c_str)
   }
   return *str == 0;
 }
+
+namespace llarp
+{
+  OwnedBuffer
+  OwnedBuffer::copy_from(const llarp_buffer_t& b)
+  {
+    auto buf = std::make_unique<byte_t[]>(b.sz);
+    std::copy(b.begin(), b.end(), buf.get());
+    return {std::move(buf), b.sz};
+  }
+
+  OwnedBuffer
+  OwnedBuffer::copy_used(const llarp_buffer_t& b)
+  {
+    auto buf = std::make_unique<byte_t[]>(b.cur - b.base);
+    std::copy(b.base, b.cur, buf.get());
+    return {std::move(buf), b.sz};
+  }
+
+}  // namespace llarp

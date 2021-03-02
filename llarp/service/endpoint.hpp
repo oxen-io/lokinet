@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_ENDPOINT_HPP
 #include <llarp.h>
 #include <dht/messages/gotrouter.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <exit/session.hpp>
 #include <net/ip_range_map.hpp>
 #include <net/net.hpp>
@@ -136,20 +136,10 @@ namespace llarp
       void
       ResetInternalState() override;
 
-      /// router's logic
+      /// logic (via router)
       /// use when sending any data on a path
-      std::shared_ptr<Logic>
-      RouterLogic();
-
-      /// endpoint's logic
-      /// use when writing any data to local network interfaces
-      std::shared_ptr<Logic>
-      EndpointLogic();
-
-      /// borrow endpoint's net loop for sending data to user on local network
-      /// interface
-      llarp_ev_loop_ptr
-      EndpointNetLoop();
+      const std::shared_ptr<llarp::Logic>&
+      Logic();
 
       AbstractRouter*
       Router();
@@ -422,22 +412,6 @@ namespace llarp
 
       void
       PrefetchServicesByTag(const Tag& tag);
-
-      /// spawn a new process that contains a network isolated process
-      /// return true if we set up isolation and the event loop is up
-      /// otherwise return false
-      virtual bool
-      SpawnIsolatedNetwork()
-      {
-        return false;
-      }
-
-      bool
-      NetworkIsIsolated() const;
-
-      /// this runs in the isolated network process
-      void
-      IsolatedNetworkMainLoop();
 
      private:
       void

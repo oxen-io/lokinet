@@ -39,12 +39,8 @@ namespace llarp::dns
       std::shared_ptr<Logic> logic, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
-      , replyFunc([logic, reply](auto res, auto source, auto buf) {
-        LogicCall(logic, [source, buf, reply, res]() { reply(res, source, buf); });
-      })
-      , failFunc([logic, fail](auto res, auto source, auto message) {
-        LogicCall(logic, [source, message, res, fail]() { fail(res, source, message); });
-      })
+      , replyFunc(logic->make_caller(std::move(reply)))
+      , failFunc(logic->make_caller(std::move(fail)))
   {}
 
   // static callback
@@ -65,8 +61,8 @@ namespace llarp::dns
       ub_resolve_free(result);
       return;
     }
-    std::vector<byte_t> pkt(result->answer_len);
-    std::copy_n(static_cast<byte_t*>(result->answer_packet), pkt.size(), pkt.data());
+    OwnedBuffer pkt{(size_t)result->answer_len};
+    std::memcpy(pkt.buf.get(), result->answer_packet, pkt.sz);
     llarp_buffer_t buf(pkt);
 
     MessageHeader hdr;

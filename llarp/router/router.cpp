@@ -47,12 +47,10 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 namespace llarp
 {
   Router::Router(
-      llarp_ev_loop_ptr __netloop,
-      std::shared_ptr<Logic> l,
-      std::shared_ptr<vpn::Platform> vpnPlatform)
+      EventLoop_ptr netloop, std::shared_ptr<Logic> l, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
       , m_lmq(std::make_shared<oxenmq::OxenMQ>())
-      , _netloop(std::move(__netloop))
+      , _netloop(std::move(netloop))
       , _logic(std::move(l))
       , _vpnPlatform(std::move(vpnPlatform))
       , paths(this)
@@ -289,7 +287,7 @@ namespace llarp
   bool
   Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
   {
-    m_Config = c;
+    m_Config = std::move(c);
     auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
@@ -307,7 +305,7 @@ namespace llarp
 
     m_lmq->start();
 
-    _nodedb = nodedb;
+    _nodedb = std::move(nodedb);
 
     m_isServiceNode = conf.router.m_isRelay;
 
@@ -366,16 +364,8 @@ namespace llarp
     if (_onDown)
       _onDown();
     LogInfo("closing router");
-    llarp_ev_loop_stop(_netloop);
+    _netloop->stop();
     _running.store(false);
-  }
-
-  void
-  Router::handle_router_ticker()
-  {
-    ticker_job_id = 0;
-    Tick();
-    ScheduleTicker(ROUTER_TICK_INTERVAL);
   }
 
   bool
@@ -915,12 +905,6 @@ namespace llarp
   }
 
   void
-  Router::ScheduleTicker(llarp_time_t interval)
-  {
-    ticker_job_id = _logic->call_later(interval, std::bind(&Router::handle_router_ticker, this));
-  }
-
-  void
   Router::SessionClosed(RouterID remote)
   {
     dht::Key_t k(remote);
@@ -1136,11 +1120,11 @@ namespace llarp
 
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
-    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+    _netloop->add_ticker([this] { PumpLL(); });
 #else
-    _netloop->set_pump_function(std::bind(&Router::PumpLL, this));
+    _netloop->set_pump_function([this] { PumpLL(); });
 #endif
-    ScheduleTicker(ROUTER_TICK_INTERVAL);
+    _logic->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1338,9 +1322,7 @@ namespace llarp
     if (!link)
       throw std::runtime_error("NewOutboundLink() failed to provide a link");
 
-    const auto afs = {AF_INET, AF_INET6};
-
-    for (const auto af : afs)
+    for (const auto af : {AF_INET, AF_INET6})
     {
       if (not link->Configure(netloop(), "*", af, m_OutboundPort))
         continue;

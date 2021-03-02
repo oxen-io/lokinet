@@ -316,6 +316,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/pybind11)
     check_submodule(external/sqlite_orm)
     check_submodule(external/oxen-mq)
+    check_submodule(external/uvw)
   endif()
 endif()
 
