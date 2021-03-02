@@ -10,6 +10,7 @@
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
 #include <util/thread/threading.hpp>
+#include <vpn/packet_router.hpp>
 
 #include <future>
 #include <queue>
@@ -232,7 +233,7 @@ namespace llarp
         reply(*query);
       }
       /// our dns resolver
-      std::shared_ptr<dns::Proxy> m_Resolver;
+      std::shared_ptr<dns::PacketHandler> m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
@@ -258,6 +259,8 @@ namespace llarp
       std::string m_IfName;
 
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
+
+      std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
     };
 
   }  // namespace handlers

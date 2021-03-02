@@ -235,6 +235,12 @@ namespace llarp
       return m_Pending.size();
     }
 
+    int
+    GetUDPSocket() const
+    {
+      return m_udp.fd;
+    }
+
    private:
     void
     OnTick();

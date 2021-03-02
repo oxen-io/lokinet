@@ -280,6 +280,9 @@ namespace llarp
       MakeICMPUnreachable() const;
     };
 
+    /// generate ip checksum
+    uint16_t
+    ipchksum(const byte_t* buf, size_t sz, uint32_t sum = 0);
   }  // namespace net
 }  // namespace llarp
 

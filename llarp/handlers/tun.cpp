@@ -23,6 +23,7 @@
 #include <rpc/endpoint_rpc.hpp>
 
 #include <util/str.hpp>
+#include <util/endian.hpp>
 
 #include <dns/srv_data.hpp>
 
@@ -36,13 +37,88 @@ namespace llarp
       static constexpr auto FlushInterval = 25ms;
       return now >= m_LastFlushAt + FlushInterval;
     }
+    constexpr size_t udp_header_size = 8;
+
+    struct DnsHandler : public dns::PacketHandler
+    {
+      TunEndpoint* const m_Endpoint;
+
+      explicit DnsHandler(AbstractRouter* router, TunEndpoint* ep)
+          : dns::PacketHandler{router->logic(), ep}, m_Endpoint{ep} {};
+
+      void
+      SendServerMessageBufferTo(SockAddr from, SockAddr to, std::vector<byte_t> buf) override
+      {
+        net::IPPacket pkt;
+
+        if (buf.size() + 28 > sizeof(pkt.buf))
+          return;
+
+        auto* hdr = pkt.Header();
+        pkt.buf[1] = 0;
+        hdr->version = 4;
+        hdr->ihl = 5;
+        hdr->tot_len = htons(buf.size() + 28);
+        hdr->protocol = 0x11;  // udp
+        hdr->ttl = 64;
+        hdr->frag_off = htons(0b0100000000000000);
+
+        hdr->saddr = from.getIPv4();
+        hdr->daddr = to.getIPv4();
+
+        // make udp packet
+        uint8_t* ptr = pkt.buf + 20;
+        htobe16buf(ptr, from.getPort());
+        ptr += 2;
+        htobe16buf(ptr, to.getPort());
+        ptr += 2;
+        htobe16buf(ptr, buf.size() + udp_header_size);
+        ptr += 2;
+        htobe16buf(ptr, uint16_t{0});  // checksum
+        ptr += 2;
+        std::copy_n(buf.data(), buf.size(), ptr);
+
+        /// queue ip packet write
+        const IpAddress remoteIP{from};
+        const IpAddress localIP{to};
+
+        hdr->check = 0;
+        hdr->check = net::ipchksum(pkt.buf, 20);
+        pkt.sz = 28 + buf.size();
+        m_Endpoint->HandleWriteIPPacket(
+            pkt.ConstBuffer(), net::ExpandV4(remoteIP.toIP()), net::ExpandV4(localIP.toIP()), 0);
+      }
+    };
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
-        , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
-    {}
+    {
+      m_PacketRouter.reset(
+          new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
+#if ANDROID
+      m_Resolver = std::make_shared<DnsHandler>(r, this);
+      m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
+        const size_t ip_header_size = (pkt.Header()->ihl * 4);
+
+        const uint8_t* ptr = pkt.buf + ip_header_size;
+        const auto dst = ToNet(pkt.dstv4());
+        const auto src = ToNet(pkt.srcv4());
+        const SockAddr raddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
+        const SockAddr laddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
+
+        std::vector<byte_t> buf;
+        buf.resize(pkt.sz - (udp_header_size + ip_header_size));
+        std::copy_n(ptr + udp_header_size, buf.size(), buf.data());
+        if (m_Resolver->ShouldHandlePacket(laddr, raddr, buf))
+          m_Resolver->HandlePacket(laddr, raddr, std::move(buf));
+        else
+          HandleGotUserPacket(std::move(pkt));
+      });
+#else
+      m_Resolver = std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this);
+#endif
+    }
 
     util::StatusObject
     TunEndpoint::ExtractStatus() const
@@ -743,7 +819,7 @@ namespace llarp
 
       auto netloop = Router()->netloop();
       if (not netloop->add_network_interface(
-              m_NetIf, [&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }))
+              m_NetIf, [&](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
       {
         LogError(Name(), " failed to add network interface");
         return false;
@@ -788,7 +864,7 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
-      if (!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
+      if (!m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers))
       {
         llarp::LogError(Name(), " failed to start DNS server");
         return false;
@@ -1008,7 +1084,9 @@ namespace llarp
       auto& pkt = write.pkt;
       // load
       if (!pkt.Load(buf))
+      {
         return false;
+      }
       if (pkt.IsV4())
       {
         pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(dst)));

@@ -519,6 +519,16 @@ namespace llarp
       return m_Config;
     }
 
+#if defined(ANDROID)
+    int m_OutboundUDPSocket = -1;
+
+    int
+    GetOutboundUDPSocket() const override
+    {
+      return m_OutboundUDPSocket;
+    }
+#endif
+
    private:
     std::atomic<bool> _stopping;
     std::atomic<bool> _running;

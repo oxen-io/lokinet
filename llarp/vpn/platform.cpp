@@ -24,7 +24,7 @@ namespace llarp::vpn
 #endif
 #ifdef __linux__
 #ifdef ANDROID
-    plat = std::make_shared<vpn::AndroidPlatform>();
+    plat = std::make_shared<vpn::AndroidPlatform>(ctx);
 #else
     plat = std::make_shared<vpn::LinuxPlatform>();
 #endif
