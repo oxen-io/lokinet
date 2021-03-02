@@ -6,49 +6,11 @@
 #include <util/thread/threading.hpp>
 #include <constants/evloop.hpp>
 
-// writev
-#ifndef _WIN32
-#include <sys/uio.h>
-#include <unistd.h>
-#endif
-
 #include <algorithm>
 #include <deque>
 #include <list>
 #include <future>
 #include <utility>
-
-#ifdef _WIN32
-// From the preview SDK, should take a look at that
-// periodically in case its definition changes
-#define UNIX_PATH_MAX 108
-
-typedef struct sockaddr_un
-{
-  ADDRESS_FAMILY sun_family;    /* AF_UNIX */
-  char sun_path[UNIX_PATH_MAX]; /* pathname */
-} SOCKADDR_UN, *PSOCKADDR_UN;
-#else
-
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
-#include <sys/event.h>
-#endif
-
-#include <sys/un.h>
-#endif
-
-struct llarp_ev_pkt_pipe;
-
-#ifndef MAX_WRITE_QUEUE_SIZE
-#define MAX_WRITE_QUEUE_SIZE (1024UL)
-#endif
-
-#ifndef EV_READ_BUF_SZ
-#define EV_READ_BUF_SZ (4 * 1024UL)
-#endif
-#ifndef EV_WRITE_BUF_SZ
-#define EV_WRITE_BUF_SZ (4 * 1024UL)
-#endif
 
 namespace llarp
 {
