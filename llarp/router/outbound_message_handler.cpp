@@ -183,10 +183,7 @@ namespace llarp
   OutboundMessageHandler::DoCallback(SendStatusHandler callback, SendStatus status)
   {
     if (callback)
-    {
-      auto f = [f = std::move(callback), status] { f(status); };
-      _loop->call([this, f = std::move(f)] { m_Killer.TryAccess(f); });
-    }
+      _loop->call([f = std::move(callback), status] { f(status); });
   }
 
   void
