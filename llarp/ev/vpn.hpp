@@ -49,14 +49,9 @@ namespace llarp::vpn
     virtual std::string
     IfName() const = 0;
 
-    /// read next ip packet
-    /// blocks until ready
+    /// read next ip packet, return an empty packet if there are none ready.
     virtual net::IPPacket
     ReadNextPacket() = 0;
-
-    /// return true if we have another packet to read
-    virtual bool
-    HasNextPacket() = 0;
 
     /// write a packet to the interface
     /// returns false if we dropped it

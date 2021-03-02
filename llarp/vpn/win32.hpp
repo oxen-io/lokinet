@@ -117,7 +117,7 @@ namespace llarp::vpn
     return deviceid;
   }
 
-  class Win32Interface : public NetworkInterface
+  class Win32Interface final : public NetworkInterface
   {
     std::atomic<bool> m_Run;
     HANDLE m_Device, m_IOCP;

@@ -122,12 +122,6 @@ namespace llarp::vpn
       return m_FD;
     }
 
-    bool
-    HasNextPacket() override
-    {
-      return false;
-    }
-
     net::IPPacket
     ReadNextPacket() override
     {
