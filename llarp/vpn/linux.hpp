@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <vpn/common.hpp>
+#include <linux/if.h>
 #include <linux/if_tun.h>
 
 namespace llarp::vpn
@@ -68,7 +69,7 @@ namespace llarp::vpn
           control6.ioctl(SIOCSIFADDR, &ifr6);
         }
       }
-      ifr.ifr_flags = flags | IFF_UP | IFF_NO_PI;
+      ifr.ifr_flags = static_cast<short>(flags | IFF_UP | IFF_NO_PI);
       control.ioctl(SIOCSIFFLAGS, &ifr);
     }
 
