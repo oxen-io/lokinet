@@ -28,4 +28,4 @@
 	url = https://github.com/oxen-io/oxen-mq
 [submodule "external/uvw"]
 	path = external/uvw
-	url = https://github.com/skypjack/uvw.git
+	url = https://github.com/jagerman/uvw.git
