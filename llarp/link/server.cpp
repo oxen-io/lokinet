@@ -347,23 +347,16 @@ namespace llarp
   {
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto itr = m_AuthedLinks.begin();
-      while (itr != m_AuthedLinks.end())
-      {
-        itr->second->Tick(now);
-        ++itr;
-      }
+      for (const auto& [routerid, link] : m_AuthedLinks)
+        link->Tick(now);
     }
 
     {
       Lock_t l(m_PendingMutex);
-      auto itr = m_Pending.begin();
-      while (itr != m_Pending.end())
-      {
-        itr->second->Tick(now);
-        ++itr;
-      }
+      for (const auto& [addr, link] : m_Pending)
+        link->Tick(now);
     }
+
     {
       // decay recently closed list
       auto itr = m_RecentlyClosed.begin();
@@ -384,21 +377,13 @@ namespace llarp
       m_Logic->remove_call(tick_id);
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto itr = m_AuthedLinks.begin();
-      while (itr != m_AuthedLinks.end())
-      {
-        itr->second->Close();
-        ++itr;
-      }
+      for (const auto& [router, link] : m_AuthedLinks)
+        link->Close();
     }
     {
       Lock_t l(m_PendingMutex);
-      auto itr = m_Pending.begin();
-      while (itr != m_Pending.end())
-      {
-        itr->second->Close();
-        ++itr;
-      }
+      for (const auto& [addr, link] : m_Pending)
+        link->Close();
     }
   }
 
@@ -411,9 +396,8 @@ namespace llarp
       Lock_t l(m_AuthedLinksMutex);
       RouterID r = remote;
       llarp::LogInfo("Closing all to ", r);
-      auto range = m_AuthedLinks.equal_range(r);
-      auto itr = range.first;
-      while (itr != range.second)
+      auto [itr, end] = m_AuthedLinks.equal_range(r);
+      while (itr != end)
       {
         itr->second->Close();
         m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
@@ -427,16 +411,13 @@ namespace llarp
   ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
     Lock_t l(m_AuthedLinksMutex);
-    auto range = m_AuthedLinks.equal_range(remote);
-    auto itr = range.first;
-    while (itr != range.second)
+    for (auto [itr, end] = m_AuthedLinks.equal_range(remote); itr != end; ++itr)
     {
       if (itr->second->ShouldPing())
       {
         LogDebug("keepalive to ", remote);
         itr->second->SendKeepAlive();
       }
-      ++itr;
     }
   }
 
@@ -447,20 +428,16 @@ namespace llarp
     std::shared_ptr<ILinkSession> s;
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto range = m_AuthedLinks.equal_range(remote);
-      auto itr = range.first;
       // pick lowest backlog session
       size_t min = std::numeric_limits<size_t>::max();
 
-      while (itr != range.second)
+      for (auto [itr, end] = m_AuthedLinks.equal_range(remote); itr != end; ++itr)
       {
-        const auto backlog = itr->second->SendQueueBacklog();
-        if (backlog < min)
+        if (const auto backlog = itr->second->SendQueueBacklog(); backlog < min)
         {
           s = itr->second;
           min = backlog;
         }
-        ++itr;
       }
     }
     ILinkSession::Message_t pkt(buf.sz);
