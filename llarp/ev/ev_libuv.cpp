@@ -146,7 +146,7 @@ namespace llarp::uv
   }
 
   std::shared_ptr<llarp::UDPHandle>
-  Loop::udp(UDPReceiveFunc on_recv)
+  Loop::make_udp(UDPReceiveFunc on_recv)
   {
     return std::static_pointer_cast<llarp::UDPHandle>(
         std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv)));

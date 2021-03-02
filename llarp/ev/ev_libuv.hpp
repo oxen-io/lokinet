@@ -62,7 +62,7 @@ namespace llarp::uv
     make_repeater() override;
 
     std::shared_ptr<llarp::UDPHandle>
-    udp(UDPReceiveFunc on_recv) override;
+    make_udp(UDPReceiveFunc on_recv) override;
 
     void
     FlushLogic();

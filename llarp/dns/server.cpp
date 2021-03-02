@@ -14,8 +14,8 @@ namespace llarp::dns
   Proxy::Proxy(EventLoop_ptr loop, IQueryHandler* h)
       : PacketHandler{loop, h}, m_Loop(std::move(loop))
   {
-    m_Server =
-        m_Loop->udp([this](UDPHandle&, SockAddr a, OwnedBuffer buf) { HandlePacket(a, a, buf); });
+    m_Server = m_Loop->make_udp(
+        [this](UDPHandle&, SockAddr a, OwnedBuffer buf) { HandlePacket(a, a, buf); });
   }
 
   void

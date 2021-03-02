@@ -128,10 +128,8 @@ namespace llarp
   bool
   ILinkLayer::Configure(EventLoop_ptr loop, const std::string& ifname, int af, uint16_t port)
   {
-    LogError("omg wtf");
     m_Loop = std::move(loop);
-    // using UDPReceiveFunc = std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
-    m_udp = m_Loop->udp(
+    m_udp = m_Loop->make_udp(
         [this]([[maybe_unused]] UDPHandle& udp, const SockAddr& from, llarp_buffer_t buf) {
           ILinkSession::Packet_t pkt;
           pkt.resize(buf.sz);

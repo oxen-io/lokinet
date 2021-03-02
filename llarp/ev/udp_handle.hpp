@@ -3,7 +3,7 @@
 
 namespace llarp
 {
-  // Base type for UDP handling; constructed via EventLoop::udp().
+  // Base type for UDP handling; constructed via EventLoop::make_udp().
   struct UDPHandle
   {
     using ReceiveFunc = EventLoop::UDPReceiveFunc;

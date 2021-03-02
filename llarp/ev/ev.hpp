@@ -175,13 +175,13 @@ namespace llarp
     virtual void
     stop() = 0;
 
+    virtual ~EventLoop() = default;
+
     using UDPReceiveFunc = std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
 
     // Constructs a UDP socket that can be used for sending and/or receiving
     virtual std::shared_ptr<UDPHandle>
-    udp(UDPReceiveFunc on_recv) = 0;
-
-    virtual ~EventLoop() = default;
+    make_udp(UDPReceiveFunc on_recv) = 0;
 
     /// set the function that is called once per cycle the flush all the queues
     virtual void
