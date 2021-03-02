@@ -27,7 +27,7 @@ namespace llarp
   Context::CallSafe(std::function<void(void)> f)
   {
     if (!loop)
-        return false;
+      return false;
     loop->call(std::move(f));
     return true;
   }
@@ -86,7 +86,7 @@ namespace llarp
   Context::makeRouter(const EventLoop_ptr& loop)
   {
     return std::static_pointer_cast<AbstractRouter>(
-            std::make_shared<Router>(loop, makeVPNPlatform()));
+        std::make_shared<Router>(loop, makeVPNPlatform()));
   }
 
   std::shared_ptr<vpn::Platform>

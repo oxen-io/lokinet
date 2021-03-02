@@ -278,7 +278,7 @@ namespace llarp
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(
-              EventLoop_ptr l,
+          EventLoop_ptr l,
           const Identity& localIdent,
           Endpoint* h,
           std::shared_ptr<ProtocolMessage> m,
@@ -402,7 +402,7 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(
-            EventLoop_ptr loop,
+        EventLoop_ptr loop,
         path::Path_ptr recvPath,
         const Identity& localIdent,
         Endpoint* handler,
@@ -438,7 +438,7 @@ namespace llarp
       auto callback = [loop, hook](std::shared_ptr<ProtocolMessage> msg) {
         if (hook)
         {
-        loop->call([msg, hook]() { hook(msg); });
+          loop->call([msg, hook]() { hook(msg); });
         }
       };
       handler->Router()->QueueWork(

@@ -211,7 +211,9 @@ namespace llarp
           currentConvoTag,
           t);
 
-      ex->hook = [self = shared_from_this(), path](auto frame) { self->Send(std::move(frame), path); };
+      ex->hook = [self = shared_from_this(), path](auto frame) {
+        self->Send(std::move(frame), path);
+      };
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;

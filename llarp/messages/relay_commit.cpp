@@ -238,7 +238,8 @@ namespace llarp
       }
 
       router->QueueWork([router, pathid, nextHop, pathKey, status] {
-          LR_StatusMessage::CreateAndSend(router, pathid, nextHop, pathKey, status); });
+        LR_StatusMessage::CreateAndSend(router, pathid, nextHop, pathKey, status);
+      });
     }
 
     /// this is done from logic thread

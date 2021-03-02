@@ -118,7 +118,10 @@ namespace llarp
     // Calls a function/lambda/etc.  If invoked from within the event loop itself this calls the
     // given lambda immediately; otherwise it passes it to `call_soon()` to be queued to run at the
     // next event loop iteration.
-    template <typename Callable> void call(Callable&& f) {
+    template <typename Callable>
+    void
+    call(Callable&& f)
+    {
       if (inEventLoop())
         f();
       else
@@ -151,21 +154,21 @@ namespace llarp
     //     m_keepalive = std::make_shared<int>(42);
     //     loop->call_every(100ms, m_keepalive, [this] { some_func(); });
     //
-    template <typename Callable> // Templated so that the compiler can inline the call
+    template <typename Callable>  // Templated so that the compiler can inline the call
     void
     call_every(llarp_time_t repeat, std::weak_ptr<void> owner, Callable f)
     {
       auto repeater = make_repeater();
-      auto& r = *repeater; // reference *before* we pass ownership into the lambda below
+      auto& r = *repeater;  // reference *before* we pass ownership into the lambda below
       r.start(
           repeat,
           [repeater = std::move(repeater), owner = std::move(owner), f = std::move(f)]() mutable {
             if (auto ptr = owner.lock())
               f();
             else
-              repeater.reset();  // Trigger timer removal on tied object destruction (we should be the only thing holding
-                                 // the repeater; ideally it would be a unique_ptr, but
-                                 // std::function says nuh-uh).
+              repeater.reset();  // Trigger timer removal on tied object destruction (we should be
+                                 // the only thing holding the repeater; ideally it would be a
+                                 // unique_ptr, but std::function says nuh-uh).
           });
     }
 

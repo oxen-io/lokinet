@@ -223,8 +223,8 @@ namespace llarp
   LR_StatusMessage::QueueSendMessage(
       AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
   {
-    router->loop()->call([router, nextHop, msg=std::move(msg)] {
-        SendMessage(router, nextHop, msg); });
+    router->loop()->call(
+        [router, nextHop, msg = std::move(msg)] { SendMessage(router, nextHop, msg); });
   }
 
   void

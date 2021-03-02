@@ -251,7 +251,8 @@ namespace llarp
                 LogError("failed to parse response from lns lookup: ", ex.what());
               }
             }
-            r->loop()->call([resultHandler, maybe=std::move(maybe)]() { resultHandler(std::move(maybe)); });
+            r->loop()->call(
+                [resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
           },
           req.dump());
     }

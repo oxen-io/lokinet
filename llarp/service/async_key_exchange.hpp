@@ -11,7 +11,7 @@ namespace llarp
   {
     struct AsyncKeyExchange : public std::enable_shared_from_this<AsyncKeyExchange>
     {
-        EventLoop_ptr loop;
+      EventLoop_ptr loop;
       SharedSecret sharedKey;
       ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
@@ -24,7 +24,7 @@ namespace llarp
       ConvoTag tag;
 
       AsyncKeyExchange(
-              EventLoop_ptr l,
+          EventLoop_ptr l,
           ServiceInfo r,
           const Identity& localident,
           const PQPubKey& introsetPubKey,

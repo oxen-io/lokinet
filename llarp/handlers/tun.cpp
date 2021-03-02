@@ -837,8 +837,9 @@ namespace llarp
       m_IfName = m_NetIf->IfName();
       LogInfo(Name(), " got network interface ", m_IfName);
 
-      if (not Router()->loop()->add_network_interface(
-              m_NetIf, [this](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
+      if (not Router()->loop()->add_network_interface(m_NetIf, [this](net::IPPacket pkt) {
+            m_PacketRouter->HandleIPPacket(std::move(pkt));
+          }))
       {
         LogError(Name(), " failed to add network interface");
         return false;

@@ -5,9 +5,7 @@
 namespace tooling
 {
   HiveRouter::HiveRouter(
-      llarp::EventLoop_ptr loop,
-      std::shared_ptr<llarp::vpn::Platform> plat,
-      RouterHive* hive)
+      llarp::EventLoop_ptr loop, std::shared_ptr<llarp::vpn::Platform> plat, RouterHive* hive)
       : Router(loop, plat), m_hive(hive)
   {}
 

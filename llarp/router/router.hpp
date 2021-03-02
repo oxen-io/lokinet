@@ -316,9 +316,7 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    explicit Router(
-        EventLoop_ptr loop,
-        std::shared_ptr<vpn::Platform> vpnPlatform);
+    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
     ~Router() override;
 

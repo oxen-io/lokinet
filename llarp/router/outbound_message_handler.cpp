@@ -184,8 +184,8 @@ namespace llarp
   {
     if (callback)
     {
-      auto f = [f=std::move(callback), status] { f(status); };
-      _loop->call([this, f=std::move(f)] { m_Killer.TryAccess(f); });
+      auto f = [f = std::move(callback), status] { f(status); };
+      _loop->call([this, f = std::move(f)] { m_Killer.TryAccess(f); });
     }
   }
 

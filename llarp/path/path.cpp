@@ -229,7 +229,8 @@ namespace llarp
         {
           llarp::LogDebug("Path build failed for an unspecified reason");
         }
-        r->loop()->call([r, self = shared_from_this()]() { self->EnterState(ePathFailed, r->Now()); });
+        r->loop()->call(
+            [r, self = shared_from_this()]() { self->EnterState(ePathFailed, r->Now()); });
       }
 
       // TODO: meaningful return value?
@@ -436,7 +437,7 @@ namespace llarp
         msg.pathid = TXID();
         ++idx;
       }
-      r->loop()->call([self = shared_from_this(), data = std::move(sendmsgs), r] () mutable {
+      r->loop()->call([self = shared_from_this(), data = std::move(sendmsgs), r]() mutable {
         self->HandleAllUpstream(std::move(data), r);
       });
     }
@@ -506,7 +507,7 @@ namespace llarp
         sendMsgs[idx].X = buf;
         ++idx;
       }
-      r->loop()->call([self = shared_from_this(), msgs = std::move(sendMsgs), r] () mutable {
+      r->loop()->call([self = shared_from_this(), msgs = std::move(sendMsgs), r]() mutable {
         self->HandleAllDownstream(std::move(msgs), r);
       });
     }

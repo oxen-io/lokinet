@@ -35,8 +35,7 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  UnboundResolver::UnboundResolver(
-      EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
+  UnboundResolver::UnboundResolver(EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
       , replyFunc(loop->make_caller(std::move(reply)))

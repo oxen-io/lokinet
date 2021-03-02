@@ -125,7 +125,7 @@ namespace llarp
 
       bool
       AsyncDecryptAndVerify(
-              EventLoop_ptr loop,
+          EventLoop_ptr loop,
           path::Path_ptr fromPath,
           const Identity& localIdent,
           Endpoint* handler,

@@ -24,7 +24,8 @@ namespace llarp
       auto msg = BuildRequestMessage();
       if (!msg)
         return false;
-      r->loop()->call([path=std::move(path), msg=std::move(msg), r] { path->SendRoutingMessage(*msg, r); });
+      r->loop()->call(
+          [path = std::move(path), msg = std::move(msg), r] { path->SendRoutingMessage(*msg, r); });
       return true;
     }
   }  // namespace service

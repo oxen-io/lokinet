@@ -10,7 +10,7 @@ namespace llarp
   namespace service
   {
     AsyncKeyExchange::AsyncKeyExchange(
-            EventLoop_ptr l,
+        EventLoop_ptr l,
         ServiceInfo r,
         const Identity& localident,
         const PQPubKey& introsetPubKey,

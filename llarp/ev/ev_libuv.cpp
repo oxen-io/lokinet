@@ -152,7 +152,9 @@ namespace llarp::uv
         std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv)));
   }
 
-  static void setup_oneshot_timer(uvw::Loop& loop, llarp_time_t delay, std::function<void()> callback) {
+  static void
+  setup_oneshot_timer(uvw::Loop& loop, llarp_time_t delay, std::function<void()> callback)
+  {
     auto timer = loop.resource<uvw::TimerHandle>();
     timer->on<uvw::TimerEvent>([f = std::move(callback)](const auto&, auto& timer) {
       f();
@@ -175,10 +177,11 @@ namespace llarp::uv
     else
     {
       call_soon([this, f = std::move(callback), target_time = time_now() + delay_ms] {
-        // Recalculate delay because it may have taken some time to get ourselves into the logic thread
+        // Recalculate delay because it may have taken some time to get ourselves into the logic
+        // thread
         auto updated_delay = target_time - time_now();
         if (updated_delay <= 0ms)
-          f(); // Timer already expired!
+          f();  // Timer already expired!
         else
           setup_oneshot_timer(*m_Impl, updated_delay, std::move(f));
       });

@@ -46,8 +46,7 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(
-      EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
+  Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
       , m_lmq(std::make_shared<oxenmq::OxenMQ>())
       , _loop(std::move(loop))

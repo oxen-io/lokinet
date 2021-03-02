@@ -74,11 +74,11 @@ namespace tooling
     llarp::LogInfo("Signalling all routers to stop");
     for (auto& [routerId, ctx] : relays)
     {
-        ctx->mainloop->call([ctx=ctx]() { ctx->HandleSignal(SIGINT); });
+      ctx->mainloop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
     }
     for (auto& [routerId, ctx] : clients)
     {
-      ctx->mainloop->call([ctx=ctx]() { ctx->HandleSignal(SIGINT); });
+      ctx->mainloop->call([ctx = ctx]() { ctx->HandleSignal(SIGINT); });
     }
 
     llarp::LogInfo("Waiting on routers to be stopped");
@@ -180,7 +180,7 @@ namespace tooling
     size_t done_count = 0;
     for (auto& [routerId, ctx] : relays)
     {
-      ctx->mainloop->call([&, i, ctx=ctx]() {
+      ctx->mainloop->call([&, i, ctx = ctx]() {
         size_t count = ctx->router->NumberOfConnectedRouters();
         std::lock_guard guard{results_lock};
         results[i] = count;
