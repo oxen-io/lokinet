@@ -49,7 +49,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) = 0;
 
     virtual bool
-    StartLinks(const EventLoop_ptr& loop) = 0;
+    StartLinks() = 0;
 
     virtual void
     Stop() = 0;

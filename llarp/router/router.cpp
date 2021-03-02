@@ -1057,7 +1057,7 @@ namespace llarp
       }
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_loop))
+    if (!_linkManager.StartLinks())
     {
       LogWarn("One or more links failed to start.");
       return false;

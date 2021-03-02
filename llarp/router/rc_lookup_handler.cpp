@@ -156,7 +156,6 @@ namespace llarp
     if (rc.IsPublicRouter())
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
-      const RouterContact copy{rc};
       _loop->call([rc, n = _nodedb] { n->PutIfNewer(rc); });
       _dht->impl->PutRCNodeAsync(rc);
     }

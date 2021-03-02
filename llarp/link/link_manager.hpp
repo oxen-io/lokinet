@@ -47,7 +47,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(const EventLoop_ptr& loop) override;
+    StartLinks() override;
 
     void
     Stop() override;

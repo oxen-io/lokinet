@@ -117,7 +117,7 @@ struct IWPLinkContext
 
     if (inbound)
     {
-      // only add address info on the recipiant's rc
+      // only add address info on the recipient's rc
       rc.addrs.emplace_back();
       REQUIRE(link->GetOurAddressInfo(rc.addrs.back()));
     }
@@ -166,19 +166,19 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   // set up client
   auto initiator = std::make_shared<IWPLinkContext>("127.0.0.1:3001", loop);
   // set up server
-  auto recipiant = std::make_shared<IWPLinkContext>("127.0.0.1:3002", loop);
+  auto recipient = std::make_shared<IWPLinkContext>("127.0.0.1:3002", loop);
 
   // function for ending unit test on success
-  auto endIfDone = [initiator, recipiant, loop]() {
-    if (initiator->gucci and recipiant->gucci)
+  auto endIfDone = [initiator, recipient, loop]() {
+    if (initiator->gucci and recipient->gucci)
     {
       loop->stop();
     }
   };
   // function to start test and give loop to unit test
-  auto start = [initiator, recipiant, loop]() {
-    REQUIRE(initiator->link->Start(loop));
-    REQUIRE(recipiant->link->Start(loop));
+  auto start = [initiator, recipient, loop]() {
+    REQUIRE(initiator->link->Start());
+    REQUIRE(recipient->link->Start());
     return loop;
   };
 
@@ -186,7 +186,7 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   auto endTest = [loop] { loop->stop(); };
 
   loop->call_later(timeout, [] { FAIL("test timeout"); });
-  test(start, endIfDone, endTest, initiator, recipiant);
+  test(start, endIfDone, endTest, initiator, recipient);
   loop->run();
   llarp::RouterContact::BlockBogons = oldBlockBogons;
 }
@@ -205,7 +205,7 @@ TEST_CASE("IWP handshake", "[iwp]")
       alice->gucci = true;
       endIfDone();
     });
-    // set up recipiant
+    // set up recipient
     bob->InitLink<true>([=](auto remote) {
       REQUIRE(remote->GetRemoteRC() == alice->rc);
       bob->gucci = true;

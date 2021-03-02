@@ -131,7 +131,7 @@ namespace llarp
     TryEstablishTo(RouterContact rc);
 
     bool
-    Start(const EventLoop_ptr& loop);
+    Start();
 
     virtual void
     Stop();
