@@ -23,7 +23,6 @@ namespace llarp
   struct Crypto;
   struct CryptoManager;
   struct AbstractRouter;
-  struct EventLoop;
   class NodeDB;
 
   namespace thread

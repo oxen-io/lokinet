@@ -223,7 +223,6 @@ namespace llarp
     }
 
    private:
-    uint32_t tick_id;
     const SecretKey& m_RouterEncSecret;
 
    protected:
