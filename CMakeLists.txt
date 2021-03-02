@@ -212,11 +212,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if (NOT MSVC_VERSION)
-	add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
-	# vla are evil
-	add_compile_options(-Wvla)
-	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
+  # vla are evil
+  add_compile_options(-Werror=vla)
+  add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
 endif()
 
 include(cmake/coverage.cmake)
