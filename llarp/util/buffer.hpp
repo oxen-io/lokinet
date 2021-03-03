@@ -104,7 +104,7 @@ struct llarp_buffer_t
   template <
       typename T,
       typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
-  llarp_buffer_t(T& t) : llarp_buffer_t{t.data(), t.size()}
+  llarp_buffer_t(T&& t) : llarp_buffer_t{t.data(), t.size()}
   {}
 
   byte_t*
