@@ -30,12 +30,6 @@ namespace llarp
 {
   namespace handlers
   {
-    bool
-    TunEndpoint::ShouldFlushNow(llarp_time_t now) const
-    {
-      static constexpr auto FlushInterval = 25ms;
-      return now >= m_LastFlushAt + FlushInterval;
-    }
     constexpr size_t udp_header_size = 8;
 
     // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
