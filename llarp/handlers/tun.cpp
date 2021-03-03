@@ -483,7 +483,23 @@ namespace llarp
         service::Address addr;
         if (addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
             || is_random_snode(msg) || is_localhost_loki(msg))
+        {
           msg.AddMXReply(qname, 1);
+        }
+        else if (service::NameIsValid(lnsName))
+        {
+          return LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
+            if (maybe.has_value())
+            {
+              msg.AddMXReply(maybe->ToString(), 1);
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+            reply(msg);
+          });
+        }
         else
           msg.AddNXReply();
         reply(msg);
