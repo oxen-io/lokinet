@@ -62,7 +62,7 @@ local debian_pipeline(name, image,
         }
     ],
 };
-local apk_builder(name, image, extra_cmds=[], allow_fail=true) = {
+local apk_builder(name, image, extra_cmds=[], allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
     name: name,
