@@ -279,8 +279,8 @@ namespace llarp
 
     bool
     TransitHop::HandlePathConfirmMessage(
-        __attribute__((unused)) const llarp::routing::PathConfirmMessage& msg,
-        __attribute__((unused)) AbstractRouter* r)
+        [[maybe_unused]] const llarp::routing::PathConfirmMessage& msg,
+        [[maybe_unused]] AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path confirm message on ", info);
       return false;
@@ -288,8 +288,8 @@ namespace llarp
 
     bool
     TransitHop::HandleDataDiscardMessage(
-        __attribute__((unused)) const llarp::routing::DataDiscardMessage& msg,
-        __attribute__((unused)) AbstractRouter* r)
+        [[maybe_unused]] const llarp::routing::DataDiscardMessage& msg,
+        [[maybe_unused]] AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;
