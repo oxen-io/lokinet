@@ -33,6 +33,9 @@ namespace llarp::uv
     running() const override;
 
     void
+    wakeup() override;
+
+    void
     call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void

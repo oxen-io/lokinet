@@ -77,6 +77,12 @@ namespace llarp
       return llarp::time_now_ms();
     }
 
+    // Triggers an event loop wakeup; use when something has been done that requires the event loop
+    // to wake up (e.g. adding to queues).  This is called implicitly by call() and call_soon().
+    // Idempotent and thread-safe.
+    virtual void
+    wakeup() = 0;
+
     // Calls a function/lambda/etc.  If invoked from within the event loop itself this calls the
     // given lambda immediately; otherwise it passes it to `call_soon()` to be queued to run at the
     // next event loop iteration.
@@ -85,7 +91,10 @@ namespace llarp
     call(Callable&& f)
     {
       if (inEventLoop())
+      {
         f();
+        wakeup();
+      }
       else
         call_soon(std::forward<Callable>(f));
     }

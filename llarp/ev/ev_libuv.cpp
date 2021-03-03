@@ -150,6 +150,12 @@ namespace llarp::uv
   }
 
   void
+  Loop::wakeup()
+  {
+    m_WakeUp->send();
+  }
+
+  void
   Loop::set_pump_function(std::function<void(void)> pump)
   {
     PumpLL = std::move(pump);
