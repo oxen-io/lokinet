@@ -681,50 +681,7 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Endpoint::GetHopsForBuildWithEndpoint(RouterID endpoint)
     {
-      std::vector<RouterContact> hops;
-      // get first hop
-      if (const auto maybe = SelectFirstHop(); maybe.has_value())
-      {
-        hops.emplace_back(*maybe);
-      }
-      else
-        return std::nullopt;
-
-      auto filter =
-          [endpoint, &hops, blacklist = SnodeBlacklist(), r = m_router](const auto& rc) -> bool {
-        if (blacklist.count(rc.pubkey) > 0)
-          return false;
-
-        if (r->routerProfiling().IsBadForPath(rc.pubkey))
-          return false;
-
-        for (const auto& hop : hops)
-        {
-          if (hop.pubkey == rc.pubkey)
-            return false;
-        }
-        return endpoint != rc.pubkey;
-      };
-
-      for (size_t idx = hops.size(); idx < numHops; ++idx)
-      {
-        if (idx + 1 == numHops)
-        {
-          if (const auto maybe = m_router->nodedb()->Get(endpoint))
-          {
-            hops.emplace_back(*maybe);
-          }
-          else
-            return std::nullopt;
-        }
-        else if (const auto maybe = m_router->nodedb()->GetRandom(filter))
-        {
-          hops.emplace_back(*maybe);
-        }
-        else
-          return std::nullopt;
-      }
-      return hops;
+      return path::Builder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());
     }
 
     void

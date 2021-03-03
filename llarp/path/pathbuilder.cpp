@@ -206,7 +206,7 @@ namespace llarp
     }
 
     std::optional<RouterContact>
-    Builder::SelectFirstHop() const
+    Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RouterContact> found = std::nullopt;
       m_router->ForEachPeer(
@@ -218,6 +218,9 @@ namespace llarp
               if (m_router->IsBootstrapNode(rc.pubkey))
                 return;
 #endif
+              if (exclude.count(rc.pubkey))
+                return;
+
               found = rc;
             }
           },
@@ -292,44 +295,62 @@ namespace llarp
     }
 
     std::optional<std::vector<RouterContact>>
-    Builder::GetHopsAlignedToForBuild(RouterID endpoint)
+    Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
+      const auto pathConfig = m_router->GetConfig()->paths;
+
       std::vector<RouterContact> hops;
       {
-        const auto maybe = SelectFirstHop();
+        const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
           return std::nullopt;
         hops.emplace_back(*maybe);
       };
+
+      RouterContact endpointRC;
+      if (const auto maybe = m_router->nodedb()->Get(endpoint))
+      {
+        endpointRC = *maybe;
+      }
+      else
+        return std::nullopt;
+
       for (size_t idx = hops.size(); idx < numHops; ++idx)
       {
         if (idx + 1 == numHops)
         {
-          const auto maybe = m_router->nodedb()->Get(endpoint);
-          if (maybe.has_value())
-          {
-            hops.emplace_back(*maybe);
-          }
-          else
-            return std::nullopt;
+          hops.emplace_back(endpointRC);
         }
         else
         {
-          const auto maybe = m_router->nodedb()->GetRandom(
-              [&hops, r = m_router, endpoint](const auto& rc) -> bool {
-                if (r->routerProfiling().IsBadForPath(rc.pubkey))
-                  return false;
-                for (const auto& hop : hops)
-                {
-                  if (hop.pubkey == rc.pubkey)
-                    return false;
-                }
-                return rc.pubkey != endpoint;
-              });
+          auto filter =
+              [&hops, r = m_router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
+            if (exclude.count(rc.pubkey))
+              return false;
 
-          if (not maybe.has_value())
+            std::set<RouterContact> hopsSet;
+            hopsSet.insert(endpointRC);
+            hopsSet.insert(hops.begin(), hops.end());
+
+            if (r->routerProfiling().IsBadForPath(rc.pubkey))
+              return false;
+            for (const auto& hop : hopsSet)
+            {
+              if (hop.pubkey == rc.pubkey)
+                return false;
+            }
+
+            hopsSet.insert(rc);
+            if (not pathConfig.Acceptable(hopsSet))
+              return false;
+
+            return rc.pubkey != endpointRC.pubkey;
+          };
+
+          if (const auto maybe = m_router->nodedb()->GetRandom(filter))
+            hops.emplace_back(*maybe);
+          else
             return std::nullopt;
-          hops.emplace_back(*maybe);
         }
       }
       return hops;
