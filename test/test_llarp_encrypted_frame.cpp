@@ -10,7 +10,6 @@
 #include <catch2/catch.hpp>
 
 using namespace ::llarp;
-using namespace ::testing;
 
 using EncryptedFrame = EncryptedFrame;
 using SecretKey = SecretKey;
@@ -25,9 +24,9 @@ class FrameTest : public test::LlarpTest<>
 
 TEST_CASE_METHOD(FrameTest, "Frame crypto")
 {
-  EncryptedFrame f(256);
+  EncryptedFrame f{256};
   f.Fill(0);
-  LRCR record;
+  LRCR record{};
   record.nextHop.Fill(1);
   record.tunnelNonce.Fill(2);
   record.rxid.Fill(3);
@@ -38,18 +37,10 @@ TEST_CASE_METHOD(FrameTest, "Frame crypto")
 
   REQUIRE(record.BEncode(buf));
 
-  EXPECT_CALL(m_crypto, randbytes(_, _)).WillOnce(Invoke(&test::randbytes_impl));
-
-  EXPECT_CALL(m_crypto, dh_client(_, _, alice, _)).WillOnce(Return(true));
-  EXPECT_CALL(m_crypto, xchacha20(_, _, _)).Times(2).WillRepeatedly(Return(true));
-  EXPECT_CALL(m_crypto, hmac(_, _, _)).Times(2).WillRepeatedly(Return(true));
-
   // rewind buffer
   buf->cur = buf->base + EncryptedFrameOverheadSize;
   // encrypt to alice
   REQUIRE(f.EncryptInPlace(alice, bob.toPublic()));
-
-  EXPECT_CALL(m_crypto, dh_server(_, _, _, _)).WillOnce(Return(true));
 
   // decrypt from alice
   REQUIRE(f.DecryptInPlace(bob));

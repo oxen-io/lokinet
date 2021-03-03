@@ -12,7 +12,6 @@
 #include <catch2/catch.hpp>
 
 using namespace ::llarp;
-using namespace ::testing;
 
 struct KeyManagerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
 {

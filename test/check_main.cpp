@@ -1,8 +1,6 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-#include <gmock/gmock.h>
-
 #include <util/logging/logger.hpp>
 
 #ifdef _WIN32
@@ -25,9 +23,7 @@ startWinsock()
 int
 main(int argc, char* argv[])
 {
-  llarp::LogSilencer shutup;
-
-  ::testing::InitGoogleMock(&argc, argv);
+  llarp::LogSilencer shutup{};
 
 #ifdef _WIN32
   if (startWinsock())

@@ -309,7 +309,6 @@ if(SUBMODULE_CHECK)
 
     message(STATUS "Checking submodules")
     check_submodule(external/nlohmann)
-    check_submodule(external/googletest)
     check_submodule(external/cxxopts)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
@@ -321,9 +320,6 @@ endif()
 
 if(WITH_HIVE)
   add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
-endif()
-if(WITH_TESTS)
-  add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")

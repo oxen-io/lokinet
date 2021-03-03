@@ -21,13 +21,6 @@ add_executable(catchAll
   crypto/test_llarp_crypto_types.cpp
   crypto/test_llarp_crypto.cpp
   crypto/test_llarp_key_manager.cpp
-  dht/test_llarp_dht_bucket.cpp
-  dht/test_llarp_dht_explorenetworkjob.cpp
-  dht/test_llarp_dht_kademlia.cpp
-  dht/test_llarp_dht_key.cpp
-  dht/test_llarp_dht_node.cpp
-  dht/test_llarp_dht_tx.cpp
-  dht/test_llarp_dht_txowner.cpp
   dns/test_llarp_dns_dns.cpp
   exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
@@ -59,7 +52,7 @@ add_executable(catchAll
   test_llarp_encrypted_frame.cpp
   test_llarp_router_contact.cpp)
 
-target_link_libraries(catchAll PUBLIC gmock liblokinet Catch2::Catch2)
+target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)
 target_include_directories(catchAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(WIN32)

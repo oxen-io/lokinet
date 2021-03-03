@@ -1,36 +1,30 @@
-#ifndef LLARP_TEST
-#define LLARP_TEST
+#pragma once
 
-#include <crypto/mock_crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <catch2/catch.hpp>
-#include <gmock/gmock.h>
 
-namespace llarp
+namespace llarp::test
 {
-  namespace test
+
+  template <typename CryptoImpl = llarp::sodium::CryptoLibSodium>
+  class LlarpTest
   {
-    template <typename CryptoImpl = MockCrypto>
-    class LlarpTest
+  protected:
+    CryptoImpl m_crypto;
+    CryptoManager cm;
+
+    LlarpTest() : cm(&m_crypto)
     {
-     protected:
-      CryptoImpl m_crypto;
-      CryptoManager cm;
-
-      LlarpTest() : cm(&m_crypto)
-      {
-        static_assert(std::is_base_of<Crypto, CryptoImpl>::value, "");
-      }
-
-      ~LlarpTest()
-      {}
-    };
-
-    template <>
-    inline LlarpTest<MockCrypto>::~LlarpTest()
-    {
-      CHECK(::testing::Mock::VerifyAndClearExpectations(&m_crypto));
+      static_assert(std::is_base_of<Crypto, CryptoImpl>::value, "");
     }
-  }  // namespace test
-}  // namespace llarp
 
-#endif
+    ~LlarpTest()
+    {}
+  };
+
+  template <>
+  inline LlarpTest<llarp::sodium::CryptoLibSodium>::~LlarpTest()
+  {
+
+  }  // namespace test
+}
