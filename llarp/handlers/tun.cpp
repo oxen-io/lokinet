@@ -412,18 +412,17 @@ namespace llarp
         }
         else if (service::NameIsValid(lnsName))
         {
-          return LookupNameAsync(
-              lnsName, [msg = std::make_shared<dns::Message>(msg), lnsName, reply](auto maybe) {
-                if (maybe.has_value())
-                {
-                  msg->AddMXReply(maybe->ToString(), 1);
-                }
-                else
-                {
-                  msg->AddNXReply();
-                }
-                reply(*msg);
-              });
+          return LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
+            if (maybe.has_value())
+            {
+              msg.AddMXReply(maybe->ToString(), 1);
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+            reply(msg);
+          });
         }
         else
           msg.AddNXReply();
