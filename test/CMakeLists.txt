@@ -10,7 +10,7 @@ endif()
 
 add_subdirectory(Catch2)
 
-add_executable(catchAll
+add_executable(testAll
   # helpers
   check_main.cpp
   test_util.cpp
@@ -52,20 +52,16 @@ add_executable(catchAll
   test_llarp_encrypted_frame.cpp
   test_llarp_router_contact.cpp)
 
-target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)
-target_include_directories(catchAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(testAll PUBLIC liblokinet Catch2::Catch2)
+target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(WIN32)
-    target_sources(catchAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
-    target_link_libraries(catchAll PUBLIC ws2_32 iphlpapi shlwapi)
+    target_sources(testAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
+    target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_link_directories(catchAll PRIVATE /usr/local/lib)
+    target_link_directories(testAll PRIVATE /usr/local/lib)
 endif()
 
-# Custom targets to invoke the different test suites:
-add_custom_target(catch COMMAND catchAll)
-
-# Add a custom "check" target that runs all the test suites:
-add_custom_target(check DEPENDS catch)
+add_custom_target(check COMMAND testAll)
