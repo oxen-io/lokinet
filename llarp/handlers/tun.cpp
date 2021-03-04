@@ -1046,7 +1046,7 @@ namespace llarp
         if (t == service::eProtocolExit)
         {
           if (pkt.IsV4())
-            dst = pkt.dst4to6Lan();
+            dst = pkt.dst4to6();
           else if (pkt.IsV6())
           {
             dst = pkt.dstv6();
@@ -1065,7 +1065,7 @@ namespace llarp
         if (pkt.IsV4())
         {
           dst = m_OurIP;
-          src = pkt.src4to6Lan();
+          src = pkt.src4to6();
         }
         else if (pkt.IsV6())
         {
