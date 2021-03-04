@@ -775,12 +775,7 @@ namespace llarp
                 return;
               }
             }
-            auto msg = std::move(itr->second);
-            const llarp_buffer_t buf(msg.m_Data);
-            m_Parent->HandleMessage(this, buf);
-            if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
-              m_SendMACKs.emplace(rxid);
-            m_RXMsgs.erase(rxid);
+            HandleRecvMsgCompleted(itr->second);
           }
         }
         else
@@ -827,18 +822,25 @@ namespace llarp
       {
         if (itr->second.Verify())
         {
-          auto msg = std::move(itr->second);
-          const llarp_buffer_t buf(msg.m_Data);
-          m_Parent->HandleMessage(this, buf);
-          if (m_ReplayFilter.emplace(itr->first, m_Parent->Now()).second)
-            m_SendMACKs.emplace(itr->first);
+          HandleRecvMsgCompleted(itr->second);
         }
         else
         {
           LogError("hash mismatch for message ", itr->first);
         }
-        m_RXMsgs.erase(itr);
       }
+    }
+
+    void
+    Session::HandleRecvMsgCompleted(const InboundMessage& msg)
+    {
+      const auto rxid = msg.m_MsgID;
+      if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
+      {
+        m_Parent->HandleMessage(this, msg.m_Data);
+        EncryptAndSend(msg.ACKS());
+      }
+      m_RXMsgs.erase(rxid);
     }
 
     void

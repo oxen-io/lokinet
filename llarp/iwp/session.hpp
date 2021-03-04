@@ -6,6 +6,7 @@
 #include <iwp/message_buffer.hpp>
 #include <net/ip_address.hpp>
 
+#include <map>
 #include <unordered_set>
 #include <deque>
 #include <queue>
@@ -185,8 +186,8 @@ namespace llarp
       void
       ResetRates();
 
-      std::unordered_map<uint64_t, InboundMessage> m_RXMsgs;
-      std::unordered_map<uint64_t, OutboundMessage> m_TXMsgs;
+      std::map<uint64_t, InboundMessage> m_RXMsgs;
+      std::map<uint64_t, OutboundMessage> m_TXMsgs;
 
       /// maps rxid to time recieved
       std::unordered_map<uint64_t, llarp_time_t> m_ReplayFilter;
@@ -226,6 +227,9 @@ namespace llarp
 
       void
       SendMACK();
+
+      void
+      HandleRecvMsgCompleted(const InboundMessage& msg);
 
       void
       GenerateAndSendIntro();
