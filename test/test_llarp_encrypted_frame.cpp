@@ -19,6 +19,13 @@ using LRCR = LR_CommitRecord;
 class FrameTest : public test::LlarpTest<>
 {
  public:
+  FrameTest() : test::LlarpTest<>{}
+  {
+    auto crypto = CryptoManager::instance();
+    crypto->encryption_keygen(alice);
+    crypto->encryption_keygen(bob);
+  }
+
   SecretKey alice, bob;
 };
 
