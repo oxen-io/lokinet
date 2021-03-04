@@ -74,7 +74,7 @@ namespace llarp
       f->T = currentConvoTag;
       f->S = ++sequenceNo;
 
-      auto path = m_PathSet->GetRandomPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (!path)
       {
         LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
