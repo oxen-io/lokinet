@@ -263,6 +263,7 @@ namespace llarp::rpc
                                   return;
                                 }
                                 auto onGoodResult = [r, reply](std::string reason) {
+                                  r->routePoker().Enable();
                                   r->routePoker().Up();
                                   reply(CreateJSONResponse(reason));
                                 };
