@@ -834,17 +834,11 @@ namespace llarp
     void
     Session::HandleRecvMsgCompleted(const InboundMessage& msg)
     {
-      /// should we send a multiack?
-      constexpr bool UseMACK = false;
-
       const auto rxid = msg.m_MsgID;
       if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
       {
         m_Parent->HandleMessage(this, msg.m_Data);
-        if (UseMACK)
-          m_SendMACKs.emplace(rxid);
-        else
-          EncryptAndSend(msg.ACKS());
+        EncryptAndSend(msg.ACKS());
       }
       m_RXMsgs.erase(rxid);
     }
