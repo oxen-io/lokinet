@@ -51,7 +51,7 @@ local debian_pipeline(name, image,
                 'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -G Ninja -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
