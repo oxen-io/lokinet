@@ -56,8 +56,7 @@ local debian_pipeline(name, image,
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
                 'ninja -v',
-                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
-                '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
+                '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
             ] + extra_cmds,
         }
     ],
@@ -200,8 +199,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
                 'ninja -v',
-                './test/testAll --gtest_color=yes',
-                './test/catchAll --use-colour yes',
+                './test/testAll --use-colour yes',
             ] + extra_cmds,
         }
     ]

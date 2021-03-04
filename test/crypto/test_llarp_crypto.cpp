@@ -2,69 +2,48 @@
 
 #include <iostream>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
-namespace llarp
+using namespace llarp;
+
+TEST_CASE("Identity key")
 {
-  struct IdentityKeyTest : public ::testing::Test
-  {
-    llarp::sodium::CryptoLibSodium crypto;
+  llarp::sodium::CryptoLibSodium crypto;
+  SecretKey secret;
+  crypto.identity_keygen(secret);
 
-    IdentityKeyTest()
-    {
-    }
-  };
-
-  TEST_F(IdentityKeyTest, TestKeyGen)
+  SECTION("Keygen")
   {
-    SecretKey secret;
-    crypto.identity_keygen(secret);
-    ASSERT_FALSE(secret.IsZero());
+    REQUIRE_FALSE(secret.IsZero());
   }
 
-  TEST_F(IdentityKeyTest, TestSignVerify)
+  SECTION("Sign-verify")
   {
-    SecretKey secret;
-    crypto.identity_keygen(secret);
-    AlignedBuffer< 128 > random;
+    AlignedBuffer<128> random;
     random.Randomize();
     Signature sig;
     const PubKey pk = secret.toPublic();
 
     const llarp_buffer_t buf(random.data(), random.size());
-    ASSERT_TRUE(crypto.sign(sig, secret, buf));
-    ASSERT_TRUE(crypto.verify(pk, buf, sig));
+    REQUIRE(crypto.sign(sig, secret, buf));
+    REQUIRE(crypto.verify(pk, buf, sig));
     random.Randomize();
     // mangle body
-    ASSERT_FALSE(crypto.verify(pk, buf, sig));
+    REQUIRE_FALSE(crypto.verify(pk, buf, sig));
   }
+}
 
-  struct PQCryptoTest : public ::testing::Test
-  {
-    llarp::sodium::CryptoLibSodium crypto;
-    PQKeyPair keys;
+TEST_CASE("PQ crypto")
+{
+  llarp::sodium::CryptoLibSodium crypto;
+  PQKeyPair keys;
+  crypto.pqe_keygen(keys);
+  PQCipherBlock block;
+  SharedSecret shared, otherShared;
+  auto c = &crypto;
 
-    PQCryptoTest()
-    {
-    }
-
-    void
-    SetUp()
-    {
-      crypto.pqe_keygen(keys);
-    }
-  };
-
-  TEST_F(PQCryptoTest, TestCrypto)
-  {
-    PQCipherBlock block;
-    SharedSecret shared, otherShared;
-    auto c = &crypto;
-
-    ASSERT_TRUE(keys.size() == PQ_KEYPAIRSIZE);
-    ASSERT_TRUE(
-        c->pqe_encrypt(block, shared, PQPubKey(pq_keypair_to_public(keys))));
-    ASSERT_TRUE(c->pqe_decrypt(block, otherShared, pq_keypair_to_secret(keys)));
-    ASSERT_TRUE(otherShared == shared);
-  }
-}  // namespace llarp
+  REQUIRE(keys.size() == PQ_KEYPAIRSIZE);
+  REQUIRE(c->pqe_encrypt(block, shared, PQPubKey(pq_keypair_to_public(keys))));
+  REQUIRE(c->pqe_decrypt(block, otherShared, pq_keypair_to_secret(keys)));
+  REQUIRE(otherShared == shared);
+}
