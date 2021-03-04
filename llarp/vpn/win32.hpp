@@ -117,7 +117,7 @@ namespace llarp::vpn
     return deviceid;
   }
 
-  class Win32Interface : public NetworkInterface
+  class Win32Interface final : public NetworkInterface
   {
     std::atomic<bool> m_Run;
     HANDLE m_Device, m_IOCP;
@@ -345,12 +345,6 @@ namespace llarp::vpn
       return -1;
     }
 
-    bool
-    HasNextPacket() override
-    {
-      return not m_ReadQueue.empty();
-    }
-
     std::string
     IfName() const override
     {
@@ -376,8 +370,11 @@ namespace llarp::vpn
     }
 
     net::IPPacket
-    ReadNextPacket()
+    ReadNextPacket() override
     {
+      if (m_ReadQueue.empty())
+        return net::IPPacket{};
+
       return m_ReadQueue.popFront();
     }
 

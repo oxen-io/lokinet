@@ -8,7 +8,7 @@
 #include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
 #include <link/link_manager.hpp>
@@ -35,7 +35,6 @@
 #include <util/mem.hpp>
 #include <util/status.hpp>
 #include <util/str.hpp>
-#include <util/thread/logic.hpp>
 #include <util/time.hpp>
 
 #include <functional>
@@ -76,22 +75,16 @@ namespace llarp
 
     LMQ_ptr m_lmq;
 
-    LMQ_ptr
+    const LMQ_ptr&
     lmq() const override
     {
       return m_lmq;
     }
 
-    std::shared_ptr<rpc::LokidRpcClient>
+    const std::shared_ptr<rpc::LokidRpcClient>&
     RpcClient() const override
     {
       return m_lokidRpcClient;
-    }
-
-    std::shared_ptr<Logic>
-    logic() const override
-    {
-      return _logic;
     }
 
     llarp_dht_context*
@@ -103,7 +96,7 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
-    std::shared_ptr<NodeDB>
+    const std::shared_ptr<NodeDB>&
     nodedb() const override
     {
       return _nodedb;
@@ -136,7 +129,7 @@ namespace llarp
       return _exitContext;
     }
 
-    std::shared_ptr<KeyManager>
+    const std::shared_ptr<KeyManager>&
     keyManager() const override
     {
       return m_keyManager;
@@ -160,10 +153,10 @@ namespace llarp
       return _routerProfiling;
     }
 
-    llarp_ev_loop_ptr
-    netloop() const override
+    const EventLoop_ptr&
+    loop() const override
     {
-      return _netloop;
+      return _loop;
     }
 
     vpn::Platform*
@@ -180,8 +173,7 @@ namespace llarp
 
     std::optional<SockAddr> _ourAddress;
 
-    llarp_ev_loop_ptr _netloop;
-    std::shared_ptr<Logic> _logic;
+    EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
     exit::Context _exitContext;
@@ -205,8 +197,6 @@ namespace llarp
 
     // should we be sending padded messages every interval?
     bool sendPadding = false;
-
-    uint32_t ticker_job_id = 0;
 
     LinkMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
@@ -326,12 +316,9 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    explicit Router(
-        llarp_ev_loop_ptr __netloop,
-        std::shared_ptr<Logic> logic,
-        std::shared_ptr<vpn::Platform> vpnPlatform);
+    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
-    virtual ~Router() override;
+    ~Router() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
@@ -462,10 +449,6 @@ namespace llarp
       return llarp::time_now_ms();
     }
 
-    /// schedule ticker to call i ms from now
-    void
-    ScheduleTicker(llarp_time_t i = 1s);
-
     /// parse a routing message in a buffer and handle it with a handler if
     /// successful parsing return true on parse and handle success otherwise
     /// return false
@@ -501,9 +484,6 @@ namespace llarp
 
     uint32_t
     NextPathBuildNumber() override;
-
-    void
-    handle_router_ticker();
 
     void
     AfterStopLinks();

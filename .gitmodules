@@ -26,3 +26,6 @@
 [submodule "external/oxen-mq"]
 	path = external/oxen-mq
 	url = https://github.com/oxen-io/oxen-mq
+[submodule "external/uvw"]
+	path = external/uvw
+	url = https://github.com/jagerman/uvw.git

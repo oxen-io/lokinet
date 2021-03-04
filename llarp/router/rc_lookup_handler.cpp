@@ -156,8 +156,7 @@ namespace llarp
     if (rc.IsPublicRouter())
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
-      const RouterContact copy{rc};
-      LogicCall(_logic, [copy, n = _nodedb]() { n->PutIfNewer(copy); });
+      _loop->call([rc, n = _nodedb] { n->PutIfNewer(rc); });
       _dht->impl->PutRCNodeAsync(rc);
     }
 
@@ -301,7 +300,7 @@ namespace llarp
   RCLookupHandler::Init(
       llarp_dht_context* dht,
       std::shared_ptr<NodeDB> nodedb,
-      std::shared_ptr<Logic> logic,
+      EventLoop_ptr loop,
       WorkerFunc_t dowork,
       ILinkManager* linkManager,
       service::Context* hiddenServiceContext,
@@ -311,9 +310,9 @@ namespace llarp
       bool isServiceNode_arg)
   {
     _dht = dht;
-    _nodedb = nodedb;
-    _logic = logic;
-    _work = dowork;
+    _nodedb = std::move(nodedb);
+    _loop = std::move(loop);
+    _work = std::move(dowork);
     _hiddenServiceContext = hiddenServiceContext;
     _strictConnectPubkeys = strictConnectPubkeys;
     _bootstrapRCList = bootstrapRCList;

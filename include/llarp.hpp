@@ -16,14 +16,13 @@ namespace llarp
     class Platform;
   }
 
-  class Logic;
+  class EventLoop;
   struct Config;
   struct RouterContact;
   struct Config;
   struct Crypto;
   struct CryptoManager;
   struct AbstractRouter;
-  struct EventLoop;
   class NodeDB;
 
   namespace thread
@@ -43,9 +42,8 @@ namespace llarp
     std::shared_ptr<Crypto> crypto = nullptr;
     std::shared_ptr<CryptoManager> cryptoManager = nullptr;
     std::shared_ptr<AbstractRouter> router = nullptr;
-    std::shared_ptr<Logic> logic = nullptr;
+    std::shared_ptr<EventLoop> loop = nullptr;
     std::shared_ptr<NodeDB> nodedb = nullptr;
-    std::shared_ptr<EventLoop> mainloop;
     std::string nodedb_dir;
 
     virtual ~Context() = default;
@@ -93,7 +91,7 @@ namespace llarp
     /// Creates a router. Can be overridden to allow a different class of router
     /// to be created instead. Defaults to llarp::Router.
     virtual std::shared_ptr<AbstractRouter>
-    makeRouter(std::shared_ptr<EventLoop> __netloop, std::shared_ptr<Logic> logic);
+    makeRouter(const std::shared_ptr<EventLoop>& loop);
 
     /// create the vpn platform for use in creating network interfaces
     virtual std::shared_ptr<llarp::vpn::Platform>

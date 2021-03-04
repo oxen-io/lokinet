@@ -21,7 +21,6 @@
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
 #include <service/protocol.hpp>
-#include <util/thread/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
 #include <util/meta/memfn.hpp>
@@ -74,21 +73,6 @@ namespace llarp
       });
 
       return m_state->Configure(conf);
-    }
-
-    llarp_ev_loop_ptr
-    Endpoint::EndpointNetLoop()
-    {
-      if (m_state->m_IsolatedNetLoop)
-        return m_state->m_IsolatedNetLoop;
-
-      return Router()->netloop();
-    }
-
-    bool
-    Endpoint::NetworkIsIsolated() const
-    {
-      return m_state->m_IsolatedLogic.get() != nullptr && m_state->m_IsolatedNetLoop != nullptr;
     }
 
     bool
@@ -652,20 +636,6 @@ namespace llarp
       m_OnReady = nullptr;
     }
 
-    void
-    Endpoint::IsolatedNetworkMainLoop()
-    {
-      m_state->m_IsolatedNetLoop = llarp_make_ev_loop();
-      m_state->m_IsolatedLogic = std::make_shared<llarp::Logic>();
-      if (SetupNetworking())
-        llarp_ev_loop_run_single_process(m_state->m_IsolatedNetLoop, m_state->m_IsolatedLogic);
-      else
-      {
-        m_state->m_IsolatedNetLoop.reset();
-        m_state->m_IsolatedLogic.reset();
-      }
-    }
-
     std::optional<std::vector<RouterContact>>
     Endpoint::GetHopsForBuild()
     {
@@ -748,13 +718,13 @@ namespace llarp
     {
       if (not msg->foundRCs.empty())
       {
-        for (auto rc : msg->foundRCs)
+        for (auto& rc : msg->foundRCs)
         {
-          Router()->QueueWork([rc = std::move(rc), logic = Router()->logic(), self = this, msg]() {
+          Router()->QueueWork([this, rc, msg]() mutable {
             bool valid = rc.Verify(llarp::time_now_ms());
-            LogicCall(logic, [self, valid, rc = std::move(rc), msg]() {
-              self->Router()->nodedb()->PutIfNewer(rc);
-              self->HandleVerifyGotRouter(msg, rc.pubkey, valid);
+            Router()->loop()->call([this, valid, rc = std::move(rc), msg] {
+              Router()->nodedb()->PutIfNewer(rc);
+              HandleVerifyGotRouter(msg, rc.pubkey, valid);
             });
           });
         }
@@ -949,8 +919,7 @@ namespace llarp
     {
       if (m_RecvQueue.full() || m_RecvQueue.empty())
       {
-        auto self = this;
-        LogicCall(m_router->logic(), [self]() { self->FlushRecvData(); });
+        m_router->loop()->call([this] { FlushRecvData(); });
       }
       m_RecvQueue.pushBack(std::move(ev));
     }
@@ -1019,7 +988,7 @@ namespace llarp
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook({AuthResultCode::eAuthAccepted, "OK"}); });
+        Router()->loop()->call([h = std::move(hook)] { h({AuthResultCode::eAuthAccepted, "OK"}); });
       }
     }
 
@@ -1099,7 +1068,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (not frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
+      if (not frame.AsyncDecryptAndVerify(Router()->loop(), p, m_Identity, this))
       {
         // send reset convo tag message
         ProtocolFrame f;
@@ -1342,14 +1311,7 @@ namespace llarp
         }
       };
 
-      if (NetworkIsIsolated())
-      {
-        LogicCall(EndpointLogic(), epPump);
-      }
-      else
-      {
-        epPump();
-      }
+      epPump();
       auto router = Router();
       // TODO: locking on this container
       for (const auto& item : m_state->m_RemoteSessions)
@@ -1537,22 +1499,16 @@ namespace llarp
           || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }
 
-    std::shared_ptr<Logic>
-    Endpoint::RouterLogic()
-    {
-      return Router()->logic();
-    }
-
-    std::shared_ptr<Logic>
-    Endpoint::EndpointLogic()
-    {
-      return m_state->m_IsolatedLogic ? m_state->m_IsolatedLogic : Router()->logic();
-    }
-
     AbstractRouter*
     Endpoint::Router()
     {
       return m_state->m_Router;
+    }
+
+    const EventLoop_ptr&
+    Endpoint::Loop()
+    {
+      return Router()->loop();
     }
 
     void

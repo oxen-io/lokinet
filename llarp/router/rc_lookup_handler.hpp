@@ -16,7 +16,7 @@ struct llarp_dht_context;
 namespace llarp
 {
   class NodeDB;
-  class Logic;
+  class EventLoop;
 
   namespace service
   {
@@ -76,7 +76,7 @@ namespace llarp
     Init(
         llarp_dht_context* dht,
         std::shared_ptr<NodeDB> nodedb,
-        std::shared_ptr<Logic> logic,
+        std::shared_ptr<EventLoop> loop,
         WorkerFunc_t dowork,
         ILinkManager* linkManager,
         service::Context* hiddenServiceContext,
@@ -103,7 +103,7 @@ namespace llarp
 
     llarp_dht_context* _dht = nullptr;
     std::shared_ptr<NodeDB> _nodedb;
-    std::shared_ptr<Logic> _logic;
+    std::shared_ptr<EventLoop> _loop;
     WorkerFunc_t _work = nullptr;
     service::Context* _hiddenServiceContext = nullptr;
     ILinkManager* _linkManager = nullptr;

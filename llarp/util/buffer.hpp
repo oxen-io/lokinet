@@ -1,6 +1,7 @@
 #ifndef LLARP_BUFFER_HPP
 #define LLARP_BUFFER_HPP
 
+#include <type_traits>
 #include <util/common.hpp>
 #include <util/mem.h>
 #include <util/types.hpp>
@@ -13,11 +14,16 @@
 #include <cstring>
 #include <utility>
 #include <algorithm>
+#include <memory>
 
 /**
  * buffer.h
  *
  * generic memory buffer
+ *
+ * TODO: replace usage of these with std::span (via a backport until we move to C++20).  That's a
+ * fairly big job, though, as llarp_buffer_t is currently used a bit differently (i.e. maintains
+ * both start and current position, plus has some value reading/writing methods).
  */
 
 /**
@@ -83,34 +89,44 @@ struct llarp_buffer_t
   llarp_buffer_t(const ManagedBuffer&) = delete;
   llarp_buffer_t(ManagedBuffer&&) = delete;
 
-  template <typename T>
-  llarp_buffer_t(T* buf, size_t _sz) : base(reinterpret_cast<byte_t*>(buf)), cur(base), sz(_sz)
+  /// Construct referencing some 1-byte, trivially copyable (e.g. char, unsigned char, byte_t)
+  /// pointer type and a buffer size.
+  template <
+      typename T,
+      typename = std::enable_if_t<sizeof(T) == 1 and std::is_trivially_copyable_v<T>>>
+  llarp_buffer_t(T* buf, size_t _sz)
+      : base(reinterpret_cast<byte_t*>(const_cast<std::remove_const_t<T>*>(buf)))
+      , cur(base)
+      , sz(_sz)
   {}
 
-  template <typename T>
-  llarp_buffer_t(const T* buf, size_t _sz)
-      : base(reinterpret_cast<byte_t*>(const_cast<T*>(buf))), cur(base), sz(_sz)
+  /// initialize llarp_buffer_t from containers supporting .data() and .size()
+  template <
+      typename T,
+      typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
+  llarp_buffer_t(T&& t) : llarp_buffer_t{t.data(), t.size()}
   {}
 
-  /** initialize llarp_buffer_t from container */
-  template <typename T>
-  llarp_buffer_t(T& t) : base(t.data()), cur(t.data()), sz(t.size())
+  byte_t*
+  begin()
   {
-    // use data over the first element to "enforce" the container used has
-    // contiguous memory. (Note this isn't required by the standard, but a
-    // reasonable test on most standard library implementations).
+    return base;
   }
-
-  template <typename T>
-  llarp_buffer_t(const T& t) : llarp_buffer_t(t.data(), t.size())
-  {}
-
-  // clang-format off
-  byte_t * begin()       { return base; }
-  byte_t * begin() const { return base; }
-  byte_t * end()         { return base + sz; }
-  byte_t * end()   const { return base + sz; }
-  // clang-format on
+  byte_t*
+  begin() const
+  {
+    return base;
+  }
+  byte_t*
+  end()
+  {
+    return base + sz;
+  }
+  byte_t*
+  end() const
+  {
+    return base + sz;
+  }
 
   size_t
   size_left() const;
@@ -210,5 +226,50 @@ struct ManagedBuffer
     return underlying;
   }
 };
+
+namespace llarp
+{
+  // Wrapper around a std::unique_ptr<byte_t[]> that owns its own memory and is also implicitly
+  // convertible to a llarp_buffer_t.
+  struct OwnedBuffer
+  {
+    std::unique_ptr<byte_t[]> buf;
+    size_t sz;
+
+    template <typename T, typename = std::enable_if_t<sizeof(T) == 1>>
+    OwnedBuffer(std::unique_ptr<T[]> buf, size_t sz)
+        : buf{reinterpret_cast<byte_t*>(buf.release())}, sz{sz}
+    {}
+
+    // Create a new, uninitialized owned buffer of the given size.
+    explicit OwnedBuffer(size_t sz) : OwnedBuffer{std::make_unique<byte_t[]>(sz), sz}
+    {}
+
+    OwnedBuffer(const OwnedBuffer&) = delete;
+    OwnedBuffer&
+    operator=(const OwnedBuffer&) = delete;
+    OwnedBuffer(OwnedBuffer&&) = default;
+    OwnedBuffer&
+    operator=(OwnedBuffer&&) = delete;
+
+    // Implicit conversion so that this OwnedBuffer can be passed to anything taking a
+    // llarp_buffer_t
+    operator llarp_buffer_t()
+    {
+      return {buf.get(), sz};
+    }
+
+    // Creates an owned buffer by copying from a llarp_buffer_t.  (Can also be used to copy from
+    // another OwnedBuffer via the implicit conversion operator above).
+    static OwnedBuffer
+    copy_from(const llarp_buffer_t& b);
+
+    // Creates an owned buffer by copying the used portion of a llarp_buffer_t (i.e. from base to
+    // cur), for when a llarp_buffer_t is used in write mode.
+    static OwnedBuffer
+    copy_used(const llarp_buffer_t& b);
+  };
+
+}  // namespace llarp
 
 #endif

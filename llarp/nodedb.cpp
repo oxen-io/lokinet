@@ -7,7 +7,6 @@
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
-#include <util/thread/logic.hpp>
 #include <util/str.hpp>
 #include <dht/kademlia.hpp>
 

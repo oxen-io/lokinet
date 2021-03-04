@@ -47,7 +47,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(Logic_ptr logic) override;
+    StartLinks() override;
 
     void
     Stop() override;

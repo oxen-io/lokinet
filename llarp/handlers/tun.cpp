@@ -18,7 +18,6 @@
 #include <service/outbound_context.hpp>
 #include <service/name.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 #include <rpc/endpoint_rpc.hpp>
 
@@ -31,34 +30,33 @@ namespace llarp
 {
   namespace handlers
   {
-    bool
-    TunEndpoint::ShouldFlushNow(llarp_time_t now) const
-    {
-      static constexpr auto FlushInterval = 25ms;
-      return now >= m_LastFlushAt + FlushInterval;
-    }
     constexpr size_t udp_header_size = 8;
 
-    struct DnsHandler : public dns::PacketHandler
+    // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
+    // Android where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible because of OS
+    // restrictions, but a tun interface *is* available.
+    class DnsInterceptor : public dns::PacketHandler
     {
+     public:
       TunEndpoint* const m_Endpoint;
 
-      explicit DnsHandler(AbstractRouter* router, TunEndpoint* ep)
-          : dns::PacketHandler{router->logic(), ep}, m_Endpoint{ep} {};
+      explicit DnsInterceptor(AbstractRouter* router, TunEndpoint* ep)
+          : dns::PacketHandler{router->loop(), ep}, m_Endpoint{ep} {};
 
       void
-      SendServerMessageBufferTo(SockAddr from, SockAddr to, std::vector<byte_t> buf) override
+      SendServerMessageBufferTo(
+          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override
       {
         net::IPPacket pkt;
 
-        if (buf.size() + 28 > sizeof(pkt.buf))
+        if (buf.sz + 28 > sizeof(pkt.buf))
           return;
 
         auto* hdr = pkt.Header();
         pkt.buf[1] = 0;
         hdr->version = 4;
         hdr->ihl = 5;
-        hdr->tot_len = htons(buf.size() + 28);
+        hdr->tot_len = htons(buf.sz + 28);
         hdr->protocol = 0x11;  // udp
         hdr->ttl = 64;
         hdr->frag_off = htons(0b0100000000000000);
@@ -72,11 +70,11 @@ namespace llarp
         ptr += 2;
         htobe16buf(ptr, to.getPort());
         ptr += 2;
-        htobe16buf(ptr, buf.size() + udp_header_size);
+        htobe16buf(ptr, buf.sz + udp_header_size);
         ptr += 2;
         htobe16buf(ptr, uint16_t{0});  // checksum
         ptr += 2;
-        std::copy_n(buf.data(), buf.size(), ptr);
+        std::copy_n(buf.base, buf.sz, ptr);
 
         /// queue ip packet write
         const IpAddress remoteIP{from};
@@ -84,7 +82,7 @@ namespace llarp
 
         hdr->check = 0;
         hdr->check = net::ipchksum(pkt.buf, 20);
-        pkt.sz = 28 + buf.size();
+        pkt.sz = 28 + buf.sz;
         m_Endpoint->HandleWriteIPPacket(
             pkt.ConstBuffer(), net::ExpandV4(remoteIP.toIP()), net::ExpandV4(localIP.toIP()), 0);
       }
@@ -92,12 +90,12 @@ namespace llarp
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
-        , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
+        , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
       m_PacketRouter.reset(
           new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
-#if ANDROID
-      m_Resolver = std::make_shared<DnsHandler>(r, this);
+#ifdef ANDROID
+      m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);
 
@@ -107,16 +105,15 @@ namespace llarp
         const SockAddr raddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
         const SockAddr laddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
 
-        std::vector<byte_t> buf;
-        buf.resize(pkt.sz - (udp_header_size + ip_header_size));
-        std::copy_n(ptr + udp_header_size, buf.size(), buf.data());
+        OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
+        std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());
         if (m_Resolver->ShouldHandlePacket(laddr, raddr, buf))
-          m_Resolver->HandlePacket(laddr, raddr, std::move(buf));
+          m_Resolver->HandlePacket(laddr, raddr, buf);
         else
           HandleGotUserPacket(std::move(pkt));
       });
 #else
-      m_Resolver = std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this);
+      m_Resolver = std::make_shared<dns::Proxy>(r->loop(), this);
 #endif
     }
 
@@ -833,9 +830,9 @@ namespace llarp
       m_IfName = m_NetIf->IfName();
       LogInfo(Name(), " got network interface ", m_IfName);
 
-      auto netloop = Router()->netloop();
-      if (not netloop->add_network_interface(
-              m_NetIf, [&](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
+      if (not Router()->loop()->add_network_interface(m_NetIf, [this](net::IPPacket pkt) {
+            m_PacketRouter->HandleIPPacket(std::move(pkt));
+          }))
       {
         LogError(Name(), " failed to add network interface");
         return false;
@@ -848,7 +845,7 @@ namespace llarp
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
 
-      netloop->add_ticker([&]() { Flush(); });
+      Router()->loop()->add_ticker([this] { Flush(); });
 
       if (m_OnUp)
       {

@@ -1,6 +1,5 @@
 #include "rpc_server.hpp"
 #include <router/route_poker.hpp>
-#include <util/thread/logic.hpp>
 #include <constants/version.hpp>
 #include <nlohmann/json.hpp>
 #include <net/ip_range.hpp>
@@ -106,7 +105,7 @@ namespace llarp::rpc
         .add_request_command(
             "status",
             [&](oxenmq::Message& msg) {
-              LogicCall(m_Router->logic(), [defer = msg.send_later(), r = m_Router]() {
+              m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
                 std::string data;
                 if (r->IsRunning())
                 {
@@ -158,7 +157,7 @@ namespace llarp::rpc
                   reply(CreateJSONError("no action taken"));
                   return;
                 }
-                LogicCall(r->logic(), [r, endpoint, kills, reply]() {
+                r->loop()->call([r, endpoint, kills, reply]() {
                   auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
                   if (ep == nullptr)
                   {
@@ -236,94 +235,93 @@ namespace llarp::rpc
                 {
                   endpoint = endpoint_itr->get<std::string>();
                 }
-                LogicCall(
-                    r->logic(), [map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
-                      auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                      if (ep == nullptr)
+                r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
+                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+                  if (ep == nullptr)
+                  {
+                    reply(CreateJSONError("no endpoint with name " + endpoint));
+                    return;
+                  }
+                  if (map and (exit.has_value() or lnsExit.has_value()))
+                  {
+                    auto mapExit = [=](service::Address addr) mutable {
+                      ep->MapExitRange(range, addr);
+                      bool shouldSendAuth = false;
+                      if (token.has_value())
                       {
-                        reply(CreateJSONError("no endpoint with name " + endpoint));
-                        return;
+                        shouldSendAuth = true;
+                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                       }
-                      if (map and (exit.has_value() or lnsExit.has_value()))
-                      {
-                        auto mapExit = [=](service::Address addr) mutable {
-                          ep->MapExitRange(range, addr);
-                          bool shouldSendAuth = false;
-                          if (token.has_value())
-                          {
-                            shouldSendAuth = true;
-                            ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
-                          }
-                          ep->EnsurePathToService(
-                              addr,
-                              [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
-                                if (ctx == nullptr)
-                                {
-                                  reply(CreateJSONError("could not find exit"));
-                                  return;
-                                }
-                                auto onGoodResult = [r, reply](std::string reason) {
-                                  r->routePoker().Enable();
-                                  r->routePoker().Up();
-                                  reply(CreateJSONResponse(reason));
-                                };
-                                if (not shouldSendAuth)
-                                {
-                                  onGoodResult("OK");
-                                  return;
-                                }
-                                ctx->AsyncSendAuth(
-                                    [onGoodResult, reply](service::AuthResult result) {
-                                      if (result.code != service::AuthResultCode::eAuthAccepted)
-                                      {
-                                        reply(CreateJSONError(result.reason));
-                                        return;
-                                      }
-                                      onGoodResult(result.reason);
-                                    });
-                              },
-                              5s);
-                        };
-                        if (exit.has_value())
-                        {
-                          mapExit(*exit);
-                        }
-                        else if (lnsExit.has_value())
-                        {
-                          ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
-                            if (not maybe.has_value())
+                      ep->EnsurePathToService(
+                          addr,
+                          [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
+                            if (ctx == nullptr)
                             {
-                              reply(CreateJSONError("we could not find an exit with that name"));
+                              reply(CreateJSONError("could not find exit"));
                               return;
                             }
-                            if (maybe->IsZero())
+                            auto onGoodResult = [r, reply](std::string reason) {
+                              r->routePoker().Enable();
+                              r->routePoker().Up();
+                              reply(CreateJSONResponse(reason));
+                            };
+                            if (not shouldSendAuth)
                             {
-                              reply(CreateJSONError("lokinet exit does not exist"));
+                              onGoodResult("OK");
                               return;
                             }
-                            mapExit(*maybe);
-                          });
-                        }
-                        else
+                            ctx->AsyncSendAuth([onGoodResult, reply](service::AuthResult result) {
+                              // TODO: refactor this code.  We are 5 lambdas deep here!
+                              if (result.code != service::AuthResultCode::eAuthAccepted)
+                              {
+                                reply(CreateJSONError(result.reason));
+                                return;
+                              }
+                              onGoodResult(result.reason);
+                            });
+                          },
+                          5s);
+                    };
+                    if (exit.has_value())
+                    {
+                      mapExit(*exit);
+                    }
+                    else if (lnsExit.has_value())
+                    {
+                      ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
+                        if (not maybe.has_value())
                         {
-                          reply(
-                              CreateJSONError("WTF inconsistent request, no exit address or lns "
-                                              "name provided?"));
+                          reply(CreateJSONError("we could not find an exit with that name"));
+                          return;
                         }
-                        return;
-                      }
-                      else if (map and not exit.has_value())
-                      {
-                        reply(CreateJSONError("no exit address provided"));
-                        return;
-                      }
-                      else if (not map)
-                      {
-                        r->routePoker().Down();
-                        ep->UnmapExitRange(range);
-                      }
-                      reply(CreateJSONResponse("OK"));
-                    });
+                        if (maybe->IsZero())
+                        {
+                          reply(CreateJSONError("lokinet exit does not exist"));
+                          return;
+                        }
+                        mapExit(*maybe);
+                      });
+                    }
+                    else
+                    {
+                      reply(
+                          CreateJSONError("WTF inconsistent request, no exit address or lns "
+                                          "name provided?"));
+                    }
+                    return;
+                  }
+                  else if (map and not exit.has_value())
+                  {
+                    reply(CreateJSONError("no exit address provided"));
+                    return;
+                  }
+                  else if (not map)
+                  {
+                    r->routePoker().Down();
+                    ep->UnmapExitRange(range);
+                  }
+                  reply(CreateJSONResponse("OK"));
+                });
               });
             })
         .add_request_command("config", [&](oxenmq::Message& msg) {

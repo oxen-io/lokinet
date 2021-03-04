@@ -8,7 +8,7 @@
 #include <util/status.hpp>
 #include <router/i_outbound_message_handler.hpp>
 #include <vector>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <functional>
 #include <router_contact.hpp>
 #include <tooling/router_event.hpp>
@@ -29,7 +29,6 @@ namespace oxenmq
 namespace llarp
 {
   class NodeDB;
-  class Logic;
   struct Config;
   struct RouterID;
   struct ILinkMessage;
@@ -81,7 +80,7 @@ namespace llarp
 
   using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
 
-  struct AbstractRouter
+  struct AbstractRouter : public std::enable_shared_from_this<AbstractRouter>
   {
 #ifdef LOKINET_HIVE
     tooling::RouterHive* hive = nullptr;
@@ -92,22 +91,19 @@ namespace llarp
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
 
-    virtual LMQ_ptr
+    virtual const LMQ_ptr&
     lmq() const = 0;
 
     virtual vpn::Platform*
     GetVPNPlatform() const = 0;
 
-    virtual std::shared_ptr<rpc::LokidRpcClient>
+    virtual const std::shared_ptr<rpc::LokidRpcClient>&
     RpcClient() const = 0;
-
-    virtual std::shared_ptr<Logic>
-    logic() const = 0;
 
     virtual llarp_dht_context*
     dht() const = 0;
 
-    virtual std::shared_ptr<NodeDB>
+    virtual const std::shared_ptr<NodeDB>&
     nodedb() const = 0;
 
     virtual const path::PathContext&
@@ -122,7 +118,7 @@ namespace llarp
     virtual exit::Context&
     exitContext() = 0;
 
-    virtual std::shared_ptr<KeyManager>
+    virtual const std::shared_ptr<KeyManager>&
     keyManager() const = 0;
 
     virtual const SecretKey&
@@ -134,8 +130,8 @@ namespace llarp
     virtual Profiling&
     routerProfiling() = 0;
 
-    virtual llarp_ev_loop_ptr
-    netloop() const = 0;
+    virtual const EventLoop_ptr&
+    loop() const = 0;
 
     /// call function in crypto worker
     virtual void QueueWork(std::function<void(void)>) = 0;

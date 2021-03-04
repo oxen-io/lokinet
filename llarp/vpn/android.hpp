@@ -53,12 +53,6 @@ namespace llarp::vpn
       return sz == static_cast<ssize_t>(pkt.sz);
     }
 
-    bool
-    HasNextPacket() override
-    {
-      return false;
-    }
-
     std::string
     IfName() const override
     {

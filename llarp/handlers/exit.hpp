@@ -13,7 +13,7 @@ namespace llarp
   {
     struct ExitEndpoint : public dns::IQueryHandler
     {
-      ExitEndpoint(const std::string& name, AbstractRouter* r);
+      ExitEndpoint(std::string name, AbstractRouter* r);
       ~ExitEndpoint() override;
 
       void

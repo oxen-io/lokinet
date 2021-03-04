@@ -42,10 +42,10 @@ namespace llarp
 #endif
     }
 
-    std::shared_ptr<Logic>
-    PathContext::logic()
+    const EventLoop_ptr&
+    PathContext::loop()
     {
-      return m_Router->logic();
+      return m_Router->loop();
     }
 
     const SecretKey&

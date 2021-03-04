@@ -8,9 +8,9 @@ namespace tooling
   {}
 
   std::shared_ptr<llarp::AbstractRouter>
-  HiveContext::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<llarp::Logic> logic)
+  HiveContext::makeRouter(const llarp::EventLoop_ptr& loop)
   {
-    return std::make_shared<HiveRouter>(netloop, logic, makeVPNPlatform(), m_hive);
+    return std::make_shared<HiveRouter>(loop, makeVPNPlatform(), m_hive);
   }
 
   HiveRouter*

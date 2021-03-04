@@ -29,7 +29,7 @@ namespace llarp::rpc
         },
         [self = shared_from_this()](oxenmq::ConnectionID, std::string_view fail) {
           LogWarn("failed to connect to endpoint auth server: ", fail);
-          self->m_Endpoint->RouterLogic()->call_later(1s, [self]() { self->Start(); });
+          self->m_Endpoint->Loop()->call_later(1s, [self] { self->Start(); });
         });
   }
 
@@ -47,30 +47,28 @@ namespace llarp::rpc
     service::ConvoTag tag = msg->tag;
     m_PendingAuths.insert(tag);
     const auto from = msg->sender.Addr();
-    auto reply =
-        [self = this, tag, logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
-          logic->Call([self, hook, result, tag]() {
-            self->m_PendingAuths.erase(tag);
-            hook(result);
-          });
-        };
+    auto reply = m_Endpoint->Loop()->make_caller([this, tag, hook](service::AuthResult result) {
+      m_PendingAuths.erase(tag);
+      hook(result);
+    });
     if (m_AuthWhitelist.count(from))
     {
       // explicitly whitelisted source
-      reply({service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
+      reply(service::AuthResult{service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
       return;
     }
     if (not m_Conn.has_value())
     {
       // we don't have a connection to the backend so it's failed
-      reply({service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
+      reply(service::AuthResult{service::AuthResultCode::eAuthFailed,
+                                "remote has no connection to auth backend"});
       return;
     }
 
     if (msg->proto != llarp::service::eProtocolAuth)
     {
       // not an auth message, reject
-      reply({service::AuthResultCode::eAuthRejected, "protocol error"});
+      reply(service::AuthResult{service::AuthResultCode::eAuthRejected, "protocol error"});
       return;
     }
 
@@ -81,7 +79,8 @@ namespace llarp::rpc
     m_LMQ->request(
         *m_Conn,
         m_AuthMethod,
-        [self = shared_from_this(), reply](bool success, std::vector<std::string> data) {
+        [self = shared_from_this(), reply = std::move(reply)](
+            bool success, std::vector<std::string> data) {
           service::AuthResult result{service::AuthResultCode::eAuthFailed, "no reason given"};
           if (success and not data.empty())
           {

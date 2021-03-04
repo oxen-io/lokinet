@@ -189,7 +189,7 @@ namespace llarp
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool
-      ShouldPublishDescriptors(__attribute__((unused)) llarp_time_t now) const
+      ShouldPublishDescriptors([[maybe_unused]] llarp_time_t now) const
       {
         return false;
       }

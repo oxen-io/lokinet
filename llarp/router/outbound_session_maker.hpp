@@ -4,7 +4,6 @@
 #include <router/i_outbound_session_maker.hpp>
 
 #include <router/i_rc_lookup_handler.hpp>
-#include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
 
 #include <profiling.hpp>
@@ -60,7 +59,7 @@ namespace llarp
         ILinkManager* linkManager,
         I_RCLookupHandler* rcLookup,
         Profiling* profiler,
-        std::shared_ptr<Logic> logic,
+        EventLoop_ptr loop,
         WorkerFunc_t work);
 
     void
@@ -113,7 +112,7 @@ namespace llarp
     I_RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;
     std::shared_ptr<NodeDB> _nodedb;
-    std::shared_ptr<Logic> _logic;
+    EventLoop_ptr _loop;
     WorkerFunc_t work;
     RouterID us;
   };

@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
@@ -162,7 +164,7 @@ endif()
 
 option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
 if(NOT FORCE_OXENMQ_SUBMODULE)
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.2)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.4)
 endif()
 if(OXENMQ_FOUND)
   add_library(oxenmq INTERFACE)
@@ -210,11 +212,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if (NOT MSVC_VERSION)
-	add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
-	# vla are evil
-	add_compile_options(-Wvla)
-	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
+  # vla are evil
+  add_compile_options(-Werror=vla)
+  add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
 endif()
 
 include(cmake/coverage.cmake)
@@ -315,6 +316,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/pybind11)
     check_submodule(external/sqlite_orm)
     check_submodule(external/oxen-mq)
+    check_submodule(external/uvw)
   endif()
 endif()
 

@@ -1,73 +1,48 @@
 #ifndef LLARP_EV_LIBUV_HPP
 #define LLARP_EV_LIBUV_HPP
 #include <ev/ev.hpp>
-#include <uv.h>
-#include <vector>
-#include <functional>
-#include <util/thread/logic.hpp>
+#include "udp_handle.hpp"
 #include <util/thread/queue.hpp>
 #include <util/meta/memfn.hpp>
 
-#include <map>
+#include <uvw/loop.h>
+#include <uvw/async.h>
+#include <uvw/poll.h>
+#include <uvw/udp.h>
 
-namespace libuv
+#include <functional>
+#include <map>
+#include <vector>
+
+namespace llarp::uv
 {
   class UVWakeup;
+  class UVRepeater;
 
-  struct Loop final : public llarp::EventLoop
+  class Loop final : public llarp::EventLoop
   {
-    typedef std::function<void(void)> Callback;
-
-    struct PendingTimer
-    {
-      uint64_t job_id;
-      llarp_time_t delay_ms;
-      Callback callback;
-    };
+   public:
+    using Callback = std::function<void()>;
 
     Loop(size_t queue_size);
 
-    bool
-    init() override;
-
-    int
+    void
     run() override;
 
     bool
     running() const override;
 
     void
-    update_time() override;
-
-    uint32_t
-    call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) override;
+    wakeup() override;
 
     void
-    cancel_delayed_call(uint32_t job_id) override;
+    call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void
-    process_timer_queue();
-
-    void
-    process_cancel_queue();
-
-    void
-    do_timer_job(uint64_t job_id);
+    tick_event_loop();
 
     void
     stop() override;
-
-    void
-    stopped() override;
-
-    void
-    CloseAll();
-
-    bool
-    udp_listen(llarp_udp_io* l, const llarp::SockAddr& src) override;
-
-    bool
-    udp_close(llarp_udp_io* l) override;
 
     bool
     add_ticker(std::function<void(void)> ticker) override;
@@ -78,41 +53,31 @@ namespace libuv
         std::function<void(llarp::net::IPPacket)> handler) override;
 
     void
-    set_logic(std::shared_ptr<llarp::Logic> l) override
-    {
-      m_Logic = l;
-      m_Logic->SetQueuer(llarp::util::memFn(&Loop::call_soon, this));
-    }
-
-    std::shared_ptr<llarp::Logic> m_Logic;
-
-    void
     call_soon(std::function<void(void)> f) override;
-
-    void
-    register_poll_fd_readable(int fd, Callback callback) override;
-
-    void
-    deregister_poll_fd_readable(int fd) override;
 
     void
     set_pump_function(std::function<void(void)> pumpll) override;
 
-    llarp::EventLoopWakeup*
-    make_event_loop_waker(std::function<void()> callback) override;
+    std::shared_ptr<llarp::EventLoopWakeup>
+    make_waker(std::function<void()> callback) override;
 
-    void
-    delete_waker(int idx);
+    std::shared_ptr<EventLoopRepeater>
+    make_repeater() override;
+
+    std::shared_ptr<llarp::UDPHandle>
+    make_udp(UDPReceiveFunc on_recv) override;
 
     void
     FlushLogic();
 
     std::function<void(void)> PumpLL;
 
+    bool
+    inEventLoop() const override;
+
    private:
-    uv_loop_t m_Impl;
-    uv_timer_t* m_TickTimer;
-    uv_async_t m_WakeUp;
+    std::shared_ptr<uvw::Loop> m_Impl;
+    std::shared_ptr<uvw::AsyncHandle> m_WakeUp;
     std::atomic<bool> m_Run;
     using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
     AtomicQueue_t m_LogicCalls;
@@ -125,16 +90,11 @@ namespace libuv
 
     std::map<uint32_t, Callback> m_pendingCalls;
 
-    std::unordered_map<int, uv_poll_t> m_Polls;
+    std::unordered_map<int, std::shared_ptr<uvw::PollHandle>> m_Polls;
 
-    llarp::thread::Queue<PendingTimer> m_timerQueue;
-    llarp::thread::Queue<uint32_t> m_timerCancelQueue;
     std::optional<std::thread::id> m_EventLoopThreadID;
-
-    int m_NumWakers;
-    std::unordered_map<int, UVWakeup*> m_Wakers;
   };
 
-}  // namespace libuv
+}  // namespace llarp::uv
 
 #endif

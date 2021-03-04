@@ -4,7 +4,6 @@
 #include <util/buffer.hpp>
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <service/endpoint.hpp>
 #include <router/abstractrouter.hpp>
 #include <utility>
@@ -271,7 +270,7 @@ namespace llarp
     struct AsyncFrameDecrypt
     {
       path::Path_ptr path;
-      std::shared_ptr<Logic> logic;
+      EventLoop_ptr loop;
       std::shared_ptr<ProtocolMessage> msg;
       const Identity& m_LocalIdentity;
       Endpoint* handler;
@@ -279,13 +278,13 @@ namespace llarp
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(
-          std::shared_ptr<Logic> l,
+          EventLoop_ptr l,
           const Identity& localIdent,
           Endpoint* h,
           std::shared_ptr<ProtocolMessage> m,
           const ProtocolFrame& f,
           const Introduction& recvIntro)
-          : logic(std::move(l))
+          : loop(std::move(l))
           , msg(std::move(m))
           , m_LocalIdentity(localIdent)
           , handler(h)
@@ -403,7 +402,7 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(
-        std::shared_ptr<Logic> logic,
+        EventLoop_ptr loop,
         path::Path_ptr recvPath,
         const Identity& localIdent,
         Endpoint* handler,
@@ -416,9 +415,9 @@ namespace llarp
         LogInfo("Got protocol frame with new convo");
         // we need to dh
         auto dh = std::make_shared<AsyncFrameDecrypt>(
-            logic, localIdent, handler, msg, *this, recvPath->intro);
+            loop, localIdent, handler, msg, *this, recvPath->intro);
         dh->path = recvPath;
-        handler->Router()->QueueWork(std::bind(&AsyncFrameDecrypt::Work, dh));
+        handler->Router()->QueueWork([dh = std::move(dh)] { return AsyncFrameDecrypt::Work(dh); });
         return true;
       }
 
@@ -436,10 +435,10 @@ namespace llarp
         return false;
       }
       v->frame = *this;
-      auto callback = [logic, hook](std::shared_ptr<ProtocolMessage> msg) {
+      auto callback = [loop, hook](std::shared_ptr<ProtocolMessage> msg) {
         if (hook)
         {
-          LogicCall(logic, [msg, hook]() { hook(msg); });
+          loop->call([msg, hook]() { hook(msg); });
         }
       };
       handler->Router()->QueueWork(

@@ -202,7 +202,7 @@ namespace llarp
       currentConvoTag.Randomize();
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
-          m_Endpoint->RouterLogic(),
+          m_Endpoint->Loop(),
           remoteIdent,
           m_Endpoint->GetIdentity(),
           currentIntroSet.K,
@@ -211,12 +211,14 @@ namespace llarp
           currentConvoTag,
           t);
 
-      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path);
+      ex->hook = [self = shared_from_this(), path](auto frame) {
+        self->Send(std::move(frame), path);
+      };
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       frame->F = ex->msg.introReply.pathID;
-      m_Endpoint->Router()->QueueWork(std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
+      m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
     }
 
     std::string
@@ -581,7 +583,7 @@ namespace llarp
         };
       }
       const auto& ident = m_Endpoint->GetIdentity();
-      if (not frame.AsyncDecryptAndVerify(m_Endpoint->EndpointLogic(), p, ident, m_Endpoint, hook))
+      if (not frame.AsyncDecryptAndVerify(m_Endpoint->Loop(), p, ident, m_Endpoint, hook))
       {
         // send reset convo tag message
         ProtocolFrame f;

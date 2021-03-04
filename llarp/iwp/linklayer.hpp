@@ -33,8 +33,6 @@ namespace llarp::iwp
         WorkerFunc_t dowork,
         bool permitInbound);
 
-    ~LinkLayer() override;
-
     std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) override;
 
@@ -63,7 +61,7 @@ namespace llarp::iwp
     void
     HandleWakeupPlaintext();
 
-    EventLoopWakeup* const m_Wakeup;
+    const std::shared_ptr<EventLoopWakeup> m_Wakeup;
     std::unordered_map<SockAddr, std::weak_ptr<Session>, SockAddr::Hash> m_PlaintextRecv;
     std::unordered_map<SockAddr, RouterID, SockAddr::Hash> m_AuthedAddrs;
     const bool permitInbound;

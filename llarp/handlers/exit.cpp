@@ -13,12 +13,12 @@ namespace llarp
 {
   namespace handlers
   {
-    ExitEndpoint::ExitEndpoint(const std::string& name, AbstractRouter* r)
+    ExitEndpoint::ExitEndpoint(std::string name, AbstractRouter* r)
         : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this))
-        , m_Name(name)
+        , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
+        , m_Name(std::move(name))
         , m_LocalResolverAddr("127.0.0.1", 53)
-        , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
+        , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
 
     {
       m_ShouldInitTun = true;
@@ -312,15 +312,14 @@ namespace llarp
           llarp::LogError("Could not create interface");
           return false;
         }
-        auto loop = GetRouter()->netloop();
-        if (not loop->add_network_interface(
-                m_NetIf, [&](net::IPPacket pkt) { OnInetPacket(std::move(pkt)); }))
+        if (not GetRouter()->loop()->add_network_interface(
+                m_NetIf, [this](net::IPPacket pkt) { OnInetPacket(std::move(pkt)); }))
         {
           llarp::LogWarn("Could not create tunnel for exit endpoint");
           return false;
         }
 
-        loop->add_ticker([&]() { Flush(); });
+        GetRouter()->loop()->add_ticker([this] { Flush(); });
 
         llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.toString());
         return m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers);

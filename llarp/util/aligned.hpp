@@ -124,7 +124,7 @@ namespace llarp
     operator^(const AlignedBuffer& other) const
     {
       AlignedBuffer<sz> ret;
-      std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<byte_t>());
+      std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<>());
       return ret;
     }
 

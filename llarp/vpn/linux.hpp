@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <vpn/common.hpp>
+#include <linux/if.h>
 #include <linux/if_tun.h>
 
 namespace llarp::vpn
@@ -68,7 +69,7 @@ namespace llarp::vpn
           control6.ioctl(SIOCSIFADDR, &ifr6);
         }
       }
-      ifr.ifr_flags = flags | IFF_UP | IFF_NO_PI;
+      ifr.ifr_flags = static_cast<short>(flags | IFF_UP | IFF_NO_PI);
       control.ioctl(SIOCSIFFLAGS, &ifr);
     }
 
@@ -91,6 +92,10 @@ namespace llarp::vpn
       const auto sz = read(m_fd, pkt.buf, sizeof(pkt.buf));
       if (sz >= 0)
         pkt.sz = std::min(sz, ssize_t{sizeof(pkt.buf)});
+      else if (errno == EAGAIN || errno == EWOULDBLOCK)
+        pkt.sz = 0;
+      else
+        throw std::error_code{errno, std::system_category()};
       return pkt;
     }
 
@@ -101,12 +106,6 @@ namespace llarp::vpn
       if (sz <= 0)
         return false;
       return sz == static_cast<ssize_t>(pkt.sz);
-    }
-
-    bool
-    HasNextPacket() override
-    {
-      return false;
     }
 
     std::string

@@ -22,16 +22,11 @@ namespace llarp::iwp
       bool allowInbound)
       : ILinkLayer(
           keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
-      , m_Wakeup{ev->make_event_loop_waker([self = this]() { self->HandleWakeupPlaintext(); })}
+      , m_Wakeup{ev->make_waker([this]() { HandleWakeupPlaintext(); })}
       , m_PlaintextRecv{1024}
       , permitInbound{allowInbound}
 
   {}
-
-  LinkLayer::~LinkLayer()
-  {
-    m_Wakeup->End();
-  }
 
   const char*
   LinkLayer::Name() const
@@ -111,7 +106,7 @@ namespace llarp::iwp
   void
   LinkLayer::WakeupPlaintext()
   {
-    m_Wakeup->Wakeup();
+    m_Wakeup->Trigger();
   }
 
   void

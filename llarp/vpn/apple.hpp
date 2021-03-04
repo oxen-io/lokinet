@@ -122,25 +122,21 @@ namespace llarp::vpn
       return m_FD;
     }
 
-    bool
-    HasNextPacket() override
-    {
-      return false;
-    }
-
     net::IPPacket
     ReadNextPacket() override
     {
+      constexpr int uintsize = sizeof(unsigned int);
       net::IPPacket pkt{};
       unsigned int pktinfo = 0;
-      const struct iovec vecs[2] = {{.iov_base = &pktinfo, .iov_len = sizeof(unsigned int)},
+      const struct iovec vecs[2] = {{.iov_base = &pktinfo, .iov_len = uintsize},
                                     {.iov_base = pkt.buf, .iov_len = sizeof(pkt.buf)}};
-      int n = readv(m_FD, vecs, 2);
-      if (n >= (int)(sizeof(unsigned int)))
-      {
-        n -= sizeof(unsigned int);
-        pkt.sz = n;
-      }
+      int sz = readv(m_FD, vecs, 2);
+      if (sz >= uintsize)
+        pkt.sz = sz - uintsize;
+      else if (sz >= 0 || errno == EAGAIN || errno == EWOULDBLOCK)
+        pkt.sz = 0;
+      else
+        throw std::error_code{errno, std::system_category()};
       return pkt;
     }
 

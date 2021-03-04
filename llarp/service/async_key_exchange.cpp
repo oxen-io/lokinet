@@ -3,7 +3,6 @@
 #include <crypto/crypto.hpp>
 #include <crypto/types.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <utility>
 
 namespace llarp
@@ -11,7 +10,7 @@ namespace llarp
   namespace service
   {
     AsyncKeyExchange::AsyncKeyExchange(
-        std::shared_ptr<Logic> l,
+        EventLoop_ptr l,
         ServiceInfo r,
         const Identity& localident,
         const PQPubKey& introsetPubKey,
@@ -19,7 +18,7 @@ namespace llarp
         IDataHandler* h,
         const ConvoTag& t,
         ProtocolType proto)
-        : logic(std::move(l))
+        : loop(std::move(l))
         , m_remote(std::move(r))
         , m_LocalIdentity(localident)
         , introPubKey(introsetPubKey)
@@ -74,7 +73,7 @@ namespace llarp
       self->msg.version = LLARP_PROTO_VERSION;
       // encrypt and sign
       if (frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
-        LogicCall(self->logic, std::bind(&AsyncKeyExchange::Result, self, frame));
+        self->loop->call([self, frame] { AsyncKeyExchange::Result(self, frame); });
       else
       {
         LogError("failed to encrypt and sign");

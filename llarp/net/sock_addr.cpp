@@ -23,7 +23,9 @@ namespace llarp
   SockAddr::init()
   {
     llarp::Zero(&m_addr, sizeof(m_addr));
+    m_addr.sin6_family = AF_INET6;
     llarp::Zero(&m_addr4, sizeof(m_addr4));
+    m_addr4.sin_family = AF_INET;
   }
 
   void
@@ -167,7 +169,8 @@ namespace llarp
 
   SockAddr::operator const sockaddr*() const
   {
-    return (sockaddr*)&m_addr;
+    return ipv6_is_mapped_ipv4(m_addr.sin6_addr) ? reinterpret_cast<const sockaddr*>(&m_addr4)
+                                                 : reinterpret_cast<const sockaddr*>(&m_addr);
   }
 
   SockAddr::operator const sockaddr_in*() const
@@ -264,10 +267,9 @@ namespace llarp
     if (isEmpty())
       return "";
 
-    const uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     std::string str;
 
-    if (ip6[10] == 0xff and ip6[11] == 0xff)
+    if (ipv6_is_mapped_ipv4(m_addr.sin6_addr))
     {
       // handle IPv4 mapped addrs
       constexpr auto MaxIPv4PlusPortStringSize = 22;
@@ -309,8 +311,6 @@ namespace llarp
   void
   SockAddr::setIPv4(uint32_t ip)
   {
-    m_addr.sin6_family = AF_INET;
-
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
 
@@ -318,15 +318,12 @@ namespace llarp
 
     std::memcpy(ip6 + 12, &ip, 4);
     m_addr4.sin_addr.s_addr = ip;
-    m_addr4.sin_family = AF_INET;
     m_empty = false;
   }
 
   void
   SockAddr::setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
   {
-    m_addr.sin6_family = AF_INET;
-
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
 
@@ -338,7 +335,6 @@ namespace llarp
     ip6[15] = d;
     const auto ip = ipaddr_ipv4_bits(a, b, c, d);
     m_addr4.sin_addr.s_addr = htonl(ip.h);
-    m_addr4.sin_family = AF_INET;
     m_empty = false;
   }
 
