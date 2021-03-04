@@ -84,7 +84,10 @@ namespace llarp
       {
         if (itr->second->Expired(now))
         {
-          router->outboundMessageHandler().QueueRemoveEmptyPath(itr->second->TXID());
+          PathID_t txid = itr->second->TXID();
+          router->outboundMessageHandler().QueueRemoveEmptyPath(std::move(txid));
+          PathID_t rxid = itr->second->RXID();
+          router->outboundMessageHandler().QueueRemoveEmptyPath(std::move(rxid));
           itr = m_Paths.erase(itr);
         }
         else
