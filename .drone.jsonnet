@@ -217,7 +217,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-9',
+                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-11',
                 './contrib/ci/drone-format-verify.sh']
         }]
     },
