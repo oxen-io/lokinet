@@ -71,16 +71,16 @@ namespace llarp::vpn
       if (connect(m_FD, (sockaddr*)&addr, sizeof(addr)) < 0)
       {
         ::close(m_FD);
-        throw std::runtime_error{"cannot connect to control socket address: "
-                                 + std::string{strerror(errno)}};
+        throw std::runtime_error{
+            "cannot connect to control socket address: " + std::string{strerror(errno)}};
       }
       uint32_t namesz = IFNAMSIZ;
       char name[IFNAMSIZ + 1]{};
       if (getsockopt(m_FD, SYSPROTO_CONTROL, 2, name, &namesz) < 0)
       {
         ::close(m_FD);
-        throw std::runtime_error{"cannot query for interface name: "
-                                 + std::string{strerror(errno)}};
+        throw std::runtime_error{
+            "cannot query for interface name: " + std::string{strerror(errno)}};
       }
       m_IfName = name;
       for (const auto& ifaddr : m_Info.addrs)
@@ -128,8 +128,9 @@ namespace llarp::vpn
       constexpr int uintsize = sizeof(unsigned int);
       net::IPPacket pkt{};
       unsigned int pktinfo = 0;
-      const struct iovec vecs[2] = {{.iov_base = &pktinfo, .iov_len = uintsize},
-                                    {.iov_base = pkt.buf, .iov_len = sizeof(pkt.buf)}};
+      const struct iovec vecs[2] = {
+          {.iov_base = &pktinfo, .iov_len = uintsize},
+          {.iov_base = pkt.buf, .iov_len = sizeof(pkt.buf)}};
       int sz = readv(m_FD, vecs, 2);
       if (sz >= uintsize)
         pkt.sz = sz - uintsize;

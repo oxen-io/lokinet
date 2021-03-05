@@ -276,10 +276,11 @@ namespace llarp
     util::StatusObject
     PathHopConfig::ExtractStatus() const
     {
-      util::StatusObject obj{{"lifetime", to_json(lifetime)},
-                             {"router", rc.pubkey.ToHex()},
-                             {"txid", txID.ToHex()},
-                             {"rxid", rxID.ToHex()}};
+      util::StatusObject obj{
+          {"lifetime", to_json(lifetime)},
+          {"router", rc.pubkey.ToHex()},
+          {"txid", txID.ToHex()},
+          {"rxid", rxID.ToHex()}};
       return obj;
     }
 
@@ -288,17 +289,18 @@ namespace llarp
     {
       auto now = llarp::time_now_ms();
 
-      util::StatusObject obj{{"intro", intro.ExtractStatus()},
-                             {"lastRecvMsg", to_json(m_LastRecvMessage)},
-                             {"lastLatencyTest", to_json(m_LastLatencyTestTime)},
-                             {"buildStarted", to_json(buildStarted)},
-                             {"expired", Expired(now)},
-                             {"expiresSoon", ExpiresSoon(now)},
-                             {"expiresAt", to_json(ExpireTime())},
-                             {"ready", IsReady()},
-                             {"txRateCurrent", m_LastTXRate},
-                             {"rxRateCurrent", m_LastRXRate},
-                             {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
+      util::StatusObject obj{
+          {"intro", intro.ExtractStatus()},
+          {"lastRecvMsg", to_json(m_LastRecvMessage)},
+          {"lastLatencyTest", to_json(m_LastLatencyTestTime)},
+          {"buildStarted", to_json(buildStarted)},
+          {"expired", Expired(now)},
+          {"expiresSoon", ExpiresSoon(now)},
+          {"expiresAt", to_json(ExpireTime())},
+          {"ready", IsReady()},
+          {"txRateCurrent", m_LastTXRate},
+          {"rxRateCurrent", m_LastRXRate},
+          {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector<util::StatusObject> hopsObj;
       std::transform(

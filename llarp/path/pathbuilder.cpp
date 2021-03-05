@@ -193,9 +193,10 @@ namespace llarp
     util::StatusObject
     Builder::ExtractStatus() const
     {
-      util::StatusObject obj{{"buildStats", m_BuildStats.ExtractStatus()},
-                             {"numHops", uint64_t(numHops)},
-                             {"numPaths", uint64_t(numDesiredPaths)}};
+      util::StatusObject obj{
+          {"buildStats", m_BuildStats.ExtractStatus()},
+          {"numHops", uint64_t(numHops)},
+          {"numPaths", uint64_t(numDesiredPaths)}};
       std::transform(
           m_Paths.begin(),
           m_Paths.end(),

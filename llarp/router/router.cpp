@@ -88,14 +88,15 @@ namespace llarp
       if (m_peerDb)
         peerStatsObj = m_peerDb->ExtractStatus();
 
-      return util::StatusObject{{"running", true},
-                                {"numNodesKnown", _nodedb->NumLoaded()},
-                                {"dht", _dht->impl->ExtractStatus()},
-                                {"services", _hiddenServiceContext.ExtractStatus()},
-                                {"exit", _exitContext.ExtractStatus()},
-                                {"links", _linkManager.ExtractStatus()},
-                                {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
-                                {"peerStats", peerStatsObj}};
+      return util::StatusObject{
+          {"running", true},
+          {"numNodesKnown", _nodedb->NumLoaded()},
+          {"dht", _dht->impl->ExtractStatus()},
+          {"services", _hiddenServiceContext.ExtractStatus()},
+          {"exit", _exitContext.ExtractStatus()},
+          {"links", _linkManager.ExtractStatus()},
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
+          {"peerStats", peerStatsObj}};
     }
     else
     {

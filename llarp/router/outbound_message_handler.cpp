@@ -100,13 +100,14 @@ namespace llarp
   util::StatusObject
   OutboundMessageHandler::ExtractStatus() const
   {
-    util::StatusObject status{"queueStats",
-                              {{"queued", m_queueStats.queued},
-                               {"dropped", m_queueStats.dropped},
-                               {"sent", m_queueStats.sent},
-                               {"queueWatermark", m_queueStats.queueWatermark},
-                               {"perTickMax", m_queueStats.perTickMax},
-                               {"numTicks", m_queueStats.numTicks}}};
+    util::StatusObject status{
+        "queueStats",
+        {{"queued", m_queueStats.queued},
+         {"dropped", m_queueStats.dropped},
+         {"sent", m_queueStats.sent},
+         {"queueWatermark", m_queueStats.queueWatermark},
+         {"perTickMax", m_queueStats.perTickMax},
+         {"numTicks", m_queueStats.numTicks}}};
 
     return status;
   }

@@ -1337,8 +1337,7 @@ namespace llarp
         const AlignedBuffer<32> /*addr*/, bool snode, ConvoEventListener_ptr /*ev*/)
     {
       if (snode)
-      {
-      }
+      {}
 
       // TODO: something meaningful
       return false;

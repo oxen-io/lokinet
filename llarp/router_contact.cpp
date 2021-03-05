@@ -217,10 +217,11 @@ namespace llarp
   util::StatusObject
   RouterContact::ExtractStatus() const
   {
-    util::StatusObject obj{{"lastUpdated", last_updated.count()},
-                           {"publicRouter", IsPublicRouter()},
-                           {"identity", pubkey.ToString()},
-                           {"addresses", addrs}};
+    util::StatusObject obj{
+        {"lastUpdated", last_updated.count()},
+        {"publicRouter", IsPublicRouter()},
+        {"identity", pubkey.ToString()},
+        {"addresses", addrs}};
 
     if (HasNick())
     {

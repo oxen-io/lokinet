@@ -435,12 +435,13 @@ namespace llarp
     util::StatusObject
     Context::ExtractStatus() const
     {
-      util::StatusObject obj{{"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
-                             {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
-                             {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
-                             {"nodes", _nodes->ExtractStatus()},
-                             {"services", _services->ExtractStatus()},
-                             {"ourKey", ourKey.ToHex()}};
+      util::StatusObject obj{
+          {"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
+          {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
+          {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
+          {"nodes", _nodes->ExtractStatus()},
+          {"services", _services->ExtractStatus()},
+          {"ourKey", ourKey.ToHex()}};
       return obj;
     }
 
