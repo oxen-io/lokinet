@@ -1,5 +1,4 @@
 #pragma once
-#include <llarp.h>
 #include <llarp/dht/messages/gotrouter.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/session.hpp>
@@ -114,14 +113,6 @@ namespace llarp
 
       std::optional<ConvoTag>
       GetBestConvoTagForService(Address addr) const;
-
-      /// inject vpn io
-      /// return false if not supported
-      virtual bool
-      InjectVPN(llarp_vpn_io*, llarp_vpn_ifaddr_info)
-      {
-        return false;
-      }
 
       /// get our ifaddr if it is set
       virtual huint128_t

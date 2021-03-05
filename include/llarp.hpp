@@ -1,6 +1,5 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
-#include <llarp.h>
 
 #include <future>
 #include <iostream>
