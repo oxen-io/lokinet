@@ -139,13 +139,15 @@ namespace llarp
       return *this;
     }
 
-    byte_t& operator[](size_t idx)
+    byte_t&
+    operator[](size_t idx)
     {
       assert(idx < SIZE);
       return m_data[idx];
     }
 
-    const byte_t& operator[](size_t idx) const
+    const byte_t&
+    operator[](size_t idx) const
     {
       assert(idx < SIZE);
       return m_data[idx];

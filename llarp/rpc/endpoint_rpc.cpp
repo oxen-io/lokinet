@@ -60,8 +60,8 @@ namespace llarp::rpc
     if (not m_Conn.has_value())
     {
       // we don't have a connection to the backend so it's failed
-      reply(service::AuthResult{service::AuthResultCode::eAuthFailed,
-                                "remote has no connection to auth backend"});
+      reply(service::AuthResult{
+          service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
       return;
     }
 

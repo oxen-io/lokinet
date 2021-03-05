@@ -147,10 +147,11 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  lokimq::LokiMQ lmq{[](lokimq::LogLevel lvl, const char* file, int line, std::string msg) {
-                       std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
-                     },
-                     logLevel};
+  lokimq::LokiMQ lmq{
+      [](lokimq::LogLevel lvl, const char* file, int line, std::string msg) {
+        std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
+      },
+      logLevel};
 
   lmq.start();
 

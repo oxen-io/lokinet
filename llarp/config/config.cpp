@@ -1006,9 +1006,10 @@ namespace llarp
           }
           m_UniqueHopsNetmaskSize = arg;
         },
-        Comment{"Netmask for router path selection; each router must be from a distinct IP subnet "
-                "of the given size.",
-                "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
+        Comment{
+            "Netmask for router path selection; each router must be from a distinct IP subnet "
+            "of the given size.",
+            "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
 
 #ifdef WITH_GEOIP
     conf.defineOption<std::string>(
@@ -1019,9 +1020,10 @@ namespace llarp
         [=](std::string arg) {
           m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
         },
-        Comment{"exclude a country given its 2 letter country code from being used in path builds",
-                "e.g. exclude-country=DE",
-                "can be listed multiple times to exclude multiple countries"});
+        Comment{
+            "exclude a country given its 2 letter country code from being used in path builds",
+            "e.g. exclude-country=DE",
+            "can be listed multiple times to exclude multiple countries"});
 #endif
   }
 

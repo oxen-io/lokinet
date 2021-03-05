@@ -76,7 +76,8 @@ struct llarp_buffer_t
   /// max size of buffer
   size_t sz{0};
 
-  byte_t operator[](size_t x)
+  byte_t
+  operator[](size_t x)
   {
     return *(this->base + x);
   }

@@ -291,10 +291,11 @@ namespace llarp
           [](const auto& item) -> util::StatusObject { return item.second->ExtractStatus(); });
     }
 
-    return {{"name", Name()},
-            {"rank", uint64_t(Rank())},
-            {"addr", m_ourAddr.toString()},
-            {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
+    return {
+        {"name", Name()},
+        {"rank", uint64_t(Rank())},
+        {"addr", m_ourAddr.toString()},
+        {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
   }
 
   bool

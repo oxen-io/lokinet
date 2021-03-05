@@ -28,7 +28,8 @@ namespace llarp
   {
     UInt_t h;
 
-    constexpr huint_t operator&(huint_t x) const
+    constexpr huint_t
+    operator&(huint_t x) const
     {
       return huint_t{UInt_t{h & x.h}};
     }
@@ -129,7 +130,8 @@ namespace llarp
   {
     UInt_t n;
 
-    constexpr nuint_t operator&(nuint_t x) const
+    constexpr nuint_t
+    operator&(nuint_t x) const
     {
       return nuint_t{UInt_t(n & x.n)};
     }

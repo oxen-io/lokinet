@@ -553,8 +553,8 @@ namespace llarp
           {
             if (msg.proto == eProtocolAuth and not msg.payload.empty())
             {
-              result.reason = std::string{reinterpret_cast<const char*>(msg.payload.data()),
-                                          msg.payload.size()};
+              result.reason = std::string{
+                  reinterpret_cast<const char*>(msg.payload.data()), msg.payload.size()};
             }
           }
         }
@@ -576,8 +576,8 @@ namespace llarp
           AuthResult result{AuthResultCode::eAuthAccepted, "OK"};
           if (msg->proto == eProtocolAuth and not msg->payload.empty())
           {
-            result.reason = std::string{reinterpret_cast<const char*>(msg->payload.data()),
-                                        msg->payload.size()};
+            result.reason = std::string{
+                reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()};
           }
           handler(result);
         };

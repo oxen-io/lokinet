@@ -21,9 +21,10 @@ namespace llarp::service
   AuthType
   ParseAuthType(std::string data)
   {
-    std::unordered_map<std::string, AuthType> values = {{"lmq", AuthType::eAuthTypeLMQ},
-                                                        {"whitelist", AuthType::eAuthTypeWhitelist},
-                                                        {"none", AuthType::eAuthTypeNone}};
+    std::unordered_map<std::string, AuthType> values = {
+        {"lmq", AuthType::eAuthTypeLMQ},
+        {"whitelist", AuthType::eAuthTypeWhitelist},
+        {"none", AuthType::eAuthTypeNone}};
     const auto itr = values.find(data);
     if (itr == values.end())
       throw std::invalid_argument("no such auth type: " + data);

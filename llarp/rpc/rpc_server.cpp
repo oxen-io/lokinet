@@ -98,8 +98,8 @@ namespace llarp::rpc
         .add_request_command(
             "version",
             [r = m_Router](oxenmq::Message& msg) {
-              util::StatusObject result{{"version", llarp::VERSION_FULL},
-                                        {"uptime", to_json(r->Uptime())}};
+              util::StatusObject result{
+                  {"version", llarp::VERSION_FULL}, {"uptime", to_json(r->Uptime())}};
               msg.send_reply(CreateJSONResponse(result));
             })
         .add_request_command(
