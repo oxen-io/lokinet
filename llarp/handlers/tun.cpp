@@ -102,8 +102,8 @@ namespace llarp
         const uint8_t* ptr = pkt.buf + ip_header_size;
         const auto dst = ToNet(pkt.dstv4());
         const auto src = ToNet(pkt.srcv4());
-        const SockAddr raddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
-        const SockAddr laddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
+        const SockAddr laddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
+        const SockAddr raddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
 
         OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
         std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());
