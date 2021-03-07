@@ -143,9 +143,10 @@ namespace llarp
   OwnedBuffer
   OwnedBuffer::copy_used(const llarp_buffer_t& b)
   {
-    auto buf = std::make_unique<byte_t[]>(b.cur - b.base);
+    const size_t sz = b.cur - b.base;
+    auto buf = std::make_unique<byte_t[]>(sz);
     std::copy(b.base, b.cur, buf.get());
-    return {std::move(buf), b.sz};
+    return {std::move(buf), sz};
   }
 
 }  // namespace llarp
