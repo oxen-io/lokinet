@@ -137,3 +137,80 @@ lokinet conversation.
 Without a controllable TCP stack we have no ability to accept these, however since the introset (and
 conversation initiation) indicates that TCP should be tunneled, we should just drop these packets.
 
+## Lokinet implementation notes
+
+### Outbound connections -- liblokinet
+
+The application makes a liblokinet library call such as
+
+    lokinet_stream_result res;
+    lokinet_outbound_stream(&res, "some-snapp.loki", 2345);
+
+This initiates an outbound connection to the given lokinet remote, asking to connect to port 2345 on
+the remote.  Plainquic begins listening on a random localhost port, and returns this via an entry in
+`res`.  New connections establishes to this localhost port initiate new streams on the quic
+connection which are tunneled to the remote end.
+
+### Inbound connections -- liblokinet
+
+The application needs to start listening on one or more TCP ports (e.g. on localhost, but doesn't
+have to be) and then registers a callback with lokinet about the availability of this port for
+incoming plainquic connections by setting up a callback:
+
+```C
+    int accept_inbound(const char *lokinet_addr, uint16_t port, sockaddr *addr, void *context) {
+        // lokinet_addr is the remote lokinet client trying to establish a stream
+        // port is the port they are trying to reach
+        // If the client is allowed then set the local TCP socket address that the tunnel should
+        // connect to in `addr` (which is big enough to allow either sockaddr_in or sockaddr_in6)
+        sockaddr_in* a = (sockaddr_in*)addr;
+        a->sin_family = AF_INET;
+        a->sin_addr = INADDR_LOOPBACK;
+        a->sin_port = htons(5678); // NB: Doesn't have to be the passed-in `port`
+        return 0;
+        // If this callback doesn't handle the requested port (will try other callbacks):
+        return -1;
+        // If this callback does handle it and the connection should be refused:
+        return -2;
+        // (Return values other than 0/-1/-2 are reserved and should not be used).
+    }
+    lokinet_inbound_stream(&accept_inbound, NULL /*context*/);
+```
+or, for the very simple case where connections should be available on some localhost port:
+```C
+    // All incoming tunneled connections for port 5678 should go to localhost:5678
+    lokinet_inbound_stream_simple(5678);
+```
+
+When a new plainquic connection arrives, if such a callback has been registered it will be called to
+determine whether the connection should be accepted and, if it is, where streams opened on that
+connection should be sent.  (For the simple version, all inbound connections on port 5678 would be
+accepted and would be forwarded to localhost:5678; inbound connections for other ports would be
+refused).
+
+Each new plainquic stream initiated by the remote connection then establishes a new TCP connection
+to the IP/port set by the callback.
+
+### Outbound connections - full lokinet
+
+When attempting to connect to a client who has indicated in its introset that it requires plainquic
+connections then plainquic will bind to and listen on the virtual (tun) TCP/IP port and establish a
+plainquic connection to the remote liblokinet on the given port.  (Future connections to this port
+will establish new streams on the existing connection).
+
+Setting up the initial listener involves intercepting the initial TCP connection attempt (i.e. the
+SYN packet), starting to listen on it while simultaneously initiating the plainquic connection over
+lokinet.  It may work sufficiently well (investigation required) to simply drop this initial SYN
+packet and let the initiator retry in a few moments to attack to the new listener which now goes
+into the plainquic listener which establishes a new stream.
+
+Thereafter the local application simply talks to this local listener and all stream data gets
+tunneled over lokinet to the remote liblokinet.
+
+### Inbound connections - full lokinet
+
+This is fairly simple: when incoming quic-tunneled packets arrive we start up a plainquic server (if
+not already running), deliver the packets into it, and it tunnels incoming stream data into TCP
+connections to the primary lokinet IP (using the IP mapped to the lokinet endpoint as the source
+address).
+
