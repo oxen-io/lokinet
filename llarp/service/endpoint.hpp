@@ -248,9 +248,6 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      EnsureConvo(const AlignedBuffer<32> addr, bool snode, ConvoEventListener_ptr ev);
-
-      bool
       SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
       bool

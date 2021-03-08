@@ -1294,31 +1294,25 @@ namespace llarp
 
     void Endpoint::Pump(llarp_time_t)
     {
-      const auto& sessions = m_state->m_SNodeSessions;
-      auto& queue = m_InboundTrafficQueue;
+      FlushRecvData();
+      // send downstream packets to user for snode
+      for (const auto& [router, session] : m_state->m_SNodeSessions)
+        session.first->FlushDownstream();
+      // send downstream traffic to user for hidden service
+      while (not m_InboundTrafficQueue.empty())
+      {
+        auto msg = m_InboundTrafficQueue.popFront();
+        const llarp_buffer_t buf(msg->payload);
+        HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
+      }
 
-      auto epPump = [&]() {
-        FlushRecvData();
-        // send downstream packets to user for snode
-        for (const auto& item : sessions)
-          item.second.first->FlushDownstream();
-        // send downstream traffic to user for hidden service
-        while (not queue.empty())
-        {
-          auto msg = queue.popFront();
-          const llarp_buffer_t buf(msg->payload);
-          HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
-        }
-      };
-
-      epPump();
       auto router = Router();
       // TODO: locking on this container
-      for (const auto& item : m_state->m_RemoteSessions)
-        item.second->FlushUpstream();
+      for (const auto& [addr, outctx] : m_state->m_RemoteSessions)
+        outctx->FlushUpstream();
       // TODO: locking on this container
-      for (const auto& item : sessions)
-        item.second.first->FlushUpstream();
+      for (const auto& [router, session] : m_state->m_SNodeSessions)
+        session.first->FlushUpstream();
 
       // send queue flush
       while (not m_SendQueue.empty())
@@ -1330,17 +1324,6 @@ namespace llarp
 
       UpstreamFlush(router);
       router->linkManager().PumpLinks();
-    }
-
-    bool
-    Endpoint::EnsureConvo(
-        const AlignedBuffer<32> /*addr*/, bool snode, ConvoEventListener_ptr /*ev*/)
-    {
-      if (snode)
-      {}
-
-      // TODO: something meaningful
-      return false;
     }
 
     std::optional<ConvoTag>
