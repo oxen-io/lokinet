@@ -37,7 +37,7 @@ namespace llarp::vpn
     net::IPPacket
     ReadNextPacket() override
     {
-      net::IPPacket pkt;
+      net::IPPacket pkt{};
       const auto sz = read(m_fd, pkt.buf, sizeof(pkt.buf));
       if (sz >= 0)
         pkt.sz = std::min(sz, ssize_t{sizeof(pkt.buf)});
