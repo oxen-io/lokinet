@@ -1,4 +1,3 @@
-#include <llarp.h>
 #include <llarp.hpp>
 #include <config/config.hpp>
 #include <router/abstractrouter.hpp>

@@ -2,7 +2,6 @@
 #include <router/router.hpp>
 #include <exit/context.hpp>
 #include <crypto/types.hpp>
-#include <llarp.h>
 #include <llarp.hpp>
 #include <catch2/catch.hpp>
 
