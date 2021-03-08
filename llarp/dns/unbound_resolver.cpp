@@ -9,8 +9,8 @@ namespace llarp::dns
   {
     std::weak_ptr<UnboundResolver> resolver;
     Message msg;
-    SockAddr source;
-    SockAddr replyFrom;
+    SockAddr resolverAddr;
+    SockAddr askerAddr;
   };
 
   void
@@ -56,7 +56,7 @@ namespace llarp::dns
     {
       Message& msg = lookup->msg;
       msg.AddServFail();
-      this_ptr->failFunc(lookup->replyFrom, lookup->source, msg);
+      this_ptr->failFunc(lookup->resolverAddr, lookup->askerAddr, msg);
       ub_resolve_free(result);
       return;
     }
@@ -71,7 +71,7 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    this_ptr->replyFunc(lookup->replyFrom, lookup->source, std::move(pkt));
+    this_ptr->replyFunc(lookup->resolverAddr, lookup->askerAddr, std::move(pkt));
 
     ub_resolve_free(result);
   }
@@ -126,7 +126,7 @@ namespace llarp::dns
     }
 
     const auto& q = msg.questions[0];
-    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, from, to};
+    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, to, from};
     int err = ub_resolve_async(
         unboundContext,
         q.Name().c_str(),
