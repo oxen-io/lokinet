@@ -45,7 +45,7 @@ namespace llarp
 
       void
       SendServerMessageBufferTo(
-          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override
+          const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) override
       {
         net::IPPacket pkt;
 
@@ -76,15 +76,11 @@ namespace llarp
         ptr += 2;
         std::copy_n(buf.base, buf.sz, ptr);
 
-        /// queue ip packet write
-        const IpAddress remoteIP{from};
-        const IpAddress localIP{to};
-
         hdr->check = 0;
         hdr->check = net::ipchksum(pkt.buf, 20);
         pkt.sz = 28 + buf.sz;
         m_Endpoint->HandleWriteIPPacket(
-            pkt.ConstBuffer(), net::ExpandV4(remoteIP.toIP()), net::ExpandV4(localIP.toIP()), 0);
+            pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }
     };
 
