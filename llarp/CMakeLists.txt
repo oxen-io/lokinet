@@ -28,19 +28,12 @@ add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR})
 
-if(NOT TARGET sqlite3)
-  add_library(sqlite3 INTERFACE)
-  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
-  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
-endif()
-
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
   filesystem
   date::date
   oxenmq
-  sqlite3
 )
 
 if(ANDROID)
@@ -229,7 +222,7 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 

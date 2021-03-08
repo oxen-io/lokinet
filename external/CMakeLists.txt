@@ -24,6 +24,7 @@ if(SUBMODULE_CHECK)
     check_submodule(oxen-mq)
     check_submodule(uvw)
     check_submodule(cpr)
+    check_submodule(ngtcp2)
   endif()
 endif()
 
@@ -74,3 +75,5 @@ target_link_libraries(cpr PUBLIC CURL::libcurl)
 target_include_directories(cpr PUBLIC cpr/include)
 target_compile_definitions(cpr PUBLIC CPR_CURL_NOSIGNAL)
 add_library(cpr::cpr ALIAS cpr)
+
+add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)
