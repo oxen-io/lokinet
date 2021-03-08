@@ -32,3 +32,6 @@
 [submodule "external/cpr"]
 	path = external/cpr
 	url = https://github.com/whoshuu/cpr
+[submodule "external/ngtcp2"]
+	path = external/ngtcp2
+	url = https://github.com/ngtcp2/ngtcp2.git
