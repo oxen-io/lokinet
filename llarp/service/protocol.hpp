@@ -37,7 +37,7 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto = eProtocolTrafficV4;
+      ProtocolType proto = ProtocolType::TrafficV4;
       llarp_time_t queued = 0s;
       std::vector<byte_t> payload;
       Introduction introReply;

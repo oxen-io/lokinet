@@ -958,14 +958,14 @@ namespace llarp
     bool
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
-      if ((msg->proto == eProtocolExit
+      if ((msg->proto == ProtocolType::Exit
            && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
-          || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
+          || msg->proto == ProtocolType::TrafficV4 || msg->proto == ProtocolType::TrafficV6)
       {
         m_InboundTrafficQueue.tryPushBack(std::move(msg));
         return true;
       }
-      if (msg->proto == eProtocolControl)
+      if (msg->proto == ProtocolType::Control)
       {
         // TODO: implement me (?)
         // right now it's just random noise
@@ -1014,7 +1014,7 @@ namespace llarp
         msg.PutBuffer(reason);
         f.N.Randomize();
         f.C.Zero();
-        msg.proto = eProtocolAuth;
+        msg.proto = ProtocolType::Auth;
         if (not GetReplyIntroFor(tag, msg.introReply))
         {
           LogError("Failed to send auth reply: no reply intro");
@@ -1252,7 +1252,7 @@ namespace llarp
                 return false;
               pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), ProtocolType::TrafficV4, 0);
             },
             Router(),
             numDesiredPaths,

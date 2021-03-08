@@ -925,7 +925,7 @@ namespace llarp
           {
             (void)ip;
             SendToServiceOrQueue(
-                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::eProtocolExit);
+                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
           }
           return;
         }
@@ -960,7 +960,7 @@ namespace llarp
                   {
                     ctx->sendTimeout = 5s;
                   }
-                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::eProtocolExit);
+                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
                 },
                 1s);
           }
@@ -983,7 +983,7 @@ namespace llarp
               this,
               service::Address(itr->second.as_array()),
               std::placeholders::_1,
-              service::eProtocolExit);
+              service::ProtocolType::Exit);
         }
         else
         {
@@ -1019,8 +1019,8 @@ namespace llarp
         service::ProtocolType t,
         uint64_t seqno)
     {
-      if (t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6
-          && t != service::eProtocolExit)
+      if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
+          && t != service::ProtocolType::Exit)
         return false;
       AlignedBuffer<32> addr;
       bool snode = false;
@@ -1036,7 +1036,7 @@ namespace llarp
       {
         // exit side from exit
         src = ObtainIPForAddr(addr, snode);
-        if (t == service::eProtocolExit)
+        if (t == service::ProtocolType::Exit)
         {
           if (pkt.IsV4())
             dst = pkt.dst4to6();
@@ -1052,7 +1052,7 @@ namespace llarp
           dst = m_OurIP;
         }
       }
-      else if (t == service::eProtocolExit)
+      else if (t == service::ProtocolType::Exit)
       {
         // client side exit traffic from exit
         if (pkt.IsV4())

@@ -226,11 +226,11 @@ namespace llarp
       ServiceProtocol() const
       {
         if (IsV4())
-          return service::eProtocolTrafficV4;
+          return service::ProtocolType::TrafficV4;
         if (IsV6())
-          return service::eProtocolTrafficV6;
+          return service::ProtocolType::TrafficV6;
 
-        return service::eProtocolControl;
+        return service::ProtocolType::Control;
       }
 
       huint128_t

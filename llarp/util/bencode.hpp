@@ -6,6 +6,7 @@
 #include <llarp/util/logging/logger.hpp>
 #include "mem.hpp"
 
+#include <type_traits>
 #include <fstream>
 #include <set>
 #include <vector>
@@ -41,7 +42,12 @@ namespace llarp
   bool
   BEncodeWriteDictInt(const char* k, const Int_t& i, llarp_buffer_t* buf)
   {
-    return bencode_write_bytestring(buf, k, 1) && bencode_write_uint64(buf, i);
+    if (!bencode_write_bytestring(buf, k, 1))
+      return false;
+    if constexpr (std::is_enum_v<Int_t>)
+      return bencode_write_uint64(buf, static_cast<std::underlying_type_t<Int_t>>(i));
+    else
+      return bencode_write_uint64(buf, i);
   }
 
   template <typename List_t>
@@ -92,7 +98,7 @@ namespace llarp
         return false;
       }
 
-      i = Int_t(read_i);
+      i = static_cast<Int_t>(read_i);
       read = true;
     }
     return true;

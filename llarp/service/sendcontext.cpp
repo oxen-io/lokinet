@@ -114,7 +114,7 @@ namespace llarp
       {
         // send auth message
         const llarp_buffer_t authdata{maybe->token};
-        AsyncGenIntro(authdata, eProtocolAuth);
+        AsyncGenIntro(authdata, ProtocolType::Auth);
         authResultListener = resultHandler;
       }
       else
@@ -134,7 +134,7 @@ namespace llarp
       {
         // send auth message
         const llarp_buffer_t authdata(maybe->token);
-        AsyncGenIntro(authdata, eProtocolAuth);
+        AsyncGenIntro(authdata, ProtocolType::Auth);
       }
       else
       {
