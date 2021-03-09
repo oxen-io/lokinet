@@ -27,7 +27,7 @@ android {
         targetSdkVersion 28
         minSdkVersion 23
         versionCode 1
-        versionName '0.8.3'
+        versionName '0.8.4'
         externalNativeBuild {
             cmake {
                 // targets "lokinet-android"
