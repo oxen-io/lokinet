@@ -1,9 +1,8 @@
-#ifndef LLARP_EV_LIBUV_HPP
-#define LLARP_EV_LIBUV_HPP
-#include <ev/ev.hpp>
+#pragma once
+#include "ev.hpp"
 #include "udp_handle.hpp"
-#include <util/thread/queue.hpp>
-#include <util/meta/memfn.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/util/meta/memfn.hpp>
 
 #include <uvw/loop.h>
 #include <uvw/async.h>
@@ -96,5 +95,3 @@ namespace llarp::uv
   };
 
 }  // namespace llarp::uv
-
-#endif

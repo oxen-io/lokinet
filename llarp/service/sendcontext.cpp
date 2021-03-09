@@ -1,8 +1,8 @@
-#include <service/sendcontext.hpp>
+#include "sendcontext.hpp"
 
-#include <router/abstractrouter.hpp>
-#include <routing/path_transfer_message.hpp>
-#include <service/endpoint.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/routing/path_transfer_message.hpp>
+#include "endpoint.hpp"
 #include <utility>
 #include <unordered_set>
 

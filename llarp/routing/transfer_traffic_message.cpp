@@ -1,8 +1,8 @@
-#include <routing/transfer_traffic_message.hpp>
+#include "transfer_traffic_message.hpp"
 
-#include <routing/handler.hpp>
-#include <util/bencode.hpp>
-#include <util/endian.hpp>
+#include "handler.hpp"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/endian.hpp>
 
 namespace llarp
 {

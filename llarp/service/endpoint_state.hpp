@@ -1,16 +1,15 @@
-#ifndef LLARP_SERVICE_ENDPOINT_STATE_HPP
-#define LLARP_SERVICE_ENDPOINT_STATE_HPP
+#pragma once
 
-#include <hook/ihook.hpp>
-#include <router_id.hpp>
-#include <service/address.hpp>
-#include <service/pendingbuffer.hpp>
-#include <service/router_lookup_job.hpp>
-#include <service/session.hpp>
-#include <service/endpoint_types.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/decaying_hashtable.hpp>
-#include <util/status.hpp>
+#include <llarp/hook/ihook.hpp>
+#include <llarp/router_id.hpp>
+#include "address.hpp"
+#include "pendingbuffer.hpp"
+#include "router_lookup_job.hpp"
+#include "session.hpp"
+#include "endpoint_types.hpp"
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/decaying_hashtable.hpp>
+#include <llarp/util/status.hpp>
 
 #include <memory>
 #include <queue>
@@ -75,5 +74,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

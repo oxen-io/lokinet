@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_LOOKUP_HPP
-#define LLARP_SERVICE_LOOKUP_HPP
+#pragma once
 
-#include <routing/message.hpp>
-#include <service/intro_set.hpp>
-#include <path/pathset.hpp>
+#include <llarp/routing/message.hpp>
+#include "intro_set.hpp"
+#include <llarp/path/pathset.hpp>
 
 #include <set>
 
@@ -94,5 +93,3 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
-
-#endif

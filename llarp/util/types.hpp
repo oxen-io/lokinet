@@ -1,5 +1,4 @@
-#ifndef LLARP_TYPES_H
-#define LLARP_TYPES_H
+#pragma once
 #include <cstdint>
 #include <string>
 #include <chrono>
@@ -13,5 +12,3 @@ namespace llarp
 {
   using namespace std::literals;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef LLARP_UTIL_LOKINET_INIT_H
-#define LLARP_UTIL_LOKINET_INIT_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C"
@@ -20,5 +19,4 @@ extern "C"
 
 #ifdef __cplusplus
 }
-#endif
 #endif

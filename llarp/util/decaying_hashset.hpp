@@ -1,7 +1,6 @@
-#ifndef LLARP_UTIL_DECAYING_HASHSET_HPP
-#define LLARP_UTIL_DECAYING_HASHSET_HPP
+#pragma once
 
-#include <util/time.hpp>
+#include "time.hpp"
 #include <unordered_map>
 
 namespace llarp
@@ -82,5 +81,3 @@ namespace llarp
     };
   }  // namespace util
 }  // namespace llarp
-
-#endif

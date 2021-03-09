@@ -1,5 +1,5 @@
-#include <util/logging/ostream_logger.hpp>
-#include <util/logging/logger_internal.hpp>
+#include "ostream_logger.hpp"
+#include "logger_internal.hpp"
 
 namespace llarp
 {

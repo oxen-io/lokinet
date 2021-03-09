@@ -1,11 +1,11 @@
-#include <service/protocol.hpp>
-#include <path/path.hpp>
-#include <routing/handler.hpp>
-#include <util/buffer.hpp>
-#include <util/mem.hpp>
-#include <util/meta/memfn.hpp>
-#include <service/endpoint.hpp>
-#include <router/abstractrouter.hpp>
+#include "protocol.hpp"
+#include <llarp/path/path.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/meta/memfn.hpp>
+#include "endpoint.hpp"
+#include <llarp/router/abstractrouter.hpp>
 #include <utility>
 
 namespace llarp

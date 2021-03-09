@@ -1,7 +1,6 @@
-#ifndef LLARP_TIME_HPP
-#define LLARP_TIME_HPP
+#pragma once
 
-#include <util/types.hpp>
+#include "types.hpp"
 #include <nlohmann/json.hpp>
 
 using namespace std::chrono_literals;
@@ -19,5 +18,3 @@ namespace llarp
   to_json(const llarp_time_t& t);
 
 }  // namespace llarp
-
-#endif

@@ -1,9 +1,9 @@
-#include <service/endpoint_util.hpp>
+#include "endpoint_util.hpp"
 
-#include <exit/session.hpp>
-#include <service/outbound_context.hpp>
-#include <service/lookup.hpp>
-#include <util/logging/logger.hpp>
+#include <llarp/exit/session.hpp>
+#include "outbound_context.hpp"
+#include "lookup.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 namespace llarp
 {

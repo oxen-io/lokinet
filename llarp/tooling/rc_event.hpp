@@ -1,8 +1,8 @@
 #pragma once
 
-#include <tooling/router_event.hpp>
+#include "router_event.hpp"
 
-#include <router_contact.hpp>
+#include <llarp/router_contact.hpp>
 
 namespace tooling
 {

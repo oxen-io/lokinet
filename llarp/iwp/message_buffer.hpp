@@ -1,11 +1,10 @@
-#ifndef LLARP_IWP_MESSAGE_BUFFER_HPP
-#define LLARP_IWP_MESSAGE_BUFFER_HPP
+#pragma once
 #include <vector>
-#include <constants/link_layer.hpp>
-#include <link/session.hpp>
-#include <util/aligned.hpp>
-#include <util/buffer.hpp>
-#include <util/types.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/link/session.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/types.hpp>
 
 namespace llarp
 {
@@ -115,5 +114,3 @@ namespace llarp
 
   }  // namespace iwp
 }  // namespace llarp
-
-#endif

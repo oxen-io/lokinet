@@ -1,14 +1,13 @@
-#ifndef LLARP_RC_HPP
-#define LLARP_RC_HPP
+#pragma once
 
-#include <constants/version.hpp>
-#include <crypto/types.hpp>
-#include <net/address_info.hpp>
-#include <net/exit_info.hpp>
-#include <util/aligned.hpp>
-#include <util/bencode.hpp>
-#include <util/status.hpp>
-#include <router_version.hpp>
+#include "constants/version.hpp"
+#include "crypto/types.hpp"
+#include "net/address_info.hpp"
+#include "net/exit_info.hpp"
+#include "util/aligned.hpp"
+#include "util/bencode.hpp"
+#include "util/status.hpp"
+#include "router_version.hpp"
 
 #include <functional>
 #include <nlohmann/json.hpp>
@@ -241,5 +240,3 @@ namespace llarp
 
   using RouterLookupHandler = std::function<void(const std::vector<RouterContact>&)>;
 }  // namespace llarp
-
-#endif

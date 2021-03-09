@@ -1,21 +1,20 @@
-#ifndef LLARP_ABSTRACT_ROUTER_HPP
-#define LLARP_ABSTRACT_ROUTER_HPP
+#pragma once
 
-#include <config/config.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/config/key_manager.hpp>
 #include <memory>
-#include <util/types.hpp>
-#include <util/status.hpp>
-#include <router/i_outbound_message_handler.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/status.hpp>
+#include "i_outbound_message_handler.hpp"
 #include <vector>
-#include <ev/ev.hpp>
+#include <llarp/ev/ev.hpp>
 #include <functional>
-#include <router_contact.hpp>
-#include <tooling/router_event.hpp>
-#include <peerstats/peer_db.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/tooling/router_event.hpp>
+#include <llarp/peerstats/peer_db.hpp>
 
 #ifdef LOKINET_HIVE
-#include "tooling/router_event.hpp"
+#include <llarp/tooling/router_event.hpp>
 #endif
 
 struct llarp_buffer_t;
@@ -327,5 +326,3 @@ namespace llarp
     HandleRouterEvent(tooling::RouterEventPtr event) const = 0;
   };
 }  // namespace llarp
-
-#endif

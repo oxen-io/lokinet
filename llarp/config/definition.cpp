@@ -1,5 +1,5 @@
-#include <config/definition.hpp>
-#include <util/logging/logger.hpp>
+#include "definition.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 #include <iterator>
 #include <sstream>

@@ -1,9 +1,8 @@
-#ifndef LLARP_I_LINK_MANAGER_HPP
-#define LLARP_I_LINK_MANAGER_HPP
+#pragma once
 
-#include <link/server.hpp>
-#include <util/types.hpp>
-#include <peerstats/peer_db.hpp>
+#include "server.hpp"
+#include <llarp/util/types.hpp>
+#include <llarp/peerstats/peer_db.hpp>
 
 #include <functional>
 #include <optional>
@@ -98,5 +97,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_I_LINK_MANAGER_HPP

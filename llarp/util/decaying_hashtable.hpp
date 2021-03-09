@@ -1,6 +1,6 @@
 #pragma once
 
-#include <util/time.hpp>
+#include "time.hpp"
 #include <unordered_map>
 
 namespace llarp::util

@@ -1,11 +1,10 @@
-#ifndef LLARP_UTIL_LOGGER_INTERNAL_HPP
-#define LLARP_UTIL_LOGGER_INTERNAL_HPP
+#pragma once
 
-#include <util/time.hpp>
+#include <llarp/util/time.hpp>
 
 #include <ctime>
 #include <sstream>
-#include <util/thread/threading.hpp>
+#include <llarp/util/thread/threading.hpp>
 
 namespace llarp
 {
@@ -52,5 +51,3 @@ namespace llarp
   operator<<(std::ostream& out, const log_timestamp& ts);
 
 }  // namespace llarp
-
-#endif

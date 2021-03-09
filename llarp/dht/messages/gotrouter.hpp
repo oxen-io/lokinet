@@ -1,9 +1,8 @@
-#ifndef LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
-#define LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
-#include <constants/proto.hpp>
-#include <dht/message.hpp>
-#include <router_contact.hpp>
-#include <util/copy_or_nullptr.hpp>
+#pragma once
+#include <llarp/constants/proto.hpp>
+#include <llarp/dht/message.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/copy_or_nullptr.hpp>
 #include <utility>
 #include <vector>
 
@@ -67,4 +66,3 @@ namespace llarp
     using GotRouterMessage_constptr = std::shared_ptr<const GotRouterMessage>;
   }  // namespace dht
 }  // namespace llarp
-#endif

@@ -1,22 +1,21 @@
-#ifndef LLARP_PATH_HPP
-#define LLARP_PATH_HPP
+#pragma once
 
-#include <constants/path.hpp>
-#include <crypto/encrypted_frame.hpp>
-#include <crypto/types.hpp>
-#include <messages/relay.hpp>
-#include <path/ihophandler.hpp>
-#include <path/path_types.hpp>
-#include <path/pathbuilder.hpp>
-#include <path/pathset.hpp>
-#include <router_id.hpp>
-#include <routing/handler.hpp>
-#include <routing/message.hpp>
-#include <service/intro.hpp>
-#include <util/aligned.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/thread/threading.hpp>
-#include <util/time.hpp>
+#include <llarp/constants/path.hpp>
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/messages/relay.hpp>
+#include "ihophandler.hpp"
+#include "path_types.hpp"
+#include "pathbuilder.hpp"
+#include "pathset.hpp"
+#include <llarp/router_id.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message.hpp>
+#include <llarp/service/intro.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/time.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -421,5 +420,3 @@ namespace llarp
     };
   }  // namespace path
 }  // namespace llarp
-
-#endif

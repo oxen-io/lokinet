@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_LOOKUPTAGLOOKUP
 #define LLARP_DHT_LOOKUPTAGLOOKUP
 
-#include <dht/taglookup.hpp>
+#include "taglookup.hpp"
 
 namespace llarp
 {

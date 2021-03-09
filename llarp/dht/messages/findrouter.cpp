@@ -1,13 +1,13 @@
-#include <dht/messages/findrouter.hpp>
+#include "findrouter.hpp"
 
-#include <dht/context.hpp>
-#include <dht/messages/gotrouter.hpp>
-#include <nodedb.hpp>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <routing/dht_message.hpp>
+#include <llarp/dht/context.hpp>
+#include "gotrouter.hpp"
+#include <llarp/nodedb.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/routing/dht_message.hpp>
 
-#include <tooling/dht_event.hpp>
+#include <llarp/tooling/dht_event.hpp>
 
 namespace llarp
 {

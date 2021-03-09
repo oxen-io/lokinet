@@ -1,7 +1,7 @@
 #ifndef _WIN32
-#include <util/logging/logger_syslog.hpp>
+#include "logger_syslog.hpp"
 
-#include <util/logging/logger_internal.hpp>
+#include "logger_internal.hpp"
 
 #include <syslog.h>
 namespace llarp

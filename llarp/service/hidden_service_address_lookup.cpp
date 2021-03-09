@@ -1,7 +1,7 @@
-#include <service/hidden_service_address_lookup.hpp>
+#include "hidden_service_address_lookup.hpp"
 
-#include <dht/messages/findintro.hpp>
-#include <service/endpoint.hpp>
+#include <llarp/dht/messages/findintro.hpp>
+#include "endpoint.hpp"
 #include <utility>
 
 namespace llarp

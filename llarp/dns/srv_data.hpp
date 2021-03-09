@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dns/name.hpp>
-#include <dns/serialize.hpp>
+#include "name.hpp"
+#include "serialize.hpp"
 
 #include <tuple>
 #include <string_view>

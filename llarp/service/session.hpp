@@ -1,12 +1,11 @@
-#ifndef LLARP_SERVICE_SESSION_HPP
-#define LLARP_SERVICE_SESSION_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <path/path.hpp>
-#include <service/info.hpp>
-#include <service/intro.hpp>
-#include <util/status.hpp>
-#include <util/types.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/path/path.hpp>
+#include "info.hpp"
+#include "intro.hpp"
+#include <llarp/util/status.hpp>
+#include <llarp/util/types.hpp>
 
 namespace llarp
 {
@@ -37,5 +36,3 @@ namespace llarp
   }  // namespace service
 
 }  // namespace llarp
-
-#endif

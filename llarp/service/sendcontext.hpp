@@ -1,13 +1,12 @@
-#ifndef LLARP_SERVICE_SENDCONTEXT_HPP
-#define LLARP_SERVICE_SENDCONTEXT_HPP
+#pragma once
 
-#include <path/pathset.hpp>
-#include <routing/path_transfer_message.hpp>
-#include <service/intro.hpp>
-#include <service/protocol.hpp>
-#include <util/buffer.hpp>
-#include <util/types.hpp>
-#include <util/thread/queue.hpp>
+#include <llarp/path/pathset.hpp>
+#include <llarp/routing/path_transfer_message.hpp>
+#include "intro.hpp"
+#include "protocol.hpp"
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 #include <deque>
 
@@ -79,5 +78,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

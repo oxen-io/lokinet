@@ -1,10 +1,9 @@
-#ifndef LLARP_LINK_MANAGER_HPP
-#define LLARP_LINK_MANAGER_HPP
+#pragma once
 
-#include <link/i_link_manager.hpp>
+#include "i_link_manager.hpp"
 
-#include <util/compare_ptr.hpp>
-#include <link/server.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include "server.hpp"
 
 #include <unordered_map>
 #include <set>
@@ -114,5 +113,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_LINK_MANAGER_HPP

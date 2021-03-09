@@ -1,7 +1,6 @@
-#ifndef LLARP_UTIL_WIN32_LOGGER_HPP
-#define LLARP_UTIL_WIN32_LOGGER_HPP
+#pragma once
 #if defined(_WIN32)
-#include <util/logging/ostream_logger.hpp>
+#include "ostream_logger.hpp"
 #define VC_EXTRALEAN
 #include <windows.h>
 
@@ -35,5 +34,4 @@ namespace llarp
     HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
   };
 }  // namespace llarp
-#endif
 #endif

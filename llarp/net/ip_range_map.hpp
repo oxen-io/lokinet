@@ -1,8 +1,7 @@
-#ifndef LLARP_NET_IP_RANGE_MAP_HPP
-#define LLARP_NET_IP_RANGE_MAP_HPP
+#pragma once
 
-#include <net/ip_range.hpp>
-#include <util/status.hpp>
+#include "ip_range.hpp"
+#include <llarp/util/status.hpp>
 #include <list>
 
 namespace llarp
@@ -149,5 +148,3 @@ namespace llarp
     };
   }  // namespace net
 }  // namespace llarp
-
-#endif

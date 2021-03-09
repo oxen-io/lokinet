@@ -1,6 +1,6 @@
-#include <service/name.hpp>
-#include <crypto/crypto.hpp>
-#include <util/str.hpp>
+#include "name.hpp"
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp::service
 {

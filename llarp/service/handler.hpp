@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_HANDLER_HPP
-#define LLARP_SERVICE_HANDLER_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <path/path.hpp>
-#include <service/intro_set.hpp>
-#include <util/aligned.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/path/path.hpp>
+#include "intro_set.hpp"
+#include <llarp/util/aligned.hpp>
 
 #include <memory>
 #include <set>
@@ -94,5 +93,3 @@ namespace std
     }
   };
 }  // namespace std
-
-#endif

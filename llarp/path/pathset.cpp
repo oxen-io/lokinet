@@ -1,9 +1,9 @@
-#include <path/pathset.hpp>
+#include "pathset.hpp"
 
-#include <dht/messages/pubintro.hpp>
-#include <path/path.hpp>
-#include <routing/dht_message.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/dht/messages/pubintro.hpp>
+#include "path.hpp"
+#include <llarp/routing/dht_message.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 #include <random>
 

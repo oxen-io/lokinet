@@ -1,5 +1,5 @@
-#include "common.hpp"
-#include "config/config.hpp"
+#include <common.hpp>
+#include <llarp/config/config.hpp>
 
 #include <netinet/in.h>
 

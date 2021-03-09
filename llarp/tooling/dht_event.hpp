@@ -1,9 +1,9 @@
 #pragma once
 
 #include "router_event.hpp"
-#include "dht/key.hpp"
-#include "service/intro_set.hpp"
-#include "dht/messages/findrouter.hpp"
+#include <llarp/dht/key.hpp>
+#include <llarp/service/intro_set.hpp>
+#include <llarp/dht/messages/findrouter.hpp>
 
 namespace tooling
 {

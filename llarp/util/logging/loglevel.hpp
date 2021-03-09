@@ -1,5 +1,4 @@
-#ifndef LLARP_UTIL_LOG_LEVEL_HPP
-#define LLARP_UTIL_LOG_LEVEL_HPP
+#pragma once
 #include <string>
 #include <optional>
 
@@ -26,5 +25,3 @@ namespace llarp
   LogLevelFromString(std::string level);
 
 }  // namespace llarp
-
-#endif

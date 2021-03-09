@@ -1,10 +1,9 @@
-#ifndef LLARP_KEY_MANAGER_HPP
-#define LLARP_KEY_MANAGER_HPP
+#pragma once
 
 #include <atomic>
-#include <config/config.hpp>
-#include <crypto/types.hpp>
-#include <router_contact.hpp>
+#include "config.hpp"
+#include <llarp/crypto/types.hpp>
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -88,5 +87,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

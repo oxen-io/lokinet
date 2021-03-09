@@ -1,10 +1,10 @@
-#include <config/key_manager.hpp>
+#include "key_manager.hpp"
 
 #include <system_error>
-#include <util/logging/logger.hpp>
-#include "config/config.hpp"
-#include "crypto/crypto.hpp"
-#include "crypto/types.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include "config.hpp"
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/types.hpp>
 
 namespace llarp
 {

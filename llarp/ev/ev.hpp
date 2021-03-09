@@ -1,10 +1,9 @@
-#ifndef LLARP_EV_HPP
-#define LLARP_EV_HPP
+#pragma once
 
-#include <util/buffer.hpp>
-#include <util/time.hpp>
-#include <util/thread/threading.hpp>
-#include <constants/evloop.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/constants/evloop.hpp>
 
 #include <algorithm>
 #include <deque>
@@ -220,4 +219,3 @@ namespace llarp
   using EventLoop_ptr = std::shared_ptr<EventLoop>;
 
 }  // namespace llarp
-#endif

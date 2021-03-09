@@ -1,5 +1,4 @@
-#ifndef LLARP_PROTO_HPP
-#define LLARP_PROTO_HPP
+#pragma once
 
 #ifndef LLARP_PROTO_VERSION
 #define LLARP_PROTO_VERSION (0)
@@ -11,6 +10,4 @@
 
 #ifndef LLARP_KEYFILE_VERSION
 #define LLARP_KEYFILE_VERSION (1)
-#endif
-
 #endif

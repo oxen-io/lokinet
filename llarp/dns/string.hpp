@@ -1,5 +1,4 @@
-#ifndef LLARP_DNS_STRING_HPP
-#define LLARP_DNS_STRING_HPP
+#pragma once
 
 #include <string>
 
@@ -21,5 +20,3 @@ namespace llarp
 
   }  // namespace dns
 }  // namespace llarp
-
-#endif

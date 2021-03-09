@@ -1,10 +1,10 @@
-#include <link/server.hpp>
-#include <ev/ev.hpp>
-#include <ev/udp_handle.hpp>
-#include <crypto/crypto.hpp>
-#include <config/key_manager.hpp>
+#include "server.hpp"
+#include <llarp/ev/ev.hpp>
+#include <llarp/ev/udp_handle.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/config/key_manager.hpp>
 #include <memory>
-#include <util/fs.hpp>
+#include <llarp/util/fs.hpp>
 #include <utility>
 #include <unordered_set>
 

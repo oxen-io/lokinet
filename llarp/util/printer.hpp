@@ -1,7 +1,6 @@
-#ifndef LLARP_PRINTER_HPP
-#define LLARP_PRINTER_HPP
+#pragma once
 
-#include <util/meta/traits.hpp>
+#include <llarp/util/meta/traits.hpp>
 
 #include <functional>
 #include <iostream>
@@ -582,5 +581,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-
-#endif

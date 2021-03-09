@@ -1,5 +1,4 @@
-#ifndef LLARP_CRYPTO_CONSTANTS_HPP
-#define LLARP_CRYPTO_CONSTANTS_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -21,5 +20,3 @@ static constexpr uint32_t PQ_CIPHERTEXTSIZE = crypto_kem_CIPHERTEXTBYTES;
 static constexpr uint32_t PQ_PUBKEYSIZE = crypto_kem_PUBLICKEYBYTES;
 static constexpr uint32_t PQ_SECRETKEYSIZE = crypto_kem_SECRETKEYBYTES;
 static constexpr uint32_t PQ_KEYPAIRSIZE = (PQ_SECRETKEYSIZE + PQ_PUBKEYSIZE);
-
-#endif

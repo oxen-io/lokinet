@@ -1,14 +1,14 @@
 #include "rpc_server.hpp"
-#include <router/route_poker.hpp>
-#include <constants/version.hpp>
+#include <llarp/router/route_poker.hpp>
+#include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
-#include <net/ip_range.hpp>
-#include <net/route.hpp>
-#include <service/context.hpp>
-#include <service/outbound_context.hpp>
-#include <service/auth.hpp>
-#include <service/name.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/net/ip_range.hpp>
+#include <llarp/net/route.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/service/outbound_context.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/service/name.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp::rpc
 {

@@ -1,8 +1,7 @@
-#ifndef LLARP_PATHBUILDER_HPP
-#define LLARP_PATHBUILDER_HPP
+#pragma once
 
-#include <path/pathset.hpp>
-#include <util/status.hpp>
+#include "pathset.hpp"
+#include <llarp/util/status.hpp>
 
 #include <atomic>
 #include <set>
@@ -127,4 +126,3 @@ namespace llarp
   }  // namespace path
 
 }  // namespace llarp
-#endif

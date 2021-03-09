@@ -1,13 +1,12 @@
-#ifndef LLARP_PATH_TRANSIT_HOP_HPP
-#define LLARP_PATH_TRANSIT_HOP_HPP
+#pragma once
 
-#include <constants/path.hpp>
-#include <path/ihophandler.hpp>
-#include <path/path_types.hpp>
-#include <routing/handler.hpp>
-#include <router_id.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/thread/queue.hpp>
+#include <llarp/constants/path.hpp>
+#include "ihophandler.hpp"
+#include "path_types.hpp"
+#include <llarp/routing/handler.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 namespace llarp
 {
@@ -236,5 +235,3 @@ namespace llarp
     }
   }  // namespace path
 }  // namespace llarp
-
-#endif

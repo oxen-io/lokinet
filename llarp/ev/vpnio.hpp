@@ -1,7 +1,6 @@
-#ifndef LLARP_EV_VPNIO_HPP
-#define LLARP_EV_VPNIO_HPP
-#include <net/ip_packet.hpp>
-#include <util/thread/queue.hpp>
+#pragma once
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/util/thread/queue.hpp>
 #include <llarp.hpp>
 #include <functional>
 
@@ -42,5 +41,3 @@ struct llarp_vpn_io_impl
   void
   Expunge();
 };
-
-#endif

@@ -1,7 +1,7 @@
-#include <service/identity.hpp>
+#include "identity.hpp"
 
-#include <crypto/crypto.hpp>
-#include <util/fs.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/util/fs.hpp>
 #include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp

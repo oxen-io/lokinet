@@ -1,5 +1,4 @@
-#ifndef LLARP_NET_INT_HPP
-#define LLARP_NET_INT_HPP
+#pragma once
 
 // for addrinfo
 #ifndef _WIN32
@@ -12,11 +11,11 @@
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
-#include <net/net.h>
+#include "net.h"
 
 #include <cstdlib>  // for itoa
 #include <iostream>
-#include <util/endian.hpp>
+#include <llarp/util/endian.hpp>
 #include <vector>
 
 #include "uint128.hpp"
@@ -253,5 +252,3 @@ namespace std
     }
   };
 }  // namespace std
-
-#endif

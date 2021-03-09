@@ -1,9 +1,9 @@
-#include <net/ip_packet.hpp>
-#include <net/ip.hpp>
+#include "ip_packet.hpp"
+#include "ip.hpp"
 
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
-#include <util/mem.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/endian.hpp>
+#include <llarp/util/mem.hpp>
 
 #ifndef _WIN32
 #include <netinet/in.h>

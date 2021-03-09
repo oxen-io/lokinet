@@ -4,8 +4,8 @@
 #include <iphlpapi.h>
 #include <io.h>
 #include <fcntl.h>
-#include <util/thread/queue.hpp>
-#include <ev/vpn.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/ev/vpn.hpp>
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \

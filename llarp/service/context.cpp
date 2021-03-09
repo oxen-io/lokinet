@@ -1,10 +1,10 @@
-#include <service/context.hpp>
+#include "context.hpp"
 
-#include <handlers/null.hpp>
-#include <handlers/tun.hpp>
-#include <nodedb.hpp>
-#include <router/abstractrouter.hpp>
-#include <service/endpoint.hpp>
+#include <llarp/handlers/null.hpp>
+#include <llarp/handlers/tun.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include "endpoint.hpp"
 #include <stdexcept>
 
 namespace llarp

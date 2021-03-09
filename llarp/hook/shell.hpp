@@ -1,5 +1,4 @@
-#ifndef LLARP_HOOK_SHELL_HPP
-#define LLARP_HOOK_SHELL_HPP
+#pragma once
 
 #include "ihook.hpp"
 
@@ -12,4 +11,3 @@ namespace llarp
     ExecShellBackend(std::string execFilePath);
   }  // namespace hooks
 }  // namespace llarp
-#endif

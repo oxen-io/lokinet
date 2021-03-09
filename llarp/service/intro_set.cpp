@@ -1,6 +1,6 @@
-#include <service/intro_set.hpp>
-#include <crypto/crypto.hpp>
-#include <path/path.hpp>
+#include "intro_set.hpp"
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/path/path.hpp>
 
 #include <oxenmq/bt_serialize.h>
 

@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_INTRO_HPP
-#define LLARP_SERVICE_INTRO_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <path/path_types.hpp>
-#include <util/bencode.hpp>
-#include <util/status.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/status.hpp>
 
 #include <iostream>
 
@@ -89,5 +88,3 @@ namespace llarp
     }
   }  // namespace service
 }  // namespace llarp
-
-#endif

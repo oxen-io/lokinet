@@ -1,7 +1,6 @@
-#ifndef LLARP_CONSENSUS_TABLE_HPP
-#define LLARP_CONSENSUS_TABLE_HPP
+#pragma once
 
-#include <crypto/types.hpp>
+#include <llarp/crypto/types.hpp>
 #include <vector>
 
 namespace llarp
@@ -16,5 +15,3 @@ namespace llarp
     };
   }  // namespace consensus
 }  // namespace llarp
-
-#endif

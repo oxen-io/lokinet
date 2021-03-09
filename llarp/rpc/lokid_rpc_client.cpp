@@ -1,13 +1,13 @@
-#include <rpc/lokid_rpc_client.hpp>
+#include "lokid_rpc_client.hpp"
 
 #include <stdexcept>
-#include <util/logging/logger.hpp>
+#include <llarp/util/logging/logger.hpp>
 
-#include <router/abstractrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 #include <nlohmann/json.hpp>
 
-#include <util/time.hpp>
+#include <llarp/util/time.hpp>
 
 namespace llarp
 {

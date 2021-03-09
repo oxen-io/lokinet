@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_HIDDEN_SERVICE_ADDRESS_LOOKUP_HPP
-#define LLARP_SERVICE_HIDDEN_SERVICE_ADDRESS_LOOKUP_HPP
+#pragma once
 
-#include <routing/dht_message.hpp>
-#include <service/intro_set.hpp>
-#include <service/lookup.hpp>
+#include <llarp/routing/dht_message.hpp>
+#include "intro_set.hpp"
+#include "lookup.hpp"
 
 namespace llarp
 {
@@ -37,5 +36,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

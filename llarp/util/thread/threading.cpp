@@ -1,6 +1,6 @@
-#include <util/thread/threading.hpp>
+#include "threading.hpp"
 
-#include <util/logging/logger.hpp>
+#include <llarp/util/logging/logger.hpp>
 #include <cstring>
 
 #ifdef POSIX

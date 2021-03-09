@@ -1,8 +1,7 @@
-#ifndef LLARP_PATH_TYPES_HPP
-#define LLARP_PATH_TYPES_HPP
+#pragma once
 
-#include <crypto/constants.hpp>
-#include <util/aligned.hpp>
+#include <llarp/crypto/constants.hpp>
+#include <llarp/util/aligned.hpp>
 
 namespace llarp
 {
@@ -12,5 +11,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

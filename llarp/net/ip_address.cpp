@@ -1,6 +1,6 @@
-#include <net/ip_address.hpp>
+#include "ip_address.hpp"
 
-#include <net/net.hpp>
+#include "net.hpp"
 
 namespace llarp
 {

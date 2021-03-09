@@ -1,8 +1,8 @@
-#include <iwp/session.hpp>
+#include "session.hpp"
 
-#include <messages/link_intro.hpp>
-#include <messages/discard.hpp>
-#include <util/meta/memfn.hpp>
+#include <llarp/messages/link_intro.hpp>
+#include <llarp/messages/discard.hpp>
+#include <llarp/util/meta/memfn.hpp>
 
 namespace llarp
 {

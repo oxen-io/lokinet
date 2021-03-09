@@ -1,11 +1,11 @@
 #pragma once
 
-#include <ev/vpn.hpp>
+#include <llarp/ev/vpn.hpp>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <vpn/common.hpp>
+#include "common.hpp"
 #include <linux/if.h>
 #include <linux/if_tun.h>
 

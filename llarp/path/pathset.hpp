@@ -1,13 +1,12 @@
-#ifndef LLARP_PATHSET_HPP
-#define LLARP_PATHSET_HPP
+#pragma once
 
-#include <path/path_types.hpp>
-#include <router_id.hpp>
-#include <routing/message.hpp>
-#include <service/intro_set.hpp>
-#include <util/status.hpp>
-#include <util/thread/threading.hpp>
-#include <util/time.hpp>
+#include "path_types.hpp"
+#include <llarp/router_id.hpp>
+#include <llarp/routing/message.hpp>
+#include <llarp/service/intro_set.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/time.hpp>
 
 #include <functional>
 #include <list>
@@ -324,5 +323,3 @@ namespace llarp
 
   }  // namespace path
 }  // namespace llarp
-
-#endif

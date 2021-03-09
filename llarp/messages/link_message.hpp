@@ -1,10 +1,9 @@
-#ifndef LLARP_LINK_MESSAGE_HPP
-#define LLARP_LINK_MESSAGE_HPP
+#pragma once
 
-#include <link/session.hpp>
-#include <router_id.hpp>
-#include <util/bencode.hpp>
-#include <path/path_types.hpp>
+#include <llarp/link/session.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/path/path_types.hpp>
 
 #include <vector>
 
@@ -65,5 +64,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

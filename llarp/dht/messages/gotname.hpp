@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dht/message.hpp>
-#include <service/name.hpp>
+#include <llarp/dht/message.hpp>
+#include <llarp/service/name.hpp>
 
 namespace llarp::dht
 {

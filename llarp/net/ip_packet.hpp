@@ -1,10 +1,9 @@
-#ifndef LLARP_IP_HPP
-#define LLARP_IP_HPP
+#pragma once
 
-#include <ev/ev.hpp>
-#include <net/net.hpp>
-#include <util/buffer.hpp>
-#include <util/time.hpp>
+#include <llarp/ev/ev.hpp>
+#include "net.hpp"
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/time.hpp>
 
 #ifndef _WIN32
 // unix, linux
@@ -106,7 +105,7 @@ struct ipv6_header
 };
 
 #include <memory>
-#include <service/protocol_type.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <utility>
 
 namespace llarp
@@ -283,5 +282,3 @@ namespace llarp
     ipchksum(const byte_t* buf, size_t sz, uint32_t sum = 0);
   }  // namespace net
 }  // namespace llarp
-
-#endif

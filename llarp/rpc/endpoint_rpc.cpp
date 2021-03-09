@@ -1,5 +1,5 @@
 #include "endpoint_rpc.hpp"
-#include <service/endpoint.hpp>
+#include <llarp/service/endpoint.hpp>
 
 namespace llarp::rpc
 {

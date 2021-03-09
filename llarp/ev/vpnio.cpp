@@ -1,6 +1,6 @@
-#include <ev/vpnio.hpp>
+#include "vpnio.hpp"
 #include <llarp.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 void
 llarp_vpn_io_impl::AsyncClose()

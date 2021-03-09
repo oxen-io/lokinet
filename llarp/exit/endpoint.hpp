@@ -1,10 +1,9 @@
-#ifndef LLARP_EXIT_ENDPOINT_HPP
-#define LLARP_EXIT_ENDPOINT_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <net/ip_packet.hpp>
-#include <path/path.hpp>
-#include <util/time.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/util/time.hpp>
 
 #include <queue>
 
@@ -142,5 +141,3 @@ namespace llarp
     };
   }  // namespace exit
 }  // namespace llarp
-
-#endif

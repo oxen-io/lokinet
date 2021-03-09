@@ -1,10 +1,9 @@
-#ifndef LLARP_IWP_HPP
-#define LLARP_IWP_HPP
+#pragma once
 
-#include <link/server.hpp>
-#include <iwp/linklayer.hpp>
+#include <llarp/link/server.hpp>
+#include "linklayer.hpp"
 #include <memory>
-#include <config/key_manager.hpp>
+#include <llarp/config/key_manager.hpp>
 
 namespace llarp::iwp
 {
@@ -39,5 +38,3 @@ namespace llarp::iwp
       WorkerFunc_t work);
 
 }  // namespace llarp::iwp
-
-#endif

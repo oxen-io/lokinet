@@ -1,11 +1,10 @@
-#ifndef LLARP_LINK_FACTORY_HPP
-#define LLARP_LINK_FACTORY_HPP
-#include <config/key_manager.hpp>
+#pragma once
+#include <llarp/config/key_manager.hpp>
 #include <string_view>
 #include <functional>
 #include <memory>
 
-#include <link/server.hpp>
+#include "server.hpp"
 
 namespace llarp
 {
@@ -47,5 +46,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

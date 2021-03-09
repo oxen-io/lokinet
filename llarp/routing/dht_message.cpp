@@ -1,7 +1,7 @@
-#include <routing/dht_message.hpp>
+#include "dht_message.hpp"
 
-#include <router/abstractrouter.hpp>
-#include <routing/handler.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include "handler.hpp"
 
 namespace llarp
 {

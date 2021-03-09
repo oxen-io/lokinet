@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_OUTBOUND_CONTEXT_HPP
-#define LLARP_SERVICE_OUTBOUND_CONTEXT_HPP
+#pragma once
 
-#include <path/pathbuilder.hpp>
-#include <service/sendcontext.hpp>
-#include <util/status.hpp>
+#include <llarp/path/pathbuilder.hpp>
+#include "sendcontext.hpp"
+#include <llarp/util/status.hpp>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -146,4 +145,3 @@ namespace llarp
   }  // namespace service
 
 }  // namespace llarp
-#endif

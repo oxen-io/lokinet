@@ -1,8 +1,8 @@
-#include <exit/endpoint.hpp>
+#include "endpoint.hpp"
 
-#include <handlers/exit.hpp>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/handlers/exit.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {

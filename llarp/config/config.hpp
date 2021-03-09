@@ -1,22 +1,21 @@
-#ifndef LLARP_CONFIG_HPP
-#define LLARP_CONFIG_HPP
+#pragma once
 
 #include <chrono>
-#include <crypto/types.hpp>
-#include <router_contact.hpp>
-#include <util/fs.hpp>
-#include <util/str.hpp>
-#include <config/ini.hpp>
-#include <config/definition.hpp>
-#include <constants/files.hpp>
-#include <net/ip_address.hpp>
-#include <net/net_int.hpp>
-#include <net/ip_range_map.hpp>
-#include <service/address.hpp>
-#include <service/auth.hpp>
-#include <dns/srv_data.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
+#include "ini.hpp"
+#include "definition.hpp"
+#include <llarp/constants/files.hpp>
+#include <llarp/net/ip_address.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/ip_range_map.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/dns/srv_data.hpp>
 
-#include <router_contact.hpp>
+#include <llarp/router_contact.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -276,5 +275,3 @@ namespace llarp
   ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
-
-#endif
