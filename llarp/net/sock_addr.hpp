@@ -131,17 +131,6 @@ namespace llarp
     huint32_t
     asIPv4() const;
 
-    struct Hash
-    {
-      size_t
-      operator()(const SockAddr& addr) const noexcept
-      {
-        const std::hash<uint16_t> port{};
-        const std::hash<huint128_t> ip{};
-        return (port(addr.getPort()) << 3) ^ ip(addr.asIPv6());
-      }
-    };
-
    private:
     bool m_empty = true;
     sockaddr_in6 m_addr;
@@ -158,3 +147,18 @@ namespace llarp
   operator<<(std::ostream& out, const SockAddr& address);
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::SockAddr>
+  {
+    size_t
+    operator()(const llarp::SockAddr& addr) const noexcept
+    {
+      const std::hash<uint16_t> port{};
+      const std::hash<llarp::huint128_t> ip{};
+      return (port(addr.getPort()) << 3) ^ ip(addr.asIPv6());
+    }
+  };
+}  // namespace std

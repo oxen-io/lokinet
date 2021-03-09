@@ -83,8 +83,8 @@ namespace tooling
     GetRelayRCs();
 
     std::mutex routerMutex;
-    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> relays;
-    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> clients;
+    std::unordered_map<llarp::RouterID, Context_ptr> relays;
+    std::unordered_map<llarp::RouterID, Context_ptr> clients;
 
     std::vector<std::thread> routerMainThreads;
 

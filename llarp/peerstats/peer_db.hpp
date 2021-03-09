@@ -127,7 +127,7 @@ namespace llarp
     ExtractStatus() const;
 
    private:
-    std::unordered_map<RouterID, PeerStats, RouterID::Hash> m_peerStats;
+    std::unordered_map<RouterID, PeerStats> m_peerStats;
     mutable std::mutex m_statsLock;
 
     std::unique_ptr<PeerDbStorage> m_storage;

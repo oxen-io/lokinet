@@ -128,10 +128,9 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingSessionMessageQueues
 
-    std::unordered_map<RouterID, MessageQueue, RouterID::Hash> pendingSessionMessageQueues
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, MessageQueue> pendingSessionMessageQueues GUARDED_BY(_mutex);
 
-    std::unordered_map<PathID_t, MessageQueue, PathID_t::Hash> outboundMessageQueues;
+    std::unordered_map<PathID_t, MessageQueue> outboundMessageQueues;
 
     std::queue<PathID_t> roundRobinOrder;
 

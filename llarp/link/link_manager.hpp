@@ -104,10 +104,9 @@ namespace llarp
     LinkSet inboundLinks;
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t, RouterID::Hash> m_PersistingSessions
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t> m_PersistingSessions GUARDED_BY(_mutex);
 
-    std::unordered_map<RouterID, SessionStats, RouterID::Hash> m_lastRouterStats;
+    std::unordered_map<RouterID, SessionStats> m_lastRouterStats;
 
     IOutboundSessionMaker* _sessionMaker;
   };

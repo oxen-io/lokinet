@@ -115,16 +115,16 @@ namespace llarp
           const auto& tx = p.hops[0].txID;
           const auto& rx = p.hops[0].rxID;
           const auto& r = p.hops[0].upstream;
-          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor<size_t>());
+          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor{});
           return std::accumulate(
               rx.begin(),
               rx.begin(),
-              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor<size_t>()),
-              std::bit_xor<size_t>());
+              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor{}),
+              std::bit_xor{});
         }
       };
 
-      /// hash for std::shared_ptr
+      /// hash for std::shared_ptr<Path>
       struct Ptr_Hash
       {
         size_t
@@ -136,7 +136,7 @@ namespace llarp
         }
       };
 
-      /// hash for std::shared_ptr by path endpoint
+      /// hash for std::shared_ptr<Path> by path endpoint
       struct Endpoint_Hash
       {
         size_t
@@ -144,7 +144,7 @@ namespace llarp
         {
           if (p == nullptr)
             return 0;
-          return RouterID::Hash{}(p->Endpoint());
+          return std::hash<RouterID>{}(p->Endpoint());
         }
       };
 

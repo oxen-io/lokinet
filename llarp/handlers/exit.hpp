@@ -134,13 +134,13 @@ namespace llarp
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
-      std::unordered_map<PathID_t, PubKey, PathID_t::Hash> m_Paths;
+      std::unordered_map<PathID_t, PubKey> m_Paths;
 
-      std::unordered_map<PubKey, exit::Endpoint*, PubKey::Hash> m_ChosenExits;
+      std::unordered_map<PubKey, exit::Endpoint*> m_ChosenExits;
 
-      std::unordered_multimap<PubKey, std::unique_ptr<exit::Endpoint>, PubKey::Hash> m_ActiveExits;
+      std::unordered_multimap<PubKey, std::unique_ptr<exit::Endpoint>> m_ActiveExits;
 
-      using KeyMap_t = std::unordered_map<PubKey, huint128_t, PubKey::Hash>;
+      using KeyMap_t = std::unordered_map<PubKey, huint128_t>;
 
       KeyMap_t m_KeyToIP;
 
@@ -148,8 +148,7 @@ namespace llarp
       /// set of pubkeys we treat as snodes
       SNodes_t m_SNodeKeys;
 
-      using SNodeSessions_t =
-          std::unordered_map<RouterID, std::shared_ptr<exit::SNodeSession>, RouterID::Hash>;
+      using SNodeSessions_t = std::unordered_map<RouterID, std::shared_ptr<exit::SNodeSession>>;
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;
 

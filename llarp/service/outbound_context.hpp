@@ -135,7 +135,7 @@ namespace llarp
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
-      std::unordered_map<Introduction, llarp_time_t, Introduction::Hash> m_BadIntros;
+      std::unordered_map<Introduction, llarp_time_t> m_BadIntros;
       llarp_time_t lastShift = 0s;
       uint16_t m_LookupFails = 0;
       uint16_t m_BuildFails = 0;

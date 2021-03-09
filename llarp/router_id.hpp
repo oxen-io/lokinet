@@ -11,8 +11,7 @@ namespace llarp
 
     using Data = std::array<byte_t, SIZE>;
 
-    RouterID()
-    {}
+    RouterID() = default;
 
     RouterID(const byte_t* buf) : AlignedBuffer<SIZE>(buf)
     {}
@@ -44,8 +43,6 @@ namespace llarp
     {
       return out << id.ToString();
     }
-
-    using Hash = AlignedBuffer<SIZE>::Hash;
   };
 
   inline bool
@@ -59,13 +56,6 @@ namespace llarp
 namespace std
 {
   template <>
-  struct hash<llarp::RouterID>
-  {
-    size_t
-    operator()(const llarp::RouterID& id) const
-    {
-      const llarp::RouterID::Hash h{};
-      return h(id);
-    }
-  };
+  struct hash<llarp::RouterID> : hash<llarp::AlignedBuffer<llarp::RouterID::SIZE>>
+  {};
 }  // namespace std

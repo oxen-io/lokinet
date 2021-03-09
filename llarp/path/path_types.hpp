@@ -6,8 +6,13 @@
 namespace llarp
 {
   struct PathID_t final : public AlignedBuffer<PATHIDSIZE>
-  {
-    using Hash = AlignedBuffer<PATHIDSIZE>::Hash;
-  };
+  {};
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::PathID_t> : hash<llarp::AlignedBuffer<llarp::PathID_t::SIZE>>
+  {};
+}  // namespace std

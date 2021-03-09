@@ -44,17 +44,21 @@ namespace llarp
       {
         return std::tie(txid, node) < std::tie(other.txid, other.node);
       }
-
-      struct Hash
-      {
-        std::size_t
-        operator()(const TXOwner& o) const noexcept
-        {
-          std::size_t sz2;
-          memcpy(&sz2, o.node.data(), sizeof(std::size_t));
-          return o.txid ^ (sz2 << 1);
-        }
-      };
     };
   }  // namespace dht
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::dht::TXOwner>
+  {
+    std::size_t
+    operator()(const llarp::dht::TXOwner& o) const noexcept
+    {
+      std::size_t sz2;
+      memcpy(&sz2, o.node.data(), sizeof(std::size_t));
+      return o.txid ^ (sz2 << 1);
+    }
+  };
+}  // namespace std

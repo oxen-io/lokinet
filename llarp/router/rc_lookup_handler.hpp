@@ -114,8 +114,7 @@ namespace llarp
     std::set<RouterContact> _bootstrapRCList;
     std::unordered_set<RouterID> _bootstrapRouterIDList;
 
-    std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
 
     bool useWhitelist = false;
     bool isServiceNode = false;
@@ -123,7 +122,7 @@ namespace llarp
     std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
 
     using TimePoint = std::chrono::steady_clock::time_point;
-    std::unordered_map<RouterID, TimePoint, RouterID::Hash> _routerLookupTimes;
+    std::unordered_map<RouterID, TimePoint> _routerLookupTimes;
   };
 
 }  // namespace llarp

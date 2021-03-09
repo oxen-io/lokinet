@@ -7,7 +7,7 @@ namespace llarp
 {
   namespace util
   {
-    template <typename Val_t, typename Hash_t = typename Val_t::Hash>
+    template <typename Val_t, typename Hash_t = std::hash<Val_t>>
     struct DecayingHashSet
     {
       using Time_t = std::chrono::milliseconds;

@@ -61,8 +61,8 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
-    std::unordered_map<SockAddr, std::weak_ptr<Session>, SockAddr::Hash> m_PlaintextRecv;
-    std::unordered_map<SockAddr, RouterID, SockAddr::Hash> m_AuthedAddrs;
+    std::unordered_map<SockAddr, std::weak_ptr<Session>> m_PlaintextRecv;
+    std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
     const bool permitInbound;
   };
 

@@ -244,16 +244,14 @@ namespace llarp
     std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
 
-    using AuthedLinks =
-        std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>, RouterID::Hash>;
-    using Pending =
-        std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>, SockAddr::Hash>;
+    using AuthedLinks = std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>>;
+    using Pending = std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    std::unordered_map<SockAddr, llarp_time_t, SockAddr::Hash> m_RecentlyClosed;
+    std::unordered_map<SockAddr, llarp_time_t> m_RecentlyClosed;
 
    private:
     std::shared_ptr<int> m_repeater_keepalive;
