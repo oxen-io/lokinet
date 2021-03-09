@@ -1,6 +1,5 @@
 #include "router_hive.hpp"
 
-#include <llarp.h>
 #include <llarp.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/router/abstractrouter.hpp>
