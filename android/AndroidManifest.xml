@@ -3,7 +3,7 @@
     package="network.loki.lokinet"
     android:installLocation="auto"
     android:versionCode="1"
-    android:versionName="0.8.0">
+    android:versionName="0.8.4">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" /> <!-- normal perm, per https://developer.android.com/guide/topics/permissions/normal-permissions.html -->
