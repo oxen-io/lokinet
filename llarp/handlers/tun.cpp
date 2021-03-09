@@ -61,8 +61,8 @@ namespace llarp
         hdr->ttl = 64;
         hdr->frag_off = htons(0b0100000000000000);
 
-        hdr->saddr = from.getIPv4();
-        hdr->daddr = to.getIPv4();
+        hdr->saddr = from.getIPv4().n;
+        hdr->daddr = to.getIPv4().n;
 
         // make udp packet
         uint8_t* ptr = pkt.buf + 20;
@@ -98,8 +98,8 @@ namespace llarp
         const uint8_t* ptr = pkt.buf + ip_header_size;
         const auto dst = ToNet(pkt.dstv4());
         const auto src = ToNet(pkt.srcv4());
-        const SockAddr laddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
-        const SockAddr raddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
+        const SockAddr laddr{src, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
+        const SockAddr raddr{dst, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr + 2)}};
 
         OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
         std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());

@@ -27,11 +27,20 @@ namespace llarp
   struct SockAddr
   {
     SockAddr();
-    SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
-    SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
+    // IPv4 constructors:
+    SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, huint16_t port = {0});
+    SockAddr(nuint32_t ip, nuint16_t port);
+    SockAddr(huint32_t ip, huint16_t port);
+
+    // IPv6 (or IPv4 if given a special IPv4-mapped IPv6 addr) in host order (including port).
+    SockAddr(huint128_t ip, huint16_t port = {0});
+    // IPv6 (or IPv4 if given a special IPv4-mapped IPv6 addr) in network order.  NB: port is also
+    // in network order!
+    SockAddr(nuint128_t ip, nuint16_t port = {0});
+
+    // String ctors
     SockAddr(std::string_view addr);
-    SockAddr(std::string_view addr, uint16_t port);
-    SockAddr(uint32_t ip, uint16_t port);
+    SockAddr(std::string_view addr, uint16_t port);  // port is in native (host) order
 
     SockAddr(const AddressInfo&);
 
@@ -81,23 +90,44 @@ namespace llarp
     void
     setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
-    /// port is in host order
     void
-    setIPv4(uint32_t ip);
+    setIPv4(nuint32_t ip);
 
     void
-    setPort(uint16_t port);
+    setIPv4(huint32_t ip);
 
-    /// port is in host order
+    void
+    setIPv6(huint128_t ip);
+
+    void
+    setIPv6(nuint128_t ip);
+
+    void
+    setPort(huint16_t port);
+
+    void
+    setPort(nuint16_t port);
+
+    // Port is a native (host) value
+    void
+    setPort(uint16_t port)
+    {
+      setPort(huint16_t{port});
+    }
+
+    /// port is always returned in native (host) order
     uint16_t
     getPort() const;
 
-    huint128_t
-    asIPv6() const;
     /// in network order
-    uint32_t
+    nuint128_t
+    getIPv6() const;
+    nuint32_t
     getIPv4() const;
 
+    /// in host order
+    huint128_t
+    asIPv6() const;
     huint32_t
     asIPv4() const;
 
