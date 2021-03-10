@@ -13,5 +13,6 @@ namespace llarp::service
     TrafficV6 = 2UL,
     Exit = 3UL,
     Auth = 4UL,
+    QUIC = 5UL,
   };
 }  // namespace llarp::service

@@ -85,6 +85,20 @@ if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
   target_include_directories(lokinet-platform SYSTEM PUBLIC /usr/local/include)
 endif()
 
+add_library(lokinet-quic
+  quic/address.cpp
+  quic/client.cpp
+  quic/connection.cpp
+  quic/endpoint.cpp
+  quic/null_crypto.cpp
+  quic/server.cpp
+  quic/stream.cpp
+  quic/tunnel.cpp
+  quic/tunnel_client.cpp
+  quic/tunnel_server.cpp
+)
+target_link_libraries(lokinet-quic PRIVATE lokinet-platform ngtcp2)
+
 add_library(liblokinet
   STATIC
   config/config.cpp
@@ -204,7 +218,7 @@ add_library(liblokinet
 
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
-enable_lto(lokinet-util lokinet-platform liblokinet)
+enable_lto(lokinet-util lokinet-platform lokinet-quic liblokinet)
   
 if(TRACY_ROOT)
   target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
@@ -222,7 +236,7 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokinet-quic sqlite_orm)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 

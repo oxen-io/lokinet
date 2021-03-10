@@ -214,3 +214,25 @@ not already running), deliver the packets into it, and it tunnels incoming strea
 connections to the primary lokinet IP (using the IP mapped to the lokinet endpoint as the source
 address).
 
+
+TODO:
+- Add quic protocol type to llarp/service/protocol_types.hpp
+- Convert stuff in plainquic code to use lokinet structures (e.g. logging, address encapsulation)
+- Add handler for QUIC packets to llarp/handlers/tun.cpp that see that protocol type and forward the
+  packet off to the quic server to handle.
+- Get at the uvw event loop from the quic code so that we can put the plainquic stuff onto it rather
+  than spinning up its own event loop.  I was thinking about something like:
+  `virtual std::shared_ptr<void> get_uvw_loop() { return nullptr; }` in ev.h, and an override that
+  returns the uvw event loop in the ev_libuv.h subclass (the type erasure through the shared_ptr<void>
+  means ev.h doesn't have to depend on any uvw.h headers).  Then the quic code can just do something
+  like:
+    auto uv_loop = std::static_pointer_cast<uvw::Loop>(ev->get_uvw_loop());
+    if (not uv_loop) { die("horribly"); }
+- convert the crap in the `main` functions copied from plainquic test code to exposed library calls.
+- decide whether we start up a quic server and/or client on demand, or just always start it.
+
+
+Outgoing conns:
+- Add "supported protocols" item to introset and (for liblokinet) leave off IPv4/v6 flags, but add
+  quic protocol flag.
+
