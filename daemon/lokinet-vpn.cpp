@@ -68,12 +68,14 @@ main(int argc, char* argv[])
     ("token", "exit auth token to use", cxxopts::value<std::string>())
     ("auth", "exit auth token to use", cxxopts::value<std::string>())
     ("status", "print status and exit", cxxopts::value<bool>())
+    ("range", "ip range to map", cxxopts::value<std::string>())
     ;
   // clang-format on
   lokimq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
   std::string endpoint = "default";
   std::optional<std::string> token;
+  std::string range = "::/0";
   lokimq::LogLevel logLevel = lokimq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
@@ -118,6 +120,10 @@ main(int argc, char* argv[])
     {
       token = result["auth"].as<std::string>();
     }
+    if (result.count("range") > 0)
+    {
+      range = result["range"].as<std::string>();
+    }
   }
   catch (const cxxopts::option_not_exists_exception& ex)
   {
@@ -141,10 +147,11 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  lokimq::LokiMQ lmq{[](lokimq::LogLevel lvl, const char* file, int line, std::string msg) {
-                       std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
-                     },
-                     logLevel};
+  lokimq::LokiMQ lmq{
+      [](lokimq::LogLevel lvl, const char* file, int line, std::string msg) {
+        std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
+      },
+      logLevel};
 
   lmq.start();
 
@@ -216,12 +223,12 @@ main(int argc, char* argv[])
           lmq,
           connID,
           "llarp.exit",
-          nlohmann::json{{"exit", exitAddress}, {"range", "0.0.0.0/0"}, {"token", *token}});
+          nlohmann::json{{"exit", exitAddress}, {"range", range}, {"token", *token}});
     }
     else
     {
       maybe_result = LMQ_Request(
-          lmq, connID, "llarp.exit", nlohmann::json{{"exit", exitAddress}, {"range", "0.0.0.0/0"}});
+          lmq, connID, "llarp.exit", nlohmann::json{{"exit", exitAddress}, {"range", range}});
     }
 
     if (not maybe_result.has_value())
@@ -238,7 +245,7 @@ main(int argc, char* argv[])
   }
   if (goDown)
   {
-    LMQ_Request(lmq, connID, "llarp.exit", nlohmann::json{{"range", "0.0.0.0/0"}, {"unmap", true}});
+    LMQ_Request(lmq, connID, "llarp.exit", nlohmann::json{{"range", range}, {"unmap", true}});
   }
 
   return 0;

@@ -40,17 +40,17 @@
 #include <systemd/sd-daemon.h>
 #endif
 
-#include <lokimq/lokimq.h>
+#include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> l)
+  Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
-      , m_lmq(std::make_shared<lokimq::LokiMQ>())
-      , _netloop(std::move(__netloop))
-      , _logic(std::move(l))
+      , m_lmq(std::make_shared<oxenmq::OxenMQ>())
+      , _loop(std::move(loop))
+      , _vpnPlatform(std::move(vpnPlatform))
       , paths(this)
       , _exitContext(this)
       , _dht(llarp_dht_context_new(this))
@@ -88,14 +88,15 @@ namespace llarp
       if (m_peerDb)
         peerStatsObj = m_peerDb->ExtractStatus();
 
-      return util::StatusObject{{"running", true},
-                                {"numNodesKnown", _nodedb->num_loaded()},
-                                {"dht", _dht->impl->ExtractStatus()},
-                                {"services", _hiddenServiceContext.ExtractStatus()},
-                                {"exit", _exitContext.ExtractStatus()},
-                                {"links", _linkManager.ExtractStatus()},
-                                {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
-                                {"peerStats", peerStatsObj}};
+      return util::StatusObject{
+          {"running", true},
+          {"numNodesKnown", _nodedb->NumLoaded()},
+          {"dht", _dht->impl->ExtractStatus()},
+          {"services", _hiddenServiceContext.ExtractStatus()},
+          {"exit", _exitContext.ExtractStatus()},
+          {"links", _linkManager.ExtractStatus()},
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
+          {"peerStats", peerStatsObj}};
     }
     else
     {
@@ -115,6 +116,30 @@ namespace llarp
       return false;
     }
     return inbound_link_msg_parser.ProcessFrom(session, buf);
+  }
+
+  void
+  Router::Thaw()
+  {
+    // get pubkeys we are connected to
+    std::unordered_set<RouterID> peerPubkeys;
+    linkManager().ForEachPeer([&peerPubkeys](auto peer) {
+      if (not peer)
+        return;
+      peerPubkeys.emplace(peer->GetPubKey());
+    });
+    // close our sessions to them on link layer
+    linkManager().ForEachOutboundLink([peerPubkeys](const auto& link) {
+      for (const auto& remote : peerPubkeys)
+        link->CloseSessionTo(remote);
+    });
+    // thaw endpoints
+    hiddenServiceContext().ForEachService([](const auto& name, const auto& ep) -> bool {
+      LogInfo(name, " thawing...");
+      ep->Thaw();
+      return true;
+    });
+    LogInfo("We are ready to go bruh...  probably");
   }
 
   void
@@ -146,19 +171,12 @@ namespace llarp
       return _rcLookupHandler.GetRandomWhitelistRouter(router);
     }
 
-    auto pick_router = [&](auto& collection) -> bool {
-      const auto sz = collection.size();
-      auto itr = collection.begin();
-      if (sz == 0)
-        return false;
-      if (sz > 1)
-        std::advance(itr, randint() % sz);
-      router = itr->first;
+    if (const auto maybe = nodedb()->GetRandom([](const auto&) -> bool { return true; }))
+    {
+      router = maybe->pubkey;
       return true;
-    };
-
-    util::Lock l{nodedb()->access};
-    return pick_router(nodedb()->entries);
+    }
+    return false;
   }
 
   void
@@ -266,17 +284,17 @@ namespace llarp
   }
 
   bool
-  Router::Configure(std::shared_ptr<Config> c, bool isRouter, llarp_nodedb* nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
   {
-    m_Config = c;
+    m_Config = std::move(c);
     auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
-      lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
+      lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
 
     enableRPCServer = conf.api.m_enableRPCServer;
     if (enableRPCServer)
-      rpcBindAddr = lokimq::address(conf.api.m_rpcBindAddr);
+      rpcBindAddr = oxenmq::address(conf.api.m_rpcBindAddr);
 
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
@@ -286,7 +304,7 @@ namespace llarp
 
     m_lmq->start();
 
-    _nodedb = nodedb;
+    _nodedb = std::move(nodedb);
 
     m_isServiceNode = conf.router.m_isRelay;
 
@@ -345,16 +363,8 @@ namespace llarp
     if (_onDown)
       _onDown();
     LogInfo("closing router");
-    llarp_ev_loop_stop(_netloop);
+    _loop->stop();
     _running.store(false);
-  }
-
-  void
-  Router::handle_router_ticker()
-  {
-    ticker_job_id = 0;
-    Tick();
-    ScheduleTicker(ROUTER_TICK_INTERVAL);
   }
 
   bool
@@ -451,13 +461,14 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    _ourAddress = conf.router.m_publicAddress;
+    if (not conf.router.m_publicAddress.isEmpty())
+      _ourAddress = conf.router.m_publicAddress.createSockAddr();
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
     // Lokid Config
     whitelistRouters = conf.lokid.whitelistRouters;
-    lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
+    lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
 
     m_isServiceNode = conf.router.m_isRelay;
 
@@ -466,7 +477,7 @@ namespace llarp
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
     //        or not?
-    std::set<RouterID> strictConnectPubkeys;
+    std::unordered_set<RouterID> strictConnectPubkeys;
     if (not networkConfig.m_strictConnect.empty())
     {
       const auto& val = networkConfig.m_strictConnect;
@@ -551,19 +562,19 @@ namespace llarp
     LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _logic);
+    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,
         &_rcLookupHandler,
         &_routerProfiling,
-        _logic,
-        _nodedb,
+        _loop,
         util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
+        _loop,
         util::memFn(&AbstractRouter::QueueWork, this),
         &_linkManager,
         &_hiddenServiceContext,
@@ -591,6 +602,7 @@ namespace llarp
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
+          loop(),
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
@@ -605,7 +617,7 @@ namespace llarp
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
-      if (!server->Configure(netloop(), key, af, port))
+      if (!server->Configure(loop(), key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
@@ -687,7 +699,7 @@ namespace llarp
   Router::ReportStats()
   {
     const auto now = Now();
-    LogInfo(nodedb()->num_loaded(), " RCs loaded");
+    LogInfo(nodedb()->NumLoaded(), " RCs loaded");
     LogInfo(bootstrapRCList.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
     if (IsServiceNode())
@@ -715,13 +727,13 @@ namespace llarp
       ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
       if (IsServiceNode())
       {
-        ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
+        ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths";
       }
       else
       {
-        ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
+        ss << " client | known/connected: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << " | path success: ";
         hiddenServiceContext().ForEachService([&ss](const auto& name, const auto& ep) {
           ss << " [" << name << " " << std::setprecision(4)
@@ -805,13 +817,18 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
-    if (HasClientExit())
+    if (not isSvcNode)
     {
-      m_RoutePoker.Enable();
+      if (HasClientExit())
+      {
+        m_RoutePoker.Enable();
+      }
+      else
+      {
+        m_RoutePoker.Disable();
+      }
       m_RoutePoker.Update();
     }
-    else
-      m_RoutePoker.Disable();
 
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)
@@ -848,11 +865,8 @@ namespace llarp
     {
       QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
-    // save nodedb
-    if (nodedb()->ShouldSaveToDisk(now))
-    {
-      nodedb()->AsyncFlushToDisk();
-    }
+
+    _nodedb->Tick(now);
 
     if (m_peerDb)
     {
@@ -890,12 +904,6 @@ namespace llarp
   }
 
   void
-  Router::ScheduleTicker(llarp_time_t interval)
-  {
-    ticker_job_id = _logic->call_later(interval, std::bind(&Router::handle_router_ticker, this));
-  }
-
-  void
   Router::SessionClosed(RouterID remote)
   {
     dht::Key_t k(remote);
@@ -904,10 +912,11 @@ namespace llarp
     LogInfo("Session to ", remote, " fully closed");
     if (IsServiceNode())
       return;
-    RouterContact rc;
-    if (not nodedb()->Get(remote, rc))
-      return;
-    m_RoutePoker.DelRoute(rc.addrs[0].toIpAddress().toIP());
+    if (const auto maybe = nodedb()->Get(remote); maybe.has_value())
+    {
+      for (const auto& addr : maybe->addrs)
+        m_RoutePoker.DelRoute(addr.toIpAddress().toIP());
+    }
   }
 
   void
@@ -1007,9 +1016,9 @@ namespace llarp
       if (link->GetOurAddressInfo(ai))
       {
         // override ip and port
-        if (not _ourAddress.isEmpty())
+        if (_ourAddress)
         {
-          ai.fromIpAddress(_ourAddress);
+          ai.fromSockAddr(*_ourAddress);
         }
         if (RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
@@ -1049,7 +1058,7 @@ namespace llarp
       }
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_logic))
+    if (!_linkManager.StartLinks())
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1093,35 +1102,28 @@ namespace llarp
     }
 
     {
-      ssize_t loaded = _nodedb->LoadAll();
-      llarp::LogInfo("loaded ", loaded, " RCs");
-      if (loaded < 0)
-      {
-        // shouldn't be possible
-        return false;
-      }
+      LogInfo("Loading nodedb from disk...");
+      _nodedb->LoadFromDisk();
     }
 
     llarp_dht_context_start(dht(), pubkey());
 
     for (const auto& rc : bootstrapRCList)
     {
-      if (this->nodedb()->Insert(rc))
-      {
-        LogInfo("added bootstrap node ", RouterID(rc.pubkey));
-      }
-      else
-      {
-        LogError("Failed to add bootstrap node ", RouterID(rc.pubkey));
-      }
+      nodedb()->Put(rc);
       _dht->impl->Nodes()->PutNode(rc);
+      LogInfo("added bootstrap node ", RouterID{rc.pubkey});
     }
 
-    LogInfo("have ", _nodedb->num_loaded(), " routers");
+    LogInfo("have ", _nodedb->NumLoaded(), " routers");
 
-    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
-
-    ScheduleTicker(ROUTER_TICK_INTERVAL);
+#ifdef _WIN32
+    // windows uses proactor event loop so we need to constantly pump
+    _loop->add_ticker([this] { PumpLL(); });
+#else
+    _loop->set_pump_function([this] { PumpLL(); });
+#endif
+    _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1157,8 +1159,8 @@ namespace llarp
   Router::AfterStopIssued()
   {
     StopLinks();
-    nodedb()->AsyncFlushToDisk();
-    _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
+    nodedb()->SaveToDisk();
+    _loop->call_later(200ms, [this] { AfterStopLinks(); });
   }
 
   void
@@ -1205,7 +1207,7 @@ namespace llarp
     _exitContext.Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
-    _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));
+    _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
 
   bool
@@ -1296,6 +1298,7 @@ namespace llarp
   {
     auto link = iwp::NewOutboundLink(
         m_keyManager,
+        loop(),
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
@@ -1318,13 +1321,14 @@ namespace llarp
     if (!link)
       throw std::runtime_error("NewOutboundLink() failed to provide a link");
 
-    const auto afs = {AF_INET, AF_INET6};
-
-    for (const auto af : afs)
+    for (const auto af : {AF_INET, AF_INET6})
     {
-      if (not link->Configure(netloop(), "*", af, m_OutboundPort))
+      if (not link->Configure(loop(), "*", af, m_OutboundPort))
         continue;
 
+#if defined(ANDROID)
+      m_OutboundUDPSocket = link->GetUDPFD().value_or(-1);
+#endif
       _linkManager.AddLink(std::move(link), false);
       return true;
     }

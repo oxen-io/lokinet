@@ -82,7 +82,7 @@ namespace llarp
     bool
     GotRouterMessage::HandleMessage(
         llarp_dht_context* ctx,
-        __attribute__((unused)) std::vector<std::unique_ptr<IMessage>>& replies) const
+        [[maybe_unused]] std::vector<std::unique_ptr<IMessage>>& replies) const
     {
       auto& dht = *ctx->impl;
       if (relayed)

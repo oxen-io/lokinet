@@ -16,6 +16,12 @@ namespace llarp::net
     return huint128_t{0x0000'ffff'0000'0000UL} | huint128_t{x.h};
   }
 
+  constexpr huint128_t
+  ExpandV4Lan(huint32_t x)
+  {
+    return huint128_t{uint128_t{0xfd00'0000'0000'0000UL, 0UL}} | huint128_t{x.h};
+  }
+
   constexpr huint32_t
   TruncateV6(huint128_t x)
   {

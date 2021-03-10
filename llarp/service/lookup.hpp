@@ -71,11 +71,12 @@ namespace llarp
       ExtractStatus() const
       {
         auto now = time_now_ms();
-        util::StatusObject obj{{"txid", txid},
-                               {"endpoint", endpoint.ToHex()},
-                               {"name", name},
-                               {"timedOut", IsTimedOut(now)},
-                               {"createdAt", m_created.count()}};
+        util::StatusObject obj{
+            {"txid", txid},
+            {"endpoint", endpoint.ToHex()},
+            {"name", name},
+            {"timedOut", IsTimedOut(now)},
+            {"createdAt", m_created.count()}};
         return obj;
       }
 

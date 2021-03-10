@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <memory>
 #include <net/net_int.hpp>
 
 namespace llarp
@@ -34,6 +35,14 @@ namespace llarp
     void
     Disable();
 
+    /// explicitly put routes up
+    void
+    Up();
+
+    /// explicitly put routes down
+    void
+    Down();
+
    private:
     void
     DeleteAllRoutes();
@@ -60,5 +69,7 @@ namespace llarp
     bool m_Enabling = false;
 
     AbstractRouter* m_Router = nullptr;
+
+    bool m_HasNetwork = true;
   };
 }  // namespace llarp

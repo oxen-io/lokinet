@@ -2,7 +2,6 @@
 #define LLARP_I_LINK_MANAGER_HPP
 
 #include <link/server.hpp>
-#include <util/thread/logic.hpp>
 #include <util/types.hpp>
 #include <peerstats/peer_db.hpp>
 
@@ -13,8 +12,6 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  using Logic_ptr = std::shared_ptr<Logic>;
-
   struct RouterContact;
   struct ILinkSession;
   struct IOutboundSessionMaker;
@@ -52,7 +49,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) = 0;
 
     virtual bool
-    StartLinks(Logic_ptr logic) = 0;
+    StartLinks() = 0;
 
     virtual void
     Stop() = 0;
@@ -69,6 +66,9 @@ namespace llarp
 
     virtual void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
+
+    virtual void
+    ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
 
     /// close all connections to this peer
     /// remove all link layer commits

@@ -9,25 +9,20 @@ namespace llarp
   void
   RoutePoker::AddRoute(huint32_t ip)
   {
-    llarp::LogInfo(
-        "RoutePoker::AddRoute adding route to IP (",
-        ip.ToString(),
-        ") via current gateway (",
-        m_CurrentGateway.ToString(),
-        ")");
-    m_PokedRoutes.emplace(ip, m_CurrentGateway);
+    m_PokedRoutes[ip] = m_CurrentGateway;
     if (m_CurrentGateway.h == 0)
     {
-      llarp::LogInfo("RoutePoker::AddRoute no current gateway, cannot enable route.");
+      llarp::LogDebug("RoutePoker::AddRoute no current gateway, cannot enable route.");
     }
     else if (m_Enabled or m_Enabling)
     {
-      llarp::LogInfo("RoutePoker::AddRoute enabled, enabling route.");
+      llarp::LogInfo(
+          "RoutePoker::AddRoute enabled, enabling route to ", ip, " via ", m_CurrentGateway);
       EnableRoute(ip, m_CurrentGateway);
     }
     else
     {
-      llarp::LogInfo("RoutePoker::AddRoute disabled, not enabling route.");
+      llarp::LogDebug("RoutePoker::AddRoute disabled, not enabling route.");
     }
   }
 
@@ -49,10 +44,10 @@ namespace llarp
     const auto itr = m_PokedRoutes.find(ip);
     if (itr == m_PokedRoutes.end())
       return;
-    m_PokedRoutes.erase(itr);
 
     if (m_Enabled)
       DisableRoute(itr->first, itr->second);
+    m_PokedRoutes.erase(itr);
   }
 
   void
@@ -91,7 +86,10 @@ namespace llarp
   RoutePoker::~RoutePoker()
   {
     for (const auto& [ip, gateway] : m_PokedRoutes)
-      net::DelRoute(ip.ToString(), gateway.ToString());
+    {
+      if (gateway.h)
+        net::DelRoute(ip.ToString(), gateway.ToString());
+    }
   }
 
   std::optional<huint32_t>
@@ -102,9 +100,12 @@ namespace llarp
 
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
+    if (gateways.empty())
+    {
+      return std::nullopt;
+    }
     huint32_t addr{};
-    if (not gateways.empty())
-      addr.FromString(gateways[0]);
+    addr.FromString(gateways[0]);
     return addr;
   }
 
@@ -114,24 +115,35 @@ namespace llarp
     if (not m_Router)
       throw std::runtime_error("Attempting to use RoutePoker before calling Init");
 
+    // check for network
     const auto maybe = GetDefaultGateway();
     if (not maybe.has_value())
     {
       LogError("Network is down");
+      // mark network lost
+      m_HasNetwork = false;
       return;
     }
     const huint32_t gateway = *maybe;
-    if (m_CurrentGateway != gateway or m_Enabling)
+
+    const bool gatewayChanged = m_CurrentGateway.h != 0 and m_CurrentGateway != gateway;
+
+    if (m_CurrentGateway != gateway)
     {
       LogInfo("found default gateway: ", gateway);
       m_CurrentGateway = gateway;
-
-      if (not m_Enabling)  // if route was already set up
-        DisableAllRoutes();
-      EnableAllRoutes();
-
-      const auto ep = m_Router->hiddenServiceContext().GetDefault();
-      net::AddDefaultRouteViaInterface(ep->GetIfName());
+      if (m_Enabling)
+      {
+        EnableAllRoutes();
+        Up();
+      }
+    }
+    // revive network connectitivity on gateway change or network wakeup
+    if (gatewayChanged or not m_HasNetwork)
+    {
+      LogInfo("our network changed, thawing router state");
+      m_Router->Thaw();
+      m_HasNetwork = true;
     }
   }
 
@@ -154,5 +166,31 @@ namespace llarp
       return;
 
     DisableAllRoutes();
+    m_Enabled = false;
   }
+
+  void
+  RoutePoker::Up()
+  {
+    // explicit route pokes for first hops
+    m_Router->ForEachPeer(
+        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },
+        false);
+    // add default route
+    const auto ep = m_Router->hiddenServiceContext().GetDefault();
+    net::AddDefaultRouteViaInterface(ep->GetIfName());
+  }
+
+  void
+  RoutePoker::Down()
+  {
+    // unpoke routes for first hops
+    m_Router->ForEachPeer(
+        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint().asIPv4()); },
+        false);
+    // remove default route
+    const auto ep = m_Router->hiddenServiceContext().GetDefault();
+    net::DelDefaultRouteViaInterface(ep->GetIfName());
+  }
+
 }  // namespace llarp

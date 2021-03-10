@@ -1,7 +1,6 @@
 #include <util/meta/memfn.hpp>
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch.hpp>
 
 using namespace llarp;
 
@@ -32,36 +31,25 @@ struct Foo
   }
 };
 
-TEST(MemFn, call)
+TEST_CASE("memFn call")
 {
   Foo foo;
-  ASSERT_FALSE(util::memFn(&Foo::empty, &foo)());
-  ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
-  ASSERT_EQ(11, util::memFn(&Foo::arg, &foo)(10));
-  ASSERT_EQ(9, util::memFn(&Foo::constArg, &foo)(10));
+  REQUIRE_FALSE(util::memFn(&Foo::empty, &foo)());
+  REQUIRE(util::memFn(&Foo::constEmpty, &foo)());
+  REQUIRE(11 == util::memFn(&Foo::arg, &foo)(10));
+  REQUIRE(9 == util::memFn(&Foo::constArg, &foo)(10));
 
-  ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
-  ASSERT_EQ(9, util::memFn(&Foo::constArg, &foo)(10));
+  REQUIRE(util::memFn(&Foo::constEmpty, &foo)());
+  REQUIRE(9 == util::memFn(&Foo::constArg, &foo)(10));
 }
-
-template < typename T >
-class MemFnType : public ::testing::Test
-{
-};
-
-TYPED_TEST_SUITE_P(MemFnType);
-
-TYPED_TEST_P(MemFnType, Smoke)
-{
-  TypeParam foo{};
-  ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
-}
-
-REGISTER_TYPED_TEST_SUITE_P(MemFnType, Smoke);
 
 // clang-format off
-using MemFnTypes = ::testing::Types<
+using MemFnTypes = std::tuple<
   Foo, const Foo>;
-
-INSTANTIATE_TYPED_TEST_SUITE_P(MemFn, MemFnType, MemFnTypes);
 // clang-format on
+
+TEMPLATE_LIST_TEST_CASE("memFn type smoke test", "", MemFnTypes)
+{
+  TestType foo{};
+  REQUIRE(util::memFn(&Foo::constEmpty, &foo)());
+}

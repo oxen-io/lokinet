@@ -2,9 +2,8 @@
 #define LLARP_DNS_SERVER_HPP
 
 #include <dns/message.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <net/net.hpp>
-#include <util/thread/logic.hpp>
 #include <dns/unbound_resolver.hpp>
 
 #include <unordered_map>
@@ -14,8 +13,9 @@ namespace llarp
   namespace dns
   {
     /// handler of dns query hooking
-    struct IQueryHandler
+    class IQueryHandler
     {
+     public:
       virtual ~IQueryHandler() = default;
 
       /// return true if we should hook this message
@@ -27,96 +27,63 @@ namespace llarp
       HandleHookedDNSMessage(Message query, std::function<void(Message)> sendReply) = 0;
     };
 
-    struct Proxy : public std::enable_shared_from_this<Proxy>
+    // Base class for DNS lookups
+    class PacketHandler : public std::enable_shared_from_this<PacketHandler>
     {
-      using Logic_ptr = std::shared_ptr<Logic>;
-      Proxy(
-          llarp_ev_loop_ptr serverLoop,
-          Logic_ptr serverLogic,
-          llarp_ev_loop_ptr clientLoop,
-          Logic_ptr clientLogic,
-          IQueryHandler* handler);
+     public:
+      explicit PacketHandler(EventLoop_ptr loop, IQueryHandler* handler);
 
-      bool
-      Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers);
+      virtual ~PacketHandler() = default;
+
+      virtual bool
+      Start(SockAddr localaddr, std::vector<IpAddress> upstreamResolvers);
 
       void
       Stop();
 
-      using Buffer_t = std::vector<uint8_t>;
-
-     private:
-      /// low level packet handler
-      static void
-      HandleUDPRecv_client(llarp_udp_io*, const SockAddr&, ManagedBuffer);
-      static void
-      HandleUDPRecv_server(llarp_udp_io*, const SockAddr&, ManagedBuffer);
-
-      /// low level ticker
-      static void
-      HandleTick(llarp_udp_io*);
+      void
+      Restart();
 
       void
-      HandlePktClient(const SockAddr& from, Buffer_t buf);
-
-      void
-      HandlePktServer(const SockAddr& from, Buffer_t buf);
-
-      void
-      SendClientMessageTo(const SockAddr& to, Message msg);
-
-      void
-      SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf);
-
-      void
-      SendServerMessageTo(const SockAddr& to, Message msg);
-
-      void
-      HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf);
-
-      void
-      HandleUpstreamFailure(const SockAddr& to, Message msg);
-
-      IpAddress
-      PickRandomResolver() const;
+      HandlePacket(const SockAddr& resolver, const SockAddr& from, llarp_buffer_t buf);
 
       bool
-      SetupUnboundResolver(const std::vector<IpAddress>& resolvers);
+      ShouldHandlePacket(const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) const;
+
+     protected:
+      virtual void
+      SendServerMessageBufferTo(const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) = 0;
 
      private:
-      llarp_udp_io m_Server;
-      llarp_udp_io m_Client;
-      llarp_ev_loop_ptr m_ServerLoop;
-      llarp_ev_loop_ptr m_ClientLoop;
-      Logic_ptr m_ServerLogic;
-      Logic_ptr m_ClientLogic;
-      IQueryHandler* m_QueryHandler;
-      std::vector<IpAddress> m_Resolvers;
+      void
+      HandleUpstreamFailure(const SockAddr& from, const SockAddr& to, Message msg);
+
+      bool
+      SetupUnboundResolver(std::vector<IpAddress> resolvers);
+
+      IQueryHandler* const m_QueryHandler;
+      std::set<IpAddress> m_Resolvers;
       std::shared_ptr<UnboundResolver> m_UnboundResolver;
+      EventLoop_ptr m_Loop;
+    };
 
-      struct TX
-      {
-        MsgID_t txid;
-        IpAddress from;
+    // Proxying DNS handler that listens on a UDP port for proper DNS requests.
+    class Proxy : public PacketHandler
+    {
+     public:
+      explicit Proxy(EventLoop_ptr loop, IQueryHandler* handler);
 
-        bool
-        operator==(const TX& other) const
-        {
-          return txid == other.txid && from == other.from;
-        }
+      bool
+      Start(SockAddr localaddr, std::vector<IpAddress> resolvers) override;
 
-        struct Hash
-        {
-          size_t
-          operator()(const TX& t) const noexcept
-          {
-            return t.txid ^ IpAddress::Hash()(t.from);
-          }
-        };
-      };
+     protected:
+      void
+      SendServerMessageBufferTo(
+          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override;
 
-      // maps tx to who to send reply to
-      std::unordered_map<TX, IpAddress, TX::Hash> m_Forwarded;
+     private:
+      std::shared_ptr<UDPHandle> m_Server;
+      EventLoop_ptr m_Loop;
     };
   }  // namespace dns
 }  // namespace llarp

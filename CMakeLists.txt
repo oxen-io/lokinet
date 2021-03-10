@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
@@ -14,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.8.3
+    VERSION 0.8.4
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -23,7 +25,7 @@ set(RELEASE_MOTTO "Proof of soon" CACHE STRING "Release motto")
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
 add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
-if(RELEASE_MOTTO)
+if(RELEASE_MOTTO AND CMAKE_BUILD_TYPE MATCHES "[Rr][Ee][Ll][Ee][Aa][Ss][Ee]")
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
 
@@ -124,6 +126,19 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 
+
+if(NOT BUILD_STATIC_DEPS)
+  pkg_check_modules(LIBUV libuv>=1.18.0 IMPORTED_TARGET)
+endif()
+if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
+  add_library(libuv INTERFACE)
+  target_link_libraries(libuv INTERFACE PkgConfig::LIBUV)
+else()
+  if(NOT BUILD_STATIC_DEPS)
+    message(FATAL_ERROR "Could not find libu >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
+  endif()
+endif()
+
 if(NOT TARGET sodium)
 # Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
   option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
@@ -147,19 +162,19 @@ if(NOT TARGET sodium)
   export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
 endif()
 
-option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
-if(NOT FORCE_LOKIMQ_SUBMODULE)
-  pkg_check_modules(LOKIMQ liblokimq>=1.2.2)
+option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
+if(NOT FORCE_OXENMQ_SUBMODULE)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.4)
 endif()
-if(LOKIMQ_FOUND)
-  add_library(lokimq INTERFACE)
-  link_dep_libs(lokimq INTERFACE "${LOKIMQ_LIBRARY_DIRS}" ${LOKIMQ_LIBRARIES})
-  target_include_directories(lokimq INTERFACE ${LOKIMQ_INCLUDE_DIRS})
-  add_library(lokimq::lokimq ALIAS lokimq)
-  message(STATUS "Found system liblokimq ${LOKIMQ_VERSION}")
+if(OXENMQ_FOUND)
+  add_library(oxenmq INTERFACE)
+  link_dep_libs(oxenmq INTERFACE "${OXENMQ_LIBRARY_DIRS}" ${OXENMQ_LIBRARIES})
+  target_include_directories(oxenmq INTERFACE ${OXENMQ_INCLUDE_DIRS})
+  add_library(oxenmq::oxenmq ALIAS oxenmq)
+  message(STATUS "Found system liboxenmq ${OXENMQ_VERSION}")
 else()
-  message(STATUS "using lokimq submodule")
-  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq)
+  message(STATUS "using oxenmq submodule")
+  add_subdirectory(${CMAKE_SOURCE_DIR}/external/oxen-mq)
 endif()
 
 
@@ -197,11 +212,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if (NOT MSVC_VERSION)
-	add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
-	# vla are evil
-	add_compile_options(-Wvla)
-	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
+  # vla are evil
+  add_compile_options(-Werror=vla)
+  add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
 endif()
 
 include(cmake/coverage.cmake)
@@ -224,12 +238,6 @@ elseif(NOT NON_PC_TARGET)
     # Public binary releases
     add_compile_options(-march=nocona -mtune=haswell -mfpmath=sse)
   endif()
-endif()
-
-if(EMBEDDED_CFG)
-  message(WARNING "This configuration is optimised for older hardware and/or constrained node operation, may result in poor performance on desktop systems")
-  message(WARNING "For deployment on such systems, all external code (currently, libuv) must also be compiled for the target!")
-  add_compile_options(-march=i486 -mtune=i486)
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -302,24 +310,18 @@ if(SUBMODULE_CHECK)
 
     message(STATUS "Checking submodules")
     check_submodule(external/nlohmann)
-    check_submodule(external/googletest)
     check_submodule(external/cxxopts)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
     check_submodule(external/pybind11)
     check_submodule(external/sqlite_orm)
-    if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
-      check_submodule(external/libuv)
-    endif()
-    check_submodule(external/loki-mq)
+    check_submodule(external/oxen-mq)
+    check_submodule(external/uvw)
   endif()
 endif()
 
 if(WITH_HIVE)
   add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
-endif()
-if(WITH_TESTS)
-  add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
@@ -328,8 +330,6 @@ add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
 
 include_directories(SYSTEM external/sqlite_orm/include)
-
-add_subdirectory(vendor)
 
 if(ANDROID)
   target_link_libraries(base_libs INTERFACE log)

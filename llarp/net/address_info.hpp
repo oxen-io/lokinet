@@ -44,9 +44,9 @@ namespace llarp
     IpAddress
     toIpAddress() const;
 
-    /// Updates our ip and port to reflact that of the given IpAddress
+    /// Updates our ip and port to reflect that of the given SockAddr
     void
-    fromIpAddress(const IpAddress& address);
+    fromSockAddr(const SockAddr& address);
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;

@@ -2,7 +2,7 @@ local default_deps_base='libsystemd-dev python3-dev libuv1-dev libunbound-dev ne
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 local default_windows_deps='mingw-w64 zip nsis';
-
+local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
 local submodules = {
     name: 'submodules',
@@ -51,19 +51,40 @@ local debian_pipeline(name, image,
                 'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -G Ninja -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
                 'ninja -v',
-                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
-                '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
+                '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
             ] + extra_cmds,
         }
     ],
 };
-
-// windows cross compile on alpine linux
+local apk_builder(name, image, extra_cmds=[], allow_fail=false) = {
+    kind: 'pipeline',
+    type: 'docker',
+    name: name,
+    platform: {arch: "amd64"},
+    trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+    steps: [
+        submodules,
+        {
+            name: 'build',
+            image: image,
+            [if allow_fail then "failure"]: "ignore",
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
+            commands: [
+                "cd android",
+                "rm -f local.properties",
+                "echo 'sdk.dir=/usr/lib/android-sdk' >> local.properties",
+                "echo 'ndk.dir=/usr/lib/android-ndk' >> local.properties",
+                "GRADLE_USER_HOME=/cache/gradle/${DRONE_STAGE_MACHINE} gradle --no-daemon assembleDebug",
+            ] + extra_cmds
+        }
+    ]
+};
+// windows cross compile on debian
 local windows_cross_pipeline(name, image,
         arch='amd64',
         build_type='Release',
@@ -90,13 +111,12 @@ local windows_cross_pipeline(name, image,
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip',
+                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-                'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CROSSCOMPILE=ON -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
@@ -134,7 +154,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
                 |||
                     # Look for the debian branch in this repo first, try upstream if that fails.
                     if ! git checkout $${distro_branch}; then
-                        git remote add --fetch upstream https://github.com/loki-project/loki-network.git &&
+                        git remote add --fetch upstream https://github.com/oxen-io/loki-network.git &&
                         git checkout $${distro_branch}
                     fi
                 |||,
@@ -156,6 +176,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
     ]
 };
 
+
 // Macos build
 local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra_cmds=[], allow_fail=false) = {
     kind: 'pipeline',
@@ -172,13 +193,13 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 // If you don't do this then the C compiler doesn't have an include path containing
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
+                'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
                 'ninja -v',
-                './test/testAll --gtest_color=yes',
-                './test/catchAll --use-colour yes',
+                './test/testAll --use-colour yes',
             ] + extra_cmds,
         }
     ]
@@ -191,12 +212,12 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         kind: 'pipeline',
         type: 'docker',
         steps: [{
-            name: 'build', image: 'debian:sid',
+            name: 'build', image: 'registry.oxen.rocks/lokinet-ci-lint',
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-9',
+                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-11',
                 './contrib/ci/drone-format-verify.sh']
         }]
     },
@@ -204,25 +225,36 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // Various debian builds
     debian_pipeline("Debian sid (amd64)", "debian:sid"),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian sid/clang-11 (amd64)", "debian:sid", deps='clang-11 '+default_deps_nocxx,
+    debian_pipeline("Debian sid/clang-11 (amd64)", docker_base+'debian-sid', deps='clang-11 '+default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 '),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
-    debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
+    debian_pipeline("Ubuntu focal (amd64)", docker_base+'ubuntu-focal'),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', loki_repo=true),
 
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+    // Static armhf build (gets uploaded)
+    debian_pipeline("Static (buster armhf)", "arm32v7/debian:buster", arch="arm64", deps='g++ python3-dev automake libtool',
+                    cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                        '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" -DNATIVE_BUILD=OFF ' +
+                        '-DWITH_SYSTEMD=OFF',
+                    extra_cmds=[
+                        '../contrib/ci/drone-check-static-libs.sh',
+                        'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh'
+                    ]),
+    // android apk builder
+    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=anrdoid ../contrib/ci/drone-static-upload.sh']),
     
     // Windows builds (x64)
-    windows_cross_pipeline("Windows (amd64)", "debian:testing",
+    windows_cross_pipeline("Windows (amd64)", docker_base+'debian-win32-cross',
         toolchain='64', extra_cmds=[
           '../contrib/ci/drone-static-upload.sh'
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 python3-dev', lto=true,
+    debian_pipeline("Static (bionic amd64)", docker_base+'ubuntu-bionic', deps='g++-8 python3-dev automake libtool', lto=true,
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" -DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" -DNATIVE_BUILD=OFF ' +
                         '-DWITH_SYSTEMD=OFF',

@@ -7,27 +7,33 @@
 
 #include <test_util.hpp>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 using namespace ::llarp;
-using namespace ::testing;
 
 using EncryptedFrame = EncryptedFrame;
-using SecretKey      = SecretKey;
-using PubKey         = PubKey;
-using LRCR           = LR_CommitRecord;
+using SecretKey = SecretKey;
+using PubKey = PubKey;
+using LRCR = LR_CommitRecord;
 
 class FrameTest : public test::LlarpTest<>
 {
  public:
+  FrameTest() : test::LlarpTest<>{}
+  {
+    auto crypto = CryptoManager::instance();
+    crypto->encryption_keygen(alice);
+    crypto->encryption_keygen(bob);
+  }
+
   SecretKey alice, bob;
 };
 
-TEST_F(FrameTest, TestFrameCrypto)
+TEST_CASE_METHOD(FrameTest, "Frame crypto")
 {
-  EncryptedFrame f(256);
+  EncryptedFrame f{256};
   f.Fill(0);
-  LRCR record;
+  LRCR record{};
   record.nextHop.Fill(1);
   record.tunnelNonce.Fill(2);
   record.rxid.Fill(3);
@@ -36,28 +42,17 @@ TEST_F(FrameTest, TestFrameCrypto)
   auto buf = f.Buffer();
   buf->cur = buf->base + EncryptedFrameOverheadSize;
 
-  ASSERT_TRUE(record.BEncode(buf));
-
-  EXPECT_CALL(m_crypto, randbytes(_, _))
-      .WillOnce(Invoke(&test::randbytes_impl));
-
-  EXPECT_CALL(m_crypto, dh_client(_, _, alice, _)).WillOnce(Return(true));
-  EXPECT_CALL(m_crypto, xchacha20(_, _, _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(m_crypto, hmac(_, _, _)).Times(2).WillRepeatedly(Return(true));
+  REQUIRE(record.BEncode(buf));
 
   // rewind buffer
   buf->cur = buf->base + EncryptedFrameOverheadSize;
   // encrypt to alice
-  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic()));
-
-  EXPECT_CALL(m_crypto, dh_server(_, _, _, _)).WillOnce(Return(true));
+  REQUIRE(f.EncryptInPlace(alice, bob.toPublic()));
 
   // decrypt from alice
-  ASSERT_TRUE(f.DecryptInPlace(bob));
+  REQUIRE(f.DecryptInPlace(bob));
 
   LRCR otherRecord;
-  ASSERT_TRUE(otherRecord.BDecode(buf));
-  ASSERT_TRUE(otherRecord == record);
+  REQUIRE(otherRecord.BDecode(buf));
+  REQUIRE(otherRecord == record);
 }

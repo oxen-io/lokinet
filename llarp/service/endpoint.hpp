@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_ENDPOINT_HPP
 #include <llarp.h>
 #include <dht/messages/gotrouter.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <exit/session.hpp>
 #include <net/ip_range_map.hpp>
 #include <net/net.hpp>
@@ -18,7 +18,6 @@
 #include <service/lookup.hpp>
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
-#include <util/thread/logic.hpp>
 #include <service/endpoint_types.hpp>
 
 #include <service/auth.hpp>
@@ -27,8 +26,6 @@
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
 #endif
-
-struct llarp_async_verify_rc;
 
 namespace llarp
 {
@@ -114,6 +111,9 @@ namespace llarp
       virtual std::string
       GetIfName() const = 0;
 
+      std::optional<ConvoTag>
+      GetBestConvoTagForService(Address addr) const;
+
       /// inject vpn io
       /// return false if not supported
       virtual bool
@@ -129,23 +129,16 @@ namespace llarp
         return {0};
       }
 
+      virtual void
+      Thaw(){};
+
       void
       ResetInternalState() override;
 
-      /// router's logic
+      /// loop (via router)
       /// use when sending any data on a path
-      std::shared_ptr<Logic>
-      RouterLogic();
-
-      /// endpoint's logic
-      /// use when writing any data to local network interfaces
-      std::shared_ptr<Logic>
-      EndpointLogic();
-
-      /// borrow endpoint's net loop for sending data to user on local network
-      /// interface
-      llarp_ev_loop_ptr
-      EndpointNetLoop();
+      const EventLoop_ptr&
+      Loop();
 
       AbstractRouter*
       Router();
@@ -259,7 +252,7 @@ namespace llarp
       EnsureConvo(const AlignedBuffer<32> addr, bool snode, ConvoEventListener_ptr ev);
 
       bool
-      SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
+      SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
@@ -268,6 +261,9 @@ namespace llarp
       CheckPathIsDead(path::Path_ptr p, llarp_time_t latency);
 
       using PendingBufferQueue = std::deque<PendingBuffer>;
+
+      size_t
+      RemoveAllConvoTagsFor(service::Address remote);
 
       bool
       WantsOutboundSession(const Address&) const override;
@@ -364,13 +360,11 @@ namespace llarp
       bool
       HasExit() const;
 
-      bool
-      SelectHop(
-          llarp_nodedb* db,
-          const std::set<RouterID>& prev,
-          RouterContact& cur,
-          size_t hop,
-          path::PathRole roles) override;
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuild() override;
+
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuildWithEndpoint(RouterID endpoint);
 
       virtual void
       PathBuildStarted(path::Path_ptr path) override;
@@ -385,7 +379,7 @@ namespace llarp
           std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
 
       void
-      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+      SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
 
       uint64_t
       GenTXID();
@@ -418,25 +412,9 @@ namespace llarp
       void
       PrefetchServicesByTag(const Tag& tag);
 
-      /// spawn a new process that contains a network isolated process
-      /// return true if we set up isolation and the event loop is up
-      /// otherwise return false
-      virtual bool
-      SpawnIsolatedNetwork()
-      {
-        return false;
-      }
-
-      bool
-      NetworkIsIsolated() const;
-
-      /// this runs in the isolated network process
-      void
-      IsolatedNetworkMainLoop();
-
      private:
       void
-      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, llarp_async_verify_rc* j);
+      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
 
       bool
       OnLookup(const service::Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
@@ -475,8 +453,11 @@ namespace llarp
           m_StartupLNSMappings;
 
       RecvPacketQueue_t m_InboundTrafficQueue;
+
+     public:
       SendMessageQueue_t m_SendQueue;
 
+     protected:
       void
       FlushRecvData();
 
