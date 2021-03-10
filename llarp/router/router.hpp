@@ -1,41 +1,40 @@
-#ifndef LLARP_ROUTER_HPP
-#define LLARP_ROUTER_HPP
+#pragma once
 
-#include <router/abstractrouter.hpp>
+#include "abstractrouter.hpp"
 
-#include <bootstrap.hpp>
-#include <config/config.hpp>
-#include <config/key_manager.hpp>
-#include <constants/link_layer.hpp>
-#include <crypto/types.hpp>
-#include <ev/ev.hpp>
-#include <exit/context.hpp>
-#include <handlers/tun.hpp>
-#include <link/link_manager.hpp>
-#include <link/server.hpp>
-#include <messages/link_message_parser.hpp>
-#include <nodedb.hpp>
-#include <path/path_context.hpp>
-#include <peerstats/peer_db.hpp>
-#include <profiling.hpp>
-#include <router_contact.hpp>
-#include <router/outbound_message_handler.hpp>
-#include <router/outbound_session_maker.hpp>
-#include <router/rc_gossiper.hpp>
-#include <router/rc_lookup_handler.hpp>
-#include <router/route_poker.hpp>
-#include <routing/handler.hpp>
-#include <routing/message_parser.hpp>
-#include <rpc/lokid_rpc_client.hpp>
-#include <rpc/rpc_server.hpp>
-#include <service/context.hpp>
+#include <llarp/bootstrap.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/config/key_manager.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/exit/context.hpp>
+#include <llarp/handlers/tun.hpp>
+#include <llarp/link/link_manager.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/messages/link_message_parser.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/peerstats/peer_db.hpp>
+#include <llarp/profiling.hpp>
+#include <llarp/router_contact.hpp>
+#include "outbound_message_handler.hpp"
+#include "outbound_session_maker.hpp"
+#include "rc_gossiper.hpp"
+#include "rc_lookup_handler.hpp"
+#include "route_poker.hpp"
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message_parser.hpp>
+#include <llarp/rpc/lokid_rpc_client.hpp>
+#include <llarp/rpc/rpc_server.hpp>
+#include <llarp/service/context.hpp>
 #include <stdexcept>
-#include <util/buffer.hpp>
-#include <util/fs.hpp>
-#include <util/mem.hpp>
-#include <util/status.hpp>
-#include <util/str.hpp>
-#include <util/time.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/util/time.hpp>
 
 #include <functional>
 #include <list>
@@ -549,5 +548,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

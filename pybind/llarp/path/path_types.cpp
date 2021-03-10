@@ -1,6 +1,6 @@
-#include <path/path.hpp>
+#include <llarp/path/path.hpp>
 
-#include "common.hpp"
+#include <common.hpp>
 #include <pybind11/operators.h>
 
 namespace llarp

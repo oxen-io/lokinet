@@ -1,8 +1,7 @@
-#ifndef LLARP_DHT_KADEMLIA_HPP
-#define LLARP_DHT_KADEMLIA_HPP
+#pragma once
 
-#include <dht/key.hpp>
-#include <router_contact.hpp>
+#include "key.hpp"
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -29,4 +28,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-#endif

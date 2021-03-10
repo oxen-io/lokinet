@@ -1,5 +1,5 @@
-#include <net/net_int.hpp>
-#include <net/ip.hpp>
+#include "net_int.hpp"
+#include "ip.hpp"
 #include <string>
 
 namespace llarp

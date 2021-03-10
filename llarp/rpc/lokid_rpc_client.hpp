@@ -1,12 +1,12 @@
 #pragma once
 
-#include <router_id.hpp>
+#include <llarp/router_id.hpp>
 
 #include <oxenmq/oxenmq.h>
 #include <oxenmq/address.h>
-#include <crypto/types.hpp>
-#include <dht/key.hpp>
-#include <service/name.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/dht/key.hpp>
+#include <llarp/service/name.hpp>
 
 namespace llarp
 {

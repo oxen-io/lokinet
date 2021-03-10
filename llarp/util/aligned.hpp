@@ -1,10 +1,9 @@
-#ifndef LLARP_ALIGNED_HPP
-#define LLARP_ALIGNED_HPP
+#pragma once
 
-#include <util/bencode.h>
-#include <util/logging/logger.hpp>
-#include <util/meta/traits.hpp>
-#include <util/printer.hpp>
+#include "bencode.h"
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/meta/traits.hpp>
+#include "printer.hpp"
 
 #include <oxenmq/hex.h>
 
@@ -305,5 +304,3 @@ namespace llarp
     Data m_data;
   };
 }  // namespace llarp
-
-#endif

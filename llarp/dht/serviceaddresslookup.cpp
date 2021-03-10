@@ -1,8 +1,8 @@
-#include <dht/serviceaddresslookup.hpp>
+#include "serviceaddresslookup.hpp"
 
-#include <dht/context.hpp>
-#include <dht/messages/findintro.hpp>
-#include <dht/messages/gotintro.hpp>
+#include "context.hpp"
+#include <llarp/dht/messages/findintro.hpp>
+#include <llarp/dht/messages/gotintro.hpp>
 #include <utility>
 
 namespace llarp

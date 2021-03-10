@@ -1,6 +1,6 @@
-#include <messages/dht_immediate.hpp>
+#include "dht_immediate.hpp"
 
-#include <router/abstractrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {

@@ -1,10 +1,10 @@
-#include <service/endpoint_state.hpp>
+#include "endpoint_state.hpp"
 
-#include <exit/session.hpp>
-#include <hook/shell.hpp>
-#include <service/endpoint.hpp>
-#include <service/outbound_context.hpp>
-#include <util/str.hpp>
+#include <llarp/exit/session.hpp>
+#include <llarp/hook/shell.hpp>
+#include "endpoint.hpp"
+#include "outbound_context.hpp"
+#include <llarp/util/str.hpp>
 
 namespace llarp
 {

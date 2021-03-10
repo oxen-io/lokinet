@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_ADDRESS_HPP
-#define LLARP_SERVICE_ADDRESS_HPP
+#pragma once
 
-#include <dht/key.hpp>
-#include <router_id.hpp>
-#include <util/aligned.hpp>
+#include <llarp/dht/key.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/aligned.hpp>
 
 #include <functional>
 #include <numeric>
@@ -116,5 +115,3 @@ namespace std
     }
   };
 }  // namespace std
-
-#endif

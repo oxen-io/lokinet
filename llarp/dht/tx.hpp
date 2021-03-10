@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_TX
 #define LLARP_DHT_TX
 
-#include <dht/key.hpp>
-#include <dht/txowner.hpp>
-#include <util/logging/logger.hpp>
-#include <util/status.hpp>
+#include "key.hpp"
+#include "txowner.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/status.hpp>
 
 #include <set>
 #include <vector>

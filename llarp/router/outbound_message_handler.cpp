@@ -1,12 +1,12 @@
-#include <router/outbound_message_handler.hpp>
+#include "outbound_message_handler.hpp"
 
-#include <messages/link_message.hpp>
-#include <router/i_outbound_session_maker.hpp>
-#include <router/i_rc_lookup_handler.hpp>
-#include <link/i_link_manager.hpp>
-#include <constants/link_layer.hpp>
-#include <util/meta/memfn.hpp>
-#include <util/status.hpp>
+#include <llarp/messages/link_message.hpp>
+#include "i_outbound_session_maker.hpp"
+#include "i_rc_lookup_handler.hpp"
+#include <llarp/link/i_link_manager.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/util/meta/memfn.hpp>
+#include <llarp/util/status.hpp>
 
 #include <algorithm>
 #include <cstdlib>

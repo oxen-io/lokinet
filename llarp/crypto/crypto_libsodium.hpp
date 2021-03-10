@@ -1,7 +1,6 @@
-#ifndef LLARP_CRYPTO_LIBSODIUM_HPP
-#define LLARP_CRYPTO_LIBSODIUM_HPP
+#pragma once
 
-#include <crypto/crypto.hpp>
+#include "crypto.hpp"
 
 namespace llarp
 {
@@ -109,5 +108,3 @@ namespace llarp
   }  // namespace sodium
 
 }  // namespace llarp
-
-#endif

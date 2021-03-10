@@ -1,7 +1,6 @@
-#ifndef LLARP_EXIT_CONTEXT_HPP
-#define LLARP_EXIT_CONTEXT_HPP
-#include <exit/policy.hpp>
-#include <handlers/exit.hpp>
+#pragma once
+#include "policy.hpp"
+#include <llarp/handlers/exit.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -52,5 +51,3 @@ namespace llarp
     };
   }  // namespace exit
 }  // namespace llarp
-
-#endif

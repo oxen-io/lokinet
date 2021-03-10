@@ -1,6 +1,6 @@
 #pragma once
 
-#include <service/auth.hpp>
+#include <llarp/service/auth.hpp>
 #include <oxenmq/oxenmq.h>
 
 namespace llarp::service

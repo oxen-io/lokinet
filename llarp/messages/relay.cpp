@@ -1,8 +1,8 @@
-#include <messages/relay.hpp>
+#include "relay.hpp"
 
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <util/bencode.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/util/bencode.hpp>
 
 namespace llarp
 {

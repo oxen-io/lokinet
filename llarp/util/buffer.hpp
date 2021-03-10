@@ -1,10 +1,9 @@
-#ifndef LLARP_BUFFER_HPP
-#define LLARP_BUFFER_HPP
+#pragma once
 
 #include <type_traits>
-#include <util/common.hpp>
-#include <util/mem.h>
-#include <util/types.hpp>
+#include "common.hpp"
+#include "mem.h"
+#include "types.hpp"
 
 #include <cassert>
 #include <iterator>
@@ -272,5 +271,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

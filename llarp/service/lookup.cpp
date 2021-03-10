@@ -1,8 +1,8 @@
-#include <service/lookup.hpp>
+#include "lookup.hpp"
 
-#include <path/path.hpp>
-#include <util/time.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/router/abstractrouter.hpp>
 #include <utility>
 
 namespace llarp

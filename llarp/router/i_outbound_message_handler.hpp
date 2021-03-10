@@ -1,7 +1,6 @@
-#ifndef LLARP_ROUTER_I_OUTBOUND_MESSAGE_HANDLER_HPP
-#define LLARP_ROUTER_I_OUTBOUND_MESSAGE_HANDLER_HPP
+#pragma once
 
-#include <util/status.hpp>
+#include <llarp/util/status.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -46,5 +45,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_ROUTER_I_OUTBOUND_MESSAGE_HANDLER_HPP

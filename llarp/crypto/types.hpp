@@ -1,11 +1,10 @@
-#ifndef LLARP_CRYPTO_TYPES_HPP
-#define LLARP_CRYPTO_TYPES_HPP
+#pragma once
 
-#include <crypto/constants.hpp>
-#include <router_id.hpp>
-#include <util/aligned.hpp>
-#include <util/types.hpp>
-#include <util/fs.hpp>
+#include "constants.hpp"
+#include <llarp/router_id.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/fs.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -244,5 +243,3 @@ namespace llarp
   /// SH(result, body)
   using shorthash_func = std::function<bool(ShortHash&, const llarp_buffer_t&)>;
 }  // namespace llarp
-
-#endif

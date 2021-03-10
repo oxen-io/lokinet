@@ -25,7 +25,7 @@ add_library(lokinet-util
 )
 add_dependencies(lokinet-util genversion)
 
-target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR})
 
 if(NOT TARGET sqlite3)
   add_library(sqlite3 INTERFACE)

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <tooling/router_event.hpp>
+#include "router_event.hpp"
 
 #include <llarp.h>
-#include <config/config.hpp>
-#include <tooling/hive_context.hpp>
+#include <llarp/config/config.hpp>
+#include "hive_context.hpp"
 
 #include <vector>
 #include <deque>

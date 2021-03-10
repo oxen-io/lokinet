@@ -1,5 +1,5 @@
 #define NO_JEMALLOC
-#include <util/mem.h>
+#include "mem.h"
 #include <cstdlib>
 
 namespace llarp

@@ -1,12 +1,12 @@
-#include <ev/ev_libuv.hpp>
-#include <ev/vpn.hpp>
+#include "ev_libuv.hpp"
+#include "vpn.hpp"
 #include <memory>
 #include <thread>
 #include <type_traits>
-#include <util/thread/queue.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 #include <cstring>
-#include "ev/ev.hpp"
+#include "ev.hpp"
 
 #include <uvw.hpp>
 

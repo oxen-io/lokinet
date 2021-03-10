@@ -1,30 +1,30 @@
 #include <algorithm>
-#include "net/net.hpp"
+#include <llarp/net/net.hpp>
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
-#include <handlers/tun.hpp>
+#include "tun.hpp"
 #include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
 
-#include <dns/dns.hpp>
-#include <ev/ev.hpp>
-#include <router/abstractrouter.hpp>
-#include <service/context.hpp>
-#include <service/outbound_context.hpp>
-#include <service/endpoint_state.hpp>
-#include <service/outbound_context.hpp>
-#include <service/name.hpp>
-#include <util/meta/memfn.hpp>
-#include <nodedb.hpp>
-#include <rpc/endpoint_rpc.hpp>
+#include <llarp/dns/dns.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/service/outbound_context.hpp>
+#include <llarp/service/endpoint_state.hpp>
+#include <llarp/service/outbound_context.hpp>
+#include <llarp/service/name.hpp>
+#include <llarp/util/meta/memfn.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/rpc/endpoint_rpc.hpp>
 
-#include <util/str.hpp>
-#include <util/endian.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/util/endian.hpp>
 
-#include <dns/srv_data.hpp>
+#include <llarp/dns/srv_data.hpp>
 
 namespace llarp
 {

@@ -1,11 +1,11 @@
-#include <config/config.hpp>  // for ensure_config
-#include <constants/version.hpp>
+#include <llarp/config/config.hpp>  // for ensure_config
+#include <llarp/constants/version.hpp>
 #include <llarp.hpp>
-#include <util/lokinet_init.h>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/logging/ostream_logger.hpp>
-#include <util/str.hpp>
+#include <llarp/util/lokinet_init.h>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging/ostream_logger.hpp>
+#include <llarp/util/str.hpp>
 
 #ifdef _WIN32
 #include <dbghelp.h>

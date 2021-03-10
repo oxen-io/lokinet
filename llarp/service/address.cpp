@@ -1,5 +1,5 @@
-#include <service/address.hpp>
-#include <crypto/crypto.hpp>
+#include "address.hpp"
+#include <llarp/crypto/crypto.hpp>
 #include <oxenmq/base32z.h>
 #include <algorithm>
 

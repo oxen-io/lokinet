@@ -1,7 +1,6 @@
-#ifndef LLARP_SERVICE_ENDPOINT_UTIL_HPP
-#define LLARP_SERVICE_ENDPOINT_UTIL_HPP
+#pragma once
 
-#include <service/endpoint_types.hpp>
+#include "endpoint_types.hpp"
 
 namespace llarp
 {
@@ -59,5 +58,3 @@ namespace llarp
   }  // namespace service
 
 }  // namespace llarp
-
-#endif

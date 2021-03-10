@@ -1,5 +1,4 @@
-#ifndef LLARP_FS_HPP
-#define LLARP_FS_HPP
+#pragma once
 
 #include <functional>
 
@@ -90,4 +89,3 @@ namespace llarp
     };
   }  // namespace util
 }  // namespace llarp
-#endif  // end LLARP_FS_HPP

@@ -1,26 +1,25 @@
-#ifndef LLARP_SERVICE_ENDPOINT_HPP
-#define LLARP_SERVICE_ENDPOINT_HPP
+#pragma once
 #include <llarp.h>
-#include <dht/messages/gotrouter.hpp>
-#include <ev/ev.hpp>
-#include <exit/session.hpp>
-#include <net/ip_range_map.hpp>
-#include <net/net.hpp>
-#include <path/path.hpp>
-#include <path/pathbuilder.hpp>
-#include <service/address.hpp>
-#include <service/handler.hpp>
-#include <service/identity.hpp>
-#include <service/pendingbuffer.hpp>
-#include <service/protocol.hpp>
-#include <service/sendcontext.hpp>
-#include <service/session.hpp>
-#include <service/lookup.hpp>
-#include <hook/ihook.hpp>
-#include <util/compare_ptr.hpp>
-#include <service/endpoint_types.hpp>
+#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/exit/session.hpp>
+#include <llarp/net/ip_range_map.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/path/pathbuilder.hpp>
+#include "address.hpp"
+#include "handler.hpp"
+#include "identity.hpp"
+#include "pendingbuffer.hpp"
+#include "protocol.hpp"
+#include "sendcontext.hpp"
+#include "session.hpp"
+#include "lookup.hpp"
+#include <llarp/hook/ihook.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include "endpoint_types.hpp"
 
-#include <service/auth.hpp>
+#include "auth.hpp"
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -478,5 +477,3 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
-
-#endif

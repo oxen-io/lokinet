@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_RECURSIVEROUTERLOOKUP
 #define LLARP_DHT_RECURSIVEROUTERLOOKUP
 
-#include <dht/tx.hpp>
+#include "tx.hpp"
 
-#include <router_contact.hpp>
-#include <router_id.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/router_id.hpp>
 
 namespace llarp
 {

@@ -1,11 +1,10 @@
-#ifndef LLARP_BENCODE_HPP
-#define LLARP_BENCODE_HPP
+#pragma once
 
-#include <util/buffer.hpp>
-#include <util/bencode.h>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
+#include "buffer.hpp"
+#include "bencode.h"
+#include "fs.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include "mem.hpp"
 
 #include <fstream>
 #include <set>
@@ -360,5 +359,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-
-#endif

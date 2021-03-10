@@ -6,12 +6,12 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <util/fs.hpp>
-#include <config/config.hpp>
-#include <router_id.hpp>
-#include <util/time.hpp>
-#include <peerstats/types.hpp>
-#include <peerstats/orm.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/time.hpp>
+#include "types.hpp"
+#include "orm.hpp"
 
 namespace llarp
 {

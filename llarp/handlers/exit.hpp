@@ -1,9 +1,8 @@
-#ifndef LLARP_HANDLERS_EXIT_HPP
-#define LLARP_HANDLERS_EXIT_HPP
+#pragma once
 
-#include <exit/endpoint.hpp>
-#include <handlers/tun.hpp>
-#include <dns/server.hpp>
+#include <llarp/exit/endpoint.hpp>
+#include "tun.hpp"
+#include <llarp/dns/server.hpp>
 #include <unordered_map>
 
 namespace llarp
@@ -186,4 +185,3 @@ namespace llarp
     };
   }  // namespace handlers
 }  // namespace llarp
-#endif

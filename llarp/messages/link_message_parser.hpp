@@ -1,8 +1,7 @@
-#ifndef LLARP_LINK_MESSAGE_PARSER_HPP
-#define LLARP_LINK_MESSAGE_PARSER_HPP
+#pragma once
 
-#include <router_id.hpp>
-#include <util/bencode.h>
+#include <llarp/router_id.hpp>
+#include <llarp/util/bencode.h>
 
 #include <memory>
 
@@ -48,4 +47,3 @@ namespace llarp
     std::unique_ptr<msg_holder_t> holder;
   };
 }  // namespace llarp
-#endif

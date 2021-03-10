@@ -1,14 +1,13 @@
-#ifndef LLARP_LINK_SERVER_HPP
-#define LLARP_LINK_SERVER_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <ev/ev.hpp>
-#include <link/session.hpp>
-#include <net/sock_addr.hpp>
-#include <router_contact.hpp>
-#include <util/status.hpp>
-#include <util/thread/threading.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/ev/ev.hpp>
+#include "session.hpp"
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/config/key_manager.hpp>
 
 #include <list>
 #include <memory>
@@ -262,5 +261,3 @@ namespace llarp
 
   using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;
 }  // namespace llarp
-
-#endif

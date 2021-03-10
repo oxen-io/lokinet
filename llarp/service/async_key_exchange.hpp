@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_ASYNC_KEY_EXCHANGE_HPP
-#define LLARP_SERVICE_ASYNC_KEY_EXCHANGE_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <service/identity.hpp>
-#include <service/protocol.hpp>
+#include <llarp/crypto/types.hpp>
+#include "identity.hpp"
+#include "protocol.hpp"
 
 namespace llarp
 {
@@ -43,5 +42,3 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
-
-#endif

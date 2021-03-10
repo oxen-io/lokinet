@@ -1,9 +1,9 @@
 #pragma once
 #include <ostream>
-#include <net/ip.hpp>
-#include <net/net_bits.hpp>
-#include <util/bits.hpp>
-#include <util/types.hpp>
+#include "ip.hpp"
+#include "net_bits.hpp"
+#include <llarp/util/bits.hpp>
+#include <llarp/util/types.hpp>
 #include <string>
 
 namespace llarp

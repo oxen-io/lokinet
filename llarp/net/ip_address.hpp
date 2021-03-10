@@ -1,12 +1,12 @@
 #pragma once
 
-#include <net/sock_addr.hpp>
+#include "sock_addr.hpp"
 
 #include <optional>
 #include <string_view>
 #include <string>
 
-#include <net/net_int.hpp>
+#include "net_int.hpp"
 
 namespace llarp
 {

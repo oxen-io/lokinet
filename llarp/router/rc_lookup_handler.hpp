@@ -1,10 +1,9 @@
-#ifndef LLARP_RC_LOOKUP_HANDLER_HPP
-#define LLARP_RC_LOOKUP_HANDLER_HPP
+#pragma once
 
 #include <chrono>
-#include <router/i_rc_lookup_handler.hpp>
+#include "i_rc_lookup_handler.hpp"
 
-#include <util/thread/threading.hpp>
+#include <llarp/util/thread/threading.hpp>
 
 #include <unordered_map>
 #include <set>
@@ -128,5 +127,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_RC_LOOKUP_HANDLER_HPP

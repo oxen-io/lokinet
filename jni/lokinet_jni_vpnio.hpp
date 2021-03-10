@@ -1,5 +1,4 @@
-#ifndef LOKINET_JNI_VPNIO_HPP
-#define LOKINET_JNI_VPNIO_HPP
+#pragma once
 
 #include <llarp.h>
 #include <memory>
@@ -143,5 +142,3 @@ struct lokinet_jni_vpnio : public lokinet::VPNIO
   Tick() override
   {}
 };
-
-#endif

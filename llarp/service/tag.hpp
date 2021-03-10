@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_TAG_HPP
-#define LLARP_SERVICE_TAG_HPP
+#pragma once
 
-#include <dht/key.hpp>
-#include <util/aligned.hpp>
-#include <util/status.hpp>
+#include <llarp/dht/key.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/status.hpp>
 
 #include <sodium/crypto_generichash.h>
 
@@ -55,5 +54,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

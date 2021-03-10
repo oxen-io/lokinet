@@ -1,11 +1,10 @@
-#ifndef LLARP_AI_HPP
-#define LLARP_AI_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <net/ip_address.hpp>
-#include <net/net.h>
-#include <util/bencode.hpp>
-#include <util/mem.h>
+#include <llarp/crypto/types.hpp>
+#include "ip_address.hpp"
+#include "net.h"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/mem.h>
 
 #include <string>
 #include <vector>
@@ -77,5 +76,3 @@ namespace llarp
   operator<(const AddressInfo& lhs, const AddressInfo& rhs);
 
 }  // namespace llarp
-
-#endif

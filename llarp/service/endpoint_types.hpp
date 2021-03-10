@@ -1,11 +1,10 @@
-#ifndef LLARP_SERVICE_ENDPOINT_TYPES_HPP
-#define LLARP_SERVICE_ENDPOINT_TYPES_HPP
+#pragma once
 
-#include <service/pendingbuffer.hpp>
-#include <service/router_lookup_job.hpp>
-#include <service/session.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/thread/queue.hpp>
+#include "pendingbuffer.hpp"
+#include "router_lookup_job.hpp"
+#include "session.hpp"
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 #include <deque>
 #include <memory>
@@ -58,5 +57,3 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
-
-#endif

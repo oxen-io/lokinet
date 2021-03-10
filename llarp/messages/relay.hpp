@@ -1,10 +1,9 @@
-#ifndef LLARP_MESSAGES_RELAY_HPP
-#define LLARP_MESSAGES_RELAY_HPP
+#pragma once
 
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <messages/link_message.hpp>
-#include <path/path_types.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include <llarp/crypto/types.hpp>
+#include "link_message.hpp"
+#include <llarp/path/path_types.hpp>
 
 #include <vector>
 
@@ -69,5 +68,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <router_id.hpp>
+#include <llarp/router_id.hpp>
 
 #include <string>
 #include <vector>

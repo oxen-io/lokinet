@@ -1,12 +1,11 @@
-#ifndef LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP
-#define LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP
+#pragma once
 
-#include <router/i_outbound_message_handler.hpp>
+#include "i_outbound_message_handler.hpp"
 
-#include <ev/ev.hpp>
-#include <util/thread/queue.hpp>
-#include <path/path_types.hpp>
-#include <router_id.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/router_id.hpp>
 
 #include <list>
 #include <unordered_map>
@@ -150,5 +149,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP

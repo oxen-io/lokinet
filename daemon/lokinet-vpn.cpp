@@ -4,7 +4,7 @@
 #include <future>
 #include <vector>
 #include <array>
-#include <net/net.hpp>
+#include <llarp/net/net.hpp>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi

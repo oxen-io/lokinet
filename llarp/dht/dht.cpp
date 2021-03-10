@@ -1,6 +1,6 @@
-#include <dht/context.hpp>
-#include <dht/dht.h>
-#include <router_contact.hpp>
+#include "context.hpp"
+#include "dht.h"
+#include <llarp/router_contact.hpp>
 
 llarp_dht_context::llarp_dht_context(llarp::AbstractRouter* router)
 {

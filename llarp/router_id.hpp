@@ -1,8 +1,7 @@
-#ifndef LLARP_ROUTER_ID_HPP
-#define LLARP_ROUTER_ID_HPP
+#pragma once
 
-#include <util/aligned.hpp>
-#include <util/status.hpp>
+#include "util/aligned.hpp"
+#include "util/status.hpp"
 
 namespace llarp
 {
@@ -70,4 +69,3 @@ namespace std
     }
   };
 }  // namespace std
-#endif

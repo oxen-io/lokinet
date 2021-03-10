@@ -1,16 +1,15 @@
-#ifndef LLARP_IWP_LINKLAYER_HPP
-#define LLARP_IWP_LINKLAYER_HPP
+#pragma once
 
-#include <constants/link_layer.hpp>
-#include <crypto/crypto.hpp>
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <link/server.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/config/key_manager.hpp>
 
 #include <memory>
 
-#include <ev/ev.hpp>
+#include <llarp/ev/ev.hpp>
 
 namespace llarp::iwp
 {
@@ -69,5 +68,3 @@ namespace llarp::iwp
 
   using LinkLayer_ptr = std::shared_ptr<LinkLayer>;
 }  // namespace llarp::iwp
-
-#endif

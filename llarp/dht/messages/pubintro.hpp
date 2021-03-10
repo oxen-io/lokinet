@@ -1,7 +1,6 @@
-#ifndef LLARP_DHT_MESSAGES_PUB_INTRO_HPP
-#define LLARP_DHT_MESSAGES_PUB_INTRO_HPP
-#include <dht/message.hpp>
-#include <service/intro_set.hpp>
+#pragma once
+#include <llarp/dht/message.hpp>
+#include <llarp/service/intro_set.hpp>
 
 #include <utility>
 #include <vector>
@@ -42,4 +41,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-#endif

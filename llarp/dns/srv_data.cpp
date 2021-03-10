@@ -1,6 +1,6 @@
-#include <dns/srv_data.hpp>
-#include <util/str.hpp>
-#include <util/logging/logger.hpp>
+#include "srv_data.hpp"
+#include <llarp/util/str.hpp>
+#include <llarp/util/logging/logger.hpp>
 
 #include <limits>
 

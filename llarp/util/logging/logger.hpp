@@ -1,10 +1,9 @@
-#ifndef LLARP_UTIL_LOGGER_HPP
-#define LLARP_UTIL_LOGGER_HPP
+#pragma once
 
 #include <memory>
-#include <util/time.hpp>
-#include <util/logging/logstream.hpp>
-#include <util/logging/logger_internal.hpp>
+#include <llarp/util/time.hpp>
+#include "logstream.hpp"
+#include "logger_internal.hpp"
 
 namespace llarp
 {
@@ -114,6 +113,4 @@ namespace llarp
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"
-#endif
-
 #endif

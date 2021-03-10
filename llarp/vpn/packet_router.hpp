@@ -1,6 +1,6 @@
 #pragma once
-#include <net/net_int.hpp>
-#include <net/ip_packet.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/ip_packet.hpp>
 #include <functional>
 #include <unordered_map>
 

@@ -1,11 +1,11 @@
-#include <handlers/exit.hpp>
+#include "exit.hpp"
 
-#include <dns/dns.hpp>
-#include <net/net.hpp>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <util/str.hpp>
-#include <util/bits.hpp>
+#include <llarp/dns/dns.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/util/bits.hpp>
 
 #include <cassert>
 

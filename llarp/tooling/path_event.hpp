@@ -1,8 +1,8 @@
 #include "router_event.hpp"
 
-#include <path/path_types.hpp>
-#include <path/path.hpp>
-#include <path/transit_hop.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/path/transit_hop.hpp>
 
 namespace tooling
 {

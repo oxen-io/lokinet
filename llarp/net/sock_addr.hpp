@@ -16,7 +16,7 @@ inet_pton(int af, const char* src, void* dst);
 
 #include <string_view>
 #include <string>
-#include <net/net_int.hpp>
+#include "net_int.hpp"
 
 namespace llarp
 {

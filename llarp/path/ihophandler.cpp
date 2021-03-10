@@ -1,5 +1,5 @@
-#include <path/ihophandler.hpp>
-#include <router/abstractrouter.hpp>
+#include "ihophandler.hpp"
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {

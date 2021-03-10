@@ -1,8 +1,8 @@
-#include <service/info.hpp>
+#include "info.hpp"
 
-#include <crypto/crypto.hpp>
-#include <service/address.hpp>
-#include <util/buffer.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include "address.hpp"
+#include <llarp/util/buffer.hpp>
 
 #include <cassert>
 

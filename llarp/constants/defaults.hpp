@@ -1,5 +1,4 @@
-#ifndef LLARP_DEFAULTS_HPP
-#define LLARP_DEFAULTS_HPP
+#pragma once
 
 #ifndef DEFAULT_RESOLVER_US
 #define DEFAULT_RESOLVER_US "1.1.1.1"
@@ -16,6 +15,4 @@
 #endif
 #ifndef DEFAULT_LOKINET_GROUP
 #define DEFAULT_LOKINET_GROUP "lokinet"
-#endif
-
 #endif

@@ -1,25 +1,25 @@
 #include <chrono>
-#include <config/config.hpp>
+#include "config.hpp"
 
-#include <config/ini.hpp>
-#include <constants/defaults.hpp>
-#include <constants/files.hpp>
-#include <net/net.hpp>
-#include <net/ip.hpp>
-#include <router_contact.hpp>
+#include "ini.hpp"
+#include <llarp/constants/defaults.hpp>
+#include <llarp/constants/files.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/router_contact.hpp>
 #include <stdexcept>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
-#include <util/str.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/str.hpp>
 
-#include <service/name.hpp>
+#include <llarp/service/name.hpp>
 
 #include <cstdlib>
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include "constants/version.hpp"
+#include <llarp/constants/version.hpp>
 
 namespace llarp
 {

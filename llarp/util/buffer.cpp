@@ -1,5 +1,5 @@
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
+#include "buffer.hpp"
+#include "endian.hpp"
 
 #include <cstdarg>
 #include <cstdio>

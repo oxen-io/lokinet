@@ -1,8 +1,8 @@
-#include <dht/messages/gotname.hpp>
+#include "gotname.hpp"
 #include <oxenmq/bt_serialize.h>
-#include <dht/context.hpp>
-#include <router/abstractrouter.hpp>
-#include <path/path_context.hpp>
+#include <llarp/dht/context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/path/path_context.hpp>
 
 namespace llarp::dht
 {

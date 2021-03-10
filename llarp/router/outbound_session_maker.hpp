@@ -1,12 +1,11 @@
-#ifndef LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP
-#define LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP
+#pragma once
 
-#include <router/i_outbound_session_maker.hpp>
+#include "i_outbound_session_maker.hpp"
 
-#include <router/i_rc_lookup_handler.hpp>
-#include <util/thread/threading.hpp>
+#include "i_rc_lookup_handler.hpp"
+#include <llarp/util/thread/threading.hpp>
 
-#include <profiling.hpp>
+#include <llarp/profiling.hpp>
 
 #include <unordered_map>
 #include <list>
@@ -118,5 +117,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP

@@ -1,8 +1,8 @@
 #ifndef LLARP_DHT_EXPLORENETWORKJOB
 #define LLARP_DHT_EXPLORENETWORKJOB
 
-#include <dht/tx.hpp>
-#include <router_id.hpp>
+#include "tx.hpp"
+#include <llarp/router_id.hpp>
 
 namespace llarp
 {

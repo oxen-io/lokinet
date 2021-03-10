@@ -1,11 +1,10 @@
-#ifndef LLARP_CONSTANTS_PATH_HPP
-#define LLARP_CONSTANTS_PATH_HPP
+#pragma once
 
 #include <chrono>
 #include <cstddef>
 
-#include <util/types.hpp>
-#include <util/time.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/time.hpp>
 
 namespace llarp
 {
@@ -40,5 +39,3 @@ namespace llarp
 
   }  // namespace path
 }  // namespace llarp
-
-#endif

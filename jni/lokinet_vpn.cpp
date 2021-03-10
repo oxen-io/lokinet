@@ -1,8 +1,8 @@
 #include "network_loki_lokinet_LokinetVPN.h"
 #include "lokinet_jni_vpnio.hpp"
 #include "lokinet_jni_common.hpp"
-#include <net/ip.hpp>
-#include <net/ip_packet.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/net/ip_packet.hpp>
 #include <string_view>
 
 extern "C"

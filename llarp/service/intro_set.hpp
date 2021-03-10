@@ -1,15 +1,14 @@
-#ifndef LLARP_SERVICE_INTRO_SET_HPP
-#define LLARP_SERVICE_INTRO_SET_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <pow.hpp>
-#include <service/info.hpp>
-#include <service/intro.hpp>
-#include <service/tag.hpp>
-#include <util/bencode.hpp>
-#include <util/time.hpp>
-#include <util/status.hpp>
-#include <dns/srv_data.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/pow.hpp>
+#include "info.hpp"
+#include "intro.hpp"
+#include "tag.hpp"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/dns/srv_data.hpp>
 
 #include <optional>
 #include <algorithm>
@@ -183,5 +182,3 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
-
-#endif
