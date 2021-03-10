@@ -2,21 +2,19 @@
 #include "client.hpp"
 #include "log.hpp"
 #include "server.hpp"
+#include <llarp/crypto/crypto.hpp>
 
 #include <iostream>
+#include <random>
 #include <variant>
 
-#include <oxenmq/hex.h>
+#include <uvw/timer.h>
 #include <oxenmq/variant.h>
 
-#include <uvw/timer.h>
-
-#include <sodium/crypto_generichash.h>
-
-// DEBUG:
 extern "C"
 {
-#include "../ngtcp2_conn.h"
+#include <sodium/crypto_generichash.h>
+#include <sodium/randombytes.h>
 }
 
 namespace llarp::quic
@@ -24,7 +22,7 @@ namespace llarp::quic
   Endpoint::Endpoint(std::optional<Address> addr, std::shared_ptr<uvw::Loop> loop_)
       : loop{std::move(loop_)}
   {
-    random_bytes(static_secret.data(), static_secret.size(), rng);
+    randombytes_buf(static_secret.data(), static_secret.size());
 
     // Create and bind the UDP socket. We can't use libuv's UDP socket here because it doesn't
     // give us the ability to set up the ECN field as QUIC requires.
@@ -252,10 +250,8 @@ namespace llarp::quic
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
     Debug("Reading packet from ", p.path);
-    Debug("Conn state before reading: ", conn.conn->state);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
-    Debug("Conn state after reading: ", conn.conn->state);
 
     if (rv == 0)
       conn.io_ready();
@@ -339,6 +335,7 @@ namespace llarp::quic
     // we're supposed to send some 0x?a?a?a?a version to trigger version negotiation
     versions[0] = 0x1a2a3a4au;
 
+    CSRNG rng{};
     auto nwrote = ngtcp2_pkt_write_version_negotiation(
         u8data(buf),
         buf.size(),
@@ -506,7 +503,7 @@ namespace llarp::quic
     ConnectionID cid;
     for (bool inserted = false; !inserted;)
     {
-      cid = ConnectionID::random(rng, cid_length);
+      cid = ConnectionID::random(cid_length);
       inserted = conns.emplace(cid, conn.weak_from_this()).second;
     }
     Debug("Created cid ", cid, " alias for ", conn.base_cid);

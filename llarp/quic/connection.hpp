@@ -1,7 +1,6 @@
 #pragma once
 
 #include "address.hpp"
-#include "random.hpp"
 #include "stream.hpp"
 #include "io_result.hpp"
 
@@ -13,7 +12,10 @@
 #include <unordered_set>
 #include <map>
 
+extern "C" {
 #include <ngtcp2/ngtcp2.h>
+#include <sodium/randombytes.h>
+}
 #include <uvw/async.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
@@ -67,15 +69,8 @@ namespace llarp::quic
       return !(*this == other);
     }
 
-    template <typename RNG>
     static ConnectionID
-    random(RNG&& rng, size_t size = ConnectionID::max_size())
-    {
-      ConnectionID r;
-      r.datalen = std::min(size, ConnectionID::max_size());
-      random_bytes(r.data, r.datalen, rng);
-      return r;
-    }
+    random(size_t size = ConnectionID::max_size());
   };
   std::ostream&
   operator<<(std::ostream& o, const ConnectionID& c);

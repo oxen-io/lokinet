@@ -16,6 +16,10 @@
 #include <oxenmq/hex.h>
 #include <oxenmq/bt_serialize.h>
 
+extern "C" {
+#include <sodium/randombytes.h>
+}
+
 namespace llarp::quic
 {
   ConnectionID::ConnectionID(const uint8_t* cid, size_t length)
@@ -29,6 +33,13 @@ namespace llarp::quic
   operator<<(std::ostream& o, const ConnectionID& c)
   {
     return o << oxenmq::to_hex(c.data, c.data + c.datalen);
+  }
+
+  ConnectionID ConnectionID::random(size_t size) {
+      ConnectionID r;
+      r.datalen = std::min(size, ConnectionID::max_size());
+      randombytes_buf(r.data, r.datalen);
+      return r;
   }
 
   namespace
@@ -255,8 +266,7 @@ namespace llarp::quic
         [[maybe_unused]] ngtcp2_rand_usage usage)
     {
       Debug("######################", __func__);
-      auto& rng = *static_cast<std::mt19937_64*>(rand_ctx->native_handle);
-      random_bytes(dest, destlen, rng);
+      randombytes_buf(dest, destlen);
       return 0;
     }
     int
@@ -479,8 +489,7 @@ namespace llarp::quic
     settings.token = header.token;
 
     // FIXME is this required?
-    random_bytes(
-        std::begin(tparams.stateless_reset_token), sizeof(tparams.stateless_reset_token), s.rng);
+    randombytes_buf(tparams.stateless_reset_token, sizeof(tparams.stateless_reset_token));
     tparams.stateless_reset_token_present = 1;
 
     ngtcp2_conn* connptr;
@@ -508,7 +517,7 @@ namespace llarp::quic
       : tunnel_port{tunnel_port}
       , endpoint{c}
       , base_cid{scid}
-      , dest_cid{ConnectionID::random(c.rng)}
+      , dest_cid{ConnectionID::random()}
       , path{path}
   {
     auto [settings, tparams, cb] = init();

@@ -11,7 +11,6 @@
 #include <map>
 #include <memory>
 #include <queue>
-#include <random>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -62,8 +61,6 @@ namespace llarp::quic
     // Max size of a UDP packet that we'll send
     static constexpr size_t max_pkt_size_v4 = NGTCP2_MAX_PKTLEN_IPV4;
     static constexpr size_t max_pkt_size_v6 = NGTCP2_MAX_PKTLEN_IPV6;
-
-    std::mt19937_64 rng = seeded<std::mt19937_64>();
 
     using primary_conn_ptr = std::shared_ptr<Connection>;
     using alias_conn_ptr = std::weak_ptr<Connection>;

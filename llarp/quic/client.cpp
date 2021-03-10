@@ -32,7 +32,7 @@ namespace llarp::quic
     // - delay_stream_timer
 
     auto connptr =
-        std::make_shared<Connection>(*this, ConnectionID::random(rng), path, tunnel_port);
+        std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
     auto& conn = *connptr;
     conns.emplace(conn.base_cid, connptr);
 

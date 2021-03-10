@@ -104,7 +104,7 @@ namespace llarp::quic
     // create and store Connection
     for (;;)
     {
-      if (auto [it, ins] = conns.emplace(ConnectionID::random(rng), primary_conn_ptr{}); ins)
+      if (auto [it, ins] = conns.emplace(ConnectionID::random(), primary_conn_ptr{}); ins)
       {
         auto connptr = std::make_shared<Connection>(*this, it->first, hd, p.path);
         it->second = connptr;
