@@ -1,3 +1,10 @@
+lokinet (0.8.4-2~deb10) buster; urgency=medium
+
+  [ Jeff Becker ]
+  * fix segfault
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 11 Mar 2021 09:55:45 -0400
+
 lokinet (0.8.4-1~deb10) buster; urgency=medium
 
   [ Jeff Becker ]
