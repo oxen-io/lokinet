@@ -1,7 +1,7 @@
 #include "stream.hpp"
 #include "connection.hpp"
 #include "endpoint.hpp"
-#include "log.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -110,7 +110,7 @@ namespace llarp::quic
       auto data_split = data.begin() + (buffer.size() - wpos);
       std::copy(data.begin(), data_split, buffer.begin() + wpos);
       std::copy(data_split, data.end(), buffer.begin());
-      Debug(
+      LogTrace(
           "Wrote ",
           data.size(),
           " bytes to buffer ranges [",
@@ -125,10 +125,10 @@ namespace llarp::quic
     {
       // No wrap needs, it fits before the end:
       std::copy(data.begin(), data.end(), buffer.begin() + wpos);
-      Debug("Wrote ", data.size(), " bytes to buffer range [", wpos, ",", wpos + data.size(), ")");
+      LogTrace("Wrote ", data.size(), " bytes to buffer range [", wpos, ",", wpos + data.size(), ")");
     }
     size += data.size();
-    Debug("New stream buffer: ", size, "/", buffer.size(), " bytes beginning at ", start);
+    LogTrace("New stream buffer: ", size, "/", buffer.size(), " bytes beginning at ", start);
     conn.io_ready();
     return true;
   }
@@ -162,7 +162,7 @@ namespace llarp::quic
     //
     assert(bytes <= unacked_size && unacked_size <= size);
 
-    Debug("Acked ", bytes, " bytes of ", unacked_size, "/", size, " unacked/total");
+    LogDebug("Acked ", bytes, " bytes of ", unacked_size, "/", size, " unacked/total");
 
     unacked_size -= bytes;
     size -= bytes;
@@ -290,7 +290,7 @@ namespace llarp::quic
     //     [  áaarrrrrr  ]  or  [rr     áaar]
     // to:
     //     [  áaaaaarrr  ]  or  [aa     áaaa]
-    Debug("wrote ", bytes, ", unsent=", unsent());
+    LogDebug("wrote ", bytes, ", unsent=", unsent());
     assert(bytes <= unsent());
     unacked_size += bytes;
   }
@@ -298,20 +298,20 @@ namespace llarp::quic
   void
   Stream::close(std::optional<uint64_t> error_code)
   {
-    Debug(
+    LogDebug(
         "Closing ",
         stream_id,
         error_code ? " immediately with code " + std::to_string(*error_code) : " gracefully");
 
     if (is_shutdown)
-      Debug("Stream is already shutting down");
+      LogDebug("Stream is already shutting down");
     else if (error_code)
     {
       is_closing = is_shutdown = true;
       ngtcp2_conn_shutdown_stream(conn, stream_id.id, *error_code);
     }
     else if (is_closing)
-      Debug("Stream is already closing");
+      LogDebug("Stream is already closing");
     else
       is_closing = true;
 

@@ -1,8 +1,10 @@
 #include "connection.hpp"
 #include "client.hpp"
-#include "log.hpp"
 #include "stream.hpp"
 #include "tunnel.hpp"
+#include <llarp/util/logging/logger.hpp>
+
+#include <oxenmq/hex.h>
 
 #include <util/str.hpp>
 
@@ -22,7 +24,7 @@ namespace llarp::quic::tunnel
   void
   on_new_connection(const uvw::ListenEvent&, uvw::TCPHandle& server)
   {
-    llarp::quic::Debug("New connection!\n");
+    LogDebug("New connection!\n");
     auto client = server.loop().resource<uvw::TCPHandle>();
     server.accept(*client);
 
@@ -30,7 +32,7 @@ namespace llarp::quic::tunnel
     std::shared_ptr<llarp::quic::Stream> stream;
     try
     {
-      llarp::quic::Debug("open stream");
+      LogTrace("open stream");
       stream = conn->open_stream(
           [client](llarp::quic::Stream& stream, llarp::quic::bstring_view bdata) {
             if (bdata.empty())
@@ -46,11 +48,11 @@ namespace llarp::quic::tunnel
                 bdata.remove_prefix(1);
                 stream.data_callback(stream, std::move(bdata));
               }
-              llarp::quic::Debug("starting client reading");
+              LogTrace("starting client reading");
             }
             else
             {
-              llarp::quic::Warn(
+              LogWarn(
                   "Remote connection returned invalid initial byte (0x",
                   oxenmq::to_hex(bdata.begin(), bdata.begin() + 1),
                   "); dropping connection");
@@ -61,14 +63,14 @@ namespace llarp::quic::tunnel
           },
           [client](llarp::quic::Stream&, std::optional<uint64_t> error_code) mutable {
             if (error_code && *error_code == tunnel::ERROR_CONNECT)
-              llarp::quic::Debug("Remote TCP connection failed, closing local connection");
+              LogDebug("Remote TCP connection failed, closing local connection");
             else
-              llarp::quic::Warn(
+              LogWarn(
                   "Stream connection closed ",
                   error_code ? "with error " + std::to_string(*error_code) : "gracefully",
                   "; closing local TCP connection.");
             auto peer = client->peer();
-            llarp::quic::Debug("Closing connection to ", peer.ip, ":", peer.port);
+            LogDebug("Closing connection to ", peer.ip, ":", peer.port);
             if (error_code)
               client->closeReset();
             else
@@ -78,12 +80,12 @@ namespace llarp::quic::tunnel
     }
     catch (const std::exception& e)
     {
-      llarp::quic::Debug("open stream failed");
+      LogDebug("open stream failed");
       client->closeReset();
       return;
     }
 
-    llarp::quic::Debug("setup stream");
+    LogTrace("done stream setup");
     conn->io_ready();
   }
 
@@ -116,14 +118,14 @@ namespace llarp::quic::tunnel
 
     signal(SIGPIPE, SIG_IGN);
 
-    llarp::quic::Debug("Initializing client");
+    LogDebug("Initializing client");
     auto tunnel_client = std::make_shared<llarp::quic::Client>(
         llarp::quic::Address{{127, 0, 0, 1}, server_port},  // server addr
         loop,
         dest_port  // tunnel destination port
     );
     tunnel_client->default_stream_buffer_size = 0;  // We steal uvw's provided buffers
-    llarp::quic::Debug("Initialized client");
+    LogDebug("Initialized client");
 
     // Start listening for TCP connections:
     auto server = loop->resource<uvw::TCPHandle>();

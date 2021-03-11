@@ -1,8 +1,8 @@
 #include "endpoint.hpp"
 #include "client.hpp"
-#include "log.hpp"
 #include "server.hpp"
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/util/logging/buffer.hpp>
 
 #include <iostream>
 #include <random>
@@ -47,7 +47,7 @@ namespace llarp::quic
     getsockname(fd, &sa.sa, &salen);
     assert(salen == sizeof(sockaddr_in));  // FIXME: IPv4-only for now
     local = {&sa, salen};
-    Debug("Bound to ", local, addr ? "" : " (auto-selected)");
+    LogDebug("Bound to ", local, addr ? "" : " (auto-selected)");
 
     // Set up the socket to provide us with incoming ECN (IP_TOS) info
     // NB: This is for IPv4; on AF_INET6 this would be IPPROTO_IPV6, IPV6_RECVTCLASS
@@ -87,7 +87,7 @@ namespace llarp::quic
     expiry_timer->on<uvw::TimerEvent>([this](const auto&, auto&) { check_timeouts(); });
     expiry_timer->start(250ms, 250ms);
 
-    Debug("Created endpoint");
+    LogDebug("Created endpoint");
   }
 
   Endpoint::~Endpoint()
@@ -107,7 +107,7 @@ namespace llarp::quic
   void
   Endpoint::on_readable()
   {
-    Debug("poll callback on readable");
+    LogDebug("poll callback on readable");
 
 #ifdef LOKINET_HAVE_RECVMMSG
     // NB: recvmmsg is linux-specific but ought to offer some performance benefits
@@ -115,11 +115,11 @@ namespace llarp::quic
     if (n_msg == -1)
     {
       if (errno != EAGAIN && errno != ENOTCONN)
-        Warn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
+        LogWarn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
       return;
     }
 
-    Debug("Recv'd ", n_msg, " messages");
+    LogDebug("Recv'd ", n_msg, " messages");
     for (int i = 0; i < n_msg; i++)
     {
       auto& [msg_hdr, msg_len] = msgs[i];
@@ -130,14 +130,14 @@ namespace llarp::quic
       auto& msg_hdr = msgs[0];
       auto n_bytes = recvmsg(socket_fd(), &msg_hdr, 0);
       if (n_bytes == -1 && errno != EAGAIN && errno != ENOTCONN)
-        Warn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
+        LogWarn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
       if (n_bytes <= 0)
         return;
       auto msg_len = static_cast<unsigned int>(n_bytes);
       bstring_view data{buf.data(), msg_len};
 #endif
 
-      Debug(
+      LogDebug(
           "header [",
           msg_hdr.msg_namelen,
           "]: ",
@@ -145,7 +145,7 @@ namespace llarp::quic
 
       if (!msg_hdr.msg_name || msg_hdr.msg_namelen != sizeof(sockaddr_in))
       {  // FIXME: IPv6 support?
-        Warn("Invalid/unknown source address, dropping packet");
+        LogWarn("Invalid/unknown source address, dropping packet");
         continue;
       }
 
@@ -164,7 +164,7 @@ namespace llarp::quic
         }
       }
 
-      Debug(
+      LogDebug(
           i,
           "[",
           pkt.path,
@@ -178,7 +178,7 @@ namespace llarp::quic
 
       handle_packet(pkt);
 
-      Debug("Done handling packet");
+      LogDebug("Done handling packet");
 
 #ifdef LOKINET_HAVE_RECVMMSG  // Help editor's { } matching:
     }
@@ -205,15 +205,15 @@ namespace llarp::quic
       send_version_negotiation(vi, p.path.remote);
       return std::nullopt;
     }
-    else if (rv != 0)
+    if (rv != 0)
     {
-      Warn("QUIC packet header decode failed: ", ngtcp2_strerror(rv));
+      LogWarn("QUIC packet header decode failed: ", ngtcp2_strerror(rv));
       return std::nullopt;
     }
 
     if (vi.dcid_len > ConnectionID::max_size())
     {
-      Warn("Internal error: destination ID is longer than should be allowed");
+      LogWarn("Internal error: destination ID is longer than should be allowed");
       return std::nullopt;
     }
 
@@ -224,13 +224,13 @@ namespace llarp::quic
   {
     if (ngtcp2_conn_is_in_closing_period(conn))
     {
-      Debug("Connection is in closing period, dropping");
+      LogDebug("Connection is in closing period, dropping");
       close_connection(conn);
       return;
     }
     if (conn.draining)
     {
-      Debug("Connection is draining, dropping");
+      LogDebug("Connection is draining, dropping");
       // "draining" state means we received a connection close and we're keeping the
       // connection alive just to catch (and discard) straggling packets that arrive
       // out of order w.r.t to connection close.
@@ -239,24 +239,24 @@ namespace llarp::quic
 
     if (auto result = read_packet(p, conn); !result)
     {
-      Warn("Read packet failed! ", ngtcp2_strerror(result.error_code));
+      LogWarn("Read packet failed! ", ngtcp2_strerror(result.error_code));
     }
 
     // FIXME - reset idle timer?
-    Debug("Done with incoming packet");
+    LogDebug("Done with incoming packet");
   }
 
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    Debug("Reading packet from ", p.path);
+    LogDebug("Reading packet from ", p.path);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
     if (rv == 0)
       conn.io_ready();
     else
-      Warn("read pkt error: ", ngtcp2_strerror(rv));
+      LogWarn("read pkt error: ", ngtcp2_strerror(rv));
 
     if (rv == NGTCP2_ERR_DRAINING)
       start_draining(conn);
@@ -274,7 +274,7 @@ namespace llarp::quic
     {
       if (-1
           == setsockopt(socket_fd(), IPPROTO_IP, IP_TOS, &ecn, static_cast<socklen_t>(sizeof(ecn))))
-        Warn("setsockopt failed to set IP_TOS: ", strerror(errno));
+        LogWarn("setsockopt failed to set IP_TOS: ", strerror(errno));
 
       // IPv6 version:
       // int tclass = this->ecn;
@@ -309,11 +309,11 @@ namespace llarp::quic
 
     if (nwrite == -1)
     {
-      Warn("sendmsg failed: ", strerror(errno));
+      LogWarn("sendmsg failed: ", strerror(errno));
       return {errno};
     }
 
-    Debug(
+    LogDebug(
         "[",
         to.to_string(),
         ",ecn=0x",
@@ -347,7 +347,7 @@ namespace llarp::quic
         versions.data(),
         versions.size());
     if (nwrote < 0)
-      Warn("Failed to construct version negotiation packet: ", ngtcp2_strerror(nwrote));
+      LogWarn("Failed to construct version negotiation packet: ", ngtcp2_strerror(nwrote));
     if (nwrote <= 0)
       return;
 
@@ -357,7 +357,7 @@ namespace llarp::quic
   void
   Endpoint::close_connection(Connection& conn, uint64_t code, bool application)
   {
-    Debug("Closing connection ", conn.base_cid);
+    LogDebug("Closing connection ", conn.base_cid);
     if (!conn.closing)
     {
       conn.conn_buffer.resize(max_pkt_size_v4);
@@ -376,7 +376,7 @@ namespace llarp::quic
           get_timestamp());
       if (written <= 0)
       {
-        Warn(
+        LogWarn(
             "Failed to write connection close packet: ",
             written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
         return;
@@ -395,7 +395,7 @@ namespace llarp::quic
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); !sent)
     {
-      Warn(
+      LogWarn(
           "Failed to send packet: ",
           strerror(sent.error_code),
           "; removing connection ",
@@ -413,7 +413,7 @@ namespace llarp::quic
   {
     if (conn.draining)
       return;
-    Debug("Putting ", conn.base_cid, " into draining mode");
+    LogDebug("Putting ", conn.base_cid, " into draining mode");
     conn.draining = true;
     // Recommended draining time is 3*Probe Timeout
     draining.emplace(conn.base_cid, get_time() + ngtcp2_conn_get_pto(conn) * 3 * 1ns);
@@ -433,7 +433,7 @@ namespace llarp::quic
       {
         if (std::holds_alternative<primary_conn_ptr>(it->second))
           cleanup = true;
-        Debug("Deleting connection ", it->first);
+        LogDebug("Deleting connection ", it->first);
         conns.erase(it);
       }
       draining.pop();
@@ -472,12 +472,12 @@ namespace llarp::quic
     auto it = conns.find(cid);
     if (it == conns.end())
     {
-      Debug("Cannot delete connection ", cid, ": cid not found");
+      LogDebug("Cannot delete connection ", cid, ": cid not found");
       return false;
     }
 
     bool primary = std::holds_alternative<primary_conn_ptr>(it->second);
-    Debug("Deleting ", primary ? "primary" : "alias", " connection ", cid);
+    LogDebug("Deleting ", primary ? "primary" : "alias", " connection ", cid);
     conns.erase(it);
     if (primary)
       clean_alias_conns();
@@ -506,7 +506,7 @@ namespace llarp::quic
       cid = ConnectionID::random(cid_length);
       inserted = conns.emplace(cid, conn.weak_from_this()).second;
     }
-    Debug("Created cid ", cid, " alias for ", conn.base_cid);
+    LogDebug("Created cid ", cid, " alias for ", conn.base_cid);
     return cid;
   }
 

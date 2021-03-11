@@ -1,5 +1,5 @@
 #include "null_crypto.hpp"
-#include "log.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 #include <limits>
 
@@ -41,7 +41,7 @@ namespace llarp::quic
   void
   NullCrypto::server_initial(Connection& conn)
   {
-    Debug("Server initial null crypto setup");
+    LogDebug("Server initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
     ngtcp2_conn_install_initial_key(
         conn,

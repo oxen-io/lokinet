@@ -1,6 +1,7 @@
 
 #include "client.hpp"
-#include "log.hpp"
+#include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/logging/logger.hpp>
 
 #include <oxenmq/variant.h>
 
@@ -15,7 +16,7 @@ namespace llarp::quic
   {
     // Our UDP socket is now set up, so now we initiate contact with the remote QUIC
     Path path{local, remote};
-    Debug("Connecting to ", remote);
+    llarp::LogDebug("Connecting to ", remote);
 
     if (tunnel_port == 0)
       throw std::logic_error{"Cannot tunnel to port 0"};
@@ -74,24 +75,24 @@ namespace llarp::quic
   void
   Client::handle_packet(const Packet& p)
   {
-    Debug("Handling incoming client packet: ", buffer_printer{p.data});
+    llarp::LogDebug("Handling incoming client packet: ", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
       return;
     auto& dcid = *maybe_dcid;
 
-    Debug("Incoming connection id ", dcid);
+    llarp::LogDebug("Incoming connection id ", dcid);
     auto [connptr, alias] = get_conn(dcid);
     if (!connptr)
     {
-      Debug("CID is ", alias ? "expired alias" : "unknown/expired", "; dropping");
+      llarp::LogDebug("CID is ", alias ? "expired alias" : "unknown/expired", "; dropping");
       return;
     }
     auto& conn = *connptr;
     if (alias)
-      Debug("CID is alias for primary CID ", conn.base_cid);
+      llarp::LogDebug("CID is alias for primary CID ", conn.base_cid);
     else
-      Debug("CID is primary CID");
+      llarp::LogDebug("CID is primary CID");
 
     handle_conn_packet(conn, p);
   }

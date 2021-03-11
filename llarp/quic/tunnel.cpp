@@ -1,6 +1,7 @@
 #include "tunnel.hpp"
-#include "log.hpp"
 #include "stream.hpp"
+#include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/logging/logger.hpp>
 
 namespace llarp::quic::tunnel
 {
@@ -12,12 +13,12 @@ namespace llarp::quic::tunnel
     assert(stream);
     std::string_view data{event.data.get(), event.length};
     auto peer = client.peer();
-    llarp::quic::Debug(peer.ip, ":", peer.port, " → lokinet ", llarp::quic::buffer_printer{data});
+    LogDebug(peer.ip, ":", peer.port, " → lokinet ", buffer_printer{data});
     // Steal the buffer from the DataEvent's unique_ptr<char[]>:
     stream->append_buffer(reinterpret_cast<const std::byte*>(event.data.release()), event.length);
     if (stream->used() >= PAUSE_SIZE)
     {
-      llarp::quic::Debug(
+      LogDebug(
           "quic tunnel is congested (have ",
           stream->used(),
           " bytes in flight); pausing local tcp connection reads");
@@ -26,7 +27,7 @@ namespace llarp::quic::tunnel
         auto client = s.data<uvw::TCPHandle>();
         if (s.used() < PAUSE_SIZE)
         {
-          llarp::quic::Debug("quic tunnel is no longer congested; resuming tcp connection reading");
+          LogDebug("quic tunnel is no longer congested; resuming tcp connection reading");
           client->read();
           return true;
         }
@@ -35,7 +36,7 @@ namespace llarp::quic::tunnel
     }
     else
     {
-      llarp::quic::Debug("Queued ", event.length, " bytes");
+      LogDebug("Queued ", event.length, " bytes");
     }
   }
 
@@ -47,7 +48,7 @@ namespace llarp::quic::tunnel
     assert(tcp);
     std::string_view data{reinterpret_cast<const char*>(bdata.data()), bdata.size()};
     auto peer = tcp->peer();
-    llarp::quic::Debug(peer.ip, ":", peer.port, " ← lokinet ", llarp::quic::buffer_printer{data});
+    LogTrace(peer.ip, ":", peer.port, " ← lokinet ", buffer_printer{data});
 
     if (data.empty())
       return;
@@ -73,7 +74,7 @@ namespace llarp::quic::tunnel
 
     tcp.on<uvw::CloseEvent>([](auto&, uvw::TCPHandle& c) {
       // This fires sometime after we call `close()` to signal that the close is done.
-      llarp::quic::Error(
+      LogError(
           "Connection with ",
           c.peer().ip,
           ":",
@@ -83,12 +84,12 @@ namespace llarp::quic::tunnel
     });
     tcp.on<uvw::EndEvent>([](auto&, uvw::TCPHandle& c) {
       // This fires on eof, most likely because the other side of the TCP connection closed it.
-      llarp::quic::Error(
+      LogError(
           "EOF on connection with ", c.peer().ip, ":", c.peer().port, ", closing quic stream");
       c.data<llarp::quic::Stream>()->close();
     });
     tcp.on<uvw::ErrorEvent>([](const uvw::ErrorEvent& e, uvw::TCPHandle& tcp) {
-      llarp::quic::Error(
+      LogError(
           "ErrorEvent[",
           e.name(),
           ": ",

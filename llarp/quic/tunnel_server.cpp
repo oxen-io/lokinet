@@ -2,7 +2,7 @@
 #include "tunnel.hpp"
 #include "connection.hpp"
 #include "server.hpp"
-#include "log.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 #include <util/str.hpp>
 
@@ -69,43 +69,36 @@ namespace llarp::quic::tunnel
     // be the localhost.loki address for lokinet).
     std::string localhost = "127.0.0.1";
 
-    llarp::quic::Debug("Initializing server");
+    LogInfo("Initializing QUIC server");
     llarp::quic::Server s{
         listen_addr,
         loop,
         [loop, localhost, allowed_ports](
             llarp::quic::Server&, llarp::quic::Stream& stream, uint16_t port) {
-          llarp::quic::Debug(
-              "\e[33mNew incoming quic stream ",
+          LogDebug(
+              "New incoming quic stream ",
               stream.id(),
               " to reach ",
               localhost,
               ":",
-              port,
-              "\e[0m");
+              port);
           if (port == 0 || !(allowed_ports.empty() || allowed_ports.count(port)))
           {
-            llarp::quic::Warn(
+            LogWarn(
                 "quic stream denied by configuration: ", port, " is not a permitted local port");
             return false;
           }
-          /*
-          stream.data_callback = [init_seen=false](llarp::quic::Stream& stream,
-          llarp::quic::bstring_view bdata) mutable { if (init_seen) { llarp::quic::Warn("Invalid
-          remote data: received multiple bytes before connection confirmation");
-              }
-          };
-          */
+
           stream.close_callback = [](llarp::quic::Stream& strm,
                                      std::optional<uint64_t> error_code) {
-            llarp::quic::Debug(
+            LogDebug(
                 error_code ? "Remote side" : "We",
                 " closed the quic stream, closing localhost tcp connection");
             if (error_code && *error_code > 0)
-              llarp::quic::Warn("Remote quic stream was closed with error code ", *error_code);
+              LogWarn("Remote quic stream was closed with error code ", *error_code);
             auto tcp = strm.data<uvw::TCPHandle>();
             if (!tcp)
-              llarp::quic::Debug("Local TCP connection already closed");
+              LogDebug("Local TCP connection already closed");
             else
               tcp->close();
           };
@@ -116,7 +109,7 @@ namespace llarp::quic::tunnel
           auto tcp = loop->resource<uvw::TCPHandle>();
           auto error_handler = tcp->once<uvw::ErrorEvent>(
               [&stream, localhost, port](const uvw::ErrorEvent&, uvw::TCPHandle&) {
-                llarp::quic::Error(
+                LogWarn(
                     "Failed to connect to ", localhost, ":", port, ", shutting down quic stream");
                 stream.close(tunnel::ERROR_CONNECT);
               });
@@ -127,7 +120,7 @@ namespace llarp::quic::tunnel
                 auto stream = streamw.lock();
                 if (!stream)
                 {
-                  llarp::quic::Warn(
+                  LogWarn(
                       "Connected to ",
                       peer.ip,
                       ":",
@@ -136,14 +129,13 @@ namespace llarp::quic::tunnel
                   tcp.closeReset();
                   return;
                 }
-                llarp::quic::Debug(
-                    "\e[32mConnected to ",
+                LogDebug(
+                    "Connected to ",
                     peer.ip,
                     ":",
                     peer.port,
                     " for quic ",
-                    stream->id(),
-                    "\e[0m");
+                    stream->id());
                 tcp.erase(error_handler);
                 tunnel::install_stream_forwarding(tcp, *stream);
                 assert(stream->used() == 0);
@@ -152,12 +144,13 @@ namespace llarp::quic::tunnel
                 tcp.read();
               });
 
+          // FIXME, need to configure this
           tcp->connect("127.0.0.1", port);
 
           return true;
         }};
     s.default_stream_buffer_size = 0;  // We steal uvw's provided buffers
-    llarp::quic::Debug("Initialized server");
+    LogDebug("Initialized server");
     std::cout << "Listening on localhost:" << listen_port
               << " with tunnel(s) to localhost port(s):";
     if (allowed_ports.empty())

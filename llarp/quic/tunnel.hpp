@@ -1,7 +1,6 @@
 #pragma once
 
 #include "stream.hpp"
-#include "log.hpp"
 
 #include <charconv>
 #include <cstdint>
