@@ -8,28 +8,27 @@
 #include <nlohmann/json.hpp>
 
 #include <util/time.hpp>
-#include <util/thread/logic.hpp>
 
 namespace llarp
 {
   namespace rpc
   {
-    static lokimq::LogLevel
+    static oxenmq::LogLevel
     toLokiMQLogLevel(llarp::LogLevel level)
     {
       switch (level)
       {
         case eLogError:
-          return lokimq::LogLevel::error;
+          return oxenmq::LogLevel::error;
         case eLogWarn:
-          return lokimq::LogLevel::warn;
+          return oxenmq::LogLevel::warn;
         case eLogInfo:
-          return lokimq::LogLevel::info;
+          return oxenmq::LogLevel::info;
         case eLogDebug:
-          return lokimq::LogLevel::debug;
+          return oxenmq::LogLevel::debug;
         case eLogNone:
         default:
-          return lokimq::LogLevel::trace;
+          return oxenmq::LogLevel::trace;
       }
     }
 
@@ -39,13 +38,13 @@ namespace llarp
       // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
 
       // TODO: proper auth here
-      auto lokidCategory = m_lokiMQ->add_category("lokid", lokimq::Access{lokimq::AuthLevel::none});
+      auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
       lokidCategory.add_request_command(
-          "get_peer_stats", [this](lokimq::Message& m) { HandleGetPeerStats(m); });
+          "get_peer_stats", [this](oxenmq::Message& m) { HandleGetPeerStats(m); });
     }
 
     void
-    LokidRpcClient::ConnectAsync(lokimq::address url)
+    LokidRpcClient::ConnectAsync(oxenmq::address url)
     {
       if (not m_Router->IsServiceNode())
       {
@@ -54,10 +53,10 @@ namespace llarp
       LogInfo("connecting to lokid via LMQ at ", url);
       m_Connection = m_lokiMQ->connect_remote(
           url,
-          [self = shared_from_this()](lokimq::ConnectionID) { self->Connected(); },
-          [self = shared_from_this(), url](lokimq::ConnectionID, std::string_view f) {
+          [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
+          [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
             llarp::LogWarn("Failed to connect to lokid: ", f);
-            LogicCall(self->m_Router->logic(), [self, url]() { self->ConnectAsync(url); });
+            self->m_Router->loop()->call([self, url]() { self->ConnectAsync(url); });
           });
     }
 
@@ -170,7 +169,7 @@ namespace llarp
         return;
       }
       // inform router about the new list
-      LogicCall(m_Router->logic(), [r = m_Router, nodeList = std::move(nodeList)]() mutable {
+      m_Router->loop()->call([r = m_Router, nodeList = std::move(nodeList)]() mutable {
         r->SetRouterWhitelist(std::move(nodeList));
       });
     }
@@ -236,8 +235,8 @@ namespace llarp
               {
                 service::EncryptedName result;
                 const auto j = nlohmann::json::parse(data[1]);
-                result.ciphertext = lokimq::from_hex(j["encrypted_value"].get<std::string>());
-                const auto nonce = lokimq::from_hex(j["nonce"].get<std::string>());
+                result.ciphertext = oxenmq::from_hex(j["encrypted_value"].get<std::string>());
+                const auto nonce = oxenmq::from_hex(j["nonce"].get<std::string>());
                 if (nonce.size() != result.nonce.size())
                 {
                   throw std::invalid_argument(stringify(
@@ -252,13 +251,14 @@ namespace llarp
                 LogError("failed to parse response from lns lookup: ", ex.what());
               }
             }
-            LogicCall(r->logic(), [resultHandler, maybe]() { resultHandler(maybe); });
+            r->loop()->call(
+                [resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
           },
           req.dump());
     }
 
     void
-    LokidRpcClient::HandleGetPeerStats(lokimq::Message& msg)
+    LokidRpcClient::HandleGetPeerStats(oxenmq::Message& msg)
     {
       LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");
       for (auto str : msg.data)
@@ -290,7 +290,7 @@ namespace llarp
         }
 
         std::vector<std::string> routerIdStrings;
-        lokimq::bt_deserialize(msg.data[0], routerIdStrings);
+        oxenmq::bt_deserialize(msg.data[0], routerIdStrings);
 
         std::vector<RouterID> routerIds;
         routerIds.reserve(routerIdStrings.size());

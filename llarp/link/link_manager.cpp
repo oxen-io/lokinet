@@ -121,12 +121,12 @@ namespace llarp
   }
 
   bool
-  LinkManager::StartLinks(Logic_ptr logic)
+  LinkManager::StartLinks()
   {
     LogInfo("starting ", outboundLinks.size(), " outbound links");
     for (const auto& link : outboundLinks)
     {
-      if (!link->Start(logic))
+      if (!link->Start())
       {
         LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
@@ -139,7 +139,7 @@ namespace llarp
       LogInfo("starting ", inboundLinks.size(), " inbound links");
       for (const auto& link : inboundLinks)
       {
-        if (!link->Start(logic))
+        if (!link->Start())
         {
           LogWarn("Link ", link->Name(), " failed to start");
           return false;
@@ -220,6 +220,15 @@ namespace llarp
   LinkManager::ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const
   {
     for (const auto& link : inboundLinks)
+    {
+      visit(link);
+    }
+  }
+
+  void
+  LinkManager::ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const
+  {
+    for (const auto& link : outboundLinks)
     {
       visit(link);
     }

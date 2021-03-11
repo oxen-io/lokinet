@@ -122,6 +122,16 @@ namespace llarp
       return true;
     }
 
+    OwnedBuffer
+    Message::ToBuffer() const
+    {
+      std::array<byte_t, 1500> tmp;
+      llarp_buffer_t buf{tmp};
+      if (not Encode(&buf))
+        throw std::runtime_error("cannot encode dns message");
+      return OwnedBuffer::copy_used(buf);
+    }
+
     void Message::AddServFail(RR_TTL_t)
     {
       if (questions.size())

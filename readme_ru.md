@@ -14,7 +14,7 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
 ## Использование
 
-О том как начать работу см. [Документацию](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/)
+О том как начать работу см. [Документацию](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/)
 
 Также прочтите [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) для установки и другой полезной информации.
 
@@ -39,11 +39,11 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
     $ lokinet
 
-## Запуск в MacOS/UNIX/BSD
+## Запуск в macOS/UNIX/BSD
 
 ** ВЫ ДОЛЖНЫ ЗАПУСКАТЬ С ПРАВАМИ СУПЕРПОЛЬЗОВАТЕЛЯ **, запускайте с помощью `sudo`. Для создания интерфейса виртуального туннеля необходимы повышенные привилегии.
 
-Установщик MacOS помещает исполняемые файлы (`lokinet` и` lokinet-bootstrap`) в `/usr/local/bin`, благодаря этому вы можете легко использовать исполняемые файлы в своем терминале. Установщик также уничтожает вашу предыдущую конфигурацию и ключи, устанавливает новую конфигурацию и загружает актуальную версию bootstrap.
+Установщик macOS помещает исполняемые файлы (`lokinet` и` lokinet-bootstrap`) в `/usr/local/bin`, благодаря этому вы можете легко использовать исполняемые файлы в своем терминале. Установщик также уничтожает вашу предыдущую конфигурацию и ключи, устанавливает новую конфигурацию и загружает актуальную версию bootstrap.
 
 для запуска, после создания конфигурации:
 
@@ -82,7 +82,7 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
     $ sudo make install
 
-### MacOS
+### macOS
 
 сборка:
     убедитесь, что у вас установлены инструменты командной строки cmake, libuv и xcode
@@ -92,7 +92,7 @@ Lokinet - реализация LLARP (протокол анонимной мар
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
-    $ make -j$(nproc)
+    $ make -j$(sysctl -n hw.ncpu)
 
 установка:
 

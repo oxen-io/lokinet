@@ -83,6 +83,10 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
+      // Wrapper around Encode that encodes into a new buffer and returns it
+      [[nodiscard]] OwnedBuffer
+      ToBuffer() const;
+
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
 

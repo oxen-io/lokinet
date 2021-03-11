@@ -86,7 +86,8 @@ namespace llarp
       }
 
       // identify closest 4 routers
-      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(addr, IntroSetStorageRedundancy);
+      auto closestRCs =
+          dht.GetRouter()->nodedb()->FindManyClosestTo(addr, IntroSetStorageRedundancy);
       if (closestRCs.size() != IntroSetStorageRedundancy)
       {
         llarp::LogWarn("Received PublishIntroMessage but only know ", closestRCs.size(), " nodes");

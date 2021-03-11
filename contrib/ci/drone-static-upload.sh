@@ -19,7 +19,7 @@ set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
 chmod 600 ssh_key
 
-os="$DRONE_STAGE_OS-$DRONE_STAGE_ARCH"
+os="${UPLOAD_OS:-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH}"
 if [ -n "$WINDOWS_BUILD_NAME" ]; then
     os="windows-$WINDOWS_BUILD_NAME"
 fi
@@ -35,10 +35,15 @@ fi
 
 mkdir -v "$base"
 if [ -e daemon/lokinet.exe ]; then
-    cp -av lokinet-*.exe ../lokinet-bootstrap.ps1 "$base"
+    cp -av lokinet-*.exe "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
+elif [ -e build/outputs/apk/debug/lokinet-debug.apk ] ; then
+    # android af ngl
+    cp -av build/outputs/apk/debug/lokinet-debug.apk "$base"
+    archive="$base.tar.xz"
+    tar cJvf "$archive" "$base"
 else
     cp -av daemon/lokinet daemon/lokinet-vpn ../lokinet-bootstrap "$base"
     # tar dat shiz up yo
@@ -46,7 +51,7 @@ else
     tar cJvf "$archive" "$base"
 fi
 
-upload_to="builds.lokinet.dev/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
+upload_to="oxen.rocks/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
 
 # sftp doesn't have any equivalent to mkdir -p, so we have to split the above up into a chain of
 # -mkdir a/, -mkdir a/b/, -mkdir a/b/c/, ... commands.  The leading `-` allows the command to fail
@@ -60,7 +65,7 @@ for p in "${upload_dirs[@]}"; do
 -mkdir $dir_tmp"
 done
 
-sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@builds.lokinet.dev <<SFTP
+sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<SFTP
 $mkdirs
 put $archive $upload_to
 SFTP

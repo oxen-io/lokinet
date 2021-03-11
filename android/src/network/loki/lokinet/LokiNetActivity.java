@@ -19,7 +19,9 @@ import android.content.Context;
 
 import android.content.ComponentName;
 import android.content.ServiceConnection;
+import android.Manifest;
 
+import android.net.VpnService;
 import android.os.AsyncTask;
 import android.content.Intent;
 import android.os.Bundle;
@@ -29,13 +31,17 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import android.util.Log;
+
 
 public class LokiNetActivity extends Activity {
 	private static final String TAG = "lokinet-activity";
 	private TextView textView;
-	private static final String DefaultBootstrapURL = "https://seed.lokinet.org/bootstrap.signed";
+	private static final String DefaultBootstrapURL = "https://seed.lokinet.org/lokinet.signed";
 
 	private AsyncBootstrap bootstrapper;
+
+  public static final String LOG_TAG = "LokinetDaemon";
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -71,11 +77,33 @@ public class LokiNetActivity extends Activity {
 		bootstrapper.execute(DefaultBootstrapURL);
 	}
 
-  
 	public void runLokinetService()
 	{
-		startService(new Intent(LokiNetActivity.this,
-				LokinetService.class));
+		Intent intent = VpnService.prepare(getApplicationContext());
+		if (intent != null)
+		{
+			Log.d(LOG_TAG, "VpnService.prepare() returned an Intent, so launch that intent.");
+			startActivityForResult(intent, 0);
+		}
+		else
+		{
+			Log.w(LOG_TAG, "VpnService.prepare() returned null, not running.");
+		}
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		if (resultCode == RESULT_OK)
+		{
+			Log.d(LOG_TAG, "VpnService prepared intent RESULT_OK, launching LokinetDaemon Service");
+			startService(new Intent(LokiNetActivity.this,
+					LokinetDaemon.class));
+		}
+		else
+		{
+			Log.d(LOG_TAG, "VpnService prepared intent NOT RESULT_OK, shit.");
+		}
 	}
 
 	@Override

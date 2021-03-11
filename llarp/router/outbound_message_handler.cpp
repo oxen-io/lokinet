@@ -100,24 +100,25 @@ namespace llarp
   util::StatusObject
   OutboundMessageHandler::ExtractStatus() const
   {
-    util::StatusObject status{"queueStats",
-                              {{"queued", m_queueStats.queued},
-                               {"dropped", m_queueStats.dropped},
-                               {"sent", m_queueStats.sent},
-                               {"queueWatermark", m_queueStats.queueWatermark},
-                               {"perTickMax", m_queueStats.perTickMax},
-                               {"numTicks", m_queueStats.numTicks}}};
+    util::StatusObject status{
+        "queueStats",
+        {{"queued", m_queueStats.queued},
+         {"dropped", m_queueStats.dropped},
+         {"sent", m_queueStats.sent},
+         {"queueWatermark", m_queueStats.queueWatermark},
+         {"perTickMax", m_queueStats.perTickMax},
+         {"numTicks", m_queueStats.numTicks}}};
 
     return status;
   }
 
   void
   OutboundMessageHandler::Init(
-      ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, std::shared_ptr<Logic> logic)
+      ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, EventLoop_ptr loop)
   {
     _linkManager = linkManager;
     _lookupHandler = lookupHandler;
-    _logic = logic;
+    _loop = std::move(loop);
 
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
@@ -183,10 +184,7 @@ namespace llarp
   OutboundMessageHandler::DoCallback(SendStatusHandler callback, SendStatus status)
   {
     if (callback)
-    {
-      auto f = std::bind(callback, status);
-      LogicCall(_logic, [self = this, f]() { self->m_Killer.TryAccess(f); });
-    }
+      _loop->call([f = std::move(callback), status] { f(status); });
   }
 
   void

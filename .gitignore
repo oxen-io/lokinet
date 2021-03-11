@@ -5,7 +5,7 @@
 *.o
 *.so
 
-build/
+/build*/
 **/__pycache__/**
 
 llarpd
@@ -18,6 +18,8 @@ CMakeFiles
 CMakeCache.txt
 .ninja_log
 .ninja_deps
+/.cache/
+/compile_commands.json
 
 callgrind.*
 .gdb_history
@@ -40,9 +42,6 @@ vsproject/
 .vs
 
 daemon.ini
-lokinet-win32.exe
-lokinet
-lokinet.exe
 
 
 .gradle/

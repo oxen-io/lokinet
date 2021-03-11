@@ -25,7 +25,7 @@ set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
 chmod 600 ~/ssh_key
 
-upload_to="builds.lokinet.dev/debs/${DRONE_REPO// /_}@${DRONE_BRANCH// /_}/$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}/$distro/$DRONE_STAGE_ARCH"
+upload_to="oxen.rocks/debs/${DRONE_REPO// /_}@${DRONE_BRANCH// /_}/$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}/$distro/$DRONE_STAGE_ARCH"
 
 # sftp doesn't have any equivalent to mkdir -p, so we have to split the above up into a chain of
 # -mkdir a/, -mkdir a/b/, -mkdir a/b/c/, ... commands.  The leading `-` allows the command to fail
@@ -39,7 +39,7 @@ for p in "${upload_dirs[@]}"; do
 -mkdir $dir_tmp"
 done
 
-sftp -i ~/ssh_key -b - -o StrictHostKeyChecking=off drone@builds.lokinet.dev <<SFTP
+sftp -i ~/ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<SFTP
 $mkdirs
 put ../*.*deb $upload_to
 SFTP

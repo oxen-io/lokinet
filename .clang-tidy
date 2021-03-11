@@ -1,2 +1,2 @@
 HeaderFilterRegex: 'llarp/.*'
-Checks: 'readability-else-after-return,clang-analyzer-core-*,modernize-*'
+Checks: 'readability-else-after-return,clang-analyzer-core-*,modernize-*,-modernize-use-trailing-return-type,-modernize-use-nodiscard,bugprone-*'

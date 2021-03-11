@@ -40,15 +40,16 @@ namespace llarp
     Endpoint::ExtractStatus() const
     {
       auto now = m_Parent->Now();
-      util::StatusObject obj{{"identity", m_remoteSignKey.ToString()},
-                             {"ip", m_IP.ToString()},
-                             {"txRate", m_TxRate},
-                             {"rxRate", m_RxRate},
-                             {"createdAt", to_json(createdAt)},
-                             {"exiting", !m_RewriteSource},
-                             {"looksDead", LooksDead(now)},
-                             {"expiresSoon", ExpiresSoon(now)},
-                             {"expired", IsExpired(now)}};
+      util::StatusObject obj{
+          {"identity", m_remoteSignKey.ToString()},
+          {"ip", m_IP.ToString()},
+          {"txRate", m_TxRate},
+          {"rxRate", m_RxRate},
+          {"createdAt", to_json(createdAt)},
+          {"exiting", !m_RewriteSource},
+          {"looksDead", LooksDead(now)},
+          {"expiresSoon", ExpiresSoon(now)},
+          {"expired", IsExpired(now)}};
       return obj;
     }
 
@@ -188,7 +189,7 @@ namespace llarp
       // flush upstream queue
       while (m_UpstreamQueue.size())
       {
-        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt.ConstBuffer());
+        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt);
         m_UpstreamQueue.pop();
       }
       // flush downstream queue

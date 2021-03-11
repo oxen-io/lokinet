@@ -1,26 +1,30 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 #include <llarp.h>
-#include <util/fs.hpp>
-#include <util/types.hpp>
-#include <ev/ev.hpp>
-#include <nodedb.hpp>
-#include <crypto/crypto.hpp>
-#include <router/abstractrouter.hpp>
 
+#include <future>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-struct llarp_ev_loop;
-
 namespace llarp
 {
-  class Logic;
+  namespace vpn
+  {
+    class Platform;
+  }
+
+  class EventLoop;
   struct Config;
   struct RouterContact;
+  struct Config;
+  struct Crypto;
+  struct CryptoManager;
+  struct AbstractRouter;
+  class NodeDB;
+
   namespace thread
   {
     class ThreadPool;
@@ -35,21 +39,17 @@ namespace llarp
 
   struct Context
   {
-    std::unique_ptr<Crypto> crypto = nullptr;
-    std::unique_ptr<CryptoManager> cryptoManager = nullptr;
-    std::unique_ptr<AbstractRouter> router = nullptr;
-    std::shared_ptr<Logic> logic = nullptr;
-    std::unique_ptr<llarp_nodedb> nodedb = nullptr;
-    llarp_ev_loop_ptr mainloop;
+    std::shared_ptr<Crypto> crypto = nullptr;
+    std::shared_ptr<CryptoManager> cryptoManager = nullptr;
+    std::shared_ptr<AbstractRouter> router = nullptr;
+    std::shared_ptr<EventLoop> loop = nullptr;
+    std::shared_ptr<NodeDB> nodedb = nullptr;
     std::string nodedb_dir;
 
     virtual ~Context() = default;
 
     void
     Close();
-
-    int
-    LoadDatabase();
 
     void
     Setup(const RuntimeOptions& opts);
@@ -61,10 +61,8 @@ namespace llarp
     HandleSignal(int sig);
 
     /// Configure given the specified config.
-    ///
-    /// note: consider using std::move() when passing conf in.
     void
-    Configure(Config conf);
+    Configure(std::shared_ptr<Config> conf);
 
     /// handle SIGHUP
     void
@@ -92,8 +90,20 @@ namespace llarp
 
     /// Creates a router. Can be overridden to allow a different class of router
     /// to be created instead. Defaults to llarp::Router.
-    virtual std::unique_ptr<AbstractRouter>
-    makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
+    virtual std::shared_ptr<AbstractRouter>
+    makeRouter(const std::shared_ptr<EventLoop>& loop);
+
+    /// create the vpn platform for use in creating network interfaces
+    virtual std::shared_ptr<llarp::vpn::Platform>
+    makeVPNPlatform();
+
+#ifdef ANDROID
+
+    int androidFD = -1;
+
+    int
+    GetUDPSocket();
+#endif
 
    protected:
     std::shared_ptr<Config> config = nullptr;
