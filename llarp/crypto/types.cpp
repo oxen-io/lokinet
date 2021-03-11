@@ -7,7 +7,7 @@
 
 #include <iterator>
 
-#include <lokimq/hex.h>
+#include <oxenmq/hex.h>
 
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_sign_ed25519.h>
@@ -20,14 +20,14 @@ namespace llarp
   {
     if (str.size() != 2 * size())
       return false;
-    lokimq::from_hex(str.begin(), str.end(), begin());
+    oxenmq::from_hex(str.begin(), str.end(), begin());
     return true;
   }
 
   std::string
   PubKey::ToString() const
   {
-    return lokimq::to_hex(begin(), end());
+    return oxenmq::to_hex(begin(), end());
   }
 
   bool

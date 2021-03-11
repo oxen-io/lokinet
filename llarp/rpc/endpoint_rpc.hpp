@@ -1,7 +1,7 @@
 #pragma once
 
 #include <service/auth.hpp>
-#include <lokimq/lokimq.h>
+#include <oxenmq/oxenmq.h>
 
 namespace llarp::service
 {
@@ -13,7 +13,7 @@ namespace llarp::rpc
   struct EndpointAuthRPC : public llarp::service::IAuthPolicy,
                            public std::enable_shared_from_this<EndpointAuthRPC>
   {
-    using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+    using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
     using Endpoint_ptr = std::shared_ptr<llarp::service::Endpoint>;
     using Whitelist_t = std::unordered_set<llarp::service::Address, llarp::service::Address::Hash>;
 
@@ -33,12 +33,16 @@ namespace llarp::rpc
         std::shared_ptr<llarp::service::ProtocolMessage> msg,
         std::function<void(service::AuthResult)> hook) override;
 
+    bool
+    AsyncAuthPending(service::ConvoTag tag) const override;
+
    private:
     const std::string m_AuthURL;
     const std::string m_AuthMethod;
     const Whitelist_t m_AuthWhitelist;
     LMQ_ptr m_LMQ;
     Endpoint_ptr m_Endpoint;
-    std::optional<lokimq::ConnectionID> m_Conn;
+    std::optional<oxenmq::ConnectionID> m_Conn;
+    std::unordered_set<service::ConvoTag> m_PendingAuths;
   };
 }  // namespace llarp::rpc

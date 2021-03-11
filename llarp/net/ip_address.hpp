@@ -126,6 +126,9 @@ namespace llarp
     huint32_t
     toIP() const;
 
+    huint128_t
+    toIP6() const;
+
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;
     // isPrivate() const;

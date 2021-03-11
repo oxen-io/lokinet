@@ -430,7 +430,7 @@ namespace llarp
           const auto pos = arg.find(":");
           if (pos == std::string::npos)
           {
-            range.FromString("0.0.0.0/0");
+            range.FromString("::/0");
           }
           else if (not range.FromString(arg.substr(pos + 1)))
           {
@@ -881,7 +881,7 @@ namespace llarp
             "but can use (non-default) TCP if lokid is configured that way:",
             "    rpc=tcp://127.0.0.1:5678",
         },
-        [this](std::string arg) { lokidRPCAddr = lokimq::address(arg); });
+        [this](std::string arg) { lokidRPCAddr = oxenmq::address(arg); });
 
     // Deprecated options:
     conf.defineOption<std::string>("lokid", "username", Deprecated);
@@ -983,6 +983,71 @@ namespace llarp
         });
   }
 
+  void
+  PeerSelectionConfig::defineConfigOptions(
+      ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    constexpr Default DefaultUniqueCIDR{32};
+    conf.defineOption<int>(
+        "paths",
+        "unique-range-size",
+        DefaultUniqueCIDR,
+        ClientOnly,
+        [=](int arg) {
+          if (arg == 0)
+          {
+            m_UniqueHopsNetmaskSize = arg;
+          }
+          else if (arg > 32 or arg < 4)
+          {
+            throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
+          }
+          m_UniqueHopsNetmaskSize = arg;
+        },
+        Comment{
+            "Netmask for router path selection; each router must be from a distinct IP subnet "
+            "of the given size.",
+            "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
+
+#ifdef WITH_GEOIP
+    conf.defineOption<std::string>(
+        "paths",
+        "exclude-country",
+        ClientOnly,
+        MultiValue,
+        [=](std::string arg) {
+          m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
+        },
+        Comment{
+            "exclude a country given its 2 letter country code from being used in path builds",
+            "e.g. exclude-country=DE",
+            "can be listed multiple times to exclude multiple countries"});
+#endif
+  }
+
+  bool
+  PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
+  {
+    if (m_UniqueHopsNetmaskSize == 0)
+      return true;
+    const auto netmask = netmask_ipv6_bits(96 + m_UniqueHopsNetmaskSize);
+    std::set<IPRange> seenRanges;
+    for (const auto& hop : rcs)
+    {
+      for (const auto& addr : hop.addrs)
+      {
+        const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
+        if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
+        {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   Config::Config(fs::path datadir)
       : m_DataDir(datadir.empty() ? fs::current_path() : std::move(datadir))
   {}
@@ -1018,6 +1083,12 @@ namespace llarp
         return true;
       });
     }
+  }
+
+  void
+  Config::AddDefault(std::string section, std::string key, std::string val)
+  {
+    m_Additional.emplace_back(std::array<std::string, 3>{section, key, val});
   }
 
   bool
@@ -1073,6 +1144,12 @@ namespace llarp
       m_Parser.Clear();
       LoadOverrides();
 
+      /// load additional config options added
+      for (const auto& [sect, key, val] : m_Additional)
+      {
+        conf.addConfigValue(sect, key, val);
+      }
+
       m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
@@ -1096,6 +1173,7 @@ namespace llarp
   {
     router.defineConfigOptions(conf, params);
     network.defineConfigOptions(conf, params);
+    paths.defineConfigOptions(conf, params);
     connect.defineConfigOptions(conf, params);
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
@@ -1217,6 +1295,11 @@ namespace llarp
     llarp::ConfigDefinition def{false};
     initializeConfig(def, params);
     generateCommonConfigComments(def);
+    def.addSectionComments(
+        "paths",
+        {
+            "path selection algorithm options",
+        });
 
     def.addSectionComments(
         "network",

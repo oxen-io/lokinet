@@ -11,15 +11,15 @@ extern "C"
   /*
    * Class:     network_loki_lokinet_LokinetConfig
    * Method:    Obtain
-   * Signature: ()Ljava/nio/Buffer;
+   * Signature: (Ljava/lang/String;)Ljava/nio/ByteBuffer;
    */
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv*, jclass);
+  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv*, jclass, jstring);
 
   /*
    * Class:     network_loki_lokinet_LokinetConfig
    * Method:    Free
-   * Signature: (Ljava/nio/Buffer;)V
+   * Signature: (Ljava/nio/ByteBuffer;)V
    */
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_LokinetConfig_Free(JNIEnv*, jclass, jobject);
@@ -27,10 +27,27 @@ extern "C"
   /*
    * Class:     network_loki_lokinet_LokinetConfig
    * Method:    Load
-   * Signature: (Ljava/lang/String;)Z
+   * Signature: ()Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv*, jobject, jstring);
+  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv*, jobject);
+
+  /*
+   * Class:     network_loki_lokinet_LokinetConfig
+   * Method:    Save
+   * Signature: ()Z
+   */
+  JNIEXPORT jboolean JNICALL
+  Java_network_loki_lokinet_LokinetConfig_Save(JNIEnv*, jobject);
+
+  /*
+   * Class:     network_loki_lokinet_LokinetConfig
+   * Method:    AddDefaultValue
+   * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+   */
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_LokinetConfig_AddDefaultValue(
+      JNIEnv*, jobject, jstring, jstring, jstring);
 
 #ifdef __cplusplus
 }

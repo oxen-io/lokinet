@@ -7,10 +7,11 @@ namespace llarp
     util::StatusObject
     Introduction::ExtractStatus() const
     {
-      util::StatusObject obj{{"router", router.ToHex()},
-                             {"expiresAt", to_json(expiresAt)},
-                             {"latency", to_json(latency)},
-                             {"version", uint64_t(version)}};
+      util::StatusObject obj{
+          {"router", router.ToHex()},
+          {"expiresAt", to_json(expiresAt)},
+          {"latency", to_json(latency)},
+          {"version", uint64_t(version)}};
       return obj;
     }
 

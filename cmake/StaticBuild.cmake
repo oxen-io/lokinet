@@ -41,12 +41,19 @@ set(SODIUM_SOURCE libsodium-${SODIUM_VERSION}.tar.gz)
 set(SODIUM_HASH SHA512=17e8638e46d8f6f7d024fe5559eccf2b8baf23e143fadd472a7d29d228b186d86686a5e6920385fe2020729119a5f12f989c3a782afbd05a8db4819bb18666ef
   CACHE STRING "libsodium source hash")
 
-set(ZMQ_VERSION 4.3.3 CACHE STRING "libzmq version")
+set(ZMQ_VERSION 4.3.4 CACHE STRING "libzmq version")
 set(ZMQ_MIRROR ${LOCAL_MIRROR} https://github.com/zeromq/libzmq/releases/download/v${ZMQ_VERSION}
     CACHE STRING "libzmq mirror(s)")
 set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
-set(ZMQ_HASH SHA512=4c18d784085179c5b1fcb753a93813095a12c8d34970f2e1bfca6499be6c9d67769c71c68b7ca54ff181b20390043170e89733c22f76ff1ea46494814f7095b1
+set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
+
+set(LIBUV_VERSION 1.40.0 CACHE STRING "libuv version")
+set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
+    CACHE STRING "libuv mirror(s)")
+set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
+set(LIBUV_HASH SHA256=61a90db95bac00adec1cc5ddc767ebbcaabc70242bd1134a7a6b1fb1d498a194
+    CACHE STRING "libuv source hash")
 
 
 
@@ -188,6 +195,17 @@ function(build_external target)
   )
 endfunction()
 
+build_external(libuv
+  CONFIGURE_COMMAND ./autogen.sh && ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --with-pic --disable-shared --enable-static "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  BUILD_BYPRODUCTS
+    ${DEPS_DESTDIR}/lib/libuv.a
+    ${DEPS_DESTDIR}/include/uv.h
+  )
+add_static_target(libuv libuv_external libuv.a)
+target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
+
+  
+
 
 
 set(openssl_system_env "")
@@ -200,6 +218,9 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
   endif()
+elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
+  # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
+  set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
 build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
@@ -256,9 +277,13 @@ build_external(sqlite3)
 add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
-if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
+if(ARCH_TRIPLET MATCHES mingw)
+  set(zmq_extra --with-poller=wepoll)
+endif()
+
+if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
 endif()
 
 build_external(zmq
@@ -266,7 +291,7 @@ build_external(zmq
   ${zmq_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
-    --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror
+    --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
     "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
 )

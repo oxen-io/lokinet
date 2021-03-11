@@ -67,13 +67,8 @@ namespace llarp
       bool
       CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
-      bool
-      SelectHop(
-          llarp_nodedb* db,
-          const std::set<RouterID>& prev,
-          RouterContact& cur,
-          size_t hop,
-          llarp::path::PathRole roles) override;
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuild() override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;

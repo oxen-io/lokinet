@@ -3,7 +3,7 @@
 # Here we build lokinet-network-control-panel into 'lokinet-gui.app' in "extra/" where a postinstall
 # script will then move it to /Applications/.
 
-set(LOKINET_GUI_REPO "https://github.com/loki-project/loki-network-control-panel.git"
+set(LOKINET_GUI_REPO "https://github.com/oxen-io/loki-network-control-panel.git"
     CACHE STRING "Can be set to override the default lokinet-gui git repository")
 set(LOKINET_GUI_CHECKOUT "origin/master"
     CACHE STRING "Can be set to specify a particular branch or tag to build from LOKINET_GUI_REPO")

@@ -12,7 +12,6 @@
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <tooling/path_event.hpp>
 
 #include <functional>
@@ -238,10 +237,9 @@ namespace llarp
           break;
       }
 
-      auto func =
-          std::bind(&LR_StatusMessage::CreateAndSend, router, pathid, nextHop, pathKey, status);
-
-      router->QueueWork(func);
+      router->QueueWork([router, pathid, nextHop, pathKey, status] {
+        LR_StatusMessage::CreateAndSend(router, pathid, nextHop, pathKey, status);
+      });
     }
 
     /// this is done from logic thread
@@ -305,20 +303,6 @@ namespace llarp
           self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
-      // if we have an rc for this hop...
-      if (self->record.nextRC)
-      {
-        // ... and it matches the next hop ...
-        if (self->record.nextHop == self->record.nextRC->pubkey)
-        {
-          // ... and it's valid
-          const auto now = self->context->Router()->Now();
-          if (self->record.nextRC->IsPublicRouter() && self->record.nextRC->Verify(now))
-          {
-            self->context->Router()->nodedb()->UpdateAsyncIfNewer(*self->record.nextRC.get());
-          }
-        }
-      }
       // forward to next hop
       using std::placeholders::_1;
       auto func = std::bind(
@@ -452,7 +436,7 @@ namespace llarp
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRSM down the path
-        LogicCall(self->context->logic(), [=]() {
+        self->context->loop()->call([self] {
           SendPathConfirm(self);
           self->decrypter = nullptr;
         });
@@ -461,7 +445,7 @@ namespace llarp
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        LogicCall(self->context->logic(), [=]() {
+        self->context->loop()->call([self] {
           SendLRCM(self);
           self->decrypter = nullptr;
         });

@@ -1,13 +1,14 @@
 #include "rpc_server.hpp"
 #include <router/route_poker.hpp>
-#include <util/thread/logic.hpp>
 #include <constants/version.hpp>
 #include <nlohmann/json.hpp>
 #include <net/ip_range.hpp>
 #include <net/route.hpp>
 #include <service/context.hpp>
+#include <service/outbound_context.hpp>
 #include <service/auth.hpp>
 #include <service/name.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp::rpc
 {
@@ -16,7 +17,7 @@ namespace llarp::rpc
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>
-  MaybeParseJSON(const lokimq::Message& msg, size_t index = 0)
+  MaybeParseJSON(const oxenmq::Message& msg, size_t index = 0)
   {
     try
     {
@@ -54,7 +55,7 @@ namespace llarp::rpc
 
   void
   HandleJSONRequest(
-      lokimq::Message& msg, std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
+      oxenmq::Message& msg, std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
   {
     const auto maybe = MaybeParseJSON(msg);
     if (not maybe.has_value())
@@ -69,10 +70,8 @@ namespace llarp::rpc
     }
     try
     {
-      std::promise<std::string> reply;
-      handleRequest(*maybe, [&reply](std::string result) { reply.set_value(result); });
-      auto ftr = reply.get_future();
-      msg.send_reply(ftr.get());
+      handleRequest(
+          *maybe, [defer = msg.send_later()](std::string result) { defer.reply(result); });
     }
     catch (std::exception& ex)
     {
@@ -81,13 +80,13 @@ namespace llarp::rpc
   }
 
   void
-  RpcServer::AsyncServeRPC(lokimq::address url)
+  RpcServer::AsyncServeRPC(oxenmq::address url)
   {
     m_LMQ->listen_plain(url.zmq_address());
-    m_LMQ->add_category("llarp", lokimq::AuthLevel::none)
+    m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
         .add_command(
             "halt",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               if (not m_Router->IsRunning())
               {
                 msg.send_reply(CreateJSONError("router is not running"));
@@ -98,25 +97,86 @@ namespace llarp::rpc
             })
         .add_request_command(
             "version",
-            [r = m_Router](lokimq::Message& msg) {
-              util::StatusObject result{{"version", llarp::VERSION_FULL},
-                                        {"uptime", to_json(r->Uptime())}};
+            [r = m_Router](oxenmq::Message& msg) {
+              util::StatusObject result{
+                  {"version", llarp::VERSION_FULL}, {"uptime", to_json(r->Uptime())}};
               msg.send_reply(CreateJSONResponse(result));
             })
         .add_request_command(
             "status",
-            [&](lokimq::Message& msg) {
-              std::promise<util::StatusObject> result;
-              LogicCall(m_Router->logic(), [&result, r = m_Router]() {
-                const auto state = r->ExtractStatus();
-                result.set_value(state);
+            [&](oxenmq::Message& msg) {
+              m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
+                std::string data;
+                if (r->IsRunning())
+                {
+                  data = CreateJSONResponse(r->ExtractStatus());
+                }
+                else
+                {
+                  data = CreateJSONError("router not yet ready");
+                }
+                defer.reply(data);
               });
-              auto ftr = result.get_future();
-              msg.send_reply(CreateJSONResponse(ftr.get()));
+            })
+        .add_request_command(
+            "endpoint",
+            [&](oxenmq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                if (r->IsServiceNode())
+                {
+                  reply(CreateJSONError("not supported"));
+                  return;
+                }
+                std::string endpoint = "default";
+                std::unordered_set<service::Address> kills;
+                {
+                  const auto itr = obj.find("endpoint");
+                  if (itr != obj.end())
+                    endpoint = itr->get<std::string>();
+                }
+                {
+                  const auto itr = obj.find("kill");
+                  if (itr != obj.end())
+                  {
+                    if (itr->is_array())
+                    {
+                      for (auto kill_itr = itr->begin(); kill_itr != itr->end(); ++kill_itr)
+                      {
+                        if (kill_itr->is_string())
+                          kills.emplace(kill_itr->get<std::string>());
+                      }
+                    }
+                    else if (itr->is_string())
+                    {
+                      kills.emplace(itr->get<std::string>());
+                    }
+                  }
+                }
+                if (kills.empty())
+                {
+                  reply(CreateJSONError("no action taken"));
+                  return;
+                }
+                r->loop()->call([r, endpoint, kills, reply]() {
+                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+                  if (ep == nullptr)
+                  {
+                    reply(CreateJSONError("no endpoint with name " + endpoint));
+                    return;
+                  }
+                  std::size_t removed = 0;
+                  for (auto kill : kills)
+                  {
+                    removed += ep->RemoveAllConvoTagsFor(std::move(kill));
+                  }
+                  reply(CreateJSONResponse(
+                      "removed " + std::to_string(removed) + " flow" + (removed == 1 ? "" : "s")));
+                });
+              });
             })
         .add_request_command(
             "exit",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
                 if (r->IsServiceNode())
                 {
@@ -152,7 +212,6 @@ namespace llarp::rpc
                 {
                   map = false;
                 }
-
                 const auto range_itr = obj.find("range");
                 if (range_itr == obj.end())
                 {
@@ -176,91 +235,96 @@ namespace llarp::rpc
                 {
                   endpoint = endpoint_itr->get<std::string>();
                 }
-                LogicCall(
-                    r->logic(), [map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
-                      auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                      if (ep == nullptr)
+                r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
+                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+                  if (ep == nullptr)
+                  {
+                    reply(CreateJSONError("no endpoint with name " + endpoint));
+                    return;
+                  }
+                  if (map and (exit.has_value() or lnsExit.has_value()))
+                  {
+                    auto mapExit = [=](service::Address addr) mutable {
+                      ep->MapExitRange(range, addr);
+                      bool shouldSendAuth = false;
+                      if (token.has_value())
                       {
-                        reply(CreateJSONError("no endpoint with name " + endpoint));
-                        return;
+                        shouldSendAuth = true;
+                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                       }
-                      if (map and (exit.has_value() or lnsExit.has_value()))
-                      {
-                        auto mapExit = [=](service::Address addr) mutable {
-                          ep->MapExitRange(range, addr);
-                          if (token.has_value())
-                          {
-                            ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
-                          }
-                          ep->EnsurePathToService(
-                              addr,
-                              [reply, ep, r](auto, service::OutboundContext* ctx) {
-                                if (ctx == nullptr)
-                                {
-                                  reply(CreateJSONError("could not find exit"));
-                                  return;
-                                }
-                                r->ForEachPeer(
-                                    [r](auto session, auto) mutable {
-                                      const auto ip = session->GetRemoteEndpoint().toIP();
-                                      r->routePoker().AddRoute(ip);
-                                    },
-                                    false);
-                                net::AddDefaultRouteViaInterface(ep->GetIfName());
-                                reply(CreateJSONResponse("OK"));
-                              },
-                              5s);
-                        };
-                        if (exit.has_value())
-                        {
-                          mapExit(*exit);
-                        }
-                        else if (lnsExit.has_value())
-                        {
-                          ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
-                            if (not maybe.has_value())
+                      ep->EnsurePathToService(
+                          addr,
+                          [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
+                            if (ctx == nullptr)
                             {
-                              reply(CreateJSONError("we could not find an exit with that name"));
+                              reply(CreateJSONError("could not find exit"));
                               return;
                             }
-                            if (maybe->IsZero())
+                            auto onGoodResult = [r, reply](std::string reason) {
+                              r->routePoker().Enable();
+                              r->routePoker().Up();
+                              reply(CreateJSONResponse(reason));
+                            };
+                            if (not shouldSendAuth)
                             {
-                              reply(CreateJSONError("lokinet exit does not exist"));
+                              onGoodResult("OK");
                               return;
                             }
-                            mapExit(*maybe);
-                          });
-                        }
-                        else
+                            ctx->AsyncSendAuth([onGoodResult, reply](service::AuthResult result) {
+                              // TODO: refactor this code.  We are 5 lambdas deep here!
+                              if (result.code != service::AuthResultCode::eAuthAccepted)
+                              {
+                                reply(CreateJSONError(result.reason));
+                                return;
+                              }
+                              onGoodResult(result.reason);
+                            });
+                          },
+                          5s);
+                    };
+                    if (exit.has_value())
+                    {
+                      mapExit(*exit);
+                    }
+                    else if (lnsExit.has_value())
+                    {
+                      ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
+                        if (not maybe.has_value())
                         {
-                          reply(
-                              CreateJSONError("WTF inconsistent request, no exit address or lns "
-                                              "name provided?"));
+                          reply(CreateJSONError("we could not find an exit with that name"));
+                          return;
                         }
-                        return;
-                      }
-                      else if (map and not exit.has_value())
-                      {
-                        reply(CreateJSONError("no exit address provided"));
-                        return;
-                      }
-                      else if (not map)
-                      {
-                        net::DelDefaultRouteViaInterface(ep->GetIfName());
-
-                        r->ForEachPeer(
-                            [r](auto session, auto) mutable {
-                              const auto ip = session->GetRemoteEndpoint().toIP();
-                              r->routePoker().DelRoute(ip);
-                            },
-                            false);
-                        ep->UnmapExitRange(range);
-                      }
-                      reply(CreateJSONResponse("OK"));
-                    });
+                        if (maybe->IsZero())
+                        {
+                          reply(CreateJSONError("lokinet exit does not exist"));
+                          return;
+                        }
+                        mapExit(*maybe);
+                      });
+                    }
+                    else
+                    {
+                      reply(
+                          CreateJSONError("WTF inconsistent request, no exit address or lns "
+                                          "name provided?"));
+                    }
+                    return;
+                  }
+                  else if (map and not exit.has_value())
+                  {
+                    reply(CreateJSONError("no exit address provided"));
+                    return;
+                  }
+                  else if (not map)
+                  {
+                    r->routePoker().Down();
+                    ep->UnmapExitRange(range);
+                  }
+                  reply(CreateJSONResponse("OK"));
+                });
               });
             })
-        .add_request_command("config", [&](lokimq::Message& msg) {
+        .add_request_command("config", [&](oxenmq::Message& msg) {
           HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
             {
               const auto itr = obj.find("override");

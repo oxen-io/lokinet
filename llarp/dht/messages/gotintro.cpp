@@ -63,7 +63,7 @@ namespace llarp
     bool
     RelayedGotIntroMessage::HandleMessage(
         llarp_dht_context* ctx,
-        __attribute__((unused)) std::vector<std::unique_ptr<IMessage>>& replies) const
+        [[maybe_unused]] std::vector<std::unique_ptr<IMessage>>& replies) const
     {
       // TODO: implement me better?
       auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);

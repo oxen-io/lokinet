@@ -19,6 +19,14 @@
 #include <util/logging/logger.hpp>
 #include <util/str.hpp>
 
+#ifdef ANDROID
+#include <android/ifaddrs.h>
+#else
+#ifndef _WIN32
+#include <ifaddrs.h>
+#endif
+#endif
+
 #include <cstdio>
 #include <list>
 
@@ -545,19 +553,31 @@ namespace llarp
     return std::nullopt;
   }
 
-  std::optional<IpAddress>
-  GetIFAddr(const std::string& ifname, int af)
+  std::optional<SockAddr>
+  GetInterfaceAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
     sockaddr* sptr = (sockaddr*)&s;
+    sptr->sa_family = af;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    llarp::SockAddr saddr = SockAddr(*sptr);
-    return llarp::IpAddress(saddr);
+    return SockAddr{*sptr};
+  }
+
+  std::optional<huint128_t>
+  GetInterfaceIPv6Address(std::string ifname)
+  {
+    sockaddr_storage s;
+    sockaddr* sptr = (sockaddr*)&s;
+    sptr->sa_family = AF_INET6;
+    if (!llarp_getifaddr(ifname.c_str(), AF_INET6, sptr))
+      return std::nullopt;
+    llarp::SockAddr addr{*sptr};
+    return addr.asIPv6();
   }
 
   bool
-  AllInterfaces(int af, IpAddress& result)
+  AllInterfaces(int af, SockAddr& result)
   {
     if (af == AF_INET)
     {
@@ -565,25 +585,18 @@ namespace llarp
       addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
       addr.sin_port = htons(0);
-      SockAddr saddr = SockAddr(addr);
-      result = IpAddress(saddr);
+      result = SockAddr{addr};
       return true;
     }
     if (af == AF_INET6)
     {
-      throw std::runtime_error("Fix me: IPv6 not supported yet");
-      /*
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
       addr6.sin6_port = htons(0);
       addr6.sin6_addr = IN6ADDR_ANY_INIT;
-      result = IpAddress(SockAddr(addr6));
+      result = SockAddr{addr6};
       return true;
-      */
     }
-
-    // TODO: implement sockaddr_ll
-
     return false;
   }
 
@@ -594,7 +607,7 @@ namespace llarp
     (void)addr;
     return false;
 #else
-    if (!ipv6_is_siit(addr))
+    if (!ipv6_is_mapped_ipv4(addr))
     {
       static in6_addr zero = {};
       if (addr == zero)
@@ -623,22 +636,23 @@ namespace llarp
   }
 
 #if !defined(TESTNET)
-  static constexpr std::array bogonRanges = {IPRange::FromIPv4(0, 0, 0, 0, 8),
-                                             IPRange::FromIPv4(10, 0, 0, 0, 8),
-                                             IPRange::FromIPv4(21, 0, 0, 0, 8),
-                                             IPRange::FromIPv4(100, 64, 0, 0, 10),
-                                             IPRange::FromIPv4(127, 0, 0, 0, 8),
-                                             IPRange::FromIPv4(169, 254, 0, 0, 16),
-                                             IPRange::FromIPv4(172, 16, 0, 0, 12),
-                                             IPRange::FromIPv4(192, 0, 0, 0, 24),
-                                             IPRange::FromIPv4(192, 0, 2, 0, 24),
-                                             IPRange::FromIPv4(192, 88, 99, 0, 24),
-                                             IPRange::FromIPv4(192, 168, 0, 0, 16),
-                                             IPRange::FromIPv4(198, 18, 0, 0, 15),
-                                             IPRange::FromIPv4(198, 51, 100, 0, 24),
-                                             IPRange::FromIPv4(203, 0, 113, 0, 24),
-                                             IPRange::FromIPv4(224, 0, 0, 0, 4),
-                                             IPRange::FromIPv4(240, 0, 0, 0, 4)};
+  static constexpr std::array bogonRanges = {
+      IPRange::FromIPv4(0, 0, 0, 0, 8),
+      IPRange::FromIPv4(10, 0, 0, 0, 8),
+      IPRange::FromIPv4(21, 0, 0, 0, 8),
+      IPRange::FromIPv4(100, 64, 0, 0, 10),
+      IPRange::FromIPv4(127, 0, 0, 0, 8),
+      IPRange::FromIPv4(169, 254, 0, 0, 16),
+      IPRange::FromIPv4(172, 16, 0, 0, 12),
+      IPRange::FromIPv4(192, 0, 0, 0, 24),
+      IPRange::FromIPv4(192, 0, 2, 0, 24),
+      IPRange::FromIPv4(192, 88, 99, 0, 24),
+      IPRange::FromIPv4(192, 168, 0, 0, 16),
+      IPRange::FromIPv4(198, 18, 0, 0, 15),
+      IPRange::FromIPv4(198, 51, 100, 0, 24),
+      IPRange::FromIPv4(203, 0, 113, 0, 24),
+      IPRange::FromIPv4(224, 0, 0, 0, 4),
+      IPRange::FromIPv4(240, 0, 0, 0, 4)};
 
   bool
   IsIPv4Bogon(const huint32_t& addr)

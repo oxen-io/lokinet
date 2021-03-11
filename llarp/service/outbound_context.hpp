@@ -106,13 +106,8 @@ namespace llarp
       void
       HandlePathBuildFailed(path::Path_ptr path) override;
 
-      bool
-      SelectHop(
-          llarp_nodedb* db,
-          const std::set<RouterID>& prev,
-          RouterContact& cur,
-          size_t hop,
-          path::PathRole roles) override;
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuild() override;
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);

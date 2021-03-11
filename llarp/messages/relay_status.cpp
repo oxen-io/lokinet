@@ -9,7 +9,6 @@
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <tooling/path_event.hpp>
 
 #include <functional>
@@ -224,8 +223,8 @@ namespace llarp
   LR_StatusMessage::QueueSendMessage(
       AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
   {
-    auto func = std::bind(&LR_StatusMessage::SendMessage, router, nextHop, msg);
-    LogicCall(router->logic(), func);
+    router->loop()->call(
+        [router, nextHop, msg = std::move(msg)] { SendMessage(router, nextHop, msg); });
   }
 
   void

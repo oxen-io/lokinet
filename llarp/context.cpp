@@ -1,11 +1,13 @@
 #include <llarp.hpp>
 #include <constants/version.hpp>
+#include <constants/evloop.hpp>
 
 #include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <ev/ev.hpp>
 #include <ev/vpnio.hpp>
+#include <memory>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <service/context.hpp>
@@ -24,20 +26,21 @@ namespace llarp
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
-    return logic && LogicCall(logic, f);
+    if (!loop)
+      return false;
+    loop->call(std::move(f));
+    return true;
   }
 
   void
-  Context::Configure(Config conf)
+  Context::Configure(std::shared_ptr<Config> conf)
   {
     if (nullptr != config.get())
       throw std::runtime_error("Config already exists");
 
-    config = std::make_shared<Config>(std::move(conf));
+    config = std::move(conf);
 
-    logic = std::make_shared<Logic>();
-
-    nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
+    nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname}.string();
   }
 
   bool
@@ -52,13 +55,6 @@ namespace llarp
     return router && router->LooksAlive();
   }
 
-  int
-  Context::LoadDatabase()
-  {
-    llarp_nodedb::ensure_dir(nodedb_dir.c_str());
-    return 1;
-  }
-
   void
   Context::Setup(const RuntimeOptions& opts)
   {
@@ -68,37 +64,38 @@ namespace llarp
 
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    if (mainloop == nullptr)
+    if (!loop)
     {
       auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
-      mainloop = llarp_make_ev_loop(jobQueueSize);
+      loop = EventLoop::create(jobQueueSize);
     }
-    logic->set_event_loop(mainloop.get());
 
-    mainloop->set_logic(logic);
+    crypto = std::make_shared<sodium::CryptoLibSodium>();
+    cryptoManager = std::make_shared<CryptoManager>(crypto.get());
 
-    crypto = std::make_unique<sodium::CryptoLibSodium>();
-    cryptoManager = std::make_unique<CryptoManager>(crypto.get());
+    router = makeRouter(loop);
 
-    router = makeRouter(mainloop, logic);
-
-    nodedb = std::make_unique<llarp_nodedb>(
+    nodedb = std::make_shared<NodeDB>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
-    if (!router->Configure(config, opts.isRouter, nodedb.get()))
+    if (!router->Configure(config, opts.isRouter, nodedb))
       throw std::runtime_error("Failed to configure router");
-
-    // must be done after router is made so we can use its disk io worker
-    // must also be done after configure so that netid is properly set if it
-    // is provided by config
-    if (!this->LoadDatabase())
-      throw std::runtime_error("Config::Setup() failed to load database");
   }
 
-  std::unique_ptr<AbstractRouter>
-  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
+  std::shared_ptr<AbstractRouter>
+  Context::makeRouter(const EventLoop_ptr& loop)
   {
-    return std::make_unique<Router>(netloop, logic);
+    return std::static_pointer_cast<AbstractRouter>(
+        std::make_shared<Router>(loop, makeVPNPlatform()));
+  }
+
+  std::shared_ptr<vpn::Platform>
+  Context::makeVPNPlatform()
+  {
+    auto plat = vpn::MakeNativePlatform(this);
+    if (plat == nullptr)
+      throw std::runtime_error("vpn platform not supported");
+    return plat;
   }
 
   int
@@ -120,12 +117,12 @@ namespace llarp
     // run net io thread
     llarp::LogInfo("running mainloop");
 
-    llarp_ev_loop_run_single_process(mainloop, logic);
+    loop->run();
     if (closeWaiter)
     {
-      // inform promise if called by CloseAsync
       closeWaiter->set_value();
     }
+    Close();
     return 0;
   }
 
@@ -177,13 +174,6 @@ namespace llarp
       /// async stop router on sigint
       router->Stop();
     }
-    else
-    {
-      if (logic)
-        logic->stop();
-      llarp_ev_loop_stop(mainloop);
-      Close();
-    }
   }
 
   void
@@ -193,14 +183,23 @@ namespace llarp
     config.reset();
 
     llarp::LogDebug("free nodedb");
-    nodedb.release();
+    nodedb.reset();
 
     llarp::LogDebug("free router");
-    router.release();
+    router.reset();
 
-    llarp::LogDebug("free logic");
-    logic.reset();
+    llarp::LogDebug("free loop");
+    loop.reset();
   }
+
+#if defined(ANDROID)
+  int
+  Context::GetUDPSocket()
+  {
+    return router->GetOutboundUDPSocket();
+  }
+#endif
+
 }  // namespace llarp
 
 extern "C"

@@ -2,6 +2,7 @@
 #include "lokinet_jni_common.hpp"
 #include "lokinet_jni_vpnio.hpp"
 #include <llarp.hpp>
+#include <config/config.hpp>
 
 extern "C"
 {
@@ -31,7 +32,9 @@ extern "C"
     try
     {
       llarp::RuntimeOptions opts{};
-      ptr->Configure(*config);
+
+      // janky make_shared deep copy because jni + shared pointer = scary
+      ptr->Configure(std::make_shared<llarp::Config>(*config));
       ptr->Setup(opts);
     }
     catch (...)
@@ -71,17 +74,30 @@ extern "C"
     return ptr->IsUp() ? JNI_FALSE : JNI_TRUE;
   }
 
-  JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv* env, jobject self, jobject vpn)
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv* env, jobject self)
   {
     auto ptr = GetImpl<llarp::Context>(env, self);
-    auto impl = GetImpl<lokinet_jni_vpnio>(env, vpn);
-    if (ptr == nullptr || impl == nullptr)
-      return JNI_FALSE;
-    if (impl->info.netmask == 0)
-      return JNI_FALSE;
-    if (not impl->Init(ptr))
-      return JNI_FALSE;
-    return llarp_main_inject_default_vpn(ptr, &impl->io, impl->info) ? JNI_TRUE : JNI_FALSE;
+
+    ptr->androidFD = GetObjectMemberAsInt<int>(env, self, "m_FD");
+  }
+
+  JNIEXPORT jint JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
+  {
+    auto ptr = GetImpl<llarp::Context>(env, self);
+
+    return ptr->GetUDPSocket();
+  }
+
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv* env, jclass)
+  {
+    std::string rangestr{};
+    if (auto maybe = llarp::FindFreeRange())
+    {
+      rangestr = maybe->ToString();
+    }
+    return env->NewStringUTF(rangestr.c_str());
   }
 }
