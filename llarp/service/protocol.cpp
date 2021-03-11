@@ -457,7 +457,7 @@ namespace llarp
             RecvDataEvent ev;
             ev.fromPath = std::move(recvPath);
             ev.pathid = v->frame.F;
-            auto& handler = ev.msg->handler;
+            auto* handler = msg->handler;
             ev.msg = std::move(msg);
             handler->QueueRecvData(std::move(ev));
           });
