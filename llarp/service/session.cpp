@@ -7,11 +7,12 @@ namespace llarp
     util::StatusObject
     Session::ExtractStatus() const
     {
-      util::StatusObject obj{{"lastUsed", to_json(lastUsed)},
-                             {"replyIntro", replyIntro.ExtractStatus()},
-                             {"remote", remote.Addr().ToString()},
-                             {"seqno", seqno},
-                             {"intro", intro.ExtractStatus()}};
+      util::StatusObject obj{
+          {"lastUsed", to_json(lastUsed)},
+          {"replyIntro", replyIntro.ExtractStatus()},
+          {"remote", remote.Addr().ToString()},
+          {"seqno", seqno},
+          {"intro", intro.ExtractStatus()}};
       return obj;
     }
 

@@ -1,4 +1,5 @@
 #include <path/ihophandler.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -6,7 +7,7 @@ namespace llarp
   {
     // handle data in upstream direction
     bool
-    IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*)
+    IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
       if (not m_UpstreamReplayFilter.Insert(Y))
         return false;
@@ -17,12 +18,13 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
+      r->loop()->wakeup();
       return true;
     }
 
     // handle data in downstream direction
     bool
-    IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*)
+    IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
       if (not m_DownstreamReplayFilter.Insert(Y))
         return false;
@@ -33,6 +35,7 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
+      r->loop()->wakeup();
       return true;
     }
 

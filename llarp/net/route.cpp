@@ -24,9 +24,11 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <stdio.h>
-#include <strsafe.h>
+#include <cstring>
 #include <locale>
 #include <codecvt>
+#include <net/net_int.hpp>
+#include <net/ip.hpp>
 #endif
 
 #include <sstream>
@@ -39,44 +41,8 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
-    LogDebug(cmd);
-#ifdef _WIN32
+    LogInfo(cmd);
     system(cmd.c_str());
-#else
-    std::vector<std::string> parts_str;
-    std::vector<const char*> parts_raw;
-    std::stringstream in(cmd);
-    for (std::string part; std::getline(in, part, ' ');)
-    {
-      if (part.empty())
-        continue;
-      parts_str.push_back(part);
-    }
-    for (const auto& part : parts_str)
-    {
-      parts_raw.push_back(part.c_str());
-    }
-    parts_raw.push_back(nullptr);
-    const auto pid = fork();
-    if (pid == -1)
-    {
-      throw std::runtime_error("failed to fork");
-    }
-    else if (pid == 0)
-    {
-      char* const* args = (char* const*)parts_raw.data();
-      const auto result = execv(parts_raw[0], args);
-      if (result)
-      {
-        std::cout << "failed: " << result << std::endl;
-      }
-      exit(result);
-    }
-    else
-    {
-      waitpid(pid, 0, 0);
-    }
-#endif
   }
 #endif
 
@@ -187,23 +153,13 @@ namespace llarp::net
 
     nl_request.r.rtm_family = dst->family;
     nl_request.r.rtm_dst_len = dst->bitlen;
-
-    /* Select scope, for simplicity we supports here only IPv6 and IPv4 */
-    if (nl_request.r.rtm_family == AF_INET6)
-    {
-      nl_request.r.rtm_scope = RT_SCOPE_UNIVERSE;
-    }
-    else
-    {
-      nl_request.r.rtm_scope = RT_SCOPE_LINK;
-    }
+    nl_request.r.rtm_scope = 0;
 
     /* Set gateway */
-    if (gw->bitlen != 0)
+    if (gw->bitlen != 0 and dst->family == AF_INET)
     {
       rtattr_add(&nl_request.n, sizeof(nl_request), RTA_GATEWAY, &gw->data, gw->bitlen / 8);
     }
-    nl_request.r.rtm_scope = 0;
     nl_request.r.rtm_family = gw->family;
     if (mode == GatewayMode::eFirstHop)
     {
@@ -214,8 +170,25 @@ namespace llarp::net
     }
     if (mode == GatewayMode::eUpperDefault)
     {
-      rtattr_add(
-          &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, sizeof(uint32_t));
+      if (dst->family == AF_INET)
+      {
+        rtattr_add(
+            &nl_request.n,
+            sizeof(nl_request),
+            /*RTA_NEWDST*/ RTA_DST,
+            &dst->data,
+            sizeof(uint32_t));
+      }
+      else
+      {
+        rtattr_add(&nl_request.n, sizeof(nl_request), RTA_OIF, &if_idx, sizeof(int));
+        rtattr_add(
+            &nl_request.n,
+            sizeof(nl_request),
+            /*RTA_NEWDST*/ RTA_DST,
+            &dst->data,
+            sizeof(in6_addr));
+      }
     }
     /* Send message to the netlink */
     return send(sock, &nl_request, sizeof(nl_request), 0);
@@ -227,7 +200,7 @@ namespace llarp::net
     if (strchr(addr, ':'))
     {
       res->family = AF_INET6;
-      res->bitlen = 128;
+      res->bitlen = bitlen;
     }
     else
     {
@@ -260,6 +233,16 @@ namespace llarp::net
   RouteCommand()
   {
     std::wstring wcmd = get_win_sys_path() + L"\\route.exe";
+
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wcmd);
+  }
+
+  std::string
+  NetshCommand()
+  {
+    std::wstring wcmd = get_win_sys_path() + L"\\netsh.exe";
 
     using convert_type = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_type, wchar_t> converter;
@@ -301,6 +284,22 @@ namespace llarp::net
 #undef MALLOC
 #undef FREE
   }
+
+  std::optional<int>
+  GetInterfaceIndex(huint32_t ip)
+  {
+    std::optional<int> ret = std::nullopt;
+    ForEachWIN32Interface([&ret, n = ToNet(ip)](auto* iface) {
+      if (ret.has_value())
+        return;
+      if (iface->dwForwardNextHop == n.n)
+      {
+        ret = iface->dwForwardIfIndex;
+      }
+    });
+    return ret;
+  }
+
 #endif
 
   void
@@ -371,26 +370,57 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    const auto maybe = GetIFAddr(ifname);
+    const auto maybe = GetInterfaceAddr(ifname);
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
-    read_addr(maybe->toHost().c_str(), &gw_addr);
+    const auto host = maybe->asIPv4().ToString();
+    read_addr(host.c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    const auto maybeInt = GetInterfaceIPv6Address(ifname);
+    if (maybeInt.has_value())
+    {
+      const auto host = maybeInt->ToString();
+      LogInfo("add v6 route via ", host);
+      read_addr(host.c_str(), &gw_addr, 128);
+      read_addr("::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("4000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("8000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("c000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    }
 #endif
 #elif _WIN32
     // poke hole for loopback bacause god is dead on windows
     Execute(RouteCommand() + " ADD 127.0.0.0 MASK 255.0.0.0 0.0.0.0");
+
+    huint32_t ip{};
+    ip.FromString(ifname);
+    const auto ipv6 = net::ExpandV4Lan(ip);
+
+    Execute(RouteCommand() + " ADD ::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD 4000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD 8000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD c000::/2 " + ipv6.ToString());
     ifname.back()++;
     Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
+
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+
+    Execute("/sbin/route -n add -inet6 -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net c000::/2 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -406,19 +436,44 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    const auto maybe = GetIFAddr(ifname);
+    const auto maybe = GetInterfaceAddr(ifname);
 
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
-    read_addr(maybe->toHost().c_str(), &gw_addr);
+    const auto host = maybe->asIPv4().ToString();
+    read_addr(host.c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+
+    const auto maybeInt = GetInterfaceIPv6Address(ifname);
+    if (maybeInt.has_value())
+    {
+      const auto host = maybeInt->ToString();
+      LogInfo("del v6 route via ", host);
+      read_addr(host.c_str(), &gw_addr, 128);
+      read_addr("::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("4000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("8000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("c000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    }
 #endif
 #elif _WIN32
+    huint32_t ip{};
+    ip.FromString(ifname);
+    const auto ipv6 = net::ExpandV4Lan(ip);
+
+    Execute(RouteCommand() + " DELETE ::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE 4000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE 8000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE c000::/2 " + ipv6.ToString());
     ifname.back()++;
     Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
@@ -427,6 +482,12 @@ namespace llarp::net
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+
+    Execute("/sbin/route -n delete -inet6 -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net c000::/2 -interface " + ifname);
+
 #else
 #error unsupported platform
 #endif
@@ -444,10 +505,10 @@ namespace llarp::net
       if (parts[1].find_first_not_of('0') == std::string::npos and parts[0] != ifname)
       {
         const auto& ip = parts[2];
-        if ((ip.size() == sizeof(uint32_t) * 2) and lokimq::is_hex(ip))
+        if ((ip.size() == sizeof(uint32_t) * 2) and oxenmq::is_hex(ip))
         {
           huint32_t x{};
-          lokimq::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
+          oxenmq::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
           gateways.emplace_back(x.ToString());
         }
       }
@@ -459,9 +520,7 @@ namespace llarp::net
       struct in_addr gateway, interface_addr;
       gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
       interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
-      std::array<char, 128> interface_str{};
-      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-      std::string interface_name{interface_str.data()};
+      std::string interface_name{inet_ntoa(interface_addr)};
       if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
         llarp::LogTrace(
@@ -472,10 +531,6 @@ namespace llarp::net
     return gateways;
 #elif __APPLE__
     LogDebug("get gateways not on ", ifname);
-    const auto maybe = GetIFAddr(ifname);
-    if (not maybe.has_value())
-      return gateways;
-    const auto interface = maybe->toString();
     // mac os is so godawful man
     FILE* p = popen("/usr/sbin/netstat -rn -f inet", "r");
     if (p == nullptr)

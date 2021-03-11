@@ -56,7 +56,8 @@ namespace llarp
       lower &= o.lower;
       return *this;
     }
-    constexpr uint128_t operator&(const uint128_t& o) const
+    constexpr uint128_t
+    operator&(const uint128_t& o) const
     {
       uint128_t result = *this;
       result &= o;
@@ -216,8 +217,7 @@ namespace llarp
     operator<<=(uint64_t shift)
     {
       if (shift == 0)
-      {
-      }
+      {}
       else if (shift < 64)
       {
         upper = upper << shift | (lower >> (64 - shift));
@@ -251,8 +251,7 @@ namespace llarp
     operator>>=(uint64_t shift)
     {
       if (shift == 0)
-      {
-      }
+      {}
       else if (shift < 64)
       {
         lower = lower >> shift | upper << (64 - shift);

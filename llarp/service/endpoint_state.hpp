@@ -17,23 +17,10 @@
 #include <set>
 #include <unordered_map>
 
-struct llarp_ev_loop;
-using llarp_ev_loop_ptr = std::shared_ptr<llarp_ev_loop>;
-
 namespace llarp
 {
-  // clang-format off
-  namespace exit { struct BaseSession; }
-  namespace path { struct Path; using Path_ptr = std::shared_ptr< Path >; }
-  namespace routing { struct PathTransferMessage; }
-  // clang-format on
-
   namespace service
   {
-    struct IServiceLookup;
-    struct OutboundContext;
-    struct Endpoint;
-
     struct EndpointState
     {
       hooks::Backend_ptr m_OnUp;
@@ -43,8 +30,6 @@ namespace llarp
       std::set<RouterID> m_SnodeBlacklist;
 
       AbstractRouter* m_Router;
-      std::shared_ptr<Logic> m_IsolatedLogic = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

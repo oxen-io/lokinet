@@ -10,53 +10,64 @@
 
 #include <memory>
 
-namespace llarp
+#include <ev/ev.hpp>
+
+namespace llarp::iwp
 {
-  namespace iwp
+  struct Session;
+
+  struct LinkLayer final : public ILinkLayer
   {
-    struct LinkLayer final : public ILinkLayer
-    {
-      LinkLayer(
-          std::shared_ptr<KeyManager> keyManager,
-          GetRCFunc getrc,
-          LinkMessageHandler h,
-          SignBufferFunc sign,
-          BeforeConnectFunc_t before,
-          SessionEstablishedHandler est,
-          SessionRenegotiateHandler reneg,
-          TimeoutHandler timeout,
-          SessionClosedHandler closed,
-          PumpDoneHandler pumpDone,
-          WorkerFunc_t dowork,
-          bool permitInbound);
+    LinkLayer(
+        std::shared_ptr<KeyManager> keyManager,
+        std::shared_ptr<EventLoop> ev,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        BeforeConnectFunc_t before,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone,
+        WorkerFunc_t dowork,
+        bool permitInbound);
 
-      ~LinkLayer() override;
+    std::shared_ptr<ILinkSession>
+    NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) override;
 
-      std::shared_ptr<ILinkSession>
-      NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) override;
+    const char*
+    Name() const override;
 
-      const char*
-      Name() const override;
+    uint16_t
+    Rank() const override;
 
-      uint16_t
-      Rank() const override;
+    void
+    RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) override;
 
-      void
-      RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) override;
+    bool
+    MapAddr(const RouterID& pk, ILinkSession* s) override;
 
-      bool
-      MapAddr(const RouterID& pk, ILinkSession* s) override;
+    void
+    UnmapAddr(const SockAddr& addr);
 
-      void
-      UnmapAddr(const IpAddress& addr);
+    void
+    WakeupPlaintext();
 
-     private:
-      std::unordered_map<IpAddress, RouterID, IpAddress::Hash> m_AuthedAddrs;
-      const bool permitInbound;
-    };
+    void
+    AddWakeup(std::weak_ptr<Session> peer);
 
-    using LinkLayer_ptr = std::shared_ptr<LinkLayer>;
-  }  // namespace iwp
-}  // namespace llarp
+   private:
+    void
+    HandleWakeupPlaintext();
+
+    const std::shared_ptr<EventLoopWakeup> m_Wakeup;
+    std::unordered_map<SockAddr, std::weak_ptr<Session>, SockAddr::Hash> m_PlaintextRecv;
+    std::unordered_map<SockAddr, RouterID, SockAddr::Hash> m_AuthedAddrs;
+    const bool permitInbound;
+  };
+
+  using LinkLayer_ptr = std::shared_ptr<LinkLayer>;
+}  // namespace llarp::iwp
 
 #endif

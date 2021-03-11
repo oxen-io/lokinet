@@ -2,14 +2,15 @@
 #define LLARP_HANDLERS_TUN_HPP
 
 #include <dns/server.hpp>
-#include <ev/ev.h>
-#include <ev/vpnio.hpp>
+#include <ev/ev.hpp>
+#include <ev/vpn.hpp>
 #include <net/ip.hpp>
 #include <net/ip_packet.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
 #include <util/thread/threading.hpp>
+#include <vpn/packet_router.hpp>
 
 #include <future>
 #include <queue>
@@ -22,7 +23,7 @@ namespace llarp
                          public dns::IQueryHandler,
                          public std::enable_shared_from_this<TunEndpoint>
     {
-      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent, bool lazyVPN = false);
+      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent);
       ~TunEndpoint() override;
 
       path::PathSet_ptr
@@ -30,6 +31,9 @@ namespace llarp
       {
         return shared_from_this();
       }
+
+      void
+      Thaw() override;
 
       bool
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
@@ -61,9 +65,6 @@ namespace llarp
 
       void
       TickTun(llarp_time_t now);
-
-      static void
-      tunifTick(llarp_tun_io*);
 
       bool
       MapAddress(const service::Address& remote, huint128_t ip, bool SNode);
@@ -102,6 +103,10 @@ namespace llarp
       bool
       QueueOutboundTraffic(llarp::net::IPPacket&& pkt);
 
+      /// we got a packet from the user
+      void
+      HandleGotUserPacket(llarp::net::IPPacket pkt);
+
       /// get the local interface's address
       huint128_t
       GetIfAddr() const override;
@@ -115,35 +120,6 @@ namespace llarp
 
       bool
       HasLocalIP(const huint128_t& ip) const;
-
-      std::unique_ptr<llarp_tun_io> tunif;
-      llarp_vpn_io* vpnif = nullptr;
-
-      bool
-      InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info) override
-      {
-        if (tunif)
-          return false;
-        m_LazyVPNPromise.set_value(lazy_vpn{info, io});
-        return true;
-      }
-
-      /// called before writing to tun interface
-      static void
-      tunifBeforeWrite(llarp_tun_io* t);
-
-      /// handle user to network send buffer flush
-      /// called in router logic thread
-      static void
-      handleNetSend(void*);
-
-      /// called every time we wish to read a packet from the tun interface
-      static void
-      tunifRecvPkt(llarp_tun_io* t, const llarp_buffer_t& buf);
-
-      /// called in the endpoint logic thread
-      static void
-      handleTickTun(void* u);
 
       /// get a key for ip address
       template <typename Addr_t>
@@ -182,10 +158,6 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      bool
-      ShouldFlushNow(llarp_time_t now) const;
-
-      llarp_time_t m_LastFlushAt = 0s;
       using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPPacket,
           net::IPPacket::GetTime,
@@ -236,14 +208,6 @@ namespace llarp
       std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
 
      private:
-      llarp_vpn_io_impl*
-      GetVPNImpl()
-      {
-        if (vpnif && vpnif->impl)
-          return static_cast<llarp_vpn_io_impl*>(vpnif->impl);
-        return nullptr;
-      }
-
       template <typename Addr_t, typename Endpoint_t>
       void
       SendDNSReply(
@@ -265,12 +229,15 @@ namespace llarp
         reply(*query);
       }
       /// our dns resolver
-      std::shared_ptr<dns::Proxy> m_Resolver;
+      std::shared_ptr<dns::PacketHandler> m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
       /// our ip address (host byte order)
       huint128_t m_OurIP;
+      /// our network interface's ipv6 address
+      huint128_t m_OurIPv6;
+
       /// next ip address to allocate (host byte order)
       huint128_t m_NextIP;
       /// highest ip address to allocate (host byte order)
@@ -285,19 +252,11 @@ namespace llarp
       std::vector<IpAddress> m_StrictConnectAddrs;
       /// use v6?
       bool m_UseV6;
-      struct lazy_vpn
-      {
-        llarp_vpn_ifaddr_info info;
-        llarp_vpn_io* io;
-      };
-      std::promise<lazy_vpn> m_LazyVPNPromise;
       std::string m_IfName;
 
-      /// send packets on endpoint to user using send function
-      /// send function returns true to indicate stop iteration and do codel
-      /// drop
-      void
-      FlushToUser(std::function<bool(const net::IPPacket&)> sendfunc);
+      std::shared_ptr<vpn::NetworkInterface> m_NetIf;
+
+      std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
     };
 
   }  // namespace handlers

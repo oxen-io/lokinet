@@ -31,14 +31,15 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
   CHECK(llarp::SockAddr("255.255.255.255").toString() == "255.255.255.255:0");
   CHECK(llarp::SockAddr("255.255.255.255:255").toString() == "255.255.255.255:255");
   CHECK(llarp::SockAddr("255.255.255.255:65535").toString() == "255.255.255.255:65535");
+  CHECK(llarp::SockAddr("5.6.7.8", 5678).toString() == "5.6.7.8:5678");
 
   CHECK_THROWS_WITH(llarp::SockAddr("abcd"), "abcd is not a valid IPv4 address");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("0.0.0.0:foo"), "0.0.0.0:foo contains invalid port");
+  CHECK_THROWS_WITH(llarp::SockAddr("0.0.0.0:foo"), "foo is not a valid port");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("256.257.258.259"), "256.257.258.259 contains invalid number");
+  CHECK_THROWS_WITH(llarp::SockAddr("256.257.258.259"), "256.257.258.259 contains invalid numeric value");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("-1.-2.-3.-4"), "-1.-2.-3.-4 contains invalid number");
+  CHECK_THROWS_WITH(llarp::SockAddr("-1.-2.-3.-4"), "-1.-2.-3.-4 contains invalid numeric value");
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3"), "1.2.3 is not a valid IPv4 address");
 
@@ -48,22 +49,24 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4.5"), "1.2.3.4.5 is not a valid IPv4 address");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3. "), "1.2.3.  contains invalid number");
+  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3. "), "1.2.3.  contains invalid numeric value");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("1a.2b.3c.4z"), "1a.2b.3c.4z contains non-numeric values");
+  CHECK_THROWS_WITH(llarp::SockAddr("1a.2b.3c.4z"), "1a.2b.3c.4z contains invalid numeric value");
 
   // TODO: there's no reason this couldn't be supported
   CHECK_THROWS_WITH(
-      llarp::SockAddr("0xFF.0xFF.0xFF.0xFF"), "0xFF.0xFF.0xFF.0xFF contains non-numeric values");
+      llarp::SockAddr("0xFF.0xFF.0xFF.0xFF"), "0xFF.0xFF.0xFF.0xFF contains invalid numeric value");
 
   // This *is* supported now; it gives you an empty address (same as default constructed).
   //CHECK_THROWS_WITH(llarp::SockAddr(""), "cannot construct IPv4 from empty string");
 
   CHECK_THROWS_WITH(llarp::SockAddr(" "), "  is not a valid IPv4 address");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:65536"), "1.2.3.4:65536 contains invalid port");
+  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:65536"), "65536 is not a valid port");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:1a"), "1.2.3.4:1a contains junk after port");
+  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:1a"), "1a is not a valid port");
+
+  CHECK_THROWS_WITH(llarp::SockAddr("5.6.7.8:1234", 5678), "invalid ip address (port not allowed here): 5.6.7.8:1234");
 }
 
 TEST_CASE("SockAddr from sockaddr_in", "[SockAddr]")

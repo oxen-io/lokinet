@@ -61,8 +61,9 @@ namespace llarp
     RouterContact remoteRC;
     if (not forceLookup)
     {
-      if (_nodedb->Get(router, remoteRC))
+      if (const auto maybe = _nodedb->Get(router); maybe.has_value())
       {
+        remoteRC = *maybe;
         if (callback)
         {
           callback(router, &remoteRC, RCRequestResult::Success);
@@ -155,7 +156,7 @@ namespace llarp
     if (rc.IsPublicRouter())
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
-      _nodedb->UpdateAsyncIfNewer(rc);
+      _loop->call([rc, n = _nodedb] { n->PutIfNewer(rc); });
       _dht->impl->PutRCNodeAsync(rc);
     }
 
@@ -210,7 +211,7 @@ namespace llarp
   RCLookupHandler::PeriodicUpdate(llarp_time_t now)
   {
     // try looking up stale routers
-    std::set<RouterID> routersToLookUp;
+    std::unordered_set<RouterID> routersToLookUp;
 
     _nodedb->VisitInsertedBefore(
         [&](const RouterContact& rc) {
@@ -231,7 +232,7 @@ namespace llarp
   void
   RCLookupHandler::ExploreNetwork()
   {
-    const size_t known = _nodedb->num_loaded();
+    const size_t known = _nodedb->NumLoaded();
     if (_bootstrapRCList.empty() && known == 0)
     {
       LogError("we have no bootstrap nodes specified");
@@ -298,18 +299,20 @@ namespace llarp
   void
   RCLookupHandler::Init(
       llarp_dht_context* dht,
-      llarp_nodedb* nodedb,
+      std::shared_ptr<NodeDB> nodedb,
+      EventLoop_ptr loop,
       WorkerFunc_t dowork,
       ILinkManager* linkManager,
       service::Context* hiddenServiceContext,
-      const std::set<RouterID>& strictConnectPubkeys,
+      const std::unordered_set<RouterID>& strictConnectPubkeys,
       const std::set<RouterContact>& bootstrapRCList,
       bool useWhitelist_arg,
       bool isServiceNode_arg)
   {
     _dht = dht;
-    _nodedb = nodedb;
-    _work = dowork;
+    _nodedb = std::move(nodedb);
+    _loop = std::move(loop);
+    _work = std::move(dowork);
     _hiddenServiceContext = hiddenServiceContext;
     _strictConnectPubkeys = strictConnectPubkeys;
     _bootstrapRCList = bootstrapRCList;

@@ -11,7 +11,7 @@ extern "C"
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
    * Method:    Obtain
-   * Signature: ()Ljava/nio/Buffer;
+   * Signature: ()Ljava/nio/ByteBuffer;
    */
   JNIEXPORT jobject JNICALL
   Java_network_loki_lokinet_LokinetDaemon_Obtain(JNIEnv*, jclass);
@@ -19,7 +19,7 @@ extern "C"
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
    * Method:    Free
-   * Signature: (Ljava/nio/Buffer;)V
+   * Signature: (Ljava/nio/ByteBuffer;)V
    */
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_LokinetDaemon_Free(JNIEnv*, jclass, jobject);
@@ -58,11 +58,27 @@ extern "C"
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
-   * Method:    InjectVPN
-   * Signature: (Lnetwork/loki/lokinet/LokinetVPN;)Z
+   * Method:    InjectVPNFD
+   * Signature: ()V
    */
-  JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv*, jobject, jobject);
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv*, jobject);
+
+  /*
+   * Class:     network_loki_lokinet_LokinetDaemon
+   * Method:    GetUDPSocket
+   * Signature: ()I
+   */
+  JNIEXPORT jint JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv*, jobject);
+
+  /*
+   * Class:     network_loki_lokinet_LokinetDaemon
+   * Method:    DetectFreeRange
+   * Signature: ()Ljava/lang/String;
+   */
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv*, jclass);
 
 #ifdef __cplusplus
 }

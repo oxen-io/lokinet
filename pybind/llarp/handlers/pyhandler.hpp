@@ -76,7 +76,7 @@ namespace llarp
       void
       SendPacket(service::Address remote, std::vector<byte_t> pkt, service::ProtocolType proto)
       {
-        LogicCall(m_router->logic(), [remote, pkt, proto, self = shared_from_this()]() {
+        m_router->loop()->call([remote, pkt, proto, self = shared_from_this()]() {
           self->SendToServiceOrQueue(remote, llarp_buffer_t(pkt), proto);
         });
       }

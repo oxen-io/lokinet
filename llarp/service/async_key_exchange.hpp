@@ -7,13 +7,11 @@
 
 namespace llarp
 {
-  class Logic;
-
   namespace service
   {
     struct AsyncKeyExchange : public std::enable_shared_from_this<AsyncKeyExchange>
     {
-      std::shared_ptr<Logic> logic;
+      EventLoop_ptr loop;
       SharedSecret sharedKey;
       ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
@@ -26,7 +24,7 @@ namespace llarp
       ConvoTag tag;
 
       AsyncKeyExchange(
-          std::shared_ptr<Logic> l,
+          EventLoop_ptr l,
           ServiceInfo r,
           const Identity& localident,
           const PQPubKey& introsetPubKey,

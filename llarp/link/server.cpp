@@ -1,5 +1,6 @@
 #include <link/server.hpp>
 #include <ev/ev.hpp>
+#include <ev/udp_handle.hpp>
 #include <crypto/crypto.hpp>
 #include <config/key_manager.hpp>
 #include <memory>
@@ -125,18 +126,17 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Configure(llarp_ev_loop_ptr loop, const std::string& ifname, int af, uint16_t port)
+  ILinkLayer::Configure(EventLoop_ptr loop, const std::string& ifname, int af, uint16_t port)
   {
-    m_Loop = loop;
-    m_udp.user = this;
-    m_udp.recvfrom = [](llarp_udp_io* udp, const llarp::SockAddr& from, ManagedBuffer pktbuf) {
-      ILinkSession::Packet_t pkt;
-      auto& buf = pktbuf.underlying;
-      pkt.resize(buf.sz);
-      std::copy_n(buf.base, buf.sz, pkt.data());
-      static_cast<ILinkLayer*>(udp->user)->RecvFrom(from, std::move(pkt));
-    };
-    m_udp.tick = &ILinkLayer::udp_tick;
+    m_Loop = std::move(loop);
+    m_udp = m_Loop->make_udp(
+        [this]([[maybe_unused]] UDPHandle& udp, const SockAddr& from, llarp_buffer_t buf) {
+          ILinkSession::Packet_t pkt;
+          pkt.resize(buf.sz);
+          std::copy_n(buf.base, buf.sz, pkt.data());
+          RecvFrom(from, std::move(pkt));
+        });
+
     if (ifname == "*")
     {
       if (!AllInterfaces(af, m_ourAddr))
@@ -144,7 +144,7 @@ namespace llarp
     }
     else
     {
-      if (const auto maybe = GetIFAddr(ifname, af))
+      if (const auto maybe = GetInterfaceAddr(ifname, af))
       {
         m_ourAddr = *maybe;
       }
@@ -152,7 +152,7 @@ namespace llarp
       {
         try
         {
-          m_ourAddr = IpAddress(ifname);
+          m_ourAddr = SockAddr{ifname + ":0"};
         }
         catch (const std::exception& e)
         {
@@ -162,7 +162,11 @@ namespace llarp
       }
     }
     m_ourAddr.setPort(port);
-    return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr.createSockAddr()) != -1;
+    if (not m_udp->listen(m_ourAddr))
+      return false;
+
+    m_Loop->add_ticker([this] { Pump(); });
+    return true;
   }
 
   void
@@ -233,7 +237,7 @@ namespace llarp
   {
     Lock_t l_authed(m_AuthedLinksMutex);
     Lock_t l_pending(m_PendingMutex);
-    IpAddress addr = s->GetRemoteEndpoint();
+    const auto addr = s->GetRemoteEndpoint();
     auto itr = m_Pending.find(addr);
     if (itr != m_Pending.end())
     {
@@ -287,10 +291,11 @@ namespace llarp
           [](const auto& item) -> util::StatusObject { return item.second->ExtractStatus(); });
     }
 
-    return {{"name", Name()},
-            {"rank", uint64_t(Rank())},
-            {"addr", m_ourAddr.toString()},
-            {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
+    return {
+        {"name", Name()},
+        {"rank", uint64_t(Rank())},
+        {"addr", m_ourAddr.toString()},
+        {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
   }
 
   bool
@@ -307,7 +312,7 @@ namespace llarp
     llarp::AddressInfo to;
     if (!PickAddress(rc, to))
       return false;
-    const IpAddress address = to.toIpAddress();
+    const SockAddr address{to};
     {
       Lock_t l(m_PendingMutex);
       if (m_Pending.count(address) >= MaxSessionsPerKey)
@@ -335,35 +340,29 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(std::shared_ptr<Logic> l)
+  ILinkLayer::Start()
   {
-    m_Logic = l;
-    ScheduleTick(LINK_LAYER_TICK_INTERVAL);
+    // Tie the lifetime of this repeater to this arbitrary shared_ptr:
+    m_repeater_keepalive = std::make_shared<int>(0);
+    m_Loop->call_every(LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
     return true;
   }
 
   void
-  ILinkLayer::Tick(llarp_time_t now)
+  ILinkLayer::Tick(const llarp_time_t now)
   {
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto itr = m_AuthedLinks.begin();
-      while (itr != m_AuthedLinks.end())
-      {
-        itr->second->Tick(now);
-        ++itr;
-      }
+      for (const auto& [routerid, link] : m_AuthedLinks)
+        link->Tick(now);
     }
 
     {
       Lock_t l(m_PendingMutex);
-      auto itr = m_Pending.begin();
-      while (itr != m_Pending.end())
-      {
-        itr->second->Tick(now);
-        ++itr;
-      }
+      for (const auto& [addr, link] : m_Pending)
+        link->Tick(now);
     }
+
     {
       // decay recently closed list
       auto itr = m_RecentlyClosed.begin();
@@ -380,25 +379,16 @@ namespace llarp
   void
   ILinkLayer::Stop()
   {
-    if (m_Logic && tick_id)
-      m_Logic->remove_call(tick_id);
+    m_repeater_keepalive.reset();  // make the repeater kill itself
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto itr = m_AuthedLinks.begin();
-      while (itr != m_AuthedLinks.end())
-      {
-        itr->second->Close();
-        ++itr;
-      }
+      for (const auto& [router, link] : m_AuthedLinks)
+        link->Close();
     }
     {
       Lock_t l(m_PendingMutex);
-      auto itr = m_Pending.begin();
-      while (itr != m_Pending.end())
-      {
-        itr->second->Close();
-        ++itr;
-      }
+      for (const auto& [addr, link] : m_Pending)
+        link->Close();
     }
   }
 
@@ -407,34 +397,39 @@ namespace llarp
   {
     static constexpr auto CloseGraceWindow = 500ms;
     const auto now = Now();
-    Lock_t l(m_AuthedLinksMutex);
-    RouterID r = remote;
-    llarp::LogInfo("Closing all to ", r);
-    auto range = m_AuthedLinks.equal_range(r);
-    auto itr = range.first;
-    while (itr != range.second)
     {
-      itr->second->Close();
-      m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
-      itr = m_AuthedLinks.erase(itr);
+      Lock_t l(m_AuthedLinksMutex);
+      RouterID r = remote;
+      llarp::LogInfo("Closing all to ", r);
+      auto [itr, end] = m_AuthedLinks.equal_range(r);
+      while (itr != end)
+      {
+        itr->second->Close();
+        m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
+        itr = m_AuthedLinks.erase(itr);
+      }
     }
+    SessionClosed(remote);
   }
 
   void
   ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
     Lock_t l(m_AuthedLinksMutex);
-    auto range = m_AuthedLinks.equal_range(remote);
-    auto itr = range.first;
-    while (itr != range.second)
+    for (auto [itr, end] = m_AuthedLinks.equal_range(remote); itr != end; ++itr)
     {
       if (itr->second->ShouldPing())
       {
         LogDebug("keepalive to ", remote);
         itr->second->SendKeepAlive();
       }
-      ++itr;
     }
+  }
+
+  void
+  ILinkLayer::SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt)
+  {
+    m_udp->send(to, pkt);
   }
 
   bool
@@ -444,20 +439,16 @@ namespace llarp
     std::shared_ptr<ILinkSession> s;
     {
       Lock_t l(m_AuthedLinksMutex);
-      auto range = m_AuthedLinks.equal_range(remote);
-      auto itr = range.first;
       // pick lowest backlog session
       size_t min = std::numeric_limits<size_t>::max();
 
-      while (itr != range.second)
+      for (auto [itr, end] = m_AuthedLinks.equal_range(remote); itr != end; ++itr)
       {
-        const auto backlog = itr->second->SendQueueBacklog();
-        if (backlog < min)
+        if (const auto backlog = itr->second->SendQueueBacklog(); backlog < min)
         {
           s = itr->second;
           min = backlog;
         }
-        ++itr;
       }
     }
     ILinkSession::Message_t pkt(buf.sz);
@@ -468,7 +459,7 @@ namespace llarp
   bool
   ILinkLayer::GetOurAddressInfo(llarp::AddressInfo& addr) const
   {
-    addr.fromIpAddress(m_ourAddr);
+    addr.fromSockAddr(m_ourAddr);
     addr.dialect = Name();
     addr.pubkey = TransportPubKey();
     addr.rank = Rank();
@@ -492,32 +483,17 @@ namespace llarp
   {
     static constexpr size_t MaxSessionsPerEndpoint = 5;
     Lock_t lock(m_PendingMutex);
-    IpAddress address = s->GetRemoteEndpoint();
+    const auto address = s->GetRemoteEndpoint();
     if (m_Pending.count(address) >= MaxSessionsPerEndpoint)
       return false;
     m_Pending.emplace(address, s);
     return true;
   }
 
-  void
-  ILinkLayer::OnTick()
+  std::optional<int>
+  ILinkLayer::GetUDPFD() const
   {
-    auto now = Now();
-    Tick(now);
-    ScheduleTick(LINK_LAYER_TICK_INTERVAL);
-  }
-
-  void
-  ILinkLayer::ScheduleTick(llarp_time_t interval)
-  {
-    tick_id = m_Logic->call_later(interval, std::bind(&ILinkLayer::OnTick, this));
-  }
-
-  void
-  ILinkLayer::udp_tick(llarp_udp_io* udp)
-  {
-    ILinkLayer* link = static_cast<ILinkLayer*>(udp->user);
-    link->Pump();
+    return m_udp->file_descriptor();
   }
 
 }  // namespace llarp
