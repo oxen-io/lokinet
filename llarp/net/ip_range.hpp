@@ -14,18 +14,24 @@ namespace llarp
     huint128_t addr = {0};
     huint128_t netmask_bits = {0};
 
+    constexpr IPRange()
+    {}
+    constexpr IPRange(huint128_t address, huint128_t netmask)
+        : addr{std::move(address)}, netmask_bits{std::move(netmask)}
+    {}
+
     static constexpr IPRange
     FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
     {
       return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
     }
 
-    /// return true if this iprange is in the SIIT range for containing ipv4 addresses
+    /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
     constexpr bool
     IsV4() const
     {
-      constexpr auto siit = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
-      return siit.Contains(addr);
+      constexpr auto ipv4_map = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
+      return ipv4_map.Contains(addr);
     }
 
     /// return the number of bits set in the hostmask
@@ -83,6 +89,12 @@ namespace llarp
           || this->netmask_bits < other.netmask_bits;
     }
 
+    bool
+    operator==(const IPRange& other) const
+    {
+      return addr == other.addr and netmask_bits == other.netmask_bits;
+    }
+
     std::string
     ToString() const
     {
@@ -97,3 +109,17 @@ namespace llarp
   };
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::IPRange>
+  {
+    size_t
+    operator()(const llarp::IPRange& range) const
+    {
+      const auto str = range.ToString();
+      return std::hash<std::string>{}(str);
+    }
+  };
+}  // namespace std

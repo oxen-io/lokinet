@@ -25,6 +25,7 @@ namespace llarp
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
         .def_readwrite("logging", &Config::logging)
+        .def_readwrite("paths", &Config::paths)
         .def("Load", &Config::Load);
 
     py::class_<RouterConfig>(mod, "RouterConfig")
@@ -46,6 +47,10 @@ namespace llarp
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
         .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
+
+    py::class_<PeerSelectionConfig>(mod, "PeerSelectionConfig")
+        .def(py::init<>())
+        .def_readwrite("netmask", &PeerSelectionConfig::m_UniqueHopsNetmaskSize);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
@@ -99,7 +104,7 @@ namespace llarp
         .def_property(
             "lokidRPCAddr",
             [](LokidConfig& self) { return self.lokidRPCAddr.full_address().c_str(); },
-            [](LokidConfig& self, std::string arg) { self.lokidRPCAddr = lokimq::address(arg); });
+            [](LokidConfig& self, std::string arg) { self.lokidRPCAddr = oxenmq::address(arg); });
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())

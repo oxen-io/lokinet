@@ -2,37 +2,19 @@
 
 #include <list>
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch.hpp>
 
 using namespace llarp;
 
-TEST(traits_bottom, Smoke)
+TEST_CASE("traits::Bottom smoke test")
 {
   traits::Bottom bottom;
   (void)bottom;
   SUCCEED();
 }
 
-template < typename T >
-class IsContainer : public ::testing::Test
-{
-};
-
-TYPED_TEST_SUITE_P(IsContainer);
-
-TYPED_TEST_P(IsContainer, Smoke)
-{
-  bool expected = std::tuple_element_t< 1, TypeParam >::value;
-  bool result =
-      traits::is_container< std::tuple_element_t< 0, TypeParam > >::value;
-  ASSERT_EQ(expected, result);
-}
-
-REGISTER_TYPED_TEST_SUITE_P(IsContainer, Smoke);
-
 // clang-format off
-using ContainerTypes = ::testing::Types<
+using ContainerTypes = std::tuple<
     std::tuple< std::vector< int >, std::integral_constant< bool, true > >,
     std::tuple< std::vector< std::string >, std::integral_constant< bool, true > >,
     std::tuple< std::list< std::string >, std::integral_constant< bool, true > >,
@@ -41,8 +23,16 @@ using ContainerTypes = ::testing::Types<
     std::tuple< std::tuple<std::string>, std::integral_constant< bool, false > >,
     std::tuple< int, std::integral_constant< bool, false > >
 >;
-INSTANTIATE_TYPED_TEST_SUITE_P(traits, IsContainer, ContainerTypes);
+// clang-format on
 
+TEMPLATE_LIST_TEST_CASE("is_container smoke test", "", ContainerTypes)
+{
+  bool expected = std::tuple_element_t<1, TestType>::value;
+  bool result = traits::is_container<std::tuple_element_t<0, TestType>>::value;
+  REQUIRE(expected == result);
+}
+
+// clang-format off
 struct A { };
 struct B { };
 struct C { };
@@ -65,29 +55,11 @@ char f(H) { return 'H'; }
 char f(I) { return 'I'; }
 char f(J) { return 'J'; }
 char f(traits::Bottom) { return '0'; }
-
 // clang-format on
-
-template < typename T >
-class TestSwitch : public ::testing::Test
-{
-};
-
-TYPED_TEST_SUITE_P(TestSwitch);
-
-TYPED_TEST_P(TestSwitch, Smoke)
-{
-  char expected   = std::tuple_element_t< 0, TypeParam >::value;
-  using InputType = typename std::tuple_element_t< 1, TypeParam >::Type;
-  char result     = f(InputType());
-  ASSERT_EQ(expected, result);
-}
-
-REGISTER_TYPED_TEST_SUITE_P(TestSwitch, Smoke);
 
 // clang-format off
 using namespace traits::Switch;
-using SwitchTypes = ::testing::Types<
+using SwitchTypes = std::tuple<
   std::tuple<std::integral_constant<char, 'A'>, Switch< 0, A, B, C, D, E, F, G, H, I, J > >,
   std::tuple<std::integral_constant<char, 'B'>, Switch< 1, A, B, C, D, E, F, G, H, I, J > >,
   std::tuple<std::integral_constant<char, 'C'>, Switch< 2, A, B, C, D, E, F, G, H, I, J > >,
@@ -102,8 +74,15 @@ using SwitchTypes = ::testing::Types<
   std::tuple<std::integral_constant<char, 'C'>, Switch< 6, C, C, C, C, C, C, C, C, C, J > >,
   std::tuple<std::integral_constant<char, '0'>, Switch< 10, A, B, C, D, E, F, G, H, I, J > >
 >;
+// clang-format off
 
-INSTANTIATE_TYPED_TEST_SUITE_P(traits, TestSwitch, SwitchTypes);
+TEMPLATE_LIST_TEST_CASE("Switch smoke test", "", SwitchTypes)
+{
+  char expected = std::tuple_element_t<0, TestType>::value;
+  using InputType = typename std::tuple_element_t<1, TestType>::Type;
+  char result = f(InputType());
+  REQUIRE(expected == result);
+}
 
 template<typename T>
 using is_bool = std::is_same<T, bool>;
@@ -126,56 +105,35 @@ selectCase()
   return dispatch(Selection());
 }
 
-template < typename T >
-class Select : public ::testing::Test
-{
-};
-
-TYPED_TEST_SUITE_P(Select);
-
-TYPED_TEST_P(Select, Smoke)
-{
-  char expected   = std::tuple_element_t< 0, TypeParam >::value;
-  char result     = selectCase<std::tuple_element_t< 1, TypeParam > >();
-  ASSERT_EQ(expected, result);
-}
-
-REGISTER_TYPED_TEST_SUITE_P(Select, Smoke);
-
-using SelectTypes = ::testing::Types<
+// clang-format off
+using SelectTypes = std::tuple<
   std::tuple<std::integral_constant<char, '0'>, double >,
   std::tuple<std::integral_constant<char, 'b'>, bool >,
   std::tuple<std::integral_constant<char, 'c'>, char >,
   std::tuple<std::integral_constant<char, 's'>, std::string >
 >;
-
-INSTANTIATE_TYPED_TEST_SUITE_P(traits, Select, SelectTypes);
-
 // clang-format on
 
-template < typename T >
-class IsPointy : public ::testing::Test
+TEMPLATE_LIST_TEST_CASE("selectCase smoke test", "", SelectTypes)
 {
-};
-
-TYPED_TEST_SUITE_P(IsPointy);
-
-TYPED_TEST_P(IsPointy, Smoke)
-{
-  bool expected = std::tuple_element_t< 1, TypeParam >::value;
-  bool result =
-      traits::is_pointy< std::tuple_element_t< 0, TypeParam > >::value;
-  ASSERT_EQ(expected, result);
+  char expected = std::tuple_element_t<0, TestType>::value;
+  char result = selectCase<std::tuple_element_t<1, TestType>>();
+  REQUIRE(expected == result);
 }
-
-REGISTER_TYPED_TEST_SUITE_P(IsPointy, Smoke);
+// clang-format on
 
 // clang-format off
-using PointerTypes = ::testing::Types<
+using PointerTypes = std::tuple<
     std::tuple< int *, std::true_type >,
     std::tuple< int, std::integral_constant< bool, false > >,
     std::tuple< std::shared_ptr<int>, std::true_type >,
     std::tuple< std::unique_ptr<int>, std::true_type >
 >;
-INSTANTIATE_TYPED_TEST_SUITE_P(traits, IsPointy, PointerTypes);
 // clang-format on
+
+TEMPLATE_LIST_TEST_CASE("is_pointy smoke test", "", PointerTypes)
+{
+  bool expected = std::tuple_element_t<1, TestType>::value;
+  bool result = traits::is_pointy<std::tuple_element_t<0, TestType>>::value;
+  REQUIRE(expected == result);
+}

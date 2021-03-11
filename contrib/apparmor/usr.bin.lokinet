@@ -1,8 +1,9 @@
-# Last Modified: Sat May  4 18:48:24 2019
+# Last Modified: Fri 05 Feb 2021 08:13:58 PM UTC
 #include <tunables/global>
 
-/usr/bin/lokinet {
+profile lokinet /usr/bin/lokinet {
   #include <abstractions/base>
+  #include <abstractions/nameservice>
 
   capability net_admin,
   capability net_bind_service,
@@ -11,14 +12,16 @@
   network inet6 dgram,
   network netlink raw,
 
+  /etc/loki/lokinet.ini r,
   /dev/net/tun rw,
-  /lib/@{multiarch}/ld-*.so mr,
   /usr/bin/lokinet mr,
 
-  owner /var/lib/lokinet/ rw,
-  owner /var/lib/lokinet/** rwk,
+  owner /{var/,}lib/lokinet/ rw,
+  owner /{var/,}lib/lokinet/** rwk,
+  owner ${HOME}/.lokinet/ rw,
+  owner ${HOME}/.lokinet/** rwk,
+  owner @{PROC}/@{pid}/task/@{pid}/comm rw,
+  owner /tmp/lokinet.*/{**,} rw,
 
-  owner @{HOME}/.lokinet/ rw,
-  owner @{HOME}/.lokinet/** rwk,
-
+  #include if exists <local/usr.bin.lokinet>
 }

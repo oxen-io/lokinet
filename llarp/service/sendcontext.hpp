@@ -52,6 +52,8 @@ namespace llarp
       using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
       thread::Queue<SendEvent_t> m_SendQueue;
 
+      std::function<void(AuthResult)> authResultListener;
+
       virtual bool
       ShiftIntroduction(bool rebuild = true)
       {
@@ -64,6 +66,9 @@ namespace llarp
 
       virtual bool
       MarkCurrentIntroBad(llarp_time_t now) = 0;
+
+      void
+      AsyncSendAuth(std::function<void(AuthResult)> replyHandler);
 
      private:
       void

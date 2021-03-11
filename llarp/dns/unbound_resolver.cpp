@@ -9,7 +9,8 @@ namespace llarp::dns
   {
     std::weak_ptr<UnboundResolver> resolver;
     Message msg;
-    SockAddr source;
+    SockAddr resolverAddr;
+    SockAddr askerAddr;
   };
 
   void
@@ -34,16 +35,11 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  UnboundResolver::UnboundResolver(llarp_ev_loop_ptr loop, ReplyFunction reply, FailFunction fail)
+  UnboundResolver::UnboundResolver(EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
-      , eventLoop(loop)
-      , replyFunc([loop, reply](auto source, auto buf) {
-        loop->call_soon([source, buf, reply]() { reply(source, buf); });
-      })
-      , failFunc([loop, fail](auto source, auto message) {
-        loop->call_soon([source, message, fail]() { fail(source, message); });
-      })
+      , replyFunc(loop->make_caller(std::move(reply)))
+      , failFunc(loop->make_caller(std::move(fail)))
   {}
 
   // static callback
@@ -60,12 +56,12 @@ namespace llarp::dns
     {
       Message& msg = lookup->msg;
       msg.AddServFail();
-      this_ptr->failFunc(lookup->source, msg);
+      this_ptr->failFunc(lookup->resolverAddr, lookup->askerAddr, msg);
       ub_resolve_free(result);
       return;
     }
-    std::vector<byte_t> pkt(result->answer_len);
-    std::copy_n(static_cast<byte_t*>(result->answer_packet), pkt.size(), pkt.data());
+    OwnedBuffer pkt{(size_t)result->answer_len};
+    std::memcpy(pkt.buf.get(), result->answer_packet, pkt.sz);
     llarp_buffer_t buf(pkt);
 
     MessageHeader hdr;
@@ -75,7 +71,7 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    this_ptr->replyFunc(lookup->source, std::move(pkt));
+    this_ptr->replyFunc(lookup->resolverAddr, lookup->askerAddr, std::move(pkt));
 
     ub_resolve_free(result);
   }
@@ -120,17 +116,17 @@ namespace llarp::dns
   }
 
   void
-  UnboundResolver::Lookup(const SockAddr& source, Message msg)
+  UnboundResolver::Lookup(SockAddr to, SockAddr from, Message msg)
   {
     if (not unboundContext)
     {
       msg.AddServFail();
-      failFunc(source, std::move(msg));
+      failFunc(to, from, std::move(msg));
       return;
     }
 
     const auto& q = msg.questions[0];
-    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, source};
+    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, to, from};
     int err = ub_resolve_async(
         unboundContext,
         q.Name().c_str(),
@@ -143,7 +139,7 @@ namespace llarp::dns
     if (err != 0)
     {
       msg.AddServFail();
-      failFunc(source, std::move(msg));
+      failFunc(to, from, std::move(msg));
       return;
     }
   }

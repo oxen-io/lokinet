@@ -11,7 +11,7 @@ if [ "$DRONE_STAGE_OS" == "darwin" ]; then
         bad=1
     fi
 elif [ "$DRONE_STAGE_OS" == "linux" ]; then
-    if ldd daemon/lokinet | grep -Ev '(linux-vdso|ld-linux-x86-64|lib(pthread|dl|rt|stdc\+\+|gcc_s|c|m))\.so'; then
+    if ldd daemon/lokinet | grep -Ev '(linux-vdso|ld-linux-(x86-64|armhf|aarch64)|lib(pthread|dl|rt|stdc\+\+|gcc_s|c|m))\.so'; then
         bad=1
     fi
 else

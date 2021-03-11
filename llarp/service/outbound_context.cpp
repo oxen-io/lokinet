@@ -202,7 +202,7 @@ namespace llarp
       currentConvoTag.Randomize();
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
-          m_Endpoint->RouterLogic(),
+          m_Endpoint->Loop(),
           remoteIdent,
           m_Endpoint->GetIdentity(),
           currentIntroSet.K,
@@ -211,12 +211,14 @@ namespace llarp
           currentConvoTag,
           t);
 
-      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path);
+      ex->hook = [self = shared_from_this(), path](auto frame) {
+        self->Send(std::move(frame), path);
+      };
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       frame->F = ex->msg.introReply.pathID;
-      m_Endpoint->Router()->QueueWork(std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
+      m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
     }
 
     std::string
@@ -334,33 +336,16 @@ namespace llarp
                                : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
-    bool
-    OutboundContext::SelectHop(
-        llarp_nodedb* db,
-        const std::set<RouterID>& prev,
-        RouterContact& cur,
-        size_t hop,
-        path::PathRole roles)
+    std::optional<std::vector<RouterContact>>
+    OutboundContext::GetHopsForBuild()
     {
-      if (m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
+      if (m_NextIntro.router.IsZero())
       {
         ShiftIntroduction(false);
       }
       if (m_NextIntro.router.IsZero())
-        return false;
-      std::set<RouterID> exclude = prev;
-      exclude.insert(m_NextIntro.router);
-      for (const auto& snode : m_Endpoint->SnodeBlacklist())
-        exclude.insert(snode);
-      if (hop == numHops - 1)
-      {
-        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-        if (db->Get(m_NextIntro.router, cur))
-          return true;
-        ++m_BuildFails;
-        return false;
-      }
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+        return std::nullopt;
+      return GetHopsAlignedToForBuild(m_NextIntro.router, m_Endpoint->SnodeBlacklist());
     }
 
     bool
@@ -545,7 +530,76 @@ namespace llarp
     {
       m_LastInboundTraffic = m_Endpoint->Now();
       m_GotInboundTraffic = true;
-      return m_Endpoint->HandleHiddenServiceFrame(p, frame);
+      if (frame.R)
+      {
+        // handle discard
+        ServiceInfo si;
+        if (!m_Endpoint->GetSenderFor(frame.T, si))
+          return false;
+        // verify source
+        if (!frame.Verify(si))
+          return false;
+        // remove convotag it doesn't exist
+        LogWarn("remove convotag T=", frame.T);
+
+        AuthResult result{AuthResultCode::eAuthFailed, "unknown reason"};
+        if (const auto maybe = AuthResultCodeFromInt(frame.R))
+          result.code = *maybe;
+        SharedSecret sessionKey{};
+        if (m_DataHandler->GetCachedSessionKeyFor(frame.T, sessionKey))
+        {
+          ProtocolMessage msg{};
+          if (frame.DecryptPayloadInto(sessionKey, msg))
+          {
+            if (msg.proto == eProtocolAuth and not msg.payload.empty())
+            {
+              result.reason = std::string{
+                  reinterpret_cast<const char*>(msg.payload.data()), msg.payload.size()};
+            }
+          }
+        }
+
+        m_Endpoint->RemoveConvoTag(frame.T);
+        if (authResultListener)
+        {
+          authResultListener(result);
+          authResultListener = nullptr;
+        }
+        return true;
+      }
+      std::function<void(std::shared_ptr<ProtocolMessage>)> hook = nullptr;
+      if (authResultListener)
+      {
+        std::function<void(AuthResult)> handler = authResultListener;
+        authResultListener = nullptr;
+        hook = [handler](std::shared_ptr<ProtocolMessage> msg) {
+          AuthResult result{AuthResultCode::eAuthAccepted, "OK"};
+          if (msg->proto == eProtocolAuth and not msg->payload.empty())
+          {
+            result.reason = std::string{
+                reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()};
+          }
+          handler(result);
+        };
+      }
+      const auto& ident = m_Endpoint->GetIdentity();
+      if (not frame.AsyncDecryptAndVerify(m_Endpoint->Loop(), p, ident, m_Endpoint, hook))
+      {
+        // send reset convo tag message
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame.T;
+        f.F = p->intro.pathID;
+
+        f.Sign(ident);
+        {
+          LogWarn("invalidating convotag T=", frame.T);
+          m_Endpoint->RemoveConvoTag(frame.T);
+          m_Endpoint->m_SendQueue.tryPushBack(
+              SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, frame.F), p});
+        }
+      }
+      return true;
     }
 
     void

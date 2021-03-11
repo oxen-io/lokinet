@@ -1,13 +1,18 @@
 #include "network_loki_lokinet_LokinetConfig.h"
 #include <llarp.hpp>
+#include <config/config.hpp>
 #include "lokinet_jni_common.hpp"
 
 extern "C"
 {
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass)
+  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass, jstring dataDir)
   {
-    auto conf = new llarp::Config();
+    auto conf = VisitStringAsStringView<llarp::Config*>(
+        env, dataDir, [](std::string_view val) -> llarp::Config* {
+          return new llarp::Config{val};
+        });
+
     if (conf == nullptr)
       return nullptr;
     return env->NewDirectByteBuffer(conf, sizeof(llarp::Config));
@@ -21,15 +26,49 @@ extern "C"
   }
 
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv* env, jobject self, jstring fname)
+  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv* env, jobject self)
   {
     auto conf = GetImpl<llarp::Config>(env, self);
     if (conf == nullptr)
       return JNI_FALSE;
-    return VisitStringAsStringView<jboolean>(env, fname, [conf](std::string_view val) -> jboolean {
-      if (conf->Load(val, false, llarp::GetDefaultDataDir()))
-        return JNI_TRUE;
+    if (conf->Load())
+    {
+      return JNI_TRUE;
+    }
+    return JNI_FALSE;
+  }
+
+  JNIEXPORT jboolean JNICALL
+  Java_network_loki_lokinet_LokinetConfig_Save(JNIEnv* env, jobject self)
+  {
+    auto conf = GetImpl<llarp::Config>(env, self);
+    if (conf == nullptr)
       return JNI_FALSE;
-    });
+    try
+    {
+      conf->Save();
+    }
+    catch (...)
+    {
+      return JNI_FALSE;
+    }
+    return JNI_TRUE;
+  }
+
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_LokinetConfig_AddDefaultValue(
+      JNIEnv* env, jobject self, jstring section, jstring key, jstring value)
+  {
+    auto convert = [](std::string_view str) -> std::string { return std::string{str}; };
+
+    const auto sect = VisitStringAsStringView<std::string>(env, section, convert);
+    const auto k = VisitStringAsStringView<std::string>(env, key, convert);
+    const auto v = VisitStringAsStringView<std::string>(env, value, convert);
+
+    auto conf = GetImpl<llarp::Config>(env, self);
+    if (conf)
+    {
+      conf->AddDefault(sect, k, v);
+    }
   }
 }

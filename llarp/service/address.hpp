@@ -104,4 +104,17 @@ namespace llarp
   }  // namespace service
 }  // namespace llarp
 
+namespace std
+{
+  template <>
+  struct hash<llarp::service::Address>
+  {
+    size_t
+    operator()(const llarp::service::Address& addr) const
+    {
+      return llarp::service::Address::Hash{}(addr);
+    }
+  };
+}  // namespace std
+
 #endif

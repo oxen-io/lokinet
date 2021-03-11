@@ -6,7 +6,10 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 #include <util/str.hpp>
-#include <util/thread/logic.hpp>
+
+#ifdef _WIN32
+#include <dbghelp.h>
+#endif
 
 #include <csignal>
 
@@ -65,7 +68,7 @@ void
 handle_signal(int sig)
 {
   if (ctx)
-    LogicCall(ctx->logic, std::bind(&llarp::Context::HandleSignal, ctx.get(), sig));
+    ctx->loop->call([sig] { ctx->HandleSignal(sig); });
   else
     std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }
@@ -255,26 +258,27 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
   llarp::LogTrace("start of run_main_context()");
   try
   {
-    std::unique_ptr<llarp::Config> conf;
+    std::shared_ptr<llarp::Config> conf;
     if (confFile.has_value())
     {
       llarp::LogInfo("Using config file: ", *confFile);
-      conf = std::make_unique<llarp::Config>(confFile->parent_path());
+      conf = std::make_shared<llarp::Config>(confFile->parent_path());
     }
     else
     {
-      conf = std::make_unique<llarp::Config>(llarp::GetDefaultDataDir());
+      conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
     }
     if (!conf->Load(confFile, opts.isRouter))
       throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
-    ctx->Configure(*conf);
+    ctx->Configure(std::move(conf));
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
+    signal(SIGUSR1, handle_signal);
 #endif
 
     ctx->Setup(opts);
@@ -329,6 +333,41 @@ class WindowsServiceStopped
     TellWindowsServiceStopped();
   }
 };
+
+/// minidump generation for windows jizz
+/// will make a coredump when there is an unhandled exception
+LONG
+GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
+{
+  const DWORD flags = MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
+      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo;
+
+  std::stringstream ss;
+  ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
+  const std::string fname = ss.str();
+  HANDLE hDumpFile;
+  SYSTEMTIME stLocalTime;
+  GetLocalTime(&stLocalTime);
+  MINIDUMP_EXCEPTION_INFORMATION ExpParam{};
+
+  hDumpFile = CreateFile(
+      fname.c_str(),
+      GENERIC_READ | GENERIC_WRITE,
+      FILE_SHARE_WRITE | FILE_SHARE_READ,
+      0,
+      CREATE_ALWAYS,
+      0,
+      0);
+
+  ExpParam.ExceptionPointers = pExceptionPointers;
+  ExpParam.ClientPointers = TRUE;
+
+  MiniDumpWriteDump(
+      GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, flags, &ExpParam, NULL, NULL);
+
+  return 1;
+}
+
 #endif
 
 int
@@ -337,8 +376,8 @@ main(int argc, char* argv[])
 #ifndef _WIN32
   return lokinet_main(argc, argv);
 #else
-  SERVICE_TABLE_ENTRY DispatchTable[] = {{"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry},
-                                         {NULL, NULL}};
+  SERVICE_TABLE_ENTRY DispatchTable[] = {
+      {"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
     start_as_daemon = true;
@@ -521,6 +560,10 @@ lokinet_main(int argc, char* argv[])
     return 0;
   }
 
+#ifdef _WIN32
+  SetUnhandledExceptionFilter(&GenerateDump);
+#endif
+
   std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
 
@@ -533,26 +576,27 @@ lokinet_main(int argc, char* argv[])
     // do periodic non lokinet related tasks here
     if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
-      for (const auto& wtf : {"you have been visited by the mascott of the "
-                              "deadlocked router.",
-                              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-                              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-                              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-                              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-                              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-                              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-                              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-                              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-                              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-                              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-                              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "file a bug report now or be cursed with this "
-                              "annoying image in your syslog for all time."})
+      for (const auto& wtf :
+           {"you have been visited by the mascott of the "
+            "deadlocked router.",
+            "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
+            "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
+            "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
+            "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
+            "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
+            "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
+            "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
+            "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
+            "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
+            "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
+            "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+            "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
+            "file a bug report now or be cursed with this "
+            "annoying image in your syslog for all time."})
       {
         LogError(wtf);
         llarp::LogContext::Instance().ImmediateFlush();

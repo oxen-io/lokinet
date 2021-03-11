@@ -19,7 +19,6 @@ add_library(lokinet-util
   util/mem.cpp
   util/printer.cpp
   util/str.cpp
-  util/thread/logic.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp
   util/time.cpp
@@ -39,7 +38,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
-  lokimq
+  oxenmq
   sqlite3
 )
 
@@ -47,12 +46,14 @@ if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
 endif()
 
+add_library(uvw INTERFACE)
+target_include_directories(uvw INTERFACE ${PROJECT_SOURCE_DIR}/external/uvw/src)
+target_link_libraries(uvw INTERFACE libuv)
+
 add_library(lokinet-platform
 # for networking
   ev/ev.cpp
-  ev/pipe.cpp
   ev/ev_libuv.cpp
-
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
@@ -61,10 +62,11 @@ add_library(lokinet-platform
   net/net_int.cpp
   net/route.cpp
   net/sock_addr.cpp
-  $<TARGET_OBJECTS:tuntap>
+  vpn/packet_router.cpp
+  vpn/platform.cpp
 )
 
-target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs libuv)
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs uvw)
 
 
 if (ANDROID)
@@ -82,8 +84,6 @@ endif()
 
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
-    ev/ev_libuv.cpp
-    ev/ev_win32.cpp
     win32/win32_inet.c
     win32/win32_intrnl.c)
 

@@ -11,6 +11,7 @@ namespace llarp::iwp
   LinkLayer_ptr
   NewInboundLink(
       std::shared_ptr<KeyManager> keyManager,
+      std::shared_ptr<EventLoop> loop,
       GetRCFunc getrc,
       LinkMessageHandler h,
       SignBufferFunc sign,
@@ -25,6 +26,7 @@ namespace llarp::iwp
   LinkLayer_ptr
   NewOutboundLink(
       std::shared_ptr<KeyManager> keyManager,
+      std::shared_ptr<EventLoop> loop,
       GetRCFunc getrc,
       LinkMessageHandler h,
       SignBufferFunc sign,

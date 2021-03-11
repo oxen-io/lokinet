@@ -4,7 +4,6 @@
 #include <util/buffer.hpp>
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/thread/logic.hpp>
 #include <service/endpoint.hpp>
 #include <router/abstractrouter.hpp>
 #include <utility>
@@ -271,7 +270,7 @@ namespace llarp
     struct AsyncFrameDecrypt
     {
       path::Path_ptr path;
-      std::shared_ptr<Logic> logic;
+      EventLoop_ptr loop;
       std::shared_ptr<ProtocolMessage> msg;
       const Identity& m_LocalIdentity;
       Endpoint* handler;
@@ -279,13 +278,13 @@ namespace llarp
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(
-          std::shared_ptr<Logic> l,
+          EventLoop_ptr l,
           const Identity& localIdent,
           Endpoint* h,
           std::shared_ptr<ProtocolMessage> m,
           const ProtocolFrame& f,
           const Introduction& recvIntro)
-          : logic(std::move(l))
+          : loop(std::move(l))
           , msg(std::move(m))
           , m_LocalIdentity(localIdent)
           , handler(h)
@@ -366,20 +365,15 @@ namespace llarp
             msg,
             [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
                 AuthResult result) {
-              if (result == AuthResult::eAuthAccepted)
+              if (result.code == AuthResultCode::eAuthAccepted)
               {
-                LogInfo("Accepted Convo T=", msg->tag);
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);
                 handler->PutSenderFor(msg->tag, msg->sender, true);
                 handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
                 ProtocolMessage::ProcessAsync(path, from, msg);
               }
-              else
-              {
-                LogInfo("Rejected Convo T=", msg->tag);
-                handler->SendAuthReject(path, from, msg->tag, result);
-              }
+              handler->SendAuthResult(path, from, msg->tag, result);
             });
       }
     };
@@ -408,10 +402,11 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(
-        std::shared_ptr<Logic> logic,
+        EventLoop_ptr loop,
         path::Path_ptr recvPath,
         const Identity& localIdent,
-        Endpoint* handler) const
+        Endpoint* handler,
+        std::function<void(std::shared_ptr<ProtocolMessage>)> hook) const
     {
       auto msg = std::make_shared<ProtocolMessage>();
       msg->handler = handler;
@@ -420,9 +415,9 @@ namespace llarp
         LogInfo("Got protocol frame with new convo");
         // we need to dh
         auto dh = std::make_shared<AsyncFrameDecrypt>(
-            logic, localIdent, handler, msg, *this, recvPath->intro);
+            loop, localIdent, handler, msg, *this, recvPath->intro);
         dh->path = recvPath;
-        handler->Router()->QueueWork(std::bind(&AsyncFrameDecrypt::Work, dh));
+        handler->Router()->QueueWork([dh = std::move(dh)] { return AsyncFrameDecrypt::Work(dh); });
         return true;
       }
 
@@ -440,23 +435,32 @@ namespace llarp
         return false;
       }
       v->frame = *this;
-      handler->Router()->QueueWork([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
-        if (not v->frame.Verify(v->si))
+      auto callback = [loop, hook](std::shared_ptr<ProtocolMessage> msg) {
+        if (hook)
         {
-          LogError("Signature failure from ", v->si.Addr());
-          return;
+          loop->call([msg, hook]() { hook(msg); });
         }
-        if (not v->frame.DecryptPayloadInto(v->shared, *msg))
-        {
-          LogError("failed to decrypt message");
-          return;
-        }
-        RecvDataEvent ev;
-        ev.fromPath = std::move(recvPath);
-        ev.pathid = v->frame.F;
-        ev.msg = std::move(msg);
-        msg->handler->QueueRecvData(std::move(ev));
-      });
+      };
+      handler->Router()->QueueWork(
+          [v, msg = std::move(msg), recvPath = std::move(recvPath), callback]() {
+            if (not v->frame.Verify(v->si))
+            {
+              LogError("Signature failure from ", v->si.Addr());
+              return;
+            }
+            if (not v->frame.DecryptPayloadInto(v->shared, *msg))
+            {
+              LogError("failed to decrypt message");
+              return;
+            }
+            callback(msg);
+            RecvDataEvent ev;
+            ev.fromPath = std::move(recvPath);
+            ev.pathid = v->frame.F;
+            auto& handler = ev.msg->handler;
+            ev.msg = std::move(msg);
+            handler->QueueRecvData(std::move(ev));
+          });
       return true;
     }
 

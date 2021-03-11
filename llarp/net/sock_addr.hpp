@@ -16,9 +16,12 @@ inet_pton(int af, const char* src, void* dst);
 
 #include <string_view>
 #include <string>
+#include <net/net_int.hpp>
 
 namespace llarp
 {
+  struct AddressInfo;
+
   /// A simple SockAddr wrapper which provides a sockaddr_in (IPv4). Memory management is handled
   /// in constructor and destructor (if needed) and copying is disabled.
   struct SockAddr
@@ -27,6 +30,10 @@ namespace llarp
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
     SockAddr(std::string_view addr);
+    SockAddr(std::string_view addr, uint16_t port);
+    SockAddr(uint32_t ip, uint16_t port);
+
+    SockAddr(const AddressInfo&);
 
     SockAddr(const SockAddr&);
     SockAddr&
@@ -59,7 +66,7 @@ namespace llarp
     operator==(const SockAddr& other) const;
 
     void
-    fromString(std::string_view str);
+    fromString(std::string_view str, bool allow_port = true);
 
     std::string
     toString() const;
@@ -74,11 +81,36 @@ namespace llarp
     void
     setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
+    /// port is in host order
+    void
+    setIPv4(uint32_t ip);
+
     void
     setPort(uint16_t port);
 
+    /// port is in host order
     uint16_t
     getPort() const;
+
+    huint128_t
+    asIPv6() const;
+    /// in network order
+    uint32_t
+    getIPv4() const;
+
+    huint32_t
+    asIPv4() const;
+
+    struct Hash
+    {
+      size_t
+      operator()(const SockAddr& addr) const noexcept
+      {
+        const std::hash<uint16_t> port{};
+        const std::hash<huint128_t> ip{};
+        return (port(addr.getPort()) << 3) ^ ip(addr.asIPv6());
+      }
+    };
 
    private:
     bool m_empty = true;
@@ -89,7 +121,7 @@ namespace llarp
     init();
 
     void
-    applySIITBytes();
+    applyIPv4MapBytes();
   };
 
   std::ostream&

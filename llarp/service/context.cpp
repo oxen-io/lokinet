@@ -20,15 +20,15 @@ namespace llarp
       static EndpointConstructors endpointConstructors = {
           {"tun",
            [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c, false);
+             return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
           {"android",
            [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c, true);
+             return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
           {"ios",
            [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c, true);
+             return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
           {"null", [](AbstractRouter* r, service::Context* c) {
              return std::make_shared<handlers::NullEndpoint>(r, c);

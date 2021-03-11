@@ -17,7 +17,6 @@
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
-#include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
 #include <router/i_rc_lookup_handler.hpp>
@@ -161,7 +160,7 @@ namespace llarp
       GetIntroSetByLocation(const Key_t& location) const override;
 
       void
-      handle_cleaner_timer(uint64_t interval);
+      handle_cleaner_timer();
 
       /// explore dht for new routers
       void
@@ -202,15 +201,13 @@ namespace llarp
       void
       PutRCNodeAsync(const RCNode& val) override
       {
-        auto func = std::bind(&Bucket<RCNode>::PutNode, Nodes(), val);
-        LogicCall(router->logic(), func);
+        router->loop()->call([nodes = Nodes(), val] { nodes->PutNode(val); });
       }
 
       void
       DelRCNodeAsync(const Key_t& val) override
       {
-        auto func = std::bind(&Bucket<RCNode>::DelNode, Nodes(), val);
-        LogicCall(router->logic(), func);
+        router->loop()->call([nodes = Nodes(), val] { nodes->DelNode(val); });
       }
 
       const Key_t&
@@ -228,7 +225,12 @@ namespace llarp
       bool
       GetRCFromNodeDB(const Key_t& k, llarp::RouterContact& rc) const override
       {
-        return router->nodedb()->Get(k.as_array(), rc);
+        if (const auto maybe = router->nodedb()->Get(k.as_array()); maybe.has_value())
+        {
+          rc = *maybe;
+          return true;
+        }
+        return false;
       }
 
       PendingIntrosetLookups _pendingIntrosetLookups;
@@ -284,8 +286,7 @@ namespace llarp
       ExploreNetworkVia(const Key_t& peer) override;
 
      private:
-      void
-      ScheduleCleanupTimer();
+      std::shared_ptr<int> _timer_keepalive;
 
       void
       CleanupTX();
@@ -328,7 +329,7 @@ namespace llarp
     }
 
     void
-    Context::handle_cleaner_timer(__attribute__((unused)) uint64_t interval)
+    Context::handle_cleaner_timer()
     {
       // clean up transactions
       CleanupTX();
@@ -349,7 +350,6 @@ namespace llarp
             ++itr;
         }
       }
-      ScheduleCleanupTimer();
     }
 
     void
@@ -435,12 +435,13 @@ namespace llarp
     util::StatusObject
     Context::ExtractStatus() const
     {
-      util::StatusObject obj{{"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
-                             {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
-                             {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
-                             {"nodes", _nodes->ExtractStatus()},
-                             {"services", _services->ExtractStatus()},
-                             {"ourKey", ourKey.ToHex()}};
+      util::StatusObject obj{
+          {"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
+          {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
+          {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
+          {"nodes", _nodes->ExtractStatus()},
+          {"services", _services->ExtractStatus()},
+          {"ourKey", ourKey.ToHex()}};
       return obj;
     }
 
@@ -453,14 +454,8 @@ namespace llarp
       _services = std::make_unique<Bucket<ISNode>>(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start cleanup timer
-      ScheduleCleanupTimer();
-    }
-
-    void
-    Context::ScheduleCleanupTimer()
-    {
-      router->logic()->call_later(
-          1s, std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
+      _timer_keepalive = std::make_shared<int>(0);
+      router->loop()->call_every(1s, _timer_keepalive, [this] { handle_cleaner_timer(); });
     }
 
     void
