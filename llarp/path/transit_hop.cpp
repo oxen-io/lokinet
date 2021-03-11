@@ -121,13 +121,10 @@ namespace llarp
     {
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayDownstreamMessage> msgs;
-        do
+        while (auto maybe = self->m_DownstreamGather.tryPopFront())
         {
-          auto maybe = self->m_DownstreamGather.tryPopFront();
-          if (not maybe)
-            break;
-          msgs.emplace_back(*maybe);
-        } while (true);
+          msgs.push_back(*maybe);
+        }
         self->HandleAllDownstream(std::move(msgs), r);
       };
       for (auto& ev : *msgs)
@@ -147,12 +144,12 @@ namespace llarp
             info.downstream);
         if (m_DownstreamGather.full())
         {
-          LogicCall(r->logic(), flushIt);
+          r->loop()->call(flushIt);
         }
         if (m_DownstreamGather.enabled())
           m_DownstreamGather.pushBack(msg);
       }
-      LogicCall(r->logic(), flushIt);
+      r->loop()->call(flushIt);
     }
 
     void
@@ -160,13 +157,10 @@ namespace llarp
     {
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayUpstreamMessage> msgs;
-        do
+        while (auto maybe = self->m_UpstreamGather.tryPopFront())
         {
-          auto maybe = self->m_UpstreamGather.tryPopFront();
-          if (not maybe)
-            break;
-          msgs.emplace_back(*maybe);
-        } while (true);
+          msgs.push_back(*maybe);
+        }
         self->HandleAllUpstream(std::move(msgs), r);
       };
       for (auto& ev : *msgs)
@@ -179,12 +173,12 @@ namespace llarp
         msg.X = buf;
         if (m_UpstreamGather.full())
         {
-          LogicCall(r->logic(), flushIt);
+          r->loop()->call(flushIt);
         }
         if (m_UpstreamGather.enabled())
           m_UpstreamGather.pushBack(msg);
       }
-      LogicCall(r->logic(), flushIt);
+      r->loop()->call(flushIt);
     }
 
     void
@@ -207,6 +201,7 @@ namespace llarp
           other->FlushDownstream(r);
         }
         m_FlushOthers.clear();
+        r->loop()->wakeup();
       }
       else
       {
@@ -221,8 +216,8 @@ namespace llarp
               info.upstream);
           r->SendToOrQueue(info.upstream, &msg);
         }
+        r->linkManager().PumpLinks();
       }
-      r->linkManager().PumpLinks();
     }
 
     void
@@ -285,8 +280,8 @@ namespace llarp
 
     bool
     TransitHop::HandlePathConfirmMessage(
-        __attribute__((unused)) const llarp::routing::PathConfirmMessage& msg,
-        __attribute__((unused)) AbstractRouter* r)
+        [[maybe_unused]] const llarp::routing::PathConfirmMessage& msg,
+        [[maybe_unused]] AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path confirm message on ", info);
       return false;
@@ -294,8 +289,8 @@ namespace llarp
 
     bool
     TransitHop::HandleDataDiscardMessage(
-        __attribute__((unused)) const llarp::routing::DataDiscardMessage& msg,
-        __attribute__((unused)) AbstractRouter* r)
+        [[maybe_unused]] const llarp::routing::DataDiscardMessage& msg,
+        [[maybe_unused]] AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;
@@ -488,8 +483,7 @@ namespace llarp
     void
     TransitHop::QueueDestroySelf(AbstractRouter* r)
     {
-      auto func = std::bind(&TransitHop::SetSelfDestruct, shared_from_this());
-      LogicCall(r->logic(), func);
+      r->loop()->call([self = shared_from_this()] { self->SetSelfDestruct(); });
     }
   }  // namespace path
 }  // namespace llarp

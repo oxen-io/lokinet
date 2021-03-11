@@ -47,7 +47,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(Logic_ptr logic) override;
+    StartLinks() override;
 
     void
     Stop() override;
@@ -64,6 +64,9 @@ namespace llarp
 
     void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
+
+    void
+    ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
     size_t
     NumberOfConnectedRouters() const override;

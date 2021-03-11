@@ -8,50 +8,9 @@ You can learn more about the high level design of LLARP [here](docs/high-level.t
 
 And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
-You can view documentation on how to get started [here](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) .
+You can view documentation on how to get started [here](https://docs.oxen.io/products-built-on-oxen/lokinet) .
 
-[![Build Status](https://drone.lokinet.dev/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/loki-project/loki-network)
-
-## Usage
-
-See the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
-
-Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
-
-### Create default config
-
-to configure as client:
-
-    $ lokinet -g
-    $ lokinet-bootstrap
-
-to configure as relay:
-
-    $ lokinet -r -g
-    $ lokinet-bootstrap
-
-
-## Running on Linux
-
-**DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
-
-to run, after you create default config:
-
-    $ lokinet
-
-## Running on MacOS/UNIX/BSD
-
-**YOU HAVE TO RUN AS ROOT**, run using sudo. Elevated privileges are needed to create the virtual tunnel interface.
-
-The MacOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
-
-to run, after you create default config:
-
-    $ sudo lokinet
-
-## Running on Windows
-
-**DO NOT RUN AS ELEVATED USER**, run as normal user.
+[![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/loki-network/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/loki-network)
 
 ## Building
 
@@ -68,7 +27,17 @@ Build requirements:
 
 ### Linux
 
-build:
+You do not have to build from source if you are on debian or ubuntu as we have apt repositories with pre-built lokinet packages on `deb.oxen.io`.
+
+You can install these using:
+
+    $ sudo curl -so /etc/apt/trusted.gpg.d/oxen.gpg https://deb.oxen.io/pub.gpg
+    $ echo "deb https://deb.oxen.io $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/oxen.list
+    $ sudo apt update
+    $ sudo apt install lokinet
+
+
+if you want to build a dev build you can do the following:
 
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
     $ git clone --recursive https://github.com/loki-project/loki-network
@@ -82,17 +51,18 @@ install:
 
     $ sudo make install
 
-### MacOS
+### macOS
 
-build:
-    make sure you have cmake, libuv and xcode command line tools installed
+You can get the latest stable macos relase from https://lokinet.org/ or check the releases page on github.
+
+alternatively you can build from source, make sure you have cmake, libuv and xcode command line tools installed:
 
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
-    $ make -j$(nproc)
+    $ make -j$(sysctl -n hw.ncpu)
 
 install:
 
@@ -100,7 +70,9 @@ install:
 
 ### Windows
 
-windows builds are cross compiled from ubuntu linux
+You can get the latest stable windows release from https://lokinet.org/ or check the releases page on github.
+
+windows builds are cross compiled from debian/ubuntu linux
 
 additional build requirements:
 
@@ -109,16 +81,13 @@ additional build requirements:
 
 setup:
 
-    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis
+    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis ninja-build
 
 building:
 
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ mkdir build-windows
-    $ cd build-windows
-    $ cmake -DBUILD_STATIC_DEPS=ON -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
-    $ cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
+    $ ./contrib/windows.sh
 
 ### Solaris 2.10+
 
@@ -148,13 +117,55 @@ install:
 
 build:
 
-    $ pkg install cmake git curl libuv libsodium pkgconf libunbound
+    $ pkg install cmake git pkgconf
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
+    $ cd build
+    $ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DBUILD_SHARED_DEPS=ON ..
     $ make
 
 install (root):
 
     # make install
+
+## Usage
+
+### Debian / Ubuntu packages
+
+When running from debian package the following steps are not needed as it is already ready to use.
+
+## Create default config
+
+to configure as client:
+
+    $ lokinet -g
+    $ lokinet-bootstrap
+
+to configure as relay:
+
+    $ lokinet -r -g
+    $ lokinet-bootstrap
+
+
+## Running on Linux
+
+**DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
+
+to run, after you create default config:
+
+    $ lokinet
+
+## Running on macOS/UNIX/BSD
+
+**YOU HAVE TO RUN AS ROOT**, run using sudo. Elevated privileges are needed to create the virtual tunnel interface.
+
+The macOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
+
+to run, after you create default config:
+
+    $ sudo lokinet
+
+## Running on Windows
+
+**DO NOT RUN AS ELEVATED USER**, run as normal user.

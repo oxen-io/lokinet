@@ -94,8 +94,9 @@ llarp_buffer_t::read_uint64(uint64_t& i)
 }
 
 size_t
-llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
+llarp_buffer_t::read_until(char c_delim, byte_t* result, size_t resultsize)
 {
+  const auto delim = static_cast<byte_t>(c_delim);
   size_t read = 0;
 
   // do the bound check first, to avoid over running
@@ -115,8 +116,9 @@ llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
 }
 
 bool
-operator==(const llarp_buffer_t& buff, const char* str)
+operator==(const llarp_buffer_t& buff, const char* c_str)
 {
+  const auto* str = reinterpret_cast<const byte_t*>(c_str);
   ManagedBuffer copy{buff};
   while (*str && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {
@@ -127,3 +129,24 @@ operator==(const llarp_buffer_t& buff, const char* str)
   }
   return *str == 0;
 }
+
+namespace llarp
+{
+  OwnedBuffer
+  OwnedBuffer::copy_from(const llarp_buffer_t& b)
+  {
+    auto buf = std::make_unique<byte_t[]>(b.sz);
+    std::copy(b.begin(), b.end(), buf.get());
+    return {std::move(buf), b.sz};
+  }
+
+  OwnedBuffer
+  OwnedBuffer::copy_used(const llarp_buffer_t& b)
+  {
+    const size_t sz = b.cur - b.base;
+    auto buf = std::make_unique<byte_t[]>(sz);
+    std::copy(b.base, b.cur, buf.get());
+    return {std::move(buf), sz};
+  }
+
+}  // namespace llarp

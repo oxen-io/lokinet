@@ -3,7 +3,6 @@
 #include <router/abstractrouter.hpp>
 #include <routing/path_transfer_message.hpp>
 #include <service/endpoint.hpp>
-#include <util/thread/logic.hpp>
 #include <utility>
 #include <unordered_set>
 
@@ -29,7 +28,7 @@ namespace llarp
     {
       if (m_SendQueue.empty() or m_SendQueue.full())
       {
-        LogicCall(m_Endpoint->RouterLogic(), [self = this]() { self->FlushUpstream(); });
+        m_Endpoint->Loop()->call([this] { FlushUpstream(); });
       }
       m_SendQueue.pushBack(std::make_pair(
           std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
@@ -74,7 +73,7 @@ namespace llarp
       f->T = currentConvoTag;
       f->S = ++sequenceNo;
 
-      auto path = m_PathSet->GetRandomPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (!path)
       {
         LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
@@ -97,15 +96,29 @@ namespace llarp
       m->sender = m_Endpoint->GetIdentity().pub;
       m->tag = f->T;
       m->PutBuffer(payload);
-      auto self = this;
-      m_Endpoint->Router()->QueueWork([f, m, shared, path, self]() {
-        if (not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
+      m_Endpoint->Router()->QueueWork([f, m, shared, path, this] {
+        if (not f->EncryptAndSign(*m, shared, m_Endpoint->GetIdentity()))
         {
-          LogError(self->m_Endpoint->Name(), " failed to sign message");
+          LogError(m_Endpoint->Name(), " failed to sign message");
           return;
         }
-        self->Send(f, path);
+        Send(f, path);
       });
+    }
+
+    void
+    SendContext::AsyncSendAuth(std::function<void(AuthResult)> resultHandler)
+    {
+      const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
+      if (maybe.has_value())
+      {
+        // send auth message
+        const llarp_buffer_t authdata{maybe->token};
+        AsyncGenIntro(authdata, eProtocolAuth);
+        authResultListener = resultHandler;
+      }
+      else
+        resultHandler({AuthResultCode::eAuthFailed, "no auth for given endpoint"});
     }
 
     void

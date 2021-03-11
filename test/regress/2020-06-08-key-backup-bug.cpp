@@ -11,12 +11,12 @@ llarp::RuntimeOptions opts = {false, false, false};
 static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {
-  llarp::Config conf{fs::current_path()};
-  conf.Load(std::nullopt, opts.isRouter);
-  conf.network.m_endpointType = "null";
-  conf.network.m_keyfile = keyfile;
-  conf.bootstrap.seednode = true;
-  conf.api.m_enableRPCServer = false;
+  auto conf = std::make_shared<llarp::Config>(fs::current_path());
+  conf->Load(std::nullopt, opts.isRouter);
+  conf->network.m_endpointType = "null";
+  conf->network.m_keyfile = keyfile;
+  conf->bootstrap.seednode = true;
+  conf->api.m_enableRPCServer = false;
 
   auto context = std::make_shared<llarp::Context>();
   REQUIRE_NOTHROW(context->Configure(std::move(conf)));

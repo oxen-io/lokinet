@@ -2,8 +2,8 @@
 
 #include <router_id.hpp>
 
-#include <lokimq/lokimq.h>
-#include <lokimq/address.h>
+#include <oxenmq/oxenmq.h>
+#include <oxenmq/address.h>
 #include <crypto/types.hpp>
 #include <dht/key.hpp>
 #include <service/name.hpp>
@@ -14,7 +14,7 @@ namespace llarp
 
   namespace rpc
   {
-    using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+    using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
 
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
@@ -23,7 +23,7 @@ namespace llarp
 
       /// Connect to lokid async
       void
-      ConnectAsync(lokimq::address url);
+      ConnectAsync(oxenmq::address url);
 
       /// blocking request identity key from lokid
       /// throws on failure
@@ -66,9 +66,9 @@ namespace llarp
 
       // Handles request from lokid for peer stats on a specific peer
       void
-      HandleGetPeerStats(lokimq::Message& msg);
+      HandleGetPeerStats(oxenmq::Message& msg);
 
-      std::optional<lokimq::ConnectionID> m_Connection;
+      std::optional<oxenmq::ConnectionID> m_Connection;
       LMQ_ptr m_lokiMQ;
       std::string m_CurrentBlockHash;
 

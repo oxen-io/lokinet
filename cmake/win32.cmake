@@ -9,6 +9,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 if(NOT MSVC_VERSION)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
   # unlike unix where you get a *single* compiler ID string in .comment
   # GNU ld sees fit to merge *all* the .ident sections in object files
   # to .r[o]data section one after the other!
@@ -36,28 +37,4 @@ if (STATIC_LINK)
   else()
     link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,mainCRTStartup )
   endif()
-endif()
-
-# win32 is the last platform for which we grab libuv manually.
-# If you want to run on older hardware try github.com/despair86/libuv.git and then:
-#     cmake .. -G Ninja -DLIBUV_ROOT=/path/to/libuv
-# Otherwise we'll try either a system one (if not under BUILD_STATIC_DEPS) or else use the submodule
-# in external/libuv.
-add_library(libuv INTERFACE)
-if(NOT LIBUV_ROOT AND NOT BUILD_STATIC_DEPS)
-  find_package(LibUV 1.28.0)
-endif()
-
-if(LibUV_FOUND)
-  message(STATUS "using system libuv")
-  target_link_libraries(libuv INTERFACE ${LIBUV_LIBRARIES})
-  target_include_directories(libuv INTERFACE ${LIBUV_INCLUDE_DIRS})
-else()
-  if(LIBUV_ROOT)
-    add_subdirectory(${LIBUV_ROOT})
-  else()
-    add_subdirectory(${PROJECT_SOURCE_DIR}/external/libuv)
-  endif()
-  target_link_libraries(libuv INTERFACE uv_a)
-  target_compile_definitions(libuv INTERFACE _LARGEFILE_SOURCE _FILE_OFFSET_BITS=64)
 endif()

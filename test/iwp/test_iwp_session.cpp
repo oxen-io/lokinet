@@ -10,6 +10,9 @@
 #include <messages/discard.hpp>
 #include <util/time.hpp>
 
+#include <net/net_if.hpp>
+#include "ev/ev.hpp"
+
 #undef LOG_TAG
 #define LOG_TAG __FILE__
 
@@ -17,16 +20,14 @@ namespace iwp = llarp::iwp;
 namespace util = llarp::util;
 
 /// make an iwp link
-template <bool inbound, typename... Args_t>
+template <bool inbound, typename... Args>
 static llarp::LinkLayer_ptr
-make_link(Args_t... args)
+make_link(Args&&... args)
 {
   if (inbound)
-    return iwp::NewInboundLink(args...);
-  else
-    return iwp::NewOutboundLink(args...);
+    return iwp::NewInboundLink(std::forward<Args>(args)...);
+  return iwp::NewOutboundLink(std::forward<Args>(args)...);
 }
-using Logic_ptr = std::shared_ptr<llarp::Logic>;
 
 /// a single iwp link with associated keys and members to make unit tests work
 struct IWPLinkContext
@@ -36,11 +37,11 @@ struct IWPLinkContext
   llarp::LinkLayer_ptr link;
   std::shared_ptr<llarp::KeyManager> keyManager;
   llarp::LinkMessageParser m_Parser;
-  llarp_ev_loop_ptr m_Loop;
+  llarp::EventLoop_ptr m_Loop;
   /// is the test done on this context ?
   bool gucci = false;
 
-  IWPLinkContext(std::string_view addr, llarp_ev_loop_ptr loop)
+  IWPLinkContext(std::string_view addr, llarp::EventLoop_ptr loop)
       : localAddr{std::move(addr)}
       , keyManager{std::make_shared<llarp::KeyManager>()}
       , m_Parser{nullptr}
@@ -76,6 +77,7 @@ struct IWPLinkContext
   {
     link = make_link<inbound>(
         keyManager,
+        m_Loop,
         // getrc
         [&]() -> const llarp::RouterContact& { return rc; },
         // link message handler
@@ -101,7 +103,7 @@ struct IWPLinkContext
         },
         // timeout handler
         [&](llarp::ILinkSession*) {
-          llarp_ev_loop_stop(m_Loop);
+          m_Loop->stop();
           FAIL("session timeout");
         },
         // session closed handler
@@ -115,7 +117,7 @@ struct IWPLinkContext
 
     if (inbound)
     {
-      // only add address info on the recipiant's rc
+      // only add address info on the recipient's rc
       rc.addrs.emplace_back();
       REQUIRE(link->GetOurAddressInfo(rc.addrs.back()));
     }
@@ -131,7 +133,7 @@ using Context_ptr = std::shared_ptr<IWPLinkContext>;
 /// call take 2 parameters, test and a timeout
 ///
 /// test is a callable that takes 5 arguments:
-/// 0) std::function<Logic_ptr(void)> that starts the iwp links and gives a logic to call with
+/// 0) std::function<EventLoop_ptr(void)> that starts the iwp links and gives an event loop to call with
 /// 1) std::function<void(void)> that ends the unit test if we are done
 /// 2) std::function<void(void)> that ends the unit test right now as a success
 /// 3) client iwp link context (shared_ptr)
@@ -146,9 +148,7 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   // shut up logs
   llarp::LogSilencer shutup;
   // set up event loop
-  auto logic = std::make_shared<llarp::Logic>();
-  auto loop = llarp_make_ev_loop();
-  loop->set_logic(logic);
+  auto loop = llarp::EventLoop::create();
 
   llarp::LogContext::Instance().Initialize(
       llarp::eLogDebug, llarp::LogType::File, "stdout", "unit test", [loop](auto work) {
@@ -166,36 +166,35 @@ RunIWPTest(Func_t test, Duration_t timeout = 10s)
   // set up client
   auto initiator = std::make_shared<IWPLinkContext>("127.0.0.1:3001", loop);
   // set up server
-  auto recipiant = std::make_shared<IWPLinkContext>("127.0.0.1:3002", loop);
+  auto recipient = std::make_shared<IWPLinkContext>("127.0.0.1:3002", loop);
 
   // function for ending unit test on success
-  auto endIfDone = [initiator, recipiant, loop, logic]() {
-    if (initiator->gucci and recipiant->gucci)
+  auto endIfDone = [initiator, recipient, loop]() {
+    if (initiator->gucci and recipient->gucci)
     {
-      LogicCall(logic, [loop]() { llarp_ev_loop_stop(loop); });
+      loop->stop();
     }
   };
-  // function to start test and give logic to unit test
-  auto start = [initiator, recipiant, logic]() {
-    REQUIRE(initiator->link->Start(logic));
-    REQUIRE(recipiant->link->Start(logic));
-    return logic;
+  // function to start test and give loop to unit test
+  auto start = [initiator, recipient, loop]() {
+    REQUIRE(initiator->link->Start());
+    REQUIRE(recipient->link->Start());
+    return loop;
   };
 
   // function to end test immediately
-  auto endTest = [logic, loop]() { LogicCall(logic, [loop]() { llarp_ev_loop_stop(loop); }); };
+  auto endTest = [loop] { loop->stop(); };
 
-  loop->call_after_delay(
-      std::chrono::duration_cast<llarp_time_t>(timeout), []() { FAIL("test timeout"); });
-  test(start, endIfDone, endTest, initiator, recipiant);
-  llarp_ev_loop_run_single_process(loop, logic);
+  loop->call_later(timeout, [] { FAIL("test timeout"); });
+  test(start, endIfDone, endTest, initiator, recipient);
+  loop->run();
   llarp::RouterContact::BlockBogons = oldBlockBogons;
 }
 
 /// ensure clients can connect to relays
 TEST_CASE("IWP handshake", "[iwp]")
 {
-  RunIWPTest([](std::function<Logic_ptr(void)> start,
+  RunIWPTest([](std::function<llarp::EventLoop_ptr(void)> start,
                 std::function<void(void)> endIfDone,
                 [[maybe_unused]] std::function<void(void)> endTestNow,
                 Context_ptr alice,
@@ -206,23 +205,23 @@ TEST_CASE("IWP handshake", "[iwp]")
       alice->gucci = true;
       endIfDone();
     });
-    // set up recipiant
+    // set up recipient
     bob->InitLink<true>([=](auto remote) {
       REQUIRE(remote->GetRemoteRC() == alice->rc);
       bob->gucci = true;
       endIfDone();
     });
     // start unit test
-    auto logic = start();
+    auto loop = start();
     // try establishing a session
-    LogicCall(logic, [link = alice->link, rc = bob->rc]() { REQUIRE(link->TryEstablishTo(rc)); });
+    loop->call([link = alice->link, rc = bob->rc]() { REQUIRE(link->TryEstablishTo(rc)); });
   });
 }
 
 /// ensure relays cannot connect to clients
 TEST_CASE("IWP handshake reverse", "[iwp]")
 {
-  RunIWPTest([](std::function<Logic_ptr(void)> start,
+  RunIWPTest([](std::function<llarp::EventLoop_ptr(void)> start,
                 [[maybe_unused]] std::function<void(void)> endIfDone,
                 std::function<void(void)> endTestNow,
                 Context_ptr alice,
@@ -230,9 +229,9 @@ TEST_CASE("IWP handshake reverse", "[iwp]")
     alice->InitLink<false>([](auto) {});
     bob->InitLink<true>([](auto) {});
     // start unit test
-    auto logic = start();
+    auto loop = start();
     // try establishing a session in the wrong direction
-    LogicCall(logic, [logic, link = bob->link, rc = alice->rc, endTestNow]() {
+    loop->call([link = bob->link, rc = alice->rc, endTestNow] {
       REQUIRE(not link->TryEstablishTo(rc));
       endTestNow();
     });
@@ -244,12 +243,12 @@ TEST_CASE("IWP send messages", "[iwp]")
 {
   int aliceNumSent = 0;
   int bobNumSent = 0;
-  RunIWPTest([&aliceNumSent, &bobNumSent](std::function<Logic_ptr(void)> start,
+  RunIWPTest([&aliceNumSent, &bobNumSent](std::function<llarp::EventLoop_ptr(void)> start,
                 std::function<void(void)> endIfDone,
                 std::function<void(void)> endTestNow,
                 Context_ptr alice,
                 Context_ptr bob) {
-    constexpr int numSend = 128;
+    constexpr int numSend = 64;
     // when alice makes a session to bob send `aliceNumSend` messages to him
     alice->InitLink<false>([endIfDone, alice, &aliceNumSent](auto session) {
       for (auto index = 0; index < numSend; index++)
@@ -304,9 +303,9 @@ TEST_CASE("IWP send messages", "[iwp]")
       }
     });
     // start unit test
-    auto logic = start();
+    auto loop = start();
     // try establishing a session from alice to bob
-    LogicCall(logic, [logic, link = alice->link, rc = bob->rc, endTestNow]() {
+    loop->call([link = alice->link, rc = bob->rc, endTestNow]() {
       REQUIRE(link->TryEstablishTo(rc));
     });
   });

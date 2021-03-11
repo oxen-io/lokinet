@@ -19,7 +19,7 @@ namespace llarp
           uint64_t relayOrder,
           const Key_t& addr,
           AbstractContext* ctx,
-          __attribute__((unused)) const Key_t& askpeer);
+          [[maybe_unused]] const Key_t& askpeer);
 
       void
       SendReply() override;

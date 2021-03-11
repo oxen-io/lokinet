@@ -57,4 +57,17 @@ namespace llarp
 
 }  // namespace llarp
 
+namespace std
+{
+  template <>
+  struct hash<llarp::RouterID>
+  {
+    size_t
+    operator()(const llarp::RouterID& id) const
+    {
+      const llarp::RouterID::Hash h{};
+      return h(id);
+    }
+  };
+}  // namespace std
 #endif

@@ -2,12 +2,11 @@
 #define LLARP_LINK_SERVER_HPP
 
 #include <crypto/types.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <link/session.hpp>
 #include <net/sock_addr.hpp>
 #include <router_contact.hpp>
 #include <util/status.hpp>
-#include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
 #include <config/key_manager.hpp>
 
@@ -93,7 +92,7 @@ namespace llarp
     llarp_time_t
     Now() const
     {
-      return llarp_ev_loop_time_now_ms(m_Loop);
+      return m_Loop->time_now();
     }
 
     bool
@@ -106,17 +105,11 @@ namespace llarp
     void
     ForEachSession(std::function<void(ILinkSession*)> visit) EXCLUDES(m_AuthedLinksMutex);
 
-    static void
-    udp_tick(llarp_udp_io* udp);
-
     void
-    SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt)
-    {
-      llarp_ev_udp_sendto(&m_udp, to, pkt);
-    }
+    SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
     virtual bool
-    Configure(llarp_ev_loop_ptr loop, const std::string& ifname, int af, uint16_t port);
+    Configure(EventLoop_ptr loop, const std::string& ifname, int af, uint16_t port);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
@@ -138,7 +131,7 @@ namespace llarp
     TryEstablishTo(RouterContact rc);
 
     bool
-    Start(std::shared_ptr<llarp::Logic> l);
+    Start();
 
     virtual void
     Stop();
@@ -211,12 +204,6 @@ namespace llarp
     std::shared_ptr<KeyManager> keyManager;
     WorkerFunc_t QueueWork;
 
-    std::shared_ptr<Logic>
-    logic()
-    {
-      return m_Logic;
-    }
-
     bool
     operator<(const ILinkLayer& other) const
     {
@@ -235,14 +222,11 @@ namespace llarp
       return m_Pending.size();
     }
 
+    // Returns the file description of the UDP server, if available.
+    std::optional<int>
+    GetUDPFD() const;
+
    private:
-    void
-    OnTick();
-
-    void
-    ScheduleTick(llarp_time_t interval);
-
-    uint32_t tick_id;
     const SecretKey& m_RouterEncSecret;
 
    protected:
@@ -256,22 +240,24 @@ namespace llarp
     bool
     PutSession(const std::shared_ptr<ILinkSession>& s);
 
-    std::shared_ptr<llarp::Logic> m_Logic = nullptr;
-    llarp_ev_loop_ptr m_Loop;
-    IpAddress m_ourAddr;
-    llarp_udp_io m_udp;
+    EventLoop_ptr m_Loop;
+    SockAddr m_ourAddr;
+    std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
 
     using AuthedLinks =
         std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>, RouterID::Hash>;
     using Pending =
-        std::unordered_multimap<IpAddress, std::shared_ptr<ILinkSession>, IpAddress::Hash>;
+        std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>, SockAddr::Hash>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    std::unordered_map<IpAddress, llarp_time_t, IpAddress::Hash> m_RecentlyClosed;
+    std::unordered_map<SockAddr, llarp_time_t, SockAddr::Hash> m_RecentlyClosed;
+
+   private:
+    std::shared_ptr<int> m_repeater_keepalive;
   };
 
   using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;

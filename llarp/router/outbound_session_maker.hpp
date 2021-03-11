@@ -4,7 +4,6 @@
 #include <router/i_outbound_session_maker.hpp>
 
 #include <router/i_rc_lookup_handler.hpp>
-#include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
 
 #include <profiling.hpp>
@@ -12,8 +11,6 @@
 #include <unordered_map>
 #include <list>
 #include <memory>
-
-struct llarp_nodedb;
 
 namespace llarp
 {
@@ -62,8 +59,7 @@ namespace llarp
         ILinkManager* linkManager,
         I_RCLookupHandler* rcLookup,
         Profiling* profiler,
-        std::shared_ptr<Logic> logic,
-        llarp_nodedb* nodedb,
+        EventLoop_ptr loop,
         WorkerFunc_t work);
 
     void
@@ -115,8 +111,8 @@ namespace llarp
     ILinkManager* _linkManager = nullptr;
     I_RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;
-    llarp_nodedb* _nodedb = nullptr;
-    std::shared_ptr<Logic> _logic;
+    std::shared_ptr<NodeDB> _nodedb;
+    EventLoop_ptr _loop;
     WorkerFunc_t work;
     RouterID us;
   };

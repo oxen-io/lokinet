@@ -1,99 +1,104 @@
-#include <gtest/gtest.h>
-
 #include <net/net_int.hpp>
 #include <net/ip.hpp>
 #include <net/ip_range.hpp>
 #include <net/net.hpp>
 
-struct TestNet : public ::testing::Test
-{
-};
+#include <catch2/catch.hpp>
 
-TEST_F(TestNet, TestIn6AddrFromString)
+TEST_CASE("In6Addr")
 {
   llarp::huint128_t ip;
-  ASSERT_TRUE(ip.FromString("fc00::1"));
+
+  SECTION("From string")
+  {
+    REQUIRE(ip.FromString("fc00::1"));
+  }
+
+  SECTION("From string fail")
+  {
+    REQUIRE_FALSE(ip.FromString("10.1.1.1"));
+  }
 }
 
-TEST_F(TestNet, TestIn6AddrFromStringFail)
-{
-  llarp::huint128_t ip;
-  ASSERT_FALSE(ip.FromString("10.1.1.1"));
-}
-
-TEST_F(TestNet, TestIn6AddrToHUIntLoopback)
+TEST_CASE("In6AddrToHUIntLoopback")
 {
   llarp::huint128_t loopback = {0};
-  ASSERT_TRUE(loopback.FromString("::1"));
+  REQUIRE(loopback.FromString("::1"));
   in6_addr addr = IN6ADDR_LOOPBACK_INIT;
   auto huint = llarp::net::In6ToHUInt(addr);
-  ASSERT_EQ(huint, loopback);
+  REQUIRE(huint == loopback);
 }
 
-TEST_F(TestNet, TestIn6AddrToHUInt)
+TEST_CASE("In6AddrToHUInt")
 {
   llarp::huint128_t huint_parsed = {0};
-  ASSERT_TRUE(huint_parsed.FromString("fd00::1"));
+  REQUIRE(huint_parsed.FromString("fd00::1"));
   in6_addr addr = {{{0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
   auto huint = llarp::net::In6ToHUInt(addr);
-  ASSERT_EQ(huint, huint_parsed);
+  REQUIRE(huint == huint_parsed);
   huint_parsed.h++;
-  ASSERT_NE(huint, huint_parsed);
+  REQUIRE(huint != huint_parsed);
 }
 
-TEST_F(TestNet, TestRangeContains8)
+TEST_CASE("Range")
 {
-  ASSERT_TRUE(
-      llarp::IPRange::FromIPv4(10, 0, 0, 1, 8).Contains(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
+  SECTION("Contains 8")
+  {
+    REQUIRE(
+        llarp::IPRange::FromIPv4(10, 0, 0, 1, 8).Contains(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
+  }
+
+  SECTION("Contains 24")
+  {
+    REQUIRE(llarp::IPRange::FromIPv4(10, 200, 0, 1, 24)
+                .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
+  }
+
+  SECTION("Contains fail")
+  {
+    REQUIRE(!llarp::IPRange::FromIPv4(192, 168, 0, 1, 24)
+                 .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
+  }
 }
 
-TEST_F(TestNet, TestRangeContains24)
+TEST_CASE("IPv4 netmask")
 {
-  ASSERT_TRUE(llarp::IPRange::FromIPv4(10, 200, 0, 1, 24)
-                  .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
+  REQUIRE(llarp::netmask_ipv4_bits(8) == llarp::huint32_t{0xFF000000});
+  REQUIRE(llarp::netmask_ipv4_bits(24) == llarp::huint32_t{0xFFFFFF00});
 }
 
-TEST_F(TestNet, TestRangeContainsFail)
+TEST_CASE("Bogon")
 {
-  ASSERT_TRUE(!llarp::IPRange::FromIPv4(192, 168, 0, 1, 24)
-                   .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
-}
+  SECTION("Bogon_10_8")
+  {
+    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
+  }
 
-TEST_F(TestNet, TestIPv4Netmask)
-{
-  ASSERT_TRUE(llarp::netmask_ipv4_bits(8) == llarp::huint32_t{0xFF000000});
-  ASSERT_TRUE(llarp::netmask_ipv4_bits(24) == llarp::huint32_t{0xFFFFFF00});
-}
+  SECTION("Bogon_192_168_16")
+  {
+    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
+  }
 
-TEST_F(TestNet, TestBogon_10_8)
-{
-  ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
-}
+  SECTION("Bogon_DoD_8")
+  {
+    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(21, 3, 37, 70)));
+  }
 
-TEST_F(TestNet, TestBogon_192_168_16)
-{
-  ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
-}
+  SECTION("Bogon_127_8")
+  {
+    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));
+  }
 
-TEST_F(TestNet, TestBogon_DoD_8)
-{
-  ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(21, 3, 37, 70)));
-}
+  SECTION("Bogon_0_8")
+  {
+    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(0, 0, 0, 0)));
+  }
 
-TEST_F(TestNet, TestBogon_127_8)
-{
-  ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));
-}
-
-TEST_F(TestNet, TestBogon_0_8)
-{
-  ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(0, 0, 0, 0)));
-}
-
-TEST_F(TestNet, TestBogon_NonBogon)
-{
-  ASSERT_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(1, 1, 1, 1)));
-  ASSERT_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(8, 8, 6, 6)));
-  ASSERT_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(141, 55, 12, 99)));
-  ASSERT_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(79, 12, 3, 4)));
+  SECTION("Non-bogon")
+  {
+    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(1, 1, 1, 1)));
+    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(8, 8, 6, 6)));
+    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(141, 55, 12, 99)));
+    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(79, 12, 3, 4)));
+  }
 }

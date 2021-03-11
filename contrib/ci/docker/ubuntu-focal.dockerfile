@@ -1,0 +1,3 @@
+FROM ubuntu:focal
+RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
+RUN /bin/bash -c 'apt-get -o=Dpkg::Use-Pty=0 -q update && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y && apt-get -o=Dpkg::Use-Pty=0 --no-install-recommends -q install -y eatmydata gdb cmake git ninja-build pkg-config ccache g++ libsodium-dev libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev libboost-thread-dev libboost-serialization-dev libboost-program-options-dev libgtest-dev libminiupnpc-dev libunwind8-dev libreadline-dev libhidapi-dev libusb-1.0.0-dev qttools5-dev libcurl4-openssl-dev'

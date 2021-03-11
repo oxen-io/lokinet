@@ -1,67 +1,58 @@
 #include <service/address.hpp>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
-struct ServiceAddressTest : public ::testing::Test
+TEST_CASE("Address", "[Address]")
 {
-  const std::string snode =
-      "8zfiwpgonsu5zpddpxwdurxyb19x6r96xy4qbikff99jwsziws9y.snode";
-  const std::string loki =
-      "7okic5x5do3uh3usttnqz9ek3uuoemdrwzto1hciwim9f947or6y.loki";
+  const std::string snode = "8zfiwpgonsu5zpddpxwdurxyb19x6r96xy4qbikff99jwsziws9y.snode";
+  const std::string loki = "7okic5x5do3uh3usttnqz9ek3uuoemdrwzto1hciwim9f947or6y.loki";
   const std::string sub = "lokinet.test";
-  const std::string invalid =
-      "7okic5x5do3uh3usttnqz9ek3uuoemdrwzto1hciwim9f947or6y.net";
-};
-
-TEST_F(ServiceAddressTest, TestParseBadTLD)
-{
+  const std::string invalid = "7okic5x5do3uh3usttnqz9ek3uuoemdrwzto1hciwim9f947or6y.net";
   llarp::service::Address addr;
-  ASSERT_FALSE(addr.FromString(snode, ".net"));
-  ASSERT_FALSE(addr.FromString(invalid, ".net"));
+
+  SECTION("Parse bad TLD")
+  {
+    REQUIRE_FALSE(addr.FromString(snode, ".net"));
+    REQUIRE_FALSE(addr.FromString(invalid, ".net"));
+  }
+
+  SECTION("Parse bad TLD appened on end")
+  {
+    const std::string bad = loki + ".net";
+    REQUIRE_FALSE(addr.FromString(bad, ".net"));
+  }
+
+  SECTION("Parse bad TLD appened on end with subdomain")
+  {
+    const std::string bad = sub + "." + loki + ".net";
+    REQUIRE_FALSE(addr.FromString(bad, ".net"));
+  }
+
+  SECTION("Parse SNode not Loki")
+  {
+    REQUIRE(addr.FromString(snode, ".snode"));
+    REQUIRE_FALSE(addr.FromString(snode, ".loki"));
+  }
+
+  SECTION("Parse Loki not SNode")
+  {
+    REQUIRE_FALSE(addr.FromString(loki, ".snode"));
+    REQUIRE(addr.FromString(loki, ".loki"));
+  }
+
+  SECTION("Parse Loki with subdomain")
+  {
+    const std::string addr_str = sub + "." + loki;
+    REQUIRE(addr.FromString(addr_str, ".loki"));
+    REQUIRE(addr.subdomain == sub);
+    REQUIRE(addr.ToString() == addr_str);
+  };
+
+  SECTION("Parse SNode with subdomain")
+  {
+    const std::string addr_str = sub + "." + snode;
+    REQUIRE(addr.FromString(addr_str, ".snode"));
+    REQUIRE(addr.subdomain == sub);
+    REQUIRE(addr.ToString(".snode") == addr_str);
+  }
 }
-
-TEST_F(ServiceAddressTest, TestParseBadTLDAppenedOnEnd)
-{
-  llarp::service::Address addr;
-  const std::string bad = loki + ".net";
-  ASSERT_FALSE(addr.FromString(bad, ".net"));
-}
-
-TEST_F(ServiceAddressTest, TestParseBadTLDAppenedOnEndWithSubdomain)
-{
-  llarp::service::Address addr;
-  const std::string bad = sub + "." + loki + ".net";
-  ASSERT_FALSE(addr.FromString(bad, ".net"));
-}
-
-TEST_F(ServiceAddressTest, TestParseSNodeNotLoki)
-{
-  llarp::service::Address addr;
-  ASSERT_TRUE(addr.FromString(snode, ".snode"));
-  ASSERT_FALSE(addr.FromString(snode, ".loki"));
-}
-
-TEST_F(ServiceAddressTest, TestParseLokiNotSNode)
-{
-  llarp::service::Address addr;
-  ASSERT_FALSE(addr.FromString(loki, ".snode"));
-  ASSERT_TRUE(addr.FromString(loki, ".loki"));
-}
-
-TEST_F(ServiceAddressTest, TestParseLokiWithSubdomain)
-{
-  llarp::service::Address addr;
-  const std::string addr_str = sub + "." + loki;
-  ASSERT_TRUE(addr.FromString(addr_str, ".loki"));
-  ASSERT_EQ(addr.subdomain, sub);
-  ASSERT_EQ(addr.ToString(), addr_str);
-};
-
-TEST_F(ServiceAddressTest, TestParseSnodeWithSubdomain)
-{
-  llarp::service::Address addr;
-  const std::string addr_str = sub + "." + snode;
-  ASSERT_TRUE(addr.FromString(addr_str, ".snode"));
-  ASSERT_EQ(addr.subdomain, sub);
-  ASSERT_EQ(addr.ToString(".snode"), addr_str);
-};

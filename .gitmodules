@@ -1,9 +1,6 @@
 [submodule "external/nlohmann"]
 	path = external/nlohmann
 	url = https://github.com/nlohmann/json.git
-[submodule "external/googletest"]
-	path = external/googletest
-	url = https://github.com/google/googletest.git
 [submodule "external/cxxopts"]
 	path = external/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
@@ -23,14 +20,12 @@
 [submodule "external/clang-format-hooks"]
 	path = external/clang-format-hooks
 	url = https://github.com/barisione/clang-format-hooks/
-[submodule "external/libuv"]
-	path = external/libuv
-	url = https://github.com/libuv/libuv
-	branch = v1.x
-[submodule "external/loki-mq"]
-	path = external/loki-mq
-	url = https://github.com/loki-project/loki-mq
-	branch = dev
 [submodule "external/sqlite_orm"]
 	path = external/sqlite_orm
 	url = https://github.com/fnc12/sqlite_orm
+[submodule "external/oxen-mq"]
+	path = external/oxen-mq
+	url = https://github.com/oxen-io/oxen-mq
+[submodule "external/uvw"]
+	path = external/uvw
+	url = https://github.com/jagerman/uvw.git

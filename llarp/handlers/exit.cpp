@@ -13,49 +13,14 @@ namespace llarp
 {
   namespace handlers
   {
-    static void
-    ExitHandlerRecvPkt(llarp_tun_io* tun, const llarp_buffer_t& buf)
-    {
-      std::vector<byte_t> pkt;
-      pkt.resize(buf.sz);
-      std::copy_n(buf.base, buf.sz, pkt.data());
-      auto self = static_cast<ExitEndpoint*>(tun->user);
-      LogicCall(self->GetRouter()->logic(), [self, pktbuf = std::move(pkt)]() {
-        self->OnInetPacket(std::move(pktbuf));
-      });
-    }
-
-    static void
-    ExitHandlerFlush(llarp_tun_io* tun)
-    {
-      auto* ep = static_cast<ExitEndpoint*>(tun->user);
-      ep->Flush();
-    }
-
-    ExitEndpoint::ExitEndpoint(const std::string& name, AbstractRouter* r)
+    ExitEndpoint::ExitEndpoint(std::string name, AbstractRouter* r)
         : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
-        , m_Name(name)
-        , m_Tun{{0},
-                0,
-                0,
-                {0},
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr}
+        , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
+        , m_Name(std::move(name))
         , m_LocalResolverAddr("127.0.0.1", 53)
-        , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
+        , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
 
     {
-      m_Tun.user = this;
-      m_Tun.recvpkt = &ExitHandlerRecvPkt;
-      m_Tun.tick = &ExitHandlerFlush;
       m_ShouldInitTun = true;
     }
 
@@ -337,14 +302,27 @@ namespace llarp
       m_SNodeKeys.insert(us);
       if (m_ShouldInitTun)
       {
-        auto loop = GetRouter()->netloop();
-        if (!llarp_ev_add_tun(loop.get(), &m_Tun))
+        vpn::InterfaceInfo info;
+        info.ifname = m_ifname;
+        info.addrs.emplace(m_OurRange);
+
+        m_NetIf = GetRouter()->GetVPNPlatform()->ObtainInterface(std::move(info));
+        if (not m_NetIf)
+        {
+          llarp::LogError("Could not create interface");
+          return false;
+        }
+        if (not GetRouter()->loop()->add_network_interface(
+                m_NetIf, [this](net::IPPacket pkt) { OnInetPacket(std::move(pkt)); }))
         {
           llarp::LogWarn("Could not create tunnel for exit endpoint");
           return false;
         }
+
+        GetRouter()->loop()->add_ticker([this] { Flush(); });
+
         llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.toString());
-        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers);
+        return m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers);
       }
       return true;
     }
@@ -444,9 +422,9 @@ namespace llarp
     }
 
     bool
-    ExitEndpoint::QueueOutboundTraffic(const llarp_buffer_t& buf)
+    ExitEndpoint::QueueOutboundTraffic(net::IPPacket pkt)
     {
-      return llarp_ev_tun_async_write(&m_Tun, buf);
+      return m_NetIf && m_NetIf->WritePacket(std::move(pkt));
     }
 
     void
@@ -469,11 +447,9 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::OnInetPacket(std::vector<byte_t> buf)
+    ExitEndpoint::OnInetPacket(net::IPPacket pkt)
     {
-      const llarp_buffer_t buffer(buf);
-      m_InetToNetwork.EmplaceIf(
-          [b = ManagedBuffer(buffer)](Pkt_t& pkt) -> bool { return pkt.Load(b); });
+      m_InetToNetwork.Emplace(std::move(pkt));
     }
 
     bool
@@ -487,7 +463,7 @@ namespace llarp
         pkt.UpdateIPv6Address(from, m_IfAddr);
       else
         pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(from)), xhtonl(net::TruncateV6(m_IfAddr)));
-      return llarp_ev_tun_async_write(&m_Tun, pkt.Buffer());
+      return m_NetIf and m_NetIf->WritePacket(std::move(pkt));
     }
 
     exit::Endpoint*
@@ -560,37 +536,20 @@ namespace llarp
       }
       const auto host_str = m_OurRange.BaseAddressString();
       // string, or just a plain char array?
-      strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
-      m_Tun.netmask = m_OurRange.HostmaskBits();
       m_IfAddr = m_OurRange.addr;
       m_NextAddr = m_IfAddr;
       m_HigestAddr = m_OurRange.HighestAddr();
-      LogInfo(
-          Name(),
-          " set ifaddr range to ",
-          m_Tun.ifaddr,
-          "/",
-          m_Tun.netmask,
-          " lo=",
-          m_IfAddr,
-          " hi=",
-          m_HigestAddr);
       m_UseV6 = not m_OurRange.IsV4();
 
-      std::string ifname = networkConfig.m_ifname;
-      if (ifname.empty())
+      m_ifname = networkConfig.m_ifname;
+      if (m_ifname.empty())
       {
         const auto maybe = llarp::FindFreeTun();
         if (not maybe.has_value())
           throw std::runtime_error("cannot find free interface name");
-        ifname = *maybe;
+        m_ifname = *maybe;
       }
-      if (ifname.length() >= sizeof(m_Tun.ifname))
-      {
-        throw std::invalid_argument(stringify(Name() + " ifname '", ifname, "' is too long"));
-      }
-      strncpy(m_Tun.ifname, ifname.c_str(), sizeof(m_Tun.ifname) - 1);
-      LogInfo(Name(), " set ifname to ", m_Tun.ifname);
+      LogInfo(Name(), " set ifname to ", m_ifname);
 
       // TODO: "exit-whitelist" and "exit-blacklist"
       //       (which weren't originally implemented)
