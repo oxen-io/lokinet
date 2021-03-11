@@ -1,3 +1,209 @@
+lokinet (0.8.4-1~deb10) buster; urgency=medium
+
+  [ Jeff Becker ]
+  * add llarp.endpoint rpc command with kill option to kill all active convotags given a list of or a single remote service address.
+
+  [ Jason Rhinelander ]
+  * Bump version & gui build (#1501)
+  * Add full-static-deps armhf build (+upload) (#1505)
+
+  [ Dimitris Apostolou ]
+  * Fix macOS instructions (#1506)
+
+  [ Jeff ]
+  * tun code refactor (#1495)
+
+  [ Jeff Becker ]
+  * unbreak the build
+  * add ulimit -n 1024 to mac ci stuff because lol apple
+
+  [ Yevhen Stasiv ]
+  * Update readme.md (#1512)
+
+  [ Jason Rhinelander ]
+  * lokimq rename compatibility fix
+  * Add oxend to dependencies
+
+  [ Jeff ]
+  * libuv cmake fixups (#1511)
+  * prevent crash by removing duplicate logic (#1515)
+
+  [ Jason Rhinelander ]
+  * Fix build server name & path (#1516)
+  * Downgrade required libuv version to 1.18
+  * Add automake+libtool for libuv static build
+  * Remove CMAKE_CROSSCOMPILE
+  * Link against libdl for libuv
+
+  [ jahway603 ]
+  * fixed broken documentation link
+
+  [ Jeff Becker ]
+  * bump submodule
+  * nodedb refactor
+  * fix iteration bug
+  * minidump fix
+  * fix pybind layer
+  * proper lokimq -> oxenmq refactor
+  * consolidate pathbuilder logic
+  * use good routers
+  * make llarp::NodeDB::GetIf always randmize location
+  * clean up calls to NodeDB::GetIf to be cleaner and more concise
+  * GetIf -> GetRandom
+
+  [ Anton Nesterov ]
+  * update apparmor profile:
+
+  [ Jeff Becker ]
+  * redo readme structure:
+  * update windows parts
+  * update badge url
+  * update readme links
+  * initial v6 exits
+  * fix exit range default value
+  * fix up route poking with lokinet to work with ipv6
+  * windows and macos route pokers for ipv6
+  * fix up macos route command for ipv6
+  * fix up names of functions to be less hidious.
+  * make it compile again
+  * clarify new member's purpose and name. add comment.
+  * wire up sigusr1 to reset libunbound dns resolver
+  * close stale sessions on thaw because they are probably already gone. this removes them and forces the sessions to be renegotiated.
+  * thaw router when connectivity changes
+  * dont wire up router thaw to sigusr1
+  * update route poker logic to include "up"
+  * always use most recent convotag
+  * call closed hook when we explicitly close a link session
+  * actually set disabled when disabiling route poker
+  * prevent bad side effects, dont use iterator after use and use operator[]
+  * try coleasing inbound packets from iwp
+  * flush queue when full
+  * get rid of use of llarp::IpAddress from hotpaths
+  * drop on overload
+  * feedback from tom.
+  * remove pointless operator overload
+  * add missing header
+  * only set public address when provided
+  * feedback auth result via lmq rpc
+  * make service restart
+  * revise lambda captures
+  * add string reason to auth messages
+  * fix typo
+  * make AuthResultCode an enum class
+  * use static_cast with enum class
+
+  [ Jason Rhinelander ]
+  * SockAddr fixes and cleanups
+  * Fix SockAddr test code
+
+  [ Jeff Becker ]
+  * loki-mq -> oxen-mq
+  * add option to enforce unique netblocks per path.
+  * truly random access in nodedb iteration
+  * feedback from jason
+  * make non 64 bit platforms happy
+  * use 64-bit Mersenne Twister instead of 32 bit flavor in nodedb
+  * use pointers to entries instead of lookups by key
+  * dont use std::optional
+  * add value 0 to disable unique-range-size
+  * fix typo
+  * add llarp::CSRNG for cryptographically secure random number generator for use in std::shuffle
+  * fix up pyllarp parts
+  * add mx records to lns names
+  * redo ci pipeline:
+  * add explicit check for setcap binary when doing setcap so when it's missing it's not a nop / silent failure
+
+  [ Thomas Winget ]
+  * Large collection of changes to make android work
+
+  [ Jeff Becker ]
+  * disallow fail on ci pipeline for android builds
+
+  [ Jason Rhinelander ]
+  * Allow multiple gradles to run on the same box
+
+  [ Jeff Becker ]
+  * use mutable lambda instead of shared_ptr for handling mx dns reply for lns
+  * use lowest latency path for send context
+  * fixes for ipv4 traffic: dont use new range because that breaks backwards comapt
+  * explicitly turn off setcap on ci builds so they pass
+  * enable route poker poking before going "up"
+  * rework cmake install targets
+  * dont include lokinet-bootstrap.ps1 in ci builds
+  * only do single ack packets
+  * use a std::map instead of a std::unordered_map for holding message buffers by their sequentially increasing message id. when retransmissions happen, they will be executed in a deterministic order by their delivery id. this reduces the jitter from delayed message delivery on link layer as with an unordered map the order of iteration is "random", so when we iterate all messages for retransmission we do it lowest id first (the messages queued first).
+  * consolidate rx message handling in iwp
+  * simplify call
+  * revert priority queue ordering change
+  * reduce test message count so it can pass
+  * don't leave old multi ack codepath in
+  * plug memory leak in outbound message queue.
+
+  [ lyyn ]
+  * Migrate tests from gtest to catch2
+
+  [ Jeff Becker ]
+  * get rid of the rest of gtest/gmock
+  * catchAll -> testAll
+  * generate keys in unit test
+  * decaying hashset unit test fixes
+
+  [ Jason Rhinelander ]
+  * Add more junk & clangd symlinks to .gitignore
+  * Bump required oxenmq version
+  * Fix signed/unsigned char comparison bug
+  * Shut up noisy catch tests
+  * Tweak clang-tidy rules
+  * Disallow evil compilation
+  * C++17 simplification
+  * Replace libuv with uvw & related refactoring
+  * Merge Logic functions into EventLoop
+  * Make format
+  * Remove unused variable
+  * Fix linux compilation & narrowing conversion warning
+  * Switch uvw to a fork with libuv backwards compat support
+  * Remove unused junk (also fix win32 compilation fail)
+  * Rename EventLoop::udp to EventLoop::make_udp
+  * Simplify code of many f's
+  * Remove unused arguments (and ants)
+  * Remove HasNextPacket() (and fix win32)
+  * Android & hive fixes
+  * Export UDP file descriptor (for android)
+  * Make llarp_buffer_t constructible from an rvalue reference
+  * Uncurse SockAddr's sockaddr* operator
+  * EventLoop: add public wakeup() method, and call it from call()
+  * Tick event loop on data queuing
+  * Remove unused ShouldFlushNow method
+  * Modernize [[maybe_unused]] attribute
+  * Add wakeup call into transit_hop UpstreamHandler
+  * Add oxen-core deps to docker images
+
+  [ Jeff Becker ]
+  * fix docker lines and dont install recommended packages
+
+  [ Jason Rhinelander ]
+  * Upgrade to clang-format 11
+  * Reformat with clang-format-11
+
+  [ Jeff Becker ]
+  * correctly set size of OwnedBuffer when using OwnedBuffer::copy_used
+  * try to unbreak more
+  * make android work again
+  * flip order of parameters so it works
+  * bump version for 0.8.4
+
+  [ Jason Rhinelander ]
+  * Bump oxen-mq submodule to tagged 1.2.4
+
+  [ Jeff Becker ]
+  * update gui hashpin for windows
+
+  [ Jason Rhinelander ]
+  * Fix UB -- use after move
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 10 Mar 2021 20:26:50 -0400
+
 lokinet (0.8.2-2~deb10) buster; urgency=medium
 
   * Rebuild for newer deps
