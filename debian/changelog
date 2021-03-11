@@ -1,3 +1,10 @@
+lokinet (0.8.4-2~ubuntu2010) groovy; urgency=medium
+
+  [ Jeff Becker ]
+  * fix segfault
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 11 Mar 2021 09:55:50 -0400
+
 lokinet (0.8.4-1~ubuntu2010) groovy; urgency=medium
 
   [ Jeff Becker ]
