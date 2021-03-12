@@ -19,16 +19,24 @@
 #include "endpoint_state.hpp"
 #include "endpoint_util.hpp"
 #include "hidden_service_address_lookup.hpp"
+#include "net/ip.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
+#include "service/info.hpp"
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/hook/shell.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
+#include <llarp/quic/server.hpp>
 
 #include <utility>
+
+#include <llarp/quic/server.hpp>
+#include <llarp/quic/tunnel.hpp>
+#include <llarp/ev/ev_libuv.hpp>
+#include <uvw.hpp>
 
 namespace llarp
 {
@@ -71,6 +79,63 @@ namespace llarp
           auth = itr->second;
         m_StartupLNSMappings[name] = std::make_pair(range, auth);
       });
+
+      auto loop = uv::Loop::MaybeGetLoop(Router()->loop());
+      auto callback = [this, loop, ports = conf.m_quicServerPorts](
+                          quic::Server& serv, quic::Stream& stream, uint16_t port) {
+        if (ports.count(port) == 0)
+        {
+          return false;
+        }
+
+        stream.close_callback = [](quic::Stream& st,
+                                   [[maybe_unused]] std::optional<uint64_t> errcode) {
+          auto tcp = st.data<uvw::TCPHandle>();
+          if (tcp)
+            tcp->close();
+        };
+
+        auto localIP = net::TruncateV6(GetIfAddr());
+
+        std::string localhost = localIP.ToString();
+
+        auto tcp = loop->resource<uvw::TCPHandle>();
+        auto error_handler = tcp->once<uvw::ErrorEvent>(
+            [&stream, localhost, port](const uvw::ErrorEvent&, uvw::TCPHandle&) {
+              LogWarn("Failed to connect to ", localhost, ":", port, ", shutting down quic stream");
+              stream.close(quic::tunnel::ERROR_CONNECT);
+            });
+        tcp->once<uvw::ConnectEvent>(
+            [streamw = stream.weak_from_this(), error_handler = std::move(error_handler)](
+                const uvw::ConnectEvent&, uvw::TCPHandle& tcp) {
+              auto peer = tcp.peer();
+              auto stream = streamw.lock();
+              if (!stream)
+              {
+                LogWarn(
+                    "Connected to ",
+                    peer.ip,
+                    ":",
+                    peer.port,
+                    " but quic stream has gone away; resetting local connection");
+                tcp.closeReset();
+                return;
+              }
+              LogDebug("Connected to ", peer.ip, ":", peer.port, " for quic ", stream->id());
+              tcp.erase(error_handler);
+              quic::tunnel::install_stream_forwarding(tcp, *stream);
+              assert(stream->used() == 0);
+
+              stream->append_buffer(new std::byte[1]{quic::tunnel::CONNECT_INIT}, 1);
+              tcp.read();
+            });
+
+        tcp->connect(localhost, port);
+
+        return true;
+      };
+
+      m_QuicServer = std::make_shared<quic::Server>(this, loop, callback);
 
       return m_state->Configure(conf);
     }
@@ -1315,6 +1380,16 @@ namespace llarp
         ++itr;
       }
       return true;
+    }
+
+    bool
+    Endpoint::SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
+    {
+      // TODO: support snode
+      ServiceInfo ident{};
+      if (not GetSenderFor(tag, ident))
+        return false;
+      return SendToServiceOrQueue(ident.Addr(), pkt, t);
     }
 
     bool

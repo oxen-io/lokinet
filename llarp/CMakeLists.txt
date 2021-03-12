@@ -34,7 +34,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
-  oxenmq
+  oxenmq::oxenmq
 )
 
 if(ANDROID)
@@ -98,6 +98,7 @@ add_library(lokinet-quic
   quic/tunnel_client.cpp
   quic/tunnel_server.cpp
 )
+
 target_link_libraries(lokinet-quic PRIVATE lokinet-platform ngtcp2)
 
 add_library(liblokinet
@@ -197,6 +198,7 @@ add_library(liblokinet
   service/address.cpp
   service/async_key_exchange.cpp
   service/auth.cpp
+  service/convotag.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
@@ -237,7 +239,7 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokinet-quic sqlite_orm)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokinet-quic sqlite_orm ngtcp2)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 

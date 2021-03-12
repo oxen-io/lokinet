@@ -1,5 +1,4 @@
 #include "address.hpp"
-#include <netinet/in.h>
 #include <cstring>
 #include <iostream>
 

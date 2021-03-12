@@ -11,11 +11,13 @@
 #include "identity.hpp"
 #include "pendingbuffer.hpp"
 #include "protocol.hpp"
+#include "quic/server.hpp"
 #include "sendcontext.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
 #include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
+#include <unordered_map>
 #include "endpoint_types.hpp"
 
 #include "auth.hpp"
@@ -463,6 +465,8 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
+
+      std::shared_ptr<quic::Server> m_QuicServer;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;
