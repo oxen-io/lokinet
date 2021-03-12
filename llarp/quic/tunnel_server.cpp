@@ -8,6 +8,7 @@
 
 #include <uvw/tcp.h>
 
+/*
 using namespace std::literals;
 
 namespace llarp::quic::tunnel
@@ -75,13 +76,7 @@ namespace llarp::quic::tunnel
         loop,
         [loop, localhost, allowed_ports](
             llarp::quic::Server&, llarp::quic::Stream& stream, uint16_t port) {
-          LogDebug(
-              "New incoming quic stream ",
-              stream.id(),
-              " to reach ",
-              localhost,
-              ":",
-              port);
+          LogDebug("New incoming quic stream ", stream.id(), " to reach ", localhost, ":", port);
           if (port == 0 || !(allowed_ports.empty() || allowed_ports.count(port)))
           {
             LogWarn(
@@ -129,13 +124,7 @@ namespace llarp::quic::tunnel
                   tcp.closeReset();
                   return;
                 }
-                LogDebug(
-                    "Connected to ",
-                    peer.ip,
-                    ":",
-                    peer.port,
-                    " for quic ",
-                    stream->id());
+                LogDebug("Connected to ", peer.ip, ":", peer.port, " for quic ", stream->id());
                 tcp.erase(error_handler);
                 tunnel::install_stream_forwarding(tcp, *stream);
                 assert(stream->used() == 0);
@@ -165,3 +154,5 @@ namespace llarp::quic::tunnel
   }
 
 }  // namespace llarp::quic::tunnel
+
+*/

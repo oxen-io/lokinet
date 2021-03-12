@@ -125,7 +125,8 @@ namespace llarp::quic
     {
       // No wrap needs, it fits before the end:
       std::copy(data.begin(), data.end(), buffer.begin() + wpos);
-      LogTrace("Wrote ", data.size(), " bytes to buffer range [", wpos, ",", wpos + data.size(), ")");
+      LogTrace(
+          "Wrote ", data.size(), " bytes to buffer range [", wpos, ",", wpos + data.size(), ")");
     }
     size += data.size();
     LogTrace("New stream buffer: ", size, "/", buffer.size(), " bytes beginning at ", start);

@@ -71,6 +71,9 @@ namespace llarp::uv
 
     std::function<void(void)> PumpLL;
 
+    static std::shared_ptr<uvw::Loop>
+    MaybeGetLoop(const EventLoop_ptr&);
+
     bool
     inEventLoop() const override;
 

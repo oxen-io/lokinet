@@ -84,8 +84,7 @@ namespace llarp::quic::tunnel
     });
     tcp.on<uvw::EndEvent>([](auto&, uvw::TCPHandle& c) {
       // This fires on eof, most likely because the other side of the TCP connection closed it.
-      LogError(
-          "EOF on connection with ", c.peer().ip, ":", c.peer().port, ", closing quic stream");
+      LogError("EOF on connection with ", c.peer().ip, ":", c.peer().port, ", closing quic stream");
       c.data<llarp::quic::Stream>()->close();
     });
     tcp.on<uvw::ErrorEvent>([](const uvw::ErrorEvent& e, uvw::TCPHandle& tcp) {
@@ -109,4 +108,4 @@ namespace llarp::quic::tunnel
     stream.data_callback = on_incoming_data;
   }
 
-}  // namespace tunnel
+}  // namespace llarp::quic::tunnel

@@ -2,7 +2,8 @@
 #include <iomanip>
 #include <iostream>
 
-namespace llarp {
+namespace llarp
+{
   std::ostream&
   operator<<(std::ostream& o, const buffer_printer& bp)
   {
@@ -42,4 +43,4 @@ namespace llarp {
     o.fill(oldfill);
     return o;
   }
-}
+}  // namespace llarp

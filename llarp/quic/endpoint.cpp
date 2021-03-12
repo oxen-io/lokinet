@@ -1,8 +1,10 @@
 #include "endpoint.hpp"
 #include "client.hpp"
 #include "server.hpp"
+#include "uvw/async.h"
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/logging/buffer.hpp>
+#include <llarp/service/endpoint.hpp>
 
 #include <iostream>
 #include <random>
@@ -19,68 +21,10 @@ extern "C"
 
 namespace llarp::quic
 {
-  Endpoint::Endpoint(std::optional<Address> addr, std::shared_ptr<uvw::Loop> loop_)
-      : loop{std::move(loop_)}
+  Endpoint::Endpoint(service::Endpoint* parent_, std::shared_ptr<uvw::Loop> loop_)
+      : parent{parent_}, loop{std::move(loop_)}
   {
     randombytes_buf(static_secret.data(), static_secret.size());
-
-    // Create and bind the UDP socket. We can't use libuv's UDP socket here because it doesn't
-    // give us the ability to set up the ECN field as QUIC requires.
-    auto fd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
-    if (fd == -1)
-      throw std::runtime_error{"Failed to open socket: "s + strerror(errno)};
-
-    if (addr)
-    {
-      assert(addr->sockaddr_size() == sizeof(sockaddr_in));  // FIXME: IPv4-only for now
-      auto rv = bind(fd, *addr, addr->sockaddr_size());
-      if (rv == -1)
-        throw std::runtime_error{
-            "Failed to bind UDP socket to " + addr->to_string() + ": " + strerror(errno)};
-    }
-
-    // Get our address via the socket in case `addr` is using anyaddr/anyport.
-    sockaddr_any sa;
-    socklen_t salen = sizeof(sa);
-    // FIXME: if I didn't call bind above then do I need to call bind() before this (with
-    // anyaddr/anyport)?
-    getsockname(fd, &sa.sa, &salen);
-    assert(salen == sizeof(sockaddr_in));  // FIXME: IPv4-only for now
-    local = {&sa, salen};
-    LogDebug("Bound to ", local, addr ? "" : " (auto-selected)");
-
-    // Set up the socket to provide us with incoming ECN (IP_TOS) info
-    // NB: This is for IPv4; on AF_INET6 this would be IPPROTO_IPV6, IPV6_RECVTCLASS
-    if (uint8_t want_tos = 1;
-        - 1
-        == setsockopt(
-            fd, IPPROTO_IP, IP_RECVTOS, &want_tos, static_cast<socklen_t>(sizeof(want_tos))))
-      throw std::runtime_error{"Failed to set ECN on socket: "s + strerror(errno)};
-
-    // Wire up our recv buffer structures into what recvmmsg() wants
-    buf.resize(max_buf_size * msgs.size());
-    for (size_t i = 0; i < msgs.size(); i++)
-    {
-      auto& iov = msgs_iov[i];
-      iov.iov_base = buf.data() + max_buf_size * i;
-      iov.iov_len = max_buf_size;
-#ifdef LOKINET_HAVE_RECVMMSG
-      auto& mh = msgs[i].msg_hdr;
-#else
-      auto& mh = msgs[i];
-#endif
-      mh.msg_name = &msgs_addr[i];
-      mh.msg_namelen = sizeof(msgs_addr[i]);
-      mh.msg_iov = &iov;
-      mh.msg_iovlen = 1;
-      mh.msg_control = msgs_cmsg[i].data();
-      mh.msg_controllen = msgs_cmsg[i].size();
-    }
-
-    // Let uv do its stuff
-    poll = loop->resource<uvw::PollHandle>(fd);
-    poll->on<uvw::PollEvent>([this](const auto&, auto&) { on_readable(); });
-    poll->start(uvw::PollHandle::Event::READABLE);
 
     // Set up a callback every 250ms to clean up stale sockets, etc.
     expiry_timer = loop->resource<uvw::TimerHandle>();
@@ -92,99 +36,8 @@ namespace llarp::quic
 
   Endpoint::~Endpoint()
   {
-    if (poll)
-      poll->close();
     if (expiry_timer)
       expiry_timer->close();
-  }
-
-  int
-  Endpoint::socket_fd() const
-  {
-    return poll->fd();
-  }
-
-  void
-  Endpoint::on_readable()
-  {
-    LogDebug("poll callback on readable");
-
-#ifdef LOKINET_HAVE_RECVMMSG
-    // NB: recvmmsg is linux-specific but ought to offer some performance benefits
-    int n_msg = recvmmsg(socket_fd(), msgs.data(), msgs.size(), 0, nullptr);
-    if (n_msg == -1)
-    {
-      if (errno != EAGAIN && errno != ENOTCONN)
-        LogWarn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
-      return;
-    }
-
-    LogDebug("Recv'd ", n_msg, " messages");
-    for (int i = 0; i < n_msg; i++)
-    {
-      auto& [msg_hdr, msg_len] = msgs[i];
-      bstring_view data{buf.data() + i * max_buf_size, msg_len};
-#else
-    for (size_t i = 0; i < N_msgs; i++)
-    {
-      auto& msg_hdr = msgs[0];
-      auto n_bytes = recvmsg(socket_fd(), &msg_hdr, 0);
-      if (n_bytes == -1 && errno != EAGAIN && errno != ENOTCONN)
-        LogWarn("Error recv'ing from ", local.to_string(), ": ", strerror(errno));
-      if (n_bytes <= 0)
-        return;
-      auto msg_len = static_cast<unsigned int>(n_bytes);
-      bstring_view data{buf.data(), msg_len};
-#endif
-
-      LogDebug(
-          "header [",
-          msg_hdr.msg_namelen,
-          "]: ",
-          buffer_printer{reinterpret_cast<char*>(msg_hdr.msg_name), msg_hdr.msg_namelen});
-
-      if (!msg_hdr.msg_name || msg_hdr.msg_namelen != sizeof(sockaddr_in))
-      {  // FIXME: IPv6 support?
-        LogWarn("Invalid/unknown source address, dropping packet");
-        continue;
-      }
-
-      Packet pkt{
-          Path{local, reinterpret_cast<const sockaddr_any*>(msg_hdr.msg_name), msg_hdr.msg_namelen},
-          data,
-          ngtcp2_pkt_info{.ecn = 0}};
-
-      // Go look for the ECN header field on the incoming packet
-      for (auto cmsg = CMSG_FIRSTHDR(&msg_hdr); cmsg; cmsg = CMSG_NXTHDR(&msg_hdr, cmsg))
-      {
-        // IPv4; for IPv6 these would be IPPROTO_IPV6 and IPV6_TCLASS
-        if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS && cmsg->cmsg_len)
-        {
-          pkt.info.ecn = *reinterpret_cast<uint8_t*>(CMSG_DATA(cmsg));
-        }
-      }
-
-      LogDebug(
-          i,
-          "[",
-          pkt.path,
-          ",ecn=0x",
-          std::hex,
-          +pkt.info.ecn,
-          std::dec,
-          "]: received ",
-          msg_len,
-          " bytes");
-
-      handle_packet(pkt);
-
-      LogDebug("Done handling packet");
-
-#ifdef LOKINET_HAVE_RECVMMSG  // Help editor's { } matching:
-    }
-#else
-    }
-#endif
   }
 
   std::optional<ConnectionID>
@@ -272,15 +125,6 @@ namespace llarp::quic
     assert(ecn <= std::numeric_limits<uint8_t>::max());
     if (ecn_curr != ecn)
     {
-      if (-1
-          == setsockopt(socket_fd(), IPPROTO_IP, IP_TOS, &ecn, static_cast<socklen_t>(sizeof(ecn))))
-        LogWarn("setsockopt failed to set IP_TOS: ", strerror(errno));
-
-      // IPv6 version:
-      // int tclass = this->ecn;
-      // setsockopt(socket_fd(), IPPROTO_IPV6, IPV6_TCLASS, &tclass,
-      // static_cast<socklen_t>(sizeof(tclass)));
-
       ecn_curr = ecn;
     }
   }
@@ -288,31 +132,9 @@ namespace llarp::quic
   io_result
   Endpoint::send_packet(const Address& to, bstring_view data, uint32_t ecn)
   {
-    iovec msg_iov;
-    msg_iov.iov_base = const_cast<std::byte*>(data.data());
-    msg_iov.iov_len = data.size();
-
-    msghdr msg{};
-    msg.msg_name = &const_cast<sockaddr&>(reinterpret_cast<const sockaddr&>(to));
-    msg.msg_namelen = sizeof(sockaddr_in);
-    msg.msg_iov = &msg_iov;
-    msg.msg_iovlen = 1;
-
-    auto fd = socket_fd();
-
     update_ecn(ecn);
-    ssize_t nwrite = 0;
-    do
-    {
-      nwrite = sendmsg(fd, &msg, 0);
-    } while (nwrite == -1 && errno == EINTR);
 
-    if (nwrite == -1)
-    {
-      LogWarn("sendmsg failed: ", strerror(errno));
-      return {errno};
-    }
-
+    parent->SendTo(to.Tag(), data, service::ProtocolType::QUIC);
     LogDebug(
         "[",
         to.to_string(),
@@ -321,7 +143,7 @@ namespace llarp::quic
         +ecn_curr,
         std::dec,
         "]: sent ",
-        nwrite,
+        data.size(),
         " bytes");
     return {};
   }

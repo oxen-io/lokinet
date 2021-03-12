@@ -1,46 +1,39 @@
 #include "address.hpp"
-
-extern "C"
-{
-#include <arpa/inet.h>
-}
-
+#include <netinet/in.h>
+#include <cstring>
 #include <iostream>
 
 namespace llarp::quic
 {
   using namespace std::literals;
 
-  Address::Address(std::array<uint8_t, 4> ip, uint16_t port)
+  Address::Address(service::ConvoTag tag) : saddr{tag.ToV6()}
+  {}
+
+  Address&
+  Address::operator=(const Address& other)
   {
-    s.in.sin_family = AF_INET;
-    std::memcpy(&s.in.sin_addr.s_addr, ip.data(), ip.size());
-    s.in.sin_port = htons(port);
-    a.addrlen = sizeof(s.in);
+    std::memmove(&saddr, &other.saddr, sizeof(saddr));
+    a.addrlen = other.a.addrlen;
+    return *this;
   }
 
-  Address::Address(const sockaddr_any* addr, size_t addrlen)
+  service::ConvoTag
+  Address::Tag() const
   {
-    assert(addrlen == sizeof(sockaddr_in));  // FIXME: IPv6 support
-    std::memmove(&s, addr, addrlen);
-    a.addrlen = addrlen;
-  }
-  Address&
-  Address::operator=(const Address& addr)
-  {
-    std::memmove(&s, &addr.s, sizeof(s));
-    a.addrlen = addr.a.addrlen;
-    return *this;
+    service::ConvoTag tag{};
+    tag.FromV6(saddr);
+    return tag;
   }
 
   std::string
   Address::to_string() const
   {
-    if (a.addrlen != sizeof(sockaddr_in))
+    if (a.addrlen != sizeof(sockaddr_in6))
       return "(unknown-addr)";
-    char buf[INET_ADDRSTRLEN] = {0};
-    inet_ntop(AF_INET, &s.in.sin_addr, buf, INET_ADDRSTRLEN);
-    return buf + ":"s + std::to_string(ntohs(s.in.sin_port));
+    char buf[INET6_ADDRSTRLEN] = {0};
+    inet_ntop(AF_INET6, &saddr.sin6_addr, buf, INET6_ADDRSTRLEN);
+    return buf;
   }
 
   std::ostream&

@@ -12,7 +12,8 @@
 #include <unordered_set>
 #include <map>
 
-extern "C" {
+extern "C"
+{
 #include <ngtcp2/ngtcp2.h>
 #include <sodium/randombytes.h>
 }
@@ -132,10 +133,6 @@ namespace llarp::quic
     // "true" (i.e. no error code) io_result.
     io_result
     send();
-
-    // Poll for writability; activated if we block while trying to send a packet.
-    std::shared_ptr<uvw::PollHandle> wpoll;
-    bool wpoll_active = false;
 
     // Internal base method called invoked during construction to set up common client/server
     // settings.  dest_cid and path must already be set.

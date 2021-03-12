@@ -12,6 +12,14 @@
 
 namespace llarp::uv
 {
+  std::shared_ptr<uvw::Loop>
+  Loop::MaybeGetLoop(const EventLoop_ptr& ptr)
+  {
+    if (auto* uv = dynamic_cast<Loop*>(ptr.get()))
+      return uv->m_Impl;
+    return nullptr;
+  }
+
   class UVWakeup final : public EventLoopWakeup
   {
     std::shared_ptr<uvw::AsyncHandle> async;

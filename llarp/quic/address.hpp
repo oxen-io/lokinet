@@ -3,18 +3,14 @@
 #include <array>
 #include <cassert>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <iosfwd>
 
 #include <ngtcp2/ngtcp2.h>
 
-extern "C"
-{
-#include <netinet/in.h>
-#include <sys/socket.h>
-}
-
-// FIXME: replace use of this with a llarp::SockAddr
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/service/convotag.hpp>
 
 namespace llarp::quic
 {
@@ -28,42 +24,48 @@ namespace llarp::quic
 
   class Address
   {
-    sockaddr_any s{};
-    ngtcp2_addr a{0, &s.sa, nullptr};
+    sockaddr_in6 saddr{};
+    ngtcp2_addr a{0, reinterpret_cast<sockaddr*>(&saddr), nullptr};
 
    public:
     Address() = default;
-    Address(std::array<uint8_t, 4> ip, uint16_t port);
-    Address(const sockaddr_any* addr, size_t addrlen);
-    Address(const Address& addr)
-    {
-      *this = addr;
-    }
-    Address&
-    operator=(const Address& addr);
+    Address(service::ConvoTag tag);
 
-    // Implicit conversion to sockaddr* and ngtcp2_addr& so that an Address can be passed wherever
-    // one of those is expected.
+    Address(const Address& other)
+    {
+      *this = other;
+    }
+
+    service::ConvoTag
+    Tag() const;
+
+    Address&
+    operator=(const Address&);
+
     operator sockaddr*()
     {
-      return a.addr;
+      return reinterpret_cast<sockaddr*>(&saddr);
     }
+
     operator const sockaddr*() const
     {
-      return a.addr;
+      return reinterpret_cast<const sockaddr*>(&saddr);
     }
-    constexpr socklen_t
-    sockaddr_size() const
-    {
-      return a.addrlen;
-    }
+
     operator ngtcp2_addr&()
     {
       return a;
     }
+
     operator const ngtcp2_addr&() const
     {
       return a;
+    }
+
+    size_t
+    sockaddr_size() const
+    {
+      return sizeof(sockaddr_in6);
     }
 
     std::string
@@ -76,7 +78,7 @@ namespace llarp::quic
   struct Path
   {
    private:
-    Address local_{}, remote_{};
+    Address local_, remote_;
 
    public:
     ngtcp2_path path{
@@ -87,12 +89,10 @@ namespace llarp::quic
     const Address& remote = remote_;
 
     Path() = default;
-    Path(const Address& local, const Address& remote) : local_{local}, remote_{remote}
+    Path(const Address& laddr, const Address& raddr) : local_{laddr}, remote_{raddr}
     {}
-    Path(const Address& local, const sockaddr_any* remote_addr, size_t remote_len)
-        : local_{local}, remote_{remote_addr, remote_len}
-    {}
-    Path(const Path& p) : local_{p.local_}, remote_{p.remote_}
+
+    Path(const Path& p) : Path{p.local, p.remote}
     {}
 
     Path&
@@ -120,6 +120,7 @@ namespace llarp::quic
 
   std::ostream&
   operator<<(std::ostream& o, const Address& a);
+
   std::ostream&
   operator<<(std::ostream& o, const Path& p);
 

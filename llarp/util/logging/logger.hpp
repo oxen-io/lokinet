@@ -93,7 +93,8 @@ namespace llarp
     log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
   }
 
-  inline void _log_noop() noexcept
+  inline void
+  _log_noop() noexcept
   {}
 
 }  // namespace llarp

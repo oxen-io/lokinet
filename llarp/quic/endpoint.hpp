@@ -6,23 +6,31 @@
 #include "null_crypto.hpp"
 #include "packet.hpp"
 #include "stream.hpp"
+#include "uvw/async.h"
 
 #include <chrono>
 #include <map>
 #include <memory>
 #include <queue>
 #include <unordered_map>
-#include <variant>
+
 #include <vector>
 
 #include <uvw/loop.h>
 #include <uvw/poll.h>
 #include <uvw/timer.h>
 
-// True if we support recvmmsg/sendmmsg
-#if defined(__linux__) && !defined(LOKINET_NO_RECVMMSG)
-#define LOKINET_HAVE_RECVMMSG
-#endif
+#include <llarp/service/convotag.hpp>
+
+namespace llarp::service
+{
+  struct Endpoint;
+}  // namespace llarp::service
+
+namespace llarp::net
+{
+  struct IPPacket;
+}
 
 namespace llarp::quic
 {
@@ -33,29 +41,17 @@ namespace llarp::quic
   class Endpoint
   {
    protected:
-    // Address we are listening on
-    Address local;
+    /// the service endpoint we are owned by
+    service::Endpoint* const parent;
     // The current outgoing IP ecn value for the socket
     uint8_t ecn_curr = 0;
 
-    std::shared_ptr<uvw::PollHandle> poll;
+    /// local "address" just a blank
+    Address local{};
+
     std::shared_ptr<uvw::TimerHandle> expiry_timer;
     std::shared_ptr<uvw::Loop> loop;
 
-    // How many messages (at most) we recv per callback:
-    static constexpr int N_msgs = 8;
-#ifdef LOKINET_HAVE_RECVMMSG
-    static constexpr int N_mmsg = N_msgs;
-    std::array<mmsghdr, N_mmsg> msgs;
-#else
-    static constexpr int N_mmsg = 1;
-    std::array<msghdr, N_mmsg> msgs;
-#endif
-
-    std::array<iovec, N_mmsg> msgs_iov;
-    std::array<sockaddr_any, N_mmsg> msgs_addr;
-    std::array<std::array<uint8_t, CMSG_SPACE(1)>, N_mmsg> msgs_cmsg;
-    std::vector<std::byte> buf;
     // Max theoretical size of a UDP packet is 2^16-1 minus IP/UDP header overhead
     static constexpr size_t max_buf_size = 64 * 1024;
     // Max size of a UDP packet that we'll send
@@ -101,20 +97,9 @@ namespace llarp::quic
     friend class Connection;
 
     // Wires up an endpoint connection.
-    //
-    // `bind` - address we should bind to.  Required for a server, optional for a client.  If
-    // omitted, no explicit bind is performed (which means the socket will be implicitly bound to
-    // some OS-determined random high bind port).
-    // `loop` - the uv loop pointer managing polling of this endpoint
-    Endpoint(std::optional<Address> bind, std::shared_ptr<uvw::Loop> loop);
+    Endpoint(service::Endpoint* ep, std::shared_ptr<uvw::Loop> loop);
 
     virtual ~Endpoint();
-
-    int
-    socket_fd() const;
-
-    void
-    on_readable();
 
     // Version & connection id info that we can potentially extract when decoding a packet
     struct version_info

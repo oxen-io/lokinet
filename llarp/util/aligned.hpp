@@ -200,7 +200,7 @@ namespace llarp
       m_data.fill(0);
     }
 
-    void
+    virtual void
     Randomize()
     {
       randombytes(data(), SIZE);

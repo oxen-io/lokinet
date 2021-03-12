@@ -23,11 +23,11 @@ namespace llarp
     // print numeric values rather than std::ostream's default of printing it as a raw char.
     using PlainT = std::remove_reference_t<TArg>;
     if constexpr (is_same_any_v<PlainT, char, unsigned char, signed char, uint8_t, std::byte>)
-        ss << +std::forward<TArg>(arg); // Promote to int
+      ss << +std::forward<TArg>(arg);  // Promote to int
     else
-        ss << std::forward<TArg>(arg);
+      ss << std::forward<TArg>(arg);
     if constexpr (sizeof...(TArgs))
-        LogAppend(ss, std::forward<TArgs>(args)...);
+      LogAppend(ss, std::forward<TArgs>(args)...);
   }
 
   inline std::string

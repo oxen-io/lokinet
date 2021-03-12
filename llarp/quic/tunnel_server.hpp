@@ -1,8 +1,8 @@
 #pragma once
 
-#include <net/sock_addr.hpp>
-#include <service/address.hpp>
-#include <ev/ev.hpp>
+#include "address.hpp"
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/ev/ev.hpp>
 
 #include <memory>
 
@@ -21,7 +21,7 @@ namespace llarp::quic::tunnel
   {
    public:
     using AcceptCallback = std::function<AcceptResult(
-        const llarp::service::Address& remote, uint16_t port, llarp::SockAddr& connect_to)>;
+        const Address& remote, uint16_t port, llarp::SockAddr& connect_to)>;
 
    private:
     AcceptCallback accept;

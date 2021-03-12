@@ -26,13 +26,15 @@ namespace llarp
         : buf{reinterpret_cast<const std::byte*>(buf.data()), buf.size()}
     {}
 
-    // Constructed from any type of lvalue string<T> for a single-byte T (char, std::byte, uint8_t, etc.)
+    // Constructed from any type of lvalue string<T> for a single-byte T (char, std::byte, uint8_t,
+    // etc.)
     template <typename T, typename = std::enable_if_t<sizeof(T) == 1>>
     explicit buffer_printer(const std::basic_string<T>& buf)
         : buffer_printer(std::basic_string_view<T>{buf})
     {}
 
-    // *Not* constructable from a string<T> rvalue (because we only hold a view and do not take ownership).
+    // *Not* constructable from a string<T> rvalue (because we only hold a view and do not take
+    // ownership).
     template <typename T, typename = std::enable_if_t<sizeof(T) == 1>>
     explicit buffer_printer(std::basic_string<T>&& buf) = delete;
 
@@ -49,4 +51,4 @@ namespace llarp
   };
   std::ostream&
   operator<<(std::ostream& o, const buffer_printer& bp);
-}
+}  // namespace llarp

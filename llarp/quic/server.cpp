@@ -13,8 +13,10 @@
 namespace llarp::quic
 {
   Server::Server(
-      Address listen, std::shared_ptr<uvw::Loop> loop, stream_open_callback_t stream_open)
-      : Endpoint{std::move(listen), std::move(loop)}, stream_open_callback{std::move(stream_open)}
+      service::Endpoint* parent,
+      std::shared_ptr<uvw::Loop> loop,
+      stream_open_callback_t stream_open)
+      : Endpoint{parent, std::move(loop)}, stream_open_callback{std::move(stream_open)}
   {}
 
   void

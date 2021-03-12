@@ -17,7 +17,8 @@
 #include <oxenmq/hex.h>
 #include <oxenmq/bt_serialize.h>
 
-extern "C" {
+extern "C"
+{
 #include <sodium/randombytes.h>
 }
 
@@ -36,11 +37,13 @@ namespace llarp::quic
     return o << oxenmq::to_hex(c.data, c.data + c.datalen);
   }
 
-  ConnectionID ConnectionID::random(size_t size) {
-      ConnectionID r;
-      r.datalen = std::min(size, ConnectionID::max_size());
-      randombytes_buf(r.data, r.datalen);
-      return r;
+  ConnectionID
+  ConnectionID::random(size_t size)
+  {
+    ConnectionID r;
+    r.datalen = std::min(size, ConnectionID::max_size());
+    randombytes_buf(r.data, r.datalen);
+    return r;
   }
 
   namespace
@@ -322,7 +325,8 @@ namespace llarp::quic
   {
     va_list ap;
     va_start(ap, fmt);
-    if (char* msg; vasprintf(&msg, sizeof(ngtcp_debug_out), fmt, ap) >= 0) {
+    if (char* msg; vasprintf(&msg, sizeof(ngtcp_debug_out), fmt, ap) >= 0)
+    {
       LogTraceExplicit("external/ngtcp2/*.c", 0, msg);
       std::free(msg);
     }
@@ -341,33 +345,8 @@ namespace llarp::quic
     {
       LogDebug("Sending packet: ", buffer_printer{send_data});
       rv = endpoint.send_packet(path.remote, send_data, send_pkt_info.ecn);
-      if (rv.blocked())
-      {
-        if (!wpoll)
-        {
-          wpoll = endpoint.loop->resource<uvw::PollHandle>(endpoint.socket_fd());
-          wpoll->on<uvw::PollEvent>([this](const auto&, auto&) { send(); });
-        }
-        if (!wpoll_active)
-        {
-          wpoll->start(uvw::PollHandle::Event::WRITABLE);
-          wpoll_active = true;
-        }
-      }
-      else if (!rv)
-      {
-        // FIXME: disconnect here?
-        LogWarn("packet send failed: ", rv.str());
-        LogError("FIXME - should disconnect");
-      }
-      else if (wpoll_active)
-      {
-        wpoll->stop();
-        wpoll_active = false;
-      }
     }
     return rv;
-
     // We succeeded
     //
     // FIXME2: probably don't want to do these things *here*, because this is called from the stream
@@ -546,8 +525,6 @@ namespace llarp::quic
 
   Connection::~Connection()
   {
-    if (wpoll)
-      wpoll->close();
     if (io_trigger)
       io_trigger->close();
   }
@@ -581,7 +558,8 @@ namespace llarp::quic
           if (!ts)
             ts = get_timestamp();
 
-          LogTrace("send_buffer size=", send_buffer.size(), ", datalen=", datalen, ", flags=", flags);
+          LogTrace(
+              "send_buffer size=", send_buffer.size(), ", datalen=", datalen, ", flags=", flags);
           nwrite = ngtcp2_conn_writev_stream(
               conn.get(),
               &path.path,
@@ -1134,7 +1112,8 @@ namespace llarp::quic
     if (rv == 0)
     {
       rv = ngtcp2_conn_set_remote_transport_params(*this, &params);
-      LogDebug("Set remote transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
+      LogDebug(
+          "Set remote transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
     }
 
     if (rv != 0)

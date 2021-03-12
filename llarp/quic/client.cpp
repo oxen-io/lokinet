@@ -4,17 +4,18 @@
 #include <llarp/util/logging/logger.hpp>
 
 #include <oxenmq/variant.h>
+#include <llarp/service/address.hpp>
+#include <llarp/service/endpoint.hpp>
+#include <llarp/ev/ev_libuv.hpp>
 
 namespace llarp::quic
 {
-  Client::Client(
-      Address remote,
-      std::shared_ptr<uvw::Loop> loop_,
-      uint16_t tunnel_port,
-      std::optional<Address> local_)
-      : Endpoint{std::move(local_), std::move(loop_)}
+  Client::Client(service::ConvoTag tag, service::Endpoint* parent, uint16_t tunnel_port)
+      : Endpoint{parent, uv::Loop::MaybeGetLoop(parent->Loop())}
   {
     // Our UDP socket is now set up, so now we initiate contact with the remote QUIC
+    Address remote{std::move(tag)};
+
     Path path{local, remote};
     llarp::LogDebug("Connecting to ", remote);
 
@@ -32,8 +33,7 @@ namespace llarp::quic
     //
     // - delay_stream_timer
 
-    auto connptr =
-        std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
+    auto connptr = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
     auto& conn = *connptr;
     conns.emplace(conn.base_cid, connptr);
 

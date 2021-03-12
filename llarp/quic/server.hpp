@@ -12,7 +12,8 @@ namespace llarp::quic
     using stream_open_callback_t =
         std::function<bool(Server& server, Stream& stream, uint16_t port)>;
 
-    Server(Address listen, std::shared_ptr<uvw::Loop> loop, stream_open_callback_t stream_opened);
+    Server(
+        service::Endpoint*, std::shared_ptr<uvw::Loop> loop, stream_open_callback_t stream_opened);
 
     // Stream callback: takes the server, the (just-created) stream, and the connection port.
     // Returns true if the stream should be allowed or false to reject the stream.  The callback
