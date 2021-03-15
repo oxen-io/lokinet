@@ -17,6 +17,7 @@
 #include "lookup.hpp"
 #include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
+#include <optional>
 #include <unordered_map>
 #include "endpoint_types.hpp"
 
@@ -178,8 +179,11 @@ namespace llarp
       void
       SetAuthInfoForEndpoint(Address remote, AuthInfo info);
 
-      virtual huint128_t
-      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) = 0;
+      virtual huint128_t ObtainIPForAddr(std::variant<Address, RouterID>) = 0;
+
+      /// get a key for ip address
+      virtual std::optional<std::variant<service::Address, RouterID>>
+      ObtainAddrForIP(huint128_t ip) const = 0;
 
       // virtual bool
       // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;
@@ -273,13 +277,9 @@ namespace llarp
       void
       BlacklistSNode(const RouterID snode) override;
 
-      /// return true if we have a convotag as an exit session
-      /// or as a hidden service session
-      /// set addr and issnode
-      ///
-      /// return false if we don't have either
-      bool
-      GetEndpointWithConvoTag(const ConvoTag t, AlignedBuffer<32>& addr, bool& issnode) const;
+      /// maybe get an endpoint variant given its convo tag
+      std::optional<std::variant<Address, RouterID>>
+      GetEndpointWithConvoTag(ConvoTag t) const;
 
       bool
       HasConvoTag(const ConvoTag& t) const override;

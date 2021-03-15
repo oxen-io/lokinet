@@ -31,6 +31,7 @@
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/server.hpp>
 
+#include <optional>
 #include <utility>
 
 #include <llarp/quic/server.hpp>
@@ -210,29 +211,23 @@ namespace llarp
       return routers.find(remote) != routers.end();
     }
 
-    bool
-    Endpoint::GetEndpointWithConvoTag(
-        const ConvoTag tag, llarp::AlignedBuffer<32>& addr, bool& snode) const
+    std::optional<std::variant<Address, RouterID>>
+    Endpoint::GetEndpointWithConvoTag(ConvoTag tag) const
     {
       auto itr = Sessions().find(tag);
       if (itr != Sessions().end())
       {
-        snode = false;
-        addr = itr->second.remote.Addr();
-        return true;
+        return itr->second.remote.Addr();
       }
 
       for (const auto& item : m_state->m_SNodeSessions)
       {
         if (item.second.second == tag)
         {
-          snode = true;
-          addr = item.first;
-          return true;
+          return item.first;
         }
       }
-
-      return false;
+      return std::nullopt;
     }
 
     bool
@@ -1345,7 +1340,7 @@ namespace llarp
         // some day :DDDDD
         tag.Randomize();
         const auto src = xhtonl(net::TruncateV6(GetIfAddr()));
-        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode, true)));
+        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode)));
 
         auto session = std::make_shared<exit::SNodeSession>(
             snode,

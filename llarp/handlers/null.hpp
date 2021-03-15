@@ -41,10 +41,15 @@ namespace llarp
       void
       SendPacketToRemote(const llarp_buffer_t&) override{};
 
-      huint128_t
-      ObtainIPForAddr(const AlignedBuffer<32>&, bool) override
+      huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
       {
         return {0};
+      }
+
+      std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
+          huint128_t) const override
+      {
+        return std::nullopt;
       }
     };
   }  // namespace handlers

@@ -30,16 +30,20 @@ namespace llarp
       {
         if (handlePacket)
         {
-          AlignedBuffer<32> addr;
-          bool isSnode = false;
-          if (not GetEndpointWithConvoTag(tag, addr, isSnode))
+          service::Address addr{};
+          if (auto maybe = GetEndpointWithConvoTag(tag))
+          {
+            if (auto ptr = std::get_if<service::Address>(&*maybe))
+              addr = *ptr;
+            else
+              return false;
+          }
+          else
             return false;
-          if (isSnode)
-            return true;
           std::vector<byte_t> pkt;
           pkt.resize(pktbuf.sz);
           std::copy_n(pktbuf.base, pktbuf.sz, pkt.data());
-          handlePacket(service::Address(addr), std::move(pkt), proto);
+          handlePacket(addr, std::move(pkt), proto);
         }
         return true;
       }
@@ -56,10 +60,15 @@ namespace llarp
         return false;
       }
 
-      llarp::huint128_t
-      ObtainIPForAddr(const llarp::AlignedBuffer<32>&, bool) override
+      llarp::huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
       {
         return {0};
+      }
+
+      std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
+          huint128_t) const override
+      {
+        return std::nullopt;
       }
 
       std::string
