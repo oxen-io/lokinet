@@ -1,4 +1,4 @@
-#include <lokimq/lokimq.h>
+#include <oxenmq/oxenmq.h>
 #include <nlohmann/json.hpp>
 #include <cxxopts.hpp>
 #include <future>
@@ -16,12 +16,12 @@
 #include <sys/wait.h>
 #endif
 
-/// do a lokimq request on an lmq instance blocking style
+/// do a oxenmq request on an lmq instance blocking style
 /// returns a json object parsed from the result
 std::optional<nlohmann::json>
 LMQ_Request(
-    lokimq::LokiMQ& lmq,
-    const lokimq::ConnectionID& id,
+    oxenmq::OxenMQ& lmq,
+    const oxenmq::ConnectionID& id,
     std::string_view method,
     std::optional<nlohmann::json> args = std::nullopt)
 {
@@ -71,12 +71,12 @@ main(int argc, char* argv[])
     ("range", "ip range to map", cxxopts::value<std::string>())
     ;
   // clang-format on
-  lokimq::address rpcURL("tcp://127.0.0.1:1190");
+  oxenmq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
   std::string endpoint = "default";
   std::optional<std::string> token;
   std::string range = "::/0";
-  lokimq::LogLevel logLevel = lokimq::LogLevel::warn;
+  oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
   bool printStatus = false;
@@ -93,11 +93,11 @@ main(int argc, char* argv[])
 
     if (result.count("verbose") > 0)
     {
-      logLevel = lokimq::LogLevel::debug;
+      logLevel = oxenmq::LogLevel::debug;
     }
     if (result.count("rpc") > 0)
     {
-      rpcURL = lokimq::address(result["rpc"].as<std::string>());
+      rpcURL = oxenmq::address(result["rpc"].as<std::string>());
     }
     if (result.count("exit") > 0)
     {
@@ -147,8 +147,8 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  lokimq::LokiMQ lmq{
-      [](lokimq::LogLevel lvl, const char* file, int line, std::string msg) {
+  oxenmq::OxenMQ lmq{
+      [](oxenmq::LogLevel lvl, const char* file, int line, std::string msg) {
         std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
       },
       logLevel};
