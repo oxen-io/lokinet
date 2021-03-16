@@ -53,7 +53,7 @@ namespace llarp
         return false;
       if (!BEncodeMaybeReadDictList("X", X, read, key, buf))
         return false;
-      return read;
+      return bencode_discard(buf);
     }
 
     bool

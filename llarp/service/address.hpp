@@ -8,6 +8,7 @@
 #include <numeric>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <set>
 
 namespace llarp
@@ -90,6 +91,9 @@ namespace llarp
         return RouterID(as_array());
       }
     };
+
+    std::optional<std::variant<Address, RouterID>>
+    ParseAddress(std::string_view lokinet_addr);
 
   }  // namespace service
 }  // namespace llarp

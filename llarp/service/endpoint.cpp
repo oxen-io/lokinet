@@ -1444,20 +1444,32 @@ namespace llarp
     }
 
     std::optional<ConvoTag>
-    Endpoint::GetBestConvoTagForService(Address remote) const
+    Endpoint::GetBestConvoTagFor(std::variant<Address, RouterID> remote) const
     {
-      llarp_time_t time = 0s;
-      std::optional<ConvoTag> ret = std::nullopt;
       // get convotag with higest timestamp
-      for (const auto& [tag, session] : Sessions())
+      if (auto ptr = std::get_if<Address>(&remote))
       {
-        if (session.remote.Addr() == remote and session.lastUsed > time)
+        llarp_time_t time = 0s;
+        std::optional<ConvoTag> ret = std::nullopt;
+        for (const auto& [tag, session] : Sessions())
         {
-          time = session.lastUsed;
-          ret = tag;
+          if (session.remote.Addr() == *ptr and session.lastUsed > time)
+          {
+            time = session.lastUsed;
+            ret = tag;
+          }
+        }
+        return ret;
+      }
+      if (auto ptr = std::get_if<RouterID>(&remote))
+      {
+        for (const auto& item : m_state->m_SNodeSessions)
+        {
+          if (item.first == *ptr)
+            return item.second.second;
         }
       }
-      return ret;
+      return std::nullopt;
     }
 
     bool
@@ -1475,7 +1487,7 @@ namespace llarp
         ProtocolFrame& f = transfer->T;
         f.R = 0;
         std::shared_ptr<path::Path> p;
-        if (const auto maybe = GetBestConvoTagForService(remote))
+        if (const auto maybe = GetBestConvoTagFor(remote))
         {
           // the remote guy's intro
           Introduction remoteIntro;
