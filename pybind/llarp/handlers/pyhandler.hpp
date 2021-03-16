@@ -91,7 +91,7 @@ namespace llarp
       }
 
       void
-      SendPacketToRemote(const llarp_buffer_t&) override{};
+      SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       std::string
       GetOurAddress() const

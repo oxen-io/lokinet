@@ -203,7 +203,8 @@ namespace llarp
     }
 
     bool
-    BaseSession::QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t N)
+    BaseSession::QueueUpstreamTraffic(
+        llarp::net::IPPacket pkt, const size_t N, service::ProtocolType t)
     {
       const auto pktbuf = pkt.ConstBuffer();
       const llarp_buffer_t& buf = pktbuf;
@@ -214,6 +215,7 @@ namespace llarp
       if (queue.size() == 0)
       {
         queue.emplace_back();
+        queue.back().protocol = t;
         return queue.back().PutBuffer(buf, m_Counter++);
       }
       auto& back = queue.back();
@@ -221,9 +223,10 @@ namespace llarp
       if (back.Size() + buf.sz > N)
       {
         queue.emplace_back();
+        queue.back().protocol = t;
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-
+      back.protocol = t;
       return back.PutBuffer(buf, m_Counter++);
     }
 
@@ -340,23 +343,23 @@ namespace llarp
     }
 
     void
-    SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return;
       pkt.ZeroAddresses();
-      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }
 
     void
-    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return;
       pkt.ZeroSourceAddress();
-      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }
   }  // namespace exit
 }  // namespace llarp

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exit_messages.hpp"
+#include "service/protocol_type.hpp"
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>
@@ -76,7 +77,8 @@ namespace llarp
       HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
-      QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t packSize);
+      QueueUpstreamTraffic(
+          llarp::net::IPPacket pkt, const size_t packSize, service::ProtocolType t);
 
       /// flush upstream to exit via paths
       bool
@@ -181,7 +183,7 @@ namespace llarp
       Name() const override;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) override;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
       void
@@ -210,7 +212,7 @@ namespace llarp
       Name() const override;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) override;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
       void

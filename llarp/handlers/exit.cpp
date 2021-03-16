@@ -8,6 +8,7 @@
 #include <llarp/util/bits.hpp>
 
 #include <cassert>
+#include "service/protocol_type.hpp"
 
 namespace llarp
 {
@@ -235,8 +236,9 @@ namespace llarp
           auto itr = m_SNodeSessions.find(pk);
           if (itr != m_SNodeSessions.end())
           {
-            if (itr->second->QueueUpstreamTraffic(pkt, routing::ExitPadSize))
-              return;
+            // TODO: quic (?)
+            itr->second->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::TrafficV4);
+            return;
           }
         }
         auto tryFlushingTraffic = [&](exit::Endpoint* const ep) -> bool {

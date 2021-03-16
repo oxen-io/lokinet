@@ -72,7 +72,7 @@ namespace llarp
 
       /// for exits
       void
-      SendPacketToRemote(const llarp_buffer_t&) override;
+      SendPacketToRemote(const llarp_buffer_t&, ProtocolType t) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;

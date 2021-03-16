@@ -13,6 +13,7 @@
 #include "protocol.hpp"
 #include "quic/server.hpp"
 #include "sendcontext.hpp"
+#include "service/protocol_type.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
 #include <llarp/hook/ihook.hpp>
@@ -361,7 +362,7 @@ namespace llarp
       SendToServiceOrQueue(
           const service::Address& addr, const llarp_buffer_t& payload, ProtocolType t);
       bool
-      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);

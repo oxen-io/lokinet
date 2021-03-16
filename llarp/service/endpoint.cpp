@@ -23,6 +23,7 @@
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "service/info.hpp"
+#include "service/protocol_type.hpp"
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
@@ -1380,22 +1381,30 @@ namespace llarp
     bool
     Endpoint::SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
     {
-      // TODO: support snode
-      ServiceInfo ident{};
-      if (not GetSenderFor(tag, ident))
-        return false;
-      return SendToServiceOrQueue(ident.Addr(), pkt, t);
+      if (auto maybe = GetEndpointWithConvoTag(tag))
+      {
+        auto addr = *maybe;
+        if (auto ptr = std::get_if<Address>(&addr))
+        {
+          return SendToServiceOrQueue(*ptr, pkt, t);
+        }
+        if (auto ptr = std::get_if<RouterID>(&addr))
+        {
+          return SendToSNodeOrQueue(*ptr, pkt, t);
+        }
+      }
+      return false;
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& buf)
+    Endpoint::SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
-      EnsurePathToSNode(addr, [pkt](RouterID, exit::BaseSession_ptr s) {
+      EnsurePathToSNode(addr, [pkt, t](RouterID, exit::BaseSession_ptr s) {
         if (s)
-          s->QueueUpstreamTraffic(*pkt, routing::ExitPadSize);
+          s->SendPacketToRemote(pkt->ConstBuffer(), t);
       });
       return true;
     }

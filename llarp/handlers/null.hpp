@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llarp/service/endpoint.hpp>
+#include "service/protocol_type.hpp"
 
 namespace llarp
 {
@@ -39,7 +40,7 @@ namespace llarp
       }
 
       void
-      SendPacketToRemote(const llarp_buffer_t&) override{};
+      SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
       {

@@ -15,6 +15,7 @@
 #include <queue>
 #include <type_traits>
 #include <variant>
+#include "service/protocol_type.hpp"
 
 namespace llarp
 {
@@ -40,7 +41,7 @@ namespace llarp
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 
       void
-      SendPacketToRemote(const llarp_buffer_t&) override{};
+      SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       std::string
       GetIfName() const override;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "path_types.hpp"
+#include "service/protocol_type.hpp"
 #include <llarp/router_id.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/intro_set.hpp>
@@ -276,7 +277,7 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) = 0;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) = 0;
 
       virtual std::optional<std::vector<RouterContact>>
       GetHopsForBuild() = 0;
