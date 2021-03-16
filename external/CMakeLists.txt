@@ -76,4 +76,5 @@ target_include_directories(cpr PUBLIC cpr/include)
 target_compile_definitions(cpr PUBLIC CPR_CURL_NOSIGNAL)
 add_library(cpr::cpr ALIAS cpr)
 
+add_definitions(-D_GNU_SOURCE)
 add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)
