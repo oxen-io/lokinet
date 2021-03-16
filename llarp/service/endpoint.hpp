@@ -39,29 +39,6 @@ namespace llarp
     struct EndpointState;
     struct OutboundContext;
 
-    struct IConvoEventListener
-    {
-      ~IConvoEventListener() = default;
-
-      /// called when we have obtained the introset
-      /// called with nullptr on not found or when we
-      /// talking to a snode
-      virtual void
-      FoundIntroSet(const IntroSet*) = 0;
-
-      /// called when we found the RC we need for alignment
-      virtual void
-      FoundRC(const RouterContact) = 0;
-
-      /// called when we have successfully built an aligned path
-      virtual void GotAlignedPath(path::Path_ptr) = 0;
-
-      /// called when we have established a session or conversation
-      virtual void
-      MadeConvo(const ConvoTag) = 0;
-    };
-    using ConvoEventListener_ptr = std::shared_ptr<IConvoEventListener>;
-
     /// minimum interval for publishing introsets
     static constexpr auto INTROSET_PUBLISH_INTERVAL =
         std::chrono::milliseconds(path::default_lifetime) / 4;
