@@ -266,6 +266,12 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
+      bool
+      EnsurePathTo(
+          std::variant<Address, RouterID> addr,
+          std::function<void(std::optional<ConvoTag>)> hook,
+          llarp_time_t timeout);
+
       // passed a sendto context when we have a path established otherwise
       // nullptr if the path was not made before the timeout
       using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
@@ -275,7 +281,7 @@ namespace llarp
       bool
       EnsurePathToService(const Address remote, PathEnsureHook h, llarp_time_t timeoutMS);
 
-      using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr)>;
+      using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
       /// ensure a path to a service node by public key
       bool

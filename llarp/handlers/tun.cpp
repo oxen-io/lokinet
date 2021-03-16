@@ -325,9 +325,11 @@ namespace llarp
     {
       auto ReplyToSNodeDNSWhenReady = [self = this, reply = reply](
                                           RouterID snode, auto msg, bool isV6) -> bool {
-        return self->EnsurePathToSNode(snode, [=](const RouterID&, exit::BaseSession_ptr s) {
-          self->SendDNSReply(snode, s, msg, reply, isV6);
-        });
+        return self->EnsurePathToSNode(
+            snode,
+            [=](const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
+              self->SendDNSReply(snode, s, msg, reply, isV6);
+            });
       };
       auto ReplyToLokiDNSWhenReady = [self = this, reply = reply](
                                          service::Address addr, auto msg, bool isV6) -> bool {

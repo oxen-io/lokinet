@@ -39,6 +39,7 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/ev/ev_libuv.hpp>
 #include <uvw.hpp>
+#include <variant>
 
 namespace llarp
 {
@@ -1367,10 +1368,10 @@ namespace llarp
       while (itr != range.second)
       {
         if (itr->second.first->IsReady())
-          h(snode, itr->second.first);
+          h(snode, itr->second.first, itr->second.second);
         else
         {
-          itr->second.first->AddReadyHook(std::bind(h, snode, _1));
+          itr->second.first->AddReadyHook(std::bind(h, snode, _1, itr->second.second));
           itr->second.first->BuildOne();
         }
         ++itr;
@@ -1402,10 +1403,11 @@ namespace llarp
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
-      EnsurePathToSNode(addr, [pkt, t](RouterID, exit::BaseSession_ptr s) {
-        if (s)
-          s->SendPacketToRemote(pkt->ConstBuffer(), t);
-      });
+      EnsurePathToSNode(
+          addr, [pkt, t](RouterID, exit::BaseSession_ptr s, [[maybe_unused]] ConvoTag tag) {
+            if (s)
+              s->SendPacketToRemote(pkt->ConstBuffer(), t);
+          });
       return true;
     }
 
@@ -1470,6 +1472,44 @@ namespace llarp
         }
       }
       return std::nullopt;
+    }
+
+    bool
+    Endpoint::EnsurePathTo(
+        std::variant<Address, RouterID> addr,
+        std::function<void(std::optional<ConvoTag>)> hook,
+        llarp_time_t timeout)
+    {
+      if (auto ptr = std::get_if<Address>(&addr))
+      {
+        return EnsurePathToService(
+            *ptr,
+            [hook](auto, auto* ctx) {
+              if (ctx)
+              {
+                hook(ctx->currentConvoTag);
+              }
+              else
+              {
+                hook(std::nullopt);
+              }
+            },
+            timeout);
+      }
+      if (auto ptr = std::get_if<RouterID>(&addr))
+      {
+        return EnsurePathToSNode(*ptr, [hook](auto, auto session, auto tag) {
+          if (session)
+          {
+            hook(tag);
+          }
+          else
+          {
+            hook(std::nullopt);
+          }
+        });
+      }
+      return false;
     }
 
     bool
