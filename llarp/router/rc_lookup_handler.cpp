@@ -270,8 +270,7 @@ namespace llarp
 
       if (lookupRouters.size() > LookupPerTick)
       {
-        static std::mt19937_64 rng{llarp::randint()};
-        std::shuffle(lookupRouters.begin(), lookupRouters.end(), rng);
+        std::shuffle(lookupRouters.begin(), lookupRouters.end(), CSRNG{});
         lookupRouters.resize(LookupPerTick);
       }
 
