@@ -178,8 +178,6 @@ namespace llarp
     Session::SendMessageBuffer(
         ILinkSession::Message_t buf, ILinkSession::CompletionHandler completed)
     {
-      if (m_TXMsgs.size() >= MaxSendQueueSize)
-        return false;
       const auto now = m_Parent->Now();
       const auto msgid = m_TXID++;
       const auto bufsz = buf.size();
