@@ -233,6 +233,8 @@ namespace llarp
       m_LocalResolverAddr = dnsConf.m_bind;
       m_UpstreamResolvers = dnsConf.m_upstreamDNS;
 
+      m_BaseV6Address = conf.m_baseV6Address;
+
       for (const auto& item : conf.m_mapAddrs)
       {
         if (not MapAddress(item.second, item.first, false))
@@ -800,10 +802,14 @@ namespace llarp
 
       vpn::InterfaceInfo info;
       info.addrs.emplace(m_OurRange);
-      IPRange v6range = m_OurRange;
-      v6range.addr = net::ExpandV4Lan(net::TruncateV6(m_OurRange.addr));
-      LogInfo(Name(), " using v6 range: ", v6range);
-      info.addrs.emplace(v6range, AF_INET6);
+
+      if (m_BaseV6Address)
+      {
+        IPRange v6range = m_OurRange;
+        v6range.addr = (*m_BaseV6Address) | m_OurRange.addr;
+        LogInfo(Name(), " using v6 range: ", v6range);
+        info.addrs.emplace(v6range, AF_INET6);
+      }
 
       info.ifname = m_IfName;
       info.dnsaddr.FromString(m_LocalResolverAddr.toHost());

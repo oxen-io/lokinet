@@ -19,6 +19,7 @@
 
 #include <cstdlib>
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -117,6 +118,8 @@ namespace llarp
     std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
+
+    std::optional<huint128_t> m_baseV6Address;
 
     // TODO:
     // on-up

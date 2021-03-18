@@ -253,6 +253,8 @@ namespace llarp
       bool m_UseV6;
       std::string m_IfName;
 
+      std::optional<huint128_t> m_BaseV6Address;
+
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
       std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
