@@ -526,6 +526,8 @@ namespace llarp
             "For all ipv6 exit traffic you will use this as the base address bitwised or'd with "
             "the v4 address in use.",
             "To disable ipv6 set this to an empty value.",
+            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
+            "de-anonymization as lokinet will no longer carry your ipv6 traffic.",
         },
         IP6RangeDefault,
         [this](std::string arg) {
