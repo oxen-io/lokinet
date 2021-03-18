@@ -806,7 +806,7 @@ namespace llarp
       if (m_BaseV6Address)
       {
         IPRange v6range = m_OurRange;
-        v6range.addr = m_BaseV6Address.value() | m_OurRange.addr;
+        v6range.addr = (*m_BaseV6Address) | m_OurRange.addr;
         LogInfo(Name(), " using v6 range: ", v6range);
         info.addrs.emplace(v6range, AF_INET6);
       }
