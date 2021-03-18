@@ -261,6 +261,7 @@ namespace llarp
     static constexpr Default ReachableDefault{true};
     static constexpr Default HopsDefault{4};
     static constexpr Default PathsDefault{6};
+    static constexpr Default IP6RangeDefault{"fd00::"};
 
     conf.defineOption<std::string>(
         "network", "type", Default{"tun"}, Hidden, AssignmentAcceptor(m_endpointType));
@@ -517,6 +518,24 @@ namespace llarp
           }
         });
 
+    conf.defineOption<std::string>(
+        "network",
+        "ip6-range",
+        ClientOnly,
+        Comment{
+            "For all ipv6 exit traffic you will use this as the base address bitwised or'd with "
+            "the v4 address in use.",
+            "To disable ipv6 set this to an empty value.",
+        },
+        IP6RangeDefault,
+        [this](std::string arg) {
+          if (arg.empty())
+            return;
+          m_baseV6Address = huint128_t{};
+          if (not m_baseV6Address->FromString(arg))
+            throw std::invalid_argument(
+                stringify("[network]:ip6-range invalid value: '", arg, "'"));
+        });
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
         "network",
