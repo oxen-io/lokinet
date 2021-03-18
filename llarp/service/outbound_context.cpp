@@ -410,9 +410,7 @@ namespace llarp
       std::vector<Introduction> intros = currentIntroSet.I;
       if (intros.size() > 1)
       {
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(intros.begin(), intros.end(), g);
+        std::shuffle(intros.begin(), intros.end(), CSRNG{});
       }
 
       // to find a intro on the same router as before that is newer
