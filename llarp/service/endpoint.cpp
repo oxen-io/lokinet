@@ -824,7 +824,11 @@ namespace llarp
       }
 
       auto maybeInvalidateCache = [handler, &cache, name](auto result) {
-        if (not result)
+        if (result)
+        {
+          cache.Put(name, *result);
+        }
+        else
         {
           cache.Remove(name);
         }
