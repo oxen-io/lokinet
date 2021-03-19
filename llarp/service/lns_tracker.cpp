@@ -11,12 +11,21 @@ namespace llarp::service
     m_PendingLookups.emplace(name, LookupInfo{numPeers, resultHandler});
     return [name, this](std::optional<Address> found) {
       auto itr = m_PendingLookups.find(name);
-      if (itr != m_PendingLookups.end() and itr->second.HandleOneResult(found))
+      if (itr == m_PendingLookups.end())
+        return;
+      itr->second.HandleOneResult(found);
+      if (itr->second.IsDone())
         m_PendingLookups.erase(itr);
     };
   }
 
   bool
+  LNSLookupTracker::LookupInfo::IsDone() const
+  {
+    return m_ResultsGotten == m_ResultsNeeded;
+  }
+
+  void
   LNSLookupTracker::LookupInfo::HandleOneResult(std::optional<Address> result)
   {
     if (result)
@@ -24,7 +33,7 @@ namespace llarp::service
       m_CurrentValues.insert(*result);
     }
     m_ResultsGotten++;
-    if (m_ResultsGotten == m_ResultsNeeded)
+    if (IsDone())
     {
       if (m_CurrentValues.size() == 1)
       {
@@ -34,8 +43,6 @@ namespace llarp::service
       {
         m_HandleResult(std::nullopt);
       }
-      return true;
     }
-    return false;
   }
 }  // namespace llarp::service

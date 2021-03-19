@@ -24,8 +24,10 @@ namespace llarp::service
           : m_HandleResult{std::move(resultHandler)}, m_ResultsNeeded{wantResults}
       {}
 
-      /// return true to remove self
       bool
+      IsDone() const;
+
+      void
       HandleOneResult(std::optional<Address> result);
     };
 
