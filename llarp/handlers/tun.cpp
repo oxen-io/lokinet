@@ -483,7 +483,7 @@ namespace llarp
         }
         else if (service::NameIsValid(lnsName))
         {
-          return LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
+          LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
             if (maybe.has_value())
             {
               msg.AddMXReply(maybe->ToString(), 1);
@@ -494,6 +494,7 @@ namespace llarp
             }
             reply(msg);
           });
+          return true;
         }
         else
           msg.AddNXReply();
@@ -617,24 +618,25 @@ namespace llarp
         }
         else if (service::NameIsValid(lnsName))
         {
-          return LookupNameAsync(
-              lnsName,
-              [msg = std::make_shared<dns::Message>(msg),
-               name = Name(),
-               lnsName,
-               isV6,
-               reply,
-               ReplyToLokiDNSWhenReady](auto maybe) {
-                if (not maybe.has_value())
-                {
-                  LogWarn(name, " lns name ", lnsName, " not resolved");
-                  msg->AddNXReply();
-                  reply(*msg);
-                  return;
-                }
-                LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
-                ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
-              });
+          LookupNameAsync(
+            lnsName,
+            [msg = std::make_shared<dns::Message>(msg),
+             name = Name(),
+             lnsName,
+             isV6,
+             reply,
+             ReplyToLokiDNSWhenReady](auto maybe) {
+              if (not maybe.has_value())
+              {
+                LogWarn(name, " lns name ", lnsName, " not resolved");
+                msg->AddNXReply();
+                reply(*msg);
+                return;
+              }
+              LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
+              ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
+            });
+          return true;
         }
         else
           msg.AddNXReply();

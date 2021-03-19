@@ -798,7 +798,7 @@ namespace llarp
       return not m_ExitMap.Empty();
     }
 
-    bool
+    void
     Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
     {
       auto& cache = m_state->nameCache;
@@ -806,7 +806,7 @@ namespace llarp
       if (maybe.has_value())
       {
         handler(maybe);
-        return true;
+        return;
       }
       LogInfo(Name(), " looking up LNS name: ", name);
       path::Path::UniqueEndpointSet_t paths;
@@ -820,7 +820,7 @@ namespace llarp
       if (paths.size() < 3)
       {
         handler(std::nullopt);
-        return true;
+        return;
       }
 
       auto maybeInvalidateCache = [handler, &cache, name](auto result) {
@@ -844,7 +844,6 @@ namespace llarp
         auto job = new LookupNameJob(this, GenTXID(), name, resultHandler);
         job->SendRequestViaPath(path, m_router);
       }
-      return true;
     }
 
     bool
