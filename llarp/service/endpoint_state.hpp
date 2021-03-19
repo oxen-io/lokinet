@@ -10,6 +10,7 @@
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashtable.hpp>
 #include <llarp/util/status.hpp>
+#include "lns_tracker.hpp"
 
 #include <memory>
 #include <queue>
@@ -65,6 +66,8 @@ namespace llarp
       OutboundSessions_t m_OutboundSessions;
 
       util::DecayingHashTable<std::string, Address, std::hash<std::string>> nameCache;
+
+      LNSLookupTracker lnsTracker;
 
       bool
       Configure(const NetworkConfig& conf);

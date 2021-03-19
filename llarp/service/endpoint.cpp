@@ -808,12 +808,39 @@ namespace llarp
         handler(maybe);
         return true;
       }
-      auto path = PickRandomEstablishedPath();
-      if (path == nullptr)
-        return false;
       LogInfo(Name(), " looking up LNS name: ", name);
-      auto job = new LookupNameJob(this, GenTXID(), name, handler);
-      return job->SendRequestViaPath(path, m_router);
+      path::Path::UniqueEndpointSet_t paths;
+      ForEachPath([&](auto path) {
+        if (path->IsReady())
+        {
+          paths.insert(path);
+        }
+      });
+      // not enough paths
+      if (paths.size() < 3)
+      {
+        handler(std::nullopt);
+        return true;
+      }
+
+      auto maybeInvalidateCache = [handler, &cache, name](auto result) {
+        if (not result)
+        {
+          cache.Remove(name);
+        }
+        handler(result);
+      };
+
+      auto resultHandler =
+          m_state->lnsTracker.MakeResultHandler(name, paths.size(), maybeInvalidateCache);
+
+      for (const auto& path : paths)
+      {
+        LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
+        auto job = new LookupNameJob(this, GenTXID(), name, resultHandler);
+        job->SendRequestViaPath(path, m_router);
+      }
+      return true;
     }
 
     bool
@@ -826,12 +853,6 @@ namespace llarp
 
       // decrypt entry
       const auto maybe = msg->result.Decrypt(itr->second->name);
-
-      if (maybe.has_value())
-      {
-        // put cache entry for result
-        m_state->nameCache.Put(itr->second->name, *maybe);
-      }
       // inform result
       itr->second->HandleNameResponse(maybe);
       lookups.erase(itr);

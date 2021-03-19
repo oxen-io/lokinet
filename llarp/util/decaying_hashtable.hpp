@@ -17,6 +17,7 @@ namespace llarp::util
       EraseIf([&](const auto& item) { return item.second.second + m_CacheInterval <= now; });
     }
 
+    /// return if we have this value by key
     bool
     Has(const Key_t& k) const
     {
@@ -33,6 +34,7 @@ namespace llarp::util
       return m_Values.try_emplace(std::move(key), std::make_pair(std::move(value), now)).second;
     }
 
+    /// get value by key
     std::optional<Value_t>
     Get(Key_t k) const
     {
@@ -40,6 +42,13 @@ namespace llarp::util
       if (itr == m_Values.end())
         return std::nullopt;
       return itr->second.first;
+    }
+
+    /// explicit remove an item from the cache by key
+    void
+    Remove(const Key_t& key)
+    {
+      m_Values.erase(key);
     }
 
    private:
