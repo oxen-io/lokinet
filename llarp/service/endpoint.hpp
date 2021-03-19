@@ -21,6 +21,8 @@
 
 #include "auth.hpp"
 
+#include <variant>
+
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -219,7 +221,9 @@ namespace llarp
       LookupRouterAnon(RouterID router, RouterLookupHandler handler);
 
       void
-      LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> resultHandler);
+      LookupNameAsync(
+          std::string name,
+          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler);
 
       /// called on event loop pump
       virtual void

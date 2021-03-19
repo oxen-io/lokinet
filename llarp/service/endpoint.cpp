@@ -232,12 +232,13 @@ namespace llarp
                   const auto maybe_auth = info.second;
 
                   m_StartupLNSMappings.erase(name);
-
-                  if (maybe_range.has_value())
-                    m_ExitMap.Insert(*maybe_range, *maybe_addr);
-
-                  if (maybe_auth.has_value())
-                    SetAuthInfoForEndpoint(*maybe_addr, *maybe_auth);
+                  if (auto* addr = std::get_if<service::Address>(&*maybe_addr))
+                  {
+                    if (maybe_range.has_value())
+                      m_ExitMap.Insert(*maybe_range, *addr);
+                    if (maybe_auth.has_value())
+                      SetAuthInfoForEndpoint(*addr, *maybe_auth);
+                  }
                 }
               });
         }
@@ -799,7 +800,9 @@ namespace llarp
     }
 
     void
-    Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
+    Endpoint::LookupNameAsync(
+        std::string name,
+        std::function<void(std::optional<std::variant<Address, RouterID>>)> handler)
     {
       auto& cache = m_state->nameCache;
       const auto maybe = cache.Get(name);
