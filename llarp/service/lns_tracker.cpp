@@ -8,11 +8,11 @@ namespace llarp::service
       std::size_t numPeers,
       std::function<void(std::optional<Address>)> resultHandler)
   {
-    auto itr = m_PendingLookups.emplace(name, LookupInfo{numPeers, resultHandler}).first;
-    auto& request = itr->second;
-    return [&, name](std::optional<Address> found) {
-      if (request.HandleOneResult(found))
-        m_PendingLookups.erase(name);
+    m_PendingLookups.emplace(name, LookupInfo{numPeers, resultHandler});
+    return [name, this](std::optional<Address> found) {
+      auto itr = m_PendingLookups.find(name);
+      if (itr != m_PendingLookups.end() and itr->second.HandleOneResult(found))
+        m_PendingLookups.erase(itr);
     };
   }
 
