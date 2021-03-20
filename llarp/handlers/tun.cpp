@@ -501,7 +501,10 @@ namespace llarp
           LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
             if (maybe.has_value())
             {
-              std::visit([&](auto&& value) { msg.AddMXReply(value.ToString(), 1); }, *maybe);
+              if (auto* addr = std::get_if<service::Address>(&*maybe))
+              {
+                msg.AddMXReply(addr->ToString(), 1);
+              }
             }
             else
             {

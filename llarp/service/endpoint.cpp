@@ -827,6 +827,10 @@ namespace llarp
       }
 
       auto maybeInvalidateCache = [handler, &cache, name](auto result) {
+        if (result and result->IsZero())
+        {
+          result = std::nullopt;
+        }
         if (result)
         {
           cache.Put(name, *result);
