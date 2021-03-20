@@ -802,7 +802,7 @@ namespace llarp
     void
     Endpoint::LookupNameAsync(
         std::string name,
-        std::function<void(std::optional<std::variant<Address, RouterID>>)> handler)
+        std::function<void(std::optional<var::variant<Address, RouterID>>)> handler)
     {
       auto& cache = m_state->nameCache;
       const auto maybe = cache.Get(name);
@@ -827,9 +827,16 @@ namespace llarp
       }
 
       auto maybeInvalidateCache = [handler, &cache, name](auto result) {
-        if (result and result->IsZero())
+        if (result)
         {
-          result = std::nullopt;
+          var::visit(
+              [&](auto&& value) {
+                if (value.IsZero())
+                {
+                  result = std::nullopt;
+                }
+              },
+              *result);
         }
         if (result)
         {

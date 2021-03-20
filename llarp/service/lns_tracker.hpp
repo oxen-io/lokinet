@@ -7,20 +7,26 @@
 #include <string>
 
 #include "address.hpp"
+#include <llarp/router_id.hpp>
+#include <oxenmq/variant.h>
 
 namespace llarp::service
 {
   /// tracks and manages consensus of lns names we fetch from the network
   class LNSLookupTracker
   {
+   public:
+    using Addr_t = var::variant<Address, RouterID>;
+
+   private:
     struct LookupInfo
     {
-      std::unordered_set<Address> m_CurrentValues;
-      std::function<void(std::optional<Address>)> m_HandleResult;
+      std::unordered_set<Addr_t> m_CurrentValues;
+      std::function<void(std::optional<Addr_t>)> m_HandleResult;
       std::size_t m_ResultsGotten = 0;
       std::size_t m_ResultsNeeded;
 
-      LookupInfo(std::size_t wantResults, std::function<void(std::optional<Address>)> resultHandler)
+      LookupInfo(std::size_t wantResults, std::function<void(std::optional<Addr_t>)> resultHandler)
           : m_HandleResult{std::move(resultHandler)}, m_ResultsNeeded{wantResults}
       {}
 
@@ -28,7 +34,7 @@ namespace llarp::service
       IsDone() const;
 
       void
-      HandleOneResult(std::optional<Address> result);
+      HandleOneResult(std::optional<Addr_t> result);
     };
 
     std::unordered_map<std::string, LookupInfo> m_PendingLookups;
@@ -38,10 +44,10 @@ namespace llarp::service
     /// name is the name we are requesting
     /// numPeers is the number of peers we asked
     /// resultHandler is a function that we are wrapping that will handle the final result
-    std::function<void(std::optional<Address>)>
+    std::function<void(std::optional<Addr_t>)>
     MakeResultHandler(
         std::string name,
         std::size_t numPeers,
-        std::function<void(std::optional<Address>)> resultHandler);
+        std::function<void(std::optional<Addr_t>)> resultHandler);
   };
 }  // namespace llarp::service
