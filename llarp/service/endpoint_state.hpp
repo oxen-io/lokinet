@@ -17,6 +17,8 @@
 #include <set>
 #include <unordered_map>
 
+#include <oxenmq/variant.h>
+
 namespace llarp
 {
   namespace service

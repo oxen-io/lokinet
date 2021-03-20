@@ -354,20 +354,19 @@ namespace llarp
             2s);
       };
 
-      auto ReplyToDNSWhenReady =
-          [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
-              std::variant<service::Address, RouterID> addr, auto msg, bool isV6) {
-            if (auto ptr = std::get_if<RouterID>(&addr))
-            {
-              ReplyToSNodeDNSWhenReady(*ptr, msg, isV6);
-              return;
-            }
-            if (auto ptr = std::get_if<service::Address>(&addr))
-            {
-              ReplyToLokiDNSWhenReady(*ptr, msg, isV6);
-              return;
-            }
-          };
+      auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
+                                     auto addr, auto msg, bool isV6) {
+        if (auto ptr = std::get_if<RouterID>(&addr))
+        {
+          ReplyToSNodeDNSWhenReady(*ptr, msg, isV6);
+          return;
+        }
+        if (auto ptr = std::get_if<service::Address>(&addr))
+        {
+          ReplyToLokiDNSWhenReady(*ptr, msg, isV6);
+          return;
+        }
+      };
 
       auto ReplyToLokiSRVWhenReady = [self = this, reply = reply](
                                          service::Address addr, auto msg) -> bool {
