@@ -16,7 +16,7 @@ namespace llarp::service
   class LNSLookupTracker
   {
    public:
-    using Addr_t = var::variant<Address, RouterID>;
+    using Addr_t = std::variant<Address, RouterID>;
 
    private:
     struct LookupInfo

@@ -802,7 +802,7 @@ namespace llarp
     void
     Endpoint::LookupNameAsync(
         std::string name,
-        std::function<void(std::optional<var::variant<Address, RouterID>>)> handler)
+        std::function<void(std::optional<std::variant<Address, RouterID>>)> handler)
     {
       auto& cache = m_state->nameCache;
       const auto maybe = cache.Get(name);
