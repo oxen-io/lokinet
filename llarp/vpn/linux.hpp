@@ -66,7 +66,14 @@ namespace llarp::vpn
           ifr6.addr = net::HUIntToIn6(ifaddr.range.addr);
           ifr6.prefixlen = llarp::bits::count_bits(ifaddr.range.netmask_bits);
           ifr6.ifindex = ifindex;
-          control6.ioctl(SIOCSIFADDR, &ifr6);
+          try
+          {
+            control6.ioctl(SIOCSIFADDR, &ifr6);
+          }
+          catch (permission_error& ex)
+          {
+            LogError("we are not allowed to use IPv6 on this system: ", ex.what());
+          }
         }
       }
       ifr.ifr_flags = static_cast<short>(flags | IFF_UP | IFF_NO_PI);
@@ -75,8 +82,7 @@ namespace llarp::vpn
 
     virtual ~LinuxInterface()
     {
-      if (m_fd != -1)
-        ::close(m_fd);
+      ::close(m_fd);
     }
 
     int

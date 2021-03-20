@@ -3,9 +3,16 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <cerrno>
 
 namespace llarp::vpn
 {
+  class permission_error : public std::runtime_error
+  {
+   public:
+    using std::runtime_error::runtime_error;
+  };
+
   struct IOCTL
   {
     const int _fd;
@@ -26,7 +33,14 @@ namespace llarp::vpn
     ioctl(Command cmd, Args&&... args)
     {
       if (::ioctl(_fd, cmd, std::forward<Args>(args)...) == -1)
-        throw std::runtime_error("ioctl failed: " + std::string{strerror(errno)});
+      {
+        if (errno == EACCES)
+        {
+          throw permission_error{"we are not allowed to call this ioctl"};
+        }
+        else
+          throw std::runtime_error("ioctl failed: " + std::string{strerror(errno)});
+      }
     }
   };
 }  // namespace llarp::vpn
