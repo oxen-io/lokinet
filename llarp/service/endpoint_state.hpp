@@ -67,7 +67,7 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      util::DecayingHashTable<std::string, var::variant<Address, RouterID>, std::hash<std::string>>
+      util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
           nameCache;
 
       LNSLookupTracker lnsTracker;
