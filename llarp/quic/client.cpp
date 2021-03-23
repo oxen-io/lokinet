@@ -11,7 +11,7 @@
 namespace llarp::quic
 {
   Client::Client(service::ConvoTag tag, service::Endpoint* parent, uint16_t tunnel_port)
-      : Endpoint{parent, uv::Loop::MaybeGetLoop(parent->Loop())}
+      : Endpoint{parent, parent->Loop()->MaybeGetUVWLoop()}
   {
     // Our UDP socket is now set up, so now we initiate contact with the remote QUIC
     Address remote{std::move(tag)};

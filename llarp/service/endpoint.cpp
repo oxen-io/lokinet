@@ -83,7 +83,8 @@ namespace llarp
         m_StartupLNSMappings[name] = std::make_pair(range, auth);
       });
 
-      auto loop = uv::Loop::MaybeGetLoop(Router()->loop());
+      auto loop = Router()->loop()->MaybeGetUVWLoop();
+      assert(loop);
       auto callback = [this, loop, ports = conf.m_quicServerPorts](
                           quic::Server& serv, quic::Stream& stream, uint16_t port) {
         if (ports.count(port) == 0)

@@ -11,6 +11,11 @@
 #include <future>
 #include <utility>
 
+namespace uvw
+{
+  class Loop;
+}
+
 namespace llarp
 {
   struct SockAddr;
@@ -214,6 +219,14 @@ namespace llarp
     // Returns true if called from within the event loop thread, false otherwise.
     virtual bool
     inEventLoop() const = 0;
+
+    // Returns the uvw::Loop *if* this event loop is backed by a uvw event loop (i.e. the default),
+    // nullptr otherwise.  (This base class default always returns nullptr).
+    virtual std::shared_ptr<uvw::Loop>
+    MaybeGetUVWLoop()
+    {
+      return nullptr;
+    }
   };
 
   using EventLoop_ptr = std::shared_ptr<EventLoop>;
