@@ -268,7 +268,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     {
       conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
     }
-    if (!conf->Load(confFile, opts.isRouter))
+    if (!conf->Load(confFile, opts.isSNode))
       throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
@@ -486,7 +486,7 @@ lokinet_main(int argc, char* argv[])
 
     if (result.count("router") > 0)
     {
-      opts.isRouter = true;
+      opts.isSNode = true;
     }
 
     if (result.count("force") > 0)
@@ -518,7 +518,7 @@ lokinet_main(int argc, char* argv[])
     {
       try
       {
-        llarp::ensureConfig(basedir, *configFile, overwrite, opts.isRouter);
+        llarp::ensureConfig(basedir, *configFile, overwrite, opts.isSNode);
       }
       catch (std::exception& ex)
       {
@@ -548,7 +548,7 @@ lokinet_main(int argc, char* argv[])
     try
     {
       llarp::ensureConfig(
-          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isSNode);
     }
     catch (std::exception& ex)
     {

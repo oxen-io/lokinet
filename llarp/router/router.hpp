@@ -344,7 +344,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) override;
+    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb) override;
 
     bool
     StartRpcServer() override;

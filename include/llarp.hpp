@@ -33,7 +33,7 @@ namespace llarp
   {
     bool background = false;
     bool debug = false;
-    bool isRouter = false;
+    bool isSNode = false;
   };
 
   struct Context

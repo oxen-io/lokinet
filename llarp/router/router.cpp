@@ -284,7 +284,7 @@ namespace llarp
   }
 
   bool
-  Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
     m_Config = std::move(c);
     auto& conf = *m_Config;
@@ -314,7 +314,7 @@ namespace llarp
     }
 
     // fetch keys
-    if (not m_keyManager->initialize(conf, true, isRouter))
+    if (not m_keyManager->initialize(conf, true, isSNode))
       throw std::runtime_error("KeyManager failed to initialize");
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");

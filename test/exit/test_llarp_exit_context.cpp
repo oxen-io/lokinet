@@ -5,7 +5,7 @@
 #include <llarp.hpp>
 #include <catch2/catch.hpp>
 
-static const llarp::RuntimeOptions opts = {.background = false, .debug = false, .isRouter = true};
+static const llarp::RuntimeOptions opts = {.background = false, .debug = false, .isSNode = true};
 
 std::shared_ptr<llarp::Context>
 make_context()

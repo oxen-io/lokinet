@@ -172,7 +172,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) = 0;
+    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
