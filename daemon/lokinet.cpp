@@ -411,20 +411,23 @@ lokinet_main(int argc, char* argv[])
       "LokiNET is a free, open source, private, "
       "decentralized, \"market based sybil resistant\" "
       "and IP based onion routing network");
-  options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())
+  // clang-format off
+  options.add_options()
+      ("v,verbose", "Verbose", cxxopts::value<bool>())
 #ifdef _WIN32
-      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())(
-          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
+      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())
+      ("remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
 #endif
-          ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
-              "g,generate", "generate client config", cxxopts::value<bool>())(
-              "r,router", "run as router instead of client", cxxopts::value<bool>())(
-              "f,force", "overwrite", cxxopts::value<bool>())(
-              "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
-              "b,background",
-              "background mode (start, but do not connect to the network)",
-              cxxopts::value<bool>())(
-              "config", "path to configuration file", cxxopts::value<std::string>());
+      ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())
+      ("g,generate", "generate client config", cxxopts::value<bool>())
+      ("r,router", "run as router instead of client", cxxopts::value<bool>())
+      ("f,force", "overwrite", cxxopts::value<bool>())
+      ("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
+      ("b,background", "background mode (start, but do not connect to the network)",
+       cxxopts::value<bool>())
+      ("config", "path to configuration file", cxxopts::value<std::string>())
+      ;
+  // clang-format on
 
   options.parse_positional("config");
 
@@ -564,7 +567,7 @@ lokinet_main(int argc, char* argv[])
   SetUnhandledExceptionFilter(&GenerateDump);
 #endif
 
-  std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
+  std::thread main_thread{[&] { run_main_context(configFile, opts); }};
   auto ftr = exit_code.get_future();
 
 #ifdef _WIN32
@@ -577,8 +580,7 @@ lokinet_main(int argc, char* argv[])
     if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
       for (const auto& wtf :
-           {"you have been visited by the mascott of the "
-            "deadlocked router.",
+           {"you have been visited by the mascott of the deadlocked router.",
             "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
             "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
             "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
