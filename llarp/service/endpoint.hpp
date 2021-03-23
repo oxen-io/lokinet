@@ -248,9 +248,6 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      EnsureConvo(const AlignedBuffer<32> addr, bool snode, ConvoEventListener_ptr ev);
-
-      bool
       SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
       bool
@@ -445,7 +442,7 @@ namespace llarp
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
-      std::unordered_map<Address, AuthInfo, Address::Hash> m_RemoteAuthInfos;
+      std::unordered_map<Address, AuthInfo> m_RemoteAuthInfos;
 
       /// (lns name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>
@@ -466,7 +463,7 @@ namespace llarp
       const IntroSet& introSet() const;
       IntroSet&       introSet();
 
-      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+      using ConvoMap = std::unordered_map<ConvoTag, Session>;
       const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
       // clang-format on

@@ -39,23 +39,32 @@ namespace llarp
     init();
   }
 
-  SockAddr::SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+  SockAddr::SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, huint16_t port)
   {
     init();
     setIPv4(a, b, c, d);
-  }
-
-  SockAddr::SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port)
-      : SockAddr{a, b, c, d}
-  {
     setPort(port);
   }
 
-  SockAddr::SockAddr(uint32_t ip, uint16_t port)
+  SockAddr::SockAddr(nuint32_t ip, nuint16_t port)
   {
     init();
     setIPv4(ip);
-    setPort(ntohs(port));
+    setPort(port);
+  }
+
+  SockAddr::SockAddr(huint128_t ip, huint16_t port)
+  {
+    init();
+    setIPv6(ip);
+    setPort(port);
+  }
+
+  SockAddr::SockAddr(nuint128_t ip, nuint16_t port)
+  {
+    init();
+    setIPv6(ip);
+    setPort(port);
   }
 
   SockAddr::SockAddr(std::string_view addr)
@@ -66,13 +75,13 @@ namespace llarp
   SockAddr::SockAddr(std::string_view addr, uint16_t port)
   {
     init();
-    setPort(port);
+    setPort(huint16_t{port});
     fromString(addr, false);
   }
 
   SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
   {
-    setPort(info.port);
+    setPort(huint16_t{info.port});
   }
 
   SockAddr::SockAddr(const SockAddr& other)
@@ -138,12 +147,14 @@ namespace llarp
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
     if (ipv6_is_mapped_ipv4(other.sin6_addr))
+    {
       setIPv4(
           other.sin6_addr.s6_addr[12],
           other.sin6_addr.s6_addr[13],
           other.sin6_addr.s6_addr[14],
           other.sin6_addr.s6_addr[15]);
-    setPort(ntohs(other.sin6_port));
+      m_addr4.sin_port = m_addr.sin6_port;
+    }
     m_empty = false;
 
     return *this;
@@ -161,7 +172,10 @@ namespace llarp
 
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
     if (ipv6_is_mapped_ipv4(other))
+    {
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
+      m_addr4.sin_port = m_addr.sin6_port;
+    }
     m_empty = false;
 
     return *this;
@@ -302,14 +316,14 @@ namespace llarp
     return m_empty;
   }
 
-  uint32_t
+  nuint32_t
   SockAddr::getIPv4() const
   {
-    return m_addr4.sin_addr.s_addr;
+    return {m_addr4.sin_addr.s_addr};
   }
 
   void
-  SockAddr::setIPv4(uint32_t ip)
+  SockAddr::setIPv4(nuint32_t ip)
   {
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
@@ -317,8 +331,14 @@ namespace llarp
     applyIPv4MapBytes();
 
     std::memcpy(ip6 + 12, &ip, 4);
-    m_addr4.sin_addr.s_addr = ip;
+    m_addr4.sin_addr.s_addr = ip.n;
     m_empty = false;
+  }
+
+  void
+  SockAddr::setIPv4(huint32_t ip)
+  {
+    setIPv4(ToNet(ip));
   }
 
   void
@@ -339,10 +359,37 @@ namespace llarp
   }
 
   void
-  SockAddr::setPort(uint16_t port)
+  SockAddr::setIPv6(huint128_t ip)
   {
-    m_addr.sin6_port = htons(port);
-    m_addr4.sin_port = htons(port);
+    return setIPv6(ToNet(ip));
+  }
+
+  void
+  SockAddr::setIPv6(nuint128_t ip)
+  {
+    std::memcpy(&m_addr.sin6_addr, &ip, sizeof(m_addr.sin6_addr));
+    if (ipv6_is_mapped_ipv4(m_addr.sin6_addr))
+    {
+      setIPv4(
+          m_addr.sin6_addr.s6_addr[12],
+          m_addr.sin6_addr.s6_addr[13],
+          m_addr.sin6_addr.s6_addr[14],
+          m_addr.sin6_addr.s6_addr[15]);
+      m_addr4.sin_port = m_addr.sin6_port;
+    }
+  }
+
+  void
+  SockAddr::setPort(nuint16_t port)
+  {
+    m_addr.sin6_port = port.n;
+    m_addr4.sin_port = port.n;
+  }
+
+  void
+  SockAddr::setPort(huint16_t port)
+  {
+    setPort(ToNet(port));
   }
 
   uint16_t

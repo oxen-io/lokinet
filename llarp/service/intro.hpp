@@ -70,15 +70,6 @@ namespace llarp
       {
         return pathID != other.pathID || router != other.router;
       }
-
-      struct Hash
-      {
-        size_t
-        operator()(const Introduction& i) const
-        {
-          return PubKey::Hash()(i.router) ^ PathID_t::Hash()(i.pathID);
-        }
-      };
     };
 
     inline std::ostream&
@@ -88,3 +79,16 @@ namespace llarp
     }
   }  // namespace service
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::service::Introduction>
+  {
+    size_t
+    operator()(const llarp::service::Introduction& i) const
+    {
+      return std::hash<llarp::PubKey>{}(i.router) ^ std::hash<llarp::PathID_t>{}(i.pathID);
+    }
+  };
+}  // namespace std

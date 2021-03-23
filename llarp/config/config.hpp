@@ -107,7 +107,7 @@ namespace llarp
     net::IPRangeMap<service::Address> m_ExitMap;
     net::IPRangeMap<std::string> m_LNSExitMap;
 
-    std::unordered_map<service::Address, service::AuthInfo, service::Address::Hash> m_ExitAuths;
+    std::unordered_map<service::Address, service::AuthInfo> m_ExitAuths;
     std::unordered_map<std::string, service::AuthInfo> m_LNSExitAuths;
 
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
@@ -115,7 +115,7 @@ namespace llarp
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
-    std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
+    std::unordered_set<service::Address> m_AuthWhitelist;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
 

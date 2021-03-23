@@ -30,28 +30,6 @@ namespace llarp
 
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
-
-      struct PathIDHash
-      {
-        std::size_t
-        operator()(const PathID_t& a) const
-        {
-          return AlignedBuffer<PathID_t::SIZE>::Hash()(a);
-        }
-      };
-
-      struct Hash
-      {
-        std::size_t
-        operator()(TransitHopInfo const& a) const
-        {
-          std::size_t idx0 = RouterID::Hash()(a.upstream);
-          std::size_t idx1 = RouterID::Hash()(a.downstream);
-          std::size_t idx2 = PathIDHash()(a.txID);
-          std::size_t idx3 = PathIDHash()(a.rxID);
-          return idx0 ^ idx1 ^ idx2 ^ idx3;
-        }
-      };
     };
 
     inline bool
@@ -235,3 +213,18 @@ namespace llarp
     }
   }  // namespace path
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::path::TransitHopInfo>
+  {
+    std::size_t
+    operator()(llarp::path::TransitHopInfo const& a) const
+    {
+      hash<llarp::RouterID> RHash{};
+      hash<llarp::PathID_t> PHash{};
+      return RHash(a.upstream) ^ RHash(a.downstream) ^ PHash(a.txID) ^ PHash(a.rxID);
+    }
+  };
+}  // namespace std

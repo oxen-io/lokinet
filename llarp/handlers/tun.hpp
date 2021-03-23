@@ -200,11 +200,11 @@ namespace llarp
       /// maps ip to key (host byte order)
       std::unordered_map<huint128_t, AlignedBuffer<32>> m_IPToAddr;
       /// maps key to ip (host byte order)
-      std::unordered_map<AlignedBuffer<32>, huint128_t, AlignedBuffer<32>::Hash> m_AddrToIP;
+      std::unordered_map<AlignedBuffer<32>, huint128_t> m_AddrToIP;
 
       /// maps key to true if key is a service node, maps key to false if key is
       /// a hidden service
-      std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
+      std::unordered_map<AlignedBuffer<32>, bool> m_SNodes;
 
      private:
       template <typename Addr_t, typename Endpoint_t>

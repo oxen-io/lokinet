@@ -5,7 +5,7 @@
 
 namespace llarp::util
 {
-  template <typename Key_t, typename Value_t, typename Hash_t = typename Key_t::Hash>
+  template <typename Key_t, typename Value_t, typename Hash_t = std::hash<Key_t>>
   struct DecayingHashTable
   {
     DecayingHashTable(std::chrono::milliseconds cacheInterval = 1h) : m_CacheInterval(cacheInterval)

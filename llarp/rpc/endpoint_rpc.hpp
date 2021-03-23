@@ -15,7 +15,7 @@ namespace llarp::rpc
   {
     using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
     using Endpoint_ptr = std::shared_ptr<llarp::service::Endpoint>;
-    using Whitelist_t = std::unordered_set<llarp::service::Address, llarp::service::Address::Hash>;
+    using Whitelist_t = std::unordered_set<llarp::service::Address>;
 
     explicit EndpointAuthRPC(
         std::string url,

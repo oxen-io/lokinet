@@ -172,7 +172,7 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
-    std::unordered_set<RouterID, RouterID::Hash> closedSessions;
+    std::unordered_set<RouterID> closedSessions;
     std::vector<std::shared_ptr<ILinkSession>> closedPending;
     auto _now = Now();
     {

@@ -13,6 +13,19 @@
 #include <map>
 #include <tuple>
 
+namespace std
+{
+  template <>
+  struct hash<std::pair<llarp::RouterID, llarp::PathID_t>>
+  {
+    size_t
+    operator()(const std::pair<llarp::RouterID, llarp::PathID_t>& i) const
+    {
+      return hash<llarp::RouterID>{}(i.first) ^ hash<llarp::PathID_t>{}(i.second);
+    }
+  };
+}  // namespace std
+
 namespace llarp
 {
   struct RouterContact;
@@ -294,29 +307,9 @@ namespace llarp
       void
       TickPaths(AbstractRouter* r);
 
-      using PathInfo_t = std::pair<RouterID, PathID_t>;
-
-      struct PathInfoHash
-      {
-        size_t
-        operator()(const PathInfo_t& i) const
-        {
-          return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
-        }
-      };
-
-      struct PathInfoEquals
-      {
-        bool
-        operator()(const PathInfo_t& left, const PathInfo_t& right) const
-        {
-          return left.first == right.first && left.second == right.second;
-        }
-      };
-
       using Mtx_t = util::NullMutex;
       using Lock_t = util::NullLock;
-      using PathMap_t = std::unordered_map<PathInfo_t, Path_ptr, PathInfoHash, PathInfoEquals>;
+      using PathMap_t = std::unordered_map<std::pair<RouterID, PathID_t>, Path_ptr>;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };

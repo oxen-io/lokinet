@@ -289,18 +289,22 @@ namespace llarp
       return stream;
     }
 
-    struct Hash
-    {
-      std::size_t
-      operator()(const AlignedBuffer& buf) const noexcept
-      {
-        std::size_t h = 0;
-        std::memcpy(&h, buf.data(), sizeof(std::size_t));
-        return h;
-      }
-    };
-
    private:
     Data m_data;
   };
 }  // namespace llarp
+
+namespace std
+{
+  template <size_t sz>
+  struct hash<llarp::AlignedBuffer<sz>>
+  {
+    std::size_t
+    operator()(const llarp::AlignedBuffer<sz>& buf) const noexcept
+    {
+      std::size_t h = 0;
+      std::memcpy(&h, buf.data(), sizeof(std::size_t));
+      return h;
+    }
+  };
+}  // namespace std

@@ -34,9 +34,9 @@ namespace llarp
 
     struct AbstractContext
     {
-      using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet, TXOwner::Hash>;
-      using PendingRouterLookups = TXHolder<RouterID, RouterContact, RouterID::Hash>;
-      using PendingExploreLookups = TXHolder<RouterID, RouterID, RouterID::Hash>;
+      using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet>;
+      using PendingRouterLookups = TXHolder<RouterID, RouterContact>;
+      using PendingExploreLookups = TXHolder<RouterID, RouterID>;
 
       virtual ~AbstractContext() = 0;
 

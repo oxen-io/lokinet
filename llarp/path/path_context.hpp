@@ -109,7 +109,7 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
-      using TransitHopsMap_t = std::unordered_multimap<PathID_t, TransitHop_ptr, PathID_t::Hash>;
+      using TransitHopsMap_t = std::unordered_multimap<PathID_t, TransitHop_ptr>;
 
       struct SyncTransitMap_t
       {
@@ -129,7 +129,7 @@ namespace llarp
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::unordered_map<PathID_t, Path_ptr, PathID_t::Hash>;
+      using OwnedPathsMap_t = std::unordered_map<PathID_t, Path_ptr>;
 
       struct SyncOwnedPathsMap_t
       {

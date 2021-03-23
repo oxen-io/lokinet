@@ -100,11 +100,10 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
 
-    std::unordered_map<RouterID, std::shared_ptr<PendingSession>, RouterID::Hash> pendingSessions
+    std::unordered_map<RouterID, std::shared_ptr<PendingSession>> pendingSessions
         GUARDED_BY(_mutex);
 
-    std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
 
     AbstractRouter* _router = nullptr;
     ILinkManager* _linkManager = nullptr;

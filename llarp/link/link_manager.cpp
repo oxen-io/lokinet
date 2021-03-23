@@ -296,7 +296,7 @@ namespace llarp
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact& router) const
   {
-    std::unordered_map<RouterID, RouterContact, RouterID::Hash> connectedRouters;
+    std::unordered_map<RouterID, RouterContact> connectedRouters;
 
     ForEachPeer(
         [&connectedRouters](const ILinkSession* peer, bool unused) {

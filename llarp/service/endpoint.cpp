@@ -958,14 +958,14 @@ namespace llarp
     bool
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
-      if ((msg->proto == eProtocolExit
+      if ((msg->proto == ProtocolType::Exit
            && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
-          || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
+          || msg->proto == ProtocolType::TrafficV4 || msg->proto == ProtocolType::TrafficV6)
       {
         m_InboundTrafficQueue.tryPushBack(std::move(msg));
         return true;
       }
-      if (msg->proto == eProtocolControl)
+      if (msg->proto == ProtocolType::Control)
       {
         // TODO: implement me (?)
         // right now it's just random noise
@@ -1014,7 +1014,7 @@ namespace llarp
         msg.PutBuffer(reason);
         f.N.Randomize();
         f.C.Zero();
-        msg.proto = eProtocolAuth;
+        msg.proto = ProtocolType::Auth;
         if (not GetReplyIntroFor(tag, msg.introReply))
         {
           LogError("Failed to send auth reply: no reply intro");
@@ -1252,7 +1252,7 @@ namespace llarp
                 return false;
               pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), ProtocolType::TrafficV4, 0);
             },
             Router(),
             numDesiredPaths,
@@ -1294,31 +1294,25 @@ namespace llarp
 
     void Endpoint::Pump(llarp_time_t)
     {
-      const auto& sessions = m_state->m_SNodeSessions;
-      auto& queue = m_InboundTrafficQueue;
+      FlushRecvData();
+      // send downstream packets to user for snode
+      for (const auto& [router, session] : m_state->m_SNodeSessions)
+        session.first->FlushDownstream();
+      // send downstream traffic to user for hidden service
+      while (not m_InboundTrafficQueue.empty())
+      {
+        auto msg = m_InboundTrafficQueue.popFront();
+        const llarp_buffer_t buf(msg->payload);
+        HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
+      }
 
-      auto epPump = [&]() {
-        FlushRecvData();
-        // send downstream packets to user for snode
-        for (const auto& item : sessions)
-          item.second.first->FlushDownstream();
-        // send downstream traffic to user for hidden service
-        while (not queue.empty())
-        {
-          auto msg = queue.popFront();
-          const llarp_buffer_t buf(msg->payload);
-          HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
-        }
-      };
-
-      epPump();
       auto router = Router();
       // TODO: locking on this container
-      for (const auto& item : m_state->m_RemoteSessions)
-        item.second->FlushUpstream();
+      for (const auto& [addr, outctx] : m_state->m_RemoteSessions)
+        outctx->FlushUpstream();
       // TODO: locking on this container
-      for (const auto& item : sessions)
-        item.second.first->FlushUpstream();
+      for (const auto& [router, session] : m_state->m_SNodeSessions)
+        session.first->FlushUpstream();
 
       // send queue flush
       while (not m_SendQueue.empty())
@@ -1330,17 +1324,6 @@ namespace llarp
 
       UpstreamFlush(router);
       router->linkManager().PumpLinks();
-    }
-
-    bool
-    Endpoint::EnsureConvo(
-        const AlignedBuffer<32> /*addr*/, bool snode, ConvoEventListener_ptr /*ev*/)
-    {
-      if (snode)
-      {}
-
-      // TODO: something meaningful
-      return false;
     }
 
     std::optional<ConvoTag>

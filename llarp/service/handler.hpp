@@ -12,7 +12,8 @@ namespace llarp
 {
   namespace service
   {
-    using ConvoTag = AlignedBuffer<16>;
+    struct ConvoTag final : AlignedBuffer<16>
+    {};
     struct ProtocolMessage;
 
     struct RecvDataEvent

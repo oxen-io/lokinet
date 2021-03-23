@@ -797,7 +797,7 @@ namespace llarp
     });
 
     // find all deregistered relays
-    std::unordered_set<PubKey, PubKey::Hash> closePeers;
+    std::unordered_set<PubKey> closePeers;
 
     _linkManager.ForEachPeer([&](auto session) {
       if (whitelistRouters and not gotWhitelist)

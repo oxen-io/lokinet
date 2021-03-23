@@ -220,14 +220,13 @@ namespace llarp
     return huint16_t{ntohs(x.n)};
   }
 
-  template <typename UInt_t>
-  huint_t<UInt_t>
-  ToHost(nuint_t<UInt_t> h);
+  huint16_t ToHost(nuint16_t);
+  huint32_t ToHost(nuint32_t);
+  huint128_t ToHost(nuint128_t);
 
-  template <typename UInt_t>
-  nuint_t<UInt_t>
-  ToNet(huint_t<UInt_t> h);
-
+  nuint16_t ToNet(huint16_t);
+  nuint32_t ToNet(huint32_t);
+  nuint128_t ToNet(huint128_t);
 }  // namespace llarp
 
 namespace std

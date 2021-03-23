@@ -49,8 +49,13 @@ namespace llarp
       {
         return data()[0] == 0;
       }
-
-      using Hash = AlignedBuffer<SIZE>::Hash;
     };
   }  // namespace service
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::service::Tag> : hash<llarp::AlignedBuffer<llarp::service::Tag::SIZE>>
+  {};
+}  // namespace std

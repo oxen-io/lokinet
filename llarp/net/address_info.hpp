@@ -49,15 +49,6 @@ namespace llarp
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;
-
-    struct Hash
-    {
-      size_t
-      operator()(const AddressInfo& addr) const
-      {
-        return AlignedBuffer<PUBKEYSIZE>::Hash()(addr.pubkey);
-      }
-    };
   };
 
   void
@@ -76,3 +67,16 @@ namespace llarp
   operator<(const AddressInfo& lhs, const AddressInfo& rhs);
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::AddressInfo>
+  {
+    size_t
+    operator()(const llarp::AddressInfo& addr) const
+    {
+      return std::hash<llarp::PubKey>{}(addr.pubkey);
+    }
+  };
+}  // namespace std

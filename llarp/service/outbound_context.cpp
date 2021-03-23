@@ -327,7 +327,7 @@ namespace llarp
             Encrypted<64> tmp;
             tmp.Randomize();
             llarp_buffer_t buf(tmp.data(), tmp.size());
-            AsyncEncryptAndSendTo(buf, eProtocolControl);
+            AsyncEncryptAndSendTo(buf, ProtocolType::Control);
           }
         }
       }
@@ -549,7 +549,7 @@ namespace llarp
           ProtocolMessage msg{};
           if (frame.DecryptPayloadInto(sessionKey, msg))
           {
-            if (msg.proto == eProtocolAuth and not msg.payload.empty())
+            if (msg.proto == ProtocolType::Auth and not msg.payload.empty())
             {
               result.reason = std::string{
                   reinterpret_cast<const char*>(msg.payload.data()), msg.payload.size()};
@@ -572,7 +572,7 @@ namespace llarp
         authResultListener = nullptr;
         hook = [handler](std::shared_ptr<ProtocolMessage> msg) {
           AuthResult result{AuthResultCode::eAuthAccepted, "OK"};
-          if (msg->proto == eProtocolAuth and not msg->payload.empty())
+          if (msg->proto == ProtocolType::Auth and not msg->payload.empty())
           {
             result.reason = std::string{
                 reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()};
@@ -603,7 +603,7 @@ namespace llarp
     void
     OutboundContext::SendPacketToRemote(const llarp_buffer_t& buf)
     {
-      AsyncEncryptAndSendTo(buf, eProtocolExit);
+      AsyncEncryptAndSendTo(buf, ProtocolType::Exit);
     }
 
   }  // namespace service

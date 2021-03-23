@@ -243,3 +243,10 @@ namespace llarp
   /// SH(result, body)
   using shorthash_func = std::function<bool(ShortHash&, const llarp_buffer_t&)>;
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::PubKey> : hash<llarp::AlignedBuffer<llarp::PubKey::SIZE>>
+  {};
+};  // namespace std

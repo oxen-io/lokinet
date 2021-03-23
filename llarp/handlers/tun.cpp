@@ -61,8 +61,8 @@ namespace llarp
         hdr->ttl = 64;
         hdr->frag_off = htons(0b0100000000000000);
 
-        hdr->saddr = from.getIPv4();
-        hdr->daddr = to.getIPv4();
+        hdr->saddr = from.getIPv4().n;
+        hdr->daddr = to.getIPv4().n;
 
         // make udp packet
         uint8_t* ptr = pkt.buf + 20;
@@ -98,8 +98,8 @@ namespace llarp
         const uint8_t* ptr = pkt.buf + ip_header_size;
         const auto dst = ToNet(pkt.dstv4());
         const auto src = ToNet(pkt.srcv4());
-        const SockAddr laddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
-        const SockAddr raddr{dst.n, *reinterpret_cast<const uint16_t*>(ptr + 2)};
+        const SockAddr laddr{src, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
+        const SockAddr raddr{dst, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr + 2)}};
 
         OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
         std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());
@@ -931,7 +931,7 @@ namespace llarp
           {
             (void)ip;
             SendToServiceOrQueue(
-                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::eProtocolExit);
+                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
           }
           return;
         }
@@ -966,7 +966,7 @@ namespace llarp
                   {
                     ctx->sendTimeout = 5s;
                   }
-                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::eProtocolExit);
+                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
                 },
                 1s);
           }
@@ -989,7 +989,7 @@ namespace llarp
               this,
               service::Address(itr->second.as_array()),
               std::placeholders::_1,
-              service::eProtocolExit);
+              service::ProtocolType::Exit);
         }
         else
         {
@@ -1025,8 +1025,8 @@ namespace llarp
         service::ProtocolType t,
         uint64_t seqno)
     {
-      if (t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6
-          && t != service::eProtocolExit)
+      if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
+          && t != service::ProtocolType::Exit)
         return false;
       AlignedBuffer<32> addr;
       bool snode = false;
@@ -1042,7 +1042,7 @@ namespace llarp
       {
         // exit side from exit
         src = ObtainIPForAddr(addr, snode);
-        if (t == service::eProtocolExit)
+        if (t == service::ProtocolType::Exit)
         {
           if (pkt.IsV4())
             dst = pkt.dst4to6();
@@ -1058,7 +1058,7 @@ namespace llarp
           dst = m_OurIP;
         }
       }
-      else if (t == service::eProtocolExit)
+      else if (t == service::ProtocolType::Exit)
       {
         // client side exit traffic from exit
         if (pkt.IsV4())
