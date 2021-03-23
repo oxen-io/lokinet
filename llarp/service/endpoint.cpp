@@ -1381,25 +1381,15 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
+    Endpoint::SendToOrQueue(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
     {
       if (auto maybe = GetEndpointWithConvoTag(tag))
-      {
-        auto addr = *maybe;
-        if (auto ptr = std::get_if<Address>(&addr))
-        {
-          return SendToServiceOrQueue(*ptr, pkt, t);
-        }
-        if (auto ptr = std::get_if<RouterID>(&addr))
-        {
-          return SendToSNodeOrQueue(*ptr, pkt, t);
-        }
-      }
+        return SendToOrQueue(*maybe, pkt, t);
       return false;
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
+    Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
@@ -1514,8 +1504,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(
-        const service::Address& remote, const llarp_buffer_t& data, ProtocolType t)
+    Endpoint::SendToOrQueue(const Address& remote, const llarp_buffer_t& data, ProtocolType t)
     {
       if (data.sz == 0)
         return false;
@@ -1624,6 +1613,13 @@ namespace llarp
         }
       }
       return false;
+    }
+
+    bool
+    Endpoint::SendToOrQueue(
+        const std::variant<Address, RouterID>& addr, const llarp_buffer_t& data, ProtocolType t)
+    {
+      return var::visit([&](auto& addr) { return SendToOrQueue(addr, data, t); }, addr);
     }
 
     bool

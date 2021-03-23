@@ -21,6 +21,7 @@
 #include <optional>
 #include <unordered_map>
 #include <variant>
+#include <oxenmq/variant.h>
 #include "endpoint_types.hpp"
 
 #include "auth.hpp"
@@ -228,9 +229,6 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
-
-      bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
       bool
@@ -365,11 +363,25 @@ namespace llarp
       const std::set<RouterID>&
       SnodeBlacklist() const;
 
+      // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
+      // or a snode (or nothing, if the convo tag is unknown).
       bool
-      SendToServiceOrQueue(
-          const service::Address& addr, const llarp_buffer_t& payload, ProtocolType t);
+      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t);
+
+      // Send a to (or queues for sending) to either an address or router id
       bool
-      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
+      SendToOrQueue(
+          const std::variant<Address, RouterID>& addr,
+          const llarp_buffer_t& payload,
+          ProtocolType t);
+
+      // Sends to (or queues for sending) to a remote client
+      bool
+      SendToOrQueue(const Address& addr, const llarp_buffer_t& payload, ProtocolType t);
+
+      // Sends to (or queues for sending) to a router
+      bool
+      SendToOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);

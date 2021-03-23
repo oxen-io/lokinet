@@ -902,8 +902,6 @@ namespace llarp
     TunEndpoint::FlushSend()
     {
       m_UserToNetworkPktQueue.Process([&](net::IPPacket& pkt) {
-        std::function<bool(const llarp_buffer_t&)> sendFunc;
-
         huint128_t dst, src;
         if (pkt.IsV4())
         {
@@ -927,7 +925,7 @@ namespace llarp
           for (const auto& [ip, addr] : m_IPToAddr)
           {
             (void)ip;
-            SendToServiceOrQueue(
+            SendToOrQueue(
                 service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
           }
           return;
@@ -963,41 +961,27 @@ namespace llarp
                   {
                     ctx->sendTimeout = 5s;
                   }
-                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
+                  self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
                 },
                 1s);
           }
           return;
         }
         bool rewriteAddrs = true;
+        std::variant<service::Address, RouterID> to;
+        service::ProtocolType type;
         if (m_SNodes.at(itr->second))
         {
-          sendFunc = std::bind(
-              &TunEndpoint::SendToSNodeOrQueue,
-              this,
-              RouterID{itr->second.as_array()},
-              std::placeholders::_1,
-              service::ProtocolType::TrafficV4);
-        }
-        else if (m_state->m_ExitEnabled and src != m_OurIP)
-        {
-          rewriteAddrs = false;
-          sendFunc = std::bind(
-              &TunEndpoint::SendToServiceOrQueue,
-              this,
-              service::Address{itr->second.as_array()},
-              std::placeholders::_1,
-              service::ProtocolType::Exit);
+          to = RouterID{itr->second.as_array()};
+          type = service::ProtocolType::TrafficV4;
         }
         else
         {
-          sendFunc = std::bind(
-              &TunEndpoint::SendToServiceOrQueue,
-              this,
-              service::Address{itr->second.as_array()},
-              std::placeholders::_1,
-              pkt.ServiceProtocol());
+          to = service::Address{itr->second.as_array()};
+          type = m_state->m_ExitEnabled and src != m_OurIP ? service::ProtocolType::Exit
+                                                           : pkt.ServiceProtocol();
         }
+
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
         if (rewriteAddrs)
@@ -1007,7 +991,7 @@ namespace llarp
           else
             pkt.UpdateIPv6Address({0}, {0});
         }
-        if (sendFunc && sendFunc(pkt.Buffer()))
+        if (SendToOrQueue(to, pkt.Buffer(), type))
         {
           MarkIPActive(dst);
           return;
