@@ -22,8 +22,10 @@ namespace llarp
     // If you are logging a char/unsigned char/uint8_t then promote it to an integer so that we
     // print numeric values rather than std::ostream's default of printing it as a raw char.
     using PlainT = std::remove_reference_t<TArg>;
-    if constexpr (is_same_any_v<PlainT, char, unsigned char, signed char, uint8_t, std::byte>)
+    if constexpr (is_same_any_v<PlainT, char, unsigned char, signed char, uint8_t>)
       ss << +std::forward<TArg>(arg);  // Promote to int
+    else if constexpr (std::is_same_v<PlainT, std::byte>)
+      ss << std::to_integer<int>(arg);
     else
       ss << std::forward<TArg>(arg);
     if constexpr (sizeof...(TArgs))
