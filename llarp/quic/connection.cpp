@@ -126,7 +126,7 @@ namespace llarp::quic
             // At this stage of the protocol with TLS the client sends back TLS info so that
             // the server can install our rx key; we have to send *something* back to invoke
             // the server's HANDSHAKE callback (so that it knows handshake is complete) so
-            // sent the magic again.
+            // send the magic again.
             if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_HANDSHAKE); rv != 0)
               return rv;
           }
@@ -263,6 +263,18 @@ namespace llarp::quic
       return 0;
     }
     int
+    extend_max_local_streams_bidi(ngtcp2_conn* conn_, uint64_t max_streams, void* user_data)
+    {
+      LogTrace("######################", __func__);
+      auto& conn = *static_cast<Connection*>(user_data);
+      if (conn.on_stream_available)
+        if (uint64_t left = ngtcp2_conn_get_streams_bidi_left(conn); left > 0)
+          conn.on_stream_available(conn);
+
+      return 0;
+    }
+
+    int
     rand(
         uint8_t* dest,
         size_t destlen,
@@ -361,10 +373,11 @@ namespace llarp::quic
   std::tuple<ngtcp2_settings, ngtcp2_transport_params, ngtcp2_callbacks>
   Connection::init()
   {
-    io_trigger = endpoint.loop->resource<uvw::AsyncHandle>();
+    auto loop = endpoint.get_loop();
+    io_trigger = loop->resource<uvw::AsyncHandle>();
     io_trigger->on<uvw::AsyncEvent>([this](auto&, auto&) { on_io_ready(); });
 
-    retransmit_timer = endpoint.loop->resource<uvw::TimerHandle>();
+    retransmit_timer = loop->resource<uvw::TimerHandle>();
     retransmit_timer->on<uvw::TimerEvent>([this](auto&, auto&) {
       LogTrace("Retransmit timer fired!");
       if (auto rv = ngtcp2_conn_handle_expiry(*this, get_timestamp()); rv != 0)
@@ -389,6 +402,7 @@ namespace llarp::quic
     cb.acked_stream_data_offset = acked_stream_data_offset;
     cb.stream_open = stream_open;
     cb.stream_reset = stream_reset_cb;
+    cb.extend_max_local_streams_bidi = extend_max_local_streams_bidi;
     cb.rand = rand;
     cb.get_new_connection_id = get_new_connection_id;
     cb.remove_connection_id = remove_connection_id;
@@ -770,7 +784,7 @@ namespace llarp::quic
     stream->stream_id = id;
     bool good = true;
     if (serv->stream_open_callback)
-      good = serv->stream_open_callback(*serv, *stream, tunnel_port);
+      good = serv->stream_open_callback(*stream, tunnel_port);
     if (!good)
     {
       LogDebug("stream_open_callback returned failure, dropping stream ", id);
@@ -897,16 +911,29 @@ namespace llarp::quic
     return endpoint.add_connection_id(*this, cidlen);
   }
 
+  bool
+  Connection::get_handshake_completed()
+  {
+    return ngtcp2_conn_get_handshake_completed(*this) != 0;
+  }
+
+  int
+  Connection::get_streams_available()
+  {
+    uint64_t left = ngtcp2_conn_get_streams_bidi_left(*this);
+    constexpr int max_int = std::numeric_limits<int>::max();
+    if (left > static_cast<uint64_t>(max_int))
+      return max_int;
+    return static_cast<int>(left);
+  }
+
   const std::shared_ptr<Stream>&
   Connection::open_stream(Stream::data_callback_t data_cb, Stream::close_callback_t close_cb)
   {
     std::shared_ptr<Stream> stream{new Stream{
         *this, std::move(data_cb), std::move(close_cb), endpoint.default_stream_buffer_size}};
     if (int rv = ngtcp2_conn_open_bidi_stream(*this, &stream->stream_id.id, stream.get()); rv != 0)
-    {
-      LogWarn("Creating stream failed: ", ngtcp2_strerror(rv));
       throw std::runtime_error{"Stream creation failed: "s + ngtcp2_strerror(rv)};
-    }
 
     auto& str = streams[stream->stream_id];
     str = std::move(stream);
@@ -979,6 +1006,12 @@ namespace llarp::quic
     if (!ngtcp2_conn_is_server(*this))
       endpoint.null_crypto.install_tx_key(*this);
     ngtcp2_conn_handshake_completed(*this);
+
+    if (on_handshake_complete)
+    {
+      on_handshake_complete(*this);
+      on_handshake_complete = nullptr;
+    }
   }
 
   // ngtcp2 doesn't expose the varint encoding, but it's fairly simple:

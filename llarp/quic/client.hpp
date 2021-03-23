@@ -1,8 +1,15 @@
 #pragma once
 
 #include "endpoint.hpp"
+#include "service/endpoint.hpp"
 
 #include <optional>
+
+namespace uvw
+{
+  struct ListenEvent;
+  class TCPHandle;
+}  // namespace uvw
 
 namespace llarp::quic
 {
@@ -10,9 +17,10 @@ namespace llarp::quic
   {
    public:
     // Constructs a client that establishes an outgoing connection to `remote` to tunnel packets to
-    // `tunnel_port` on the remote's lokinet address. `local` can be used to optionally bind to a
-    // local IP and/or port for the connection.
-    Client(service::ConvoTag remote, service::Endpoint* parent, uint16_t tunnel_port);
+    // `remote.getPort()` on the remote's lokinet address.  `pseudo_port` is *our* unique local
+    // identifier which we include in outgoing packets (so that the remote server knows where to
+    // send the back to *this* client).
+    Client(service::Endpoint& ep, const SockAddr& remote, uint16_t pseudo_port);
 
     // Returns a reference to the client's connection to the server. Returns a nullptr if there is
     // no connection.
@@ -20,8 +28,8 @@ namespace llarp::quic
     get_connection();
 
    private:
-    void
-    handle_packet(const Packet& p) override;
+    size_t
+    write_packet_header(nuint16_t remote_port, uint8_t ecn) override;
   };
 
 }  // namespace llarp::quic

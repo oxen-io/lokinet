@@ -35,6 +35,11 @@
 
 namespace llarp
 {
+  namespace quic
+  {
+    class TunnelManager;
+  }
+
   namespace service
   {
     struct AsyncKeyExchange;
@@ -386,6 +391,11 @@ namespace llarp
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);
 
+      /// Returns a pointer to the quic::Tunnel object handling quic connections for this endpoint.
+      /// Returns nullptr if quic is not supported.
+      quic::TunnelManager*
+      GetQUICTunnel();
+
      protected:
       /// parent context that owns this endpoint
       Context* const context;
@@ -437,6 +447,7 @@ namespace llarp
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
       std::unordered_map<Address, AuthInfo> m_RemoteAuthInfos;
+      std::unique_ptr<quic::TunnelManager> m_quic;
 
       /// (lns name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>
@@ -462,8 +473,6 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
-
-      std::shared_ptr<quic::Server> m_QuicServer;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

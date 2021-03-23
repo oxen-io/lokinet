@@ -622,16 +622,6 @@ namespace llarp
           m_SRVRecords.push_back(std::move(newSRV));
         });
 
-    conf.defineOption<uint16_t>(
-        "network",
-        "expose",
-        ClientOnly,
-        MultiValue,
-        Comment{
-            "expose a local port via quic for liblokinet",
-        },
-        [this](uint16_t port) { m_quicServerPorts.insert(port); });
-
     // Deprecated options:
     conf.defineOption<std::string>("network", "enabled", Deprecated);
   }

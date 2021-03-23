@@ -1,5 +1,7 @@
 #pragma once
 
+#include <llarp/net/sock_addr.hpp>
+
 #include <array>
 #include <cassert>
 #include <cstring>
@@ -14,14 +16,8 @@
 
 namespace llarp::quic
 {
-  union sockaddr_any
-  {
-    sockaddr_storage storage;
-    sockaddr sa;
-    sockaddr_in6 in6;
-    sockaddr_in in;
-  };
-
+  // Wrapper around a sockaddr; ngtcp2 requires more intrusive access that llarp::SockAddr is meant
+  // to deal with, hence this wrapper (rather than trying to abuse llarp::SockAddr).
   class Address
   {
     sockaddr_in6 saddr{};
@@ -29,19 +25,18 @@ namespace llarp::quic
 
    public:
     Address() = default;
-    Address(service::ConvoTag tag);
+    Address(const SockAddr& addr);
 
     Address(const Address& other)
     {
       *this = other;
     }
 
-    service::ConvoTag
-    Tag() const;
-
     Address&
     operator=(const Address&);
 
+    // Implicit conversion to sockaddr* and ngtcp2_addr& so that an Address can be passed wherever
+    // one of those is expected.
     operator sockaddr*()
     {
       return reinterpret_cast<sockaddr*>(&saddr);
@@ -66,6 +61,32 @@ namespace llarp::quic
     sockaddr_size() const
     {
       return sizeof(sockaddr_in6);
+    }
+
+    // Implicit conversion to a convo tag so you can pass an Address to things taking a ConvoTag
+    operator service::ConvoTag() const;
+
+    // Returns the lokinet pseudo-port for the quic connection (which routes this quic packet to the
+    // correct waiting quic instance on the remote).
+    nuint16_t
+    port() const
+    {
+      return nuint16_t{saddr.sin6_port};
+    }
+
+    // Sets the address port
+    void
+    port(nuint16_t port)
+    {
+      saddr.sin6_port = port.n;
+    }
+
+    // Implicit conversion to SockAddr for going back to general llarp code
+    // FIXME: see if this is still needed, I think it may have been refactored away with the
+    // ConvoTag operator
+    operator SockAddr() const
+    {
+      return SockAddr(saddr);
     }
 
     std::string

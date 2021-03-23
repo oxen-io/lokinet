@@ -197,6 +197,12 @@ namespace llarp
     return &m_addr;
   }
 
+  size_t
+  SockAddr::sockaddr_len() const
+  {
+    return isIPv6() ? sizeof(m_addr) : sizeof(m_addr4);
+  }
+
   bool
   SockAddr::operator<(const SockAddr& other) const
   {

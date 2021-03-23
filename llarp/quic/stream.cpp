@@ -60,7 +60,7 @@ namespace llarp::quic
       , conn{conn}
       , stream_id{std::move(id)}
       , buffer{buffer_size}
-      , avail_trigger{conn.endpoint.get_loop().resource<uvw::AsyncHandle>()}
+      , avail_trigger{conn.endpoint.get_loop()->resource<uvw::AsyncHandle>()}
   {
     avail_trigger->on<uvw::AsyncEvent>([this](auto&, auto&) { handle_unblocked(); });
   }

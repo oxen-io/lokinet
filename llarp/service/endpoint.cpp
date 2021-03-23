@@ -30,7 +30,7 @@
 #include <llarp/hook/shell.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
-#include <llarp/quic/server.hpp>
+#include <llarp/quic/tunnel.hpp>
 
 #include <optional>
 #include <utility>
@@ -56,6 +56,9 @@ namespace llarp
       m_state->m_Router = r;
       m_state->m_Name = "endpoint";
       m_RecvQueue.enable();
+
+      if (Loop()->MaybeGetUVWLoop())
+        m_quic = std::make_unique<quic::TunnelManager>(*this);
     }
 
     bool
@@ -82,64 +85,6 @@ namespace llarp
           auth = itr->second;
         m_StartupLNSMappings[name] = std::make_pair(range, auth);
       });
-
-      auto loop = Router()->loop()->MaybeGetUVWLoop();
-      assert(loop);
-      auto callback = [this, loop, ports = conf.m_quicServerPorts](
-                          quic::Server& serv, quic::Stream& stream, uint16_t port) {
-        if (ports.count(port) == 0)
-        {
-          return false;
-        }
-
-        stream.close_callback = [](quic::Stream& st,
-                                   [[maybe_unused]] std::optional<uint64_t> errcode) {
-          auto tcp = st.data<uvw::TCPHandle>();
-          if (tcp)
-            tcp->close();
-        };
-
-        auto localIP = net::TruncateV6(GetIfAddr());
-
-        std::string localhost = localIP.ToString();
-
-        auto tcp = loop->resource<uvw::TCPHandle>();
-        auto error_handler = tcp->once<uvw::ErrorEvent>(
-            [&stream, localhost, port](const uvw::ErrorEvent&, uvw::TCPHandle&) {
-              LogWarn("Failed to connect to ", localhost, ":", port, ", shutting down quic stream");
-              stream.close(quic::tunnel::ERROR_CONNECT);
-            });
-        tcp->once<uvw::ConnectEvent>(
-            [streamw = stream.weak_from_this(), error_handler = std::move(error_handler)](
-                const uvw::ConnectEvent&, uvw::TCPHandle& tcp) {
-              auto peer = tcp.peer();
-              auto stream = streamw.lock();
-              if (!stream)
-              {
-                LogWarn(
-                    "Connected to ",
-                    peer.ip,
-                    ":",
-                    peer.port,
-                    " but quic stream has gone away; resetting local connection");
-                tcp.closeReset();
-                return;
-              }
-              LogDebug("Connected to ", peer.ip, ":", peer.port, " for quic ", stream->id());
-              tcp.erase(error_handler);
-              quic::tunnel::install_stream_forwarding(tcp, *stream);
-              assert(stream->used() == 0);
-
-              stream->append_buffer(new std::byte[1]{quic::tunnel::CONNECT_INIT}, 1);
-              tcp.read();
-            });
-
-        tcp->connect(localhost, port);
-
-        return true;
-      };
-
-      m_QuicServer = std::make_shared<quic::Server>(this, loop, callback);
 
       return m_state->Configure(conf);
     }
@@ -1727,6 +1672,12 @@ namespace llarp
       if (itr == m_RemoteAuthInfos.end())
         return std::nullopt;
       return itr->second;
+    }
+
+    quic::TunnelManager*
+    Endpoint::GetQUICTunnel()
+    {
+      return m_quic.get();
     }
 
   }  // namespace service

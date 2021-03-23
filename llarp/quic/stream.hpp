@@ -258,6 +258,13 @@ namespace llarp::quic
               : std::get<std::weak_ptr<void>>(user_data).lock());
     }
 
+    // Returns a reference to the connection that owns this stream
+    Connection&
+    get_connection()
+    {
+      return conn;
+    }
+
    private:
     friend class Connection;
 

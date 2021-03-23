@@ -9,11 +9,10 @@ namespace llarp::quic
   class Server : public Endpoint
   {
    public:
-    using stream_open_callback_t =
-        std::function<bool(Server& server, Stream& stream, uint16_t port)>;
+    using stream_open_callback_t = std::function<bool(Stream& stream, uint16_t port)>;
 
-    Server(
-        service::Endpoint*, std::shared_ptr<uvw::Loop> loop, stream_open_callback_t stream_opened);
+    Server(service::Endpoint& service_endpoint) : Endpoint{service_endpoint}
+    {}
 
     // Stream callback: takes the server, the (just-created) stream, and the connection port.
     // Returns true if the stream should be allowed or false to reject the stream.  The callback
@@ -21,21 +20,14 @@ namespace llarp::quic
     // (which means incoming data will simply be dropped).
     stream_open_callback_t stream_open_callback;
 
-    int
-    setup_null_crypto(ngtcp2_conn* conn);
-
    private:
-    // Handles an incoming packet by figuring out and handling the connection id; if necessary we
-    // send back a version negotiation or a connection close frame, or drop the packet (if in the
-    // draining state).  If we get through all of the above then it's a packet to read, in which
-    // case we pass it on to read_packet().
-    void
-    handle_packet(const Packet& p) override;
-
-    // Creates a new connection from an incoming packet.  Returns a nullptr if the connection can't
-    // be created.
+    // Accept a new incoming connection, i.e. pre-handshake.  Returns a nullptr if the connection
+    // can't be created (e.g. because of invalid initial data), or is invalid.
     std::shared_ptr<Connection>
-    accept_connection(const Packet& p);
+    accept_initial_connection(const Packet& p) override;
+
+    size_t
+    write_packet_header(nuint16_t pport, uint8_t ecn) override;
   };
 
 }  // namespace llarp::quic

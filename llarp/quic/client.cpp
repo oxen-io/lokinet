@@ -1,62 +1,46 @@
-
 #include "client.hpp"
+#include "tunnel.hpp"
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/logger.hpp>
 
+#include <uvw/tcp.h>
 #include <oxenmq/variant.h>
 #include <llarp/service/address.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/ev/ev_libuv.hpp>
 
+#include <variant>
+
 namespace llarp::quic
 {
-  Client::Client(service::ConvoTag tag, service::Endpoint* parent, uint16_t tunnel_port)
-      : Endpoint{parent, parent->Loop()->MaybeGetUVWLoop()}
+  Client::Client(service::Endpoint& ep, const SockAddr& remote, uint16_t pseudo_port) : Endpoint{ep}
   {
-    // Our UDP socket is now set up, so now we initiate contact with the remote QUIC
-    Address remote{std::move(tag)};
+    default_stream_buffer_size =
+        0;  // We steal uvw's provided buffers so don't need an outgoing data buffer
 
-    Path path{local, remote};
-    llarp::LogDebug("Connecting to ", remote);
+    // *Our* port; we stuff this in the llarp quic header so it knows how to target quic packets
+    // back to *this* client.
+    local_addr.port(ToNet(huint16_t{pseudo_port}));
 
+    uint16_t tunnel_port = remote.getPort();
     if (tunnel_port == 0)
       throw std::logic_error{"Cannot tunnel to port 0"};
 
     // TODO: need timers for:
     //
-    // - timeout (to disconnect if idle for too longer)
+    // - timeout (to disconnect if idle for too long)
     //
     // - probably don't need for lokinet tunnel: change local addr -- attempts to re-bind the local
     // socket
     //
     // - key_update_timer
-    //
-    // - delay_stream_timer
 
-    auto connptr = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
-    auto& conn = *connptr;
-    conns.emplace(conn.base_cid, connptr);
+    Path path{local_addr, remote};
+    llarp::LogDebug("Connecting to ", remote);
 
-    /*    Debug("set crypto ctx");
-
-        null_crypto.client_initial(conn);
-
-        auto x = ngtcp2_conn_get_max_data_left(conn);
-        Debug("mdl = ", x);
-        */
-
-    conn.io_ready();
-
-    /*
-    Debug("Opening bidi stream");
-    int64_t stream_id;
-    if (auto rv = ngtcp2_conn_open_bidi_stream(conn, &stream_id, nullptr);
-            rv != 0) {
-        Debug("Opening bidi stream failed: ", ngtcp2_strerror(rv));
-        assert(rv == NGTCP2_ERR_STREAM_ID_BLOCKED);
-    }
-    else { Debug("Opening bidi stream good"); }
-    */
+    auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
+    conn->io_ready();
+    conns.emplace(conn->base_cid, std::move(conn));
   }
 
   std::shared_ptr<Connection>
@@ -72,29 +56,13 @@ namespace llarp::quic
     return std::get<primary_conn_ptr>(it->second);
   }
 
-  void
-  Client::handle_packet(const Packet& p)
+  size_t
+  Client::write_packet_header(nuint16_t, uint8_t ecn)
   {
-    llarp::LogDebug("Handling incoming client packet: ", buffer_printer{p.data});
-    auto maybe_dcid = handle_packet_init(p);
-    if (!maybe_dcid)
-      return;
-    auto& dcid = *maybe_dcid;
-
-    llarp::LogDebug("Incoming connection id ", dcid);
-    auto [connptr, alias] = get_conn(dcid);
-    if (!connptr)
-    {
-      llarp::LogDebug("CID is ", alias ? "expired alias" : "unknown/expired", "; dropping");
-      return;
-    }
-    auto& conn = *connptr;
-    if (alias)
-      llarp::LogDebug("CID is alias for primary CID ", conn.base_cid);
-    else
-      llarp::LogDebug("CID is primary CID");
-
-    handle_conn_packet(conn, p);
+    buf_[0] = CLIENT_TO_SERVER;
+    auto pseudo_port = local_addr.port();
+    std::memcpy(&buf_[1], &pseudo_port.n, 2);  // remote quic pseudo-port (network order u16)
+    buf_[3] = std::byte{ecn};
+    return 4;
   }
-
 }  // namespace llarp::quic

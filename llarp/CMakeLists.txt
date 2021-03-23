@@ -95,8 +95,6 @@ add_library(lokinet-quic
   quic/server.cpp
   quic/stream.cpp
   quic/tunnel.cpp
-  quic/tunnel_client.cpp
-  quic/tunnel_server.cpp
 )
 
 target_link_libraries(lokinet-quic PRIVATE lokinet-platform ngtcp2)

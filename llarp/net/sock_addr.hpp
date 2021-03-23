@@ -68,6 +68,9 @@ namespace llarp
     operator const sockaddr_in*() const;
     operator const sockaddr_in6*() const;
 
+    size_t
+    sockaddr_len() const;
+
     bool
     operator<(const SockAddr& other) const;
 

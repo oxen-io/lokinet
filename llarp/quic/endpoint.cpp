@@ -5,6 +5,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/service/endpoint.hpp>
+#include <llarp/ev/ev_libuv.hpp>
 
 #include <iostream>
 #include <random>
@@ -21,13 +22,12 @@ extern "C"
 
 namespace llarp::quic
 {
-  Endpoint::Endpoint(service::Endpoint* parent_, std::shared_ptr<uvw::Loop> loop_)
-      : parent{parent_}, loop{std::move(loop_)}
+  Endpoint::Endpoint(service::Endpoint& ep) : service_endpoint{ep}
   {
     randombytes_buf(static_secret.data(), static_secret.size());
 
     // Set up a callback every 250ms to clean up stale sockets, etc.
-    expiry_timer = loop->resource<uvw::TimerHandle>();
+    expiry_timer = get_loop()->resource<uvw::TimerHandle>();
     expiry_timer->on<uvw::TimerEvent>([this](const auto&, auto&) { check_timeouts(); });
     expiry_timer->start(250ms, 250ms);
 
@@ -38,6 +38,61 @@ namespace llarp::quic
   {
     if (expiry_timer)
       expiry_timer->close();
+  }
+
+  std::shared_ptr<uvw::Loop>
+  Endpoint::get_loop()
+  {
+    auto loop = service_endpoint.Loop()->MaybeGetUVWLoop();
+    assert(loop);  // This object should never have been constructed if we aren't using uvw
+    return loop;
+  }
+
+  void
+  Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
+  {
+    // ngtcp2 wants a local address but we don't necessarily have something so just set it to
+    // IPv4 or IPv6 "unspecified" address (0.0.0.0 or ::)
+    SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
+
+    Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
+
+    LogDebug("[", pkt.path, ",ecn=", pkt.info.ecn, "]: received ", data.size(), " bytes");
+
+    handle_packet(pkt);
+
+    LogDebug("Done handling packet");
+  }
+
+  void
+  Endpoint::handle_packet(const Packet& p)
+  {
+    LogDebug("Handling incoming quic packet: ", buffer_printer{p.data});
+    auto maybe_dcid = handle_packet_init(p);
+    if (!maybe_dcid)
+      return;
+    auto& dcid = *maybe_dcid;
+
+    // See if we have an existing connection already established for it
+    LogDebug("Incoming connection id ", dcid);
+    auto [connptr, alias] = get_conn(dcid);
+    if (!connptr)
+    {
+      if (alias)
+      {
+        LogDebug("CID is an expired alias; dropping");
+        return;
+      }
+      connptr = accept_initial_connection(p);
+      if (!connptr)
+        return;
+    }
+    if (alias)
+      llarp::LogDebug("CID is alias for primary CID ", connptr->base_cid);
+    else
+      llarp::LogDebug("CID is primary CID");
+
+    handle_conn_packet(*connptr, p);
   }
 
   std::optional<ConnectionID>
@@ -119,32 +174,20 @@ namespace llarp::quic
     return {rv};
   }
 
-  void
-  Endpoint::update_ecn(uint32_t ecn)
-  {
-    assert(ecn <= std::numeric_limits<uint8_t>::max());
-    if (ecn_curr != ecn)
-    {
-      ecn_curr = ecn;
-    }
-  }
-
   io_result
-  Endpoint::send_packet(const Address& to, bstring_view data, uint32_t ecn)
+  Endpoint::send_packet(const Address& to, bstring_view data, uint8_t ecn)
   {
-    update_ecn(ecn);
+    assert(service_endpoint.Loop()->inEventLoop());
 
-    parent->SendTo(to.Tag(), data, service::ProtocolType::QUIC);
-    LogDebug(
-        "[",
-        to.to_string(),
-        ",ecn=0x",
-        std::hex,
-        +ecn_curr,
-        std::dec,
-        "]: sent ",
-        data.size(),
-        " bytes");
+    size_t header_size = write_packet_header(to.port(), ecn);
+    size_t outgoing_len = header_size + data.size();
+    assert(outgoing_len <= buf_.size());
+    std::memcpy(&buf_[header_size], data.data(), data.size());
+    bstring_view outgoing{buf_.data(), outgoing_len};
+
+    service_endpoint.SendToOrQueue(to, outgoing, service::ProtocolType::QUIC);
+    LogDebug("[", to, "]: sent ", outgoing.size(), " bytes");
+    LogTrace("Full quic data: ", buffer_printer{outgoing});
     return {};
   }
 
@@ -207,15 +250,11 @@ namespace llarp::quic
       conn.conn_buffer.resize(written);
       conn.closing = true;
 
-      // FIXME: ipv6
-      assert(path.local.sockaddr_size() == sizeof(sockaddr_in));
-      assert(path.remote.sockaddr_size() == sizeof(sockaddr_in));
-
       conn.path = path;
     }
     assert(conn.closing && !conn.conn_buffer.empty());
 
-    if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); !sent)
+    if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
     {
       LogWarn(
           "Failed to send packet: ",

@@ -121,8 +121,6 @@ namespace llarp
 
     std::optional<huint128_t> m_baseV6Address;
 
-    std::unordered_set<uint16_t> m_quicServerPorts;
-
     // TODO:
     // on-up
     // on-down

@@ -184,26 +184,28 @@ namespace llarp::quic
     // when the connection is initiated.
     std::map<StreamID, std::shared_ptr<Stream>> streams;
 
-    /// Constructs and initializes a new connection received by a Server
+    /// Constructs and initializes a new incoming connection
     ///
-    /// \param s - the Server object on which the connection was initiated
+    /// \param server - the Server object that owns this connection
     /// \param base_cid - the local "primary" ConnectionID we use for this connection, typically
-    /// random \param header - packet header that initiated the connection \param path - the network
-    /// path to reach the remote
-    Connection(Server& s, const ConnectionID& base_cid, ngtcp2_pkt_hd& header, const Path& path);
+    /// random
+    /// \param header - packet header that initiated the connection \param path - the network path
+    /// to reach the remote
+    Connection(
+        Server& server, const ConnectionID& base_cid, ngtcp2_pkt_hd& header, const Path& path);
 
     /// Establishes a connection from the local Client to a remote Server
-    /// \param c - the Client object from which the connection is being made
+    /// \param client - the Endpoint object that owns this connection
     /// \param base_cid - the client's source (i.e. local) connection ID, typically random
     /// \param path - the network path to reach the remote
     /// \param tunnel_port - the port that this connection should tunnel to on the remote end
-    Connection(Client& c, const ConnectionID& scid, const Path& path, uint16_t tunnel_port);
+    Connection(Client& client, const ConnectionID& scid, const Path& path, uint16_t tunnel_port);
 
     // Non-movable, non-copyable:
     Connection(Connection&&) = delete;
+    Connection(const Connection&) = delete;
     Connection&
     operator=(Connection&&) = delete;
-    Connection(const Connection&) = delete;
     Connection&
     operator=(const Connection&) = delete;
 
@@ -264,6 +266,25 @@ namespace llarp::quic
     // used to specify the size of the cid (default is full size).
     ConnectionID
     make_alias_id(size_t cidlen = ConnectionID::max_size());
+
+    // A callback to invoke when the connection handshake completes.  Will be cleared after being
+    // called.
+    std::function<void(Connection&)> on_handshake_complete;
+
+    // Returns true iff this connection has completed a handshake with the remote end.
+    bool
+    get_handshake_completed();
+
+    // Callback that is invoked whenever new streams become available: i.e. after handshaking, or
+    // after existing streams are closed.  Note that this callback is invoked whenever the number of
+    // available streams increases, even if it was initially non-zero before the increase.  To see
+    // how many streams are currently available call `get_streams_available()` (it will always be at
+    // least 1 when this callback is invoked).
+    std::function<void(Connection&)> on_stream_available;
+
+    // Returns the number of available streams that can currently be opened on the connection
+    int
+    get_streams_available();
 
     // Opens a stream over this connection; when the server receives this it attempts to establish a
     // TCP connection to the tunnel configured in the connection.  The data callback is invoked as

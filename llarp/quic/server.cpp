@@ -12,59 +12,11 @@
 
 namespace llarp::quic
 {
-  Server::Server(
-      service::Endpoint* parent,
-      std::shared_ptr<uvw::Loop> loop,
-      stream_open_callback_t stream_open)
-      : Endpoint{parent, std::move(loop)}, stream_open_callback{std::move(stream_open)}
-  {}
-
-  void
-  Server::handle_packet(const Packet& p)
-  {
-    LogDebug("Handling incoming server packet: ", buffer_printer{p.data});
-    auto maybe_dcid = handle_packet_init(p);
-    if (!maybe_dcid)
-      return;
-    auto& dcid = *maybe_dcid;
-
-    // See if we have an existing connection already established for it
-    LogDebug("Incoming connection id ", dcid);
-    primary_conn_ptr connptr;
-    if (auto conn_it = conns.find(dcid); conn_it != conns.end())
-    {
-      if (auto* wptr = std::get_if<alias_conn_ptr>(&conn_it->second))
-      {
-        connptr = wptr->lock();
-        if (!connptr)
-          LogDebug("CID is an expired alias");
-        else
-          LogDebug("CID is an alias for primary CID ", connptr->base_cid);
-      }
-      else
-      {
-        connptr = var::get<primary_conn_ptr>(conn_it->second);
-        LogDebug("CID is primary");
-      }
-    }
-    else
-    {
-      connptr = accept_connection(p);
-    }
-
-    if (!connptr)
-    {
-      LogWarn("invalid or expired connection, ignoring");
-      return;
-    }
-
-    handle_conn_packet(*connptr, p);
-  }
-
   std::shared_ptr<Connection>
-  Server::accept_connection(const Packet& p)
+  Server::accept_initial_connection(const Packet& p)
   {
     LogDebug("Accepting new connection");
+
     // This is a new incoming connection
     ngtcp2_pkt_hd hd;
     auto rv = ngtcp2_accept(&hd, u8data(p.data), p.data.size());
@@ -85,10 +37,6 @@ namespace llarp::quic
       return nullptr;
     }
 
-    /*
-    ngtcp2_cid ocid;
-    ngtcp2_cid *pocid = nullptr;
-    */
     if (hd.type == NGTCP2_PKT_0RTT)
     {
       LogWarn("Received 0-RTT packet, which shouldn't happen in our implementation; dropping");
@@ -112,6 +60,15 @@ namespace llarp::quic
         return connptr;
       }
     }
+  }
+
+  size_t
+  Server::write_packet_header(nuint16_t pport, uint8_t ecn)
+  {
+    buf_[0] = SERVER_TO_CLIENT;
+    std::memcpy(&buf_[1], &pport.n, 2);  // remote quic pseudo-port (network order u16)
+    buf_[3] = std::byte{ecn};
+    return 4;
   }
 
 }  // namespace llarp::quic

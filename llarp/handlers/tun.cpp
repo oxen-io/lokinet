@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <llarp/net/net.hpp>
 #include <variant>
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
@@ -12,14 +11,17 @@
 
 #include <llarp/dns/dns.hpp>
 #include <llarp/ev/ev.hpp>
+#include <llarp/net/net.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/name.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/quic/tunnel.hpp>
 #include <llarp/rpc/endpoint_rpc.hpp>
 
 #include <llarp/util/str.hpp>
@@ -89,8 +91,8 @@ namespace llarp
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
-      m_PacketRouter.reset(
-          new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
+      m_PacketRouter = std::make_unique<vpn::PacketRouter>(
+          [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
 #ifdef ANDROID
       m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
@@ -1007,6 +1009,23 @@ namespace llarp
         service::ProtocolType t,
         uint64_t seqno)
     {
+      if (t == service::ProtocolType::QUIC)
+      {
+        auto* quic = GetQUICTunnel();
+        if (!quic)
+        {
+          LogWarn("incoming quic packet but this endpoint is not quic capable; dropping");
+          return false;
+        }
+        if (buf.sz < 4)
+        {
+          LogWarn("invalid incoming quic packet, dropping");
+          return false;
+        }
+        quic->receive_packet(tag, buf);
+        return true;
+      }
+
       if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
           && t != service::ProtocolType::Exit)
         return false;

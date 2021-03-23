@@ -6,31 +6,22 @@
 #include "null_crypto.hpp"
 #include "packet.hpp"
 #include "stream.hpp"
-#include "uvw/async.h"
+#include <llarp/net/ip_packet.hpp>
 
 #include <chrono>
 #include <map>
 #include <memory>
 #include <queue>
 #include <unordered_map>
-
 #include <vector>
 
-#include <uvw/loop.h>
-#include <uvw/poll.h>
+#include <uvw/async.h>
 #include <uvw/timer.h>
-
-#include <llarp/service/convotag.hpp>
 
 namespace llarp::service
 {
   struct Endpoint;
 }  // namespace llarp::service
-
-namespace llarp::net
-{
-  struct IPPacket;
-}
 
 namespace llarp::quic
 {
@@ -38,20 +29,38 @@ namespace llarp::quic
 
   inline constexpr auto IDLE_TIMEOUT = 5min;
 
+  inline constexpr std::byte CLIENT_TO_SERVER{1};
+  inline constexpr std::byte SERVER_TO_CLIENT{2};
+
+  /// QUIC Tunnel Endpoint; this is the class that implements either end of a quic tunnel for both
+  /// servers and clients.
   class Endpoint
   {
+   public:
+    /// Called from tun code via TunnelManager to deliver an incoming packet to us.
+    ///
+    /// \param src - the source address; this may be a tun interface address, or may be a fake IPv6
+    /// address based on the convo tag.  The port is not used.
+    /// \param ecn - the packet ecn parameter
+    void
+    receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data);
+
+    /// Returns a shared pointer to the uvw loop.
+    std::shared_ptr<uvw::Loop>
+    get_loop();
+
    protected:
     /// the service endpoint we are owned by
-    service::Endpoint* const parent;
-    // The current outgoing IP ecn value for the socket
-    uint8_t ecn_curr = 0;
+    service::Endpoint& service_endpoint;
 
-    /// local "address" just a blank
-    Address local{};
+    /// local "address" is the IPv6 unspecified address since we don't have (or care about) the
+    /// actual local address for building quic packets.  The port of this address must be set to our
+    /// local pseudo-port, for clients, and 0 for a server.
+    Address local_addr{in6addr_any};
 
     std::shared_ptr<uvw::TimerHandle> expiry_timer;
-    std::shared_ptr<uvw::Loop> loop;
 
+    std::vector<std::byte> buf;
     // Max theoretical size of a UDP packet is 2^16-1 minus IP/UDP header overhead
     static constexpr size_t max_buf_size = 64 * 1024;
     // Max size of a UDP packet that we'll send
@@ -96,8 +105,7 @@ namespace llarp::quic
 
     friend class Connection;
 
-    // Wires up an endpoint connection.
-    Endpoint(service::Endpoint* ep, std::shared_ptr<uvw::Loop> loop);
+    explicit Endpoint(service::Endpoint& service_endpoint_);
 
     virtual ~Endpoint();
 
@@ -112,8 +120,8 @@ namespace llarp::quic
     };
 
     // Called to handle an incoming packet
-    virtual void
-    handle_packet(const Packet& p) = 0;
+    void
+    handle_packet(const Packet& p);
 
     // Internal method: handles initial common packet decoding, returns the connection ID or nullopt
     // if decoding failed.
@@ -123,27 +131,47 @@ namespace llarp::quic
     void
     handle_conn_packet(Connection& c, const Packet& p);
 
+    // Accept a new incoming connection, i.e. pre-handshake.  Returns a nullptr if the connection
+    // can't be created (e.g. because of invalid initial data), or if incoming connections are not
+    // accepted by this endpoint (i.e. because it is not a Server instance, or because there are no
+    // registered listen handlers).  The base class default returns nullptr.
+    virtual std::shared_ptr<Connection>
+    accept_initial_connection(const Packet&)
+    {
+      return nullptr;
+    }
+
     // Reads a packet and handles various error conditions.  Returns an io_result.  Note that it is
     // possible for the conn_it to be erased from `conns` if the error code is anything other than
     // success (0) or NGTCP2_ERR_RETRY.
     io_result
     read_packet(const Packet& p, Connection& conn);
 
-    // Sets up the ECN IP field (IP_TOS for IPv4) for the next outgoing packet sent via
-    // send_packet().  This does the actual syscall (if ECN is different than currently set), and is
-    // typically called implicitly via send_packet().
-    void
-    update_ecn(uint32_t ecn);
+    // Writes the lokinet packet header to the beginning of `buf_`; the header is prepend to quic
+    // packets to identify which quic server the packet should be delivered to and consists of:
+    // - type [1 byte]: 1 for client->server packets; 2 for server->client packets (other values
+    // reserved)
+    // - port [2 bytes, network order]: client pseudoport (i.e. either a source or destination port
+    // depending on type)
+    // - ecn value [1 byte]: provided by ngtcp2.  (Only the lower 2 bits are actually used).
+    //
+    // \param psuedo_port - the remote's pseudo-port (will be 0 if the remote is a server, > 0 for
+    // a client remote)
+    // \param ecn - the ecn value from ngtcp2
+    //
+    // Returns the number of bytes written to buf_.
+    virtual size_t
+    write_packet_header(nuint16_t pseudo_port, uint8_t ecn) = 0;
 
     // Sends a packet to `to` containing `data`. Returns a non-error io_result on success,
     // an io_result with .error_code set to the errno of the failure on failure.
     io_result
-    send_packet(const Address& to, bstring_view data, uint32_t ecn);
+    send_packet(const Address& to, bstring_view data, uint8_t ecn);
 
     // Wrapper around the above that takes a regular std::string_view (i.e. of chars) and recasts
     // it to an string_view of std::bytes.
     io_result
-    send_packet(const Address& to, std::string_view data, uint32_t ecn)
+    send_packet(const Address& to, std::string_view data, uint8_t ecn)
     {
       return send_packet(
           to, bstring_view{reinterpret_cast<const std::byte*>(data.data()), data.size()}, ecn);
@@ -151,7 +179,7 @@ namespace llarp::quic
 
     // Another wrapper taking a vector
     io_result
-    send_packet(const Address& to, const std::vector<std::byte>& data, uint32_t ecn)
+    send_packet(const Address& to, const std::vector<std::byte>& data, uint8_t ecn)
     {
       return send_packet(to, bstring_view{data.data(), data.size()}, ecn);
     }
@@ -212,12 +240,12 @@ namespace llarp::quic
     // Default stream buffer size for streams opened through this endpoint.
     size_t default_stream_buffer_size = 64 * 1024;
 
-    // Gets a reference to the UV event loop
-    uvw::Loop&
-    get_loop()
-    {
-      return *loop;
-    }
+    // Packet buffer we use when constructing custom packets to fire over lokinet
+    std::array<std::byte, net::IPPacket::MaxSize> buf_;
+
+    // Non-copyable, non-movable
+    Endpoint(const Endpoint&) = delete;
+    Endpoint(Endpoint&&) = delete;
   };
 
 }  // namespace llarp::quic
