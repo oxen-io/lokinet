@@ -88,7 +88,7 @@ namespace llarp
     if (log.curLevel > lvl || log.logStream == nullptr)
       return;
     std::ostringstream ss;
-    if constexpr (sizeof...(args))
+    if constexpr (sizeof...(args) > 0)
       LogAppend(ss, std::forward<TArgs>(args)...);
     log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
   }
