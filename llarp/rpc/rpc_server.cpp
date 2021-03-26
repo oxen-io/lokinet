@@ -2,8 +2,10 @@
 #include <llarp/router/route_poker.hpp>
 #include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
+#include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/route.hpp>
+#include <llarp/quic/tunnel.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/auth.hpp>
@@ -52,6 +54,19 @@ namespace llarp::rpc
 
   /// a function that replies to an rpc request
   using ReplyFunction_t = std::function<void(std::string)>;
+
+  std::shared_ptr<EndpointBase>
+  GetEndpointByName(AbstractRouter* r, std::string name)
+  {
+    if (r->IsServiceNode())
+    {
+      return r->exitContext().GetExitEndpoint(name);
+    }
+    else
+    {
+      return r->hiddenServiceContext().GetEndpointByName(name);
+    }
+  }
 
   void
   HandleJSONRequest(
@@ -116,6 +131,177 @@ namespace llarp::rpc
                   data = CreateJSONError("router not yet ready");
                 }
                 defer.reply(data);
+              });
+            })
+        .add_request_command(
+            "quic_connect",
+            [&](oxenmq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                std::string endpoint = "default";
+                if (auto itr = obj.find("endpoint"); itr != obj.end())
+                  endpoint = itr->get<std::string>();
+
+                std::string remoteHost;
+                if (auto itr = obj.find("host"); itr != obj.end())
+                  remoteHost = itr->get<std::string>();
+
+                uint16_t port = 0;
+                if (auto itr = obj.find("port"); itr != obj.end())
+                  port = itr->get<uint16_t>();
+
+                int closeID = 0;
+                if (auto itr = obj.find("close"); itr != obj.end())
+                  closeID = itr->get<int>();
+
+                if (port == 0 and closeID == 0)
+                {
+                  reply(CreateJSONError("port not provided"));
+                  return;
+                }
+                if (remoteHost.empty() and closeID == 0)
+                {
+                  reply(CreateJSONError("host not provided"));
+                  return;
+                }
+
+                r->loop()->call([reply, endpoint, r, remoteHost, port, closeID]() {
+                  auto ep = GetEndpointByName(r, endpoint);
+                  if (not ep)
+                  {
+                    reply(CreateJSONError("no such local endpoint"));
+                    return;
+                  }
+                  auto quic = ep->GetQUICTunnel();
+                  if (not quic)
+                  {
+                    reply(CreateJSONError("local endpoint has no quic tunnel"));
+                    return;
+                  }
+                  if (closeID)
+                  {
+                    quic->close(closeID);
+                    reply(CreateJSONResponse("OK"));
+                    return;
+                  }
+
+                  auto status = std::make_shared<util::StatusObject>();
+
+                  auto hook = [status, reply](bool success) {
+                    if (success)
+                    {
+                      reply(CreateJSONResponse(*status));
+                    }
+                    else
+                    {
+                      reply(CreateJSONError("failed"));
+                    }
+                  };
+                  auto [addr, id] = quic->open(remoteHost, port, hook);
+                  status->operator[]("addr") = addr.toString();
+                  status->operator[]("id") = id;
+                });
+              });
+            })
+        .add_request_command(
+            "quic_listener",
+            [&](oxenmq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                std::string endpoint = "default";
+                if (auto itr = obj.find("endpoint"); itr != obj.end())
+                  endpoint = itr->get<std::string>();
+
+                uint16_t port = 0;
+                if (auto itr = obj.find("port"); itr != obj.end())
+                  port = itr->get<uint16_t>();
+
+                int closeID = 0;
+                if (auto itr = obj.find("close"); itr != obj.end())
+                  closeID = itr->get<int>();
+
+                if (port == 0 and closeID == 0)
+                {
+                  reply(CreateJSONError("invalid arguments"));
+                  return;
+                }
+                r->loop()->call([reply, endpoint, port, r, closeID]() {
+                  auto ep = GetEndpointByName(r, endpoint);
+                  if (not ep)
+                  {
+                    reply(CreateJSONError("no such local endpoint"));
+                    return;
+                  }
+                  auto quic = ep->GetQUICTunnel();
+                  if (not quic)
+                  {
+                    reply(CreateJSONError("no quic interface available on endpoint " + endpoint));
+                    return;
+                  }
+                  if (port)
+                  {
+                    int id = 0;
+                    try
+                    {
+                      id = quic->listen(port);
+                    }
+                    catch (std::exception& ex)
+                    {
+                      reply(CreateJSONError(ex.what()));
+                      return;
+                    }
+                    util::StatusObject result{{"id", id}};
+                    reply(CreateJSONResponse(result));
+                  }
+                  else if (closeID)
+                  {
+                    quic->forget(closeID);
+                    reply(CreateJSONResponse("OK"));
+                  }
+                });
+              });
+            })
+        .add_request_command(
+            "lookup_snode",
+            [&](oxenmq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                if (not r->IsServiceNode())
+                {
+                  reply(CreateJSONError("not supported"));
+                  return;
+                }
+                RouterID routerID;
+                if (auto itr = obj.find("snode"); itr != obj.end())
+                {
+                  std::string remote = itr->get<std::string>();
+                  if (not routerID.FromString(remote))
+                  {
+                    reply(CreateJSONError("invalid remote: " + remote));
+                    return;
+                  }
+                }
+                else
+                {
+                  reply(CreateJSONError("no remote provided"));
+                  return;
+                }
+                std::string endpoint = "default";
+                r->loop()->call([r, endpoint, routerID, reply]() {
+                  auto ep = r->exitContext().GetExitEndpoint(endpoint);
+                  if (ep == nullptr)
+                  {
+                    reply(CreateJSONError("cannot find local endpoint: " + endpoint));
+                    return;
+                  }
+                  ep->ObtainSNodeSession(routerID, [routerID, ep, reply](auto session) {
+                    if (session and session->IsReady())
+                    {
+                      const auto ip = net::TruncateV6(ep->GetIPForIdent(PubKey{routerID}));
+                      util::StatusObject status{{"ip", ip.ToString()}};
+                      reply(CreateJSONResponse(status));
+                    }
+                    else
+                      reply(CreateJSONError("failed to obtain snode session"));
+                  });
+                });
               });
             })
         .add_request_command(

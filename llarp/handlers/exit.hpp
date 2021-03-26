@@ -129,12 +129,15 @@ namespace llarp
       Flush();
 
       quic::TunnelManager*
-      GetQUICTunnel();
+      GetQUICTunnel() override;
 
-     private:
       huint128_t
       GetIPForIdent(const PubKey pk);
+      /// async obtain snode session and call callback when it's ready to send
+      void
+      ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb);
 
+     private:
       huint128_t
       AllocateNewAddress();
 
@@ -142,10 +145,6 @@ namespace llarp
       /// not existing already
       huint128_t
       ObtainServiceNodeIP(const RouterID& router);
-
-      /// async obtain snode session and call callback when it's ready to send
-      void
-      ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb);
 
       bool
       QueueSNodePacket(const llarp_buffer_t& buf, huint128_t from);

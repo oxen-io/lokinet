@@ -14,12 +14,20 @@
 
 namespace llarp
 {
+  namespace quic
+  {
+    class TunnelManager;
+  }
+
   class EndpointBase
   {
    public:
     virtual ~EndpointBase() = default;
 
     using AddressVariant_t = std::variant<service::Address, RouterID>;
+
+    virtual quic::TunnelManager*
+    GetQUICTunnel() = 0;
 
     virtual std::optional<AddressVariant_t>
     GetEndpointWithConvoTag(service::ConvoTag tag) const = 0;

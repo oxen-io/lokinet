@@ -95,7 +95,7 @@ namespace llarp
         itr->second->Tick(now);
         if (itr->second->Pump(now))
         {
-          LogInfo("marking session as dead T=", itr->first);
+          LogInfo("marking session as dead T=", itr->second->currentConvoTag);
           itr->second->Stop();
           sessions.erase(itr->second->currentConvoTag);
           deadSessions.emplace(std::move(*itr));

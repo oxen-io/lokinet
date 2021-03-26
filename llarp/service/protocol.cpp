@@ -412,7 +412,6 @@ namespace llarp
       msg->handler = handler;
       if (T.IsZero())
       {
-        LogInfo("Got protocol frame with new convo");
         // we need to dh
         auto dh = std::make_shared<AsyncFrameDecrypt>(
             loop, localIdent, handler, msg, *this, recvPath->intro);

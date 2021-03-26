@@ -399,7 +399,7 @@ namespace llarp
       /// Returns a pointer to the quic::Tunnel object handling quic connections for this endpoint.
       /// Returns nullptr if quic is not supported.
       quic::TunnelManager*
-      GetQUICTunnel();
+      GetQUICTunnel() override;
 
      protected:
       /// parent context that owns this endpoint

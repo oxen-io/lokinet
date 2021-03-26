@@ -1248,7 +1248,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    _exitContext.AddExitEndpoint("default-connectivity", m_Config->network, m_Config->dns);
+    _exitContext.AddExitEndpoint("default", m_Config->network, m_Config->dns);
     return true;
   }
 

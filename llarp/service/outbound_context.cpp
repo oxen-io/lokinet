@@ -67,6 +67,8 @@ namespace llarp
         if (intro.expiresAt > m_NextIntro.expiresAt)
           m_NextIntro = intro;
       }
+
+      currentConvoTag.Randomize();
     }
 
     OutboundContext::~OutboundContext() = default;
@@ -182,12 +184,10 @@ namespace llarp
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
     {
-      if (not currentConvoTag.IsZero())
-        return;
       if (remoteIntro.router.IsZero())
         SwapIntros();
 
-      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (path == nullptr)
       {
         // try parent as fallback
@@ -200,7 +200,6 @@ namespace llarp
           return;
         }
       }
-      currentConvoTag.Randomize();
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
           m_Endpoint->Loop(),
