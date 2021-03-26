@@ -45,6 +45,8 @@ namespace llarp
 
     using Data = std::array<byte_t, SIZE>;
 
+    virtual ~AlignedBuffer() = default;
+
     AlignedBuffer()
     {
       Zero();
