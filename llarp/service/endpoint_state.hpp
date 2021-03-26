@@ -10,11 +10,14 @@
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashtable.hpp>
 #include <llarp/util/status.hpp>
+#include "lns_tracker.hpp"
 
 #include <memory>
 #include <queue>
 #include <set>
 #include <unordered_map>
+
+#include <oxenmq/variant.h>
 
 namespace llarp
 {
@@ -64,7 +67,10 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      util::DecayingHashTable<std::string, Address, std::hash<std::string>> nameCache;
+      util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
+          nameCache;
+
+      LNSLookupTracker lnsTracker;
 
       bool
       Configure(const NetworkConfig& conf);

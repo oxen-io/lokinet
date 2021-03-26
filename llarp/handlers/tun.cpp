@@ -354,6 +354,20 @@ namespace llarp
             2s);
       };
 
+      auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
+                                     auto addr, auto msg, bool isV6) {
+        if (auto ptr = std::get_if<RouterID>(&addr))
+        {
+          ReplyToSNodeDNSWhenReady(*ptr, msg, isV6);
+          return;
+        }
+        if (auto ptr = std::get_if<service::Address>(&addr))
+        {
+          ReplyToLokiDNSWhenReady(*ptr, msg, isV6);
+          return;
+        }
+      };
+
       auto ReplyToLokiSRVWhenReady = [self = this, reply = reply](
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
@@ -483,10 +497,10 @@ namespace llarp
         }
         else if (service::NameIsValid(lnsName))
         {
-          return LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
+          LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
             if (maybe.has_value())
             {
-              msg.AddMXReply(maybe->ToString(), 1);
+              var::visit([&](auto&& value) { msg.AddMXReply(value.ToString(), 1); }, *maybe);
             }
             else
             {
@@ -494,6 +508,7 @@ namespace llarp
             }
             reply(msg);
           });
+          return true;
         }
         else
           msg.AddNXReply();
@@ -617,14 +632,14 @@ namespace llarp
         }
         else if (service::NameIsValid(lnsName))
         {
-          return LookupNameAsync(
+          LookupNameAsync(
               lnsName,
               [msg = std::make_shared<dns::Message>(msg),
                name = Name(),
                lnsName,
                isV6,
                reply,
-               ReplyToLokiDNSWhenReady](auto maybe) {
+               ReplyToDNSWhenReady](auto maybe) {
                 if (not maybe.has_value())
                 {
                   LogWarn(name, " lns name ", lnsName, " not resolved");
@@ -632,9 +647,9 @@ namespace llarp
                   reply(*msg);
                   return;
                 }
-                LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
-                ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
+                ReplyToDNSWhenReady(*maybe, msg, isV6);
               });
+          return true;
         }
         else
           msg.AddNXReply();

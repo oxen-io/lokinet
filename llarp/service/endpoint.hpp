@@ -21,6 +21,8 @@
 
 #include "auth.hpp"
 
+#include <oxenmq/variant.h>
+
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -218,8 +220,10 @@ namespace llarp
       bool
       LookupRouterAnon(RouterID router, RouterLookupHandler handler);
 
-      bool
-      LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> resultHandler);
+      void
+      LookupNameAsync(
+          std::string name,
+          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler);
 
       /// called on event loop pump
       virtual void

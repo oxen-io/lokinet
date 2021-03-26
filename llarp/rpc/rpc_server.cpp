@@ -294,12 +294,15 @@ namespace llarp::rpc
                           reply(CreateJSONError("we could not find an exit with that name"));
                           return;
                         }
-                        if (maybe->IsZero())
+                        if (auto ptr = std::get_if<service::Address>(&*maybe))
                         {
-                          reply(CreateJSONError("lokinet exit does not exist"));
+                          mapExit(*ptr);
+                        }
+                        else
+                        {
+                          reply(CreateJSONError("lns name resolved to a snode"));
                           return;
                         }
-                        mapExit(*maybe);
                       });
                     }
                     else
