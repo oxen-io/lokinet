@@ -148,24 +148,32 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueInboundTraffic(ManagedBuffer buf)
+    Endpoint::QueueInboundTraffic(ManagedBuffer buf, service::ProtocolType type)
     {
-      llarp::net::IPPacket pkt;
-      if (!pkt.Load(buf.underlying))
-        return false;
-
-      huint128_t src;
-      if (m_RewriteSource)
-        src = m_Parent->GetIfAddr();
+      llarp::net::IPPacket pkt{};
+      if (type == service::ProtocolType::QUIC)
+      {
+        pkt.sz = std::min(buf.underlying.sz, sizeof(pkt.buf));
+        std::copy_n(buf.underlying.base, pkt.sz, pkt.buf);
+      }
       else
-        src = pkt.srcv6();
-      if (pkt.IsV6())
-        pkt.UpdateIPv6Address(src, m_IP);
-      else
-        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+      {
+        if (!pkt.Load(buf.underlying))
+          return false;
 
-      const auto _pktbuf = pkt.Buffer();
-      const llarp_buffer_t& pktbuf = _pktbuf.underlying;
+        huint128_t src;
+        if (m_RewriteSource)
+          src = m_Parent->GetIfAddr();
+        else
+          src = pkt.srcv6();
+        if (pkt.IsV6())
+          pkt.UpdateIPv6Address(src, m_IP);
+        else
+          pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+      }
+      const auto _pktbuf = pkt.ConstBuffer();
+      auto& pktbuf = _pktbuf.underlying;
+
       const uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
       if (m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});

@@ -8,6 +8,7 @@
 #include <llarp/util/bits.hpp>
 
 #include <llarp/quic/tunnel.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
 
 #include <cassert>
 #include "service/protocol_type.hpp"
@@ -42,6 +43,11 @@ namespace llarp
     std::optional<EndpointBase::AddressVariant_t>
     ExitEndpoint::GetEndpointWithConvoTag(service::ConvoTag tag) const
     {
+      for (const auto& [pathID, pk] : m_Paths)
+      {
+        if (pathID.as_array() == tag.as_array())
+          return RouterID{pk.as_array()};
+      }
       for (const auto& [rid, session] : m_SNodeSessions)
       {
         PathID_t pathID{tag.as_array()};
@@ -56,12 +62,21 @@ namespace llarp
     {
       if (auto* rid = std::get_if<RouterID>(&addr))
       {
+        service::ConvoTag tag{};
+        auto visit = [&tag](exit::Endpoint* const ep) -> bool {
+          if (ep)
+            tag = service::ConvoTag{ep->LocalPath().as_array()};
+          return true;
+        };
+        if (VisitEndpointsFor(PubKey{*rid}, visit) and not tag.IsZero())
+          return tag;
         auto itr = m_SNodeSessions.find(*rid);
         if (itr == m_SNodeSessions.end())
           return std::nullopt;
         if (auto path = itr->second->GetPathByRouter(*rid))
         {
-          return service::ConvoTag{path->TXID().as_array()};
+          tag = service::ConvoTag{path->TXID().as_array()};
+          return tag;
         }
         return std::nullopt;
       }
@@ -85,6 +100,18 @@ namespace llarp
           return false;
         if (auto* rid = std::get_if<RouterID>(&*maybeAddr))
         {
+          auto range = m_ActiveExits.equal_range(PubKey{*rid});
+          auto itr = range.first;
+          while (itr != range.second)
+          {
+            if (not itr->second->LooksDead(Now()))
+            {
+              if (itr->second->QueueInboundTraffic(ManagedBuffer{payload}, type))
+                return true;
+              ++itr;
+            }
+          }
+
           std::vector<byte_t> data{};
           data.resize(payload.sz);
           std::copy_n(payload.base, data.size(), data.data());
@@ -288,6 +315,11 @@ namespace llarp
     void
     ExitEndpoint::ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb)
     {
+      if (not m_Router->rcLookupHandler().RemoteIsAllowed(router))
+      {
+        obtainCb(nullptr);
+        return;
+      }
       ObtainServiceNodeIP(router);
       m_SNodeSessions[router]->AddReadyHook(obtainCb);
     }
@@ -300,7 +332,7 @@ namespace llarp
 
     bool
     ExitEndpoint::VisitEndpointsFor(
-        const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit)
+        const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const
     {
       auto range = m_ActiveExits.equal_range(pk);
       auto itr = range.first;
@@ -343,7 +375,8 @@ namespace llarp
           }
         }
         auto tryFlushingTraffic = [&](exit::Endpoint* const ep) -> bool {
-          if (!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
+          if (!ep->QueueInboundTraffic(
+                  ManagedBuffer{pkt.Buffer()}, service::ProtocolType::TrafficV4))
           {
             LogWarn(
                 Name(),

@@ -57,7 +57,7 @@ namespace llarp
 
       /// queue traffic from service node / internet to be transmitted
       bool
-      QueueInboundTraffic(ManagedBuffer buff);
+      QueueInboundTraffic(ManagedBuffer buff, service::ProtocolType t);
 
       /// flush inbound and outbound traffic queues
       bool
