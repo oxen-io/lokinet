@@ -1,7 +1,6 @@
 include(Version)
 
 add_library(lokinet-util
-  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
@@ -42,7 +41,6 @@ if(ANDROID)
 endif()
 
 add_library(lokinet-platform
-  STATIC
   # for networking
   ev/ev.cpp
   ev/ev_libuv.cpp
@@ -86,21 +84,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
   target_include_directories(lokinet-platform SYSTEM PUBLIC /usr/local/include)
 endif()
 
-add_library(lokinet-quic
-  quic/address.cpp
-  quic/client.cpp
-  quic/connection.cpp
-  quic/endpoint.cpp
-  quic/null_crypto.cpp
-  quic/server.cpp
-  quic/stream.cpp
-  quic/tunnel.cpp
-)
-
-target_link_libraries(lokinet-quic PRIVATE lokinet-platform ngtcp2)
-
 add_library(liblokinet
-  STATIC
   config/config.cpp
   config/definition.cpp
   config/ini.cpp
@@ -175,15 +159,26 @@ add_library(liblokinet
   peerstats/types.cpp
   pow.cpp
   profiling.cpp
+
+  quic/address.cpp
+  quic/client.cpp
+  quic/connection.cpp
+  quic/endpoint.cpp
+  quic/null_crypto.cpp
+  quic/server.cpp
+  quic/stream.cpp
+  quic/tunnel.cpp
+
+  router_contact.cpp
+  router_id.cpp
+  router_version.cpp
+  service/name.cpp
   router/outbound_message_handler.cpp
   router/outbound_session_maker.cpp
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp
   router/route_poker.cpp
-  router_contact.cpp
-  router_id.cpp
-  router_version.cpp
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
@@ -219,7 +214,7 @@ add_library(liblokinet
 
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
-enable_lto(lokinet-util lokinet-platform lokinet-quic liblokinet)
+enable_lto(lokinet-util lokinet-platform liblokinet)
   
 if(TRACY_ROOT)
   target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
@@ -237,7 +232,7 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokinet-quic sqlite_orm ngtcp2)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 
