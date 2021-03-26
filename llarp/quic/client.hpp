@@ -1,7 +1,7 @@
 #pragma once
 
 #include "endpoint.hpp"
-#include "service/endpoint.hpp"
+#include "llarp/endpoint_base.hpp"
 
 #include <optional>
 
@@ -20,7 +20,7 @@ namespace llarp::quic
     // `remote.getPort()` on the remote's lokinet address.  `pseudo_port` is *our* unique local
     // identifier which we include in outgoing packets (so that the remote server knows where to
     // send the back to *this* client).
-    Client(service::Endpoint& ep, const SockAddr& remote, uint16_t pseudo_port);
+    Client(EndpointBase& ep, const SockAddr& remote, uint16_t pseudo_port);
 
     // Returns a reference to the client's connection to the server. Returns a nullptr if there is
     // no connection.

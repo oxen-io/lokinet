@@ -3,6 +3,7 @@
 #include <llarp/crypto/types.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/time.hpp>
 
 #include <queue>
@@ -65,7 +66,7 @@ namespace llarp
       /// queue outbound traffic
       /// does ip rewrite here
       bool
-      QueueOutboundTraffic(ManagedBuffer pkt, uint64_t counter);
+      QueueOutboundTraffic(ManagedBuffer pkt, uint64_t counter, service::ProtocolType t);
 
       /// update local path id and cascade information to parent
       /// return true if success

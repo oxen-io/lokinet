@@ -1304,7 +1304,7 @@ namespace llarp
             numDesiredPaths,
             numHops,
             false,
-            ShouldBundleRC());
+            GetQUICTunnel());
 
         m_state->m_SNodeSessions.emplace(snode, std::make_pair(session, tag));
       }

@@ -9,6 +9,8 @@ namespace llarp::service
 {
   struct ConvoTag final : AlignedBuffer<16>
   {
+    using AlignedBuffer<16>::AlignedBuffer;
+
     void
     Randomize() override;
 

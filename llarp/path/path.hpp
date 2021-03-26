@@ -80,7 +80,8 @@ namespace llarp
       using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrame&)>;
       using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
       using ExitClosedFunc = std::function<bool(Path_ptr)>;
-      using ExitTrafficHandlerFunc = std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t)>;
+      using ExitTrafficHandlerFunc =
+          std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t, service::ProtocolType)>;
       /// (path, backoff) backoff is 0 on success
       using ObtainedExitHandler = std::function<bool(Path_ptr, llarp_time_t)>;
 

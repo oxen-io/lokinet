@@ -4,6 +4,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/quic/tunnel.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <utility>
@@ -18,13 +19,14 @@ namespace llarp
         AbstractRouter* r,
         size_t numpaths,
         size_t hoplen,
-        bool bundleRC)
-        : llarp::path::Builder(r, numpaths, hoplen)
-        , m_ExitRouter(routerId)
-        , m_WritePacket(std::move(writepkt))
-        , m_Counter(0)
-        , m_LastUse(r->Now())
-        , m_BundleRC(bundleRC)
+        quic::TunnelManager* quictun)
+        : llarp::path::Builder{r, numpaths, hoplen}
+        , m_ExitRouter{routerId}
+        , m_WritePacket{std::move(writepkt)}
+        , m_Counter{0}
+        , m_LastUse{r->Now()}
+        , m_BundleRC{false}
+        , m_QUIC{quictun}
     {
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
@@ -180,8 +182,21 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path_ptr, const llarp_buffer_t& buf, uint64_t counter)
+    BaseSession::HandleTraffic(
+        llarp::path::Path_ptr path,
+        const llarp_buffer_t& buf,
+        uint64_t counter,
+        service::ProtocolType t)
     {
+      if (t == service::ProtocolType::QUIC)
+      {
+        if (buf.sz < 4 or not m_QUIC)
+          return false;
+        service::ConvoTag tag{path->TXID().as_array()};
+        m_QUIC->receive_packet(tag, buf);
+        return true;
+      }
+
       if (m_WritePacket)
       {
         llarp::net::IPPacket pkt;
@@ -321,8 +336,8 @@ namespace llarp
         size_t numpaths,
         size_t hoplen,
         bool useRouterSNodeKey,
-        bool bundleRC)
-        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
+        quic::TunnelManager* quictun)
+        : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, quictun}
     {
       if (useRouterSNodeKey)
       {

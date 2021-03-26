@@ -108,8 +108,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueOutboundTraffic(ManagedBuffer buf, uint64_t counter)
+    Endpoint::QueueOutboundTraffic(ManagedBuffer buf, uint64_t counter, service::ProtocolType t)
     {
+      if (t == service::ProtocolType::QUIC)
+        return false;
       // queue overflow
       if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;

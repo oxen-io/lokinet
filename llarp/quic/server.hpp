@@ -1,7 +1,7 @@
 #pragma once
 
 #include "endpoint.hpp"
-
+#include "llarp/endpoint_base.hpp"
 #include <functional>
 
 namespace llarp::quic
@@ -11,7 +11,7 @@ namespace llarp::quic
    public:
     using stream_open_callback_t = std::function<bool(Stream& stream, uint16_t port)>;
 
-    Server(service::Endpoint& service_endpoint) : Endpoint{service_endpoint}
+    Server(EndpointBase& service_endpoint) : Endpoint{service_endpoint}
     {}
 
     // Stream callback: takes the server, the (just-created) stream, and the connection port.

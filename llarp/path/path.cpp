@@ -823,7 +823,8 @@ namespace llarp
         if (pkt.size() <= 8)
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
-        if (m_ExitTrafficHandler(self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter))
+        if (m_ExitTrafficHandler(
+                self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
         {
           MarkActive(r->Now());
           EnterState(ePathEstablished, r->Now());

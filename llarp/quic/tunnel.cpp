@@ -184,7 +184,7 @@ namespace llarp::quic
 
   }  // namespace
 
-  TunnelManager::TunnelManager(service::Endpoint& se) : service_endpoint_{se}
+  TunnelManager::TunnelManager(EndpointBase& se) : service_endpoint_{se}
   {
     // Cleanup callback to clear out closed tunnel connections
     service_endpoint_.Loop()->call_every(500ms, timer_keepalive_, [this] {

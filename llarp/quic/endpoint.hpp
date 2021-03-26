@@ -18,10 +18,10 @@
 #include <uvw/async.h>
 #include <uvw/timer.h>
 
-namespace llarp::service
+namespace llarp
 {
-  struct Endpoint;
-}  // namespace llarp::service
+  class EndpointBase;
+}  // namespace llarp
 
 namespace llarp::quic
 {
@@ -51,7 +51,7 @@ namespace llarp::quic
 
    protected:
     /// the service endpoint we are owned by
-    service::Endpoint& service_endpoint;
+    EndpointBase& service_endpoint;
 
     /// local "address" is the IPv6 unspecified address since we don't have (or care about) the
     /// actual local address for building quic packets.  The port of this address must be set to our
@@ -105,7 +105,7 @@ namespace llarp::quic
 
     friend class Connection;
 
-    explicit Endpoint(service::Endpoint& service_endpoint_);
+    explicit Endpoint(EndpointBase& service_endpoint_);
 
     virtual ~Endpoint();
 

@@ -10,10 +10,34 @@ namespace llarp
   struct AbstractRouter;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::IQueryHandler
+    struct ExitEndpoint : public dns::IQueryHandler, public EndpointBase
     {
       ExitEndpoint(std::string name, AbstractRouter* r);
       ~ExitEndpoint() override;
+
+      std::optional<AddressVariant_t>
+      GetEndpointWithConvoTag(service::ConvoTag tag) const override;
+
+      std::optional<service::ConvoTag>
+      GetBestConvoTagFor(AddressVariant_t addr) const override;
+
+      bool
+      EnsurePathTo(
+          AddressVariant_t addr,
+          std::function<void(std::optional<service::ConvoTag>)> hook,
+          llarp_time_t timeout) override;
+
+      void
+      LookupNameAsync(
+          std::string name,
+          std::function<void(std::optional<AddressVariant_t>)> resultHandler) override;
+
+      const EventLoop_ptr&
+      Loop() override;
+
+      bool
+      SendToOrQueue(
+          service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
 
       void
       Tick(llarp_time_t now);
@@ -104,6 +128,9 @@ namespace llarp
       void
       Flush();
 
+      quic::TunnelManager*
+      GetQUICTunnel();
+
      private:
       huint128_t
       GetIPForIdent(const PubKey pk);
@@ -167,6 +194,8 @@ namespace llarp
 
       IpAddress m_LocalResolverAddr;
       std::vector<IpAddress> m_UpstreamResolvers;
+
+      std::shared_ptr<quic::TunnelManager> m_QUIC;
 
       using Pkt_t = net::IPPacket;
       using PacketQueue_t = util::CoDelQueue<

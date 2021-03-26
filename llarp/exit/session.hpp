@@ -12,6 +12,11 @@
 
 namespace llarp
 {
+  namespace quic
+  {
+    class TunnelManager;
+  }
+
   namespace exit
   {
     struct BaseSession;
@@ -34,7 +39,7 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          bool bundleRC);
+          quic::TunnelManager* quictun);
 
       ~BaseSession() override;
 
@@ -131,7 +136,11 @@ namespace llarp
       HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path_ptr p, const llarp_buffer_t& buf, uint64_t seqno);
+      HandleTraffic(
+          llarp::path::Path_ptr p,
+          const llarp_buffer_t& buf,
+          uint64_t seqno,
+          service::ProtocolType t);
 
      private:
       std::set<RouterID> m_SnodeBlacklist;
@@ -160,6 +169,7 @@ namespace llarp
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
       const bool m_BundleRC;
+      quic::TunnelManager* const m_QUIC;
 
       void
       CallPendingCallbacks(bool success);
@@ -173,8 +183,8 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          bool bundleRC)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
+          quic::TunnelManager* quictun)
+          : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, quictun}
       {}
 
       ~ExitSession() override = default;
@@ -204,7 +214,7 @@ namespace llarp
           size_t numpaths,
           size_t hoplen,
           bool useRouterSNodeKey,
-          bool bundleRC);
+          quic::TunnelManager* quictun);
 
       ~SNodeSession() override = default;
 

@@ -13,7 +13,7 @@
 
 namespace llarp::quic
 {
-  Client::Client(service::Endpoint& ep, const SockAddr& remote, uint16_t pseudo_port) : Endpoint{ep}
+  Client::Client(EndpointBase& ep, const SockAddr& remote, uint16_t pseudo_port) : Endpoint{ep}
   {
     default_stream_buffer_size =
         0;  // We steal uvw's provided buffers so don't need an outgoing data buffer

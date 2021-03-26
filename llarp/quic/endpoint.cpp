@@ -22,7 +22,7 @@ extern "C"
 
 namespace llarp::quic
 {
-  Endpoint::Endpoint(service::Endpoint& ep) : service_endpoint{ep}
+  Endpoint::Endpoint(EndpointBase& ep) : service_endpoint{ep}
   {
     randombytes_buf(static_secret.data(), static_secret.size());
 

@@ -23,6 +23,7 @@
 #include <variant>
 #include <oxenmq/variant.h>
 #include "endpoint_types.hpp"
+#include "llarp/endpoint_base.hpp"
 
 #include "auth.hpp"
 
@@ -55,7 +56,10 @@ namespace llarp
 
     static constexpr auto INTROSET_LOOKUP_RETRY_COOLDOWN = 3s;
 
-    struct Endpoint : public path::Builder, public ILookupHolder, public IDataHandler
+    struct Endpoint : public path::Builder,
+                      public ILookupHolder,
+                      public IDataHandler,
+                      public EndpointBase
     {
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 

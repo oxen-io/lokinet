@@ -1,6 +1,6 @@
 #pragma once
 
-#include <llarp/service/endpoint.hpp>
+#include <llarp/endpoint_base.hpp>
 #include "stream.hpp"
 #include "address.hpp"
 #include "client.hpp"
@@ -49,7 +49,7 @@ namespace llarp::quic
     // includes the resolution time.
     std::chrono::milliseconds open_timeout = 10s;
 
-    TunnelManager(service::Endpoint& endpoint);
+    TunnelManager(EndpointBase& endpoint);
 
     /// Adds an incoming listener callback.  When a new incoming quic connection is initiated to us
     /// by some remote we invoke these callback(s) in order of registration.  Each one has three
@@ -132,7 +132,7 @@ namespace llarp::quic
     receive_packet(const service::ConvoTag& tag, const llarp_buffer_t& buf);
 
    private:
-    service::Endpoint& service_endpoint_;
+    EndpointBase& service_endpoint_;
 
     struct ClientTunnel
     {

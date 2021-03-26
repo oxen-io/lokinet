@@ -7,6 +7,8 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/bits.hpp>
 
+#include <llarp/quic/tunnel.hpp>
+
 #include <cassert>
 #include "service/protocol_type.hpp"
 
@@ -19,13 +21,113 @@ namespace llarp
         , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
         , m_Name(std::move(name))
         , m_LocalResolverAddr("127.0.0.1", 53)
+        , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
         , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
 
     {
       m_ShouldInitTun = true;
+      m_QUIC = std::make_shared<quic::TunnelManager>(*this);
     }
 
     ExitEndpoint::~ExitEndpoint() = default;
+
+    void
+    ExitEndpoint::LookupNameAsync(
+        std::string, std::function<void(std::optional<AddressVariant_t>)> resultHandler)
+    {
+      // TODO: implement me
+      resultHandler(std::nullopt);
+    }
+
+    std::optional<EndpointBase::AddressVariant_t>
+    ExitEndpoint::GetEndpointWithConvoTag(service::ConvoTag tag) const
+    {
+      for (const auto& [rid, session] : m_SNodeSessions)
+      {
+        PathID_t pathID{tag.as_array()};
+        if (session->GetPathByID(pathID))
+          return rid;
+      }
+      return std::nullopt;
+    }
+
+    std::optional<service::ConvoTag>
+    ExitEndpoint::GetBestConvoTagFor(AddressVariant_t addr) const
+    {
+      if (auto* rid = std::get_if<RouterID>(&addr))
+      {
+        auto itr = m_SNodeSessions.find(*rid);
+        if (itr == m_SNodeSessions.end())
+          return std::nullopt;
+        if (auto path = itr->second->GetPathByRouter(*rid))
+        {
+          return service::ConvoTag{path->TXID().as_array()};
+        }
+        return std::nullopt;
+      }
+      else
+        return std::nullopt;
+    }
+
+    const EventLoop_ptr&
+    ExitEndpoint::Loop()
+    {
+      return m_Router->loop();
+    }
+
+    bool
+    ExitEndpoint::SendToOrQueue(
+        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType type)
+    {
+      if (auto maybeAddr = GetEndpointWithConvoTag(tag))
+      {
+        if (std::holds_alternative<service::Address>(*maybeAddr))
+          return false;
+        if (auto* rid = std::get_if<RouterID>(&*maybeAddr))
+        {
+          std::vector<byte_t> data{};
+          data.resize(payload.sz);
+          std::copy_n(payload.base, data.size(), data.data());
+          ObtainSNodeSession(*rid, [data, type](auto session) {
+            if (session and session->IsReady())
+            {
+              session->SendPacketToRemote(data, type);
+            }
+          });
+        }
+        return true;
+      }
+      else
+        return false;
+    }
+
+    bool
+    ExitEndpoint::EnsurePathTo(
+        AddressVariant_t addr,
+        std::function<void(std::optional<service::ConvoTag>)> hook,
+        llarp_time_t)
+    {
+      if (std::holds_alternative<service::Address>(addr))
+        return false;
+      if (auto* rid = std::get_if<RouterID>(&addr))
+      {
+        ObtainSNodeSession(
+            *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
+              if (session and session->IsReady())
+              {
+                if (auto path = session->GetPathByRouter(routerID))
+                {
+                  hook(service::ConvoTag{path->TXID().as_array()});
+                }
+                else
+                  hook(std::nullopt);
+              }
+              else
+                hook(std::nullopt);
+            });
+      }
+      return true;
+    }
 
     util::StatusObject
     ExitEndpoint::ExtractStatus() const
@@ -236,7 +338,6 @@ namespace llarp
           auto itr = m_SNodeSessions.find(pk);
           if (itr != m_SNodeSessions.end())
           {
-            // TODO: quic (?)
             itr->second->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::TrafficV4);
             return;
           }
@@ -576,11 +677,17 @@ namespace llarp
             2,
             1,
             true,
-            false);
+            GetQUICTunnel());
         // this is a new service node make an outbound session to them
         m_SNodeSessions.emplace(other, session);
       }
       return ip;
+    }
+
+    quic::TunnelManager*
+    ExitEndpoint::GetQUICTunnel()
+    {
+      return m_QUIC.get();
     }
 
     bool
