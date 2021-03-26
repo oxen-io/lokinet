@@ -104,7 +104,7 @@ namespace llarp
       GetIfName() const = 0;
 
       std::optional<ConvoTag>
-      GetBestConvoTagFor(std::variant<Address, RouterID> addr) const;
+      GetBestConvoTagFor(std::variant<Address, RouterID> addr) const override;
 
       /// get our ifaddr if it is set
       virtual huint128_t
@@ -122,7 +122,7 @@ namespace llarp
       /// loop (via router)
       /// use when sending any data on a path
       const EventLoop_ptr&
-      Loop();
+      Loop() override;
 
       AbstractRouter*
       Router();
@@ -209,7 +209,8 @@ namespace llarp
       void
       LookupNameAsync(
           std::string name,
-          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler);
+          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler)
+          override;
 
       /// called on event loop pump
       virtual void
@@ -265,7 +266,7 @@ namespace llarp
 
       /// maybe get an endpoint variant given its convo tag
       std::optional<std::variant<Address, RouterID>>
-      GetEndpointWithConvoTag(ConvoTag t) const;
+      GetEndpointWithConvoTag(ConvoTag t) const override;
 
       bool
       HasConvoTag(const ConvoTag& t) const override;
@@ -277,7 +278,7 @@ namespace llarp
       EnsurePathTo(
           std::variant<Address, RouterID> addr,
           std::function<void(std::optional<ConvoTag>)> hook,
-          llarp_time_t timeout);
+          llarp_time_t timeout) override;
 
       // passed a sendto context when we have a path established otherwise
       // nullptr if the path was not made before the timeout
@@ -375,7 +376,7 @@ namespace llarp
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
       bool
-      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t);
+      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
 
       // Send a to (or queues for sending) to either an address or router id
       bool

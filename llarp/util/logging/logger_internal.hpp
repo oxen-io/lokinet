@@ -28,7 +28,7 @@ namespace llarp
       ss << std::to_integer<int>(arg);
     else
       ss << std::forward<TArg>(arg);
-    if constexpr (sizeof...(TArgs))
+    if constexpr (sizeof...(TArgs) > 0)
       LogAppend(ss, std::forward<TArgs>(args)...);
   }
 
