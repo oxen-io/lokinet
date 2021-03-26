@@ -156,7 +156,7 @@ namespace llarp::quic
     std::map<uint16_t, ClientTunnel> client_tunnels_;
 
     uint16_t next_pseudo_port_ = 0;
-    [[maybe_unused]] bool pport_wrapped_ = false;
+    // bool pport_wrapped_ = false;
 
     bool
     continue_connecting(
