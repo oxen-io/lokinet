@@ -1,6 +1,7 @@
 include(Version)
 
 add_library(lokinet-util
+  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
@@ -41,6 +42,7 @@ if(ANDROID)
 endif()
 
 add_library(lokinet-platform
+  STATIC
   # for networking
   ev/ev.cpp
   ev/ev_libuv.cpp
@@ -85,6 +87,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 endif()
 
 add_library(liblokinet
+  STATIC
   config/config.cpp
   config/definition.cpp
   config/ini.cpp
