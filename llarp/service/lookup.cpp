@@ -11,10 +11,10 @@ namespace llarp
 
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder* p, uint64_t tx, std::string n)
-        : m_parent(p), txid(tx), name(std::move(n))
+    IServiceLookup::IServiceLookup(
+        ILookupHolder* p, uint64_t tx, std::string n, llarp_time_t timeout)
+        : m_parent(p), txid(tx), name(std::move(n)), m_created{time_now_ms()}, m_timeout{timeout}
     {
-      m_created = time_now_ms();
       p->PutLookup(this, tx);
     }
 

@@ -136,6 +136,9 @@ namespace llarp
       std::string
       Name() const override;
 
+      std::string
+      LocalAddress() const override;
+
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
 
@@ -338,7 +341,7 @@ namespace llarp
       GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const override;
 
       void
-      PutNewOutboundContext(const IntroSet& introset);
+      PutNewOutboundContext(const IntroSet& introset, llarp_time_t timeLeftToAlign);
 
       uint64_t
       GetSeqNoForConvo(const ConvoTag& tag);
@@ -422,7 +425,11 @@ namespace llarp
       HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
 
       bool
-      OnLookup(const service::Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
+      OnLookup(
+          const service::Address& addr,
+          std::optional<IntroSet> i,
+          const RouterID& endpoint,
+          llarp_time_t timeLeft);
 
       bool
       DoNetworkIsolation(bool failed);

@@ -557,6 +557,13 @@ namespace llarp
       return found;
     }
 
+    std::string
+    ExitEndpoint::LocalAddress() const
+    {
+      const RouterID r{m_Router->pubkey()};
+      return r.ToString();
+    }
+
     bool
     ExitEndpoint::QueueOutboundTraffic(net::IPPacket pkt)
     {

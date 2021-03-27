@@ -47,7 +47,7 @@ namespace llarp::quic
 
     // Timeout for the next `open()`.  Note that when `open()` is given a ONS name to resolve this
     // includes the resolution time.
-    std::chrono::milliseconds open_timeout = 10s;
+    std::chrono::milliseconds open_timeout = 4s;
 
     TunnelManager(EndpointBase& endpoint);
 

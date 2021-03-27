@@ -79,8 +79,9 @@ namespace llarp
     {
       if (remoteIntro != m_NextIntro)
       {
-        LogInfo(Name(), " swap intro to use ", RouterID(m_NextIntro.router));
+        LogInfo(Name(), " swap intro to use ", RouterID{m_NextIntro.router});
         remoteIntro = m_NextIntro;
+        m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.A, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
         ShiftIntroduction(false);
       }
@@ -88,7 +89,7 @@ namespace llarp
 
     bool
     OutboundContext::OnIntroSetUpdate(
-        const Address&, std::optional<IntroSet> foundIntro, const RouterID& endpoint)
+        const Address&, std::optional<IntroSet> foundIntro, const RouterID& endpoint, llarp_time_t)
     {
       if (markedBad)
         return true;
@@ -113,7 +114,6 @@ namespace llarp
           return true;
         }
         currentIntroSet = *foundIntro;
-        SwapIntros();
       }
       else
       {
@@ -173,7 +173,7 @@ namespace llarp
       p->SetDataHandler(util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if (p->Endpoint() == m_NextIntro.router)
+      if (p->Endpoint() == m_NextIntro.router or p->Endpoint() == remoteIntro.router)
         SwapIntros();
       else
       {
@@ -184,6 +184,9 @@ namespace llarp
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
     {
+      if (sentIntro)
+        return;
+
       if (remoteIntro.router.IsZero())
         SwapIntros();
 
@@ -200,6 +203,7 @@ namespace llarp
           return;
         }
       }
+      sentIntro = true;
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
           m_Endpoint->Loop(),
@@ -218,7 +222,9 @@ namespace llarp
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       frame->F = ex->msg.introReply.pathID;
+      frame->R = 0;
       m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
+      LogInfo("send intro frame");
     }
 
     std::string
@@ -245,7 +251,8 @@ namespace llarp
             location,
             PubKey{addr.as_array()},
             relayOrder,
-            m_Endpoint->GenTXID());
+            m_Endpoint->GenTXID(),
+            5s);
         relayOrder++;
         if (job->SendRequestViaPath(path, m_Endpoint->Router()))
           updatingIntroSet = true;
@@ -275,6 +282,14 @@ namespace llarp
       return obj;
     }
 
+    void
+    OutboundContext::KeepAlive()
+    {
+      Encrypted<64> tmp;
+      tmp.Randomize();
+      SendPacketToRemote(tmp, ProtocolType::Control);
+    }
+
     bool
     OutboundContext::Pump(llarp_time_t now)
     {
@@ -283,6 +298,11 @@ namespace llarp
         return true;
 
       constexpr auto InboundTrafficTimeout = 5s;
+
+      if (ReadyToSend() and remoteIntro.router.IsZero())
+      {
+        SwapIntros();
+      }
 
       if (m_GotInboundTraffic and m_LastInboundTraffic + InboundTrafficTimeout <= now)
       {
@@ -312,28 +332,29 @@ namespace llarp
         else
           ++itr;
       }
-      // send control message if we look too quiet
-      if (lastGoodSend > 0s)
+
+      if (ReadyToSend() and m_ReadyHook)
       {
-        if (now - lastGoodSend > (sendTimeout / 2))
-        {
-          if (!GetNewestPathByRouter(remoteIntro.router))
-          {
-            if (!BuildCooldownHit(now))
-              BuildOneAlignedTo(remoteIntro.router);
-          }
-          else
-          {
-            Encrypted<64> tmp;
-            tmp.Randomize();
-            llarp_buffer_t buf(tmp.data(), tmp.size());
-            AsyncEncryptAndSendTo(buf, ProtocolType::Control);
-          }
-        }
+        m_ReadyHook(this);
+        m_ReadyHook = nullptr;
       }
+
       // if we are dead return true so we are removed
       return lastGoodSend > 0s ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
                                : (now >= createdAt && now - createdAt > connectTimeout);
+    }
+
+    void
+    OutboundContext::SetReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
+    {
+      if (m_ReadyHook)
+        return;
+      m_ReadyHook = hook;
+      m_router->loop()->call_later(timeout, [this]() {
+        if (m_ReadyHook)
+          m_ReadyHook(nullptr);
+        m_ReadyHook = nullptr;
+      });
     }
 
     std::optional<std::vector<RouterContact>>
@@ -533,12 +554,18 @@ namespace llarp
         // handle discard
         ServiceInfo si;
         if (!m_Endpoint->GetSenderFor(frame.T, si))
+        {
+          LogWarn("no sender for T=", frame.T);
           return false;
+        }
         // verify source
         if (!frame.Verify(si))
+        {
+          LogWarn("signature failed");
           return false;
+        }
         // remove convotag it doesn't exist
-        LogWarn("remove convotag T=", frame.T);
+        LogWarn("remove convotag T=", frame.T, " R=", frame.R);
 
         AuthResult result{AuthResultCode::eAuthFailed, "unknown reason"};
         if (const auto maybe = AuthResultCodeFromInt(frame.R))
@@ -584,6 +611,7 @@ namespace llarp
       if (not frame.AsyncDecryptAndVerify(m_Endpoint->Loop(), p, ident, m_Endpoint, hook))
       {
         // send reset convo tag message
+        LogError("failed to decrypt and verify frame");
         ProtocolFrame f;
         f.R = 1;
         f.T = frame.T;

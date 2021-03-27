@@ -14,8 +14,8 @@ namespace llarp
       const PubKey rootkey;
       uint64_t relayOrder;
       const dht::Key_t location;
-      using HandlerFunc =
-          std::function<bool(const Address&, std::optional<IntroSet>, const RouterID&)>;
+      using HandlerFunc = std::function<bool(
+          const Address&, std::optional<IntroSet>, const RouterID&, llarp_time_t)>;
       HandlerFunc handle;
 
       HiddenServiceAddressLookup(
@@ -24,7 +24,8 @@ namespace llarp
           const dht::Key_t& location,
           const PubKey& rootkey,
           uint64_t relayOrder,
-          uint64_t tx);
+          uint64_t tx,
+          llarp_time_t timeout);
 
       ~HiddenServiceAddressLookup() override = default;
 

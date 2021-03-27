@@ -141,6 +141,10 @@ namespace llarp::rpc
                 if (auto itr = obj.find("endpoint"); itr != obj.end())
                   endpoint = itr->get<std::string>();
 
+                std::string bindAddr = "127.0.0.1:0";
+                if (auto itr = obj.find("bind"); itr != obj.end())
+                  bindAddr = itr->get<std::string>();
+
                 std::string remoteHost;
                 if (auto itr = obj.find("host"); itr != obj.end())
                   remoteHost = itr->get<std::string>();
@@ -163,6 +167,8 @@ namespace llarp::rpc
                   reply(CreateJSONError("host not provided"));
                   return;
                 }
+                SockAddr laddr{};
+                laddr.fromString(bindAddr);
 
                 r->loop()->call([reply, endpoint, r, remoteHost, port, closeID]() {
                   auto ep = GetEndpointByName(r, endpoint);
@@ -184,21 +190,11 @@ namespace llarp::rpc
                     return;
                   }
 
-                  auto status = std::make_shared<util::StatusObject>();
-
-                  auto hook = [status, reply](bool success) {
-                    if (success)
-                    {
-                      reply(CreateJSONResponse(*status));
-                    }
-                    else
-                    {
-                      reply(CreateJSONError("failed"));
-                    }
-                  };
-                  auto [addr, id] = quic->open(remoteHost, port, hook);
-                  status->operator[]("addr") = addr.toString();
-                  status->operator[]("id") = id;
+                  auto [addr, id] = quic->open(remoteHost, port);
+                  util::StatusObject status;
+                  status["addr"] = addr.toString();
+                  status["id"] = id;
+                  reply(CreateJSONResponse(status));
                 });
               });
             })
@@ -248,7 +244,9 @@ namespace llarp::rpc
                       reply(CreateJSONError(ex.what()));
                       return;
                     }
-                    util::StatusObject result{{"id", id}};
+                    util::StatusObject result;
+                    result["id"] = id;
+                    result["addr"] = ep->LocalAddress() + ":" + std::to_string(port);
                     reply(CreateJSONResponse(result));
                   }
                   else if (closeID)

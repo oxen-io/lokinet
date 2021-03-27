@@ -26,6 +26,9 @@ namespace llarp
 
     using AddressVariant_t = std::variant<service::Address, RouterID>;
 
+    virtual std::string
+    LocalAddress() const = 0;
+
     virtual quic::TunnelManager*
     GetQUICTunnel() = 0;
 

@@ -70,6 +70,9 @@ namespace llarp
       bool
       ReadyToSend() const;
 
+      void
+      SetReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+
       /// for exits
       void
       SendPacketToRemote(const llarp_buffer_t&, ProtocolType t) override;
@@ -114,6 +117,9 @@ namespace llarp
       std::string
       Name() const override;
 
+      void
+      KeepAlive();
+
       const IntroSet&
       GetCurrentIntroSet() const
       {
@@ -129,7 +135,8 @@ namespace llarp
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
       bool
-      OnIntroSetUpdate(const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
+      OnIntroSetUpdate(
+          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
 
       const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
@@ -141,6 +148,8 @@ namespace llarp
       uint16_t m_BuildFails = 0;
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
+      bool sentIntro = false;
+      std::function<void(OutboundContext*)> m_ReadyHook;
     };
   }  // namespace service
 

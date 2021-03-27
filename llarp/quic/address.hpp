@@ -21,7 +21,7 @@ namespace llarp::quic
   class Address
   {
     sockaddr_in6 saddr{};
-    ngtcp2_addr a{0, reinterpret_cast<sockaddr*>(&saddr)};
+    ngtcp2_addr a{sizeof(saddr), reinterpret_cast<sockaddr*>(&saddr)};
 
    public:
     Address() = default;

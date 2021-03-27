@@ -46,11 +46,18 @@ namespace llarp
 
       /// determine if this request has timed out
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const
+      IsTimedOut(llarp_time_t now) const
       {
-        if (now <= m_created)
-          return false;
-        return now - m_created > timeout;
+        return TimeLeft(now) == 0ms;
+      }
+
+      /// return how long this request has left to be fufilled
+      llarp_time_t
+      TimeLeft(llarp_time_t now) const
+      {
+        if (now > (m_created + m_timeout))
+          return 0s;
+        return now - (m_created + m_timeout);
       }
 
       /// build request message for service lookup
@@ -80,9 +87,10 @@ namespace llarp
       }
 
      protected:
-      IServiceLookup(ILookupHolder* parent, uint64_t tx, std::string name);
+      IServiceLookup(
+          ILookupHolder* parent, uint64_t tx, std::string name, llarp_time_t timeout = 10s);
 
-      llarp_time_t m_created;
+      const llarp_time_t m_created, m_timeout;
     };
 
     struct ILookupHolder

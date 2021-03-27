@@ -367,13 +367,19 @@ namespace llarp
                 AuthResult result) {
               if (result.code == AuthResultCode::eAuthAccepted)
               {
+                handler->PutSenderFor(msg->tag, msg->sender, true);
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);
-                handler->PutSenderFor(msg->tag, msg->sender, true);
                 handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
+                handler->SendAuthResult(path, from, msg->tag, result);
+                LogInfo("auth okay for T=", msg->tag, " from ", msg->sender.Addr());
                 ProtocolMessage::ProcessAsync(path, from, msg);
               }
-              handler->SendAuthResult(path, from, msg->tag, result);
+              else
+              {
+                LogWarn("auth not okay for T=", msg->tag, ": ", result.reason);
+              }
+              handler->Pump(time_now_ms());
             });
       }
     };
@@ -427,12 +433,23 @@ namespace llarp
         LogError("No cached session for T=", T);
         return false;
       }
+      if (v->shared.IsZero())
+      {
+        LogError("bad cached session key for T=", T);
+        return false;
+      }
 
       if (!handler->GetSenderFor(T, v->si))
       {
         LogError("No sender for T=", T);
         return false;
       }
+      if (v->si.Addr().IsZero())
+      {
+        LogError("Bad sender for T=", T);
+        return false;
+      }
+
       v->frame = *this;
       auto callback = [loop, hook](std::shared_ptr<ProtocolMessage> msg) {
         if (hook)

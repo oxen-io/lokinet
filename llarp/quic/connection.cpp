@@ -331,7 +331,6 @@ namespace llarp::quic
 #pragma GCC diagnostic pop
   }  // namespace
 
-#if 0
 #ifndef NDEBUG
   extern "C" inline void
   ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
@@ -345,7 +344,6 @@ namespace llarp::quic
     }
     va_end(ap);
   }
-#endif
 #endif
 
   io_result
@@ -411,11 +409,10 @@ namespace llarp::quic
     cb.update_key = update_key;
 
     ngtcp2_settings_default(&settings);
-#if 0
 #ifndef NDEBUG
     settings.log_printf = ngtcp_trace_logger;
 #endif
-#endif
+
     settings.initial_ts = get_timestamp();
     // FIXME: IPv6
     settings.max_udp_payload_size = NGTCP2_MAX_PKTLEN_IPV4;
