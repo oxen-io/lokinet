@@ -603,6 +603,7 @@ namespace llarp::quic
     quic::Endpoint* ep = nullptr;
     if (type == CLIENT_TO_SERVER)
     {
+      LogTrace("packet is client-to-server from client pport ", pseudo_port);
       // Client-to-server: the header port is the return port
       remote.setPort(pseudo_port);
       if (!server_)
@@ -614,6 +615,7 @@ namespace llarp::quic
     }
     else if (type == SERVER_TO_CLIENT)
     {
+      LogTrace("packet is server-to-client to client pport ", pseudo_port);
       // Server-to-client: the header port tells us which client tunnel this is going to
       if (auto it = client_tunnels_.find(pseudo_port); it != client_tunnels_.end())
         ep = it->second.client.get();
@@ -627,7 +629,10 @@ namespace llarp::quic
       // The server doesn't send back the port because we already know it 1-to-1 from our outgoing
       // connection.
       if (auto conn = static_cast<quic::Client&>(*ep).get_connection())
+      {
         remote.setPort(conn->path.remote.port());
+        LogTrace("remote port is ", remote.getPort());
+      }
       else
       {
         LogWarn("Incoming quic to a quic::Client without an active quic::Connection; dropping");

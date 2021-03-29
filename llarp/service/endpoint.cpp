@@ -1355,18 +1355,22 @@ namespace llarp
     Endpoint::SendToOrQueue(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
     {
       if (tag.IsZero())
+      {
+        LogWarn("SendToOrQueue failed: convo tag is zero");
         return false;
-      LogWarn("sent to tag T=", tag);
+      }
       if (auto maybe = GetEndpointWithConvoTag(tag))
       {
         return SendToOrQueue(*maybe, pkt, t);
       }
+      LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
       return false;
     }
 
     bool
     Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
+      LogTrace("SendToOrQueue: sending to snode ", addr);
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
@@ -1484,13 +1488,18 @@ namespace llarp
     bool
     Endpoint::SendToOrQueue(const Address& remote, const llarp_buffer_t& data, ProtocolType t)
     {
+      LogTrace("SendToOrQueue: sending to address ", remote);
       if (data.sz == 0)
+      {
+        LogTrace("SendToOrQueue: dropping because data.sz == 0");
         return false;
-      // inbound converstation
+      }
+      // inbound conversation
       const auto now = Now();
 
       if (HasInboundConvo(remote))
       {
+        LogTrace("Have inbound convo");
         auto transfer = std::make_shared<routing::PathTransferMessage>();
         ProtocolFrame& f = transfer->T;
         f.R = 0;
@@ -1562,25 +1571,34 @@ namespace llarp
             });
             return true;
           }
+          else
+          {
+            LogTrace("SendToOrQueue failed to return via inbound: no path");
+          }
+        }
+        else
+        {
+          LogWarn("Have inbound convo but get-best returned none; bug?");
         }
       }
       else
       {
+        LogTrace("Not an inbound convo");
         auto& sessions = m_state->m_RemoteSessions;
         auto range = sessions.equal_range(remote);
-        auto itr = range.first;
-        while (itr != range.second)
+        for (auto itr = range.first; itr != range.second; ++itr)
         {
           if (itr->second->ReadyToSend())
           {
+            LogTrace("Found an inbound session to use to reach ", remote);
             itr->second->AsyncEncryptAndSendTo(data, t);
             return true;
           }
-          ++itr;
         }
         // if we want to make an outbound session
         if (WantsOutboundSession(remote))
         {
+          LogTrace("Making an outbound session and queuing the data");
           // add pending traffic
           auto& traffic = m_state->m_PendingTraffic;
           traffic[remote].emplace_back(data, t);
@@ -1602,6 +1620,10 @@ namespace llarp
               },
               1500ms);
           return true;
+        }
+        else
+        {
+          LogDebug("SendOrQueue failed: no inbound/outbound sessions");
         }
       }
       return false;
