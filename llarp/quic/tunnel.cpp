@@ -623,6 +623,16 @@ namespace llarp::quic
         LogWarn("Incoming quic packet to invalid/closed client; dropping");
         return;
       }
+
+      // The server doesn't send back the port because we already know it 1-to-1 from our outgoing
+      // connection.
+      if (auto conn = static_cast<quic::Client&>(*ep).get_connection())
+        remote.setPort(conn->path.remote.port());
+      else
+      {
+        LogWarn("Incoming quic to a quic::Client without an active quic::Connection; dropping");
+        return;
+      }
     }
     else
     {
