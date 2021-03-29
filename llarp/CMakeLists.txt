@@ -106,7 +106,6 @@ add_library(liblokinet
 
   bootstrap.cpp
   context.cpp
-  endpoint_base.cpp
   crypto/crypto_libsodium.cpp
   crypto/crypto.cpp
   crypto/encrypted_frame.cpp
