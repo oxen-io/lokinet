@@ -530,5 +530,51 @@ namespace llarp
       }
       return std::nullopt;
     }
+
+    IPPacket
+    IPPacket::UDP(
+        nuint32_t srcaddr,
+        nuint16_t srcport,
+        nuint32_t dstaddr,
+        nuint16_t dstport,
+        const llarp_buffer_t& buf)
+    {
+      net::IPPacket pkt;
+
+      if (buf.sz + 28 > sizeof(pkt.buf))
+      {
+        pkt.sz = 0;
+        return pkt;
+      }
+      auto* hdr = pkt.Header();
+      pkt.buf[1] = 0;
+      hdr->version = 4;
+      hdr->ihl = 5;
+      hdr->tot_len = htons(buf.sz + 28);
+      hdr->protocol = 0x11;  // udp
+      hdr->ttl = 64;
+      hdr->frag_off = htons(0b0100000000000000);
+
+      hdr->saddr = srcaddr.n;
+      hdr->daddr = dstaddr.n;
+
+      // make udp packet
+      uint8_t* ptr = pkt.buf + 20;
+      std::memcpy(ptr, &srcport.n, 2);
+      ptr += 2;
+      std::memcpy(ptr, &dstport.n, 2);
+      ptr += 2;
+      htobe16buf(ptr, static_cast<uint16_t>(buf.sz + 8));
+      ptr += 2;
+      htobe16buf(ptr, uint16_t{0});  // checksum
+      ptr += 2;
+      std::copy_n(buf.base, buf.sz, ptr);
+
+      hdr->check = 0;
+      hdr->check = net::ipchksum(pkt.buf, 20);
+      pkt.sz = 28 + buf.sz;
+      return pkt;
+    }
+
   }  // namespace net
 }  // namespace llarp

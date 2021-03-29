@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <optional>
 #include "oxenmq/variant.h"
 

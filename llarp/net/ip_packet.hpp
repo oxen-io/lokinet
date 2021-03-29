@@ -120,6 +120,13 @@ namespace llarp
       size_t sz;
       byte_t buf[MaxSize];
 
+      static IPPacket
+      UDP(nuint32_t srcaddr,
+          nuint16_t srcport,
+          nuint32_t dstaddr,
+          nuint16_t dstport,
+          const llarp_buffer_t& data);
+
       ManagedBuffer
       Buffer();
 

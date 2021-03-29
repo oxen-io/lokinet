@@ -1220,7 +1220,19 @@ namespace llarp
       MarkAddressOutbound(remote);
 
       auto& sessions = m_state->m_RemoteSessions;
-
+      {
+        auto range = sessions.equal_range(remote);
+        auto itr = range.first;
+        while (itr != range.second)
+        {
+          if (itr->second->ReadyToSend())
+          {
+            hook(remote, itr->second.get());
+            return true;
+          }
+          ++itr;
+        }
+      }
       // add response hook to list for address.
       m_state->m_PendingServiceLookups.emplace(remote, hook);
 
@@ -1318,7 +1330,7 @@ namespace llarp
             numDesiredPaths,
             numHops,
             false,
-            GetQUICTunnel());
+            this);
 
         m_state->m_SNodeSessions.emplace(snode, std::make_pair(session, tag));
       }
@@ -1346,7 +1358,9 @@ namespace llarp
         return false;
       LogWarn("sent to tag T=", tag);
       if (auto maybe = GetEndpointWithConvoTag(tag))
+      {
         return SendToOrQueue(*maybe, pkt, t);
+      }
       return false;
     }
 

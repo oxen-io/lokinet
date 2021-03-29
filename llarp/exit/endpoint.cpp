@@ -3,6 +3,7 @@
 #include <llarp/handlers/exit.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/quic/tunnel.hpp>
 
 namespace llarp
 {
@@ -108,10 +109,18 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueOutboundTraffic(ManagedBuffer buf, uint64_t counter, service::ProtocolType t)
+    Endpoint::QueueOutboundTraffic(
+        PathID_t path, ManagedBuffer buf, uint64_t counter, service::ProtocolType t)
     {
+      const service::ConvoTag tag{path.as_array()};
       if (t == service::ProtocolType::QUIC)
+      {
+        auto quic = m_Parent->GetQUICTunnel();
+        if (not quic)
+          return false;
+        quic->receive_packet(tag, buf.underlying);
         return false;
+      }
       // queue overflow
       if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;

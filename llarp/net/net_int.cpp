@@ -84,6 +84,19 @@ namespace llarp
 
   template <>
   bool
+  huint16_t::FromString(const std::string& str)
+  {
+    if (auto val = std::atoi(str.c_str()); val >= 0)
+    {
+      h = val;
+      return true;
+    }
+    else
+      return false;
+  }
+
+  template <>
+  bool
   huint32_t::FromString(const std::string& str)
   {
     uint32_t n;

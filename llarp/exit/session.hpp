@@ -12,6 +12,8 @@
 
 namespace llarp
 {
+  class EndpointBase;
+
   namespace quic
   {
     class TunnelManager;
@@ -39,7 +41,7 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          quic::TunnelManager* quictun);
+          EndpointBase* parent);
 
       ~BaseSession() override;
 
@@ -169,7 +171,7 @@ namespace llarp
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
       const bool m_BundleRC;
-      quic::TunnelManager* const m_QUIC;
+      EndpointBase* const m_Parent;
 
       void
       CallPendingCallbacks(bool success);
@@ -183,8 +185,8 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          quic::TunnelManager* quictun)
-          : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, quictun}
+          EndpointBase* parent)
+          : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
       {}
 
       ~ExitSession() override = default;
@@ -214,7 +216,7 @@ namespace llarp
           size_t numpaths,
           size_t hoplen,
           bool useRouterSNodeKey,
-          quic::TunnelManager* quictun);
+          EndpointBase* parent);
 
       ~SNodeSession() override = default;
 

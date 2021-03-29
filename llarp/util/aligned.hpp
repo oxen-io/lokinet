@@ -193,7 +193,13 @@ namespace llarp
     bool
     IsZero() const
     {
-      return sodium_is_zero(data(), size());
+      const uint64_t* ptr = reinterpret_cast<const uint64_t*>(data());
+      for (size_t idx = 0; idx < SIZE / sizeof(uint64_t); idx++)
+      {
+        if (ptr[idx])
+          return false;
+      }
+      return true;
     }
 
     void

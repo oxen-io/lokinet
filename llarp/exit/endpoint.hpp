@@ -66,7 +66,8 @@ namespace llarp
       /// queue outbound traffic
       /// does ip rewrite here
       bool
-      QueueOutboundTraffic(ManagedBuffer pkt, uint64_t counter, service::ProtocolType t);
+      QueueOutboundTraffic(
+          PathID_t txid, ManagedBuffer pkt, uint64_t counter, service::ProtocolType t);
 
       /// update local path id and cascade information to parent
       /// return true if success

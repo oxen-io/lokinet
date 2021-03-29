@@ -127,7 +127,7 @@ namespace llarp
   template <typename UInt_t>
   struct nuint_t
   {
-    UInt_t n;
+    UInt_t n = 0;
 
     constexpr nuint_t
     operator&(nuint_t x) const
@@ -184,6 +184,16 @@ namespace llarp
 
     std::string
     ToString() const;
+
+    bool
+    FromString(const std::string& data)
+    {
+      huint_t<UInt_t> x;
+      if (not x.FromString(data))
+        return false;
+      *this = ToNet(x);
+      return true;
+    }
 
     friend std::ostream&
     operator<<(std::ostream& out, const nuint_t& i)

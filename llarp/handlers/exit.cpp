@@ -717,7 +717,7 @@ namespace llarp
             2,
             1,
             true,
-            GetQUICTunnel());
+            this);
         // this is a new service node make an outbound session to them
         m_SNodeSessions.emplace(other, session);
       }

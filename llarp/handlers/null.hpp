@@ -26,7 +26,11 @@ namespace llarp
           service::ProtocolType t,
           uint64_t) override
       {
-        if (t != service::ProtocolType::QUIC and t != service::ProtocolType::Control)
+
+        if (t == service::ProtocolType::Control)
+          return true;
+
+        if (t != service::ProtocolType::QUIC)
           return false;
 
         auto* quic = GetQUICTunnel();
@@ -40,7 +44,6 @@ namespace llarp
           LogWarn("invalid incoming quic packet, dropping");
           return false;
         }
-        LogInfo("tag active T=", tag);
         MarkConvoTagActive(tag);
         quic->receive_packet(tag, buf);
         m_router->loop()->wakeup();

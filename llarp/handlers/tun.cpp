@@ -33,8 +33,6 @@ namespace llarp
 {
   namespace handlers
   {
-    constexpr size_t udp_header_size = 8;
-
     // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
     // Android where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible because of OS
     // restrictions, but a tun interface *is* available.
@@ -50,38 +48,15 @@ namespace llarp
       SendServerMessageBufferTo(
           const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) override
       {
-        net::IPPacket pkt;
+        const auto pkt = net::IPPacket::UDP(
+            from.getIPv4(),
+            ToNet(huint16_t{from.getPort()}),
+            to.getIPv4(),
+            ToNet(huint16_t{to.getPort()}),
+            buf);
 
-        if (buf.sz + 28 > sizeof(pkt.buf))
+        if (pkt.sz == 0)
           return;
-
-        auto* hdr = pkt.Header();
-        pkt.buf[1] = 0;
-        hdr->version = 4;
-        hdr->ihl = 5;
-        hdr->tot_len = htons(buf.sz + 28);
-        hdr->protocol = 0x11;  // udp
-        hdr->ttl = 64;
-        hdr->frag_off = htons(0b0100000000000000);
-
-        hdr->saddr = from.getIPv4().n;
-        hdr->daddr = to.getIPv4().n;
-
-        // make udp packet
-        uint8_t* ptr = pkt.buf + 20;
-        htobe16buf(ptr, from.getPort());
-        ptr += 2;
-        htobe16buf(ptr, to.getPort());
-        ptr += 2;
-        htobe16buf(ptr, buf.sz + udp_header_size);
-        ptr += 2;
-        htobe16buf(ptr, uint16_t{0});  // checksum
-        ptr += 2;
-        std::copy_n(buf.base, buf.sz, ptr);
-
-        hdr->check = 0;
-        hdr->check = net::ipchksum(pkt.buf, 20);
-        pkt.sz = 28 + buf.sz;
         m_Endpoint->HandleWriteIPPacket(
             pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }

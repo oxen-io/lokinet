@@ -19,14 +19,14 @@ namespace llarp
         AbstractRouter* r,
         size_t numpaths,
         size_t hoplen,
-        quic::TunnelManager* quictun)
+        EndpointBase* parent)
         : llarp::path::Builder{r, numpaths, hoplen}
         , m_ExitRouter{routerId}
         , m_WritePacket{std::move(writepkt)}
         , m_Counter{0}
         , m_LastUse{r->Now()}
         , m_BundleRC{false}
-        , m_QUIC{quictun}
+        , m_Parent{parent}
     {
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
@@ -188,12 +188,14 @@ namespace llarp
         uint64_t counter,
         service::ProtocolType t)
     {
+      const service::ConvoTag tag{path->TXID().as_array()};
+
       if (t == service::ProtocolType::QUIC)
       {
-        if (buf.sz < 4 or not m_QUIC)
+        auto quic = m_Parent->GetQUICTunnel();
+        if (not quic)
           return false;
-        service::ConvoTag tag{path->TXID().as_array()};
-        m_QUIC->receive_packet(tag, buf);
+        quic->receive_packet(tag, buf);
         return true;
       }
 
@@ -336,8 +338,8 @@ namespace llarp
         size_t numpaths,
         size_t hoplen,
         bool useRouterSNodeKey,
-        quic::TunnelManager* quictun)
-        : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, quictun}
+        EndpointBase* parent)
+        : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
     {
       if (useRouterSNodeKey)
       {
