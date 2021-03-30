@@ -119,7 +119,7 @@ namespace llarp
         if (not quic)
           return false;
         quic->receive_packet(tag, buf.underlying);
-        return false;
+        return true;
       }
       // queue overflow
       if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)

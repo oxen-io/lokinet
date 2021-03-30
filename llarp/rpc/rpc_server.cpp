@@ -170,7 +170,7 @@ namespace llarp::rpc
                 SockAddr laddr{};
                 laddr.fromString(bindAddr);
 
-                r->loop()->call([reply, endpoint, r, remoteHost, port, closeID]() {
+                r->loop()->call([reply, endpoint, r, remoteHost, port, closeID, laddr]() {
                   auto ep = GetEndpointByName(r, endpoint);
                   if (not ep)
                   {
@@ -190,11 +190,19 @@ namespace llarp::rpc
                     return;
                   }
 
-                  auto [addr, id] = quic->open(remoteHost, port);
-                  util::StatusObject status;
-                  status["addr"] = addr.toString();
-                  status["id"] = id;
-                  reply(CreateJSONResponse(status));
+                  try
+                  {
+                    auto [addr, id] = quic->open(
+                        remoteHost, port, [](auto&&) {}, laddr);
+                    util::StatusObject status;
+                    status["addr"] = addr.toString();
+                    status["id"] = id;
+                    reply(CreateJSONResponse(status));
+                  }
+                  catch (std::exception& ex)
+                  {
+                    reply(CreateJSONError(ex.what()));
+                  }
                 });
               });
             })

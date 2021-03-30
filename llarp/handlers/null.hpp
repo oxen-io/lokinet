@@ -26,7 +26,6 @@ namespace llarp
           service::ProtocolType t,
           uint64_t) override
       {
-
         if (t == service::ProtocolType::Control)
           return true;
 
