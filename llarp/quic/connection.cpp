@@ -359,15 +359,6 @@ namespace llarp::quic
       rv = endpoint.send_packet(path.remote, send_data, send_pkt_info.ecn);
     }
     return rv;
-    // We succeeded
-    //
-    // FIXME2: probably don't want to do these things *here*, because this is called from the stream
-    // checking code.
-    //
-    // FIXME: check and send other pending streams
-    //
-    // FIXME: schedule retransmit?
-    // return true;
   }
 
   std::tuple<ngtcp2_settings, ngtcp2_transport_params, ngtcp2_callbacks>
