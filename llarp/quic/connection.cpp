@@ -756,17 +756,11 @@ namespace llarp::quic
   Connection::schedule_retransmit()
   {
     auto expiry = std::chrono::nanoseconds{ngtcp2_conn_get_expiry(*this)};
-    if (expiry < 0ns)
-    {
-      retransmit_timer->repeat(0ms);
-      return;
-    }
     auto expires_in = std::chrono::duration_cast<std::chrono::milliseconds>(
         expiry - get_time().time_since_epoch());
+    if (expires_in < 0ms) expires_in = 0ms;
     LogDebug("Next retransmit in ", expires_in.count(), "ms");
-    if (expires_in < 1ms)
-      expires_in = 1ms;
-    retransmit_timer->repeat(expires_in);
+    retransmit_timer->repeat(std::max(0ms, expires_in));
     retransmit_timer->again();
   }
 
