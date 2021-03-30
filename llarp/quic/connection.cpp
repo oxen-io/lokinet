@@ -589,7 +589,6 @@ namespace llarp::quic
       send_buffer_size = nwrite;
       LogTrace("Sending ", send_buffer_size, "B packet");
 
-      // FIXME: update remote addr? ecn?
       auto sent = send();
       if (sent.blocked())
       {
