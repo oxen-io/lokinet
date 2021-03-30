@@ -537,6 +537,8 @@ namespace llarp::quic
       retransmit_timer->stop();
       retransmit_timer->close();
     }
+    for (auto& [id, str] : streams)
+      str->hard_close();
   }
 
   void
@@ -820,7 +822,7 @@ namespace llarp::quic
             " data callback raised exception (",
             e.what(),
             "); closing stream with app code ",
-            STREAM_EXCEPTION_ERROR_CODE);
+            STREAM_ERROR_EXCEPTION);
       }
       catch (...)
       {
@@ -828,11 +830,11 @@ namespace llarp::quic
             "Stream ",
             str->id(),
             " data callback raised an unknown exception; closing stream with app code ",
-            STREAM_EXCEPTION_ERROR_CODE);
+            STREAM_ERROR_EXCEPTION);
       }
       if (!good)
       {
-        str->close(STREAM_EXCEPTION_ERROR_CODE);
+        str->close(STREAM_ERROR_EXCEPTION);
         return NGTCP2_ERR_CALLBACK_FAILURE;
       }
     }

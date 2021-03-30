@@ -73,7 +73,11 @@ namespace llarp::quic
   };
 
   // Application error code we close with if the data handle throws
-  constexpr uint64_t STREAM_EXCEPTION_ERROR_CODE = (1ULL << 62) - 2;
+  inline constexpr uint64_t STREAM_ERROR_EXCEPTION = (1ULL << 62) - 2;
+
+  // Error code we send to a stream close callback if the stream's connection expires; this is *not*
+  // sent over quic, hence using a value >= 2^62 (quic's maximum serializable integer).
+  inline constexpr uint64_t STREAM_ERROR_CONNECTION_EXPIRED = (1ULL << 62) + 1;
 
   std::ostream&
   operator<<(std::ostream& o, const StreamID& s);
@@ -266,6 +270,8 @@ namespace llarp::quic
       return conn;
     }
 
+    ~Stream();
+
    private:
     friend class Connection;
 
@@ -309,6 +315,11 @@ namespace llarp::quic
     // was actually used.
     void
     wrote(size_t bytes);
+
+    // Called by the owning Connection to do a "hard" close of a stream during Connection
+    // destruction: unlike a regular close this doesn't try to transmit a close over the wire (which
+    // won't work since the Connection is dead), it just fires the close callback and cleans up.
+    void hard_close();
 
     // ngtcp2 stream_id, assigned during stream creation
     StreamID stream_id{-1};

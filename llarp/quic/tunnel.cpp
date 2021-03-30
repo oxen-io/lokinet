@@ -78,6 +78,11 @@ namespace llarp::quic
       }
     }
 
+    void close_tcp_pair(quic::Stream& st, std::optional<uint64_t> /*errcode*/) {
+      if (auto tcp = st.data<uvw::TCPHandle>())
+        tcp->close();
+    };
+
     // Creates a new tcp handle that forwards incoming data/errors/closes into appropriate actions
     // on the given quic stream.
     void
@@ -124,6 +129,7 @@ namespace llarp::quic
       });
       tcp.on<uvw::DataEvent>(on_outgoing_data);
       stream.data_callback = on_incoming_data;
+      stream.close_callback = close_tcp_pair;
     }
     // This initial data handler is responsible for pulling off the initial stream data that comes
     // back, confirming that the tunnel is opened on the other end.  Currently this is a null byte
@@ -236,12 +242,7 @@ namespace llarp::quic
 
     server_ = std::make_unique<Server>(service_endpoint_);
     server_->stream_open_callback = [this](Stream& stream, uint16_t port) -> bool {
-      stream.close_callback = [](quic::Stream& st,
-                                 [[maybe_unused]] std::optional<uint64_t> errcode) {
-        auto tcp = st.data<uvw::TCPHandle>();
-        if (tcp)
-          tcp->close();
-      };
+      stream.close_callback = close_tcp_pair;
 
       auto& conn = stream.get_connection();
       auto remote = service_endpoint_.GetEndpointWithConvoTag(conn.path.remote);

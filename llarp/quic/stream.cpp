@@ -69,6 +69,11 @@ namespace llarp::quic
       : Stream{conn, nullptr, nullptr, buffer_size, std::move(id)}
   {}
 
+  Stream::~Stream()
+  {
+    hard_close();
+  }
+
   void
   Stream::set_buffer_size(size_t size)
   {
@@ -257,6 +262,8 @@ namespace llarp::quic
   void
   Stream::handle_unblocked()
   {
+    if (is_closing)
+      return;
     if (buffer.empty())
     {
       while (!unblocked_callbacks.empty() && unblocked_callbacks.front()(*this))
@@ -281,7 +288,8 @@ namespace llarp::quic
   void
   Stream::available_ready()
   {
-    avail_trigger->send();
+    if (avail_trigger)
+      avail_trigger->send();
   }
 
   void
@@ -321,6 +329,19 @@ namespace llarp::quic
 
     conn.io_ready();
   }
+
+  void
+    Stream::hard_close()
+    {
+      if (avail_trigger)
+      {
+        avail_trigger->close();
+        avail_trigger.reset();
+      }
+      if (!is_closing && close_callback)
+        close_callback(*this, STREAM_ERROR_CONNECTION_EXPIRED);
+      is_closing = is_shutdown = true;
+    }
 
   void
   Stream::data(std::shared_ptr<void> data)
