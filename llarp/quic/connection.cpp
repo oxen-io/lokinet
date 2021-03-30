@@ -532,6 +532,11 @@ namespace llarp::quic
   {
     if (io_trigger)
       io_trigger->close();
+    if (retransmit_timer)
+    {
+      retransmit_timer->stop();
+      retransmit_timer->close();
+    }
   }
 
   void
