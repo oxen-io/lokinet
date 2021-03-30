@@ -150,7 +150,7 @@ namespace llarp::quic
       if (auto b0 = bdata[0]; b0 == tunnel::CONNECT_INIT)
       {
         // Set up callbacks, which replaces both of these initial callbacks
-        client.read();
+        client.read();  // Unfreeze (we stop() before putting into pending)
         install_stream_forwarding(client, stream);
 
         if (bdata.size() > 1)
@@ -610,8 +610,6 @@ namespace llarp::quic
             [tcp_client](auto&&... args) {
               initial_client_close_handler(*tcp_client, std::forward<decltype(args)>(args)...);
             });
-        install_stream_forwarding(*tcp_client, *str);
-        tcp_client->read();  // Unfreeze (we stop() before putting into pending)
         available--;
       }
       catch (const std::exception& e)
