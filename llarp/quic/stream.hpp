@@ -175,7 +175,7 @@ namespace llarp::quic
 
     // Takes ownership of the given buffer pointer, queuing it to be sent after any existing buffers
     // and freed once fully acked.  You *must* have called `set_buffer_size(0)` (or set the
-    // endpoints default_stream_buffer_size to 0) in order to use this.
+    // endpoint's default_stream_buffer_size to 0) in order to use this.
     void
     append_buffer(const std::byte* buf, size_t length);
 

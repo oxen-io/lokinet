@@ -12,7 +12,9 @@ namespace llarp::quic
     using stream_open_callback_t = std::function<bool(Stream& stream, uint16_t port)>;
 
     Server(EndpointBase& service_endpoint) : Endpoint{service_endpoint}
-    {}
+    {
+      default_stream_buffer_size = 0; // We don't currently use the endpoint ring buffer
+    }
 
     // Stream callback: takes the server, the (just-created) stream, and the connection port.
     // Returns true if the stream should be allowed or false to reject the stream.  The callback
