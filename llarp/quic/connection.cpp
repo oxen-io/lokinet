@@ -592,7 +592,10 @@ namespace llarp::quic
       // FIXME: update remote addr? ecn?
       auto sent = send();
       if (sent.blocked())
-        return false;  // We'll get called again when the socket becomes writable
+      {
+        schedule_retransmit();
+        return false;
+      }
 
       send_buffer_size = 0;
       if (!sent)
