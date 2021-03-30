@@ -1581,7 +1581,8 @@ namespace llarp
           LogWarn("Have inbound convo but get-best returned none; bug?");
         }
       }
-      else
+
+      // Failed to find a suitable inbound convo, look for outbound
       {
         LogTrace("Not an inbound convo");
         auto& sessions = m_state->m_RemoteSessions;
