@@ -356,7 +356,6 @@ namespace llarp::quic
 
     if (!send_data.empty())
     {
-      LogTrace("Sending packet: ", buffer_printer{send_data});
       rv = endpoint.send_packet(path.remote, send_data, send_pkt_info.ecn);
     }
     return rv;
