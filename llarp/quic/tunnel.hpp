@@ -166,7 +166,7 @@ namespace llarp::quic
     make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row);
 
     void
-    flush_pending_incoming(ClientTunnel& ct, Connection& conn);
+    flush_pending_incoming(ClientTunnel& ct);
 
     // Server instance; this listens on pseudo-port 0 (if it listens).  This is automatically
     // instantiated the first time `listen()` is called; if not instantiated we simply drop any

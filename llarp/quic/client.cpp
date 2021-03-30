@@ -3,7 +3,6 @@
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/logger.hpp>
 
-#include <uvw/tcp.h>
 #include <oxenmq/variant.h>
 #include <llarp/service/address.hpp>
 #include <llarp/service/endpoint.hpp>

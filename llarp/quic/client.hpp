@@ -5,12 +5,6 @@
 
 #include <optional>
 
-namespace uvw
-{
-  struct ListenEvent;
-  class TCPHandle;
-}  // namespace uvw
-
 namespace llarp::quic
 {
   class Client : public Endpoint
