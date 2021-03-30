@@ -168,7 +168,7 @@ namespace llarp::quic
     //
     assert(bytes <= unacked_size && unacked_size <= size);
 
-    LogDebug("Acked ", bytes, " bytes of ", unacked_size, "/", size, " unacked/total");
+    LogTrace("Acked ", bytes, " bytes of ", unacked_size, "/", size, " unacked/total");
 
     unacked_size -= bytes;
     size -= bytes;
@@ -299,7 +299,7 @@ namespace llarp::quic
     //     [  áaarrrrrr  ]  or  [rr     áaar]
     // to:
     //     [  áaaaaarrr  ]  or  [aa     áaaa]
-    LogDebug("wrote ", bytes, ", unsent=", unsent());
+    LogTrace("wrote ", bytes, ", unsent=", unsent());
     assert(bytes <= unsent());
     unacked_size += bytes;
   }

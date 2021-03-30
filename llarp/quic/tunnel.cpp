@@ -256,7 +256,7 @@ namespace llarp::quic
       auto tunnel_to = allow_connection(lokinet_addr, port);
       if (not tunnel_to)
         return false;
-      LogDebug("quic stream from ", lokinet_addr, " to ", port, " tunnelling to ", *tunnel_to);
+      LogInfo("quic stream from ", lokinet_addr, " to ", port, " tunnelling to ", *tunnel_to);
 
       auto tcp = get_loop()->resource<uvw::TCPHandle>();
       auto error_handler = tcp->once<uvw::ErrorEvent>(
@@ -488,7 +488,7 @@ namespace llarp::quic
           "Unable to open an outgoing quic connection: too many existing connections"};
     (next_pseudo_port_ = pport)++;
 
-    LogDebug("Bound TCP tunnel ", saddr, " for quic client :", pport);
+    LogInfo("Bound TCP tunnel ", saddr, " for quic client :", pport);
 
     // We are emplacing into client_tunnels_ here: beyond this point we must not throw until we
     // return (or if we do, make sure we remove this row from client_tunnels_ first).

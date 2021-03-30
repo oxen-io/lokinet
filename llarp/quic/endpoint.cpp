@@ -31,7 +31,7 @@ namespace llarp::quic
     expiry_timer->on<uvw::TimerEvent>([this](const auto&, auto&) { check_timeouts(); });
     expiry_timer->start(250ms, 250ms);
 
-    LogDebug("Created endpoint");
+    LogDebug("Created QUIC endpoint");
   }
 
   Endpoint::~Endpoint()
@@ -57,30 +57,30 @@ namespace llarp::quic
 
     Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
 
-    LogDebug("[", pkt.path, ",ecn=", pkt.info.ecn, "]: received ", data.size(), " bytes");
+    LogTrace("[", pkt.path, ",ecn=", pkt.info.ecn, "]: received ", data.size(), " bytes");
 
     handle_packet(pkt);
 
-    LogDebug("Done handling packet");
+    LogTrace("Done handling packet");
   }
 
   void
   Endpoint::handle_packet(const Packet& p)
   {
-    LogDebug("Handling incoming quic packet: ", buffer_printer{p.data});
+    LogTrace("Handling incoming quic packet: ", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
       return;
     auto& dcid = *maybe_dcid;
 
     // See if we have an existing connection already established for it
-    LogDebug("Incoming connection id ", dcid);
+    LogTrace("Incoming connection id ", dcid);
     auto [connptr, alias] = get_conn(dcid);
     if (!connptr)
     {
       if (alias)
       {
-        LogDebug("CID is an expired alias; dropping");
+        LogDebug("Incoming packet QUIC CID is an expired alias; dropping");
         return;
       }
       connptr = accept_initial_connection(p);
@@ -88,9 +88,9 @@ namespace llarp::quic
         return;
     }
     if (alias)
-      llarp::LogDebug("CID is alias for primary CID ", connptr->base_cid);
+      LogTrace("CID is alias for primary CID ", connptr->base_cid);
     else
-      llarp::LogDebug("CID is primary CID");
+      LogTrace("CID is primary CID");
 
     handle_conn_packet(*connptr, p);
   }
@@ -151,13 +151,13 @@ namespace llarp::quic
     }
 
     // FIXME - reset idle timer?
-    LogDebug("Done with incoming packet");
+    LogTrace("Done with incoming packet");
   }
 
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    LogDebug("Reading packet from ", p.path);
+    LogTrace("Reading packet from ", p.path);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
@@ -187,8 +187,7 @@ namespace llarp::quic
 
     if (service_endpoint.SendToOrQueue(to, outgoing, service::ProtocolType::QUIC))
     {
-      LogDebug("[", to, "]: sent ", outgoing.size(), " bytes");
-      LogTrace("Full quic data: ", buffer_printer{outgoing});
+      LogTrace("[", to, "]: sent ", buffer_printer{outgoing});
     }
     else
     {

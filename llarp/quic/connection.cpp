@@ -355,7 +355,7 @@ namespace llarp::quic
 
     if (!send_data.empty())
     {
-      LogDebug("Sending packet: ", buffer_printer{send_data});
+      LogTrace("Sending packet: ", buffer_printer{send_data});
       rv = endpoint.send_packet(path.remote, send_data, send_pkt_info.ecn);
     }
     return rv;
@@ -436,8 +436,6 @@ namespace llarp::quic
     auto [settings, tparams, cb] = init();
 
     cb.recv_client_initial = recv_client_initial;
-
-    LogDebug("header.type = ", header.type);
 
     // ConnectionIDs are a little complicated:
     // - when a client creates a new connection to us, it creates a random source connection ID
@@ -589,7 +587,7 @@ namespace llarp::quic
 
     auto send_packet = [&](auto nwrite) -> bool {
       send_buffer_size = nwrite;
-      LogDebug("Sending ", send_buffer_size, "B packet");
+      LogTrace("Sending ", send_buffer_size, "B packet");
 
       // FIXME: update remote addr? ecn?
       auto sent = send();
@@ -606,7 +604,7 @@ namespace llarp::quic
         // FIXME: disconnect?
         return false;
       }
-      LogDebug("packet away!");
+      LogTrace("packet away!");
       return true;
     };
 
@@ -664,18 +662,18 @@ namespace llarp::quic
 
         auto [nwrite, consumed] =
             add_stream_data(stream.id(), vecs.data(), vecs.size(), extra_flags);
-        LogDebug(
+        LogTrace(
             "add_stream_data for stream ", stream.id(), " returned [", nwrite, ",", consumed, "]");
 
         if (nwrite > 0)
         {
           if (consumed >= 0)
           {
-            LogDebug("consumed ", consumed, " bytes from stream ", stream.id());
+            LogTrace("consumed ", consumed, " bytes from stream ", stream.id());
             stream.wrote(consumed);
           }
 
-          LogDebug("Sending stream data packet");
+          LogTrace("Sending stream data packet");
           if (!send_packet(nwrite))
             return;
           ++stream_packets;
@@ -686,14 +684,14 @@ namespace llarp::quic
         switch (nwrite)
         {
           case 0:
-            LogDebug(
+            LogTrace(
                 "Done stream writing to ",
                 stream.id(),
                 " (either stream is congested or we have nothing else to send right now)");
             assert(consumed <= 0);
             break;
           case NGTCP2_ERR_WRITE_MORE:
-            LogDebug(
+            LogTrace(
                 "consumed ", consumed, " bytes from stream ", stream.id(), " and have space left");
             stream.wrote(consumed);
             if (stream.unsent() > 0)
@@ -723,11 +721,11 @@ namespace llarp::quic
     for (;;)
     {
       auto [nwrite, consumed] = add_stream_data(StreamID{}, nullptr, 0);
-      LogDebug("add_stream_data for non-stream returned [", nwrite, ",", consumed, "]");
+      LogTrace("add_stream_data for non-stream returned [", nwrite, ",", consumed, "]");
       assert(consumed <= 0);
       if (nwrite == NGTCP2_ERR_WRITE_MORE)
       {
-        LogDebug("Writing non-stream data, and have space left");
+        LogTrace("Writing non-stream data, and have space left");
         continue;
       }
       if (nwrite < 0)
@@ -737,14 +735,14 @@ namespace llarp::quic
       }
       if (nwrite == 0)
       {
-        LogDebug("Nothing else to write for non-stream data for now (or we are congested)");
+        LogTrace("Nothing else to write for non-stream data for now (or we are congested)");
         ngtcp2_conn_stat cstat;
         ngtcp2_conn_get_conn_stat(*this, &cstat);
-        LogDebug("Current unacked bytes in flight: ", cstat.bytes_in_flight);
+        LogTrace("Current unacked bytes in flight: ", cstat.bytes_in_flight);
         break;
       }
 
-      LogDebug("Sending non-stream data packet");
+      LogTrace("Sending non-stream data packet");
       if (!send_packet(nwrite))
         return;
     }
