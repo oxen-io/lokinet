@@ -24,7 +24,7 @@ namespace llarp::quic
       assert(stream);
       std::string_view data{event.data.get(), event.length};
       auto peer = client.peer();
-      LogDebug(peer.ip, ":", peer.port, " → lokinet ", buffer_printer{data});
+      LogTrace(peer.ip, ":", peer.port, " → lokinet ", buffer_printer{data});
       // Steal the buffer from the DataEvent's unique_ptr<char[]>:
       stream->append_buffer(reinterpret_cast<const std::byte*>(event.data.release()), event.length);
       if (stream->used() >= tunnel::PAUSE_SIZE)
@@ -128,6 +128,7 @@ namespace llarp::quic
     void
     initial_client_data_handler(uvw::TCPHandle& client, Stream& stream, bstring_view bdata)
     {
+      LogTrace("initial client handler; data: ", buffer_printer{bdata});
       if (bdata.empty())
         return;
       client.clear();  // Clear these initial event handlers: we either set up the proper ones, or
@@ -479,6 +480,8 @@ namespace llarp::quic
           "Unable to open an outgoing quic connection: too many existing connections"};
     (next_pseudo_port_ = pport)++;
 
+    LogDebug("Bound TCP tunnel ", saddr, " for quic client :", pport);
+
     // We are emplacing into client_tunnels_ here: beyond this point we must not throw until we
     // return (or if we do, make sure we remove this row from client_tunnels_ first).
     assert(client_tunnels_.count(pport) == 0);
@@ -570,6 +573,7 @@ namespace llarp::quic
     auto conn = tunnel.client->get_connection();
 
     conn->on_stream_available = [this, id = row.first](Connection&) {
+      LogDebug("QUIC connection :", id, " established; streams now available");
       if (auto it = client_tunnels_.find(id); it != client_tunnels_.end())
         flush_pending_incoming(it->second);
     };
