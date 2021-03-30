@@ -242,7 +242,8 @@ namespace llarp::quic
     void
     data(std::shared_ptr<void> data);
 
-    // Variation of data() that holds the pointer in a weak_ptr instead of a shared_ptr.
+    // Variation of data() that holds the pointer in a weak_ptr instead of a shared_ptr.  (Note that
+    // setting this replaces data() and vice versa).
     void
     weak_data(std::weak_ptr<void> data);
 

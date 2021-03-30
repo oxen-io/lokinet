@@ -56,7 +56,8 @@ namespace llarp::quic
     on_incoming_data(Stream& stream, bstring_view bdata)
     {
       auto tcp = stream.data<uvw::TCPHandle>();
-      assert(tcp);
+      if (!tcp) return; // TCP connection is gone, which would have already sent a stream close, so just drop it.
+
       std::string_view data{reinterpret_cast<const char*>(bdata.data()), bdata.size()};
       auto peer = tcp->peer();
       LogTrace(peer.ip, ":", peer.port, " ← lokinet ", buffer_printer{data});
@@ -90,7 +91,11 @@ namespace llarp::quic
       tcp.on<uvw::CloseEvent>([](auto&, uvw::TCPHandle& c) {
         // This fires sometime after we call `close()` to signal that the close is done.
         LogError("Connection closed to ", c.peer().ip, ":", c.peer().port, "; closing quic stream");
-        c.data<Stream>()->close();
+        if (auto stream = c.data<Stream>())
+        {
+          stream->close();
+          stream->data(nullptr);
+        }
         c.data(nullptr);
       });
       tcp.on<uvw::EndEvent>([](auto&, uvw::TCPHandle& c) {
@@ -109,10 +114,12 @@ namespace llarp::quic
             ":",
             tcp.peer().port,
             ", shutting down quic stream");
-        // Failed to open connection, so close the quic stream
-        auto stream = tcp.data<Stream>();
-        if (stream)
+        if (auto stream = tcp.data<Stream>())
+        {
           stream->close(tunnel::ERROR_TCP);
+          stream->data(nullptr);
+          tcp.data(nullptr);
+        }
         tcp.closeReset();
       });
       tcp.on<uvw::DataEvent>(on_outgoing_data);
