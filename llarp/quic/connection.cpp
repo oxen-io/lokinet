@@ -1,6 +1,7 @@
 #include "connection.hpp"
 #include "client.hpp"
 #include "server.hpp"
+#include <limits>
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
@@ -752,7 +753,15 @@ namespace llarp::quic
   void
   Connection::schedule_retransmit()
   {
-    auto expiry = std::chrono::nanoseconds{ngtcp2_conn_get_expiry(*this)};
+    auto exp = ngtcp2_conn_get_expiry(*this);
+    if (exp == std::numeric_limits<decltype(exp)>::max())
+    {
+      LogTrace("no retransmit currently needed");
+      retransmit_timer->stop();
+      return;
+    }
+
+    auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
     auto expires_in = std::max(0ms,
         std::chrono::duration_cast<std::chrono::milliseconds>(
           expiry - get_time().time_since_epoch()));
