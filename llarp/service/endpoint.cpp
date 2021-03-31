@@ -1531,8 +1531,13 @@ namespace llarp
         if (*ptr == m_Identity.pub.Addr())
         {
           ConvoTag tag{};
-          tag.Randomize();
-          PutSenderFor(tag, m_Identity.pub, false);
+
+          if (auto maybe = GetBestConvoTagFor(*ptr))
+            tag = *maybe;
+          else
+            tag.Randomize();
+
+          PutSenderFor(tag, m_Identity.pub, true);
           MarkConvoTagActive(tag);
           Loop()->call_soon([tag, hook]() { hook(tag); });
           return true;
