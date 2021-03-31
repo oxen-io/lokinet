@@ -71,7 +71,7 @@ namespace llarp::quic
     /// Simple wrapper around `listen(...)` that adds a handler that accepts all incoming
     /// connections trying to tunnel to port `port` and maps them to `localhost:port`.
     int
-    listen(uint16_t port);
+    listen(SockAddr port);
 
     /// Removes an incoming connection handler; takes the ID returned by `listen()`.
     void

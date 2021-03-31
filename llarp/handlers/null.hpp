@@ -16,15 +16,37 @@ namespace llarp
       NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
           : llarp::service::Endpoint(r, parent)
       {
-        r->loop()->add_ticker([this] { Pump(Now()); });
+        r->loop()->add_ticker([this] {
+          while (not m_InboundQuic.empty())
+          {
+            LogInfo(m_InboundQuic.top().seqno);
+            m_InboundQuic.top().process();
+            m_InboundQuic.pop();
+          }
+          Pump(Now());
+        });
       }
+
+      struct QUICEvent
+      {
+        uint64_t seqno;
+        std::function<void()> process;
+
+        bool
+        operator<(const QUICEvent& other) const
+        {
+          return other.seqno < seqno;
+        }
+      };
+
+      std::priority_queue<QUICEvent> m_InboundQuic;
 
       virtual bool
       HandleInboundPacket(
           const service::ConvoTag tag,
           const llarp_buffer_t& buf,
           service::ProtocolType t,
-          uint64_t) override
+          uint64_t seqno) override
       {
         if (t == service::ProtocolType::Control)
           return true;
@@ -44,7 +66,10 @@ namespace llarp
           return false;
         }
         MarkConvoTagActive(tag);
-        quic->receive_packet(tag, buf);
+        std::vector<byte_t> copy;
+        copy.resize(buf.sz);
+        std::copy_n(buf.base, buf.sz, copy.data());
+        m_InboundQuic.push({seqno, [quic, buf = copy, tag]() { quic->receive_packet(tag, buf); }});
         m_router->loop()->wakeup();
         return true;
       }

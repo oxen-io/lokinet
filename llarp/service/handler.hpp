@@ -66,6 +66,9 @@ namespace llarp
       virtual bool
       HasInboundConvo(const Address& addr) const = 0;
 
+      virtual bool
+      HasOutboundConvo(const Address& addr) const = 0;
+
       /// do we want a session outbound to addr
       virtual bool
       WantsOutboundSession(const Address& addr) const = 0;

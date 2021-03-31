@@ -318,11 +318,11 @@ namespace llarp::quic
   }
 
   int
-  TunnelManager::listen(uint16_t port)
+  TunnelManager::listen(SockAddr addr)
   {
-    return listen([port](std::string_view, uint16_t p) -> std::optional<SockAddr> {
-      if (p == port)
-        return SockAddr{127, 0, 0, 1, huint16_t{port}};
+    return listen([addr](std::string_view, uint16_t p) -> std::optional<SockAddr> {
+      if (p == addr.getPort())
+        return addr;
       return std::nullopt;
     });
   }

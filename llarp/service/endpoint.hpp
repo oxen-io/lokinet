@@ -312,6 +312,9 @@ namespace llarp
       HasInboundConvo(const Address& addr) const override;
 
       bool
+      HasOutboundConvo(const Address& addr) const override;
+
+      bool
       GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const override;
       void
       PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) override;

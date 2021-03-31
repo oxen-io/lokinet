@@ -214,6 +214,10 @@ namespace llarp::rpc
                 if (auto itr = obj.find("endpoint"); itr != obj.end())
                   endpoint = itr->get<std::string>();
 
+                std::string remote = "127.0.0.1";
+                if (auto itr = obj.find("host"); itr != obj.end())
+                  remote = itr->get<std::string>();
+
                 uint16_t port = 0;
                 if (auto itr = obj.find("port"); itr != obj.end())
                   port = itr->get<uint16_t>();
@@ -227,7 +231,7 @@ namespace llarp::rpc
                   reply(CreateJSONError("invalid arguments"));
                   return;
                 }
-                r->loop()->call([reply, endpoint, port, r, closeID]() {
+                r->loop()->call([reply, endpoint, remote, port, r, closeID]() {
                   auto ep = GetEndpointByName(r, endpoint);
                   if (not ep)
                   {
@@ -245,7 +249,8 @@ namespace llarp::rpc
                     int id = 0;
                     try
                     {
-                      id = quic->listen(port);
+                      SockAddr addr{remote + ":" + std::to_string(port)};
+                      id = quic->listen(addr);
                     }
                     catch (std::exception& ex)
                     {
