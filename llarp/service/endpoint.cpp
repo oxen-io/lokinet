@@ -1675,7 +1675,6 @@ namespace llarp
       }
 
       // Failed to find a suitable inbound convo, look for outbound
-      {
         LogTrace("Not an inbound convo");
         auto& sessions = m_state->m_RemoteSessions;
         auto range = sessions.equal_range(remote);
@@ -1714,11 +1713,7 @@ namespace llarp
               1500ms);
           return true;
         }
-        else
-        {
           LogDebug("SendOrQueue failed: no inbound/outbound sessions");
-        }
-      }
       return false;
     }
 
