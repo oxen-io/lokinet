@@ -24,7 +24,7 @@ namespace llarp
     struct IServiceLookup;
     struct OutboundContext;
 
-    using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
+    using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
 
     using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
     using SendMessageQueue_t = thread::Queue<SendEvent_t>;

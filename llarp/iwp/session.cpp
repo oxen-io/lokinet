@@ -60,7 +60,7 @@ namespace llarp
     void
     Session::Send_LL(const byte_t* buf, size_t sz)
     {
-      LogDebug("send ", sz, " to ", m_RemoteAddr);
+      LogTrace("send ", sz, " to ", m_RemoteAddr);
       const llarp_buffer_t pkt(buf, sz);
       m_Parent->SendTo_LL(m_RemoteAddr, pkt);
       m_LastTX = time_now_ms();
@@ -128,7 +128,7 @@ namespace llarp
       {
         LogError("failed to send LIM to ", m_RemoteAddr);
       }
-      LogDebug("sent LIM to ", m_RemoteAddr);
+      LogTrace("sent LIM to ", m_RemoteAddr);
     }
 
     void
@@ -145,7 +145,7 @@ namespace llarp
     void
     Session::EncryptWorker(CryptoQueue_t msgs)
     {
-      LogDebug("encrypt worker ", msgs.size(), " messages");
+      LogTrace("encrypt worker ", msgs.size(), " messages");
       for (auto& pkt : msgs)
       {
         llarp_buffer_t pktbuf{pkt};
@@ -195,7 +195,7 @@ namespace llarp
         msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
       m_Stats.totalInFlightTX++;
-      LogDebug("send message ", msgid);
+      LogDebug("send message ", msgid, " to ", m_RemoteAddr);
       return true;
     }
 
@@ -211,7 +211,7 @@ namespace llarp
         auto mack = CreatePacket(Command::eMACK, 1 + (numAcks * sizeof(uint64_t)));
         mack[PacketOverhead + CommandOverhead] = byte_t{static_cast<byte_t>(numAcks)};
         byte_t* ptr = mack.data() + 3 + PacketOverhead;
-        LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
+        LogTrace("send ", numAcks, " macks to ", m_RemoteAddr);
         const auto& itr = m_SendMACKs.top();
         while (numAcks > 0)
         {
@@ -367,7 +367,7 @@ namespace llarp
           {
             m_Stats.totalDroppedTX++;
             m_Stats.totalInFlightTX--;
-            LogDebug("Dropped unacked packet to ", m_RemoteAddr);
+            LogTrace("Dropped unacked packet to ", m_RemoteAddr);
             itr->second.InformTimeout();
             itr = m_TXMsgs.erase(itr);
           }
@@ -439,7 +439,7 @@ namespace llarp
         LogError("failed to transport_dh_client on outbound session to ", m_RemoteAddr);
         return;
       }
-      LogDebug("sent intro to ", m_RemoteAddr);
+      LogTrace("sent intro to ", m_RemoteAddr);
     }
 
     void
@@ -589,7 +589,7 @@ namespace llarp
       const TunnelNonce N{curbuf.base};
       curbuf.base += 32;
       curbuf.sz -= 32;
-      LogDebug("decrypt: ", curbuf.sz, " bytes from ", m_RemoteAddr);
+      LogTrace("decrypt: ", curbuf.sz, " bytes from ", m_RemoteAddr);
       return CryptoManager::instance()->xchacha20(curbuf, m_SessionKey, N);
     }
 
@@ -641,7 +641,7 @@ namespace llarp
         auto queue = m_PlaintextRecv.popFront();
         for (auto& result : queue)
         {
-          LogDebug("Command ", int(result[PacketOverhead + 1]));
+          LogTrace("Command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
           switch (result[PacketOverhead + 1])
           {
             case Command::eXMIT:
@@ -688,12 +688,12 @@ namespace llarp
         LogError("short mack from ", m_RemoteAddr);
         return;
       }
-      LogDebug("got ", int(numAcks), " mack from ", m_RemoteAddr);
+      LogTrace("got ", int(numAcks), " mack from ", m_RemoteAddr);
       byte_t* ptr = data.data() + CommandOverhead + PacketOverhead + 1;
       while (numAcks > 0)
       {
         uint64_t acked = bufbe64toh(ptr);
-        LogDebug("mack containing txid=", acked, " from ", m_RemoteAddr);
+        LogTrace("mack containing txid=", acked, " from ", m_RemoteAddr);
         auto itr = m_TXMsgs.find(acked);
         if (itr != m_TXMsgs.end())
         {
@@ -704,7 +704,7 @@ namespace llarp
         }
         else
         {
-          LogDebug("ignored mack for txid=", acked, " from ", m_RemoteAddr);
+          LogTrace("ignored mack for txid=", acked, " from ", m_RemoteAddr);
         }
         ptr += sizeof(uint64_t);
         numAcks--;
@@ -720,7 +720,7 @@ namespace llarp
         return;
       }
       uint64_t txid = bufbe64toh(data.data() + CommandOverhead + PacketOverhead);
-      LogDebug("got nack on ", txid, " from ", m_RemoteAddr);
+      LogTrace("got nack on ", txid, " from ", m_RemoteAddr);
       auto itr = m_TXMsgs.find(txid);
       if (itr != m_TXMsgs.end())
       {
@@ -744,7 +744,7 @@ namespace llarp
       uint64_t rxid = bufbe64toh(data.data() + CommandOverhead + sizeof(uint16_t) + PacketOverhead);
       ShortHash h{
           data.data() + CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t) + PacketOverhead};
-      LogDebug("rxid=", rxid, " sz=", sz, " h=", h.ToHex());
+      LogTrace("rxid=", rxid, " sz=", sz, " h=", h.ToHex(), " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
       {
         // check for replay
@@ -752,7 +752,7 @@ namespace llarp
         if (itr != m_ReplayFilter.end())
         {
           m_SendMACKs.emplace(rxid);
-          LogDebug("duplicate rxid=", rxid, " from ", m_RemoteAddr);
+          LogTrace("duplicate rxid=", rxid, " from ", m_RemoteAddr);
           return;
         }
       }
@@ -784,7 +784,7 @@ namespace llarp
           }
         }
         else
-          LogDebug("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
+          LogTrace("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
       }
     }
 
@@ -804,14 +804,14 @@ namespace llarp
       {
         if (m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
         {
-          LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
+          LogTrace("no rxid=", rxid, " for ", m_RemoteAddr);
           auto nack = CreatePacket(Command::eNACK, 8);
           htobe64buf(nack.data() + PacketOverhead + CommandOverhead, rxid);
           EncryptAndSend(std::move(nack));
         }
         else
         {
-          LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr);
+          LogTrace("replay hit for rxid=", rxid, " for ", m_RemoteAddr);
           m_SendMACKs.emplace(rxid);
         }
         return;
@@ -844,6 +844,7 @@ namespace llarp
       {
         m_Parent->HandleMessage(this, msg.m_Data);
         EncryptAndSend(msg.ACKS());
+        LogDebug("recv'd message ", rxid, " from ", m_RemoteAddr);
       }
       m_RXMsgs.erase(rxid);
     }
@@ -862,14 +863,14 @@ namespace llarp
       auto itr = m_TXMsgs.find(txid);
       if (itr == m_TXMsgs.end())
       {
-        LogDebug("no txid=", txid, " for ", m_RemoteAddr);
+        LogTrace("no txid=", txid, " for ", m_RemoteAddr);
         return;
       }
       itr->second.Ack(data[10 + PacketOverhead]);
 
       if (itr->second.IsTransmitted())
       {
-        LogDebug("sent message ", itr->first);
+        LogDebug("sent message ", itr->first, " to ", m_RemoteAddr);
         itr->second.Completed();
         itr = m_TXMsgs.erase(itr);
       }

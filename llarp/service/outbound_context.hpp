@@ -126,6 +126,9 @@ namespace llarp
         return currentIntroSet;
       }
 
+      llarp_time_t
+      RTT() const;
+
      private:
       /// swap remoteIntro with next intro
       void

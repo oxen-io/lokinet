@@ -269,6 +269,7 @@ namespace llarp
     OutboundContext::ExtractStatus() const
     {
       auto obj = path::Builder::ExtractStatus();
+      obj["estimatedRTT"] = to_json(estimatedRTT);
       obj["currentConvoTag"] = currentConvoTag.ToHex();
       obj["remoteIntro"] = remoteIntro.ExtractStatus();
       obj["sessionCreatedAt"] = to_json(createdAt);
@@ -341,8 +342,26 @@ namespace llarp
 
       if (ReadyToSend() and m_ReadyHook)
       {
-        m_ReadyHook(this);
-        m_ReadyHook = nullptr;
+        KeepAlive();
+        const auto path = GetPathByRouter(remoteIntro.router);
+        if (not path)
+        {
+          LogWarn(Name(), " ready but no path to ", remoteIntro.router, " ???");
+          return false;
+        }
+        const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
+        m_router->loop()->call_later(
+            rtt, [rtt, self = shared_from_this(), hook = std::move(m_ReadyHook)]() {
+              LogInfo(
+                  self->Name(),
+                  " is ready, RTT is measured as ",
+                  self->estimatedRTT,
+                  " approximated as ",
+                  rtt,
+                  " delta=",
+                  rtt - self->estimatedRTT);
+              hook(self.get());
+            });
       }
 
       // if we are dead return true so we are removed
@@ -628,7 +647,7 @@ namespace llarp
           LogWarn("invalidating convotag T=", frame.T);
           m_Endpoint->RemoveConvoTag(frame.T);
           m_Endpoint->m_SendQueue.tryPushBack(
-              SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, frame.F), p});
+              SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.F), p});
         }
       }
       return true;

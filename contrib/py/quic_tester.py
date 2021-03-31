@@ -56,7 +56,8 @@ if not 2 <= len(sys.argv) or any(x in y for x in ("--help", "-h") for y in sys.a
 action = sys.argv[1].lower()
 host = sys.argv[2]
 port = int(sys.argv[3])
-    
+request_path = len(sys.argv) >= 5 and sys.argv[4] or '/'
+
 beginning_of_time = time.clock_gettime(time.CLOCK_MONOTONIC)
 
 #print("Connecting to {}".format(remote), file=sys.stderr)
@@ -95,8 +96,8 @@ def success_or_die(response):
 if action == "connect":
     result = success_or_die(rpc("llarp.quic_connect", args))
     print(result)
-    cmd = "curl -vv http://{}".format(result["addr"])
-    print("exec: {}".format(cmd))
+    cmd = "curl -vv http://{}{} -o /dev/null".format(result["addr"], request_path)
+    print("{}".format(cmd))
     os.system(cmd)
 if action == "listen":
     result = success_or_die(rpc("llarp.quic_listener", args))

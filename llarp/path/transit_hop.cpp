@@ -275,6 +275,7 @@ namespace llarp
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg.T;
+      reply.S = msg.S;
       return SendRoutingMessage(reply, r);
     }
 
@@ -435,14 +436,13 @@ namespace llarp
         const llarp::routing::PathTransferMessage& msg, AbstractRouter* r)
     {
       auto path = r->pathContext().GetPathForTransfer(msg.P);
-      llarp::routing::DataDiscardMessage discarded(msg.P, msg.S);
+      llarp::routing::DataDiscardMessage discarded{msg.P, msg.S};
       if (path == nullptr || msg.T.F != info.txID)
       {
         return SendRoutingMessage(discarded, r);
       }
-
       std::array<byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-      llarp_buffer_t buf(tmp);
+      llarp_buffer_t buf{tmp};
       if (!msg.T.BEncode(&buf))
       {
         llarp::LogWarn(info, " failed to transfer data message, encode failed");

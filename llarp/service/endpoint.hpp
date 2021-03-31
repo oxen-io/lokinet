@@ -61,7 +61,7 @@ namespace llarp
                       public IDataHandler,
                       public EndpointBase
     {
-      static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
+      static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 1;
 
       Endpoint(AbstractRouter* r, Context* parent);
       ~Endpoint() override;
@@ -415,7 +415,7 @@ namespace llarp
       SupportsV6() const = 0;
 
       void
-      RegenAndPublishIntroSet(bool forceRebuild = false);
+      RegenAndPublishIntroSet();
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
@@ -472,6 +472,9 @@ namespace llarp
 
      public:
       SendMessageQueue_t m_SendQueue;
+
+     private:
+      llarp_time_t m_LastIntrosetRegenAttempt = 0s;
 
      protected:
       void

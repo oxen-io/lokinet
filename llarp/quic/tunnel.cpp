@@ -321,6 +321,7 @@ namespace llarp::quic
   TunnelManager::listen(SockAddr addr)
   {
     return listen([addr](std::string_view, uint16_t p) -> std::optional<SockAddr> {
+      LogInfo("try accepting ", addr.getPort());
       if (p == addr.getPort())
         return addr;
       return std::nullopt;
@@ -595,7 +596,8 @@ namespace llarp::quic
   {
     if (!ct.client)
       return;  // Happens if we're still waiting for a path to build
-    assert(ct.client->get_connection());
+    if (not ct.client->get_connection())
+      return;
     auto& conn = *ct.client->get_connection();
     int available = conn.get_streams_available();
     while (available > 0 and not ct.pending_incoming.empty())

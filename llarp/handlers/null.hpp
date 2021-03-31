@@ -19,7 +19,6 @@ namespace llarp
         r->loop()->add_ticker([this] {
           while (not m_InboundQuic.empty())
           {
-            LogInfo(m_InboundQuic.top().seqno);
             m_InboundQuic.top().process();
             m_InboundQuic.pop();
           }
