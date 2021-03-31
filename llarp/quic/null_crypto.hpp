@@ -32,7 +32,7 @@ namespace llarp::quic
     install_rx_key(Connection& conn);
 
    private:
-    std::array<uint8_t, 1> null_iv{};
+    std::array<uint8_t, 8> null_iv{};
     // std::array<uint8_t, 4096> null_data{};
 
     ngtcp2_crypto_ctx null_ctx{};
