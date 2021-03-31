@@ -1683,7 +1683,7 @@ namespace llarp
         {
           if (itr->second->ReadyToSend())
           {
-            LogTrace("Found an inbound session to use to reach ", remote);
+            LogTrace("Found an outbound session to use to reach ", remote);
             itr->second->AsyncEncryptAndSendTo(data, t);
             return true;
           }
