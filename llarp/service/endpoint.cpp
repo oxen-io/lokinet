@@ -1532,7 +1532,7 @@ namespace llarp
         {
           ConvoTag tag{};
           tag.Randomize();
-          Sessions()[tag].inbound = false;
+          PutSenderFor(tag, m_Identity.pub, false);
           MarkConvoTagActive(tag);
           Loop()->call_soon([tag, hook]() { hook(tag); });
           return true;
