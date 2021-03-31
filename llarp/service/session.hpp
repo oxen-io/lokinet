@@ -26,6 +26,7 @@ namespace llarp
       llarp_time_t lastUsed = 0s;
       uint64_t seqno = 0;
       bool inbound = false;
+      bool forever = false;
 
       util::StatusObject
       ExtractStatus() const;

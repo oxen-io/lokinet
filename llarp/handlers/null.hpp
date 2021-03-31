@@ -48,8 +48,10 @@ namespace llarp
           uint64_t seqno) override
       {
         if (t == service::ProtocolType::Control)
+        {
+          MarkConvoTagActive(tag);
           return true;
-
+        }
         if (t != service::ProtocolType::QUIC)
           return false;
 

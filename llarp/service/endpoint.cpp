@@ -1536,9 +1536,9 @@ namespace llarp
             tag = *maybe;
           else
             tag.Randomize();
-
           PutSenderFor(tag, m_Identity.pub, true);
           MarkConvoTagActive(tag);
+          Sessions()[tag].forever = true;
           Loop()->call_soon([tag, hook]() { hook(tag); });
           return true;
         }
