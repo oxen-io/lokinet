@@ -682,11 +682,7 @@ namespace llarp
         while (i != range.second)
         {
           itr->second->SetReadyHook(
-              [callback = i->second, addr](auto session) {
-                LogInfo(addr, " is ready to send");
-                callback(addr, session);
-              },
-              left);
+              [callback = i->second, addr](auto session) { callback(addr, session); }, left);
           ++i;
         }
         serviceLookups.erase(addr);
@@ -703,11 +699,7 @@ namespace llarp
       if (itr != range.second)
       {
         session->SetReadyHook(
-            [callback = itr->second, addr](auto session) {
-              LogInfo(addr, " is ready to send");
-              callback(addr, session);
-            },
-            left);
+            [callback = itr->second, addr](auto session) { callback(addr, session); }, left);
         ++itr;
       }
       serviceLookups.erase(addr);
@@ -1428,6 +1420,8 @@ namespace llarp
         std::optional<ConvoTag> ret = std::nullopt;
         for (const auto& [tag, session] : Sessions())
         {
+          if (tag.IsZero())
+            continue;
           if (session.remote.Addr() == *ptr and session.lastUsed >= time)
           {
             time = session.lastUsed;

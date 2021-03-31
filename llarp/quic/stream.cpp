@@ -331,17 +331,17 @@ namespace llarp::quic
   }
 
   void
-    Stream::hard_close()
+  Stream::hard_close()
+  {
+    if (avail_trigger)
     {
-      if (avail_trigger)
-      {
-        avail_trigger->close();
-        avail_trigger.reset();
-      }
-      if (!is_closing && close_callback)
-        close_callback(*this, STREAM_ERROR_CONNECTION_EXPIRED);
-      is_closing = is_shutdown = true;
+      avail_trigger->close();
+      avail_trigger.reset();
     }
+    if (!is_closing && close_callback)
+      close_callback(*this, STREAM_ERROR_CONNECTION_EXPIRED);
+    is_closing = is_shutdown = true;
+  }
 
   void
   Stream::data(std::shared_ptr<void> data)

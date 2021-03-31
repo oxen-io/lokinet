@@ -172,6 +172,12 @@ namespace llarp
         currentStatus = record.status;
         if ((record.status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
         {
+          if (record.status & LR_StatusRecord::FAIL_CONGESTION and index == 0)
+          {
+            // first hop building too fast
+            failedAt = hops[index].rc.pubkey;
+            break;
+          }
           // failed at next hop
           if (index + 1 < hops.size())
           {
@@ -245,8 +251,13 @@ namespace llarp
         {
           llarp::LogDebug("Path build failed for an unspecified reason");
         }
-        r->loop()->call(
-            [r, self = shared_from_this()]() { self->EnterState(ePathFailed, r->Now()); });
+        RouterID edge{};
+        if (failedAt)
+          edge = *failedAt;
+        r->loop()->call([r, self = shared_from_this(), edge]() {
+          self->EnterState(ePathFailed, r->Now());
+          self->m_PathSet->HandlePathBuildFailedAt(self, edge);
+        });
       }
 
       // TODO: meaningful return value?
@@ -259,7 +270,6 @@ namespace llarp
       if (st == ePathFailed)
       {
         _status = st;
-        m_PathSet->HandlePathBuildFailed(shared_from_this());
         return;
       }
       if (st == ePathExpired && _status == ePathBuilding)

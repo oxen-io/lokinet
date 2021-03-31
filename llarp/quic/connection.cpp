@@ -761,9 +761,10 @@ namespace llarp::quic
     }
 
     auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
-    auto expires_in = std::max(0ms,
+    auto expires_in = std::max(
+        0ms,
         std::chrono::duration_cast<std::chrono::milliseconds>(
-          expiry - get_time().time_since_epoch()));
+            expiry - get_time().time_since_epoch()));
     LogDebug("Next retransmit in ", expires_in.count(), "ms");
     retransmit_timer->stop();
     retransmit_timer->start(expires_in, 0ms);

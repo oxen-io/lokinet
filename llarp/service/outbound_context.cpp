@@ -79,11 +79,9 @@ namespace llarp
     {
       if (remoteIntro != m_NextIntro)
       {
-        LogInfo(Name(), " swap intro to use ", RouterID{m_NextIntro.router});
         remoteIntro = m_NextIntro;
         m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.A, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
-        ShiftIntroduction(false);
       }
     }
 
@@ -128,7 +126,9 @@ namespace llarp
     {
       if (markedBad)
         return false;
-      return (!remoteIntro.router.IsZero()) && GetPathByRouter(remoteIntro.router) != nullptr;
+      if (remoteIntro.router.IsZero())
+        return false;
+      return GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
     void
@@ -157,10 +157,14 @@ namespace llarp
     }
 
     void
-    OutboundContext::HandlePathBuildFailed(path::Path_ptr p)
+    OutboundContext::HandlePathBuildFailedAt(path::Path_ptr p, RouterID hop)
     {
-      ShiftIntroRouter(p->Endpoint());
-      path::Builder::HandlePathBuildFailed(p);
+      if (p->Endpoint() == hop)
+      {
+        // shift intro when we fail at the pivot
+        ShiftIntroRouter(p->Endpoint());
+      }
+      path::Builder::HandlePathBuildFailedAt(p, hop);
     }
 
     void
@@ -186,9 +190,11 @@ namespace llarp
     {
       if (sentIntro)
         return;
-
       if (remoteIntro.router.IsZero())
-        SwapIntros();
+      {
+        LogWarn(Name(), " dropping intro frame we have no intro ready yet");
+        return;
+      }
 
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (path == nullptr)

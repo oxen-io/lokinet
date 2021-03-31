@@ -319,7 +319,8 @@ namespace llarp::quic
     // Called by the owning Connection to do a "hard" close of a stream during Connection
     // destruction: unlike a regular close this doesn't try to transmit a close over the wire (which
     // won't work since the Connection is dead), it just fires the close callback and cleans up.
-    void hard_close();
+    void
+    hard_close();
 
     // ngtcp2 stream_id, assigned during stream creation
     StreamID stream_id{-1};

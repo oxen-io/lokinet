@@ -106,7 +106,7 @@ namespace llarp
       HandlePathBuildTimeout(path::Path_ptr path) override;
 
       void
-      HandlePathBuildFailed(path::Path_ptr path) override;
+      HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
 
       std::optional<std::vector<RouterContact>>
       GetHopsForBuild() override;

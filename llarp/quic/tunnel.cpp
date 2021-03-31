@@ -56,7 +56,9 @@ namespace llarp::quic
     on_incoming_data(Stream& stream, bstring_view bdata)
     {
       auto tcp = stream.data<uvw::TCPHandle>();
-      if (!tcp) return; // TCP connection is gone, which would have already sent a stream close, so just drop it.
+      if (!tcp)
+        return;  // TCP connection is gone, which would have already sent a stream close, so just
+                 // drop it.
 
       std::string_view data{reinterpret_cast<const char*>(bdata.data()), bdata.size()};
       auto peer = tcp->peer();
@@ -78,11 +80,12 @@ namespace llarp::quic
       }
     }
 
-    void close_tcp_pair(quic::Stream& st, std::optional<uint64_t> /*errcode*/) {
+    void
+    close_tcp_pair(quic::Stream& st, std::optional<uint64_t> /*errcode*/)
+    {
       if (auto tcp = st.data<uvw::TCPHandle>())
         tcp->close();
     };
-
     // Creates a new tcp handle that forwards incoming data/errors/closes into appropriate actions
     // on the given quic stream.
     void
@@ -447,7 +450,7 @@ namespace llarp::quic
     auto err_handler =
         tcp_tunnel->once<uvw::ErrorEvent>([&failed](auto& evt, auto&) { failed = evt.what(); });
     tcp_tunnel->bind(*bind_addr.operator const sockaddr*());
-    tcp_tunnel->on<uvw::ListenEvent>([this] (const uvw::ListenEvent&, uvw::TCPHandle& tcp_tunnel) {
+    tcp_tunnel->on<uvw::ListenEvent>([this](const uvw::ListenEvent&, uvw::TCPHandle& tcp_tunnel) {
       auto client = tcp_tunnel.loop().resource<uvw::TCPHandle>();
       tcp_tunnel.accept(*client);
       // Freeze the connection (after accepting) because we may need to stall it until a stream
@@ -590,7 +593,8 @@ namespace llarp::quic
   void
   TunnelManager::flush_pending_incoming(ClientTunnel& ct)
   {
-    if (!ct.client) return;  // Happens if we're still waiting for a path to build
+    if (!ct.client)
+      return;  // Happens if we're still waiting for a path to build
     assert(ct.client->get_connection());
     auto& conn = *ct.client->get_connection();
     int available = conn.get_streams_available();

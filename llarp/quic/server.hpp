@@ -13,7 +13,7 @@ namespace llarp::quic
 
     Server(EndpointBase& service_endpoint) : Endpoint{service_endpoint}
     {
-      default_stream_buffer_size = 0; // We don't currently use the endpoint ring buffer
+      default_stream_buffer_size = 0;  // We don't currently use the endpoint ring buffer
     }
 
     // Stream callback: takes the server, the (just-created) stream, and the connection port.

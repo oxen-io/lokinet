@@ -138,7 +138,7 @@ namespace llarp
       HandlePathBuildTimeout(Path_ptr path);
 
       virtual void
-      HandlePathBuildFailed(Path_ptr path);
+      HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
       virtual void
       PathBuildStarted(Path_ptr path);

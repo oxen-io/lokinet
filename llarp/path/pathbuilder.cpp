@@ -161,7 +161,11 @@ namespace llarp
   namespace path
   {
     Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet(pathNum), _run(true), m_router(p_router), numHops(hops)
+        : path::PathSet{pathNum}
+        , m_EdgeLimiter{MIN_PATH_BUILD_INTERVAL}
+        , _run{true}
+        , m_router{p_router}
+        , numHops{hops}
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }
@@ -169,13 +173,14 @@ namespace llarp
     void
     Builder::ResetInternalState()
     {
-      buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+      buildIntervalLimit = PATH_BUILD_RATE;
       lastBuild = 0s;
     }
 
     void Builder::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
+      m_EdgeLimiter.Decay(now);
       ExpirePaths(now, m_router);
       if (ShouldBuildMore(now))
         BuildOne();
@@ -221,6 +226,9 @@ namespace llarp
               if (exclude.count(rc.pubkey))
                 return;
 
+              if (m_EdgeLimiter.Contains(rc.pubkey))
+                return;
+
               found = rc;
             }
           },
@@ -264,6 +272,12 @@ namespace llarp
     Builder::GetTunnelEncryptionSecretKey() const
     {
       return enckey;
+    }
+
+    bool
+    Builder::BuildCooldownHit(RouterID edge) const
+    {
+      return m_EdgeLimiter.Contains(edge);
     }
 
     bool
@@ -379,6 +393,14 @@ namespace llarp
     {
       if (IsStopped())
         return;
+
+      const RouterID edge{hops[0].pubkey};
+      if (not m_EdgeLimiter.Insert(edge))
+      {
+        LogWarn(Name(), " building too fast to edge router ", edge);
+        return;
+      }
+
       lastBuild = Now();
       // async generate keys
       auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
@@ -401,7 +423,7 @@ namespace llarp
     void
     Builder::HandlePathBuilt(Path_ptr p)
     {
-      buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+      buildIntervalLimit = PATH_BUILD_RATE;
       m_router->routerProfiling().MarkPathSuccess(p.get());
 
       LogInfo(p->Name(), " built latency=", p->intro.latency);
@@ -409,11 +431,12 @@ namespace llarp
     }
 
     void
-    Builder::HandlePathBuildFailed(Path_ptr p)
+    Builder::HandlePathBuildFailedAt(Path_ptr p, RouterID edge)
     {
-      m_router->routerProfiling().MarkPathFail(p.get());
-      PathSet::HandlePathBuildFailed(p);
+      PathSet::HandlePathBuildFailedAt(p, edge);
       DoPathBuildBackoff();
+      /// add it to the edge limter even if it's not an edge for simplicity
+      m_EdgeLimiter.Insert(edge);
     }
 
     void
@@ -421,7 +444,7 @@ namespace llarp
     {
       static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
       // linear backoff
-      buildIntervalLimit = std::min(MIN_PATH_BUILD_INTERVAL + buildIntervalLimit, MaxBuildInterval);
+      buildIntervalLimit = std::min(PATH_BUILD_RATE + buildIntervalLimit, MaxBuildInterval);
       LogWarn(Name(), " build interval is now ", buildIntervalLimit);
     }
 

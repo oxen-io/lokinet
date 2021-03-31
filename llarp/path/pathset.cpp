@@ -327,9 +327,9 @@ namespace llarp
     }
 
     void
-    PathSet::HandlePathBuildFailed(Path_ptr p)
+    PathSet::HandlePathBuildFailedAt(Path_ptr p, RouterID hop)
     {
-      LogWarn(Name(), " path build ", p->ShortName(), " failed");
+      LogWarn(Name(), " path build ", p->ShortName(), " failed at ", hop);
       m_BuildStats.fails++;
     }
 
