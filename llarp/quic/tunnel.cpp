@@ -84,7 +84,10 @@ namespace llarp::quic
     close_tcp_pair(quic::Stream& st, std::optional<uint64_t> /*errcode*/)
     {
       if (auto tcp = st.data<uvw::TCPHandle>())
+      {
+        LogTrace("Closing TCP connection");
         tcp->close();
+      }
     };
     // Creates a new tcp handle that forwards incoming data/errors/closes into appropriate actions
     // on the given quic stream.
@@ -98,9 +101,9 @@ namespace llarp::quic
 
       tcp.on<uvw::CloseEvent>([](auto&, uvw::TCPHandle& c) {
         // This fires sometime after we call `close()` to signal that the close is done.
-        LogError("Connection closed to ", c.peer().ip, ":", c.peer().port, "; closing quic stream");
         if (auto stream = c.data<Stream>())
         {
+          LogInfo("Local TCP connection closed, closing associated quic stream ", stream->id());
           stream->close();
           stream->data(nullptr);
         }
@@ -108,7 +111,7 @@ namespace llarp::quic
       });
       tcp.on<uvw::EndEvent>([](auto&, uvw::TCPHandle& c) {
         // This fires on eof, most likely because the other side of the TCP connection closed it.
-        LogError("EOF on connection to ", c.peer().ip, ":", c.peer().port);
+        LogInfo("EOF on connection to ", c.peer().ip, ":", c.peer().port);
         c.close();
       });
       tcp.on<uvw::ErrorEvent>([](const uvw::ErrorEvent& e, uvw::TCPHandle& tcp) {

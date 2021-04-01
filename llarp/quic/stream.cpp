@@ -71,7 +71,16 @@ namespace llarp::quic
 
   Stream::~Stream()
   {
-    hard_close();
+    LogTrace("Destroying stream ", stream_id);
+    if (avail_trigger)
+    {
+      avail_trigger->close();
+      avail_trigger.reset();
+    }
+    bool was_closing = is_closing;
+    is_closing = is_shutdown = true;
+    if (!was_closing && close_callback)
+      close_callback(*this, STREAM_ERROR_CONNECTION_EXPIRED);
   }
 
   void
@@ -328,19 +337,6 @@ namespace llarp::quic
       data_callback = {};
 
     conn.io_ready();
-  }
-
-  void
-  Stream::hard_close()
-  {
-    if (avail_trigger)
-    {
-      avail_trigger->close();
-      avail_trigger.reset();
-    }
-    if (!is_closing && close_callback)
-      close_callback(*this, STREAM_ERROR_CONNECTION_EXPIRED);
-    is_closing = is_shutdown = true;
   }
 
   void

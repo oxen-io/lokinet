@@ -254,11 +254,11 @@ namespace llarp::quic
     int
     stream_receive(StreamID id, bstring_view data, bool fin);
 
-    // Called when a stream is closed/reset
-    int
-    stream_reset(StreamID id, uint64_t app_error_code);
+    // Called when a stream is closed
+    void
+    stream_closed(StreamID id, uint64_t app_error_code);
 
-    // Called when stream data has been acknoledged and can be freed
+    // Called when stream data has been acknowledged and can be freed
     int
     stream_ack(StreamID id, size_t size);
 

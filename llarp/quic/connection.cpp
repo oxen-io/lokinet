@@ -242,16 +242,16 @@ namespace llarp::quic
       return static_cast<Connection*>(user_data)->stream_opened({stream_id});
     }
     int
-    stream_reset_cb(
+    stream_close_cb(
         ngtcp2_conn* conn,
         int64_t stream_id,
-        uint64_t final_size,
         uint64_t app_error_code,
         void* user_data,
         void* stream_user_data)
     {
       LogTrace("######################", __func__);
-      return static_cast<Connection*>(user_data)->stream_reset({stream_id}, app_error_code);
+      static_cast<Connection*>(user_data)->stream_closed({stream_id}, app_error_code);
+      return 0;
     }
 
     // (client only)
@@ -392,7 +392,7 @@ namespace llarp::quic
     cb.recv_stream_data = recv_stream_data;
     cb.acked_stream_data_offset = acked_stream_data_offset;
     cb.stream_open = stream_open;
-    cb.stream_reset = stream_reset_cb;
+    cb.stream_close = stream_close_cb;
     cb.extend_max_local_streams_bidi = extend_max_local_streams_bidi;
     cb.rand = rand;
     cb.get_new_connection_id = get_new_connection_id;
@@ -535,8 +535,6 @@ namespace llarp::quic
       retransmit_timer->stop();
       retransmit_timer->close();
     }
-    for (auto& [id, str] : streams)
-      str->hard_close();
   }
 
   void
@@ -622,12 +620,6 @@ namespace llarp::quic
       {
         auto& stream = **it;
         auto bufs = stream.pending();
-        if (stream.is_shutdown
-            || (bufs.empty() && !stream.is_new && !(stream.is_closing && !stream.sent_fin)))
-        {
-          it = strs.erase(it);
-          continue;
-        }
         std::vector<ngtcp2_vec> vecs;
         vecs.reserve(bufs.size());
         std::transform(bufs.begin(), bufs.end(), std::back_inserter(vecs), [](const auto& buf) {
@@ -840,10 +832,8 @@ namespace llarp::quic
     }
     if (fin)
     {
-      if (str->close_callback)
-        str->close_callback(*str, std::nullopt);
-      streams.erase(id);
-      io_ready();
+      LogTrace("Stream ", str->id(), " closed by remote");
+      // Don't cleanup here; stream_closed is going to be called right away to deal with that
     }
     else
     {
@@ -853,25 +843,32 @@ namespace llarp::quic
     return 0;
   }
 
-  int
-  Connection::stream_reset(StreamID id, uint64_t app_code)
+  void
+  Connection::stream_closed(StreamID id, uint64_t app_code)
   {
-    LogDebug(id, " reset with code ", app_code);
+    assert(ngtcp2_is_bidi_stream(id.id));
+    LogDebug(id, " closed with code ", app_code);
     auto it = streams.find(id);
     if (it == streams.end())
-      return NGTCP2_ERR_CALLBACK_FAILURE;
+      return;
     auto& stream = *it->second;
     const bool was_closing = stream.is_closing;
-    stream.is_closing = true;
+    stream.is_closing = stream.is_shutdown = true;
     if (!was_closing && stream.close_callback)
     {
       LogDebug("Invoke stream close callback");
-      stream.close_callback(stream, app_code);
+      stream.close_callback(stream, app_code == 0 ? std::nullopt : std::optional<uint64_t>{app_code});
     }
 
+    LogDebug("Erasing stream ", id, " from ", (void*)it->second.get());
     streams.erase(it);
-    return 0;
+
+    if (!ngtcp2_conn_is_local_stream(*this, id.id))
+      ngtcp2_conn_extend_max_streams_bidi(*this, 1);
+
+    io_ready(); // Probably superfluous but sometimes we might need to send a FIN or something.
   }
+
 
   int
   Connection::stream_ack(StreamID id, size_t size)
