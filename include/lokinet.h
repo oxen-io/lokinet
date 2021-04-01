@@ -32,12 +32,18 @@ extern "C"
   struct lokinet_context*
   lokinet_default();
 
+  /// get a free()-able null terminated string that holds our .loki address
+  /// returns NULL if we dont have one right now
+  char*
+  lokinet_address(struct lokinet_context*);
+
   /// the result of a lokinet stream mapping attempt
+#pragma pack(1)
   struct lokinet_stream_result
   {
     /// set to zero on success otherwise the error that happened
     /// use strerror(3) to get printable string of this error
-    int errno;
+    int error;
 
     /// the local ip address we mapped the remote endpoint to
     /// null terminated
@@ -47,14 +53,17 @@ extern "C"
     /// the id of the stream we created
     int stream_id;
   };
+#pragma pack()
 
   /// connect out to a remote endpoint
   /// remoteAddr is in the form of "name:port"
   /// localAddr is either NULL for any or in the form of "ip:port" to bind to an explicit address
-  /// returns a lokinet_stream_result * that contains the result that can be free()'d
-  struct lokinet_stream_result*
+  void
   lokinet_outbound_stream(
-      const char* remoteAddr, const char* localAddr, struct lokinet_context* context);
+      struct lokinet_stream_result* result,
+      const char* remoteAddr,
+      const char* localAddr,
+      struct lokinet_context* context);
 
   /// stream accept filter determines if we should accept a stream or not
   /// return 0 to accept

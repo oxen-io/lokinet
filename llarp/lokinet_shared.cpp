@@ -51,26 +51,24 @@ struct lokinet_context
 
 namespace
 {
-  struct lokinet_context g_context
-  {};
+  std::unique_ptr<lokinet_context> g_context;
 
-  lokinet_stream_result*
-  stream_error(int err)
+  void
+  stream_error(lokinet_stream_result* result, int err)
   {
-    return new lokinet_stream_result{err, {0}, 0, 0};
+    result->error = err;
   }
 
-  lokinet_stream_result*
-  stream_okay(std::string host, int port, int stream_id)
+  void
+  stream_okay(lokinet_stream_result* result, std::string host, int port, int stream_id)
   {
-    auto* result = new lokinet_stream_result{};
+    stream_error(result, 0);
     std::copy_n(
         host.c_str(),
         std::min(host.size(), sizeof(result->local_address) - 1),
         result->local_address);
     result->local_port = port;
     result->stream_id = stream_id;
-    return result;
   }
 
   std::pair<std::string, int>
@@ -90,7 +88,7 @@ namespace
       return {host, serv->s_port};
     }
     else
-      throw(errno ? errno : EINVAL);
+      return {host, std::stoi(portStr)};
   }
 
   int
@@ -111,7 +109,21 @@ extern "C"
   struct lokinet_context*
   lokinet_default()
   {
-    return &g_context;
+    if (not g_context)
+      g_context = std::make_unique<lokinet_context>();
+    return g_context.get();
+  }
+
+  char*
+  lokinet_address(struct lokinet_context* ctx)
+  {
+    if (not ctx)
+      return nullptr;
+    auto lock = ctx->acquire();
+    auto ep = ctx->impl->router->hiddenServiceContext().GetEndpointByName("default");
+    const auto addr = ep->GetIdentity().pub.Addr();
+    const auto addrStr = addr.ToString();
+    return strdup(addrStr.c_str());
   }
 
   struct lokinet_context*
@@ -134,11 +146,26 @@ extern "C"
       return;
     auto lock = ctx->acquire();
     ctx->runner = std::make_unique<std::thread>([ctx]() {
+      llarp::util::SetThreadName("llarp-mainloop");
       ctx->impl->Configure(llarp::Config::EmbeddedConfig());
       const llarp::RuntimeOptions opts{};
-      ctx->impl->Setup(opts);
-      ctx->impl->Run(opts);
+      try
+      {
+        ctx->impl->Setup(opts);
+        ctx->impl->Run(opts);
+      }
+      catch (std::exception& ex)
+      {
+        std::cerr << ex.what() << std::endl;
+        ctx->impl->CloseAsync();
+      }
     });
+    while (not ctx->impl->IsUp())
+    {
+      if (ctx->impl->IsStopping())
+        return;
+      std::this_thread::sleep_for(5ms);
+    }
   }
 
   void
@@ -160,20 +187,28 @@ extern "C"
     ctx->runner.reset();
   }
 
-  struct lokinet_stream_result*
-  lokinet_outbound_stream(const char* remote, const char* local, struct lokinet_context* ctx)
+  void
+  lokinet_outbound_stream(
+      struct lokinet_stream_result* result,
+      const char* remote,
+      const char* local,
+      struct lokinet_context* ctx)
   {
     if (ctx == nullptr)
-      return stream_error(EHOSTDOWN);
-
-    std::promise<lokinet_stream_result*> promise;
+    {
+      stream_error(result, EHOSTDOWN);
+      return;
+    }
+    std::promise<void> promise;
 
     {
       auto lock = ctx->acquire();
 
       if (not ctx->impl->IsUp())
-        return stream_error(EHOSTDOWN);
-
+      {
+        stream_error(result, EHOSTDOWN);
+        return;
+      }
       std::string remotehost;
       int remoteport;
       try
@@ -184,7 +219,8 @@ extern "C"
       }
       catch (int err)
       {
-        return stream_error(err);
+        stream_error(result, err);
+        return;
       }
       // TODO: make configurable (?)
       std::string endpoint{"default"};
@@ -199,10 +235,12 @@ extern "C"
       }
       catch (std::exception& ex)
       {
-        return stream_error(EINVAL);
+        stream_error(result, EINVAL);
+        return;
       }
       auto call = [&promise,
                    ctx,
+                   result,
                    router = ctx->impl->router,
                    remotehost,
                    remoteport,
@@ -211,31 +249,35 @@ extern "C"
         auto ep = router->hiddenServiceContext().GetEndpointByName(endpoint);
         if (ep == nullptr)
         {
-          promise.set_value(stream_error(EHOSTUNREACH));
+          stream_error(result, ENOTSUP);
+          promise.set_value();
           return;
         }
         auto* quic = ep->GetQUICTunnel();
         if (quic == nullptr)
         {
-          promise.set_value(stream_error(ENOTSUP));
+          stream_error(result, ENOTSUP);
+          promise.set_value();
           return;
         }
         try
         {
           auto [addr, id] = quic->open(
-              remotehost, remoteport, [](auto&&) {}, localAddr);
+              remotehost, remoteport, [](auto) {}, localAddr);
           auto [host, port] = split_host_port(addr.toString());
           ctx->outbound_stream(id);
-          promise.set_value(stream_okay(host, port, id));
+          stream_okay(result, host, port, id);
         }
         catch (std::exception& ex)
         {
-          promise.set_value(stream_error(ECANCELED));
+          std::cout << ex.what() << std::endl;
+          stream_error(result, ECANCELED);
         }
         catch (int err)
         {
-          promise.set_value(stream_error(err));
+          stream_error(result, err);
         }
+        promise.set_value();
       };
 
       ctx->impl->CallSafe([call]() {
@@ -255,17 +297,16 @@ extern "C"
       if (auto status = future.wait_for(std::chrono::seconds{10});
           status == std::future_status::ready)
       {
-        return future.get();
+        future.get();
       }
       else
       {
-        promise.set_value(stream_error(ETIMEDOUT));
-        return future.get();
+        stream_error(result, ETIMEDOUT);
       }
     }
     catch (std::exception& ex)
     {
-      return stream_error(EBADF);
+      stream_error(result, EBADF);
     }
   }
 
