@@ -1378,6 +1378,7 @@ namespace llarp
         }
         if (not SendToOrQueue(*maybe, pkt, t))
           return false;
+        MarkConvoTagActive(tag);
         Loop()->wakeup();
         return true;
       }
@@ -1425,7 +1426,11 @@ namespace llarp
             msg.payload.size(),
             " bytes seqno=",
             msg.seqno);
-        if (not HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
+        if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
+        {
+          MarkConvoTagActive(msg.tag);
+        }
+        else
         {
           LogWarn("Failed to handle inbound message");
         }

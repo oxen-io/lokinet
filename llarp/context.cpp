@@ -129,11 +129,17 @@ namespace llarp
   Context::CloseAsync()
   {
     /// already closing
-    if (closeWaiter)
+    if (IsStopping())
       return;
 
     if (CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
       closeWaiter = std::make_unique<std::promise<void>>();
+  }
+
+  bool
+  Context::IsStopping() const
+  {
+    return closeWaiter.operator bool();
   }
 
   void

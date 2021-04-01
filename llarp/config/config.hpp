@@ -251,6 +251,10 @@ namespace llarp
     void
     AddDefault(std::string section, std::string key, std::string value);
 
+    /// create a config with the default parameters for an embedded lokinet
+    static std::shared_ptr<Config>
+    EmbeddedConfig();
+
    private:
     /// Load (initialize) a default config.
     ///

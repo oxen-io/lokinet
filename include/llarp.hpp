@@ -48,9 +48,6 @@ namespace llarp
     virtual ~Context() = default;
 
     void
-    Close();
-
-    void
     Setup(const RuntimeOptions& opts);
 
     int
@@ -72,6 +69,9 @@ namespace llarp
 
     bool
     LooksAlive() const;
+
+    bool
+    IsStopping() const;
 
     /// close async
     void
@@ -110,6 +110,9 @@ namespace llarp
    private:
     void
     SigINT();
+
+    void
+    Close();
 
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
