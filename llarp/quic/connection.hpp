@@ -33,8 +33,8 @@ namespace llarp::quic
   // Flow control window sizes for a buffer and individual streams:
   constexpr uint64_t CONNECTION_BUFFER = 1024 * 1024;
   constexpr uint64_t STREAM_BUFFER = 64 * 1024;
-  // Max number of simultaneous streams we support on a connection
-  constexpr uint64_t STREAM_LIMIT = 100;
+  // Max number of simultaneous streams we support over one connection
+  constexpr uint64_t STREAM_LIMIT = 32;
 
   using bstring_view = std::basic_string_view<std::byte>;
 
