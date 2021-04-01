@@ -47,6 +47,7 @@ namespace llarp
           service::ProtocolType t,
           uint64_t seqno) override
       {
+        LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
         if (t == service::ProtocolType::Control)
         {
           MarkConvoTagActive(tag);
