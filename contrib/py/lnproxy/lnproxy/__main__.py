@@ -150,6 +150,8 @@ server = Server(('127.0.0.1', 3000), Handler)
 ctx.start()
 id = ctx.expose(80)
 print("we are {}".format(ctx.addr()))
-server.serve_forever()
-ctx.ln_call("lokinet_close_stream", id)
-ctx.stop()
+try:
+    server.serve_forever()
+except:
+    ctx.ln_call("lokinet_close_stream", id)
+    ctx.stop()
