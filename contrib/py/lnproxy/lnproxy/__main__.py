@@ -39,7 +39,7 @@ class Context:
     wrapper around liblokinet
     """
 
-    def __init__(self):
+    def __init__(self, debug=False):
         self._ln = ctypes.CDLL(find_library("lokinet"))
         self._c = ctypes.CDLL(find_library("c"))
         self._ln.lokinet_context_new.restype = ctypes.POINTER(LNContext)
@@ -49,6 +49,7 @@ class Context:
         self._ln.lokinet_outbound_stream.argtypes = (ctypes.POINTER(ResultStruct), ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(LNContext))
         self._ctx = self._ln.lokinet_context_new()
         self._addrmap = dict()
+        self._debug = debug
 
     def free(self, ptr):
         self._c.free(ptr)
@@ -58,6 +59,9 @@ class Context:
         ptrlen = ctypes.c_size_t(len(data))
         return self.ln_call("lokinet_add_bootstrap_rc", ptr, ptrlen)
 
+    def wait_for_ready(self, ms):
+        return self.ln_call("lokinet_wait_for_ready", ms) == 0
+
     def addr(self):
         return self._ln.lokinet_address(self._ctx).decode('ascii')
 
@@ -66,8 +70,14 @@ class Context:
 
     def ln_call(self, funcname, *args):
         args += (self._ctx,)
-        print("call {}{}".format(funcname, args))
+        if self._debug:
+            print("call {}{}".format(funcname, args))
         return self._ln[funcname](*args)
+
+    def expose(self, port):
+        port = int(port)
+        print("exposing loopback port: {}".format(port))
+        return self.ln_call("lokinet_inbound_stream", port)
 
     def start(self):
         return self.ln_call("lokinet_context_start")
@@ -145,8 +155,10 @@ class Handler(BaseHandler):
             ctx.putAddr(host, result)
 
         sock = socket.socket()
-        sock.connect(ctx.getAddr(host))
-        if not sock:
+        try:
+            sock.connect(ctx.getAddr(host))
+        except:
+            self.delAddr(host)
             self.send_error(504)
             return
 
@@ -177,6 +189,7 @@ from argparse import ArgumentParser as AP
 ap = AP()
 ap.add_argument("--ip", type=str, help="ip to bind to", default="127.0.0.1")
 ap.add_argument("--port", type=int, help="port to bind to", default=3000)
+ap.add_argument("--expose", type=int, help="expose a port to loopback")
 ap.add_argument("--bootstrap", type=str, help="bootstrap file", default="bootstrap.signed")
 if bootstrapFromURL:
     ap.add_argument("--bootstrap-url", type=str, help="bootstrap from remote url", default="https://seed.lokinet.org/lokinet.signed")
@@ -203,11 +216,19 @@ if ctx.start() != 0:
     ctx.stop()
     sys.exit(-1)
 
-id = ctx.expose(80)
-print("we are {}".format(ctx.addr()))
+id = None
+
 try:
+    while not ctx.wait_for_ready(1000):
+        print("waiting for lokinet...")
+    lokiaddr = ctx.addr()
+    print("we are {}".format(lokiaddr))
+    if args.expose:
+        id = ctx.expose(args.expose)
+        print("exposed {}:{}".format(lokiaddr, args.expose))
     print("serving on {}:{}".format(*addr))
     server.serve_forever()
 finally:
-    ctx.ln_call("lokinet_close_stream", id)
+    if id is not None:
+        ctx.ln_call("lokinet_close_stream", id)
     ctx.stop()

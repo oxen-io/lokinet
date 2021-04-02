@@ -876,7 +876,7 @@ namespace llarp
     _exitContext.Tick(now);
 
     // save profiles
-    if (routerProfiling().ShouldSave(now))
+    if (routerProfiling().ShouldSave(now) and m_Config->network.m_saveProfiles)
     {
       QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }

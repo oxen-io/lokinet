@@ -51,6 +51,12 @@ struct lokinet_context
     return std::unique_lock{m_access};
   }
 
+  [[nodiscard]] auto
+  endpoint() const
+  {
+    return impl->router->hiddenServiceContext().GetEndpointByName("default");
+  }
+
   std::unordered_map<int, bool> streams;
 
   void
@@ -138,7 +144,7 @@ extern "C"
     if (not ctx)
       return nullptr;
     auto lock = ctx->acquire();
-    auto ep = ctx->impl->router->hiddenServiceContext().GetEndpointByName("default");
+    auto ep = ctx->endpoint();
     const auto addr = ep->GetIdentity().pub.Addr();
     const auto addrStr = addr.ToString();
     return strdup(addrStr.c_str());
@@ -203,9 +209,30 @@ extern "C"
     {
       if (ctx->impl->IsStopping())
         return -1;
-      std::this_thread::sleep_for(5ms);
+      std::this_thread::sleep_for(50ms);
     }
     return 0;
+  }
+
+  int
+  lokinet_wait_for_ready(int ms, struct lokinet_context* ctx)
+  {
+    if (ctx == nullptr)
+      return -1;
+    auto lock = ctx->acquire();
+    auto ep = ctx->endpoint();
+    int iterations = ms / 10;
+    if (iterations <= 0)
+    {
+      ms = 10;
+      iterations = 1;
+    }
+    while (not ep->IsReady() and iterations > 0)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds{ms / 10});
+      iterations--;
+    }
+    return ep->IsReady() ? 0 : -1;
   }
 
   void
@@ -286,7 +313,7 @@ extern "C"
                    remoteport,
                    endpoint,
                    localAddr]() {
-        auto ep = router->hiddenServiceContext().GetEndpointByName(endpoint);
+        auto ep = ctx->endpoint();
         if (ep == nullptr)
         {
           stream_error(result, ENOTSUP);
@@ -375,8 +402,8 @@ extern "C"
         return -1;
       }
 
-      ctx->impl->CallSafe([router = ctx->impl->router, acceptFilter, user, &promise]() {
-        auto ep = router->hiddenServiceContext().GetEndpointByName("default");
+      ctx->impl->CallSafe([ctx, acceptFilter, user, &promise]() {
+        auto ep = ctx->endpoint();
         auto* quic = ep->GetQUICTunnel();
         auto id = quic->listen(
             [acceptFilter, user](auto remoteAddr, auto port) -> std::optional<llarp::SockAddr> {
@@ -417,8 +444,8 @@ extern "C"
     {
       std::promise<void> promise;
       bool inbound = ctx->streams.at(stream_id);
-      ctx->impl->CallSafe([stream_id, inbound, router = ctx->impl->router, &promise]() {
-        auto ep = router->hiddenServiceContext().GetEndpointByName("default");
+      ctx->impl->CallSafe([stream_id, inbound, ctx, &promise]() {
+        auto ep = ctx->endpoint();
         auto* quic = ep->GetQUICTunnel();
         try
         {

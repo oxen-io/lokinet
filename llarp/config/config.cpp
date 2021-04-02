@@ -259,6 +259,7 @@ namespace llarp
     (void)params;
 
     static constexpr Default ProfilingValueDefault{true};
+    static constexpr Default SaveProfilesDefault{true};
     static constexpr Default ReachableDefault{true};
     static constexpr Default HopsDefault{4};
     static constexpr Default PathsDefault{6};
@@ -266,6 +267,13 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "network", "type", Default{"tun"}, Hidden, AssignmentAcceptor(m_endpointType));
+
+    conf.defineOption<bool>(
+        "network",
+        "save-profiles",
+        SaveProfilesDefault,
+        Hidden,
+        AssignmentAcceptor(m_saveProfiles));
 
     conf.defineOption<bool>(
         "network",
@@ -1361,6 +1369,7 @@ namespace llarp
     config->logging.m_logLevel = eLogNone;
     config->api.m_enableRPCServer = false;
     config->network.m_endpointType = "null";
+    config->network.m_saveProfiles = false;
     config->bootstrap.files.clear();
     return config;
   }

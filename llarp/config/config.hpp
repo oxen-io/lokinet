@@ -93,6 +93,7 @@ namespace llarp
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
+    bool m_saveProfiles;
     std::string m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;

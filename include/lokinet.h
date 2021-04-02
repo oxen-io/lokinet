@@ -32,6 +32,12 @@ extern "C"
   int
   lokinet_context_start(struct lokinet_context*);
 
+  /// wait at most N milliseconds for lokinet to build paths and get ready
+  /// return 0 if we are ready
+  /// return nonzero if we are not ready
+  int
+  lokinet_wait_for_ready(int N, struct lokinet_context*);
+
   /// stop all operations on this lokinet context
   void
   lokinet_context_stop(struct lokinet_context*);
