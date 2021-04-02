@@ -857,7 +857,8 @@ namespace llarp::quic
     if (!was_closing && stream.close_callback)
     {
       LogDebug("Invoke stream close callback");
-      stream.close_callback(stream, app_code == 0 ? std::nullopt : std::optional<uint64_t>{app_code});
+      stream.close_callback(
+          stream, app_code == 0 ? std::nullopt : std::optional<uint64_t>{app_code});
     }
 
     LogDebug("Erasing stream ", id, " from ", (void*)it->second.get());
@@ -866,9 +867,8 @@ namespace llarp::quic
     if (!ngtcp2_conn_is_local_stream(*this, id.id))
       ngtcp2_conn_extend_max_streams_bidi(*this, 1);
 
-    io_ready(); // Probably superfluous but sometimes we might need to send a FIN or something.
+    io_ready();  // Probably superfluous but sometimes we might need to send a FIN or something.
   }
-
 
   int
   Connection::stream_ack(StreamID id, size_t size)

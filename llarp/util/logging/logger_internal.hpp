@@ -50,8 +50,8 @@ namespace llarp
   struct log_timestamp
   {
     const char* format;
-    const llarp_time_t now;
-    const llarp_time_t delta;
+    const Duration_t now;
+    const Duration_t delta;
 
     log_timestamp();
 

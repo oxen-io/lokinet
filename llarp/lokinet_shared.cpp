@@ -2,23 +2,40 @@
 
 #include "lokinet.h"
 #include "llarp.hpp"
-#include "config/config.hpp"
+#include <llarp/config/config.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/quic/tunnel.hpp>
+#include <llarp/nodedb.hpp>
 
 #include <mutex>
+
+namespace
+{
+  struct Context : public llarp::Context
+  {
+    using llarp::Context::Context;
+
+    std::shared_ptr<llarp::NodeDB>
+    makeNodeDB() override
+    {
+      return std::make_shared<llarp::NodeDB>();
+    }
+  };
+}  // namespace
 
 struct lokinet_context
 {
   std::mutex m_access;
 
   std::shared_ptr<llarp::Context> impl;
+  std::shared_ptr<llarp::Config> config;
 
   std::unique_ptr<std::thread> runner;
 
-  lokinet_context() : impl{std::make_shared<llarp::Context>()}
+  lokinet_context() : impl{std::make_shared<Context>()}, config{llarp::Config::EmbeddedConfig()}
   {}
 
   ~lokinet_context()
@@ -56,6 +73,7 @@ namespace
   void
   stream_error(lokinet_stream_result* result, int err)
   {
+    std::memset(result, 0, sizeof(lokinet_stream_result));
     result->error = err;
   }
 
@@ -126,6 +144,24 @@ extern "C"
     return strdup(addrStr.c_str());
   }
 
+  int
+  lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
+  {
+    llarp_buffer_t buf{data, datalen};
+    llarp::RouterContact rc{};
+    if (ctx == nullptr)
+      return -3;
+    auto lock = ctx->acquire();
+    // add a temp cryptography implementation here so rc.Verify works
+    llarp::CryptoManager instance{new llarp::sodium::CryptoLibSodium{}};
+    if (not rc.BDecode(&buf))
+      return -1;
+    if (not rc.Verify(llarp::time_now_ms()))
+      return -2;
+    ctx->config->bootstrap.routers.insert(std::move(rc));
+    return 0;
+  }
+
   struct lokinet_context*
   lokinet_context_new()
   {
@@ -139,19 +175,22 @@ extern "C"
     delete ctx;
   }
 
-  void
+  int
   lokinet_context_start(struct lokinet_context* ctx)
   {
     if (not ctx)
-      return;
+      return -1;
     auto lock = ctx->acquire();
     ctx->runner = std::make_unique<std::thread>([ctx]() {
       llarp::util::SetThreadName("llarp-mainloop");
-      ctx->impl->Configure(llarp::Config::EmbeddedConfig());
+      ctx->impl->Configure(ctx->config);
       const llarp::RuntimeOptions opts{};
       try
       {
         ctx->impl->Setup(opts);
+#ifdef SIG_PIPE
+        signal(SIG_PIPE, SIGIGN);
+#endif
         ctx->impl->Run(opts);
       }
       catch (std::exception& ex)
@@ -163,9 +202,10 @@ extern "C"
     while (not ctx->impl->IsUp())
     {
       if (ctx->impl->IsStopping())
-        return;
+        return -1;
       std::this_thread::sleep_for(5ms);
     }
+    return 0;
   }
 
   void

@@ -188,7 +188,8 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector<fs::path> routers;
+    std::vector<fs::path> files;
+    std::set<RouterContact> routers;
     bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

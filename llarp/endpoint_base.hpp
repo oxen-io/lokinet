@@ -27,7 +27,29 @@ namespace llarp
 
     using AddressVariant_t = std::variant<service::Address, RouterID>;
 
-    virtual std::string
+    struct SendStat
+    {
+      /// how many routing messages we sent to them
+      uint64_t messagesSend;
+      /// how many routing messages we got from them
+      uint64_t messagesRecv;
+      /// how many convos have we had to this guy total?
+      size_t numTotalConvos;
+      /// current estimated rtt
+      Duration_t estimatedRTT;
+      /// last time point when we sent a message to them
+      Duration_t lastSendAt;
+      /// last time point when we got a message from them
+      Duration_t lastRecvAt;
+    };
+
+    /// get statistics about how much traffic we sent and recv'd via remote endpoints we are talking
+    /// to
+    virtual std::unordered_map<AddressVariant_t, SendStat>
+    GetStatistics() const = 0;
+
+    /// get our local address
+    virtual AddressVariant_t
     LocalAddress() const = 0;
 
     virtual quic::TunnelManager*

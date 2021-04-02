@@ -33,8 +33,13 @@ namespace llarp
       virtual void
       PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) = 0;
 
+      /// called when we send data to remote on a convotag
       virtual void
-      MarkConvoTagActive(const ConvoTag& tag) = 0;
+      ConvoTagTX(const ConvoTag& tag) = 0;
+
+      /// called when we got data from remote on a convotag
+      virtual void
+      ConvoTagRX(const ConvoTag& tag) = 0;
 
       virtual void
       RemoveConvoTag(const ConvoTag& remote) = 0;

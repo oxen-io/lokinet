@@ -937,8 +937,8 @@ namespace llarp
           {
             throw std::invalid_argument("cannot use empty filename as bootstrap");
           }
-          routers.emplace_back(std::move(arg));
-          if (not fs::exists(routers.back()))
+          files.emplace_back(std::move(arg));
+          if (not fs::exists(files.back()))
           {
             throw std::invalid_argument("file does not exist: " + arg);
           }
@@ -1356,11 +1356,12 @@ namespace llarp
   std::shared_ptr<Config>
   Config::EmbeddedConfig()
   {
-    auto config = std::make_shared<Config>(fs::current_path());
+    auto config = std::make_shared<Config>(fs::path{});
     config->Load();
     config->logging.m_logLevel = eLogNone;
     config->api.m_enableRPCServer = false;
     config->network.m_endpointType = "null";
+    config->bootstrap.files.clear();
     return config;
   }
 

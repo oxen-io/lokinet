@@ -999,7 +999,6 @@ namespace llarp
           return false;
         }
         LogInfo("tag active T=", tag);
-        MarkConvoTagActive(tag);
         quic->receive_packet(tag, buf);
         return true;
       }

@@ -259,7 +259,10 @@ namespace llarp::rpc
                     }
                     util::StatusObject result;
                     result["id"] = id;
-                    result["addr"] = ep->LocalAddress() + ":" + std::to_string(port);
+                    std::string localAddress;
+                    var::visit(
+                        [&](auto&& addr) { localAddress = addr.ToString(); }, ep->LocalAddress());
+                    result["addr"] = localAddress + ":" + std::to_string(port);
                     reply(CreateJSONResponse(result));
                   }
                   else if (closeID)

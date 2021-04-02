@@ -497,11 +497,11 @@ namespace llarp
 
     std::vector<fs::path> configRouters = conf.connect.routers;
     configRouters.insert(
-        configRouters.end(), conf.bootstrap.routers.begin(), conf.bootstrap.routers.end());
+        configRouters.end(), conf.bootstrap.files.begin(), conf.bootstrap.files.end());
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    if (configRouters.empty())
+    if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       // TODO: use constant
       fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
@@ -549,6 +549,11 @@ namespace llarp
       }
     }
 
+    for (const auto& rc : conf.bootstrap.routers)
+    {
+      b_list.emplace(rc);
+    }
+
     for (auto& rc : b_list)
     {
       if (not rc.Verify(Now()))
@@ -559,7 +564,17 @@ namespace llarp
       bootstrapRCList.emplace(std::move(rc));
     }
 
-    LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
+    if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
+    {
+      throw std::runtime_error{"we have no bootstrap nodes"};
+    }
+
+    if (conf.bootstrap.seednode)
+    {
+      LogInfo("we are a seed node");
+    }
+    else
+      LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);

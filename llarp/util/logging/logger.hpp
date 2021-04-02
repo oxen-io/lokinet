@@ -28,8 +28,6 @@ namespace llarp
     ILogStream_ptr logStream;
     std::string nodeName = "lokinet";
 
-    const llarp_time_t started;
-
     static LogContext&
     Instance();
 

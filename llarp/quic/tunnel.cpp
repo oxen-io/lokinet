@@ -131,7 +131,7 @@ namespace llarp::quic
           stream->data(nullptr);
           tcp.data(nullptr);
         }
-        tcp.closeReset();
+        // tcp.closeReset();
       });
       tcp.on<uvw::DataEvent>(on_outgoing_data);
       stream.data_callback = on_incoming_data;

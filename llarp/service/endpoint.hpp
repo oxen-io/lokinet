@@ -136,8 +136,11 @@ namespace llarp
       std::string
       Name() const override;
 
-      std::string
+      AddressVariant_t
       LocalAddress() const override;
+
+      std::unordered_map<AddressVariant_t, SendStat>
+      GetStatistics() const override;
 
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
@@ -332,7 +335,10 @@ namespace llarp
       RemoveConvoTag(const ConvoTag& remote) override;
 
       void
-      MarkConvoTagActive(const ConvoTag& remote) override;
+      ConvoTagTX(const ConvoTag& remote) override;
+
+      void
+      ConvoTagRX(const ConvoTag& remote) override;
 
       void
       PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro) override;
@@ -346,7 +352,7 @@ namespace llarp
       void
       PutNewOutboundContext(const IntroSet& introset, llarp_time_t timeLeftToAlign);
 
-      uint64_t
+      std::optional<uint64_t>
       GetSeqNoForConvo(const ConvoTag& tag);
 
       bool

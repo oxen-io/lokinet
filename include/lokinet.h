@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -15,12 +16,20 @@ extern "C"
   struct lokinet_context*
   lokinet_context_new();
 
+  /// load a bootstrap RC from memory
+  /// return 0 on success
+  /// return non zero on fail
+  int
+  lokinet_add_bootstrap_rc(const char*, size_t, struct lokinet_context*);
+
   /// free a context allocated by lokinet_context_new
   void
   lokinet_context_free(struct lokinet_context*);
 
   /// spawn all the threads needed for operation and start running
-  void
+  /// return 0 on success
+  /// return non zero on fail
+  int
   lokinet_context_start(struct lokinet_context*);
 
   /// stop all operations on this lokinet context

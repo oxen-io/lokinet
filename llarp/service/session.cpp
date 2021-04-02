@@ -8,10 +8,13 @@ namespace llarp
     Session::ExtractStatus() const
     {
       util::StatusObject obj{
-          {"lastUsed", to_json(lastUsed)},
+          {"lastSend", to_json(lastSend)},
+          {"lastRecv", to_json(lastRecv)},
           {"replyIntro", replyIntro.ExtractStatus()},
           {"remote", remote.Addr().ToString()},
           {"seqno", seqno},
+          {"tx", messagesSend},
+          {"rx", messagesRecv},
           {"intro", intro.ExtractStatus()}};
       return obj;
     }
@@ -21,7 +24,22 @@ namespace llarp
     {
       if (forever)
         return false;
+      const auto lastUsed = std::max(lastSend, lastRecv);
       return now > lastUsed && (now - lastUsed > lifetime || intro.IsExpired(now));
+    }
+
+    void
+    Session::TX()
+    {
+      messagesSend++;
+      lastSend = time_now_ms();
+    }
+
+    void
+    Session::RX()
+    {
+      messagesRecv++;
+      lastRecv = time_now_ms();
     }
 
   }  // namespace service

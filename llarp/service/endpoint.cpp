@@ -346,7 +346,6 @@ namespace llarp
         itr->second.inbound = inbound;
         itr->second.remote = info;
       }
-      itr->second.lastUsed = Now();
     }
 
     size_t
@@ -383,7 +382,6 @@ namespace llarp
     {
       auto& s = Sessions()[tag];
       s.intro = intro;
-      s.lastUsed = Now();
     }
 
     bool
@@ -405,7 +403,6 @@ namespace llarp
         return;
       }
       itr->second.replyIntro = intro;
-      itr->second.lastUsed = Now();
     }
 
     bool
@@ -443,17 +440,18 @@ namespace llarp
         itr = Sessions().emplace(tag, Session{}).first;
       }
       itr->second.sharedKey = k;
-      itr->second.lastUsed = Now();
     }
 
     void
-    Endpoint::MarkConvoTagActive(const ConvoTag& tag)
+    Endpoint::ConvoTagTX(const ConvoTag& tag)
     {
-      auto itr = Sessions().find(tag);
-      if (itr != Sessions().end())
-      {
-        itr->second.lastUsed = Now();
-      }
+      Sessions()[tag].TX();
+    }
+
+    void
+    Endpoint::ConvoTagRX(const ConvoTag& tag)
+    {
+      Sessions()[tag].RX();
     }
 
     bool
@@ -1012,10 +1010,35 @@ namespace llarp
       return false;
     }
 
-    std::string
+    EndpointBase::AddressVariant_t
     Endpoint::LocalAddress() const
     {
-      return m_Identity.pub.Addr().ToString();
+      return m_Identity.pub.Addr();
+    }
+
+    inline void
+    AccumulateStats(const Session& session, EndpointBase::SendStat& stats)
+    {}
+
+    inline void
+    AccumulateStats(
+        const std::shared_ptr<exit::BaseSession>& session, EndpointBase::SendStat& stats)
+    {}
+
+    std::unordered_map<EndpointBase::AddressVariant_t, EndpointBase::SendStat>
+    Endpoint::GetStatistics() const
+    {
+      std::unordered_map<AddressVariant_t, SendStat> stats;
+      for (const auto& item : Sessions())
+      {
+        Address addr = item.second.remote.Addr();
+        AccumulateStats(item.second, stats[addr]);
+      }
+      for (const auto& item : m_state->m_SNodeSessions)
+      {
+        AccumulateStats(item.second.first, stats[item.first]);
+      }
+      return stats;
     }
 
     bool
@@ -1372,13 +1395,16 @@ namespace llarp
         {
           if (*ptr == m_Identity.pub.Addr())
           {
+            ConvoTagTX(tag);
             Loop()->wakeup();
-            return HandleInboundPacket(tag, pkt, t, 0);
+            if (not HandleInboundPacket(tag, pkt, t, 0))
+              return false;
+            ConvoTagRX(tag);
+            return true;
           }
         }
         if (not SendToOrQueue(*maybe, pkt, t))
           return false;
-        MarkConvoTagActive(tag);
         Loop()->wakeup();
         return true;
       }
@@ -1393,11 +1419,13 @@ namespace llarp
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
-      EnsurePathToSNode(
-          addr, [pkt, t](RouterID, exit::BaseSession_ptr s, [[maybe_unused]] ConvoTag tag) {
-            if (s)
-              s->SendPacketToRemote(pkt->ConstBuffer(), t);
-          });
+      EnsurePathToSNode(addr, [=](RouterID, exit::BaseSession_ptr s, ConvoTag tag) {
+        if (s)
+        {
+          ConvoTagTX(tag);
+          s->SendPacketToRemote(pkt->ConstBuffer(), t);
+        }
+      });
       return true;
     }
 
@@ -1428,7 +1456,7 @@ namespace llarp
             msg.seqno);
         if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
         {
-          MarkConvoTagActive(msg.tag);
+          ConvoTagRX(msg.tag);
         }
         else
         {
@@ -1451,7 +1479,7 @@ namespace llarp
         SendEvent_t item = m_SendQueue.popFront();
         item.first->S = item.second->NextSeqNo();
         if (item.second->SendRoutingMessage(*item.first, router))
-          MarkConvoTagActive(item.first->T.T);
+          ConvoTagTX(item.first->T.T);
       }
 
       UpstreamFlush(router);
@@ -1542,7 +1570,7 @@ namespace llarp
           else
             tag.Randomize();
           PutSenderFor(tag, m_Identity.pub, true);
-          MarkConvoTagActive(tag);
+          ConvoTagTX(tag);
           Sessions()[tag].forever = true;
           Loop()->call_soon([tag, hook]() { hook(tag); });
           return true;
@@ -1648,10 +1676,14 @@ namespace llarp
             m->introReply = p->intro;
             PutReplyIntroFor(f.T, m->introReply);
             m->sender = m_Identity.pub;
-            m->seqno = GetSeqNoForConvo(f.T);
-            if (m->seqno == 0)
+            if (auto maybe = GetSeqNoForConvo(f.T))
+            {
+              m->seqno = *maybe;
+            }
+            else
             {
               LogWarn(Name(), " no session T=", f.T);
+              return false;
             }
             f.S = m->seqno;
             f.F = m->introReply.pathID;
@@ -1680,45 +1712,45 @@ namespace llarp
       }
 
       // Failed to find a suitable inbound convo, look for outbound
-        LogTrace("Not an inbound convo");
-        auto& sessions = m_state->m_RemoteSessions;
-        auto range = sessions.equal_range(remote);
-        for (auto itr = range.first; itr != range.second; ++itr)
+      LogTrace("Not an inbound convo");
+      auto& sessions = m_state->m_RemoteSessions;
+      auto range = sessions.equal_range(remote);
+      for (auto itr = range.first; itr != range.second; ++itr)
+      {
+        if (itr->second->ReadyToSend())
         {
-          if (itr->second->ReadyToSend())
-          {
-            LogTrace("Found an outbound session to use to reach ", remote);
-            itr->second->AsyncEncryptAndSendTo(data, t);
-            return true;
-          }
-        }
-        // if we want to make an outbound session
-        if (WantsOutboundSession(remote))
-        {
-          LogTrace("Making an outbound session and queuing the data");
-          // add pending traffic
-          auto& traffic = m_state->m_PendingTraffic;
-          traffic[remote].emplace_back(data, t);
-          EnsurePathToService(
-              remote,
-              [self = this](Address addr, OutboundContext* ctx) {
-                if (ctx)
-                {
-                  for (auto& pending : self->m_state->m_PendingTraffic[addr])
-                  {
-                    ctx->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
-                  }
-                }
-                else
-                {
-                  LogWarn("no path made to ", addr);
-                }
-                self->m_state->m_PendingTraffic.erase(addr);
-              },
-              1500ms);
+          LogTrace("Found an outbound session to use to reach ", remote);
+          itr->second->AsyncEncryptAndSendTo(data, t);
           return true;
         }
-          LogDebug("SendOrQueue failed: no inbound/outbound sessions");
+      }
+      // if we want to make an outbound session
+      if (WantsOutboundSession(remote))
+      {
+        LogTrace("Making an outbound session and queuing the data");
+        // add pending traffic
+        auto& traffic = m_state->m_PendingTraffic;
+        traffic[remote].emplace_back(data, t);
+        EnsurePathToService(
+            remote,
+            [self = this](Address addr, OutboundContext* ctx) {
+              if (ctx)
+              {
+                for (auto& pending : self->m_state->m_PendingTraffic[addr])
+                {
+                  ctx->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
+                }
+              }
+              else
+              {
+                LogWarn("no path made to ", addr);
+              }
+              self->m_state->m_PendingTraffic.erase(addr);
+            },
+            1500ms);
+        return true;
+      }
+      LogDebug("SendOrQueue failed: no inbound/outbound sessions");
       return false;
     }
 
@@ -1735,14 +1767,13 @@ namespace llarp
       return Sessions().find(t) != Sessions().end();
     }
 
-    uint64_t
+    std::optional<uint64_t>
     Endpoint::GetSeqNoForConvo(const ConvoTag& tag)
     {
       auto itr = Sessions().find(tag);
       if (itr == Sessions().end())
-        return 0;
-      itr->second.seqno += 1;
-      return itr->second.seqno;
+        return std::nullopt;
+      return itr->second.seqno++;
     }
 
     bool

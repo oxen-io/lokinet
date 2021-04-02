@@ -74,11 +74,17 @@ namespace llarp
 
     router = makeRouter(loop);
 
-    nodedb = std::make_shared<NodeDB>(
-        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+    nodedb = makeNodeDB();
 
     if (!router->Configure(config, opts.isSNode, nodedb))
       throw std::runtime_error("Failed to configure router");
+  }
+
+  std::shared_ptr<NodeDB>
+  Context::makeNodeDB()
+  {
+    return std::make_shared<NodeDB>(
+        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
   }
 
   std::shared_ptr<AbstractRouter>

@@ -21,15 +21,32 @@ namespace llarp
       ServiceInfo remote;
       /// the intro they have
       Introduction intro;
-      /// the intro remoet last sent on
-      Introduction lastInboundIntro;
-      llarp_time_t lastUsed = 0s;
+
+      /// the sequence number we are to use for the next message
       uint64_t seqno = 0;
+
+      /// number of remote messages we sent to them
+      uint64_t messagesSend = 0;
+      /// number of remote messages we got from them
+      uint64_t messagesRecv = 0;
+
       bool inbound = false;
       bool forever = false;
 
+      Duration_t lastSend{};
+      Duration_t lastRecv{};
+
       util::StatusObject
       ExtractStatus() const;
+
+      /// called to indicate we recieved on this session
+      void
+      RX();
+
+      /// called to indicate we transimitted on this session
+      void
+      TX();
+
       bool
       IsExpired(llarp_time_t now, llarp_time_t lifetime = SessionLifetime) const;
     };

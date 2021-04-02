@@ -29,7 +29,6 @@ namespace llarp
         LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
         if (t == service::ProtocolType::Control)
         {
-          MarkConvoTagActive(tag);
           return true;
         }
         if (t != service::ProtocolType::QUIC)
@@ -46,7 +45,6 @@ namespace llarp
           LogWarn("invalid incoming quic packet, dropping");
           return false;
         }
-        MarkConvoTagActive(tag);
         quic->receive_packet(tag, buf);
         return true;
       }

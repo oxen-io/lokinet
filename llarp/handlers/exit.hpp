@@ -109,8 +109,11 @@ namespace llarp
       bool
       QueueOutboundTraffic(net::IPPacket pkt);
 
-      std::string
+      AddressVariant_t
       LocalAddress() const override;
+
+      std::unordered_map<AddressVariant_t, SendStat>
+      GetStatistics() const override;
 
       /// sets up networking and starts traffic
       bool

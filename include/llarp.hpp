@@ -92,6 +92,10 @@ namespace llarp
     virtual std::shared_ptr<AbstractRouter>
     makeRouter(const std::shared_ptr<EventLoop>& loop);
 
+    /// create the nodedb given our current configs
+    virtual std::shared_ptr<NodeDB>
+    makeNodeDB();
+
     /// create the vpn platform for use in creating network interfaces
     virtual std::shared_ptr<llarp::vpn::Platform>
     makeVPNPlatform();

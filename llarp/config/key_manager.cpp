@@ -17,6 +17,14 @@ namespace llarp
     if (m_initialized)
       return false;
 
+    if (not isSNode)
+    {
+      CryptoManager::instance()->identity_keygen(identityKey);
+      CryptoManager::instance()->encryption_keygen(encryptionKey);
+      CryptoManager::instance()->encryption_keygen(transportKey);
+      return true;
+    }
+
     const fs::path root = config.router.m_dataDir;
 
     // utility function to assign a path, using the specified config parameter if present and

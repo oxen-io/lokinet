@@ -53,7 +53,7 @@ namespace llarp
           {
             lastGoodSend = r->Now();
             flushpaths.emplace(item.second);
-            m_Endpoint->MarkConvoTagActive(item.first->T.T);
+            m_Endpoint->ConvoTagTX(item.first->T.T);
             const auto rtt = (item.second->intro.latency + remoteIntro.latency) * 2;
             rttRMS += rtt * rtt.count();
           }
@@ -98,7 +98,15 @@ namespace llarp
       m_DataHandler->PutIntroFor(f->T, remoteIntro);
       m_DataHandler->PutReplyIntroFor(f->T, path->intro);
       m->proto = t;
-      m->seqno = m_Endpoint->GetSeqNoForConvo(f->T);
+      if (auto maybe = m_Endpoint->GetSeqNoForConvo(f->T))
+      {
+        m->seqno = *maybe;
+      }
+      else
+      {
+        LogWarn(m_Endpoint->Name(), " no session T=", f->T);
+        return;
+      }
       m->introReply = path->intro;
       f->F = m->introReply.pathID;
       m->sender = m_Endpoint->GetIdentity().pub;

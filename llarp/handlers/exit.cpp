@@ -557,11 +557,16 @@ namespace llarp
       return found;
     }
 
-    std::string
+    EndpointBase::AddressVariant_t
     ExitEndpoint::LocalAddress() const
     {
-      const RouterID r{m_Router->pubkey()};
-      return r.ToString();
+      return RouterID{m_Router->pubkey()};
+    }
+
+    std::unordered_map<EndpointBase::AddressVariant_t, EndpointBase::SendStat>
+    ExitEndpoint::GetStatistics() const
+    {
+      return {};
     }
 
     bool
