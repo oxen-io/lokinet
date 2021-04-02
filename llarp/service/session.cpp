@@ -25,6 +25,8 @@ namespace llarp
       if (forever)
         return false;
       const auto lastUsed = std::max(lastSend, lastRecv);
+      if(lastUsed == 0s)
+        return intro.IsExpired(now);
       return now > lastUsed && (now - lastUsed > lifetime || intro.IsExpired(now));
     }
 
