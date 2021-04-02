@@ -173,7 +173,7 @@ namespace llarp::quic
             oxenmq::to_hex(bdata.begin(), bdata.begin() + 1),
             "); dropping connection");
         stream.close(tunnel::ERROR_BAD_INIT);
-        client.closeReset();
+        client.close();
       }
       stream.io_ready();
     }
@@ -197,7 +197,7 @@ namespace llarp::quic
       LogDebug("Closing connection to ", peer.ip, ":", peer.port);
       client.clear();
       if (error_code)
-        client.closeReset();
+        client.close();
       else
         client.close();
     }
@@ -287,7 +287,7 @@ namespace llarp::quic
                   ":",
                   peer.port,
                   " but quic stream has gone away; close/resetting local TCP connection");
-              tcp.closeReset();
+              tcp.close();
               return;
             }
             LogDebug("Connected to ", peer.ip, ":", peer.port, " for quic ", stream->id());
@@ -419,7 +419,7 @@ namespace llarp::quic
     if (!step_success)
     {
       LogWarn("QUIC tunnel to ", addr, " failed during ", step_name, "; aborting tunnel");
-      it->second.tcp->closeReset();
+      it->second.tcp->close();
       if (it->second.open_cb)
         it->second.open_cb(false);
       client_tunnels_.erase(it);
@@ -471,14 +471,14 @@ namespace llarp::quic
         }
         tcp_tunnel.data(nullptr);
       }
-      client->closeReset();
+      client->close();
     });
     tcp_tunnel->listen();
     tcp_tunnel->erase(err_handler);
 
     if (failed)
     {
-      tcp_tunnel->closeReset();
+      tcp_tunnel->close();
       throw std::runtime_error{
           "Failed to bind/listen local TCP tunnel socket on " + bind_addr.toString() + ": "
           + failed};
@@ -564,7 +564,7 @@ namespace llarp::quic
       tcp.reset();
     }
     for (auto& conn : conns)
-      conn->closeReset();
+      conn->close();
     conns.clear();
 
     while (not pending_incoming.empty())
@@ -624,7 +624,7 @@ namespace llarp::quic
       catch (const std::exception& e)
       {
         LogWarn("Opening quic stream failed: ", e.what());
-        tcp_client->closeReset();
+        tcp_client->close();
       }
 
       LogTrace("Set up new stream");
