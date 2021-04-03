@@ -441,18 +441,8 @@ namespace llarp
       {
         return SendRoutingMessage(discarded, r);
       }
-      std::array<byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-      llarp_buffer_t buf{tmp};
-      if (!msg.T.BEncode(&buf))
-      {
-        llarp::LogWarn(info, " failed to transfer data message, encode failed");
-        return SendRoutingMessage(discarded, r);
-      }
-      // rewind
-      buf.sz = buf.cur - buf.base;
-      buf.cur = buf.base;
-      // send
-      if (path->HandleDownstream(buf, msg.Y, r))
+      // send routing message
+      if (path->SendRoutingMessage(msg.T, r))
       {
         m_FlushOthers.emplace(path);
         return true;
