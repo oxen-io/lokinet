@@ -50,6 +50,11 @@ class Context:
         self._ctx = self._ln.lokinet_context_new()
         self._addrmap = dict()
         self._debug = debug
+        lvl = 'none'
+        if self._debug:
+            lvl = 'debug'
+        self._ln.lokinet_log_level(ctypes.create_string_buffer(lvl.encode('ascii')))
+
 
     def free(self, ptr):
         self._c.free(ptr)
@@ -99,6 +104,9 @@ class Context:
         self.stop()
         self._ln_call("lokinet_context_free")
 
+    def set_netid(self, netid):
+        self._ln.lokinet_set_netid(ctypes.create_string_buffer(netid.encode('ascii')))
+
 class Stream:
 
     def __init__(self, ctx):
@@ -115,7 +123,7 @@ class Stream:
         addr = result.local_address.decode('ascii')
         port = result.local_port
         self._id = result.stream_id
-        print("connect to {} made via {}:{} via {}".format(remote, addr, port, self._id))
+        print("connection to {} made via {}:{} via {}".format(remote, addr, port, self._id))
         return addr, port
 
 
@@ -135,7 +143,7 @@ def read_and_forward_or_close(readfd, writefd):
         else:
             return read > 0
 
-ctx = Context()
+ctx = None
 
 
 class Handler(BaseHandler):
@@ -169,8 +177,6 @@ class Handler(BaseHandler):
         sockfd = sock.makefile('rwb')
         sel.register(self.rfile.fileno(), selectors.EVENT_READ, lambda x : read_and_forward_or_close(x, sockfd))
         sel.register(sock.fileno(), selectors.EVENT_READ, lambda x : read_and_forward_or_close(x, self.wfile))
-
-        print("running")
         while True:
             events = sel.select(1)
             if not events:
@@ -191,12 +197,20 @@ ap.add_argument("--ip", type=str, help="ip to bind to", default="127.0.0.1")
 ap.add_argument("--port", type=int, help="port to bind to", default=3000)
 ap.add_argument("--expose", type=int, help="expose a port to loopback")
 ap.add_argument("--bootstrap", type=str, help="bootstrap file", default="bootstrap.signed")
+ap.add_argument("--netid", type=str, help="override network id")
+ap.add_argument("--debug", action="store_const", const=True, default=False, help="enable verose logging")
 if bootstrapFromURL:
     ap.add_argument("--bootstrap-url", type=str, help="bootstrap from remote url", default="https://seed.lokinet.org/lokinet.signed")
 
 args = ap.parse_args()
 addr = (args.ip, args.port)
 server = Server(addr, Handler)
+
+ctx = Context(args.debug)
+
+if args.netid is not None:
+    print("overriding netid: {}".format(args.netid))
+    ctx.set_netid(args.netid)
 
 if os.path.exists(args.bootstrap):
     with open(args.bootstrap, 'rb') as f:
@@ -211,6 +225,7 @@ if args.bootstrap_url is not None:
     else:
         print("failed")
 
+print("starting up...")
 if ctx.start() != 0:
     print("failed to start")
     ctx.stop()
@@ -219,7 +234,7 @@ if ctx.start() != 0:
 id = None
 
 try:
-    while not ctx.wait_for_ready(1000):
+    while not ctx.wait_for_ready(500):
         print("waiting for lokinet...")
     lokiaddr = ctx.addr()
     print("we are {}".format(lokiaddr))

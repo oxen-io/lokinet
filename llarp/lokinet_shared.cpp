@@ -52,9 +52,9 @@ struct lokinet_context
   }
 
   [[nodiscard]] auto
-  endpoint() const
+  endpoint(std::string name = "default") const
   {
-    return impl->router->hiddenServiceContext().GetEndpointByName("default");
+    return impl->router->hiddenServiceContext().GetEndpointByName(name);
   }
 
   std::unordered_map<int, bool> streams;
@@ -138,6 +138,30 @@ extern "C"
     return g_context.get();
   }
 
+  void
+  lokinet_set_netid(const char* netid)
+  {
+    llarp::NetID::DefaultValue() = llarp::NetID{reinterpret_cast<const byte_t*>(netid)};
+  }
+
+  const char*
+  lokinet_get_netid()
+  {
+    const auto netid = llarp::NetID::DefaultValue().ToString();
+    return strdup(netid.c_str());
+  }
+
+  int
+  lokinet_log_level(const char* level)
+  {
+    if (auto maybe = llarp::LogLevelFromString(level))
+    {
+      llarp::SetLogLevel(*maybe);
+      return 0;
+    }
+    return -1;
+  }
+
   char*
   lokinet_address(struct lokinet_context* ctx)
   {
@@ -187,6 +211,8 @@ extern "C"
     if (not ctx)
       return -1;
     auto lock = ctx->acquire();
+    ctx->config->router.m_netId = lokinet_get_netid();
+    ctx->config->logging.m_logLevel = llarp::GetLogLevel();
     ctx->runner = std::make_unique<std::thread>([ctx]() {
       llarp::util::SetThreadName("llarp-mainloop");
       ctx->impl->Configure(ctx->config);

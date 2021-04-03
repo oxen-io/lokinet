@@ -40,7 +40,7 @@ namespace llarp
 
   NetID::NetID(const byte_t* val)
   {
-    size_t len = strnlen(reinterpret_cast<const char*>(val), size());
+    const size_t len = strnlen(reinterpret_cast<const char*>(val), size());
     std::copy(val, val + len, begin());
   }
 
