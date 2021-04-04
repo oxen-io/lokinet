@@ -48,6 +48,13 @@ extern "C"
   int
   lokinet_context_start(struct lokinet_context*);
 
+  /// return 0 if we our endpoint has published on the network and is ready to send
+  /// return -1 if we don't have enough paths ready
+  /// retrun -2 if we look deadlocked
+  /// retrun -3 if context was null or not started yet
+  int
+  lokinet_status(struct lokinet_context*);
+
   /// wait at most N milliseconds for lokinet to build paths and get ready
   /// return 0 if we are ready
   /// return nonzero if we are not ready

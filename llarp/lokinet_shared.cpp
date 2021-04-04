@@ -241,6 +241,19 @@ extern "C"
   }
 
   int
+  lokinet_status(struct lokinet_context* ctx)
+  {
+    if (ctx == nullptr)
+      return -3;
+    auto lock = ctx->acquire();
+    if (not ctx->impl->IsUp())
+      return -3;
+    if (not ctx->impl->LooksAlive())
+      return -2;
+    return ctx->endpoint()->IsReady() ? 0 : -1;
+  }
+
+  int
   lokinet_wait_for_ready(int ms, struct lokinet_context* ctx)
   {
     if (ctx == nullptr)

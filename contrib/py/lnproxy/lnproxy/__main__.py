@@ -67,6 +67,9 @@ class Context:
     def wait_for_ready(self, ms):
         return self.ln_call("lokinet_wait_for_ready", ms) == 0
 
+    def ready(self):
+        return self.ln_call("lokinet_status") == 0
+
     def addr(self):
         return self._ln.lokinet_address(self._ctx).decode('ascii')
 
@@ -99,6 +102,10 @@ class Context:
     def getAddr(self, addr):
         if addr in self._addrmap:
             return self._addrmap[addr]
+
+    def delAddr(self, addr):
+        if addr in self._addrmap:
+            del self._addrmap[addr]
 
     def __del__(self):
         self.stop()
@@ -153,10 +160,17 @@ class Handler(BaseHandler):
 
     def connect(self, host):
         global ctx
+        if not ctx.ready():
+            self.send_error(501)
+            return
+
         if not ctx.hasAddr(host):
             stream = Stream(ctx)
-
-            result = stream.connect(host)
+            result = None
+            try:
+                result = stream.connect(host)
+            except:
+                pass
             if not result:
                 self.send_error(503)
                 return
@@ -166,7 +180,7 @@ class Handler(BaseHandler):
         try:
             sock.connect(ctx.getAddr(host))
         except:
-            self.delAddr(host)
+            ctx.delAddr(host)
             self.send_error(504)
             return
 
