@@ -331,7 +331,7 @@ namespace llarp
       {
         return now > m_LastRX && now - m_LastRX > SessionAliveTimeout;
       }
-      return now - m_CreatedAt > SessionAliveTimeout;
+      return now - m_CreatedAt >= LinkLayerConnectTimeout;
     }
 
     bool

@@ -819,6 +819,11 @@ namespace llarp
         std::string name,
         std::function<void(std::optional<std::variant<Address, RouterID>>)> handler)
     {
+      if (not NameIsValid(name))
+      {
+        handler(std::nullopt);
+        return;
+      }
       auto& cache = m_state->nameCache;
       const auto maybe = cache.Get(name);
       if (maybe.has_value())
