@@ -14,6 +14,7 @@
 #include <utility>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 /**
  * buffer.h
