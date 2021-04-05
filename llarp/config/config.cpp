@@ -457,7 +457,7 @@ namespace llarp
             return;
           }
 
-          if (not exit.FromString(arg))
+          if (arg != "null" and not exit.FromString(arg))
           {
             throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
           }

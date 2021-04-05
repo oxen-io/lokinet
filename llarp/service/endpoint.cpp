@@ -1847,7 +1847,8 @@ namespace llarp
     void
     Endpoint::MapExitRange(IPRange range, Address exit)
     {
-      LogInfo(Name(), " map ", range, " to exit at ", exit);
+      if (not exit.IsZero())
+        LogInfo(Name(), " map ", range, " to exit at ", exit);
       m_ExitMap.Insert(range, exit);
     }
 
@@ -1858,7 +1859,7 @@ namespace llarp
       m_ExitMap.RemoveIf([&](const auto& item) -> bool {
         if (not range.Contains(item.first))
           return false;
-        LogInfo(Name(), " unmap ", item.first, " from exit at ", item.second);
+        LogInfo(Name(), " unmap ", item.first, " exit range mapping");
         return true;
       });
     }

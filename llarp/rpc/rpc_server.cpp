@@ -488,7 +488,14 @@ namespace llarp::rpc
                     }
                     else if (lnsExit.has_value())
                     {
-                      ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
+                      const std::string name = *lnsExit;
+                      if (name == "null")
+                      {
+                        service::Address nullAddr{};
+                        mapExit(nullAddr);
+                        return;
+                      }
+                      ep->LookupNameAsync(name, [reply, mapExit](auto maybe) mutable {
                         if (not maybe.has_value())
                         {
                           reply(CreateJSONError("we could not find an exit with that name"));
@@ -496,7 +503,10 @@ namespace llarp::rpc
                         }
                         if (auto ptr = std::get_if<service::Address>(&*maybe))
                         {
-                          mapExit(*ptr);
+                          if (ptr->IsZero())
+                            reply(CreateJSONError("name does not exist"));
+                          else
+                            mapExit(*ptr);
                         }
                         else
                         {

@@ -929,6 +929,8 @@ namespace llarp
           else
           {
             const auto addr = *exits.begin();
+            if (addr.IsZero())  // drop
+              return;
             pkt.ZeroSourceAddress();
             MarkAddressOutbound(addr);
             EnsurePathToService(
