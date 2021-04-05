@@ -868,7 +868,7 @@ namespace llarp
     if (connected < connectToNum)
     {
       size_t dlt = connectToNum - connected;
-      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      LogDebug("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt);
     }
 
