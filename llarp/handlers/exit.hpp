@@ -35,6 +35,12 @@ namespace llarp
       const EventLoop_ptr&
       Loop() override;
 
+      std::unordered_set<EndpointBase::AddressVariant_t>
+      AllRemoteEndpoints() const override;
+
+      void
+      SRVRecordsChanged() override;
+
       bool
       SendToOrQueue(
           service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
@@ -112,8 +118,8 @@ namespace llarp
       AddressVariant_t
       LocalAddress() const override;
 
-      std::unordered_map<AddressVariant_t, SendStat>
-      GetStatistics() const override;
+      std::optional<SendStat>
+      GetStatFor(AddressVariant_t remote) const override;
 
       /// sets up networking and starts traffic
       bool

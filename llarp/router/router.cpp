@@ -946,6 +946,17 @@ namespace llarp
     _outboundSessionMaker.OnConnectTimeout(session);
   }
 
+  void
+  Router::ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify)
+  {
+    if (auto maybe = modify(rc()))
+    {
+      _rc = *maybe;
+      UpdateOurRC();
+      _rcGossiper.GossipRC(rc());
+    }
+  }
+
   bool
   Router::ConnectionEstablished(ILinkSession* session, bool inbound)
   {

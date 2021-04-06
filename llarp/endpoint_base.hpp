@@ -4,13 +4,16 @@
 #include "llarp/service/convotag.hpp"
 #include "llarp/service/protocol_type.hpp"
 #include "router_id.hpp"
-#include "ev/ev.hpp"
+#include "llarp/ev/ev.hpp"
+#include "llarp/dns/srv_data.hpp"
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <optional>
+#include <unordered_set>
+#include <set>
 #include "oxenmq/variant.h"
 
 namespace llarp
@@ -22,6 +25,8 @@ namespace llarp
 
   class EndpointBase
   {
+    std::unordered_set<dns::SRVData> m_SRVRecords;
+
    public:
     virtual ~EndpointBase() = default;
 
@@ -43,10 +48,51 @@ namespace llarp
       Duration_t lastRecvAt;
     };
 
-    /// get statistics about how much traffic we sent and recv'd via remote endpoints we are talking
-    /// to
-    virtual std::unordered_map<AddressVariant_t, SendStat>
-    GetStatistics() const = 0;
+    /// info about a quic mapping
+    struct QUICMappingInfo
+    {
+      /// srv data if it was provided
+      std::optional<dns::SRVData> srv;
+      /// address we are bound on
+      SockAddr localAddr;
+      /// the remote's lns name if we have one
+      std::optional<std::string> remoteName;
+      /// the remote's address
+      AddressVariant_t remoteAddr;
+      /// the remote's port we are connecting to
+      uint16_t remotePort;
+    };
+
+    /// maybe get quic mapping info given its stream id
+    /// returns std::nullopt if we have no stream given that id
+    std::optional<QUICMappingInfo>
+    GetQUICMappingInfoByID(int stream_id) const;
+
+    /// add an srv record to this endpoint's descriptor
+    void
+    PutSRVRecord(dns::SRVData srv);
+
+    /// called when srv data changes in some way
+    virtual void
+    SRVRecordsChanged() = 0;
+
+    /// remove srv records from this endpoint that match a filter
+    /// for each srv record call it with filter, remove if filter returns true
+    /// return if we removed any srv records
+    bool
+    DelSRVRecordIf(std::function<bool(const dns::SRVData&)> filter);
+
+    /// get copy of all srv records
+    std::set<dns::SRVData>
+    SRVRecords() const;
+
+    /// get statistics about how much traffic we sent and recv'd to a remote endpoint
+    virtual std::optional<SendStat>
+    GetStatFor(AddressVariant_t remote) const = 0;
+
+    /// list all remote endpoint addresses we have that are mapped
+    virtual std::unordered_set<AddressVariant_t>
+    AllRemoteEndpoints() const = 0;
 
     /// get our local address
     virtual AddressVariant_t

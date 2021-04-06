@@ -128,6 +128,9 @@ add_library(liblokinet
   dht/recursiverouterlookup.cpp
   dht/serviceaddresslookup.cpp
   dht/taglookup.cpp
+
+  endpoint_base.cpp
+  
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp

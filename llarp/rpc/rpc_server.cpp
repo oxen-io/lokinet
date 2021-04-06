@@ -226,12 +226,16 @@ namespace llarp::rpc
                 if (auto itr = obj.find("close"); itr != obj.end())
                   closeID = itr->get<int>();
 
+                std::string srvProto;
+                if (auto itr = obj.find("srv-proto"); itr != obj.end())
+                  srvProto = itr->get<std::string>();
+
                 if (port == 0 and closeID == 0)
                 {
                   reply(CreateJSONError("invalid arguments"));
                   return;
                 }
-                r->loop()->call([reply, endpoint, remote, port, r, closeID]() {
+                r->loop()->call([reply, endpoint, remote, port, r, closeID, srvProto]() {
                   auto ep = GetEndpointByName(r, endpoint);
                   if (not ep)
                   {
@@ -263,6 +267,12 @@ namespace llarp::rpc
                     var::visit(
                         [&](auto&& addr) { localAddress = addr.ToString(); }, ep->LocalAddress());
                     result["addr"] = localAddress + ":" + std::to_string(port);
+                    if (not srvProto.empty())
+                    {
+                      auto srvData =
+                          dns::SRVData::fromTuple(std::make_tuple(srvProto, 1, 1, port, ""));
+                      ep->PutSRVRecord(std::move(srvData));
+                    }
                     reply(CreateJSONResponse(result));
                   }
                   else if (closeID)

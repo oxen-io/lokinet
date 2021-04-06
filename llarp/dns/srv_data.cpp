@@ -4,6 +4,9 @@
 
 #include <limits>
 
+#include <oxenmq/bt_serialize.h>
+#include "llarp/util/bencode.h"
+
 namespace llarp::dns
 {
   bool
@@ -99,4 +102,42 @@ namespace llarp::dns
     return IsValid();
   }
 
+  bool
+  SRVData::BEncode(llarp_buffer_t* buf) const
+  {
+    const std::string data = oxenmq::bt_serialize(toTuple());
+    return buf->write(data.begin(), data.end());
+  }
+
+  bool
+  SRVData::BDecode(llarp_buffer_t* buf)
+  {
+    byte_t* begin = buf->cur;
+    if (not bencode_discard(buf))
+      return false;
+    byte_t* end = buf->cur;
+    std::string_view srvString{reinterpret_cast<char*>(begin), end - begin};
+    try
+    {
+      SRVTuple tuple{};
+      oxenmq::bt_deserialize(srvString, tuple);
+      *this = fromTuple(std::move(tuple));
+      return true;
+    }
+    catch (const oxenmq::bt_deserialize_invalid&)
+    {
+      return false;
+    };
+  }
+
+  util::StatusObject
+  SRVData::ExtractStatus() const
+  {
+    return util::StatusObject{
+        {"proto", service_proto},
+        {"priority", priority},
+        {"weight", weight},
+        {"port", port},
+        {"target", target}};
+  }
 }  // namespace llarp::dns

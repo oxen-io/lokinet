@@ -13,6 +13,8 @@
 #include <llarp/tooling/router_event.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 
+#include <optional>
+
 #ifdef LOKINET_HIVE
 #include <llarp/tooling/router_event.hpp>
 #endif
@@ -113,6 +115,12 @@ namespace llarp
 
     virtual const RouterContact&
     rc() const = 0;
+
+    /// modify our rc
+    /// modify returns nullopt if unmodified otherwise it returns the new rc to be sigend and
+    /// published out
+    virtual void
+    ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) = 0;
 
     virtual exit::Context&
     exitContext() = 0;

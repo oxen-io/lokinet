@@ -120,6 +120,9 @@ namespace llarp
     }
 
     void
+    ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
+
+    void
     SetRouterWhitelist(const std::vector<RouterID> routers) override;
 
     exit::Context&

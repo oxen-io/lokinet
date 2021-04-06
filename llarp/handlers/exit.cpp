@@ -563,10 +563,49 @@ namespace llarp
       return RouterID{m_Router->pubkey()};
     }
 
-    std::unordered_map<EndpointBase::AddressVariant_t, EndpointBase::SendStat>
-    ExitEndpoint::GetStatistics() const
+    void
+    ExitEndpoint::SRVRecordsChanged()
     {
-      return {};
+      m_Router->ModifyOurRC(
+          [srvRecords = SRVRecords()](RouterContact rc) -> std::optional<RouterContact> {
+            // check if there are any new srv records
+            bool shouldUpdate = false;
+
+            for (const auto& rcSrv : rc.srvRecords)
+            {
+              if (srvRecords.count(rcSrv) == 0)
+                shouldUpdate = true;
+            }
+
+            // no new records so don't modify
+            if (not shouldUpdate)
+              return std::nullopt;
+
+            // we got new entries so we clear the whole vector on the rc and recreate it
+            rc.srvRecords.clear();
+            for (auto& record : srvRecords)
+              rc.srvRecords.emplace_back(record);
+            // set the version to 1 because we have srv records
+            rc.version = 1;
+            return rc;
+          });
+    }
+
+    std::optional<EndpointBase::SendStat> ExitEndpoint::GetStatFor(AddressVariant_t) const
+    {
+      /// TODO: implement me
+      return std::nullopt;
+    }
+
+    std::unordered_set<EndpointBase::AddressVariant_t>
+    ExitEndpoint::AllRemoteEndpoints() const
+    {
+      std::unordered_set<AddressVariant_t> remote;
+      for (auto itr = m_Paths.begin(); itr != m_Paths.end(); ++itr)
+      {
+        remote.insert(RouterID{itr->second});
+      }
+      return remote;
     }
 
     bool

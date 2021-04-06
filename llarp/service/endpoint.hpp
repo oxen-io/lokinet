@@ -139,11 +139,17 @@ namespace llarp
       AddressVariant_t
       LocalAddress() const override;
 
-      std::unordered_map<AddressVariant_t, SendStat>
-      GetStatistics() const override;
+      std::optional<SendStat>
+      GetStatFor(AddressVariant_t remote) const override;
+
+      std::unordered_set<AddressVariant_t>
+      AllRemoteEndpoints() const override;
 
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
+
+      void
+      SRVRecordsChanged() override;
 
       void
       HandlePathDied(path::Path_ptr p) override;

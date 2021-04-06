@@ -1030,20 +1030,25 @@ namespace llarp
         const std::shared_ptr<exit::BaseSession>& session, EndpointBase::SendStat& stats)
     {}
 
-    std::unordered_map<EndpointBase::AddressVariant_t, EndpointBase::SendStat>
-    Endpoint::GetStatistics() const
+    std::optional<EndpointBase::SendStat> Endpoint::GetStatFor(AddressVariant_t) const
     {
-      std::unordered_map<AddressVariant_t, SendStat> stats;
+      // TODO: implement me
+      return std::nullopt;
+    }
+
+    std::unordered_set<EndpointBase::AddressVariant_t>
+    Endpoint::AllRemoteEndpoints() const
+    {
+      std::unordered_set<AddressVariant_t> remote;
       for (const auto& item : Sessions())
       {
-        Address addr = item.second.remote.Addr();
-        AccumulateStats(item.second, stats[addr]);
+        remote.insert(item.second.remote.Addr());
       }
       for (const auto& item : m_state->m_SNodeSessions)
       {
-        AccumulateStats(item.second.first, stats[item.first]);
+        remote.insert(item.first);
       }
-      return stats;
+      return remote;
     }
 
     bool
@@ -1327,6 +1332,17 @@ namespace llarp
         }
       }
       return hookAdded;
+    }
+
+    void
+    Endpoint::SRVRecordsChanged()
+    {
+      auto& introset = introSet();
+      introset.SRVs.clear();
+      for (const auto& srv : SRVRecords())
+        introset.SRVs.emplace_back(srv.toTuple());
+
+      RegenAndPublishIntroSet();
     }
 
     bool
