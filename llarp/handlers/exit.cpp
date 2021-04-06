@@ -279,17 +279,20 @@ namespace llarp
           else if (m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped, async obtain it
-            ObtainSNodeSession(r, [&](std::shared_ptr<exit::BaseSession> session) {
-              if (session && session->IsReady())
-              {
-                msg.AddINReply(m_KeyToIP[pubKey], isV6);
-              }
-              else
-              {
-                msg.AddNXReply();
-              }
-              reply(msg);
-            });
+            ObtainSNodeSession(
+                r,
+                [&, msg = std::make_shared<dns::Message>(msg), reply](
+                    std::shared_ptr<exit::BaseSession> session) {
+                  if (session && session->IsReady())
+                  {
+                    msg->AddINReply(m_KeyToIP[pubKey], isV6);
+                  }
+                  else
+                  {
+                    msg->AddNXReply();
+                  }
+                  reply(*msg);
+                });
             return true;
           }
           else
