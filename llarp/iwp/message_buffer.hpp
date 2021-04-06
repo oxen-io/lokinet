@@ -69,7 +69,7 @@ namespace llarp
       IsTransmitted() const;
 
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout) const;
+      IsTimedOut(llarp_time_t now) const;
 
       void
       InformTimeout();
@@ -94,7 +94,7 @@ namespace llarp
       IsCompleted() const;
 
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout) const;
+      IsTimedOut(llarp_time_t now) const;
 
       bool
       Verify() const;

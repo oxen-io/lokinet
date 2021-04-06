@@ -363,7 +363,7 @@ namespace llarp
         auto itr = m_TXMsgs.begin();
         while (itr != m_TXMsgs.end())
         {
-          if (itr->second.IsTimedOut(now, DeliveryTimeout()))
+          if (itr->second.IsTimedOut(now))
           {
             m_Stats.totalDroppedTX++;
             m_Stats.totalInFlightTX--;
@@ -380,7 +380,7 @@ namespace llarp
         auto itr = m_RXMsgs.begin();
         while (itr != m_RXMsgs.end())
         {
-          if (itr->second.IsTimedOut(now, ReceivalTimeout))
+          if (itr->second.IsTimedOut(now))
           {
             m_ReplayFilter.emplace(itr->first, now);
             itr = m_RXMsgs.erase(itr);
@@ -406,17 +406,6 @@ namespace llarp
 
     using Introduction =
         AlignedBuffer<PubKey::SIZE + PubKey::SIZE + TunnelNonce::SIZE + Signature::SIZE>;
-
-    Session::Time_t
-    Session::DeliveryTimeout() const
-    {
-      if (m_Inbound and not m_RemoteRC.IsPublicRouter())
-        return ClientDeliveryTimeout;
-      if (m_Parent->GetOurRC().IsPublicRouter())
-        return SNodeDeliveryTimeout;
-      else
-        return ClientDeliveryTimeout;
-    }
 
     void
     Session::GenerateAndSendIntro()
