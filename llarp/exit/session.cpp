@@ -75,7 +75,14 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     BaseSession::GetHopsForBuild()
     {
-      return GetHopsAlignedToForBuild(m_ExitRouter);
+      if (numHops == 1)
+      {
+        if (auto maybe = m_router->nodedb()->Get(m_ExitRouter))
+          return std::vector<RouterContact>{*maybe};
+        return std::nullopt;
+      }
+      else
+        return GetHopsAlignedToForBuild(m_ExitRouter);
     }
 
     bool
