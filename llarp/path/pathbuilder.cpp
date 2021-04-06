@@ -148,7 +148,8 @@ namespace llarp
       if (ctx->router->SendToOrQueue(remote, msg, sentHandler))
       {
         // persist session with router until this path is done
-        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+        if (ctx->path)
+          ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
       }
       else
       {
