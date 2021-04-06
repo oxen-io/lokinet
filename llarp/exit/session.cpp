@@ -274,24 +274,18 @@ namespace llarp
     BaseSession::FlushUpstream()
     {
       auto now = m_router->Now();
-      auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
+      auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
       if (path)
       {
         for (auto& item : m_Upstream)
         {
-          auto& queue = item.second;  // XXX: uninitialised memory here!
+          auto& queue = item.second;
           while (queue.size())
           {
             auto& msg = queue.front();
-            if (path)
-            {
-              msg.S = path->NextSeqNo();
-              path->SendRoutingMessage(msg, m_router);
-            }
+            msg.S = path->NextSeqNo();
+            path->SendRoutingMessage(msg, m_router);
             queue.pop_front();
-
-            // spread across all paths
-            path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
           }
         }
       }

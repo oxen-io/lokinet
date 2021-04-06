@@ -238,6 +238,9 @@ namespace llarp
       GetEstablishedPathClosestTo(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
+      PickEstablishedPath(PathRole roles = ePathRoleAny) const;
+
+      Path_ptr
       PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
       Path_ptr

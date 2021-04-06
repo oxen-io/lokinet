@@ -365,7 +365,7 @@ namespace llarp
           pk = itr->second;
         }
         // check if this key is a service node
-        if (m_SNodeKeys.find(pk) != m_SNodeKeys.end())
+        if (m_SNodeKeys.count(pk))
         {
           // check if it's a service node session we made and queue it via our
           // snode session that we made otherwise use an inbound session that
@@ -417,11 +417,7 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while (itr != m_SNodeSessions.end())
         {
-          // TODO: move flush upstream to router event loop
-          if (!itr->second->FlushUpstream())
-          {
-            LogWarn("failed to flush snode traffic to ", itr->first, " via outbound session");
-          }
+          itr->second->FlushUpstream();
           itr->second->FlushDownstream();
           ++itr;
         }
@@ -504,11 +500,11 @@ namespace llarp
     huint128_t
     ExitEndpoint::GetIPForIdent(const PubKey pk)
     {
-      huint128_t found = {0};
+      huint128_t found{};
       if (!HasLocalMappedAddrFor(pk))
       {
         // allocate and map
-        found.h = AllocateNewAddress().h;
+        found = AllocateNewAddress();
         if (!m_KeyToIP.emplace(pk, found).second)
         {
           LogError(Name(), "failed to map ", pk, " to ", found);
@@ -525,7 +521,7 @@ namespace llarp
           LogError(Name(), "failed to map ", pk, " to ", found);
       }
       else
-        found.h = m_KeyToIP[pk].h;
+        found = m_KeyToIP[pk];
 
       MarkIPActive(found);
       m_KeyToIP.rehash(0);
@@ -748,8 +744,8 @@ namespace llarp
     huint128_t
     ExitEndpoint::ObtainServiceNodeIP(const RouterID& other)
     {
-      const PubKey pubKey(other);
-      const PubKey us(m_Router->pubkey());
+      const PubKey pubKey{other};
+      const PubKey us{m_Router->pubkey()};
       // just in case
       if (pubKey == us)
         return m_IfAddr;
@@ -766,7 +762,7 @@ namespace llarp
             true,
             this);
         // this is a new service node make an outbound session to them
-        m_SNodeSessions.emplace(other, session);
+        m_SNodeSessions[other] = session;
       }
       return ip;
     }

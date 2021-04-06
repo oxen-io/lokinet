@@ -413,6 +413,31 @@ namespace llarp
       return nullptr;
     }
 
+    Path_ptr
+    PathSet::PickEstablishedPath(PathRole roles) const
+    {
+      std::vector<Path_ptr> established;
+      Lock_t l(m_PathsMutex);
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
+      {
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+          established.push_back(itr->second);
+        ++itr;
+      }
+      Path_ptr chosen = nullptr;
+      llarp_time_t minLatency = 30s;
+      for (const auto& path : established)
+      {
+        if (path->intro.latency < minLatency)
+        {
+          minLatency = path->intro.latency;
+          chosen = path;
+        }
+      }
+      return chosen;
+    }
+
     void
     PathSet::UpstreamFlush(AbstractRouter* r)
     {
