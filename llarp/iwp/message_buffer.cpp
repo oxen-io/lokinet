@@ -97,10 +97,10 @@ namespace llarp
     }
 
     bool
-    OutboundMessage::IsTimedOut(const llarp_time_t now) const
+    OutboundMessage::IsTimedOut(const llarp_time_t now, llarp_time_t timeout) const
     {
       // TODO: make configurable by outbound message deliverer
-      return now > m_StartedAt && now - m_StartedAt > DeliveryTimeout;
+      return now > m_StartedAt && now - m_StartedAt > timeout;
     }
 
     void
@@ -166,9 +166,9 @@ namespace llarp
     }
 
     bool
-    InboundMessage::IsTimedOut(const llarp_time_t now) const
+    InboundMessage::IsTimedOut(const llarp_time_t now, llarp_time_t timeout) const
     {
-      return now > m_LastActiveAt && now - m_LastActiveAt > DeliveryTimeout;
+      return now > m_LastActiveAt && now - m_LastActiveAt > timeout;
     }
 
     void

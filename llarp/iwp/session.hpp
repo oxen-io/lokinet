@@ -21,16 +21,18 @@ namespace llarp
     /// creates a packet with plaintext size + wire overhead + random pad
     ILinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16, size_t pad_variance = 16);
-    /// Time how long we try delivery for
-    static constexpr std::chrono::milliseconds DeliveryTimeout = 500ms;
+    /// Time how long we try delivery for as a snode to snode
+    static constexpr std::chrono::milliseconds SNodeDeliveryTimeout = 200ms;
+    /// Time how long we try delivery for to/from a client
+    static constexpr std::chrono::milliseconds ClientDeliveryTimeout = 500ms;
     /// Time how long we wait to recieve a message
-    static constexpr auto ReceivalTimeout = (DeliveryTimeout * 8) / 5;
+    static constexpr auto ReceivalTimeout = 1s;
     /// How long to keep a replay window for
-    static constexpr auto ReplayWindow = (ReceivalTimeout * 3) / 2;
+    static constexpr auto ReplayWindow = 1500ms;
     /// How often to acks RX messages
-    static constexpr auto ACKResendInterval = DeliveryTimeout / 2;
+    static constexpr auto ACKResendInterval = 200ms;
     /// How often to retransmit TX fragments
-    static constexpr auto TXFlushInterval = (DeliveryTimeout / 5) * 4;
+    static constexpr auto TXFlushInterval = 200ms;
     /// How often we send a keepalive
     static constexpr std::chrono::milliseconds PingInterval = 5s;
     /// How long we wait for a session to die with no tx from them
@@ -52,6 +54,9 @@ namespace llarp
 
       void
       Pump() override;
+
+      Time_t
+      DeliveryTimeout() const;
 
       void
       Tick(llarp_time_t now) override;
