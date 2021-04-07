@@ -417,7 +417,7 @@ namespace llarp
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              info.txID,
+              info.rxID,
               ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
               counter,
               msg.protocol);
