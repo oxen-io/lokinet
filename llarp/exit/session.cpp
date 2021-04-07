@@ -195,7 +195,7 @@ namespace llarp
         uint64_t counter,
         service::ProtocolType t)
     {
-      const service::ConvoTag tag{path->TXID().as_array()};
+      const service::ConvoTag tag{path->RXID().as_array()};
 
       if (t == service::ProtocolType::QUIC)
       {
