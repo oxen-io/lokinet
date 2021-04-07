@@ -66,7 +66,8 @@ namespace llarp
         auto visit = [&tag](exit::Endpoint* const ep) -> bool {
           if (not ep)
             return false;
-          tag = service::ConvoTag{ep->LocalPath().as_array()};
+          if (auto path = ep->GetCurrentPath())
+            tag = service::ConvoTag{path->RXID().as_array()};
           return true;
         };
         if (VisitEndpointsFor(PubKey{*rid}, visit) and not tag.IsZero())
@@ -789,6 +790,10 @@ namespace llarp
     {
       if (wantInternet && !m_PermitExit)
         return false;
+      path::HopHandler_ptr handler =
+          m_Router->pathContext().GetByUpstream(m_Router->pubkey(), path);
+      if (handler == nullptr)
+        return false;
       auto ip = GetIPForIdent(pk);
       if (GetRouter()->pathContext().TransitHopPreviousIsRouter(path, pk.as_array()))
       {
@@ -797,7 +802,7 @@ namespace llarp
         m_SNodeKeys.emplace(pk.as_array());
       }
       m_ActiveExits.emplace(
-          pk, std::make_unique<exit::Endpoint>(pk, path, !wantInternet, ip, this));
+          pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
 
       m_Paths[path] = pk;
 
@@ -823,12 +828,13 @@ namespace llarp
       auto itr = range.first;
       while (itr != range.second)
       {
-        if (itr->second->LocalPath() == ep->LocalPath())
+        if (itr->second->GetCurrentPath() == ep->GetCurrentPath())
         {
           itr = m_ActiveExits.erase(itr);
           // now ep is gone af
           return;
         }
+
         ++itr;
       }
     }

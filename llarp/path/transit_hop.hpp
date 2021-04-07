@@ -73,6 +73,12 @@ namespace llarp
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
 
+      PathID_t
+      RXID() const override
+      {
+        return info.rxID;
+      }
+
       void
       Stop();
 

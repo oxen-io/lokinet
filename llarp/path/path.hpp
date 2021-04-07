@@ -360,7 +360,7 @@ namespace llarp
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
 
       PathID_t
-      RXID() const;
+      RXID() const override;
 
       RouterID
       Upstream() const;

@@ -11,24 +11,24 @@ namespace llarp
   {
     Endpoint::Endpoint(
         const llarp::PubKey& remoteIdent,
-        const llarp::PathID_t& beginPath,
+        const llarp::path::HopHandler_ptr& beginPath,
         bool rewriteIP,
         huint128_t ip,
         llarp::handlers::ExitEndpoint* parent)
-        : createdAt(parent->Now())
-        , m_Parent(parent)
-        , m_remoteSignKey(remoteIdent)
-        , m_CurrentPath(beginPath)
-        , m_IP(ip)
-        , m_RewriteSource(rewriteIP)
-        , m_Counter(0)
+        : createdAt{parent->Now()}
+        , m_Parent{parent}
+        , m_remoteSignKey{remoteIdent}
+        , m_CurrentPath{beginPath}
+        , m_IP{ip}
+        , m_RewriteSource{rewriteIP}
     {
       m_LastActive = parent->Now();
     }
 
     Endpoint::~Endpoint()
     {
-      m_Parent->DelEndpointInfo(m_CurrentPath);
+      if (m_CurrentPath)
+        m_Parent->DelEndpointInfo(m_CurrentPath->RXID());
     }
 
     void
@@ -59,7 +59,8 @@ namespace llarp
     {
       if (!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
         return false;
-      m_CurrentPath = nextPath;
+      const RouterID us{m_Parent->GetRouter()->pubkey()};
+      m_CurrentPath = m_Parent->GetRouter()->pathContext().GetByUpstream(us, nextPath);
       return true;
     }
 
@@ -98,7 +99,7 @@ namespace llarp
       if (ExpiresSoon(now, timeout))
         return true;
       auto path = GetCurrentPath();
-      if (!path)
+      if (not path)
         return true;
       auto lastPing = path->LastRemoteActivityAt();
       if (lastPing == 0s || (now > lastPing && now - lastPing > timeout))
@@ -239,13 +240,6 @@ namespace llarp
       for (auto& item : m_DownstreamQueues)
         item.second.clear();
       return sent;
-    }
-
-    llarp::path::HopHandler_ptr
-    Endpoint::GetCurrentPath() const
-    {
-      auto router = m_Parent->GetRouter();
-      return router->pathContext().GetByUpstream(router->pubkey(), m_CurrentPath);
     }
   }  // namespace exit
 }  // namespace llarp

@@ -2,7 +2,8 @@
 
 #include <llarp/crypto/types.hpp>
 #include <llarp/net/ip_packet.hpp>
-#include <llarp/path/path.hpp>
+#include <llarp/path/ihophandler.hpp>
+#include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/time.hpp>
 
@@ -23,9 +24,9 @@ namespace llarp
     {
       static constexpr size_t MaxUpstreamQueueSize = 256;
 
-      Endpoint(
+      explicit Endpoint(
           const llarp::PubKey& remoteIdent,
-          const llarp::PathID_t& beginPath,
+          const llarp::path::HopHandler_ptr& path,
           bool rewriteIP,
           huint128_t ip,
           llarp::handlers::ExitEndpoint* parent);
@@ -75,18 +76,15 @@ namespace llarp
       UpdateLocalPath(const llarp::PathID_t& nextPath);
 
       llarp::path::HopHandler_ptr
-      GetCurrentPath() const;
+      GetCurrentPath() const
+      {
+        return m_CurrentPath;
+      }
 
       const llarp::PubKey&
       PubKey() const
       {
         return m_remoteSignKey;
-      }
-
-      const llarp::PathID_t&
-      LocalPath() const
-      {
-        return m_CurrentPath;
       }
 
       uint64_t
@@ -112,7 +110,7 @@ namespace llarp
      private:
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;
-      llarp::PathID_t m_CurrentPath;
+      llarp::path::HopHandler_ptr m_CurrentPath;
       llarp::huint128_t m_IP;
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
