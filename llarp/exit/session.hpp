@@ -114,6 +114,14 @@ namespace llarp
         return m_ExitRouter;
       }
 
+      std::optional<PathID_t>
+      CurrentPath() const
+      {
+        if (m_CurrentPath.IsZero())
+          return std::nullopt;
+        return m_CurrentPath;
+      }
+
       bool
       IsExpired(llarp_time_t now) const;
 
@@ -150,6 +158,8 @@ namespace llarp
       using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
       using TieredQueue_t = std::map<uint8_t, UpstreamTrafficQueue_t>;
       TieredQueue_t m_Upstream;
+
+      PathID_t m_CurrentPath;
 
       using DownstreamPkt = std::pair<uint64_t, llarp::net::IPPacket>;
 

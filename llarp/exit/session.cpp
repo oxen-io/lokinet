@@ -127,6 +127,7 @@ namespace llarp
       if (b == 0s)
       {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
+        m_CurrentPath = p->RXID();
         CallPendingCallbacks(true);
       }
       return true;
@@ -257,6 +258,8 @@ namespace llarp
     bool
     BaseSession::IsReady() const
     {
+      if (m_CurrentPath.IsZero())
+        return false;
       const size_t expect = (1 + (numDesiredPaths / 2));
       return AvailablePaths(llarp::path::ePathRoleExit) >= expect;
     }
