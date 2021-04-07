@@ -171,6 +171,10 @@ struct llarp_buffer_t
   size_t
   read_until(char delim, byte_t* result, size_t resultlen);
 
+  /// make a copy of this buffer
+  std::vector<byte_t>
+  copy() const;
+
  private:
   friend struct ManagedBuffer;
   llarp_buffer_t(const llarp_buffer_t&) = default;

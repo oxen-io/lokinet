@@ -115,10 +115,10 @@ namespace llarp
             }
           }
 
-          std::vector<byte_t> data{};
-          data.resize(payload.sz);
-          std::copy_n(payload.base, data.size(), data.data());
-          ObtainSNodeSession(*rid, [data, type](auto session) {
+          if (not m_Router->ConnectionToRouterAllowed(*rid))
+            return false;
+
+          ObtainSNodeSession(*rid, [data = payload.copy(), type](auto session) {
             if (session and session->IsReady())
             {
               session->SendPacketToRemote(data, type);
@@ -141,20 +141,28 @@ namespace llarp
         return false;
       if (auto* rid = std::get_if<RouterID>(&addr))
       {
-        ObtainSNodeSession(
-            *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
-              if (session and session->IsReady())
-              {
-                if (auto path = session->GetPathByRouter(routerID))
+        if (m_SNodeKeys.count(PubKey{*rid}) or m_Router->ConnectionToRouterAllowed(*rid))
+        {
+          ObtainSNodeSession(
+              *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
+                if (session and session->IsReady())
                 {
-                  hook(service::ConvoTag{path->RXID().as_array()});
+                  if (auto path = session->GetPathByRouter(routerID))
+                  {
+                    hook(service::ConvoTag{path->RXID().as_array()});
+                  }
+                  else
+                    hook(std::nullopt);
                 }
                 else
                   hook(std::nullopt);
-              }
-              else
-                hook(std::nullopt);
-            });
+              });
+        }
+        else
+        {
+          // probably a client
+          hook(GetBestConvoTagFor(addr));
+        }
       }
       return true;
     }

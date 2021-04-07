@@ -119,6 +119,8 @@ namespace llarp
         if (not quic)
           return false;
         quic->receive_packet(tag, buf.underlying);
+        m_LastActive = m_Parent->Now();
+        m_TxRate += buf.underlying.sz;
         return true;
       }
       // queue overflow
