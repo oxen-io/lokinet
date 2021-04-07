@@ -22,7 +22,6 @@ add_executable(testAll
   crypto/test_llarp_crypto.cpp
   crypto/test_llarp_key_manager.cpp
   dns/test_llarp_dns_dns.cpp
-  exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
   net/test_ip_address.cpp
   net/test_llarp_net.cpp
