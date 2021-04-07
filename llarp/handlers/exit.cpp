@@ -112,8 +112,8 @@ namespace llarp
             {
               if (itr->second->QueueInboundTraffic(ManagedBuffer{payload}, type))
                 return true;
-              ++itr;
             }
+            ++itr;
           }
 
           if (not m_Router->ConnectionToRouterAllowed(*rid))

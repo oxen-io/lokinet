@@ -87,9 +87,8 @@ namespace llarp
     bool
     Endpoint::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
     {
-      auto path = GetCurrentPath();
-      if (path)
-        return path->ExpiresSoon(now, dlt);
+      if(m_CurrentPath)
+        return m_CurrentPath->ExpiresSoon(now, dlt);
       return true;
     }
 
