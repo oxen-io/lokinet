@@ -64,18 +64,21 @@ namespace llarp
       {
         service::ConvoTag tag{};
         auto visit = [&tag](exit::Endpoint* const ep) -> bool {
-          if (ep)
-            tag = service::ConvoTag{ep->LocalPath().as_array()};
+          if (not ep)
+            return false;
+          tag = service::ConvoTag{ep->LocalPath().as_array()};
           return true;
         };
         if (VisitEndpointsFor(PubKey{*rid}, visit) and not tag.IsZero())
           return tag;
         auto itr = m_SNodeSessions.find(*rid);
         if (itr == m_SNodeSessions.end())
+        {
           return std::nullopt;
+        }
         if (auto path = itr->second->GetPathByRouter(*rid))
         {
-          tag = service::ConvoTag{path->TXID().as_array()};
+          tag = service::ConvoTag{path->RXID().as_array()};
           return tag;
         }
         return std::nullopt;
@@ -144,7 +147,7 @@ namespace llarp
               {
                 if (auto path = session->GetPathByRouter(routerID))
                 {
-                  hook(service::ConvoTag{path->TXID().as_array()});
+                  hook(service::ConvoTag{path->RXID().as_array()});
                 }
                 else
                   hook(std::nullopt);

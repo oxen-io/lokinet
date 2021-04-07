@@ -190,15 +190,17 @@ namespace llarp
       if (queue.size() == 0)
       {
         queue.emplace_back();
+        queue.back().protocol = type;
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
       auto& msg = queue.back();
       if (msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
       {
         queue.emplace_back();
+        queue.back().protocol = type;
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
-
+      msg.protocol = type;
       return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
