@@ -6,6 +6,7 @@
 
 #include <oxenmq/bt_serialize.h>
 #include "llarp/util/bencode.h"
+#include "llarp/util/types.hpp"
 
 namespace llarp::dns
 {
@@ -122,7 +123,7 @@ namespace llarp::dns
       SRVTuple tuple{};
       oxenmq::bt_deserialize(srvString, tuple);
       *this = fromTuple(std::move(tuple));
-      return true;
+      return IsValid();
     }
     catch (const oxenmq::bt_deserialize_invalid&)
     {
