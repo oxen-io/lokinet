@@ -166,7 +166,3 @@ The macOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap
 to run, after you create default config:
 
     $ sudo lokinet
-
-## Running on Windows
-
-**DO NOT RUN AS ELEVATED USER**, run as normal user.
