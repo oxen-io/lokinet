@@ -94,7 +94,7 @@ namespace llarp
   {
     std::optional<bool> m_enableProfiling;
     bool m_saveProfiles;
-    std::string m_strictConnect;
+    std::set<RouterID> m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;
 

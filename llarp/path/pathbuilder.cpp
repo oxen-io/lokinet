@@ -130,7 +130,6 @@ namespace llarp
       ctx->router->NotifyRouterEvent<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
 
       const RouterID remote = ctx->path->Upstream();
-      const ILinkMessage* msg = &ctx->LRCM;
       auto sentHandler = [ctx](auto status) {
         if (status == SendStatus::Success)
         {
@@ -145,7 +144,7 @@ namespace llarp
         ctx->path = nullptr;
         ctx->pathset = nullptr;
       };
-      if (ctx->router->SendToOrQueue(remote, msg, sentHandler))
+      if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
       {
         // persist session with router until this path is done
         if (ctx->path)
@@ -300,7 +299,7 @@ namespace llarp
     void
     Builder::BuildOne(PathRole roles)
     {
-      if (const auto maybe = GetHopsForBuild(); maybe.has_value())
+      if (const auto maybe = GetHopsForBuild())
         Build(*maybe, roles);
     }
 
@@ -318,7 +317,10 @@ namespace llarp
       {
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
+        {
+          LogWarn(Name(), " has no first hop candidate");
           return std::nullopt;
+        }
         hops.emplace_back(*maybe);
       };
 
@@ -395,15 +397,13 @@ namespace llarp
     {
       if (IsStopped())
         return;
-
+      lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
       if (not m_EdgeLimiter.Insert(edge))
       {
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
       }
-
-      lastBuild = Now();
       // async generate keys
       auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
       ctx->router = m_router;

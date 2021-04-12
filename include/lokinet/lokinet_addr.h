@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
 
-/// get a free()-able null terminated string that holds our .loki address
+  /// get a free()-able null terminated string that holds our .loki address
   /// returns NULL if we dont have one right now
   char*
   lokinet_address(struct lokinet_context*);

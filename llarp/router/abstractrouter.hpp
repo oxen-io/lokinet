@@ -243,7 +243,7 @@ namespace llarp
 
     virtual bool
     SendToOrQueue(
-        const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler = nullptr) = 0;
+        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler = nullptr) = 0;
 
     virtual void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) = 0;

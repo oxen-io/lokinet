@@ -224,6 +224,12 @@ namespace llarp
           std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler)
           override;
 
+      void
+      LookupServiceAsync(
+          std::string name,
+          std::string service,
+          std::function<void(std::vector<dns::SRVData>)> resultHandler) override;
+
       /// called on event loop pump
       virtual void
       Pump(llarp_time_t now);

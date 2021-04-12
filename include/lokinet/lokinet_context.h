@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -49,7 +48,6 @@ extern "C"
   int
   lokinet_add_bootstrap_rc(const char*, size_t, struct lokinet_context*);
 
-  
 #ifdef __cplusplus
 }
 #endif

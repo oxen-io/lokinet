@@ -436,7 +436,7 @@ namespace llarp
     {
       for (const auto& msg : msgs)
       {
-        if (r->SendToOrQueue(Upstream(), &msg))
+        if (r->SendToOrQueue(Upstream(), msg))
         {
           m_TXRate += msg.X.size();
         }

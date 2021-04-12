@@ -110,7 +110,7 @@ namespace llarp
             "could not publish descriptors for endpoint ",
             Name(),
             " because we couldn't get enough valid introductions");
-        ManualRebuild(1);
+        BuildOne();
         return;
       }
       introSet().I.clear();
@@ -177,6 +177,44 @@ namespace llarp
         }
       }
       return std::nullopt;
+    }
+
+    void
+    Endpoint::LookupServiceAsync(
+        std::string name,
+        std::string service,
+        std::function<void(std::vector<dns::SRVData>)> resultHandler)
+    {
+      auto fail = [resultHandler]() { resultHandler({}); };
+      auto lookupByAddress = [resultHandler](auto address) {
+        if (auto* ptr = std::get_if<RouterID>(&address))
+        {}
+        else if (auto* ptr = std::get_if<Address>(&address))
+        {}
+        else
+        {
+          resultHandler({});
+        }
+      };
+      if (auto maybe = ParseAddress(name))
+      {
+        lookupByAddress(*maybe);
+      }
+      else if (NameIsValid(name))
+      {
+        LookupNameAsync(name, [lookupByAddress, fail](auto maybe) {
+          if (maybe)
+          {
+            lookupByAddress(*maybe);
+          }
+          else
+          {
+            fail();
+          }
+        });
+      }
+      else
+        fail();
     }
 
     bool
@@ -835,14 +873,21 @@ namespace llarp
       LogInfo(Name(), " looking up LNS name: ", name);
       path::Path::UniqueEndpointSet_t paths;
       ForEachPath([&](auto path) {
-        if (path->IsReady())
-        {
+        if (path and path->IsReady())
           paths.insert(path);
-        }
       });
+
+      constexpr size_t min_unique_lns_endpoints = 3;
+
       // not enough paths
-      if (paths.size() < 3)
+      if (paths.size() < min_unique_lns_endpoints)
       {
+        LogWarn(
+            Name(),
+            " not enough paths for lns lookup, have ",
+            paths.size(),
+            " need ",
+            min_unique_lns_endpoints);
         handler(std::nullopt);
         return;
       }

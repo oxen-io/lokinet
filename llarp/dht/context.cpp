@@ -335,6 +335,22 @@ namespace llarp
       CleanupTX();
       const llarp_time_t now = Now();
 
+      if (_nodes)
+      {
+        // expire router contacts in memory
+        auto& nodes = _nodes->nodes;
+        auto itr = nodes.begin();
+        while (itr != nodes.end())
+        {
+          if (itr->second.rc.IsExpired(now))
+          {
+            itr = nodes.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
+
       if (_services)
       {
         // expire intro sets
@@ -463,10 +479,7 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, &m, [](SendStatus status) {
-        if (status != SendStatus::Success)
-          LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
-      });
+      router->SendToOrQueue(peer, m);
       auto now = Now();
       router->PersistSessionUntil(peer, now + 1min);
     }

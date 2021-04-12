@@ -288,9 +288,16 @@ namespace llarp
         "network",
         "strict-connect",
         ClientOnly,
-        AssignmentAcceptor(m_strictConnect),
+        MultiValue,
+        [this](std::string value) {
+          RouterID router;
+          if (not router.FromString(value))
+            throw std::invalid_argument{"bad snode value: " + value};
+          if (not m_strictConnect.insert(router).second)
+            throw std::invalid_argument{"duplicate strict connect snode: " + value};
+        },
         Comment{
-            "Public key of a router which will act as sole first-hop. This may be used to",
+            "Public key of a router which will act as a pinned first-hop. This may be used to",
             "provide a trusted router (consider that you are not fully anonymous with your",
             "first hop).",
         });
@@ -392,7 +399,7 @@ namespace llarp
             "Number of paths to maintain at any given time.",
         },
         [this](int arg) {
-          if (arg < 2 or arg > 8)
+          if (arg < 3 or arg > 8)
             throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
           m_Paths = arg;
         });

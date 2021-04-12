@@ -69,6 +69,12 @@ namespace llarp
       bool
       HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>) override;
 
+      void
+      LookupServiceAsync(
+          std::string name,
+          std::string service,
+          std::function<void(std::vector<dns::SRVData>)> handler) override;
+
       bool
       AllocateNewExit(const PubKey pk, const PathID_t& path, bool permitInternet);
 

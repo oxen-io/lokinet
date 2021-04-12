@@ -1088,7 +1088,7 @@ namespace llarp::quic
     std::string_view lokinet_metadata{
         reinterpret_cast<const char*>(
             data.substr(lokinet_metadata_code.size() + meta_len_bytes).data()),
-        meta_len};
+        static_cast<std::size_t>(meta_len)};
     LogDebug("Received bencoded lokinet metadata: ", buffer_printer{lokinet_metadata});
 
     uint16_t port;

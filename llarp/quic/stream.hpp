@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
-
+#include <optional>
 #include <uvw/async.h>
 
 namespace llarp::quic

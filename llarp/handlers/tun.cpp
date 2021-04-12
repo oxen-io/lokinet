@@ -79,8 +79,8 @@ namespace llarp
         const SockAddr laddr{src, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
         const SockAddr raddr{dst, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr + 2)}};
 
-        OwnedBuffer buf{pkt.sz - (udp_header_size + ip_header_size)};
-        std::copy_n(ptr + udp_header_size, buf.sz, buf.buf.get());
+        OwnedBuffer buf{pkt.sz - (8 + ip_header_size)};
+        std::copy_n(ptr + 8, buf.sz, buf.buf.get());
         if (m_Resolver->ShouldHandlePacket(laddr, raddr, buf))
           m_Resolver->HandlePacket(laddr, raddr, buf);
         else

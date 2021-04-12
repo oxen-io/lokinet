@@ -123,6 +123,13 @@ namespace llarp
     virtual bool
     SendToOrQueue(
         service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+
+    /// lookup srv records async
+    virtual void
+    LookupServiceAsync(
+        std::string name,
+        std::string service,
+        std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
   };
 
 }  // namespace llarp

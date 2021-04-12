@@ -40,6 +40,14 @@ namespace llarp
       resultHandler(std::nullopt);
     }
 
+    void
+    ExitEndpoint::LookupServiceAsync(
+        std::string, std::string, std::function<void(std::vector<dns::SRVData>)> resultHandler)
+    {
+      // TODO: implement me
+      resultHandler({});
+    }
+
     std::optional<EndpointBase::AddressVariant_t>
     ExitEndpoint::GetEndpointWithConvoTag(service::ConvoTag tag) const
     {

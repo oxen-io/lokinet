@@ -254,7 +254,7 @@ endif()
 if(TESTNET)
   add_definitions(-DTESTNET=1)
   # 5 times slower than realtime
-  add_definitions(-DTESTNET_SPEED=5)
+  # add_definitions(-DTESTNET_SPEED=5)
 endif()
 
 if(SHADOW)

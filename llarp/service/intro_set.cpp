@@ -90,7 +90,7 @@ namespace llarp::service
     llarp_buffer_t buf(payload);
     CryptoManager::instance()->xchacha20(buf, k, nounce);
     if (not i.BDecode(&buf))
-      return {};
+      return std::nullopt;
     return i;
   }
 
@@ -177,7 +177,8 @@ namespace llarp::service
 
       byte_t* end = buf->cur;
 
-      std::string_view srvString{reinterpret_cast<char*>(begin), end - begin};
+      std::string_view srvString{
+          reinterpret_cast<char*>(begin), static_cast<std::size_t>(end - begin)};
 
       try
       {

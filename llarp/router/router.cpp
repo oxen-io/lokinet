@@ -193,7 +193,7 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler)
+  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
   {
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
@@ -483,16 +483,7 @@ namespace llarp
       const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
         throw std::runtime_error("cannot use strict-connect option as service node");
-
-      // try as a RouterID and as a PubKey, convert to RouterID if needed
-      llarp::RouterID snode;
-      llarp::PubKey pk;
-      if (pk.FromString(val))
-        strictConnectPubkeys.emplace(pk);
-      else if (snode.FromString(val))
-        strictConnectPubkeys.insert(snode);
-      else
-        throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
+      strictConnectPubkeys.insert(val.begin(), val.end());
     }
 
     std::vector<fs::path> configRouters = conf.connect.routers;

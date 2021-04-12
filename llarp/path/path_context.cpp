@@ -83,11 +83,11 @@ namespace llarp
         return false;
       }
 
-      auto msg = std::make_shared<const LR_CommitMessage>(frames);
+      const LR_CommitMessage msg{frames};
 
       LogDebug("forwarding LRCM to ", nextHop);
 
-      return m_Router->SendToOrQueue(nextHop, msg.get(), handler);
+      return m_Router->SendToOrQueue(nextHop, msg, handler);
     }
 
     template <

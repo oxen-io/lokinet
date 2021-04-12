@@ -32,7 +32,7 @@ namespace llarp
     virtual ~IOutboundMessageHandler() = default;
 
     virtual bool
-    QueueMessage(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback) = 0;
+    QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback) = 0;
 
     virtual void
     Tick() = 0;

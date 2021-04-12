@@ -53,10 +53,6 @@ extern "C"
   int
   lokinet_inbound_stream(uint16_t port, struct lokinet_context* context);
 
-  /// close a stream by id
-  void
-  lokinet_close_stream(int stream_id, struct lokinet_context* context);
-
 #ifdef __cplusplus
 }
 #endif

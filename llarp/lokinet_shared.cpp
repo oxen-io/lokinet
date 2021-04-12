@@ -126,7 +126,63 @@ namespace
     return -1;
   }
 
+  lokinet_srv_record
+  SRVFromData(const llarp::dns::SRVData& data, std::string name)
+  {
+    // TODO: implement me
+    (void)data;
+    (void)name;
+    return {};
+  }
+
 }  // namespace
+
+struct lokinet_srv_lookup_private
+{
+  std::vector<lokinet_srv_record> results;
+
+  int
+  LookupSRV(std::string host, std::string service, lokinet_context* ctx)
+  {
+    std::promise<int> promise;
+    {
+      auto lock = ctx->acquire();
+      if (ctx->impl and ctx->impl->IsUp())
+      {
+        ctx->impl->CallSafe([host, service, &promise, ctx, self = this]() {
+          auto ep = ctx->endpoint();
+          if (ep == nullptr)
+          {
+            promise.set_value(ENOTSUP);
+            return;
+          }
+          ep->LookupServiceAsync(host, service, [self, &promise, host](auto results) {
+            // for (const auto& result : results)
+            // {
+            //   self->results.emplace_back(SRVFromData(result, host));
+            // }
+            promise.set_value(0);
+          });
+        });
+      }
+      else
+      {
+        promise.set_value(EHOSTDOWN);
+      }
+    }
+    auto future = promise.get_future();
+    return future.get();
+  }
+
+  void
+  IterateAll(std::function<void(lokinet_srv_record*)> visit)
+  {
+    for (size_t idx = 0; idx < results.size(); ++idx)
+      visit(&results[idx]);
+    // null terminator
+    visit(nullptr);
+  }
+};
 
 extern "C"
 {
@@ -501,5 +557,44 @@ extern "C"
     }
     catch (...)
     {}
+  }
+
+  int
+  lokinet_srv_lookup(
+      char* host,
+      char* service,
+      struct lokinet_srv_lookup_result* result,
+      struct lokinet_context* ctx)
+  {
+    if (result == nullptr or ctx == nullptr or host == nullptr or service == nullptr)
+      return -1;
+    // sanity check, if the caller has not free()'d internals yet free them
+    if (result->internal)
+      delete result->internal;
+    result->internal = new lokinet_srv_lookup_private{};
+    return result->internal->LookupSRV(host, service, ctx);
+  }
+
+  void
+  lokinet_for_each_srv_record(
+      struct lokinet_srv_lookup_result* result, lokinet_srv_record_iterator iter, void* user)
+  {
+    if (result and result->internal)
+    {
+      result->internal->IterateAll([iter, user](auto* result) { iter(result, user); });
+    }
+    else
+    {
+      iter(nullptr, user);
+    }
+  }
+
+  void
+  lokinet_srv_lookup_done(struct lokinet_srv_lookup_result* result)
+  {
+    if (result == nullptr or result->internal == nullptr)
+      return;
+    delete result->internal;
+    result->internal = nullptr;
   }
 }

@@ -28,7 +28,7 @@ namespace llarp
     OutboundMessageHandler(size_t maxQueueSize = MAX_OUTBOUND_QUEUE_SIZE);
 
     bool
-    QueueMessage(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback)
+    QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
     void
@@ -98,7 +98,7 @@ namespace llarp
     QueueSessionCreation(const RouterID& remote);
 
     bool
-    EncodeBuffer(const ILinkMessage* msg, llarp_buffer_t& buf);
+    EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf);
 
     bool
     Send(const RouterID& remote, const Message& msg);
