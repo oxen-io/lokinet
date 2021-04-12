@@ -51,11 +51,11 @@ def main():
         }
         if args.netid:
             config['router']['netid'] = args.netid
-            
+
         if args.ip:
             config['router']['public-ip'] = args.ip
             config['router']['public-port'] = str(args.baseport + nodeid)
-            
+
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
         }
