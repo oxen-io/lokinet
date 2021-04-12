@@ -180,7 +180,7 @@ namespace llarp
     {
       if (m_TXMsgs.size() >= MaxSendQueueSize)
       {
-        if(completed)
+        if (completed)
           completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
         return false;
       }

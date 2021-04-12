@@ -200,6 +200,14 @@ namespace llarp
         return _status;
       }
 
+      // handle data in upstream direction
+      bool
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
+      // handle data in downstream direction
+
+      bool
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
+
       const std::string&
       ShortName() const;
 
