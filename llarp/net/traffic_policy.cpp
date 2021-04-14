@@ -184,7 +184,7 @@ namespace llarp::net
   ProtocolInfo::ExtractStatus() const
   {
     util::StatusObject status{
-        {"protocol", static_cast<uint>(protocol)},
+        {"protocol", static_cast<uint32_t>(protocol)},
     };
     if (port)
       status["port"] = ToHost(*port).h;
