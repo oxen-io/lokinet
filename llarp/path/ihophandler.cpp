@@ -9,8 +9,6 @@ namespace llarp
     bool
     IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
-      if (not m_UpstreamReplayFilter.Insert(Y))
-        return false;
       if (m_UpstreamQueue == nullptr)
         m_UpstreamQueue = std::make_shared<TrafficQueue_t>();
       m_UpstreamQueue->emplace_back();
@@ -26,8 +24,6 @@ namespace llarp
     bool
     IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
-      if (not m_DownstreamReplayFilter.Insert(Y))
-        return false;
       if (m_DownstreamQueue == nullptr)
         m_DownstreamQueue = std::make_shared<TrafficQueue_t>();
       m_DownstreamQueue->emplace_back();

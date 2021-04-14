@@ -63,6 +63,22 @@ namespace llarp
       m_BuiltHook = func;
     }
 
+    bool
+    Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    {
+      if (not m_UpstreamReplayFilter.Insert(Y))
+        return false;
+      return IHopHandler::HandleUpstream(X, Y, r);
+    }
+
+    bool
+    Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    {
+      if (not m_DownstreamReplayFilter.Insert(Y))
+        return false;
+      return IHopHandler::HandleDownstream(X, Y, r);
+    }
+
     RouterID
     Path::Endpoint() const
     {
@@ -300,6 +316,8 @@ namespace llarp
           {"ready", IsReady()},
           {"txRateCurrent", m_LastTXRate},
           {"rxRateCurrent", m_LastRXRate},
+          {"replayTX", m_UpstreamReplayFilter.Size()},
+          {"replayRX", m_DownstreamReplayFilter.Size()},
           {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector<util::StatusObject> hopsObj;

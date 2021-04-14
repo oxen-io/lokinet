@@ -179,7 +179,11 @@ namespace llarp
         ILinkSession::Message_t buf, ILinkSession::CompletionHandler completed)
     {
       if (m_TXMsgs.size() >= MaxSendQueueSize)
+      {
+        if (completed)
+          completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
         return false;
+      }
       const auto now = m_Parent->Now();
       const auto msgid = m_TXID++;
       const auto bufsz = buf.size();
