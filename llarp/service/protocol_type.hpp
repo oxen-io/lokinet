@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <ostream>
+
 namespace llarp::service
 {
   // Supported protocol types; the values are given explicitly because they are specifically used
@@ -14,5 +16,10 @@ namespace llarp::service
     Exit = 3UL,
     Auth = 4UL,
     QUIC = 5UL,
+
   };
+
+  std::ostream&
+  operator<<(std::ostream& o, ProtocolType t);
+
 }  // namespace llarp::service

@@ -260,7 +260,6 @@ namespace llarp
         },
         buf);
   }
-
   template <typename List_t>
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf)
@@ -277,6 +276,46 @@ namespace llarp
           return true;
         },
         buf);
+  }
+
+  /// read a std::set of decodable entities and deny duplicates
+  template <typename Set_t>
+  bool
+  BEncodeReadSet(Set_t& set, llarp_buffer_t* buffer)
+  {
+    return bencode_read_list(
+        [&set](llarp_buffer_t* buf, bool more) {
+          if (more)
+          {
+            typename Set_t::value_type item;
+            if (not item.BDecode(buf))
+              return false;
+            // deny duplicates
+            return set.emplace(std::move(item)).second;
+          }
+          return true;
+        },
+        buffer);
+  }
+
+  /// read a std::set of decodable entities and deny duplicates
+  template <typename Set_t>
+  bool
+  BEncodeWriteSet(Set_t& set, llarp_buffer_t* buffer)
+  {
+    return bencode_read_list(
+        [&set](llarp_buffer_t* buf, bool more) {
+          if (more)
+          {
+            typename Set_t::value_type item;
+            if (not item.BDecode(buf))
+              return false;
+            // deny duplicates
+            return set.emplace(std::move(item)).second;
+          }
+          return true;
+        },
+        buffer);
   }
 
   template <typename List_t>

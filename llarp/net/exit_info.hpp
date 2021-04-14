@@ -15,6 +15,7 @@
 /// Exit info model
 namespace llarp
 {
+  /// deprecated don't use me , this is only for backwards compat
   struct ExitInfo
   {
     IpAddress ipAddress;

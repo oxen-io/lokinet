@@ -5,10 +5,14 @@
 #include "info.hpp"
 #include "intro.hpp"
 #include "tag.hpp"
+#include "protocol_type.hpp"
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/time.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/dns/srv_data.hpp>
+
+#include <llarp/net/ip_range.hpp>
+#include <llarp/net/traffic_policy.hpp>
 
 #include <optional>
 #include <algorithm>
@@ -26,20 +30,31 @@ namespace llarp
 
     struct IntroSet
     {
-      ServiceInfo A;
-      std::vector<Introduction> I;
-      PQPubKey K;
+      ServiceInfo addressKeys;
+      std::vector<Introduction> intros;
+      PQPubKey sntrupKey;
       Tag topic;
       std::vector<llarp::dns::SRVTuple> SRVs;
-      llarp_time_t T = 0s;
-      std::optional<PoW> W;
-      Signature Z;
+      llarp_time_t timestampSignedAt = 0s;
+
+      /// ethertypes we advertise that we speak
+      std::vector<ProtocolType> supportedProtocols;
+      /// aonnuce that these ranges are reachable via our endpoint
+      /// only set when we support exit traffic ethertype is supported
+      std::vector<IPRange> ownedRanges;
+
+      /// policies about traffic that we are willing to carry
+      /// a protocol/range whitelist or blacklist
+      /// only set when we support exit traffic ethertype
+      std::optional<net::TrafficPolicy> exitTrafficPolicy;
+
+      Signature signature;
       uint64_t version = LLARP_PROTO_VERSION;
 
       bool
       OtherIsNewer(const IntroSet& other) const
       {
-        return T < other.T;
+        return timestampSignedAt < other.timestampSignedAt;
       }
 
       std::ostream&
@@ -82,14 +97,28 @@ namespace llarp
     inline bool
     operator<(const IntroSet& lhs, const IntroSet& rhs)
     {
-      return lhs.A < rhs.A;
+      return lhs.addressKeys < rhs.addressKeys;
     }
 
     inline bool
     operator==(const IntroSet& lhs, const IntroSet& rhs)
     {
-      return std::tie(lhs.A, lhs.I, lhs.K, lhs.T, lhs.version, lhs.topic, lhs.W, lhs.Z)
-          == std::tie(rhs.A, rhs.I, rhs.K, rhs.T, rhs.version, rhs.topic, rhs.W, rhs.Z);
+      return std::tie(
+                 lhs.addressKeys,
+                 lhs.intros,
+                 lhs.sntrupKey,
+                 lhs.timestampSignedAt,
+                 lhs.version,
+                 lhs.topic,
+                 lhs.signature)
+          == std::tie(
+                 rhs.addressKeys,
+                 rhs.intros,
+                 rhs.sntrupKey,
+                 rhs.timestampSignedAt,
+                 rhs.version,
+                 rhs.topic,
+                 rhs.signature);
     }
 
     inline bool

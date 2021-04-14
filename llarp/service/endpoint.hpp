@@ -113,6 +113,22 @@ namespace llarp
         return {0};
       }
 
+      /// get the exit policy for our exit if we have one
+      /// override me
+      virtual std::optional<net::TrafficPolicy>
+      GetExitPolicy() const
+      {
+        return std::nullopt;
+      };
+
+      /// get the ip ranges we claim to own
+      /// override me
+      virtual std::vector<IPRange>
+      GetOwnedRanges() const
+      {
+        return {};
+      };
+
       virtual void
       Thaw(){};
 

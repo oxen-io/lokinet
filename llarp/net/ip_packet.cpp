@@ -4,7 +4,7 @@
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/endian.hpp>
 #include <llarp/util/mem.hpp>
-
+#include <llarp/util/str.hpp>
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
@@ -32,6 +32,33 @@ namespace llarp
 {
   namespace net
   {
+    std::string
+    IPProtocolName(IPProtocol proto)
+    {
+      if (const auto* ent = ::getprotobynumber(static_cast<uint8_t>(proto)))
+      {
+        return ent->p_name;
+      }
+      throw std::invalid_argument{
+          "cannot determine protocol name for ip proto '" + std::to_string(static_cast<int>(proto))
+          + "'"};
+    }
+
+    IPProtocol
+    ParseIPProtocol(std::string data)
+    {
+      if (const auto* ent = ::getprotobyname(data.c_str()))
+      {
+        return static_cast<IPProtocol>(ent->p_proto);
+      }
+      if (starts_with(data, "0x"))
+      {
+        if (const int intVal = std::stoi(data.substr(2), nullptr, 16); intVal > 0)
+          return static_cast<IPProtocol>(intVal);
+      }
+      throw std::invalid_argument{"no such ip protocol: '" + data + "'"};
+    }
+
     inline static uint32_t*
     in6_uint32_ptr(in6_addr& addr)
     {
@@ -86,6 +113,19 @@ namespace llarp
       byte_t* ptr = buf;
       llarp_buffer_t b(ptr, sz);
       return ManagedBuffer(b);
+    }
+
+    std::optional<nuint16_t>
+    IPPacket::DstPort() const
+    {
+      switch (IPProtocol{Header()->protocol})
+      {
+        case IPProtocol::TCP:
+        case IPProtocol::UDP:
+          return nuint16_t{*reinterpret_cast<const uint16_t*>(buf + (Header()->ihl * 4) + 2)};
+        default:
+          return std::nullopt;
+      }
     }
 
     huint32_t

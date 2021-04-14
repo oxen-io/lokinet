@@ -158,56 +158,6 @@ namespace llarp
         m_AuthPolicy = std::move(auth);
       }
 
-      /*
-       * TODO: reinstate this option (it's not even clear what section this came from...)
-       *
-      if (k == "isolate-network" && IsTrueValue(v.c_str()))
-      {
-#if defined(__linux__)
-        LogInfo(Name(), " isolating network...");
-        if (!SpawnIsolatedNetwork())
-        {
-          LogError(Name(), " failed to spawn isolated network");
-          return false;
-        }
-        LogInfo(Name(), " booyeah network isolation succeeded");
-        return true;
-#else
-        LogError(Name(), " network isolation is not supported on your platform");
-        return false;
-#endif
-      }
-      */
-
-      /*
-       * TODO: this is currently defined for [router] / RouterConfig, but is clearly an [endpoint]
-       *       option. either move it to [endpoint] or plumb RouterConfig through
-       *
-      if (k == "strict-connect")
-      {
-        RouterID connect;
-        if (!connect.FromString(v))
-        {
-          LogError(Name(), " invalid snode for strict-connect: ", v);
-          return false;
-        }
-
-        RouterContact rc;
-        if (!m_router->nodedb()->Get(connect, rc))
-        {
-          LogError(
-              Name(), " we don't have the RC for ", v, " so we can't use it in strict-connect");
-          return false;
-        }
-        for (const auto& ai : rc.addrs)
-        {
-          m_StrictConnectAddrs.emplace_back(ai);
-          LogInfo(Name(), " added ", m_StrictConnectAddrs.back(), " to strict connect");
-        }
-        return true;
-      }
-       */
-
       m_LocalResolverAddr = dnsConf.m_bind;
       m_UpstreamResolvers = dnsConf.m_upstreamDNS;
 
@@ -916,34 +866,46 @@ namespace llarp
         auto itr = m_IPToAddr.find(dst);
         if (itr == m_IPToAddr.end())
         {
-          const auto exits = m_ExitMap.FindAll(dst);
-          if (IsBogon(dst) or exits.empty())
+          // find all ranges that match the destination ip
+          const auto exitEntries = m_ExitMap.FindAllEntries(dst);
+          if (exitEntries.empty())
           {
-            // send icmp unreachable
-            const auto icmp = pkt.MakeICMPUnreachable();
-            if (icmp.has_value())
+            // send icmp unreachable as we dont have any exits for this ip
+            if (const auto icmp = pkt.MakeICMPUnreachable())
             {
               HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
             }
+            return;
           }
-          else
+          service::Address addr{};
+          for (const auto& [range, exitAddr] : exitEntries)
           {
-            const auto addr = *exits.begin();
-            if (addr.IsZero())  // drop
-              return;
-            pkt.ZeroSourceAddress();
-            MarkAddressOutbound(addr);
-            EnsurePathToService(
-                addr,
-                [addr, pkt, self = this](service::Address, service::OutboundContext* ctx) {
-                  if (ctx)
-                  {
-                    ctx->sendTimeout = 5s;
-                  }
-                  self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
-                },
-                1s);
+            if (range.BogonRange() and range.Contains(dst))
+            {
+              // we permit this because it matches our rules and we allow bogons
+              addr = exitAddr;
+            }
+            else if (not IsBogon(dst))
+            {
+              // allow because the destination is not a bogon and the mapped range is not a bogon
+              addr = exitAddr;
+            }
+            // we do not permit bogons when they don't explicitly match a permitted bogon range
           }
+          if (addr.IsZero())  // drop becase no exit was found that matches our rules
+            return;
+          pkt.ZeroSourceAddress();
+          MarkAddressOutbound(addr);
+          EnsurePathToService(
+              addr,
+              [addr, pkt, self = this](service::Address, service::OutboundContext* ctx) {
+                if (ctx)
+                {
+                  ctx->sendTimeout = 5s;
+                }
+                self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
+              },
+              1s);
           return;
         }
         bool rewriteAddrs = true;
@@ -977,6 +939,18 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
+    }
+
+    bool
+    TunEndpoint::ShouldAllowTraffic(const net::IPPacket& pkt) const
+    {
+      if (const auto exitPolicy = GetExitPolicy())
+      {
+        if (not exitPolicy->AllowsTraffic(pkt))
+          return false;
+      }
+
+      return true;
     }
 
     bool
@@ -1024,6 +998,11 @@ namespace llarp
       if (m_state->m_ExitEnabled)
       {
         // exit side from exit
+
+        // check packet against exit policy and if as needed
+        if (not ShouldAllowTraffic(pkt))
+          return false;
+
         src = ObtainIPForAddr(addr);
         if (t == service::ProtocolType::Exit)
         {
@@ -1055,18 +1034,22 @@ namespace llarp
           src = pkt.srcv6();
         }
         // find what exit we think this should be for
-        const auto mapped = m_ExitMap.FindAll(src);
-        if (IsBogon(src))
-          return false;
-
-        if (const auto ptr = std::get_if<service::Address>(&addr))
+        const auto mapped = m_ExitMap.FindAllEntries(src);
+        bool allow = false;
+        for (const auto& [range, exitAddr] : mapped)
         {
-          if (mapped.count(*ptr) == 0)
+          if ((range.BogonRange() and range.Contains(src)) or not IsBogon(src))
           {
-            // we got exit traffic from someone who we should not have gotten it from
-            return false;
+            // this range is either not a bogon or is a bogon we are explicitly allowing
+            if (const auto* ptr = std::get_if<service::Address>(&addr))
+            {
+              // allow if this address matches the endpoint we think it should be
+              allow = exitAddr == *ptr;
+            }
           }
         }
+        if (not allow)
+          return false;
       }
       else
       {

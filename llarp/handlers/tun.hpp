@@ -123,6 +123,18 @@ namespace llarp
       bool
       HasLocalIP(const huint128_t& ip) const;
 
+      std::optional<net::TrafficPolicy>
+      GetExitPolicy() const override
+      {
+        return m_ExitPolicy;
+      }
+
+      /// ip packet against any exit policies we have
+      /// returns false if this traffic is disallowed by any of those policies
+      /// returns true otherwise
+      bool
+      ShouldAllowTraffic(const net::IPPacket& pkt) const;
+
       /// get a key for ip address
       std::optional<std::variant<service::Address, RouterID>>
       ObtainAddrForIP(huint128_t ip) const override;
@@ -245,6 +257,8 @@ namespace llarp
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
       std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
+
+      std::optional<net::TrafficPolicy> m_ExitPolicy;
     };
 
   }  // namespace handlers

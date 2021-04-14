@@ -31,9 +31,6 @@ namespace llarp
 
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
-    std::ostream&
-    operator<<(std::ostream& o, ProtocolType t);
-
     /// inner message
     struct ProtocolMessage
     {

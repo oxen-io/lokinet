@@ -113,12 +113,41 @@ namespace llarp
         BuildOne();
         return;
       }
-      introSet().I.clear();
+
+      // add supported ethertypes
+      if (HasIfAddr())
+      {
+        const auto ourIP = net::HUIntToIn6(GetIfAddr());
+        if (ipv6_is_mapped_ipv4(ourIP))
+        {
+          introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
+        }
+        else
+        {
+          introSet().supportedProtocols.push_back(ProtocolType::TrafficV6);
+        }
+
+        // exit related stuffo
+        if (m_state->m_ExitEnabled)
+        {
+          introSet().supportedProtocols.push_back(ProtocolType::Exit);
+          introSet().exitTrafficPolicy = GetExitPolicy();
+          introSet().ownedRanges = GetOwnedRanges();
+        }
+      }
+      // add quic ethertype if we have listeners set up
+      if (auto* quic = GetQUICTunnel())
+      {
+        if (quic->hasListeners())
+          introSet().supportedProtocols.push_back(ProtocolType::QUIC);
+      }
+
+      introSet().intros.clear();
       for (auto& intro : introset)
       {
-        introSet().I.emplace_back(std::move(intro));
+        introSet().intros.emplace_back(std::move(intro));
       }
-      if (introSet().I.size() == 0)
+      if (introSet().intros.empty())
       {
         LogWarn("not enough intros to publish introset for ", Name());
         if (ShouldBuildMore(now))
@@ -145,7 +174,7 @@ namespace llarp
     Endpoint::IsReady() const
     {
       const auto now = Now();
-      if (introSet().I.size() == 0)
+      if (introSet().intros.empty())
         return false;
       if (introSet().IsExpired(now))
         return false;
@@ -716,7 +745,7 @@ namespace llarp
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
     {
-      Address addr{introset.A.Addr()};
+      Address addr{introset.addressKeys.Addr()};
 
       auto& remoteSessions = m_state->m_RemoteSessions;
       auto& serviceLookups = m_state->m_PendingServiceLookups;

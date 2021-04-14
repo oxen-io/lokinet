@@ -131,6 +131,13 @@ namespace llarp::quic
     void
     receive_packet(const service::ConvoTag& tag, const llarp_buffer_t& buf);
 
+    /// return true if we have any listeners added
+    inline bool
+    hasListeners() const
+    {
+      return not incoming_handlers_.empty();
+    }
+
    private:
     EndpointBase& service_endpoint_;
 

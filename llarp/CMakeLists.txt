@@ -154,6 +154,7 @@ add_library(liblokinet
   messages/relay_status.cpp
   net/address_info.cpp
   net/exit_info.cpp
+  net/traffic_policy.cpp
   nodedb.cpp
   path/ihophandler.cpp
   path/path_context.cpp
@@ -212,6 +213,7 @@ add_library(liblokinet
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
+  service/protocol_type.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp

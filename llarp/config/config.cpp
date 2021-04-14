@@ -415,19 +415,25 @@ namespace llarp
             "on the server and may pose liability concerns. Enable at your own risk.",
         });
 
-    // TODO: not implemented yet!
-    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
-    //       additionally, what's default? What if I don't whitelist anything?
-    /*
-    conf.defineOption<std::string>("network", "exit-whitelist", MultiValue, Comment{
-            "List of destination protocol:port pairs to whitelist, example: udp:*",
-            "or tcp:80. Multiple values supported.",
-        }, FIXME-acceptor);
+    conf.defineOption<std::string>(
+        "network",
+        "traffic-whitelist",
+        MultiValue,
+        Comment{
+            "List of ip traffic whitelist, anything not specified will be dropped by us."
+            "examples:",
+            "tcp for all tcp traffic regardless of port",
+            "0x69 for all packets using ip protocol 0x69"
+            "udp/53 for udp port 53",
+            "tcp/smtp for smtp port",
+        },
+        [this](std::string arg) {
+          if (not m_TrafficPolicy)
+            m_TrafficPolicy = net::TrafficPolicy{};
 
-    conf.defineOption<std::string>("network", "exit-blacklist", MultiValue, Comment{
-            "Blacklist of destinations (same format as whitelist).",
-        }, FIXME-acceptor);
-    */
+          // this will throw on error
+          m_TrafficPolicy->protocols.emplace(arg);
+        });
 
     conf.defineOption<std::string>(
         "network",

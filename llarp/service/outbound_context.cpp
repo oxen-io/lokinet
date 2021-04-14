@@ -56,13 +56,13 @@ namespace llarp
 
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
         : path::Builder(parent->Router(), 4, parent->numHops)
-        , SendContext(introset.A, {}, this, parent)
-        , location(introset.A.Addr().ToKey())
+        , SendContext(introset.addressKeys, {}, this, parent)
+        , location(introset.addressKeys.Addr().ToKey())
         , currentIntroSet(introset)
 
     {
       updatingIntroSet = false;
-      for (const auto& intro : introset.I)
+      for (const auto& intro : introset.intros)
       {
         if (intro.expiresAt > m_NextIntro.expiresAt)
           m_NextIntro = intro;
@@ -80,7 +80,7 @@ namespace llarp
       if (remoteIntro != m_NextIntro)
       {
         remoteIntro = m_NextIntro;
-        m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.A, false);
+        m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
       }
     }
@@ -94,12 +94,12 @@ namespace llarp
       updatingIntroSet = false;
       if (foundIntro)
       {
-        if (foundIntro->T == 0s)
+        if (foundIntro->timestampSignedAt == 0s)
         {
           LogWarn(Name(), " got introset with zero timestamp: ", *foundIntro);
           return true;
         }
-        if (currentIntroSet.T > foundIntro->T)
+        if (currentIntroSet.timestampSignedAt > foundIntro->timestampSignedAt)
         {
           LogInfo("introset is old, dropping");
           return true;
@@ -136,7 +136,7 @@ namespace llarp
     {
       const auto now = Now();
       Introduction selectedIntro;
-      for (const auto& intro : currentIntroSet.I)
+      for (const auto& intro : currentIntroSet.intros)
       {
         if (intro.expiresAt > selectedIntro.expiresAt && intro.router != r)
         {
@@ -215,7 +215,7 @@ namespace llarp
           m_Endpoint->Loop(),
           remoteIdent,
           m_Endpoint->GetIdentity(),
-          currentIntroSet.K,
+          currentIntroSet.sntrupKey,
           remoteIntro,
           m_DataHandler,
           currentConvoTag,
@@ -236,7 +236,8 @@ namespace llarp
     std::string
     OutboundContext::Name() const
     {
-      return "OBContext:" + m_Endpoint->Name() + "-" + currentIntroSet.A.Addr().ToString();
+      return "OBContext:" + m_Endpoint->Name() + "-"
+          + currentIntroSet.addressKeys.Addr().ToString();
     }
 
     void
@@ -244,7 +245,7 @@ namespace llarp
     {
       if (updatingIntroSet || markedBad)
         return;
-      const auto addr = currentIntroSet.A.Addr();
+      const auto addr = currentIntroSet.addressKeys.Addr();
       // we want to use the parent endpoint's paths because outbound context
       // does not implement path::PathSet::HandleGotIntroMessage
       const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
@@ -453,7 +454,7 @@ namespace llarp
       if (now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
       bool shifted = false;
-      std::vector<Introduction> intros = currentIntroSet.I;
+      std::vector<Introduction> intros = currentIntroSet.intros;
       if (intros.size() > 1)
       {
         std::shuffle(intros.begin(), intros.end(), CSRNG{});
@@ -543,7 +544,7 @@ namespace llarp
           // hop off it
           Introduction picked;
           // get the latest intro that isn't on that endpoint
-          for (const auto& intro : currentIntroSet.I)
+          for (const auto& intro : currentIntroSet.intros)
           {
             if (intro.router == endpoint)
               continue;
