@@ -278,7 +278,10 @@ add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
 if(ARCH_TRIPLET MATCHES mingw)
-  set(zmq_extra --with-poller=wepoll)
+  option(WITH_WEPOLL "use wepoll zmq poller (crashy)" OFF)
+  if(WITH_WEPOLL)
+    set(zmq_extra --with-poller=wepoll)
+  endif()
 endif()
 
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
