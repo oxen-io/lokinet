@@ -417,6 +417,22 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "network",
+        "owned-range",
+        MultiValue,
+        Comment{
+            "When in exit mode announce we allow a private range in our introset"
+            "exmaple:",
+            "owned-range=10.0.0.0/24",
+        },
+        [this](std::string arg) {
+          IPRange range;
+          if (not range.FromString(arg))
+            throw std::invalid_argument{"bad ip range: '" + arg + "'"};
+          m_OwnedRanges.insert(range);
+        });
+
+    conf.defineOption<std::string>(
+        "network",
         "traffic-whitelist",
         MultiValue,
         Comment{

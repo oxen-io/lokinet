@@ -219,7 +219,7 @@ namespace llarp::service
 
     if (key == "r")
     {
-      return BEncodeReadList(ownedRanges, buf);
+      return BEncodeReadSet(ownedRanges, buf);
     }
 
     if (key == "s")
@@ -308,6 +308,16 @@ namespace llarp::service
         return false;
     }
 
+    // owned ranges
+    if (not ownedRanges.empty())
+    {
+      if (not bencode_write_bytestring(buf, "r", 1))
+        return false;
+
+      if (not BEncodeWriteSet(ownedRanges, buf))
+        return false;
+    }
+
     // srv records
     if (not SRVs.empty())
     {
@@ -315,13 +325,6 @@ namespace llarp::service
       if (!bencode_write_bytestring(buf, "s", 1))
         return false;
       if (!buf->write(serial.begin(), serial.end()))
-        return false;
-    }
-
-    // owned ranges
-    if (not ownedRanges.empty())
-    {
-      if (not BEncodeWriteDictArray("r", ownedRanges, buf))
         return false;
     }
 

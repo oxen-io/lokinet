@@ -41,7 +41,7 @@ namespace llarp
       std::vector<ProtocolType> supportedProtocols;
       /// aonnuce that these ranges are reachable via our endpoint
       /// only set when we support exit traffic ethertype is supported
-      std::vector<IPRange> ownedRanges;
+      std::set<IPRange> ownedRanges;
 
       /// policies about traffic that we are willing to carry
       /// a protocol/range whitelist or blacklist

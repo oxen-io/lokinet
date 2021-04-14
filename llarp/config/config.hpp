@@ -122,7 +122,7 @@ namespace llarp
 
     std::optional<huint128_t> m_baseV6Address;
 
-    std::set<IPRange> m_AdvertisedRanges;
+    std::set<IPRange> m_OwnedRanges;
     std::optional<net::TrafficPolicy> m_TrafficPolicy;
 
     // TODO:

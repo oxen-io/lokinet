@@ -158,6 +158,9 @@ namespace llarp
         m_AuthPolicy = std::move(auth);
       }
 
+      m_TrafficPolicy = conf.m_TrafficPolicy;
+      m_OwnedRanges = conf.m_OwnedRanges;
+
       m_LocalResolverAddr = dnsConf.m_bind;
       m_UpstreamResolvers = dnsConf.m_upstreamDNS;
 

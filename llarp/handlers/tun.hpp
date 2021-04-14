@@ -126,7 +126,13 @@ namespace llarp
       std::optional<net::TrafficPolicy>
       GetExitPolicy() const override
       {
-        return m_ExitPolicy;
+        return m_TrafficPolicy;
+      }
+
+      std::set<IPRange>
+      GetOwnedRanges() const override
+      {
+        return m_OwnedRanges;
       }
 
       /// ip packet against any exit policies we have
@@ -258,7 +264,9 @@ namespace llarp
 
       std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
 
-      std::optional<net::TrafficPolicy> m_ExitPolicy;
+      std::optional<net::TrafficPolicy> m_TrafficPolicy;
+      /// ranges we advetise as reachable
+      std::set<IPRange> m_OwnedRanges;
     };
 
   }  // namespace handlers

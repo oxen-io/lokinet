@@ -123,7 +123,7 @@ namespace llarp
 
       /// get the ip ranges we claim to own
       /// override me
-      virtual std::vector<IPRange>
+      virtual std::set<IPRange>
       GetOwnedRanges() const
       {
         return {};

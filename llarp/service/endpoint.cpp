@@ -114,6 +114,8 @@ namespace llarp
         return;
       }
 
+      introSet().supportedProtocols.clear();
+
       // add supported ethertypes
       if (HasIfAddr())
       {
@@ -215,14 +217,17 @@ namespace llarp
         std::function<void(std::vector<dns::SRVData>)> resultHandler)
     {
       auto fail = [resultHandler]() { resultHandler({}); };
-      auto lookupByAddress = [resultHandler](auto address) {
+
+      auto lookupByAddress = [service, fail, resultHandler](auto address) {
+        // TODO: remove me after implementing the rest
+        fail();
         if (auto* ptr = std::get_if<RouterID>(&address))
         {}
         else if (auto* ptr = std::get_if<Address>(&address))
         {}
         else
         {
-          resultHandler({});
+          fail();
         }
       };
       if (auto maybe = ParseAddress(name))
@@ -1095,15 +1100,6 @@ namespace llarp
     {
       return m_Identity.pub.Addr();
     }
-
-    inline void
-    AccumulateStats(const Session& session, EndpointBase::SendStat& stats)
-    {}
-
-    inline void
-    AccumulateStats(
-        const std::shared_ptr<exit::BaseSession>& session, EndpointBase::SendStat& stats)
-    {}
 
     std::optional<EndpointBase::SendStat> Endpoint::GetStatFor(AddressVariant_t) const
     {
