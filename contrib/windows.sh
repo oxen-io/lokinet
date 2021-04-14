@@ -3,6 +3,7 @@ set -e
 set +x
 mkdir -p build-windows
 cd build-windows
+# build it
 cmake \
       -G Ninja \
       -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
