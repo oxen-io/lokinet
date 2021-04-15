@@ -1,6 +1,7 @@
-add_executable(lokinet main.cpp)
+add_executable(lokinet lokinet.cpp)
 add_executable(lokinet-vpn lokinet-vpn.cpp)
-enable_lto(lokinet lokinet-vpn)
+add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+enable_lto(lokinet lokinet-vpn lokinet-bootstrap)
 
 if(TRACY_ROOT)
   target_sources(lokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
@@ -22,7 +23,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-foreach(exe lokinet lokinet-vpn)
+target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
+
+foreach(exe lokinet lokinet-vpn lokinet-bootstrap)
   if(WIN32 AND NOT MSVC_VERSION)
     target_sources(${exe} PRIVATE ../llarp/win32/version.rc)
     target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
@@ -42,10 +45,4 @@ endforeach()
 
 if(SETCAP)
   install(CODE "execute_process(COMMAND ${SETCAP} cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
-endif()
-
-if(NOT WIN32)
-  if(should_install)
-    install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin COMPONENT lokinet)
-  endif()
 endif()
