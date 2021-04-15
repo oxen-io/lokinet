@@ -21,6 +21,7 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
+* libcurl (for lokinet-bootstrap)
 * libunbound
 * libzmq
 * sqlite3
@@ -39,7 +40,7 @@ You can install these using:
 
 if you want to build a dev build you can do the following:
 
-    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
+    $ sudo apt install build-essential cmake git libcap-dev libcurl4-openssl-dev libuv1-dev libsodium-dev pkg-config
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
