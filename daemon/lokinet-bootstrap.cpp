@@ -16,6 +16,10 @@
 
 #include <sstream>
 
+#ifndef _WIN32
+#include <openssl/x509.h>
+#endif
+
 namespace
 {
   int
