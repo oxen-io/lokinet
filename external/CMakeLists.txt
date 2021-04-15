@@ -86,4 +86,11 @@ add_definitions(-D_GNU_SOURCE)
 add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)
 
 set(CPR_BUILD_TESTS OFF)
-add_subdirectory(cpr)
+set(CPR_FORCE_OPENSSL_BACKEND ON)
+
+if(OPENSSL_ROOT_DIR)
+  message("openssl root: ${OPENSSL_ROOT_DIR}")
+  message("openssl headers: ${OPENSSL_INCLUDE_DIR}")
+  message("openssl crypto library: ${OPENSSL_CRYPTO_LIBRARY}")
+endif()
+add_subdirectory(cpr EXCLUDE_FROM_ALL)

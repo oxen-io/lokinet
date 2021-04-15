@@ -1,6 +1,7 @@
 #include <cpr/cpr.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/version.hpp>
+#include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 
 #include <fstream>
@@ -12,6 +13,8 @@
 #ifndef _WIN32
 #include <openssl/x509.h>
 #endif
+
+#include <sstream>
 
 namespace
 {
