@@ -25,6 +25,7 @@ if(SUBMODULE_CHECK)
     check_submodule(uvw)
     check_submodule(cpr)
     check_submodule(ngtcp2)
+    check_submodule(cpr)
   endif()
 endif()
 
@@ -83,3 +84,6 @@ set(ENABLE_BORINGSSL OFF CACHE BOOL "Disable boringssl for ngtcp2")
 
 add_definitions(-D_GNU_SOURCE)
 add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)
+
+set(CPR_BUILD_TESTS OFF)
+add_subdirectory(cpr)
