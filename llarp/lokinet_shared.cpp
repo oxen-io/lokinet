@@ -126,13 +126,13 @@ namespace
     return -1;
   }
 
-  lokinet_srv_record
+  std::optional<lokinet_srv_record>
   SRVFromData(const llarp::dns::SRVData& data, std::string name)
   {
     // TODO: implement me
     (void)data;
     (void)name;
-    return {};
+    return std::nullopt;
   }
 
 }  // namespace
@@ -157,10 +157,11 @@ struct lokinet_srv_lookup_private
             return;
           }
           ep->LookupServiceAsync(host, service, [self, &promise, host](auto results) {
-            // for (const auto& result : results)
-            // {
-            //   self->results.emplace_back(SRVFromData(result, host));
-            // }
+            for (const auto& result : results)
+            {
+              if (auto maybe = SRVFromData(result, host))
+                self->results.emplace_back(*maybe);
+            }
             promise.set_value(0);
           });
         });

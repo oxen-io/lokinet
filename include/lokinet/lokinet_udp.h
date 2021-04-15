@@ -50,8 +50,10 @@ extern "C"
   /// if srv is not NULL add an srv record for this port, the format being "thingservice" in which
   /// will add a srv record "_udp.thingservice.ouraddress.tld" that advertises this port provide
   /// localAddr to forward inbound udp packets to "ip:port" if localAddr is NULL then the resulting
-  /// socket MUST be drained by lokinet_udp_recvmmsg returns 0 on success returns nonzero on error
-  /// in which it is an errno value
+  /// socket MUST be drained by lokinet_udp_recvmmsg
+  ///
+  /// returns 0 on success
+  /// returns nonzero on error in which it is an errno value
   int
   lokinet_udp_bind(
       int exposedPort,
@@ -61,10 +63,15 @@ extern "C"
       struct lokinet_context* ctx);
 
   /// poll many udp sockets for activity
-  /// each pollfd.fd should be set to the udp socket id
   /// returns 0 on sucess
+  ///
+  /// returns non zero errno on error
   int
-  lokinet_udp_poll(struct pollfd* poll, nfds_t numsockets, struct lokinet_context* ctx);
+  lokinet_udp_poll(
+      const int* socket_ids,
+      size_t numsockets,
+      const struct timespec* timeout,
+      struct lokinet_context* ctx);
 
   struct lokinet_udp_pkt
   {
@@ -76,7 +83,10 @@ extern "C"
   /// analog to recvmmsg
   ssize_t
   lokinet_udp_recvmmsg(
-      int socket_id, struct lokinet_udp_pkt* pkts, size_t numevents, struct lokient_context* ctx);
+      int socket_id,
+      struct lokinet_udp_pkt* events,
+      size_t max_events,
+      struct lokient_context* ctx);
 
 #ifdef __cplusplus
 }
