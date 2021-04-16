@@ -1,11 +1,13 @@
 #include <cpr/cpr.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/version.hpp>
-#include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
-#include <llarp/router_contact.hpp>
 
+#include <fstream>
 #include <sstream>
+#include <iostream>
+
+#include <unordered_map>
 
 #ifndef _WIN32
 #include <openssl/x509.h>
@@ -14,21 +16,41 @@
 namespace
 {
   int
-  exit_with_message(std::string msg, int exitcode)
+  fail(std::string msg)
   {
     std::cout << msg << std::endl;
-    return exitcode;
+    return 1;
   }
 }  // namespace
 
 int
 main(int argc, char* argv[])
 {
-  std::string bootstrap_url{"https://seed.lokinet.org/lokinet.signed"};
+  const std::unordered_map<std::string, std::string> bootstrap_urls = {
+      {"mainnet", "https://seed.lokinet.org/lokinet.signed"},
+      {"lokinet", "https://seed.lokinet.org/lokinet.signed"},
+      {"testnet", "https://seed.lokinet.org/testnet.signed"},
+      {"gamma", "https://seed.lokinet.org/testnet.signed"}};
+
+  std::string bootstrap_url = bootstrap_urls.at("lokinet");
+  fs::path outputfile{llarp::GetDefaultBootstrap()};
+
   if (argc > 1)
   {
-    bootstrap_url = argv[1];
+    if (auto itr = bootstrap_urls.find(argv[1]); itr != bootstrap_urls.end())
+    {
+      bootstrap_url = itr->second;
+    }
+    else
+    {
+      bootstrap_url = argv[1];
+    }
   }
+  if (argc > 2)
+  {
+    outputfile = fs::path{argv[2]};
+  }
+
   cpr::Response resp =
 #ifdef _WIN32
       cpr::Get(
@@ -41,24 +63,16 @@ main(int argc, char* argv[])
 #endif
   if (resp.status_code != 200)
   {
-    return exit_with_message(
-        "failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code), 1);
+    return fail("failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
   }
-
   std::stringstream ss;
   ss << resp.text;
-
   std::string data{ss.str()};
-  llarp_buffer_t buf{&data[0], data.size()};
-
-  llarp::RouterContact rc;
-  if (not rc.BDecode(&buf))
-    return exit_with_message("invalid bootstrap data was fetched", 1);
-
-  const auto path = llarp::GetDefaultBootstrap();
-  if (not rc.Write(path))
-    return exit_with_message("failed to write bootstrap file to " + path.string(), 1);
-
-  const llarp::RouterID router{rc.pubkey};
-  return exit_with_message("fetched bootstrap file for " + router.ToString(), 0);
+  if (data[0] == 'l' or data[0] == 'd')
+  {
+    std::ofstream ofs{outputfile};
+    ofs << data;
+    return 0;
+  }
+  return fail("got invalid bootstrap file content");
 }
