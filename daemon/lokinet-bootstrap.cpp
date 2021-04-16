@@ -70,7 +70,8 @@ main(int argc, char* argv[])
   std::string data{ss.str()};
   if (data[0] == 'l' or data[0] == 'd')
   {
-    std::ofstream ofs{outputfile};
+    fs::ofstream ofs{outputfile};
+    ofs.exceptions(fs::ofstream::failbit);
     ofs << data;
     return 0;
   }

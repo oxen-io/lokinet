@@ -14,7 +14,14 @@
 namespace fs = ghc::filesystem;
 #else
 #include <filesystem>
-namespace fs = std::filesystem;
+namespace fs
+{
+  using namespace std::filesystem;
+  using ifstream = std::ifstream;
+  using ofstream = std::ofstream;
+  using fstream = std::fstream;
+}  // namespace fs
+
 #endif
 
 #ifndef _MSC_VER
