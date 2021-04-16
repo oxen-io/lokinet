@@ -8,10 +8,10 @@ Rather than cramming it into CXXFLAGS in debian/rules.
  1 file changed, 3 insertions(+)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 47a6014..8ef2af0 100644
+index 793b1c8..9d31a69 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -110,6 +110,9 @@ include(cmake/unix.cmake)
+@@ -111,6 +111,9 @@ include(cmake/unix.cmake)
  include(cmake/check_for_std_optional.cmake)
  include(cmake/check_for_std_filesystem.cmake)
  
