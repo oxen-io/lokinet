@@ -70,10 +70,17 @@ main(int argc, char* argv[])
   std::string data{ss.str()};
   if (data[0] == 'l' or data[0] == 'd')
   {
-    fs::ofstream ofs{outputfile};
-    ofs.exceptions(fs::ofstream::failbit);
-    ofs << data;
-    return 0;
+    try
+    {
+      fs::ofstream ofs{outputfile};
+      ofs.exceptions(fs::ofstream::failbit);
+      ofs << data;
+      return 0;
+    }
+    catch (std::exception& ex)
+    {
+      return fail(std::string{"failed to write bootstrap file: "} + ex.what());
+    }
   }
   return fail("got invalid bootstrap file content");
 }
