@@ -72,7 +72,7 @@ main(int argc, char* argv[])
   {
     try
     {
-      fs::ofstream ofs{outputfile};
+      fs::ofstream ofs{outputfile, std::ios::binary};
       ofs.exceptions(fs::ofstream::failbit);
       ofs << data;
       return 0;
