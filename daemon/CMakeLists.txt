@@ -24,6 +24,11 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 endif()
 
 target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
+if(NOT WIN32)
+  find_package(OpenSSL REQUIRED)
+  # because debian sid's curl doesn't link against openssl for some godawful cursed reason
+  target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::Crypto)
+endif()
 
 foreach(exe lokinet lokinet-vpn lokinet-bootstrap)
   if(WIN32 AND NOT MSVC_VERSION)
