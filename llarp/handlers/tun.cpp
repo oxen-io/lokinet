@@ -194,6 +194,14 @@ namespace llarp
 
       m_OurIP = m_OurRange.addr;
       m_UseV6 = false;
+
+      if (auto* quic = GetQUICTunnel())
+      {
+        quic->listen([this](std::string_view, uint16_t port) {
+          return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
+        });
+      }
+
       return Endpoint::Configure(conf, dnsConf);
     }
 

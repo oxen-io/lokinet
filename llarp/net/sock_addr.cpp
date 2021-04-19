@@ -53,6 +53,9 @@ namespace llarp
     setPort(port);
   }
 
+  SockAddr::SockAddr(huint32_t ip, huint16_t port) : SockAddr{ToNet(ip), ToNet(port)}
+  {}
+
   SockAddr::SockAddr(huint128_t ip, huint16_t port)
   {
     init();

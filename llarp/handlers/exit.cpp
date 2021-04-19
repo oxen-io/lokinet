@@ -756,7 +756,12 @@ namespace llarp
         m_ifname = *maybe;
       }
       LogInfo(Name(), " set ifname to ", m_ifname);
-
+      if (auto* quic = GetQUICTunnel())
+      {
+        quic->listen([ifaddr = net::TruncateV6(m_IfAddr)](std::string_view, uint16_t port) {
+          return llarp::SockAddr{ifaddr, huint16_t{port}};
+        });
+      }
       // TODO: "exit-whitelist" and "exit-blacklist"
       //       (which weren't originally implemented)
     }
