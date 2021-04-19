@@ -102,7 +102,7 @@ function(add_static_target target ext_target libname)
   add_library(${target} STATIC IMPORTED GLOBAL)
   add_dependencies(${target} ${ext_target})
   set_target_properties(${target} PROPERTIES
-    IMPORTED_LOCATION ${DEPS_DESTDIR}/lib/${libname}
+    IMPORTED_LOCATION ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/${libname}
   )
 endfunction()
 
@@ -180,7 +180,7 @@ set(build_def_CONFIGURE_COMMAND ./configure ${cross_host} --disable-shared --pre
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS}" "CXXFLAGS=${deps_CXXFLAGS}" ${cross_rc})
 set(build_def_BUILD_COMMAND make)
 set(build_def_INSTALL_COMMAND make install)
-set(build_def_BUILD_BYPRODUCTS ${DEPS_DESTDIR}/lib/lib___TARGET___.a ${DEPS_DESTDIR}/include/___TARGET___.h)
+set(build_def_BUILD_BYPRODUCTS ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/lib___TARGET___.a ${DEPS_DESTDIR}/include/___TARGET___.h)
 
 function(build_external target)
   set(options DEPENDS PATCH_COMMAND CONFIGURE_COMMAND BUILD_COMMAND INSTALL_COMMAND BUILD_BYPRODUCTS)
@@ -212,7 +212,7 @@ endfunction()
 build_external(libuv
   CONFIGURE_COMMAND ./autogen.sh && ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --with-pic --disable-shared --enable-static "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
   BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libuv.a
+    ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libuv.a
     ${DEPS_DESTDIR}/include/uv.h
   )
 add_static_target(libuv libuv_external libuv.a)
@@ -222,7 +222,7 @@ target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
   BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libz.a
+    ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libz.a
     ${DEPS_DESTDIR}/include/zlib.h
 )
 add_static_target(zlib zlib_external libz.a)
@@ -249,7 +249,7 @@ build_external(openssl
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
   INSTALL_COMMAND make install_sw
   BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
+    ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libssl.a ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libcrypto.a
     ${DEPS_DESTDIR}/include/openssl/ssl.h ${DEPS_DESTDIR}/include/openssl/crypto.h
 )
 add_static_target(OpenSSL::SSL openssl_external libssl.a)
@@ -259,7 +259,7 @@ if(WIN32)
 endif()
 
 set(OPENSSL_INCLUDE_DIR ${DEPS_DESTDIR}/include)
-set(OPENSSL_CRYPTO_LIBRARY ${DEPS_DESTDIR}/lib/libcrypto.a ${DEPS_DESTDIR}/lib/libssl.a)
+set(OPENSSL_CRYPTO_LIBRARY ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libcrypto.a ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libssl.a)
 set(OPENSSL_VERSION 1.1.1)
 set(OPENSSL_ROOT_DIR ${DEPS_DESTDIR})
 
@@ -316,7 +316,7 @@ build_external(zmq
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
     --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
-    "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
+    "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX} -lsodium"
 )
 add_static_target(libzmq zmq_external libzmq.a)
 
@@ -336,7 +336,7 @@ elseif(APPLE)
   set(curl_ssl_opts --without-ssl --with-secure-transport)
   if(IOS)
     # This CPP crap shouldn't be necessary but is because Apple's toolchain is trash
-    set(curl_extra "LDFLAGS=-L${DEPS_DESTDIR}/lib -isysroot ${CMAKE_OSX_SYSROOT}" CPP=cpp)
+    set(curl_extra "LDFLAGS=-L${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX} -isysroot ${CMAKE_OSX_SYSROOT}" CPP=cpp)
   endif()
 else()
   set(curl_ssl_opts --with-ssl=${DEPS_DESTDIR})
@@ -386,11 +386,11 @@ foreach(curl_arch ${curl_arches})
     BUILD_COMMAND true
     INSTALL_COMMAND make -C lib install && make -C include install
     BUILD_BYPRODUCTS
-      ${curl_prefix}/lib/libcurl.a
+      ${curl_prefix}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libcurl.a
       ${curl_prefix}/include/curl/curl.h
   )
   list(APPEND curl_lib_targets curl${curl_target_suffix}_external)
-  list(APPEND curl_lib_outputs ${curl_prefix}/lib/libcurl.a)
+  list(APPEND curl_lib_outputs ${curl_prefix}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libcurl.a)
 endforeach()
 
 message(STATUS "TARGETS: ${curl_lib_targets}")
@@ -402,7 +402,7 @@ if(IOS AND num_arches GREATER 1)
   add_custom_target(curl_external
     COMMAND lipo ${curl_lib_outputs} -create -output ${DEPS_DESTDIR}/libcurl.a
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${DEPS_DESTDIR}/tmp/${curl_arch0}/include/curl ${DEPS_DESTDIR}/include/curl
-    BYPRODUCTS ${DEPS_DESTDIR}/lib/libcurl.a ${DEPS_DESTDIR}/include/curl/curl.h
+    BYPRODUCTS ${DEPS_DESTDIR}/lib${CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX}/libcurl.a ${DEPS_DESTDIR}/include/curl/curl.h
     DEPENDS ${curl_lib_targets})
 endif()
 
