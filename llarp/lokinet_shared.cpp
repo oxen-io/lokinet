@@ -12,6 +12,10 @@
 
 #include <mutex>
 
+#ifdef _WIN32
+#define EHOSTDOWN ENETDOWN
+#endif
+
 namespace
 {
   struct Context : public llarp::Context

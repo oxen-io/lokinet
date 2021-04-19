@@ -84,11 +84,3 @@ set(ENABLE_BORINGSSL OFF CACHE BOOL "Disable boringssl for ngtcp2")
 
 add_definitions(-D_GNU_SOURCE)
 add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)
-
-set(CPR_BUILD_TESTS OFF)
-if(WIN32)
-  set(CPR_FORCE_WINSSL_BACKEND ON)
-else()
-  set(CPR_FORCE_USE_SYSETM_CURL ON)
-endif()
-add_subdirectory(cpr EXCLUDE_FROM_ALL)

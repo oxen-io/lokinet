@@ -1,7 +1,19 @@
 #pragma once
 
 #include "lokinet_context.h"
-#include "lokinet_os.h"
+
+#ifdef _WIN32
+extern "C"
+{
+  struct iovec
+  {
+    void* iov_base;
+    size_t iov_len;
+  };
+}
+#else
+#include <sys/uio.h>
+#endif
 
 #ifdef __cplusplus
 extern "C"
