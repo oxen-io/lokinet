@@ -40,7 +40,7 @@ namespace llarp
     }
 
     /// return true if we intersect with a bogon range
-    constexpr bool
+    bool
     BogonRange() const
     {
       // special case for 0.0.0.0/0
