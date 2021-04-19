@@ -3,11 +3,16 @@
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include <llarp/util/bits.hpp>
+#include <llarp/util/buffer.hpp>
 #include <llarp/util/types.hpp>
 #include <string>
 
 namespace llarp
 {
+  /// forward declare
+  bool
+  IsBogon(huint128_t ip);
+
   struct IPRange
   {
     using Addr_t = huint128_t;
@@ -32,6 +37,19 @@ namespace llarp
     {
       constexpr auto ipv4_map = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
       return ipv4_map.Contains(addr);
+    }
+
+    /// return true if we intersect with a bogon range
+    constexpr bool
+    BogonRange() const
+    {
+      // special case for 0.0.0.0/0
+      if (IsV4() and netmask_bits == netmask_ipv6_bits(96))
+        return false;
+      // special case for ::/0
+      if (netmask_bits == huint128_t{0})
+        return false;
+      return IsBogon(addr) or IsBogon(HighestAddr());
     }
 
     /// return the number of bits set in the hostmask
@@ -106,6 +124,12 @@ namespace llarp
 
     bool
     FromString(std::string str);
+
+    bool
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    BDecode(llarp_buffer_t* buf);
   };
 
 }  // namespace llarp

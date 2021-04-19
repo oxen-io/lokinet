@@ -1,5 +1,6 @@
 
 add_library(lokinet-cryptography
+  STATIC
   libntrup/src/ntru.cpp
   libntrup/src/ref/randomsmall.c
   libntrup/src/ref/swap.c
@@ -57,10 +58,6 @@ endif()
 
 enable_lto(lokinet-cryptography)
 add_log_tag(lokinet-cryptography)
-
-if(BUILD_SHARED_LIBS)
-  install(TARGETS lokinet-cryptography LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
 
 if (WARNINGS_AS_ERRORS)
   target_compile_options(lokinet-cryptography PUBLIC -Wall -Wextra -Werror)

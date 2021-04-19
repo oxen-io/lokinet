@@ -232,7 +232,7 @@ namespace llarp
       AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
   {
     llarp::LogDebug("Attempting to send LR_Status message to (", nextHop, ")");
-    if (not router->SendToOrQueue(nextHop, msg.get()))
+    if (not router->SendToOrQueue(nextHop, *msg))
     {
       llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop, " failed");
     }

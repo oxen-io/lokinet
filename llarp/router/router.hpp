@@ -120,6 +120,9 @@ namespace llarp
     }
 
     void
+    ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
+
+    void
     SetRouterWhitelist(const std::vector<RouterID> routers) override;
 
     exit::Context&
@@ -344,7 +347,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) override;
+    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb) override;
 
     bool
     StartRpcServer() override;
@@ -408,7 +411,7 @@ namespace llarp
     /// MUST be called in the logic thread
     bool
     SendToOrQueue(
-        const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler) override;
+        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler) override;
 
     void
     ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)

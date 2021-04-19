@@ -31,7 +31,7 @@ namespace llarp
         m_Endpoint->Loop()->call([this] { FlushUpstream(); });
       }
       m_SendQueue.pushBack(std::make_pair(
-          std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
+          std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
       return true;
     }
 
@@ -40,6 +40,7 @@ namespace llarp
     {
       auto r = m_Endpoint->Router();
       std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
+      auto rttRMS = 0ms;
       {
         do
         {
@@ -47,11 +48,14 @@ namespace llarp
           if (not maybe)
             break;
           auto& item = *maybe;
+          item.first->S = item.second->NextSeqNo();
           if (item.second->SendRoutingMessage(*item.first, r))
           {
             lastGoodSend = r->Now();
             flushpaths.emplace(item.second);
-            m_Endpoint->MarkConvoTagActive(item.first->T.T);
+            m_Endpoint->ConvoTagTX(item.first->T.T);
+            const auto rtt = (item.second->intro.latency + remoteIntro.latency) * 2;
+            rttRMS += rtt * rtt.count();
           }
         } while (not m_SendQueue.empty());
       }
@@ -60,6 +64,10 @@ namespace llarp
       {
         path->FlushUpstream(r);
       }
+      if (flushpaths.empty())
+        return;
+      estimatedRTT = std::chrono::milliseconds{
+          static_cast<int64_t>(std::sqrt(rttRMS.count() / flushpaths.size()))};
     }
 
     /// send on an established convo tag
@@ -90,7 +98,15 @@ namespace llarp
       m_DataHandler->PutIntroFor(f->T, remoteIntro);
       m_DataHandler->PutReplyIntroFor(f->T, path->intro);
       m->proto = t;
-      m->seqno = m_Endpoint->GetSeqNoForConvo(f->T);
+      if (auto maybe = m_Endpoint->GetSeqNoForConvo(f->T))
+      {
+        m->seqno = *maybe;
+      }
+      else
+      {
+        LogWarn(m_Endpoint->Name(), " no session T=", f->T);
+        return;
+      }
       m->introReply = path->intro;
       f->F = m->introReply.pathID;
       m->sender = m_Endpoint->GetIdentity().pub;

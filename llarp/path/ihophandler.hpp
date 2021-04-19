@@ -30,6 +30,9 @@ namespace llarp
 
       virtual ~IHopHandler() = default;
 
+      virtual PathID_t
+      RXID() const = 0;
+
       void
       DecayFilters(llarp_time_t now);
 

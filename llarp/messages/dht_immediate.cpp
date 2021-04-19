@@ -74,7 +74,7 @@ namespace llarp
     {
       if (result)
       {
-        result = router->SendToOrQueue(session->GetPubKey(), &reply);
+        result = router->SendToOrQueue(session->GetPubKey(), reply);
       }
     }
     return true;

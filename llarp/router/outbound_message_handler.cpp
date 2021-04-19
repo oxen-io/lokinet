@@ -21,7 +21,7 @@ namespace llarp
 
   bool
   OutboundMessageHandler::QueueMessage(
-      const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback)
+      const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
   {
     if (not _linkManager->SessionIsClient(remote) and not _lookupHandler->RemoteIsAllowed(remote))
     {
@@ -29,7 +29,7 @@ namespace llarp
       return true;
     }
 
-    const uint16_t priority = msg->Priority();
+    const uint16_t priority = msg.Priority();
     std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
     llarp_buffer_t buf(linkmsg_buffer);
 
@@ -46,7 +46,7 @@ namespace llarp
 
     if (_linkManager->HasSessionTo(remote))
     {
-      QueueOutboundMessage(remote, std::move(message), msg->pathid, priority);
+      QueueOutboundMessage(remote, std::move(message), msg.pathid, priority);
       return true;
     }
 
@@ -195,9 +195,9 @@ namespace llarp
   }
 
   bool
-  OutboundMessageHandler::EncodeBuffer(const ILinkMessage* msg, llarp_buffer_t& buf)
+  OutboundMessageHandler::EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf)
   {
-    if (!msg->BEncode(&buf))
+    if (!msg.BEncode(&buf))
     {
       LogWarn("failed to encode outbound message, buffer size left: ", buf.size_left());
       return false;
@@ -248,10 +248,6 @@ namespace llarp
     if (outboundQueue.tryPushBack(std::move(entry)) != llarp::thread::QueueReturn::Success)
     {
       m_queueStats.dropped++;
-      LogWarn(
-          "QueueOutboundMessage outbound message handler dropped message on "
-          "pathid=",
-          pathid);
       DoCallback(callback_copy, SendStatus::Congestion);
     }
     else
@@ -288,10 +284,6 @@ namespace llarp
       }
       else
       {
-        LogWarn(
-            "ProcessOutboundQueue outbound message handler dropped message on "
-            "pathid=",
-            entry.pathid);
         DoCallback(entry.message.second, SendStatus::Congestion);
         m_queueStats.dropped++;
       }

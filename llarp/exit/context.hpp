@@ -44,6 +44,9 @@ namespace llarp
       void
       CalculateExitTraffic(TrafficStats& stats);
 
+      std::shared_ptr<handlers::ExitEndpoint>
+      GetExitEndpoint(std::string name) const;
+
      private:
       AbstractRouter* m_Router;
       std::unordered_map<std::string, std::shared_ptr<handlers::ExitEndpoint>> m_Exits;

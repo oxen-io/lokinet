@@ -6,7 +6,6 @@
 #include "crypto/crypto_libsodium.hpp"
 #include "dht/context.hpp"
 #include "ev/ev.hpp"
-#include "ev/vpnio.hpp"
 #include <memory>
 #include "nodedb.hpp"
 #include "router/router.hpp"
@@ -75,11 +74,17 @@ namespace llarp
 
     router = makeRouter(loop);
 
-    nodedb = std::make_shared<NodeDB>(
-        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+    nodedb = makeNodeDB();
 
-    if (!router->Configure(config, opts.isRouter, nodedb))
+    if (!router->Configure(config, opts.isSNode, nodedb))
       throw std::runtime_error("Failed to configure router");
+  }
+
+  std::shared_ptr<NodeDB>
+  Context::makeNodeDB()
+  {
+    return std::make_shared<NodeDB>(
+        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
   }
 
   std::shared_ptr<AbstractRouter>
@@ -130,11 +135,17 @@ namespace llarp
   Context::CloseAsync()
   {
     /// already closing
-    if (closeWaiter)
+    if (IsStopping())
       return;
 
     if (CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
       closeWaiter = std::make_unique<std::promise<void>>();
+  }
+
+  bool
+  Context::IsStopping() const
+  {
+    return closeWaiter.operator bool();
   }
 
   void
@@ -201,87 +212,3 @@ namespace llarp
 #endif
 
 }  // namespace llarp
-
-extern "C"
-{
-  ssize_t
-  llarp_vpn_io_readpkt(struct llarp_vpn_pkt_reader* r, unsigned char* dst, size_t dstlen)
-  {
-    if (r == nullptr)
-      return -1;
-    if (not r->queue.enabled())
-      return -1;
-    auto pkt = r->queue.popFront();
-    ManagedBuffer mbuf = pkt.ConstBuffer();
-    const llarp_buffer_t& buf = mbuf;
-    if (buf.sz > dstlen || buf.sz == 0)
-      return -1;
-    std::copy_n(buf.base, buf.sz, dst);
-    return buf.sz;
-  }
-
-  bool
-  llarp_vpn_io_writepkt(struct llarp_vpn_pkt_writer* w, unsigned char* pktbuf, size_t pktlen)
-  {
-    if (pktlen == 0 || pktbuf == nullptr)
-      return false;
-    if (w == nullptr)
-      return false;
-    llarp_vpn_pkt_queue::Packet_t pkt;
-    llarp_buffer_t buf(pktbuf, pktlen);
-    if (not pkt.Load(buf))
-      return false;
-    return w->queue.pushBack(std::move(pkt)) == llarp::thread::QueueReturn::Success;
-  }
-
-  bool
-  llarp_main_inject_vpn_by_name(
-      llarp::Context* ctx,
-      const char* name,
-      struct llarp_vpn_io* io,
-      struct llarp_vpn_ifaddr_info info)
-  {
-    if (name == nullptr || io == nullptr)
-      return false;
-    if (ctx == nullptr || ctx->router == nullptr)
-      return false;
-    auto ep = ctx->router->hiddenServiceContext().GetEndpointByName(name);
-    return ep && ep->InjectVPN(io, info);
-  }
-
-  void
-  llarp_vpn_io_close_async(struct llarp_vpn_io* io)
-  {
-    if (io == nullptr || io->impl == nullptr)
-      return;
-    static_cast<llarp_vpn_io_impl*>(io->impl)->AsyncClose();
-  }
-
-  bool
-  llarp_vpn_io_init(llarp::Context* ctx, struct llarp_vpn_io* io)
-  {
-    if (io == nullptr || ctx == nullptr)
-      return false;
-    llarp_vpn_io_impl* impl = new llarp_vpn_io_impl(ctx, io);
-    io->impl = impl;
-    return true;
-  }
-
-  struct llarp_vpn_pkt_writer*
-  llarp_vpn_io_packet_writer(struct llarp_vpn_io* io)
-  {
-    if (io == nullptr || io->impl == nullptr)
-      return nullptr;
-    llarp_vpn_io_impl* vpn = static_cast<llarp_vpn_io_impl*>(io->impl);
-    return &vpn->writer;
-  }
-
-  struct llarp_vpn_pkt_reader*
-  llarp_vpn_io_packet_reader(struct llarp_vpn_io* io)
-  {
-    if (io == nullptr || io->impl == nullptr)
-      return nullptr;
-    llarp_vpn_io_impl* vpn = static_cast<llarp_vpn_io_impl*>(io->impl);
-    return &vpn->reader;
-  }
-}

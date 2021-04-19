@@ -1,6 +1,7 @@
 #pragma once
 
 #include "path_types.hpp"
+#include "service/protocol_type.hpp"
 #include <llarp/router_id.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/intro_set.hpp>
@@ -137,7 +138,7 @@ namespace llarp
       HandlePathBuildTimeout(Path_ptr path);
 
       virtual void
-      HandlePathBuildFailed(Path_ptr path);
+      HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
       virtual void
       PathBuildStarted(Path_ptr path);
@@ -237,6 +238,9 @@ namespace llarp
       GetEstablishedPathClosestTo(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
+      PickEstablishedPath(PathRole roles = ePathRoleAny) const;
+
+      Path_ptr
       PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
       Path_ptr
@@ -276,7 +280,7 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) = 0;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) = 0;
 
       virtual std::optional<std::vector<RouterContact>>
       GetHopsForBuild() = 0;

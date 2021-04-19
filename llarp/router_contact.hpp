@@ -1,13 +1,15 @@
 #pragma once
 
-#include "constants/version.hpp"
-#include "crypto/types.hpp"
-#include "net/address_info.hpp"
-#include "net/exit_info.hpp"
-#include "util/aligned.hpp"
-#include "util/bencode.hpp"
-#include "util/status.hpp"
+#include "llarp/constants/version.hpp"
+#include "llarp/crypto/types.hpp"
+#include "llarp/net/address_info.hpp"
+#include "llarp/net/exit_info.hpp"
+#include "llarp/util/aligned.hpp"
+#include "llarp/util/bencode.hpp"
+#include "llarp/util/status.hpp"
 #include "router_version.hpp"
+
+#include "llarp/dns/srv_data.hpp"
 
 #include <functional>
 #include <nlohmann/json.hpp>
@@ -103,6 +105,8 @@ namespace llarp
     const static bool serializeExit = true;
 
     std::string signed_bt_dict;
+
+    std::vector<dns::SRVData> srvRecords;
 
     util::StatusObject
     ExtractStatus() const;

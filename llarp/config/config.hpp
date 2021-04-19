@@ -93,7 +93,8 @@ namespace llarp
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
-    std::string m_strictConnect;
+    bool m_saveProfiles;
+    std::set<RouterID> m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;
 
@@ -120,6 +121,9 @@ namespace llarp
     std::vector<llarp::dns::SRVData> m_SRVRecords;
 
     std::optional<huint128_t> m_baseV6Address;
+
+    std::set<IPRange> m_OwnedRanges;
+    std::optional<net::TrafficPolicy> m_TrafficPolicy;
 
     // TODO:
     // on-up
@@ -188,7 +192,8 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector<fs::path> routers;
+    std::vector<fs::path> files;
+    std::set<RouterContact> routers;
     bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -250,6 +255,10 @@ namespace llarp
 
     void
     AddDefault(std::string section, std::string key, std::string value);
+
+    /// create a config with the default parameters for an embedded lokinet
+    static std::shared_ptr<Config>
+    EmbeddedConfig();
 
    private:
     /// Load (initialize) a default config.

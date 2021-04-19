@@ -6,6 +6,8 @@
 #include <tuple>
 #include <string_view>
 
+#include "llarp/util/status.hpp"
+
 namespace llarp::dns
 {
   typedef std::tuple<std::string, uint16_t, uint16_t, uint16_t, std::string> SRVTuple;
@@ -36,6 +38,30 @@ namespace llarp::dns
     SRVTuple
     toTuple() const;
 
+    /// so we can put SRVData in a std::set
+    bool
+    operator<(const SRVData& other) const
+    {
+      return service_proto < other.service_proto or priority < other.priority
+          or weight < other.weight or port < other.port or target < other.target;
+    }
+
+    bool
+    operator==(const SRVData& other) const
+    {
+      return service_proto == other.service_proto and priority == other.priority
+          and weight == other.weight and port == other.port and target == other.target;
+    }
+
+    bool
+    BEncode(llarp_buffer_t*) const;
+
+    bool
+    BDecode(llarp_buffer_t*);
+
+    util::StatusObject
+    ExtractStatus() const;
+
     static SRVData
     fromTuple(SRVTuple tuple);
 
@@ -60,3 +86,19 @@ namespace llarp::dns
   };
 
 }  // namespace llarp::dns
+
+namespace std
+{
+  template <>
+  struct hash<llarp::dns::SRVData>
+  {
+    size_t
+    operator()(const llarp::dns::SRVData& data) const
+    {
+      const std::hash<std::string> h_str{};
+      const std::hash<uint16_t> h_port{};
+      return h_str(data.service_proto) ^ (h_str(data.target) << 3) ^ (h_port(data.priority) << 5)
+          ^ (h_port(data.weight) << 7) ^ (h_port(data.port) << 9);
+    }
+  };
+}  // namespace std

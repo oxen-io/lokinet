@@ -1,12 +1,14 @@
 include(Version)
 
 add_library(lokinet-util
+  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
   util/fs.cpp
   util/json.cpp
   util/logging/android_logger.cpp
+  util/logging/buffer.cpp
   util/logging/file_logger.cpp
   util/logging/json_logger.cpp
   util/logging/logger.cpp
@@ -27,19 +29,12 @@ add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR})
 
-if(NOT TARGET sqlite3)
-  add_library(sqlite3 INTERFACE)
-  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
-  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
-endif()
-
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
   filesystem
   date::date
-  oxenmq
-  sqlite3
+  oxenmq::oxenmq
 )
 
 if(ANDROID)
@@ -47,7 +42,8 @@ if(ANDROID)
 endif()
 
 add_library(lokinet-platform
-# for networking
+  STATIC
+  # for networking
   ev/ev.cpp
   ev/ev_libuv.cpp
   net/ip.cpp
@@ -91,6 +87,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 endif()
 
 add_library(liblokinet
+  STATIC
   config/config.cpp
   config/definition.cpp
   config/ini.cpp
@@ -106,8 +103,6 @@ add_library(liblokinet
   dns/unbound_resolver.cpp
 
   consensus/table.cpp
-
-  ev/vpnio.cpp
 
   bootstrap.cpp
   context.cpp
@@ -133,6 +128,9 @@ add_library(liblokinet
   dht/recursiverouterlookup.cpp
   dht/serviceaddresslookup.cpp
   dht/taglookup.cpp
+
+  endpoint_base.cpp
+  
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
@@ -156,6 +154,7 @@ add_library(liblokinet
   messages/relay_status.cpp
   net/address_info.cpp
   net/exit_info.cpp
+  net/traffic_policy.cpp
   nodedb.cpp
   path/ihophandler.cpp
   path/path_context.cpp
@@ -167,15 +166,26 @@ add_library(liblokinet
   peerstats/types.cpp
   pow.cpp
   profiling.cpp
+
+  quic/address.cpp
+  quic/client.cpp
+  quic/connection.cpp
+  quic/endpoint.cpp
+  quic/null_crypto.cpp
+  quic/server.cpp
+  quic/stream.cpp
+  quic/tunnel.cpp
+
+  router_contact.cpp
+  router_id.cpp
+  router_version.cpp
+  service/name.cpp
   router/outbound_message_handler.cpp
   router/outbound_session_maker.cpp
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp
   router/route_poker.cpp
-  router_contact.cpp
-  router_id.cpp
-  router_version.cpp
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
@@ -188,6 +198,7 @@ add_library(liblokinet
   service/address.cpp
   service/async_key_exchange.cpp
   service/auth.cpp
+  service/convotag.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
@@ -202,6 +213,7 @@ add_library(liblokinet
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
+  service/protocol_type.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
@@ -228,17 +240,21 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 
-if(BUILD_SHARED_LIBS)
+if(BUILD_LIBLOKINET)
   include(GNUInstallDirs)
-
-  install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  add_library(lokinet-shared SHARED lokinet_shared.cpp)
+  target_link_libraries(lokinet-shared PUBLIC liblokinet)
+  install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
   if(WIN32)
-    target_link_libraries(liblokinet PUBLIC ws2_32 iphlpapi)
+    set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
+    target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
   endif()
+  set_target_properties(lokinet-shared PROPERTIES OUTPUT_NAME lokinet)
+  add_log_tag(lokinet-shared)
 endif()
 
 foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
@@ -246,5 +262,5 @@ foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptograph
 endforeach()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
-  
+
 set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)

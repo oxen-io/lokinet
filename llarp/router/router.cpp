@@ -42,7 +42,7 @@
 
 #include <oxenmq/oxenmq.h>
 
-static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
+static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
@@ -193,7 +193,7 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler)
+  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
   {
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
@@ -284,7 +284,7 @@ namespace llarp
   }
 
   bool
-  Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
     m_Config = std::move(c);
     auto& conf = *m_Config;
@@ -314,7 +314,7 @@ namespace llarp
     }
 
     // fetch keys
-    if (not m_keyManager->initialize(conf, true, isRouter))
+    if (not m_keyManager->initialize(conf, true, isSNode))
       throw std::runtime_error("KeyManager failed to initialize");
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");
@@ -483,25 +483,16 @@ namespace llarp
       const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
         throw std::runtime_error("cannot use strict-connect option as service node");
-
-      // try as a RouterID and as a PubKey, convert to RouterID if needed
-      llarp::RouterID snode;
-      llarp::PubKey pk;
-      if (pk.FromString(val))
-        strictConnectPubkeys.emplace(pk);
-      else if (snode.FromString(val))
-        strictConnectPubkeys.insert(snode);
-      else
-        throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
+      strictConnectPubkeys.insert(val.begin(), val.end());
     }
 
     std::vector<fs::path> configRouters = conf.connect.routers;
     configRouters.insert(
-        configRouters.end(), conf.bootstrap.routers.begin(), conf.bootstrap.routers.end());
+        configRouters.end(), conf.bootstrap.files.begin(), conf.bootstrap.files.end());
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    if (configRouters.empty())
+    if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       // TODO: use constant
       fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
@@ -549,6 +540,11 @@ namespace llarp
       }
     }
 
+    for (const auto& rc : conf.bootstrap.routers)
+    {
+      b_list.emplace(rc);
+    }
+
     for (auto& rc : b_list)
     {
       if (not rc.Verify(Now()))
@@ -559,7 +555,17 @@ namespace llarp
       bootstrapRCList.emplace(std::move(rc));
     }
 
-    LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
+    if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
+    {
+      throw std::runtime_error{"we have no bootstrap nodes"};
+    }
+
+    if (conf.bootstrap.seednode)
+    {
+      LogInfo("we are a seed node");
+    }
+    else
+      LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
@@ -853,7 +859,7 @@ namespace llarp
     if (connected < connectToNum)
     {
       size_t dlt = connectToNum - connected;
-      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      LogDebug("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt);
     }
 
@@ -861,7 +867,7 @@ namespace llarp
     _exitContext.Tick(now);
 
     // save profiles
-    if (routerProfiling().ShouldSave(now))
+    if (routerProfiling().ShouldSave(now) and m_Config->network.m_saveProfiles)
     {
       QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
@@ -929,6 +935,17 @@ namespace llarp
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionTimeouts++; });
     }
     _outboundSessionMaker.OnConnectTimeout(session);
+  }
+
+  void
+  Router::ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify)
+  {
+    if (auto maybe = modify(rc()))
+    {
+      _rc = *maybe;
+      UpdateOurRC();
+      _rcGossiper.GossipRC(rc());
+    }
   }
 
   bool
@@ -1248,7 +1265,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    _exitContext.AddExitEndpoint("default-connectivity", m_Config->network, m_Config->dns);
+    _exitContext.AddExitEndpoint("default", m_Config->network, m_Config->dns);
     return true;
   }
 
@@ -1275,7 +1292,8 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    m_lmq->job(std::move(func));
+    _loop->call_soon(func);
+    // m_lmq->job(std::move(func));
   }
 
   void

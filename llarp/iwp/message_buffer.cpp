@@ -128,7 +128,7 @@ namespace llarp
       byte_t* dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
-      LogDebug("got fragment ", idx / FragmentSize);
+      LogTrace("got fragment ", idx / FragmentSize);
       m_LastActiveAt = now;
     }
 

@@ -83,7 +83,7 @@ namespace llarp
           m_SNodeSessions.begin(),
           m_SNodeSessions.end(),
           std::back_inserter(obj["snodeSessions"]),
-          [](const auto& item) { return item.second.first->ExtractStatus(); });
+          [](const auto& item) { return item.second->ExtractStatus(); });
 
       util::StatusObject sessionObj{};
 

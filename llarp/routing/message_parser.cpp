@@ -55,7 +55,7 @@ namespace llarp
         if (strbuf.sz != 1)
           return false;
         ourKey = *strbuf.cur;
-        LogDebug("routing message '", key, "'");
+        LogDebug("routing message '", std::string{ourKey, 1}, "'");
         switch (ourKey)
         {
           case 'D':
@@ -123,6 +123,7 @@ namespace llarp
       if (bencode_read_dict(*this, &copy))
       {
         msg->from = from;
+        LogDebug("handle routing message ", msg->S, " from ", from);
         result = msg->HandleMessage(h, r);
         if (!result)
         {

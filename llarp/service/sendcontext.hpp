@@ -46,9 +46,11 @@ namespace llarp
       const llarp_time_t createdAt;
       llarp_time_t sendTimeout = 40s;
       llarp_time_t connectTimeout = 60s;
+      llarp_time_t estimatedRTT = 0s;
       bool markedBad = false;
-      using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
+      using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
       using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
+
       thread::Queue<SendEvent_t> m_SendQueue;
 
       std::function<void(AuthResult)> authResultListener;

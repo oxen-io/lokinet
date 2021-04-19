@@ -96,6 +96,16 @@ namespace llarp
       return false;
     }
 
+    std::shared_ptr<handlers::ExitEndpoint>
+    Context::GetExitEndpoint(std::string name) const
+    {
+      if (auto itr = m_Exits.find(name); itr != m_Exits.end())
+      {
+        return itr->second;
+      }
+      return nullptr;
+    }
+
     void
     Context::AddExitEndpoint(
         const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)

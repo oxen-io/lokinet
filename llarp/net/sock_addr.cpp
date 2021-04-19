@@ -53,6 +53,9 @@ namespace llarp
     setPort(port);
   }
 
+  SockAddr::SockAddr(huint32_t ip, huint16_t port) : SockAddr{ToNet(ip), ToNet(port)}
+  {}
+
   SockAddr::SockAddr(huint128_t ip, huint16_t port)
   {
     init();
@@ -183,8 +186,8 @@ namespace llarp
 
   SockAddr::operator const sockaddr*() const
   {
-    return ipv6_is_mapped_ipv4(m_addr.sin6_addr) ? reinterpret_cast<const sockaddr*>(&m_addr4)
-                                                 : reinterpret_cast<const sockaddr*>(&m_addr);
+    return isIPv4() ? reinterpret_cast<const sockaddr*>(&m_addr4)
+                    : reinterpret_cast<const sockaddr*>(&m_addr);
   }
 
   SockAddr::operator const sockaddr_in*() const
@@ -195,6 +198,12 @@ namespace llarp
   SockAddr::operator const sockaddr_in6*() const
   {
     return &m_addr;
+  }
+
+  size_t
+  SockAddr::sockaddr_len() const
+  {
+    return isIPv6() ? sizeof(m_addr) : sizeof(m_addr4);
   }
 
   bool
@@ -283,7 +292,7 @@ namespace llarp
 
     std::string str;
 
-    if (ipv6_is_mapped_ipv4(m_addr.sin6_addr))
+    if (isIPv4())
     {
       // handle IPv4 mapped addrs
       constexpr auto MaxIPv4PlusPortStringSize = 22;
@@ -314,6 +323,17 @@ namespace llarp
   SockAddr::isEmpty() const
   {
     return m_empty;
+  }
+
+  bool
+  SockAddr::isIPv4() const
+  {
+    return ipv6_is_mapped_ipv4(m_addr.sin6_addr);
+  }
+  bool
+  SockAddr::isIPv6() const
+  {
+    return not isIPv4();
   }
 
   nuint32_t
@@ -368,7 +388,7 @@ namespace llarp
   SockAddr::setIPv6(nuint128_t ip)
   {
     std::memcpy(&m_addr.sin6_addr, &ip, sizeof(m_addr.sin6_addr));
-    if (ipv6_is_mapped_ipv4(m_addr.sin6_addr))
+    if (isIPv4())
     {
       setIPv4(
           m_addr.sin6_addr.s6_addr[12],

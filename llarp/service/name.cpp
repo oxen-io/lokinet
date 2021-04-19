@@ -19,6 +19,9 @@ namespace llarp::service
   bool
   NameIsValid(std::string_view lnsName)
   {
+    // make sure it ends with .loki because no fucking shit right?
+    if (not ends_with(lnsName, ".loki"))
+      return false;
     // strip off .loki suffix
     lnsName = lnsName.substr(0, lnsName.find_last_of('.'));
 

@@ -29,8 +29,8 @@ namespace llarp
     SockAddr();
     // IPv4 constructors:
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, huint16_t port = {0});
-    SockAddr(nuint32_t ip, nuint16_t port);
-    SockAddr(huint32_t ip, huint16_t port);
+    SockAddr(nuint32_t ip, nuint16_t port = {0});
+    SockAddr(huint32_t ip, huint16_t port = {0});
 
     // IPv6 (or IPv4 if given a special IPv4-mapped IPv6 addr) in host order (including port).
     SockAddr(huint128_t ip, huint16_t port = {0});
@@ -67,6 +67,9 @@ namespace llarp
     operator const sockaddr*() const;
     operator const sockaddr_in*() const;
     operator const sockaddr_in6*() const;
+
+    size_t
+    sockaddr_len() const;
 
     bool
     operator<(const SockAddr& other) const;
@@ -118,6 +121,14 @@ namespace llarp
     /// port is always returned in native (host) order
     uint16_t
     getPort() const;
+
+    /// True if this stores an IPv6 address, false if IPv4.
+    bool
+    isIPv6() const;
+
+    /// !isIPv6()
+    bool
+    isIPv4() const;
 
     /// in network order
     nuint128_t

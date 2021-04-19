@@ -33,6 +33,12 @@ namespace llarp
 
       virtual void
       Clear() = 0;
+
+      bool
+      operator<(const IMessage& other) const
+      {
+        return other.S < S;
+      }
     };
 
   }  // namespace routing

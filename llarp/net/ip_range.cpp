@@ -1,7 +1,38 @@
 #include "ip_range.hpp"
 
+#include "oxenmq/bt_serialize.h"
+
+#include "llarp/util/bencode.h"
+
 namespace llarp
 {
+  bool
+  IPRange::BEncode(llarp_buffer_t* buf) const
+  {
+    const auto str = oxenmq::bt_serialize(ToString());
+    return buf->write(str.begin(), str.end());
+  }
+
+  bool
+  IPRange::BDecode(llarp_buffer_t* buf)
+  {
+    const auto* start = buf->cur;
+    if (not bencode_discard(buf))
+      return false;
+    std::string_view data{
+        reinterpret_cast<const char*>(start), static_cast<size_t>(buf->cur - start)};
+    std::string str;
+    try
+    {
+      oxenmq::bt_deserialize(data, str);
+    }
+    catch (std::exception&)
+    {
+      return false;
+    }
+    return FromString(str);
+  }
+
   bool
   IPRange::FromString(std::string str)
   {

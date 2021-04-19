@@ -5,20 +5,31 @@
 #include <ctime>
 #include <sstream>
 #include <llarp/util/thread/threading.hpp>
+#include <type_traits>
 
 namespace llarp
 {
-  /** internal, recursion terminator */
-  constexpr void
-  LogAppend(std::stringstream&) noexcept
-  {}
   /** internal */
+
+  // true if T is the same as any of V...
+  template <typename T, typename... V>
+  constexpr bool is_same_any_v = (std::is_same_v<T, V> || ...);
+
   template <typename TArg, typename... TArgs>
   void
-  LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args) noexcept
+  LogAppend(std::ostringstream& ss, TArg&& arg, TArgs&&... args) noexcept
   {
-    ss << std::forward<TArg>(arg);
-    LogAppend(ss, std::forward<TArgs>(args)...);
+    // If you are logging a char/unsigned char/uint8_t then promote it to an integer so that we
+    // print numeric values rather than std::ostream's default of printing it as a raw char.
+    using PlainT = std::remove_reference_t<TArg>;
+    if constexpr (is_same_any_v<PlainT, char, unsigned char, signed char, uint8_t>)
+      ss << +std::forward<TArg>(arg);  // Promote to int
+    else if constexpr (std::is_same_v<PlainT, std::byte>)
+      ss << std::to_integer<int>(arg);
+    else
+      ss << std::forward<TArg>(arg);
+    if constexpr (sizeof...(TArgs) > 0)
+      LogAppend(ss, std::forward<TArgs>(args)...);
   }
 
   inline std::string
@@ -39,8 +50,8 @@ namespace llarp
   struct log_timestamp
   {
     const char* format;
-    const llarp_time_t now;
-    const llarp_time_t delta;
+    const Duration_t now;
+    const Duration_t delta;
 
     log_timestamp();
 

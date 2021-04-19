@@ -2,9 +2,9 @@
 
 #include "router_event.hpp"
 
-#include <llarp.h>
-#include <llarp/config/config.hpp>
-#include "hive_context.hpp"
+#include <llarp.hpp>
+#include <config/config.hpp>
+#include <tooling/hive_context.hpp>
 
 #include <vector>
 #include <deque>

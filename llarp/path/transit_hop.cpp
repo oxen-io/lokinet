@@ -214,7 +214,7 @@ namespace llarp
               info.downstream,
               " to ",
               info.upstream);
-          r->SendToOrQueue(info.upstream, &msg);
+          r->SendToOrQueue(info.upstream, msg);
         }
         r->linkManager().PumpLinks();
       }
@@ -232,7 +232,7 @@ namespace llarp
             info.upstream,
             " to ",
             info.downstream);
-        r->SendToOrQueue(info.downstream, &msg);
+        r->SendToOrQueue(info.downstream, msg);
       }
       r->linkManager().PumpLinks();
     }
@@ -275,6 +275,7 @@ namespace llarp
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg.T;
+      reply.S = msg.S;
       return SendRoutingMessage(reply, r);
     }
 
@@ -416,7 +417,10 @@ namespace llarp
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)), counter);
+              info.rxID,
+              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
+              counter,
+              msg.protocol);
         }
         return sent;
       }
@@ -432,24 +436,13 @@ namespace llarp
         const llarp::routing::PathTransferMessage& msg, AbstractRouter* r)
     {
       auto path = r->pathContext().GetPathForTransfer(msg.P);
-      llarp::routing::DataDiscardMessage discarded(msg.P, msg.S);
+      llarp::routing::DataDiscardMessage discarded{msg.P, msg.S};
       if (path == nullptr || msg.T.F != info.txID)
       {
         return SendRoutingMessage(discarded, r);
       }
-
-      std::array<byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-      llarp_buffer_t buf(tmp);
-      if (!msg.T.BEncode(&buf))
-      {
-        llarp::LogWarn(info, " failed to transfer data message, encode failed");
-        return SendRoutingMessage(discarded, r);
-      }
-      // rewind
-      buf.sz = buf.cur - buf.base;
-      buf.cur = buf.base;
-      // send
-      if (path->HandleDownstream(buf, msg.Y, r))
+      // send routing message
+      if (path->SendRoutingMessage(msg.T, r))
       {
         m_FlushOthers.emplace(path);
         return true;

@@ -24,7 +24,7 @@ namespace llarp
     struct IServiceLookup;
     struct OutboundContext;
 
-    using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
+    using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
 
     using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
     using SendMessageQueue_t = thread::Queue<SendEvent_t>;
@@ -41,9 +41,7 @@ namespace llarp
 
     using Sessions = std::unordered_multimap<Address, std::shared_ptr<OutboundContext>>;
 
-    using SNodeSessionValue = std::pair<std::shared_ptr<exit::BaseSession>, ConvoTag>;
-
-    using SNodeSessions = std::unordered_multimap<RouterID, SNodeSessionValue>;
+    using SNodeSessions = std::unordered_map<RouterID, std::shared_ptr<exit::BaseSession>>;
 
     using ConvoMap = std::unordered_map<ConvoTag, Session>;
 

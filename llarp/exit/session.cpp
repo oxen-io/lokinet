@@ -4,6 +4,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/quic/tunnel.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <utility>
@@ -18,13 +19,14 @@ namespace llarp
         AbstractRouter* r,
         size_t numpaths,
         size_t hoplen,
-        bool bundleRC)
-        : llarp::path::Builder(r, numpaths, hoplen)
-        , m_ExitRouter(routerId)
-        , m_WritePacket(std::move(writepkt))
-        , m_Counter(0)
-        , m_LastUse(r->Now())
-        , m_BundleRC(bundleRC)
+        EndpointBase* parent)
+        : llarp::path::Builder{r, numpaths, hoplen}
+        , m_ExitRouter{routerId}
+        , m_WritePacket{std::move(writepkt)}
+        , m_Counter{0}
+        , m_LastUse{r->Now()}
+        , m_BundleRC{false}
+        , m_Parent{parent}
     {
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
@@ -73,7 +75,14 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     BaseSession::GetHopsForBuild()
     {
-      return GetHopsAlignedToForBuild(m_ExitRouter);
+      if (numHops == 1)
+      {
+        if (auto maybe = m_router->nodedb()->Get(m_ExitRouter))
+          return std::vector<RouterContact>{*maybe};
+        return std::nullopt;
+      }
+      else
+        return GetHopsAlignedToForBuild(m_ExitRouter);
     }
 
     bool
@@ -118,6 +127,7 @@ namespace llarp
       if (b == 0s)
       {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
+        m_CurrentPath = p->RXID();
         CallPendingCallbacks(true);
       }
       return true;
@@ -180,8 +190,23 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path_ptr, const llarp_buffer_t& buf, uint64_t counter)
+    BaseSession::HandleTraffic(
+        llarp::path::Path_ptr path,
+        const llarp_buffer_t& buf,
+        uint64_t counter,
+        service::ProtocolType t)
     {
+      const service::ConvoTag tag{path->RXID().as_array()};
+
+      if (t == service::ProtocolType::QUIC)
+      {
+        auto quic = m_Parent->GetQUICTunnel();
+        if (not quic)
+          return false;
+        quic->receive_packet(tag, buf);
+        return true;
+      }
+
       if (m_WritePacket)
       {
         llarp::net::IPPacket pkt;
@@ -203,7 +228,8 @@ namespace llarp
     }
 
     bool
-    BaseSession::QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t N)
+    BaseSession::QueueUpstreamTraffic(
+        llarp::net::IPPacket pkt, const size_t N, service::ProtocolType t)
     {
       const auto pktbuf = pkt.ConstBuffer();
       const llarp_buffer_t& buf = pktbuf;
@@ -214,6 +240,7 @@ namespace llarp
       if (queue.size() == 0)
       {
         queue.emplace_back();
+        queue.back().protocol = t;
         return queue.back().PutBuffer(buf, m_Counter++);
       }
       auto& back = queue.back();
@@ -221,15 +248,18 @@ namespace llarp
       if (back.Size() + buf.sz > N)
       {
         queue.emplace_back();
+        queue.back().protocol = t;
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-
+      back.protocol = t;
       return back.PutBuffer(buf, m_Counter++);
     }
 
     bool
     BaseSession::IsReady() const
     {
+      if (m_CurrentPath.IsZero())
+        return false;
       const size_t expect = (1 + (numDesiredPaths / 2));
       return AvailablePaths(llarp::path::ePathRoleExit) >= expect;
     }
@@ -254,24 +284,18 @@ namespace llarp
     BaseSession::FlushUpstream()
     {
       auto now = m_router->Now();
-      auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
+      auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
       if (path)
       {
         for (auto& item : m_Upstream)
         {
-          auto& queue = item.second;  // XXX: uninitialised memory here!
+          auto& queue = item.second;
           while (queue.size())
           {
             auto& msg = queue.front();
-            if (path)
-            {
-              msg.S = path->NextSeqNo();
-              path->SendRoutingMessage(msg, m_router);
-            }
+            msg.S = path->NextSeqNo();
+            path->SendRoutingMessage(msg, m_router);
             queue.pop_front();
-
-            // spread across all paths
-            path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
           }
         }
       }
@@ -318,8 +342,8 @@ namespace llarp
         size_t numpaths,
         size_t hoplen,
         bool useRouterSNodeKey,
-        bool bundleRC)
-        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
+        EndpointBase* parent)
+        : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
     {
       if (useRouterSNodeKey)
       {
@@ -340,23 +364,23 @@ namespace llarp
     }
 
     void
-    SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return;
       pkt.ZeroAddresses();
-      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }
 
     void
-    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return;
       pkt.ZeroSourceAddress();
-      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }
   }  // namespace exit
 }  // namespace llarp

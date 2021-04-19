@@ -3,6 +3,7 @@
 #include <llarp/handlers/exit.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/quic/tunnel.hpp>
 
 namespace llarp
 {
@@ -10,24 +11,24 @@ namespace llarp
   {
     Endpoint::Endpoint(
         const llarp::PubKey& remoteIdent,
-        const llarp::PathID_t& beginPath,
+        const llarp::path::HopHandler_ptr& beginPath,
         bool rewriteIP,
         huint128_t ip,
         llarp::handlers::ExitEndpoint* parent)
-        : createdAt(parent->Now())
-        , m_Parent(parent)
-        , m_remoteSignKey(remoteIdent)
-        , m_CurrentPath(beginPath)
-        , m_IP(ip)
-        , m_RewriteSource(rewriteIP)
-        , m_Counter(0)
+        : createdAt{parent->Now()}
+        , m_Parent{parent}
+        , m_remoteSignKey{remoteIdent}
+        , m_CurrentPath{beginPath}
+        , m_IP{ip}
+        , m_RewriteSource{rewriteIP}
     {
       m_LastActive = parent->Now();
     }
 
     Endpoint::~Endpoint()
     {
-      m_Parent->DelEndpointInfo(m_CurrentPath);
+      if (m_CurrentPath)
+        m_Parent->DelEndpointInfo(m_CurrentPath->RXID());
     }
 
     void
@@ -58,7 +59,8 @@ namespace llarp
     {
       if (!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
         return false;
-      m_CurrentPath = nextPath;
+      const RouterID us{m_Parent->GetRouter()->pubkey()};
+      m_CurrentPath = m_Parent->GetRouter()->pathContext().GetByUpstream(us, nextPath);
       return true;
     }
 
@@ -85,9 +87,8 @@ namespace llarp
     bool
     Endpoint::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
     {
-      auto path = GetCurrentPath();
-      if (path)
-        return path->ExpiresSoon(now, dlt);
+      if (m_CurrentPath)
+        return m_CurrentPath->ExpiresSoon(now, dlt);
       return true;
     }
 
@@ -97,7 +98,7 @@ namespace llarp
       if (ExpiresSoon(now, timeout))
         return true;
       auto path = GetCurrentPath();
-      if (!path)
+      if (not path)
         return true;
       auto lastPing = path->LastRemoteActivityAt();
       if (lastPing == 0s || (now > lastPing && now - lastPing > timeout))
@@ -108,8 +109,20 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueOutboundTraffic(ManagedBuffer buf, uint64_t counter)
+    Endpoint::QueueOutboundTraffic(
+        PathID_t path, ManagedBuffer buf, uint64_t counter, service::ProtocolType t)
     {
+      const service::ConvoTag tag{path.as_array()};
+      if (t == service::ProtocolType::QUIC)
+      {
+        auto quic = m_Parent->GetQUICTunnel();
+        if (not quic)
+          return false;
+        quic->receive_packet(tag, buf.underlying);
+        m_LastActive = m_Parent->Now();
+        m_TxRate += buf.underlying.sz;
+        return true;
+      }
       // queue overflow
       if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
@@ -146,24 +159,32 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueInboundTraffic(ManagedBuffer buf)
+    Endpoint::QueueInboundTraffic(ManagedBuffer buf, service::ProtocolType type)
     {
-      llarp::net::IPPacket pkt;
-      if (!pkt.Load(buf.underlying))
-        return false;
-
-      huint128_t src;
-      if (m_RewriteSource)
-        src = m_Parent->GetIfAddr();
+      llarp::net::IPPacket pkt{};
+      if (type == service::ProtocolType::QUIC)
+      {
+        pkt.sz = std::min(buf.underlying.sz, sizeof(pkt.buf));
+        std::copy_n(buf.underlying.base, pkt.sz, pkt.buf);
+      }
       else
-        src = pkt.srcv6();
-      if (pkt.IsV6())
-        pkt.UpdateIPv6Address(src, m_IP);
-      else
-        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+      {
+        if (!pkt.Load(buf.underlying))
+          return false;
 
-      const auto _pktbuf = pkt.Buffer();
-      const llarp_buffer_t& pktbuf = _pktbuf.underlying;
+        huint128_t src;
+        if (m_RewriteSource)
+          src = m_Parent->GetIfAddr();
+        else
+          src = pkt.srcv6();
+        if (pkt.IsV6())
+          pkt.UpdateIPv6Address(src, m_IP);
+        else
+          pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+      }
+      const auto _pktbuf = pkt.ConstBuffer();
+      auto& pktbuf = _pktbuf.underlying;
+
       const uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
       if (m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
@@ -171,15 +192,17 @@ namespace llarp
       if (queue.size() == 0)
       {
         queue.emplace_back();
+        queue.back().protocol = type;
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
       auto& msg = queue.back();
       if (msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
       {
         queue.emplace_back();
+        queue.back().protocol = type;
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
-
+      msg.protocol = type;
       return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
@@ -216,13 +239,6 @@ namespace llarp
       for (auto& item : m_DownstreamQueues)
         item.second.clear();
       return sent;
-    }
-
-    llarp::path::HopHandler_ptr
-    Endpoint::GetCurrentPath() const
-    {
-      auto router = m_Parent->GetRouter();
-      return router->pathContext().GetByUpstream(router->pubkey(), m_CurrentPath);
     }
   }  // namespace exit
 }  // namespace llarp

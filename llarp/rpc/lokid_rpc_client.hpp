@@ -45,7 +45,7 @@ namespace llarp
       Command(std::string_view cmd);
 
       void
-      UpdateServiceNodeList();
+      UpdateServiceNodeList(std::string topblock);
 
       template <typename HandlerFunc_t, typename Args_t>
       void
@@ -68,9 +68,12 @@ namespace llarp
       void
       HandleGetPeerStats(oxenmq::Message& msg);
 
+      // Handles notification of a new block
+      void
+      HandleNewBlock(oxenmq::Message& msg);
+
       std::optional<oxenmq::ConnectionID> m_Connection;
       LMQ_ptr m_lokiMQ;
-      std::string m_CurrentBlockHash;
 
       AbstractRouter* const m_Router;
     };

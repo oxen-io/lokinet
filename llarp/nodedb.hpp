@@ -50,6 +50,9 @@ namespace llarp
    public:
     explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller);
 
+    /// in memory nodedb
+    NodeDB();
+
     /// load all entries from disk syncrhonously
     void
     LoadFromDisk();
