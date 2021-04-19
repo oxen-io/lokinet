@@ -857,8 +857,10 @@ namespace llarp::quic
     if (!was_closing && stream.close_callback)
     {
       LogDebug("Invoke stream close callback");
-      stream.close_callback(
-          stream, app_code == 0 ? std::nullopt : std::optional<uint64_t>{app_code});
+      std::optional<uint64_t> code;
+      if (app_code != 0)
+        code = app_code;
+      stream.close_callback(stream, code);
     }
 
     LogDebug("Erasing stream ", id, " from ", (void*)it->second.get());
