@@ -39,7 +39,7 @@ namespace llarp
 
       // new block handler
       m_lokiMQ->add_category("notify", oxenmq::Access{oxenmq::AuthLevel::none})
-          .add_request_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
+          .add_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
 
       // TODO: proper auth here
       auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
