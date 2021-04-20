@@ -259,8 +259,8 @@ namespace llarp::quic
     {
       return std::static_pointer_cast<T>(
           std::holds_alternative<std::shared_ptr<void>>(user_data)
-              ? std::get<std::shared_ptr<void>>(user_data)
-              : std::get<std::weak_ptr<void>>(user_data).lock());
+              ? var::get<std::shared_ptr<void>>(user_data)
+              : var::get<std::weak_ptr<void>>(user_data).lock());
     }
 
     // Returns a reference to the connection that owns this stream
