@@ -113,15 +113,21 @@ namespace llarp
             "routers",
             [](BootstrapConfig& self) {
               std::vector<std::string> args;
-              for (const auto& arg : self.routers)
-                args.emplace_back(arg.string());
+              for (const auto& rc : self.routers)
+              {
+                args.emplace_back(rc.pubkey.ToString());
+              }
               return args;
             },
             [](BootstrapConfig& self, std::vector<std::string> args) {
               self.routers.clear();
               for (const auto& arg : args)
               {
-                self.routers.emplace_back(arg);
+                RouterContact rc{};
+                if (rc.Read(arg))
+                  self.routers.emplace(std::move(rc));
+                else
+                  throw std::invalid_argument{"cannot read rc from " + arg};
               }
             });
 
