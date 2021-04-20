@@ -52,7 +52,7 @@ namespace llarp::quic
       return nullptr;
     if (auto* wptr = std::get_if<alias_conn_ptr>(&it->second))
       return wptr->lock();
-    return std::get<primary_conn_ptr>(it->second);
+    return var::get<primary_conn_ptr>(it->second);
   }
 
   size_t

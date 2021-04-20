@@ -596,7 +596,7 @@ namespace llarp
 
         if (auto maybe = ObtainAddrForIP(ip))
         {
-          std::visit([&msg](auto&& result) { msg.AddAReply(result.ToString()); }, *maybe);
+          var::visit([&msg](auto&& result) { msg.AddAReply(result.ToString()); }, *maybe);
           reply(msg);
           return true;
         }
@@ -1111,7 +1111,7 @@ namespace llarp
       AlignedBuffer<32> ident{};
       bool snode = false;
 
-      std::visit([&ident](auto&& val) { ident = val.data(); }, addr);
+      var::visit([&ident](auto&& val) { ident = val.data(); }, addr);
 
       if (std::get_if<RouterID>(&addr))
       {
