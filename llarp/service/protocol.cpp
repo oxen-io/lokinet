@@ -371,13 +371,13 @@ namespace llarp
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);
                 handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
-                handler->SendAuthResult(path, from, msg->tag, result);
                 LogInfo("auth okay for T=", msg->tag, " from ", msg->sender.Addr());
                 ProtocolMessage::ProcessAsync(path, from, msg);
               }
               else
               {
                 LogWarn("auth not okay for T=", msg->tag, ": ", result.reason);
+                handler->SendAuthResult(path, from, msg->tag, result);
               }
               handler->Pump(time_now_ms());
             });

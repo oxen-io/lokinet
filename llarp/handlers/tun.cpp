@@ -919,7 +919,6 @@ namespace llarp
               1s);
           return;
         }
-        bool rewriteAddrs = true;
         std::variant<service::Address, RouterID> to;
         service::ProtocolType type;
         if (m_SNodes.at(itr->second))
@@ -936,7 +935,7 @@ namespace llarp
 
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
-        if (rewriteAddrs)
+        if (type != service::ProtocolType::Exit)
         {
           if (pkt.IsV4())
             pkt.UpdateIPv4Address({0}, {0});
@@ -989,6 +988,8 @@ namespace llarp
         quic->receive_packet(tag, buf);
         return true;
       }
+      if (t == service::ProtocolType::Control or t == service::ProtocolType::Auth)
+        return true;
 
       if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
           && t != service::ProtocolType::Exit)
@@ -1068,8 +1069,7 @@ namespace llarp
         src = ObtainIPForAddr(addr);
         dst = m_OurIP;
       }
-      HandleWriteIPPacket(buf, src, dst, seqno);
-      return true;
+      return HandleWriteIPPacket(buf, src, dst, seqno);
     }
 
     bool
