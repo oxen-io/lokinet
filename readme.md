@@ -10,6 +10,8 @@ And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
 You can view documentation on how to get started [here](https://docs.oxen.io/products-built-on-oxen/lokinet) .
 
+A simple demo application that is lokinet "aware" can be found [here](https://github.com/majestrate/lokinet-aware-demos)
+
 [![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/loki-network/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/loki-network)
 
 ## Building
