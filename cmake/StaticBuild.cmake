@@ -273,7 +273,6 @@ add_static_target(expat expat_external libexpat.a)
 
 build_external(unbound
   DEPENDS openssl_external expat_external
-  PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-no-apple-dontfrag.patch
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
