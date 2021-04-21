@@ -410,7 +410,7 @@ set(libcurl_link_libs zlib)
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   list(APPEND libcurl_link_libs crypt32)
 elseif(APPLE)
-  list(APPEND libcurl_link_libs "-framework Security")
+  list(APPEND libcurl_link_libs "-framework Security -framework CoreFoundation")
 endif()
 set_target_properties(CURL::libcurl PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libcurl_link_libs}"
