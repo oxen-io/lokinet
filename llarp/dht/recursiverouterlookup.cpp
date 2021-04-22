@@ -1,11 +1,11 @@
-#include <dht/recursiverouterlookup.hpp>
+#include "recursiverouterlookup.hpp"
 
-#include <dht/context.hpp>
-#include <dht/messages/findrouter.hpp>
-#include <dht/messages/gotrouter.hpp>
+#include "context.hpp"
+#include <llarp/dht/messages/findrouter.hpp>
+#include <llarp/dht/messages/gotrouter.hpp>
 
-#include <router/abstractrouter.hpp>
-#include <router/i_rc_lookup_handler.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
 
 #include <utility>
 

@@ -1,7 +1,6 @@
-#ifndef LLARP_DNS_SERIALIZE_HPP
-#define LLARP_DNS_SERIALIZE_HPP
+#pragma once
 
-#include <util/buffer.hpp>
+#include <llarp/util/buffer.hpp>
 
 #include <vector>
 
@@ -31,5 +30,3 @@ namespace llarp
 
   }  // namespace dns
 }  // namespace llarp
-
-#endif

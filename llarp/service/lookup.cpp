@@ -1,8 +1,8 @@
-#include <service/lookup.hpp>
+#include "lookup.hpp"
 
-#include <path/path.hpp>
-#include <util/time.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/router/abstractrouter.hpp>
 #include <utility>
 
 namespace llarp
@@ -11,10 +11,10 @@ namespace llarp
 
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder* p, uint64_t tx, std::string n)
-        : m_parent(p), txid(tx), name(std::move(n))
+    IServiceLookup::IServiceLookup(
+        ILookupHolder* p, uint64_t tx, std::string n, llarp_time_t timeout)
+        : m_parent(p), txid(tx), name(std::move(n)), m_created{time_now_ms()}, m_timeout{timeout}
     {
-      m_created = time_now_ms();
       p->PutLookup(this, tx);
     }
 

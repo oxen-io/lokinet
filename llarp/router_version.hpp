@@ -1,10 +1,9 @@
-#ifndef LLARP_ROUTER_VERSION_HPP
-#define LLARP_ROUTER_VERSION_HPP
+#pragma once
 
 #include <array>
-#include <util/bencode.hpp>
-#include <constants/version.hpp>
-#include <constants/proto.hpp>
+#include "util/bencode.hpp"
+#include "constants/version.hpp"
+#include "constants/proto.hpp"
 
 namespace llarp
 {
@@ -71,5 +70,3 @@ namespace llarp
   static const RouterVersion emptyRouterVersion({0, 0, 0}, INVALID_VERSION);
 
 }  // namespace llarp
-
-#endif

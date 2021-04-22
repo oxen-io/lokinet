@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include <ev/vpn.hpp>
-#include <vpn/common.hpp>
+#include <llarp/ev/vpn.hpp>
+#include "common.hpp"
 #include <llarp.hpp>
 
 namespace llarp::vpn

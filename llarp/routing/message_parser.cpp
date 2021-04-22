@@ -1,14 +1,14 @@
-#include <routing/message_parser.hpp>
+#include "message_parser.hpp"
 
-#include <exit/exit_messages.hpp>
-#include <messages/discard.hpp>
-#include <path/path_types.hpp>
-#include <routing/dht_message.hpp>
-#include <routing/path_confirm_message.hpp>
-#include <routing/path_latency_message.hpp>
-#include <routing/path_transfer_message.hpp>
-#include <routing/transfer_traffic_message.hpp>
-#include <util/mem.hpp>
+#include <llarp/exit/exit_messages.hpp>
+#include <llarp/messages/discard.hpp>
+#include <llarp/path/path_types.hpp>
+#include "dht_message.hpp"
+#include "path_confirm_message.hpp"
+#include "path_latency_message.hpp"
+#include "path_transfer_message.hpp"
+#include "transfer_traffic_message.hpp"
+#include <llarp/util/mem.hpp>
 
 namespace llarp
 {
@@ -55,7 +55,7 @@ namespace llarp
         if (strbuf.sz != 1)
           return false;
         ourKey = *strbuf.cur;
-        LogDebug("routing message '", key, "'");
+        LogDebug("routing message '", std::string{ourKey, 1}, "'");
         switch (ourKey)
         {
           case 'D':
@@ -123,6 +123,7 @@ namespace llarp
       if (bencode_read_dict(*this, &copy))
       {
         msg->from = from;
+        LogDebug("handle routing message ", msg->S, " from ", from);
         result = msg->HandleMessage(h, r);
         if (!result)
         {

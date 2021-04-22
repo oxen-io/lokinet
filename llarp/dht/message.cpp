@@ -1,14 +1,14 @@
-#include <dht/context.hpp>
+#include "context.hpp"
 
 #include <memory>
-#include <util/bencode.hpp>
-#include <dht/messages/findintro.hpp>
-#include <dht/messages/findrouter.hpp>
-#include <dht/messages/gotintro.hpp>
-#include <dht/messages/gotrouter.hpp>
-#include <dht/messages/pubintro.hpp>
-#include <dht/messages/findname.hpp>
-#include <dht/messages/gotname.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/dht/messages/findintro.hpp>
+#include <llarp/dht/messages/findrouter.hpp>
+#include <llarp/dht/messages/gotintro.hpp>
+#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/dht/messages/pubintro.hpp>
+#include <llarp/dht/messages/findname.hpp>
+#include <llarp/dht/messages/gotname.hpp>
 
 namespace llarp
 {

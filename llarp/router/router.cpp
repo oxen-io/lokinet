@@ -1,31 +1,31 @@
 #include <memory>
-#include <router/router.hpp>
+#include "router.hpp"
 
-#include <config/config.hpp>
-#include <constants/proto.hpp>
-#include <constants/files.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <crypto/crypto.hpp>
-#include <dht/context.hpp>
-#include <dht/node.hpp>
-#include <iwp/iwp.hpp>
-#include <link/server.hpp>
-#include <messages/link_message.hpp>
-#include <net/net.hpp>
-#include <net/route.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/constants/proto.hpp>
+#include <llarp/constants/files.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/dht/context.hpp>
+#include <llarp/dht/node.hpp>
+#include <llarp/iwp/iwp.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/messages/link_message.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/net/route.hpp>
 #include <stdexcept>
-#include <util/buffer.hpp>
-#include <util/logging/file_logger.hpp>
-#include <util/logging/json_logger.hpp>
-#include <util/logging/logger_syslog.hpp>
-#include <util/logging/logger.hpp>
-#include <util/meta/memfn.hpp>
-#include <util/str.hpp>
-#include <ev/ev.hpp>
-#include <tooling/peer_stats_event.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/logging/file_logger.hpp>
+#include <llarp/util/logging/json_logger.hpp>
+#include <llarp/util/logging/logger_syslog.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/meta/memfn.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/tooling/peer_stats_event.hpp>
 
-#include "tooling/router_event.hpp"
-#include "util/status.hpp"
+#include <llarp/tooling/router_event.hpp>
+#include <llarp/util/status.hpp>
 
 #include <fstream>
 #include <cstdlib>
@@ -42,7 +42,7 @@
 
 #include <oxenmq/oxenmq.h>
 
-static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
+static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
@@ -193,7 +193,7 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler)
+  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
   {
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
@@ -284,7 +284,7 @@ namespace llarp
   }
 
   bool
-  Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
     m_Config = std::move(c);
     auto& conf = *m_Config;
@@ -314,7 +314,7 @@ namespace llarp
     }
 
     // fetch keys
-    if (not m_keyManager->initialize(conf, true, isRouter))
+    if (not m_keyManager->initialize(conf, true, isSNode))
       throw std::runtime_error("KeyManager failed to initialize");
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");
@@ -483,25 +483,16 @@ namespace llarp
       const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
         throw std::runtime_error("cannot use strict-connect option as service node");
-
-      // try as a RouterID and as a PubKey, convert to RouterID if needed
-      llarp::RouterID snode;
-      llarp::PubKey pk;
-      if (pk.FromString(val))
-        strictConnectPubkeys.emplace(pk);
-      else if (snode.FromString(val))
-        strictConnectPubkeys.insert(snode);
-      else
-        throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
+      strictConnectPubkeys.insert(val.begin(), val.end());
     }
 
     std::vector<fs::path> configRouters = conf.connect.routers;
     configRouters.insert(
-        configRouters.end(), conf.bootstrap.routers.begin(), conf.bootstrap.routers.end());
+        configRouters.end(), conf.bootstrap.files.begin(), conf.bootstrap.files.end());
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    if (configRouters.empty())
+    if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       // TODO: use constant
       fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
@@ -549,6 +540,11 @@ namespace llarp
       }
     }
 
+    for (const auto& rc : conf.bootstrap.routers)
+    {
+      b_list.emplace(rc);
+    }
+
     for (auto& rc : b_list)
     {
       if (not rc.Verify(Now()))
@@ -559,7 +555,17 @@ namespace llarp
       bootstrapRCList.emplace(std::move(rc));
     }
 
-    LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
+    if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
+    {
+      throw std::runtime_error{"we have no bootstrap nodes"};
+    }
+
+    if (conf.bootstrap.seednode)
+    {
+      LogInfo("we are a seed node");
+    }
+    else
+      LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
@@ -797,7 +803,7 @@ namespace llarp
     });
 
     // find all deregistered relays
-    std::unordered_set<PubKey, PubKey::Hash> closePeers;
+    std::unordered_set<PubKey> closePeers;
 
     _linkManager.ForEachPeer([&](auto session) {
       if (whitelistRouters and not gotWhitelist)
@@ -853,7 +859,7 @@ namespace llarp
     if (connected < connectToNum)
     {
       size_t dlt = connectToNum - connected;
-      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      LogDebug("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt);
     }
 
@@ -861,7 +867,7 @@ namespace llarp
     _exitContext.Tick(now);
 
     // save profiles
-    if (routerProfiling().ShouldSave(now))
+    if (routerProfiling().ShouldSave(now) and m_Config->network.m_saveProfiles)
     {
       QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
@@ -929,6 +935,17 @@ namespace llarp
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionTimeouts++; });
     }
     _outboundSessionMaker.OnConnectTimeout(session);
+  }
+
+  void
+  Router::ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify)
+  {
+    if (auto maybe = modify(rc()))
+    {
+      _rc = *maybe;
+      UpdateOurRC();
+      _rcGossiper.GossipRC(rc());
+    }
   }
 
   bool
@@ -1248,7 +1265,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    _exitContext.AddExitEndpoint("default-connectivity", m_Config->network, m_Config->dns);
+    _exitContext.AddExitEndpoint("default", m_Config->network, m_Config->dns);
     return true;
   }
 
@@ -1275,7 +1292,8 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    m_lmq->job(std::move(func));
+    _loop->call_soon(func);
+    // m_lmq->job(std::move(func));
   }
 
   void

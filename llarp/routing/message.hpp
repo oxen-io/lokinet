@@ -1,10 +1,9 @@
-#ifndef LLARP_ROUTING_MESSAGE_HPP
-#define LLARP_ROUTING_MESSAGE_HPP
+#pragma once
 
-#include <constants/proto.hpp>
-#include <path/path_types.hpp>
-#include <util/bencode.hpp>
-#include <util/buffer.hpp>
+#include <llarp/constants/proto.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/buffer.hpp>
 
 namespace llarp
 {
@@ -34,9 +33,13 @@ namespace llarp
 
       virtual void
       Clear() = 0;
+
+      bool
+      operator<(const IMessage& other) const
+      {
+        return other.S < S;
+      }
     };
 
   }  // namespace routing
 }  // namespace llarp
-
-#endif

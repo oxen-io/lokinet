@@ -1,5 +1,5 @@
 #include "endpoint_rpc.hpp"
-#include <service/endpoint.hpp>
+#include <llarp/service/endpoint.hpp>
 
 namespace llarp::rpc
 {
@@ -65,7 +65,7 @@ namespace llarp::rpc
       return;
     }
 
-    if (msg->proto != llarp::service::eProtocolAuth)
+    if (msg->proto != llarp::service::ProtocolType::Auth)
     {
       // not an auth message, reject
       reply(service::AuthResult{service::AuthResultCode::eAuthRejected, "protocol error"});

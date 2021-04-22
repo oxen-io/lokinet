@@ -1,5 +1,5 @@
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
+#include "buffer.hpp"
+#include "endian.hpp"
 
 #include <cstdarg>
 #include <cstdio>
@@ -113,6 +113,15 @@ llarp_buffer_t::read_until(char c_delim, byte_t* result, size_t resultsize)
     return read;
 
   return 0;
+}
+
+std::vector<byte_t>
+llarp_buffer_t::copy() const
+{
+  std::vector<byte_t> copy;
+  copy.resize(sz);
+  std::copy_n(base, sz, copy.data());
+  return copy;
 }
 
 bool

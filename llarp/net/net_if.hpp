@@ -1,5 +1,4 @@
-#ifndef LLARP_NET_NET_IF_HPP
-#define LLARP_NET_NET_IF_HPP
+#pragma once
 #ifndef _WIN32
 // this file is a shim include for #include <net/if.h>
 #if defined(__linux__)
@@ -21,5 +20,3 @@ namespace llarp::net
   std::string
   LoopbackInterfaceName();
 }  // namespace llarp::net
-
-#endif

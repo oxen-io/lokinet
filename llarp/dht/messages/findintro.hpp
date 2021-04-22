@@ -1,10 +1,9 @@
-#ifndef LLARP_DHT_MESSAGES_FIND_INTRO_HPP
-#define LLARP_DHT_MESSAGES_FIND_INTRO_HPP
+#pragma once
 
-#include <dht/message.hpp>
-#include <routing/message.hpp>
-#include <service/address.hpp>
-#include <service/tag.hpp>
+#include <llarp/dht/message.hpp>
+#include <llarp/routing/message.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/tag.hpp>
 
 namespace llarp
 {
@@ -47,4 +46,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-#endif

@@ -1,13 +1,12 @@
-#ifndef LLARP_BITS_HPP
-#define LLARP_BITS_HPP
+#pragma once
 
 #include <bitset>
 #include <cstddef>
 #include <numeric>
 #include <type_traits>
 #include <limits>
-#include <net/uint128.hpp>
-#include <net/net_int.hpp>
+#include <llarp/net/uint128.hpp>
+#include <llarp/net/net_int.hpp>
 
 namespace llarp
 {
@@ -72,5 +71,3 @@ namespace llarp
     }
   }  // namespace bits
 }  // namespace llarp
-
-#endif

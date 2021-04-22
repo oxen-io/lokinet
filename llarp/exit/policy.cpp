@@ -1,4 +1,4 @@
-#include <exit/policy.hpp>
+#include "policy.hpp"
 
 namespace llarp
 {

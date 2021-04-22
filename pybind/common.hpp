@@ -5,7 +5,7 @@
 
 #include <unordered_map>
 
-#include <util/fs.hpp>
+#include <llarp/util/fs.hpp>
 
 namespace py = pybind11;
 

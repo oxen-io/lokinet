@@ -1,9 +1,8 @@
-#ifndef LLARP_SERVICE_OUTBOUND_CONTEXT_HPP
-#define LLARP_SERVICE_OUTBOUND_CONTEXT_HPP
+#pragma once
 
-#include <path/pathbuilder.hpp>
-#include <service/sendcontext.hpp>
-#include <util/status.hpp>
+#include <llarp/path/pathbuilder.hpp>
+#include "sendcontext.hpp"
+#include <llarp/util/status.hpp>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -71,9 +70,12 @@ namespace llarp
       bool
       ReadyToSend() const;
 
+      void
+      SetReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+
       /// for exits
       void
-      SendPacketToRemote(const llarp_buffer_t&) override;
+      SendPacketToRemote(const llarp_buffer_t&, ProtocolType t) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -104,7 +106,7 @@ namespace llarp
       HandlePathBuildTimeout(path::Path_ptr path) override;
 
       void
-      HandlePathBuildFailed(path::Path_ptr path) override;
+      HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
 
       std::optional<std::vector<RouterContact>>
       GetHopsForBuild() override;
@@ -115,11 +117,17 @@ namespace llarp
       std::string
       Name() const override;
 
+      void
+      KeepAlive();
+
       const IntroSet&
       GetCurrentIntroSet() const
       {
         return currentIntroSet;
       }
+
+      llarp_time_t
+      RTT() const;
 
      private:
       /// swap remoteIntro with next intro
@@ -130,20 +138,22 @@ namespace llarp
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
       bool
-      OnIntroSetUpdate(const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
+      OnIntroSetUpdate(
+          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
 
       const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
-      std::unordered_map<Introduction, llarp_time_t, Introduction::Hash> m_BadIntros;
+      std::unordered_map<Introduction, llarp_time_t> m_BadIntros;
       llarp_time_t lastShift = 0s;
       uint16_t m_LookupFails = 0;
       uint16_t m_BuildFails = 0;
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
+      bool sentIntro = false;
+      std::function<void(OutboundContext*)> m_ReadyHook;
     };
   }  // namespace service
 
 }  // namespace llarp
-#endif

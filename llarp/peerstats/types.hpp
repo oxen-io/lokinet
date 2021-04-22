@@ -3,9 +3,9 @@
 #include <chrono>
 #include <unordered_map>
 
-#include <router_id.hpp>
-#include <util/status.hpp>
-#include <util/time.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/time.hpp>
 
 /// Types stored in our peerstats database are declared here
 

@@ -1,6 +1,5 @@
-#ifndef LLARP_GOSSIPER_HPP
-#define LLARP_GOSSIPER_HPP
-#include <router_contact.hpp>
+#pragma once
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -27,5 +26,3 @@ namespace llarp
     IsOurRC(const RouterContact& rc) const = 0;
   };
 }  // namespace llarp
-
-#endif

@@ -1,10 +1,11 @@
 #pragma once
 
-#include <util/fs.hpp>
+#include <llarp/util/fs.hpp>
 
 #include <stdlib.h>
 
 #ifndef _WIN32
+#include <unistd.h>
 #include <pwd.h>
 #endif
 
@@ -21,23 +22,18 @@ namespace llarp
   GetDefaultDataDir()
   {
 #ifdef _WIN32
-    const fs::path homedir = getenv("APPDATA");
-    return homedir / "lokinet";
+    return "C:/programdata/lokinet";
 #else
-    fs::path homedir;
+    fs::path datadir{"/var/lib/lokinet"};
 
-    auto pw = getpwuid(getuid());
-    if ((pw and pw->pw_uid) and pw->pw_dir)
+    if (auto uid = ::geteuid())
     {
-      homedir = pw->pw_dir;
+      if (auto* pw = getpwuid(uid))
+      {
+        datadir = fs::path{pw->pw_dir} / ".lokinet";
+      }
     }
-    else
-    {
-      // no home dir specified yea idk
-      homedir = "/var/lib/lokinet";
-      return homedir;
-    }
-    return homedir / ".lokinet";
+    return datadir;
 #endif
   }
 
@@ -51,6 +47,12 @@ namespace llarp
   GetDefaultConfigPath()
   {
     return GetDefaultDataDir() / GetDefaultConfigFilename();
+  }
+
+  inline fs::path
+  GetDefaultBootstrap()
+  {
+    return GetDefaultDataDir() / "bootstrap.signed";
   }
 
 }  // namespace llarp

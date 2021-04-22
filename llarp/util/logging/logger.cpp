@@ -1,16 +1,16 @@
-#include <util/logging/logger.hpp>
-#include <util/logging/ostream_logger.hpp>
-#include <util/logging/logger_syslog.hpp>
-#include <util/logging/file_logger.hpp>
-#include <util/logging/json_logger.hpp>
+#include "logger.hpp"
+#include "ostream_logger.hpp"
+#include "logger_syslog.hpp"
+#include "file_logger.hpp"
+#include "json_logger.hpp"
 #if defined(_WIN32)
-#include <util/logging/win32_logger.hpp>
+#include "win32_logger.hpp"
 #endif
 #if defined(ANDROID)
-#include <util/logging/android_logger.hpp>
+#include "android_logger.hpp"
 #endif
 
-#include <util/str.hpp>
+#include <llarp/util/str.hpp>
 
 #include <stdexcept>
 
@@ -44,8 +44,7 @@ namespace llarp
     return LogType::Unknown;
   }
 
-  LogContext::LogContext()
-      : logStream(std::make_unique<Stream_t>(_LOGSTREAM_INIT)), started(llarp::time_now_ms())
+  LogContext::LogContext() : logStream{std::make_unique<Stream_t>(_LOGSTREAM_INIT)}
   {}
 
   LogContext&
@@ -71,9 +70,7 @@ namespace llarp
   {}
 
   log_timestamp::log_timestamp(const char* fmt)
-      : format(fmt)
-      , now(llarp::time_now_ms())
-      , delta(llarp::time_now_ms() - LogContext::Instance().started)
+      : format{fmt}, now{llarp::time_now_ms()}, delta{llarp::uptime()}
   {}
 
   void

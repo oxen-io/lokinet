@@ -1,6 +1,6 @@
-#include <router_contact.hpp>
-#include <dht/key.hpp>
-#include "common.hpp"
+#include <llarp/router_contact.hpp>
+#include <llarp/dht/key.hpp>
+#include <common.hpp>
 
 namespace llarp
 {

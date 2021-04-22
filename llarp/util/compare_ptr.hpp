@@ -1,5 +1,4 @@
-#ifndef LLARP_UTIL_COMPARE_PTR_HPP
-#define LLARP_UTIL_COMPARE_PTR_HPP
+#pragma once
 #include <functional>
 
 namespace llarp
@@ -18,5 +17,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

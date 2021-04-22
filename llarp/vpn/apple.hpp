@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ev/vpn.hpp>
-#include <vpn/common.hpp>
+#include <llarp/ev/vpn.hpp>
+#include "common.hpp"
 
 #include <sys/kern_control.h>
 #include <sys/sys_domain.h>

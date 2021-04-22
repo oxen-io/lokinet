@@ -1,5 +1,4 @@
-#ifndef LLARP_ROUTING_HANDLER_HPP
-#define LLARP_ROUTING_HANDLER_HPP
+#pragma once
 
 #include <memory>
 
@@ -77,5 +76,3 @@ namespace llarp
 
   }  // namespace routing
 }  // namespace llarp
-
-#endif

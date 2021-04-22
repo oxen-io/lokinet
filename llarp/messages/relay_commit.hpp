@@ -1,11 +1,10 @@
-#ifndef LLARP_RELAY_COMMIT_HPP
-#define LLARP_RELAY_COMMIT_HPP
+#pragma once
 
-#include <crypto/encrypted_frame.hpp>
-#include <crypto/types.hpp>
-#include <messages/link_message.hpp>
-#include <path/path_types.hpp>
-#include <pow.hpp>
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/crypto/types.hpp>
+#include "link_message.hpp"
+#include <llarp/path/path_types.hpp>
+#include <llarp/pow.hpp>
 
 #include <array>
 #include <memory>
@@ -86,5 +85,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

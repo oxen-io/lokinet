@@ -18,7 +18,6 @@ def clientNodeName(id): return 'client-node-%03d' % id
 
 def main():
     ap = AP()
-    ap.add_argument('--lokid', type=str, required=True)
     ap.add_argument('--valgrind', type=bool, default=False)
     ap.add_argument('--dir', type=str, default='testnet_tmp')
     ap.add_argument('--svc', type=int, default=20,
@@ -32,6 +31,7 @@ def main():
     ap.add_argument('--ip', type=str, default=None)
     ap.add_argument('--ifname', type=str, default='lo')
     ap.add_argument('--netid', type=str, default=None)
+    ap.add_argument('--loglevel', type=str, default='info')
     args = ap.parse_args()
 
     if args.valgrind:
@@ -43,6 +43,7 @@ def main():
     for nodeid in range(args.svc):
         config = CP()
         config['router'] = {
+            'data-dir': '.',
             'net-threads': '1',
             'worker-threads': '4',
             'nickname': svcNodeName(nodeid),
@@ -50,11 +51,11 @@ def main():
         }
         if args.netid:
             config['router']['netid'] = args.netid
-            
+
         if args.ip:
             config['router']['public-ip'] = args.ip
             config['router']['public-port'] = str(args.baseport + nodeid)
-            
+
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
         }
@@ -68,10 +69,7 @@ def main():
             'enabled': 'false'
         }
         config['lokid'] = {
-            'enabled': 'true',
-            'username': 'svc-%03d' % nodeid,
-            'password': 'lokinet',
-            'jsonrpc': '127.0.0.1:5000'
+            'enabled': 'false',
         }
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):
@@ -80,20 +78,26 @@ def main():
         with open(fp, 'w') as f:
             config.write(f)
             for n in [0]:
-                if nodeid:
-                    f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(n), 'rc.signed')))
+                if nodeid is not 0:
+                    f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(n), 'self.signed')))
+                else:
+                    f.write("[bootstrap]\nseed-node=true\n")
 
-        
     for nodeid in range(args.clients):
         config = CP()
 
         config['router'] = {
+            'data-dir': '.',
             'net-threads': '1',
             'worker-threads': '2',
             'nickname': clientNodeName(nodeid)
         }
         if args.netid:
             config['router']['netid'] = args.netid
+
+        config["logging"] = {
+            "level": args.loglevel
+        }
 
         config['netdb'] = {
             'dir': 'netdb'
@@ -107,34 +111,18 @@ def main():
         d = os.path.join(args.dir, clientNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)
-        hiddenservice = os.path.join(d, 'service.ini')
-        config['services'] = {
-            'testnet': hiddenservice
-        }
         fp = os.path.join(d, 'client.ini')
         with open(fp, 'w') as f:
             config.write(f)
             for n in [0]:
                 otherID = (n + nodeid) % args.svc
-                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
-        with open(hiddenservice, 'w') as f:
-            f.write('''[test-service]
-tag=test
-prefetch-tag=test
-type=null
-''')
+                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'self.signed')))
 
     with open(args.out, 'w') as f:
-        f.write('''[program:mock-lokid]
-command = {} {}
-autorestart = true
-redirect_stderr=true
-stdout_logfile={}/lokid.txt
-stdout_logfile_maxbytes=0
-'''.format(args.lokid, args.svc, args.dir))
+        basedir = os.path.join(args.dir, 'svc-node-%(process_num)03d')
         f.write('''[program:svc-node]
 directory = {}
-command = {} daemon.ini
+command = {} -r {}/daemon.ini
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
@@ -142,10 +130,11 @@ stdout_logfile={}/svc-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), exe, args.dir, args.svc))
+'''.format(basedir, exe, basedir, args.dir, args.svc))
+        basedir = os.path.join(args.dir, 'client-node-%(process_num)03d')
         f.write('''[program:Client-node]
 directory = {}
-command = bash -c "sleep 5 && {} client.ini"
+command = bash -c "sleep 5 && {} {}/client.ini"
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
@@ -153,7 +142,7 @@ stdout_logfile={}/client-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = client-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'), exe, args.dir, args.clients))
+'''.format(basedir, exe, basedir, args.dir, args.clients))
         f.write('[supervisord]\ndirectory=.\n')
 
 

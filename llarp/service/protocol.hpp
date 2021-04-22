@@ -1,18 +1,17 @@
-#ifndef LLARP_SERVICE_PROTOCOL_HPP
-#define LLARP_SERVICE_PROTOCOL_HPP
+#pragma once
 
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <dht/message.hpp>
-#include <routing/message.hpp>
-#include <service/protocol_type.hpp>
-#include <service/identity.hpp>
-#include <service/info.hpp>
-#include <service/intro.hpp>
-#include <service/handler.hpp>
-#include <util/bencode.hpp>
-#include <util/time.hpp>
-#include <path/pathset.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/dht/message.hpp>
+#include <llarp/routing/message.hpp>
+#include "protocol_type.hpp"
+#include "identity.hpp"
+#include "info.hpp"
+#include "intro.hpp"
+#include "handler.hpp"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/path/pathset.hpp>
 
 #include <vector>
 
@@ -38,7 +37,7 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto = eProtocolTrafficV4;
+      ProtocolType proto = ProtocolType::TrafficV4;
       llarp_time_t queued = 0s;
       std::vector<byte_t> payload;
       Introduction introReply;
@@ -67,7 +66,7 @@ namespace llarp
       bool
       operator<(const ProtocolMessage& other) const
       {
-        return seqno < other.seqno;
+        return other.seqno < seqno;
       }
     };
 
@@ -167,5 +166,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

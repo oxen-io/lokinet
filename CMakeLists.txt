@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.8.4
+    VERSION 0.9.0
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -38,7 +38,7 @@ option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
-option(BUILD_SHARED_LIBS "build lokinet libraries as shared libraries instead of static" OFF)
+option(BUILD_LIBLOKINET "build liblokinet.so" ON)
 option(SHADOW "use shadow testing framework. linux only" OFF)
 option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
 option(WITH_JEMALLOC "use jemalloc as allocator" OFF)
@@ -59,6 +59,7 @@ if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
   message(FATAL_ERROR "Option BUILD_STATIC_DEPS requires STATIC_LINK to be enabled as well")
 endif()
 if(BUILD_STATIC_DEPS)
+  set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
   include(StaticBuild)
 endif()
 
@@ -253,7 +254,7 @@ endif()
 if(TESTNET)
   add_definitions(-DTESTNET=1)
   # 5 times slower than realtime
-  add_definitions(-DTESTNET_SPEED=5)
+  # add_definitions(-DTESTNET_SPEED=5)
 endif()
 
 if(SHADOW)
@@ -293,42 +294,7 @@ if(WITH_SYSTEMD AND (NOT ANDROID))
   target_compile_definitions(base_libs INTERFACE WITH_SYSTEMD)
 endif()
 
-option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
-if(SUBMODULE_CHECK)
-  find_package(Git)
-  if(GIT_FOUND)
-    function(check_submodule relative_path)
-      execute_process(COMMAND git rev-parse "HEAD" WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${relative_path} OUTPUT_VARIABLE localHead)
-      execute_process(COMMAND git rev-parse "HEAD:${relative_path}" WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE checkedHead)
-      string(COMPARE EQUAL "${localHead}" "${checkedHead}" upToDate)
-      if (upToDate)
-        message(STATUS "Submodule '${relative_path}' is up-to-date")
-      else()
-        message(FATAL_ERROR "Submodule '${relative_path}' is not up-to-date. Please update with\ngit submodule update --init --recursive\nor run cmake with -DSUBMODULE_CHECK=OFF")
-      endif()
-    endfunction ()
-
-    message(STATUS "Checking submodules")
-    check_submodule(external/nlohmann)
-    check_submodule(external/cxxopts)
-    check_submodule(external/ghc-filesystem)
-    check_submodule(external/date)
-    check_submodule(external/pybind11)
-    check_submodule(external/sqlite_orm)
-    check_submodule(external/oxen-mq)
-    check_submodule(external/uvw)
-  endif()
-endif()
-
-if(WITH_HIVE)
-  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
-endif()
-
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
-add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
-add_subdirectory(external/date EXCLUDE_FROM_ALL)
-
+add_subdirectory(external)
 include_directories(SYSTEM external/sqlite_orm/include)
 
 if(ANDROID)

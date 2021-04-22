@@ -1,10 +1,10 @@
-#include <config/key_manager.hpp>
+#include "key_manager.hpp"
 
 #include <system_error>
-#include <util/logging/logger.hpp>
-#include "config/config.hpp"
-#include "crypto/crypto.hpp"
-#include "crypto/types.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include "config.hpp"
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/types.hpp>
 
 namespace llarp
 {
@@ -12,10 +12,18 @@ namespace llarp
   {}
 
   bool
-  KeyManager::initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter)
+  KeyManager::initialize(const llarp::Config& config, bool genIfAbsent, bool isSNode)
   {
     if (m_initialized)
       return false;
+
+    if (not isSNode)
+    {
+      CryptoManager::instance()->identity_keygen(identityKey);
+      CryptoManager::instance()->encryption_keygen(encryptionKey);
+      CryptoManager::instance()->encryption_keygen(transportKey);
+      return true;
+    }
 
     const fs::path root = config.router.m_dataDir;
 
@@ -51,7 +59,7 @@ namespace llarp
 
     // we need to back up keys if our self.signed doesn't appear to have a
     // valid signature
-    m_needBackup = (isRouter and not rc.VerifySignature());
+    m_needBackup = (isSNode and not rc.VerifySignature());
 
     // if our RC file can't be verified, assume it is out of date (e.g. uses
     // older encryption) and needs to be regenerated. before doing so, backup

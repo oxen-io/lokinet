@@ -1,9 +1,9 @@
-#include <service/endpoint_util.hpp>
+#include "endpoint_util.hpp"
 
-#include <exit/session.hpp>
-#include <service/outbound_context.hpp>
-#include <service/lookup.hpp>
-#include <util/logging/logger.hpp>
+#include <llarp/exit/session.hpp>
+#include "outbound_context.hpp"
+#include "lookup.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 namespace llarp
 {
@@ -15,19 +15,19 @@ namespace llarp
       auto itr = sessions.begin();
       while (itr != sessions.end())
       {
-        if (itr->second.first->ShouldRemove() && itr->second.first->IsStopped())
+        if (itr->second->ShouldRemove() && itr->second->IsStopped())
         {
           itr = sessions.erase(itr);
           continue;
         }
         // expunge next tick
-        if (itr->second.first->IsExpired(now))
+        if (itr->second->IsExpired(now))
         {
-          itr->second.first->Stop();
+          itr->second->Stop();
         }
         else
         {
-          itr->second.first->Tick(now);
+          itr->second->Tick(now);
         }
 
         ++itr;
@@ -95,7 +95,7 @@ namespace llarp
         itr->second->Tick(now);
         if (itr->second->Pump(now))
         {
-          LogInfo("marking session as dead T=", itr->first);
+          LogInfo("marking session as dead T=", itr->second->currentConvoTag);
           itr->second->Stop();
           sessions.erase(itr->second->currentConvoTag);
           deadSessions.emplace(std::move(*itr));
@@ -138,7 +138,7 @@ namespace llarp
     {
       for (auto& item : sessions)
       {
-        item.second.first->Stop();
+        item.second->Stop();
       }
     }
 

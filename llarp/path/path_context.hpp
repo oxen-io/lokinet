@@ -1,17 +1,16 @@
-#ifndef LLARP_PATH_CONTEXT_HPP
-#define LLARP_PATH_CONTEXT_HPP
+#pragma once
 
-#include <crypto/encrypted_frame.hpp>
-#include <net/ip_address.hpp>
-#include <path/ihophandler.hpp>
-#include <path/path_types.hpp>
-#include <path/pathset.hpp>
-#include <path/transit_hop.hpp>
-#include <routing/handler.hpp>
-#include <router/i_outbound_message_handler.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/decaying_hashset.hpp>
-#include <util/types.hpp>
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/net/ip_address.hpp>
+#include "ihophandler.hpp"
+#include "path_types.hpp"
+#include "pathset.hpp"
+#include "transit_hop.hpp"
+#include <llarp/routing/handler.hpp>
+#include <llarp/router/i_outbound_message_handler.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/types.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -110,7 +109,7 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
-      using TransitHopsMap_t = std::unordered_multimap<PathID_t, TransitHop_ptr, PathID_t::Hash>;
+      using TransitHopsMap_t = std::unordered_multimap<PathID_t, TransitHop_ptr>;
 
       struct SyncTransitMap_t
       {
@@ -130,7 +129,7 @@ namespace llarp
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::unordered_map<PathID_t, Path_ptr, PathID_t::Hash>;
+      using OwnedPathsMap_t = std::unordered_map<PathID_t, Path_ptr>;
 
       struct SyncOwnedPathsMap_t
       {
@@ -171,5 +170,3 @@ namespace llarp
     };
   }  // namespace path
 }  // namespace llarp
-
-#endif

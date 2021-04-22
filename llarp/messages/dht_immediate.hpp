@@ -1,8 +1,7 @@
-#ifndef LLARP_MESSAGES_DHT_IMMEDIATE_HPP
-#define LLARP_MESSAGES_DHT_IMMEDIATE_HPP
+#pragma once
 
-#include <dht/message.hpp>
-#include <messages/link_message.hpp>
+#include <llarp/dht/message.hpp>
+#include "link_message.hpp"
 
 #include <vector>
 
@@ -34,5 +33,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

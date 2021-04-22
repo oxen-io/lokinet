@@ -1,14 +1,13 @@
-#ifndef LLARP_LINK_SERVER_HPP
-#define LLARP_LINK_SERVER_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <ev/ev.hpp>
-#include <link/session.hpp>
-#include <net/sock_addr.hpp>
-#include <router_contact.hpp>
-#include <util/status.hpp>
-#include <util/thread/threading.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/ev/ev.hpp>
+#include "session.hpp"
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/config/key_manager.hpp>
 
 #include <list>
 #include <memory>
@@ -245,16 +244,14 @@ namespace llarp
     std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
 
-    using AuthedLinks =
-        std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>, RouterID::Hash>;
-    using Pending =
-        std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>, SockAddr::Hash>;
+    using AuthedLinks = std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>>;
+    using Pending = std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    std::unordered_map<SockAddr, llarp_time_t, SockAddr::Hash> m_RecentlyClosed;
+    std::unordered_map<SockAddr, llarp_time_t> m_RecentlyClosed;
 
    private:
     std::shared_ptr<int> m_repeater_keepalive;
@@ -262,5 +259,3 @@ namespace llarp
 
   using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;
 }  // namespace llarp
-
-#endif

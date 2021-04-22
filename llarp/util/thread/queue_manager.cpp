@@ -1,5 +1,5 @@
-#include <util/thread/queue_manager.hpp>
-#include <util/thread/threading.hpp>
+#include "queue_manager.hpp"
+#include "threading.hpp"
 
 #include <thread>
 

@@ -1,26 +1,26 @@
-#include <dht/context.hpp>
+#include "context.hpp"
 
-#include <dht/explorenetworkjob.hpp>
-#include <dht/localrouterlookup.hpp>
-#include <dht/localserviceaddresslookup.hpp>
-#include <dht/localtaglookup.hpp>
-#include <dht/messages/findrouter.hpp>
-#include <dht/messages/gotintro.hpp>
-#include <dht/messages/gotrouter.hpp>
-#include <dht/messages/pubintro.hpp>
-#include <dht/node.hpp>
-#include <dht/publishservicejob.hpp>
-#include <dht/recursiverouterlookup.hpp>
-#include <dht/serviceaddresslookup.hpp>
-#include <dht/taglookup.hpp>
-#include <messages/dht_immediate.hpp>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <routing/dht_message.hpp>
-#include <nodedb.hpp>
-#include <profiling.hpp>
-#include <router/i_rc_lookup_handler.hpp>
-#include <util/decaying_hashset.hpp>
+#include "explorenetworkjob.hpp"
+#include "localrouterlookup.hpp"
+#include "localserviceaddresslookup.hpp"
+#include "localtaglookup.hpp"
+#include <llarp/dht/messages/findrouter.hpp>
+#include <llarp/dht/messages/gotintro.hpp>
+#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/dht/messages/pubintro.hpp>
+#include "node.hpp"
+#include "publishservicejob.hpp"
+#include "recursiverouterlookup.hpp"
+#include "serviceaddresslookup.hpp"
+#include "taglookup.hpp"
+#include <llarp/messages/dht_immediate.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/routing/dht_message.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/profiling.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/util/decaying_hashset.hpp>
 #include <vector>
 
 namespace llarp
@@ -335,6 +335,22 @@ namespace llarp
       CleanupTX();
       const llarp_time_t now = Now();
 
+      if (_nodes)
+      {
+        // expire router contacts in memory
+        auto& nodes = _nodes->nodes;
+        auto itr = nodes.begin();
+        while (itr != nodes.end())
+        {
+          if (itr->second.rc.IsExpired(now))
+          {
+            itr = nodes.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
+
       if (_services)
       {
         // expire intro sets
@@ -463,10 +479,7 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, &m, [](SendStatus status) {
-        if (status != SendStatus::Success)
-          LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
-      });
+      router->SendToOrQueue(peer, m);
       auto now = Now();
       router->PersistSessionUntil(peer, now + 1min);
     }

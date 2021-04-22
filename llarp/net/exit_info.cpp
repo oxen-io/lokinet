@@ -2,11 +2,11 @@
 #include <arpa/inet.h>
 #endif
 
-#include <net/exit_info.hpp>
-#include <net/net.hpp>
-#include <util/bencode.h>
-#include <util/bits.hpp>
-#include <util/mem.h>
+#include "exit_info.hpp"
+#include "net.hpp"
+#include <llarp/util/bencode.h>
+#include <llarp/util/bits.hpp>
+#include <llarp/util/mem.h>
 
 #include <list>
 #include <cstring>

@@ -1,8 +1,8 @@
-#include <dns/question.hpp>
+#include "question.hpp"
 
-#include <util/logging/logger.hpp>
-#include <util/printer.hpp>
-#include <util/str.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/printer.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp
 {

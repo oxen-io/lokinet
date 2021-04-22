@@ -1,7 +1,7 @@
-#include <dns/unbound_resolver.hpp>
+#include "unbound_resolver.hpp"
 
-#include <dns/server.hpp>
-#include <util/buffer.hpp>
+#include "server.hpp"
+#include <llarp/util/buffer.hpp>
 
 namespace llarp::dns
 {

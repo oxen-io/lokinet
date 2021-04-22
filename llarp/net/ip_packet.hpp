@@ -1,10 +1,9 @@
-#ifndef LLARP_IP_HPP
-#define LLARP_IP_HPP
+#pragma once
 
-#include <ev/ev.hpp>
-#include <net/net.hpp>
-#include <util/buffer.hpp>
-#include <util/time.hpp>
+#include <llarp/ev/ev.hpp>
+#include "net.hpp"
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/time.hpp>
 
 #ifndef _WIN32
 // unix, linux
@@ -106,13 +105,38 @@ struct ipv6_header
 };
 
 #include <memory>
-#include <service/protocol_type.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <utility>
 
 namespace llarp
 {
   namespace net
   {
+    /// "well known" ip protocols
+    /// TODO: extend this to non "well known values"
+    enum class IPProtocol : uint8_t
+    {
+      ICMP = 0x01,
+      IGMP = 0x02,
+      IPIP = 0x04,
+      TCP = 0x06,
+      UDP = 0x11,
+      GRE = 0x2F,
+      ICMP6 = 0x3A,
+      OSFP = 0x59,
+      PGM = 0x71,
+    };
+
+    /// get string representation of this protocol
+    /// throws std::invalid_argument if we don't know the name of this ip protocol
+    std::string
+    IPProtocolName(IPProtocol proto);
+
+    /// parse a string to an ip protocol
+    /// throws std::invalid_argument if cannot be parsed
+    IPProtocol
+    ParseIPProtocol(std::string data);
+
     /// an Packet
     struct IPPacket
     {
@@ -120,6 +144,13 @@ namespace llarp
       llarp_time_t timestamp;
       size_t sz;
       byte_t buf[MaxSize];
+
+      static IPPacket
+      UDP(nuint32_t srcaddr,
+          nuint16_t srcport,
+          nuint32_t dstaddr,
+          nuint16_t dstport,
+          const llarp_buffer_t& data);
 
       ManagedBuffer
       Buffer();
@@ -227,11 +258,11 @@ namespace llarp
       ServiceProtocol() const
       {
         if (IsV4())
-          return service::eProtocolTrafficV4;
+          return service::ProtocolType::TrafficV4;
         if (IsV6())
-          return service::eProtocolTrafficV6;
+          return service::ProtocolType::TrafficV6;
 
-        return service::eProtocolControl;
+        return service::ProtocolType::Control;
       }
 
       huint128_t
@@ -258,6 +289,10 @@ namespace llarp
       huint128_t
       dst4to6Lan() const;
 
+      /// get destination port if applicable
+      std::optional<nuint16_t>
+      DstPort() const;
+
       void
       UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 
@@ -283,5 +318,3 @@ namespace llarp
     ipchksum(const byte_t* buf, size_t sz, uint32_t sum = 0);
   }  // namespace net
 }  // namespace llarp
-
-#endif

@@ -1,6 +1,6 @@
-#include <peerstats/types.hpp>
+#include "types.hpp"
 
-#include <util/str.hpp>
+#include <llarp/util/str.hpp>
 #include <oxenmq/bt_serialize.h>
 #include <stdexcept>
 

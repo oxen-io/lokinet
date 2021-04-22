@@ -314,3 +314,9 @@ ntoh128(llarp::uint128_t i)
   return {loSwapped, hiSwapped};
 #endif
 }
+
+inline llarp::uint128_t
+hton128(llarp::uint128_t i)
+{
+  return ntoh128(i);  // Same bit flipping as n-to-h
+}
