@@ -1,6 +1,6 @@
-local distro = "groovy";
-local distro_name = 'Ubuntu 20.10';
-local distro_docker = 'ubuntu:groovy';
+local distro = "hirsute";
+local distro_name = 'Ubuntu 21.04';
+local distro_docker = 'ubuntu:hirsute';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
