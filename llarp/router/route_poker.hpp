@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
+#include <optional>
 #include <llarp/net/net_int.hpp>
 
 namespace llarp
