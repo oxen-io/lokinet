@@ -1,13 +1,12 @@
-#ifndef LLARP_PATH_TRANSIT_HOP_HPP
-#define LLARP_PATH_TRANSIT_HOP_HPP
+#pragma once
 
-#include <constants/path.hpp>
-#include <path/ihophandler.hpp>
-#include <path/path_types.hpp>
-#include <routing/handler.hpp>
-#include <router_id.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/thread/queue.hpp>
+#include <llarp/constants/path.hpp>
+#include "ihophandler.hpp"
+#include "path_types.hpp"
+#include <llarp/routing/handler.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 namespace llarp
 {
@@ -31,28 +30,6 @@ namespace llarp
 
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
-
-      struct PathIDHash
-      {
-        std::size_t
-        operator()(const PathID_t& a) const
-        {
-          return AlignedBuffer<PathID_t::SIZE>::Hash()(a);
-        }
-      };
-
-      struct Hash
-      {
-        std::size_t
-        operator()(TransitHopInfo const& a) const
-        {
-          std::size_t idx0 = RouterID::Hash()(a.upstream);
-          std::size_t idx1 = RouterID::Hash()(a.downstream);
-          std::size_t idx2 = PathIDHash()(a.txID);
-          std::size_t idx3 = PathIDHash()(a.rxID);
-          return idx0 ^ idx1 ^ idx2 ^ idx3;
-        }
-      };
     };
 
     inline bool
@@ -95,6 +72,12 @@ namespace llarp
       llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
+
+      PathID_t
+      RXID() const override
+      {
+        return info.rxID;
+      }
 
       void
       Stop();
@@ -237,4 +220,17 @@ namespace llarp
   }  // namespace path
 }  // namespace llarp
 
-#endif
+namespace std
+{
+  template <>
+  struct hash<llarp::path::TransitHopInfo>
+  {
+    std::size_t
+    operator()(llarp::path::TransitHopInfo const& a) const
+    {
+      hash<llarp::RouterID> RHash{};
+      hash<llarp::PathID_t> PHash{};
+      return RHash(a.upstream) ^ RHash(a.downstream) ^ PHash(a.txID) ^ PHash(a.rxID);
+    }
+  };
+}  // namespace std

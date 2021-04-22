@@ -1,11 +1,11 @@
-#include <dht/context.hpp>
-#include <dht/messages/gotrouter.hpp>
+#include <llarp/dht/context.hpp>
+#include "gotrouter.hpp"
 
 #include <memory>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <router/i_rc_lookup_handler.hpp>
-#include <tooling/rc_event.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/tooling/rc_event.hpp>
 
 namespace llarp
 {

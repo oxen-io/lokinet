@@ -1,5 +1,4 @@
-#ifndef LLARP_UTIL_COPY_OR_NULLPTR_HPP
-#define LLARP_UTIL_COPY_OR_NULLPTR_HPP
+#pragma once
 #include <memory>
 
 template <typename T>
@@ -10,5 +9,3 @@ copy_or_nullptr(const std::unique_ptr<T>& other)
     return std::make_unique<T>(*other);
   return nullptr;
 }
-
-#endif

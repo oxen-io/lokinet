@@ -1,6 +1,6 @@
-#include <messages/dht_immediate.hpp>
+#include "dht_immediate.hpp"
 
-#include <router/abstractrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -74,7 +74,7 @@ namespace llarp
     {
       if (result)
       {
-        result = router->SendToOrQueue(session->GetPubKey(), &reply);
+        result = router->SendToOrQueue(session->GetPubKey(), reply);
       }
     }
     return true;

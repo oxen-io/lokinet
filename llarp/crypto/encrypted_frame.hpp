@@ -1,11 +1,10 @@
-#ifndef LLARP_ENCRYPTED_FRAME_HPP
-#define LLARP_ENCRYPTED_FRAME_HPP
+#pragma once
 
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <util/buffer.hpp>
+#include "encrypted.hpp"
+#include "types.hpp"
+#include <llarp/util/buffer.hpp>
 #include <utility>
-#include <util/mem.h>
+#include <llarp/util/mem.h>
 
 namespace llarp
 {
@@ -85,5 +84,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

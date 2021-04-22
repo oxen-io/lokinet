@@ -1,8 +1,7 @@
-#ifndef LLARP_QUEUE_HPP
-#define LLARP_QUEUE_HPP
+#pragma once
 
-#include <util/thread/queue_manager.hpp>
-#include <util/thread/threading.hpp>
+#include "queue_manager.hpp"
+#include "threading.hpp"
 
 #include <optional>
 #include <atomic>
@@ -561,5 +560,3 @@ namespace llarp
 
   }  // namespace thread
 }  // namespace llarp
-
-#endif

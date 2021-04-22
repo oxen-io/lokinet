@@ -1,5 +1,4 @@
-#ifndef LLARP_QUEUE_MANAGER_HPP
-#define LLARP_QUEUE_MANAGER_HPP
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -208,4 +207,3 @@ namespace llarp
     };
   }  // namespace thread
 }  // namespace llarp
-#endif

@@ -1,9 +1,8 @@
-#ifndef LLARP_DNS_RR_HPP
-#define LLARP_DNS_RR_HPP
+#pragma once
 
-#include <dns/name.hpp>
-#include <dns/serialize.hpp>
-#include <net/net_int.hpp>
+#include "name.hpp"
+#include "serialize.hpp"
+#include <llarp/net/net_int.hpp>
 
 #include <memory>
 #include <vector>
@@ -49,5 +48,3 @@ namespace llarp
     }
   }  // namespace dns
 }  // namespace llarp
-
-#endif

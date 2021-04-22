@@ -1,16 +1,16 @@
 #include <chrono>
-#include <router/rc_lookup_handler.hpp>
+#include "rc_lookup_handler.hpp"
 
-#include <link/i_link_manager.hpp>
-#include <link/server.hpp>
-#include <crypto/crypto.hpp>
-#include <service/context.hpp>
-#include <router_contact.hpp>
-#include <util/types.hpp>
-#include <util/thread/threading.hpp>
-#include <nodedb.hpp>
-#include <dht/context.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/link/i_link_manager.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/dht/context.hpp>
+#include "abstractrouter.hpp"
 
 #include <iterator>
 #include <functional>
@@ -270,8 +270,7 @@ namespace llarp
 
       if (lookupRouters.size() > LookupPerTick)
       {
-        static std::mt19937_64 rng{llarp::randint()};
-        std::shuffle(lookupRouters.begin(), lookupRouters.end(), rng);
+        std::shuffle(lookupRouters.begin(), lookupRouters.end(), CSRNG{});
         lookupRouters.resize(LookupPerTick);
       }
 

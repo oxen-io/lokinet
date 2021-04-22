@@ -1,5 +1,4 @@
-#ifndef LOKINET_BOOTSERV_CONFIG_HPP
-#define LOKINET_BOOTSERV_CONFIG_HPP
+#pragma once
 
 #include <string_view>
 #include <string>
@@ -7,7 +6,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-#include <util/fs.hpp>
+#include <llarp/util/fs.hpp>
 
 namespace llarp
 {
@@ -59,5 +58,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

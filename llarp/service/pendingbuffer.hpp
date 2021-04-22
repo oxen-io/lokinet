@@ -1,8 +1,7 @@
-#ifndef LLARP_SERVICE_PENDINGBUFFER_HPP
-#define LLARP_SERVICE_PENDINGBUFFER_HPP
+#pragma once
 
-#include <service/protocol.hpp>
-#include <util/buffer.hpp>
+#include "protocol.hpp"
+#include <llarp/util/buffer.hpp>
 
 #include <algorithm>
 #include <iterator>
@@ -31,5 +30,3 @@ namespace llarp
   }  // namespace service
 
 }  // namespace llarp
-
-#endif

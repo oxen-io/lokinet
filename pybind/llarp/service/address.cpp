@@ -1,5 +1,5 @@
-#include "common.hpp"
-#include "service/address.hpp"
+#include <common.hpp>
+#include <llarp/service/address.hpp>
 
 namespace llarp
 {

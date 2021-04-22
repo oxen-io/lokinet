@@ -1,8 +1,7 @@
-#ifndef LLARP_ROUTER_I_OUTBOUND_SESSION_MAKER_HPP
-#define LLARP_ROUTER_I_OUTBOUND_SESSION_MAKER_HPP
+#pragma once
 
-#include <util/status.hpp>
-#include <util/types.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/types.hpp>
 
 #include <functional>
 
@@ -53,5 +52,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_ROUTER_I_OUTBOUND_SESSION_MAKER_HPP

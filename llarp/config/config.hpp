@@ -1,25 +1,25 @@
-#ifndef LLARP_CONFIG_HPP
-#define LLARP_CONFIG_HPP
+#pragma once
 
 #include <chrono>
-#include <crypto/types.hpp>
-#include <router_contact.hpp>
-#include <util/fs.hpp>
-#include <util/str.hpp>
-#include <config/ini.hpp>
-#include <config/definition.hpp>
-#include <constants/files.hpp>
-#include <net/ip_address.hpp>
-#include <net/net_int.hpp>
-#include <net/ip_range_map.hpp>
-#include <service/address.hpp>
-#include <service/auth.hpp>
-#include <dns/srv_data.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
+#include "ini.hpp"
+#include "definition.hpp"
+#include <llarp/constants/files.hpp>
+#include <llarp/net/ip_address.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/ip_range_map.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/dns/srv_data.hpp>
 
-#include <router_contact.hpp>
+#include <llarp/router_contact.hpp>
 
 #include <cstdlib>
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,7 +93,8 @@ namespace llarp
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
-    std::string m_strictConnect;
+    bool m_saveProfiles;
+    std::set<RouterID> m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;
 
@@ -107,7 +108,7 @@ namespace llarp
     net::IPRangeMap<service::Address> m_ExitMap;
     net::IPRangeMap<std::string> m_LNSExitMap;
 
-    std::unordered_map<service::Address, service::AuthInfo, service::Address::Hash> m_ExitAuths;
+    std::unordered_map<service::Address, service::AuthInfo> m_ExitAuths;
     std::unordered_map<std::string, service::AuthInfo> m_LNSExitAuths;
 
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
@@ -115,9 +116,14 @@ namespace llarp
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
-    std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
+    std::unordered_set<service::Address> m_AuthWhitelist;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
+
+    std::optional<huint128_t> m_baseV6Address;
+
+    std::set<IPRange> m_OwnedRanges;
+    std::optional<net::TrafficPolicy> m_TrafficPolicy;
 
     // TODO:
     // on-up
@@ -186,7 +192,8 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector<fs::path> routers;
+    std::vector<fs::path> files;
+    std::set<RouterContact> routers;
     bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -249,6 +256,10 @@ namespace llarp
     void
     AddDefault(std::string section, std::string key, std::string value);
 
+    /// create a config with the default parameters for an embedded lokinet
+    static std::shared_ptr<Config>
+    EmbeddedConfig();
+
    private:
     /// Load (initialize) a default config.
     ///
@@ -276,5 +287,3 @@ namespace llarp
   ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
-
-#endif

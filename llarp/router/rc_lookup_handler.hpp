@@ -1,10 +1,9 @@
-#ifndef LLARP_RC_LOOKUP_HANDLER_HPP
-#define LLARP_RC_LOOKUP_HANDLER_HPP
+#pragma once
 
 #include <chrono>
-#include <router/i_rc_lookup_handler.hpp>
+#include "i_rc_lookup_handler.hpp"
 
-#include <util/thread/threading.hpp>
+#include <llarp/util/thread/threading.hpp>
 
 #include <unordered_map>
 #include <set>
@@ -115,8 +114,7 @@ namespace llarp
     std::set<RouterContact> _bootstrapRCList;
     std::unordered_set<RouterID> _bootstrapRouterIDList;
 
-    std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
 
     bool useWhitelist = false;
     bool isServiceNode = false;
@@ -124,9 +122,7 @@ namespace llarp
     std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
 
     using TimePoint = std::chrono::steady_clock::time_point;
-    std::unordered_map<RouterID, TimePoint, RouterID::Hash> _routerLookupTimes;
+    std::unordered_map<RouterID, TimePoint> _routerLookupTimes;
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_RC_LOOKUP_HANDLER_HPP

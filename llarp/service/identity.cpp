@@ -1,7 +1,7 @@
-#include <service/identity.hpp>
+#include "identity.hpp"
 
-#include <crypto/crypto.hpp>
-#include <util/fs.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/util/fs.hpp>
 #include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp
@@ -155,31 +155,31 @@ namespace llarp
     {
       EncryptedIntroSet encrypted;
 
-      if (other_i.I.size() == 0)
-        return {};
-      IntroSet i(other_i);
+      if (other_i.intros.empty())
+        return std::nullopt;
+      IntroSet i{other_i};
       encrypted.nounce.Randomize();
       // set timestamp
       // TODO: round to nearest 1000 ms
-      i.T = now;
+      i.timestampSignedAt = now;
       encrypted.signedAt = now;
       // set service info
-      i.A = pub;
+      i.addressKeys = pub;
       // set public encryption key
-      i.K = pq_keypair_to_public(pq);
+      i.sntrupKey = pq_keypair_to_public(pq);
       std::array<byte_t, MAX_INTROSET_SIZE> tmp;
-      llarp_buffer_t buf(tmp);
+      llarp_buffer_t buf{tmp};
       if (not i.BEncode(&buf))
-        return {};
+        return std::nullopt;
       // rewind and resize buffer
       buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
-      const SharedSecret k(i.A.Addr());
+      const SharedSecret k{i.addressKeys.Addr()};
       CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
-      encrypted.introsetPayload.resize(buf.sz);
-      std::copy_n(buf.base, buf.sz, encrypted.introsetPayload.data());
+      encrypted.introsetPayload = buf.copy();
+
       if (not encrypted.Sign(derivedSignKey))
-        return {};
+        return std::nullopt;
       return encrypted;
     }
   }  // namespace service

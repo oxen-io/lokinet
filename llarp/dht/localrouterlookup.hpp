@@ -1,11 +1,11 @@
 #ifndef LLARP_DHT_LOCALROUTERLOOKUP
 #define LLARP_DHT_LOCALROUTERLOOKUP
 
-#include <dht/recursiverouterlookup.hpp>
+#include "recursiverouterlookup.hpp"
 
-#include <path/path_types.hpp>
-#include <router_contact.hpp>
-#include <router_id.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/router_id.hpp>
 
 namespace llarp
 {

@@ -1,12 +1,11 @@
-#ifndef LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP
-#define LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP
+#pragma once
 
-#include <router/i_outbound_message_handler.hpp>
+#include "i_outbound_message_handler.hpp"
 
-#include <ev/ev.hpp>
-#include <util/thread/queue.hpp>
-#include <path/path_types.hpp>
-#include <router_id.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/router_id.hpp>
 
 #include <list>
 #include <unordered_map>
@@ -29,7 +28,7 @@ namespace llarp
     OutboundMessageHandler(size_t maxQueueSize = MAX_OUTBOUND_QUEUE_SIZE);
 
     bool
-    QueueMessage(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback)
+    QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
     void
@@ -99,7 +98,7 @@ namespace llarp
     QueueSessionCreation(const RouterID& remote);
 
     bool
-    EncodeBuffer(const ILinkMessage* msg, llarp_buffer_t& buf);
+    EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf);
 
     bool
     Send(const RouterID& remote, const Message& msg);
@@ -129,10 +128,9 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingSessionMessageQueues
 
-    std::unordered_map<RouterID, MessageQueue, RouterID::Hash> pendingSessionMessageQueues
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, MessageQueue> pendingSessionMessageQueues GUARDED_BY(_mutex);
 
-    std::unordered_map<PathID_t, MessageQueue, PathID_t::Hash> outboundMessageQueues;
+    std::unordered_map<PathID_t, MessageQueue> outboundMessageQueues;
 
     std::queue<PathID_t> roundRobinOrder;
 
@@ -150,5 +148,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_ROUTER_OUTBOUND_MESSAGE_HANDLER_HPP

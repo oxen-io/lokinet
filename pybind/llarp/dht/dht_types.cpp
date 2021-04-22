@@ -1,6 +1,6 @@
-#include <dht/key.hpp>
+#include <llarp/dht/key.hpp>
 
-#include "common.hpp"
+#include <common.hpp>
 #include <pybind11/operators.h>
 
 namespace llarp

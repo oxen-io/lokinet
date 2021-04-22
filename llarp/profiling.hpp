@@ -1,12 +1,11 @@
-#ifndef LLARP_PROFILING_HPP
-#define LLARP_PROFILING_HPP
+#pragma once
 
-#include <path/path.hpp>
-#include <router_id.hpp>
-#include <util/bencode.hpp>
-#include <util/thread/threading.hpp>
+#include "path/path.hpp"
+#include "router_id.hpp"
+#include "util/bencode.hpp"
+#include "util/thread/threading.hpp"
 
-#include <util/thread/annotations.hpp>
+#include "util/thread/annotations.hpp"
 #include <map>
 
 namespace llarp
@@ -120,5 +119,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

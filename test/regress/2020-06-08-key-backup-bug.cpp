@@ -1,4 +1,3 @@
-#include <llarp.h>
 #include <llarp.hpp>
 #include <config/config.hpp>
 #include <router/abstractrouter.hpp>
@@ -12,7 +11,7 @@ static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {
   auto conf = std::make_shared<llarp::Config>(fs::current_path());
-  conf->Load(std::nullopt, opts.isRouter);
+  conf->Load(std::nullopt, opts.isSNode);
   conf->network.m_endpointType = "null";
   conf->network.m_keyfile = keyfile;
   conf->bootstrap.seednode = true;

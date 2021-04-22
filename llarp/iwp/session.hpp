@@ -1,17 +1,16 @@
-#ifndef LLARP_IWP_SESSION_HPP
-#define LLARP_IWP_SESSION_HPP
+#pragma once
 
-#include <link/session.hpp>
-#include <iwp/linklayer.hpp>
-#include <iwp/message_buffer.hpp>
-#include <net/ip_address.hpp>
+#include <llarp/link/session.hpp>
+#include "linklayer.hpp"
+#include "message_buffer.hpp"
+#include <llarp/net/ip_address.hpp>
 
 #include <map>
 #include <unordered_set>
 #include <deque>
 #include <queue>
 
-#include <util/thread/queue.hpp>
+#include <llarp/util/thread/queue.hpp>
 
 namespace llarp
 {
@@ -269,5 +268,3 @@ namespace llarp
     };
   }  // namespace iwp
 }  // namespace llarp
-
-#endif

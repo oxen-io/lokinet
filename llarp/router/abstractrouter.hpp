@@ -1,21 +1,22 @@
-#ifndef LLARP_ABSTRACT_ROUTER_HPP
-#define LLARP_ABSTRACT_ROUTER_HPP
+#pragma once
 
-#include <config/config.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/config/key_manager.hpp>
 #include <memory>
-#include <util/types.hpp>
-#include <util/status.hpp>
-#include <router/i_outbound_message_handler.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/util/status.hpp>
+#include "i_outbound_message_handler.hpp"
 #include <vector>
-#include <ev/ev.hpp>
+#include <llarp/ev/ev.hpp>
 #include <functional>
-#include <router_contact.hpp>
-#include <tooling/router_event.hpp>
-#include <peerstats/peer_db.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/tooling/router_event.hpp>
+#include <llarp/peerstats/peer_db.hpp>
+
+#include <optional>
 
 #ifdef LOKINET_HIVE
-#include "tooling/router_event.hpp"
+#include <llarp/tooling/router_event.hpp>
 #endif
 
 struct llarp_buffer_t;
@@ -115,6 +116,12 @@ namespace llarp
     virtual const RouterContact&
     rc() const = 0;
 
+    /// modify our rc
+    /// modify returns nullopt if unmodified otherwise it returns the new rc to be sigend and
+    /// published out
+    virtual void
+    ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) = 0;
+
     virtual exit::Context&
     exitContext() = 0;
 
@@ -173,7 +180,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) = 0;
+    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
@@ -236,7 +243,7 @@ namespace llarp
 
     virtual bool
     SendToOrQueue(
-        const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler = nullptr) = 0;
+        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler = nullptr) = 0;
 
     virtual void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) = 0;
@@ -327,5 +334,3 @@ namespace llarp
     HandleRouterEvent(tooling::RouterEventPtr event) const = 0;
   };
 }  // namespace llarp
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef LOKINET_JNI_COMMON_HPP
-#define LOKINET_JNI_COMMON_HPP
+#pragma once
 
 #include <jni.h>
 #include <string_view>
@@ -78,5 +77,3 @@ GetImpl(JNIEnv* env, jobject self)
 {
   return FromObjectMember<T>(env, self, "impl");
 }
-
-#endif

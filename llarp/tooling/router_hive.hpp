@@ -1,8 +1,8 @@
 #pragma once
 
-#include <tooling/router_event.hpp>
+#include "router_event.hpp"
 
-#include <llarp.h>
+#include <llarp.hpp>
 #include <config/config.hpp>
 #include <tooling/hive_context.hpp>
 
@@ -83,8 +83,8 @@ namespace tooling
     GetRelayRCs();
 
     std::mutex routerMutex;
-    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> relays;
-    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> clients;
+    std::unordered_map<llarp::RouterID, Context_ptr> relays;
+    std::unordered_map<llarp::RouterID, Context_ptr> clients;
 
     std::vector<std::thread> routerMainThreads;
 

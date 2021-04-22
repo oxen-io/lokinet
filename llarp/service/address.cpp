@@ -1,5 +1,5 @@
-#include <service/address.hpp>
-#include <crypto/crypto.hpp>
+#include "address.hpp"
+#include <llarp/crypto/crypto.hpp>
 #include <oxenmq/base32z.h>
 #include <algorithm>
 
@@ -70,4 +70,17 @@ namespace llarp::service
     CryptoManager::instance()->derive_subkey(k, PubKey(data()), 1);
     return dht::Key_t{k.as_array()};
   }
+
+  std::optional<std::variant<Address, RouterID>>
+  ParseAddress(std::string_view lokinet_addr)
+  {
+    RouterID router{};
+    service::Address addr{};
+    if (router.FromString(lokinet_addr))
+      return router;
+    if (addr.FromString(lokinet_addr))
+      return addr;
+    return std::nullopt;
+  }
+
 }  // namespace llarp::service

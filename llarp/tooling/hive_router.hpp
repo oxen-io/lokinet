@@ -1,6 +1,6 @@
 #pragma once
 
-#include <router/router.hpp>
+#include <llarp/router/router.hpp>
 
 namespace tooling
 {

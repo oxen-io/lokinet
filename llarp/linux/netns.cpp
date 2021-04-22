@@ -14,12 +14,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <linux/netns.hpp>
+#include "netns.hpp"
 #include <util/logger.hpp>
 #ifndef MS_REC
 #define MS_REC (16384)
 #endif
-#include <util/fs.hpp>
+#include <llarp/util/fs.hpp>
 
 namespace llarp
 {

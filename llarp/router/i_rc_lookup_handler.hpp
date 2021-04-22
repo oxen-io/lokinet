@@ -1,8 +1,7 @@
-#ifndef LLARP_I_RC_LOOKUP_HANDLER_HPP
-#define LLARP_I_RC_LOOKUP_HANDLER_HPP
+#pragma once
 
-#include <util/types.hpp>
-#include <router_id.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/router_id.hpp>
 
 #include <memory>
 #include <set>
@@ -62,5 +61,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_I_RC_LOOKUP_HANDLER_HPP

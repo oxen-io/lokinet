@@ -1,11 +1,11 @@
 #pragma once
 
-#include <util/time.hpp>
+#include "time.hpp"
 #include <unordered_map>
 
 namespace llarp::util
 {
-  template <typename Key_t, typename Value_t, typename Hash_t = typename Key_t::Hash>
+  template <typename Key_t, typename Value_t, typename Hash_t = std::hash<Key_t>>
   struct DecayingHashTable
   {
     DecayingHashTable(std::chrono::milliseconds cacheInterval = 1h) : m_CacheInterval(cacheInterval)
@@ -17,6 +17,7 @@ namespace llarp::util
       EraseIf([&](const auto& item) { return item.second.second + m_CacheInterval <= now; });
     }
 
+    /// return if we have this value by key
     bool
     Has(const Key_t& k) const
     {
@@ -33,6 +34,7 @@ namespace llarp::util
       return m_Values.try_emplace(std::move(key), std::make_pair(std::move(value), now)).second;
     }
 
+    /// get value by key
     std::optional<Value_t>
     Get(Key_t k) const
     {
@@ -40,6 +42,13 @@ namespace llarp::util
       if (itr == m_Values.end())
         return std::nullopt;
       return itr->second.first;
+    }
+
+    /// explicit remove an item from the cache by key
+    void
+    Remove(const Key_t& key)
+    {
+      m_Values.erase(key);
     }
 
    private:

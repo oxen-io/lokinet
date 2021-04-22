@@ -1,5 +1,4 @@
-#ifndef LLARP_ENDIAN_HPP
-#define LLARP_ENDIAN_HPP
+#pragma once
 
 // adapted from libi2pd
 
@@ -202,5 +201,3 @@ htole64buf(void* buf, uint64_t big64)
 {
   htobuf64(buf, htole64(big64));
 }
-
-#endif

@@ -1,18 +1,18 @@
 #ifndef LLARP_DHT_CONTEXT
 #define LLARP_DHT_CONTEXT
 
-#include <dht/bucket.hpp>
-#include <dht/dht.h>
-#include <dht/key.hpp>
-#include <dht/message.hpp>
-#include <dht/messages/findintro.hpp>
-#include <dht/node.hpp>
-#include <dht/tx.hpp>
-#include <dht/txholder.hpp>
-#include <dht/txowner.hpp>
-#include <service/intro_set.hpp>
-#include <util/time.hpp>
-#include <util/status.hpp>
+#include "bucket.hpp"
+#include "dht.h"
+#include "key.hpp"
+#include "message.hpp"
+#include <llarp/dht/messages/findintro.hpp>
+#include "node.hpp"
+#include "tx.hpp"
+#include "txholder.hpp"
+#include "txowner.hpp"
+#include <llarp/service/intro_set.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/util/status.hpp>
 
 #include <memory>
 #include <set>
@@ -34,9 +34,9 @@ namespace llarp
 
     struct AbstractContext
     {
-      using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet, TXOwner::Hash>;
-      using PendingRouterLookups = TXHolder<RouterID, RouterContact, RouterID::Hash>;
-      using PendingExploreLookups = TXHolder<RouterID, RouterID, RouterID::Hash>;
+      using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet>;
+      using PendingRouterLookups = TXHolder<RouterID, RouterContact>;
+      using PendingExploreLookups = TXHolder<RouterID, RouterID>;
 
       virtual ~AbstractContext() = 0;
 

@@ -1,5 +1,4 @@
-#ifndef LLARP_THREADING_HPP
-#define LLARP_THREADING_HPP
+#pragma once
 
 #include <thread>
 #include <shared_mutex>
@@ -21,7 +20,7 @@ using pid_t = int;
 #endif
 
 #ifdef TRACY_ENABLE
-#include "Tracy.hpp"
+#include <Tracy.hpp>
 #define DECLARE_LOCK(type, var, ...) TracyLockable(type, var)
 #else
 #define DECLARE_LOCK(type, var, ...) type var __VA_ARGS__
@@ -181,5 +180,3 @@ namespace llarp
     };
   }  // namespace util
 }  // namespace llarp
-
-#endif

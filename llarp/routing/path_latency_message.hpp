@@ -1,7 +1,6 @@
-#ifndef LLARP_MESSAGES_PATH_LATENCY_HPP
-#define LLARP_MESSAGES_PATH_LATENCY_HPP
+#pragma once
 
-#include <routing/message.hpp>
+#include "message.hpp"
 
 namespace llarp
 {
@@ -32,5 +31,3 @@ namespace llarp
     };
   }  // namespace routing
 }  // namespace llarp
-
-#endif

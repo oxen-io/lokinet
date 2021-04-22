@@ -1,5 +1,4 @@
-#ifndef LLARP_DNS_DNS_HPP
-#define LLARP_DNS_DNS_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -29,5 +28,3 @@ namespace llarp
 
   }  // namespace dns
 }  // namespace llarp
-
-#endif

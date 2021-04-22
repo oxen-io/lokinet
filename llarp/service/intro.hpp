@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_INTRO_HPP
-#define LLARP_SERVICE_INTRO_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <path/path_types.hpp>
-#include <util/bencode.hpp>
-#include <util/status.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/status.hpp>
 
 #include <iostream>
 
@@ -71,15 +70,6 @@ namespace llarp
       {
         return pathID != other.pathID || router != other.router;
       }
-
-      struct Hash
-      {
-        size_t
-        operator()(const Introduction& i) const
-        {
-          return PubKey::Hash()(i.router) ^ PathID_t::Hash()(i.pathID);
-        }
-      };
     };
 
     inline std::ostream&
@@ -90,4 +80,15 @@ namespace llarp
   }  // namespace service
 }  // namespace llarp
 
-#endif
+namespace std
+{
+  template <>
+  struct hash<llarp::service::Introduction>
+  {
+    size_t
+    operator()(const llarp::service::Introduction& i) const
+    {
+      return std::hash<llarp::PubKey>{}(i.router) ^ std::hash<llarp::PathID_t>{}(i.pathID);
+    }
+  };
+}  // namespace std

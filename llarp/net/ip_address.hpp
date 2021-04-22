@@ -1,12 +1,12 @@
 #pragma once
 
-#include <net/sock_addr.hpp>
+#include "sock_addr.hpp"
 
 #include <optional>
 #include <string_view>
 #include <string>
 
-#include <net/net_int.hpp>
+#include "net_int.hpp"
 
 namespace llarp
 {
@@ -132,7 +132,7 @@ namespace llarp
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;
     // isPrivate() const;
-    // struct Hash
+    // std::hash
     // to string / stream / etc
 
     bool
@@ -140,15 +140,6 @@ namespace llarp
 
     bool
     operator==(const IpAddress& other) const;
-
-    struct Hash
-    {
-      std::size_t
-      operator()(const IpAddress& address) const noexcept
-      {
-        return std::hash<std::string>{}(address.toString());
-      }
-    };
 
    private:
     bool m_empty = true;
@@ -160,3 +151,16 @@ namespace llarp
   operator<<(std::ostream& out, const IpAddress& address);
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::IpAddress>
+  {
+    std::size_t
+    operator()(const llarp::IpAddress& address) const noexcept
+    {
+      return std::hash<std::string>{}(address.toString());
+    }
+  };
+}  // namespace std

@@ -210,19 +210,19 @@ TEST_CASE("Test sign and encrypt introset", "[crypto]")
   ident.RegenerateKeys();
   service::Address addr;
   CHECK(ident.pub.CalculateAddress(addr.as_array()));
-  service::IntroSet I;
+  service::IntroSet introset;
   auto now = time_now_ms();
-  I.T      = now;
-  while(I.I.size() < 10)
+  introset.timestampSignedAt = now;
+  while(introset.intros.size() < 10)
   {
     service::Introduction intro;
     intro.expiresAt = now + (path::default_lifetime / 2);
     intro.router.Randomize();
     intro.pathID.Randomize();
-    I.I.emplace_back(std::move(intro));
+    introset.intros.emplace_back(std::move(intro));
   }
 
-  const auto maybe = ident.EncryptAndSignIntroSet(I, now);
+  const auto maybe = ident.EncryptAndSignIntroSet(introset, now);
   CHECK(maybe.has_value());
   CHECK(maybe->Verify(now));
   PubKey blind_key;

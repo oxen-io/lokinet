@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_TXHOLDER
 #define LLARP_DHT_TXHOLDER
 
-#include <dht/tx.hpp>
-#include <dht/txowner.hpp>
-#include <util/time.hpp>
-#include <util/status.hpp>
+#include "tx.hpp"
+#include "txowner.hpp"
+#include <llarp/util/time.hpp>
+#include <llarp/util/status.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -13,16 +13,16 @@ namespace llarp
 {
   namespace dht
   {
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     struct TXHolder
     {
       using TXPtr = std::unique_ptr<TX<K, V>>;
       // tx who are waiting for a reply for each key
-      std::unordered_multimap<K, TXOwner, K_Hash> waiting;
+      std::unordered_multimap<K, TXOwner> waiting;
       // tx timesouts by key
-      std::unordered_map<K, llarp_time_t, K_Hash> timeouts;
+      std::unordered_map<K, llarp_time_t> timeouts;
       // maps remote peer with tx to handle reply from them
-      std::unordered_map<TXOwner, TXPtr, TXOwner::Hash> tx;
+      std::unordered_map<TXOwner, TXPtr> tx;
 
       const TX<K, V>*
       GetPendingLookupFrom(const TXOwner& owner) const;
@@ -106,9 +106,9 @@ namespace llarp
       Expire(llarp_time_t now);
     };
 
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     const TX<K, V>*
-    TXHolder<K, V, K_Hash>::GetPendingLookupFrom(const TXOwner& owner) const
+    TXHolder<K, V>::GetPendingLookupFrom(const TXOwner& owner) const
     {
       auto itr = tx.find(owner);
       if (itr == tx.end())
@@ -119,9 +119,9 @@ namespace llarp
       return itr->second.get();
     }
 
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     void
-    TXHolder<K, V, K_Hash>::NewTX(
+    TXHolder<K, V>::NewTX(
         const TXOwner& askpeer,
         const TXOwner& whoasked,
         const K& k,
@@ -144,9 +144,9 @@ namespace llarp
       }
     }
 
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     void
-    TXHolder<K, V, K_Hash>::NotFound(const TXOwner& from, const std::unique_ptr<Key_t>&)
+    TXHolder<K, V>::NotFound(const TXOwner& from, const std::unique_ptr<Key_t>&)
     {
       auto txitr = tx.find(from);
       if (txitr == tx.end())
@@ -156,9 +156,9 @@ namespace llarp
       Inform(from, txitr->second->target, {}, true, true);
     }
 
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     void
-    TXHolder<K, V, K_Hash>::Inform(
+    TXHolder<K, V>::Inform(
         TXOwner from, K key, std::vector<V> values, bool sendreply, bool removeTimeouts)
     {
       auto range = waiting.equal_range(key);
@@ -192,9 +192,9 @@ namespace llarp
       }
     }
 
-    template <typename K, typename V, typename K_Hash>
+    template <typename K, typename V>
     void
-    TXHolder<K, V, K_Hash>::Expire(llarp_time_t now)
+    TXHolder<K, V>::Expire(llarp_time_t now)
     {
       auto itr = timeouts.begin();
       while (itr != timeouts.end())

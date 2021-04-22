@@ -1,5 +1,4 @@
-#ifndef LLARP_STR_HPP
-#define LLARP_STR_HPP
+#pragma once
 
 #include <string_view>
 #include <sstream>
@@ -155,5 +154,3 @@ namespace llarp
   friendly_duration(std::chrono::nanoseconds dur);
 
 }  // namespace llarp
-
-#endif
