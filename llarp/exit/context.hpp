@@ -1,7 +1,6 @@
-#ifndef LLARP_EXIT_CONTEXT_HPP
-#define LLARP_EXIT_CONTEXT_HPP
-#include <exit/policy.hpp>
-#include <handlers/exit.hpp>
+#pragma once
+#include "policy.hpp"
+#include <llarp/handlers/exit.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -40,10 +39,13 @@ namespace llarp
       FindEndpointForPath(const PathID_t& path) const;
 
       /// calculate (pk, tx, rx) for all exit traffic
-      using TrafficStats = std::unordered_map<PubKey, std::pair<uint64_t, uint64_t>, PubKey::Hash>;
+      using TrafficStats = std::unordered_map<PubKey, std::pair<uint64_t, uint64_t>>;
 
       void
       CalculateExitTraffic(TrafficStats& stats);
+
+      std::shared_ptr<handlers::ExitEndpoint>
+      GetExitEndpoint(std::string name) const;
 
      private:
       AbstractRouter* m_Router;
@@ -52,5 +54,3 @@ namespace llarp
     };
   }  // namespace exit
 }  // namespace llarp
-
-#endif

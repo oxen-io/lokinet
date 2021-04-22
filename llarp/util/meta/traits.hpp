@@ -1,5 +1,4 @@
-#ifndef LLARP_TRAITS_HPP
-#define LLARP_TRAITS_HPP
+#pragma once
 
 #include <cstddef>
 #include <type_traits>
@@ -208,5 +207,3 @@ namespace llarp
 
   }  // namespace traits
 }  // namespace llarp
-
-#endif

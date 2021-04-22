@@ -1,12 +1,12 @@
-#include <dht/explorenetworkjob.hpp>
+#include "explorenetworkjob.hpp"
 
-#include <dht/context.hpp>
-#include <dht/messages/findrouter.hpp>
-#include <router/abstractrouter.hpp>
+#include "context.hpp"
+#include <llarp/dht/messages/findrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
-#include <nodedb.hpp>
+#include <llarp/nodedb.hpp>
 
-#include <tooling/dht_event.hpp>
+#include <llarp/tooling/dht_event.hpp>
 
 namespace llarp
 {

@@ -1,10 +1,9 @@
-#ifndef LLARP_DNS_SERVER_HPP
-#define LLARP_DNS_SERVER_HPP
+#pragma once
 
-#include <dns/message.hpp>
-#include <ev/ev.hpp>
-#include <net/net.hpp>
-#include <dns/unbound_resolver.hpp>
+#include "message.hpp"
+#include <llarp/ev/ev.hpp>
+#include <llarp/net/net.hpp>
+#include "unbound_resolver.hpp"
 
 #include <unordered_map>
 
@@ -87,5 +86,3 @@ namespace llarp
     };
   }  // namespace dns
 }  // namespace llarp
-
-#endif

@@ -1,13 +1,13 @@
-#include <ev/ev.hpp>
-#include <util/mem.hpp>
-#include <util/str.hpp>
+#include "ev.hpp"
+#include <llarp/util/mem.hpp>
+#include <llarp/util/str.hpp>
 
 #include <cstddef>
 #include <cstring>
 #include <string_view>
 
 // We libuv now
-#include <ev/ev_libuv.hpp>
+#include "ev_libuv.hpp"
 
 namespace llarp
 {

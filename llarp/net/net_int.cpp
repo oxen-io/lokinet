@@ -1,28 +1,43 @@
-#include <net/net_int.hpp>
-#include <net/ip.hpp>
+#include "net_int.hpp"
+#include "ip.hpp"
 #include <string>
 
 namespace llarp
 {
-  template <>
+  huint16_t
+  ToHost(nuint16_t n)
+  {
+    return xntohs(n);
+  }
+
   huint32_t
   ToHost(nuint32_t n)
   {
     return xntohl(n);
   }
 
-  template <>
+  huint128_t
+  ToHost(nuint128_t n)
+  {
+    return {ntoh128(n.n)};
+  }
+
   nuint16_t
   ToNet(huint16_t h)
   {
     return xhtons(h);
   }
 
-  template <>
   nuint32_t
   ToNet(huint32_t h)
   {
     return xhtonl(h);
+  }
+
+  nuint128_t
+  ToNet(huint128_t h)
+  {
+    return {hton128(h.h)};
   }
 
   template <>
@@ -65,6 +80,19 @@ namespace llarp
     if (!inet_ntop(AF_INET6, (void*)&addr, tmp, sizeof(tmp)))
       return "";
     return tmp;
+  }
+
+  template <>
+  bool
+  huint16_t::FromString(const std::string& str)
+  {
+    if (auto val = std::atoi(str.c_str()); val >= 0)
+    {
+      h = val;
+      return true;
+    }
+    else
+      return false;
   }
 
   template <>

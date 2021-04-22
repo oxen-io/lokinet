@@ -1,15 +1,15 @@
 #ifdef _WIN32
-#include <vpn/win32.hpp>
+#include "win32.hpp"
 #endif
 #ifdef __linux__
 #ifdef ANDROID
-#include <vpn/android.hpp>
+#include "android.hpp"
 #else
-#include <vpn/linux.hpp>
+#include "linux.hpp"
 #endif
 #endif
 #ifdef __APPLE__
-#include <vpn/apple.hpp>
+#include "apple.hpp"
 #endif
 
 namespace llarp::vpn

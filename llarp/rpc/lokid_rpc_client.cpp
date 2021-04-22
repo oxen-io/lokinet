@@ -1,13 +1,13 @@
-#include <rpc/lokid_rpc_client.hpp>
+#include "lokid_rpc_client.hpp"
 
 #include <stdexcept>
-#include <util/logging/logger.hpp>
+#include <llarp/util/logging/logger.hpp>
 
-#include <router/abstractrouter.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 #include <nlohmann/json.hpp>
 
-#include <util/time.hpp>
+#include <llarp/util/time.hpp>
 
 namespace llarp
 {
@@ -36,6 +36,10 @@ namespace llarp
         : m_lokiMQ(std::move(lmq)), m_Router(r)
     {
       // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
+
+      // new block handler
+      m_lokiMQ->add_category("notify", oxenmq::Access{oxenmq::AuthLevel::none})
+          .add_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
 
       // TODO: proper auth here
       auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
@@ -68,14 +72,29 @@ namespace llarp
     }
 
     void
-    LokidRpcClient::UpdateServiceNodeList()
+    LokidRpcClient::HandleNewBlock(oxenmq::Message& msg)
+    {
+      if (msg.data.size() != 2)
+      {
+        LogError(
+            "we got an invalid new block notification with ",
+            msg.data.size(),
+            " parts instead of 2 parts so we will not update the list of service nodes");
+        return;  // bail
+      }
+      LogDebug("new block at hieght ", msg.data[0]);
+      UpdateServiceNodeList(std::string{msg.data[1]});
+    }
+
+    void
+    LokidRpcClient::UpdateServiceNodeList(std::string topblock)
     {
       nlohmann::json request, fields;
       fields["pubkey_ed25519"] = true;
       request["fields"] = fields;
       request["active_only"] = true;
-      if (not m_CurrentBlockHash.empty())
-        request["poll_block_hash"] = m_CurrentBlockHash;
+      if (not topblock.empty())
+        request["poll_block_hash"] = topblock;
       Request(
           "rpc.get_service_nodes",
           [self = shared_from_this()](bool success, std::vector<std::string> data) {
@@ -105,9 +124,8 @@ namespace llarp
     LokidRpcClient::Connected()
     {
       constexpr auto PingInterval = 30s;
-      constexpr auto NodeListUpdateInterval = 30s;
-
       auto makePingRequest = [self = shared_from_this()]() {
+        // send a ping
         nlohmann::json payload = {{"version", {VERSION[0], VERSION[1], VERSION[2]}}};
         self->Request(
             "admin.lokinet_ping",
@@ -116,24 +134,25 @@ namespace llarp
               LogDebug("Received response for ping. Successful: ", success);
             },
             payload.dump());
+        // subscribe to block updates
+        self->Request("sub.block", [](bool success, std::vector<std::string> data) {
+          if (data.empty() or not success)
+          {
+            LogError("failed to subscribe to new blocks");
+            return;
+          }
+          LogDebug("subscribed to new blocks: ", data[0]);
+        });
       };
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
-      m_lokiMQ->add_timer(
-          [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
-      UpdateServiceNodeList();
+      // initial fetch of service node list
+      UpdateServiceNodeList("");
     }
 
     void
     LokidRpcClient::HandleGotServiceNodeList(std::string data)
     {
       auto j = nlohmann::json::parse(std::move(data));
-      {
-        const auto itr = j.find("block_hash");
-        if (itr != j.end())
-        {
-          m_CurrentBlockHash = itr->get<std::string>();
-        }
-      }
       {
         const auto itr = j.find("unchanged");
         if (itr != j.end())
@@ -165,7 +184,7 @@ namespace llarp
 
       if (nodeList.empty())
       {
-        LogWarn("got empty service node list from lokid");
+        LogWarn("got empty service node list, ignoring.");
         return;
       }
       // inform router about the new list

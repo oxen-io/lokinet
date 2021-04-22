@@ -2,7 +2,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <peerstats/types.hpp>
+#include "types.hpp"
 
 /// Contains some code to help deal with sqlite_orm in hopes of keeping other headers clean
 

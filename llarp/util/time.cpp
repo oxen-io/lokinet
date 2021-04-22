@@ -1,73 +1,55 @@
-#include <util/time.hpp>
+#include "time.hpp"
 #include <chrono>
-#include <util/logging/logger.hpp>
 
 namespace llarp
 {
   using Clock_t = std::chrono::system_clock;
 
   template <typename Res, typename Clock>
-  static llarp_time_t
-  time_since_epoch()
+  static Duration_t
+  time_since_epoch(std::chrono::time_point<Clock> point)
   {
-    return std::chrono::duration_cast<Res>(Clock::now().time_since_epoch());
+    return std::chrono::duration_cast<Res>(point.time_since_epoch());
   }
 
-  const static llarp_time_t started_at_system =
-      time_since_epoch<std::chrono::milliseconds, Clock_t>();
+  const static auto started_at_system = Clock_t::now();
 
-  const static llarp_time_t started_at_steady =
-      time_since_epoch<std::chrono::milliseconds, std::chrono::steady_clock>();
+  const static auto started_at_steady = std::chrono::steady_clock::now();
+
+  uint64_t
+  ToMS(Duration_t ms)
+  {
+    return ms.count();
+  }
+
   /// get our uptime in ms
-  static llarp_time_t
-  time_since_started()
+  Duration_t
+  uptime()
   {
-    return time_since_epoch<std::chrono::milliseconds, std::chrono::steady_clock>()
-        - started_at_steady;
+    return std::chrono::duration_cast<Duration_t>(
+        std::chrono::steady_clock::now() - started_at_steady);
   }
 
-  llarp_time_t
+  Duration_t
   time_now_ms()
   {
-    static llarp_time_t lastTime = 0s;
-    auto t = time_since_started();
+    auto t = uptime();
 #ifdef TESTNET_SPEED
-    t /= uint64_t(TESTNET_SPEED);
+    t /= uint64_t{TESTNET_SPEED};
 #endif
-    t += started_at_system;
-
-    if (t <= lastTime)
-    {
-      return lastTime;
-    }
-    if (lastTime == 0s)
-    {
-      lastTime = t;
-    }
-    const auto dlt = t - lastTime;
-    if (dlt > 5s)
-    {
-      // big timeskip
-      t = lastTime;
-      lastTime = 0s;
-    }
-    else
-    {
-      lastTime = t;
-    }
-    return t;
+    return t + time_since_epoch<Duration_t, Clock_t>(started_at_system);
   }
 
   nlohmann::json
-  to_json(const llarp_time_t& t)
+  to_json(const Duration_t& t)
   {
-    return t.count();
+    return ToMS(t);
   }
 
   std::ostream&
-  operator<<(std::ostream& out, const llarp_time_t& t)
+  operator<<(std::ostream& out, const Duration_t& t)
   {
-    std::chrono::milliseconds amount = t;
+    std::chrono::milliseconds amount{ToMS(t)};
     auto h = std::chrono::duration_cast<std::chrono::hours>(amount);
     amount -= h;
     auto m = std::chrono::duration_cast<std::chrono::minutes>(amount);

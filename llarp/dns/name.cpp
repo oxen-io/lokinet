@@ -1,8 +1,8 @@
 #define __USE_MINGW_ANSI_STDIO 1
-#include <dns/name.hpp>
-#include <net/net.hpp>
-#include <net/ip.hpp>
-#include <util/str.hpp>
+#include "name.hpp"
+#include <llarp/net/net.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/util/str.hpp>
 
 #include <algorithm>
 #include <sstream>

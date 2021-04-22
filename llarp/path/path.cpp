@@ -1,22 +1,23 @@
-#include <path/path.hpp>
+#include "path.hpp"
 
-#include <exit/exit_messages.hpp>
-#include <link/i_link_manager.hpp>
-#include <messages/discard.hpp>
-#include <messages/relay_commit.hpp>
-#include <messages/relay_status.hpp>
-#include <path/pathbuilder.hpp>
-#include <path/transit_hop.hpp>
-#include <profiling.hpp>
-#include <router/abstractrouter.hpp>
-#include <routing/dht_message.hpp>
-#include <routing/path_latency_message.hpp>
-#include <routing/transfer_traffic_message.hpp>
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
-#include <tooling/path_event.hpp>
+#include <llarp/exit/exit_messages.hpp>
+#include <llarp/link/i_link_manager.hpp>
+#include <llarp/messages/discard.hpp>
+#include <llarp/messages/relay_commit.hpp>
+#include <llarp/messages/relay_status.hpp>
+#include "pathbuilder.hpp"
+#include "transit_hop.hpp"
+#include <llarp/profiling.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_latency_message.hpp>
+#include <llarp/routing/transfer_traffic_message.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/endian.hpp>
+#include <llarp/tooling/path_event.hpp>
 
 #include <deque>
+#include <queue>
 
 namespace llarp
 {
@@ -61,6 +62,22 @@ namespace llarp
     Path::SetBuildResultHook(BuildResultHookFunc func)
     {
       m_BuiltHook = func;
+    }
+
+    bool
+    Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    {
+      if (not m_UpstreamReplayFilter.Insert(Y))
+        return false;
+      return IHopHandler::HandleUpstream(X, Y, r);
+    }
+
+    bool
+    Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    {
+      if (not m_DownstreamReplayFilter.Insert(Y))
+        return false;
+      return IHopHandler::HandleDownstream(X, Y, r);
     }
 
     RouterID
@@ -156,6 +173,12 @@ namespace llarp
         currentStatus = record.status;
         if ((record.status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
         {
+          if (record.status & LR_StatusRecord::FAIL_CONGESTION and index == 0)
+          {
+            // first hop building too fast
+            failedAt = hops[index].rc.pubkey;
+            break;
+          }
           // failed at next hop
           if (index + 1 < hops.size())
           {
@@ -229,8 +252,13 @@ namespace llarp
         {
           llarp::LogDebug("Path build failed for an unspecified reason");
         }
-        r->loop()->call(
-            [r, self = shared_from_this()]() { self->EnterState(ePathFailed, r->Now()); });
+        RouterID edge{};
+        if (failedAt)
+          edge = *failedAt;
+        r->loop()->call([r, self = shared_from_this(), edge]() {
+          self->EnterState(ePathFailed, r->Now());
+          self->m_PathSet->HandlePathBuildFailedAt(self, edge);
+        });
       }
 
       // TODO: meaningful return value?
@@ -243,7 +271,6 @@ namespace llarp
       if (st == ePathFailed)
       {
         _status = st;
-        m_PathSet->HandlePathBuildFailed(shared_from_this());
         return;
       }
       if (st == ePathExpired && _status == ePathBuilding)
@@ -300,6 +327,8 @@ namespace llarp
           {"ready", IsReady()},
           {"txRateCurrent", m_LastTXRate},
           {"rxRateCurrent", m_LastRXRate},
+          {"replayTX", m_UpstreamReplayFilter.Size()},
+          {"replayRX", m_DownstreamReplayFilter.Size()},
           {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector<util::StatusObject> hopsObj;
@@ -407,7 +436,7 @@ namespace llarp
     {
       for (const auto& msg : msgs)
       {
-        if (r->SendToOrQueue(Upstream(), &msg))
+        if (r->SendToOrQueue(Upstream(), msg))
         {
           m_TXRate += msg.X.size();
         }
@@ -487,8 +516,6 @@ namespace llarp
     {
       std::stringstream ss;
       ss << "TX=" << TXID() << " RX=" << RXID();
-      if (m_PathSet)
-        ss << " on " << m_PathSet->Name();
       return ss.str();
     }
 
@@ -519,16 +546,14 @@ namespace llarp
     {
       for (const auto& msg : msgs)
       {
-        const llarp_buffer_t buf(msg.X);
+        const llarp_buffer_t buf{msg.X};
         m_RXRate += buf.sz;
-        if (!HandleRoutingMessage(buf, r))
+        if (HandleRoutingMessage(buf, r))
         {
-          LogWarn("failed to handle downstream message");
-          continue;
+          r->loop()->wakeup();
+          m_LastRecvMessage = r->Now();
         }
-        m_LastRecvMessage = r->Now();
       }
-      FlushUpstream(r);
     }
 
     bool
@@ -587,6 +612,7 @@ namespace llarp
         buf.sz = pad_size;
       }
       buf.cur = buf.base;
+      LogDebug("send routing message ", msg.S, " with ", buf.sz, " bytes to endpoint ", Endpoint());
       return HandleUpstream(buf, N, r);
     }
 
@@ -625,6 +651,7 @@ namespace llarp
         // send path latency test
         routing::PathLatencyMessage latency;
         latency.T = randint();
+        latency.S = NextSeqNo();
         m_LastLatencyTestID = latency.T;
         m_LastLatencyTestTime = now;
         if (!SendRoutingMessage(latency, r))
@@ -662,7 +689,6 @@ namespace llarp
         if (m_BuiltHook)
           m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
-        LogDebug("path latency is now ", intro.latency, " for ", Name());
         return true;
       }
 
@@ -805,7 +831,8 @@ namespace llarp
         if (pkt.size() <= 8)
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
-        if (m_ExitTrafficHandler(self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter))
+        if (m_ExitTrafficHandler(
+                self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
         {
           MarkActive(r->Now());
           EnterState(ePathEstablished, r->Now());

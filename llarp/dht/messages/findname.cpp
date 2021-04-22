@@ -1,11 +1,11 @@
-#include <dht/messages/findname.hpp>
+#include "findname.hpp"
 #include <oxenmq/bt_serialize.h>
-#include <dht/context.hpp>
-#include <dht/messages/gotname.hpp>
-#include <router/abstractrouter.hpp>
-#include <rpc/lokid_rpc_client.hpp>
-#include <path/path_context.hpp>
-#include <routing/dht_message.hpp>
+#include <llarp/dht/context.hpp>
+#include "gotname.hpp"
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/rpc/lokid_rpc_client.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/routing/dht_message.hpp>
 
 namespace llarp::dht
 {

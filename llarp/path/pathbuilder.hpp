@@ -1,8 +1,8 @@
-#ifndef LLARP_PATHBUILDER_HPP
-#define LLARP_PATHBUILDER_HPP
+#pragma once
 
-#include <path/pathset.hpp>
-#include <util/status.hpp>
+#include "pathset.hpp"
+#include <llarp/util/status.hpp>
+#include <llarp/util/decaying_hashset.hpp>
 
 #include <atomic>
 #include <set>
@@ -11,13 +11,15 @@ namespace llarp
 {
   namespace path
   {
-    // milliseconds waiting between builds on a path
+    // milliseconds waiting between builds on a path per router
     static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
+    static constexpr auto PATH_BUILD_RATE = 100ms;
 
     struct Builder : public PathSet
     {
      private:
       llarp_time_t m_LastWarn = 0s;
+      util::DecayingHashSet<RouterID> m_EdgeLimiter;
 
      protected:
       /// flag for PathSet::Stop()
@@ -25,6 +27,10 @@ namespace llarp
 
       virtual bool
       UrgentBuild(llarp_time_t now) const;
+
+      /// return true if we hit our soft limit for building paths too fast on a first hop
+      bool
+      BuildCooldownHit(RouterID edge) const;
 
      private:
       void
@@ -119,7 +125,7 @@ namespace llarp
       HandlePathBuildTimeout(Path_ptr p) override;
 
       virtual void
-      HandlePathBuildFailed(Path_ptr p) override;
+      HandlePathBuildFailedAt(Path_ptr p, RouterID hop) override;
     };
 
     using Builder_ptr = std::shared_ptr<Builder>;
@@ -127,4 +133,3 @@ namespace llarp
   }  // namespace path
 
 }  // namespace llarp
-#endif

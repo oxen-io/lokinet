@@ -1,8 +1,8 @@
-#include <peerstats/peer_db.hpp>
+#include "peer_db.hpp"
 
-#include <util/logging/logger.hpp>
-#include <util/status.hpp>
-#include <util/str.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp
 {

@@ -1,13 +1,13 @@
-#include <net/address_info.hpp>
+#include "address_info.hpp"
 #include <stdexcept>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
 #endif
-#include <net/net.hpp>
-#include <util/bencode.h>
-#include <util/mem.h>
-#include <util/printer.hpp>
+#include "net.hpp"
+#include <llarp/util/bencode.h>
+#include <llarp/util/mem.h>
+#include <llarp/util/printer.hpp>
 
 #include <cstring>
 

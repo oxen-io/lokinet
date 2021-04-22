@@ -1,10 +1,9 @@
-#ifndef LLARP_UTIL_FILE_LOGGER_HPP
-#define LLARP_UTIL_FILE_LOGGER_HPP
+#pragma once
 
-#include <util/logging/logstream.hpp>
+#include "logstream.hpp"
 
-#include <util/thread/queue.hpp>
-#include <util/time.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/util/time.hpp>
 
 #include <deque>
 
@@ -70,5 +69,3 @@ namespace llarp
     const bool m_Close;
   };
 }  // namespace llarp
-
-#endif

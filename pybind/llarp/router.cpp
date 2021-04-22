@@ -1,7 +1,7 @@
-#include "common.hpp"
+#include <common.hpp>
 
-#include "router/abstractrouter.hpp"
-#include "tooling/hive_router.hpp"
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/tooling/hive_router.hpp>
 
 namespace llarp
 {

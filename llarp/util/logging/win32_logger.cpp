@@ -1,6 +1,6 @@
 #if defined(_WIN32)
-#include <util/logging/win32_logger.hpp>
-#include <util/logging/logger_internal.hpp>
+#include "win32_logger.hpp"
+#include "logger_internal.hpp"
 
 static CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
 static short old_attrs;

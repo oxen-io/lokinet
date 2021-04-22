@@ -1,5 +1,4 @@
-#ifndef LLARP_NET_H
-#define LLARP_NET_H
+#pragma once
 #if defined(_WIN32) || defined(__MINGW32__)
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -34,5 +33,3 @@ typedef unsigned int in_addr_t;
 
 bool
 llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr);
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef LLARP_LINUX_NETNS_HPP
-#define LLARP_LINUX_NETNS_HPP
+#pragma once
 #ifdef __linux__
 namespace llarp
 {
@@ -13,5 +12,4 @@ namespace llarp
 }  // namespace llarp
 #else
 #error "Don't include this file"
-#endif
 #endif

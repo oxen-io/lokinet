@@ -1,10 +1,10 @@
-#include <service/endpoint_state.hpp>
+#include "endpoint_state.hpp"
 
-#include <exit/session.hpp>
-#include <hook/shell.hpp>
-#include <service/endpoint.hpp>
-#include <service/outbound_context.hpp>
-#include <util/str.hpp>
+#include <llarp/exit/session.hpp>
+#include <llarp/hook/shell.hpp>
+#include "endpoint.hpp"
+#include "outbound_context.hpp"
+#include <llarp/util/str.hpp>
 
 namespace llarp
 {
@@ -83,7 +83,7 @@ namespace llarp
           m_SNodeSessions.begin(),
           m_SNodeSessions.end(),
           std::back_inserter(obj["snodeSessions"]),
-          [](const auto& item) { return item.second.first->ExtractStatus(); });
+          [](const auto& item) { return item.second->ExtractStatus(); });
 
       util::StatusObject sessionObj{};
 

@@ -1,9 +1,9 @@
-#include <dht/context.hpp>
-#include <dht/messages/findintro.hpp>
-#include <dht/messages/gotintro.hpp>
-#include <routing/message.hpp>
-#include <router/abstractrouter.hpp>
-#include <nodedb.hpp>
+#include <llarp/dht/context.hpp>
+#include "findintro.hpp"
+#include "gotintro.hpp"
+#include <llarp/routing/message.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/nodedb.hpp>
 
 namespace llarp
 {

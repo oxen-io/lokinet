@@ -1,10 +1,9 @@
-#ifndef LLARP_DHT_MESSAGE_HPP
-#define LLARP_DHT_MESSAGE_HPP
+#pragma once
 
-#include <dht/dht.h>
-#include <dht/key.hpp>
-#include <path/path_types.hpp>
-#include <util/bencode.hpp>
+#include "dht.h"
+#include "key.hpp"
+#include <llarp/path/path_types.hpp>
+#include <llarp/util/bencode.hpp>
 
 #include <vector>
 
@@ -46,5 +45,3 @@ namespace llarp
         Key_t from, llarp_buffer_t* buf, std::vector<IMessage::Ptr_t>& dst, bool relayed = false);
   }  // namespace dht
 }  // namespace llarp
-
-#endif

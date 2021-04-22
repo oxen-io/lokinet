@@ -1,5 +1,4 @@
-#ifndef LLARP_UTIL_JSON_HPP
-#define LLARP_UTIL_JSON_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -41,5 +40,3 @@ namespace llarp
 
   }  // namespace json
 }  // namespace llarp
-
-#endif

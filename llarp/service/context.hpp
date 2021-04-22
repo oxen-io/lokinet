@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_CONTEXT_HPP
-#define LLARP_SERVICE_CONTEXT_HPP
+#pragma once
 
-#include <handlers/tun.hpp>
-#include <net/net.hpp>
-#include <config/config.hpp>
-#include <service/endpoint.hpp>
+#include <llarp/handlers/tun.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/config/config.hpp>
+#include "endpoint.hpp"
 
 #include <unordered_map>
 
@@ -69,4 +68,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-#endif

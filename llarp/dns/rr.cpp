@@ -1,8 +1,8 @@
-#include <dns/rr.hpp>
-#include <dns/dns.hpp>
-#include <util/mem.hpp>
-#include <util/logging/logger.hpp>
-#include <util/printer.hpp>
+#include "rr.hpp"
+#include "dns.hpp"
+#include <llarp/util/mem.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/printer.hpp>
 
 namespace llarp
 {

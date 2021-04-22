@@ -1,6 +1,5 @@
-#ifndef LLARP_DHT_MESSAGES_FIND_ROUTER_HPP
-#define LLARP_DHT_MESSAGES_FIND_ROUTER_HPP
-#include <dht/message.hpp>
+#pragma once
+#include <llarp/dht/message.hpp>
 
 namespace llarp
 {
@@ -56,4 +55,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-#endif

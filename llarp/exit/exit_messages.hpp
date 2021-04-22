@@ -1,9 +1,8 @@
-#ifndef LLARP_EXIT_MESSAGES_HPP
-#define LLARP_EXIT_MESSAGES_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <exit/policy.hpp>
-#include <routing/message.hpp>
+#include <llarp/crypto/types.hpp>
+#include "policy.hpp"
+#include <llarp/routing/message.hpp>
 
 #include <vector>
 
@@ -214,5 +213,3 @@ namespace llarp
 
   }  // namespace routing
 }  // namespace llarp
-
-#endif

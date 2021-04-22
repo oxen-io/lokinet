@@ -1,9 +1,9 @@
 #pragma once
-#include "common.hpp"
-#include "llarp.hpp"
-#include "service/context.hpp"
-#include "service/endpoint.hpp"
-#include "router/abstractrouter.hpp"
+#include <common.hpp>
+#include <llarp.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/service/endpoint.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -30,16 +30,20 @@ namespace llarp
       {
         if (handlePacket)
         {
-          AlignedBuffer<32> addr;
-          bool isSnode = false;
-          if (not GetEndpointWithConvoTag(tag, addr, isSnode))
+          service::Address addr{};
+          if (auto maybe = GetEndpointWithConvoTag(tag))
+          {
+            if (auto ptr = std::get_if<service::Address>(&*maybe))
+              addr = *ptr;
+            else
+              return false;
+          }
+          else
             return false;
-          if (isSnode)
-            return true;
           std::vector<byte_t> pkt;
           pkt.resize(pktbuf.sz);
           std::copy_n(pktbuf.base, pktbuf.sz, pkt.data());
-          handlePacket(service::Address(addr), std::move(pkt), proto);
+          handlePacket(addr, std::move(pkt), proto);
         }
         return true;
       }
@@ -56,10 +60,15 @@ namespace llarp
         return false;
       }
 
-      llarp::huint128_t
-      ObtainIPForAddr(const llarp::AlignedBuffer<32>&, bool) override
+      llarp::huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
       {
         return {0};
+      }
+
+      std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
+          huint128_t) const override
+      {
+        return std::nullopt;
       }
 
       std::string
@@ -77,12 +86,12 @@ namespace llarp
       SendPacket(service::Address remote, std::vector<byte_t> pkt, service::ProtocolType proto)
       {
         m_router->loop()->call([remote, pkt, proto, self = shared_from_this()]() {
-          self->SendToServiceOrQueue(remote, llarp_buffer_t(pkt), proto);
+          self->SendToOrQueue(remote, llarp_buffer_t(pkt), proto);
         });
       }
 
       void
-      SendPacketToRemote(const llarp_buffer_t&) override{};
+      SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       std::string
       GetOurAddress() const

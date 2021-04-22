@@ -1,7 +1,7 @@
-#include <dht/taglookup.hpp>
+#include "taglookup.hpp"
 
-#include <dht/context.hpp>
-#include <dht/messages/gotintro.hpp>
+#include "context.hpp"
+#include <llarp/dht/messages/gotintro.hpp>
 
 namespace llarp
 {

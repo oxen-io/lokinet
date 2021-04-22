@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp.hpp>
-#include <tooling/hive_router.hpp>
+#include "hive_router.hpp"
 
 namespace tooling
 {

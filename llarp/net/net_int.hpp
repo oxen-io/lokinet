@@ -1,5 +1,4 @@
-#ifndef LLARP_NET_INT_HPP
-#define LLARP_NET_INT_HPP
+#pragma once
 
 // for addrinfo
 #ifndef _WIN32
@@ -12,11 +11,11 @@
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
-#include <net/net.h>
+#include "net.h"
 
 #include <cstdlib>  // for itoa
 #include <iostream>
-#include <util/endian.hpp>
+#include <llarp/util/endian.hpp>
 #include <vector>
 
 #include "uint128.hpp"
@@ -128,7 +127,7 @@ namespace llarp
   template <typename UInt_t>
   struct nuint_t
   {
-    UInt_t n;
+    UInt_t n = 0;
 
     constexpr nuint_t
     operator&(nuint_t x) const
@@ -186,6 +185,16 @@ namespace llarp
     std::string
     ToString() const;
 
+    bool
+    FromString(const std::string& data)
+    {
+      huint_t<UInt_t> x;
+      if (not x.FromString(data))
+        return false;
+      *this = ToNet(x);
+      return true;
+    }
+
     friend std::ostream&
     operator<<(std::ostream& out, const nuint_t& i)
     {
@@ -221,14 +230,13 @@ namespace llarp
     return huint16_t{ntohs(x.n)};
   }
 
-  template <typename UInt_t>
-  huint_t<UInt_t>
-  ToHost(nuint_t<UInt_t> h);
+  huint16_t ToHost(nuint16_t);
+  huint32_t ToHost(nuint32_t);
+  huint128_t ToHost(nuint128_t);
 
-  template <typename UInt_t>
-  nuint_t<UInt_t>
-  ToNet(huint_t<UInt_t> h);
-
+  nuint16_t ToNet(huint16_t);
+  nuint32_t ToNet(huint32_t);
+  nuint128_t ToNet(huint128_t);
 }  // namespace llarp
 
 namespace std
@@ -253,5 +261,3 @@ namespace std
     }
   };
 }  // namespace std
-
-#endif

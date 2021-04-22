@@ -1,11 +1,10 @@
-#ifndef LLARP_AI_HPP
-#define LLARP_AI_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <net/ip_address.hpp>
-#include <net/net.h>
-#include <util/bencode.hpp>
-#include <util/mem.h>
+#include <llarp/crypto/types.hpp>
+#include "ip_address.hpp"
+#include "net.h"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/mem.h>
 
 #include <string>
 #include <vector>
@@ -50,15 +49,6 @@ namespace llarp
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;
-
-    struct Hash
-    {
-      size_t
-      operator()(const AddressInfo& addr) const
-      {
-        return AlignedBuffer<PUBKEYSIZE>::Hash()(addr.pubkey);
-      }
-    };
   };
 
   void
@@ -78,4 +68,15 @@ namespace llarp
 
 }  // namespace llarp
 
-#endif
+namespace std
+{
+  template <>
+  struct hash<llarp::AddressInfo>
+  {
+    size_t
+    operator()(const llarp::AddressInfo& addr) const
+    {
+      return std::hash<llarp::PubKey>{}(addr.pubkey);
+    }
+  };
+}  // namespace std

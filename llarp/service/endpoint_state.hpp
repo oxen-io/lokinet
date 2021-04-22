@@ -1,21 +1,23 @@
-#ifndef LLARP_SERVICE_ENDPOINT_STATE_HPP
-#define LLARP_SERVICE_ENDPOINT_STATE_HPP
+#pragma once
 
-#include <hook/ihook.hpp>
-#include <router_id.hpp>
-#include <service/address.hpp>
-#include <service/pendingbuffer.hpp>
-#include <service/router_lookup_job.hpp>
-#include <service/session.hpp>
-#include <service/endpoint_types.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/decaying_hashtable.hpp>
-#include <util/status.hpp>
+#include <llarp/hook/ihook.hpp>
+#include <llarp/router_id.hpp>
+#include "address.hpp"
+#include "pendingbuffer.hpp"
+#include "router_lookup_job.hpp"
+#include "session.hpp"
+#include "endpoint_types.hpp"
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/decaying_hashtable.hpp>
+#include <llarp/util/status.hpp>
+#include "lns_tracker.hpp"
 
 #include <memory>
 #include <queue>
 #include <set>
 #include <unordered_map>
+
+#include <oxenmq/variant.h>
 
 namespace llarp
 {
@@ -44,10 +46,10 @@ namespace llarp
 
       SNodeSessions m_SNodeSessions;
 
-      std::unordered_multimap<Address, PathEnsureHook, Address::Hash> m_PendingServiceLookups;
-      std::unordered_map<Address, llarp_time_t, Address::Hash> m_LastServiceLookupTimes;
+      std::unordered_multimap<Address, PathEnsureHook> m_PendingServiceLookups;
+      std::unordered_map<Address, llarp_time_t> m_LastServiceLookupTimes;
 
-      std::unordered_map<RouterID, uint32_t, RouterID::Hash> m_ServiceLookupFails;
+      std::unordered_map<RouterID, uint32_t> m_ServiceLookupFails;
 
       PendingRouters m_PendingRouters;
 
@@ -65,7 +67,10 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      util::DecayingHashTable<std::string, Address, std::hash<std::string>> nameCache;
+      util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
+          nameCache;
+
+      LNSLookupTracker lnsTracker;
 
       bool
       Configure(const NetworkConfig& conf);
@@ -75,5 +80,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-#endif

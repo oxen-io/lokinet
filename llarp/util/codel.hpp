@@ -1,10 +1,9 @@
-#ifndef LLARP_CODEL_QUEUE_HPP
-#define LLARP_CODEL_QUEUE_HPP
+#pragma once
 
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
-#include <util/thread/threading.hpp>
-#include <util/time.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include "mem.hpp"
+#include <llarp/util/thread/threading.hpp>
+#include "time.hpp"
 
 #include <algorithm>
 #include <array>
@@ -166,5 +165,3 @@ namespace llarp
     };  // namespace util
   }     // namespace util
 }  // namespace llarp
-
-#endif

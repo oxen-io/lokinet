@@ -1,9 +1,9 @@
 #ifndef LLARP_DHT_LOCALSERVICEADDRESSLOOKUP
 #define LLARP_DHT_LOCALSERVICEADDRESSLOOKUP
 
-#include <dht/serviceaddresslookup.hpp>
+#include "serviceaddresslookup.hpp"
 
-#include <path/path_types.hpp>
+#include <llarp/path/path_types.hpp>
 
 namespace llarp
 {

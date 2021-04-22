@@ -1,10 +1,10 @@
-#include <messages/link_intro.hpp>
+#include "link_intro.hpp"
 
-#include <crypto/crypto.hpp>
-#include <router_contact.hpp>
-#include <router/abstractrouter.hpp>
-#include <util/bencode.h>
-#include <util/logging/logger.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/util/bencode.h>
+#include <llarp/util/logging/logger.hpp>
 
 namespace llarp
 {
