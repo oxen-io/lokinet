@@ -1,5 +1,5 @@
-#include <consensus/table.hpp>
-#include <crypto/crypto.hpp>
+#include "table.hpp"
+#include <llarp/crypto/crypto.hpp>
 
 namespace llarp
 {

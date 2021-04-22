@@ -24,6 +24,8 @@ if(SUBMODULE_CHECK)
     check_submodule(oxen-mq)
     check_submodule(uvw)
     check_submodule(cpr)
+    check_submodule(ngtcp2)
+    check_submodule(cpr)
   endif()
 endif()
 
@@ -74,3 +76,11 @@ target_link_libraries(cpr PUBLIC CURL::libcurl)
 target_include_directories(cpr PUBLIC cpr/include)
 target_compile_definitions(cpr PUBLIC CPR_CURL_NOSIGNAL)
 add_library(cpr::cpr ALIAS cpr)
+
+# We don't need any of these as we don't use the ssl crypto helper code at all:
+set(ENABLE_GNUTLS OFF CACHE BOOL "Disable gnutls for ngtcp2")
+set(ENABLE_OPENSSL OFF CACHE BOOL "Disable openssl for ngtcp2")
+set(ENABLE_BORINGSSL OFF CACHE BOOL "Disable boringssl for ngtcp2")
+
+add_definitions(-D_GNU_SOURCE)
+add_subdirectory(ngtcp2 EXCLUDE_FROM_ALL)

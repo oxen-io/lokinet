@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_SERVICEADDRESSLOOKUP
 #define LLARP_DHT_SERVICEADDRESSLOOKUP
 
-#include <dht/key.hpp>
-#include <dht/tx.hpp>
-#include <service/address.hpp>
-#include <service/intro_set.hpp>
+#include "key.hpp"
+#include "tx.hpp"
+#include <llarp/service/address.hpp>
+#include <llarp/service/intro_set.hpp>
 
 namespace llarp
 {

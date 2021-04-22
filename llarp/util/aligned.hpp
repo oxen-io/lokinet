@@ -1,10 +1,9 @@
-#ifndef LLARP_ALIGNED_HPP
-#define LLARP_ALIGNED_HPP
+#pragma once
 
-#include <util/bencode.h>
-#include <util/logging/logger.hpp>
-#include <util/meta/traits.hpp>
-#include <util/printer.hpp>
+#include "bencode.h"
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/meta/traits.hpp>
+#include "printer.hpp"
 
 #include <oxenmq/hex.h>
 
@@ -45,6 +44,8 @@ namespace llarp
     static constexpr size_t SIZE = sz;
 
     using Data = std::array<byte_t, SIZE>;
+
+    virtual ~AlignedBuffer() = default;
 
     AlignedBuffer()
     {
@@ -192,7 +193,13 @@ namespace llarp
     bool
     IsZero() const
     {
-      return sodium_is_zero(data(), size());
+      const uint64_t* ptr = reinterpret_cast<const uint64_t*>(data());
+      for (size_t idx = 0; idx < SIZE / sizeof(uint64_t); idx++)
+      {
+        if (ptr[idx])
+          return false;
+      }
+      return true;
     }
 
     void
@@ -201,7 +208,7 @@ namespace llarp
       m_data.fill(0);
     }
 
-    void
+    virtual void
     Randomize()
     {
       randombytes(data(), SIZE);
@@ -290,20 +297,22 @@ namespace llarp
       return stream;
     }
 
-    struct Hash
-    {
-      std::size_t
-      operator()(const AlignedBuffer& buf) const noexcept
-      {
-        std::size_t h = 0;
-        std::memcpy(&h, buf.data(), sizeof(std::size_t));
-        return h;
-      }
-    };
-
    private:
     Data m_data;
   };
 }  // namespace llarp
 
-#endif
+namespace std
+{
+  template <size_t sz>
+  struct hash<llarp::AlignedBuffer<sz>>
+  {
+    std::size_t
+    operator()(const llarp::AlignedBuffer<sz>& buf) const noexcept
+    {
+      std::size_t h = 0;
+      std::memcpy(&h, buf.data(), sizeof(std::size_t));
+      return h;
+    }
+  };
+}  // namespace std

@@ -1,7 +1,6 @@
-#ifndef LLARP_BOOTSTRAP_HPP
-#define LLARP_BOOTSTRAP_HPP
+#pragma once
 
-#include <router_contact.hpp>
+#include "router_contact.hpp"
 #include <set>
 
 namespace llarp
@@ -18,5 +17,3 @@ namespace llarp
     Clear();
   };
 }  // namespace llarp
-
-#endif

@@ -10,13 +10,13 @@
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
 #endif
-#include <net/net.hpp>
+#include "net.hpp"
 #include <exception>
 #include <charconv>
 #endif
 #ifdef __APPLE__
-#include <net/net.hpp>
-#include <util/str.hpp>
+#include "net.hpp"
+#include <llarp/util/str.hpp>
 #endif
 #ifdef _WIN32
 #include <windows.h>
@@ -27,13 +27,13 @@
 #include <cstring>
 #include <locale>
 #include <codecvt>
-#include <net/net_int.hpp>
-#include <net/ip.hpp>
+#include "net_int.hpp"
+#include "ip.hpp"
 #endif
 
 #include <sstream>
-#include <util/logging/logger.hpp>
-#include <util/str.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp::net
 {

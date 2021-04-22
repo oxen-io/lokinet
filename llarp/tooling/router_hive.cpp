@@ -1,9 +1,8 @@
-#include <tooling/router_hive.hpp>
+#include "router_hive.hpp"
 
-#include "llarp.h"
-#include "llarp.hpp"
-#include "util/str.hpp"
-#include "router/abstractrouter.hpp"
+#include <llarp.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 #include <chrono>
 #include <algorithm>
@@ -14,12 +13,12 @@ using namespace std::chrono_literals;
 namespace tooling
 {
   void
-  RouterHive::AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRouter)
+  RouterHive::AddRouter(const std::shared_ptr<llarp::Config>& config, bool isSNode)
   {
-    auto& container = (isRouter ? relays : clients);
+    auto& container = (isSNode ? relays : clients);
 
     llarp::RuntimeOptions opts;
-    opts.isRouter = isRouter;
+    opts.isSNode = isSNode;
 
     Context_ptr context = std::make_shared<HiveContext>(this);
     context->Configure(config);

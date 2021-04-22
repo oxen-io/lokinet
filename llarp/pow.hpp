@@ -1,8 +1,7 @@
-#ifndef LLARP_POW_HPP
-#define LLARP_POW_HPP
+#pragma once
 
-#include <router_id.hpp>
-#include <util/buffer.hpp>
+#include "router_id.hpp"
+#include "util/buffer.hpp"
 
 namespace llarp
 {
@@ -49,5 +48,3 @@ namespace llarp
     return p.print(out, -1, -1);
   }
 }  // namespace llarp
-
-#endif

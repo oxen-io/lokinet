@@ -2,8 +2,8 @@
 
 #include <initializer_list>
 #include <type_traits>
-#include <util/str.hpp>
-#include <util/fs.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/util/fs.hpp>
 
 #include <iostream>
 #include <memory>

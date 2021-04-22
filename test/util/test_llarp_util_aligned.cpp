@@ -162,7 +162,7 @@ TEMPLATE_LIST_TEST_CASE("AlignedBuffer", "[AlignedBuffer]", TestSizes)
 
   SECTION("TestHash")
   {
-    using Map_t = std::unordered_map<Buffer, int, typename Buffer::Hash>;
+    using Map_t = std::unordered_map<Buffer, int>;
 
     Buffer k, other_k;
     k.Randomize();

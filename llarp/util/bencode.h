@@ -1,9 +1,8 @@
-#ifndef LLARP_BENCODE_H
-#define LLARP_BENCODE_H
+#pragma once
 
-#include <constants/proto.hpp>
-#include <util/buffer.hpp>
-#include <util/common.hpp>
+#include <llarp/constants/proto.hpp>
+#include "buffer.hpp"
+#include "common.hpp"
 
 #include <functional>
 
@@ -45,5 +44,3 @@ bencode_end(llarp_buffer_t* buff);
 /// read next member, discard it and advance buffer
 bool
 bencode_discard(llarp_buffer_t* buf);
-
-#endif

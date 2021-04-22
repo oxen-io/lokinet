@@ -1,14 +1,13 @@
-#ifndef LLARP_NET_HPP
-#define LLARP_NET_HPP
+#pragma once
 
-#include <net/uint128.hpp>
-#include <net/address_info.hpp>
-#include <net/ip_address.hpp>
-#include <net/net_int.hpp>
-#include <net/net.h>
-#include <net/ip_range.hpp>
-#include <util/mem.hpp>
-#include <util/bits.hpp>
+#include "uint128.hpp"
+#include "address_info.hpp"
+#include "ip_address.hpp"
+#include "net_int.hpp"
+#include "net.h"
+#include "ip_range.hpp"
+#include <llarp/util/mem.hpp>
+#include <llarp/util/bits.hpp>
 
 #include <functional>
 #include <cstdlib>  // for itoa
@@ -94,5 +93,3 @@ namespace llarp
 #endif
 
 }  // namespace llarp
-
-#endif

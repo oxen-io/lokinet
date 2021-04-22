@@ -1,7 +1,6 @@
-#ifndef LLARP_SERVICE_ROUTER_LOOKUP_JOB_HPP
-#define LLARP_SERVICE_ROUTER_LOOKUP_JOB_HPP
+#pragma once
 
-#include <router_contact.hpp>
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -34,4 +33,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-#endif

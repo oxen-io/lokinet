@@ -1,11 +1,10 @@
-#ifndef LLARP_ENCRYPTED_HPP
-#define LLARP_ENCRYPTED_HPP
+#pragma once
 
-#include <constants/link_layer.hpp>
-#include <util/aligned.hpp>
-#include <util/bencode.h>
-#include <util/buffer.hpp>
-#include <util/mem.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/bencode.h>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/mem.hpp>
 
 #include <vector>
 #include <stdexcept>
@@ -165,5 +164,3 @@ namespace llarp
     llarp_buffer_t m_Buffer;
   };  // namespace llarp
 }  // namespace llarp
-
-#endif

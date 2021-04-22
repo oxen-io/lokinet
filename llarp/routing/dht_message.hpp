@@ -1,8 +1,7 @@
-#ifndef LLARP_MESSAGES_DHT_HPP
-#define LLARP_MESSAGES_DHT_HPP
+#pragma once
 
-#include <dht/message.hpp>
-#include <routing/message.hpp>
+#include <llarp/dht/message.hpp>
+#include "message.hpp"
 
 #include <vector>
 
@@ -35,5 +34,3 @@ namespace llarp
     };
   }  // namespace routing
 }  // namespace llarp
-
-#endif

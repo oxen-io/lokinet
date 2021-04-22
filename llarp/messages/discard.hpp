@@ -1,10 +1,9 @@
-#ifndef LLARP_MESSAGES_DISCARD_HPP
-#define LLARP_MESSAGES_DISCARD_HPP
+#pragma once
 
-#include <messages/link_message.hpp>
-#include <routing/handler.hpp>
-#include <routing/message.hpp>
-#include <util/bencode.hpp>
+#include "link_message.hpp"
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message.hpp>
+#include <llarp/util/bencode.hpp>
 
 namespace llarp
 {
@@ -119,5 +118,3 @@ namespace llarp
   }  // namespace routing
 
 }  // namespace llarp
-
-#endif

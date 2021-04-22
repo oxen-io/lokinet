@@ -1,4 +1,4 @@
-#include <exit/context.hpp>
+#include "context.hpp"
 #include <memory>
 #include <stdexcept>
 
@@ -94,6 +94,16 @@ namespace llarp
         ++itr;
       }
       return false;
+    }
+
+    std::shared_ptr<handlers::ExitEndpoint>
+    Context::GetExitEndpoint(std::string name) const
+    {
+      if (auto itr = m_Exits.find(name); itr != m_Exits.end())
+      {
+        return itr->second;
+      }
+      return nullptr;
     }
 
     void

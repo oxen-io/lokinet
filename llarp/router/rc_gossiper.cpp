@@ -1,9 +1,9 @@
-#include <router/rc_gossiper.hpp>
-#include <messages/dht_immediate.hpp>
-#include <dht/messages/gotrouter.hpp>
-#include <util/time.hpp>
-#include <constants/link_layer.hpp>
-#include <tooling/rc_event.hpp>
+#include "rc_gossiper.hpp"
+#include <llarp/messages/dht_immediate.hpp>
+#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/tooling/rc_event.hpp>
 
 namespace llarp
 {

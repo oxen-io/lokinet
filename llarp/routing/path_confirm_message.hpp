@@ -1,7 +1,6 @@
-#ifndef LLARP_MESSAGE_PATH_CONFIRM_HPP
-#define LLARP_MESSAGE_PATH_CONFIRM_HPP
+#pragma once
 
-#include <routing/message.hpp>
+#include "message.hpp"
 
 namespace llarp
 {
@@ -35,5 +34,3 @@ namespace llarp
     };
   }  // namespace routing
 }  // namespace llarp
-
-#endif

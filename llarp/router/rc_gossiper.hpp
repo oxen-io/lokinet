@@ -1,11 +1,10 @@
-#ifndef LLARP_RC_GOSSIPER_HPP
-#define LLARP_RC_GOSSIPER_HPP
+#pragma once
 
-#include <util/decaying_hashset.hpp>
-#include <router/i_gossiper.hpp>
-#include <router/i_outbound_message_handler.hpp>
-#include <link/i_link_manager.hpp>
-#include <router/abstractrouter.hpp>
+#include <llarp/util/decaying_hashset.hpp>
+#include "i_gossiper.hpp"
+#include "i_outbound_message_handler.hpp"
+#include <llarp/link/i_link_manager.hpp>
+#include "abstractrouter.hpp"
 
 namespace llarp
 {
@@ -39,5 +38,3 @@ namespace llarp
     AbstractRouter* m_router;
   };
 }  // namespace llarp
-
-#endif

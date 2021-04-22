@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_PUBLISHSERVICEJOB
 #define LLARP_DHT_PUBLISHSERVICEJOB
 
-#include <dht/tx.hpp>
-#include <dht/txowner.hpp>
-#include <service/address.hpp>
-#include <service/intro_set.hpp>
+#include "tx.hpp"
+#include "txowner.hpp"
+#include <llarp/service/address.hpp>
+#include <llarp/service/intro_set.hpp>
 
 #include <set>
 

@@ -1,9 +1,8 @@
-#ifndef LLARP_DHT_H_
-#define LLARP_DHT_H_
+#pragma once
 
-#include <crypto/crypto.hpp>
-#include <router_contact.hpp>
-#include <util/buffer.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/buffer.hpp>
 
 /**
  * dht.h
@@ -60,5 +59,3 @@ __llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id);
 
 void
 llarp_dht_lookup_router(struct llarp_dht_context* ctx, struct llarp_router_lookup_job* job);
-
-#endif

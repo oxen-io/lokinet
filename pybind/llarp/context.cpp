@@ -1,8 +1,9 @@
-#include "common.hpp"
+#include <common.hpp>
 #include <llarp.hpp>
-#include <tooling/hive_context.hpp>
-#include <router/router.cpp>
-#include "llarp/handlers/pyhandler.hpp"
+#include <llarp/tooling/hive_context.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/handlers/pyhandler.hpp>
+#include "service/protocol_type.hpp"
 namespace llarp
 {
   void
@@ -28,7 +29,7 @@ namespace llarp
               std::vector<byte_t> buf;
               buf.resize(pkt.size());
               std::copy_n(pkt.c_str(), pkt.size(), buf.data());
-              return ep and ep->SendToServiceOrQueue(to, std::move(buf), service::eProtocolControl);
+              return ep and ep->SendToOrQueue(to, std::move(buf), service::ProtocolType::Control);
             })
         .def(
             "AddEndpoint",

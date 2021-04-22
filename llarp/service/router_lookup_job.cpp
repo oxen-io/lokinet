@@ -1,6 +1,6 @@
-#include <service/router_lookup_job.hpp>
+#include "router_lookup_job.hpp"
 
-#include <service/endpoint.hpp>
+#include "endpoint.hpp"
 #include <utility>
 
 namespace llarp

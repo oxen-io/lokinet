@@ -1,8 +1,7 @@
-#ifndef LLARP_DNS_NAME_HPP
-#define LLARP_DNS_NAME_HPP
+#pragma once
 
-#include <net/net_int.hpp>
-#include <util/buffer.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/util/buffer.hpp>
 
 #include <string>
 
@@ -28,5 +27,3 @@ namespace llarp
 
   }  // namespace dns
 }  // namespace llarp
-
-#endif

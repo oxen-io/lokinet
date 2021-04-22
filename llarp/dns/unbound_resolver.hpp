@@ -6,9 +6,9 @@
 #include <memory>
 #include <queue>
 
-#include <ev/ev.hpp>
+#include <llarp/ev/ev.hpp>
 
-#include <dns/message.hpp>
+#include "message.hpp"
 
 #ifdef _WIN32
 #include <thread>

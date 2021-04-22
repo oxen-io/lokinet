@@ -1,14 +1,14 @@
-#include <nodedb.hpp>
+#include "nodedb.hpp"
 
-#include <crypto/crypto.hpp>
-#include <crypto/types.hpp>
-#include <router_contact.hpp>
-#include <util/buffer.hpp>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
-#include <util/str.hpp>
-#include <dht/kademlia.hpp>
+#include "crypto/crypto.hpp"
+#include "crypto/types.hpp"
+#include "router_contact.hpp"
+#include "util/buffer.hpp"
+#include "util/fs.hpp"
+#include "util/logging/logger.hpp"
+#include "util/mem.hpp"
+#include "util/str.hpp"
+#include "dht/kademlia.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -63,10 +63,15 @@ namespace llarp
   {
     EnsureSkiplist(m_Root);
   }
+  NodeDB::NodeDB() : m_Root{}, disk{[](auto) {}}, m_NextFlushAt{0s}
+  {}
 
   void
   NodeDB::Tick(llarp_time_t now)
   {
+    if (m_NextFlushAt == 0s)
+      return;
+
     if (now > m_NextFlushAt)
     {
       m_NextFlushAt += FlushInterval;
@@ -102,6 +107,9 @@ namespace llarp
   void
   NodeDB::LoadFromDisk()
   {
+    if (m_Root.empty())
+      return;
+
     for (const char& ch : skiplist_subdirs)
     {
       if (!ch)
@@ -125,6 +133,9 @@ namespace llarp
   void
   NodeDB::SaveToDisk() const
   {
+    if (m_Root.empty())
+      return;
+
     for (const auto& item : m_Entries)
     {
       item.second.rc.Write(GetPathForPubkey(item.first));
@@ -209,6 +220,8 @@ namespace llarp
   void
   NodeDB::AsyncRemoveManyFromDisk(std::unordered_set<RouterID> remove) const
   {
+    if (m_Root.empty())
+      return;
     // build file list
     std::set<fs::path> files;
     for (auto id : remove)

@@ -1,10 +1,9 @@
-#ifndef LLARP_CRYPTO_HPP
-#define LLARP_CRYPTO_HPP
+#pragma once
 
-#include <crypto/constants.hpp>
-#include <crypto/types.hpp>
+#include "constants.hpp"
+#include "types.hpp"
 
-#include <util/buffer.hpp>
+#include <llarp/util/buffer.hpp>
 
 #include <functional>
 
@@ -176,5 +175,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

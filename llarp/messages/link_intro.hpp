@@ -1,9 +1,8 @@
-#ifndef LLARP_MESSAGES_LINK_INTRO_HPP
-#define LLARP_MESSAGES_LINK_INTRO_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <messages/link_message.hpp>
-#include <router_contact.hpp>
+#include <llarp/crypto/types.hpp>
+#include "link_message.hpp"
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -53,5 +52,3 @@ namespace llarp
     }
   };
 }  // namespace llarp
-
-#endif

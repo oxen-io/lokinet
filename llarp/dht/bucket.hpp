@@ -1,9 +1,8 @@
-#ifndef LLARP_DHT_BUCKET_HPP
-#define LLARP_DHT_BUCKET_HPP
+#pragma once
 
-#include <dht/kademlia.hpp>
-#include <dht/key.hpp>
-#include <util/status.hpp>
+#include "kademlia.hpp"
+#include "key.hpp"
+#include <llarp/util/status.hpp>
 
 #include <map>
 #include <set>
@@ -230,4 +229,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-#endif

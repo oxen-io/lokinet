@@ -1,9 +1,8 @@
-#ifndef LLARP_NET_IP_RANGE_MAP_HPP
-#define LLARP_NET_IP_RANGE_MAP_HPP
+#pragma once
 
-#include <net/ip_range.hpp>
-#include <util/status.hpp>
-#include <list>
+#include "ip_range.hpp"
+#include <llarp/util/status.hpp>
+#include <vector>
 
 namespace llarp
 {
@@ -20,7 +19,7 @@ namespace llarp
       using IP_t = Range_t::Addr_t;
 
       using Entry_t = std::pair<Range_t, Value_t>;
-      using Container_t = std::list<Entry_t>;
+      using Container_t = std::vector<Entry_t>;
 
       /// get a set of all values
       std::set<Value_t>
@@ -90,15 +89,15 @@ namespace llarp
         return std::nullopt;
       }
 
-      /// return a set of all values who's range contains this IP
-      std::set<Value_t>
-      FindAll(const IP_t& addr) const
+      /// return a set of all entries who's range contains this IP
+      std::set<Entry_t>
+      FindAllEntries(const IP_t& addr) const
       {
-        std::set<Value_t> found;
+        std::set<Entry_t> found;
         for (const auto& entry : m_Entries)
         {
           if (entry.first.Contains(addr))
-            found.insert(entry.second);
+            found.insert(entry);
         }
         return found;
       }
@@ -115,8 +114,7 @@ namespace llarp
       void
       Insert(const Range_t& addr, const Value_t& val)
       {
-        m_Entries.emplace_front(addr, val);
-        m_Entries.sort(CompareEntry{});
+        m_Entries.emplace_back(addr, val);
       }
 
       template <typename Visit_t>
@@ -149,5 +147,3 @@ namespace llarp
     };
   }  // namespace net
 }  // namespace llarp
-
-#endif

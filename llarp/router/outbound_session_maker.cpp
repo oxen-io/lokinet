@@ -1,16 +1,16 @@
-#include <router/outbound_session_maker.hpp>
+#include "outbound_session_maker.hpp"
 
-#include <router/abstractrouter.hpp>
-#include <tooling/peer_stats_event.hpp>
-#include <link/server.hpp>
-#include <router_contact.hpp>
-#include <nodedb.hpp>
-#include <router/i_rc_lookup_handler.hpp>
-#include <link/i_link_manager.hpp>
-#include <util/meta/memfn.hpp>
-#include <util/thread/threading.hpp>
-#include <util/status.hpp>
-#include <crypto/crypto.hpp>
+#include "abstractrouter.hpp"
+#include <llarp/tooling/peer_stats_event.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/nodedb.hpp>
+#include "i_rc_lookup_handler.hpp"
+#include <llarp/link/i_link_manager.hpp>
+#include <llarp/util/meta/memfn.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/crypto/crypto.hpp>
 #include <utility>
 
 namespace llarp

@@ -27,7 +27,7 @@ target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
   # because debian sid's curl doesn't link against openssl for some godawful cursed reason
-  target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::Crypto)
+  target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
 foreach(exe lokinet lokinet-vpn lokinet-bootstrap)

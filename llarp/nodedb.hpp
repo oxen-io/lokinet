@@ -1,14 +1,13 @@
-#ifndef LLARP_NODEDB_HPP
-#define LLARP_NODEDB_HPP
+#pragma once
 
-#include <router_contact.hpp>
-#include <router_id.hpp>
-#include <util/common.hpp>
-#include <util/fs.hpp>
-#include <util/thread/threading.hpp>
-#include <util/thread/annotations.hpp>
-#include <dht/key.hpp>
-#include <crypto/crypto.hpp>
+#include "router_contact.hpp"
+#include "router_id.hpp"
+#include "util/common.hpp"
+#include "util/fs.hpp"
+#include "util/thread/threading.hpp"
+#include "util/thread/annotations.hpp"
+#include "dht/key.hpp"
+#include "crypto/crypto.hpp"
 
 #include <set>
 #include <optional>
@@ -50,6 +49,9 @@ namespace llarp
 
    public:
     explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller);
+
+    /// in memory nodedb
+    NodeDB();
 
     /// load all entries from disk syncrhonously
     void
@@ -168,4 +170,3 @@ namespace llarp
     Put(RouterContact rc);
   };
 }  // namespace llarp
-#endif

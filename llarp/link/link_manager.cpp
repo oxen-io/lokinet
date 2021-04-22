@@ -1,7 +1,7 @@
-#include <link/link_manager.hpp>
+#include "link_manager.hpp"
 
-#include <router/i_outbound_session_maker.hpp>
-#include <crypto/crypto.hpp>
+#include <llarp/router/i_outbound_session_maker.hpp>
+#include <llarp/crypto/crypto.hpp>
 
 #include <algorithm>
 #include <set>
@@ -296,7 +296,7 @@ namespace llarp
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact& router) const
   {
-    std::unordered_map<RouterID, RouterContact, RouterID::Hash> connectedRouters;
+    std::unordered_map<RouterID, RouterContact> connectedRouters;
 
     ForEachPeer(
         [&connectedRouters](const ILinkSession* peer, bool unused) {

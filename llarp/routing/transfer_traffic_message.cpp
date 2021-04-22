@@ -1,8 +1,8 @@
-#include <routing/transfer_traffic_message.hpp>
+#include "transfer_traffic_message.hpp"
 
-#include <routing/handler.hpp>
-#include <util/bencode.hpp>
-#include <util/endian.hpp>
+#include "handler.hpp"
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/endian.hpp>
 
 namespace llarp
 {
@@ -30,6 +30,8 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictMsgType(buf, "A", "I"))
         return false;
+      if (!BEncodeWriteDictInt("P", protocol, buf))
+        return false;
       if (!BEncodeWriteDictInt("S", S, buf))
         return false;
       if (!BEncodeWriteDictInt("V", version, buf))
@@ -45,11 +47,13 @@ namespace llarp
       bool read = false;
       if (!BEncodeMaybeReadDictInt("S", S, read, key, buf))
         return false;
+      if (!BEncodeMaybeReadDictInt("P", protocol, read, key, buf))
+        return false;
       if (!BEncodeMaybeReadDictInt("V", version, read, key, buf))
         return false;
       if (!BEncodeMaybeReadDictList("X", X, read, key, buf))
         return false;
-      return read;
+      return read or bencode_discard(buf);
     }
 
     bool

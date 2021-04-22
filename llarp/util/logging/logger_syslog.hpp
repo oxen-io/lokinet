@@ -1,7 +1,6 @@
-#ifndef LLARP_UTIL_LOGGER_SYSLOG_HPP
-#define LLARP_UTIL_LOGGER_SYSLOG_HPP
+#pragma once
 
-#include <util/logging/logstream.hpp>
+#include "logstream.hpp"
 #include <iostream>
 
 namespace llarp
@@ -30,4 +29,3 @@ namespace llarp
     {}
   };
 }  // namespace llarp
-#endif

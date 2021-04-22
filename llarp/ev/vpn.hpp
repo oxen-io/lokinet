@@ -1,7 +1,7 @@
 #pragma once
 
-#include <net/ip_range.hpp>
-#include <net/ip_packet.hpp>
+#include <llarp/net/ip_range.hpp>
+#include <llarp/net/ip_packet.hpp>
 #include <set>
 
 namespace llarp

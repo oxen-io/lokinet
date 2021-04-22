@@ -1,13 +1,17 @@
-#include <handlers/exit.hpp>
+#include "exit.hpp"
 
-#include <dns/dns.hpp>
-#include <net/net.hpp>
-#include <path/path_context.hpp>
-#include <router/abstractrouter.hpp>
-#include <util/str.hpp>
-#include <util/bits.hpp>
+#include <llarp/dns/dns.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/path/path_context.hpp>
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/util/str.hpp>
+#include <llarp/util/bits.hpp>
+
+#include <llarp/quic/tunnel.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
 
 #include <cassert>
+#include "service/protocol_type.hpp"
 
 namespace llarp
 {
@@ -18,13 +22,159 @@ namespace llarp
         , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
         , m_Name(std::move(name))
         , m_LocalResolverAddr("127.0.0.1", 53)
+        , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
         , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
 
     {
       m_ShouldInitTun = true;
+      m_QUIC = std::make_shared<quic::TunnelManager>(*this);
     }
 
     ExitEndpoint::~ExitEndpoint() = default;
+
+    void
+    ExitEndpoint::LookupNameAsync(
+        std::string, std::function<void(std::optional<AddressVariant_t>)> resultHandler)
+    {
+      // TODO: implement me
+      resultHandler(std::nullopt);
+    }
+
+    void
+    ExitEndpoint::LookupServiceAsync(
+        std::string, std::string, std::function<void(std::vector<dns::SRVData>)> resultHandler)
+    {
+      // TODO: implement me
+      resultHandler({});
+    }
+
+    std::optional<EndpointBase::AddressVariant_t>
+    ExitEndpoint::GetEndpointWithConvoTag(service::ConvoTag tag) const
+    {
+      for (const auto& [pathID, pk] : m_Paths)
+      {
+        if (pathID.as_array() == tag.as_array())
+          return RouterID{pk.as_array()};
+      }
+      for (const auto& [rid, session] : m_SNodeSessions)
+      {
+        PathID_t pathID{tag.as_array()};
+        if (session->GetPathByID(pathID))
+          return rid;
+      }
+      return std::nullopt;
+    }
+
+    std::optional<service::ConvoTag>
+    ExitEndpoint::GetBestConvoTagFor(AddressVariant_t addr) const
+    {
+      if (auto* rid = std::get_if<RouterID>(&addr))
+      {
+        service::ConvoTag tag{};
+        auto visit = [&tag](exit::Endpoint* const ep) -> bool {
+          if (not ep)
+            return false;
+          if (auto path = ep->GetCurrentPath())
+            tag = service::ConvoTag{path->RXID().as_array()};
+          return true;
+        };
+        if (VisitEndpointsFor(PubKey{*rid}, visit) and not tag.IsZero())
+          return tag;
+        auto itr = m_SNodeSessions.find(*rid);
+        if (itr == m_SNodeSessions.end())
+        {
+          return std::nullopt;
+        }
+        if (auto path = itr->second->GetPathByRouter(*rid))
+        {
+          tag = service::ConvoTag{path->RXID().as_array()};
+          return tag;
+        }
+        return std::nullopt;
+      }
+      else
+        return std::nullopt;
+    }
+
+    const EventLoop_ptr&
+    ExitEndpoint::Loop()
+    {
+      return m_Router->loop();
+    }
+
+    bool
+    ExitEndpoint::SendToOrQueue(
+        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType type)
+    {
+      if (auto maybeAddr = GetEndpointWithConvoTag(tag))
+      {
+        if (std::holds_alternative<service::Address>(*maybeAddr))
+          return false;
+        if (auto* rid = std::get_if<RouterID>(&*maybeAddr))
+        {
+          auto range = m_ActiveExits.equal_range(PubKey{*rid});
+          auto itr = range.first;
+          while (itr != range.second)
+          {
+            if (not itr->second->LooksDead(Now()))
+            {
+              if (itr->second->QueueInboundTraffic(ManagedBuffer{payload}, type))
+                return true;
+            }
+            ++itr;
+          }
+
+          if (not m_Router->ConnectionToRouterAllowed(*rid))
+            return false;
+
+          ObtainSNodeSession(*rid, [data = payload.copy(), type](auto session) {
+            if (session and session->IsReady())
+            {
+              session->SendPacketToRemote(data, type);
+            }
+          });
+        }
+        return true;
+      }
+      else
+        return false;
+    }
+
+    bool
+    ExitEndpoint::EnsurePathTo(
+        AddressVariant_t addr,
+        std::function<void(std::optional<service::ConvoTag>)> hook,
+        llarp_time_t)
+    {
+      if (std::holds_alternative<service::Address>(addr))
+        return false;
+      if (auto* rid = std::get_if<RouterID>(&addr))
+      {
+        if (m_SNodeKeys.count(PubKey{*rid}) or m_Router->ConnectionToRouterAllowed(*rid))
+        {
+          ObtainSNodeSession(
+              *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
+                if (session and session->IsReady())
+                {
+                  if (auto path = session->GetPathByRouter(routerID))
+                  {
+                    hook(service::ConvoTag{path->RXID().as_array()});
+                  }
+                  else
+                    hook(std::nullopt);
+                }
+                else
+                  hook(std::nullopt);
+              });
+        }
+        else
+        {
+          // probably a client
+          hook(GetBestConvoTagFor(addr));
+        }
+      }
+      return true;
+    }
 
     util::StatusObject
     ExitEndpoint::ExtractStatus() const
@@ -149,17 +299,20 @@ namespace llarp
           else if (m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped, async obtain it
-            ObtainSNodeSession(r, [&](std::shared_ptr<exit::BaseSession> session) {
-              if (session && session->IsReady())
-              {
-                msg.AddINReply(m_KeyToIP[pubKey], isV6);
-              }
-              else
-              {
-                msg.AddNXReply();
-              }
-              reply(msg);
-            });
+            ObtainSNodeSession(
+                r,
+                [&, msg = std::make_shared<dns::Message>(msg), reply](
+                    std::shared_ptr<exit::BaseSession> session) {
+                  if (session && session->IsReady())
+                  {
+                    msg->AddINReply(m_KeyToIP[pubKey], isV6);
+                  }
+                  else
+                  {
+                    msg->AddNXReply();
+                  }
+                  reply(*msg);
+                });
             return true;
           }
           else
@@ -185,6 +338,11 @@ namespace llarp
     void
     ExitEndpoint::ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb)
     {
+      if (not m_Router->rcLookupHandler().RemoteIsAllowed(router))
+      {
+        obtainCb(nullptr);
+        return;
+      }
       ObtainServiceNodeIP(router);
       m_SNodeSessions[router]->AddReadyHook(obtainCb);
     }
@@ -197,7 +355,7 @@ namespace llarp
 
     bool
     ExitEndpoint::VisitEndpointsFor(
-        const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit)
+        const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const
     {
       auto range = m_ActiveExits.equal_range(pk);
       auto itr = range.first;
@@ -227,7 +385,7 @@ namespace llarp
           pk = itr->second;
         }
         // check if this key is a service node
-        if (m_SNodeKeys.find(pk) != m_SNodeKeys.end())
+        if (m_SNodeKeys.count(pk))
         {
           // check if it's a service node session we made and queue it via our
           // snode session that we made otherwise use an inbound session that
@@ -235,12 +393,13 @@ namespace llarp
           auto itr = m_SNodeSessions.find(pk);
           if (itr != m_SNodeSessions.end())
           {
-            if (itr->second->QueueUpstreamTraffic(pkt, routing::ExitPadSize))
-              return;
+            itr->second->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::TrafficV4);
+            return;
           }
         }
         auto tryFlushingTraffic = [&](exit::Endpoint* const ep) -> bool {
-          if (!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
+          if (!ep->QueueInboundTraffic(
+                  ManagedBuffer{pkt.Buffer()}, service::ProtocolType::TrafficV4))
           {
             LogWarn(
                 Name(),
@@ -278,11 +437,7 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while (itr != m_SNodeSessions.end())
         {
-          // TODO: move flush upstream to router event loop
-          if (!itr->second->FlushUpstream())
-          {
-            LogWarn("failed to flush snode traffic to ", itr->first, " via outbound session");
-          }
+          itr->second->FlushUpstream();
           itr->second->FlushDownstream();
           ++itr;
         }
@@ -365,11 +520,11 @@ namespace llarp
     huint128_t
     ExitEndpoint::GetIPForIdent(const PubKey pk)
     {
-      huint128_t found = {0};
+      huint128_t found{};
       if (!HasLocalMappedAddrFor(pk))
       {
         // allocate and map
-        found.h = AllocateNewAddress().h;
+        found = AllocateNewAddress();
         if (!m_KeyToIP.emplace(pk, found).second)
         {
           LogError(Name(), "failed to map ", pk, " to ", found);
@@ -386,7 +541,7 @@ namespace llarp
           LogError(Name(), "failed to map ", pk, " to ", found);
       }
       else
-        found.h = m_KeyToIP[pk].h;
+        found = m_KeyToIP[pk];
 
       MarkIPActive(found);
       m_KeyToIP.rehash(0);
@@ -419,6 +574,57 @@ namespace llarp
       KickIdentOffExit(pk);
 
       return found;
+    }
+
+    EndpointBase::AddressVariant_t
+    ExitEndpoint::LocalAddress() const
+    {
+      return RouterID{m_Router->pubkey()};
+    }
+
+    void
+    ExitEndpoint::SRVRecordsChanged()
+    {
+      m_Router->ModifyOurRC(
+          [srvRecords = SRVRecords()](RouterContact rc) -> std::optional<RouterContact> {
+            // check if there are any new srv records
+            bool shouldUpdate = false;
+
+            for (const auto& rcSrv : rc.srvRecords)
+            {
+              if (srvRecords.count(rcSrv) == 0)
+                shouldUpdate = true;
+            }
+
+            // no new records so don't modify
+            if (not shouldUpdate)
+              return std::nullopt;
+
+            // we got new entries so we clear the whole vector on the rc and recreate it
+            rc.srvRecords.clear();
+            for (auto& record : srvRecords)
+              rc.srvRecords.emplace_back(record);
+            // set the version to 1 because we have srv records
+            rc.version = 1;
+            return rc;
+          });
+    }
+
+    std::optional<EndpointBase::SendStat> ExitEndpoint::GetStatFor(AddressVariant_t) const
+    {
+      /// TODO: implement me
+      return std::nullopt;
+    }
+
+    std::unordered_set<EndpointBase::AddressVariant_t>
+    ExitEndpoint::AllRemoteEndpoints() const
+    {
+      std::unordered_set<AddressVariant_t> remote;
+      for (auto itr = m_Paths.begin(); itr != m_Paths.end(); ++itr)
+      {
+        remote.insert(RouterID{itr->second});
+      }
+      return remote;
     }
 
     bool
@@ -550,7 +756,12 @@ namespace llarp
         m_ifname = *maybe;
       }
       LogInfo(Name(), " set ifname to ", m_ifname);
-
+      if (auto* quic = GetQUICTunnel())
+      {
+        quic->listen([ifaddr = net::TruncateV6(m_IfAddr)](std::string_view, uint16_t port) {
+          return llarp::SockAddr{ifaddr, huint16_t{port}};
+        });
+      }
       // TODO: "exit-whitelist" and "exit-blacklist"
       //       (which weren't originally implemented)
     }
@@ -558,8 +769,8 @@ namespace llarp
     huint128_t
     ExitEndpoint::ObtainServiceNodeIP(const RouterID& other)
     {
-      const PubKey pubKey(other);
-      const PubKey us(m_Router->pubkey());
+      const PubKey pubKey{other};
+      const PubKey us{m_Router->pubkey()};
       // just in case
       if (pubKey == us)
         return m_IfAddr;
@@ -574,17 +785,27 @@ namespace llarp
             2,
             1,
             true,
-            false);
+            this);
         // this is a new service node make an outbound session to them
-        m_SNodeSessions.emplace(other, session);
+        m_SNodeSessions[other] = session;
       }
       return ip;
+    }
+
+    quic::TunnelManager*
+    ExitEndpoint::GetQUICTunnel()
+    {
+      return m_QUIC.get();
     }
 
     bool
     ExitEndpoint::AllocateNewExit(const PubKey pk, const PathID_t& path, bool wantInternet)
     {
       if (wantInternet && !m_PermitExit)
+        return false;
+      path::HopHandler_ptr handler =
+          m_Router->pathContext().GetByUpstream(m_Router->pubkey(), path);
+      if (handler == nullptr)
         return false;
       auto ip = GetIPForIdent(pk);
       if (GetRouter()->pathContext().TransitHopPreviousIsRouter(path, pk.as_array()))
@@ -594,7 +815,7 @@ namespace llarp
         m_SNodeKeys.emplace(pk.as_array());
       }
       m_ActiveExits.emplace(
-          pk, std::make_unique<exit::Endpoint>(pk, path, !wantInternet, ip, this));
+          pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
 
       m_Paths[path] = pk;
 
@@ -620,12 +841,13 @@ namespace llarp
       auto itr = range.first;
       while (itr != range.second)
       {
-        if (itr->second->LocalPath() == ep->LocalPath())
+        if (itr->second->GetCurrentPath() == ep->GetCurrentPath())
         {
           itr = m_ActiveExits.erase(itr);
           // now ep is gone af
           return;
         }
+
         ++itr;
       }
     }

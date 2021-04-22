@@ -1,19 +1,21 @@
-#ifndef LLARP_HANDLERS_TUN_HPP
-#define LLARP_HANDLERS_TUN_HPP
+#pragma once
 
-#include <dns/server.hpp>
-#include <ev/ev.hpp>
-#include <ev/vpn.hpp>
-#include <net/ip.hpp>
-#include <net/ip_packet.hpp>
-#include <net/net.hpp>
-#include <service/endpoint.hpp>
-#include <util/codel.hpp>
-#include <util/thread/threading.hpp>
-#include <vpn/packet_router.hpp>
+#include <llarp/dns/server.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/ev/vpn.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/service/endpoint.hpp>
+#include <llarp/util/codel.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/vpn/packet_router.hpp>
 
 #include <future>
 #include <queue>
+#include <type_traits>
+#include <variant>
+#include "service/protocol_type.hpp"
 
 namespace llarp
 {
@@ -39,7 +41,7 @@ namespace llarp
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 
       void
-      SendPacketToRemote(const llarp_buffer_t&) override{};
+      SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       std::string
       GetIfName() const override;
@@ -121,24 +123,27 @@ namespace llarp
       bool
       HasLocalIP(const huint128_t& ip) const;
 
-      /// get a key for ip address
-      template <typename Addr_t>
-      Addr_t
-      ObtainAddrForIP(huint128_t ip, bool isSNode)
+      std::optional<net::TrafficPolicy>
+      GetExitPolicy() const override
       {
-        Addr_t addr;
-        auto itr = m_IPToAddr.find(ip);
-        if (itr != m_IPToAddr.end() and m_SNodes[itr->second] == isSNode)
-        {
-          addr = Addr_t(itr->second);
-        }
-        // found
-        return addr;
+        return m_TrafficPolicy;
       }
 
-      template <typename Addr_t>
+      std::set<IPRange>
+      GetOwnedRanges() const override
+      {
+        return m_OwnedRanges;
+      }
+
+      /// ip packet against any exit policies we have
+      /// returns false if this traffic is disallowed by any of those policies
+      /// returns true otherwise
       bool
-      FindAddrForIP(Addr_t& addr, huint128_t ip);
+      ShouldAllowTraffic(const net::IPPacket& pkt) const;
+
+      /// get a key for ip address
+      std::optional<std::variant<service::Address, RouterID>>
+      ObtainAddrForIP(huint128_t ip) const override;
 
       bool
       HasAddress(const AlignedBuffer<32>& addr) const
@@ -148,7 +153,7 @@ namespace llarp
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) override;
+      ObtainIPForAddr(std::variant<service::Address, RouterID> addr) override;
 
       /// flush network traffic
       void
@@ -201,11 +206,11 @@ namespace llarp
       /// maps ip to key (host byte order)
       std::unordered_map<huint128_t, AlignedBuffer<32>> m_IPToAddr;
       /// maps key to ip (host byte order)
-      std::unordered_map<AlignedBuffer<32>, huint128_t, AlignedBuffer<32>::Hash> m_AddrToIP;
+      std::unordered_map<AlignedBuffer<32>, huint128_t> m_AddrToIP;
 
       /// maps key to true if key is a service node, maps key to false if key is
       /// a hidden service
-      std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
+      std::unordered_map<AlignedBuffer<32>, bool> m_SNodes;
 
      private:
       template <typename Addr_t, typename Endpoint_t>
@@ -215,12 +220,11 @@ namespace llarp
           Endpoint_t ctx,
           std::shared_ptr<dns::Message> query,
           std::function<void(dns::Message)> reply,
-          bool snode,
           bool sendIPv6)
       {
         if (ctx)
         {
-          huint128_t ip = ObtainIPForAddr(addr, snode);
+          huint128_t ip = ObtainIPForAddr(addr);
           query->answers.clear();
           query->AddINReply(ip, sendIPv6);
         }
@@ -254,12 +258,16 @@ namespace llarp
       bool m_UseV6;
       std::string m_IfName;
 
+      std::optional<huint128_t> m_BaseV6Address;
+
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
       std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
+
+      std::optional<net::TrafficPolicy> m_TrafficPolicy;
+      /// ranges we advetise as reachable
+      std::set<IPRange> m_OwnedRanges;
     };
 
   }  // namespace handlers
 }  // namespace llarp
-
-#endif

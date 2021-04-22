@@ -1,20 +1,26 @@
-#ifndef LLARP_UTIL_DECAYING_HASHSET_HPP
-#define LLARP_UTIL_DECAYING_HASHSET_HPP
+#pragma once
 
-#include <util/time.hpp>
+#include "time.hpp"
 #include <unordered_map>
 
 namespace llarp
 {
   namespace util
   {
-    template <typename Val_t, typename Hash_t = typename Val_t::Hash>
+    template <typename Val_t, typename Hash_t = std::hash<Val_t>>
     struct DecayingHashSet
     {
       using Time_t = std::chrono::milliseconds;
 
-      DecayingHashSet(Time_t cacheInterval = 5s) : m_CacheInterval(cacheInterval)
+      DecayingHashSet(Time_t cacheInterval = 1s) : m_CacheInterval(cacheInterval)
       {}
+
+      size_t
+      Size() const
+      {
+        return m_Values.size();
+      }
+
       /// determine if we have v contained in our decaying hashset
       bool
       Contains(const Val_t& v) const
@@ -39,6 +45,7 @@ namespace llarp
         if (now == 0s)
           now = llarp::time_now_ms();
         EraseIf([&](const auto& item) { return (m_CacheInterval + item.second) <= now; });
+        m_Values.rehash(0);
       }
 
       Time_t
@@ -82,5 +89,3 @@ namespace llarp
     };
   }  // namespace util
 }  // namespace llarp
-
-#endif
