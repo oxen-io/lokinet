@@ -1,4 +1,10 @@
-lokinet (0.9.0-1) unstable; urgency=medium
+lokinet (0.9.0-1~deb11) bullseye; urgency=medium
+
+  * Add bullseye deb
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 22 Apr 2021 14:15:09 -0300
+
+lokinet (0.9.0-0) unstable; urgency=medium
 
   [ Thomas Winget ]
   * add project source dir to util include directories
