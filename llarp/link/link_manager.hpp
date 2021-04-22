@@ -1,10 +1,9 @@
-#ifndef LLARP_LINK_MANAGER_HPP
-#define LLARP_LINK_MANAGER_HPP
+#pragma once
 
-#include <link/i_link_manager.hpp>
+#include "i_link_manager.hpp"
 
-#include <util/compare_ptr.hpp>
-#include <link/server.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include "server.hpp"
 
 #include <unordered_map>
 #include <set>
@@ -105,14 +104,11 @@ namespace llarp
     LinkSet inboundLinks;
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t, RouterID::Hash> m_PersistingSessions
-        GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t> m_PersistingSessions GUARDED_BY(_mutex);
 
-    std::unordered_map<RouterID, SessionStats, RouterID::Hash> m_lastRouterStats;
+    std::unordered_map<RouterID, SessionStats> m_lastRouterStats;
 
     IOutboundSessionMaker* _sessionMaker;
   };
 
 }  // namespace llarp
-
-#endif  // LLARP_LINK_MANAGER_HPP

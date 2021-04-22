@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_HANDLER_HPP
-#define LLARP_SERVICE_HANDLER_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <path/path.hpp>
-#include <service/intro_set.hpp>
-#include <util/aligned.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/path/path.hpp>
+#include "intro_set.hpp"
+#include "convotag.hpp"
 
 #include <memory>
 #include <set>
@@ -13,7 +12,6 @@ namespace llarp
 {
   namespace service
   {
-    using ConvoTag = AlignedBuffer<16>;
     struct ProtocolMessage;
 
     struct RecvDataEvent
@@ -35,8 +33,13 @@ namespace llarp
       virtual void
       PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) = 0;
 
+      /// called when we send data to remote on a convotag
       virtual void
-      MarkConvoTagActive(const ConvoTag& tag) = 0;
+      ConvoTagTX(const ConvoTag& tag) = 0;
+
+      /// called when we got data from remote on a convotag
+      virtual void
+      ConvoTagRX(const ConvoTag& tag) = 0;
 
       virtual void
       RemoveConvoTag(const ConvoTag& remote) = 0;
@@ -68,6 +71,9 @@ namespace llarp
       virtual bool
       HasInboundConvo(const Address& addr) const = 0;
 
+      virtual bool
+      HasOutboundConvo(const Address& addr) const = 0;
+
       /// do we want a session outbound to addr
       virtual bool
       WantsOutboundSession(const Address& addr) const = 0;
@@ -80,19 +86,3 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
-
-namespace std
-{
-  template <>
-  struct hash<llarp::service::ConvoTag>
-  {
-    size_t
-    operator()(const llarp::service::ConvoTag& tag) const
-    {
-      std::hash<std::string_view> h{};
-      return h(std::string_view{reinterpret_cast<const char*>(tag.data()), tag.size()});
-    }
-  };
-}  // namespace std
-
-#endif

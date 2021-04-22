@@ -1,6 +1,6 @@
-#include <iwp/message_buffer.hpp>
-#include <iwp/session.hpp>
-#include <crypto/crypto.hpp>
+#include "message_buffer.hpp"
+#include "session.hpp"
+#include <llarp/crypto/crypto.hpp>
 
 namespace llarp
 {
@@ -128,7 +128,7 @@ namespace llarp
       byte_t* dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
-      LogDebug("got fragment ", idx / FragmentSize);
+      LogTrace("got fragment ", idx / FragmentSize);
       m_LastActiveAt = now;
     }
 

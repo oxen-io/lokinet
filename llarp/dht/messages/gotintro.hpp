@@ -1,9 +1,8 @@
-#ifndef LLARP_DHT_MESSAGES_GOT_INTRO_HPP
-#define LLARP_DHT_MESSAGES_GOT_INTRO_HPP
+#pragma once
 
-#include <dht/message.hpp>
-#include <service/intro_set.hpp>
-#include <util/copy_or_nullptr.hpp>
+#include <llarp/dht/message.hpp>
+#include <llarp/service/intro_set.hpp>
+#include <llarp/util/copy_or_nullptr.hpp>
 
 #include <vector>
 #include <optional>
@@ -63,4 +62,3 @@ namespace llarp
     using GotIntroMessage_constptr = std::shared_ptr<const GotIntroMessage>;
   }  // namespace dht
 }  // namespace llarp
-#endif

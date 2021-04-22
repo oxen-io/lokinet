@@ -1,9 +1,8 @@
-#ifndef LLARP_DHT_NODE_HPP
-#define LLARP_DHT_NODE_HPP
+#pragma once
 
-#include <dht/key.hpp>
-#include <router_contact.hpp>
-#include <service/intro_set.hpp>
+#include "key.hpp"
+#include <llarp/router_contact.hpp>
+#include <llarp/service/intro_set.hpp>
 #include <utility>
 
 namespace llarp
@@ -66,5 +65,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-
-#endif

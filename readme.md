@@ -10,6 +10,8 @@ And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
 You can view documentation on how to get started [here](https://docs.oxen.io/products-built-on-oxen/lokinet) .
 
+A simple demo application that is lokinet "aware" can be found [here](https://github.com/majestrate/lokinet-aware-demos)
+
 [![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/loki-network/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/loki-network)
 
 ## Building
@@ -21,6 +23,7 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
+* libcurl (for lokinet-bootstrap)
 * libunbound
 * libzmq
 * sqlite3
@@ -39,7 +42,7 @@ You can install these using:
 
 if you want to build a dev build you can do the following:
 
-    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
+    $ sudo apt install build-essential cmake git libcap-dev libcurl4-openssl-dev libuv1-dev libsodium-dev pkg-config
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
@@ -165,7 +168,3 @@ The macOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap
 to run, after you create default config:
 
     $ sudo lokinet
-
-## Running on Windows
-
-**DO NOT RUN AS ELEVATED USER**, run as normal user.

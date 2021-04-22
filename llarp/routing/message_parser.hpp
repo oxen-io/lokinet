@@ -1,8 +1,7 @@
-#ifndef LLARP_ROUTING_MESSAGE_PARSER_HPP
-#define LLARP_ROUTING_MESSAGE_PARSER_HPP
+#pragma once
 
-#include <util/bencode.h>
-#include <util/buffer.hpp>
+#include <llarp/util/bencode.h>
+#include <llarp/util/buffer.hpp>
 
 #include <memory>
 
@@ -42,4 +41,3 @@ namespace llarp
     };
   }  // namespace routing
 }  // namespace llarp
-#endif

@@ -1,7 +1,6 @@
-#ifndef LLARP_DHT_MESSAGES_CONSENSUS_HPP
-#define LLARP_DHT_MESSAGES_CONSENSUS_HPP
-#include <dht/message.hpp>
-#include <router_version.hpp>
+#pragma once
+#include <llarp/dht/message.hpp>
+#include <llarp/router_version.hpp>
 
 namespace llarp
 {

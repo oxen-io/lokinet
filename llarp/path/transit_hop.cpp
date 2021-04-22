@@ -1,20 +1,20 @@
-#include <path/path.hpp>
+#include "path.hpp"
 
-#include <dht/context.hpp>
-#include <exit/context.hpp>
-#include <exit/exit_messages.hpp>
-#include <link/i_link_manager.hpp>
-#include <messages/discard.hpp>
-#include <messages/relay_commit.hpp>
-#include <messages/relay_status.hpp>
-#include <path/path_context.hpp>
-#include <path/transit_hop.hpp>
-#include <router/abstractrouter.hpp>
-#include <routing/path_latency_message.hpp>
-#include <routing/path_transfer_message.hpp>
-#include <routing/handler.hpp>
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
+#include <llarp/dht/context.hpp>
+#include <llarp/exit/context.hpp>
+#include <llarp/exit/exit_messages.hpp>
+#include <llarp/link/i_link_manager.hpp>
+#include <llarp/messages/discard.hpp>
+#include <llarp/messages/relay_commit.hpp>
+#include <llarp/messages/relay_status.hpp>
+#include "path_context.hpp"
+#include "transit_hop.hpp"
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/routing/path_latency_message.hpp>
+#include <llarp/routing/path_transfer_message.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/endian.hpp>
 
 namespace llarp
 {
@@ -214,7 +214,7 @@ namespace llarp
               info.downstream,
               " to ",
               info.upstream);
-          r->SendToOrQueue(info.upstream, &msg);
+          r->SendToOrQueue(info.upstream, msg);
         }
         r->linkManager().PumpLinks();
       }
@@ -232,7 +232,7 @@ namespace llarp
             info.upstream,
             " to ",
             info.downstream);
-        r->SendToOrQueue(info.downstream, &msg);
+        r->SendToOrQueue(info.downstream, msg);
       }
       r->linkManager().PumpLinks();
     }
@@ -275,6 +275,7 @@ namespace llarp
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg.T;
+      reply.S = msg.S;
       return SendRoutingMessage(reply, r);
     }
 
@@ -416,7 +417,10 @@ namespace llarp
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)), counter);
+              info.rxID,
+              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
+              counter,
+              msg.protocol);
         }
         return sent;
       }
@@ -432,24 +436,13 @@ namespace llarp
         const llarp::routing::PathTransferMessage& msg, AbstractRouter* r)
     {
       auto path = r->pathContext().GetPathForTransfer(msg.P);
-      llarp::routing::DataDiscardMessage discarded(msg.P, msg.S);
+      llarp::routing::DataDiscardMessage discarded{msg.P, msg.S};
       if (path == nullptr || msg.T.F != info.txID)
       {
         return SendRoutingMessage(discarded, r);
       }
-
-      std::array<byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-      llarp_buffer_t buf(tmp);
-      if (!msg.T.BEncode(&buf))
-      {
-        llarp::LogWarn(info, " failed to transfer data message, encode failed");
-        return SendRoutingMessage(discarded, r);
-      }
-      // rewind
-      buf.sz = buf.cur - buf.base;
-      buf.cur = buf.base;
-      // send
-      if (path->HandleDownstream(buf, msg.Y, r))
+      // send routing message
+      if (path->SendRoutingMessage(msg.T, r))
       {
         m_FlushOthers.emplace(path);
         return true;

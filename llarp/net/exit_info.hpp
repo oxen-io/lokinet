@@ -1,9 +1,8 @@
-#ifndef LLARP_XI_HPP
-#define LLARP_XI_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <net/ip_address.hpp>
-#include <util/bencode.hpp>
+#include <llarp/crypto/types.hpp>
+#include "ip_address.hpp"
+#include <llarp/util/bencode.hpp>
 
 #include <iosfwd>
 
@@ -16,6 +15,7 @@
 /// Exit info model
 namespace llarp
 {
+  /// deprecated don't use me , this is only for backwards compat
   struct ExitInfo
   {
     IpAddress ipAddress;
@@ -50,5 +50,3 @@ namespace llarp
     return xi.print(out, -1, -1);
   }
 }  // namespace llarp
-
-#endif

@@ -1,8 +1,7 @@
-#ifndef LLARP_MEM_HPP
-#define LLARP_MEM_HPP
+#pragma once
 
-#include <util/buffer.hpp>
-#include <util/mem.h>
+#include "buffer.hpp"
+#include "mem.h"
 
 #include <cctype>
 #include <cstdio>
@@ -92,5 +91,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-
-#endif

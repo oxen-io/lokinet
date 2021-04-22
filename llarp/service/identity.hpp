@@ -1,14 +1,13 @@
-#ifndef LLARP_SERVICE_IDENTITY_HPP
-#define LLARP_SERVICE_IDENTITY_HPP
+#pragma once
 
-#include <config/key_manager.hpp>
-#include <constants/proto.hpp>
-#include <crypto/types.hpp>
+#include <llarp/config/key_manager.hpp>
+#include <llarp/constants/proto.hpp>
+#include <llarp/crypto/types.hpp>
 #include <memory>
-#include <service/info.hpp>
-#include <service/intro_set.hpp>
-#include <service/vanity.hpp>
-#include <util/buffer.hpp>
+#include "info.hpp"
+#include "intro_set.hpp"
+#include "vanity.hpp"
+#include <llarp/util/buffer.hpp>
 
 #include <tuple>
 
@@ -69,5 +68,3 @@ namespace llarp
     }
   }  // namespace service
 }  // namespace llarp
-
-#endif

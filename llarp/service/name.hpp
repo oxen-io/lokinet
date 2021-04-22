@@ -1,6 +1,6 @@
 #pragma once
-#include <crypto/types.hpp>
-#include <service/address.hpp>
+#include <llarp/crypto/types.hpp>
+#include "address.hpp"
 
 namespace llarp::service
 {

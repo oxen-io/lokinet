@@ -1,17 +1,24 @@
-#ifndef LLARP_EXIT_SESSION_HPP
-#define LLARP_EXIT_SESSION_HPP
+#pragma once
 
-#include <exit/exit_messages.hpp>
-#include <net/ip_packet.hpp>
-#include <path/pathbuilder.hpp>
-#include <routing/transfer_traffic_message.hpp>
-#include <constants/path.hpp>
+#include "exit_messages.hpp"
+#include "service/protocol_type.hpp"
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/path/pathbuilder.hpp>
+#include <llarp/routing/transfer_traffic_message.hpp>
+#include <llarp/constants/path.hpp>
 
 #include <deque>
 #include <queue>
 
 namespace llarp
 {
+  class EndpointBase;
+
+  namespace quic
+  {
+    class TunnelManager;
+  }
+
   namespace exit
   {
     struct BaseSession;
@@ -34,7 +41,7 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          bool bundleRC);
+          EndpointBase* parent);
 
       ~BaseSession() override;
 
@@ -77,7 +84,8 @@ namespace llarp
       HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
-      QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t packSize);
+      QueueUpstreamTraffic(
+          llarp::net::IPPacket pkt, const size_t packSize, service::ProtocolType t);
 
       /// flush upstream to exit via paths
       bool
@@ -106,6 +114,14 @@ namespace llarp
         return m_ExitRouter;
       }
 
+      std::optional<PathID_t>
+      CurrentPath() const
+      {
+        if (m_CurrentPath.IsZero())
+          return std::nullopt;
+        return m_CurrentPath;
+      }
+
       bool
       IsExpired(llarp_time_t now) const;
 
@@ -130,7 +146,11 @@ namespace llarp
       HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path_ptr p, const llarp_buffer_t& buf, uint64_t seqno);
+      HandleTraffic(
+          llarp::path::Path_ptr p,
+          const llarp_buffer_t& buf,
+          uint64_t seqno,
+          service::ProtocolType t);
 
      private:
       std::set<RouterID> m_SnodeBlacklist;
@@ -138,6 +158,8 @@ namespace llarp
       using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
       using TieredQueue_t = std::map<uint8_t, UpstreamTrafficQueue_t>;
       TieredQueue_t m_Upstream;
+
+      PathID_t m_CurrentPath;
 
       using DownstreamPkt = std::pair<uint64_t, llarp::net::IPPacket>;
 
@@ -159,6 +181,7 @@ namespace llarp
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
       const bool m_BundleRC;
+      EndpointBase* const m_Parent;
 
       void
       CallPendingCallbacks(bool success);
@@ -172,8 +195,8 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          bool bundleRC)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
+          EndpointBase* parent)
+          : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
       {}
 
       ~ExitSession() override = default;
@@ -182,7 +205,7 @@ namespace llarp
       Name() const override;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) override;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
       void
@@ -203,7 +226,7 @@ namespace llarp
           size_t numpaths,
           size_t hoplen,
           bool useRouterSNodeKey,
-          bool bundleRC);
+          EndpointBase* parent);
 
       ~SNodeSession() override = default;
 
@@ -211,7 +234,7 @@ namespace llarp
       Name() const override;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt) override;
+      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
       void
@@ -225,5 +248,3 @@ namespace llarp
 
   }  // namespace exit
 }  // namespace llarp
-
-#endif

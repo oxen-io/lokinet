@@ -1,10 +1,9 @@
-#ifndef LLARP_KEY_MANAGER_HPP
-#define LLARP_KEY_MANAGER_HPP
+#pragma once
 
 #include <atomic>
-#include <config/config.hpp>
-#include <crypto/types.hpp>
-#include <router_contact.hpp>
+#include "config.hpp"
+#include <llarp/crypto/types.hpp>
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -41,10 +40,10 @@ namespace llarp
     /// @param config should be a prepared config object
     /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
-    /// @param isRouter
+    /// @param isSNode
     /// @return true on success, false otherwise
     bool
-    initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter);
+    initialize(const llarp::Config& config, bool genIfAbsent, bool isSNode);
 
     /// Obtain the self-signed RouterContact
     ///
@@ -88,5 +87,3 @@ namespace llarp
   };
 
 }  // namespace llarp
-
-#endif

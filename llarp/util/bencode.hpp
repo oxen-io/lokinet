@@ -1,12 +1,12 @@
-#ifndef LLARP_BENCODE_HPP
-#define LLARP_BENCODE_HPP
+#pragma once
 
-#include <util/buffer.hpp>
-#include <util/bencode.h>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
+#include "buffer.hpp"
+#include "bencode.h"
+#include "fs.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include "mem.hpp"
 
+#include <type_traits>
 #include <fstream>
 #include <set>
 #include <vector>
@@ -42,7 +42,12 @@ namespace llarp
   bool
   BEncodeWriteDictInt(const char* k, const Int_t& i, llarp_buffer_t* buf)
   {
-    return bencode_write_bytestring(buf, k, 1) && bencode_write_uint64(buf, i);
+    if (!bencode_write_bytestring(buf, k, 1))
+      return false;
+    if constexpr (std::is_enum_v<Int_t>)
+      return bencode_write_uint64(buf, static_cast<std::underlying_type_t<Int_t>>(i));
+    else
+      return bencode_write_uint64(buf, i);
   }
 
   template <typename List_t>
@@ -93,7 +98,7 @@ namespace llarp
         return false;
       }
 
-      i = Int_t(read_i);
+      i = static_cast<Int_t>(read_i);
       read = true;
     }
     return true;
@@ -255,7 +260,6 @@ namespace llarp
         },
         buf);
   }
-
   template <typename List_t>
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf)
@@ -272,6 +276,43 @@ namespace llarp
           return true;
         },
         buf);
+  }
+
+  /// read a std::set of decodable entities and deny duplicates
+  template <typename Set_t>
+  bool
+  BEncodeReadSet(Set_t& set, llarp_buffer_t* buffer)
+  {
+    return bencode_read_list(
+        [&set](llarp_buffer_t* buf, bool more) {
+          if (more)
+          {
+            typename Set_t::value_type item;
+            if (not item.BDecode(buf))
+              return false;
+            // deny duplicates
+            return set.emplace(item).second;
+          }
+          return true;
+        },
+        buffer);
+  }
+
+  /// write an iterable container as a list
+  template <typename Set_t>
+  bool
+  BEncodeWriteSet(const Set_t& set, llarp_buffer_t* buffer)
+  {
+    if (not bencode_start_list(buffer))
+      return false;
+
+    for (const auto& item : set)
+    {
+      if (not item.BEncode(buffer))
+        return false;
+    }
+
+    return bencode_end(buffer);
   }
 
   template <typename List_t>
@@ -360,5 +401,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-
-#endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dht/message.hpp>
+#include <llarp/dht/message.hpp>
 
 namespace llarp::dht
 {

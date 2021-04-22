@@ -1,11 +1,10 @@
-#ifndef LLARP_LINK_SESSION_HPP
-#define LLARP_LINK_SESSION_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <net/net.hpp>
-#include <ev/ev.hpp>
-#include <router_contact.hpp>
-#include <util/types.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/types.hpp>
 
 #include <functional>
 
@@ -133,5 +132,3 @@ namespace llarp
     ExtractStatus() const = 0;
   };
 }  // namespace llarp
-
-#endif

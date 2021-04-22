@@ -1,16 +1,20 @@
-#ifndef LLARP_EV_HPP
-#define LLARP_EV_HPP
+#pragma once
 
-#include <util/buffer.hpp>
-#include <util/time.hpp>
-#include <util/thread/threading.hpp>
-#include <constants/evloop.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/constants/evloop.hpp>
 
 #include <algorithm>
 #include <deque>
 #include <list>
 #include <future>
 #include <utility>
+
+namespace uvw
+{
+  class Loop;
+}
 
 namespace llarp
 {
@@ -215,9 +219,16 @@ namespace llarp
     // Returns true if called from within the event loop thread, false otherwise.
     virtual bool
     inEventLoop() const = 0;
+
+    // Returns the uvw::Loop *if* this event loop is backed by a uvw event loop (i.e. the default),
+    // nullptr otherwise.  (This base class default always returns nullptr).
+    virtual std::shared_ptr<uvw::Loop>
+    MaybeGetUVWLoop()
+    {
+      return nullptr;
+    }
   };
 
   using EventLoop_ptr = std::shared_ptr<EventLoop>;
 
 }  // namespace llarp
-#endif

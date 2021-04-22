@@ -1,19 +1,19 @@
-#include <router_contact.hpp>
+#include "router_contact.hpp"
 
-#include <constants/version.hpp>
-#include <crypto/crypto.hpp>
-#include <net/net.hpp>
-#include <util/bencode.hpp>
-#include <util/buffer.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
-#include <util/printer.hpp>
-#include <util/time.hpp>
+#include "constants/version.hpp"
+#include "crypto/crypto.hpp"
+#include "net/net.hpp"
+#include "util/bencode.hpp"
+#include "util/buffer.hpp"
+#include "util/logging/logger.hpp"
+#include "util/mem.hpp"
+#include "util/printer.hpp"
+#include "util/time.hpp"
 
 #include <oxenmq/bt_serialize.h>
 
 #include <fstream>
-#include <util/fs.hpp>
+#include "util/fs.hpp"
 
 namespace llarp
 {
@@ -40,7 +40,7 @@ namespace llarp
 
   NetID::NetID(const byte_t* val)
   {
-    size_t len = strnlen(reinterpret_cast<const char*>(val), size());
+    const size_t len = strnlen(reinterpret_cast<const char*>(val), size());
     std::copy(val, val + len, begin());
   }
 
@@ -163,10 +163,18 @@ namespace llarp
       return false;
     if (!enckey.BEncode(buf))
       return false;
+
     // write router version if present
     if (routerVersion)
     {
       if (not BEncodeWriteDictEntry("r", *routerVersion, buf))
+        return false;
+    }
+
+    if (version > 0)
+    {
+      // srv records if present
+      if (not BEncodeWriteDictList("s", srvRecords, buf))
         return false;
     }
     /* write last updated */
@@ -212,6 +220,8 @@ namespace llarp
     pubkey.Zero();
     routerVersion = std::optional<RouterVersion>{};
     last_updated = 0s;
+    srvRecords.clear();
+    version = LLARP_PROTO_VERSION;
   }
 
   util::StatusObject
@@ -231,6 +241,12 @@ namespace llarp
     {
       obj["routerVersion"] = routerVersion->ToString();
     }
+    std::vector<util::StatusObject> srv;
+    for (const auto& record : srvRecords)
+    {
+      srv.emplace_back(record.ExtractStatus());
+    }
+    obj["srvRecords"] = srv;
     return obj;
   }
 
@@ -345,6 +361,9 @@ namespace llarp
       return true;
     }
 
+    if (not BEncodeMaybeReadDictList("s", srvRecords, read, key, buf))
+      return false;
+
     if (!BEncodeMaybeReadDictEntry("p", enckey, read, key, buf))
       return false;
 
@@ -362,7 +381,7 @@ namespace llarp
     if (!BEncodeMaybeReadDictEntry("z", signature, read, key, buf))
       return false;
 
-    return read;
+    return read or bencode_discard(buf);
   }
 
   bool
@@ -503,7 +522,7 @@ namespace llarp
     /* else */
     if (version == 1)
     {
-      llarp_buffer_t buf(signed_bt_dict);
+      llarp_buffer_t buf{signed_bt_dict};
       return CryptoManager::instance()->verify(pubkey, buf, signature);
     }
 

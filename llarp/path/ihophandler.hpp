@@ -1,11 +1,10 @@
-#ifndef LLARP_PATH_IHOPHANDLER_HPP
-#define LLARP_PATH_IHOPHANDLER_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <util/types.hpp>
-#include <crypto/encrypted_frame.hpp>
-#include <util/decaying_hashset.hpp>
-#include <messages/relay.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/util/types.hpp>
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/messages/relay.hpp>
 #include <vector>
 
 #include <memory>
@@ -30,6 +29,9 @@ namespace llarp
       using TrafficQueue_ptr = std::shared_ptr<TrafficQueue_t>;
 
       virtual ~IHopHandler() = default;
+
+      virtual PathID_t
+      RXID() const = 0;
 
       void
       DecayFilters(llarp_time_t now);
@@ -92,4 +94,3 @@ namespace llarp
     using HopHandler_ptr = std::shared_ptr<IHopHandler>;
   }  // namespace path
 }  // namespace llarp
-#endif

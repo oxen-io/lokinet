@@ -1,6 +1,6 @@
 #pragma once
-#include <crypto/crypto_libsodium.hpp>
-#include <ev/ev.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/ev/ev.hpp>
 
 namespace llarp
 {

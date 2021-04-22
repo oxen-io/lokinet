@@ -1,4 +1,4 @@
-#include <hook/shell.hpp>
+#include "shell.hpp"
 
 #if defined(ENABLE_SHELLHOOKS)
 #include <util/thread_pool.hpp>

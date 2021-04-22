@@ -1,8 +1,7 @@
-#ifndef LLARP_DHT_KEY_HPP
-#define LLARP_DHT_KEY_HPP
+#pragma once
 
-#include <util/aligned.hpp>
-#include <router_id.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/router_id.hpp>
 
 #include <array>
 
@@ -75,5 +74,3 @@ namespace llarp
     };
   }  // namespace dht
 }  // namespace llarp
-
-#endif

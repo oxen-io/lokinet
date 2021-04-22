@@ -1,16 +1,15 @@
-#ifndef LLARP_IWP_LINKLAYER_HPP
-#define LLARP_IWP_LINKLAYER_HPP
+#pragma once
 
-#include <constants/link_layer.hpp>
-#include <crypto/crypto.hpp>
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <link/server.hpp>
-#include <config/key_manager.hpp>
+#include <llarp/constants/link_layer.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/link/server.hpp>
+#include <llarp/config/key_manager.hpp>
 
 #include <memory>
 
-#include <ev/ev.hpp>
+#include <llarp/ev/ev.hpp>
 
 namespace llarp::iwp
 {
@@ -62,12 +61,10 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
-    std::unordered_map<SockAddr, std::weak_ptr<Session>, SockAddr::Hash> m_PlaintextRecv;
-    std::unordered_map<SockAddr, RouterID, SockAddr::Hash> m_AuthedAddrs;
+    std::unordered_map<SockAddr, std::weak_ptr<Session>> m_PlaintextRecv;
+    std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
     const bool permitInbound;
   };
 
   using LinkLayer_ptr = std::shared_ptr<LinkLayer>;
 }  // namespace llarp::iwp
-
-#endif

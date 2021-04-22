@@ -1,25 +1,26 @@
 #include <chrono>
-#include <config/config.hpp>
+#include "config.hpp"
 
-#include <config/ini.hpp>
-#include <constants/defaults.hpp>
-#include <constants/files.hpp>
-#include <net/net.hpp>
-#include <net/ip.hpp>
-#include <router_contact.hpp>
+#include "config/definition.hpp"
+#include "ini.hpp"
+#include <llarp/constants/defaults.hpp>
+#include <llarp/constants/files.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/router_contact.hpp>
 #include <stdexcept>
-#include <util/fs.hpp>
-#include <util/logging/logger.hpp>
-#include <util/mem.hpp>
-#include <util/str.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/str.hpp>
 
-#include <service/name.hpp>
+#include <llarp/service/name.hpp>
 
 #include <cstdlib>
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include "constants/version.hpp"
+#include <llarp/constants/version.hpp>
 
 namespace llarp
 {
@@ -258,12 +259,21 @@ namespace llarp
     (void)params;
 
     static constexpr Default ProfilingValueDefault{true};
+    static constexpr Default SaveProfilesDefault{true};
     static constexpr Default ReachableDefault{true};
     static constexpr Default HopsDefault{4};
     static constexpr Default PathsDefault{6};
+    static constexpr Default IP6RangeDefault{"fd00::"};
 
     conf.defineOption<std::string>(
         "network", "type", Default{"tun"}, Hidden, AssignmentAcceptor(m_endpointType));
+
+    conf.defineOption<bool>(
+        "network",
+        "save-profiles",
+        SaveProfilesDefault,
+        Hidden,
+        AssignmentAcceptor(m_saveProfiles));
 
     conf.defineOption<bool>(
         "network",
@@ -278,9 +288,16 @@ namespace llarp
         "network",
         "strict-connect",
         ClientOnly,
-        AssignmentAcceptor(m_strictConnect),
+        MultiValue,
+        [this](std::string value) {
+          RouterID router;
+          if (not router.FromString(value))
+            throw std::invalid_argument{"bad snode value: " + value};
+          if (not m_strictConnect.insert(router).second)
+            throw std::invalid_argument{"duplicate strict connect snode: " + value};
+        },
         Comment{
-            "Public key of a router which will act as sole first-hop. This may be used to",
+            "Public key of a router which will act as a pinned first-hop. This may be used to",
             "provide a trusted router (consider that you are not fully anonymous with your",
             "first hop).",
         });
@@ -382,7 +399,7 @@ namespace llarp
             "Number of paths to maintain at any given time.",
         },
         [this](int arg) {
-          if (arg < 2 or arg > 8)
+          if (arg < 3 or arg > 8)
             throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
           m_Paths = arg;
         });
@@ -398,19 +415,41 @@ namespace llarp
             "on the server and may pose liability concerns. Enable at your own risk.",
         });
 
-    // TODO: not implemented yet!
-    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
-    //       additionally, what's default? What if I don't whitelist anything?
-    /*
-    conf.defineOption<std::string>("network", "exit-whitelist", MultiValue, Comment{
-            "List of destination protocol:port pairs to whitelist, example: udp:*",
-            "or tcp:80. Multiple values supported.",
-        }, FIXME-acceptor);
+    conf.defineOption<std::string>(
+        "network",
+        "owned-range",
+        MultiValue,
+        Comment{
+            "When in exit mode announce we allow a private range in our introset"
+            "exmaple:",
+            "owned-range=10.0.0.0/24",
+        },
+        [this](std::string arg) {
+          IPRange range;
+          if (not range.FromString(arg))
+            throw std::invalid_argument{"bad ip range: '" + arg + "'"};
+          m_OwnedRanges.insert(range);
+        });
 
-    conf.defineOption<std::string>("network", "exit-blacklist", MultiValue, Comment{
-            "Blacklist of destinations (same format as whitelist).",
-        }, FIXME-acceptor);
-    */
+    conf.defineOption<std::string>(
+        "network",
+        "traffic-whitelist",
+        MultiValue,
+        Comment{
+            "List of ip traffic whitelist, anything not specified will be dropped by us."
+            "examples:",
+            "tcp for all tcp traffic regardless of port",
+            "0x69 for all packets using ip protocol 0x69"
+            "udp/53 for udp port 53",
+            "tcp/smtp for smtp port",
+        },
+        [this](std::string arg) {
+          if (not m_TrafficPolicy)
+            m_TrafficPolicy = net::TrafficPolicy{};
+
+          // this will throw on error
+          m_TrafficPolicy->protocols.emplace(arg);
+        });
 
     conf.defineOption<std::string>(
         "network",
@@ -447,7 +486,7 @@ namespace llarp
             return;
           }
 
-          if (not exit.FromString(arg))
+          if (arg != "null" and not exit.FromString(arg))
           {
             throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
           }
@@ -517,6 +556,26 @@ namespace llarp
           }
         });
 
+    conf.defineOption<std::string>(
+        "network",
+        "ip6-range",
+        ClientOnly,
+        Comment{
+            "For all ipv6 exit traffic you will use this as the base address bitwised or'd with "
+            "the v4 address in use.",
+            "To disable ipv6 set this to an empty value.",
+            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
+            "de-anonymization as lokinet will no longer carry your ipv6 traffic.",
+        },
+        IP6RangeDefault,
+        [this](std::string arg) {
+          if (arg.empty())
+            return;
+          m_baseV6Address = huint128_t{};
+          if (not m_baseV6Address->FromString(arg))
+            throw std::invalid_argument(
+                stringify("[network]:ip6-range invalid value: '", arg, "'"));
+        });
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
         "network",
@@ -915,8 +974,8 @@ namespace llarp
           {
             throw std::invalid_argument("cannot use empty filename as bootstrap");
           }
-          routers.emplace_back(std::move(arg));
-          if (not fs::exists(routers.back()))
+          files.emplace_back(std::move(arg));
+          if (not fs::exists(files.back()))
           {
             throw std::invalid_argument("file does not exist: " + arg);
           }
@@ -1329,6 +1388,19 @@ namespace llarp
         });
 
     return def.generateINIConfig(true);
+  }
+
+  std::shared_ptr<Config>
+  Config::EmbeddedConfig()
+  {
+    auto config = std::make_shared<Config>(fs::path{});
+    config->Load();
+    config->logging.m_logLevel = eLogNone;
+    config->api.m_enableRPCServer = false;
+    config->network.m_endpointType = "null";
+    config->network.m_saveProfiles = false;
+    config->bootstrap.files.clear();
+    return config;
   }
 
 }  // namespace llarp

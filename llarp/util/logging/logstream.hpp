@@ -1,8 +1,7 @@
-#ifndef LLARP_UTIL_LOG_STREAM_HPP
-#define LLARP_UTIL_LOG_STREAM_HPP
-#include <util/logging/loglevel.hpp>
+#pragma once
+#include "loglevel.hpp"
 
-#include <util/time.hpp>
+#include <llarp/util/time.hpp>
 
 #include <memory>
 #include <string>
@@ -56,4 +55,3 @@ namespace llarp
   using ILogStream_ptr = std::unique_ptr<ILogStream>;
 
 }  // namespace llarp
-#endif

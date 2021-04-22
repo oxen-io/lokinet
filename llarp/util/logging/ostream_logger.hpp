@@ -1,7 +1,6 @@
-#ifndef LLARP_UTIL_OSTREAM_LOGGER_HPP
-#define LLARP_UTIL_OSTREAM_LOGGER_HPP
+#pragma once
 
-#include <util/logging/logstream.hpp>
+#include "logstream.hpp"
 #include <iostream>
 
 namespace llarp
@@ -37,5 +36,3 @@ namespace llarp
     std::ostream& m_Out;
   };
 }  // namespace llarp
-
-#endif

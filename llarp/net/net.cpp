@@ -1,10 +1,10 @@
-#include <net/net.hpp>
+#include "net.hpp"
 
-#include <net/net_if.hpp>
+#include "net_if.hpp"
 #include <stdexcept>
 
 #ifdef ANDROID
-#include <android/ifaddrs.h>
+#include <llarp/android/ifaddrs.h>
 #endif
 
 #ifndef _WIN32
@@ -14,13 +14,13 @@
 #endif
 #endif
 
-#include <net/ip.hpp>
-#include <net/ip_range.hpp>
-#include <util/logging/logger.hpp>
-#include <util/str.hpp>
+#include "ip.hpp"
+#include "ip_range.hpp"
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/str.hpp>
 
 #ifdef ANDROID
-#include <android/ifaddrs.h>
+#include <llarp/android/ifaddrs.h>
 #else
 #ifndef _WIN32
 #include <ifaddrs.h>

@@ -1,6 +1,5 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
-#include <llarp.h>
 
 #include <future>
 #include <iostream>
@@ -34,7 +33,7 @@ namespace llarp
   {
     bool background = false;
     bool debug = false;
-    bool isRouter = false;
+    bool isSNode = false;
   };
 
   struct Context
@@ -47,9 +46,6 @@ namespace llarp
     std::string nodedb_dir;
 
     virtual ~Context() = default;
-
-    void
-    Close();
 
     void
     Setup(const RuntimeOptions& opts);
@@ -74,6 +70,9 @@ namespace llarp
     bool
     LooksAlive() const;
 
+    bool
+    IsStopping() const;
+
     /// close async
     void
     CloseAsync();
@@ -93,6 +92,10 @@ namespace llarp
     virtual std::shared_ptr<AbstractRouter>
     makeRouter(const std::shared_ptr<EventLoop>& loop);
 
+    /// create the nodedb given our current configs
+    virtual std::shared_ptr<NodeDB>
+    makeNodeDB();
+
     /// create the vpn platform for use in creating network interfaces
     virtual std::shared_ptr<llarp::vpn::Platform>
     makeVPNPlatform();
@@ -111,6 +114,9 @@ namespace llarp
    private:
     void
     SigINT();
+
+    void
+    Close();
 
     std::unique_ptr<std::promise<void>> closeWaiter;
   };

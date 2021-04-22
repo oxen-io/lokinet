@@ -1,4 +1,4 @@
-#include <util/lokinet_init.h>
+#include "lokinet_init.h"
 #if defined(_WIN32)
 #include <windows.h>
 #include <winuser.h>

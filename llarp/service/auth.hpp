@@ -4,7 +4,7 @@
 #include <functional>
 #include "address.hpp"
 #include "handler.hpp"
-#include <crypto/types.hpp>
+#include <llarp/crypto/types.hpp>
 
 namespace llarp::service
 {

@@ -1,8 +1,8 @@
-#ifndef LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
-#define LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
+#pragma once
 
-#include <crypto/encrypted.hpp>
-#include <routing/message.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include "message.hpp"
+#include <llarp/service/protocol_type.hpp>
 
 #include <vector>
 
@@ -16,6 +16,7 @@ namespace llarp
     struct TransferTrafficMessage final : public IMessage
     {
       std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> X;
+      service::ProtocolType protocol;
       size_t _size = 0;
 
       void
@@ -24,6 +25,7 @@ namespace llarp
         X.clear();
         _size = 0;
         version = 0;
+        protocol = service::ProtocolType::TrafficV4;
       }
 
       size_t
@@ -47,5 +49,3 @@ namespace llarp
     };
   }  // namespace routing
 }  // namespace llarp
-
-#endif

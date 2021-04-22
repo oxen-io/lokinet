@@ -1,7 +1,7 @@
-#include <service/hidden_service_address_lookup.hpp>
+#include "hidden_service_address_lookup.hpp"
 
-#include <dht/messages/findintro.hpp>
-#include <service/endpoint.hpp>
+#include <llarp/dht/messages/findintro.hpp>
+#include "endpoint.hpp"
 #include <utility>
 
 namespace llarp
@@ -14,8 +14,9 @@ namespace llarp
         const dht::Key_t& l,
         const PubKey& k,
         uint64_t order,
-        uint64_t tx)
-        : IServiceLookup(p, tx, "HSLookup")
+        uint64_t tx,
+        llarp_time_t timeout)
+        : IServiceLookup(p, tx, "HSLookup", timeout)
         , rootkey(k)
         , relayOrder(order)
         , location(l)
@@ -42,7 +43,7 @@ namespace llarp
           found = *maybe;
         }
       }
-      return handle(remote, found, endpoint);
+      return handle(remote, found, endpoint, TimeLeft(time_now_ms()));
     }
 
     std::shared_ptr<routing::IMessage>

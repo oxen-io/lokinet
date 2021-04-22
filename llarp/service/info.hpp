@@ -1,10 +1,9 @@
-#ifndef LLARP_SERVICE_INFO_HPP
-#define LLARP_SERVICE_INFO_HPP
+#pragma once
 
-#include <crypto/types.hpp>
-#include <service/address.hpp>
-#include <service/vanity.hpp>
-#include <util/bencode.hpp>
+#include <llarp/crypto/types.hpp>
+#include "address.hpp"
+#include "vanity.hpp"
+#include <llarp/util/bencode.hpp>
 
 #include <optional>
 
@@ -110,5 +109,3 @@ namespace llarp
     }
   }  // namespace service
 }  // namespace llarp
-
-#endif

@@ -1,5 +1,5 @@
-#include <path/path.hpp>
-#include "common.hpp"
+#include <llarp/path/path.hpp>
+#include <common.hpp>
 
 namespace llarp
 {

@@ -1,5 +1,4 @@
-#ifndef LLARP_HOOK_IHOOK_HPP
-#define LLARP_HOOK_IHOOK_HPP
+#pragma once
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -29,5 +28,3 @@ namespace llarp
     inline IBackend::~IBackend() = default;
   }  // namespace hooks
 }  // namespace llarp
-
-#endif

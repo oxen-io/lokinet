@@ -1,7 +1,7 @@
-#include <config/config.hpp>
-#include <router_contact.hpp>
-#include <util/logging/logger.hpp>
-#include <util/logging/ostream_logger.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging/ostream_logger.hpp>
 
 #include <cxxopts.hpp>
 #include <string>

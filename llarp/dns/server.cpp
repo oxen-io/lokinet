@@ -1,9 +1,9 @@
-#include <dns/server.hpp>
-#include <dns/dns.hpp>
-#include <crypto/crypto.hpp>
+#include "server.hpp"
+#include "dns.hpp"
+#include <llarp/crypto/crypto.hpp>
 #include <array>
 #include <utility>
-#include <ev/udp_handle.hpp>
+#include <llarp/ev/udp_handle.hpp>
 
 namespace llarp::dns
 {

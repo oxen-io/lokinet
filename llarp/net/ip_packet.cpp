@@ -1,10 +1,10 @@
-#include <net/ip_packet.hpp>
-#include <net/ip.hpp>
+#include "ip_packet.hpp"
+#include "ip.hpp"
 
-#include <util/buffer.hpp>
-#include <util/endian.hpp>
-#include <util/mem.hpp>
-
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/endian.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/str.hpp>
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
@@ -32,6 +32,33 @@ namespace llarp
 {
   namespace net
   {
+    std::string
+    IPProtocolName(IPProtocol proto)
+    {
+      if (const auto* ent = ::getprotobynumber(static_cast<uint8_t>(proto)))
+      {
+        return ent->p_name;
+      }
+      throw std::invalid_argument{
+          "cannot determine protocol name for ip proto '" + std::to_string(static_cast<int>(proto))
+          + "'"};
+    }
+
+    IPProtocol
+    ParseIPProtocol(std::string data)
+    {
+      if (const auto* ent = ::getprotobyname(data.c_str()))
+      {
+        return static_cast<IPProtocol>(ent->p_proto);
+      }
+      if (starts_with(data, "0x"))
+      {
+        if (const int intVal = std::stoi(data.substr(2), nullptr, 16); intVal > 0)
+          return static_cast<IPProtocol>(intVal);
+      }
+      throw std::invalid_argument{"no such ip protocol: '" + data + "'"};
+    }
+
     inline static uint32_t*
     in6_uint32_ptr(in6_addr& addr)
     {
@@ -86,6 +113,19 @@ namespace llarp
       byte_t* ptr = buf;
       llarp_buffer_t b(ptr, sz);
       return ManagedBuffer(b);
+    }
+
+    std::optional<nuint16_t>
+    IPPacket::DstPort() const
+    {
+      switch (IPProtocol{Header()->protocol})
+      {
+        case IPProtocol::TCP:
+        case IPProtocol::UDP:
+          return nuint16_t{*reinterpret_cast<const uint16_t*>(buf + (Header()->ihl * 4) + 2)};
+        default:
+          return std::nullopt;
+      }
     }
 
     huint32_t
@@ -530,5 +570,51 @@ namespace llarp
       }
       return std::nullopt;
     }
+
+    IPPacket
+    IPPacket::UDP(
+        nuint32_t srcaddr,
+        nuint16_t srcport,
+        nuint32_t dstaddr,
+        nuint16_t dstport,
+        const llarp_buffer_t& buf)
+    {
+      net::IPPacket pkt;
+
+      if (buf.sz + 28 > sizeof(pkt.buf))
+      {
+        pkt.sz = 0;
+        return pkt;
+      }
+      auto* hdr = pkt.Header();
+      pkt.buf[1] = 0;
+      hdr->version = 4;
+      hdr->ihl = 5;
+      hdr->tot_len = htons(buf.sz + 28);
+      hdr->protocol = 0x11;  // udp
+      hdr->ttl = 64;
+      hdr->frag_off = htons(0b0100000000000000);
+
+      hdr->saddr = srcaddr.n;
+      hdr->daddr = dstaddr.n;
+
+      // make udp packet
+      uint8_t* ptr = pkt.buf + 20;
+      std::memcpy(ptr, &srcport.n, 2);
+      ptr += 2;
+      std::memcpy(ptr, &dstport.n, 2);
+      ptr += 2;
+      htobe16buf(ptr, static_cast<uint16_t>(buf.sz + 8));
+      ptr += 2;
+      htobe16buf(ptr, uint16_t{0});  // checksum
+      ptr += 2;
+      std::copy_n(buf.base, buf.sz, ptr);
+
+      hdr->check = 0;
+      hdr->check = net::ipchksum(pkt.buf, 20);
+      pkt.sz = 28 + buf.sz;
+      return pkt;
+    }
+
   }  // namespace net
 }  // namespace llarp

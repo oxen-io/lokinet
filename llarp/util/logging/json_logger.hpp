@@ -1,7 +1,7 @@
 #ifndef LLARP_UTIL_JSON_LOGGER
 #define LLARP_UTIL_JSON_LOGGER
 
-#include <util/logging/file_logger.hpp>
+#include "file_logger.hpp"
 
 namespace llarp
 {

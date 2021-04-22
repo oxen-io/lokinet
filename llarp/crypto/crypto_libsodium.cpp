@@ -1,4 +1,4 @@
-#include <crypto/crypto_libsodium.hpp>
+#include "crypto_libsodium.hpp"
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
@@ -8,9 +8,9 @@
 #include <sodium/crypto_aead_xchacha20poly1305.h>
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
-#include <util/mem.hpp>
-#include <util/endian.hpp>
-#include <util/str.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/util/endian.hpp>
+#include <llarp/util/str.hpp>
 #include <cassert>
 #include <cstring>
 

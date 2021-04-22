@@ -1,22 +1,21 @@
-#ifndef LLARP_PATH_HPP
-#define LLARP_PATH_HPP
+#pragma once
 
-#include <constants/path.hpp>
-#include <crypto/encrypted_frame.hpp>
-#include <crypto/types.hpp>
-#include <messages/relay.hpp>
-#include <path/ihophandler.hpp>
-#include <path/path_types.hpp>
-#include <path/pathbuilder.hpp>
-#include <path/pathset.hpp>
-#include <router_id.hpp>
-#include <routing/handler.hpp>
-#include <routing/message.hpp>
-#include <service/intro.hpp>
-#include <util/aligned.hpp>
-#include <util/compare_ptr.hpp>
-#include <util/thread/threading.hpp>
-#include <util/time.hpp>
+#include <llarp/constants/path.hpp>
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/messages/relay.hpp>
+#include "ihophandler.hpp"
+#include "path_types.hpp"
+#include "pathbuilder.hpp"
+#include "pathset.hpp"
+#include <llarp/router_id.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message.hpp>
+#include <llarp/service/intro.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/time.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -81,7 +80,8 @@ namespace llarp
       using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrame&)>;
       using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
       using ExitClosedFunc = std::function<bool(Path_ptr)>;
-      using ExitTrafficHandlerFunc = std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t)>;
+      using ExitTrafficHandlerFunc =
+          std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t, service::ProtocolType)>;
       /// (path, backoff) backoff is 0 on success
       using ObtainedExitHandler = std::function<bool(Path_ptr, llarp_time_t)>;
 
@@ -116,16 +116,16 @@ namespace llarp
           const auto& tx = p.hops[0].txID;
           const auto& rx = p.hops[0].rxID;
           const auto& r = p.hops[0].upstream;
-          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor<size_t>());
+          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor{});
           return std::accumulate(
               rx.begin(),
               rx.begin(),
-              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor<size_t>()),
-              std::bit_xor<size_t>());
+              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor{}),
+              std::bit_xor{});
         }
       };
 
-      /// hash for std::shared_ptr
+      /// hash for std::shared_ptr<Path>
       struct Ptr_Hash
       {
         size_t
@@ -137,7 +137,7 @@ namespace llarp
         }
       };
 
-      /// hash for std::shared_ptr by path endpoint
+      /// hash for std::shared_ptr<Path> by path endpoint
       struct Endpoint_Hash
       {
         size_t
@@ -145,7 +145,7 @@ namespace llarp
         {
           if (p == nullptr)
             return 0;
-          return RouterID::Hash{}(p->Endpoint());
+          return std::hash<RouterID>{}(p->Endpoint());
         }
       };
 
@@ -200,6 +200,14 @@ namespace llarp
       {
         return _status;
       }
+
+      // handle data in upstream direction
+      bool
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
+      // handle data in downstream direction
+
+      bool
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
 
       const std::string&
       ShortName() const;
@@ -352,7 +360,7 @@ namespace llarp
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
 
       PathID_t
-      RXID() const;
+      RXID() const override;
 
       RouterID
       Upstream() const;
@@ -421,5 +429,3 @@ namespace llarp
     };
   }  // namespace path
 }  // namespace llarp
-
-#endif

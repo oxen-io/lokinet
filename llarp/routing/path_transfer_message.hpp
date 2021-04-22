@@ -1,10 +1,9 @@
-#ifndef LLARP_MESSAGES_PATH_TRANSFER_HPP
-#define LLARP_MESSAGES_PATH_TRANSFER_HPP
+#pragma once
 
-#include <crypto/encrypted.hpp>
-#include <crypto/types.hpp>
-#include <routing/message.hpp>
-#include <service/protocol.hpp>
+#include <llarp/crypto/encrypted.hpp>
+#include <llarp/crypto/types.hpp>
+#include "message.hpp"
+#include <llarp/service/protocol.hpp>
 
 namespace llarp
 {
@@ -44,5 +43,3 @@ namespace llarp
 
   }  // namespace routing
 }  // namespace llarp
-
-#endif
