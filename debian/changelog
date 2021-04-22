@@ -1,3 +1,256 @@
+lokinet (0.9.0-1) unstable; urgency=medium
+
+  [ Thomas Winget ]
+  * add project source dir to util include directories
+  * standardize include format and pragma once
+  * let format.sh try system clang-format in case it is the correct version
+  * remove vestigal file
+
+  [ Jason Rhinelander ]
+  * Convert protocol type to enum class
+  * Code cleanups
+  * SockAddr endian cleanups & add uint128 ctors
+  * Replace ::Hash nested structs with std::hash specializations
+
+  [ Jeff Becker ]
+  * fix segfault
+  * remove references to lokimq namespace
+  * lokimq -> oxenmq artifact
+  * make ipv6 range used by exit traffic configurable.
+  * dont use .value() because macos is absolutely broken, thanks apple.
+  * fix issue #1562
+  * add warning and note in documenation of config option
+  * redunant lookups for lns.
+  * cache result on success
+  * dont reference iterator in lambda.
+  * make Endpoint::LookupNameAsync return void
+  * make lookup name async return optional variant
+  * seperate logic into IsDone()
+  * lokimq -> oxenmq artifact
+  * allow failure of setting ipv6 address when it is not allowed by kernel on linux
+  * remove std::visit because apple is functionally retarded and does not support it despite claiming to support c++14
+  * use var::variant and var::visit shims because apple is sux
+  * move stuff to var::variant
+  * use std::variant
+  * forgot a type
+  * call delivery status hook on overload
+  * * lessen replay filter window * dont have transit hops use a replay filter * formatting
+  * rebrand and bump version
+  * lokinet-bootstrap native binary
+  * rebrand and bump version
+  * lokinet-bootstrap native binary
+  * add include directory for daemon directory so llarp/* includes work
+  * require openssl explicitly for lokinet-bootstrap
+  * update lokinet-bootstrap
+  * build lokinet-android target only on android
+  * throw on failed writing and port fs namespace changes from oxen-core
+  * catch exception and print out error
+  * use binary mode for writing files
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Add new libcurl build dep
+  * Add libssl-dev needed for libcurl
+
+  [ Jeff Becker ]
+  * remove old vpnio bits
+  * remove unneeded header
+  * remove llarp.h header references
+  * add lokinet.h header for liblokinet api
+  * flesh out lokinet.h more
+  * redo cmake parts
+  * fix pybind layer compile errors from missing llarp.h header
+  * fix windows dll link-ism
+  * get rid of deprecated vpnio code in android
+  * don't build liblokinet in android we have liblokinet-android for that
+
+  [ Jason Rhinelander ]
+  * Add draft liblokinet TCP-over-QUIC design doc
+  * Add ngtcp2 submodule
+  * Move external/ cmake bits into external/CMakeLists.txt
+  * WIP plainquic tunnels
+  * Replace custom random with llarp/sodium random
+  * Migrate plainquic logging to llarp logging
+  * Add llarp::buffer_printer for pretty buffer logs
+  * no-op LogTrace(); print chars as ints
+
+  [ Jeff Becker ]
+  * fix and format.
+  * more
+  * clean up address/ip management code to use std::variant and std::optional
+  * fix link error in ngtcp2
+  * update ngtcp2 address/path structs
+  * get rid of uneeded type
+  * * add protocol type to snode traffic * make path::PathSet::SendPacketToRemote know about protocol type
+  * use more variants
+  * * add convotags to ensure path to snode * add service::Endpoint::EnsurePathTo which gives you a std::optional<Convotag>
+  * remove superflous include
+
+  [ Jason Rhinelander ]
+  * Change MaybeGetLoop to a virtual member func
+  * Simplify/unify SendTo* methods
+  * Fix logging of std::byte values
+  * Fix cursed formatting
+  * Rename isRouter -> isSNode
+  * Add isIPv4/isIPv6 to SockAddr
+  * QUIC lokinet integration refactor
+
+  [ Jeff Becker ]
+  * fix compile error
+  * wire up snode traffic to quic
+  * try inbound paths first
+  * fix compiler errors
+  * add virtual default destructor to appease clang
+  * variable is unused for now but i dont want to remove it yet
+  * comment out member
+  * move lokinet-quic into the big giant amalgum of liblokinet
+  * re add static build for all internal lokinet libs
+  * rpc endpoint for triggering quic tunnel
+  * make the lokinet endpoint code work still needs the quic sides to work
+  * add quic_tester.py script for hitting rpc endpoints to test quic
+  * various fixups and cleanups
+  * dont try to build untracked file
+  * patch
+
+  [ Jason Rhinelander ]
+  * Disable building ngtcp2 example code
+  * Set port properly in server-to-client reply packets
+  * Add more checks and logging
+  * Try outbound convos if no inbound convos work (FIXME)
+  * Add missing client TCP accept/forwarding handlers
+  * Add some more useful debug logging
+  * Fix Server's missing opt-out of ring buffer
+
+  [ Jeff Becker ]
+  * stuff
+
+  [ Jason Rhinelander ]
+  * Sever tunnel links earlier
+  * Update ngtcp2
+  * Remove obsolete fixme
+  * Stop retransmit timer when destroying a connection
+  * Schedule retransmit after blocked send
+  * Fix/refactor stream closing
+  * Simplify/fix expiry timer logic
+  * Don't install stream forwarding here
+  * Revisit/reduce quic logging
+  * Remove obsolete fixme
+  * Replace timer->again() with stop/start()
+  * Properly handle ngtcp2 returning UINT64_MAX
+  * Remove superfluous log statement
+
+  [ Jeff Becker ]
+  * build paths faster and limit path builds at edge router instead of via a time counter for all edges
+  * fixes
+  * refactors
+  * fix loopback convotag
+  * dont regenerate convotag on loopback when we have one already
+  * mark loopback convotags as forever make null handler mark discard data as activity for convotag
+
+  [ Jason Rhinelander ]
+  * Increase null_iv to 8 bytes to avoid ngtcp2 stack corruption
+  * Fix debug message
+  * Remove superfluous block (FIXME: squash this with earlier "FIXME")
+  * Add trace debugging of inbound packet type
+
+  [ Jeff Becker ]
+  * wire up liblokinet
+  * fix up liblokinet api to be more friendly to ffi
+
+  [ Jason Rhinelander ]
+  * Fix connection close handling
+  * Reduce max number of per-connection active streams to 32
+
+  [ Jeff Becker ]
+  * proper shutdown
+  * liblokinet additions:
+  * more liblokinet api stuff
+  * add readme
+  * fix: if we have not used a session yet we only check the intro for expiration
+  * XXX: single threaded mode
+  * temp commit, closeReset -> close
+  * more liblokinet api functions
+  * service node logic change: simplify transit hop behavior to send protocol frames directly from a path transfer message
+  * fix up some retarded bullshit
+  * liblokinet and lnproxy updates
+  * add option to run lokinet traffic only with no exit and drop all non lokinet traffic
+  * add forgotten header
+  * reduce log level
+  * srv records
+  * correctly discard invalid data on transfer traffic message
+  * add untracked file
+  * add forgotten file again
+  * stop crashing when we send dns reply for snode on service nodes
+  * various cleanups
+  * cover special case for 1 hop path builders
+  * tweak timeout parameters for link layer. have different timeouts for service node vs client
+  * dont persist sessions if we failed to build
+  * Revert "tweak timeout parameters for link layer."
+  * use rx id on snode side of paths set protocol on reply routing messages
+  * use rxid
+  * more client to snode quic fixes
+  * use rxid
+  * fix up client to snode codepath
+  * try fixing deadlock
+  * remove deprecated test
+  * remove untracked file
+  * fix infinite iteration
+  * remove old deprecated files
+  * ensure dns srv data is valid after decoding
+  * formatting
+  * split up liblokinet headers
+  * fixes for testnet
+  * add forgotten files
+  * temp commit
+  * initial commit for #1595
+  * rebrand and bump version
+  * win32 fix
+  * finish wiring up config for #1595
+  * fix some compiler errors
+  * refactor: make lokinet-bootstrap a native executable
+  * bullshit for windows and openssl with CPR
+  * fixes for lokinet-bootstrap
+  * cleanup after rebase
+  * set up accept any plainquic handlers
+  * deconstexpr ip range bogon check
+
+  [ Jason Rhinelander ]
+  * Attempt fix to work around gcc-8 warning
+  * Link lokinet-bootstrap against libssl as well
+
+  [ Jeff Becker ]
+  * macos variant fixes
+  * pybind fixes
+  * correct header
+  * add_command instead of add_request_command
+
+  [ Jason Rhinelander ]
+  * Remove stable old debian/ dir
+  * Update submodules and static build deps
+  * ngtcp2 compat update
+  * 😡
+
+  [ Jeff ]
+  * add link to demo repo
+
+  [ Jeff Becker ]
+  * bump libuv version to match the tarball fetched
+
+  [ Jason Rhinelander ]
+  * Fix curl hash
+
+  [ Jeff Becker ]
+  * libunbound patch no longer needed as fixes have been upstreamed
+  * link against core foundation as a fix for static macos build
+
+  [ Thomas Winget ]
+  * Lokinet version bump to 0.9.0
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 22 Apr 2021 00:21:38 -0300
+
 lokinet (0.8.4-2) unstable; urgency=medium
 
   [ Jeff Becker ]
