@@ -1292,8 +1292,7 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    _loop->call_soon(func);
-    // m_lmq->job(std::move(func));
+    m_lmq->job(std::move(func));
   }
 
   void
