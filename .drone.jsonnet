@@ -21,6 +21,7 @@ local debian_pipeline(name, image,
         werror=true,
         cmake_extra='',
         extra_cmds=[],
+        jobs=6,
         loki_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
@@ -55,7 +56,7 @@ local debian_pipeline(name, image,
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
-                'ninja -v',
+                'ninja -j' + jobs + ' -v',
                 '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
             ] + extra_cmds,
         }
@@ -93,6 +94,7 @@ local windows_cross_pipeline(name, image,
         cmake_extra='',
         toolchain='32',
         extra_cmds=[],
+        jobs=6,
         allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
@@ -121,7 +123,7 @@ local windows_cross_pipeline(name, image,
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
                 cmake_extra,
-                'ninja -v package',
+                'ninja -j' + jobs + ' -v package',
             ] + extra_cmds,
         }
     ],
@@ -178,7 +180,13 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
 
 
 // Macos build
-local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra_cmds=[], allow_fail=false) = {
+local mac_builder(name,
+        build_type='Release',
+        werror=true,
+        cmake_extra='',
+        extra_cmds=[],
+        jobs=6,
+        allow_fail=false) = {
     kind: 'pipeline',
     type: 'exec',
     name: name,
@@ -198,7 +206,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'ninja -v',
+                'ninja -j' + jobs + ' -v',
                 './test/testAll --use-colour yes',
             ] + extra_cmds,
         }
@@ -233,8 +241,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', loki_repo=true),
 
     // ARM builds (ARM64 and armhf)
-    debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
-    debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+    debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64", jobs=4),
+    debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON', jobs=4),
     // Static armhf build (gets uploaded)
     debian_pipeline("Static (buster armhf)", "arm32v7/debian:buster", arch="arm64", deps='g++ python3-dev automake libtool',
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
@@ -243,7 +251,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                     extra_cmds=[
                         '../contrib/ci/drone-check-static-libs.sh',
                         'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh'
-                    ]),
+                    ],
+                    jobs=4),
     // android apk builder
     apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=anrdoid ../contrib/ci/drone-static-upload.sh']),
     
