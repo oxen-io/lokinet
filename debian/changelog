@@ -1,3 +1,10 @@
+lokinet (0.9.0-2~ubuntu1804) bionic; urgency=medium
+
+  * Build in /staging
+  * limit calls to service node list updates for when we are synching the chain we dont spam with list updates
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 27 Apr 2021 17:19:07 -0300
+
 lokinet (0.9.0-1~ubuntu1804) bionic; urgency=medium
 
   [ Thomas Winget ]
