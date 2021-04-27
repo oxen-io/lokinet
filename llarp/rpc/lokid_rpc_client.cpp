@@ -45,6 +45,7 @@ namespace llarp
       auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
       lokidCategory.add_request_command(
           "get_peer_stats", [this](oxenmq::Message& m) { HandleGetPeerStats(m); });
+      m_UpdatingList = false;
     }
 
     void
@@ -83,7 +84,9 @@ namespace llarp
         return;  // bail
       }
       LogDebug("new block at hieght ", msg.data[0]);
-      UpdateServiceNodeList(std::string{msg.data[1]});
+      // don't upadate on block notification if an update is pending
+      if (not m_UpdatingList)
+        UpdateServiceNodeList(std::string{msg.data[1]});
     }
 
     void
@@ -95,9 +98,11 @@ namespace llarp
       request["active_only"] = true;
       if (not topblock.empty())
         request["poll_block_hash"] = topblock;
+      m_UpdatingList = true;
       Request(
           "rpc.get_service_nodes",
           [self = shared_from_this()](bool success, std::vector<std::string> data) {
+            self->m_UpdatingList = false;
             if (not success)
             {
               LogWarn("failed to update service node list");

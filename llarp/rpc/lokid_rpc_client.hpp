@@ -76,6 +76,7 @@ namespace llarp
       LMQ_ptr m_lokiMQ;
 
       AbstractRouter* const m_Router;
+      std::atomic<bool> m_UpdatingList;
     };
 
   }  // namespace rpc
