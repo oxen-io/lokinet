@@ -1,0 +1,57 @@
+From: Jeff Becker <jeff@i2p.rocks>
+Date: Mon, 26 Apr 2021 06:41:23 -0400
+Subject: limit calls to service node list updates for when we are synching
+ the chain we dont spam with list updates
+
+---
+ llarp/rpc/lokid_rpc_client.cpp | 7 ++++++-
+ llarp/rpc/lokid_rpc_client.hpp | 1 +
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/llarp/rpc/lokid_rpc_client.cpp b/llarp/rpc/lokid_rpc_client.cpp
+index 691115f..6051ce9 100644
+--- a/llarp/rpc/lokid_rpc_client.cpp
++++ b/llarp/rpc/lokid_rpc_client.cpp
+@@ -45,6 +45,7 @@ namespace llarp
+       auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
+       lokidCategory.add_request_command(
+           "get_peer_stats", [this](oxenmq::Message& m) { HandleGetPeerStats(m); });
++      m_UpdatingList = false;
+     }
+ 
+     void
+@@ -83,7 +84,9 @@ namespace llarp
+         return;  // bail
+       }
+       LogDebug("new block at hieght ", msg.data[0]);
+-      UpdateServiceNodeList(std::string{msg.data[1]});
++      // don't upadate on block notification if an update is pending
++      if (not m_UpdatingList)
++        UpdateServiceNodeList(std::string{msg.data[1]});
+     }
+ 
+     void
+@@ -95,9 +98,11 @@ namespace llarp
+       request["active_only"] = true;
+       if (not topblock.empty())
+         request["poll_block_hash"] = topblock;
++      m_UpdatingList = true;
+       Request(
+           "rpc.get_service_nodes",
+           [self = shared_from_this()](bool success, std::vector<std::string> data) {
++            self->m_UpdatingList = false;
+             if (not success)
+             {
+               LogWarn("failed to update service node list");
+diff --git a/llarp/rpc/lokid_rpc_client.hpp b/llarp/rpc/lokid_rpc_client.hpp
+index 08c84e9..2c4df49 100644
+--- a/llarp/rpc/lokid_rpc_client.hpp
++++ b/llarp/rpc/lokid_rpc_client.hpp
+@@ -76,6 +76,7 @@ namespace llarp
+       LMQ_ptr m_lokiMQ;
+ 
+       AbstractRouter* const m_Router;
++      std::atomic<bool> m_UpdatingList;
+     };
+ 
+   }  // namespace rpc
