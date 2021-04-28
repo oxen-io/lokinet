@@ -14,5 +14,6 @@ namespace llarp
   /// \param dns -- the listening address of the lokinet DNS server
   /// \param global -- whether to set up lokinet for all DNS queries (true) or just .loki & .snode
   /// addresses (false).
-  bool systemd_resolved_set_dns(std::string if_name, llarp::SockAddr dns, bool global);
-}
+  bool
+  systemd_resolved_set_dns(std::string if_name, llarp::SockAddr dns, bool global);
+}  // namespace llarp

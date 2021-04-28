@@ -786,8 +786,10 @@ namespace llarp
       Router()->loop()->add_ticker([this] { Flush(); });
 
       // Attempt to register DNS on the interface
-      systemd_resolved_set_dns(m_IfName, m_LocalResolverAddr.createSockAddr(),
-              false /* just .loki/.snode DNS initially */);
+      systemd_resolved_set_dns(
+          m_IfName,
+          m_LocalResolverAddr.createSockAddr(),
+          false /* just .loki/.snode DNS initially */);
 
       if (m_OnUp)
       {
