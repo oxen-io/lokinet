@@ -1,4 +1,5 @@
 #include "systemd_resolved.hpp"
+#include <llarp/util/logging/logger.hpp>
 
 #ifndef WITH_SYSTEMD
 
@@ -7,14 +8,12 @@ namespace llarp
   bool
   systemd_resolved_set_dns(std::string, llarp::SockAddr, bool)
   {
-    LogDebug("lokinet is not build with systemd support, cannot set systemd resolved DNS");
+    LogDebug("lokinet is not built with systemd support, cannot set systemd resolved DNS");
     return false;
   }
-}
+}  // namespace llarp
 
 #else
-
-#include <llarp/util/logging/logger.hpp>
 
 #include <stdexcept>
 
@@ -167,6 +166,6 @@ namespace llarp
     return false;
   }
 
-#endif  // WITH_SYSTEMD
-
 }  // namespace llarp
+
+#endif  // WITH_SYSTEMD
