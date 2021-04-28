@@ -1,5 +1,6 @@
 #include "route_poker.hpp"
 #include "abstractrouter.hpp"
+#include "net/sock_addr.hpp"
 #include <llarp/net/route.hpp>
 #include <llarp/service/context.hpp>
 #include <unordered_set>
@@ -157,6 +158,11 @@ namespace llarp
     Update();
     m_Enabling = false;
     m_Enabled = true;
+
+    systemd_resolved_set_dns(
+        m_Router->hiddenServiceContext().GetDefault()->GetIfName(),
+        m_Router->GetConfig()->dns.m_bind.createSockAddr(),
+        true /* route all DNS */);
   }
 
   void
@@ -167,6 +173,11 @@ namespace llarp
 
     DisableAllRoutes();
     m_Enabled = false;
+
+    systemd_resolved_set_dns(
+        m_Router->hiddenServiceContext().GetDefault()->GetIfName(),
+        m_Router->GetConfig()->dns.m_bind.createSockAddr(),
+        false /* route DNS only for .loki/.snode */);
   }
 
   void
