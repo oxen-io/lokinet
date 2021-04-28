@@ -1,4 +1,16 @@
 #include "systemd_resolved.hpp"
+
+#ifndef WITH_SYSTEMD
+
+namespace llarp {
+  bool systemd_resolved_set_dns(std::string, llarp::SockAddr, bool) {
+    LogDebug("lokinet is not build with systemd support, cannot set systemd resolved DNS");
+    return false;
+  }
+}
+
+#else
+
 #include <llarp/util/logging/logger.hpp>
 
 #include <stdexcept>
@@ -11,15 +23,6 @@ extern "C" {
 using namespace std::literals;
 
 namespace llarp {
-
-#ifndef WITH_SYSTEMD
-
-  bool systemd_resolved_set_dns(std::string, llarp::SockAddr, bool) {
-    LogDebug("lokinet is not build with systemd support, cannot set systemd resolved DNS");
-    return false;
-  }
-
-#else
 
   namespace {
     template <typename... T>
