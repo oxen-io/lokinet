@@ -13,6 +13,7 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/systemd_resolved.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
@@ -783,6 +784,12 @@ namespace llarp
       }
 
       Router()->loop()->add_ticker([this] { Flush(); });
+
+      // Attempt to register DNS on the interface
+      systemd_resolved_set_dns(
+          m_IfName,
+          m_LocalResolverAddr.createSockAddr(),
+          false /* just .loki/.snode DNS initially */);
 
       if (m_OnUp)
       {

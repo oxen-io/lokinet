@@ -186,6 +186,7 @@ add_library(liblokinet
   router/rc_gossiper.cpp
   router/router.cpp
   router/route_poker.cpp
+  router/systemd_resolved.cpp
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
