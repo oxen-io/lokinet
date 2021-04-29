@@ -120,7 +120,9 @@ namespace llarp
     const auto maybe = GetDefaultGateway();
     if (not maybe.has_value())
     {
+#ifndef ANDROID
       LogError("Network is down");
+#endif
       // mark network lost
       m_HasNetwork = false;
       return;
