@@ -25,14 +25,14 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-g
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
-install(PROGRAMS ${TUNTAP_EXE} DESTINATION bin)
+install(PROGRAMS ${TUNTAP_EXE} DESTINATION bin COMPONENT tuntap)
 install(FILES ${BOOTSTRAP_FILE} DESTINATION share)
 
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait 'sc failure lokinet reset= 60 actions= restart/1000'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed\\nExecWait '$INSTDIR\\\\bin\\\\lokinet-bootstrap.exe'")
+set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ifFileExists $INSTDIR\\\\bin\\\\tuntap-install.exe 0 +2\\nExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait 'sc failure lokinet reset= 60 actions= restart/1000'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed\\nExecWait '$INSTDIR\\\\bin\\\\lokinet-bootstrap.exe'")
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "ExecWait 'net stop lokinet'\\nExecWait 'taskkill /f /t /im lokinet-gui.exe'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --remove'\\nRMDir /r /REBOOTOK C:\\\\ProgramData\\\\lokinet")
 set(CPACK_NSIS_CREATE_ICONS_EXTRA
     "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Lokinet.lnk' '$INSTDIR\\\\share\\\\gui\\\\lokinet-gui.exe'"
