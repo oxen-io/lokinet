@@ -664,14 +664,14 @@ namespace llarp
         "path-alignment-timeout",
         ClientOnly,
         Comment{
-            "time in milliseconds how long to wait for a path to align to pivot routers",
+            "time in seconds how long to wait for a path to align to pivot routers",
             "if not provided a sensible default will be used",
         },
         [this](int val) {
-          if (val <= 200)
+          if (val <= 0)
             throw std::invalid_argument{
-                "invalid path alignment timeout: " + std::to_string(val) + " <= 200"};
-          m_PathAlignmentTimeout = std::chrono::milliseconds{val};
+                "invalid path alignment timeout: " + std::to_string(val) + " <= 0"};
+          m_PathAlignmentTimeout = std::chrono::seconds{val};
         });
 
     // Deprecated options:
