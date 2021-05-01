@@ -46,11 +46,12 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
-        : path::Builder(r, 3, path::default_len)
-        , context(parent)
-        , m_InboundTrafficQueue(512)
-        , m_SendQueue(512)
-        , m_RecvQueue(512)
+        : path::Builder{r, 3, path::default_len}
+        , context{parent}
+        , m_InboundTrafficQueue{512}
+        , m_SendQueue{512}
+        , m_RecvQueue{512}
+        , m_IntrosetLookupFilter{5s}
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
@@ -283,7 +284,8 @@ namespace llarp
       {
         RegenAndPublishIntroSet();
       }
-
+      // decay introset lookup filter
+      m_IntrosetLookupFilter.Decay(now);
       // expire name cache
       m_state->nameCache.Decay(now);
       // expire snode sessions
@@ -955,7 +957,7 @@ namespace llarp
       for (const auto& path : paths)
       {
         LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
-        auto job = new LookupNameJob(this, GenTXID(), name, resultHandler);
+        auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
         job->SendRequestViaPath(path, m_router);
       }
     }
@@ -1003,7 +1005,7 @@ namespace llarp
           msg.S = path->NextSeqNo();
         if (path && path->SendRoutingMessage(msg, Router()))
         {
-          RouterLookupJob job(this, handler);
+          RouterLookupJob job{this, handler};
 
           assert(msg.M.size() == 1);
           auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.M[0].get());
@@ -1011,7 +1013,7 @@ namespace llarp
 
           m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), *dhtMsg);
 
-          routers.emplace(router, RouterLookupJob(this, handler));
+          routers.emplace(router, std::move(job));
           return true;
         }
       }
@@ -1266,6 +1268,7 @@ namespace llarp
     void
     Endpoint::HandlePathDied(path::Path_ptr p)
     {
+      m_router->routerProfiling().MarkPathTimeout(p.get());
       ManualRebuild(1);
       RegenAndPublishIntroSet();
       path::Builder::HandlePathDied(p);
@@ -1349,13 +1352,8 @@ namespace llarp
       // add response hook to list for address.
       m_state->m_PendingServiceLookups.emplace(remote, hook);
 
-      auto& lookupTimes = m_state->m_LastServiceLookupTimes;
-      const auto now = Now();
-
-      // if most recent lookup was within last INTROSET_LOOKUP_RETRY_COOLDOWN
-      // just add callback to the list and return
-      if (lookupTimes.find(remote) != lookupTimes.end()
-          && now < (lookupTimes[remote] + INTROSET_LOOKUP_RETRY_COOLDOWN))
+      /// check replay filter
+      if (not m_IntrosetLookupFilter.Insert(remote))
         return true;
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
@@ -1379,6 +1377,7 @@ namespace llarp
               },
               location,
               PubKey{remote.as_array()},
+              path->Endpoint(),
               order,
               GenTXID(),
               timeout);
@@ -1394,12 +1393,7 @@ namespace llarp
           order++;
           if (job->SendRequestViaPath(path, Router()))
           {
-            if (not hookAdded)
-            {
-              // if any of the lookups is successful, set last lookup time
-              lookupTimes[remote] = now;
-              hookAdded = true;
-            }
+            hookAdded = true;
           }
           else
             LogError(Name(), " send via path failed for lookup");

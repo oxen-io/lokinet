@@ -525,6 +525,9 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
+
+      /// for rate limiting introset lookups
+      util::DecayingHashSet<Address> m_IntrosetLookupFilter;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

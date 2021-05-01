@@ -259,6 +259,7 @@ namespace llarp
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
             location,
             PubKey{addr.as_array()},
+            path->Endpoint(),
             relayOrder,
             m_Endpoint->GenTXID(),
             5s);
