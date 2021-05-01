@@ -1164,6 +1164,9 @@ namespace llarp
     Endpoint::SendAuthResult(
         path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
     {
+      // not applicable because we are not an exit or don't have an endpoint auth policy
+      if ((not m_state->m_ExitEnabled) or m_AuthPolicy == nullptr)
+        return;
       ProtocolFrame f;
       f.R = AuthResultCodeAsInt(result.code);
       f.T = tag;
