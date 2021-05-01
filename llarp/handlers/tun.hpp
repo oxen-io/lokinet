@@ -267,6 +267,8 @@ namespace llarp
       std::optional<net::TrafficPolicy> m_TrafficPolicy;
       /// ranges we advetise as reachable
       std::set<IPRange> m_OwnedRanges;
+      /// how long to wait for path alignment
+      llarp_time_t m_PathAlignmentTimeout;
     };
 
   }  // namespace handlers
