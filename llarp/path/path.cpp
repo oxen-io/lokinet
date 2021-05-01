@@ -303,7 +303,9 @@ namespace llarp
     util::StatusObject
     PathHopConfig::ExtractStatus() const
     {
+      const auto ip = net::In6ToHUInt(rc.addrs[0].ip);
       util::StatusObject obj{
+          {"ip", ip.ToString()},
           {"lifetime", to_json(lifetime)},
           {"router", rc.pubkey.ToHex()},
           {"txid", txID.ToHex()},
