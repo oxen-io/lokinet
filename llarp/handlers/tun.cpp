@@ -131,6 +131,8 @@ namespace llarp
         m_Resolver->Restart();
     }
 
+    constexpr auto DefaultAlignmentTimeout = 10s;
+
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
@@ -166,6 +168,13 @@ namespace llarp
       m_UpstreamResolvers = dnsConf.m_upstreamDNS;
 
       m_BaseV6Address = conf.m_baseV6Address;
+
+      if (conf.m_PathAlignmentTimeout)
+      {
+        m_PathAlignmentTimeout = *conf.m_PathAlignmentTimeout;
+      }
+      else
+        m_PathAlignmentTimeout = DefaultAlignmentTimeout;
 
       for (const auto& item : conf.m_mapAddrs)
       {
@@ -259,8 +268,6 @@ namespace llarp
         return service::Address{itr->second.as_array()};
     }
 
-    constexpr auto TrafficAlignmentTimeout = 10s;
-
     bool
     TunEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
@@ -272,7 +279,7 @@ namespace llarp
               SendDNSReply(snode, s, msg, reply, isV6);
             });
       };
-      auto ReplyToLokiDNSWhenReady = [this, reply](
+      auto ReplyToLokiDNSWhenReady = [this, reply, timeout = m_PathAlignmentTimeout](
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
@@ -281,7 +288,7 @@ namespace llarp
             [this, addr, msg, reply, isV6](const Address&, OutboundContext* ctx) {
               SendDNSReply(addr, ctx, msg, reply, isV6);
             },
-            TrafficAlignmentTimeout);
+            timeout);
       };
 
       auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
@@ -298,7 +305,8 @@ namespace llarp
         }
       };
 
-      auto ReplyToLokiSRVWhenReady = [this, reply](service::Address addr, auto msg) -> bool {
+      auto ReplyToLokiSRVWhenReady = [this, reply, timeout = m_PathAlignmentTimeout](
+                                         service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
 
@@ -312,7 +320,7 @@ namespace llarp
               msg->AddSRVReply(introset.GetMatchingSRVRecords(addr.subdomain));
               reply(*msg);
             },
-            TrafficAlignmentTimeout);
+            timeout);
       };
 
       if (msg.answers.size() > 0)
@@ -924,7 +932,7 @@ namespace llarp
                 }
                 self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
               },
-              TrafficAlignmentTimeout);
+              m_PathAlignmentTimeout);
           return;
         }
         bool rewriteAddrs = true;

@@ -659,6 +659,21 @@ namespace llarp
           m_SRVRecords.push_back(std::move(newSRV));
         });
 
+    conf.defineOption<int>(
+        "network",
+        "path-alignment-timeout",
+        ClientOnly,
+        Comment{
+            "time in milliseconds how long to wait for a path to align to pivot routers",
+            "if not provided a sensible default will be used",
+        },
+        [this](int val) {
+          if (val <= 200)
+            throw std::invalid_argument{
+                "invalid path alignment timeout: " + std::to_string(val) + " <= 200"};
+          m_PathAlignmentTimeout = std::chrono::milliseconds{val};
+        });
+
     // Deprecated options:
     conf.defineOption<std::string>("network", "enabled", Deprecated);
   }

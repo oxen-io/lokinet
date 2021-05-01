@@ -125,6 +125,8 @@ namespace llarp
     std::set<IPRange> m_OwnedRanges;
     std::optional<net::TrafficPolicy> m_TrafficPolicy;
 
+    std::optional<llarp_time_t> m_PathAlignmentTimeout;
+
     // TODO:
     // on-up
     // on-down
