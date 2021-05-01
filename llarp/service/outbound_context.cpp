@@ -45,20 +45,18 @@ namespace llarp
       if (dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
         LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
-        if (MarkCurrentIntroBad(Now()))
-        {
-          SwapIntros();
-        }
-        UpdateIntroSet();
+        MarkCurrentIntroBad(Now());
       }
       return true;
     }
 
+    constexpr auto OutboundContextNumPaths = 2;
+
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
-        : path::Builder(parent->Router(), 4, parent->numHops)
-        , SendContext(introset.addressKeys, {}, this, parent)
-        , location(introset.addressKeys.Addr().ToKey())
-        , currentIntroSet(introset)
+        : path::Builder{parent->Router(), OutboundContextNumPaths, parent->numHops}
+        , SendContext{introset.addressKeys, {}, this, parent}
+        , location{introset.addressKeys.Addr().ToKey()}
+        , currentIntroSet{introset}
 
     {
       updatingIntroSet = false;
@@ -243,8 +241,12 @@ namespace llarp
     void
     OutboundContext::UpdateIntroSet()
     {
-      if (updatingIntroSet || markedBad)
+      constexpr auto IntrosetUpdateInterval = 10s;
+      const auto now = Now();
+      if (updatingIntroSet or markedBad or now < m_LastIntrosetUpdateAt + IntrosetUpdateInterval)
         return;
+      LogInfo(Name(), " updating introset");
+      m_LastIntrosetUpdateAt = now;
       const auto addr = currentIntroSet.addressKeys.Addr();
       // we want to use the parent endpoint's paths because outbound context
       // does not implement path::PathSet::HandleGotIntroMessage
@@ -257,6 +259,7 @@ namespace llarp
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
             location,
             PubKey{addr.as_array()},
+            path->Endpoint(),
             relayOrder,
             m_Endpoint->GenTXID(),
             5s);
@@ -410,40 +413,17 @@ namespace llarp
       return t >= now + path::default_lifetime / 4;
     }
 
-    bool
+    void
     OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
-      return MarkIntroBad(remoteIntro, now);
+      MarkIntroBad(remoteIntro, now);
     }
 
-    bool
+    void
     OutboundContext::MarkIntroBad(const Introduction& intro, llarp_time_t now)
     {
       // insert bad intro
       m_BadIntros[intro] = now;
-      // try shifting intro without rebuild
-      if (ShiftIntroduction(false))
-      {
-        // we shifted
-        // check if we have a path to the next intro router
-        if (GetNewestPathByRouter(m_NextIntro.router))
-          return true;
-        // we don't have a path build one if we aren't building too fast
-        if (!BuildCooldownHit(now))
-          BuildOneAlignedTo(m_NextIntro.router);
-        return true;
-      }
-
-      // we didn't shift check if we should update introset
-      if (now - lastShift >= MIN_SHIFT_INTERVAL || currentIntroSet.HasExpiredIntros(now)
-          || currentIntroSet.IsExpired(now))
-      {
-        // update introset
-        LogInfo(Name(), " updating introset");
-        UpdateIntroSet();
-        return true;
-      }
-      return false;
     }
 
     bool

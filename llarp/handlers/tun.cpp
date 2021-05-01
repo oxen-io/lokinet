@@ -259,27 +259,29 @@ namespace llarp
         return service::Address{itr->second.as_array()};
     }
 
+    constexpr auto TrafficAlignmentTimeout = 10s;
+
     bool
     TunEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
-      auto ReplyToSNodeDNSWhenReady = [self = this, reply = reply](
-                                          RouterID snode, auto msg, bool isV6) -> bool {
-        return self->EnsurePathToSNode(
+      auto ReplyToSNodeDNSWhenReady = [this, reply](RouterID snode, auto msg, bool isV6) -> bool {
+        return EnsurePathToSNode(
             snode,
-            [=](const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
-              self->SendDNSReply(snode, s, msg, reply, isV6);
+            [this, snode, msg, reply, isV6](
+                const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
+              SendDNSReply(snode, s, msg, reply, isV6);
             });
       };
-      auto ReplyToLokiDNSWhenReady = [self = this, reply = reply](
+      auto ReplyToLokiDNSWhenReady = [this, reply](
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
-        return self->EnsurePathToService(
+        return EnsurePathToService(
             addr,
-            [=](const Address&, OutboundContext* ctx) {
-              self->SendDNSReply(addr, ctx, msg, reply, isV6);
+            [this, addr, msg, reply, isV6](const Address&, OutboundContext* ctx) {
+              SendDNSReply(addr, ctx, msg, reply, isV6);
             },
-            2s);
+            TrafficAlignmentTimeout);
       };
 
       auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
@@ -296,14 +298,13 @@ namespace llarp
         }
       };
 
-      auto ReplyToLokiSRVWhenReady = [self = this, reply = reply](
-                                         service::Address addr, auto msg) -> bool {
+      auto ReplyToLokiSRVWhenReady = [this, reply](service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
 
-        return self->EnsurePathToService(
+        return EnsurePathToService(
             addr,
-            [=](const Address&, OutboundContext* ctx) {
+            [msg, addr, reply](const Address&, OutboundContext* ctx) {
               if (ctx == nullptr)
                 return;
 
@@ -311,7 +312,7 @@ namespace llarp
               msg->AddSRVReply(introset.GetMatchingSRVRecords(addr.subdomain));
               reply(*msg);
             },
-            2s);
+            TrafficAlignmentTimeout);
       };
 
       if (msg.answers.size() > 0)
@@ -923,7 +924,7 @@ namespace llarp
                 }
                 self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
               },
-              1s);
+              TrafficAlignmentTimeout);
           return;
         }
         bool rewriteAddrs = true;

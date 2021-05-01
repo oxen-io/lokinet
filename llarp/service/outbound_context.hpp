@@ -60,10 +60,10 @@ namespace llarp
       ShiftIntroRouter(const RouterID remote);
 
       /// mark the current remote intro as bad
-      bool
+      void
       MarkCurrentIntroBad(llarp_time_t now) override;
 
-      bool
+      void
       MarkIntroBad(const Introduction& marked, llarp_time_t now);
 
       /// return true if we are ready to send
@@ -153,6 +153,7 @@ namespace llarp
       bool m_GotInboundTraffic = false;
       bool sentIntro = false;
       std::function<void(OutboundContext*)> m_ReadyHook;
+      llarp_time_t m_LastIntrosetUpdateAt = 0s;
     };
   }  // namespace service
 

@@ -65,7 +65,7 @@ namespace llarp
       virtual void
       UpdateIntroSet() = 0;
 
-      virtual bool
+      virtual void
       MarkCurrentIntroBad(llarp_time_t now) = 0;
 
       void
