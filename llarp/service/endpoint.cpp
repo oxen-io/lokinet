@@ -1604,7 +1604,7 @@ namespace llarp
             }
             if (session.inbound)
             {
-              auto path = GetPathByRouter(session.intro.router);
+              auto path = GetPathByRouter(session.replyIntro.router);
               if (path)
               {
                 const auto rttEstimate = (session.replyIntro.latency + path->intro.latency) * 2;
