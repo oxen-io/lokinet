@@ -749,6 +749,8 @@ namespace llarp
       path::Builder::PathBuildStarted(path);
     }
 
+    constexpr auto MaxOutboundContextPerRemote = 4;
+
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
     {
@@ -757,7 +759,7 @@ namespace llarp
       auto& remoteSessions = m_state->m_RemoteSessions;
       auto& serviceLookups = m_state->m_PendingServiceLookups;
 
-      if (remoteSessions.count(addr) >= MAX_OUTBOUND_CONTEXT_COUNT)
+      if (remoteSessions.count(addr) >= MaxOutboundContextPerRemote)
       {
         auto itr = remoteSessions.find(addr);
 
