@@ -735,7 +735,8 @@ namespace llarp
       {
         ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
-           << pathContext().CurrentTransitPaths() << " active paths";
+           << pathContext().CurrentTransitPaths() << " active paths | "
+           << "block " << m_lokidRpcClient->BlockHeight();
       }
       else
       {
