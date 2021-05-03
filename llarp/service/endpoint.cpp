@@ -934,7 +934,7 @@ namespace llarp
         if (result)
         {
           var::visit(
-            [&result, &cache, name](auto&& value) {
+              [&result, &cache, name](auto&& value) {
                 if (value.IsZero())
                 {
                   cache.Remove(name);
