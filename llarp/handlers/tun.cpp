@@ -131,7 +131,7 @@ namespace llarp
         m_Resolver->Restart();
     }
 
-    constexpr auto DefaultAlignmentTimeout = 10s;
+    constexpr auto DefaultAlignmentTimeout = 15s;
 
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
