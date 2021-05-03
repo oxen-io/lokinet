@@ -932,9 +932,10 @@ namespace llarp
         if (result)
         {
           var::visit(
-              [&](auto&& value) {
+            [&result, &cache, name](auto&& value) {
                 if (value.IsZero())
                 {
+                  cache.Remove(name);
                   result = std::nullopt;
                 }
               },
@@ -943,10 +944,6 @@ namespace llarp
         if (result)
         {
           cache.Put(name, *result);
-        }
-        else
-        {
-          cache.Remove(name);
         }
         handler(result);
       };
