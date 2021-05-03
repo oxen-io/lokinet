@@ -61,8 +61,6 @@ namespace llarp
                       public IDataHandler,
                       public EndpointBase
     {
-      static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 1;
-
       Endpoint(AbstractRouter* r, Context* parent);
       ~Endpoint() override;
 

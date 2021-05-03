@@ -749,6 +749,8 @@ namespace llarp
       path::Builder::PathBuildStarted(path);
     }
 
+    constexpr auto MaxOutboundContextPerRemote = 4;
+
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
     {
@@ -757,7 +759,7 @@ namespace llarp
       auto& remoteSessions = m_state->m_RemoteSessions;
       auto& serviceLookups = m_state->m_PendingServiceLookups;
 
-      if (remoteSessions.count(addr) >= MAX_OUTBOUND_CONTEXT_COUNT)
+      if (remoteSessions.count(addr) >= MaxOutboundContextPerRemote)
       {
         auto itr = remoteSessions.find(addr);
 
@@ -932,9 +934,10 @@ namespace llarp
         if (result)
         {
           var::visit(
-              [&](auto&& value) {
+              [&result, &cache, name](auto&& value) {
                 if (value.IsZero())
                 {
+                  cache.Remove(name);
                   result = std::nullopt;
                 }
               },
@@ -943,10 +946,6 @@ namespace llarp
         if (result)
         {
           cache.Put(name, *result);
-        }
-        else
-        {
-          cache.Remove(name);
         }
         handler(result);
       };
@@ -1605,7 +1604,7 @@ namespace llarp
             }
             if (session.inbound)
             {
-              auto path = GetPathByRouter(session.intro.router);
+              auto path = GetPathByRouter(session.replyIntro.router);
               if (path)
               {
                 const auto rttEstimate = (session.replyIntro.latency + path->intro.latency) * 2;

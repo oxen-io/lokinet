@@ -83,7 +83,17 @@ namespace llarp
             " parts instead of 2 parts so we will not update the list of service nodes");
         return;  // bail
       }
-      LogDebug("new block at hieght ", msg.data[0]);
+      try
+      {
+        m_BlockHeight = std::stoll(std::string{msg.data[0]});
+      }
+      catch (std::exception& ex)
+      {
+        LogError("bad block hieght: ", ex.what());
+        return;  // bail
+      }
+
+      LogDebug("new block at hieght ", m_BlockHeight);
       // don't upadate on block notification if an update is pending
       if (not m_UpdatingList)
         UpdateServiceNodeList(std::string{msg.data[1]});
