@@ -156,7 +156,8 @@ namespace llarp
           {
             if (chosen == nullptr)
               chosen = itr->second;
-            else if (chosen->intro.latency > itr->second->intro.latency)
+            else if (
+                chosen->intro.latency != 0s and chosen->intro.latency > itr->second->intro.latency)
               chosen = itr->second;
           }
         }
@@ -429,7 +430,7 @@ namespace llarp
       llarp_time_t minLatency = 30s;
       for (const auto& path : established)
       {
-        if (path->intro.latency < minLatency)
+        if (path->intro.latency < minLatency and path->intro.latency != 0s)
         {
           minLatency = path->intro.latency;
           chosen = path;
