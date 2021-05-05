@@ -412,9 +412,6 @@ namespace llarp
         auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
-          // bail doing test if we are active
-          if (now - m_LastRecvMessage < path::latency_interval)
-            return;
           routing::PathLatencyMessage latency;
           latency.T = randint();
           m_LastLatencyTestID = latency.T;
