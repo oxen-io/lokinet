@@ -753,6 +753,8 @@ namespace llarp
     }
 #endif
 
+    m_PathBuildLimiter.Decay(now);
+
     routerProfiling().Tick();
 
     if (ShouldReportStats(now))

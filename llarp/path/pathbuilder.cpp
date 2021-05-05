@@ -160,12 +160,26 @@ namespace llarp
 
   namespace path
   {
+    bool
+    BuildLimiter::Attempt(const RouterID& router)
+    {
+      return m_EdgeLimiter.Insert(router);
+    }
+
+    void
+    BuildLimiter::Decay(llarp_time_t now)
+    {
+      m_EdgeLimiter.Decay(now);
+    }
+
+    bool
+    BuildLimiter::Limited(const RouterID& router) const
+    {
+      return m_EdgeLimiter.Contains(router);
+    }
+
     Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet{pathNum}
-        , m_EdgeLimiter{MIN_PATH_BUILD_INTERVAL}
-        , _run{true}
-        , m_router{p_router}
-        , numHops{hops}
+        : path::PathSet{pathNum}, _run{true}, m_router{p_router}, numHops{hops}
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }
@@ -180,7 +194,6 @@ namespace llarp
     void Builder::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
-      m_EdgeLimiter.Decay(now);
       ExpirePaths(now, m_router);
       if (ShouldBuildMore(now))
         BuildOne();
@@ -226,7 +239,7 @@ namespace llarp
               if (exclude.count(rc.pubkey))
                 return;
 
-              if (m_EdgeLimiter.Contains(rc.pubkey))
+              if (BuildCooldownHit(rc.pubkey))
                 return;
 
               found = rc;
@@ -277,7 +290,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(RouterID edge) const
     {
-      return m_EdgeLimiter.Contains(edge);
+      return m_router->pathBuildLimiter().Limited(edge);
     }
 
     bool
@@ -399,7 +412,7 @@ namespace llarp
         return;
       lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
-      if (not m_EdgeLimiter.Insert(edge))
+      if (not m_router->pathBuildLimiter().Attempt(edge))
       {
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
@@ -437,8 +450,6 @@ namespace llarp
     {
       PathSet::HandlePathBuildFailedAt(p, edge);
       DoPathBuildBackoff();
-      /// add it to the edge limter even if it's not an edge for simplicity
-      m_EdgeLimiter.Insert(edge);
     }
 
     void
