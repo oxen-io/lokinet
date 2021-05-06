@@ -24,11 +24,11 @@ BE(x) is bittorrent encode x
 BD(x) is bittorrent decode x
 
 { a: b, y: z } is a dictionary with two keys a and y
-    who's values are b and z respectively
+    whose values are b and z respectively
 
 [ a, b, c ... ] is a list containing a b c and more items in that order
 
-"<description>" is a bytestring who's contents and length is described by the
+"<description>" is a bytestring whose contents and length is described by the
     quoted value <description>
 
 "<value>" * N is a bytestring containing the <value> concatenated N times.
@@ -354,8 +354,8 @@ hop length.
 link relay commit record (LRCR)
 
 record requesting relaying messages for 600 seconds to router
-on network who's i is equal to RC.k and decrypt data any messages using
-PKE(n, rc.p, c) as symettric key for encryption and decryption.
+on network whose i is equal to RC.k and decrypt data any messages using
+PKE(n, rc.p, c) as symmetric key for encryption and decryption.
 
 if l is provided and is less than 600 and greater than 10 then that lifespan 
 is used (in seconds) instead of 600 seconds.
@@ -845,8 +845,8 @@ X is parsed as a list of IP packet buffers.
 for each ip packet the source addresss is extracted and sent on the 
 appropriate network interface.
 
-When we recieve an ip packet from the internet to an exit address, we put it
-into a TITM, and send it downstream the corrisponding path in an LRDM.
+When we receive an ip packet from the internet to an exit address, we put it
+into a TITM, and send it downstream the corresponding path in an LRDM.
 
 update exit path message (UXPM)
 
