@@ -567,7 +567,7 @@ namespace llarp
         // verify source
         if (!frame.Verify(si))
         {
-          LogWarn("signature failed");
+          LogWarn("signature verification failed, T=", frame.T);
           return false;
         }
         // remove convotag it doesn't exist

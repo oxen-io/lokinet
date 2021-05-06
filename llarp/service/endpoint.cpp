@@ -622,8 +622,12 @@ namespace llarp
       Endpoint* m_Endpoint;
       uint64_t m_relayOrder;
       PublishIntroSetJob(
-          Endpoint* parent, uint64_t id, EncryptedIntroSet introset, uint64_t relayOrder)
-          : IServiceLookup(parent, id, "PublishIntroSet")
+          Endpoint* parent,
+          uint64_t id,
+          EncryptedIntroSet introset,
+          uint64_t relayOrder,
+          llarp_time_t timeout)
+          : IServiceLookup(parent, id, "PublishIntroSet", timeout)
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
@@ -665,6 +669,8 @@ namespace llarp
       }
     }
 
+    constexpr auto PublishIntrosetTimeout = 20s;
+
     bool
     Endpoint::PublishIntroSetVia(
         const EncryptedIntroSet& introset,
@@ -672,7 +678,8 @@ namespace llarp
         path::Path_ptr path,
         uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
+      auto job =
+          new PublishIntroSetJob(this, GenTXID(), introset, relayOrder, PublishIntrosetTimeout);
       if (job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
@@ -1605,7 +1612,7 @@ namespace llarp
             if (session.inbound)
             {
               auto path = GetPathByRouter(session.replyIntro.router);
-              if (path)
+              if (path and path->IsReady())
               {
                 const auto rttEstimate = (session.replyIntro.latency + path->intro.latency) * 2;
                 if (rttEstimate < rtt)
@@ -1613,10 +1620,6 @@ namespace llarp
                   ret = tag;
                   rtt = rttEstimate;
                 }
-              }
-              else
-              {
-                LogWarn("no path for inbound session T=", tag);
               }
             }
             else

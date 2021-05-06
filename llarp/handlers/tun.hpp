@@ -222,7 +222,7 @@ namespace llarp
           std::function<void(dns::Message)> reply,
           bool sendIPv6)
       {
-        if (ctx)
+        if (ctx or HasAddress(addr))
         {
           huint128_t ip = ObtainIPForAddr(addr);
           query->answers.clear();
