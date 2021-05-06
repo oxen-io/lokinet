@@ -74,6 +74,14 @@ namespace llarp
 
     LMQ_ptr m_lmq;
 
+    path::BuildLimiter m_PathBuildLimiter;
+
+    path::BuildLimiter&
+    pathBuildLimiter() override
+    {
+      return m_PathBuildLimiter;
+    }
+
     const LMQ_ptr&
     lmq() const override
     {
