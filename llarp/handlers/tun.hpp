@@ -135,6 +135,12 @@ namespace llarp
         return m_OwnedRanges;
       }
 
+      llarp_time_t
+      DefaultPathAlignmentTimeout() const override
+      {
+        return m_PathAlignmentTimeout;
+      }
+
       /// ip packet against any exit policies we have
       /// returns false if this traffic is disallowed by any of those policies
       /// returns true otherwise
