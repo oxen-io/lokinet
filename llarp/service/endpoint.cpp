@@ -520,13 +520,15 @@ namespace llarp
     void
     Endpoint::ConvoTagTX(const ConvoTag& tag)
     {
-      Sessions()[tag].TX();
+      if (Sessions().count(tag))
+        Sessions()[tag].TX();
     }
 
     void
     Endpoint::ConvoTagRX(const ConvoTag& tag)
     {
-      Sessions()[tag].RX();
+      if (Sessions().count(tag))
+        Sessions()[tag].RX();
     }
 
     bool
