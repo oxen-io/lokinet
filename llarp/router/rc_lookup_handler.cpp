@@ -49,7 +49,7 @@ namespace llarp
   }
 
   bool
-  RCLookupHandler::HaveReceivedWhitelist()
+  RCLookupHandler::HaveReceivedWhitelist() const
   {
     util::Lock l(_mutex);
     return not whitelistRouters.empty();
@@ -127,14 +127,12 @@ namespace llarp
       return false;
     }
 
-    util::Lock l(_mutex);
+    if (not useWhitelist)
+      return true;
 
-    if (useWhitelist && whitelistRouters.find(remote) == whitelistRouters.end())
-    {
-      return false;
-    }
+    util::Lock lock{_mutex};
 
-    return true;
+    return whitelistRouters.count(remote);
   }
 
   bool
