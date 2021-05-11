@@ -1850,7 +1850,7 @@ namespace llarp
               }
               self->m_state->m_PendingTraffic.erase(addr);
             },
-            DefaultPathAlignmentTimeout());
+            PathAlignmentTimeout());
         return true;
       }
       LogDebug("SendOrQueue failed: no inbound/outbound sessions");

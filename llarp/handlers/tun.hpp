@@ -136,7 +136,7 @@ namespace llarp
       }
 
       llarp_time_t
-      DefaultPathAlignmentTimeout() const override
+      PathAlignmentTimeout() const override
       {
         return m_PathAlignmentTimeout;
       }

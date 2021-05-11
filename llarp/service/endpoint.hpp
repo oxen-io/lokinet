@@ -307,9 +307,10 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       virtual llarp_time_t
-      DefaultPathAlignmentTimeout() const
+      PathAlignmentTimeout() const
       {
-        return 10s;
+        constexpr auto DefaultPathAlignmentTimeout = 30s;
+        return DefaultPathAlignmentTimeout;
       }
 
       bool

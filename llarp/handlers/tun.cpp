@@ -131,8 +131,6 @@ namespace llarp
         m_Resolver->Restart();
     }
 
-    constexpr auto DefaultAlignmentTimeout = 15s;
-
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
@@ -174,7 +172,7 @@ namespace llarp
         m_PathAlignmentTimeout = *conf.m_PathAlignmentTimeout;
       }
       else
-        m_PathAlignmentTimeout = DefaultAlignmentTimeout;
+        m_PathAlignmentTimeout = service::Endpoint::PathAlignmentTimeout();
 
       for (const auto& item : conf.m_mapAddrs)
       {
@@ -279,7 +277,7 @@ namespace llarp
               SendDNSReply(snode, s, msg, reply, isV6);
             });
       };
-      auto ReplyToLokiDNSWhenReady = [this, reply, timeout = m_PathAlignmentTimeout](
+      auto ReplyToLokiDNSWhenReady = [this, reply, timeout = PathAlignmentTimeout()](
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
@@ -305,7 +303,7 @@ namespace llarp
         }
       };
 
-      auto ReplyToLokiSRVWhenReady = [this, reply, timeout = m_PathAlignmentTimeout](
+      auto ReplyToLokiSRVWhenReady = [this, reply, timeout = PathAlignmentTimeout()](
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
@@ -932,7 +930,7 @@ namespace llarp
                 }
                 self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
               },
-              m_PathAlignmentTimeout);
+              PathAlignmentTimeout());
           return;
         }
         bool rewriteAddrs = true;
