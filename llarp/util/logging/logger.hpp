@@ -1,9 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
 #include "logstream.hpp"
 #include "logger_internal.hpp"
+#include "source_location.hpp"
 
 namespace llarp
 {
@@ -11,7 +13,6 @@ namespace llarp
   {
     Unknown = 0,
     File,
-    Json,
     Syslog,
   };
   LogType
@@ -80,7 +81,7 @@ namespace llarp
   /** internal */
   template <typename... TArgs>
   inline static void
-  _log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
+  _log(LogLevel lvl, const slns::source_location& location, TArgs&&... args) noexcept
   {
     auto& log = LogContext::Instance();
     if (log.curLevel > lvl || log.logStream == nullptr)
@@ -88,41 +89,80 @@ namespace llarp
     std::ostringstream ss;
     if constexpr (sizeof...(args) > 0)
       LogAppend(ss, std::forward<TArgs>(args)...);
-    log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
+    log.logStream->AppendLog(
+        lvl,
+        strip_prefix(location.file_name(), SOURCE_ROOT),
+        location.line(),
+        log.nodeName,
+        ss.str());
   }
 
-  inline void
-  _log_noop() noexcept
-  {}
+  template <typename... T>
+  struct LogTrace
+  {
+    LogTrace(
+        [[maybe_unused]] T... args,
+        [[maybe_unused]] const slns::source_location& location = slns::source_location::current())
+    {
+#ifndef NDEBUG
+      _log(eLogTrace, location, std::forward<T>(args)...);
+#endif
+    }
+  };
+
+  template <typename... T>
+  LogTrace(T&&...) -> LogTrace<T...>;
+
+  template <typename... T>
+  struct LogDebug
+  {
+    LogDebug(
+        [[maybe_unused]] T... args,
+        [[maybe_unused]] const slns::source_location& location = slns::source_location::current())
+    {
+#ifndef NDEBUG
+      _log(eLogDebug, location, std::forward<T>(args)...);
+#endif
+    }
+  };
+
+  template <typename... T>
+  LogDebug(T&&...) -> LogDebug<T...>;
+
+  template <typename... T>
+  struct LogInfo
+  {
+    LogInfo(T... args, const slns::source_location& location = slns::source_location::current())
+    {
+      _log(eLogInfo, location, std::forward<T>(args)...);
+    }
+  };
+
+  template <typename... T>
+  LogInfo(T&&...) -> LogInfo<T...>;
+
+  template <typename... T>
+  struct LogWarn
+  {
+    LogWarn(T... args, const slns::source_location& location = slns::source_location::current())
+    {
+      _log(eLogWarn, location, std::forward<T>(args)...);
+    }
+  };
+
+  template <typename... T>
+  LogWarn(T&&...) -> LogWarn<T...>;
+
+  template <typename... T>
+  struct LogError
+  {
+    LogError(T... args, const slns::source_location& location = slns::source_location::current())
+    {
+      _log(eLogError, location, std::forward<T>(args)...);
+    }
+  };
+
+  template <typename... T>
+  LogError(T&&...) -> LogError<T...>;
 
 }  // namespace llarp
-
-#define LogDebug(...) _log(llarp::eLogDebug, LOG_TAG, __LINE__, __VA_ARGS__)
-#define LogInfo(...) _log(llarp::eLogInfo, LOG_TAG, __LINE__, __VA_ARGS__)
-#define LogWarn(...) _log(llarp::eLogWarn, LOG_TAG, __LINE__, __VA_ARGS__)
-#define LogError(...) _log(llarp::eLogError, LOG_TAG, __LINE__, __VA_ARGS__)
-
-#define LogDebugTag(tag, ...) _log(llarp::eLogDebug, tag, __LINE__, __VA_ARGS__)
-#define LogInfoTag(tag, ...) _log(llarp::eLogInfo, tag, __LINE__, __VA_ARGS__)
-#define LogWarnTag(tag, ...) _log(llarp::eLogWarn, tag, __LINE__, __VA_ARGS__)
-#define LogErrorTag(tag, ...) _log(llarp::eLogError, tag, __LINE__, __VA_ARGS__)
-
-#define LogDebugExplicit(tag, line, ...) _log(llarp::eLogDebug, tag, line, __VA_ARGS__)
-#define LogInfoExplicit(tag, line, ...) _log(llarp::eLogInfo, tag, line __VA_ARGS__)
-#define LogWarnExplicit(tag, line, ...) _log(llarp::eLogWarn, tag, line, __VA_ARGS__)
-#define LogErrorExplicit(tag, line, ...) _log(llarp::eLogError, tag, line, __VA_ARGS__)
-
-// null-op Trace logging if this is a release build
-#ifdef NDEBUG
-#define LogTrace(...) _log_noop()
-#define LogTraceTag(tag, ...) _log_noop()
-#define LogTraceExplicit(tag, line, ...) _log_noop()
-#else
-#define LogTrace(...) _log(llarp::eLogTrace, LOG_TAG, __LINE__, __VA_ARGS__)
-#define LogTraceTag(tag, ...) _log(llarp::eLogTrace, tag, __LINE__, __VA_ARGS__)
-#define LogTraceExplicit(tag, line, ...) _log(llarp::eLogTrace, tag, line, __VA_ARGS__)
-#endif
-
-#ifndef LOG_TAG
-#define LOG_TAG "default"
-#endif

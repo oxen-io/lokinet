@@ -10,7 +10,6 @@ add_library(lokinet-util
   util/logging/android_logger.cpp
   util/logging/buffer.cpp
   util/logging/file_logger.cpp
-  util/logging/json_logger.cpp
   util/logging/logger.cpp
   util/logging/logger_internal.cpp
   util/logging/loglevel.cpp

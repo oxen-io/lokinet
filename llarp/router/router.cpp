@@ -15,7 +15,6 @@
 #include <stdexcept>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging/file_logger.hpp>
-#include <llarp/util/logging/json_logger.hpp>
 #include <llarp/util/logging/logger_syslog.hpp>
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/meta/memfn.hpp>

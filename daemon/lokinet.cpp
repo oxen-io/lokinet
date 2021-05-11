@@ -496,7 +496,7 @@ lokinet_main(int argc, char* argv[])
       }
       catch (std::exception& ex)
       {
-        LogError("cannot generate config at ", *configFile, ": ", ex.what());
+        llarp::LogError("cannot generate config at ", *configFile, ": ", ex.what());
         return 1;
       }
     }
@@ -512,7 +512,7 @@ lokinet_main(int argc, char* argv[])
       }
       catch (std::exception& ex)
       {
-        LogError("cannot check if ", *configFile, " exists: ", ex.what());
+        llarp::LogError("cannot check if ", *configFile, " exists: ", ex.what());
         return 1;
       }
     }
@@ -574,7 +574,7 @@ lokinet_main(int argc, char* argv[])
             "file a bug report now or be cursed with this "
             "annoying image in your syslog for all time."})
       {
-        LogError(wtf);
+        llarp::LogError{wtf};
         llarp::LogContext::Instance().ImmediateFlush();
       }
 #ifdef _WIN32
