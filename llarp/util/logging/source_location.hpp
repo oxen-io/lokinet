@@ -4,7 +4,6 @@
 #include <source_location>
 namespace slns = std;
 #else
-#ifdef __APPLE__
 namespace slns
 {
   struct source_location
@@ -15,7 +14,12 @@ namespace slns
         const char* fileName = __builtin_FILE(),
         const char* functionName = __builtin_FUNCTION(),
         const uint_least32_t lineNumber = __builtin_LINE(),
-        const uint_least32_t columnOffset = __builtin_COLUMN()) noexcept
+#if defined(__GNUC__) and (__GNUC__ > 4 or (__GNUC__ == 4 and __GNUC_MINOR__ >= 8))
+        const uint_least32_t columnOffset = 0)
+#else
+        const uint_least32_t columnOffset = __builtin_COLUMN())
+#endif
+        noexcept
     {
       return source_location{fileName, functionName, lineNumber, columnOffset};
     }
@@ -65,8 +69,4 @@ namespace slns
     const std::uint_least32_t columnOffset;
   };
 }  // namespace slns
-#else
-#include <experimental/source_location>
-namespace slns = std::experimental;
-#endif
 #endif

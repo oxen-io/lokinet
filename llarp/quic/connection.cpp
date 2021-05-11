@@ -337,7 +337,7 @@ namespace llarp::quic
     va_start(ap, fmt);
     if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
     {
-      LogTraceExplicit("external/ngtcp2/*.c", 0, msg);
+      LogTrace{msg};
       std::free(msg);
     }
     va_end(ap);
