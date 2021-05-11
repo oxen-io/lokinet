@@ -306,6 +306,13 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
+      virtual llarp_time_t
+      PathAlignmentTimeout() const
+      {
+        constexpr auto DefaultPathAlignmentTimeout = 30s;
+        return DefaultPathAlignmentTimeout;
+      }
+
       bool
       EnsurePathTo(
           std::variant<Address, RouterID> addr,
