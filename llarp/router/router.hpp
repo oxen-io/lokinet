@@ -181,6 +181,10 @@ namespace llarp
     void
     QueueDiskIO(std::function<void(void)> func) override;
 
+    /// return true if we look like we are a deregistered service node
+    bool
+    LooksDeregistered() const;
+
     std::optional<SockAddr> _ourAddress;
 
     EventLoop_ptr _loop;

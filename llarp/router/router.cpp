@@ -375,8 +375,20 @@ namespace llarp
   }
 
   bool
+  Router::LooksDeregistered() const
+  {
+    return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
+        and not _rcLookupHandler.RemoteIsAllowed(pubkey());
+  }
+
+  bool
   Router::ConnectionToRouterAllowed(const RouterID& router) const
   {
+    if (LooksDeregistered())
+    {
+      // we are deregistered don't allow any connections outbound at all
+      return false;
+    }
     return _rcLookupHandler.RemoteIsAllowed(router);
   }
 
@@ -766,7 +778,9 @@ namespace llarp
 
     _rcLookupHandler.PeriodicUpdate(now);
 
+    const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
+    const bool looksDeregistered = LooksDeregistered();
 
     if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
         || (now - _rc.last_updated) > rcRegenInterval)
@@ -775,11 +789,10 @@ namespace llarp
       if (!UpdateOurRC(false))
         LogError("Failed to update our RC");
     }
-    else
+    else if (not looksDeregistered)
     {
       GossipRCIfNeeded(_rc);
     }
-    const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     // remove RCs for nodes that are no longer allowed by network policy
     nodedb()->RemoveIf([&](const RouterContact& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
@@ -847,7 +860,7 @@ namespace llarp
 
     const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
-    if (timepoint_now >= m_NextExploreAt)
+    if (timepoint_now >= m_NextExploreAt and not looksDeregistered)
     {
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
@@ -859,7 +872,17 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (connected < connectToNum)
+    if (looksDeregistered)
+    {
+      // kill all sessions that are open because we think we are deregistered
+      _linkManager.ForEachPeer([](auto* peer) {
+        if (peer)
+          peer->Close();
+      });
+      // complain about being deregistered
+      LogError("We are running as a service node but we seem to be decommissioned");
+    }
+    else if (connected < connectToNum)
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
@@ -886,7 +909,16 @@ namespace llarp
       if (m_peerDb->shouldFlush(now))
       {
         LogDebug("Queing database flush...");
-        QueueDiskIO([this]() { m_peerDb->flushDatabase(); });
+        QueueDiskIO([this]() {
+          try
+          {
+            m_peerDb->flushDatabase();
+          }
+          catch (std::exception& ex)
+          {
+            LogError("Could not flush peer stats database: ", ex.what());
+          }
+        });
       }
     }
 
