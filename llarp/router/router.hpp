@@ -402,7 +402,7 @@ namespace llarp
 
     /// return true if we are a client with an exit configured
     bool
-    HasClientExit() const;
+    HasClientExit() const override;
 
     const byte_t*
     pubkey() const override
