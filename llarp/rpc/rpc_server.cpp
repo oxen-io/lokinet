@@ -456,38 +456,54 @@ namespace llarp::rpc
                   {
                     auto mapExit = [=](service::Address addr) mutable {
                       ep->MapExitRange(range, addr);
+                      r->routePoker().Enable();
+                      r->routePoker().Up();
                       bool shouldSendAuth = false;
                       if (token.has_value())
                       {
                         shouldSendAuth = true;
                         ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                       }
+                      auto onGoodResult = [r, reply](std::string reason) {
+                        if (r->HasClientExit())
+                          reply(CreateJSONResponse(reason));
+                        else
+                          reply(CreateJSONError("we dont have an exit?"));
+                      };
+                      auto onBadResult = [r, reply, ep, range](std::string reason) {
+                        r->routePoker().Down();
+                        ep->UnmapExitRange(range);
+                        reply(CreateJSONError(reason));
+                      };
+                      if (addr.IsZero())
+                      {
+                        onGoodResult("added null exit");
+                        return;
+                      }
                       ep->EnsurePathToService(
                           addr,
-                          [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
+                          [onBadResult, onGoodResult, shouldSendAuth, addrStr = addr.ToString()](
+                              auto, service::OutboundContext* ctx) {
                             if (ctx == nullptr)
                             {
-                              reply(CreateJSONError("could not find exit"));
+                              onBadResult("could not find exit");
                               return;
                             }
-                            auto onGoodResult = [r, reply](std::string reason) {
-                              r->routePoker().Enable();
-                              reply(CreateJSONResponse(reason));
-                            };
                             if (not shouldSendAuth)
                             {
-                              onGoodResult("OK");
+                              onGoodResult("OK: connected to " + addrStr);
                               return;
                             }
-                            ctx->AsyncSendAuth([onGoodResult, reply](service::AuthResult result) {
-                              // TODO: refactor this code.  We are 5 lambdas deep here!
-                              if (result.code != service::AuthResultCode::eAuthAccepted)
-                              {
-                                reply(CreateJSONError(result.reason));
-                                return;
-                              }
-                              onGoodResult(result.reason);
-                            });
+                            ctx->AsyncSendAuth(
+                                [onGoodResult, onBadResult](service::AuthResult result) {
+                                  // TODO: refactor this code.  We are 5 lambdas deep here!
+                                  if (result.code != service::AuthResultCode::eAuthAccepted)
+                                  {
+                                    onBadResult(result.reason);
+                                    return;
+                                  }
+                                  onGoodResult(result.reason);
+                                });
                           },
                           5s);
                     };
@@ -520,7 +536,6 @@ namespace llarp::rpc
                         else
                         {
                           reply(CreateJSONError("lns name resolved to a snode"));
-                          return;
                         }
                       });
                     }
