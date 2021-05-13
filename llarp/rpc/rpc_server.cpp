@@ -402,7 +402,7 @@ namespace llarp::rpc
                 {
                   service::Address addr;
                   const auto exit_str = exit_itr->get<std::string>();
-                  if (service::NameIsValid(exit_str))
+                  if (service::NameIsValid(exit_str) or exit_str == "null")
                   {
                     lnsExit = exit_str;
                   }
@@ -472,7 +472,6 @@ namespace llarp::rpc
                             }
                             auto onGoodResult = [r, reply](std::string reason) {
                               r->routePoker().Enable();
-                              r->routePoker().Up();
                               reply(CreateJSONResponse(reason));
                             };
                             if (not shouldSendAuth)
