@@ -264,6 +264,14 @@ namespace llarp
     Builder::Stop()
     {
       _run = false;
+      // tell all our paths that they have expired
+      const auto now = Now();
+      for (auto& item : m_Paths)
+      {
+        item.second->EnterState(ePathExpired, now);
+      }
+      // remove expired paths
+      ExpirePaths(now, m_router);
       return true;
     }
 
