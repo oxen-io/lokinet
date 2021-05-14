@@ -30,6 +30,13 @@ namespace llarp
       SecretKey
       ObtainIdentityKey();
 
+      /// get what the current block height is according to oxend
+      uint64_t
+      BlockHeight() const
+      {
+        return m_BlockHeight;
+      }
+
       void
       LookupLNSNameHash(
           dht::Key_t namehash,
@@ -76,6 +83,9 @@ namespace llarp
       LMQ_ptr m_lokiMQ;
 
       AbstractRouter* const m_Router;
+      std::atomic<bool> m_UpdatingList;
+
+      uint64_t m_BlockHeight;
     };
 
   }  // namespace rpc

@@ -368,7 +368,10 @@ namespace llarp::uv
   bool
   Loop::inEventLoop() const
   {
-    return m_EventLoopThreadID and *m_EventLoopThreadID == std::this_thread::get_id();
+    if (m_EventLoopThreadID)
+      return *m_EventLoopThreadID == std::this_thread::get_id();
+    // assume we are in it because we haven't started up yet
+    return true;
   }
 
 }  // namespace llarp::uv

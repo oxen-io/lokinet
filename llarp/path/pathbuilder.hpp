@@ -15,11 +15,31 @@ namespace llarp
     static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
     static constexpr auto PATH_BUILD_RATE = 100ms;
 
+    /// limiter for path builds
+    /// prevents overload and such
+    class BuildLimiter
+    {
+      util::DecayingHashSet<RouterID> m_EdgeLimiter;
+
+     public:
+      /// attempt a build
+      /// return true if we are allowed to continue
+      bool
+      Attempt(const RouterID& router);
+
+      /// decay limit entries
+      void
+      Decay(llarp_time_t now);
+
+      /// return true if this router is currently limited
+      bool
+      Limited(const RouterID& router) const;
+    };
+
     struct Builder : public PathSet
     {
      private:
       llarp_time_t m_LastWarn = 0s;
-      util::DecayingHashSet<RouterID> m_EdgeLimiter;
 
      protected:
       /// flag for PathSet::Stop()
