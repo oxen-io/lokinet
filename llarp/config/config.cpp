@@ -1446,4 +1446,18 @@ namespace llarp
     return config;
   }
 
+#ifdef __APPLE__
+  std::shared_ptr<Config>
+  Config::NetworkExtensionConfig()
+  {
+    auto config = std::make_shared<Config>(fs::path{});
+    config->Load();
+    config->logging.m_logLevel = eLogInfo;
+    config->api.m_enableRPCServer = false;
+    config->network.m_saveProfiles = false;
+    config->bootstrap.files.clear();
+    return config;
+  }
+#endif
+
 }  // namespace llarp

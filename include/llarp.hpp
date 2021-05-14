@@ -120,7 +120,6 @@ namespace llarp
 
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
-
 }  // namespace llarp
 
 #endif

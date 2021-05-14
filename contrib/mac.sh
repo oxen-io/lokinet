@@ -1,23 +1,20 @@
 #!/bin/bash
 #
-# helper script for me for when i cross compile for windows
+# build the shit on mac
 # t. jeff
 #
 
 set -e
 set +x
-mkdir -p build-windows
-cd build-windows
+mkdir -p build-mac
+cd build-mac
 cmake \
-      -G 'Unix Makefiles' \
-      -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
-      -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always\
-      -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw64.cmake\
+      -G Ninja \
       -DBUILD_STATIC_DEPS=ON \
       -DBUILD_PACKAGE=ON \
       -DBUILD_SHARED_LIBS=OFF \
       -DBUILD_TESTING=OFF \
-      -DBUILD_LIBLOKINET=ON \
+      -DBUILD_LIBLOKINET=OFF \
       -DWITH_TESTS=OFF \
       -DNATIVE_BUILD=OFF \
       -DSTATIC_LINK=ON \
@@ -25,6 +22,7 @@ cmake \
       -DFORCE_OXENMQ_SUBMODULE=ON \
       -DSUBMODULE_CHECK=OFF \
       -DWITH_LTO=OFF \
+      -DCMAKE_INSTALL_PREFIX=$(pwd) \
       -DCMAKE_BUILD_TYPE=Release \
       $@ ..
-make package -j${JOBS:-$(nproc)}
+ninja install && ninja sign

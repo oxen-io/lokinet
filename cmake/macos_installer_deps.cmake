@@ -1,8 +1,9 @@
 # macos specific cpack stuff goes here
 
+return()
+
 # Here we build lokinet-network-control-panel into 'lokinet-gui.app' in "extra/" where a postinstall
 # script will then move it to /Applications/.
-
 set(LOKINET_GUI_REPO "https://github.com/oxen-io/loki-network-control-panel.git"
     CACHE STRING "Can be set to override the default lokinet-gui git repository")
 set(LOKINET_GUI_CHECKOUT "origin/master"
@@ -18,83 +19,25 @@ set(MACOS_NOTARIZE_PASS ""
 set(MACOS_NOTARIZE_ASC ""
     CACHE STRING "set macos notarization asc provider; can also set it in ~/.notarization.cmake")
 
-include(ExternalProject)
-
-message(STATUS "Building UninstallLokinet.app")
-
-ExternalProject_Add(lokinet-uninstaller
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/contrib/macos/uninstaller
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-)
-
-message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_CHECKOUT}")
-
 if(NOT BUILD_STATIC_DEPS)
     message(FATAL_ERROR "Building an installer on macos requires -DBUILD_STATIC_DEPS=ON")
 endif()
 
+#set(CPACK_GENERATOR "Bundle")
 
-
-ExternalProject_Add(lokinet-gui
-    DEPENDS oxenmq::oxenmq
-    GIT_REPOSITORY "${LOKINET_GUI_REPO}"
-    GIT_TAG "${LOKINET_GUI_CHECKOUT}"
-    CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_SHARED_LIBS=OFF
-        "-DOXENMQ_LIBRARIES=$<TARGET_FILE:oxenmq::oxenmq>$<SEMICOLON>$<TARGET_FILE:libzmq>$<SEMICOLON>$<TARGET_FILE:sodium>"
-        "-DOXENMQ_INCLUDE_DIRS=$<TARGET_PROPERTY:oxenmq::oxenmq,INCLUDE_DIRECTORIES>"
-        )
-
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
-        DESTINATION "bin/"
-        COMPONENT lokinet)
-
-install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
-        DESTINATION "../../Applications/Lokinet"
-        USE_SOURCE_PERMISSIONS
-        COMPONENT gui
-        PATTERN "*"
-        )
-
-install(DIRECTORY ${PROJECT_BINARY_DIR}/UninstallLokinet.app
-        DESTINATION "../../Applications/Lokinet"
-        USE_SOURCE_PERMISSIONS
-        COMPONENT gui
-        PATTERN "*"
-        )
-
-# copy files that will be later moved by the postinstall script to proper locations
-install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_macos_daemon_script.sh
-  ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
-  ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet-newsyslog.conf
-  DESTINATION "extra/"
-  COMPONENT lokinet)
-
-set(CPACK_COMPONENTS_ALL lokinet gui)
-
-set(CPACK_COMPONENT_LOKINET_DISPLAY_NAME "Lokinet Service")
-set(CPACK_COMPONENT_LOKINET_DESCRIPTION "Main Lokinet runtime service, managed by Launchd")
-
-set(CPACK_COMPONENT_GUI_DISPLAY_NAME "Lokinet GUI")
-set(CPACK_COMPONENT_GUI_DESCRIPTION "Small GUI which provides stats and limited runtime control of the Lokinet service. Resides in the system tray.")
-
-set(CPACK_GENERATOR "productbuild")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/lokinet")
-set(CPACK_PREINSTALL_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/preinstall)
-set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
-
-set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
-
-set(CPACK_PRODUCTBUILD_IDENTITY_NAME "${MACOS_SIGN_PKG}")
-
-if(MACOS_SIGN_APP)
-    add_custom_target(sign ALL
-        echo "Signing lokinet and lokinet-vpn binaries"
-        COMMAND codesign -s "${MACOS_SIGN_APP}" --strict --options runtime --force -vvv $<TARGET_FILE:lokinet> $<TARGET_FILE:lokinet-vpn>
-        DEPENDS lokinet lokinet-vpn
-        )
-endif()
+#set(MACOSX_BUNDLE_BUNDLE_NAME Lokinet)
+#set(CPACK_BUNDLE_NAME Lokinet)
+#set(CPACK_BUNDLE_PLIST ${CMAKE_SOURCE_DIR}/contrib/macos/Info.plist)
+#set(CPACK_BUNDLE_ICON "${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns")
+#set(CPACK_BUNDLE_STARTUP_COMMAND ${CMAKE_BINARY_DIR}/daemon/lokinet)
+#set(MACOSX_BUNDLE_GUI_IDENTIFIER org.lokinet.lokinet)
+#set(MACOSX_BUNDLE_INFO_STRING "Lokinet IP Packet Onion Router")
+#set(MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION})
+#set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
+#set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
+#set(MACOSX_BUNDLE_COPYRIGHT "© 2021, The Loki Project")
+#set(CPACK_BUNDLE_APPLE_ENTITLEMENTS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet.entitlements)
+#set(CPACK_BUNDLE_APPLE_CERT_APP "${MACOS_SIGN_APP}")
 
 if(MACOS_SIGN_APP AND MACOS_SIGN_PKG)
     if(NOT MACOS_NOTARIZE_USER)

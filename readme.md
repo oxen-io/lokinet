@@ -62,14 +62,7 @@ alternatively you can build from source, make sure you have cmake, libuv and xco
 
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
-    $ mkdir build
-    $ cd build
-    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
-    $ make -j$(sysctl -n hw.ncpu)
-
-install:
-
-    $ sudo make install
+    $ ./contrib/mac.sh -DCODESIGN_KEY='insert your key identity here'
 
 ### Windows
 

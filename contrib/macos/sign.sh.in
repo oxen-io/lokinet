@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -x
+set -e
+for file in "${SIGN_TARGET}/Contents/Frameworks/lokinet-extension.framework" "${SIGN_TARGET}/Contents/MacOS/Lokinet" "${SIGN_TARGET}" ; do
+    codesign -vvvv --force -s "${CODESIGN_KEY}" --entitlements "${SIGN_ENTITLEMENTS}" --deep --timestamp --options=runtime "$file" 
+done
+
+codesign --verify "${SIGN_TARGET}"

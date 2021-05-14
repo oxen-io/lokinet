@@ -262,6 +262,33 @@ if(BUILD_LIBLOKINET)
   add_log_tag(lokinet-shared)
 endif()
 
+if(APPLE)
+  find_library(NETEXT NetworkExtension REQUIRED)
+  find_library(COREFOUNDATION CoreFoundation REQUIRED)
+  
+  add_library(lokinet-extension SHARED
+    framework.mm
+    ${CMAKE_SOURCE_DIR}/include/lokinet-extension.hpp)
+  target_include_directories(lokinet-extension PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(lokinet-extension PUBLIC
+    liblokinet
+    ${COREFOUNDATION}
+    ${NETEXT})
+
+  set_target_properties(lokinet-extension PROPERTIES
+    FRAMEWORK TRUE
+    FRAMEWORK_VERSION CXX
+    MACOSX_FRAMEWORK_IDENTIFIER org.lokinet.NetworkExtension
+    MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist
+    # "current version" in semantic format in Mach-O binary file
+    VERSION 16.4.0
+    # "compatibility version" in semantic format in Mach-O binary file
+    SOVERSION 1.0.0
+    PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/include/lokinet-extension.hpp)
+  
+endif()
+
 foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
   add_log_tag(${lokinet_lib})
 endforeach()

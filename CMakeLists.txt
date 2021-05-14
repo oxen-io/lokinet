@@ -5,9 +5,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
+set(LANGS ASM C CXX)
+if(APPLE)
+  set(LANGS ${LANGS} OBJC Swift)
+endif()
+
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-  foreach(lang C CXX)
+  foreach(lang ${LANGS})
     if(NOT DEFINED CMAKE_${lang}_COMPILER_LAUNCHER AND NOT CMAKE_${lang}_COMPILER MATCHES ".*/ccache")
       message(STATUS "Enabling ccache for ${lang}")
       set(CMAKE_${lang}_COMPILER_LAUNCHER ${CCACHE_PROGRAM} CACHE STRING "")
@@ -15,10 +20,11 @@ if(CCACHE_PROGRAM)
   endforeach()
 endif()
 
+
 project(lokinet
     VERSION 0.9.5
     DESCRIPTION "lokinet - IP packet onion router"
-    LANGUAGES C CXX)
+    LANGUAGES ${LANGS})
 
 set(RELEASE_MOTTO "A Series of Tubes" CACHE STRING "Release motto")
 
@@ -31,7 +37,6 @@ endif()
 
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
 
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
@@ -93,14 +98,6 @@ if (STATIC_LINK)
 endif()
 
 add_definitions(-D${CMAKE_SYSTEM_NAME})
-
-if(MSVC_VERSION)
-  enable_language(ASM_MASM)
-  list(APPEND CMAKE_ASM_MASM_SOURCE_FILE_EXTENSIONS s)
-  add_definitions(-D_WIN32_WINNT=0x0600 -DNOMINMAX -DSODIUM_STATIC)
-else()
-  enable_language(ASM)
-endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
@@ -184,8 +181,12 @@ else()
 endif()
 
 
-# this is messing with release builds
-add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+if(NOT APPLE)
+  add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-Wno-unknown-warning-option)
+  endif()
+endif()
 
 if (NOT CMAKE_SYSTEM_NAME MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
@@ -213,17 +214,6 @@ if(TRACY_ROOT)
 endif()
 
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wno-unknown-warning-option)
-endif()
-
-if (NOT MSVC_VERSION)
-  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
-  # vla are evil
-  add_compile_options(-Werror=vla)
-  add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
-endif()
-
 include(cmake/coverage.cmake)
 
 # these vars are set by the cmake toolchain spec
@@ -231,18 +221,20 @@ if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
   include(cmake/cross_compile.cmake)
 endif()
 
-if(NATIVE_BUILD)
-  if(CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64le)
-    add_compile_options(-mcpu=native -mtune=native)
-  else()
-    add_compile_options(-march=native -mtune=native)
-  endif()
-elseif(NOT NON_PC_TARGET)
-  if (USE_AVX2)
-    add_compile_options(-march=haswell -mtune=haswell -mfpmath=sse)
-  else()
-    # Public binary releases
-    add_compile_options(-march=nocona -mtune=haswell -mfpmath=sse)
+if(NOT APPLE)
+  if(NATIVE_BUILD)
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64le)
+      add_compile_options(-mcpu=native -mtune=native)
+    else()
+      add_compile_options(-march=native -mtune=native)
+    endif()
+  elseif(NOT NON_PC_TARGET)
+    if (USE_AVX2)
+      add_compile_options(-march=haswell -mtune=haswell -mfpmath=sse)
+    else()
+      # Public binary releases
+      add_compile_options(-march=nocona -mtune=haswell -mfpmath=sse)
+    endif()
   endif()
 endif()
 
@@ -332,12 +324,11 @@ endif()
 add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(daemon)
+
+
 if(WITH_HIVE)
   add_subdirectory(pybind)
 endif()
-
-
-
 if (NOT SHADOW)
   if(WITH_TESTS OR WITH_HIVE)
     add_subdirectory(test)

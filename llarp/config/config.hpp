@@ -260,6 +260,11 @@ namespace llarp
     static std::shared_ptr<Config>
     EmbeddedConfig();
 
+#ifdef __APPLE__
+    static std::shared_ptr<Config>
+    NetworkExtensionConfig();
+#endif
+
    private:
     /// Load (initialize) a default config.
     ///
