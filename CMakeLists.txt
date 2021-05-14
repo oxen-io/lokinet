@@ -16,11 +16,11 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.9.0
+    VERSION 0.9.1
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
-set(RELEASE_MOTTO "Proof of soon" CACHE STRING "Release motto")
+set(RELEASE_MOTTO "A Series of Tubes" CACHE STRING "Release motto")
 
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})

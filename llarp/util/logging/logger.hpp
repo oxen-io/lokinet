@@ -24,7 +24,7 @@ namespace llarp
     LogContext();
     LogLevel curLevel = eLogInfo;
     LogLevel startupLevel = eLogInfo;
-    LogLevel runtimeLevel = eLogInfo;
+    LogLevel runtimeLevel = eLogWarn;
     ILogStream_ptr logStream;
     std::string nodeName = "lokinet";
 

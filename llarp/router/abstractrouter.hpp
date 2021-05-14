@@ -292,6 +292,16 @@ namespace llarp
     virtual bool
     ConnectionToRouterAllowed(const RouterID& router) const = 0;
 
+    /// return true if we have an exit as a client
+    virtual bool
+    HasClientExit() const
+    {
+      return false;
+    };
+
+    virtual path::BuildLimiter&
+    pathBuildLimiter() = 0;
+
     /// return true if we have at least 1 session to this router in either
     /// direction
     virtual bool

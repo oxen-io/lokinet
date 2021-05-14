@@ -114,11 +114,17 @@ public class LokinetDaemon extends VpnService
       builder.setMtu(1500);
 
       String[] parts = ourRange.split("/");
-      String ourIP = parts[0];
+      String ourIPv4 = parts[0];
       int ourMask = Integer.parseInt(parts[1]);
 
-      builder.addAddress(ourIP, ourMask);
+      // set ip4
+      builder.addAddress(ourIPv4, ourMask);
       builder.addRoute("0.0.0.0", 0);
+      // set ip6
+      // TODO: convert ipv4 to fd00::/8 range for ipv6
+      // builder.addAddress(ourIPv6, ourMask + 96);
+      // builder.addRoute("::", 0);
+
       builder.addDnsServer(upstreamDNS);
       builder.setSession("Lokinet");
       builder.setConfigureIntent(null);
@@ -134,24 +140,10 @@ public class LokinetDaemon extends VpnService
 
       InjectVPNFD();
 
-      if (!Configure(config))
-      {
-        //TODO: close vpn FD if this fails, either on native side, or here if possible
-        Log.e(LOG_TAG, "failed to configure daemon");
-        return START_NOT_STICKY;
-      }
-
-      m_UDPSocket = GetUDPSocket();
-
-      if (m_UDPSocket <= 0)
-      {
-        Log.e(LOG_TAG, "failed to get proper UDP handle from daemon, aborting.");
-        return START_NOT_STICKY;
-      }
-
-      protect(m_UDPSocket);
-
       new Thread(() -> {
+          Configure(config);
+          m_UDPSocket = GetUDPSocket();
+          protect(m_UDPSocket);
           Mainloop();
           }).start();
 

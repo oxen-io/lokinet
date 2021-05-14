@@ -23,6 +23,7 @@ namespace llarp
           HandlerFunc h,
           const dht::Key_t& location,
           const PubKey& rootkey,
+          const RouterID& routerAsked,
           uint64_t relayOrder,
           uint64_t tx,
           llarp_time_t timeout);

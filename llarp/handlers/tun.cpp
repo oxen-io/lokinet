@@ -13,6 +13,7 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/systemd_resolved.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
@@ -166,6 +167,13 @@ namespace llarp
 
       m_BaseV6Address = conf.m_baseV6Address;
 
+      if (conf.m_PathAlignmentTimeout)
+      {
+        m_PathAlignmentTimeout = *conf.m_PathAlignmentTimeout;
+      }
+      else
+        m_PathAlignmentTimeout = service::Endpoint::PathAlignmentTimeout();
+
       for (const auto& item : conf.m_mapAddrs)
       {
         if (not MapAddress(item.second, item.first, false))
@@ -261,24 +269,24 @@ namespace llarp
     bool
     TunEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
-      auto ReplyToSNodeDNSWhenReady = [self = this, reply = reply](
-                                          RouterID snode, auto msg, bool isV6) -> bool {
-        return self->EnsurePathToSNode(
+      auto ReplyToSNodeDNSWhenReady = [this, reply](RouterID snode, auto msg, bool isV6) -> bool {
+        return EnsurePathToSNode(
             snode,
-            [=](const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
-              self->SendDNSReply(snode, s, msg, reply, isV6);
+            [this, snode, msg, reply, isV6](
+                const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
+              SendDNSReply(snode, s, msg, reply, isV6);
             });
       };
-      auto ReplyToLokiDNSWhenReady = [self = this, reply = reply](
+      auto ReplyToLokiDNSWhenReady = [this, reply, timeout = PathAlignmentTimeout()](
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
-        return self->EnsurePathToService(
+        return EnsurePathToService(
             addr,
-            [=](const Address&, OutboundContext* ctx) {
-              self->SendDNSReply(addr, ctx, msg, reply, isV6);
+            [this, addr, msg, reply, isV6](const Address&, OutboundContext* ctx) {
+              SendDNSReply(addr, ctx, msg, reply, isV6);
             },
-            2s);
+            timeout);
       };
 
       auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
@@ -295,14 +303,14 @@ namespace llarp
         }
       };
 
-      auto ReplyToLokiSRVWhenReady = [self = this, reply = reply](
+      auto ReplyToLokiSRVWhenReady = [this, reply, timeout = PathAlignmentTimeout()](
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
 
-        return self->EnsurePathToService(
+        return EnsurePathToService(
             addr,
-            [=](const Address&, OutboundContext* ctx) {
+            [msg, addr, reply](const Address&, OutboundContext* ctx) {
               if (ctx == nullptr)
                 return;
 
@@ -310,7 +318,7 @@ namespace llarp
               msg->AddSRVReply(introset.GetMatchingSRVRecords(addr.subdomain));
               reply(*msg);
             },
-            2s);
+            timeout);
       };
 
       if (msg.answers.size() > 0)
@@ -784,6 +792,12 @@ namespace llarp
 
       Router()->loop()->add_ticker([this] { Flush(); });
 
+      // Attempt to register DNS on the interface
+      systemd_resolved_set_dns(
+          m_IfName,
+          m_LocalResolverAddr.createSockAddr(),
+          false /* just .loki/.snode DNS initially */);
+
       if (m_OnUp)
       {
         m_OnUp->NotifyAsync(NotifyParams());
@@ -916,7 +930,7 @@ namespace llarp
                 }
                 self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
               },
-              1s);
+              PathAlignmentTimeout());
           return;
         }
         bool rewriteAddrs = true;
