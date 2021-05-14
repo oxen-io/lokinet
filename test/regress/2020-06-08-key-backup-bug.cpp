@@ -6,7 +6,7 @@
 
 llarp::RuntimeOptions opts = {false, false, false};
 
-/// make a llarp_main* with 1 endpoint that specifies a keyfile
+/// make a context with 1 endpoint that specifies a keyfile
 static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {

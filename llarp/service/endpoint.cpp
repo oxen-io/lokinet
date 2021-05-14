@@ -46,11 +46,12 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
-        : path::Builder(r, 3, path::default_len)
-        , context(parent)
-        , m_InboundTrafficQueue(512)
-        , m_SendQueue(512)
-        , m_RecvQueue(512)
+        : path::Builder{r, 3, path::default_len}
+        , context{parent}
+        , m_InboundTrafficQueue{512}
+        , m_SendQueue{512}
+        , m_RecvQueue{512}
+        , m_IntrosetLookupFilter{5s}
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
@@ -283,7 +284,8 @@ namespace llarp
       {
         RegenAndPublishIntroSet();
       }
-
+      // decay introset lookup filter
+      m_IntrosetLookupFilter.Decay(now);
       // expire name cache
       m_state->nameCache.Decay(now);
       // expire snode sessions
@@ -518,13 +520,15 @@ namespace llarp
     void
     Endpoint::ConvoTagTX(const ConvoTag& tag)
     {
-      Sessions()[tag].TX();
+      if (Sessions().count(tag))
+        Sessions()[tag].TX();
     }
 
     void
     Endpoint::ConvoTagRX(const ConvoTag& tag)
     {
-      Sessions()[tag].RX();
+      if (Sessions().count(tag))
+        Sessions()[tag].RX();
     }
 
     bool
@@ -620,8 +624,12 @@ namespace llarp
       Endpoint* m_Endpoint;
       uint64_t m_relayOrder;
       PublishIntroSetJob(
-          Endpoint* parent, uint64_t id, EncryptedIntroSet introset, uint64_t relayOrder)
-          : IServiceLookup(parent, id, "PublishIntroSet")
+          Endpoint* parent,
+          uint64_t id,
+          EncryptedIntroSet introset,
+          uint64_t relayOrder,
+          llarp_time_t timeout)
+          : IServiceLookup(parent, id, "PublishIntroSet", timeout)
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
@@ -663,6 +671,8 @@ namespace llarp
       }
     }
 
+    constexpr auto PublishIntrosetTimeout = 20s;
+
     bool
     Endpoint::PublishIntroSetVia(
         const EncryptedIntroSet& introset,
@@ -670,7 +680,8 @@ namespace llarp
         path::Path_ptr path,
         uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
+      auto job =
+          new PublishIntroSetJob(this, GenTXID(), introset, relayOrder, PublishIntrosetTimeout);
       if (job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
@@ -747,6 +758,8 @@ namespace llarp
       path::Builder::PathBuildStarted(path);
     }
 
+    constexpr auto MaxOutboundContextPerRemote = 4;
+
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
     {
@@ -755,7 +768,7 @@ namespace llarp
       auto& remoteSessions = m_state->m_RemoteSessions;
       auto& serviceLookups = m_state->m_PendingServiceLookups;
 
-      if (remoteSessions.count(addr) >= MAX_OUTBOUND_CONTEXT_COUNT)
+      if (remoteSessions.count(addr) >= MaxOutboundContextPerRemote)
       {
         auto itr = remoteSessions.find(addr);
 
@@ -930,9 +943,10 @@ namespace llarp
         if (result)
         {
           var::visit(
-              [&](auto&& value) {
+              [&result, &cache, name](auto&& value) {
                 if (value.IsZero())
                 {
+                  cache.Remove(name);
                   result = std::nullopt;
                 }
               },
@@ -941,10 +955,6 @@ namespace llarp
         if (result)
         {
           cache.Put(name, *result);
-        }
-        else
-        {
-          cache.Remove(name);
         }
         handler(result);
       };
@@ -955,7 +965,7 @@ namespace llarp
       for (const auto& path : paths)
       {
         LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
-        auto job = new LookupNameJob(this, GenTXID(), name, resultHandler);
+        auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
         job->SendRequestViaPath(path, m_router);
       }
     }
@@ -1003,7 +1013,7 @@ namespace llarp
           msg.S = path->NextSeqNo();
         if (path && path->SendRoutingMessage(msg, Router()))
         {
-          RouterLookupJob job(this, handler);
+          RouterLookupJob job{this, handler};
 
           assert(msg.M.size() == 1);
           auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.M[0].get());
@@ -1011,7 +1021,7 @@ namespace llarp
 
           m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), *dhtMsg);
 
-          routers.emplace(router, RouterLookupJob(this, handler));
+          routers.emplace(router, std::move(job));
           return true;
         }
       }
@@ -1164,6 +1174,9 @@ namespace llarp
     Endpoint::SendAuthResult(
         path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
     {
+      // not applicable because we are not an exit or don't have an endpoint auth policy
+      if ((not m_state->m_ExitEnabled) or m_AuthPolicy == nullptr)
+        return;
       ProtocolFrame f;
       f.R = AuthResultCodeAsInt(result.code);
       f.T = tag;
@@ -1263,6 +1276,7 @@ namespace llarp
     void
     Endpoint::HandlePathDied(path::Path_ptr p)
     {
+      m_router->routerProfiling().MarkPathTimeout(p.get());
       ManualRebuild(1);
       RegenAndPublishIntroSet();
       path::Builder::HandlePathDied(p);
@@ -1346,13 +1360,8 @@ namespace llarp
       // add response hook to list for address.
       m_state->m_PendingServiceLookups.emplace(remote, hook);
 
-      auto& lookupTimes = m_state->m_LastServiceLookupTimes;
-      const auto now = Now();
-
-      // if most recent lookup was within last INTROSET_LOOKUP_RETRY_COOLDOWN
-      // just add callback to the list and return
-      if (lookupTimes.find(remote) != lookupTimes.end()
-          && now < (lookupTimes[remote] + INTROSET_LOOKUP_RETRY_COOLDOWN))
+      /// check replay filter
+      if (not m_IntrosetLookupFilter.Insert(remote))
         return true;
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
@@ -1376,6 +1385,7 @@ namespace llarp
               },
               location,
               PubKey{remote.as_array()},
+              path->Endpoint(),
               order,
               GenTXID(),
               timeout);
@@ -1391,12 +1401,7 @@ namespace llarp
           order++;
           if (job->SendRequestViaPath(path, Router()))
           {
-            if (not hookAdded)
-            {
-              // if any of the lookups is successful, set last lookup time
-              lookupTimes[remote] = now;
-              hookAdded = true;
-            }
+            hookAdded = true;
           }
           else
             LogError(Name(), " send via path failed for lookup");
@@ -1608,8 +1613,8 @@ namespace llarp
             }
             if (session.inbound)
             {
-              auto path = GetPathByRouter(session.intro.router);
-              if (path)
+              auto path = GetPathByRouter(session.replyIntro.router);
+              if (path and path->IsReady())
               {
                 const auto rttEstimate = (session.replyIntro.latency + path->intro.latency) * 2;
                 if (rttEstimate < rtt)
@@ -1617,10 +1622,6 @@ namespace llarp
                   ret = tag;
                   rtt = rttEstimate;
                 }
-              }
-              else
-              {
-                LogWarn("no path for inbound session T=", tag);
               }
             }
             else
@@ -1849,7 +1850,7 @@ namespace llarp
               }
               self->m_state->m_PendingTraffic.erase(addr);
             },
-            1500ms);
+            PathAlignmentTimeout());
         return true;
       }
       LogDebug("SendOrQueue failed: no inbound/outbound sessions");

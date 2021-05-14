@@ -498,6 +498,8 @@ namespace llarp::net
   {
     std::vector<std::string> gateways;
 #ifdef __linux__
+#ifdef ANDROID
+#else
     std::ifstream inf("/proc/net/route");
     for (std::string line; std::getline(inf, line);)
     {
@@ -513,7 +515,7 @@ namespace llarp::net
         }
       }
     }
-
+#endif
     return gateways;
 #elif _WIN32
     ForEachWIN32Interface([&](auto w32interface) {
