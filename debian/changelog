@@ -1,3 +1,78 @@
+lokinet (0.9.1-1~ubuntu2010) groovy; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Add missing <optional> header
+
+  [ Jeff Becker ]
+  * fixes for android jni
+  * fix regression: llarp::Context::CallSafe was not deferring call on startup
+  * prepare for ipv6 on android
+  * remove test case
+  * limit calls to service node list updates for when we are synching the chain we dont spam with list updates
+
+  [ Jason Rhinelander ]
+  * Limit builds to 6 jobs (4 for arm)
+  * Add missing getIPv6 implementation
+  * Add systemd-resolved dynamic DNS updating
+  * Put systemd ifdef around the headers, too
+  * format
+  * Fix headers & grammar for non-systemd
+
+  [ Thomas Winget ]
+  * Fixes subtle memory leak, adds comments
+
+  [ Jeff Becker ]
+  * lokinetmon updates
+  * fix up outbound session
+  * limit path reanimation
+  * parameterize traffic alignement timeout in dns lookups
+  * don't rehash decaying hashsets that is no bueno and probably leaks like the pipes in tom's apartment
+  * compat for lokinet 0.8.x
+  * consmetic fixes
+  * win32 installer
+  * make path alignment timeout configuable
+  * make default log level warn fixes #1593
+  * change granularity to seconds
+  * try fixing std::shared_ptr leak with paths
+  * if a path's latency is zero dont use it because it's not actually a zero latency path it's probably about to be failed or timed out
+  * dont invalidate cache on lns timeout, only on explicit negative
+  * allow more than one outbound context per endpoint for fallback in case one outbound context takes a shit
+  * only use alive paths for lookups only track usage from sessions and don't care about intro timeouts
+  * use correct intro
+  * re-add parans
+  * report block height reported by oxend in systemd status
+  * report block height reported by oxend in systemd status
+  * format
+  * make profiling far stricter for path builds
+  * limit path builds across all builders
+  * always do path tests
+
+  [ David Arnold ]
+  * Tyops
+
+  [ Jeff Becker ]
+  * fixups in service endpoint
+  * don't send nx if we have an address already mapped
+  * in the event that a session is removed and then gets more traffic we would re-add the session with everything blank if there was more traffic in the same tick.
+  * shift off bad intros when we get a discard message, this happens if the other side's intro expires or the pivot restarts for whatever reason.
+  * when we have to reestablish an outbound session use a much much higher timeout for restablishment so it doesn't time out and get into a state that's totally screwed.
+  * DefaultPathAlignmentTimeout -> PathAlignmentTimeout
+  * if we look deregistered we will now:
+  * version bump for 0.9.1
+  * when we stop a path builder we want to expire all of their paths so they go away
+  * rpc server fixups for win32:
+  * add liblokinet option to nsis cpack installer
+  * make liblokinet target work on nsis cpack
+  * fix route poking via rpc:
+
+  [ Jeff ]
+  * update release motto
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 14 May 2021 16:49:59 -0300
+
 lokinet (0.9.0-2~ubuntu2010) groovy; urgency=medium
 
   * Build in /staging
