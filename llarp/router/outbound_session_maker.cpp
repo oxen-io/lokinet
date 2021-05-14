@@ -232,7 +232,7 @@ namespace llarp
   bool
   OutboundSessionMaker::ShouldConnectTo(const RouterID& router) const
   {
-    if (router == us)
+    if (router == us or not _rcLookup->RemoteIsAllowed(router))
       return false;
     size_t numPending = 0;
     {

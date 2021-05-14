@@ -7,6 +7,32 @@ import time
 
 import zmq
 
+geo = None
+
+try:
+    import GeoIP
+    geo = GeoIP.open("/usr/share/GeoIP/GeoIP.dat", GeoIP.GEOIP_STANDARD)
+except Exception as ex:
+    print('no geoip: {}'.format(ex))
+    time.sleep(1)
+
+
+def ip_to_flag(ip):
+    """
+    convert an ip to a flag emoji
+    """
+    # bail if no geoip available
+    if not geo:
+        return ''
+    # trim off excess ipv6 jizz
+    ip = ip.replace("::ffff:", "")
+    # get the country code
+    cc = geo.country_code_by_addr(ip)
+    # Unicode flag sequences are just country codes transposed into the REGIONAL
+    # INDICATOR SYMBOL LETTER A ... Z range (U+1F1E6 ... U+1F1FF):
+    flag = ''.join(chr(0x1f1e6 + ord(i) - ord('A')) for i in cc)
+    return '({}) {}'.format(cc, flag)
+
 
 class Monitor:
 
@@ -26,7 +52,7 @@ class Monitor:
         self._rpc_socket.connect(url)
         self._speed_samples = [(0,0,0,0)] * self._sample_size
         self._run = True
-    
+
     def rpc(self, method):
         self._rpc_socket.send_multipart([method.encode(), b'lokinetmon'+method.encode()])
         if not self._rpc_socket.poll(timeout=50):
@@ -34,10 +60,10 @@ class Monitor:
         reply = self._rpc_socket.recv_multipart()
         if len(reply) >= 3 and reply[0:2] == [b'REPLY', b'lokinetmon'+method.encode()]:
             return reply[2].decode()
-            
+
     def _close(self):
         self._rpc_socket.close(linger=0)
-        self._run = False            
+        self._run = False
         curses.endwin()
 
     def update_data(self):
@@ -62,7 +88,11 @@ class Monitor:
         y_pos += 1
         self.win.addstr("me -> ")
         for hop in path["hops"]:
-            self.win.addstr(" {} ->".format(hop["router"][:4]))
+            hopstr = hop['router'][:4]
+            if 'ip' in hop:
+                hopstr += ' {}'.format(ip_to_flag(hop['ip']))
+            self.win.addstr(" {} ->".format(hopstr))
+
         self.win.addstr(" [{} ms latency]".format(path["intro"]["latency"]))
         self.win.addstr(" [{} until expire]".format(self.time_to(path["expiresAt"])))
         if path["expiresSoon"]:
@@ -174,7 +204,7 @@ class Monitor:
         barstr = "#" * (samp - badsamp)
         pad = " " * (maxsamp - samp)
         return pad, barstr, '#' * badsamp
-    
+
     def display_speedgraph(self, y_pos, maxsz=40):
         """ display global speed graph """
         txmax, rxmax = 1024, 1024
@@ -260,9 +290,13 @@ class Monitor:
         self.win.move(y_pos, 1)
         self.txrate += sess["txRateCurrent"]
         self.rxrate += sess["rxRateCurrent"]
+        addr = sess['remoteAddr']
+        if geo:
+            ip = addr.split(':')[0]
+            addr += '\t{}'.format(ip_to_flag(ip))
         self.win.addstr(
             "{}\t[{}\ttx]\t[{}\trx]".format(
-                sess["remoteAddr"], self.speed_of(sess["txRateCurrent"]), self.speed_of(sess["rxRateCurrent"])
+                addr, self.speed_of(sess["txRateCurrent"]), self.speed_of(sess["rxRateCurrent"])
             )
         )
         if (sess['txMsgQueueSize'] or 0) > 1:
@@ -333,7 +367,7 @@ class Monitor:
             self.version = json.loads(self.rpc("llarp.version"))['result']['version']
         except:
             self.version = None
-            
+
         while self._run:
             if self.update_data():
                 self.win.box()

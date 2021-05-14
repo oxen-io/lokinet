@@ -50,7 +50,7 @@ namespace llarp
       {
         --tries;
         const auto path = ep->PickRandomEstablishedPath();
-        if (path)
+        if (path and path->IsReady())
           paths.emplace(path);
       } while (tries > 0 and paths.size() < N);
       return paths;

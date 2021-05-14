@@ -58,6 +58,9 @@ namespace llarp
 
     virtual size_t
     NumberOfStrictConnectRouters() const = 0;
+
+    virtual bool
+    HaveReceivedWhitelist() const = 0;
   };
 
 }  // namespace llarp

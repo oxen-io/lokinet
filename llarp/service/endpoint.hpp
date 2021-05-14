@@ -61,8 +61,6 @@ namespace llarp
                       public IDataHandler,
                       public EndpointBase
     {
-      static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 1;
-
       Endpoint(AbstractRouter* r, Context* parent);
       ~Endpoint() override;
 
@@ -308,6 +306,13 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
+      virtual llarp_time_t
+      PathAlignmentTimeout() const
+      {
+        constexpr auto DefaultPathAlignmentTimeout = 30s;
+        return DefaultPathAlignmentTimeout;
+      }
+
       bool
       EnsurePathTo(
           std::variant<Address, RouterID> addr,
@@ -525,6 +530,9 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
+
+      /// for rate limiting introset lookups
+      util::DecayingHashSet<Address> m_IntrosetLookupFilter;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;
