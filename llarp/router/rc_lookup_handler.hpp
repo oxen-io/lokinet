@@ -44,7 +44,7 @@ namespace llarp
     SetRouterWhitelist(const std::vector<RouterID>& routers) override EXCLUDES(_mutex);
 
     bool
-    HaveReceivedWhitelist();
+    HaveReceivedWhitelist() const override;
 
     void
     GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) override

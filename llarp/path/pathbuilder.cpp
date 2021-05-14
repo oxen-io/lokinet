@@ -96,7 +96,10 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        loop->call([self = shared_from_this()] { self->result(self); });
+        loop->call([self = shared_from_this()] {
+          self->result(self);
+          self->result = nullptr;
+        });
       }
       else
       {
@@ -125,47 +128,56 @@ namespace llarp
   static void
   PathBuilderKeysGenerated(std::shared_ptr<AsyncPathKeyExchangeContext> ctx)
   {
-    if (!ctx->pathset->IsStopped())
-    {
-      ctx->router->NotifyRouterEvent<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
+    if (ctx->pathset->IsStopped())
+      return;
 
-      const RouterID remote = ctx->path->Upstream();
-      auto sentHandler = [ctx](auto status) {
-        if (status == SendStatus::Success)
-        {
-          ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-          ctx->pathset->PathBuildStarted(std::move(ctx->path));
-        }
-        else
-        {
-          LogError(ctx->pathset->Name(), " failed to send LRCM to ", ctx->path->Upstream());
-          ctx->path->EnterState(path::ePathFailed, ctx->router->Now());
-        }
-        ctx->path = nullptr;
-        ctx->pathset = nullptr;
-      };
-      if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
+    ctx->router->NotifyRouterEvent<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
+
+    ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+    ctx->pathset->PathBuildStarted(ctx->path);
+
+    const RouterID remote = ctx->path->Upstream();
+    auto sentHandler = [router = ctx->router, path = ctx->path](auto status) {
+      if (status != SendStatus::Success)
       {
-        // persist session with router until this path is done
-        if (ctx->path)
-          ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+        path->EnterState(path::ePathFailed, router->Now());
       }
-      else
-      {
-        LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
-        sentHandler(SendStatus::NoLink);
-      }
+    };
+    if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
+    {
+      // persist session with router until this path is done
+      if (ctx->path)
+        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+    }
+    else
+    {
+      LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
+      sentHandler(SendStatus::NoLink);
     }
   }
 
   namespace path
   {
+    bool
+    BuildLimiter::Attempt(const RouterID& router)
+    {
+      return m_EdgeLimiter.Insert(router);
+    }
+
+    void
+    BuildLimiter::Decay(llarp_time_t now)
+    {
+      m_EdgeLimiter.Decay(now);
+    }
+
+    bool
+    BuildLimiter::Limited(const RouterID& router) const
+    {
+      return m_EdgeLimiter.Contains(router);
+    }
+
     Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet{pathNum}
-        , m_EdgeLimiter{MIN_PATH_BUILD_INTERVAL}
-        , _run{true}
-        , m_router{p_router}
-        , numHops{hops}
+        : path::PathSet{pathNum}, _run{true}, m_router{p_router}, numHops{hops}
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }
@@ -180,7 +192,6 @@ namespace llarp
     void Builder::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
-      m_EdgeLimiter.Decay(now);
       ExpirePaths(now, m_router);
       if (ShouldBuildMore(now))
         BuildOne();
@@ -226,7 +237,7 @@ namespace llarp
               if (exclude.count(rc.pubkey))
                 return;
 
-              if (m_EdgeLimiter.Contains(rc.pubkey))
+              if (BuildCooldownHit(rc.pubkey))
                 return;
 
               found = rc;
@@ -253,6 +264,14 @@ namespace llarp
     Builder::Stop()
     {
       _run = false;
+      // tell all our paths that they have expired
+      const auto now = Now();
+      for (auto& item : m_Paths)
+      {
+        item.second->EnterState(ePathExpired, now);
+      }
+      // remove expired paths
+      ExpirePaths(now, m_router);
       return true;
     }
 
@@ -277,7 +296,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(RouterID edge) const
     {
-      return m_EdgeLimiter.Contains(edge);
+      return m_router->pathBuildLimiter().Limited(edge);
     }
 
     bool
@@ -399,7 +418,7 @@ namespace llarp
         return;
       lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
-      if (not m_EdgeLimiter.Insert(edge))
+      if (not m_router->pathBuildLimiter().Attempt(edge))
       {
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
@@ -437,8 +456,6 @@ namespace llarp
     {
       PathSet::HandlePathBuildFailedAt(p, edge);
       DoPathBuildBackoff();
-      /// add it to the edge limter even if it's not an edge for simplicity
-      m_EdgeLimiter.Insert(edge);
     }
 
     void
