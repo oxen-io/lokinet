@@ -80,11 +80,6 @@ TEST_CASE("Bogon")
     REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
   }
 
-  SECTION("Bogon_DoD_8")
-  {
-    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(21, 3, 37, 70)));
-  }
-
   SECTION("Bogon_127_8")
   {
     REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));

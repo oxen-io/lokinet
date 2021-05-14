@@ -342,6 +342,17 @@ namespace llarp
     return {m_addr4.sin_addr.s_addr};
   }
 
+  nuint128_t
+  SockAddr::getIPv6() const
+  {
+    nuint128_t a;
+    // Explicit cast to void* here to avoid non-trivial type copying warnings (technically this
+    // isn't trivial because of the zeroing default constructor, but it's trivial enough that this
+    // copy is safe).
+    std::memcpy(static_cast<void*>(&a), &m_addr.sin6_addr, 16);
+    return a;
+  }
+
   void
   SockAddr::setIPv4(nuint32_t ip)
   {

@@ -38,7 +38,7 @@ namespace llarp
     Tick() = 0;
 
     virtual void
-    QueueRemoveEmptyPath(const PathID_t& pathid) = 0;
+    RemovePath(const PathID_t& pathid) = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
