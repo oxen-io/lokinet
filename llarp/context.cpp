@@ -27,7 +27,7 @@ namespace llarp
   {
     if (!loop)
       return false;
-    loop->call(std::move(f));
+    loop->call_soon(std::move(f));
     return true;
   }
 

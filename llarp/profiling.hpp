@@ -50,17 +50,20 @@ namespace llarp
   {
     Profiling();
 
+    inline static const int profiling_chances = 4;
+
     /// generic variant
     bool
-    IsBad(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
+    IsBad(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should have paths built over it
     bool
-    IsBadForPath(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
+    IsBadForPath(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should be connected directly to
     bool
-    IsBadForConnect(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
+    IsBadForConnect(const RouterID& r, uint64_t chances = profiling_chances)
+        EXCLUDES(m_ProfilesMutex);
 
     void
     MarkConnectTimeout(const RouterID& r) EXCLUDES(m_ProfilesMutex);
