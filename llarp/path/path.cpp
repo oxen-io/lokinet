@@ -303,7 +303,9 @@ namespace llarp
     util::StatusObject
     PathHopConfig::ExtractStatus() const
     {
+      const auto ip = net::In6ToHUInt(rc.addrs[0].ip);
       util::StatusObject obj{
+          {"ip", ip.ToString()},
           {"lifetime", to_json(lifetime)},
           {"router", rc.pubkey.ToHex()},
           {"txid", txID.ToHex()},
@@ -410,9 +412,6 @@ namespace llarp
         auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
-          // bail doing test if we are active
-          if (now - m_LastRecvMessage < path::latency_interval)
-            return;
           routing::PathLatencyMessage latency;
           latency.T = randint();
           m_LastLatencyTestID = latency.T;
@@ -497,6 +496,9 @@ namespace llarp
       }
     }
 
+    /// how long we wait for a path to become active again after it times out
+    constexpr auto PathReanimationTimeout = 45s;
+
     bool
     Path::Expired(llarp_time_t now) const
     {
@@ -504,7 +506,11 @@ namespace llarp
         return true;
       if (_status == ePathBuilding)
         return false;
-      if (_status == ePathEstablished || _status == ePathTimeout)
+      if (_status == ePathTimeout)
+      {
+        return now >= m_LastRecvMessage + PathReanimationTimeout;
+      }
+      if (_status == ePathEstablished)
       {
         return now >= ExpireTime();
       }

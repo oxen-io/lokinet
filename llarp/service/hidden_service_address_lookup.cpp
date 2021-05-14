@@ -13,6 +13,7 @@ namespace llarp
         HandlerFunc h,
         const dht::Key_t& l,
         const PubKey& k,
+        const RouterID& ep,
         uint64_t order,
         uint64_t tx,
         llarp_time_t timeout)
@@ -21,13 +22,15 @@ namespace llarp
         , relayOrder(order)
         , location(l)
         , handle(std::move(h))
-    {}
+    {
+      endpoint = ep;
+    }
 
     bool
     HiddenServiceAddressLookup::HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results)
     {
       std::optional<IntroSet> found;
-      const Address remote(rootkey);
+      const Address remote{rootkey};
       if (results.size() > 0)
       {
         EncryptedIntroSet selected;

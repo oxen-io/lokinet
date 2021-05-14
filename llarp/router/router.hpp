@@ -74,6 +74,14 @@ namespace llarp
 
     LMQ_ptr m_lmq;
 
+    path::BuildLimiter m_PathBuildLimiter;
+
+    path::BuildLimiter&
+    pathBuildLimiter() override
+    {
+      return m_PathBuildLimiter;
+    }
+
     const LMQ_ptr&
     lmq() const override
     {
@@ -172,6 +180,10 @@ namespace llarp
 
     void
     QueueDiskIO(std::function<void(void)> func) override;
+
+    /// return true if we look like we are a deregistered service node
+    bool
+    LooksDeregistered() const;
 
     std::optional<SockAddr> _ourAddress;
 
@@ -390,7 +402,7 @@ namespace llarp
 
     /// return true if we are a client with an exit configured
     bool
-    HasClientExit() const;
+    HasClientExit() const override;
 
     const byte_t*
     pubkey() const override

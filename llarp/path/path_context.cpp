@@ -302,7 +302,7 @@ namespace llarp
         {
           if (itr->second->Expired(now))
           {
-            m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
+            m_Router->outboundMessageHandler().RemovePath(itr->first);
             itr = map.erase(itr);
           }
           else
