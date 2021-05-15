@@ -933,7 +933,6 @@ namespace llarp
               PathAlignmentTimeout());
           return;
         }
-        bool rewriteAddrs = true;
         std::variant<service::Address, RouterID> to;
         service::ProtocolType type;
         if (m_SNodes.at(itr->second))
@@ -950,7 +949,8 @@ namespace llarp
 
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
-        if (rewriteAddrs)
+        // this does not happen for exits because the point is they don't rewrite addresses
+        if (type != service::ProtocolType::Exit)
         {
           if (pkt.IsV4())
             pkt.UpdateIPv4Address({0}, {0});
@@ -1074,7 +1074,12 @@ namespace llarp
           }
         }
         if (not allow)
+        {
+          var::visit(
+              [&](auto&& address) { LogWarn(Name(), " does not allow ", src, " from ", address); },
+              addr);
           return false;
+        }
       }
       else
       {
