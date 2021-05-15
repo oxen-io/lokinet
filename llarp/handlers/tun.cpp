@@ -1059,18 +1059,22 @@ namespace llarp
           src = pkt.srcv6();
         }
         // find what exit we think this should be for
+        service::Address fromAddr{};
+        if (const auto* ptr = std::get_if<service::Address>(&addr))
+        {
+          fromAddr = *ptr;
+        }
+        else  // don't allow snode
+          return false;
         const auto mapped = m_ExitMap.FindAllEntries(src);
         bool allow = false;
         for (const auto& [range, exitAddr] : mapped)
         {
           if ((range.BogonRange() and range.Contains(src)) or not IsBogon(src))
           {
-            // this range is either not a bogon or is a bogon we are explicitly allowing
-            if (const auto* ptr = std::get_if<service::Address>(&addr))
-            {
-              // allow if this address matches the endpoint we think it should be
-              allow = exitAddr == *ptr;
-            }
+            // allow if this address matches the endpoint we think it should be
+            allow = exitAddr == fromAddr;
+            break;
           }
         }
         if (not allow)
