@@ -47,6 +47,7 @@ namespace llarp
         LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
         MarkCurrentIntroBad(Now());
         ShiftIntroduction(false);
+        UpdateIntroSet();
       }
       return true;
     }
