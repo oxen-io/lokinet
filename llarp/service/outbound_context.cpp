@@ -369,6 +369,12 @@ namespace llarp
             });
       }
 
+      if (lastGoodSend > 0s and now >= lastGoodSend + (sendTimeout / 2))
+      {
+        // send a keep alive to keep this session alive
+        KeepAlive();
+      }
+
       // if we are dead return true so we are removed
       return lastGoodSend > 0s ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
                                : (now >= createdAt && now - createdAt > connectTimeout);
