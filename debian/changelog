@@ -1,3 +1,21 @@
+lokinet (0.9.2-1) unstable; urgency=medium
+
+  [ Jeff Becker ]
+  * add format verification to contrib/format.sh
+  * check in pre-push git hook so I don't lose it
+  * mark inbound traffic as convotag active
+  * exits don't rewrite ip addresses, fix this and add note
+  * simplify loop and correct logic, we want to bail out of the loop on first match.
+  * send a keep alive to keep an idle session alive so it doesn't get removed
+  * update introset if we get a discard message from a possibly expired intro
+  * don't defer call to ready hook with timer call it right away because we are ready
+  * bump version
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 17 May 2021 15:24:21 -0300
+
 lokinet (0.9.1-1) unstable; urgency=medium
 
   [ Jason Rhinelander ]
