@@ -1083,9 +1083,10 @@ namespace llarp
       PutReplyIntroFor(msg->tag, path->intro);
       Introduction intro;
       intro.pathID = from;
-      intro.router = PubKey(path->Endpoint());
+      intro.router = PubKey{path->Endpoint()};
       intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
       PutIntroFor(msg->tag, intro);
+      ConvoTagRX(msg->tag);
       return ProcessDataMessage(msg);
     }
 
