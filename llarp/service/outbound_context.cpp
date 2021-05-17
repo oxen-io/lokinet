@@ -47,6 +47,7 @@ namespace llarp
         LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
         MarkCurrentIntroBad(Now());
         ShiftIntroduction(false);
+        UpdateIntroSet();
       }
       return true;
     }
@@ -347,26 +348,20 @@ namespace llarp
 
       if (ReadyToSend() and m_ReadyHook)
       {
-        KeepAlive();
         const auto path = GetPathByRouter(remoteIntro.router);
         if (not path)
         {
           LogWarn(Name(), " ready but no path to ", remoteIntro.router, " ???");
-          return false;
+          return true;
         }
-        const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
-        m_router->loop()->call_later(
-            rtt, [rtt, self = shared_from_this(), hook = std::move(m_ReadyHook)]() {
-              LogInfo(
-                  self->Name(),
-                  " is ready, RTT is measured as ",
-                  self->estimatedRTT,
-                  " approximated as ",
-                  rtt,
-                  " delta=",
-                  rtt - self->estimatedRTT);
-              hook(self.get());
-            });
+        m_ReadyHook(this);
+        m_ReadyHook = nullptr;
+      }
+
+      if (lastGoodSend > 0s and now >= lastGoodSend + (sendTimeout / 2))
+      {
+        // send a keep alive to keep this session alive
+        KeepAlive();
       }
 
       // if we are dead return true so we are removed
