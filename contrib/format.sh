@@ -16,6 +16,9 @@ if [ $? -ne 0 ]; then
     fi
 fi
 
-# TODO: readlink -e is a GNU-ism
-cd "$(readlink -e $(dirname $0)/../)"
-$binary -i $(find jni daemon llarp include pybind | grep -E '\.[hc](pp)?$') &> /dev/null
+cd "$(dirname $0)/../"
+if [ "$1" = "verify" ] ; then
+    exit $($binary --output-replacements-xml $(find jni daemon llarp include pybind | grep -E '\.[hc](pp)?$' | grep -v '\#') | grep '</replacement>' | wc -l)
+else
+    $binary -i $(find jni daemon llarp include pybind | grep -E '\.[hc](pp)?$' | grep -v '\#') &> /dev/null
+fi
