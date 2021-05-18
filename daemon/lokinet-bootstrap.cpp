@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include <unordered_map>
+#include <unordered_set>
 
 #ifndef _WIN32
 #include <openssl/x509.h>
@@ -28,6 +29,24 @@ namespace
     std::cout << msg << std::endl;
     return 1;
   }
+
+  int
+  print_help(std::string exe)
+  {
+    std::cout << R"(Lokinet bootstrap.signed fetchy program thing
+
+Downloads the initial bootstrap.signed for lokinet into a local file from a default or user defined server via the reachable network.
+
+Usage: )" << exe
+              << R"( [bootstrap_url [output_file]]
+
+bootstrap_url can be a named value in which we will use a predefined url that
+holds a bootstrap file
+
+)";
+    return 0;
+  }
+
 }  // namespace
 
 int
@@ -41,6 +60,15 @@ main(int argc, char* argv[])
 
   std::string bootstrap_url = bootstrap_urls.at("lokinet");
   fs::path outputfile{llarp::GetDefaultBootstrap()};
+
+  const std::unordered_set<std::string> help_args = {"-h", "--help"};
+
+  for (int idx = 1; idx < argc; idx++)
+  {
+    const std::string arg{argv[idx]};
+    if (help_args.count(arg))
+      return print_help(argv[0]);
+  }
 
   if (argc > 1)
   {
@@ -57,7 +85,7 @@ main(int argc, char* argv[])
   {
     outputfile = fs::path{argv[2]};
   }
-
+  std::cout << "fetching " << bootstrap_url << std::endl;
   cpr::Response resp =
 #ifdef _WIN32
       cpr::Get(
@@ -79,6 +107,7 @@ main(int argc, char* argv[])
   {
     try
     {
+      std::cout << "writing bootstrap file to: " << outputfile << std::endl;
       fs::ofstream ofs{outputfile, std::ios::binary};
       ofs.exceptions(fs::ofstream::failbit);
       ofs << data;
