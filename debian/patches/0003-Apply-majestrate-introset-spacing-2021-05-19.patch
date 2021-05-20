@@ -1,0 +1,407 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Thu, 20 May 2021 11:40:11 -0300
+Subject: Apply majestrate/introset-spacing-2021-05-19
+
+---
+ llarp/constants/path.hpp           |  2 +-
+ llarp/path/path.cpp                | 21 ++++++++++++++++++++-
+ llarp/path/path.hpp                |  2 +-
+ llarp/path/pathbuilder.cpp         |  4 ++--
+ llarp/path/pathset.cpp             | 34 +++++++---------------------------
+ llarp/path/pathset.hpp             |  6 +-----
+ llarp/service/endpoint.cpp         | 21 +++++++++++++--------
+ llarp/service/endpoint.hpp         |  9 +++++----
+ llarp/service/intro_set.cpp        |  9 +++++++++
+ llarp/service/intro_set.hpp        |  4 ++++
+ llarp/service/outbound_context.cpp | 22 +++++++++++-----------
+ llarp/service/outbound_context.hpp |  4 ++--
+ llarp/service/sendcontext.cpp      |  1 +
+ 13 files changed, 77 insertions(+), 62 deletions(-)
+
+diff --git a/llarp/constants/path.hpp b/llarp/constants/path.hpp
+index 512f561..72a22f9 100644
+--- a/llarp/constants/path.hpp
++++ b/llarp/constants/path.hpp
+@@ -21,7 +21,7 @@ namespace llarp
+     /// minimum into lifetime we will advertise
+     constexpr std::chrono::milliseconds min_intro_lifetime = default_lifetime / 2;
+     /// spacing frequency at which we try to build paths for introductions
+-    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / 5;
++    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / 8;
+     /// Minimum paths to keep around for intros; mainly used at startup (the
+     /// spread, above, should be able to maintain more than this number of paths
+     /// normally once things are going).
+diff --git a/llarp/path/path.cpp b/llarp/path/path.cpp
+index fcc2734..0547670 100644
+--- a/llarp/path/path.cpp
++++ b/llarp/path/path.cpp
+@@ -682,6 +682,20 @@ namespace llarp
+       return m_DataHandler && m_DataHandler(shared_from_this(), frame);
+     }
+ 
++    template <typename Samples_t>
++    static llarp_time_t
++    computeLatency(const Samples_t& samps)
++    {
++      llarp_time_t mean = 0s;
++      if (samps.empty())
++        return mean;
++      for (const auto& samp : samps)
++        mean += samp;
++      return mean / samps.size();
++    }
++
++    constexpr auto MaxLatencySamples = 8;
++
+     bool
+     Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r)
+     {
+@@ -689,7 +703,12 @@ namespace llarp
+       MarkActive(now);
+       if (msg.L == m_LastLatencyTestID)
+       {
+-        intro.latency = now - m_LastLatencyTestTime;
++        m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
++
++        while (m_LatencySamples.size() > MaxLatencySamples)
++          m_LatencySamples.pop_front();
++
++        intro.latency = computeLatency(m_LatencySamples);
+         m_LastLatencyTestID = 0;
+         EnterState(ePathEstablished, now);
+         if (m_BuiltHook)
+diff --git a/llarp/path/path.hpp b/llarp/path/path.hpp
+index 0d57b37..44d130a 100644
+--- a/llarp/path/path.hpp
++++ b/llarp/path/path.hpp
+@@ -424,7 +424,7 @@ namespace llarp
+       uint64_t m_RXRate = 0;
+       uint64_t m_LastTXRate = 0;
+       uint64_t m_TXRate = 0;
+-
++      std::deque<llarp_time_t> m_LatencySamples;
+       const std::string m_shortName;
+     };
+   }  // namespace path
+diff --git a/llarp/path/pathbuilder.cpp b/llarp/path/pathbuilder.cpp
+index e035bbd..0ccffbf 100644
+--- a/llarp/path/pathbuilder.cpp
++++ b/llarp/path/pathbuilder.cpp
+@@ -211,8 +211,8 @@ namespace llarp
+     {
+       util::StatusObject obj{
+           {"buildStats", m_BuildStats.ExtractStatus()},
+-          {"numHops", uint64_t(numHops)},
+-          {"numPaths", uint64_t(numDesiredPaths)}};
++          {"numHops", uint64_t{numHops}},
++          {"numPaths", uint64_t{numDesiredPaths}}};
+       std::transform(
+           m_Paths.begin(),
+           m_Paths.end(),
+diff --git a/llarp/path/pathset.cpp b/llarp/path/pathset.cpp
+index f5f7885..969fdd0 100644
+--- a/llarp/path/pathset.cpp
++++ b/llarp/path/pathset.cpp
+@@ -280,44 +280,24 @@ namespace llarp
+       return itr->second;
+     }
+ 
+-    bool
++    std::optional<std::set<service::Introduction>>
+     PathSet::GetCurrentIntroductionsWithFilter(
+-        std::set<service::Introduction>& intros,
+         std::function<bool(const service::Introduction&)> filter) const
+     {
+-      intros.clear();
+-      size_t count = 0;
+-      Lock_t l(m_PathsMutex);
++      std::set<service::Introduction> intros;
++      Lock_t l{m_PathsMutex};
+       auto itr = m_Paths.begin();
+       while (itr != m_Paths.end())
+       {
+-        if (itr->second->IsReady() && filter(itr->second->intro))
++        if (itr->second->IsReady() and filter(itr->second->intro))
+         {
+           intros.insert(itr->second->intro);
+-          ++count;
+-        }
+-        ++itr;
+-      }
+-      return count > 0;
+-    }
+-
+-    bool
+-    PathSet::GetCurrentIntroductions(std::set<service::Introduction>& intros) const
+-    {
+-      intros.clear();
+-      size_t count = 0;
+-      Lock_t l(m_PathsMutex);
+-      auto itr = m_Paths.begin();
+-      while (itr != m_Paths.end())
+-      {
+-        if (itr->second->IsReady())
+-        {
+-          intros.insert(itr->second->intro);
+-          ++count;
+         }
+         ++itr;
+       }
+-      return count > 0;
++      if (intros.empty())
++        return std::nullopt;
++      return intros;
+     }
+ 
+     void
+diff --git a/llarp/path/pathset.hpp b/llarp/path/pathset.hpp
+index db26b56..d58e520 100644
+--- a/llarp/path/pathset.hpp
++++ b/llarp/path/pathset.hpp
+@@ -258,14 +258,10 @@ namespace llarp
+       Path_ptr
+       GetByEndpointWithID(RouterID router, PathID_t id) const;
+ 
+-      bool
++      std::optional<std::set<service::Introduction>>
+       GetCurrentIntroductionsWithFilter(
+-          std::set<service::Introduction>& intros,
+           std::function<bool(const service::Introduction&)> filter) const;
+ 
+-      bool
+-      GetCurrentIntroductions(std::set<service::Introduction>& intros) const;
+-
+       virtual bool
+       PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)
+       {
+diff --git a/llarp/service/endpoint.cpp b/llarp/service/endpoint.cpp
+index 9eeac81..2bacb1d 100644
+--- a/llarp/service/endpoint.cpp
++++ b/llarp/service/endpoint.cpp
+@@ -102,10 +102,14 @@ namespace llarp
+       const auto now = llarp::time_now_ms();
+       m_LastIntrosetRegenAttempt = now;
+       std::set<Introduction> introset;
+-      if (!GetCurrentIntroductionsWithFilter(
+-              introset, [now](const service::Introduction& intro) -> bool {
++      if (const auto maybe =
++              GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
+                 return not intro.ExpiresSoon(now, path::min_intro_lifetime);
+               }))
++      {
++        introset = *maybe;
++      }
++      else
+       {
+         LogWarn(
+             "could not publish descriptors for endpoint ",
+@@ -710,8 +714,9 @@ namespace llarp
+         return false;
+ 
+       auto next_pub = m_state->m_LastPublishAttempt
+-          + (m_state->m_IntroSet.HasExpiredIntros(now) ? INTROSET_PUBLISH_RETRY_INTERVAL
+-                                                       : INTROSET_PUBLISH_INTERVAL);
++          + (m_state->m_IntroSet.HasStaleIntros(now, path::min_intro_lifetime)
++                 ? IntrosetPublishRetryCooldown
++                 : IntrosetPublishInterval);
+ 
+       return now >= next_pub and m_LastIntrosetRegenAttempt + 1s <= now;
+     }
+@@ -776,7 +781,7 @@ namespace llarp
+         auto i = range.first;
+         while (i != range.second)
+         {
+-          itr->second->SetReadyHook(
++          itr->second->AddReadyHook(
+               [callback = i->second, addr](auto session) { callback(addr, session); }, left);
+           ++i;
+         }
+@@ -793,7 +798,7 @@ namespace llarp
+       auto itr = range.first;
+       if (itr != range.second)
+       {
+-        session->SetReadyHook(
++        session->AddReadyHook(
+             [callback = itr->second, addr](auto session) { callback(addr, session); }, left);
+         ++itr;
+       }
+@@ -1279,8 +1284,8 @@ namespace llarp
+     {
+       m_router->routerProfiling().MarkPathTimeout(p.get());
+       ManualRebuild(1);
+-      RegenAndPublishIntroSet();
+       path::Builder::HandlePathDied(p);
++      RegenAndPublishIntroSet();
+     }
+ 
+     bool
+@@ -1886,7 +1891,7 @@ namespace llarp
+       if (not path::Builder::ShouldBuildMore(now))
+         return false;
+       return ((now - lastBuild) > path::intro_path_spread)
+-          || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
++          or NumInStatus(path::ePathEstablished) < std::max(numDesiredPaths, path::min_intro_paths);
+     }
+ 
+     AbstractRouter*
+diff --git a/llarp/service/endpoint.hpp b/llarp/service/endpoint.hpp
+index 9de2e05..7acbc68 100644
+--- a/llarp/service/endpoint.hpp
++++ b/llarp/service/endpoint.hpp
+@@ -49,12 +49,13 @@ namespace llarp
+     struct OutboundContext;
+ 
+     /// minimum interval for publishing introsets
+-    static constexpr auto INTROSET_PUBLISH_INTERVAL =
+-        std::chrono::milliseconds(path::default_lifetime) / 4;
++    static constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
+ 
+-    static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
++    /// how agressively should we retry publishing introset on failure
++    static constexpr auto IntrosetPublishRetryCooldown = 1s;
+ 
+-    static constexpr auto INTROSET_LOOKUP_RETRY_COOLDOWN = 3s;
++    /// how aggressively should we retry looking up introsets
++    static constexpr auto IntrosetLookupCooldown = 250ms;
+ 
+     struct Endpoint : public path::Builder,
+                       public ILookupHolder,
+diff --git a/llarp/service/intro_set.cpp b/llarp/service/intro_set.cpp
+index 8bd8ae6..ca6e584 100644
+--- a/llarp/service/intro_set.cpp
++++ b/llarp/service/intro_set.cpp
+@@ -351,6 +351,15 @@ namespace llarp::service
+     return false;
+   }
+ 
++  bool
++  IntroSet::HasStaleIntros(llarp_time_t now, llarp_time_t delta) const
++  {
++    for (const auto& intro : intros)
++      if (intro.ExpiresSoon(now, delta))
++        return true;
++    return false;
++  }
++
+   bool
+   IntroSet::IsExpired(llarp_time_t now) const
+   {
+diff --git a/llarp/service/intro_set.hpp b/llarp/service/intro_set.hpp
+index d0fbca6..66e88fb 100644
+--- a/llarp/service/intro_set.hpp
++++ b/llarp/service/intro_set.hpp
+@@ -69,6 +69,10 @@ namespace llarp
+       bool
+       HasExpiredIntros(llarp_time_t now) const;
+ 
++      /// return true if any of our intros expires soon given a delta
++      bool
++      HasStaleIntros(llarp_time_t now, llarp_time_t delta) const;
++
+       bool
+       IsExpired(llarp_time_t now) const;
+ 
+diff --git a/llarp/service/outbound_context.cpp b/llarp/service/outbound_context.cpp
+index c24928d..67ce324 100644
+--- a/llarp/service/outbound_context.cpp
++++ b/llarp/service/outbound_context.cpp
+@@ -48,6 +48,7 @@ namespace llarp
+         MarkCurrentIntroBad(Now());
+         ShiftIntroduction(false);
+         UpdateIntroSet();
++        SwapIntros();
+       }
+       return true;
+     }
+@@ -112,6 +113,7 @@ namespace llarp
+           return true;
+         }
+         currentIntroSet = *foundIntro;
++        ShiftIntroRouter(RouterID{});
+       }
+       else
+       {
+@@ -145,7 +147,6 @@ namespace llarp
+       }
+       if (selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
+         return;
+-      LogWarn(Name(), " shfiting intro off of ", r, " to ", RouterID(selectedIntro.router));
+       m_NextIntro = selectedIntro;
+     }
+ 
+@@ -346,7 +347,7 @@ namespace llarp
+           ++itr;
+       }
+ 
+-      if (ReadyToSend() and m_ReadyHook)
++      if (ReadyToSend() and not m_ReadyHooks.empty())
+       {
+         const auto path = GetPathByRouter(remoteIntro.router);
+         if (not path)
+@@ -354,8 +355,9 @@ namespace llarp
+           LogWarn(Name(), " ready but no path to ", remoteIntro.router, " ???");
+           return true;
+         }
+-        m_ReadyHook(this);
+-        m_ReadyHook = nullptr;
++        for (const auto& hook : m_ReadyHooks)
++          hook(this);
++        m_ReadyHooks.clear();
+       }
+ 
+       if (lastGoodSend > 0s and now >= lastGoodSend + (sendTimeout / 2))
+@@ -370,15 +372,13 @@ namespace llarp
+     }
+ 
+     void
+-    OutboundContext::SetReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
++    OutboundContext::AddReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
+     {
+-      if (m_ReadyHook)
+-        return;
+-      m_ReadyHook = hook;
++      m_ReadyHooks.push_back(hook);
+       m_router->loop()->call_later(timeout, [this]() {
+-        if (m_ReadyHook)
+-          m_ReadyHook(nullptr);
+-        m_ReadyHook = nullptr;
++        for (const auto& hook : m_ReadyHooks)
++          hook(nullptr);
++        m_ReadyHooks.clear();
+       });
+     }
+ 
+diff --git a/llarp/service/outbound_context.hpp b/llarp/service/outbound_context.hpp
+index 011aa74..8c47ac1 100644
+--- a/llarp/service/outbound_context.hpp
++++ b/llarp/service/outbound_context.hpp
+@@ -71,7 +71,7 @@ namespace llarp
+       ReadyToSend() const;
+ 
+       void
+-      SetReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
++      AddReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+ 
+       /// for exits
+       void
+@@ -152,7 +152,7 @@ namespace llarp
+       llarp_time_t m_LastInboundTraffic = 0s;
+       bool m_GotInboundTraffic = false;
+       bool sentIntro = false;
+-      std::function<void(OutboundContext*)> m_ReadyHook;
++      std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
+       llarp_time_t m_LastIntrosetUpdateAt = 0s;
+     };
+   }  // namespace service
+diff --git a/llarp/service/sendcontext.cpp b/llarp/service/sendcontext.cpp
+index 5425839..78558b0 100644
+--- a/llarp/service/sendcontext.cpp
++++ b/llarp/service/sendcontext.cpp
+@@ -84,6 +84,7 @@ namespace llarp
+       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+       if (!path)
+       {
++        ShiftIntroduction(false);
+         LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
+         return;
+       }
