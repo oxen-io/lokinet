@@ -355,6 +355,18 @@ extern "C"
   }
 
   void
+  lokinet_set_hop_length(int numhops, struct lokinet_context* ctx)
+  {
+    if (not ctx)
+      return;
+    auto lock = ctx->acquire();
+    if (auto ep = ctx->endpoint())
+    {
+      ep->numHops = numhops;
+    }
+  }
+
+  void
   lokinet_outbound_stream(
       struct lokinet_stream_result* result,
       const char* remote,

@@ -48,6 +48,10 @@ extern "C"
   int
   lokinet_add_bootstrap_rc(const char*, size_t, struct lokinet_context*);
 
+  /// set the number of hops we want to use by default
+  void
+  lokinet_set_hop_length(int numhops, struct lokinet_context*);
+
 #ifdef __cplusplus
 }
 #endif
