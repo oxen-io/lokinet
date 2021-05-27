@@ -13,6 +13,7 @@
 #include <list>
 #include <map>
 #include <tuple>
+#include <unordered_set>
 
 namespace std
 {
@@ -235,7 +236,10 @@ namespace llarp
       }
 
       Path_ptr
-      GetEstablishedPathClosestTo(RouterID router, PathRole roles = ePathRoleAny) const;
+      GetEstablishedPathClosestTo(
+          RouterID router,
+          std::unordered_set<RouterID> excluding = {},
+          PathRole roles = ePathRoleAny) const;
 
       Path_ptr
       PickEstablishedPath(PathRole roles = ePathRoleAny) const;
@@ -258,13 +262,9 @@ namespace llarp
       Path_ptr
       GetByEndpointWithID(RouterID router, PathID_t id) const;
 
-      bool
+      std::optional<std::set<service::Introduction>>
       GetCurrentIntroductionsWithFilter(
-          std::set<service::Introduction>& intros,
           std::function<bool(const service::Introduction&)> filter) const;
-
-      bool
-      GetCurrentIntroductions(std::set<service::Introduction>& intros) const;
 
       virtual bool
       PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)

@@ -102,10 +102,14 @@ namespace llarp
       const auto now = llarp::time_now_ms();
       m_LastIntrosetRegenAttempt = now;
       std::set<Introduction> introset;
-      if (!GetCurrentIntroductionsWithFilter(
-              introset, [now](const service::Introduction& intro) -> bool {
+      if (const auto maybe =
+              GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
                 return not intro.ExpiresSoon(now, path::min_intro_lifetime);
               }))
+      {
+        introset = *maybe;
+      }
+      else
       {
         LogWarn(
             "could not publish descriptors for endpoint ",
@@ -710,8 +714,9 @@ namespace llarp
         return false;
 
       auto next_pub = m_state->m_LastPublishAttempt
-          + (m_state->m_IntroSet.HasExpiredIntros(now) ? INTROSET_PUBLISH_RETRY_INTERVAL
-                                                       : INTROSET_PUBLISH_INTERVAL);
+          + (m_state->m_IntroSet.HasStaleIntros(now, path::min_intro_lifetime)
+                 ? IntrosetPublishRetryCooldown
+                 : IntrosetPublishInterval);
 
       return now >= next_pub and m_LastIntrosetRegenAttempt + 1s <= now;
     }
@@ -758,7 +763,7 @@ namespace llarp
       path::Builder::PathBuildStarted(path);
     }
 
-    constexpr auto MaxOutboundContextPerRemote = 4;
+    constexpr auto MaxOutboundContextPerRemote = 2;
 
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
@@ -770,15 +775,17 @@ namespace llarp
 
       if (remoteSessions.count(addr) >= MaxOutboundContextPerRemote)
       {
-        auto itr = remoteSessions.find(addr);
-
-        auto range = serviceLookups.equal_range(addr);
-        auto i = range.first;
-        while (i != range.second)
+        auto sessionRange = remoteSessions.equal_range(addr);
+        for (auto itr = sessionRange.first; itr != sessionRange.second; ++itr)
         {
-          itr->second->SetReadyHook(
-              [callback = i->second, addr](auto session) { callback(addr, session); }, left);
-          ++i;
+          auto range = serviceLookups.equal_range(addr);
+          auto i = range.first;
+          while (i != range.second)
+          {
+            itr->second->AddReadyHook(
+                [callback = i->second, addr](auto session) { callback(addr, session); }, left);
+            ++i;
+          }
         }
         serviceLookups.erase(addr);
         return;
@@ -793,7 +800,7 @@ namespace llarp
       auto itr = range.first;
       if (itr != range.second)
       {
-        session->SetReadyHook(
+        session->AddReadyHook(
             [callback = itr->second, addr](auto session) { callback(addr, session); }, left);
         ++itr;
       }
@@ -924,7 +931,7 @@ namespace llarp
           paths.insert(path);
       });
 
-      constexpr size_t min_unique_lns_endpoints = 3;
+      constexpr size_t min_unique_lns_endpoints = 2;
 
       // not enough paths
       if (paths.size() < min_unique_lns_endpoints)
@@ -1066,11 +1073,11 @@ namespace llarp
     void
     Endpoint::QueueRecvData(RecvDataEvent ev)
     {
-      if (m_RecvQueue.full() || m_RecvQueue.empty())
+      if (m_RecvQueue.full() or m_RecvQueue.empty())
       {
-        m_router->loop()->call([this] { FlushRecvData(); });
+        m_router->loop()->call_soon([this] { FlushRecvData(); });
       }
-      m_RecvQueue.pushBack(std::move(ev));
+      m_RecvQueue.tryPushBack(std::move(ev));
     }
 
     bool
@@ -1178,10 +1185,11 @@ namespace llarp
       // not applicable because we are not an exit or don't have an endpoint auth policy
       if ((not m_state->m_ExitEnabled) or m_AuthPolicy == nullptr)
         return;
-      ProtocolFrame f;
+      ProtocolFrame f{};
       f.R = AuthResultCodeAsInt(result.code);
       f.T = tag;
       f.F = path->intro.pathID;
+      f.N.Randomize();
       if (result.code == AuthResultCode::eAuthAccepted)
       {
         ProtocolMessage msg;
@@ -1189,10 +1197,7 @@ namespace llarp
         std::vector<byte_t> reason{};
         reason.resize(result.reason.size());
         std::copy_n(result.reason.c_str(), reason.size(), reason.data());
-
         msg.PutBuffer(reason);
-        f.N.Randomize();
-        f.C.Zero();
         if (m_AuthPolicy)
           msg.proto = ProtocolType::Auth;
         else
@@ -1253,22 +1258,18 @@ namespace llarp
       }
       if (not frame.AsyncDecryptAndVerify(Router()->loop(), p, m_Identity, this))
       {
-        LogError("Failed to decrypt protocol frame");
-        if (not frame.C.IsZero())
-        {
-          // send reset convo tag message
-          ProtocolFrame f;
-          f.R = 1;
-          f.T = frame.T;
-          f.F = p->intro.pathID;
+        // send reset convo tag message
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame.T;
+        f.F = p->intro.pathID;
 
-          f.Sign(m_Identity);
-          {
-            LogWarn("invalidating convotag T=", frame.T);
-            RemoveConvoTag(frame.T);
-            m_SendQueue.tryPushBack(
-                SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.F), p});
-          }
+        f.Sign(m_Identity);
+        {
+          LogWarn("invalidating convotag T=", frame.T);
+          RemoveConvoTag(frame.T);
+          m_SendQueue.tryPushBack(
+              SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.F), p});
         }
       }
       return true;
@@ -1279,8 +1280,8 @@ namespace llarp
     {
       m_router->routerProfiling().MarkPathTimeout(p.get());
       ManualRebuild(1);
-      RegenAndPublishIntroSet();
       path::Builder::HandlePathDied(p);
+      RegenAndPublishIntroSet();
     }
 
     bool
@@ -1296,6 +1297,18 @@ namespace llarp
         const RouterID& endpoint,
         llarp_time_t timeLeft)
     {
+      // tell all our existing remote sessions about this introset update
+      if (introset)
+      {
+        auto& sessions = m_state->m_RemoteSessions;
+        auto range = sessions.equal_range(addr);
+        auto itr = range.first;
+        while (itr != range.second)
+        {
+          itr->second->OnIntroSetUpdate(addr, introset, endpoint, timeLeft);
+          ++itr;
+        }
+      }
       const auto now = Router()->Now();
       auto& fails = m_state->m_ServiceLookupFails;
       auto& lookups = m_state->m_PendingServiceLookups;
@@ -1365,7 +1378,7 @@ namespace llarp
       if (not m_IntrosetLookupFilter.Insert(remote))
         return true;
 
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
+      const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups, remote.ToKey());
 
       using namespace std::placeholders;
       const dht::Key_t location = remote.ToKey();
@@ -1425,14 +1438,8 @@ namespace llarp
     bool
     Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
     {
-      static constexpr size_t MaxConcurrentSNodeSessions = 16;
       auto& nodeSessions = m_state->m_SNodeSessions;
-      if (nodeSessions.size() >= MaxConcurrentSNodeSessions)
-      {
-        // a quick client side work arround before we do proper limiting
-        LogError(Name(), " has too many snode sessions");
-        return false;
-      }
+
       using namespace std::placeholders;
       if (nodeSessions.count(snode) == 0)
       {
@@ -1799,8 +1806,7 @@ namespace llarp
                 LogError("failed to encrypt and sign");
                 return;
               }
-              self->m_SendQueue.pushBack(SendEvent_t{transfer, p});
-              ;
+              self->m_SendQueue.tryPushBack(SendEvent_t{transfer, p});
             });
             return true;
           }
@@ -1883,10 +1889,13 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      if (not path::Builder::ShouldBuildMore(now))
+      if (BuildCooldownHit(now))
         return false;
-      return ((now - lastBuild) > path::intro_path_spread)
-          || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
+      const auto requiredPaths = std::max(
+          std::max(numDesiredPaths, path::min_intro_paths) / path::intro_spread_slices, size_t{3});
+      if (NumInStatus(path::ePathBuilding) >= requiredPaths)
+        return false;
+      return NumPathsExistingAt(now + path::intro_path_spread) < requiredPaths;
     }
 
     AbstractRouter*

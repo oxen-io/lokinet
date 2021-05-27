@@ -28,9 +28,9 @@ namespace llarp
     {
       if (m_SendQueue.empty() or m_SendQueue.full())
       {
-        m_Endpoint->Loop()->call([this] { FlushUpstream(); });
+        m_Endpoint->Loop()->call_soon([this] { FlushUpstream(); });
       }
-      m_SendQueue.pushBack(std::make_pair(
+      m_SendQueue.tryPushBack(std::make_pair(
           std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
       return true;
     }
@@ -84,6 +84,7 @@ namespace llarp
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (!path)
       {
+        ShiftIntroduction(false);
         LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
         return;
       }

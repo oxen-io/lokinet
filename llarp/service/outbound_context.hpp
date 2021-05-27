@@ -71,7 +71,7 @@ namespace llarp
       ReadyToSend() const;
 
       void
-      SetReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+      AddReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
 
       /// for exits
       void
@@ -129,6 +129,10 @@ namespace llarp
       llarp_time_t
       RTT() const;
 
+      bool
+      OnIntroSetUpdate(
+          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
+
      private:
       /// swap remoteIntro with next intro
       void
@@ -137,11 +141,8 @@ namespace llarp
       void
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
-      bool
-      OnIntroSetUpdate(
-          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
-
       const dht::Key_t location;
+      const Address addr;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
@@ -152,7 +153,7 @@ namespace llarp
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
       bool sentIntro = false;
-      std::function<void(OutboundContext*)> m_ReadyHook;
+      std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
     };
   }  // namespace service

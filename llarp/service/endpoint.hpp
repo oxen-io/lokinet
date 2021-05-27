@@ -49,12 +49,13 @@ namespace llarp
     struct OutboundContext;
 
     /// minimum interval for publishing introsets
-    static constexpr auto INTROSET_PUBLISH_INTERVAL =
-        std::chrono::milliseconds(path::default_lifetime) / 4;
+    static constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
 
-    static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
+    /// how agressively should we retry publishing introset on failure
+    static constexpr auto IntrosetPublishRetryCooldown = 1s;
 
-    static constexpr auto INTROSET_LOOKUP_RETRY_COOLDOWN = 3s;
+    /// how aggressively should we retry looking up introsets
+    static constexpr auto IntrosetLookupCooldown = 250ms;
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,

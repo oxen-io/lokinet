@@ -2,6 +2,7 @@
 #include "loglevel.hpp"
 
 #include <llarp/util/time.hpp>
+#include <llarp/util/decaying_hashset.hpp>
 
 #include <memory>
 #include <string>
@@ -12,6 +13,8 @@ namespace llarp
   /// logger stream interface
   struct ILogStream
   {
+    util::DecayingHashSet<std::string> limitFilter{1s};
+
     virtual ~ILogStream() = default;
 
     virtual void
@@ -51,7 +54,7 @@ namespace llarp
     virtual void
     Tick(llarp_time_t now)
     {
-      (void) now;
+      limitFilter.Decay(now);
     }
   };
 

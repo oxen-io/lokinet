@@ -48,6 +48,7 @@ namespace llarp
         MarkCurrentIntroBad(Now());
         ShiftIntroduction(false);
         UpdateIntroSet();
+        SwapIntros();
       }
       return true;
     }
@@ -58,6 +59,7 @@ namespace llarp
         : path::Builder{parent->Router(), OutboundContextNumPaths, parent->numHops}
         , SendContext{introset.addressKeys, {}, this, parent}
         , location{introset.addressKeys.Addr().ToKey()}
+        , addr{introset.addressKeys.Addr()}
         , currentIntroSet{introset}
 
     {
@@ -112,6 +114,7 @@ namespace llarp
           return true;
         }
         currentIntroSet = *foundIntro;
+        ShiftIntroRouter(RouterID{});
       }
       else
       {
@@ -145,7 +148,6 @@ namespace llarp
       }
       if (selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
         return;
-      LogWarn(Name(), " shfiting intro off of ", r, " to ", RouterID(selectedIntro.router));
       m_NextIntro = selectedIntro;
     }
 
@@ -177,7 +179,7 @@ namespace llarp
       p->SetDataHandler(util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if (p->Endpoint() == m_NextIntro.router or p->Endpoint() == remoteIntro.router)
+      if (p->Endpoint() == m_NextIntro.router)
         SwapIntros();
       else
       {
@@ -249,10 +251,9 @@ namespace llarp
         return;
       LogInfo(Name(), " updating introset");
       m_LastIntrosetUpdateAt = now;
-      const auto addr = currentIntroSet.addressKeys.Addr();
       // we want to use the parent endpoint's paths because outbound context
       // does not implement path::PathSet::HandleGotIntroMessage
-      const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
+      const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2, location);
       uint64_t relayOrder = 0;
       for (const auto& path : paths)
       {
@@ -283,7 +284,7 @@ namespace llarp
       obj["seqno"] = sequenceNo;
       obj["markedBad"] = markedBad;
       obj["lastShift"] = to_json(lastShift);
-      obj["remoteIdentity"] = remoteIdent.Addr().ToString();
+      obj["remoteIdentity"] = addr.ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"] = m_NextIntro.ExtractStatus();
 
@@ -346,7 +347,7 @@ namespace llarp
           ++itr;
       }
 
-      if (ReadyToSend() and m_ReadyHook)
+      if (ReadyToSend() and not m_ReadyHooks.empty())
       {
         const auto path = GetPathByRouter(remoteIntro.router);
         if (not path)
@@ -354,8 +355,9 @@ namespace llarp
           LogWarn(Name(), " ready but no path to ", remoteIntro.router, " ???");
           return true;
         }
-        m_ReadyHook(this);
-        m_ReadyHook = nullptr;
+        for (const auto& hook : m_ReadyHooks)
+          hook(this);
+        m_ReadyHooks.clear();
       }
 
       if (lastGoodSend > 0s and now >= lastGoodSend + (sendTimeout / 2))
@@ -370,16 +372,22 @@ namespace llarp
     }
 
     void
-    OutboundContext::SetReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
+    OutboundContext::AddReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
     {
-      if (m_ReadyHook)
+      if (ReadyToSend())
+      {
+        hook(this);
         return;
-      m_ReadyHook = hook;
-      m_router->loop()->call_later(timeout, [this]() {
-        if (m_ReadyHook)
-          m_ReadyHook(nullptr);
-        m_ReadyHook = nullptr;
-      });
+      }
+      if (m_ReadyHooks.empty())
+      {
+        m_router->loop()->call_later(timeout, [this]() {
+          for (const auto& hook : m_ReadyHooks)
+            hook(nullptr);
+          m_ReadyHooks.clear();
+        });
+      }
+      m_ReadyHooks.push_back(hook);
     }
 
     std::optional<std::vector<RouterContact>>
@@ -397,16 +405,18 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if (markedBad || not path::Builder::ShouldBuildMore(now))
+      if (markedBad or path::Builder::BuildCooldownHit(now))
         return false;
       if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
-      llarp_time_t t = 0s;
-      ForEachPath([&t](path::Path_ptr path) {
-        if (path->IsReady())
-          t = std::max(path->ExpireTime(), t);
+      bool good = false;
+      ForEachPath([now, &good](path::Path_ptr path) {
+        if (not path->IsReady())
+          return;
+        if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
+          good = true;
       });
-      return t >= now + path::default_lifetime / 4;
+      return not good;
     }
 
     void
@@ -488,7 +498,7 @@ namespace llarp
     {
       // unconditionally update introset
       UpdateIntroSet();
-      const RouterID endpoint(path->Endpoint());
+      const RouterID endpoint{path->Endpoint()};
       // if a path to our current intro died...
       if (endpoint == remoteIntro.router)
       {
@@ -498,50 +508,13 @@ namespace llarp
           if (p->Endpoint() == endpoint && p->IsReady())
             ++num;
         });
-        // if we have more than two then we are probably fine
-        if (num > 2)
-          return;
-        // if we have one working one ...
-        if (num == 1)
+        if (num == 0)
         {
-          num = 0;
-          ForEachPath([&](const path::Path_ptr& p) {
-            if (p->Endpoint() == endpoint)
-              ++num;
-          });
-          // if we have 2 or more established or pending don't do anything
-          if (num > 2)
-            return;
-          BuildOneAlignedTo(endpoint);
-        }
-        else if (num == 0)
-        {
-          // we have no paths to this router right now
-          // hop off it
-          Introduction picked;
-          // get the latest intro that isn't on that endpoint
-          for (const auto& intro : currentIntroSet.intros)
-          {
-            if (intro.router == endpoint)
-              continue;
-            if (intro.expiresAt > picked.expiresAt)
-              picked = intro;
-          }
-          // we got nothing
-          if (picked.router.IsZero())
-          {
-            return;
-          }
-          m_NextIntro = picked;
-          // check if we have a path to this router
-          num = 0;
-          ForEachPath([&](const path::Path_ptr& p) {
-            // don't count timed out paths
-            if (p->Status() != path::ePathTimeout && p->Endpoint() == m_NextIntro.router)
-              ++num;
-          });
-          // build a path if one isn't already pending build or established
-          BuildOneAlignedTo(m_NextIntro.router);
+          // we have no more paths to this endpoint so we want to pivot off of it
+          MarkCurrentIntroBad(Now());
+          ShiftIntroRouter(endpoint);
+          if (m_NextIntro.router != endpoint)
+            BuildOneAlignedTo(m_NextIntro.router);
         }
       }
     }

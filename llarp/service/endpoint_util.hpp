@@ -43,15 +43,31 @@ namespace llarp
 
     template <typename Endpoint_t>
     static path::Path::UniqueEndpointSet_t
-    GetManyPathsWithUniqueEndpoints(Endpoint_t* ep, size_t N, size_t tries = 10)
+    GetManyPathsWithUniqueEndpoints(
+        Endpoint_t* ep,
+        size_t N,
+        std::optional<dht::Key_t> maybeLocation = std::nullopt,
+        size_t tries = 10)
     {
+      std::unordered_set<RouterID> exclude;
       path::Path::UniqueEndpointSet_t paths;
       do
       {
         --tries;
-        const auto path = ep->PickRandomEstablishedPath();
+        path::Path_ptr path;
+        if (maybeLocation)
+        {
+          path = ep->GetEstablishedPathClosestTo(RouterID{maybeLocation->as_array()}, exclude);
+        }
+        else
+        {
+          path = ep->PickRandomEstablishedPath();
+        }
         if (path and path->IsReady())
+        {
           paths.emplace(path);
+          exclude.insert(path->Endpoint());
+        }
       } while (tries > 0 and paths.size() < N);
       return paths;
     }

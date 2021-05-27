@@ -44,8 +44,8 @@ namespace llarp
       uint64_t sequenceNo = 0;
       llarp_time_t lastGoodSend = 0s;
       const llarp_time_t createdAt;
-      llarp_time_t sendTimeout = 40s;
-      llarp_time_t connectTimeout = 60s;
+      llarp_time_t sendTimeout = 10s;
+      llarp_time_t connectTimeout = 15s;
       llarp_time_t estimatedRTT = 0s;
       bool markedBad = false;
       using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
