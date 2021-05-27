@@ -327,16 +327,15 @@ namespace llarp
         }
       }
 
-      // check for expiration
-      if (remoteIntro.ExpiresSoon(now))
+      // check for stale intros
+      // update the introset if we think we need to
+      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread))
       {
         UpdateIntroSet();
-        // shift intro if it expires "soon"
-        if (ShiftIntroduction())
-          SwapIntros();  // swap intros if we shifted
       }
       // lookup router in intro if set and unknown
-      m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+      if (not m_NextIntro.router.IsZero())
+        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
       // expire bad intros
       auto itr = m_BadIntros.begin();
       while (itr != m_BadIntros.end())
