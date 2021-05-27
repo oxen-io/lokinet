@@ -39,9 +39,6 @@ namespace llarp
   AndroidLogStream::PostLog(std::stringstream&) const
   {}
 
-  void AndroidLogStream::Tick(llarp_time_t)
-  {}
-
   void
   AndroidLogStream::Print(LogLevel lvl, const char* tag, const std::string& msg)
   {

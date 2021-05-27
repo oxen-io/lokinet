@@ -21,10 +21,5 @@ namespace llarp
 
     void
     PostLog(std::stringstream&) const override;
-
-    void Tick(llarp_time_t) override;
-
-    void
-    ImmediateFlush() override{};
   };
 }  // namespace llarp

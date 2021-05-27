@@ -103,6 +103,7 @@ namespace llarp
   void
   FileLogStream::Tick(llarp_time_t now)
   {
+    ILogStream::Tick(now);
     if (ShouldFlush(now))
       FlushLinesToDisk(now);
   }

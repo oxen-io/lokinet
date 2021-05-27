@@ -28,9 +28,6 @@ namespace llarp
     virtual void
     ImmediateFlush() override;
 
-    void Tick(llarp_time_t) override
-    {}
-
    private:
     bool m_withColours;
     std::ostream& m_Out;
