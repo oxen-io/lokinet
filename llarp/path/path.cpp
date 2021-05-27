@@ -678,6 +678,20 @@ namespace llarp
       return m_DataHandler && m_DataHandler(shared_from_this(), frame);
     }
 
+    template <typename Samples_t>
+    static llarp_time_t
+    computeLatency(const Samples_t& samps)
+    {
+      llarp_time_t mean = 0s;
+      if (samps.empty())
+        return mean;
+      for (const auto& samp : samps)
+        mean += samp;
+      return mean / samps.size();
+    }
+
+    constexpr auto MaxLatencySamples = 8;
+
     bool
     Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r)
     {
@@ -685,7 +699,12 @@ namespace llarp
       MarkActive(now);
       if (msg.L == m_LastLatencyTestID)
       {
-        intro.latency = now - m_LastLatencyTestTime;
+        m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
+
+        while (m_LatencySamples.size() > MaxLatencySamples)
+          m_LatencySamples.pop_front();
+
+        intro.latency = computeLatency(m_LatencySamples);
         m_LastLatencyTestID = 0;
         EnterState(ePathEstablished, now);
         if (m_BuiltHook)
