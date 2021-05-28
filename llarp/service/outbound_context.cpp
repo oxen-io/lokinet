@@ -365,10 +365,6 @@ namespace llarp
       {
         // send a keep alive to keep this session alive
         KeepAlive();
-        if (m_LastInboundTraffic == 0s)
-        {
-          MarkCurrentIntroBad(now);
-        }
       }
       // if we are dead return true so we are removed
       return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
