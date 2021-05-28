@@ -319,13 +319,14 @@ namespace llarp
         SwapIntros();
       }
 
+      if (m_BadIntros.count(remoteIntro) and GetPathByRouter(m_NextIntro.router))
+        SwapIntros();
+
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
       {
         // timeout on other side
         MarkCurrentIntroBad(now);
         ShiftIntroRouter(remoteIntro.router);
-        if (not BuildCooldownHit(now))
-          BuildOneAlignedTo(m_NextIntro.router);
       }
       // check for stale intros
       // update the introset if we think we need to
@@ -364,6 +365,10 @@ namespace llarp
       {
         // send a keep alive to keep this session alive
         KeepAlive();
+        if (m_LastInboundTraffic == 0s)
+        {
+          MarkCurrentIntroBad(now);
+        }
       }
       // if we are dead return true so we are removed
       return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
