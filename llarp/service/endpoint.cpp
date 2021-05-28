@@ -1299,6 +1299,9 @@ namespace llarp
         llarp_time_t timeLeft)
     {
       // tell all our existing remote sessions about this introset update
+
+      const auto now = Router()->Now();
+      auto& lookups = m_state->m_PendingServiceLookups;
       if (introset)
       {
         auto& sessions = m_state->m_RemoteSessions;
@@ -1307,12 +1310,23 @@ namespace llarp
         while (itr != range.second)
         {
           itr->second->OnIntroSetUpdate(addr, introset, endpoint, timeLeft);
+          // we got a successful lookup
+          if (itr->second->ReadyToSend() and not introset->IsExpired(now))
+          {
+            // inform all lookups
+            auto lookup_range = lookups.equal_range(addr);
+            auto i = lookup_range.first;
+            while (i != lookup_range.second)
+            {
+              i->second(addr, itr->second.get());
+              ++i;
+            }
+            lookups.erase(addr);
+          }
           ++itr;
         }
       }
-      const auto now = Router()->Now();
       auto& fails = m_state->m_ServiceLookupFails;
-      auto& lookups = m_state->m_PendingServiceLookups;
       if (not introset or introset->IsExpired(now))
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ", endpoint);
