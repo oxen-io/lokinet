@@ -9,6 +9,7 @@ namespace llarp
     {
       util::StatusObject obj{
           {"router", router.ToHex()},
+          {"path", pathID.ToHex()},
           {"expiresAt", to_json(expiresAt)},
           {"latency", to_json(latency)},
           {"version", uint64_t(version)}};

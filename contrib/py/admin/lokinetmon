@@ -16,6 +16,8 @@ except Exception as ex:
     print('no geoip: {}'.format(ex))
     time.sleep(1)
 
+now = lambda : int(time.time()) * 1000
+
 
 def ip_to_flag(ip):
     """
@@ -38,7 +40,7 @@ class Monitor:
 
     _sample_size = 12
 
-    def __init__(self, url):
+    def __init__(self, url, introsetMode=False):
         self.txrate = 0
         self.rxrate = 0
         self.data = dict()
@@ -52,6 +54,7 @@ class Monitor:
         self._rpc_socket.connect(url)
         self._speed_samples = [(0,0,0,0)] * self._sample_size
         self._run = True
+        self._introsetMode = introsetMode
 
     def rpc(self, method):
         self._rpc_socket.send_multipart([method.encode(), b'lokinetmon'+method.encode()])
@@ -104,8 +107,14 @@ class Monitor:
     @staticmethod
     def time_to(timestamp):
         """ return time until timestamp in seconds formatted"""
-        now = time.time() * 1000
-        return "{} seconds".format(int((timestamp - now) / 1000))
+        if timestamp:
+            val = int((timestamp - now()) / 1000)
+            if val < 0:
+                return "{} seconds ago".format(0-val)
+            else:
+                return "{} seconds".format(val)
+        else:
+            return 'never'
 
     @staticmethod
     def speed_of(rate):
@@ -343,6 +352,88 @@ class Monitor:
             self.win.addstr("search for {}".format(transaction["tx"]["target"]))
         return y_pos
 
+
+
+    def display_introsets(self, y_pos, service):
+        """
+        display introsets on a service
+        """
+        y_pos = self._display_our_introset(y_pos, service)
+        y_pos += 1
+        remotes = service['remoteSessions'] or []
+        for session in remotes:
+            y_pos = self._display_session_introset(y_pos, session)
+
+    def _display_intro(self, y_pos, intro, label, paths):
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], intro['path'][:4], self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
+        return y_pos
+
+    @staticmethod
+    def count_endpoints_in_path(paths, endpoint):
+        num = 0
+        for path in paths:
+            if path['hops'][-1]['router'] == endpoint and path['ready']:
+                num += 1
+        return num
+
+    @staticmethod
+    def make_bar(timestamp, scale=1, char='#'):
+        if timestamp > 0:
+            return int((abs(timestamp - now()) / 1000) / scale) * char
+        return ''
+
+    def _display_our_introset(self, y_pos, context):
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr("our introset")
+        for intro in context['introset']['intros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
+        return y_pos
+
+
+    def _display_session_introset(self, y_pos, context):
+        #print(context.keys())
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('{} ({})'.format(context['remoteIdentity'], context['currentConvoTag']))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last good send: {}'.format(self.time_to(context['lastGoodSend'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastGoodSend']))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last recv: {}'.format(self.time_to(context['lastRecv'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastRecv']))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last introset update: {}'.format(self.time_to(context['lastIntrosetUpdate'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastIntrosetUpdate'], 30))
+        y_pos += 2
+
+        self.win.move(y_pos, 1)
+        self.win.addstr('last shift: {}'.format(self.time_to(context['lastShift'])))
+
+        paths = context['paths']
+
+        y_pos = self._display_intro(y_pos + 1, context['nextIntro'], 'next intro', paths) + 1
+        y_pos = self._display_intro(y_pos, context['remoteIntro'], 'current intro', paths) + 1
+        for intro in context['currentRemoteIntroset']['intros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "introset intro", paths)
+        y_pos += 1
+        for intro in context['badIntros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "bad intro", paths)
+        y_pos += 1
+        return y_pos
+
+
     def display_data(self):
         """ draw main window """
         if self.data is not None:
@@ -351,12 +442,16 @@ class Monitor:
             services = self.data["services"] or {}
             y_pos = 3
             try:
-                y_pos = self.display_links(y_pos, self.data["links"])
-                for key in services:
-                    y_pos = self.display_service(y_pos, key, services[key])
-                y_pos = self.display_dht(y_pos, self.data["dht"])
-            except:
-                pass
+                if not self._introsetMode:
+                    y_pos = self.display_links(y_pos, self.data["links"])
+                    for key in services:
+                        y_pos = self.display_service(y_pos, key, services[key])
+                    y_pos = self.display_dht(y_pos, self.data["dht"])
+                else:
+                    for key in services:
+                        y_pos = self.display_introsets(y_pos, services[key])
+            except Exception as ex:
+                print('{}'.format(ex))
         else:
             self.win.move(1, 1)
             self.win.addstr("lokinet offline")
@@ -387,8 +482,13 @@ class Monitor:
 
 def main():
     """ main function """
+
+
+    introsetMode = '--introset' in sys.argv
+
     mon = Monitor(
-        len(sys.argv) > 1 and sys.argv[1] or "tcp://127.0.0.1:1190"
+        len(sys.argv) > 1 and sys.argv[1] or "tcp://127.0.0.1:1190",
+        introsetMode
     )
     mon.run()
 

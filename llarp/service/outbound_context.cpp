@@ -84,6 +84,7 @@ namespace llarp
         remoteIntro = m_NextIntro;
         m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+        ShiftIntroRouter(m_NextIntro.router);
       }
     }
 
@@ -149,6 +150,7 @@ namespace llarp
       if (selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
         return;
       m_NextIntro = selectedIntro;
+      lastShift = now;
     }
 
     void
@@ -281,6 +283,8 @@ namespace llarp
       obj["remoteIntro"] = remoteIntro.ExtractStatus();
       obj["sessionCreatedAt"] = to_json(createdAt);
       obj["lastGoodSend"] = to_json(lastGoodSend);
+      obj["lastRecv"] = to_json(m_LastInboundTraffic);
+      obj["lastIntrosetUpdate"] = to_json(m_LastIntrosetUpdateAt);
       obj["seqno"] = sequenceNo;
       obj["markedBad"] = markedBad;
       obj["lastShift"] = to_json(lastShift);
@@ -311,22 +315,19 @@ namespace llarp
       if (m_LookupFails > 16 || m_BuildFails > 10)
         return true;
 
-      constexpr auto InboundTrafficTimeout = 5s;
-
       if (ReadyToSend() and remoteIntro.router.IsZero())
       {
         SwapIntros();
       }
 
-      if (m_GotInboundTraffic and m_LastInboundTraffic + InboundTrafficTimeout <= now)
+      if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
       {
-        if (std::chrono::abs(now - lastGoodSend) < InboundTrafficTimeout)
-        {
-          // timeout on other side
-          MarkCurrentIntroBad(now);
-        }
+        // timeout on other side
+        MarkCurrentIntroBad(now);
+        ShiftIntroRouter(remoteIntro.router);
+        if (not BuildCooldownHit(now))
+          BuildOneAlignedTo(m_NextIntro.router);
       }
-
       // check for stale intros
       // update the introset if we think we need to
       if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread))
@@ -364,10 +365,10 @@ namespace llarp
         // send a keep alive to keep this session alive
         KeepAlive();
       }
-
+      const auto timeout = std::min(lastGoodSend, m_LastInboundTraffic);
       // if we are dead return true so we are removed
-      return lastGoodSend > 0s ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
-                               : (now >= createdAt && now - createdAt > connectTimeout);
+      return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
+                          : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
     void
@@ -408,6 +409,10 @@ namespace llarp
         return false;
       if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
+
+      if (m_BadIntros.count(remoteIntro))
+        return true;
+
       bool good = false;
       ForEachPath([now, &good](path::Path_ptr path) {
         if (not path->IsReady())
