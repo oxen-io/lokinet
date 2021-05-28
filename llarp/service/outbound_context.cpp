@@ -64,11 +64,10 @@ namespace llarp
 
     {
       updatingIntroSet = false;
-      for (const auto& intro : introset.intros)
-      {
-        if (intro.expiresAt > m_NextIntro.expiresAt)
-          m_NextIntro = intro;
-      }
+      auto itr = introset.intros.begin();
+      if (introset.intros.size() > 1)
+        std::advance(itr, randint() % introset.intros.size());
+      m_NextIntro = *itr;
 
       currentConvoTag.Randomize();
     }
