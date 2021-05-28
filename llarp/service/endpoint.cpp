@@ -152,7 +152,8 @@ namespace llarp
       introSet().intros.clear();
       for (auto& intro : introset)
       {
-        introSet().intros.emplace_back(std::move(intro));
+        if (introSet().intros.size() < numDesiredPaths)
+          introSet().intros.emplace_back(std::move(intro));
       }
       if (introSet().intros.empty())
       {
@@ -1891,11 +1892,11 @@ namespace llarp
     {
       if (BuildCooldownHit(now))
         return false;
-      const auto requiredPaths = std::max(
-          std::max(numDesiredPaths, path::min_intro_paths) / path::intro_spread_slices, size_t{3});
+      const auto requiredPaths = std::max(numDesiredPaths, path::min_intro_paths);
       if (NumInStatus(path::ePathBuilding) >= requiredPaths)
         return false;
-      return NumPathsExistingAt(now + path::intro_path_spread) < requiredPaths;
+      return NumPathsExistingAt(now + (path::default_lifetime - path::intro_path_spread))
+          < requiredPaths;
     }
 
     AbstractRouter*

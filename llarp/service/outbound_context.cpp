@@ -360,12 +360,12 @@ namespace llarp
         m_ReadyHooks.clear();
       }
 
-      if (lastGoodSend > 0s and now >= lastGoodSend + (sendTimeout / 2))
+      const auto timeout = std::min(lastGoodSend, m_LastInboundTraffic);
+      if (lastGoodSend > 0s and now >= timeout + (sendTimeout / 2))
       {
         // send a keep alive to keep this session alive
         KeepAlive();
       }
-      const auto timeout = std::min(lastGoodSend, m_LastInboundTraffic);
       // if we are dead return true so we are removed
       return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
                           : (now >= createdAt && now - createdAt > connectTimeout);

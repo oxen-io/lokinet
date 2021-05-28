@@ -367,7 +367,8 @@ class Monitor:
     def _display_intro(self, y_pos, intro, label, paths):
         y_pos += 1
         self.win.move(y_pos, 1)
-        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], intro['path'][:4], self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
+        path = 'path' in intro and intro['path'][:4] or '????'
+        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
         return y_pos
 
     @staticmethod
@@ -421,7 +422,7 @@ class Monitor:
         self.win.move(y_pos, 1)
         self.win.addstr('last shift: {}'.format(self.time_to(context['lastShift'])))
 
-        paths = context['paths']
+        paths = context['paths'] or []
 
         y_pos = self._display_intro(y_pos + 1, context['nextIntro'], 'next intro', paths) + 1
         y_pos = self._display_intro(y_pos, context['remoteIntro'], 'current intro', paths) + 1
