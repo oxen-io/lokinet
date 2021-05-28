@@ -64,11 +64,11 @@ namespace llarp
 
     {
       updatingIntroSet = false;
-      auto itr = introset.intros.begin();
-      if (introset.intros.size() > 1)
-        std::advance(itr, randint() % introset.intros.size());
-      m_NextIntro = *itr;
-
+      for (const auto& intro : introset.intros)
+      {
+        if (m_NextIntro.latency == 0s or m_NextIntro.latency > intro.latency)
+          m_NextIntro = intro;
+      }
       currentConvoTag.Randomize();
     }
 
