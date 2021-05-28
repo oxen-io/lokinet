@@ -892,20 +892,6 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if (not isSvcNode)
-    {
-      // close any sessions to edges that are timing out really bad
-      linkManager().ForEachPeer([this](ILinkSession* session) {
-        if (not session)
-          return;
-        const RouterID pk{session->GetPubKey()};
-        if (routerProfiling().IsBadForPath(pk, 16))
-        {
-          session->Close();
-        }
-      });
-    }
-
     // save profiles
     if (routerProfiling().ShouldSave(now) and m_Config->network.m_saveProfiles)
     {
