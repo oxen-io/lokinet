@@ -26,6 +26,9 @@ public class LokinetDaemon extends VpnService
 
   private static native String DetectFreeRange();
 
+  public native String DumpStatus();
+
+
   public static final String LOG_TAG = "LokinetDaemon";
 
   ByteBuffer impl = null;
