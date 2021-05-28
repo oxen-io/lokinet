@@ -957,6 +957,8 @@ namespace llarp
           else
             pkt.UpdateIPv6Address({0}, {0});
         }
+        if (SendToOrQueue(to, pkt.ConstBuffer(), type))
+          return;
         EnsurePathTo(
             to,
             [pkt, type, dst, this](auto maybe) {
