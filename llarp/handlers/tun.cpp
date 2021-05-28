@@ -957,12 +957,15 @@ namespace llarp
           else
             pkt.UpdateIPv6Address({0}, {0});
         }
-        if (SendToOrQueue(to, pkt.Buffer(), type))
-        {
-          MarkIPActive(dst);
-          return;
-        }
-        llarp::LogWarn(Name(), " did not flush packets");
+        EnsurePathTo(
+            to,
+            [pkt, type, dst, this](auto maybe) {
+              if (maybe and SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+              {
+                MarkIPActive(dst);
+              }
+            },
+            PathAlignmentTimeout());
       });
     }
 
