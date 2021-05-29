@@ -9,6 +9,7 @@
 #include <llarp/service/context.hpp>
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/bootstrap.hpp>
 
 #include <mutex>
 
@@ -238,13 +239,26 @@ extern "C"
   int
   lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
   {
-    llarp_buffer_t buf{data, datalen};
-    llarp::RouterContact rc{};
     if (ctx == nullptr)
       return -3;
+    llarp_buffer_t buf{data, datalen};
+    llarp::RouterContact rc{};
     auto lock = ctx->acquire();
     // add a temp cryptography implementation here so rc.Verify works
     llarp::CryptoManager instance{new llarp::sodium::CryptoLibSodium{}};
+    if(data[0] == 'l')
+    {
+      llarp::BootstrapList list{};
+      if(not list.BDecode(&buf))
+        return -1;
+      for(const auto & rc : list)
+      {
+        if(not rc.Verify(llarp::time_now_ms()))
+          return -1;
+      }
+      ctx->config->bootstrap.routers.insert(list.begin(), list.end());
+      return 0;
+    }
     if (not rc.BDecode(&buf))
       return -1;
     if (not rc.Verify(llarp::time_now_ms()))

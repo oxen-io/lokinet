@@ -15,7 +15,7 @@ from ctypes.util import find_library
 
 import selectors
 import socket
-
+import subprocess
 import os
 
 class ResultStruct(ctypes.Structure):
@@ -213,6 +213,7 @@ ap.add_argument("--expose", type=int, help="expose a port to loopback")
 ap.add_argument("--bootstrap", type=str, help="bootstrap file", default="bootstrap.signed")
 ap.add_argument("--netid", type=str, help="override network id")
 ap.add_argument("--debug", action="store_const", const=True, default=False, help="enable verose logging")
+ap.add_argument('--browser', type=str, help='run browser with lnproxy')
 if bootstrapFromURL:
     ap.add_argument("--bootstrap-url", type=str, help="bootstrap from remote url", default="https://seed.lokinet.org/lokinet.signed")
 
@@ -255,6 +256,9 @@ try:
     if args.expose:
         id = ctx.expose(args.expose)
         print("exposed {}:{}".format(lokiaddr, args.expose))
+    if args.browser:
+        print('spawning browser')
+        subprocess.call("{} --proxy-server=http://{}:{}/ & disown".format(args.browser,*args))
     print("serving on {}:{}".format(*addr))
     server.serve_forever()
 finally:
