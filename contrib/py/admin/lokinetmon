@@ -4,17 +4,64 @@ import curses
 import json
 import sys
 import time
+import platform
+import os
+from argparse import ArgumentParser as AP
 
-import zmq
+is_windows = lambda : platform.system().lower() == 'windows'
+is_linux = lambda : platform.system().lower() == 'linux'
+
+
+try:
+    import zmq
+except ImportError:
+    print("zmq module not found")
+    print()
+    if is_linux():
+        print("for debian-based linux do:")
+        print("\tsudo apt install python3-zmq")
+        print("for other linuxs do:")
+        print("\tpip3 install --user zmq")
+    else:
+        print("install it with:")
+        print("\tpip3 install --user zmq")
+    sys.quit()
 
 geo = None
 
 try:
     import GeoIP
-    geo = GeoIP.open("/usr/share/GeoIP/GeoIP.dat", GeoIP.GEOIP_STANDARD)
-except Exception as ex:
-    print('no geoip: {}'.format(ex))
-    time.sleep(1)
+except ImportError:
+    print("geoip module not found")
+    print()
+    if is_linux():
+        print("for debian-based linux do:")
+        print("\tsudo apt install python3-geoip")
+        print("for other linuxs do:")
+        print("\tpip3 install --user geoip")
+        print("for other linuxs you are responsible for obtaining your owen geoip databases, glhf")
+    else:
+        print("install it with:")
+        print("\tpip3 install --user geoip")
+    print("")
+    print("press enter to continue without geoip")
+    sys.stdin.read(1)
+else:
+    try:
+        geoip_env_var = 'GEOIP_DB_FILE'
+        if is_windows():
+            geoip_default_db = '.\\GeoIP.dat'
+        else:
+            geoip_default_db = "/usr/share/GeoIP/GeoIP.dat"
+        geoip_db_file = geoip_env_var in os.environ and os.environ[geoip_env_var] or geoip_default_db
+        if not os.path.exists(geoip_db_file):
+            print("no geoip database found at {}".format(geoip_db_file))
+            print("you can override the path to it using the {} environmental variable".format(geoip_env_var))
+            sys.quit()
+        geo = GeoIP.open(geoip_db_file, GeoIP.GEOIP_STANDARD)
+    except Exception as ex:
+        print('failed to load geoip database: {}'.format(ex))
+        time.sleep(1)
 
 now = lambda : int(time.time()) * 1000
 
@@ -380,6 +427,16 @@ class Monitor:
         return num
 
     @staticmethod
+    def count_ready_paths(paths):
+        num = 0
+        for path in paths:
+            if path['ready']:
+                num += 1
+        return num
+
+
+
+    @staticmethod
     def make_bar(timestamp, scale=1, char='#'):
         if timestamp > 0:
             return int((abs(timestamp - now()) / 1000) / scale) * char
@@ -391,6 +448,9 @@ class Monitor:
         self.win.addstr("our introset")
         for intro in context['introset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
+        y_pos += 2
+        self.win.move(y_pos, 1)
+        self.win.addstr("inbound paths: {}".format(self.count_ready_paths(context['paths'])))
         return y_pos
 
 
@@ -484,12 +544,16 @@ class Monitor:
 def main():
     """ main function """
 
+    ap = AP()
 
-    introsetMode = '--introset' in sys.argv
+    ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
+    ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
+
+    args = ap.parse_args()
 
     mon = Monitor(
-        len(sys.argv) > 1 and sys.argv[1] or "tcp://127.0.0.1:1190",
-        introsetMode
+        args.url,
+        args.introset
     )
     mon.run()
 
