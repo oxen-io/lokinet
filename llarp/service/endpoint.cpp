@@ -716,7 +716,8 @@ namespace llarp
         return false;
 
       auto next_pub = m_state->m_LastPublishAttempt
-          + (m_state->m_IntroSet.HasStaleIntros(now, path::min_intro_lifetime)
+          + (m_state->m_IntroSet.HasStaleIntros(
+                 now, path::default_lifetime - path::intro_path_spread)
                  ? IntrosetPublishRetryCooldown
                  : IntrosetPublishInterval);
 
