@@ -101,13 +101,14 @@ namespace llarp
     {
       const auto now = llarp::time_now_ms();
       m_LastIntrosetRegenAttempt = now;
-      std::set<Introduction> introset;
+      std::set<Introduction, CompareIntroTimestamp> intros;
       if (const auto maybe =
               GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
-                return not intro.ExpiresSoon(now, path::min_intro_lifetime);
+                return not intro.ExpiresSoon(
+                    now, path::default_lifetime - path::min_intro_lifetime);
               }))
       {
-        introset = *maybe;
+        intros.insert(maybe->begin(), maybe->end());
       }
       else
       {
@@ -150,7 +151,7 @@ namespace llarp
       }
 
       introSet().intros.clear();
-      for (auto& intro : introset)
+      for (auto& intro : intros)
       {
         if (introSet().intros.size() < numDesiredPaths)
           introSet().intros.emplace_back(std::move(intro));
