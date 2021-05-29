@@ -405,6 +405,9 @@ class Monitor:
         """
         display introsets on a service
         """
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr("localhost.loki")
         y_pos = self._display_our_introset(y_pos, service)
         y_pos += 1
         remotes = service['remoteSessions'] or []
@@ -443,14 +446,10 @@ class Monitor:
         return ''
 
     def _display_our_introset(self, y_pos, context):
-        y_pos += 1
-        self.win.move(y_pos, 1)
-        self.win.addstr("our introset")
         for intro in context['introset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
-        y_pos += 2
-        self.win.move(y_pos, 1)
-        self.win.addstr("inbound paths: {}".format(self.count_ready_paths(context['paths'])))
+        for path in context['paths']:
+            y_pos = self._display_intro(y_pos, path['intro'], "inbound path intro", context['paths'])
         return y_pos
 
 
