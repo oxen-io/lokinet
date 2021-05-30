@@ -766,46 +766,33 @@ namespace llarp
       path::Builder::PathBuildStarted(path);
     }
 
-    constexpr auto MaxOutboundContextPerRemote = 2;
+    constexpr auto MaxOutboundContextPerRemote = 1;
 
     void
     Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
     {
-      Address addr{introset.addressKeys.Addr()};
+      const Address addr{introset.addressKeys.Addr()};
 
       auto& remoteSessions = m_state->m_RemoteSessions;
       auto& serviceLookups = m_state->m_PendingServiceLookups;
 
-      if (remoteSessions.count(addr) >= MaxOutboundContextPerRemote)
+      if (remoteSessions.count(addr) < MaxOutboundContextPerRemote)
       {
-        auto sessionRange = remoteSessions.equal_range(addr);
-        for (auto itr = sessionRange.first; itr != sessionRange.second; ++itr)
-        {
-          auto range = serviceLookups.equal_range(addr);
-          auto i = range.first;
-          while (i != range.second)
-          {
-            itr->second->AddReadyHook(
-                [callback = i->second, addr](auto session) { callback(addr, session); }, left);
-            ++i;
-          }
-        }
-        serviceLookups.erase(addr);
-        return;
+        remoteSessions.emplace(addr, std::make_shared<OutboundContext>(introset, this));
+        LogInfo("Created New outbound context for ", addr.ToString());
       }
 
-      auto session = std::make_shared<OutboundContext>(introset, this);
-      remoteSessions.emplace(addr, session);
-      LogInfo("Created New outbound context for ", addr.ToString());
-
-      // inform pending
-      auto range = serviceLookups.equal_range(addr);
-      auto itr = range.first;
-      if (itr != range.second)
+      auto sessionRange = remoteSessions.equal_range(addr);
+      for (auto itr = sessionRange.first; itr != sessionRange.second; ++itr)
       {
-        session->AddReadyHook(
-            [callback = itr->second, addr](auto session) { callback(addr, session); }, left);
-        ++itr;
+        auto range = serviceLookups.equal_range(addr);
+        auto i = range.first;
+        while (i != range.second)
+        {
+          itr->second->AddReadyHook(
+              [callback = i->second, addr](auto session) { callback(addr, session); }, left);
+          ++i;
+        }
       }
       serviceLookups.erase(addr);
     }
