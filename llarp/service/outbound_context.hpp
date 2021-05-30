@@ -138,11 +138,10 @@ namespace llarp
       void
       SwapIntros();
 
-      void
-      OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
-
       bool
       IntroGenerated() const override;
+      bool
+      IntroSent() const override;
 
       const dht::Key_t location;
       const Address addr;
@@ -156,6 +155,7 @@ namespace llarp
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
       bool generatedIntro = false;
+      bool sentIntro = false;
       std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
     };

@@ -77,6 +77,8 @@ namespace llarp
      private:
       virtual bool
       IntroGenerated() const = 0;
+      virtual bool
+      IntroSent() const = 0;
 
       void
       EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);

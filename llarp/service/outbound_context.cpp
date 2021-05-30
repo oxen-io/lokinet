@@ -206,6 +206,7 @@ namespace llarp
         return;
       }
       auto frame = std::make_shared<ProtocolFrame>();
+      frame->Clear();
       auto ex = std::make_shared<AsyncKeyExchange>(
           m_Endpoint->Loop(),
           remoteIdent,
@@ -217,7 +218,7 @@ namespace llarp
           t);
 
       ex->hook = [self = shared_from_this(), path](auto frame) {
-        self->Send(std::move(frame), path);
+        self->sentIntro = self->Send(std::move(frame), path);
       };
 
       ex->msg.PutBuffer(payload);
@@ -225,7 +226,11 @@ namespace llarp
       frame->F = ex->msg.introReply.pathID;
       frame->R = 0;
       generatedIntro = true;
+      // ensure we have a sender put for this convo tag
+      m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
+      // encrypt frame async
       m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
+
       LogInfo(Name(), " send intro frame T=", currentConvoTag);
     }
 
@@ -406,14 +411,14 @@ namespace llarp
       if (m_BadIntros.count(remoteIntro))
         return true;
 
-      bool good = false;
-      ForEachPath([now, &good](path::Path_ptr path) {
+      size_t numValidPaths = 0;
+      ForEachPath([now, &numValidPaths](path::Path_ptr path) {
         if (not path->IsReady())
           return;
         if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
-          good = true;
+          numValidPaths++;
       });
-      return not good;
+      return numValidPaths < numDesiredPaths;
     }
 
     void
@@ -430,9 +435,15 @@ namespace llarp
     }
 
     bool
+    OutboundContext::IntroSent() const
+    {
+      return sentIntro;
+    }
+
+    bool
     OutboundContext::IntroGenerated() const
     {
-      return generatedIntro;
+      return sentIntro;
     }
 
     bool

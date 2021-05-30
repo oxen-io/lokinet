@@ -144,11 +144,15 @@ namespace llarp
     void
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data, ProtocolType protocol)
     {
-      if (IntroGenerated())
+      if (IntroSent())
       {
         EncryptAndSendTo(data, protocol);
         return;
       }
+      // have we generated the initial intro but not sent it yet? bail here so we don't cause
+      // bullshittery
+      if (IntroGenerated() and not IntroSent())
+        return;
       const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
       if (maybe.has_value())
       {
