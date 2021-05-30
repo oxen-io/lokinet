@@ -236,6 +236,27 @@ extern "C"
     return strdup(addrStr.c_str());
   }
 
+  void
+  lokinet_set_exit(const char* addr, struct lokinet_context* ctx)
+  {
+    if (not ctx)
+      return;
+    if (not addr)
+      return;
+
+    std::string exit{addr};
+    std::promise<void> result;
+    auto lock = ctx->acquire();
+    ctx->impl->CallSafe([exit, ctx, &result]() {
+      auto ep = ctx->endpoint();
+      if (ep)
+      {}
+      result.set_value();
+    });
+    auto ftr = result.get_future();
+    ftr.get();
+  }
+
   int
   lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
   {

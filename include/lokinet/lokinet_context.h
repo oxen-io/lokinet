@@ -52,6 +52,10 @@ extern "C"
   void
   lokinet_set_hop_length(int numhops, struct lokinet_context*);
 
+  /// set the exit node we want to use
+  void
+  lokient_set_exit(const char*, struct lokinet_context*);
+
 #ifdef __cplusplus
 }
 #endif
