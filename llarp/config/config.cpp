@@ -729,12 +729,9 @@ namespace llarp
           }
           if (!arg.empty())
           {
-            auto& addr = m_upstreamDNS.emplace_back(std::move(arg));
-            if (auto p = addr.getPort(); p && *p != 53)
-              // unbound doesn't support non-default ports so bail if the user gave one
-              throw std::invalid_argument(
-                  "Invalid [dns] upstream setting: non-default DNS ports are not supported");
-            addr.setPort(std::nullopt);
+            auto& entry = m_upstreamDNS.emplace_back(std::move(arg));
+            if (!entry.getPort())
+              entry.setPort(53);
           }
         });
 
@@ -746,7 +743,7 @@ namespace llarp
             "Address to bind to for handling DNS requests.",
         },
         [=](std::string arg) {
-          m_bind = IpAddress{std::move(arg)};
+          m_bind = SockAddr{std::move(arg)};
           if (!m_bind.getPort())
             m_bind.setPort(53);
         });

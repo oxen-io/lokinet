@@ -135,8 +135,8 @@ namespace llarp
 
   struct DnsConfig
   {
-    IpAddress m_bind;
-    std::vector<IpAddress> m_upstreamDNS;
+    SockAddr m_bind;
+    std::vector<SockAddr> m_upstreamDNS;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

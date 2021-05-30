@@ -50,7 +50,7 @@ namespace llarp::dns
     Init();
 
     bool
-    AddUpstreamResolver(const std::string& upstreamResolverIP);
+    AddUpstreamResolver(const SockAddr& upstreamResolverIP);
 
     void
     Lookup(SockAddr to, SockAddr from, Message msg);

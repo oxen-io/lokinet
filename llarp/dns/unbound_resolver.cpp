@@ -2,6 +2,7 @@
 
 #include "server.hpp"
 #include <llarp/util/buffer.hpp>
+#include <sstream>
 
 namespace llarp::dns
 {
@@ -105,9 +106,12 @@ namespace llarp::dns
   }
 
   bool
-  UnboundResolver::AddUpstreamResolver(const std::string& upstreamResolverIP)
+  UnboundResolver::AddUpstreamResolver(const SockAddr& upstreamResolver)
   {
-    if (ub_ctx_set_fwd(unboundContext, upstreamResolverIP.c_str()) != 0)
+    std::stringstream ss;
+    ss << upstreamResolver.hostString() << "@" << upstreamResolver.getPort();
+    const auto str = ss.str();
+    if (ub_ctx_set_fwd(unboundContext, str.c_str()) != 0)
     {
       Reset();
       return false;
