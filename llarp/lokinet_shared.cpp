@@ -246,14 +246,14 @@ extern "C"
     auto lock = ctx->acquire();
     // add a temp cryptography implementation here so rc.Verify works
     llarp::CryptoManager instance{new llarp::sodium::CryptoLibSodium{}};
-    if(data[0] == 'l')
+    if (data[0] == 'l')
     {
       llarp::BootstrapList list{};
-      if(not list.BDecode(&buf))
+      if (not list.BDecode(&buf))
         return -1;
-      for(const auto & rc : list)
+      for (const auto& rc : list)
       {
-        if(not rc.Verify(llarp::time_now_ms()))
+        if (not rc.Verify(llarp::time_now_ms()))
           return -1;
       }
       ctx->config->bootstrap.routers.insert(list.begin(), list.end());

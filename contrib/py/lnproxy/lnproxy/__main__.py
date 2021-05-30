@@ -54,7 +54,7 @@ class Context:
         if self._debug:
             lvl = 'debug'
         self._ln.lokinet_log_level(ctypes.create_string_buffer(lvl.encode('ascii')))
-
+        self.exit_addr = None
 
     def free(self, ptr):
         self._c.free(ptr)
@@ -163,7 +163,10 @@ class Handler(BaseHandler):
         if not ctx.ready():
             self.send_error(501)
             return
-
+        forward_req = None
+        if host.split(':')[0].split('.')[-1] not in ['loki', 'snode']:
+            forward_req = host
+            host = ctx.exit_addr
         if not ctx.hasAddr(host):
             stream = Stream(ctx)
             result = None
@@ -179,16 +182,23 @@ class Handler(BaseHandler):
         sock = socket.socket()
         try:
             sock.connect(ctx.getAddr(host))
-        except:
+        except Exception as ex:
+            print(ex)
             ctx.delAddr(host)
             self.send_error(504)
             return
+        sockfd = sock.makefile('rwb')
+        if forward_req:
+            sock.send('CONNECT {} HTTP/1.1\r\n\r\n'.format(forward_req).encode('ascii'))
+            while True:
+                line = sockfd.readline()
+                if line == b'\r\n':
+                    break
 
         self.send_response_only(200)
         self.end_headers()
-        sel = selectors.DefaultSelector()
         sock.setblocking(False)
-        sockfd = sock.makefile('rwb')
+        sel = selectors.DefaultSelector()
         sel.register(self.rfile.fileno(), selectors.EVENT_READ, lambda x : read_and_forward_or_close(x, sockfd))
         sel.register(sock.fileno(), selectors.EVENT_READ, lambda x : read_and_forward_or_close(x, self.wfile))
         while True:
@@ -205,6 +215,7 @@ class Handler(BaseHandler):
 import os
 import sys
 from argparse import ArgumentParser as AP
+from threading import Thread
 
 ap = AP()
 ap.add_argument("--ip", type=str, help="ip to bind to", default="127.0.0.1")
@@ -214,6 +225,7 @@ ap.add_argument("--bootstrap", type=str, help="bootstrap file", default="bootstr
 ap.add_argument("--netid", type=str, help="override network id")
 ap.add_argument("--debug", action="store_const", const=True, default=False, help="enable verose logging")
 ap.add_argument('--browser', type=str, help='run browser with lnproxy')
+ap.add_argument('--exit', type=str, help='exit node to use for non lokinet traffic')
 if bootstrapFromURL:
     ap.add_argument("--bootstrap-url", type=str, help="bootstrap from remote url", default="https://seed.lokinet.org/lokinet.signed")
 
@@ -247,21 +259,27 @@ if ctx.start() != 0:
     sys.exit(-1)
 
 id = None
-
+t = None
 try:
     while not ctx.wait_for_ready(500):
         print("waiting for lokinet...")
     lokiaddr = ctx.addr()
     print("we are {}".format(lokiaddr))
+    ctx.exit_addr = args.exit
     if args.expose:
         id = ctx.expose(args.expose)
         print("exposed {}:{}".format(lokiaddr, args.expose))
     if args.browser:
-        print('spawning browser')
-        subprocess.call("{} --proxy-server=http://{}:{}/ & disown".format(args.browser,*args))
+        args = [args.browser, "--proxy-server={}:{}".format(*addr)]
+        print('spawning browser: {}'.format(args))
+        spawn = lambda : subprocess.call(args)
+        t = Thread(target=spawn)
+        t.start()
     print("serving on {}:{}".format(*addr))
     server.serve_forever()
 finally:
     if id is not None:
         ctx.ln_call("lokinet_close_stream", id)
     ctx.stop()
+    if t:
+        t.join()
