@@ -22,6 +22,7 @@ namespace llarp
     constexpr uint16_t flags_TC = (1 << 9);
     constexpr uint16_t flags_RD = (1 << 8);
     constexpr uint16_t flags_RA = (1 << 7);
+    constexpr uint16_t flags_RCODERefused = (5);
     constexpr uint16_t flags_RCODENameError = (3);
     constexpr uint16_t flags_RCODEServFail = (2);
     constexpr uint16_t flags_RCODENoError = (0);

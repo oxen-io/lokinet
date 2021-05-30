@@ -144,6 +144,18 @@ namespace llarp
       }
     }
 
+    void Message::Refused(RR_TTL_t)
+    {
+      if (questions.size())
+      {
+        hdr_fields |= flags_RCODERefused;
+        // authorative response with recursion available
+        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        // don't allow recursion on this request
+        hdr_fields &= ~flags_RD;
+      }
+    }
+
     static constexpr uint16_t
     reply_flags(uint16_t setbits)
     {

@@ -166,8 +166,8 @@ namespace llarp::dns
     else if (not m_UnboundResolver)
     {
       // no upstream resolvers
-      // let's serv fail it
-      msg.AddServFail();
+      // tell it "no"
+      msg.Refused();
       SendServerMessageBufferTo(resolver, from, msg.ToBuffer());
     }
     else

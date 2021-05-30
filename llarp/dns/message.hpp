@@ -56,6 +56,9 @@ namespace llarp
       AddServFail(RR_TTL_t ttl = 30);
 
       void
+      Refused(RR_TTL_t ttl = 30);
+
+      void
       AddMXReply(std::string name, uint16_t priority, RR_TTL_t ttl = 1);
 
       void
