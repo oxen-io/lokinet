@@ -63,6 +63,9 @@ namespace llarp
       }
 
       virtual void
+      ShiftIntroRouter(const RouterID) = 0;
+
+      virtual void
       UpdateIntroSet() = 0;
 
       virtual void
@@ -72,6 +75,9 @@ namespace llarp
       AsyncSendAuth(std::function<void(AuthResult)> replyHandler);
 
      private:
+      virtual bool
+      IntroGenerated() const = 0;
+
       void
       EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 

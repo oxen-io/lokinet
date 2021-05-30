@@ -191,7 +191,7 @@ namespace llarp
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
     {
-      if (sentIntro)
+      if (generatedIntro)
         return;
       if (remoteIntro.router.IsZero())
       {
@@ -199,20 +199,12 @@ namespace llarp
         return;
       }
 
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+      auto path = GetPathByRouter(remoteIntro.router);
       if (path == nullptr)
       {
-        // try parent as fallback
-        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
-        if (path == nullptr)
-        {
-          if (!BuildCooldownHit(Now()))
-            BuildOneAlignedTo(remoteIntro.router);
-          LogWarn(Name(), " dropping intro frame, no path to ", remoteIntro.router);
-          return;
-        }
+        LogError(Name(), " has no path to ", remoteIntro.router, " when we should have had one");
+        return;
       }
-      sentIntro = true;
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
           m_Endpoint->Loop(),
@@ -232,15 +224,15 @@ namespace llarp
       ex->msg.introReply = path->intro;
       frame->F = ex->msg.introReply.pathID;
       frame->R = 0;
+      generatedIntro = true;
       m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
-      LogInfo("send intro frame");
+      LogInfo(Name(), " send intro frame T=", currentConvoTag);
     }
 
     std::string
     OutboundContext::Name() const
     {
-      return "OBContext:" + m_Endpoint->Name() + "-"
-          + currentIntroSet.addressKeys.Addr().ToString();
+      return "OBContext:" + currentIntroSet.addressKeys.Addr().ToString();
     }
 
     void
@@ -319,7 +311,8 @@ namespace llarp
         SwapIntros();
       }
 
-      if (m_BadIntros.count(remoteIntro) and GetPathByRouter(m_NextIntro.router))
+      if ((remoteIntro.router.IsZero() or m_BadIntros.count(remoteIntro))
+          and GetPathByRouter(m_NextIntro.router))
         SwapIntros();
 
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
@@ -434,6 +427,12 @@ namespace llarp
     {
       // insert bad intro
       m_BadIntros[intro] = now;
+    }
+
+    bool
+    OutboundContext::IntroGenerated() const
+    {
+      return generatedIntro;
     }
 
     bool

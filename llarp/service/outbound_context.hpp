@@ -57,7 +57,7 @@ namespace llarp
 
       /// shift the intro off the current router it is using
       void
-      ShiftIntroRouter(const RouterID remote);
+      ShiftIntroRouter(const RouterID remote) override;
 
       /// mark the current remote intro as bad
       void
@@ -141,6 +141,9 @@ namespace llarp
       void
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
+      bool
+      IntroGenerated() const override;
+
       const dht::Key_t location;
       const Address addr;
       uint64_t m_UpdateIntrosetTX = 0;
@@ -152,7 +155,7 @@ namespace llarp
       uint16_t m_BuildFails = 0;
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
-      bool sentIntro = false;
+      bool generatedIntro = false;
       std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
     };
