@@ -457,7 +457,8 @@ class Monitor:
         #print(context.keys())
         y_pos += 1
         self.win.move(y_pos, 1)
-        self.win.addstr('{} ({})'.format(context['remoteIdentity'], context['currentConvoTag']))
+        readyState = context['readyToSend'] and '✔️' or '❌'
+        self.win.addstr('{} ({}) [{}]'.format(context['remoteIdentity'], context['currentConvoTag'], readyState))
         y_pos += 1
         self.win.move(y_pos, 1)
         self.win.addstr('last good send: {}'.format(self.time_to(context['lastGoodSend'])))

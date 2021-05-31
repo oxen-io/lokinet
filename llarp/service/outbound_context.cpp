@@ -70,6 +70,7 @@ namespace llarp
           m_NextIntro = intro;
       }
       currentConvoTag.Randomize();
+      lastShift = Now();
     }
 
     OutboundContext::~OutboundContext() = default;
@@ -287,7 +288,7 @@ namespace llarp
       obj["remoteIdentity"] = addr.ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"] = m_NextIntro.ExtractStatus();
-
+      obj["readyToSend"] = ReadyToSend();
       std::transform(
           m_BadIntros.begin(),
           m_BadIntros.end(),
@@ -450,8 +451,8 @@ namespace llarp
     OutboundContext::ShiftIntroduction(bool rebuild)
     {
       bool success = false;
-      auto now = Now();
-      if (now - lastShift < MIN_SHIFT_INTERVAL)
+      const auto now = Now();
+      if (abs(now - lastShift) < shiftTimeout)
         return false;
       bool shifted = false;
       std::vector<Introduction> intros = currentIntroSet.intros;

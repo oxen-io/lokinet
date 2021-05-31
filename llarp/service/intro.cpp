@@ -67,8 +67,9 @@ namespace llarp
     std::ostream&
     Introduction::print(std::ostream& stream, int level, int spaces) const
     {
+      const RouterID r{router};
       Printer printer(stream, level, spaces);
-      printer.printAttribute("k", RouterID(router));
+      printer.printAttribute("k", r.ToString());
       printer.printAttribute("l", latency.count());
       printer.printAttribute("p", pathID);
       printer.printAttribute("v", version);

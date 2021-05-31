@@ -46,6 +46,7 @@ namespace llarp
       const llarp_time_t createdAt;
       llarp_time_t sendTimeout = path::build_timeout * 2;
       llarp_time_t connectTimeout = path::build_timeout * 4;
+      llarp_time_t shiftTimeout = (path::build_timeout * 5) / 2;
       llarp_time_t estimatedRTT = 0s;
       bool markedBad = false;
       using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
