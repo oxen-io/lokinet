@@ -966,6 +966,15 @@ namespace llarp
           // it's an inbound session so let's not build back better
           if (not WantsOutboundSession(*ptr))
             return;
+          EnsurePathToService(
+              *ptr,
+              [pkt, type, this](auto addr, auto* ctx) {
+                if (ctx == nullptr)
+                  return;
+                SendToOrQueue(addr, pkt.ConstBuffer(), type);
+              },
+              PathAlignmentTimeout());
+          return;
         }
         // it's an inbound session or a snode session let's gooooo
         EnsurePathTo(
