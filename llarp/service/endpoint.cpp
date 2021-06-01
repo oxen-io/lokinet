@@ -1075,8 +1075,8 @@ namespace llarp
         intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
         PutSenderFor(msg->tag, msg->sender, true);
         PutIntroFor(msg->tag, intro);
-        PutReplyIntroFor(msg->tag, path->intro);
       }
+      PutReplyIntroFor(msg->tag, path->intro);
       ConvoTagRX(msg->tag);
       return ProcessDataMessage(msg);
     }
