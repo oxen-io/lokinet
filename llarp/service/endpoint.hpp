@@ -331,6 +331,9 @@ namespace llarp
 
       using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
+      void
+      InformPathToService(const Address remote, OutboundContext* ctx);
+
       /// ensure a path to a service node by public key
       bool
       EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);

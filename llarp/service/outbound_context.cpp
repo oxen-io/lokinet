@@ -324,6 +324,7 @@ namespace llarp
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
       {
         // timeout on other side
+        UpdateIntroSet();
         MarkCurrentIntroBad(now);
         ShiftIntroRouter(remoteIntro.router);
       }
@@ -381,6 +382,7 @@ namespace llarp
       if (m_ReadyHooks.empty())
       {
         m_router->loop()->call_later(timeout, [this]() {
+          LogWarn(Name(), " did not obtain session in time");
           for (const auto& hook : m_ReadyHooks)
             hook(nullptr);
           m_ReadyHooks.clear();

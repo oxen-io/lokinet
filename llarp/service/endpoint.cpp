@@ -774,7 +774,6 @@ namespace llarp
       const Address addr{introset.addressKeys.Addr()};
 
       auto& remoteSessions = m_state->m_RemoteSessions;
-      auto& serviceLookups = m_state->m_PendingServiceLookups;
 
       if (remoteSessions.count(addr) < MaxOutboundContextPerRemote)
       {
@@ -785,16 +784,9 @@ namespace llarp
       auto sessionRange = remoteSessions.equal_range(addr);
       for (auto itr = sessionRange.first; itr != sessionRange.second; ++itr)
       {
-        auto range = serviceLookups.equal_range(addr);
-        auto i = range.first;
-        while (i != range.second)
-        {
-          itr->second->AddReadyHook(
-              [callback = i->second, addr](auto session) { callback(addr, session); }, left);
-          ++i;
-        }
+        itr->second->AddReadyHook(
+            [addr, this](auto session) { InformPathToService(addr, session); }, left);
       }
-      serviceLookups.erase(addr);
     }
 
     void
@@ -1076,13 +1068,15 @@ namespace llarp
     {
       msg->sender.UpdateAddr();
       if (not HasOutboundConvo(msg->sender.Addr()))
+      {
+        Introduction intro{};
+        intro.pathID = from;
+        intro.router = PubKey{path->Endpoint()};
+        intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
         PutSenderFor(msg->tag, msg->sender, true);
-      PutReplyIntroFor(msg->tag, path->intro);
-      Introduction intro;
-      intro.pathID = from;
-      intro.router = PubKey{path->Endpoint()};
-      intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
-      PutIntroFor(msg->tag, intro);
+        PutIntroFor(msg->tag, intro);
+        PutReplyIntroFor(msg->tag, path->intro);
+      }
       ConvoTagRX(msg->tag);
       return ProcessDataMessage(msg);
     }
@@ -1356,6 +1350,20 @@ namespace llarp
       return m_state->m_OutboundSessions.count(addr) > 0;
     }
 
+    void
+    Endpoint::InformPathToService(const Address remote, OutboundContext* ctx)
+    {
+      auto& serviceLookups = m_state->m_PendingServiceLookups;
+      auto range = serviceLookups.equal_range(remote);
+      auto itr = range.first;
+      while (itr != range.second)
+      {
+        itr->second(remote, ctx);
+        ++itr;
+      }
+      serviceLookups.erase(remote);
+    }
+
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook, llarp_time_t timeout)
     {
@@ -1365,6 +1373,8 @@ namespace llarp
       static constexpr size_t RequestsPerLookup = 2;
 
       MarkAddressOutbound(remote);
+      // add response hook to list for address.
+      m_state->m_PendingServiceLookups.emplace(remote, hook);
 
       auto& sessions = m_state->m_RemoteSessions;
       {
@@ -1374,15 +1384,12 @@ namespace llarp
         {
           if (itr->second->ReadyToSend())
           {
-            hook(remote, itr->second.get());
+            InformPathToService(remote, itr->second.get());
             return true;
           }
           ++itr;
         }
       }
-      // add response hook to list for address.
-      m_state->m_PendingServiceLookups.emplace(remote, hook);
-
       /// check replay filter
       if (not m_IntrosetLookupFilter.Insert(remote))
         return true;
