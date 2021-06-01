@@ -1229,6 +1229,23 @@ namespace llarp
       Sessions().erase(t);
     }
 
+    void
+    Endpoint::ResetConvoTag(ConvoTag tag, path::Path_ptr p, PathID_t from)
+    {
+      // send reset convo tag message
+      ProtocolFrame f{};
+      f.R = 1;
+      f.T = tag;
+      f.F = p->intro.pathID;
+      f.Sign(m_Identity);
+      {
+        LogWarn("invalidating convotag T=", tag);
+        RemoveConvoTag(tag);
+        m_SendQueue.tryPushBack(
+            SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, from), p});
+      }
+    }
+
     bool
     Endpoint::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame)
     {
@@ -1248,19 +1265,7 @@ namespace llarp
       }
       if (not frame.AsyncDecryptAndVerify(Router()->loop(), p, m_Identity, this))
       {
-        // send reset convo tag message
-        ProtocolFrame f;
-        f.R = 1;
-        f.T = frame.T;
-        f.F = p->intro.pathID;
-
-        f.Sign(m_Identity);
-        {
-          LogWarn("invalidating convotag T=", frame.T);
-          RemoveConvoTag(frame.T);
-          m_SendQueue.tryPushBack(
-              SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.F), p});
-        }
+        ResetConvoTag(frame.T, p, frame.F);
       }
       return true;
     }

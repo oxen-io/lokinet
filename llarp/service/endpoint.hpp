@@ -416,6 +416,9 @@ namespace llarp
       uint64_t
       GenTXID();
 
+      void
+      ResetConvoTag(ConvoTag tag, path::Path_ptr path, PathID_t from);
+
       const std::set<RouterID>&
       SnodeBlacklist() const;
 
