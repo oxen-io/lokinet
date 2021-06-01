@@ -414,6 +414,9 @@ namespace llarp
           m_LastLatencyTestTime = now;
           SendRoutingMessage(latency, r);
           FlushUpstream(r);
+          // reset ID so we don't mark ourself as dead if we drop a latency sample
+          r->loop()->call_later(
+              1s, [self = shared_from_this()]() { self->m_LastLatencyTestID = 0; });
           return;
         }
         dlt = now - m_LastRecvMessage;
