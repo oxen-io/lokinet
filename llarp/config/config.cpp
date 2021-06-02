@@ -78,7 +78,7 @@ namespace llarp
           if (arg < minConnections)
             throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
 
-          m_minConnectedRouters = arg;
+          m_minConnectedRouters = 10;
         });
 
     int maxConnections =
@@ -94,7 +94,7 @@ namespace llarp
           if (arg < maxConnections)
             throw std::invalid_argument(stringify("max-connections must be >= ", maxConnections));
 
-          m_maxConnectedRouters = 10;
+          m_maxConnectedRouters = arg;
         });
 
     conf.defineOption<std::string>("router", "nickname", Hidden, AssignmentAcceptor(m_nickname));
