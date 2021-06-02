@@ -27,7 +27,7 @@ namespace llarp
     /// normally once things are going).
     constexpr std::size_t min_intro_paths = 4;
     /// after this many ms a path build times out
-    constexpr auto build_timeout = 30s;
+    constexpr auto build_timeout = 10s;
 
     /// measure latency every this interval ms
     constexpr auto latency_interval = 20s;
