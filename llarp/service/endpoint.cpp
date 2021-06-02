@@ -1069,13 +1069,14 @@ namespace llarp
       msg->sender.UpdateAddr();
       if (not HasOutboundConvo(msg->sender.Addr()))
       {
-        Introduction intro{};
-        intro.pathID = from;
-        intro.router = PubKey{path->Endpoint()};
-        intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
         PutSenderFor(msg->tag, msg->sender, true);
-        PutIntroFor(msg->tag, intro);
       }
+      Introduction intro{};
+      intro.pathID = from;
+      intro.router = PubKey{path->Endpoint()};
+      intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
+      intro.latency = path->intro.latency;
+      PutIntroFor(msg->tag, intro);
       PutReplyIntroFor(msg->tag, path->intro);
       ConvoTagRX(msg->tag);
       return ProcessDataMessage(msg);
