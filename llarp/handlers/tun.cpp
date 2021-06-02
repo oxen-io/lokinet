@@ -957,12 +957,35 @@ namespace llarp
           else
             pkt.UpdateIPv6Address({0}, {0});
         }
-        if (SendToOrQueue(to, pkt.Buffer(), type))
+        // try sending it on an existing convotag
+        if (SendToOrQueue(to, pkt.ConstBuffer(), type))
+          return;
+        // make sure we are not trying to ensure a path to an inbound session
+        if (const auto* ptr = std::get_if<service::Address>(&to))
         {
-          MarkIPActive(dst);
+          // it's an inbound session so let's not build back better
+          if (not WantsOutboundSession(*ptr))
+            return;
+          EnsurePathToService(
+              *ptr,
+              [pkt, type, this](auto addr, auto* ctx) {
+                if (ctx == nullptr)
+                  return;
+                SendToOrQueue(addr, pkt.ConstBuffer(), type);
+              },
+              PathAlignmentTimeout());
           return;
         }
-        llarp::LogWarn(Name(), " did not flush packets");
+        // it's an inbound session or a snode session let's gooooo
+        EnsurePathTo(
+            to,
+            [pkt, type, dst, this](auto maybe) {
+              if (maybe and SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+              {
+                MarkIPActive(dst);
+              }
+            },
+            PathAlignmentTimeout());
       });
     }
 
