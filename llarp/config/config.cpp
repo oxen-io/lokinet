@@ -26,7 +26,7 @@ namespace llarp
 {
   // constants for config file default values
   constexpr int DefaultMinConnectionsForRouter = 6;
-  constexpr int DefaultMaxConnectionsForRouter = 10;
+  constexpr int DefaultMaxConnectionsForRouter = 60;
 
   constexpr int DefaultMinConnectionsForClient = 4;
   constexpr int DefaultMaxConnectionsForClient = 6;
