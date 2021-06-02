@@ -1381,8 +1381,8 @@ namespace llarp
         {
           HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
               this,
-              [this](auto addr, auto result, auto from, auto left) {
-                return OnLookup(addr, result, from, left);
+              [this](auto addr, auto result, auto from, auto left, auto order) {
+                return OnLookup(addr, result, from, left, order);
               },
               location,
               PubKey{remote.as_array()},

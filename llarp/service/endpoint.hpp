@@ -471,7 +471,8 @@ namespace llarp
           const service::Address& addr,
           std::optional<IntroSet> i,
           const RouterID& endpoint,
-          llarp_time_t timeLeft);
+          llarp_time_t timeLeft,
+          uint64_t relayOrder);
 
       bool
       DoNetworkIsolation(bool failed);

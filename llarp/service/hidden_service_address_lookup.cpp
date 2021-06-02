@@ -46,7 +46,7 @@ namespace llarp
           found = *maybe;
         }
       }
-      return handle(remote, found, endpoint, TimeLeft(time_now_ms()));
+      return handle(remote, found, endpoint, TimeLeft(time_now_ms()), relayOrder);
     }
 
     std::shared_ptr<routing::IMessage>

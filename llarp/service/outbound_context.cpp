@@ -82,12 +82,17 @@ namespace llarp
         remoteIntro = m_NextIntro;
         m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+        ShiftIntroRouter(m_NextIntro.router);
       }
     }
 
     bool
     OutboundContext::OnIntroSetUpdate(
-        const Address&, std::optional<IntroSet> foundIntro, const RouterID& endpoint, llarp_time_t)
+        const Address&,
+        std::optional<IntroSet> foundIntro,
+        const RouterID& endpoint,
+        llarp_time_t,
+        uint64_t relayOrder)
     {
       if (markedBad)
         return true;
@@ -112,8 +117,9 @@ namespace llarp
           return true;
         }
         currentIntroSet = *foundIntro;
+        ShiftIntroRouter(RouterID{});
       }
-      else
+      else if (relayOrder > 0)
       {
         ++m_LookupFails;
         LogWarn(Name(), " failed to look up introset, fails=", m_LookupFails);
