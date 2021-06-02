@@ -90,7 +90,11 @@ namespace llarp
 
     bool
     OutboundContext::OnIntroSetUpdate(
-        const Address&, std::optional<IntroSet> foundIntro, const RouterID& endpoint, llarp_time_t)
+        const Address&,
+        std::optional<IntroSet> foundIntro,
+        const RouterID& endpoint,
+        llarp_time_t,
+        uint64_t relayOrder)
     {
       if (markedBad)
         return true;
@@ -117,7 +121,7 @@ namespace llarp
         currentIntroSet = *foundIntro;
         ShiftIntroRouter(RouterID{});
       }
-      else
+      else if (relayOrder > 0)
       {
         ++m_LookupFails;
         LogWarn(Name(), " failed to look up introset, fails=", m_LookupFails);

@@ -1285,7 +1285,8 @@ namespace llarp
         const Address& addr,
         std::optional<IntroSet> introset,
         const RouterID& endpoint,
-        llarp_time_t timeLeft)
+        llarp_time_t timeLeft,
+        uint64_t relayOrder)
     {
       // tell all our existing remote sessions about this introset update
 
@@ -1298,7 +1299,7 @@ namespace llarp
         auto itr = range.first;
         while (itr != range.second)
         {
-          itr->second->OnIntroSetUpdate(addr, introset, endpoint, timeLeft);
+          itr->second->OnIntroSetUpdate(addr, introset, endpoint, timeLeft, relayOrder);
           // we got a successful lookup
           if (itr->second->ReadyToSend() and not introset->IsExpired(now))
           {
@@ -1320,13 +1321,18 @@ namespace llarp
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ", endpoint);
         fails[endpoint] = fails[endpoint] + 1;
-        // inform one
-        auto range = lookups.equal_range(addr);
-        auto itr = range.first;
-        if (itr != range.second)
+        // inform one if applicable
+        // when relay order is non zero we can be pretty sure that it's a fail as when relay order
+        // is zero that can sometimes yield a fail because it isn't always the closets in keyspace.
+        if (relayOrder > 0)
         {
-          itr->second(addr, nullptr);
-          itr = lookups.erase(itr);
+          auto range = lookups.equal_range(addr);
+          auto itr = range.first;
+          if (itr != range.second)
+          {
+            itr->second(addr, nullptr);
+            itr = lookups.erase(itr);
+          }
         }
         return false;
       }
@@ -1411,8 +1417,8 @@ namespace llarp
         {
           HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
               this,
-              [this](auto addr, auto result, auto from, auto left) {
-                return OnLookup(addr, result, from, left);
+              [this](auto addr, auto result, auto from, auto left, auto order) {
+                return OnLookup(addr, result, from, left, order);
               },
               location,
               PubKey{remote.as_array()},

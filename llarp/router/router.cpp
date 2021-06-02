@@ -880,7 +880,7 @@ namespace llarp
           peer->Close();
       });
       // complain about being deregistered
-      if(now >= m_NextDecommissionWarn)
+      if (now >= m_NextDecommissionWarn)
       {
         constexpr auto DecommissionWarnInterval = 30s;
         LogError("We are running as a service node but we seem to be decommissioned");

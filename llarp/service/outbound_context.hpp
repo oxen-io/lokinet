@@ -131,7 +131,11 @@ namespace llarp
 
       bool
       OnIntroSetUpdate(
-          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
+          const Address& addr,
+          std::optional<IntroSet> i,
+          const RouterID& endpoint,
+          llarp_time_t,
+          uint64_t relayOrder);
 
      private:
       /// swap remoteIntro with next intro
