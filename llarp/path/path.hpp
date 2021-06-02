@@ -424,7 +424,7 @@ namespace llarp
       uint64_t m_RXRate = 0;
       uint64_t m_LastTXRate = 0;
       uint64_t m_TXRate = 0;
-
+      std::deque<llarp_time_t> m_LatencySamples;
       const std::string m_shortName;
     };
   }  // namespace path

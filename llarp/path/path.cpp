@@ -418,6 +418,9 @@ namespace llarp
           m_LastLatencyTestTime = now;
           SendRoutingMessage(latency, r);
           FlushUpstream(r);
+          // reset ID so we don't mark ourself as dead if we drop a latency sample
+          r->loop()->call_later(
+              1s, [self = shared_from_this()]() { self->m_LastLatencyTestID = 0; });
           return;
         }
         dlt = now - m_LastRecvMessage;
@@ -682,6 +685,20 @@ namespace llarp
       return m_DataHandler && m_DataHandler(shared_from_this(), frame);
     }
 
+    template <typename Samples_t>
+    static llarp_time_t
+    computeLatency(const Samples_t& samps)
+    {
+      llarp_time_t mean = 0s;
+      if (samps.empty())
+        return mean;
+      for (const auto& samp : samps)
+        mean += samp;
+      return mean / samps.size();
+    }
+
+    constexpr auto MaxLatencySamples = 8;
+
     bool
     Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r)
     {
@@ -689,17 +706,19 @@ namespace llarp
       MarkActive(now);
       if (msg.L == m_LastLatencyTestID)
       {
-        intro.latency = now - m_LastLatencyTestTime;
+        m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
+
+        while (m_LatencySamples.size() > MaxLatencySamples)
+          m_LatencySamples.pop_front();
+
+        intro.latency = computeLatency(m_LatencySamples);
         m_LastLatencyTestID = 0;
         EnterState(ePathEstablished, now);
         if (m_BuiltHook)
           m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
-        return true;
       }
-
-      LogWarn("unwarranted path latency message via ", Upstream());
-      return false;
+      return true;
     }
 
     /// this is the Client's side of handling a DHT message. it's handled
