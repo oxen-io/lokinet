@@ -106,6 +106,10 @@ namespace llarp
           ++itr;
         }
       }
+      for (auto& item : deadSessions)
+      {
+        item.second->Tick(now);
+      }
     }
 
     void

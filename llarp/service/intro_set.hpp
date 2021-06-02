@@ -69,6 +69,10 @@ namespace llarp
       bool
       HasExpiredIntros(llarp_time_t now) const;
 
+      /// return true if any of our intros expires soon given a delta
+      bool
+      HasStaleIntros(llarp_time_t now, llarp_time_t delta) const;
+
       bool
       IsExpired(llarp_time_t now) const;
 
