@@ -747,8 +747,11 @@ namespace llarp
     {
       std::unordered_set<RouterID> exclude;
       ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
-      const auto maybe = m_router->nodedb()->GetRandom(
-          [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; });
+      const auto maybe =
+          m_router->nodedb()->GetRandom([exclude, r = m_router](const auto& rc) -> bool {
+            return exclude.count(rc.pubkey) == 0
+                and not r->routerProfiling().IsBadForPath(rc.pubkey);
+          });
       if (not maybe.has_value())
         return std::nullopt;
       return GetHopsForBuildWithEndpoint(maybe->pubkey);
