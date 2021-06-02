@@ -280,13 +280,15 @@ namespace llarp
       obj["remoteIntro"] = remoteIntro.ExtractStatus();
       obj["sessionCreatedAt"] = to_json(createdAt);
       obj["lastGoodSend"] = to_json(lastGoodSend);
+      obj["lastRecv"] = to_json(m_LastInboundTraffic);
+      obj["lastIntrosetUpdate"] = to_json(m_LastIntrosetUpdateAt);
       obj["seqno"] = sequenceNo;
       obj["markedBad"] = markedBad;
       obj["lastShift"] = to_json(lastShift);
       obj["remoteIdentity"] = remoteIdent.Addr().ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"] = m_NextIntro.ExtractStatus();
-
+      obj["readyToSend"] = ReadyToSend();
       std::transform(
           m_BadIntros.begin(),
           m_BadIntros.end(),
