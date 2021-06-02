@@ -1,6 +1,6 @@
 if(NOT GUI_ZIP_URL)
-  set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/loki-network-control-panel/lokinet-gui-windows-32bit-v0.3.7.zip")
-  set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=faafb5c7c8b9831f572ed78bb2cf8454bfa0d5f79897ce31e64e4a4331d55045)
+  set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/loki-network-control-panel/lokinet-gui-windows-32bit-v0.3.8.zip")
+  set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=60c2b738cf997e5684f307e5222498fd09143d495a932924105a49bf59ded8bb)
 endif()
 
 set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
