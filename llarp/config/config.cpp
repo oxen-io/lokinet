@@ -78,7 +78,7 @@ namespace llarp
           if (arg < minConnections)
             throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
 
-          m_minConnectedRouters = arg;
+          m_minConnectedRouters = 10;
         });
 
     int maxConnections =
