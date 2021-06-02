@@ -184,10 +184,6 @@ namespace llarp
           {
             failedAt = hops[index + 1].rc.pubkey;
           }
-          else
-          {
-            failedAt = hops[index].rc.pubkey;
-          }
           break;
         }
         ++index;

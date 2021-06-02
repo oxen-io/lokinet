@@ -267,14 +267,12 @@ namespace llarp
     Builder::Stop()
     {
       _run = false;
-      // tell all our paths that they have expired
+      // tell all our paths that they are to be ignored
       const auto now = Now();
       for (auto& item : m_Paths)
       {
-        item.second->EnterState(ePathExpired, now);
+        item.second->EnterState(ePathIgnore, now);
       }
-      // remove expired paths
-      ExpirePaths(now, m_router);
       return true;
     }
 
@@ -287,7 +285,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      return IsStopped();
+      return IsStopped() and NumInStatus(ePathEstablished) == 0;
     }
 
     const SecretKey&
