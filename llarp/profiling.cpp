@@ -64,7 +64,7 @@ namespace llarp
   void
   RouterProfile::Tick()
   {
-    static constexpr auto updateInterval = 30min;
+    static constexpr auto updateInterval = 30s;
     const auto now = llarp::time_now_ms();
     if (lastDecay < now && now - lastDecay > updateInterval)
       Decay();
@@ -96,8 +96,9 @@ namespace llarp
   bool
   RouterProfile::IsGoodForPath(uint64_t chances) const
   {
-    return checkIsGood(pathFailCount, pathSuccessCount, chances)
-        and checkIsGood(pathTimeoutCount, pathSuccessCount, chances);
+    if (pathTimeoutCount > chances)
+      return false;
+    return checkIsGood(pathFailCount, pathSuccessCount, chances);
   }
 
   Profiling::Profiling() : m_DisableProfiling(false)
@@ -210,15 +211,10 @@ namespace llarp
   Profiling::MarkPathTimeout(path::Path* p)
   {
     util::Lock lock{m_ProfilesMutex};
-    size_t idx = 0;
     for (const auto& hop : p->hops)
     {
-      if (idx)
-      {
-        m_Profiles[hop.rc.pubkey].pathTimeoutCount += 1;
-        m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
-      }
-      ++idx;
+      m_Profiles[hop.rc.pubkey].pathTimeoutCount += 1;
+      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
     }
   }
 
