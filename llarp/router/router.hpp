@@ -530,7 +530,7 @@ namespace llarp
     bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0s;
-
+    llarp_time_t m_NextDecommissionWarn = 0s;
     std::shared_ptr<llarp::KeyManager> m_keyManager;
     std::shared_ptr<PeerDb> m_peerDb;
 

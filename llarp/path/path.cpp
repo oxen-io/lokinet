@@ -713,11 +713,8 @@ namespace llarp
         if (m_BuiltHook)
           m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
-        return true;
       }
-
-      LogWarn("unwarranted path latency message via ", Upstream());
-      return false;
+      return true;
     }
 
     /// this is the Client's side of handling a DHT message. it's handled
