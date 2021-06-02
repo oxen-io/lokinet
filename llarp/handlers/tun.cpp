@@ -1186,7 +1186,9 @@ namespace llarp
           m_AddrToIP[ident] = nextIP;
           m_IPToAddr[nextIP] = ident;
           m_SNodes[ident] = snode;
-          llarp::LogInfo(Name(), " mapped ", ident, " to ", nextIP);
+          var::visit([&](auto&& remote) {
+            llarp::LogInfo(Name(), " mapped ", remote, " to ", nextIP);
+            }, addr);
           MarkIPActive(nextIP);
           return nextIP;
         }
