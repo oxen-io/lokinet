@@ -25,7 +25,6 @@ if(SUBMODULE_CHECK)
     check_submodule(uvw)
     check_submodule(cpr)
     check_submodule(ngtcp2)
-    check_submodule(cpr)
   endif()
 endif()
 
