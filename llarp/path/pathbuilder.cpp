@@ -240,6 +240,9 @@ namespace llarp
               if (BuildCooldownHit(rc.pubkey))
                 return;
 
+              if (m_router->routerProfiling().IsBadForPath(rc.pubkey))
+                return;
+
               found = rc;
             }
           },
@@ -251,7 +254,7 @@ namespace llarp
     Builder::GetHopsForBuild()
     {
       auto filter = [r = m_router](const auto& rc) -> bool {
-        return not r->routerProfiling().IsBadForPath(rc.pubkey);
+        return not r->routerProfiling().IsBadForPath(rc.pubkey, 1);
       };
       if (const auto maybe = m_router->nodedb()->GetRandom(filter))
       {
@@ -368,7 +371,7 @@ namespace llarp
             hopsSet.insert(endpointRC);
             hopsSet.insert(hops.begin(), hops.end());
 
-            if (r->routerProfiling().IsBadForPath(rc.pubkey))
+            if (r->routerProfiling().IsBadForPath(rc.pubkey, 1))
               return false;
             for (const auto& hop : hopsSet)
             {
