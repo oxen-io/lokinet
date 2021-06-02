@@ -242,6 +242,8 @@ namespace llarp
     }
     if (_linkManager->HasSessionTo(router))
       return false;
+    if (_router->IsServiceNode())
+      return true;
     return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
   }
 
