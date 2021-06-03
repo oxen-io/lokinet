@@ -152,7 +152,13 @@ namespace llarp
       // have we generated the initial intro but not sent it yet? bail here so we don't cause
       // bullshittery
       if (IntroGenerated() and not IntroSent())
+      {
+        LogWarn(
+            m_PathSet->Name(),
+            " we have generated an intial handshake but have not sent it yet so we drop a packet "
+            "to prevent bullshittery");
         return;
+      }
       const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
       if (maybe.has_value())
       {

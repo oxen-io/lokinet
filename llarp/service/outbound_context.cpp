@@ -203,7 +203,10 @@ namespace llarp
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
     {
       if (generatedIntro)
+      {
+        LogWarn(Name(), " dropping packet as we are not fully handshaked right now");
         return;
+      }
       if (remoteIntro.router.IsZero())
       {
         LogWarn(Name(), " dropping intro frame we have no intro ready yet");
