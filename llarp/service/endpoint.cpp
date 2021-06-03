@@ -1330,7 +1330,14 @@ namespace llarp
       auto& fails = m_state->m_ServiceLookupFails;
       if (not introset or introset->IsExpired(now))
       {
-        LogError(Name(), " failed to lookup ", addr.ToString(), " from ", endpoint);
+        LogError(
+            Name(),
+            " failed to lookup ",
+            addr.ToString(),
+            " from ",
+            endpoint,
+            " order=",
+            relayOrder);
         fails[endpoint] = fails[endpoint] + 1;
 
         const auto pendingForAddr = std::count_if(
