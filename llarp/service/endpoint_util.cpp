@@ -37,6 +37,7 @@ namespace llarp
     void
     EndpointUtil::ExpirePendingTx(llarp_time_t now, PendingLookups& lookups)
     {
+      std::vector<std::unique_ptr<IServiceLookup>> timedout;
       for (auto itr = lookups.begin(); itr != lookups.end();)
       {
         if (!itr->second->IsTimedOut(now))
@@ -44,11 +45,14 @@ namespace llarp
           ++itr;
           continue;
         }
-        std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
+        timedout.emplace_back(std::move(itr->second));
+        itr = lookups.erase(itr);
+      }
 
+      for (const auto& lookup : timedout)
+      {
         LogWarn(lookup->name, " timed out txid=", lookup->txid);
         lookup->HandleTimeout();
-        itr = lookups.erase(itr);
       }
     }
 
