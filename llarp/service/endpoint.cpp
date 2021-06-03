@@ -1011,7 +1011,8 @@ namespace llarp
                                   LogInfo("could not find ", router, ", remove it from nodedb");
                                   nodedb->Remove(router);
                                 }
-                                handler(results);
+                                if (handler)
+                                  handler(results);
                               }};
 
           assert(msg.M.size() == 1);
@@ -1654,14 +1655,15 @@ namespace llarp
             }
             if (session.inbound)
             {
-              // if we have no reply intro for this session just add it so we can at least get
-              // SOMETHING.
-              if (session.replyIntro.router.IsZero())
+              auto path = GetPathByRouter(session.replyIntro.router);
+              // if we have no path to the remote router that's fine still use it just in case this
+              // is the ONLY one we have
+              if (path == nullptr)
               {
                 ret = tag;
                 continue;
               }
-              auto path = GetPathByRouter(session.replyIntro.router);
+
               if (path and path->IsReady())
               {
                 const auto rttEstimate = (session.replyIntro.latency + path->intro.latency) * 2;
