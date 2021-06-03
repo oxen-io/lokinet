@@ -88,6 +88,12 @@ namespace llarp
       }
     }
 
+    Address
+    OutboundContext::Addr() const
+    {
+      return addr;
+    }
+
     bool
     OutboundContext::OnIntroSetUpdate(
         const Address&,

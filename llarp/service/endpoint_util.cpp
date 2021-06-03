@@ -95,7 +95,11 @@ namespace llarp
         itr->second->Tick(now);
         if (itr->second->Pump(now))
         {
-          LogInfo("marking session as dead T=", itr->second->currentConvoTag);
+          LogInfo(
+              "marking session as dead T=",
+              itr->second->currentConvoTag,
+              " to ",
+              itr->second->Addr());
           itr->second->Stop();
           sessions.erase(itr->second->currentConvoTag);
           deadSessions.emplace(std::move(*itr));
@@ -120,7 +124,7 @@ namespace llarp
       {
         if (itr->second.IsExpired(now))
         {
-          LogInfo("Expire session T=", itr->first);
+          LogInfo("Expire session T=", itr->first, " to ", itr->second.Addr());
           itr = sessions.erase(itr);
         }
         else

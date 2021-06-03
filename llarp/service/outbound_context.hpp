@@ -38,6 +38,9 @@ namespace llarp
         return shared_from_this();
       }
 
+      Address
+      Addr() const;
+
       bool
       Stop() override;
 

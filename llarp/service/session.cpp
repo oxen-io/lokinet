@@ -11,12 +11,18 @@ namespace llarp
           {"lastSend", to_json(lastSend)},
           {"lastRecv", to_json(lastRecv)},
           {"replyIntro", replyIntro.ExtractStatus()},
-          {"remote", remote.Addr().ToString()},
+          {"remote", Addr().ToString()},
           {"seqno", seqno},
           {"tx", messagesSend},
           {"rx", messagesRecv},
           {"intro", intro.ExtractStatus()}};
       return obj;
+    }
+
+    Address
+    Session::Addr() const
+    {
+      return remote.Addr();
     }
 
     bool
