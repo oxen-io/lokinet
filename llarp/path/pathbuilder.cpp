@@ -192,6 +192,9 @@ namespace llarp
     void Builder::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
+
+      m_router->pathBuildLimiter().Decay(now);
+
       ExpirePaths(now, m_router);
       if (ShouldBuildMore(now))
         BuildOne();
