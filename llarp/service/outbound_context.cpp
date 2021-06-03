@@ -239,7 +239,8 @@ namespace llarp
       ex->hook = [self = shared_from_this(), path](auto frame) {
         if (not self->Send(std::move(frame), path))
           return;
-        self->m_Endpoint->Loop()->call_later(100ms, [self]() { self->sentIntro = true; });
+        self->m_Endpoint->Loop()->call_later(
+            self->remoteIntro.latency, [self]() { self->sentIntro = true; });
       };
 
       ex->msg.PutBuffer(payload);
