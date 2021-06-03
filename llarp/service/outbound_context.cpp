@@ -85,6 +85,11 @@ namespace llarp
         m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
         m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
         ShiftIntroRouter(m_NextIntro.router);
+        // if we have not made a handshake to the remote endpoint do so
+        if (not IntroGenerated())
+        {
+          KeepAlive();
+        }
       }
     }
 
@@ -142,7 +147,7 @@ namespace llarp
         return false;
       if (remoteIntro.router.IsZero())
         return false;
-      return GetPathByRouter(remoteIntro.router) != nullptr;
+      return IntroSent();
     }
 
     void
