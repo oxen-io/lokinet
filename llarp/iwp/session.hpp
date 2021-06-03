@@ -34,7 +34,7 @@ namespace llarp
     /// How often we send a keepalive
     static constexpr std::chrono::milliseconds PingInterval = 5s;
     /// How long we wait for a session to die with no tx from them
-    static constexpr auto SessionAliveTimeout = (PingInterval * 2) + DefaultLinkSessionLifetime;
+    static constexpr auto SessionAliveTimeout = PingInterval * 5;
 
     struct Session : public ILinkSession, public std::enable_shared_from_this<Session>
     {
