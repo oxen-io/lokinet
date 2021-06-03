@@ -1264,7 +1264,7 @@ namespace llarp
         if (!frame.Verify(si))
           return false;
         // remove convotag it doesn't exist
-        LogWarn("remove convotag T=", frame.T, " R=", frame.R);
+        LogWarn("remove convotag T=", frame.T, " R=", frame.R, " from ", si.Addr());
         RemoveConvoTag(frame.T);
         return true;
       }

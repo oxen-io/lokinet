@@ -923,12 +923,13 @@ namespace llarp
           MarkAddressOutbound(addr);
           EnsurePathToService(
               addr,
-              [addr, pkt, self = this](service::Address, service::OutboundContext* ctx) {
-                if (ctx)
+              [pkt](service::Address addr, service::OutboundContext* ctx) {
+                if(ctx)
                 {
-                  ctx->sendTimeout = 5s;
+                  ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
+                  return;
                 }
-                self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
+                LogWarn("cannot ensure path to exit ", addr, " so we drop some packets");
               },
               PathAlignmentTimeout());
           return;
@@ -968,10 +969,13 @@ namespace llarp
             return;
           EnsurePathToService(
               *ptr,
-              [pkt, type, this](auto addr, auto* ctx) {
+              [pkt, type](auto addr, auto* ctx) {
                 if (ctx == nullptr)
+                {
+                  LogWarn("failed to ensure path to ", addr, " so we drop some packets");
                   return;
-                SendToOrQueue(addr, pkt.ConstBuffer(), type);
+                }
+                ctx->SendPacketToRemote(pkt.ConstBuffer(), type);
               },
               PathAlignmentTimeout());
           return;
