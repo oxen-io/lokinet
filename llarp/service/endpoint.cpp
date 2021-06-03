@@ -1654,6 +1654,13 @@ namespace llarp
             }
             if (session.inbound)
             {
+              // if we have no reply intro for this session just add it so we can at least get
+              // SOMETHING.
+              if (session.replyIntro.router.IsZero())
+              {
+                ret = tag;
+                continue;
+              }
               auto path = GetPathByRouter(session.replyIntro.router);
               if (path and path->IsReady())
               {
@@ -1850,7 +1857,7 @@ namespace llarp
         }
         else
         {
-          LogWarn("Have inbound convo but get-best returned none; bug?");
+          LogWarn("Have inbound convo from ", remote, " but get-best returned none; bug?");
         }
       }
 

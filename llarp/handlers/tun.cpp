@@ -924,7 +924,7 @@ namespace llarp
           EnsurePathToService(
               addr,
               [pkt](service::Address addr, service::OutboundContext* ctx) {
-                if(ctx)
+                if (ctx)
                 {
                   ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
                   return;
