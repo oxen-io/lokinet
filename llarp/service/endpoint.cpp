@@ -1005,7 +1005,14 @@ namespace llarp
           msg.S = path->NextSeqNo();
         if (path && path->SendRoutingMessage(msg, Router()))
         {
-          RouterLookupJob job{this, handler};
+          RouterLookupJob job{this, [handler, router, nodedb = m_router->nodedb()](auto results) {
+                                if (results.empty())
+                                {
+                                  LogInfo("could not find ", router, ", remove it from nodedb");
+                                  nodedb->Remove(router);
+                                }
+                                handler(results);
+                              }};
 
           assert(msg.M.size() == 1);
           auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.M[0].get());
