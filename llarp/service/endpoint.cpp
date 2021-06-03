@@ -1332,14 +1332,18 @@ namespace llarp
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ", endpoint);
         fails[endpoint] = fails[endpoint] + 1;
-        // inform one if applicable
-        // when relay order is non zero we can be pretty sure that it's a fail as when relay order
-        // is zero that can sometimes yield a fail because it isn't always the closets in keyspace.
-        if (relayOrder > 0)
+
+        const auto pendingForAddr = std::count_if(
+            m_state->m_PendingLookups.begin(),
+            m_state->m_PendingLookups.end(),
+            [addr](const auto& item) -> bool { return item.second->IsFor(addr); });
+
+        // inform all if we have no more pending lookups for this address
+        if (pendingForAddr == 0)
         {
           auto range = lookups.equal_range(addr);
           auto itr = range.first;
-          if (itr != range.second)
+          while (itr != range.second)
           {
             itr->second(addr, nullptr);
             itr = lookups.erase(itr);

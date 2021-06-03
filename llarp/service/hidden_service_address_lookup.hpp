@@ -30,6 +30,16 @@ namespace llarp
 
       ~HiddenServiceAddressLookup() override = default;
 
+      virtual bool
+      IsFor(EndpointBase::AddressVariant_t addr) const override
+      {
+        if (const auto* ptr = std::get_if<Address>(&addr))
+        {
+          return Address{rootkey} == *ptr;
+        }
+        return false;
+      }
+
       bool
       HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results) override;
 
