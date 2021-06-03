@@ -329,9 +329,6 @@ namespace llarp
     bool
     OutboundContext::Pump(llarp_time_t now)
     {
-      // we are probably dead af
-      if (m_LookupFails > 16 || m_BuildFails > 10)
-        return true;
 
       if (ReadyToSend() and remoteIntro.router.IsZero())
       {
