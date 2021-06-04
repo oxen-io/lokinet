@@ -477,6 +477,17 @@ namespace llarp
       m_router->routerProfiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
+      bool firstHop = true;
+      for (const auto& hop : p->hops)
+      {
+        if (not firstHop)
+        {
+          RouterID router{hop.rc.pubkey};
+          LogWarn(Name(), " removing router ", router, " because of path build timeout");
+          m_router->nodedb()->Remove(router);
+        }
+        firstHop = false;
+      }
     }
 
     void
