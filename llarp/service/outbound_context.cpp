@@ -71,6 +71,10 @@ namespace llarp
       }
       currentConvoTag.Randomize();
       lastShift = Now();
+      // add send and connect timeouts to the parent endpoints path alignment timeout
+      // this will make it so that there is less of a chance for timing races
+      sendTimeout += parent->PathAlignmentTimeout();
+      connectTimeout += parent->PathAlignmentTimeout();
     }
 
     OutboundContext::~OutboundContext() = default;
