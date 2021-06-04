@@ -117,6 +117,10 @@ namespace llarp
       virtual PathSet_ptr
       GetSelf() = 0;
 
+      /// get a weak_ptr of ourself
+      virtual std::weak_ptr<PathSet>
+      GetWeak() = 0;
+
       virtual void
       BuildOne(PathRole roles = ePathRoleAny) = 0;
 

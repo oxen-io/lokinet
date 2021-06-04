@@ -87,7 +87,7 @@ namespace llarp
 
       HopList hops;
 
-      PathSet* const m_PathSet;
+      std::weak_ptr<PathSet> m_PathSet;
 
       service::Introduction intro;
 
@@ -95,7 +95,7 @@ namespace llarp
 
       Path(
           const std::vector<RouterContact>& routers,
-          PathSet* parent,
+          std::weak_ptr<PathSet> parent,
           PathRole startingRoles,
           std::string shortName);
 

@@ -333,7 +333,6 @@ namespace llarp
     bool
     OutboundContext::Pump(llarp_time_t now)
     {
-
       if (ReadyToSend() and remoteIntro.router.IsZero())
       {
         SwapIntros();

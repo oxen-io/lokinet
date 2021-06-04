@@ -25,10 +25,10 @@ namespace llarp
   {
     Path::Path(
         const std::vector<RouterContact>& h,
-        PathSet* parent,
+        std::weak_ptr<PathSet> pathset,
         PathRole startingRoles,
         std::string shortName)
-        : m_PathSet(parent), _role(startingRoles), m_shortName(std::move(shortName))
+        : m_PathSet{pathset}, _role{startingRoles}, m_shortName{std::move(shortName)}
 
     {
       hops.resize(h.size());
@@ -54,7 +54,7 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      if (parent)
+      if (auto parent = m_PathSet.lock())
         EnterState(ePathBuilding, parent->Now());
     }
 
@@ -253,7 +253,10 @@ namespace llarp
           edge = *failedAt;
         r->loop()->call([r, self = shared_from_this(), edge]() {
           self->EnterState(ePathFailed, r->Now());
-          self->m_PathSet->HandlePathBuildFailedAt(self, edge);
+          if (auto parent = self->m_PathSet.lock())
+          {
+            parent->HandlePathBuildFailedAt(self, edge);
+          }
         });
       }
 
@@ -272,7 +275,10 @@ namespace llarp
       if (st == ePathExpired && _status == ePathBuilding)
       {
         _status = st;
-        m_PathSet->HandlePathBuildTimeout(shared_from_this());
+        if (auto parent = m_PathSet.lock())
+        {
+          parent->HandlePathBuildTimeout(shared_from_this());
+        }
       }
       else if (st == ePathBuilding)
       {
@@ -287,7 +293,10 @@ namespace llarp
       {
         LogInfo("path ", Name(), " died");
         _status = st;
-        m_PathSet->HandlePathDied(shared_from_this());
+        if (auto parent = m_PathSet.lock())
+        {
+          parent->HandlePathDied(shared_from_this());
+        }
       }
       else if (st == ePathEstablished && _status == ePathTimeout)
       {
@@ -371,11 +380,14 @@ namespace llarp
     void
     Path::Rebuild()
     {
-      std::vector<RouterContact> newHops;
-      for (const auto& hop : hops)
-        newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", ShortName());
-      m_PathSet->Build(newHops);
+      if (auto parent = m_PathSet.lock())
+      {
+        std::vector<RouterContact> newHops;
+        for (const auto& hop : hops)
+          newHops.emplace_back(hop.rc);
+        LogInfo(Name(), " rebuilding on ", ShortName());
+        parent->Build(newHops);
+      }
     }
 
     void
@@ -681,8 +693,12 @@ namespace llarp
     bool
     Path::HandleHiddenServiceFrame(const service::ProtocolFrame& frame)
     {
-      MarkActive(m_PathSet->Now());
-      return m_DataHandler && m_DataHandler(shared_from_this(), frame);
+      if (auto parent = m_PathSet.lock())
+      {
+        MarkActive(parent->Now());
+        return m_DataHandler && m_DataHandler(shared_from_this(), frame);
+      }
+      return false;
     }
 
     template <typename Samples_t>

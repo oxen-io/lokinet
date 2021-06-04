@@ -434,7 +434,7 @@ namespace llarp
       ctx->pathset = self;
       std::string path_shortName = "[path " + m_router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(m_router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, self.get(), roles, std::move(path_shortName));
+      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });

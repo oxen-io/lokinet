@@ -225,7 +225,8 @@ namespace llarp
       auto itr = map.second.find(id);
       if (itr != map.second.end())
       {
-        return itr->second->m_PathSet->GetSelf();
+        if (auto parent = itr->second->m_PathSet.lock())
+          return parent;
       }
       return nullptr;
     }
