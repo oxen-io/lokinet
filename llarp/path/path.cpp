@@ -293,6 +293,10 @@ namespace llarp
       {
         LogInfo("path ", Name(), " reanimated");
       }
+      else if (st == ePathIgnore)
+      {
+        LogInfo("path ", Name(), " ignored");
+      }
       _status = st;
     }
 
