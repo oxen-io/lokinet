@@ -513,7 +513,7 @@ namespace llarp
       {
         return now >= m_LastRecvMessage + PathReanimationTimeout;
       }
-      if (_status == ePathEstablished)
+      if (_status == ePathEstablished or _status == ePathIgnore)
       {
         return now >= ExpireTime();
       }
