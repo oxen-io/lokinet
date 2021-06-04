@@ -7,6 +7,7 @@
 #include <llarp/messages/relay_status.hpp>
 #include "pathbuilder.hpp"
 #include "transit_hop.hpp"
+#include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/routing/dht_message.hpp>
@@ -232,6 +233,13 @@ namespace llarp
           llarp::LogDebug(
               "Path build failed due to one or more nodes considered an "
               "invalid destination");
+          if (failedAt)
+          {
+            r->loop()->call([nodedb = r->nodedb(), router = *failedAt]() {
+              LogInfo("router ", router, " is deregistered so we remove it");
+              nodedb->Remove(router);
+            });
+          }
         }
         else if (currentStatus & LR_StatusRecord::FAIL_CANNOT_CONNECT)
         {
