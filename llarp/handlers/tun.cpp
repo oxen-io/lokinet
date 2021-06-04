@@ -67,6 +67,8 @@ namespace llarp
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
+      m_PacketSendWaker = r->loop()->make_waker([this]() { FlushWrite(); });
+      m_MessageSendWaker = r->loop()->make_waker([this]() { FlushSend(); });
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
 #ifdef ANDROID
@@ -224,6 +226,12 @@ namespace llarp
     {
       FlushSend();
       Pump(Now());
+      FlushWrite();
+    }
+
+    void
+    TunEndpoint::FlushWrite()
+    {
       // flush network to user
       while (not m_NetworkToUserPktQueue.empty())
       {
@@ -1144,6 +1152,8 @@ namespace llarp
         pkt.UpdateIPv6Address(src, dst);
       }
       m_NetworkToUserPktQueue.push(std::move(write));
+      // wake up packet flushing event so we ensure that all packets are written to user
+      m_PacketSendWaker->Trigger();
       return true;
     }
 
@@ -1252,6 +1262,7 @@ namespace llarp
     TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
     {
       m_UserToNetworkPktQueue.Emplace(std::move(pkt));
+      m_MessageSendWaker->Trigger();
     }
 
     TunEndpoint::~TunEndpoint() = default;

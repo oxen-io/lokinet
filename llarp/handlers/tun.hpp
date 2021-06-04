@@ -209,6 +209,10 @@ namespace llarp
       virtual void
       FlushSend();
 
+      /// flush writing ip packets to interface
+      void
+      FlushWrite();
+
       /// maps ip to key (host byte order)
       std::unordered_map<huint128_t, AlignedBuffer<32>> m_IPToAddr;
       /// maps key to ip (host byte order)
@@ -275,6 +279,11 @@ namespace llarp
       std::set<IPRange> m_OwnedRanges;
       /// how long to wait for path alignment
       llarp_time_t m_PathAlignmentTimeout;
+      /// idempotent wakeup for writing packets to user
+      std::shared_ptr<EventLoopWakeup> m_PacketSendWaker;
+
+      /// idempotent wakeup for writing messages to network
+      std::shared_ptr<EventLoopWakeup> m_MessageSendWaker;
     };
 
   }  // namespace handlers
