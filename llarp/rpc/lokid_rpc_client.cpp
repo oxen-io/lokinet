@@ -104,6 +104,7 @@ namespace llarp
     {
       nlohmann::json request, fields;
       fields["pubkey_ed25519"] = true;
+      fields["service_node_pubkey"] = true;
       request["fields"] = fields;
       request["active_only"] = true;
       if (not topblock.empty())
@@ -179,7 +180,7 @@ namespace llarp
           }
         }
       }
-
+      std::unordered_map<RouterID, PubKey> keymap;
       std::vector<RouterID> nodeList;
       {
         const auto itr = j.find("service_node_states");
@@ -190,9 +191,16 @@ namespace llarp
             const auto ed_itr = j_itr->find("pubkey_ed25519");
             if (ed_itr == j_itr->end() or not ed_itr->is_string())
               continue;
+            const auto svc_itr = j_itr->find("service_node_pubkey");
+            if (svc_itr == j_itr->end() or not svc_itr->is_string())
+              continue;
             RouterID rid;
-            if (rid.FromHex(ed_itr->get<std::string>()))
+            PubKey pk;
+            if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
+            {
               nodeList.emplace_back(std::move(rid));
+              keymap[rid] = pk;
+            }
           }
         }
       }
@@ -203,8 +211,33 @@ namespace llarp
         return;
       }
       // inform router about the new list
-      m_Router->loop()->call([r = m_Router, nodeList = std::move(nodeList)]() mutable {
-        r->SetRouterWhitelist(std::move(nodeList));
+      m_Router->loop()->call(
+          [this, nodeList = std::move(nodeList), keymap = std::move(keymap)]() mutable {
+            m_KeyMap = std::move(keymap);
+            m_Router->SetRouterWhitelist(std::move(nodeList));
+          });
+    }
+
+    void
+    LokidRpcClient::RecordConnection(RouterID router, bool success)
+    {
+      m_Router->loop()->call([router, success, this]() {
+        if (auto itr = m_KeyMap.find(router); itr != m_KeyMap.end())
+        {
+          const nlohmann::json request = {
+              {"passed", success}, {"pubkey", itr->second.ToHex()}, {"type", "lokinet"}};
+          Request(
+              "admin.report_peer_status",
+              [self = shared_from_this()](bool success, std::vector<std::string>) {
+                if (not success)
+                {
+                  LogError("Failed to report connection status to oxend");
+                  return;
+                }
+                LogDebug("reported connection status to core");
+              },
+              request.dump());
+        }
       });
     }
 

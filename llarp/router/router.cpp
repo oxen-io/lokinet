@@ -1181,6 +1181,25 @@ namespace llarp
 #if defined(WITH_SYSTEMD)
     ::sd_notify(0, "READY=1");
 #endif
+    if (whitelistRouters)
+    {
+      // do service node testing if we are in service node whitelist mode
+      _loop->call_every(5s, weak_from_this(), [this] {
+        // dont run tests if we are not running or we are stopping
+        if (not _running)
+          return;
+        // get a random router to test by pubkey
+        RouterID router{};
+        if (not _rcLookupHandler.GetRandomWhitelistRouter(router))
+        {
+          LogError("could not get random whitelisted router for testing");
+          return;
+        }
+        // try to make a session to this random router
+        // this will do a dht lookup if needed
+        _outboundSessionMaker.CreateSessionTo(router, nullptr);
+      });
+    }
     LogContext::Instance().DropToRuntimeLevel();
     return _running;
   }

@@ -13,6 +13,8 @@
 #include <llarp/crypto/crypto.hpp>
 #include <utility>
 
+#include <llarp/rpc/lokid_rpc_client.hpp>
+
 namespace llarp
 {
   struct PendingSession
@@ -35,7 +37,7 @@ namespace llarp
     // TODO: do we want to keep it
 
     const auto router = RouterID(session->GetPubKey());
-
+    const bool isOutbound = not session->IsInbound();
     const std::string remoteType = session->GetRemoteRC().IsPublicRouter() ? "router" : "client";
     LogInfo("session with ", remoteType, " [", router, "] established");
 
@@ -44,9 +46,18 @@ namespace llarp
       FinalizeRequest(router, SessionResult::InvalidRouter);
       return false;
     }
-
-    auto func = std::bind(&OutboundSessionMaker::VerifyRC, this, session->GetRemoteRC());
-    work(func);
+    if (isOutbound)
+    {
+      // add a callback for this router if it's outbound to inform core if applicable
+      if (auto rpc = _router->RpcClient())
+      {
+        util::Lock l{_mutex};
+        pendingCallbacks[router].emplace_back([rpc](const auto& router, const auto result) {
+          rpc->RecordConnection(router, result == SessionResult::Establish);
+        });
+      }
+    }
+    work([this, rc = session->GetRemoteRC()] { VerifyRC(rc); });
 
     return true;
   }
@@ -54,13 +65,16 @@ namespace llarp
   void
   OutboundSessionMaker::OnConnectTimeout(ILinkSession* session)
   {
-    // TODO: retry/num attempts
-    LogWarn(
-        "Session establish attempt to ",
-        RouterID(session->GetPubKey()),
-        " timed out.",
-        session->GetRemoteEndpoint());
-    FinalizeRequest(session->GetPubKey(), SessionResult::Timeout);
+    const auto router = RouterID(session->GetPubKey());
+    LogWarn("Session establish attempt to ", router, " timed out.", session->GetRemoteEndpoint());
+
+    // inform core if needed
+    if (auto rpc = _router->RpcClient())
+    {
+      rpc->RecordConnection(router, false);
+    }
+
+    FinalizeRequest(router, SessionResult::Timeout);
   }
 
   void

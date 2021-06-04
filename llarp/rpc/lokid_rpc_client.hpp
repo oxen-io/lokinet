@@ -42,6 +42,10 @@ namespace llarp
           dht::Key_t namehash,
           std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 
+      /// record that if connected to a router successfully
+      void
+      RecordConnection(RouterID router, bool success);
+
      private:
       /// called when we have connected to lokid via lokimq
       void
@@ -84,6 +88,8 @@ namespace llarp
 
       AbstractRouter* const m_Router;
       std::atomic<bool> m_UpdatingList;
+
+      std::unordered_map<RouterID, PubKey> m_KeyMap;
 
       uint64_t m_BlockHeight;
     };
