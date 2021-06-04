@@ -1078,11 +1078,9 @@ namespace llarp
         path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
     {
       msg->sender.UpdateAddr();
-      if (not HasOutboundConvo(msg->sender.Addr()))
-      {
-        PutSenderFor(msg->tag, msg->sender, true);
-      }
-      Introduction intro{};
+      PutSenderFor(msg->tag, msg->sender, true);
+      PutReplyIntroFor(msg->tag, path->intro);
+      Introduction intro;
       intro.pathID = from;
       intro.router = PubKey{path->Endpoint()};
       intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
