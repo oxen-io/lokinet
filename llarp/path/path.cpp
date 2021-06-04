@@ -199,7 +199,14 @@ namespace llarp
         if (failedAt)
         {
           r->NotifyRouterEvent<tooling::PathBuildRejectedEvent>(Endpoint(), RXID(), *failedAt);
-          LogWarn(Name(), " build failed at ", *failedAt);
+          LogWarn(
+              Name(),
+              " build failed at ",
+              *failedAt,
+              " status=",
+              LRStatusCodeToString(currentStatus),
+              " hops=",
+              HopsString());
           r->routerProfiling().MarkHopFail(*failedAt);
         }
         else

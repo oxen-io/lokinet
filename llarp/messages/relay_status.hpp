@@ -49,6 +49,9 @@ namespace llarp
     OnKey(llarp_buffer_t* buffer, llarp_buffer_t* key);
   };
 
+  std::string
+  LRStatusCodeToString(uint64_t status);
+
   struct LR_StatusMessage : public ILinkMessage
   {
     std::array<EncryptedFrame, 8> frames;

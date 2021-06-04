@@ -273,4 +273,32 @@ namespace llarp
     return status == other.status;
   }
 
+  std::string
+  LRStatusCodeToString(uint64_t status)
+  {
+    std::map<uint64_t, std::string> codes = {
+        {LR_StatusRecord::SUCCESS, "success"},
+        {LR_StatusRecord::FAIL_TIMEOUT, "timeout"},
+        {LR_StatusRecord::FAIL_CONGESTION, "congestion"},
+        {LR_StatusRecord::FAIL_DEST_UNKNOWN, "destination unknown"},
+        {LR_StatusRecord::FAIL_DECRYPT_ERROR, "decrypt error"},
+        {LR_StatusRecord::FAIL_MALFORMED_RECORD, "malformed record"},
+        {LR_StatusRecord::FAIL_DEST_INVALID, "destination invalid"},
+        {LR_StatusRecord::FAIL_CANNOT_CONNECT, "cannot connect"},
+        {LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"}};
+    std::stringstream ss;
+    ss << "[";
+    bool found = false;
+    for (const auto& [val, message] : codes)
+    {
+      if ((status & val) == val)
+      {
+        ss << (found ? ", " : "") << message;
+        found = true;
+      }
+    }
+    ss << "]";
+    return ss.str();
+  }
+
 }  // namespace llarp
