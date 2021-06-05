@@ -289,6 +289,7 @@ namespace llarp
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
+        MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
             [this, addr, msg, reply, isV6](const Address&, OutboundContext* ctx) {
@@ -315,7 +316,7 @@ namespace llarp
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
-
+        MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
             [msg, addr, reply](const Address&, OutboundContext* ctx) {
@@ -967,34 +968,33 @@ namespace llarp
             pkt.UpdateIPv6Address({0}, {0});
         }
         // try sending it on an existing convotag
+        // this succeds for inbound convos, probably.
         if (SendToOrQueue(to, pkt.ConstBuffer(), type))
           return;
-        // make sure we are not trying to ensure a path to an inbound session
-        if (const auto* ptr = std::get_if<service::Address>(&to))
-        {
-          // it's an inbound session so let's not build back better
-          if (not WantsOutboundSession(*ptr))
-            return;
-          EnsurePathToService(
-              *ptr,
-              [pkt, type](auto addr, auto* ctx) {
-                if (ctx == nullptr)
-                {
-                  LogWarn("failed to ensure path to ", addr, " so we drop some packets");
-                  return;
-                }
-                ctx->SendPacketToRemote(pkt.ConstBuffer(), type);
-              },
-              PathAlignmentTimeout());
-          return;
-        }
-        // it's an inbound session or a snode session let's gooooo
+        // try establishing a path to this guy
+        // will fail if it's an inbound convo
         EnsurePathTo(
             to,
-            [pkt, type, dst, this](auto maybe) {
-              if (maybe and SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+            [pkt, type, dst, to, this](auto maybe) {
+              if (not maybe)
+              {
+                var::visit(
+                    [&](auto&& addr) {
+                      LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
+                    },
+                    to);
+              }
+              if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
               {
                 MarkIPActive(dst);
+              }
+              else
+              {
+                var::visit(
+                    [&](auto&& addr) {
+                      LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
+                    },
+                    to);
               }
             },
             PathAlignmentTimeout());

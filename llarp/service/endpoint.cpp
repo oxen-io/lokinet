@@ -1394,12 +1394,19 @@ namespace llarp
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook, llarp_time_t timeout)
     {
+      if (not WantsOutboundSession(remote))
+      {
+        // we don't want to ensure paths to addresses that are inbound
+        // inform fail right away in that case
+        hook(remote, nullptr);
+        return false;
+      }
+
       /// how many routers to use for lookups
       static constexpr size_t NumParallelLookups = 2;
       /// how many requests per router
       static constexpr size_t RequestsPerLookup = 2;
 
-      MarkAddressOutbound(remote);
       // add response hook to list for address.
       m_state->m_PendingServiceLookups.emplace(remote, hook);
 
@@ -1737,6 +1744,13 @@ namespace llarp
           Loop()->call_soon([tag, hook]() { hook(tag); });
           return true;
         }
+        if (not WantsOutboundSession(*ptr))
+        {
+          // we don't want to connect back to inbound sessions
+          hook(std::nullopt);
+          return true;
+        }
+
         return EnsurePathToService(
             *ptr,
             [hook](auto, auto* ctx) {

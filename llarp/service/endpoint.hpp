@@ -285,6 +285,7 @@ namespace llarp
       bool
       WantsOutboundSession(const Address&) const override;
 
+      /// this MUST be called if you want to call EnsurePathTo on the given address
       void
       MarkAddressOutbound(const Address&) override;
 
