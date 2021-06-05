@@ -286,8 +286,7 @@ namespace llarp
       WantsOutboundSession(const Address&) const override;
 
       /// this MUST be called if you want to call EnsurePathTo on the given address
-      void
-      MarkAddressOutbound(const Address&) override;
+      void MarkAddressOutbound(AddressVariant_t) override;
 
       bool
       ShouldBundleRC() const override

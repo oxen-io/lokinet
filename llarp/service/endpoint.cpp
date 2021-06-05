@@ -1366,9 +1366,10 @@ namespace llarp
     }
 
     void
-    Endpoint::MarkAddressOutbound(const Address& addr)
+    Endpoint::MarkAddressOutbound(AddressVariant_t addr)
     {
-      m_state->m_OutboundSessions.insert(addr);
+      if (auto* ptr = std::get_if<Address>(&addr))
+        m_state->m_OutboundSessions.insert(*ptr);
     }
 
     bool
