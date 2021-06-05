@@ -381,7 +381,7 @@ namespace llarp
         m_ReadyHooks.clear();
       }
 
-      const auto timeout = std::min(lastGoodSend, m_LastInboundTraffic);
+      const auto timeout = std::max(lastGoodSend, m_LastInboundTraffic);
       if (lastGoodSend > 0s and now >= timeout + (sendTimeout / 2))
       {
         // send a keep alive to keep this session alive
