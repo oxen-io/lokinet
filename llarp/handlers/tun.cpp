@@ -706,6 +706,7 @@ namespace llarp
       m_AddrToIP[addr] = ip;
       m_SNodes[addr] = SNode;
       MarkIPActiveForever(ip);
+      MarkAddressOutbound(addr);
       return true;
     }
 
