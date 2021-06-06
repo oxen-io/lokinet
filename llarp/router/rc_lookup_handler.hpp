@@ -84,6 +84,13 @@ namespace llarp
         bool useWhitelist_arg,
         bool isServiceNode_arg);
 
+    std::unordered_set<RouterID>
+    Whitelist() const
+    {
+      util::Lock lock{_mutex};
+      return whitelistRouters;
+    }
+
    private:
     void
     HandleDHTLookupResult(RouterID remote, const std::vector<RouterContact>& results);

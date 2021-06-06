@@ -63,7 +63,6 @@ namespace llarp
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
-      , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
     // for lokid, so we don't close the connection when syncing the whitelist
@@ -290,7 +289,10 @@ namespace llarp
     auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
+    {
       lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
+      m_lokidRpcClient = std::make_shared<rpc::LokidRpcClient>(m_lmq, weak_from_this());
+    }
 
     enableRPCServer = conf.api.m_enableRPCServer;
     if (enableRPCServer)
@@ -748,7 +750,7 @@ namespace llarp
         ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths | "
-           << "block " << m_lokidRpcClient->BlockHeight();
+           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0);
       }
       else
       {
@@ -1184,21 +1186,37 @@ namespace llarp
     if (whitelistRouters)
     {
       // do service node testing if we are in service node whitelist mode
-      _loop->call_every(5s, weak_from_this(), [this] {
-        // dont run tests if we are not running or we are stopping
-        if (not _running)
-          return;
-        // get a random router to test by pubkey
-        RouterID router{};
-        if (not _rcLookupHandler.GetRandomWhitelistRouter(router))
-        {
-          LogError("could not get random whitelisted router for testing");
-          return;
-        }
-        // try to make a session to this random router
-        // this will do a dht lookup if needed
-        _outboundSessionMaker.CreateSessionTo(router, nullptr);
-      });
+      _loop->call_every(
+          consensus::reachability_testing::TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
+            // dont run tests if we are not running or we are stopping
+            if (not _running)
+              return;
+            auto tests = m_routerTesting.get_failing(this);
+            if (auto maybe = m_routerTesting.next_random(this))
+            {
+              tests.emplace_back(*maybe, 0);
+            }
+            for (const auto& [router, fails] : tests)
+            {
+              // try to make a session to this random router
+              // this will do a dht lookup if needed
+              _outboundSessionMaker.CreateSessionTo(
+                  router, [fails, this](const auto& router, const auto result) {
+                    auto rpc = RpcClient();
+
+                    if (result != SessionResult::Establish)
+                    {
+                      // failed connection mark it as so
+                      m_routerTesting.add_failing_node(router, fails);
+                    }
+                    if (rpc)
+                    {
+                      // inform as needed
+                      rpc->InformConnection(router, result == SessionResult::Establish);
+                    }
+                  });
+            }
+          });
     }
     LogContext::Instance().DropToRuntimeLevel();
     return _running;

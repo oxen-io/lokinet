@@ -133,6 +133,12 @@ namespace llarp
     void
     SetRouterWhitelist(const std::vector<RouterID> routers) override;
 
+    std::unordered_set<RouterID>
+    GetRouterWhitelist() const override
+    {
+      return _rcLookupHandler.Whitelist();
+    }
+
     exit::Context&
     exitContext() override
     {
@@ -535,6 +541,8 @@ namespace llarp
     std::shared_ptr<PeerDb> m_peerDb;
 
     uint32_t path_build_count = 0;
+
+    consensus::reachability_testing m_routerTesting;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

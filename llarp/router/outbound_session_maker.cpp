@@ -39,24 +39,15 @@ namespace llarp
     const auto router = RouterID(session->GetPubKey());
     const bool isOutbound = not session->IsInbound();
     const std::string remoteType = session->GetRemoteRC().IsPublicRouter() ? "router" : "client";
-    LogInfo("session with ", remoteType, " [", router, "] established");
+    LogInfo(
+        "session with ", remoteType, " [", router, "] ", isOutbound ? "established" : "received");
 
     if (not _rcLookup->RemoteIsAllowed(router))
     {
       FinalizeRequest(router, SessionResult::InvalidRouter);
       return false;
     }
-    if (isOutbound)
-    {
-      // add a callback for this router if it's outbound to inform core if applicable
-      if (auto rpc = _router->RpcClient())
-      {
-        util::Lock l{_mutex};
-        pendingCallbacks[router].emplace_back([rpc](const auto& router, const auto result) {
-          rpc->RecordConnection(router, result == SessionResult::Establish);
-        });
-      }
-    }
+
     work([this, rc = session->GetRemoteRC()] { VerifyRC(rc); });
 
     return true;
@@ -67,13 +58,6 @@ namespace llarp
   {
     const auto router = RouterID(session->GetPubKey());
     LogWarn("Session establish attempt to ", router, " timed out.", session->GetRemoteEndpoint());
-
-    // inform core if needed
-    if (auto rpc = _router->RpcClient())
-    {
-      rpc->RecordConnection(router, false);
-    }
-
     FinalizeRequest(router, SessionResult::Timeout);
   }
 
