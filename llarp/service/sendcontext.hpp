@@ -44,8 +44,8 @@ namespace llarp
       uint64_t sequenceNo = 0;
       llarp_time_t lastGoodSend = 0s;
       const llarp_time_t createdAt;
-      llarp_time_t sendTimeout = path::build_timeout * 2;
-      llarp_time_t connectTimeout = path::build_timeout * 4;
+      llarp_time_t sendTimeout = path::build_timeout;
+      llarp_time_t connectTimeout = path::build_timeout;
       llarp_time_t shiftTimeout = (path::build_timeout * 5) / 2;
       llarp_time_t estimatedRTT = 0s;
       bool markedBad = false;
