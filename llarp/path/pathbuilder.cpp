@@ -6,8 +6,10 @@
 #include "path_context.hpp"
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/tooling/path_event.hpp>
+#include <llarp/link/link_manager.hpp>
 
 #include <functional>
 
@@ -477,16 +479,30 @@ namespace llarp
       m_router->routerProfiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
-      bool firstHop = true;
       for (const auto& hop : p->hops)
       {
-        if (not firstHop)
-        {
-          RouterID router{hop.rc.pubkey};
-          LogWarn(Name(), " removing router ", router, " because of path build timeout");
-          m_router->nodedb()->Remove(router);
-        }
-        firstHop = false;
+        const RouterID router{hop.rc.pubkey};
+        // look up router and see if it's still on the network
+        m_router->loop()->call_soon([router, r = m_router]() {
+          LogInfo("looking up ", router, " because of path build timeout");
+          r->rcLookupHandler().GetRC(
+              router,
+              [r](const auto& router, const auto* rc, auto result) {
+                if (result == RCRequestResult::Success && rc != nullptr)
+                {
+                  LogInfo("refreshed rc for ", router);
+                  r->nodedb()->PutIfNewer(*rc);
+                }
+                else
+                {
+                  // remove all connections to this router as it's probably not registered anymore
+                  LogWarn("removing router ", router, " because of path build timeout");
+                  r->linkManager().DeregisterPeer(router);
+                  r->nodedb()->Remove(router);
+                }
+              },
+              true);
+        });
       }
     }
 
