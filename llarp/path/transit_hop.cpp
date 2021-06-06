@@ -76,7 +76,7 @@ namespace llarp
         LogWarn(
             "TransitHop received non-successful LR_StatusMessage, queueing "
             "self-destruct status=",
-            status);
+            LRStatusCodeToString(status));
         QueueDestroySelf(r);
       }
 

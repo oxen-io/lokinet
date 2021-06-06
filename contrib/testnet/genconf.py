@@ -59,6 +59,9 @@ def main():
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
         }
+        config["logging"] = {
+            "level": args.loglevel
+        }
         config['netdb'] = {
             'dir': 'netdb'
         }
