@@ -185,10 +185,8 @@ namespace llarp
       return;
 
     util::Lock l(_mutex);
-    auto& curr = m_PersistingSessions[remote];
-    if (until > curr)
-      curr = until;
-    LogDebug("persist session to ", remote, " until ", curr - time_now_ms());
+
+    m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
   }
 
   void
