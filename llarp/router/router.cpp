@@ -797,7 +797,7 @@ namespace llarp
       if (!UpdateOurRC(false))
         LogError("Failed to update our RC");
     }
-    else if (whitelistEnabled and gotWhitelist and _rcLookupHandler.SessionIsAllowed(pubkey()))
+    else if (whitelistRouters and gotWhitelist and _rcLookupHandler.SessionIsAllowed(pubkey()))
     {
       // if we have the whitelist enabled, we have fetched the list and we are in either
       // the white or grey list, we want to gossip our RC
