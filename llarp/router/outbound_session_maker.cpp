@@ -226,6 +226,10 @@ namespace llarp
     {
       _loop->call([this, router] { DoEstablish(router); });
     }
+    else if(_linkManager->HasSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+    }
     else
     {
       FinalizeRequest(router, SessionResult::NoLink);
