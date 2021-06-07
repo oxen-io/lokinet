@@ -235,10 +235,10 @@ namespace llarp
       {
         auto& loop = router->loop();
         loop->call([this,
-                active=std::move(activeNodeList),
-                inactive=std::move(nonActiveNodeList),
-                keymap=std::move(keymap),
-                router=std::move(router)]() mutable {
+                    active = std::move(activeNodeList),
+                    inactive = std::move(nonActiveNodeList),
+                    keymap = std::move(keymap),
+                    router = std::move(router)]() mutable {
           m_KeyMap = std::move(keymap);
           router->SetRouterWhitelist(active, inactive);
         });
