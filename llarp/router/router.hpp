@@ -188,9 +188,9 @@ namespace llarp
     void
     QueueDiskIO(std::function<void(void)> func) override;
 
-    /// return true if we look like we are a deregistered service node
+    /// return true if we look like we are a decommissioned service node
     bool
-    LooksDeregistered() const;
+    LooksDecommissioned() const;
 
     std::optional<SockAddr> _ourAddress;
 

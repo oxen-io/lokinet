@@ -377,7 +377,7 @@ namespace llarp
   }
 
   bool
-  Router::LooksDeregistered() const
+  Router::LooksDecommissioned() const
   {
     return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
         and _rcLookupHandler.IsGreylisted(pubkey());
@@ -392,9 +392,9 @@ namespace llarp
   bool
   Router::PathToRouterAllowed(const RouterID& router) const
   {
-    if (LooksDeregistered())
+    if (LooksDecommissioned())
     {
-      // we are deregistered don't allow any paths outbound at all
+      // we are decom'd don't allow any paths outbound at all
       return false;
     }
     return _rcLookupHandler.PathIsAllowed(router);
@@ -788,7 +788,7 @@ namespace llarp
 
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
-    const bool looksDeregistered = LooksDeregistered();
+    const bool decom = LooksDecommissioned();
 
     if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
         || (now - _rc.last_updated) > rcRegenInterval)
@@ -870,7 +870,7 @@ namespace llarp
 
     const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
-    if (timepoint_now >= m_NextExploreAt and not looksDeregistered)
+    if (timepoint_now >= m_NextExploreAt and not decom)
     {
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
@@ -882,13 +882,8 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (looksDeregistered)
+    if (decom)
     {
-      // kill all sessions that are open because we think we are deregistered
-      _linkManager.ForEachPeer([](auto* peer) {
-        if (peer)
-          peer->Close();
-      });
       // complain about being deregistered
       LogError("We are running as a service node but we seem to be decommissioned");
     }
@@ -1199,6 +1194,9 @@ namespace llarp
           consensus::reachability_testing::TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
             // dont run tests if we are not running or we are stopping
             if (not _running)
+              return;
+            // dont run tests if we are decommissioned
+            if (LooksDecommissioned())
               return;
             auto tests = m_routerTesting.get_failing(this);
             if (auto maybe = m_routerTesting.next_random(this))
