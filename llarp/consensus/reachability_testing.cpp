@@ -144,6 +144,7 @@ namespace llarp::consensus
     if (next_test_in > TESTING_BACKOFF_MAX)
       next_test_in = TESTING_BACKOFF_MAX;
 
+    failing.insert(pk);
     failing_queue.emplace(pk, steady_clock::now() + next_test_in, previous_failures + 1);
   }
 
