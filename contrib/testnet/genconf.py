@@ -31,7 +31,7 @@ def main():
     ap.add_argument('--ip', type=str, default=None)
     ap.add_argument('--ifname', type=str, default='lo')
     ap.add_argument('--netid', type=str, default=None)
-    ap.add_argument('--loglevel', type=str, default='info')
+    ap.add_argument('--loglevel', type=str, default='debug')
     args = ap.parse_args()
 
     if args.valgrind:
@@ -66,13 +66,17 @@ def main():
             'dir': 'netdb'
         }
         config['network'] = {
-            'type' : 'null'
+            'type' : 'null',
+            'save-profiles': 'false'
         }
         config['api'] = {
             'enabled': 'false'
         }
         config['lokid'] = {
             'enabled': 'false',
+        }
+        config["logging"] = {
+            "level": args.loglevel
         }
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):

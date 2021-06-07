@@ -187,6 +187,14 @@ namespace llarp
     util::Lock l(_mutex);
 
     m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
+    if (auto maybe = SessionIsClient(remote))
+    {
+      if (*maybe)
+      {
+        // mark this as a client so we don't try to back connect
+        m_Clients.Upsert(remote);
+      }
+    }
   }
 
   void
@@ -335,43 +343,43 @@ namespace llarp
       return;
 
     std::vector<RouterID> sessionsNeeded;
+    std::vector<RouterID> sessionsClosed;
 
     {
       util::Lock l(_mutex);
-
-      auto itr = m_PersistingSessions.begin();
-      while (itr != m_PersistingSessions.end())
+      for (auto [remote, until] : m_PersistingSessions)
       {
-        if (now < itr->second)
+        if (now < until)
         {
-          auto link = GetLinkWithSessionTo(itr->first);
+          auto link = GetLinkWithSessionTo(remote);
           if (link)
           {
-            link->KeepAliveSessionTo(itr->first);
+            link->KeepAliveSessionTo(remote);
           }
-          else
+          else if (not m_Clients.Contains(remote))
           {
-            sessionsNeeded.push_back(itr->first);
+            sessionsNeeded.push_back(remote);
           }
-          ++itr;
         }
-        else
+        else if (not m_Clients.Contains(remote))
         {
-          const RouterID r(itr->first);
-          LogInfo("commit to ", r, " expired");
-          itr = m_PersistingSessions.erase(itr);
-          for (const auto& link : outboundLinks)
-          {
-            link->CloseSessionTo(r);
-          }
+          sessionsClosed.push_back(remote);
         }
       }
     }
 
     for (const auto& router : sessionsNeeded)
     {
+      LogInfo("ensuring session to ", router, " for previously made commitment");
       _sessionMaker->CreateSessionTo(router, nullptr);
     }
+
+    ForEachOutboundLink([sessionsClosed](auto link) {
+      for (const auto& router : sessionsClosed)
+      {
+        link->CloseSessionTo(router);
+      }
+    });
   }
 
   void
