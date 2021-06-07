@@ -9,17 +9,6 @@ using std::chrono::steady_clock;
 
 namespace llarp::consensus
 {
-  namespace detail
-  {
-    std::mt19937_64&
-    rng()
-    {
-      static thread_local std::mt19937_64 generator{std::random_device{}()};
-      return generator;
-    }
-
-  }  // namespace detail
-
   using fseconds = std::chrono::duration<float, std::chrono::seconds::period>;
   using fminutes = std::chrono::duration<float, std::chrono::minutes::period>;
 
@@ -87,9 +76,10 @@ namespace llarp::consensus
   {
     if (next_general_test > now)
       return std::nullopt;
+    CSRNG rng;
     next_general_test = now
         + std::chrono::duration_cast<time_point_t::duration>(
-                            fseconds(TESTING_INTERVAL(detail::rng())));
+                            fseconds(TESTING_INTERVAL(rng)));
 
     // Pull the next element off the queue, but skip ourself, any that are no longer registered, and
     // any that are currently known to be failing (those are queued for testing separately).
@@ -118,7 +108,7 @@ namespace llarp::consensus
     const auto all = router->GetRouterWhitelist();
     testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
 
-    std::shuffle(testing_queue.begin(), testing_queue.end(), detail::rng());
+    std::shuffle(testing_queue.begin(), testing_queue.end(), rng);
 
     // Recurse with the rebuild list, but don't let it try rebuilding again
     return next_random(router, now, false);
@@ -149,8 +139,9 @@ namespace llarp::consensus
 
     if (previous_failures < 0)
       previous_failures = 0;
+    CSRNG rng;
     auto next_test_in = duration_cast<time_point_t::duration>(
-        previous_failures * TESTING_BACKOFF + fseconds{TESTING_INTERVAL(detail::rng())});
+        previous_failures * TESTING_BACKOFF + fseconds{TESTING_INTERVAL(rng)});
     if (next_test_in > TESTING_BACKOFF_MAX)
       next_test_in = TESTING_BACKOFF_MAX;
 
