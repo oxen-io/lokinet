@@ -42,7 +42,7 @@ namespace llarp
     LogInfo(
         "session with ", remoteType, " [", router, "] ", isOutbound ? "established" : "received");
 
-    if (not _rcLookup->RemoteIsAllowed(router))
+    if (not _rcLookup->SessionIsAllowed(router))
     {
       FinalizeRequest(router, SessionResult::InvalidRouter);
       return false;
@@ -132,7 +132,7 @@ namespace llarp
         break;
 
       exclude.insert(other.pubkey);
-      if (not _rcLookup->RemoteIsAllowed(other.pubkey))
+      if (not _rcLookup->SessionIsAllowed(other.pubkey))
       {
         continue;
       }
@@ -226,7 +226,7 @@ namespace llarp
     {
       _loop->call([this, router] { DoEstablish(router); });
     }
-    else if(_linkManager->HasSessionTo(router))
+    else if (_linkManager->HasSessionTo(router))
     {
       FinalizeRequest(router, SessionResult::Establish);
     }
@@ -239,7 +239,7 @@ namespace llarp
   bool
   OutboundSessionMaker::ShouldConnectTo(const RouterID& router) const
   {
-    if (router == us or not _rcLookup->RemoteIsAllowed(router))
+    if (router == us or not _rcLookup->SessionIsAllowed(router))
       return false;
     size_t numPending = 0;
     {

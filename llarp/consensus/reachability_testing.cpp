@@ -77,9 +77,8 @@ namespace llarp::consensus
     if (next_general_test > now)
       return std::nullopt;
     CSRNG rng;
-    next_general_test = now
-        + std::chrono::duration_cast<time_point_t::duration>(
-                            fseconds(TESTING_INTERVAL(rng)));
+    next_general_test =
+        now + std::chrono::duration_cast<time_point_t::duration>(fseconds(TESTING_INTERVAL(rng)));
 
     // Pull the next element off the queue, but skip ourself, any that are no longer registered, and
     // any that are currently known to be failing (those are queued for testing separately).

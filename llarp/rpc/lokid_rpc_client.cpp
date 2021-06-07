@@ -111,8 +111,9 @@ namespace llarp
       nlohmann::json request, fields;
       fields["pubkey_ed25519"] = true;
       fields["service_node_pubkey"] = true;
+      fields["funded"] = true;
+      fields["active"] = true;
       request["fields"] = fields;
-      request["active_only"] = true;
       if (not topblock.empty())
         request["poll_block_hash"] = topblock;
       m_UpdatingList = true;
@@ -187,7 +188,7 @@ namespace llarp
         }
       }
       std::unordered_map<RouterID, PubKey> keymap;
-      std::vector<RouterID> nodeList;
+      std::vector<RouterID> activeNodeList, nonActiveNodeList;
       {
         const auto itr = j.find("service_node_states");
         if (itr != j.end() and itr->is_array())
@@ -200,18 +201,33 @@ namespace llarp
             const auto svc_itr = j_itr->find("service_node_pubkey");
             if (svc_itr == j_itr->end() or not svc_itr->is_string())
               continue;
+            const auto funded_itr = j_itr->find("funded");
+            if (funded_itr == j_itr->end() or not funded_itr->is_boolean())
+              continue;
+            const auto active_itr = j_itr->find("active");
+            if (active_itr == j_itr->end() or not active_itr->is_boolean())
+              continue;
+            const bool active = active_itr->get<bool>();
+            const bool funded = funded_itr->get<bool>();
+
+            if (not funded)
+              continue;
+
             RouterID rid;
             PubKey pk;
             if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
             {
               keymap[rid] = pk;
-              nodeList.emplace_back(std::move(rid));
+              if (active)
+                activeNodeList.emplace_back(std::move(rid));
+              else
+                nonActiveNodeList.emplace_back(std::move(rid));
             }
           }
         }
       }
 
-      if (nodeList.empty())
+      if (activeNodeList.empty())
       {
         LogWarn("got empty service node list, ignoring.");
         return;
@@ -219,12 +235,11 @@ namespace llarp
       // inform router about the new list
       if (auto router = m_Router.lock())
       {
-        router->loop()->call(
-            [this, nodeList = std::move(nodeList), keymap = std::move(keymap)]() mutable {
-              m_KeyMap = std::move(keymap);
-              if (auto router = m_Router.lock())
-                router->SetRouterWhitelist(std::move(nodeList));
-            });
+        router->loop()->call([this, activeNodeList, nonActiveNodeList, keymap]() {
+          m_KeyMap = keymap;
+          if (auto router = m_Router.lock())
+            router->SetRouterWhitelist(activeNodeList, nonActiveNodeList);
+        });
       }
     }
 

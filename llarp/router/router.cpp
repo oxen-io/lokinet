@@ -380,18 +380,24 @@ namespace llarp
   Router::LooksDeregistered() const
   {
     return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
-        and not _rcLookupHandler.RemoteIsAllowed(pubkey());
+        and _rcLookupHandler.IsGreylisted(pubkey());
   }
 
   bool
-  Router::ConnectionToRouterAllowed(const RouterID& router) const
+  Router::SessionToRouterAllowed(const RouterID& router) const
+  {
+    return _rcLookupHandler.SessionIsAllowed(router);
+  }
+
+  bool
+  Router::PathToRouterAllowed(const RouterID& router) const
   {
     if (LooksDeregistered())
     {
-      // we are deregistered don't allow any connections outbound at all
+      // we are deregistered don't allow any paths outbound at all
       return false;
     }
-    return _rcLookupHandler.RemoteIsAllowed(router);
+    return _rcLookupHandler.PathIsAllowed(router);
   }
 
   size_t
@@ -817,7 +823,7 @@ namespace llarp
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
+      return not _rcLookupHandler.SessionIsAllowed(rc.pubkey);
     });
 
     // find all deregistered relays
@@ -829,7 +835,7 @@ namespace llarp
       if (not session)
         return;
       const auto pk = session->GetPubKey();
-      if (session->IsRelay() and not _rcLookupHandler.RemoteIsAllowed(pk))
+      if (session->IsRelay() and not _rcLookupHandler.SessionIsAllowed(pk))
       {
         closePeers.emplace(pk);
       }
@@ -1034,9 +1040,10 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector<RouterID> routers)
+  Router::SetRouterWhitelist(
+      const std::vector<RouterID> whitelist, const std::vector<RouterID> greylist)
   {
-    _rcLookupHandler.SetRouterWhitelist(routers);
+    _rcLookupHandler.SetRouterWhitelist(whitelist, greylist);
   }
 
   bool
@@ -1202,17 +1209,27 @@ namespace llarp
               // try to make a session to this random router
               // this will do a dht lookup if needed
               _outboundSessionMaker.CreateSessionTo(
-                  router, [previous_fails=fails, this](const auto& router, const auto result) {
+                  router, [previous_fails = fails, this](const auto& router, const auto result) {
                     auto rpc = RpcClient();
 
                     if (result != SessionResult::Establish)
                     {
                       // failed connection mark it as so
                       m_routerTesting.add_failing_node(router, previous_fails);
-                      LogInfo("FAILED SN connection test to ", router, " (", previous_fails + 1, " consecutive failures)");
+                      LogInfo(
+                          "FAILED SN connection test to ",
+                          router,
+                          " (",
+                          previous_fails + 1,
+                          " consecutive failures)");
                     }
                     else if (previous_fails > 0)
-                      LogInfo("Successful SN connection test to ", router, " after ", previous_fails, " failures");
+                      LogInfo(
+                          "Successful SN connection test to ",
+                          router,
+                          " after ",
+                          previous_fails,
+                          " failures");
                     else
                       LogDebug("Successful SN connection test to ", router);
 
@@ -1358,7 +1375,7 @@ namespace llarp
       return false;
     }
 
-    if (!_rcLookupHandler.RemoteIsAllowed(rc.pubkey))
+    if (not _rcLookupHandler.SessionIsAllowed(rc.pubkey))
     {
       return false;
     }

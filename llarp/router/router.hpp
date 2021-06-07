@@ -131,7 +131,8 @@ namespace llarp
     ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
 
     void
-    SetRouterWhitelist(const std::vector<RouterID> routers) override;
+    SetRouterWhitelist(
+        const std::vector<RouterID> whitelist, const std::vector<RouterID> greylist) override;
 
     std::unordered_set<RouterID>
     GetRouterWhitelist() const override
@@ -398,7 +399,9 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    ConnectionToRouterAllowed(const RouterID& router) const override;
+    SessionToRouterAllowed(const RouterID& router) const override;
+    bool
+    PathToRouterAllowed(const RouterID& router) const override;
 
     void
     HandleSaveRC() const;
