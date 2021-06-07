@@ -1201,7 +1201,7 @@ namespace llarp
               // try to make a session to this random router
               // this will do a dht lookup if needed
               _outboundSessionMaker.CreateSessionTo(
-                  router, [fails, this](const auto& router, const auto result) {
+                  router, [fails=fails, this](const auto& router, const auto result) {
                     auto rpc = RpcClient();
 
                     if (result != SessionResult::Establish)
