@@ -285,7 +285,7 @@ namespace llarp
     /// set router's service node whitelist
     virtual void
     SetRouterWhitelist(
-        const std::vector<RouterID> whitelist, const std::vector<RouterID> greylist) = 0;
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
 
     virtual std::unordered_set<RouterID>
     GetRouterWhitelist() const = 0;

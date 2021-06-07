@@ -132,7 +132,7 @@ namespace llarp
 
     void
     SetRouterWhitelist(
-        const std::vector<RouterID> whitelist, const std::vector<RouterID> greylist) override;
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override;
 
     std::unordered_set<RouterID>
     GetRouterWhitelist() const override

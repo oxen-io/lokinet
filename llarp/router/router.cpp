@@ -1043,7 +1043,7 @@ namespace llarp
 
   void
   Router::SetRouterWhitelist(
-      const std::vector<RouterID> whitelist, const std::vector<RouterID> greylist)
+      const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist)
   {
     _rcLookupHandler.SetRouterWhitelist(whitelist, greylist);
   }
