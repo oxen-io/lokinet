@@ -204,8 +204,8 @@ namespace llarp
             PubKey pk;
             if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
             {
-              nodeList.emplace_back(std::move(rid));
               keymap[rid] = pk;
+              nodeList.emplace_back(std::move(rid));
             }
           }
         }
