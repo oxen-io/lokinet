@@ -74,6 +74,7 @@ namespace llarp
 
     if (HavePendingSessionTo(router))
     {
+      LogDebug("has pending session to", router);
       return;
     }
 
@@ -225,6 +226,10 @@ namespace llarp
     {
       _loop->call([this, router] { DoEstablish(router); });
     }
+    else
+    {
+      FinalizeRequest(router, SessionResult::NoLink);
+    }
   }
 
   bool
@@ -240,6 +245,8 @@ namespace llarp
     }
     if (_linkManager->HasSessionTo(router))
       return false;
+    if (_router->IsServiceNode())
+      return true;
     return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
   }
 
@@ -261,6 +268,7 @@ namespace llarp
   {
     if (not HavePendingSessionTo(router))
     {
+      LogError("no pending session to ", router);
       return;
     }
 
@@ -274,6 +282,7 @@ namespace llarp
         else
         {
           LogError("RCRequestResult::Success but null rc pointer given");
+          InvalidRouter(router);
         }
         break;
       case RCRequestResult::InvalidRouter:
@@ -283,6 +292,7 @@ namespace llarp
         RouterNotFound(router);
         break;
       default:
+        RouterNotFound(router);
         break;
     }
   }
