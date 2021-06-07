@@ -35,6 +35,12 @@ namespace llarp
     virtual bool
     HasSessionTo(const RouterID& remote) const = 0;
 
+    // it is fine to have both an inbound and outbound session with
+    // another relay, and is useful for network testing.  This test
+    // is more specific for use with "should we connect outbound?"
+    virtual bool
+    HasOutboundSessionTo(const RouterID& remote) const = 0;
+
     /// return true if the session with this pubkey is a client
     /// return false if the session with this pubkey is a router
     /// return std::nullopt we have no session with this pubkey

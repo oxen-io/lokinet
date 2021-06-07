@@ -247,7 +247,7 @@ namespace llarp
       if (pendingSessions.find(router) == pendingSessions.end())
         numPending += pendingSessions.size();
     }
-    if (_linkManager->HasSessionTo(router))
+    if (_linkManager->HasOutboundSessionTo(router))
       return false;
     if (_router->IsServiceNode())
       return true;
