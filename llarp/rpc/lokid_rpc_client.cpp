@@ -95,11 +95,11 @@ namespace llarp
       }
       catch (std::exception& ex)
       {
-        LogError("bad block hieght: ", ex.what());
+        LogError("bad block height: ", ex.what());
         return;  // bail
       }
 
-      LogDebug("new block at hieght ", m_BlockHeight);
+      LogDebug("new block at height ", m_BlockHeight);
       // don't upadate on block notification if an update is pending
       if (not m_UpdatingList)
         UpdateServiceNodeList(std::string{msg.data[1]});
@@ -241,6 +241,8 @@ namespace llarp
             router->SetRouterWhitelist(activeNodeList, nonActiveNodeList);
         });
       }
+      else
+        LogWarn("Cannot update whitelist: router object has gone away");
     }
 
     void
