@@ -1198,17 +1198,24 @@ namespace llarp
             }
             for (const auto& [router, fails] : tests)
             {
+              LogDebug("Establishing session to ", router, " for SN testing");
               // try to make a session to this random router
               // this will do a dht lookup if needed
               _outboundSessionMaker.CreateSessionTo(
-                  router, [fails=fails, this](const auto& router, const auto result) {
+                  router, [previous_fails=fails, this](const auto& router, const auto result) {
                     auto rpc = RpcClient();
 
                     if (result != SessionResult::Establish)
                     {
                       // failed connection mark it as so
-                      m_routerTesting.add_failing_node(router, fails);
+                      m_routerTesting.add_failing_node(router, previous_fails);
+                      LogInfo("FAILED SN connection test to ", router, " (", previous_fails + 1, " consecutive failures)");
                     }
+                    else if (previous_fails > 0)
+                      LogInfo("Successful SN connection test to ", router, " after ", previous_fails, " failures");
+                    else
+                      LogDebug("Successful SN connection test to ", router);
+
                     if (rpc)
                     {
                       // inform as needed
