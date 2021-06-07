@@ -235,10 +235,14 @@ namespace llarp
       // inform router about the new list
       if (auto router = m_Router.lock())
       {
-        router->loop()->call([this, activeNodeList, nonActiveNodeList, keymap]() {
-          m_KeyMap = keymap;
-          if (auto router = m_Router.lock())
-            router->SetRouterWhitelist(activeNodeList, nonActiveNodeList);
+        auto& loop = router->loop();
+        loop->call([this,
+                active=std::move(activeNodeList),
+                inactive=std::move(nonActiveNodeList),
+                keymap=std::move(keymap),
+                router=std::move(router)]() mutable {
+          m_KeyMap = std::move(keymap);
+          router->SetRouterWhitelist(active, inactive);
         });
       }
       else
