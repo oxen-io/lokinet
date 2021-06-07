@@ -102,11 +102,11 @@ namespace llarp
       LogDebug("new block at height ", m_BlockHeight);
       // don't upadate on block notification if an update is pending
       if (not m_UpdatingList)
-        UpdateServiceNodeList(std::string{msg.data[1]});
+        UpdateServiceNodeList();
     }
 
     void
-    LokidRpcClient::UpdateServiceNodeList(std::string topblock)
+    LokidRpcClient::UpdateServiceNodeList()
     {
       nlohmann::json request, fields;
       fields["pubkey_ed25519"] = true;
@@ -114,8 +114,6 @@ namespace llarp
       fields["funded"] = true;
       fields["active"] = true;
       request["fields"] = fields;
-      if (not topblock.empty())
-        request["poll_block_hash"] = topblock;
       m_UpdatingList = true;
       Request(
           "rpc.get_service_nodes",
@@ -169,7 +167,7 @@ namespace llarp
       };
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
       // initial fetch of service node list
-      UpdateServiceNodeList("");
+      UpdateServiceNodeList();
     }
 
     void

@@ -56,7 +56,7 @@ namespace llarp
       Command(std::string_view cmd);
 
       void
-      UpdateServiceNodeList(std::string topblock);
+      UpdateServiceNodeList();
 
       template <typename HandlerFunc_t, typename Args_t>
       void
