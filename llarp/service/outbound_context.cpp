@@ -289,7 +289,7 @@ namespace llarp
             path->Endpoint(),
             relayOrder,
             m_Endpoint->GenTXID(),
-            5s + (2 * path->intro.latency));
+            (IntrosetUpdateInterval / 2) + (2 * path->intro.latency));
         relayOrder++;
         if (job->SendRequestViaPath(path, m_Endpoint->Router()))
           updatingIntroSet = true;
