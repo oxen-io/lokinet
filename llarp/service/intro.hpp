@@ -78,7 +78,7 @@ namespace llarp
       return i.print(out, -1, -1);
     }
 
-    /// comparitor for introset timestamp
+    /// comparator for introset timestamp
     struct CompareIntroTimestamp
     {
       bool
