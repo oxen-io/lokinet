@@ -971,7 +971,10 @@ namespace llarp
         // try sending it on an existing convotag
         // this succeds for inbound convos, probably.
         if (SendToOrQueue(to, pkt.ConstBuffer(), type))
+        {
+          MarkIPActive(dst);
           return;
+        }
         // try establishing a path to this guy
         // will fail if it's an inbound convo
         EnsurePathTo(
