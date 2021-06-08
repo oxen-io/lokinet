@@ -63,7 +63,6 @@ namespace llarp
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
-      , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
     // for lokid, so we don't close the connection when syncing the whitelist
@@ -290,7 +289,10 @@ namespace llarp
     auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
+    {
       lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
+      m_lokidRpcClient = std::make_shared<rpc::LokidRpcClient>(m_lmq, weak_from_this());
+    }
 
     enableRPCServer = conf.api.m_enableRPCServer;
     if (enableRPCServer)
@@ -375,21 +377,27 @@ namespace llarp
   }
 
   bool
-  Router::LooksDeregistered() const
+  Router::LooksDecommissioned() const
   {
     return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
-        and not _rcLookupHandler.RemoteIsAllowed(pubkey());
+        and _rcLookupHandler.IsGreylisted(pubkey());
   }
 
   bool
-  Router::ConnectionToRouterAllowed(const RouterID& router) const
+  Router::SessionToRouterAllowed(const RouterID& router) const
   {
-    if (LooksDeregistered())
+    return _rcLookupHandler.SessionIsAllowed(router);
+  }
+
+  bool
+  Router::PathToRouterAllowed(const RouterID& router) const
+  {
+    if (LooksDecommissioned())
     {
-      // we are deregistered don't allow any connections outbound at all
+      // we are decom'd don't allow any paths outbound at all
       return false;
     }
-    return _rcLookupHandler.RemoteIsAllowed(router);
+    return _rcLookupHandler.PathIsAllowed(router);
   }
 
   size_t
@@ -748,7 +756,7 @@ namespace llarp
         ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths | "
-           << "block " << m_lokidRpcClient->BlockHeight();
+           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0);
       }
       else
       {
@@ -780,7 +788,7 @@ namespace llarp
 
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
-    const bool looksDeregistered = LooksDeregistered();
+    const bool decom = LooksDecommissioned();
 
     if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
         || (now - _rc.last_updated) > rcRegenInterval)
@@ -789,8 +797,10 @@ namespace llarp
       if (!UpdateOurRC(false))
         LogError("Failed to update our RC");
     }
-    else if (not looksDeregistered)
+    else if (whitelistRouters and gotWhitelist and _rcLookupHandler.SessionIsAllowed(pubkey()))
     {
+      // if we have the whitelist enabled, we have fetched the list and we are in either
+      // the white or grey list, we want to gossip our RC
       GossipRCIfNeeded(_rc);
     }
     // remove RCs for nodes that are no longer allowed by network policy
@@ -815,7 +825,7 @@ namespace llarp
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
+      return not _rcLookupHandler.SessionIsAllowed(rc.pubkey);
     });
 
     // find all deregistered relays
@@ -827,7 +837,7 @@ namespace llarp
       if (not session)
         return;
       const auto pk = session->GetPubKey();
-      if (session->IsRelay() and not _rcLookupHandler.RemoteIsAllowed(pk))
+      if (session->IsRelay() and not _rcLookupHandler.SessionIsAllowed(pk))
       {
         closePeers.emplace(pk);
       }
@@ -860,7 +870,7 @@ namespace llarp
 
     const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
-    if (timepoint_now >= m_NextExploreAt and not looksDeregistered)
+    if (timepoint_now >= m_NextExploreAt and not decom)
     {
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
@@ -872,13 +882,8 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (looksDeregistered)
+    if (decom)
     {
-      // kill all sessions that are open because we think we are deregistered
-      _linkManager.ForEachPeer([](auto* peer) {
-        if (peer)
-          peer->Close();
-      });
       // complain about being deregistered
       LogError("We are running as a service node but we seem to be decommissioned");
     }
@@ -1032,9 +1037,10 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector<RouterID> routers)
+  Router::SetRouterWhitelist(
+      const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist)
   {
-    _rcLookupHandler.SetRouterWhitelist(routers);
+    _rcLookupHandler.SetRouterWhitelist(whitelist, greylist);
   }
 
   bool
@@ -1181,6 +1187,75 @@ namespace llarp
 #if defined(WITH_SYSTEMD)
     ::sd_notify(0, "READY=1");
 #endif
+    if (whitelistRouters)
+    {
+      // do service node testing if we are in service node whitelist mode
+      _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
+        // dont run tests if we are not running or we are stopping
+        if (not _running)
+          return;
+        // dont run tests if we are decommissioned
+        if (LooksDecommissioned())
+          return;
+        auto tests = m_routerTesting.get_failing();
+        if (auto maybe = m_routerTesting.next_random(this))
+        {
+          tests.emplace_back(*maybe, 0);
+        }
+        for (const auto& [router, fails] : tests)
+        {
+          if (not SessionToRouterAllowed(router))
+          {
+            LogDebug(
+                router,
+                " is no longer a registered service node so we remove it from the testing list");
+            m_routerTesting.remove_node_from_failing(router);
+            continue;
+          }
+          LogDebug("Establishing session to ", router, " for SN testing");
+          // try to make a session to this random router
+          // this will do a dht lookup if needed
+          _outboundSessionMaker.CreateSessionTo(
+              router, [previous_fails = fails, this](const auto& router, const auto result) {
+                auto rpc = RpcClient();
+
+                if (result != SessionResult::Establish)
+                {
+                  // failed connection mark it as so
+                  m_routerTesting.add_failing_node(router, previous_fails);
+                  LogInfo(
+                      "FAILED SN connection test to ",
+                      router,
+                      " (",
+                      previous_fails + 1,
+                      " consecutive failures)");
+                }
+                else
+                {
+                  m_routerTesting.remove_node_from_failing(router);
+                  if (previous_fails > 0)
+                  {
+                    LogInfo(
+                        "Successful SN connection test to ",
+                        router,
+                        " after ",
+                        previous_fails,
+                        " failures");
+                  }
+                  else
+                  {
+                    LogDebug("Successful SN connection test to ", router);
+                  }
+                }
+                if (rpc)
+                {
+                  // inform as needed
+                  rpc->InformConnection(router, result == SessionResult::Establish);
+                }
+              });
+        }
+      });
+    }
     LogContext::Instance().DropToRuntimeLevel();
     return _running;
   }
@@ -1314,7 +1389,7 @@ namespace llarp
       return false;
     }
 
-    if (!_rcLookupHandler.RemoteIsAllowed(rc.pubkey))
+    if (not _rcLookupHandler.SessionIsAllowed(rc.pubkey))
     {
       return false;
     }

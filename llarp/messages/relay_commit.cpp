@@ -279,7 +279,7 @@ namespace llarp
 #endif
       }
 
-      if (!self->context->Router()->ConnectionToRouterAllowed(self->hop->info.upstream))
+      if (not self->context->Router()->PathToRouterAllowed(self->hop->info.upstream))
       {
         // we are not allowed to forward it ... now what?
         llarp::LogError(

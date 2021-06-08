@@ -60,6 +60,17 @@ namespace llarp
     return GetLinkWithSessionTo(remote) != nullptr;
   }
 
+  bool
+  LinkManager::HasOutboundSessionTo(const RouterID& remote) const
+  {
+    for (const auto& link : outboundLinks)
+    {
+      if (link->HasSessionTo(remote))
+        return true;
+    }
+    return false;
+  }
+
   std::optional<bool>
   LinkManager::SessionIsClient(RouterID remote) const
   {
@@ -69,11 +80,8 @@ namespace llarp
       if (session)
         return not session->IsRelay();
     }
-    for (const auto& link : outboundLinks)
-    {
-      if (link->HasSessionTo(remote))
-        return false;
-    }
+    if (HasOutboundSessionTo(remote))
+      return false;
     return std::nullopt;
   }
 
