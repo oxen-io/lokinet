@@ -1190,57 +1190,56 @@ namespace llarp
     if (whitelistRouters)
     {
       // do service node testing if we are in service node whitelist mode
-      _loop->call_every(
-          consensus::reachability_testing::TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
-            // dont run tests if we are not running or we are stopping
-            if (not _running)
-              return;
-            // dont run tests if we are decommissioned
-            if (LooksDecommissioned())
-              return;
-            auto tests = m_routerTesting.get_failing(this);
-            if (auto maybe = m_routerTesting.next_random(this))
-            {
-              tests.emplace_back(*maybe, 0);
-            }
-            for (const auto& [router, fails] : tests)
-            {
-              LogDebug("Establishing session to ", router, " for SN testing");
-              // try to make a session to this random router
-              // this will do a dht lookup if needed
-              _outboundSessionMaker.CreateSessionTo(
-                  router, [previous_fails = fails, this](const auto& router, const auto result) {
-                    auto rpc = RpcClient();
+      _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
+        // dont run tests if we are not running or we are stopping
+        if (not _running)
+          return;
+        // dont run tests if we are decommissioned
+        if (LooksDecommissioned())
+          return;
+        auto tests = m_routerTesting.get_failing(this);
+        if (auto maybe = m_routerTesting.next_random(this))
+        {
+          tests.emplace_back(*maybe, 0);
+        }
+        for (const auto& [router, fails] : tests)
+        {
+          LogDebug("Establishing session to ", router, " for SN testing");
+          // try to make a session to this random router
+          // this will do a dht lookup if needed
+          _outboundSessionMaker.CreateSessionTo(
+              router, [previous_fails = fails, this](const auto& router, const auto result) {
+                auto rpc = RpcClient();
 
-                    if (result != SessionResult::Establish)
-                    {
-                      // failed connection mark it as so
-                      m_routerTesting.add_failing_node(router, previous_fails);
-                      LogInfo(
-                          "FAILED SN connection test to ",
-                          router,
-                          " (",
-                          previous_fails + 1,
-                          " consecutive failures)");
-                    }
-                    else if (previous_fails > 0)
-                      LogInfo(
-                          "Successful SN connection test to ",
-                          router,
-                          " after ",
-                          previous_fails,
-                          " failures");
-                    else
-                      LogDebug("Successful SN connection test to ", router);
+                if (result != SessionResult::Establish)
+                {
+                  // failed connection mark it as so
+                  m_routerTesting.add_failing_node(router, previous_fails);
+                  LogInfo(
+                      "FAILED SN connection test to ",
+                      router,
+                      " (",
+                      previous_fails + 1,
+                      " consecutive failures)");
+                }
+                else if (previous_fails > 0)
+                  LogInfo(
+                      "Successful SN connection test to ",
+                      router,
+                      " after ",
+                      previous_fails,
+                      " failures");
+                else
+                  LogDebug("Successful SN connection test to ", router);
 
-                    if (rpc)
-                    {
-                      // inform as needed
-                      rpc->InformConnection(router, result == SessionResult::Establish);
-                    }
-                  });
-            }
-          });
+                if (rpc)
+                {
+                  // inform as needed
+                  rpc->InformConnection(router, result == SessionResult::Establish);
+                }
+              });
+        }
+      });
     }
     LogContext::Instance().DropToRuntimeLevel();
     return _running;

@@ -44,16 +44,16 @@ namespace llarp::consensus
   using time_point_t = detail::time_point_t;
   using clock_t = detail::clock_t;
 
+  // How often we tick the timer to check whether we need to do any tests.
+  constexpr auto REACHABILITY_TESTING_TIMER_INTERVAL = 50ms;
+
   class reachability_testing
   {
    public:
-    // How often we tick the timer to check whether we need to do any tests.
-    inline static constexpr auto TESTING_TIMER_INTERVAL = 50ms;
-
     // Distribution for the seconds between node tests: we throw in some randomness to avoid
     // potential clustering of tests.  (Note that there is some granularity here as the test timer
-    // only runs every TESTING_TIMER_INTERVAL).
-    inline static thread_local std::normal_distribution<float> TESTING_INTERVAL{10.0, 3.0};
+    // only runs every REACHABILITY_TESTING_TIMER_INTERVAL).
+    std::normal_distribution<float> TESTING_INTERVAL{10.0, 3.0};
 
     // The linear backoff after each consecutive test failure before we re-test.  Specifically we
     // schedule the next re-test for (TESTING_BACKOFF*previous_failures) + TESTING_INTERVAL(rng).
