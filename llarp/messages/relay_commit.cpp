@@ -308,14 +308,15 @@ namespace llarp
       self->context->PutTransitHop(self->hop);
       // forward to next hop
       using std::placeholders::_1;
-      auto func = std::bind(
-          &OnForwardLRCMResult,
-          self->context->Router(),
-          self->hop,
-          self->hop->info.rxID,
-          self->hop->info.downstream,
-          self->hop->pathKey,
-          _1);
+      auto func = [self](auto status) {
+        OnForwardLRCMResult(
+            self->context->Router(),
+            self->hop,
+            self->hop->info.rxID,
+            self->hop->info.downstream,
+            self->hop->pathKey,
+            status);
+      };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
       self->hop = nullptr;
     }
