@@ -21,17 +21,16 @@ namespace llarp
         , m_Endpoint(ep)
         , createdAt(ep->Now())
         , m_SendQueue(SendContextQueueSize)
-    {}
+    {
+      m_FlushWakeup = ep->Loop()->make_waker([this] { FlushUpstream(); });
+    }
 
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)
     {
       if (not path->IsReady())
         return false;
-      if (m_SendQueue.empty() or m_SendQueue.full())
-      {
-        m_Endpoint->Loop()->call_soon([this] { FlushUpstream(); });
-      }
+      m_FlushWakeup->Trigger();
       return m_SendQueue.tryPushBack(std::make_pair(
                  std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path))
           == thread::QueueReturn::Success;

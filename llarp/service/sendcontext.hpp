@@ -56,6 +56,8 @@ namespace llarp
 
       std::function<void(AuthResult)> authResultListener;
 
+      std::shared_ptr<EventLoopWakeup> m_FlushWakeup;
+
       virtual bool
       ShiftIntroduction(bool rebuild = true)
       {
