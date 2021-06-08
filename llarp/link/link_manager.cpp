@@ -374,12 +374,11 @@ namespace llarp
       _sessionMaker->CreateSessionTo(router, nullptr);
     }
 
-    ForEachOutboundLink([sessionsClosed](auto link) {
-      for (const auto& router : sessionsClosed)
-      {
-        link->CloseSessionTo(router);
-      }
-    });
+    for (const auto& router : sessionsClosed)
+    {
+      m_PersistingSessions.erase(router);
+      ForEachOutboundLink([router](auto link) { link->CloseSessionTo(router); });
+    }
   }
 
   void
