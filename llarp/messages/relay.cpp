@@ -111,7 +111,7 @@ namespace llarp
     {
       return path->HandleDownstream(llarp_buffer_t(X), Y, r);
     }
-    llarp::LogWarn("unhandled downstream message id=", pathid);
+    llarp::LogWarn("no path for downstream message id=", pathid);
     return false;
   }
 }  // namespace llarp

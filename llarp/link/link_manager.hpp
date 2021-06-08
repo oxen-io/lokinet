@@ -111,6 +111,8 @@ namespace llarp
 
     std::unordered_map<RouterID, SessionStats> m_lastRouterStats;
 
+    util::DecayingHashSet<RouterID> m_Clients{path::default_lifetime};
+
     IOutboundSessionMaker* _sessionMaker;
   };
 

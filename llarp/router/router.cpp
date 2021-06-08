@@ -42,7 +42,7 @@
 
 #include <oxenmq/oxenmq.h>
 
-static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 100ms;
+static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;
 
 namespace llarp
 {
@@ -885,7 +885,12 @@ namespace llarp
     if (decom)
     {
       // complain about being deregistered
-      LogError("We are running as a service node but we seem to be decommissioned");
+      if (now >= m_NextDecommissionWarn)
+      {
+        constexpr auto DecommissionWarnInterval = 30s;
+        LogError("We are running as a service node but we seem to be decommissioned");
+        m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      }
     }
     else if (connected < connectToNum)
     {
@@ -1402,8 +1407,10 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    _loop->call_soon(func);
-    // m_lmq->job(std::move(func));
+    if (m_isServiceNode)
+      _loop->call_soon(std::move(func));
+    else
+      m_lmq->job(std::move(func));
   }
 
   void

@@ -96,7 +96,7 @@ namespace llarp
         version = other.version;
       }
 
-      ProtocolFrame() : routing::IMessage()
+      ProtocolFrame() : routing::IMessage{}
       {
         Clear();
       }

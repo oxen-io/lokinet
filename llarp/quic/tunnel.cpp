@@ -528,6 +528,7 @@ namespace llarp::quic
             if (not continue_connecting(
                     pport, (bool)maybe_remote, "endpoint ONS lookup", remote_addr))
               return;
+            service_endpoint_.MarkAddressOutbound(*maybe_remote);
             service_endpoint_.EnsurePathTo(*maybe_remote, after_path, open_timeout);
           });
       return result;
@@ -539,7 +540,10 @@ namespace llarp::quic
     if (auto maybe_convo = service_endpoint_.GetBestConvoTagFor(remote))
       after_path(maybe_convo);
     else
+    {
+      service_endpoint_.MarkAddressOutbound(remote);
       service_endpoint_.EnsurePathTo(remote, after_path, open_timeout);
+    }
 
     return result;
   }

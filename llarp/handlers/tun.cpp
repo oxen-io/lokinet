@@ -67,6 +67,8 @@ namespace llarp
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
+      m_PacketSendWaker = r->loop()->make_waker([this]() { FlushWrite(); });
+      m_MessageSendWaker = r->loop()->make_waker([this]() { FlushSend(); });
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
 #ifdef ANDROID
@@ -224,6 +226,12 @@ namespace llarp
     {
       FlushSend();
       Pump(Now());
+      FlushWrite();
+    }
+
+    void
+    TunEndpoint::FlushWrite()
+    {
       // flush network to user
       while (not m_NetworkToUserPktQueue.empty())
       {
@@ -281,6 +289,7 @@ namespace llarp
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
+        MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
             [this, addr, msg, reply, isV6](const Address&, OutboundContext* ctx) {
@@ -307,7 +316,7 @@ namespace llarp
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
-
+        MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
             [msg, addr, reply](const Address&, OutboundContext* ctx) {
@@ -697,6 +706,7 @@ namespace llarp
       m_AddrToIP[addr] = ip;
       m_SNodes[addr] = SNode;
       MarkIPActiveForever(ip);
+      MarkAddressOutbound(addr);
       return true;
     }
 
@@ -923,12 +933,13 @@ namespace llarp
           MarkAddressOutbound(addr);
           EnsurePathToService(
               addr,
-              [addr, pkt, self = this](service::Address, service::OutboundContext* ctx) {
+              [pkt](service::Address addr, service::OutboundContext* ctx) {
                 if (ctx)
                 {
-                  ctx->sendTimeout = 5s;
+                  ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
+                  return;
                 }
-                self->SendToOrQueue(addr, pkt.ConstBuffer(), service::ProtocolType::Exit);
+                LogWarn("cannot ensure path to exit ", addr, " so we drop some packets");
               },
               PathAlignmentTimeout());
           return;
@@ -957,12 +968,40 @@ namespace llarp
           else
             pkt.UpdateIPv6Address({0}, {0});
         }
-        if (SendToOrQueue(to, pkt.Buffer(), type))
+        // try sending it on an existing convotag
+        // this succeds for inbound convos, probably.
+        if (SendToOrQueue(to, pkt.ConstBuffer(), type))
         {
           MarkIPActive(dst);
           return;
         }
-        llarp::LogWarn(Name(), " did not flush packets");
+        // try establishing a path to this guy
+        // will fail if it's an inbound convo
+        EnsurePathTo(
+            to,
+            [pkt, type, dst, to, this](auto maybe) {
+              if (not maybe)
+              {
+                var::visit(
+                    [&](auto&& addr) {
+                      LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
+                    },
+                    to);
+              }
+              if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+              {
+                MarkIPActive(dst);
+              }
+              else
+              {
+                var::visit(
+                    [&](auto&& addr) {
+                      LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
+                    },
+                    to);
+              }
+            },
+            PathAlignmentTimeout());
       });
     }
 
@@ -1117,6 +1156,8 @@ namespace llarp
         pkt.UpdateIPv6Address(src, dst);
       }
       m_NetworkToUserPktQueue.push(std::move(write));
+      // wake up packet flushing event so we ensure that all packets are written to user
+      m_PacketSendWaker->Trigger();
       return true;
     }
 
@@ -1163,7 +1204,9 @@ namespace llarp
           m_AddrToIP[ident] = nextIP;
           m_IPToAddr[nextIP] = ident;
           m_SNodes[ident] = snode;
-          llarp::LogInfo(Name(), " mapped ", ident, " to ", nextIP);
+          var::visit(
+              [&](auto&& remote) { llarp::LogInfo(Name(), " mapped ", remote, " to ", nextIP); },
+              addr);
           MarkIPActive(nextIP);
           return nextIP;
         }
@@ -1223,6 +1266,7 @@ namespace llarp
     TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
     {
       m_UserToNetworkPktQueue.Emplace(std::move(pkt));
+      m_MessageSendWaker->Trigger();
     }
 
     TunEndpoint::~TunEndpoint() = default;

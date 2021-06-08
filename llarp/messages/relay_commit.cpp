@@ -204,6 +204,7 @@ namespace llarp
     static void
     OnForwardLRCMResult(
         AbstractRouter* router,
+        std::shared_ptr<path::TransitHop> path,
         const PathID_t pathid,
         const RouterID nextHop,
         const SharedSecret pathKey,
@@ -236,9 +237,8 @@ namespace llarp
           std::abort();
           break;
       }
-
-      router->QueueWork([router, pathid, nextHop, pathKey, status] {
-        LR_StatusMessage::CreateAndSend(router, pathid, nextHop, pathKey, status);
+      router->QueueWork([router, path, pathid, nextHop, pathKey, status] {
+        LR_StatusMessage::CreateAndSend(router, path, pathid, nextHop, pathKey, status);
       });
     }
 
@@ -251,6 +251,7 @@ namespace llarp
         llarp::LogError("duplicate transit hop ", self->hop->info);
         LR_StatusMessage::CreateAndSend(
             self->context->Router(),
+            self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
             self->hop->pathKey,
@@ -269,6 +270,7 @@ namespace llarp
           llarp::LogError("client path build hit limit ", *self->fromAddr);
           OnForwardLRCMResult(
               self->context->Router(),
+              self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
               self->hop->pathKey,
@@ -288,6 +290,7 @@ namespace llarp
             "not allowed, dropping build request on the floor");
         OnForwardLRCMResult(
             self->context->Router(),
+            self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
             self->hop->pathKey,
@@ -305,13 +308,15 @@ namespace llarp
       self->context->PutTransitHop(self->hop);
       // forward to next hop
       using std::placeholders::_1;
-      auto func = std::bind(
-          &OnForwardLRCMResult,
-          self->context->Router(),
-          self->hop->info.rxID,
-          self->hop->info.downstream,
-          self->hop->pathKey,
-          _1);
+      auto func = [self](auto status) {
+        OnForwardLRCMResult(
+            self->context->Router(),
+            self->hop,
+            self->hop->info.rxID,
+            self->hop->info.downstream,
+            self->hop->pathKey,
+            status);
+      };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
       self->hop = nullptr;
     }
@@ -338,6 +343,7 @@ namespace llarp
 
       if (!LR_StatusMessage::CreateAndSend(
               self->context->Router(),
+              self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
               self->hop->pathKey,

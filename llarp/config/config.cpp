@@ -769,7 +769,7 @@ namespace llarp
     }
     else
     {
-      info.interface = name;
+      info.interface = std::string{name};
 
       std::vector<std::string_view> splits = split(value, ',');
       for (std::string_view str : splits)
