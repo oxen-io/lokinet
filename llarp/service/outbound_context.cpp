@@ -467,7 +467,7 @@ namespace llarp
     bool
     OutboundContext::IntroGenerated() const
     {
-      return sentIntro;
+      return generatedIntro;
     }
 
     bool
