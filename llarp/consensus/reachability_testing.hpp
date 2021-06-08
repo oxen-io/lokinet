@@ -123,7 +123,7 @@ namespace llarp::consensus
     // Removes and returns up to MAX_RETESTS_PER_TICK nodes that are due to be tested (i.e.
     // next-testing-time <= now).  Returns [snrecord, #previous-failures] for each.
     std::vector<std::pair<RouterID, int>>
-    get_failing(AbstractRouter* router, const time_point_t& now = clock_t::now());
+    get_failing(const time_point_t& now = clock_t::now());
 
     // Adds a bad node pubkey to the failing list, to be re-tested soon (with a backoff depending on
     // `failures`; see TESTING_BACKOFF).  `previous_failures` should be the number of previous
@@ -131,6 +131,10 @@ namespace llarp::consensus
     // by `get_failing` for repeated failures.
     void
     add_failing_node(const RouterID& pk, int previous_failures = 0);
+
+    /// removes the public key from the failing set
+    void
+    remove_node_from_failing(const RouterID& pk);
 
     // Called when this router receives an incomming session
     void

@@ -114,7 +114,7 @@ namespace llarp::consensus
   }
 
   std::vector<std::pair<RouterID, int>>
-  reachability_testing::get_failing(AbstractRouter*, const time_point_t& now)
+  reachability_testing::get_failing(const time_point_t& now)
   {
     // Our failing_queue puts the oldest retest times at the top, so pop them off into our result
     // until the top node should be retested sometime in the future
@@ -146,6 +146,12 @@ namespace llarp::consensus
 
     failing.insert(pk);
     failing_queue.emplace(pk, steady_clock::now() + next_test_in, previous_failures + 1);
+  }
+
+  void
+  reachability_testing::remove_node_from_failing(const RouterID& pk)
+  {
+    failing.erase(pk);
   }
 
 }  // namespace llarp::consensus

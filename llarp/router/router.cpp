@@ -1197,13 +1197,21 @@ namespace llarp
         // dont run tests if we are decommissioned
         if (LooksDecommissioned())
           return;
-        auto tests = m_routerTesting.get_failing(this);
+        auto tests = m_routerTesting.get_failing();
         if (auto maybe = m_routerTesting.next_random(this))
         {
           tests.emplace_back(*maybe, 0);
         }
         for (const auto& [router, fails] : tests)
         {
+          if (not SessionToRouterAllowed(router))
+          {
+            LogDebug(
+                router,
+                " is no longer a registered service node so we remove it from the testing list");
+            m_routerTesting.remove_node_from_failing(router);
+            continue;
+          }
           LogDebug("Establishing session to ", router, " for SN testing");
           // try to make a session to this random router
           // this will do a dht lookup if needed
@@ -1222,16 +1230,23 @@ namespace llarp
                       previous_fails + 1,
                       " consecutive failures)");
                 }
-                else if (previous_fails > 0)
-                  LogInfo(
-                      "Successful SN connection test to ",
-                      router,
-                      " after ",
-                      previous_fails,
-                      " failures");
                 else
-                  LogDebug("Successful SN connection test to ", router);
-
+                {
+                  m_routerTesting.remove_node_from_failing(router);
+                  if (previous_fails > 0)
+                  {
+                    LogInfo(
+                        "Successful SN connection test to ",
+                        router,
+                        " after ",
+                        previous_fails,
+                        " failures");
+                  }
+                  else
+                  {
+                    LogDebug("Successful SN connection test to ", router);
+                  }
+                }
                 if (rpc)
                 {
                   // inform as needed
