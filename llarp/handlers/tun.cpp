@@ -68,7 +68,10 @@ namespace llarp
         , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
       m_PacketSendWaker = r->loop()->make_waker([this]() { FlushWrite(); });
-      m_MessageSendWaker = r->loop()->make_waker([this]() { FlushSend(); });
+      m_MessageSendWaker = r->loop()->make_waker([this]() {
+        FlushSend();
+        Pump(Now());
+      });
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
 #ifdef ANDROID
