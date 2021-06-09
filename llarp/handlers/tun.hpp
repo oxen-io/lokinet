@@ -266,6 +266,8 @@ namespace llarp
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
       std::vector<SockAddr> m_UpstreamResolvers;
+      /// dns host files list
+      std::vector<fs::path> m_hostfiles;
       /// local dns
       IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks

@@ -3,6 +3,7 @@
 #include "server.hpp"
 #include <llarp/util/buffer.hpp>
 #include <sstream>
+#include <llarp/util/str.hpp>
 
 namespace llarp::dns
 {
@@ -117,6 +118,21 @@ namespace llarp::dns
       return false;
     }
     return true;
+  }
+
+  void
+  UnboundResolver::AddHostsFile(const fs::path& file)
+  {
+    LogDebug("adding hosts file ", file);
+    const auto str = file.u8string();
+    if (auto ret = ub_ctx_hosts(unboundContext, str.c_str()))
+    {
+      throw std::runtime_error{stringify("Failed to add host file ", file, ": ", ub_strerror(ret))};
+    }
+    else
+    {
+      LogInfo("added hosts file ", file);
+    }
   }
 
   void

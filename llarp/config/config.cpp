@@ -748,6 +748,21 @@ namespace llarp
             m_bind.setPort(53);
         });
 
+    conf.defineOption<std::string>(
+        "dns",
+        "add-hosts",
+        ClientOnly,
+        Comment{"Add a hosts file to the dns resolver", "For use with client side dns filtering"},
+        [=](std::string arg) {
+          if (arg.empty())
+            return;
+          fs::path path{arg};
+          if (not exists(path))
+            throw std::invalid_argument{
+                stringify("cannot add hosts file ", path, " as it does not seem to exist")};
+          m_hostfiles.emplace_back(std::move(path));
+        });
+
     // Ignored option (used by the systemd service file to disable resolvconf configuration).
     conf.defineOption<bool>(
         "dns",

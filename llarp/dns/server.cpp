@@ -26,9 +26,9 @@ namespace llarp::dns
   }
 
   bool
-  Proxy::Start(SockAddr addr, std::vector<SockAddr> resolvers)
+  Proxy::Start(SockAddr addr, std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
-    if (not PacketHandler::Start(addr, std::move(resolvers)))
+    if (not PacketHandler::Start(addr, std::move(resolvers), std::move(hostfiles)))
       return false;
     return m_Server->listen(addr);
   }
@@ -44,13 +44,14 @@ namespace llarp::dns
   }
 
   bool
-  PacketHandler::Start(SockAddr, std::vector<SockAddr> resolvers)
+  PacketHandler::Start(SockAddr, std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
-    return SetupUnboundResolver(std::move(resolvers));
+    return SetupUnboundResolver(std::move(resolvers), std::move(hostfiles));
   }
 
   bool
-  PacketHandler::SetupUnboundResolver(std::vector<SockAddr> resolvers)
+  PacketHandler::SetupUnboundResolver(
+      std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
     // if we have no resolvers don't set up unbound
     if (resolvers.empty())
@@ -84,6 +85,10 @@ namespace llarp::dns
         return false;
       }
       m_Resolvers.emplace(resolver);
+    }
+    for (const auto& path : hostfiles)
+    {
+      m_UnboundResolver->AddHostsFile(path);
     }
 
     return true;

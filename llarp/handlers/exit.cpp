@@ -477,7 +477,7 @@ namespace llarp
         GetRouter()->loop()->add_ticker([this] { Flush(); });
 
         llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr);
-        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers);
+        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers, {});
       }
       return true;
     }
