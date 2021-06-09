@@ -432,9 +432,6 @@ namespace llarp
       if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
 
-      if (m_BadIntros.count(remoteIntro))
-        return true;
-
       size_t numValidPaths = 0;
       ForEachPath([now, &numValidPaths](path::Path_ptr path) {
         if (not path->IsReady())
