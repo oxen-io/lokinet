@@ -400,6 +400,9 @@ namespace llarp
       HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
 
      private:
+      bool
+      SendLatencyMessage(AbstractRouter* r);
+
       /// call obtained exit hooks
       bool
       InformExitResult(llarp_time_t b);

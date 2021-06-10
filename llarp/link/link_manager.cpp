@@ -370,7 +370,7 @@ namespace llarp
 
     for (const auto& router : sessionsNeeded)
     {
-      LogInfo("ensuring session to ", router, " for previously made commitment");
+      LogDebug("ensuring session to ", router, " for previously made commitment");
       _sessionMaker->CreateSessionTo(router, nullptr);
     }
 

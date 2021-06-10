@@ -405,6 +405,23 @@ namespace llarp
       }
     }
 
+    bool
+    Path::SendLatencyMessage(AbstractRouter* r)
+    {
+      const auto now = r->Now();
+      // send path latency test
+      routing::PathLatencyMessage latency{};
+      latency.T = randint();
+      latency.S = NextSeqNo();
+      m_LastLatencyTestID = latency.T;
+      m_LastLatencyTestTime = now;
+      LogDebug(Name(), " send latency test id=", latency.T);
+      if (not SendRoutingMessage(latency, r))
+        return false;
+      FlushUpstream(r);
+      return true;
+    }
+
     void
     Path::Tick(llarp_time_t now, AbstractRouter* r)
     {
@@ -439,15 +456,12 @@ namespace llarp
         auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
-          routing::PathLatencyMessage latency;
-          latency.T = randint();
-          m_LastLatencyTestID = latency.T;
-          m_LastLatencyTestTime = now;
-          SendRoutingMessage(latency, r);
-          FlushUpstream(r);
-          // reset ID so we don't mark ourself as dead if we drop a latency sample
-          r->loop()->call_later(
-              1s, [self = shared_from_this()]() { self->m_LastLatencyTestID = 0; });
+          SendLatencyMessage(r);
+          // latency test FEC
+          r->loop()->call_later(2s, [self = shared_from_this(), r]() {
+            if (self->m_LastLatencyTestID)
+              self->SendLatencyMessage(r);
+          });
           return;
         }
         dlt = now - m_LastRecvMessage;
@@ -684,16 +698,7 @@ namespace llarp
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
         MarkActive(now);
-        // send path latency test
-        routing::PathLatencyMessage latency;
-        latency.T = randint();
-        latency.S = NextSeqNo();
-        m_LastLatencyTestID = latency.T;
-        m_LastLatencyTestTime = now;
-        if (!SendRoutingMessage(latency, r))
-          return false;
-        FlushUpstream(r);
-        return true;
+        return SendLatencyMessage(r);
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(), " rx=", RXID());
       return false;
@@ -731,11 +736,11 @@ namespace llarp
     constexpr auto MaxLatencySamples = 8;
 
     bool
-    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r)
+    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage&, AbstractRouter* r)
     {
       const auto now = r->Now();
       MarkActive(now);
-      if (msg.L == m_LastLatencyTestID)
+      if (m_LastLatencyTestID)
       {
         m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
 

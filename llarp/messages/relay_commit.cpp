@@ -316,9 +316,9 @@ namespace llarp
             self->hop->info.downstream,
             self->hop->pathKey,
             status);
+        self->hop = nullptr;
       };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
-      self->hop = nullptr;
     }
 
     // this is called from the logic thread
