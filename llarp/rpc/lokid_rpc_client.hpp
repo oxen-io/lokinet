@@ -19,7 +19,7 @@ namespace llarp
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
     {
-      explicit LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r);
+      explicit LokidRpcClient(LMQ_ptr lmq, std::weak_ptr<AbstractRouter> r);
 
       /// Connect to lokid async
       void
@@ -42,6 +42,10 @@ namespace llarp
           dht::Key_t namehash,
           std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 
+      /// inform that if connected to a router successfully
+      void
+      InformConnection(RouterID router, bool success);
+
      private:
       /// called when we have connected to lokid via lokimq
       void
@@ -52,7 +56,7 @@ namespace llarp
       Command(std::string_view cmd);
 
       void
-      UpdateServiceNodeList(std::string topblock);
+      UpdateServiceNodeList();
 
       template <typename HandlerFunc_t, typename Args_t>
       void
@@ -82,8 +86,10 @@ namespace llarp
       std::optional<oxenmq::ConnectionID> m_Connection;
       LMQ_ptr m_lokiMQ;
 
-      AbstractRouter* const m_Router;
+      std::weak_ptr<AbstractRouter> m_Router;
       std::atomic<bool> m_UpdatingList;
+
+      std::unordered_map<RouterID, PubKey> m_KeyMap;
 
       uint64_t m_BlockHeight;
     };

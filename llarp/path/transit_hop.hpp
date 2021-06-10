@@ -185,6 +185,9 @@ namespace llarp
       void
       FlushDownstream(AbstractRouter* r) override;
 
+      void
+      QueueDestroySelf(AbstractRouter* r);
+
      protected:
       void
       UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
@@ -201,9 +204,6 @@ namespace llarp
      private:
       void
       SetSelfDestruct();
-
-      void
-      QueueDestroySelf(AbstractRouter* r);
 
       std::set<std::shared_ptr<TransitHop>, ComparePtr<std::shared_ptr<TransitHop>>> m_FlushOthers;
       thread::Queue<RelayUpstreamMessage> m_UpstreamGather;

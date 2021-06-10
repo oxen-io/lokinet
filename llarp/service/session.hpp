@@ -49,6 +49,9 @@ namespace llarp
 
       bool
       IsExpired(llarp_time_t now, llarp_time_t lifetime = SessionLifetime) const;
+
+      Address
+      Addr() const;
     };
 
   }  // namespace service

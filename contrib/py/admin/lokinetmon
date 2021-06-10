@@ -4,17 +4,66 @@ import curses
 import json
 import sys
 import time
+import platform
+import os
+from argparse import ArgumentParser as AP
 
-import zmq
+is_windows = lambda : platform.system().lower() == 'windows'
+is_linux = lambda : platform.system().lower() == 'linux'
+
+
+try:
+    import zmq
+except ImportError:
+    print("zmq module not found")
+    print()
+    if is_linux():
+        print("for debian-based linux do:")
+        print("\tsudo apt install python3-zmq")
+        print("for other linuxs do:")
+        print("\tpip3 install --user zmq")
+    else:
+        print("install it with:")
+        print("\tpip3 install --user zmq")
+    sys.quit()
 
 geo = None
 
 try:
     import GeoIP
-    geo = GeoIP.open("/usr/share/GeoIP/GeoIP.dat", GeoIP.GEOIP_STANDARD)
-except Exception as ex:
-    print('no geoip: {}'.format(ex))
-    time.sleep(1)
+except ImportError:
+    print("geoip module not found")
+    print()
+    if is_linux():
+        print("for debian-based linux do:")
+        print("\tsudo apt install python3-geoip")
+        print("for other linuxs do:")
+        print("\tpip3 install --user geoip")
+        print("for other linuxs you are responsible for obtaining your owen geoip databases, glhf")
+    else:
+        print("install it with:")
+        print("\tpip3 install --user geoip")
+    print("")
+    print("press enter to continue without geoip")
+    sys.stdin.read(1)
+else:
+    try:
+        geoip_env_var = 'GEOIP_DB_FILE'
+        if is_windows():
+            geoip_default_db = '.\\GeoIP.dat'
+        else:
+            geoip_default_db = "/usr/share/GeoIP/GeoIP.dat"
+        geoip_db_file = geoip_env_var in os.environ and os.environ[geoip_env_var] or geoip_default_db
+        if not os.path.exists(geoip_db_file):
+            print("no geoip database found at {}".format(geoip_db_file))
+            print("you can override the path to it using the {} environmental variable".format(geoip_env_var))
+            sys.quit()
+        geo = GeoIP.open(geoip_db_file, GeoIP.GEOIP_STANDARD)
+    except Exception as ex:
+        print('failed to load geoip database: {}'.format(ex))
+        time.sleep(1)
+
+now = lambda : int(time.time()) * 1000
 
 
 def ip_to_flag(ip):
@@ -38,7 +87,7 @@ class Monitor:
 
     _sample_size = 12
 
-    def __init__(self, url):
+    def __init__(self, url, introsetMode=False):
         self.txrate = 0
         self.rxrate = 0
         self.data = dict()
@@ -52,6 +101,7 @@ class Monitor:
         self._rpc_socket.connect(url)
         self._speed_samples = [(0,0,0,0)] * self._sample_size
         self._run = True
+        self._introsetMode = introsetMode
 
     def rpc(self, method):
         self._rpc_socket.send_multipart([method.encode(), b'lokinetmon'+method.encode()])
@@ -104,8 +154,14 @@ class Monitor:
     @staticmethod
     def time_to(timestamp):
         """ return time until timestamp in seconds formatted"""
-        now = time.time() * 1000
-        return "{} seconds".format(int((timestamp - now) / 1000))
+        if timestamp:
+            val = int((timestamp - now()) / 1000)
+            if val < 0:
+                return "{} seconds ago".format(0-val)
+            else:
+                return "{} seconds".format(val)
+        else:
+            return 'never'
 
     @staticmethod
     def speed_of(rate):
@@ -343,6 +399,102 @@ class Monitor:
             self.win.addstr("search for {}".format(transaction["tx"]["target"]))
         return y_pos
 
+
+
+    def display_introsets(self, y_pos, service):
+        """
+        display introsets on a service
+        """
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr("localhost.loki")
+        y_pos = self._display_our_introset(y_pos, service)
+        y_pos += 1
+        remotes = service['remoteSessions'] or []
+        for session in remotes:
+            y_pos = self._display_session_introset(y_pos, session)
+
+    def _display_intro(self, y_pos, intro, label, paths):
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        path = 'path' in intro and intro['path'][:4] or '????'
+        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
+        return y_pos
+
+    @staticmethod
+    def count_endpoints_in_path(paths, endpoint):
+        num = 0
+        for path in paths:
+            if path['hops'][-1]['router'] == endpoint and path['ready']:
+                num += 1
+        return num
+
+    @staticmethod
+    def count_ready_paths(paths):
+        num = 0
+        for path in paths:
+            if path['ready']:
+                num += 1
+        return num
+
+
+
+    @staticmethod
+    def make_bar(timestamp, scale=1, char='#'):
+        if timestamp > 0:
+            return int((abs(timestamp - now()) / 1000) / scale) * char
+        return ''
+
+    def _display_our_introset(self, y_pos, context):
+        for intro in context['introset']['intros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
+        for path in context['paths']:
+            y_pos = self._display_intro(y_pos, path['intro'], "inbound path intro", context['paths'])
+        return y_pos
+
+
+    def _display_session_introset(self, y_pos, context):
+        #print(context.keys())
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        readyState = context['readyToSend'] and '✔️' or '❌'
+        self.win.addstr('{} ({}) [{}]'.format(context['remoteIdentity'], context['currentConvoTag'], readyState))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last good send: {}'.format(self.time_to(context['lastGoodSend'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastGoodSend']))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last recv: {}'.format(self.time_to(context['lastRecv'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastRecv']))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('last introset update: {}'.format(self.time_to(context['lastIntrosetUpdate'])))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr(self.make_bar(context['lastIntrosetUpdate'], 30))
+        y_pos += 2
+
+        self.win.move(y_pos, 1)
+        self.win.addstr('last shift: {}'.format(self.time_to(context['lastShift'])))
+
+        paths = context['paths'] or []
+
+        y_pos = self._display_intro(y_pos + 1, context['nextIntro'], 'next intro', paths) + 1
+        y_pos = self._display_intro(y_pos, context['remoteIntro'], 'current intro', paths) + 1
+        for intro in context['currentRemoteIntroset']['intros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "introset intro", paths)
+        y_pos += 1
+        for intro in context['badIntros'] or []:
+            y_pos = self._display_intro(y_pos, intro, "bad intro", paths)
+        y_pos += 1
+        return y_pos
+
+
     def display_data(self):
         """ draw main window """
         if self.data is not None:
@@ -351,12 +503,16 @@ class Monitor:
             services = self.data["services"] or {}
             y_pos = 3
             try:
-                y_pos = self.display_links(y_pos, self.data["links"])
-                for key in services:
-                    y_pos = self.display_service(y_pos, key, services[key])
-                y_pos = self.display_dht(y_pos, self.data["dht"])
-            except:
-                pass
+                if not self._introsetMode:
+                    y_pos = self.display_links(y_pos, self.data["links"])
+                    for key in services:
+                        y_pos = self.display_service(y_pos, key, services[key])
+                    y_pos = self.display_dht(y_pos, self.data["dht"])
+                else:
+                    for key in services:
+                        y_pos = self.display_introsets(y_pos, services[key])
+            except Exception as ex:
+                print('{}'.format(ex))
         else:
             self.win.move(1, 1)
             self.win.addstr("lokinet offline")
@@ -387,8 +543,17 @@ class Monitor:
 
 def main():
     """ main function """
+
+    ap = AP()
+
+    ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
+    ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
+
+    args = ap.parse_args()
+
     mon = Monitor(
-        len(sys.argv) > 1 and sys.argv[1] or "tcp://127.0.0.1:1190"
+        args.url,
+        args.introset
     )
     mon.run()
 

@@ -130,6 +130,9 @@ namespace llarp
         std::string name,
         std::string service,
         std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
+
+    virtual void
+    MarkAddressOutbound(AddressVariant_t remote) = 0;
   };
 
 }  // namespace llarp
