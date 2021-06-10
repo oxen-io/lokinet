@@ -1,3 +1,119 @@
+lokinet (0.9.3-1~deb11) bullseye; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove double cpr submodule
+
+  [ Jeff Becker ]
+  * windows cmake upgrades: * dont call lokinet-bootstrap.exe on install * bump lokinet gui version with hashpin update
+  * initial lokinet router testing: * report via rpc to oxen core connection stats on success and failure * connect to random service node by pubkey every 5 seconds for testing
+  * * use weak_ptr on core rpc * use reachability testing code lifted storage server's code
+  * there were some unhandled edge cases in outbound_session_maker, specifically when we are not permitted to connect to a remoute but we got its rc we silently drop the error.
+
+  [ Jason Rhinelander ]
+  * Switch stl mt19937_64 to CSRNG
+
+  [ Jeff Becker ]
+  * capture by value to appease clang 11
+  * handle case where we already have an outbound session, inform caller about it
+
+  [ Jason Rhinelander ]
+  * Fix use after move
+  * Add logging about testing success/fail
+
+  [ Jeff Becker ]
+  * separate white/grey list for active/decommissioned nodes.
+  * gossip RC when we are not deregistered so we can come back when we are decommissioned
+
+  [ Jason Rhinelander ]
+  * Add warning when can't update whitelist
+  * Fix unintentional whitelist/greylist copying
+  * Avoid copying & keep router alive by moving shared_ptr
+  * Don't pass last hash into UpdateServiceNodeList
+  * Fix failing pks not being populated
+  * Make format
+
+  [ Jeff Becker ]
+  * typofix
+  * dont run router testing if we are decommissioned.
+
+  [ Thomas Winget ]
+  * make outbound session if we do not have
+
+  [ Jeff Becker ]
+  * make windows happy by making some constexprs non static and such as windows does not LTO
+  * fix linking on win32 for lokinet.dll only apply static link flags for executables
+  * export functions in liblokinet for win32 dll
+  * * get_failing does not need abstract router as paramter so we remove it * add remove_node_from_failing to remove a node by pubkey from the failing set * if a router is deregistered we remove it from the failing set so we don't retest it * remove a router from the failing set if we get a test success
+  * updates to lokinetmon
+  * increase link layer buffer size
+  * reduce path build timeout from 30s to 10s
+  * reduce path intro spread slices from 5 to 4.
+  * fix an assert fail in gcc 11.
+  * improve log message clairity by printing the address not hex
+  * don't cache dns result if we have an address mapped. we want to use dns to trigger a call to EnsurePathTo
+  * make packet sending logic not attempt to align back to inbound sessions.
+  * make log warning have a more accurate message when we have no path for a relay downstream message
+  * fix latency tests.
+  * path and intro selection fixups:
+  * * don't include failed at when we are the pivot router as that case never happens. * mark paths as ingored instead of expired when we stop a path builder * only remove path builder when we have no established paths
+  * far stricter profiling algorithm * include first hop in profiling * decay stats faster * make fail case for path build profiling far more sensative
+  * make router tick 250ms instead of 100ms to prevent excessive log spam
+  * re-enable multithreading on clients but not on service nodes
+  * add relayOrder awareness to introset lookups.
+  * * tweak introset handover timeouts * introset path haodver tweaks * improve warn/error messages to convey more information * dont block on queue insertion * reset convotag on decrypt/verify fail * add multiple ready hooks on outbound context * lookup introsets from close routers on dht * continue to tick dead sessions so they expire their paths * introset spacing * reduce lns lookup diversity requirement for speed * add a function to send reset convotag message * only have 1 outbound context at a time
+  * remove service nodes we can't look up from the nodedb as client
+  * improve log messages about expiring convotags
+  * dont change send timeout for exits from tun handler as that screws with consistency in testing.
+  * use inbound sessions we don't have paths to in GetBestConvoTagFor just so we can give the caller SOMETHING.
+  * dont call null handler if we have no path to the remote router that's fine still use it just in case we have no other convotags
+  * log drop events more
+  * defer ready to send state until after we send a handshake
+  * delay setting sentIntro by the advertised latency of the remote intro instead of static value
+  * only inform failure or success of introset lookups when all lookups have returned
+  * decay path build limiter per path builder every tick
+  * add relay order to error message
+  * increase default session lifetime to 5 minutes for mobile client related reasons
+  * for inbound sessions, keep them alive for the default session lifetime, for outbound sessions keep alive for 5 ping intervals
+  * don't kill outbound context after build or lookup fails
+  * HandleTimeout can touch iterators so do all handling of lookup timeouts outside of loop iteration
+  * add idempotent wake up for sending messages to the network and writing packets on interfaces
+  * add path aligntment timeout to send and connect timeouts on outbound context to reduce the chance of timing race conditon
+  * log when we ignore a path
+  * treat ignored paths like established paths when dealing with expiration
+  * use weak_ptr on a path to reference its parent pathset instead of a bare pointer so crashes dont happen
+  * account for path latency in introset lookups on outbound contexts
+  * record reason for path fail and the full hops
+  * nuke invalid routers when we get a path build fail back to not resuse them in the future
+  * nuke from orbit style router profiling for path build timeouts.
+  * unconditional putsenderfor
+  * dont establish paths to inbound sessions to try and address state race condition
+  * add MarkAddressOutbound to plainquic
+  * this fixes the shit wtf
+  * when we map an address forever mark it as outbound
+  * on path timeout look up each router, if the lookup fails then we remove it from nodedb and close any connections to it so that bad first hops are rotated off of.
+  * tweak timeouts to be a bit more sane
+  * fixes for loopback testnet
+  * correctly persist link sessions
+  * more shit
+  * close links and remove commit
+  * mark exit address outbound when we add it via rpc
+  * mark ip active on successful send
+  * typofix
+  * add idempotent wakeup for flushing instead of the dumb queue checking
+  * spelling fix
+  * convert to lambda
+  * convert magic number to where it came from
+  * correctly do latency test FEC
+  * forgot to pump on wakeup
+  * remove case that spams build on an outbound context
+  * move setting hop to nullptr to after delivery or delivery fail
+  * downgrade log level
+  * increase timer timeout interval because 1 seconds RTT can happen but 2 seconds is pretty bad
+  * version bump
+  * fix for testing: dont remove from failing set
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 10 Jun 2021 16:36:40 -0300
+
 lokinet (0.9.2-1~deb11) bullseye; urgency=medium
 
   [ Jeff Becker ]
