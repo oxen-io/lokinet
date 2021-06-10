@@ -458,7 +458,7 @@ namespace llarp
         {
           SendLatencyMessage(r);
           // latency test FEC
-          r->loop()->call_later(1s, [self = shared_from_this(), r]() {
+          r->loop()->call_later(2s, [self = shared_from_this(), r]() {
             if (self->m_LastLatencyTestID)
               self->SendLatencyMessage(r);
           });
