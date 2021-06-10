@@ -96,9 +96,10 @@ namespace llarp
     }
 
     Path_ptr
-    PathSet::GetEstablishedPathClosestTo(RouterID id, PathRole roles) const
+    PathSet::GetEstablishedPathClosestTo(
+        RouterID id, std::unordered_set<RouterID> excluding, PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l{m_PathsMutex};
       Path_ptr path = nullptr;
       AlignedBuffer<32> dist;
       AlignedBuffer<32> to = id;
@@ -108,6 +109,8 @@ namespace llarp
         if (!item.second->IsReady())
           continue;
         if (!item.second->SupportsAnyRoles(roles))
+          continue;
+        if (excluding.count(item.second->Endpoint()))
           continue;
         AlignedBuffer<32> localDist = item.second->Endpoint() ^ to;
         if (localDist < dist)
@@ -280,44 +283,24 @@ namespace llarp
       return itr->second;
     }
 
-    bool
+    std::optional<std::set<service::Introduction>>
     PathSet::GetCurrentIntroductionsWithFilter(
-        std::set<service::Introduction>& intros,
         std::function<bool(const service::Introduction&)> filter) const
     {
-      intros.clear();
-      size_t count = 0;
-      Lock_t l(m_PathsMutex);
+      std::set<service::Introduction> intros;
+      Lock_t l{m_PathsMutex};
       auto itr = m_Paths.begin();
       while (itr != m_Paths.end())
       {
-        if (itr->second->IsReady() && filter(itr->second->intro))
+        if (itr->second->IsReady() and filter(itr->second->intro))
         {
           intros.insert(itr->second->intro);
-          ++count;
         }
         ++itr;
       }
-      return count > 0;
-    }
-
-    bool
-    PathSet::GetCurrentIntroductions(std::set<service::Introduction>& intros) const
-    {
-      intros.clear();
-      size_t count = 0;
-      Lock_t l(m_PathsMutex);
-      auto itr = m_Paths.begin();
-      while (itr != m_Paths.end())
-      {
-        if (itr->second->IsReady())
-        {
-          intros.insert(itr->second->intro);
-          ++count;
-        }
-        ++itr;
-      }
-      return count > 0;
+      if (intros.empty())
+        return std::nullopt;
+      return intros;
     }
 
     void

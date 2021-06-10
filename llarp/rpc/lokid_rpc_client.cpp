@@ -32,8 +32,8 @@ namespace llarp
       }
     }
 
-    LokidRpcClient::LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r)
-        : m_lokiMQ(std::move(lmq)), m_Router(r)
+    LokidRpcClient::LokidRpcClient(LMQ_ptr lmq, std::weak_ptr<AbstractRouter> r)
+        : m_lokiMQ{std::move(lmq)}, m_Router{std::move(r)}
     {
       // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
 
@@ -51,18 +51,24 @@ namespace llarp
     void
     LokidRpcClient::ConnectAsync(oxenmq::address url)
     {
-      if (not m_Router->IsServiceNode())
+      if (auto router = m_Router.lock())
       {
-        throw std::runtime_error("we cannot talk to lokid while not a service node");
+        if (not router->IsServiceNode())
+        {
+          throw std::runtime_error("we cannot talk to lokid while not a service node");
+        }
+        LogInfo("connecting to lokid via LMQ at ", url);
+        m_Connection = m_lokiMQ->connect_remote(
+            url,
+            [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
+            [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
+              llarp::LogWarn("Failed to connect to lokid: ", f);
+              if (auto router = self->m_Router.lock())
+              {
+                router->loop()->call([self, url]() { self->ConnectAsync(url); });
+              }
+            });
       }
-      LogInfo("connecting to lokid via LMQ at ", url);
-      m_Connection = m_lokiMQ->connect_remote(
-          url,
-          [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
-          [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
-            llarp::LogWarn("Failed to connect to lokid: ", f);
-            self->m_Router->loop()->call([self, url]() { self->ConnectAsync(url); });
-          });
     }
 
     void
@@ -89,25 +95,25 @@ namespace llarp
       }
       catch (std::exception& ex)
       {
-        LogError("bad block hieght: ", ex.what());
+        LogError("bad block height: ", ex.what());
         return;  // bail
       }
 
-      LogDebug("new block at hieght ", m_BlockHeight);
+      LogDebug("new block at height ", m_BlockHeight);
       // don't upadate on block notification if an update is pending
       if (not m_UpdatingList)
-        UpdateServiceNodeList(std::string{msg.data[1]});
+        UpdateServiceNodeList();
     }
 
     void
-    LokidRpcClient::UpdateServiceNodeList(std::string topblock)
+    LokidRpcClient::UpdateServiceNodeList()
     {
       nlohmann::json request, fields;
       fields["pubkey_ed25519"] = true;
+      fields["service_node_pubkey"] = true;
+      fields["funded"] = true;
+      fields["active"] = true;
       request["fields"] = fields;
-      request["active_only"] = true;
-      if (not topblock.empty())
-        request["poll_block_hash"] = topblock;
       m_UpdatingList = true;
       Request(
           "rpc.get_service_nodes",
@@ -161,7 +167,7 @@ namespace llarp
       };
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
       // initial fetch of service node list
-      UpdateServiceNodeList("");
+      UpdateServiceNodeList();
     }
 
     void
@@ -179,8 +185,8 @@ namespace llarp
           }
         }
       }
-
-      std::vector<RouterID> nodeList;
+      std::unordered_map<RouterID, PubKey> keymap;
+      std::vector<RouterID> activeNodeList, nonActiveNodeList;
       {
         const auto itr = j.find("service_node_states");
         if (itr != j.end() and itr->is_array())
@@ -190,22 +196,81 @@ namespace llarp
             const auto ed_itr = j_itr->find("pubkey_ed25519");
             if (ed_itr == j_itr->end() or not ed_itr->is_string())
               continue;
+            const auto svc_itr = j_itr->find("service_node_pubkey");
+            if (svc_itr == j_itr->end() or not svc_itr->is_string())
+              continue;
+            const auto funded_itr = j_itr->find("funded");
+            if (funded_itr == j_itr->end() or not funded_itr->is_boolean())
+              continue;
+            const auto active_itr = j_itr->find("active");
+            if (active_itr == j_itr->end() or not active_itr->is_boolean())
+              continue;
+            const bool active = active_itr->get<bool>();
+            const bool funded = funded_itr->get<bool>();
+
+            if (not funded)
+              continue;
+
             RouterID rid;
-            if (rid.FromHex(ed_itr->get<std::string>()))
-              nodeList.emplace_back(std::move(rid));
+            PubKey pk;
+            if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
+            {
+              keymap[rid] = pk;
+              if (active)
+                activeNodeList.emplace_back(std::move(rid));
+              else
+                nonActiveNodeList.emplace_back(std::move(rid));
+            }
           }
         }
       }
 
-      if (nodeList.empty())
+      if (activeNodeList.empty())
       {
         LogWarn("got empty service node list, ignoring.");
         return;
       }
       // inform router about the new list
-      m_Router->loop()->call([r = m_Router, nodeList = std::move(nodeList)]() mutable {
-        r->SetRouterWhitelist(std::move(nodeList));
-      });
+      if (auto router = m_Router.lock())
+      {
+        auto& loop = router->loop();
+        loop->call([this,
+                    active = std::move(activeNodeList),
+                    inactive = std::move(nonActiveNodeList),
+                    keymap = std::move(keymap),
+                    router = std::move(router)]() mutable {
+          m_KeyMap = std::move(keymap);
+          router->SetRouterWhitelist(active, inactive);
+        });
+      }
+      else
+        LogWarn("Cannot update whitelist: router object has gone away");
+    }
+
+    void
+    LokidRpcClient::InformConnection(RouterID router, bool success)
+    {
+      if (auto r = m_Router.lock())
+      {
+        r->loop()->call([router, success, this]() {
+          if (auto itr = m_KeyMap.find(router); itr != m_KeyMap.end())
+          {
+            const nlohmann::json request = {
+                {"passed", success}, {"pubkey", itr->second.ToHex()}, {"type", "lokinet"}};
+            Request(
+                "admin.report_peer_status",
+                [self = shared_from_this()](bool success, std::vector<std::string>) {
+                  if (not success)
+                  {
+                    LogError("Failed to report connection status to oxend");
+                    return;
+                  }
+                  LogDebug("reported connection status to core");
+                },
+                request.dump());
+          }
+        });
+      }
     }
 
     SecretKey
@@ -261,7 +326,7 @@ namespace llarp
       const nlohmann::json req{{"type", 2}, {"name_hash", namehash.ToHex()}};
       Request(
           "rpc.lns_resolve",
-          [r = m_Router, resultHandler](bool success, std::vector<std::string> data) {
+          [this, resultHandler](bool success, std::vector<std::string> data) {
             std::optional<service::EncryptedName> maybe = std::nullopt;
             if (success)
             {
@@ -285,8 +350,11 @@ namespace llarp
                 LogError("failed to parse response from lns lookup: ", ex.what());
               }
             }
-            r->loop()->call(
-                [resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
+            if (auto r = m_Router.lock())
+            {
+              r->loop()->call(
+                  [resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
+            }
           },
           req.dump());
     }
@@ -300,65 +368,66 @@ namespace llarp
         LogInfo("    :", str);
       }
 
-      assert(m_Router != nullptr);
-
-      if (not m_Router->peerDb())
+      if (auto router = m_Router.lock())
       {
-        LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
-
-        // TODO: this can sometimes occur if lokid hits our API before we're done configuring
-        //       (mostly an issue in a loopback testnet)
-        msg.send_reply("EAGAIN");
-        return;
-      }
-
-      try
-      {
-        // msg.data[0] is expected to contain a bt list of router ids (in our preferred string
-        // format)
-        if (msg.data.empty())
+        if (not router->peerDb())
         {
-          LogWarn("lokid requested peer stats with no request body");
-          msg.send_reply("peer stats request requires list of router IDs");
+          LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
+
+          // TODO: this can sometimes occur if lokid hits our API before we're done configuring
+          //       (mostly an issue in a loopback testnet)
+          msg.send_reply("EAGAIN");
           return;
         }
 
-        std::vector<std::string> routerIdStrings;
-        oxenmq::bt_deserialize(msg.data[0], routerIdStrings);
-
-        std::vector<RouterID> routerIds;
-        routerIds.reserve(routerIdStrings.size());
-
-        for (const auto& routerIdString : routerIdStrings)
+        try
         {
-          RouterID id;
-          if (not id.FromString(routerIdString))
+          // msg.data[0] is expected to contain a bt list of router ids (in our preferred string
+          // format)
+          if (msg.data.empty())
           {
-            LogWarn("lokid sent us an invalid router id: ", routerIdString);
-            msg.send_reply("Invalid router id");
+            LogWarn("lokid requested peer stats with no request body");
+            msg.send_reply("peer stats request requires list of router IDs");
             return;
           }
 
-          routerIds.push_back(std::move(id));
+          std::vector<std::string> routerIdStrings;
+          oxenmq::bt_deserialize(msg.data[0], routerIdStrings);
+
+          std::vector<RouterID> routerIds;
+          routerIds.reserve(routerIdStrings.size());
+
+          for (const auto& routerIdString : routerIdStrings)
+          {
+            RouterID id;
+            if (not id.FromString(routerIdString))
+            {
+              LogWarn("lokid sent us an invalid router id: ", routerIdString);
+              msg.send_reply("Invalid router id");
+              return;
+            }
+
+            routerIds.push_back(std::move(id));
+          }
+
+          auto statsList = router->peerDb()->listPeerStats(routerIds);
+
+          int32_t bufSize =
+              256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
+          auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[bufSize]);
+          llarp_buffer_t llarpBuf(buf.get(), bufSize);
+
+          PeerStats::BEncodeList(statsList, &llarpBuf);
+
+          msg.send_reply(
+              std::string_view((const char*)llarpBuf.base, llarpBuf.cur - llarpBuf.base));
         }
-
-        auto statsList = m_Router->peerDb()->listPeerStats(routerIds);
-
-        int32_t bufSize =
-            256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
-        auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[bufSize]);
-        llarp_buffer_t llarpBuf(buf.get(), bufSize);
-
-        PeerStats::BEncodeList(statsList, &llarpBuf);
-
-        msg.send_reply(std::string_view((const char*)llarpBuf.base, llarpBuf.cur - llarpBuf.base));
-      }
-      catch (const std::exception& e)
-      {
-        LogError("Failed to handle get_peer_stats request: ", e.what());
-        msg.send_reply("server error");
+        catch (const std::exception& e)
+        {
+          LogError("Failed to handle get_peer_stats request: ", e.what());
+          msg.send_reply("server error");
+        }
       }
     }
-
   }  // namespace rpc
 }  // namespace llarp

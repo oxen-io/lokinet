@@ -37,6 +37,7 @@ namespace llarp
     void
     EndpointUtil::ExpirePendingTx(llarp_time_t now, PendingLookups& lookups)
     {
+      std::vector<std::unique_ptr<IServiceLookup>> timedout;
       for (auto itr = lookups.begin(); itr != lookups.end();)
       {
         if (!itr->second->IsTimedOut(now))
@@ -44,11 +45,14 @@ namespace llarp
           ++itr;
           continue;
         }
-        std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
+        timedout.emplace_back(std::move(itr->second));
+        itr = lookups.erase(itr);
+      }
 
+      for (const auto& lookup : timedout)
+      {
         LogWarn(lookup->name, " timed out txid=", lookup->txid);
         lookup->HandleTimeout();
-        itr = lookups.erase(itr);
       }
     }
 
@@ -95,7 +99,11 @@ namespace llarp
         itr->second->Tick(now);
         if (itr->second->Pump(now))
         {
-          LogInfo("marking session as dead T=", itr->second->currentConvoTag);
+          LogInfo(
+              "marking session as dead T=",
+              itr->second->currentConvoTag,
+              " to ",
+              itr->second->Addr());
           itr->second->Stop();
           sessions.erase(itr->second->currentConvoTag);
           deadSessions.emplace(std::move(*itr));
@@ -105,6 +113,10 @@ namespace llarp
         {
           ++itr;
         }
+      }
+      for (auto& item : deadSessions)
+      {
+        item.second->Tick(now);
       }
     }
 
@@ -116,7 +128,7 @@ namespace llarp
       {
         if (itr->second.IsExpired(now))
         {
-          LogInfo("Expire session T=", itr->first);
+          LogInfo("Expire session T=", itr->first, " to ", itr->second.Addr());
           itr = sessions.erase(itr);
         }
         else

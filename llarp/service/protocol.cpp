@@ -458,15 +458,21 @@ namespace llarp
         }
       };
       handler->Router()->QueueWork(
-          [v, msg = std::move(msg), recvPath = std::move(recvPath), callback]() {
+          [v, msg = std::move(msg), recvPath = std::move(recvPath), callback, handler]() {
+            auto resetTag = [handler, tag = v->frame.T, from = v->frame.F, path = recvPath]() {
+              handler->ResetConvoTag(tag, path, from);
+            };
+
             if (not v->frame.Verify(v->si))
             {
               LogError("Signature failure from ", v->si.Addr());
+              handler->Loop()->call_soon(resetTag);
               return;
             }
             if (not v->frame.DecryptPayloadInto(v->shared, *msg))
             {
-              LogError("failed to decrypt message");
+              LogError("failed to decrypt message from ", v->si.Addr());
+              handler->Loop()->call_soon(resetTag);
               return;
             }
             callback(msg);

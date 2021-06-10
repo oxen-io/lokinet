@@ -42,7 +42,7 @@ extern "C"
   /// localAddr is the local ip:port to bind our socket to, if localAddr is NULL then
   /// lokinet_udp_sendmmsg MUST be used to send packets return 0 on success return nonzero on fail,
   /// containing an errno value
-  int
+  int EXPORT
   lokinet_udp_establish(
       char* remoteHost,
       char* remotePort,
@@ -66,7 +66,7 @@ extern "C"
   ///
   /// returns 0 on success
   /// returns nonzero on error in which it is an errno value
-  int
+  int EXPORT
   lokinet_udp_bind(
       int exposedPort,
       char* srv,
@@ -78,7 +78,7 @@ extern "C"
   /// returns 0 on sucess
   ///
   /// returns non zero errno on error
-  int
+  int EXPORT
   lokinet_udp_poll(
       const int* socket_ids,
       size_t numsockets,
@@ -93,7 +93,7 @@ extern "C"
   };
 
   /// analog to recvmmsg
-  ssize_t
+  ssize_t EXPORT
   lokinet_udp_recvmmsg(
       int socket_id,
       struct lokinet_udp_pkt* events,

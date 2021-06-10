@@ -382,7 +382,7 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
-      if (not GetRouter()->ConnectionToRouterAllowed(target.as_array()))
+      if (not GetRouter()->SessionToRouterAllowed(target.as_array()))
       {
         // explicitly not allowed
         replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
