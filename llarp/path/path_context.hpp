@@ -77,6 +77,12 @@ namespace llarp
       HopHandler_ptr
       GetByDownstream(const RouterID& id, const PathID_t& path);
 
+      std::optional<std::weak_ptr<TransitHop>>
+      TransitHopByInfo(const TransitHopInfo&);
+
+      std::optional<std::weak_ptr<TransitHop>>
+      TransitHopByUpstream(const RouterID&, const PathID_t&);
+
       PathSet_ptr
       GetLocalPathSet(const PathID_t& id);
 

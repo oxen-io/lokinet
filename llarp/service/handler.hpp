@@ -77,10 +77,6 @@ namespace llarp
       /// do we want a session outbound to addr
       virtual bool
       WantsOutboundSession(const Address& addr) const = 0;
-
-      virtual void
-      MarkAddressOutbound(const Address& addr) = 0;
-
       virtual void
       QueueRecvData(RecvDataEvent ev) = 0;
     };

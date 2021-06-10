@@ -49,12 +49,13 @@ namespace llarp
     struct OutboundContext;
 
     /// minimum interval for publishing introsets
-    static constexpr auto INTROSET_PUBLISH_INTERVAL =
-        std::chrono::milliseconds(path::default_lifetime) / 4;
+    static constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
 
-    static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
+    /// how agressively should we retry publishing introset on failure
+    static constexpr auto IntrosetPublishRetryCooldown = 1s;
 
-    static constexpr auto INTROSET_LOOKUP_RETRY_COOLDOWN = 3s;
+    /// how aggressively should we retry looking up introsets
+    static constexpr auto IntrosetLookupCooldown = 250ms;
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
@@ -284,8 +285,8 @@ namespace llarp
       bool
       WantsOutboundSession(const Address&) const override;
 
-      void
-      MarkAddressOutbound(const Address&) override;
+      /// this MUST be called if you want to call EnsurePathTo on the given address
+      void MarkAddressOutbound(AddressVariant_t) override;
 
       bool
       ShouldBundleRC() const override
@@ -329,6 +330,9 @@ namespace llarp
       EnsurePathToService(const Address remote, PathEnsureHook h, llarp_time_t timeoutMS);
 
       using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
+
+      void
+      InformPathToService(const Address remote, OutboundContext* ctx);
 
       /// ensure a path to a service node by public key
       bool
@@ -415,6 +419,9 @@ namespace llarp
       uint64_t
       GenTXID();
 
+      void
+      ResetConvoTag(ConvoTag tag, path::Path_ptr path, PathID_t from);
+
       const std::set<RouterID>&
       SnodeBlacklist() const;
 
@@ -471,7 +478,8 @@ namespace llarp
           const service::Address& addr,
           std::optional<IntroSet> i,
           const RouterID& endpoint,
-          llarp_time_t timeLeft);
+          llarp_time_t timeLeft,
+          uint64_t relayOrder);
 
       bool
       DoNetworkIsolation(bool failed);

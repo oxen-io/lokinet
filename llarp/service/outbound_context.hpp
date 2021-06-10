@@ -38,6 +38,15 @@ namespace llarp
         return shared_from_this();
       }
 
+      std::weak_ptr<path::PathSet>
+      GetWeak() override
+      {
+        return weak_from_this();
+      }
+
+      Address
+      Addr() const;
+
       bool
       Stop() override;
 
@@ -57,7 +66,7 @@ namespace llarp
 
       /// shift the intro off the current router it is using
       void
-      ShiftIntroRouter(const RouterID remote);
+      ShiftIntroRouter(const RouterID remote) override;
 
       /// mark the current remote intro as bad
       void
@@ -71,7 +80,7 @@ namespace llarp
       ReadyToSend() const;
 
       void
-      SetReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+      AddReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
 
       /// for exits
       void
@@ -129,19 +138,26 @@ namespace llarp
       llarp_time_t
       RTT() const;
 
+      bool
+      OnIntroSetUpdate(
+          const Address& addr,
+          std::optional<IntroSet> i,
+          const RouterID& endpoint,
+          llarp_time_t,
+          uint64_t relayOrder);
+
      private:
       /// swap remoteIntro with next intro
       void
       SwapIntros();
 
-      void
-      OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
-
       bool
-      OnIntroSetUpdate(
-          const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint, llarp_time_t);
+      IntroGenerated() const override;
+      bool
+      IntroSent() const override;
 
       const dht::Key_t location;
+      const Address addr;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
@@ -151,8 +167,9 @@ namespace llarp
       uint16_t m_BuildFails = 0;
       llarp_time_t m_LastInboundTraffic = 0s;
       bool m_GotInboundTraffic = false;
+      bool generatedIntro = false;
       bool sentIntro = false;
-      std::function<void(OutboundContext*)> m_ReadyHook;
+      std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
     };
   }  // namespace service

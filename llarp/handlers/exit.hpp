@@ -41,6 +41,8 @@ namespace llarp
       void
       SRVRecordsChanged() override;
 
+      void MarkAddressOutbound(AddressVariant_t) override{};
+
       bool
       SendToOrQueue(
           service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;

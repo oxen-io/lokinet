@@ -38,6 +38,13 @@ namespace llarp
         return m_Values.try_emplace(v, now).second;
       }
 
+      /// upsert will insert or update a value with time as now
+      void
+      Upsert(const Val_t& v)
+      {
+        m_Values[v] = llarp::time_now_ms();
+      }
+
       /// decay hashset entries
       void
       Decay(Time_t now = 0s)

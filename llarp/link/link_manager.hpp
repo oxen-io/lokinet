@@ -33,6 +33,9 @@ namespace llarp
     bool
     HasSessionTo(const RouterID& remote) const override;
 
+    bool
+    HasOutboundSessionTo(const RouterID& remote) const override;
+
     std::optional<bool>
     SessionIsClient(RouterID remote) const override;
 
@@ -107,6 +110,8 @@ namespace llarp
     std::unordered_map<RouterID, llarp_time_t> m_PersistingSessions GUARDED_BY(_mutex);
 
     std::unordered_map<RouterID, SessionStats> m_lastRouterStats;
+
+    util::DecayingHashSet<RouterID> m_Clients{path::default_lifetime};
 
     IOutboundSessionMaker* _sessionMaker;
   };

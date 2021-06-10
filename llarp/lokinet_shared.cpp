@@ -191,28 +191,20 @@ struct lokinet_srv_lookup_private
 
 extern "C"
 {
-  struct lokinet_context*
-  lokinet_default()
-  {
-    if (not g_context)
-      g_context = std::make_unique<lokinet_context>();
-    return g_context.get();
-  }
-
-  void
+  void EXPORT
   lokinet_set_netid(const char* netid)
   {
     llarp::NetID::DefaultValue() = llarp::NetID{reinterpret_cast<const byte_t*>(netid)};
   }
 
-  const char*
+  const char* EXPORT
   lokinet_get_netid()
   {
     const auto netid = llarp::NetID::DefaultValue().ToString();
     return strdup(netid.c_str());
   }
 
-  int
+  int EXPORT
   lokinet_log_level(const char* level)
   {
     if (auto maybe = llarp::LogLevelFromString(level))
@@ -223,7 +215,7 @@ extern "C"
     return -1;
   }
 
-  char*
+  char* EXPORT
   lokinet_address(struct lokinet_context* ctx)
   {
     if (not ctx)
@@ -235,7 +227,7 @@ extern "C"
     return strdup(addrStr.c_str());
   }
 
-  int
+  int EXPORT
   lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
   {
     llarp_buffer_t buf{data, datalen};
@@ -253,20 +245,20 @@ extern "C"
     return 0;
   }
 
-  struct lokinet_context*
+  struct lokinet_context* EXPORT
   lokinet_context_new()
   {
     return new lokinet_context{};
   }
 
-  void
+  void EXPORT
   lokinet_context_free(struct lokinet_context* ctx)
   {
     lokinet_context_stop(ctx);
     delete ctx;
   }
 
-  int
+  int EXPORT
   lokinet_context_start(struct lokinet_context* ctx)
   {
     if (not ctx)
@@ -301,7 +293,7 @@ extern "C"
     return 0;
   }
 
-  int
+  int EXPORT
   lokinet_status(struct lokinet_context* ctx)
   {
     if (ctx == nullptr)
@@ -314,7 +306,7 @@ extern "C"
     return ctx->endpoint()->IsReady() ? 0 : -1;
   }
 
-  int
+  int EXPORT
   lokinet_wait_for_ready(int ms, struct lokinet_context* ctx)
   {
     if (ctx == nullptr)
@@ -335,7 +327,7 @@ extern "C"
     return ep->IsReady() ? 0 : -1;
   }
 
-  void
+  void EXPORT
   lokinet_context_stop(struct lokinet_context* ctx)
   {
     if (not ctx)
@@ -354,7 +346,7 @@ extern "C"
     ctx->runner.reset();
   }
 
-  void
+  void EXPORT
   lokinet_outbound_stream(
       struct lokinet_stream_result* result,
       const char* remote,
@@ -477,14 +469,14 @@ extern "C"
     }
   }
 
-  int
+  int EXPORT
   lokinet_inbound_stream(uint16_t port, struct lokinet_context* ctx)
   {
     /// FIXME: delete pointer later
     return lokinet_inbound_stream_filter(&accept_port, (void*)new std::uintptr_t{port}, ctx);
   }
 
-  int
+  int EXPORT
   lokinet_inbound_stream_filter(
       lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* ctx)
   {
@@ -531,7 +523,7 @@ extern "C"
     return id;
   }
 
-  void
+  void EXPORT
   lokinet_close_stream(int stream_id, struct lokinet_context* ctx)
   {
     if (not ctx)
@@ -564,7 +556,7 @@ extern "C"
     {}
   }
 
-  int
+  int EXPORT
   lokinet_srv_lookup(
       char* host,
       char* service,
@@ -580,7 +572,7 @@ extern "C"
     return result->internal->LookupSRV(host, service, ctx);
   }
 
-  void
+  void EXPORT
   lokinet_for_each_srv_record(
       struct lokinet_srv_lookup_result* result, lokinet_srv_record_iterator iter, void* user)
   {
@@ -594,7 +586,7 @@ extern "C"
     }
   }
 
-  void
+  void EXPORT
   lokinet_srv_lookup_done(struct lokinet_srv_lookup_result* result)
   {
     if (result == nullptr or result->internal == nullptr)

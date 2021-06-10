@@ -480,6 +480,7 @@ namespace llarp::rpc
                         onGoodResult("added null exit");
                         return;
                       }
+                      ep->MarkAddressOutbound(addr);
                       ep->EnsurePathToService(
                           addr,
                           [onBadResult, onGoodResult, shouldSendAuth, addrStr = addr.ToString()](

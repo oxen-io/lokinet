@@ -26,12 +26,11 @@ namespace llarp
       const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
   {
     // if the destination is invalid, callback with failure and return
-    if (not _linkManager->SessionIsClient(remote) and not _lookupHandler->RemoteIsAllowed(remote))
+    if (not _linkManager->SessionIsClient(remote) and not _lookupHandler->SessionIsAllowed(remote))
     {
       DoCallback(callback, SendStatus::InvalidRouter);
       return true;
     }
-
     const uint16_t priority = msg.Priority();
     std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
     llarp_buffer_t buf(linkmsg_buffer);

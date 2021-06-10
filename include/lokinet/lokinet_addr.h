@@ -8,7 +8,7 @@ extern "C"
 
   /// get a free()-able null terminated string that holds our .loki address
   /// returns NULL if we dont have one right now
-  char*
+  char* EXPORT
   lokinet_address(struct lokinet_context*);
 #ifdef __cplusplus
 }

@@ -28,7 +28,7 @@ extern "C"
   /// connect out to a remote endpoint
   /// remoteAddr is in the form of "name:port"
   /// localAddr is either NULL for any or in the form of "ip:port" to bind to an explicit address
-  void
+  void EXPORT
   lokinet_outbound_stream(
       struct lokinet_stream_result* result,
       const char* remoteAddr,
@@ -44,13 +44,13 @@ extern "C"
   /// set stream accepter filter
   /// passes user parameter into stream filter as void *
   /// returns stream id
-  int
+  int EXPORT
   lokinet_inbound_stream_filter(
       lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* context);
 
   /// simple stream acceptor
   /// simple variant of lokinet_inbound_stream_filter that maps port to localhost:port
-  int
+  int EXPORT
   lokinet_inbound_stream(uint16_t port, struct lokinet_context* context);
 
 #ifdef __cplusplus
