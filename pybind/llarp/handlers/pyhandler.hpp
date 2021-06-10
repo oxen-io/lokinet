@@ -54,6 +54,12 @@ namespace llarp
         return shared_from_this();
       }
 
+      std::weak_ptr<path::PathSet>
+      GetWeak() override
+      {
+        return weak_from_this();
+      }
+
       bool
       SupportsV6() const override
       {

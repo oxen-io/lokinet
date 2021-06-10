@@ -41,7 +41,9 @@ namespace llarp
     RemoveValidRouter(const RouterID& router) override EXCLUDES(_mutex);
 
     void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) override EXCLUDES(_mutex);
+    SetRouterWhitelist(
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override
+        EXCLUDES(_mutex);
 
     bool
     HaveReceivedWhitelist() const override;
@@ -51,7 +53,13 @@ namespace llarp
         EXCLUDES(_mutex);
 
     bool
-    RemoteIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+    PathIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+
+    bool
+    SessionIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+
+    bool
+    IsGreylisted(const RouterID& remote) const override EXCLUDES(_mutex);
 
     bool
     CheckRC(const RouterContact& rc) const override;
@@ -83,6 +91,13 @@ namespace llarp
         const std::set<RouterContact>& bootstrapRCList,
         bool useWhitelist_arg,
         bool isServiceNode_arg);
+
+    std::unordered_set<RouterID>
+    Whitelist() const
+    {
+      util::Lock lock{_mutex};
+      return whitelistRouters;
+    }
 
    private:
     void
@@ -120,6 +135,7 @@ namespace llarp
     bool isServiceNode = false;
 
     std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> greylistRouters GUARDED_BY(_mutex);
 
     using TimePoint = std::chrono::steady_clock::time_point;
     std::unordered_map<RouterID, TimePoint> _routerLookupTimes;

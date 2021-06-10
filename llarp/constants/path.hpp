@@ -20,14 +20,16 @@ namespace llarp
     constexpr std::chrono::milliseconds default_lifetime = 20min;
     /// minimum into lifetime we will advertise
     constexpr std::chrono::milliseconds min_intro_lifetime = default_lifetime / 2;
+    /// number of slices of path lifetime to spread intros out via
+    constexpr auto intro_spread_slices = 4;
     /// spacing frequency at which we try to build paths for introductions
-    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / 5;
+    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / intro_spread_slices;
     /// Minimum paths to keep around for intros; mainly used at startup (the
     /// spread, above, should be able to maintain more than this number of paths
     /// normally once things are going).
     constexpr std::size_t min_intro_paths = 4;
     /// after this many ms a path build times out
-    constexpr auto build_timeout = 30s;
+    constexpr auto build_timeout = 10s;
 
     /// measure latency every this interval ms
     constexpr auto latency_interval = 20s;

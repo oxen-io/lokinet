@@ -22,21 +22,21 @@ namespace llarp
 
     std::array<EncryptedFrame, 8> frames;
     uint64_t status = 0;
-    HopHandler_ptr path;
+    HopHandler_ptr hop;
     AbstractRouter* router;
     PathID_t pathid;
 
     LRSM_AsyncHandler(
         std::array<EncryptedFrame, 8> _frames,
         uint64_t _status,
-        HopHandler_ptr _path,
+        HopHandler_ptr _hop,
         AbstractRouter* _router,
         const PathID_t& pathid)
-        : frames(std::move(_frames))
-        , status(_status)
-        , path(std::move(_path))
-        , router(_router)
-        , pathid(pathid)
+        : frames{std::move(_frames)}
+        , status{_status}
+        , hop{std::move(_hop)}
+        , router{_router}
+        , pathid{pathid}
     {}
 
     ~LRSM_AsyncHandler() = default;
@@ -45,8 +45,7 @@ namespace llarp
     handle()
     {
       router->NotifyRouterEvent<tooling::PathStatusReceivedEvent>(router->pubkey(), pathid, status);
-
-      path->HandleLRSM(status, frames, router);
+      hop->HandleLRSM(status, frames, router);
     }
 
     void
@@ -133,16 +132,13 @@ namespace llarp
     }
 
     auto path = router->pathContext().GetByUpstream(session->GetPubKey(), pathid);
-    if (!path)
+    if (not path)
     {
       llarp::LogWarn("unhandled LR_Status message: no associated path found pathid=", pathid);
       return false;
     }
-
     auto handler = std::make_shared<LRSM_AsyncHandler>(frames, status, path, router, pathid);
-
     handler->queue_handle();
-
     return true;
   }
 
@@ -157,6 +153,7 @@ namespace llarp
   bool
   LR_StatusMessage::CreateAndSend(
       AbstractRouter* router,
+      std::shared_ptr<path::TransitHop> hop,
       const PathID_t pathid,
       const RouterID nextHop,
       const SharedSecret pathKey,
@@ -169,12 +166,9 @@ namespace llarp
 
     message->SetDummyFrames();
 
-    if (!message->AddFrame(pathKey, status))
-    {
-      return false;
-    }
+    message->AddFrame(pathKey, status);
 
-    QueueSendMessage(router, nextHop, message);
+    QueueSendMessage(router, nextHop, message, hop);
     return true;  // can't guarantee delivery here, as far as we know it's fine
   }
 
@@ -221,10 +215,19 @@ namespace llarp
 
   void
   LR_StatusMessage::QueueSendMessage(
-      AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
+      AbstractRouter* router,
+      const RouterID nextHop,
+      std::shared_ptr<LR_StatusMessage> msg,
+      std::shared_ptr<path::TransitHop> hop)
   {
-    router->loop()->call(
-        [router, nextHop, msg = std::move(msg)] { SendMessage(router, nextHop, msg); });
+    router->loop()->call([router, nextHop, msg = std::move(msg), hop = std::move(hop)] {
+      SendMessage(router, nextHop, msg);
+      // destroy hop as needed
+      if ((msg->status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
+      {
+        hop->QueueDestroySelf(router);
+      }
+    });
   }
 
   void
@@ -271,6 +274,34 @@ namespace llarp
   LR_StatusRecord::operator==(const LR_StatusRecord& other) const
   {
     return status == other.status;
+  }
+
+  std::string
+  LRStatusCodeToString(uint64_t status)
+  {
+    std::map<uint64_t, std::string> codes = {
+        {LR_StatusRecord::SUCCESS, "success"},
+        {LR_StatusRecord::FAIL_TIMEOUT, "timeout"},
+        {LR_StatusRecord::FAIL_CONGESTION, "congestion"},
+        {LR_StatusRecord::FAIL_DEST_UNKNOWN, "destination unknown"},
+        {LR_StatusRecord::FAIL_DECRYPT_ERROR, "decrypt error"},
+        {LR_StatusRecord::FAIL_MALFORMED_RECORD, "malformed record"},
+        {LR_StatusRecord::FAIL_DEST_INVALID, "destination invalid"},
+        {LR_StatusRecord::FAIL_CANNOT_CONNECT, "cannot connect"},
+        {LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"}};
+    std::stringstream ss;
+    ss << "[";
+    bool found = false;
+    for (const auto& [val, message] : codes)
+    {
+      if ((status & val) == val)
+      {
+        ss << (found ? ", " : "") << message;
+        found = true;
+      }
+    }
+    ss << "]";
+    return ss.str();
   }
 
 }  // namespace llarp

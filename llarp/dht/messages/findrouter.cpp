@@ -34,7 +34,7 @@ namespace llarp
 
       Key_t peer;
       // check if we know this in our nodedb first
-      if (not dht.GetRouter()->ConnectionToRouterAllowed(targetKey))
+      if (not dht.GetRouter()->SessionToRouterAllowed(targetKey))
       {
         // explicitly disallowed by network
         replies.emplace_back(new GotRouterMessage(k, txid, {}, false));

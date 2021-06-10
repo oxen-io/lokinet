@@ -329,7 +329,8 @@ namespace llarp
     {
       if (m_State == State::Ready || m_State == State::LinkIntro)
       {
-        return now > m_LastRX && now - m_LastRX > SessionAliveTimeout;
+        return now > m_LastRX
+            && now - m_LastRX > (m_Inbound ? DefaultLinkSessionLifetime : SessionAliveTimeout);
       }
       return now - m_CreatedAt >= LinkLayerConnectTimeout;
     }
