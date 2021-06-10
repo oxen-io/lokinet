@@ -124,7 +124,7 @@ namespace llarp
             ++itr;
           }
 
-          if (not m_Router->ConnectionToRouterAllowed(*rid))
+          if (not m_Router->PathToRouterAllowed(*rid))
             return false;
 
           ObtainSNodeSession(*rid, [data = payload.copy(), type](auto session) {
@@ -150,7 +150,7 @@ namespace llarp
         return false;
       if (auto* rid = std::get_if<RouterID>(&addr))
       {
-        if (m_SNodeKeys.count(PubKey{*rid}) or m_Router->ConnectionToRouterAllowed(*rid))
+        if (m_SNodeKeys.count(PubKey{*rid}) or m_Router->PathToRouterAllowed(*rid))
         {
           ObtainSNodeSession(
               *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
@@ -338,7 +338,7 @@ namespace llarp
     void
     ExitEndpoint::ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb)
     {
-      if (not m_Router->rcLookupHandler().RemoteIsAllowed(router))
+      if (not m_Router->rcLookupHandler().SessionIsAllowed(router))
       {
         obtainCb(nullptr);
         return;

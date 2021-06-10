@@ -95,8 +95,9 @@ namespace llarp
         typename Map_t,
         typename Key_t,
         typename CheckValue_t,
-        typename GetFunc_t>
-    HopHandler_ptr
+        typename GetFunc_t,
+        typename Return_ptr = HopHandler_ptr>
+    Return_ptr
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
       Lock_t lock(map.first);
@@ -172,6 +173,46 @@ namespace llarp
           });
     }
 
+    std::optional<std::weak_ptr<TransitHop>>
+    PathContext::TransitHopByInfo(const TransitHopInfo& info)
+    {
+      // this is ugly as sin
+      auto own = MapGet<
+          SyncTransitMap_t::Lock_t,
+          decltype(m_TransitPaths),
+          PathID_t,
+          std::function<bool(const std::shared_ptr<TransitHop>&)>,
+          std::function<TransitHop*(const std::shared_ptr<TransitHop>&)>,
+          TransitHop*>(
+          m_TransitPaths,
+          info.txID,
+          [info](const auto& hop) -> bool { return hop->info == info; },
+          [](const auto& hop) -> TransitHop* { return hop.get(); });
+      if (own)
+        return own->weak_from_this();
+      return std::nullopt;
+    }
+
+    std::optional<std::weak_ptr<TransitHop>>
+    PathContext::TransitHopByUpstream(const RouterID& upstream, const PathID_t& id)
+    {
+      // this is ugly as sin as well
+      auto own = MapGet<
+          SyncTransitMap_t::Lock_t,
+          decltype(m_TransitPaths),
+          PathID_t,
+          std::function<bool(const std::shared_ptr<TransitHop>&)>,
+          std::function<TransitHop*(const std::shared_ptr<TransitHop>&)>,
+          TransitHop*>(
+          m_TransitPaths,
+          id,
+          [upstream](const auto& hop) -> bool { return hop->info.upstream == upstream; },
+          [](const auto& hop) -> TransitHop* { return hop.get(); });
+      if (own)
+        return own->weak_from_this();
+      return std::nullopt;
+    }
+
     HopHandler_ptr
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
@@ -225,7 +266,8 @@ namespace llarp
       auto itr = map.second.find(id);
       if (itr != map.second.end())
       {
-        return itr->second->m_PathSet->GetSelf();
+        if (auto parent = itr->second->m_PathSet.lock())
+          return parent;
       }
       return nullptr;
     }

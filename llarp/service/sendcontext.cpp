@@ -21,18 +21,19 @@ namespace llarp
         , m_Endpoint(ep)
         , createdAt(ep->Now())
         , m_SendQueue(SendContextQueueSize)
-    {}
+    {
+      m_FlushWakeup = ep->Loop()->make_waker([this] { FlushUpstream(); });
+    }
 
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)
     {
-      if (m_SendQueue.empty() or m_SendQueue.full())
-      {
-        m_Endpoint->Loop()->call([this] { FlushUpstream(); });
-      }
-      m_SendQueue.pushBack(std::make_pair(
-          std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
-      return true;
+      if (not path->IsReady())
+        return false;
+      m_FlushWakeup->Trigger();
+      return m_SendQueue.tryPushBack(std::make_pair(
+                 std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path))
+          == thread::QueueReturn::Success;
     }
 
     void
@@ -84,13 +85,15 @@ namespace llarp
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if (!path)
       {
-        LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
+        ShiftIntroRouter(remoteIntro.router);
+        LogWarn(m_PathSet->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
         return;
       }
 
       if (!m_DataHandler->GetCachedSessionKeyFor(f->T, shared))
       {
-        LogWarn(m_Endpoint->Name(), " has no cached session key on session T=", f->T);
+        LogWarn(
+            m_PathSet->Name(), " could not send, has no cached session key on session T=", f->T);
         return;
       }
 
@@ -104,7 +107,7 @@ namespace llarp
       }
       else
       {
-        LogWarn(m_Endpoint->Name(), " no session T=", f->T);
+        LogWarn(m_PathSet->Name(), " could not get sequence number for session T=", f->T);
         return;
       }
       m->introReply = path->intro;
@@ -115,7 +118,7 @@ namespace llarp
       m_Endpoint->Router()->QueueWork([f, m, shared, path, this] {
         if (not f->EncryptAndSign(*m, shared, m_Endpoint->GetIdentity()))
         {
-          LogError(m_Endpoint->Name(), " failed to sign message");
+          LogError(m_PathSet->Name(), " failed to sign message");
           return;
         }
         Send(f, path);
@@ -140,9 +143,19 @@ namespace llarp
     void
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data, ProtocolType protocol)
     {
-      if (lastGoodSend != 0s)
+      if (IntroSent())
       {
         EncryptAndSendTo(data, protocol);
+        return;
+      }
+      // have we generated the initial intro but not sent it yet? bail here so we don't cause
+      // bullshittery
+      if (IntroGenerated() and not IntroSent())
+      {
+        LogWarn(
+            m_PathSet->Name(),
+            " we have generated an intial handshake but have not sent it yet so we drop a packet "
+            "to prevent bullshittery");
         return;
       }
       const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());

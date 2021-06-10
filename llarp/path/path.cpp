@@ -7,6 +7,7 @@
 #include <llarp/messages/relay_status.hpp>
 #include "pathbuilder.hpp"
 #include "transit_hop.hpp"
+#include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/routing/dht_message.hpp>
@@ -25,10 +26,10 @@ namespace llarp
   {
     Path::Path(
         const std::vector<RouterContact>& h,
-        PathSet* parent,
+        std::weak_ptr<PathSet> pathset,
         PathRole startingRoles,
         std::string shortName)
-        : m_PathSet(parent), _role(startingRoles), m_shortName(std::move(shortName))
+        : m_PathSet{pathset}, _role{startingRoles}, m_shortName{std::move(shortName)}
 
     {
       hops.resize(h.size());
@@ -54,7 +55,7 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      if (parent)
+      if (auto parent = m_PathSet.lock())
         EnterState(ePathBuilding, parent->Now());
     }
 
@@ -184,10 +185,6 @@ namespace llarp
           {
             failedAt = hops[index + 1].rc.pubkey;
           }
-          else
-          {
-            failedAt = hops[index].rc.pubkey;
-          }
           break;
         }
         ++index;
@@ -203,7 +200,14 @@ namespace llarp
         if (failedAt)
         {
           r->NotifyRouterEvent<tooling::PathBuildRejectedEvent>(Endpoint(), RXID(), *failedAt);
-          LogWarn(Name(), " build failed at ", *failedAt);
+          LogWarn(
+              Name(),
+              " build failed at ",
+              *failedAt,
+              " status=",
+              LRStatusCodeToString(currentStatus),
+              " hops=",
+              HopsString());
           r->routerProfiling().MarkHopFail(*failedAt);
         }
         else
@@ -229,6 +233,13 @@ namespace llarp
           llarp::LogDebug(
               "Path build failed due to one or more nodes considered an "
               "invalid destination");
+          if (failedAt)
+          {
+            r->loop()->call([nodedb = r->nodedb(), router = *failedAt]() {
+              LogInfo("router ", router, " is deregistered so we remove it");
+              nodedb->Remove(router);
+            });
+          }
         }
         else if (currentStatus & LR_StatusRecord::FAIL_CANNOT_CONNECT)
         {
@@ -257,7 +268,10 @@ namespace llarp
           edge = *failedAt;
         r->loop()->call([r, self = shared_from_this(), edge]() {
           self->EnterState(ePathFailed, r->Now());
-          self->m_PathSet->HandlePathBuildFailedAt(self, edge);
+          if (auto parent = self->m_PathSet.lock())
+          {
+            parent->HandlePathBuildFailedAt(self, edge);
+          }
         });
       }
 
@@ -276,7 +290,10 @@ namespace llarp
       if (st == ePathExpired && _status == ePathBuilding)
       {
         _status = st;
-        m_PathSet->HandlePathBuildTimeout(shared_from_this());
+        if (auto parent = m_PathSet.lock())
+        {
+          parent->HandlePathBuildTimeout(shared_from_this());
+        }
       }
       else if (st == ePathBuilding)
       {
@@ -291,11 +308,18 @@ namespace llarp
       {
         LogInfo("path ", Name(), " died");
         _status = st;
-        m_PathSet->HandlePathDied(shared_from_this());
+        if (auto parent = m_PathSet.lock())
+        {
+          parent->HandlePathDied(shared_from_this());
+        }
       }
       else if (st == ePathEstablished && _status == ePathTimeout)
       {
         LogInfo("path ", Name(), " reanimated");
+      }
+      else if (st == ePathIgnore)
+      {
+        LogInfo("path ", Name(), " ignored");
       }
       _status = st;
     }
@@ -371,11 +395,31 @@ namespace llarp
     void
     Path::Rebuild()
     {
-      std::vector<RouterContact> newHops;
-      for (const auto& hop : hops)
-        newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", ShortName());
-      m_PathSet->Build(newHops);
+      if (auto parent = m_PathSet.lock())
+      {
+        std::vector<RouterContact> newHops;
+        for (const auto& hop : hops)
+          newHops.emplace_back(hop.rc);
+        LogInfo(Name(), " rebuilding on ", ShortName());
+        parent->Build(newHops);
+      }
+    }
+
+    bool
+    Path::SendLatencyMessage(AbstractRouter* r)
+    {
+      const auto now = r->Now();
+      // send path latency test
+      routing::PathLatencyMessage latency{};
+      latency.T = randint();
+      latency.S = NextSeqNo();
+      m_LastLatencyTestID = latency.T;
+      m_LastLatencyTestTime = now;
+      LogDebug(Name(), " send latency test id=", latency.T);
+      if (not SendRoutingMessage(latency, r))
+        return false;
+      FlushUpstream(r);
+      return true;
     }
 
     void
@@ -412,12 +456,12 @@ namespace llarp
         auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
-          routing::PathLatencyMessage latency;
-          latency.T = randint();
-          m_LastLatencyTestID = latency.T;
-          m_LastLatencyTestTime = now;
-          SendRoutingMessage(latency, r);
-          FlushUpstream(r);
+          SendLatencyMessage(r);
+          // latency test FEC
+          r->loop()->call_later(2s, [self = shared_from_this(), r]() {
+            if (self->m_LastLatencyTestID)
+              self->SendLatencyMessage(r);
+          });
           return;
         }
         dlt = now - m_LastRecvMessage;
@@ -510,7 +554,7 @@ namespace llarp
       {
         return now >= m_LastRecvMessage + PathReanimationTimeout;
       }
-      if (_status == ePathEstablished)
+      if (_status == ePathEstablished or _status == ePathIgnore)
       {
         return now >= ExpireTime();
       }
@@ -654,16 +698,7 @@ namespace llarp
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
         MarkActive(now);
-        // send path latency test
-        routing::PathLatencyMessage latency;
-        latency.T = randint();
-        latency.S = NextSeqNo();
-        m_LastLatencyTestID = latency.T;
-        m_LastLatencyTestTime = now;
-        if (!SendRoutingMessage(latency, r))
-          return false;
-        FlushUpstream(r);
-        return true;
+        return SendLatencyMessage(r);
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(), " rx=", RXID());
       return false;
@@ -678,28 +713,48 @@ namespace llarp
     bool
     Path::HandleHiddenServiceFrame(const service::ProtocolFrame& frame)
     {
-      MarkActive(m_PathSet->Now());
-      return m_DataHandler && m_DataHandler(shared_from_this(), frame);
+      if (auto parent = m_PathSet.lock())
+      {
+        MarkActive(parent->Now());
+        return m_DataHandler && m_DataHandler(shared_from_this(), frame);
+      }
+      return false;
     }
 
+    template <typename Samples_t>
+    static llarp_time_t
+    computeLatency(const Samples_t& samps)
+    {
+      llarp_time_t mean = 0s;
+      if (samps.empty())
+        return mean;
+      for (const auto& samp : samps)
+        mean += samp;
+      return mean / samps.size();
+    }
+
+    constexpr auto MaxLatencySamples = 8;
+
     bool
-    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r)
+    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage&, AbstractRouter* r)
     {
       const auto now = r->Now();
       MarkActive(now);
-      if (msg.L == m_LastLatencyTestID)
+      if (m_LastLatencyTestID)
       {
-        intro.latency = now - m_LastLatencyTestTime;
+        m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
+
+        while (m_LatencySamples.size() > MaxLatencySamples)
+          m_LatencySamples.pop_front();
+
+        intro.latency = computeLatency(m_LatencySamples);
         m_LastLatencyTestID = 0;
         EnterState(ePathEstablished, now);
         if (m_BuiltHook)
           m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
-        return true;
       }
-
-      LogWarn("unwarranted path latency message via ", Upstream());
-      return false;
+      return true;
     }
 
     /// this is the Client's side of handling a DHT message. it's handled

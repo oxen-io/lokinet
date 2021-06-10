@@ -131,7 +131,14 @@ namespace llarp
     ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
 
     void
-    SetRouterWhitelist(const std::vector<RouterID> routers) override;
+    SetRouterWhitelist(
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override;
+
+    std::unordered_set<RouterID>
+    GetRouterWhitelist() const override
+    {
+      return _rcLookupHandler.Whitelist();
+    }
 
     exit::Context&
     exitContext() override
@@ -181,9 +188,9 @@ namespace llarp
     void
     QueueDiskIO(std::function<void(void)> func) override;
 
-    /// return true if we look like we are a deregistered service node
+    /// return true if we look like we are a decommissioned service node
     bool
-    LooksDeregistered() const;
+    LooksDecommissioned() const;
 
     std::optional<SockAddr> _ourAddress;
 
@@ -392,7 +399,9 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    ConnectionToRouterAllowed(const RouterID& router) const override;
+    SessionToRouterAllowed(const RouterID& router) const override;
+    bool
+    PathToRouterAllowed(const RouterID& router) const override;
 
     void
     HandleSaveRC() const;
@@ -530,11 +539,13 @@ namespace llarp
     bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0s;
-
+    llarp_time_t m_NextDecommissionWarn = 0s;
     std::shared_ptr<llarp::KeyManager> m_keyManager;
     std::shared_ptr<PeerDb> m_peerDb;
 
     uint32_t path_build_count = 0;
+
+    consensus::reachability_testing m_routerTesting;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

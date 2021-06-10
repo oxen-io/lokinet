@@ -352,6 +352,15 @@ namespace llarp::service
   }
 
   bool
+  IntroSet::HasStaleIntros(llarp_time_t now, llarp_time_t delta) const
+  {
+    for (const auto& intro : intros)
+      if (intro.ExpiresSoon(now, delta))
+        return true;
+    return false;
+  }
+
+  bool
   IntroSet::IsExpired(llarp_time_t now) const
   {
     return GetNewestIntroExpiration() < now;

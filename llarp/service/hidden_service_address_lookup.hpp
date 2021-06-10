@@ -15,7 +15,7 @@ namespace llarp
       uint64_t relayOrder;
       const dht::Key_t location;
       using HandlerFunc = std::function<bool(
-          const Address&, std::optional<IntroSet>, const RouterID&, llarp_time_t)>;
+          const Address&, std::optional<IntroSet>, const RouterID&, llarp_time_t, uint64_t)>;
       HandlerFunc handle;
 
       HiddenServiceAddressLookup(
@@ -29,6 +29,16 @@ namespace llarp
           llarp_time_t timeout);
 
       ~HiddenServiceAddressLookup() override = default;
+
+      virtual bool
+      IsFor(EndpointBase::AddressVariant_t addr) const override
+      {
+        if (const auto* ptr = std::get_if<Address>(&addr))
+        {
+          return Address{rootkey} == *ptr;
+        }
+        return false;
+      }
 
       bool
       HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results) override;

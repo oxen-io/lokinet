@@ -33,16 +33,22 @@ namespace llarp
   }
 
   void
-  RCLookupHandler::SetRouterWhitelist(const std::vector<RouterID>& routers)
+  RCLookupHandler::SetRouterWhitelist(
+      const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist)
   {
-    if (routers.empty())
+    if (whitelist.empty())
       return;
     util::Lock l(_mutex);
 
     whitelistRouters.clear();
-    for (auto& router : routers)
+    greylistRouters.clear();
+    for (auto& router : whitelist)
     {
       whitelistRouters.emplace(router);
+    }
+    for (auto& router : greylist)
+    {
+      greylistRouters.emplace(router);
     }
 
     LogInfo("lokinet service node list now has ", whitelistRouters.size(), " routers");
@@ -119,7 +125,24 @@ namespace llarp
   }
 
   bool
-  RCLookupHandler::RemoteIsAllowed(const RouterID& remote) const
+  RCLookupHandler::IsGreylisted(const RouterID& remote) const
+  {
+    if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
+        && !RemoteInBootstrap(remote))
+    {
+      return false;
+    }
+
+    if (not useWhitelist)
+      return false;
+
+    util::Lock lock{_mutex};
+
+    return greylistRouters.count(remote);
+  }
+
+  bool
+  RCLookupHandler::PathIsAllowed(const RouterID& remote) const
   {
     if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
         && !RemoteInBootstrap(remote))
@@ -136,9 +159,26 @@ namespace llarp
   }
 
   bool
+  RCLookupHandler::SessionIsAllowed(const RouterID& remote) const
+  {
+    if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
+        && !RemoteInBootstrap(remote))
+    {
+      return false;
+    }
+
+    if (not useWhitelist)
+      return true;
+
+    util::Lock lock{_mutex};
+
+    return whitelistRouters.count(remote) or greylistRouters.count(remote);
+  }
+
+  bool
   RCLookupHandler::CheckRC(const RouterContact& rc) const
   {
-    if (not RemoteIsAllowed(rc.pubkey))
+    if (not SessionIsAllowed(rc.pubkey))
     {
       _dht->impl->DelRCNodeAsync(dht::Key_t{rc.pubkey});
       return false;
@@ -189,7 +229,7 @@ namespace llarp
     if (newrc.pubkey != oldrc.pubkey)
       return false;
 
-    if (!RemoteIsAllowed(newrc.pubkey))
+    if (!SessionIsAllowed(newrc.pubkey))
       return false;
 
     auto func = std::bind(&RCLookupHandler::CheckRC, this, newrc);
@@ -332,7 +372,7 @@ namespace llarp
       return;
     }
 
-    if (not RemoteIsAllowed(remote))
+    if (not SessionIsAllowed(remote))
     {
       FinalizeRequest(remote, &results[0], RCRequestResult::InvalidRouter);
       return;

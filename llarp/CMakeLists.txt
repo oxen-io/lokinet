@@ -103,6 +103,7 @@ add_library(liblokinet
   dns/unbound_resolver.cpp
 
   consensus/table.cpp
+  consensus/reachability_testing.cpp
 
   bootstrap.cpp
   context.cpp

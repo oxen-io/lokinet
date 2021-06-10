@@ -4,6 +4,8 @@
 #include "intro_set.hpp"
 #include <llarp/path/pathset.hpp>
 
+#include <llarp/endpoint_base.hpp>
+
 #include <set>
 
 namespace llarp
@@ -72,6 +74,12 @@ namespace llarp
       uint64_t txid;
       const std::string name;
       RouterID endpoint;
+
+      /// return true if this lookup is for a remote address
+      virtual bool IsFor(EndpointBase::AddressVariant_t) const
+      {
+        return false;
+      }
 
       util::StatusObject
       ExtractStatus() const

@@ -35,7 +35,7 @@ extern "C"
 
   /// do a srv lookup on host for service
   /// caller MUST call lokinet_srv_lookup_done when they are done handling the result
-  int
+  int EXPORT
   lokinet_srv_lookup(
       char* host,
       char* service,
@@ -51,12 +51,12 @@ extern "C"
   /// iterate over each srv record in a lookup result
   /// user is passes into hook and called for each result and then with NULL as the result on the
   /// end of iteration
-  void
+  void EXPORT
   lokinet_for_each_srv_record(
       struct lokinet_srv_lookup_result* result, lokinet_srv_record_iterator iter, void* user);
 
   /// free internal members of a srv lookup result after use of the result
-  void
+  void EXPORT
   lokinet_srv_lookup_done(struct lokinet_srv_lookup_result* result);
 
 #ifdef __cplusplus
