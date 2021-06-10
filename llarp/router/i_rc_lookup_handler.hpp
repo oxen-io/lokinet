@@ -33,13 +33,20 @@ namespace llarp
     RemoveValidRouter(const RouterID& router) = 0;
 
     virtual void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) = 0;
+    SetRouterWhitelist(
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
 
     virtual void
     GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) = 0;
 
     virtual bool
-    RemoteIsAllowed(const RouterID& remote) const = 0;
+    PathIsAllowed(const RouterID& remote) const = 0;
+
+    virtual bool
+    SessionIsAllowed(const RouterID& remote) const = 0;
+
+    virtual bool
+    IsGreylisted(const RouterID& remote) const = 0;
 
     virtual bool
     CheckRC(const RouterContact& rc) const = 0;

@@ -64,22 +64,9 @@ namespace llarp
       // TODO: add to IHopHandler some notion of "path status"
 
       const uint64_t ourStatus = LR_StatusRecord::SUCCESS;
-      if (!msg->AddFrame(pathKey, ourStatus))
-      {
-        return false;
-      }
 
-      LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
-
-      if ((status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
-      {
-        LogWarn(
-            "TransitHop received non-successful LR_StatusMessage, queueing "
-            "self-destruct status=",
-            status);
-        QueueDestroySelf(r);
-      }
-
+      msg->AddFrame(pathKey, ourStatus);
+      LR_StatusMessage::QueueSendMessage(r, info.downstream, msg, shared_from_this());
       return true;
     }
 

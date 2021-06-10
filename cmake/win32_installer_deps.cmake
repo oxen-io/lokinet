@@ -1,6 +1,6 @@
 if(NOT GUI_ZIP_URL)
-  set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/loki-network-control-panel/lokinet-gui-windows-32bit-v0.3.7.zip")
-  set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=faafb5c7c8b9831f572ed78bb2cf8454bfa0d5f79897ce31e64e4a4331d55045)
+  set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/loki-network-control-panel/lokinet-gui-windows-32bit-v0.3.8.zip")
+  set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=60c2b738cf997e5684f307e5222498fd09143d495a932924105a49bf59ded8bb)
 endif()
 
 set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
@@ -32,7 +32,7 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ifFileExists $INSTDIR\\\\bin\\\\tuntap-install.exe 0 +2\\nExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait 'sc failure lokinet reset= 60 actions= restart/1000'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed\\nExecWait '$INSTDIR\\\\bin\\\\lokinet-bootstrap.exe'")
+set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ifFileExists $INSTDIR\\\\bin\\\\tuntap-install.exe 0 +2\\nExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait 'sc failure lokinet reset= 60 actions= restart/1000'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed\\n")
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "ExecWait 'net stop lokinet'\\nExecWait 'taskkill /f /t /im lokinet-gui.exe'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --remove'\\nRMDir /r /REBOOTOK C:\\\\ProgramData\\\\lokinet")
 set(CPACK_NSIS_CREATE_ICONS_EXTRA
     "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Lokinet.lnk' '$INSTDIR\\\\share\\\\gui\\\\lokinet-gui.exe'"

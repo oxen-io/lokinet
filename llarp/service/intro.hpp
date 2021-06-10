@@ -77,6 +77,16 @@ namespace llarp
     {
       return i.print(out, -1, -1);
     }
+
+    /// comparator for introset timestamp
+    struct CompareIntroTimestamp
+    {
+      bool
+      operator()(const Introduction& left, const Introduction& right) const
+      {
+        return left.expiresAt > right.expiresAt;
+      }
+    };
   }  // namespace service
 }  // namespace llarp
 
