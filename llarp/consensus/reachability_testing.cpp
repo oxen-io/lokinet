@@ -125,7 +125,6 @@ namespace llarp::consensus
       if (retest_time > now)
         break;
       result.emplace_back(pk, failures);
-      failing.erase(pk);
       failing_queue.pop();
     }
     return result;
