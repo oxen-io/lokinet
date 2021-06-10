@@ -6,8 +6,10 @@
 #include "path_context.hpp"
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/tooling/path_event.hpp>
+#include <llarp/link/link_manager.hpp>
 
 #include <functional>
 
@@ -192,6 +194,9 @@ namespace llarp
     void Builder::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
+
+      m_router->pathBuildLimiter().Decay(now);
+
       ExpirePaths(now, m_router);
       if (ShouldBuildMore(now))
         BuildOne();
@@ -211,8 +216,8 @@ namespace llarp
     {
       util::StatusObject obj{
           {"buildStats", m_BuildStats.ExtractStatus()},
-          {"numHops", uint64_t(numHops)},
-          {"numPaths", uint64_t(numDesiredPaths)}};
+          {"numHops", uint64_t{numHops}},
+          {"numPaths", uint64_t{numDesiredPaths}}};
       std::transform(
           m_Paths.begin(),
           m_Paths.end(),
@@ -240,6 +245,9 @@ namespace llarp
               if (BuildCooldownHit(rc.pubkey))
                 return;
 
+              if (m_router->routerProfiling().IsBadForPath(rc.pubkey))
+                return;
+
               found = rc;
             }
           },
@@ -251,7 +259,7 @@ namespace llarp
     Builder::GetHopsForBuild()
     {
       auto filter = [r = m_router](const auto& rc) -> bool {
-        return not r->routerProfiling().IsBadForPath(rc.pubkey);
+        return not r->routerProfiling().IsBadForPath(rc.pubkey, 1);
       };
       if (const auto maybe = m_router->nodedb()->GetRandom(filter))
       {
@@ -264,14 +272,12 @@ namespace llarp
     Builder::Stop()
     {
       _run = false;
-      // tell all our paths that they have expired
+      // tell all our paths that they are to be ignored
       const auto now = Now();
       for (auto& item : m_Paths)
       {
-        item.second->EnterState(ePathExpired, now);
+        item.second->EnterState(ePathIgnore, now);
       }
-      // remove expired paths
-      ExpirePaths(now, m_router);
       return true;
     }
 
@@ -284,7 +290,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      return IsStopped();
+      return IsStopped() and NumInStatus(ePathEstablished) == 0;
     }
 
     const SecretKey&
@@ -368,7 +374,7 @@ namespace llarp
             hopsSet.insert(endpointRC);
             hopsSet.insert(hops.begin(), hops.end());
 
-            if (r->routerProfiling().IsBadForPath(rc.pubkey))
+            if (r->routerProfiling().IsBadForPath(rc.pubkey, 1))
               return false;
             for (const auto& hop : hopsSet)
             {
@@ -430,7 +436,7 @@ namespace llarp
       ctx->pathset = self;
       std::string path_shortName = "[path " + m_router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(m_router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, self.get(), roles, std::move(path_shortName));
+      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
@@ -473,6 +479,31 @@ namespace llarp
       m_router->routerProfiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
+      for (const auto& hop : p->hops)
+      {
+        const RouterID router{hop.rc.pubkey};
+        // look up router and see if it's still on the network
+        m_router->loop()->call_soon([router, r = m_router]() {
+          LogInfo("looking up ", router, " because of path build timeout");
+          r->rcLookupHandler().GetRC(
+              router,
+              [r](const auto& router, const auto* rc, auto result) {
+                if (result == RCRequestResult::Success && rc != nullptr)
+                {
+                  LogInfo("refreshed rc for ", router);
+                  r->nodedb()->PutIfNewer(*rc);
+                }
+                else
+                {
+                  // remove all connections to this router as it's probably not registered anymore
+                  LogWarn("removing router ", router, " because of path build timeout");
+                  r->linkManager().DeregisterPeer(router);
+                  r->nodedb()->Remove(router);
+                }
+              },
+              true);
+        });
+      }
     }
 
     void

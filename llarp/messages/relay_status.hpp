@@ -18,6 +18,7 @@ namespace llarp
   {
     struct PathContext;
     struct IHopHandler;
+    struct TransitHop;
   }  // namespace path
 
   struct LR_StatusRecord
@@ -48,6 +49,9 @@ namespace llarp
     bool
     OnKey(llarp_buffer_t* buffer, llarp_buffer_t* key);
   };
+
+  std::string
+  LRStatusCodeToString(uint64_t status);
 
   struct LR_StatusMessage : public ILinkMessage
   {
@@ -83,6 +87,7 @@ namespace llarp
     static bool
     CreateAndSend(
         AbstractRouter* router,
+        std::shared_ptr<path::TransitHop> hop,
         const PathID_t pathid,
         const RouterID nextHop,
         const SharedSecret pathKey,
@@ -93,7 +98,10 @@ namespace llarp
 
     static void
     QueueSendMessage(
-        AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg);
+        AbstractRouter* router,
+        const RouterID nextHop,
+        std::shared_ptr<LR_StatusMessage> msg,
+        std::shared_ptr<path::TransitHop> hop);
 
     static void
     SendMessage(

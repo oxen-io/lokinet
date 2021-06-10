@@ -12,6 +12,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/tooling/router_event.hpp>
 #include <llarp/peerstats/peer_db.hpp>
+#include <llarp/consensus/reachability_testing.hpp>
 
 #include <optional>
 
@@ -283,14 +284,21 @@ namespace llarp
 
     /// set router's service node whitelist
     virtual void
-    SetRouterWhitelist(const std::vector<RouterID> routers) = 0;
+    SetRouterWhitelist(
+        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
+
+    virtual std::unordered_set<RouterID>
+    GetRouterWhitelist() const = 0;
 
     /// visit each connected link session
     virtual void
     ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const = 0;
 
     virtual bool
-    ConnectionToRouterAllowed(const RouterID& router) const = 0;
+    SessionToRouterAllowed(const RouterID& router) const = 0;
+
+    virtual bool
+    PathToRouterAllowed(const RouterID& router) const = 0;
 
     /// return true if we have an exit as a client
     virtual bool
