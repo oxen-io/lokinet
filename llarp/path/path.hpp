@@ -87,7 +87,7 @@ namespace llarp
 
       HopList hops;
 
-      PathSet* const m_PathSet;
+      std::weak_ptr<PathSet> m_PathSet;
 
       service::Introduction intro;
 
@@ -95,7 +95,7 @@ namespace llarp
 
       Path(
           const std::vector<RouterContact>& routers,
-          PathSet* parent,
+          std::weak_ptr<PathSet> parent,
           PathRole startingRoles,
           std::string shortName);
 
@@ -400,6 +400,9 @@ namespace llarp
       HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
 
      private:
+      bool
+      SendLatencyMessage(AbstractRouter* r);
+
       /// call obtained exit hooks
       bool
       InformExitResult(llarp_time_t b);
@@ -424,7 +427,7 @@ namespace llarp
       uint64_t m_RXRate = 0;
       uint64_t m_LastTXRate = 0;
       uint64_t m_TXRate = 0;
-
+      std::deque<llarp_time_t> m_LatencySamples;
       const std::string m_shortName;
     };
   }  // namespace path

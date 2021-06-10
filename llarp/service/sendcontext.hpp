@@ -44,8 +44,9 @@ namespace llarp
       uint64_t sequenceNo = 0;
       llarp_time_t lastGoodSend = 0s;
       const llarp_time_t createdAt;
-      llarp_time_t sendTimeout = 40s;
-      llarp_time_t connectTimeout = 60s;
+      llarp_time_t sendTimeout = path::build_timeout;
+      llarp_time_t connectTimeout = path::build_timeout;
+      llarp_time_t shiftTimeout = (path::build_timeout * 5) / 2;
       llarp_time_t estimatedRTT = 0s;
       bool markedBad = false;
       using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
@@ -55,12 +56,17 @@ namespace llarp
 
       std::function<void(AuthResult)> authResultListener;
 
+      std::shared_ptr<EventLoopWakeup> m_FlushWakeup;
+
       virtual bool
       ShiftIntroduction(bool rebuild = true)
       {
         (void)rebuild;
         return true;
       }
+
+      virtual void
+      ShiftIntroRouter(const RouterID) = 0;
 
       virtual void
       UpdateIntroSet() = 0;
@@ -72,6 +78,11 @@ namespace llarp
       AsyncSendAuth(std::function<void(AuthResult)> replyHandler);
 
      private:
+      virtual bool
+      IntroGenerated() const = 0;
+      virtual bool
+      IntroSent() const = 0;
+
       void
       EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 

@@ -13,6 +13,8 @@
 #include <llarp/crypto/crypto.hpp>
 #include <utility>
 
+#include <llarp/rpc/lokid_rpc_client.hpp>
+
 namespace llarp
 {
   struct PendingSession
@@ -35,18 +37,18 @@ namespace llarp
     // TODO: do we want to keep it
 
     const auto router = RouterID(session->GetPubKey());
-
+    const bool isOutbound = not session->IsInbound();
     const std::string remoteType = session->GetRemoteRC().IsPublicRouter() ? "router" : "client";
-    LogInfo("session with ", remoteType, " [", router, "] established");
+    LogInfo(
+        "session with ", remoteType, " [", router, "] ", isOutbound ? "established" : "received");
 
-    if (not _rcLookup->RemoteIsAllowed(router))
+    if (not _rcLookup->SessionIsAllowed(router))
     {
       FinalizeRequest(router, SessionResult::InvalidRouter);
       return false;
     }
 
-    auto func = std::bind(&OutboundSessionMaker::VerifyRC, this, session->GetRemoteRC());
-    work(func);
+    work([this, rc = session->GetRemoteRC()] { VerifyRC(rc); });
 
     return true;
   }
@@ -54,13 +56,9 @@ namespace llarp
   void
   OutboundSessionMaker::OnConnectTimeout(ILinkSession* session)
   {
-    // TODO: retry/num attempts
-    LogWarn(
-        "Session establish attempt to ",
-        RouterID(session->GetPubKey()),
-        " timed out.",
-        session->GetRemoteEndpoint());
-    FinalizeRequest(session->GetPubKey(), SessionResult::Timeout);
+    const auto router = RouterID(session->GetPubKey());
+    LogWarn("Session establish attempt to ", router, " timed out.", session->GetRemoteEndpoint());
+    FinalizeRequest(router, SessionResult::Timeout);
   }
 
   void
@@ -76,6 +74,7 @@ namespace llarp
 
     if (HavePendingSessionTo(router))
     {
+      LogDebug("has pending session to", router);
       return;
     }
 
@@ -133,7 +132,7 @@ namespace llarp
         break;
 
       exclude.insert(other.pubkey);
-      if (not _rcLookup->RemoteIsAllowed(other.pubkey))
+      if (not _rcLookup->SessionIsAllowed(other.pubkey))
       {
         continue;
       }
@@ -227,12 +226,20 @@ namespace llarp
     {
       _loop->call([this, router] { DoEstablish(router); });
     }
+    else if (_linkManager->HasSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+    }
+    else
+    {
+      FinalizeRequest(router, SessionResult::NoLink);
+    }
   }
 
   bool
   OutboundSessionMaker::ShouldConnectTo(const RouterID& router) const
   {
-    if (router == us or not _rcLookup->RemoteIsAllowed(router))
+    if (router == us or not _rcLookup->SessionIsAllowed(router))
       return false;
     size_t numPending = 0;
     {
@@ -240,8 +247,10 @@ namespace llarp
       if (pendingSessions.find(router) == pendingSessions.end())
         numPending += pendingSessions.size();
     }
-    if (_linkManager->HasSessionTo(router))
+    if (_linkManager->HasOutboundSessionTo(router))
       return false;
+    if (_router->IsServiceNode())
+      return true;
     return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
   }
 
@@ -263,6 +272,7 @@ namespace llarp
   {
     if (not HavePendingSessionTo(router))
     {
+      LogError("no pending session to ", router);
       return;
     }
 
@@ -276,6 +286,7 @@ namespace llarp
         else
         {
           LogError("RCRequestResult::Success but null rc pointer given");
+          InvalidRouter(router);
         }
         break;
       case RCRequestResult::InvalidRouter:
@@ -285,6 +296,7 @@ namespace llarp
         RouterNotFound(router);
         break;
       default:
+        RouterNotFound(router);
         break;
     }
   }
