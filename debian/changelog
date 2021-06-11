@@ -1,3 +1,10 @@
+lokinet (0.9.3-2) unstable; urgency=medium
+
+  * Revert test patch from sid
+  * use exisitng convotag first instead of trying to send to directly
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 11 Jun 2021 17:54:14 -0300
+
 lokinet (0.9.3-1) unstable; urgency=medium
 
   [ Jason Rhinelander ]
