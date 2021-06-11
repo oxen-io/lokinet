@@ -1,3 +1,9 @@
+lokinet (0.9.3-2~ubuntu2104) hirsute; urgency=medium
+
+  * use exisitng convotag first instead of trying to send to directly
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 11 Jun 2021 17:54:45 -0300
+
 lokinet (0.9.3-1~ubuntu2104) hirsute; urgency=medium
 
   [ Jason Rhinelander ]
