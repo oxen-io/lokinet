@@ -1,3 +1,9 @@
+lokinet (0.9.3-2~deb10) buster; urgency=medium
+
+  * use exisitng convotag first instead of trying to send to directly
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 11 Jun 2021 17:54:22 -0300
+
 lokinet (0.9.3-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
