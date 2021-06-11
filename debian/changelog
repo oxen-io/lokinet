@@ -1,3 +1,9 @@
+lokinet (0.9.3-2~deb11) bullseye; urgency=medium
+
+  * use exisitng convotag first instead of trying to send to directly
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 11 Jun 2021 17:54:28 -0300
+
 lokinet (0.9.3-1~deb11) bullseye; urgency=medium
 
   [ Jason Rhinelander ]
