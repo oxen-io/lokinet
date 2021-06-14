@@ -337,6 +337,14 @@ namespace llarp
       {
         SwapIntros();
       }
+      if (ReadyToSend() and IntroSent())
+      {
+        // if we dont have a cached session key after sending intro we are in a fugged state so
+        // expunge
+        SharedSecret discardme;
+        if (not m_DataHandler->GetCachedSessionKeyFor(currentConvoTag, discardme))
+          return true;
+      }
 
       if ((remoteIntro.router.IsZero() or m_BadIntros.count(remoteIntro))
           and GetPathByRouter(m_NextIntro.router))
