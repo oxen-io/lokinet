@@ -397,6 +397,13 @@ namespace llarp
                                          service::Address addr, auto msg, bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
+        if(HasInboundConvo(addr))
+        {
+          // if we have an inbound convo to this address don't mark as outbound so we don't have a state race
+          // this codepath is hit when an application verifies that reverse and forward dns records match for an inbound session
+          SendDNSReply(addr, this, msg, reply, isV6);
+          return true;
+        }
         MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
@@ -424,6 +431,7 @@ namespace llarp
                                          service::Address addr, auto msg) -> bool {
         using service::Address;
         using service::OutboundContext;
+        // TODO: how do we handle SRV record lookups for inbound sessions?
         MarkAddressOutbound(addr);
         return EnsurePathToService(
             addr,
