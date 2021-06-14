@@ -155,7 +155,7 @@ class Monitor:
     def time_to(timestamp):
         """ return time until timestamp in seconds formatted"""
         if timestamp:
-            val = int((timestamp - now()) / 1000)
+            val = (timestamp - now()) / 1000.0
             if val < 0:
                 return "{} seconds ago".format(0-val)
             else:

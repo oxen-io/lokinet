@@ -420,9 +420,24 @@ namespace llarp
     void
     Endpoint::PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound)
     {
-      auto itr = Sessions().find(tag);
-      if (itr == Sessions().end() and not(WantsOutboundSession(info.Addr()) and inbound))
+      if (info.Addr().IsZero())
       {
+        LogError(Name(), " cannot put invalid service info ", info, " T=", tag);
+        return;
+      }
+      auto itr = Sessions().find(tag);
+      if (itr == Sessions().end())
+      {
+        if (WantsOutboundSession(info.Addr()) and inbound)
+        {
+          LogWarn(
+              Name(),
+              " not adding sender for ",
+              info.Addr(),
+              " session is inbound and we want outbound T=",
+              tag);
+          return;
+        }
         itr = Sessions().emplace(tag, Session{}).first;
         itr->second.inbound = inbound;
         itr->second.remote = info;
@@ -1077,9 +1092,13 @@ namespace llarp
     Endpoint::HandleDataMessage(
         path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
     {
-      msg->sender.UpdateAddr();
       PutSenderFor(msg->tag, msg->sender, true);
-      PutReplyIntroFor(msg->tag, msg->introReply);
+      Introduction intro = msg->introReply;
+      if (HasInboundConvo(msg->sender.Addr()))
+      {
+        intro.pathID = from;
+      }
+      PutReplyIntroFor(msg->tag, intro);
       ConvoTagRX(msg->tag);
       return ProcessDataMessage(msg);
     }
@@ -1798,7 +1817,7 @@ namespace llarp
         if (const auto maybe = GetBestConvoTagFor(remote))
         {
           // the remote guy's intro
-          Introduction remoteIntro;
+          Introduction replyIntro;
           SharedSecret K;
           const auto tag = *maybe;
 
@@ -1807,20 +1826,20 @@ namespace llarp
             LogError(Name(), " no cached key for inbound session from ", remote, " T=", tag);
             return false;
           }
-          if (not GetReplyIntroFor(tag, remoteIntro))
+          if (not GetReplyIntroFor(tag, replyIntro))
           {
             LogError(Name(), "no reply intro for inbound session from ", remote, " T=", tag);
             return false;
           }
           // get path for intro
-          auto p = GetPathByRouter(remoteIntro.router);
+          auto p = GetPathByRouter(replyIntro.router);
 
           if (not p)
           {
             LogWarn(
                 Name(),
                 " has no path for intro router ",
-                RouterID{remoteIntro.router},
+                RouterID{replyIntro.router},
                 " for inbound convo T=",
                 tag);
             return false;
@@ -1847,8 +1866,8 @@ namespace llarp
             return false;
           }
           f.S = m->seqno;
-          f.F = m->introReply.pathID;
-          transfer->P = remoteIntro.pathID;
+          f.F = p->intro.pathID;
+          transfer->P = replyIntro.pathID;
           auto self = this;
           Router()->QueueWork([transfer, p, m, K, self]() {
             if (not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
