@@ -444,7 +444,7 @@ namespace llarp
       ForEachPath([now, &numValidPaths](path::Path_ptr path) {
         if (not path->IsReady())
           return;
-        if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
+        if (not path->intro.ExpiresSoon(now, path::intro_path_spread))
           numValidPaths++;
       });
       return numValidPaths < numDesiredPaths;
