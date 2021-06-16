@@ -489,11 +489,7 @@ class Monitor:
         for intro in context['currentRemoteIntroset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", paths)
         y_pos += 1
-        for intro in context['badIntros'] or []:
-            y_pos = self._display_intro(y_pos, intro, "bad intro", paths)
-        y_pos += 1
         return y_pos
-
 
     def display_data(self):
         """ draw main window """
