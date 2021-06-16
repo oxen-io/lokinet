@@ -441,13 +441,18 @@ namespace llarp
         return false;
 
       size_t numValidPaths = 0;
-      ForEachPath([now, &numValidPaths](path::Path_ptr path) {
+      bool havePathToNextIntro = false;
+      ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](path::Path_ptr path) {
         if (not path->IsReady())
           return;
-        if (not path->intro.ExpiresSoon(now, path::intro_path_spread))
+        if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
+        {
           numValidPaths++;
+          if (path->intro.router == m_NextIntro.router)
+            havePathToNextIntro = true;
+        }
       });
-      return numValidPaths < numDesiredPaths;
+      return numValidPaths < numDesiredPaths or not havePathToNextIntro;
     }
 
     void
