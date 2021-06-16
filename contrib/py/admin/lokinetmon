@@ -449,7 +449,7 @@ class Monitor:
         for intro in context['introset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
         for path in context['paths']:
-            y_pos = self._display_intro(y_pos, path['intro'], "inbound path intro", context['paths'])
+            y_pos = self._display_intro(y_pos, path['intro'], "inbound path [created {}]".format(self.time_to(path['buildStarted'])), context['paths'])
         return y_pos
 
 

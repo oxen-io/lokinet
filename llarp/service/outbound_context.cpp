@@ -314,11 +314,6 @@ namespace llarp
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"] = m_NextIntro.ExtractStatus();
       obj["readyToSend"] = ReadyToSend();
-      std::transform(
-          m_BadIntros.begin(),
-          m_BadIntros.end(),
-          std::back_inserter(obj["badIntros"]),
-          [](const auto& item) -> util::StatusObject { return item.first.ExtractStatus(); });
       return obj;
     }
 
@@ -346,10 +341,6 @@ namespace llarp
           return true;
       }
 
-      if ((remoteIntro.router.IsZero() or m_BadIntros.count(remoteIntro))
-          and GetPathByRouter(m_NextIntro.router))
-        SwapIntros();
-
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
       {
         // timeout on other side
@@ -359,22 +350,34 @@ namespace llarp
       }
       // check for stale intros
       // update the introset if we think we need to
-      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread))
+      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread) or remoteIntro.ExpiresSoon(now, path::intro_path_spread))
       {
         UpdateIntroSet();
+        ShiftIntroduction(false);
+      }
+
+      if(ReadyToSend())
+      {
+        if(not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
+        {
+          std::vector<Introduction> otherPivots;
+          ForEachPath([router=remoteIntro.router, &otherPivots](auto path)
+                      {
+                        if(path and path->IsReady() and path->Endpoint() != router)
+                        {
+                          otherPivots.emplace_back(path->intro);
+                        }
+                      });
+          if(not otherPivots.empty())
+          {
+            std::shuffle(otherPivots.begin(), otherPivots.end(), CSRNG{});
+            remoteIntro = otherPivots[0];
+          }
+        }
       }
       // lookup router in intro if set and unknown
       if (not m_NextIntro.router.IsZero())
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-      // expire bad intros
-      auto itr = m_BadIntros.begin();
-      while (itr != m_BadIntros.end())
-      {
-        if (now > itr->second && now - itr->second > path::default_lifetime)
-          itr = m_BadIntros.erase(itr);
-        else
-          ++itr;
-      }
 
       if (ReadyToSend() and not m_ReadyHooks.empty())
       {
@@ -453,7 +456,7 @@ namespace llarp
         }
       });
       return numValidPaths < numDesiredPaths or not havePathToNextIntro;
-    }
+}
 
     void
     OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
@@ -462,10 +465,8 @@ namespace llarp
     }
 
     void
-    OutboundContext::MarkIntroBad(const Introduction& intro, llarp_time_t now)
+    OutboundContext::MarkIntroBad(const Introduction& , llarp_time_t )
     {
-      // insert bad intro
-      m_BadIntros[intro] = now;
     }
 
     bool
@@ -501,13 +502,12 @@ namespace llarp
           continue;
         if (m_Endpoint->SnodeBlacklist().count(intro.router))
           continue;
-        if (m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro.router == intro.router)
+        if (remoteIntro.router == intro.router)
         {
           if (intro.expiresAt > m_NextIntro.expiresAt)
           {
             success = true;
             m_NextIntro = intro;
-            return true;
           }
         }
       }
@@ -521,7 +521,7 @@ namespace llarp
           m_Endpoint->EnsureRouterIsKnown(intro.router);
           if (intro.ExpiresSoon(now))
             continue;
-          if (m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
+          if (m_NextIntro != intro)
           {
             if (intro.expiresAt > m_NextIntro.expiresAt)
             {
