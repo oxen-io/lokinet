@@ -1090,7 +1090,7 @@ namespace llarp
 
     bool
     Endpoint::HandleDataMessage(
-        path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
+        path::Path_ptr, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
     {
       PutSenderFor(msg->tag, msg->sender, true);
       Introduction intro = msg->introReply;

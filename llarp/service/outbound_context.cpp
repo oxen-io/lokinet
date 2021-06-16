@@ -350,25 +350,25 @@ namespace llarp
       }
       // check for stale intros
       // update the introset if we think we need to
-      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread) or remoteIntro.ExpiresSoon(now, path::intro_path_spread))
+      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread)
+          or remoteIntro.ExpiresSoon(now, path::intro_path_spread))
       {
         UpdateIntroSet();
         ShiftIntroduction(false);
       }
 
-      if(ReadyToSend())
+      if (ReadyToSend())
       {
-        if(not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
+        if (not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
         {
           std::vector<Introduction> otherPivots;
-          ForEachPath([router=remoteIntro.router, &otherPivots](auto path)
-                      {
-                        if(path and path->IsReady() and path->Endpoint() != router)
-                        {
-                          otherPivots.emplace_back(path->intro);
-                        }
-                      });
-          if(not otherPivots.empty())
+          ForEachPath([router = remoteIntro.router, &otherPivots](auto path) {
+            if (path and path->IsReady() and path->Endpoint() != router)
+            {
+              otherPivots.emplace_back(path->intro);
+            }
+          });
+          if (not otherPivots.empty())
           {
             std::shuffle(otherPivots.begin(), otherPivots.end(), CSRNG{});
             remoteIntro = otherPivots[0];
@@ -456,7 +456,7 @@ namespace llarp
         }
       });
       return numValidPaths < numDesiredPaths or not havePathToNextIntro;
-}
+    }
 
     void
     OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
@@ -465,9 +465,8 @@ namespace llarp
     }
 
     void
-    OutboundContext::MarkIntroBad(const Introduction& , llarp_time_t )
-    {
-    }
+    OutboundContext::MarkIntroBad(const Introduction&, llarp_time_t)
+    {}
 
     bool
     OutboundContext::IntroSent() const
