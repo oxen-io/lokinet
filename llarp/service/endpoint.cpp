@@ -1803,9 +1803,6 @@ namespace llarp
         LogTrace("SendToOrQueue: dropping because data.sz == 0");
         return false;
       }
-
-      const auto now = Now();
-
       if (HasInboundConvo(remote))
       {
         // inbound conversation
