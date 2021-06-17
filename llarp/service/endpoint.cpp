@@ -1465,7 +1465,7 @@ namespace llarp
               path->Endpoint(),
               order,
               GenTXID(),
-              timeout + (2 * path->intro.latency));
+              timeout + (2 * path->intro.latency) + IntrosetLookupGraceInterval);
           LogInfo(
               "doing lookup for ",
               remote,
