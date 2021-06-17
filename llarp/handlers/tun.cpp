@@ -956,15 +956,11 @@ namespace llarp
           std::map<std::string, std::string> addrmap;
           for (const auto& [ip, addr] : m_IPToAddr)
           {
-            if (m_SNodes.at(addr))
-            {
-              const RouterID r{addr.as_array()};
-              addrmap[ip.ToString()] = r.ToString();
-            }
-            else
+            if (not m_SNodes.at(addr))
             {
               const service::Address a{addr.as_array()};
-              addrmap[ip.ToString()] = a.ToString();
+              if (HasInboundConvo(a))
+                addrmap[ip.ToString()] = a.ToString();
             }
           }
           const auto data = oxenmq::bt_serialize(addrmap);
