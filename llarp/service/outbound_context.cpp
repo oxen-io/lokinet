@@ -158,10 +158,10 @@ namespace llarp
     OutboundContext::ShiftIntroRouter(const RouterID r)
     {
       const auto now = Now();
-      Introduction selectedIntro;
+      Introduction selectedIntro{};
       for (const auto& intro : currentIntroSet.intros)
       {
-        if (intro.expiresAt > selectedIntro.expiresAt && intro.router != r)
+        if (intro.expiresAt > selectedIntro.expiresAt and intro.router != r)
         {
           selectedIntro = intro;
         }
