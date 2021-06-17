@@ -151,7 +151,7 @@ namespace llarp
         return false;
       if (remoteIntro.router.IsZero())
         return false;
-      return IntroSent();
+      return IntroSent() and GetPathByRouter(remoteIntro.router);
     }
 
     void
