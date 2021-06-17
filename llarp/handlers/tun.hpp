@@ -290,6 +290,9 @@ namespace llarp
 
       /// idempotent wakeup for writing messages to network
       std::shared_ptr<EventLoopWakeup> m_MessageSendWaker;
+
+      /// a file to load / store the ephemeral address map to
+      std::optional<fs::path> m_PersistAddrMapFile;
     };
 
   }  // namespace handlers

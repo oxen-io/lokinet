@@ -127,10 +127,7 @@ namespace llarp
 
     std::optional<llarp_time_t> m_PathAlignmentTimeout;
 
-    // TODO:
-    // on-up
-    // on-down
-    // on-ready
+    std::optional<fs::path> m_AddrMapPersistFile;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
