@@ -218,10 +218,11 @@ namespace llarp
           if (auto maybe = util::OpenFileStream<fs::ifstream>(file, std::ios_base::binary))
           {
             LogInfo(Name(), " loading address map file from ", file);
-            maybe->seekg(std::ios_base::end);
-            const auto len = maybe->tellg();
-            maybe->seekg(std::ios_base::beg);
+            maybe->seekg(0, std::ios_base::end);
+            const size_t len = maybe->tellg();
+            maybe->seekg(0, std::ios_base::beg);
             data.resize(len);
+            LogInfo(Name(), " reading ", len, " bytes");
             maybe->read(data.data(), data.size());
           }
           else
@@ -230,9 +231,9 @@ namespace llarp
           }
           if (not data.empty())
           {
-            LogDebug(Name(), " parsing address map data");
-            const auto parsed =
-                oxenmq::bt_deserialize<oxenmq::bt_dict>(std::string_view{data.data(), data.size()});
+            std::string_view bdata{data.data(), data.size()};
+            LogInfo(Name(), " parsing address map data: ", bdata);
+            const auto parsed = oxenmq::bt_deserialize<oxenmq::bt_dict>(bdata);
             for (const auto& [key, value] : parsed)
             {
               huint128_t ip{};
@@ -241,6 +242,8 @@ namespace llarp
                 LogWarn(Name(), " malformed IP in addr map data: ", key);
                 continue;
               }
+              if (m_OurIP == ip)
+                continue;
               if (not m_OurRange.Contains(ip))
               {
                 LogWarn(Name(), " out of range IP in addr map data: ", ip);
