@@ -332,7 +332,7 @@ namespace llarp
       {
         SwapIntros();
       }
-      if (ReadyToSend() and IntroSent())
+      if (ReadyToSend())
       {
         // if we dont have a cached session key after sending intro we are in a fugged state so
         // expunge
