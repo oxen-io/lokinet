@@ -214,8 +214,19 @@ namespace llarp
         const auto& file = *m_PersistAddrMapFile;
         if (fs::exists(file))
         {
+          bool shouldLoadFile = true;
+          {
+            constexpr auto LastModifiedWindow = 1min;
+            const auto lastmodified = fs::last_write_time(file);
+            const auto now = decltype(lastmodified)::clock::now();
+            if (now < lastmodified or now - lastmodified > LastModifiedWindow)
+            {
+              shouldLoadFile = false;
+            }
+          }
           std::vector<char> data;
-          if (auto maybe = util::OpenFileStream<fs::ifstream>(file, std::ios_base::binary))
+          if (auto maybe = util::OpenFileStream<fs::ifstream>(file, std::ios_base::binary);
+              maybe and shouldLoadFile)
           {
             LogInfo(Name(), " loading address map file from ", file);
             maybe->seekg(0, std::ios_base::end);
@@ -227,7 +238,12 @@ namespace llarp
           }
           else
           {
-            LogInfo(Name(), " address map file ", file, " not found so not loading it");
+            if (shouldLoadFile)
+            {
+              LogInfo(Name(), " address map file ", file, " does not exist, so we won't load it");
+            }
+            else
+              LogInfo(Name(), " address map file ", file, " not loaded because it's stale");
           }
           if (not data.empty())
           {
