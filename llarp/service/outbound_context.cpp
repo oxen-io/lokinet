@@ -361,17 +361,19 @@ namespace llarp
       {
         if (not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
         {
-          std::vector<Introduction> otherPivots;
-          ForEachPath([router = remoteIntro.router, &otherPivots](auto path) {
-            if (path and path->IsReady() and path->Endpoint() != router)
+          // pick another good intro if we have no path on our current intro
+          std::vector<Introduction> otherIntros;
+          ForEachPath([now, router = remoteIntro.router, &otherIntros](auto path) {
+            if (path and path->IsReady() and path->Endpoint() != router
+                and not path->ExpiresSoon(now, path::intro_path_spread))
             {
-              otherPivots.emplace_back(path->intro);
+              otherIntros.emplace_back(path->intro);
             }
           });
-          if (not otherPivots.empty())
+          if (not otherIntros.empty())
           {
-            std::shuffle(otherPivots.begin(), otherPivots.end(), CSRNG{});
-            remoteIntro = otherPivots[0];
+            std::shuffle(otherIntros.begin(), otherIntros.end(), CSRNG{});
+            remoteIntro = otherIntros[0];
           }
         }
       }
