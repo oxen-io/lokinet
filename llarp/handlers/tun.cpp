@@ -208,6 +208,110 @@ namespace llarp
       m_OurIP = m_OurRange.addr;
       m_UseV6 = false;
 
+      m_PersistAddrMapFile = conf.m_AddrMapPersistFile;
+      if (m_PersistAddrMapFile)
+      {
+        const auto& file = *m_PersistAddrMapFile;
+        if (fs::exists(file))
+        {
+          bool shouldLoadFile = true;
+          {
+            constexpr auto LastModifiedWindow = 1min;
+            const auto lastmodified = fs::last_write_time(file);
+            const auto now = decltype(lastmodified)::clock::now();
+            if (now < lastmodified or now - lastmodified > LastModifiedWindow)
+            {
+              shouldLoadFile = false;
+            }
+          }
+          std::vector<char> data;
+          if (auto maybe = util::OpenFileStream<fs::ifstream>(file, std::ios_base::binary);
+              maybe and shouldLoadFile)
+          {
+            LogInfo(Name(), " loading address map file from ", file);
+            maybe->seekg(0, std::ios_base::end);
+            const size_t len = maybe->tellg();
+            maybe->seekg(0, std::ios_base::beg);
+            data.resize(len);
+            LogInfo(Name(), " reading ", len, " bytes");
+            maybe->read(data.data(), data.size());
+          }
+          else
+          {
+            if (shouldLoadFile)
+            {
+              LogInfo(Name(), " address map file ", file, " does not exist, so we won't load it");
+            }
+            else
+              LogInfo(Name(), " address map file ", file, " not loaded because it's stale");
+          }
+          if (not data.empty())
+          {
+            std::string_view bdata{data.data(), data.size()};
+            LogInfo(Name(), " parsing address map data: ", bdata);
+            const auto parsed = oxenmq::bt_deserialize<oxenmq::bt_dict>(bdata);
+            for (const auto& [key, value] : parsed)
+            {
+              huint128_t ip{};
+              if (not ip.FromString(key))
+              {
+                LogWarn(Name(), " malformed IP in addr map data: ", key);
+                continue;
+              }
+              if (m_OurIP == ip)
+                continue;
+              if (not m_OurRange.Contains(ip))
+              {
+                LogWarn(Name(), " out of range IP in addr map data: ", ip);
+                continue;
+              }
+              EndpointBase::AddressVariant_t addr;
+
+              if (const auto* str = std::get_if<std::string>(&value))
+              {
+                if (auto maybe = service::ParseAddress(*str))
+                {
+                  addr = *maybe;
+                }
+                else
+                {
+                  LogWarn(Name(), " invalid address in addr map: ", *str);
+                  continue;
+                }
+              }
+              else
+              {
+                LogWarn(Name(), " invalid first entry in addr map, not a string");
+                continue;
+              }
+              if (const auto* loki = std::get_if<service::Address>(&addr))
+              {
+                m_IPToAddr.emplace(ip, loki->data());
+                m_AddrToIP.emplace(loki->data(), ip);
+                m_SNodes[*loki] = false;
+                LogInfo(Name(), " remapped ", ip, " to ", *loki);
+              }
+              if (const auto* snode = std::get_if<RouterID>(&addr))
+              {
+                m_IPToAddr.emplace(ip, snode->data());
+                m_AddrToIP.emplace(snode->data(), ip);
+                m_SNodes[*snode] = true;
+                LogInfo(Name(), " remapped ", ip, " to ", *snode);
+              }
+              if (m_NextIP < ip)
+                m_NextIP = ip;
+              // make sure we dont unmap this guy
+              MarkIPActive(ip);
+            }
+          }
+        }
+        else
+        {
+          LogInfo(
+              Name(), " skipping loading addr map at ", file, " as it does not currently exist");
+        }
+      }
+
       if (auto* quic = GetQUICTunnel())
       {
         quic->listen([this](std::string_view, uint16_t port) {
@@ -858,6 +962,27 @@ namespace llarp
     bool
     TunEndpoint::Stop()
     {
+      // save address map if applicable
+      if (m_PersistAddrMapFile)
+      {
+        const auto& file = *m_PersistAddrMapFile;
+        LogInfo(Name(), " saving address map to ", file);
+        if (auto maybe = util::OpenFileStream<fs::ofstream>(file, std::ios_base::binary))
+        {
+          std::map<std::string, std::string> addrmap;
+          for (const auto& [ip, addr] : m_IPToAddr)
+          {
+            if (not m_SNodes.at(addr))
+            {
+              const service::Address a{addr.as_array()};
+              if (HasInboundConvo(a))
+                addrmap[ip.ToString()] = a.ToString();
+            }
+          }
+          const auto data = oxenmq::bt_serialize(addrmap);
+          maybe->write(data.data(), data.size());
+        }
+      }
       if (m_Resolver)
         m_Resolver->Stop();
       return llarp::service::Endpoint::Stop();

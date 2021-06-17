@@ -674,6 +674,22 @@ namespace llarp
           m_PathAlignmentTimeout = std::chrono::seconds{val};
         });
 
+    conf.defineOption<fs::path>(
+        "network",
+        "persist-addrmap-file",
+        ClientOnly,
+        Default{fs::path{params.defaultDataDir / "addrmap.dat"}},
+        Comment{
+            "persist mapped ephemeral addresses to a file",
+            "on restart the mappings will be loaded so that ip addresses will not be mapped to a "
+            "different address",
+        },
+        [this](fs::path arg) {
+          if (arg.empty())
+            throw std::invalid_argument("persist-addrmap-file cannot be empty");
+          m_AddrMapPersistFile = arg;
+        });
+
     // Deprecated options:
     conf.defineOption<std::string>("network", "enabled", Deprecated);
   }
