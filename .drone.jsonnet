@@ -56,7 +56,7 @@ local debian_pipeline(name, image,
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
-                'make -j' + jobs,
+                'VERBOSE=1 make -j' + jobs,
                 '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
             ] + extra_cmds,
         }
@@ -195,7 +195,7 @@ local mac_builder(name,
                 'cd build',
                 'cmake .. -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'make -j' + jobs,
+                'VERBOSE=1 make -j' + jobs,
                 './test/testAll --use-colour yes',
             ] + extra_cmds,
         }
