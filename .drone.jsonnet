@@ -76,7 +76,7 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
             commands: [
-                'JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh'
+                'VERBOSE=1 JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh'
             ] + extra_cmds
         }
     ]
@@ -112,7 +112,7 @@ local windows_cross_pipeline(name, image,
                 'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-                'JOBS=' + jobs + ' ./contrib/windows.sh'
+                'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh'
             ] + extra_cmds,
         }
     ],
