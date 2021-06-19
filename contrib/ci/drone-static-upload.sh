@@ -42,9 +42,11 @@ if [ -e daemon/lokinet.exe ]; then
 elif [ -e build-android ] ; then
     # android af ngl
     archive="$base.tar.xz"
-    cp -av build-android/lokinet-android-*.tar.xz "$archive"
+    cp -av lokinet-android-* "$base"
+    archive="$base.tar.xz"
+    tar cJvf "$archive" "$base"
 else
-    cp -av daemon/lokinet daemon/lokinet-vpn ../lokinet-bootstrap "$base"
+    cp -av daemon/lokinet daemon/lokinet-vpn daemon/lokinet-bootstrap "$base"
     # tar dat shiz up yo
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"

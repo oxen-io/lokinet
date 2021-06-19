@@ -1,13 +1,22 @@
 #!/bin/bash
 set -e
-set -x
-test x$NDK = x  && exit 1
+set +x
+
+default_abis="armeabi-v7a arm64-v8a x86 x86_64"
+build_abis=${ABIS:-$default_abis}
+
+test x$NDK = x && echo "NDK env var not set"
+test x$NDK = x && exit 1
+
+echo "building abis: $build_abis"
+
 root="$(readlink -f $(dirname $0)/../)"
 out=$root/lokinet-android-$(git describe)
 mkdir -p $out
 mkdir -p $root/build-android
 cd $root/build-android
-for abi in armeabi-v7a arm64-v8a x86 x86_64 ; do
+
+for abi in $build_abis; do
     mkdir -p build-$abi $out/$abi
     cd build-$abi
     cmake \
@@ -36,4 +45,7 @@ for abi in armeabi-v7a arm64-v8a x86 x86_64 ; do
     cp jni/liblokinet-android.so $out/$abi/liblokinet-android.so
     cd -
 done
-tar -cvf $out $out.tar.xz
+
+
+echo
+echo "build artifacts outputted to $out"

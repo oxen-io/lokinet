@@ -243,7 +243,7 @@ local mac_builder(name,
                     ],
                     jobs=4),
     // android apk builder
-    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=anrdoid ./contrib/ci/drone-static-upload.sh']),
+    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
     // Windows builds (x64)
     windows_cross_pipeline("Windows (amd64)", docker_base+'debian-win32-cross',
