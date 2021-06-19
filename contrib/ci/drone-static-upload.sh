@@ -41,8 +41,7 @@ if [ -e build-windows ]; then
     zip -r "$archive" "$base"
 elif [ -e build-android ] ; then
     # android af ngl
-    archive="$base.tar.xz"
-    cp -av lokinet-android-* "$base"
+    cp -av lokinet-jni-* "$base"
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"
 else
