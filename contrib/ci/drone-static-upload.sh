@@ -34,8 +34,8 @@ else
 fi
 
 mkdir -v "$base"
-if [ -e daemon/lokinet.exe ]; then
-    cp -av lokinet-*.exe "$base"
+if [ -e build-windows ]; then
+    cp -av build-windows/lokinet-*.exe "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
