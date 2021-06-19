@@ -932,6 +932,7 @@ namespace llarp
       });
 
       constexpr size_t min_unique_lns_endpoints = 2;
+      constexpr size_t max_unique_lns_endpoints = 7;
 
       // not enough paths
       if (paths.size() < min_unique_lns_endpoints)
@@ -966,10 +967,16 @@ namespace llarp
         handler(result);
       };
 
-      auto resultHandler =
-          m_state->lnsTracker.MakeResultHandler(name, paths.size(), maybeInvalidateCache);
+      // pick up to max_unique_lns_endpoints random paths to do lookups from
+      std::vector<path::Path_ptr> chosenpaths;
+      chosenpaths.insert(chosenpaths.begin(), paths.begin(), paths.end());
+      std::shuffle(chosenpaths.begin(), chosenpaths.end(), CSRNG{});
+      chosenpaths.resize(std::min(paths.size(), max_unique_lns_endpoints));
 
-      for (const auto& path : paths)
+      auto resultHandler =
+          m_state->lnsTracker.MakeResultHandler(name, chosenpaths.size(), maybeInvalidateCache);
+
+      for (const auto& path : chosenpaths)
       {
         LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
         auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
