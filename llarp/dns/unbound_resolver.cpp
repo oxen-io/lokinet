@@ -110,7 +110,11 @@ namespace llarp::dns
   UnboundResolver::AddUpstreamResolver(const SockAddr& upstreamResolver)
   {
     std::stringstream ss;
-    ss << upstreamResolver.hostString() << "@" << upstreamResolver.getPort();
+    ss << upstreamResolver.hostString();
+
+    if (const auto port = upstreamResolver.getPort(); port != 53)
+      ss << "@" << port;
+
     const auto str = ss.str();
     if (ub_ctx_set_fwd(unboundContext, str.c_str()) != 0)
     {
