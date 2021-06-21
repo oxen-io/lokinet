@@ -602,7 +602,10 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
     {
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, llarp::dht::IntroSetRelayRedundancy);
+      const auto paths = GetManyPathsWithUniqueEndpoints(
+          this,
+          llarp::dht::IntroSetRelayRedundancy,
+          dht::Key_t{introset.derivedSigningKey.as_array()});
 
       if (paths.size() != llarp::dht::IntroSetRelayRedundancy)
       {
@@ -1448,7 +1451,7 @@ namespace llarp
       if (not m_IntrosetLookupFilter.Insert(remote))
         return true;
 
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups, remote.ToKey());
+      const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
       using namespace std::placeholders;
       const dht::Key_t location = remote.ToKey();
