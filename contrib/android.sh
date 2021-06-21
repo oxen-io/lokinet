@@ -11,7 +11,7 @@ test x$NDK = x && exit 1
 echo "building abis: $build_abis"
 
 root="$(readlink -f $(dirname $0)/../)"
-out=$root/lokinet-jni-$(git describe)
+out=$root/lokinet-jni-$(git describe || echo unknown)
 mkdir -p $out
 mkdir -p $root/build-android
 cd $root/build-android
