@@ -49,6 +49,7 @@ namespace llarp
         ShiftIntroduction(false);
         UpdateIntroSet();
         SwapIntros();
+        markedBad = remoteIntro.IsExpired(Now());
       }
       return true;
     }
@@ -399,6 +400,8 @@ namespace llarp
       {
         // send a keep alive to keep this session alive
         KeepAlive();
+        if (markedBad)
+          return true;
       }
       // if we are dead return true so we are removed
       return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
