@@ -729,12 +729,9 @@ namespace llarp
           }
           if (!arg.empty())
           {
-            auto& addr = m_upstreamDNS.emplace_back(std::move(arg));
-            if (auto p = addr.getPort(); p && *p != 53)
-              // unbound doesn't support non-default ports so bail if the user gave one
-              throw std::invalid_argument(
-                  "Invalid [dns] upstream setting: non-default DNS ports are not supported");
-            addr.setPort(std::nullopt);
+            auto& entry = m_upstreamDNS.emplace_back(std::move(arg));
+            if (!entry.getPort())
+              entry.setPort(53);
           }
         });
 
@@ -746,9 +743,23 @@ namespace llarp
             "Address to bind to for handling DNS requests.",
         },
         [=](std::string arg) {
-          m_bind = IpAddress{std::move(arg)};
+          m_bind = SockAddr{std::move(arg)};
           if (!m_bind.getPort())
             m_bind.setPort(53);
+        });
+
+    conf.defineOption<fs::path>(
+        "dns",
+        "add-hosts",
+        ClientOnly,
+        Comment{"Add a hosts file to the dns resolver", "For use with client side dns filtering"},
+        [=](fs::path path) {
+          if (path.empty())
+            return;
+          if (not fs::exists(path))
+            throw std::invalid_argument{
+                stringify("cannot add hosts file ", path, " as it does not seem to exist")};
+          m_hostfiles.emplace_back(std::move(path));
         });
 
     // Ignored option (used by the systemd service file to disable resolvconf configuration).

@@ -169,6 +169,7 @@ namespace llarp
 
       m_LocalResolverAddr = dnsConf.m_bind;
       m_UpstreamResolvers = dnsConf.m_upstreamDNS;
+      m_hostfiles = dnsConf.m_hostfiles;
 
       m_BaseV6Address = conf.m_baseV6Address;
 
@@ -945,7 +946,8 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
-      if (!m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers))
+      if (!m_Resolver->Start(
+              m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
       {
         llarp::LogError(Name(), " failed to start DNS server");
         return false;

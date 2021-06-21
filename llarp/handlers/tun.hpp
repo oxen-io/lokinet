@@ -265,7 +265,9 @@ namespace llarp
       /// our ip range we are using
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
-      std::vector<IpAddress> m_UpstreamResolvers;
+      std::vector<SockAddr> m_UpstreamResolvers;
+      /// dns host files list
+      std::vector<fs::path> m_hostfiles;
       /// local dns
       IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks

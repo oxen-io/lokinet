@@ -75,10 +75,10 @@ namespace llarp
     init();
     fromString(addr);
   }
-  SockAddr::SockAddr(std::string_view addr, uint16_t port)
+  SockAddr::SockAddr(std::string_view addr, huint16_t port)
   {
     init();
-    setPort(huint16_t{port});
+    setPort(port);
     fromString(addr, false);
   }
 
@@ -289,7 +289,15 @@ namespace llarp
     // TODO: review
     if (isEmpty())
       return "";
+    std::string str = hostString();
+    str.append(1, ':');
+    str.append(std::to_string(getPort()));
+    return str;
+  }
 
+  std::string
+  SockAddr::hostString() const
+  {
     std::string str;
 
     if (isIPv4())
@@ -313,9 +321,6 @@ namespace llarp
       str.append(buf);
       str.append("]");
     }
-
-    str.append(1, ':');
-    str.append(std::to_string(getPort()));
     return str;
   }
 
