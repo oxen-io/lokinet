@@ -49,6 +49,7 @@ namespace llarp
         ShiftIntroduction(false);
         UpdateIntroSet();
         SwapIntros();
+        markedBad = remoteIntro.IsExpired(Now());
       }
       return true;
     }
@@ -151,17 +152,17 @@ namespace llarp
         return false;
       if (remoteIntro.router.IsZero())
         return false;
-      return IntroSent();
+      return IntroSent() and GetPathByRouter(remoteIntro.router);
     }
 
     void
     OutboundContext::ShiftIntroRouter(const RouterID r)
     {
       const auto now = Now();
-      Introduction selectedIntro;
+      Introduction selectedIntro{};
       for (const auto& intro : currentIntroSet.intros)
       {
-        if (intro.expiresAt > selectedIntro.expiresAt && intro.router != r)
+        if (intro.expiresAt > selectedIntro.expiresAt and intro.router != r)
         {
           selectedIntro = intro;
         }
@@ -289,7 +290,7 @@ namespace llarp
             path->Endpoint(),
             relayOrder,
             m_Endpoint->GenTXID(),
-            (IntrosetUpdateInterval / 2) + (2 * path->intro.latency));
+            (IntrosetUpdateInterval / 2) + (2 * path->intro.latency) + IntrosetLookupGraceInterval);
         relayOrder++;
         if (job->SendRequestViaPath(path, m_Endpoint->Router()))
           updatingIntroSet = true;
@@ -314,11 +315,6 @@ namespace llarp
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"] = m_NextIntro.ExtractStatus();
       obj["readyToSend"] = ReadyToSend();
-      std::transform(
-          m_BadIntros.begin(),
-          m_BadIntros.end(),
-          std::back_inserter(obj["badIntros"]),
-          [](const auto& item) -> util::StatusObject { return item.first.ExtractStatus(); });
       return obj;
     }
 
@@ -337,10 +333,14 @@ namespace llarp
       {
         SwapIntros();
       }
-
-      if ((remoteIntro.router.IsZero() or m_BadIntros.count(remoteIntro))
-          and GetPathByRouter(m_NextIntro.router))
-        SwapIntros();
+      if (ReadyToSend())
+      {
+        // if we dont have a cached session key after sending intro we are in a fugged state so
+        // expunge
+        SharedSecret discardme;
+        if (not m_DataHandler->GetCachedSessionKeyFor(currentConvoTag, discardme))
+          return true;
+      }
 
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
       {
@@ -351,22 +351,36 @@ namespace llarp
       }
       // check for stale intros
       // update the introset if we think we need to
-      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread))
+      if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread)
+          or remoteIntro.ExpiresSoon(now, path::intro_path_spread))
       {
         UpdateIntroSet();
+        ShiftIntroduction(false);
+      }
+
+      if (ReadyToSend())
+      {
+        if (not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
+        {
+          // pick another good intro if we have no path on our current intro
+          std::vector<Introduction> otherIntros;
+          ForEachPath([now, router = remoteIntro.router, &otherIntros](auto path) {
+            if (path and path->IsReady() and path->Endpoint() != router
+                and not path->ExpiresSoon(now, path::intro_path_spread))
+            {
+              otherIntros.emplace_back(path->intro);
+            }
+          });
+          if (not otherIntros.empty())
+          {
+            std::shuffle(otherIntros.begin(), otherIntros.end(), CSRNG{});
+            remoteIntro = otherIntros[0];
+          }
+        }
       }
       // lookup router in intro if set and unknown
       if (not m_NextIntro.router.IsZero())
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-      // expire bad intros
-      auto itr = m_BadIntros.begin();
-      while (itr != m_BadIntros.end())
-      {
-        if (now > itr->second && now - itr->second > path::default_lifetime)
-          itr = m_BadIntros.erase(itr);
-        else
-          ++itr;
-      }
 
       if (ReadyToSend() and not m_ReadyHooks.empty())
       {
@@ -386,6 +400,8 @@ namespace llarp
       {
         // send a keep alive to keep this session alive
         KeepAlive();
+        if (markedBad)
+          return true;
       }
       // if we are dead return true so we are removed
       return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
@@ -433,13 +449,18 @@ namespace llarp
         return false;
 
       size_t numValidPaths = 0;
-      ForEachPath([now, &numValidPaths](path::Path_ptr path) {
+      bool havePathToNextIntro = false;
+      ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](path::Path_ptr path) {
         if (not path->IsReady())
           return;
         if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
+        {
           numValidPaths++;
+          if (path->intro.router == m_NextIntro.router)
+            havePathToNextIntro = true;
+        }
       });
-      return numValidPaths < numDesiredPaths;
+      return numValidPaths < numDesiredPaths or not havePathToNextIntro;
     }
 
     void
@@ -449,11 +470,8 @@ namespace llarp
     }
 
     void
-    OutboundContext::MarkIntroBad(const Introduction& intro, llarp_time_t now)
-    {
-      // insert bad intro
-      m_BadIntros[intro] = now;
-    }
+    OutboundContext::MarkIntroBad(const Introduction&, llarp_time_t)
+    {}
 
     bool
     OutboundContext::IntroSent() const
@@ -488,13 +506,12 @@ namespace llarp
           continue;
         if (m_Endpoint->SnodeBlacklist().count(intro.router))
           continue;
-        if (m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro.router == intro.router)
+        if (remoteIntro.router == intro.router)
         {
           if (intro.expiresAt > m_NextIntro.expiresAt)
           {
             success = true;
             m_NextIntro = intro;
-            return true;
           }
         }
       }
@@ -508,7 +525,7 @@ namespace llarp
           m_Endpoint->EnsureRouterIsKnown(intro.router);
           if (intro.ExpiresSoon(now))
             continue;
-          if (m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
+          if (m_NextIntro != intro)
           {
             if (intro.expiresAt > m_NextIntro.expiresAt)
             {
