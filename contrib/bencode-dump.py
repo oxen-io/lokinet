@@ -4,7 +4,7 @@ import sys
 import pprint
 
 if len(sys.argv) != 2 or sys.argv[1].startswith('-'):
-    print("Usage: {} FILE -- dumps a bencoded file", file=sys.stderr)
+    print("Usage: {} FILE -- dumps a bencoded file".format(sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 f = open(sys.argv[1], 'rb')
