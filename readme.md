@@ -40,9 +40,9 @@ You can install these using:
     $ sudo apt install lokinet
 
 
-if you want to build a dev build you can do the following:
+If you are not on a platform supported by the debian packages or if you want to build a dev build, this is the most "portable" way to do it:
 
-    $ sudo apt install build-essential cmake git libcap-dev libcurl4-openssl-dev libuv1-dev libsodium-dev pkg-config
+    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build

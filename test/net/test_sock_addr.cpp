@@ -31,7 +31,7 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
   CHECK(llarp::SockAddr("255.255.255.255").toString() == "255.255.255.255:0");
   CHECK(llarp::SockAddr("255.255.255.255:255").toString() == "255.255.255.255:255");
   CHECK(llarp::SockAddr("255.255.255.255:65535").toString() == "255.255.255.255:65535");
-  CHECK(llarp::SockAddr("5.6.7.8", 5678).toString() == "5.6.7.8:5678");
+  CHECK(llarp::SockAddr("5.6.7.8", llarp::huint16_t{5678}).toString() == "5.6.7.8:5678");
 
   CHECK_THROWS_WITH(llarp::SockAddr("abcd"), "abcd is not a valid IPv4 address");
 
@@ -66,7 +66,7 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:1a"), "1a is not a valid port");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("5.6.7.8:1234", 5678), "invalid ip address (port not allowed here): 5.6.7.8:1234");
+  CHECK_THROWS_WITH(llarp::SockAddr("5.6.7.8:1234", llarp::huint16_t{5678}), "invalid ip address (port not allowed here): 5.6.7.8:1234");
 }
 
 TEST_CASE("SockAddr from sockaddr_in", "[SockAddr]")

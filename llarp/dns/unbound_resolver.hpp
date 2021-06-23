@@ -7,6 +7,7 @@
 #include <queue>
 
 #include <llarp/ev/ev.hpp>
+#include <llarp/util/fs.hpp>
 
 #include "message.hpp"
 
@@ -50,7 +51,10 @@ namespace llarp::dns
     Init();
 
     bool
-    AddUpstreamResolver(const std::string& upstreamResolverIP);
+    AddUpstreamResolver(const SockAddr& upstreamResolverIP);
+
+    void
+    AddHostsFile(const fs::path& file);
 
     void
     Lookup(SockAddr to, SockAddr from, Message msg);
