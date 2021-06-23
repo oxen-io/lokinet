@@ -2,6 +2,7 @@
 #include "lokinet_jni_common.hpp"
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 extern "C"
 {
@@ -98,5 +99,24 @@ extern "C"
       rangestr = maybe->ToString();
     }
     return env->NewStringUTF(rangestr.c_str());
+  }
+
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_DumpStatus(JNIEnv* env, jobject self)
+  {
+    std::string status{};
+    if (auto ptr = GetImpl<llarp::Context>(env, self))
+    {
+      if (ptr->IsUp())
+      {
+        std::promise<std::string> result;
+        ptr->CallSafe([&result, router = ptr->router]() {
+          const auto status = router->ExtractStatus();
+          result.set_value(status.dump());
+        });
+        status = result.get_future().get();
+      }
+    }
+    return env->NewStringUTF(status.c_str());
   }
 }

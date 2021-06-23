@@ -485,7 +485,7 @@ namespace llarp::quic
     }
 
     auto bound = tcp_tunnel->sock();
-    saddr = SockAddr{bound.ip, static_cast<uint16_t>(bound.port)};
+    saddr = SockAddr{bound.ip, huint16_t{static_cast<uint16_t>(bound.port)}};
 
     // Find the first unused psuedo-port value starting from next_pseudo_port_.
     if (auto p = find_unused_key(client_tunnels_, next_pseudo_port_))
