@@ -195,17 +195,18 @@ namespace llarp
     OutboundContext::HandlePathBuilt(path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
-      /// don't use it if we are marked bad
-      if (markedBad)
-        return;
       p->SetDataHandler(util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
-      // we now have a path to the next intro, swap intros
-      if (p->Endpoint() == m_NextIntro.router)
-        SwapIntros();
-      else
+      if (markedBad)
       {
-        LogInfo(Name(), " built to non aligned router: ", p->Endpoint());
+        // ignore new path if we are marked dead
+        LogInfo(Name(), " marked bad, ignoring new path");
+        p->EnterState(path::ePathIgnore, Now());
+      }
+      else if (p->Endpoint() == m_NextIntro.router)
+      {
+        // we now have a path to the next intro, swap intros
+        SwapIntros();
       }
     }
 
