@@ -1,3 +1,71 @@
+lokinet (0.9.4~pre20210623-1~ubuntu2004) focal; urgency=medium
+
+  [ Jeff ]
+  * [feature] optionally keep inbound convos mapped to same IP on restart  (#1672)
+
+  [ Jeff Becker ]
+  * [buildsystem] remove use of ninja entirely
+  * update android ci docker image definition to include cmake and exclude gradle
+  * dont build shared libs when we are building static deps
+  * * make android ABIS list configurable * fix android ci jizz, correct typo, upload generated assets
+  * fix windows static ci upload for windows
+  * typofix
+  * fix android ci output path name so that it does not conflict
+  * ccache android builds in ci
+  * use make instead of build essential in ci so that it does not conflict with clang builds
+  * use $(MAKE) only on makefile generator
+  * pass VERBOSE=1 in ci jobs for full verbosity on builds
+  * use std::make_optional for backwards compat on older toolchains
+  * add new JNI function: LokinetDaemon DumpStatus
+  * fix #1655
+  * add dns hosts file option for user side dns filtering
+  * only use @ syntax when the dns port is not port 53
+  * mitigate lto compiler bug with lto
+  * update docker ci jizz to include flutter on android
+  * if git describe fails fall back to a placeholder
+  * update android ci docker jizz
+  * correct the logic for inbound convos
+  * dont mark inbound sessions as outbound when we get a DNS lookup for it
+  * format and logging ignore outbound session auth messages
+  * kill outbound context when we remove our convotag
+  * in outbound context, ShouldBuildMore intro.ExpiresSoon delta is too big and has no overlap, change it so that
+
+  [ Thomas Winget ]
+  * make sure we have a path to the next introduction we want to use
+
+  [ Jeff Becker ]
+  * more
+  * format
+  * make clang compile, remove unused variable
+  * remove badIntros from lokinetmon as rpc no longer has them in it
+  * ReadyToSend also should include checking we have a path to the remote
+  * value initialize introduction so that expiresAt defaults to zero
+  * remove redundant check as ReadyToSend also checks IntroSent()
+  * rename local variable to be clear about meaning, add comment
+  * make it so lookups dont time out
+  * bump version to 0.9.4
+  * add upperbound to number of endpoints used in lns lookups
+  * use exisitng convotag first instead of trying to send to directly
+  * publish introsets on nearest routers fetch introset from random routers
+  * if we get a discard message from the pivot discard the outbound context if the remote intro is also expired
+  * only permit 1 pending session per udp endpoint
+
+  [ Jason Rhinelander ]
+  * Add bencoded file dumper
+  * Fix program name in bencode-dump.py --help
+
+  [ Jeff ]
+  * update deps for source build
+
+  [ Jeff Becker ]
+  * when an outbound context is "marked bad" we want to ignore any new paths. before this commit when a new path was made when an outbound context marked bad lokinet would segfault.
+  * lower log level
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 23 Jun 2021 09:55:42 -0300
+
 lokinet (0.9.3-2~ubuntu2004) focal; urgency=medium
 
   * use exisitng convotag first instead of trying to send to directly
