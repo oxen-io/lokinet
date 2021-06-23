@@ -1,4 +1,4 @@
-lokinet (0.9.4~pre1-1) unstable; urgency=medium
+lokinet (0.9.4~pre20210623-1) unstable; urgency=medium
 
   [ Jeff ]
   * [feature] optionally keep inbound convos mapped to same IP on restart  (#1672)
