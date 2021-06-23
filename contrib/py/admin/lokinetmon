@@ -155,7 +155,7 @@ class Monitor:
     def time_to(timestamp):
         """ return time until timestamp in seconds formatted"""
         if timestamp:
-            val = int((timestamp - now()) / 1000)
+            val = (timestamp - now()) / 1000.0
             if val < 0:
                 return "{} seconds ago".format(0-val)
             else:
@@ -449,7 +449,7 @@ class Monitor:
         for intro in context['introset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", context['paths'])
         for path in context['paths']:
-            y_pos = self._display_intro(y_pos, path['intro'], "inbound path intro", context['paths'])
+            y_pos = self._display_intro(y_pos, path['intro'], "inbound path [created {}]".format(self.time_to(path['buildStarted'])), context['paths'])
         return y_pos
 
 
@@ -489,11 +489,7 @@ class Monitor:
         for intro in context['currentRemoteIntroset']['intros'] or []:
             y_pos = self._display_intro(y_pos, intro, "introset intro", paths)
         y_pos += 1
-        for intro in context['badIntros'] or []:
-            y_pos = self._display_intro(y_pos, intro, "bad intro", paths)
-        y_pos += 1
         return y_pos
-
 
     def display_data(self):
         """ draw main window """

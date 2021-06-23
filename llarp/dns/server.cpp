@@ -26,9 +26,9 @@ namespace llarp::dns
   }
 
   bool
-  Proxy::Start(SockAddr addr, std::vector<IpAddress> resolvers)
+  Proxy::Start(SockAddr addr, std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
-    if (not PacketHandler::Start(addr, std::move(resolvers)))
+    if (not PacketHandler::Start(addr, std::move(resolvers), std::move(hostfiles)))
       return false;
     return m_Server->listen(addr);
   }
@@ -44,14 +44,19 @@ namespace llarp::dns
   }
 
   bool
-  PacketHandler::Start(SockAddr, std::vector<IpAddress> resolvers)
+  PacketHandler::Start(SockAddr, std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
-    return SetupUnboundResolver(std::move(resolvers));
+    return SetupUnboundResolver(std::move(resolvers), std::move(hostfiles));
   }
 
   bool
-  PacketHandler::SetupUnboundResolver(std::vector<IpAddress> resolvers)
+  PacketHandler::SetupUnboundResolver(
+      std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles)
   {
+    // if we have no resolvers don't set up unbound
+    if (resolvers.empty())
+      return true;
+
     auto failFunc = [self = weak_from_this()](
                         const SockAddr& from, const SockAddr& to, Message msg) {
       if (auto this_ptr = self.lock())
@@ -73,13 +78,17 @@ namespace llarp::dns
     }
     for (const auto& resolver : resolvers)
     {
-      if (not m_UnboundResolver->AddUpstreamResolver(resolver.toHost()))
+      if (not m_UnboundResolver->AddUpstreamResolver(resolver))
       {
-        llarp::LogError("Failed to add upstream DNS server: ", resolver.toHost());
+        llarp::LogError("Failed to add upstream DNS server: ", resolver);
         m_UnboundResolver = nullptr;
         return false;
       }
       m_Resolvers.emplace(resolver);
+    }
+    for (const auto& path : hostfiles)
+    {
+      m_UnboundResolver->AddHostsFile(path);
     }
 
     return true;
