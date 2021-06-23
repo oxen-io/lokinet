@@ -40,7 +40,7 @@ namespace llarp
 
     // String ctors
     SockAddr(std::string_view addr);
-    SockAddr(std::string_view addr, uint16_t port);  // port is in native (host) order
+    SockAddr(std::string_view addr, huint16_t port);  // port is in native (host) order
 
     SockAddr(const AddressInfo&);
 
@@ -82,6 +82,9 @@ namespace llarp
 
     std::string
     toString() const;
+
+    std::string
+    hostString() const;
 
     /// Returns true if this is an empty SockAddr, defined by having no IP address set. An empty IP
     /// address with a valid port is still considered empty.

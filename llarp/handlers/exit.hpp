@@ -211,8 +211,8 @@ namespace llarp
 
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
-      IpAddress m_LocalResolverAddr;
-      std::vector<IpAddress> m_UpstreamResolvers;
+      SockAddr m_LocalResolverAddr;
+      std::vector<SockAddr> m_UpstreamResolvers;
 
       std::shared_ptr<quic::TunnelManager> m_QUIC;
 

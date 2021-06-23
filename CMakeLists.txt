@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.9.3
+    VERSION 0.9.4
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -65,6 +65,11 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+if(BUILD_STATIC_DEPS AND STATIC_LINK)
+  message(STATUS "we are building static deps so we won't build shared libs")
+  set(BUILD_SHARED_LIBS OFF)
 endif()
 
 include(CheckCXXSourceCompiles)
