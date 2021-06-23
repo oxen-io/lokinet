@@ -302,7 +302,7 @@ namespace llarp::uv
     handle->on<uvw::UDPDataEvent>([this](auto& event, auto& /*handle*/) {
       on_recv(
           *this,
-          SockAddr{event.sender.ip, static_cast<uint16_t>(event.sender.port)},
+          SockAddr{event.sender.ip, huint16_t{static_cast<uint16_t>(event.sender.port)}},
           OwnedBuffer{std::move(event.data), event.length});
     });
   }

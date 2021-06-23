@@ -35,7 +35,10 @@ namespace llarp
       virtual ~PacketHandler() = default;
 
       virtual bool
-      Start(SockAddr localaddr, std::vector<IpAddress> upstreamResolvers);
+      Start(
+          SockAddr localaddr,
+          std::vector<SockAddr> upstreamResolvers,
+          std::vector<fs::path> hostfiles);
 
       void
       Stop();
@@ -58,10 +61,10 @@ namespace llarp
       HandleUpstreamFailure(const SockAddr& from, const SockAddr& to, Message msg);
 
       bool
-      SetupUnboundResolver(std::vector<IpAddress> resolvers);
+      SetupUnboundResolver(std::vector<SockAddr> resolvers, std::vector<fs::path> hostfiles);
 
       IQueryHandler* const m_QueryHandler;
-      std::set<IpAddress> m_Resolvers;
+      std::set<SockAddr> m_Resolvers;
       std::shared_ptr<UnboundResolver> m_UnboundResolver;
       EventLoop_ptr m_Loop;
     };
@@ -73,7 +76,10 @@ namespace llarp
       explicit Proxy(EventLoop_ptr loop, IQueryHandler* handler);
 
       bool
-      Start(SockAddr localaddr, std::vector<IpAddress> resolvers) override;
+      Start(
+          SockAddr localaddr,
+          std::vector<SockAddr> upstreamResolvers,
+          std::vector<fs::path> hostfiles) override;
 
      protected:
       void

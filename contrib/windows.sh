@@ -4,7 +4,7 @@ set +x
 mkdir -p build-windows
 cd build-windows
 cmake \
-      -G Ninja \
+      -G 'Unix Makefiles' \
       -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
       -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always\
       -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw64.cmake\
@@ -22,4 +22,4 @@ cmake \
       -DWITH_LTO=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       $@ ..
-ninja package
+make package -j${JOBS:-$(nproc)}
