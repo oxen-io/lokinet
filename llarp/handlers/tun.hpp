@@ -265,7 +265,9 @@ namespace llarp
       /// our ip range we are using
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
-      std::vector<IpAddress> m_UpstreamResolvers;
+      std::vector<SockAddr> m_UpstreamResolvers;
+      /// dns host files list
+      std::vector<fs::path> m_hostfiles;
       /// local dns
       IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks
@@ -290,6 +292,9 @@ namespace llarp
 
       /// idempotent wakeup for writing messages to network
       std::shared_ptr<EventLoopWakeup> m_MessageSendWaker;
+
+      /// a file to load / store the ephemeral address map to
+      std::optional<fs::path> m_PersistAddrMapFile;
     };
 
   }  // namespace handlers

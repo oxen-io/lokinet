@@ -58,9 +58,7 @@ namespace llarp
     {
       if (EnsurePrivateFile(pathname))
         return {};
-
-      std::string f = pathname.string();
-      return T{pathname, mode};
+      return std::make_optional<T>(pathname, mode);
     }
 
     using PathVisitor = std::function<bool(const fs::path&)>;

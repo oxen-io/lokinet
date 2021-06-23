@@ -80,6 +80,14 @@ extern "C"
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv*, jclass);
 
+  /*
+   * Class:     network_loki_lokinet_LokinetDaemon
+   * Method:    DumpStatus
+   * Signature: ()Ljava/lang/String;
+   */
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_DumpStatus(JNIEnv*, jobject);
+
 #ifdef __cplusplus
 }
 #endif

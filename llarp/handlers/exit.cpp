@@ -21,7 +21,7 @@ namespace llarp
         : m_Router(r)
         , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
         , m_Name(std::move(name))
-        , m_LocalResolverAddr("127.0.0.1", 53)
+        , m_LocalResolverAddr{"127.0.0.1:53"}
         , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
         , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
 
@@ -476,8 +476,8 @@ namespace llarp
 
         GetRouter()->loop()->add_ticker([this] { Flush(); });
 
-        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.toString());
-        return m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers);
+        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr);
+        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers, {});
       }
       return true;
     }

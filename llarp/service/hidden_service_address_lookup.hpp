@@ -8,6 +8,9 @@ namespace llarp
 {
   namespace service
   {
+    /// interval for which we will add to lookup timeout interval
+    constexpr auto IntrosetLookupGraceInterval = 20s;
+
     struct Endpoint;
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
