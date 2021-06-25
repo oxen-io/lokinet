@@ -91,6 +91,7 @@ namespace llarp
       if (gateway.h)
         net::DelRoute(ip.ToString(), gateway.ToString());
     }
+    net::DelBlackhole();
   }
 
   std::optional<huint32_t>
@@ -185,6 +186,8 @@ namespace llarp
   void
   RoutePoker::Up()
   {
+    // black hole all routes by default
+    net::AddBlackhole();
     // explicit route pokes for first hops
     m_Router->ForEachPeer(
         [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },
@@ -204,6 +207,8 @@ namespace llarp
     // remove default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     net::DelDefaultRouteViaInterface(ep->GetIfName());
+    // delete route blackhole
+    net::DelBlackhole();
   }
 
 }  // namespace llarp

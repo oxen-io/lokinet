@@ -112,6 +112,40 @@ namespace llarp::net
     return 0;
   }
 
+  struct nl_req
+  {
+    struct nlmsghdr n;
+    struct rtmsg r;
+    char buf[4096];
+  };
+
+  /// add/remove a route blackhole
+  int
+  do_blackhole(int sock, int cmd, int flags, int af)
+  {
+    nl_req nl_request{};
+    /* Initialize request structure */
+    nl_request.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+    nl_request.n.nlmsg_flags = NLM_F_REQUEST | flags;
+    nl_request.n.nlmsg_type = cmd;
+    nl_request.n.nlmsg_pid = getpid();
+    nl_request.r.rtm_family = af;
+    nl_request.r.rtm_table = RT_TABLE_LOCAL;
+    nl_request.r.rtm_type = RTN_BLACKHOLE;
+    nl_request.r.rtm_scope = RT_SCOPE_UNIVERSE;
+    if (af == AF_INET)
+    {
+      uint32_t addr{};
+      rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &addr, sizeof(addr));
+    }
+    else
+    {
+      uint128_t addr{};
+      rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &addr, sizeof(addr));
+    }
+    return send(sock, &nl_request, sizeof(nl_request), 0);
+  }
+
   int
   do_route(
       int sock,
@@ -122,12 +156,7 @@ namespace llarp::net
       GatewayMode mode,
       int if_idx)
   {
-    struct
-    {
-      struct nlmsghdr n;
-      struct rtmsg r;
-      char buf[4096];
-    } nl_request{};
+    nl_req nl_request{};
 
     /* Initialize request structure */
     nl_request.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -357,6 +386,32 @@ namespace llarp::net
 #error unsupported platform
 #endif
     Execute(ss.str());
+#endif
+  }
+
+  void
+  AddBlackhole()
+  {
+    LogInfo("adding route blackhole to drop all traffic");
+#if __linux__
+#ifndef ANDROID
+    NLSocket sock;
+    do_blackhole(sock.fd, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET);
+    do_blackhole(sock.fd, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET6);
+#endif
+#endif
+  }
+
+  void
+  DelBlackhole()
+  {
+    LogInfo("remove route blackhole");
+#if __linux__
+#ifndef ANDROID
+    NLSocket sock;
+    do_blackhole(sock.fd, RTM_DELROUTE, 0, AF_INET);
+    do_blackhole(sock.fd, RTM_DELROUTE, 0, AF_INET6);
+#endif
 #endif
   }
 
