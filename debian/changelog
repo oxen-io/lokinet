@@ -1,3 +1,10 @@
+lokinet (0.9.4-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jeff Becker ]
+  * use weak_ptr instead of bare pointer to prevent use after free
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 25 Jun 2021 17:25:00 -0300
+
 lokinet (0.9.4~pre20210623-1~ubuntu1804) bionic; urgency=medium
 
   [ Jeff ]
