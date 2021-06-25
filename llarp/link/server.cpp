@@ -481,10 +481,9 @@ namespace llarp
   bool
   ILinkLayer::PutSession(const std::shared_ptr<ILinkSession>& s)
   {
-    static constexpr size_t MaxSessionsPerEndpoint = 5;
     Lock_t lock(m_PendingMutex);
     const auto address = s->GetRemoteEndpoint();
-    if (m_Pending.count(address) >= MaxSessionsPerEndpoint)
+    if (m_Pending.count(address))
       return false;
     m_Pending.emplace(address, s);
     return true;

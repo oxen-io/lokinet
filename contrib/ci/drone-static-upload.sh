@@ -34,18 +34,18 @@ else
 fi
 
 mkdir -v "$base"
-if [ -e daemon/lokinet.exe ]; then
-    cp -av lokinet-*.exe "$base"
+if [ -e build-windows ]; then
+    cp -av build-windows/lokinet-*.exe "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
-elif [ -e build/outputs/apk/debug/lokinet-debug.apk ] ; then
+elif [ -e build-android ] ; then
     # android af ngl
-    cp -av build/outputs/apk/debug/lokinet-debug.apk "$base"
+    cp -av lokinet-jni-* "$base"
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"
 else
-    cp -av daemon/lokinet daemon/lokinet-vpn ../lokinet-bootstrap "$base"
+    cp -av daemon/lokinet daemon/lokinet-vpn daemon/lokinet-bootstrap "$base"
     # tar dat shiz up yo
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"
@@ -73,4 +73,3 @@ SFTP
 set +o xtrace
 
 echo -e "\n\n\n\n\e[32;1mUploaded to https://${upload_to}/${archive}\e[0m\n\n\n"
-

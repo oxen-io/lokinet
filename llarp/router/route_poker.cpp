@@ -163,7 +163,7 @@ namespace llarp
 
     systemd_resolved_set_dns(
         m_Router->hiddenServiceContext().GetDefault()->GetIfName(),
-        m_Router->GetConfig()->dns.m_bind.createSockAddr(),
+        m_Router->GetConfig()->dns.m_bind,
         true /* route all DNS */);
   }
 
@@ -178,7 +178,7 @@ namespace llarp
 
     systemd_resolved_set_dns(
         m_Router->hiddenServiceContext().GetDefault()->GetIfName(),
-        m_Router->GetConfig()->dns.m_bind.createSockAddr(),
+        m_Router->GetConfig()->dns.m_bind,
         false /* route DNS only for .loki/.snode */);
   }
 

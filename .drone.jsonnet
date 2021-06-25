@@ -1,6 +1,6 @@
-local default_deps_base='libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev libcurl4-openssl-dev';
+local default_deps_base='libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev libcurl4-openssl-dev make';
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
-local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
+local default_deps='g++ ' + default_deps_nocxx;
 local default_windows_deps='mingw-w64 zip nsis';
 local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
@@ -49,20 +49,20 @@ local debian_pipeline(name, image,
                     ] else []
                 ) + [
                 'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
+                'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
-                'ninja -j' + jobs + ' -v',
+                'VERBOSE=1 make -j' + jobs,
                 '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
             ] + extra_cmds,
         }
     ],
 };
-local apk_builder(name, image, extra_cmds=[], allow_fail=false) = {
+local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
     kind: 'pipeline',
     type: 'docker',
     name: name,
@@ -76,11 +76,7 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false) = {
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
             commands: [
-                "cd android",
-                "rm -f local.properties",
-                "echo 'sdk.dir=/usr/lib/android-sdk' >> local.properties",
-                "echo 'ndk.dir=/usr/lib/android-ndk' >> local.properties",
-                "GRADLE_USER_HOME=/cache/gradle/${DRONE_STAGE_MACHINE} gradle --no-daemon assembleDebug",
+                'VERBOSE=1 JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh'
             ] + extra_cmds
         }
     ]
@@ -113,17 +109,10 @@ local windows_cross_pipeline(name, image,
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
+                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-                'mkdir build',
-                'cd build',
-                'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
-                    (if lto then '' else '-DWITH_LTO=OFF ') +
-                    "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
-                cmake_extra,
-                'ninja -j' + jobs + ' -v package',
+                'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh'
             ] + extra_cmds,
         }
     ],
@@ -204,9 +193,9 @@ local mac_builder(name,
                 'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'ninja -j' + jobs + ' -v',
+                'VERBOSE=1 make -j' + jobs,
                 './test/testAll --use-colour yes',
             ] + extra_cmds,
         }
@@ -254,12 +243,12 @@ local mac_builder(name,
                     ],
                     jobs=4),
     // android apk builder
-    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=anrdoid ../contrib/ci/drone-static-upload.sh']),
-    
+    apk_builder("android apk", "registry.oxen.rocks/lokinet-ci-android", extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
+
     // Windows builds (x64)
     windows_cross_pipeline("Windows (amd64)", docker_base+'debian-win32-cross',
         toolchain='64', extra_cmds=[
-          '../contrib/ci/drone-static-upload.sh'
+          './contrib/ci/drone-static-upload.sh'
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:

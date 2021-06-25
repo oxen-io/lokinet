@@ -367,9 +367,15 @@ namespace llarp
                 AuthResult result) {
               if (result.code == AuthResultCode::eAuthAccepted)
               {
-                handler->PutSenderFor(msg->tag, msg->sender, true);
-                handler->PutIntroFor(msg->tag, msg->introReply);
-                handler->PutReplyIntroFor(msg->tag, fromIntro);
+                if (handler->WantsOutboundSession(msg->sender.Addr()))
+                {
+                  handler->PutSenderFor(msg->tag, msg->sender, false);
+                }
+                else
+                {
+                  handler->PutSenderFor(msg->tag, msg->sender, true);
+                }
+                handler->PutReplyIntroFor(msg->tag, msg->introReply);
                 handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
                 handler->SendAuthResult(path, from, msg->tag, result);
                 LogInfo("auth okay for T=", msg->tag, " from ", msg->sender.Addr());

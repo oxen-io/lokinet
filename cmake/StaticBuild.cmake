@@ -170,6 +170,13 @@ if(APPLE)
 endif()
 
 
+if("${CMAKE_GENERATOR}" STREQUAL "Unix Makefiles")
+  set(_make $(MAKE))
+else()
+  set(_make make)
+endif()
+
+
 # Builds a target; takes the target name (e.g. "readline") and builds it in an external project with
 # target name suffixed with `_external`.  Its upper-case value is used to get the download details
 # (from the variables set above).  The following options are supported and passed through to
@@ -178,8 +185,8 @@ set(build_def_DEPENDS "")
 set(build_def_PATCH_COMMAND "")
 set(build_def_CONFIGURE_COMMAND ./configure ${cross_host} --disable-shared --prefix=${DEPS_DESTDIR} --with-pic
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS}" "CXXFLAGS=${deps_CXXFLAGS}" ${cross_rc})
-set(build_def_BUILD_COMMAND make)
-set(build_def_INSTALL_COMMAND make install)
+set(build_def_BUILD_COMMAND ${_make})
+set(build_def_INSTALL_COMMAND ${_make} install)
 set(build_def_BUILD_BYPRODUCTS ${DEPS_DESTDIR}/lib/lib___TARGET___.a ${DEPS_DESTDIR}/include/___TARGET___.h)
 
 function(build_external target)
@@ -247,7 +254,7 @@ build_external(openssl
     --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
-  INSTALL_COMMAND make install_sw
+  INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
     ${DEPS_DESTDIR}/include/openssl/ssl.h ${DEPS_DESTDIR}/include/openssl/crypto.h
@@ -383,7 +390,7 @@ foreach(curl_arch ${curl_arches})
     --without-zsh-functions-dir --without-fish-functions-dir
     "CC=${deps_cc}" "CFLAGS=${deps_noarch_CFLAGS}${cflags_extra}" ${curl_extra}
     BUILD_COMMAND true
-    INSTALL_COMMAND make -C lib install && make -C include install
+    INSTALL_COMMAND ${_make} -C lib install && ${_make} -C include install
     BUILD_BYPRODUCTS
       ${curl_prefix}/lib/libcurl.a
       ${curl_prefix}/include/curl/curl.h
