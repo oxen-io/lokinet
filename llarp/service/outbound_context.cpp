@@ -195,8 +195,16 @@ namespace llarp
     OutboundContext::HandlePathBuilt(path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
-      p->SetDataHandler(util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
-      p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
+      p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
+        if (auto ptr = self.lock())
+          return ptr->HandleHiddenServiceFrame(path, frame);
+        return false;
+      });
+      p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
+        if (auto ptr = self.lock())
+          return ptr->HandleDataDrop(path, id, seqno);
+        return false;
+      });
       if (markedBad)
       {
         // ignore new path if we are marked dead
