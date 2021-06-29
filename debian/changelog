@@ -1,3 +1,9 @@
+lokinet (0.9.4-2~ubuntu2010) groovy; urgency=medium
+
+  * Link to jemalloc for better memory usage
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Jun 2021 16:11:22 -0300
+
 lokinet (0.9.4-1~ubuntu2010) groovy; urgency=medium
 
   [ Jeff Becker ]
