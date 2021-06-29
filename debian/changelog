@@ -1,3 +1,9 @@
+lokinet (0.9.4-2) unstable; urgency=medium
+
+  * Link to jemalloc for better memory usage
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Jun 2021 16:07:15 -0300
+
 lokinet (0.9.4-1) unstable; urgency=medium
 
   [ Jeff Becker ]
