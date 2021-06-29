@@ -1,0 +1,33 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 29 Jun 2021 16:00:14 -0300
+Subject: Link to jemalloc for better memory usage
+
+---
+ CMakeLists.txt | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 475590b..7edb136 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -305,6 +305,20 @@ endif()
+ add_subdirectory(external)
+ include_directories(SYSTEM external/sqlite_orm/include)
+ 
++option(USE_JEMALLOC "Link to jemalloc for memory allocations, if found" ON)
++if(USE_JEMALLOC AND NOT STATIC_LINK)
++  pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
++  if(JEMALLOC_FOUND)
++    message(STATUS "Found jemalloc ${JEMALLOC_VERSION}")
++    target_link_libraries(base_libs INTERFACE PkgConfig::JEMALLOC)
++  else()
++    message(STATUS "jemalloc not found, not linking to jemalloc")
++  endif()
++else()
++  message(STATUS "jemalloc support disabled")
++endif()
++
++
+ if(ANDROID)
+   target_link_libraries(base_libs INTERFACE log)
+   target_compile_definitions(base_libs INTERFACE ANDROID)
