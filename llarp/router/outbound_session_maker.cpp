@@ -80,6 +80,14 @@ namespace llarp
 
     CreatePendingSession(router);
 
+    // short-circuit to success callback if we already have an outbound session
+    // to the remote
+    if (_linkManager->HasOutboundSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+      return;
+    }
+
     LogDebug("Creating session establish attempt to ", router, " .");
 
     auto fn = util::memFn(&OutboundSessionMaker::OnRouterContactResult, this);
@@ -102,6 +110,14 @@ namespace llarp
     {
       LogDebug("Creating session establish attempt to ", rc.pubkey, " .");
       CreatePendingSession(rc.pubkey);
+    }
+
+    // short-circuit to success callback if we already have an outbound session
+    // to the remote
+    if (_linkManager->HasOutboundSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+      return;
     }
 
     GotRouterContact(rc.pubkey, rc);
