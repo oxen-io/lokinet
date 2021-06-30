@@ -244,10 +244,6 @@ namespace llarp
     {
       _loop->call([this, router] { DoEstablish(router); });
     }
-    else if (_linkManager->HasSessionTo(router))
-    {
-      FinalizeRequest(router, SessionResult::Establish);
-    }
     else
     {
       FinalizeRequest(router, SessionResult::NoLink);
@@ -259,7 +255,7 @@ namespace llarp
   {
     if (router == us or not _rcLookup->SessionIsAllowed(router))
       return false;
-    if (_linkManager->HasSessionTo(router))
+    if (_linkManager->HasOutboundSessionTo(router))
       return false;
     if (_router->IsServiceNode())
       return true;
