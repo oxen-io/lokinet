@@ -8,6 +8,7 @@ add_library(lokinet-util
   util/fs.cpp
   util/json.cpp
   util/logging/android_logger.cpp
+  util/logging/apple_logger.mm
   util/logging/buffer.cpp
   util/logging/file_logger.cpp
   util/logging/json_logger.cpp
@@ -36,6 +37,11 @@ target_link_libraries(lokinet-util PUBLIC
   date::date
   oxenmq::oxenmq
 )
+
+if(APPLE)
+  find_library(FOUNDATION Foundation REQUIRED)
+  target_link_libraries(lokinet-util PUBLIC ${FOUNDATION})
+endif()
 
 if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
@@ -263,6 +269,7 @@ if(BUILD_LIBLOKINET)
 endif()
 
 if(APPLE)
+  # god made apple so that man may suffer
   find_library(NETEXT NetworkExtension REQUIRED)
   find_library(COREFOUNDATION CoreFoundation REQUIRED)
   
@@ -276,15 +283,18 @@ if(APPLE)
     ${COREFOUNDATION}
     ${NETEXT})
 
+  configure_file(${CMAKE_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist.in
+    ${CMAKE_CURRENT_BINARY_DIR}/LokinetExtension.Info.plist)
+  
   set_target_properties(lokinet-extension PROPERTIES
     FRAMEWORK TRUE
-    FRAMEWORK_VERSION CXX
-    MACOSX_FRAMEWORK_IDENTIFIER org.lokinet.NetworkExtension
-    MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist
+    FRAMEWORK_VERSION ${lokinet_VERSION}
+    MACOSX_FRAMEWORK_IDENTIFIER com.loki-project.lokinet.network-extension
+    MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/LokinetExtension.Info.plist
     # "current version" in semantic format in Mach-O binary file
-    VERSION 16.4.0
+    VERSION ${lokinet_VERSION}
     # "compatibility version" in semantic format in Mach-O binary file
-    SOVERSION 1.0.0
+    SOVERSION ${lokinet_VERSION}
     PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/include/lokinet-extension.hpp)
   
 endif()

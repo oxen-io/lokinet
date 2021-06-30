@@ -1,52 +1,70 @@
-// AppDelegateExtension.swift
-
+import AppKit
 import Foundation
 import LokinetExtension
 import NetworkExtension
 
-class LokinetMain: NSObject {
-    var vpnManager = NETunnelProviderManager()
+let app = NSApplication.shared
 
-    let lokinetComponent = "org.lokinet.NetworkExtension"
+class LokinetMain: NSObject, NSApplicationDelegate {
+    var vpnManager = NETunnelProviderManager()
+    let lokinetComponent = "com.loki-project.lokinet.network-extension"
     var lokinetAdminTimer: DispatchSourceTimer?
 
-    func runMain() {
-        print("Starting up lokinet")
-        NETunnelProviderManager.loadAllFromPreferences { (savedManagers: [NETunnelProviderManager]?, error: Error?) in
+    func applicationDidFinishLaunching(_: Notification) {
+        setupVPNJizz()
+    }
+
+    func bail() {
+        app.terminate(self)
+    }
+
+    func setupVPNJizz() {
+        NSLog("Starting up lokinet")
+        NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
             if let error = error {
-                print(error)
+                NSLog(error.localizedDescription)
+                bail()
             }
 
             if let savedManagers = savedManagers {
                 for manager in savedManagers {
                     if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.lokinetComponent {
-                        print("Found saved VPN Manager")
+                        NSLog("%@", manager)
+                        NSLog("Found saved VPN Manager")
                         self.vpnManager = manager
                     }
                 }
             }
             let providerProtocol = NETunnelProviderProtocol()
-            providerProtocol.serverAddress = "lokinet"
+            providerProtocol.serverAddress = ""
+            providerProtocol.username = "anonymous"
             providerProtocol.providerBundleIdentifier = self.lokinetComponent
+            providerProtocol.includeAllNetworks = true
             self.vpnManager.protocolConfiguration = providerProtocol
             self.vpnManager.isEnabled = true
+            self.vpnManager.isOnDemandEnabled = true
             self.vpnManager.saveToPreferences(completionHandler: { error -> Void in
                 if error != nil {
-                    print("Error saving to preferences")
+                    NSLog("Error saving to preferences")
+                    NSLog(error!.localizedDescription)
+                    bail()
                 } else {
-                    print("saved...")
                     self.vpnManager.loadFromPreferences(completionHandler: { error in
                         if error != nil {
-                            print("Error loading from preferences")
+                            NSLog("Error loading from preferences")
+                            NSLog(error!.localizedDescription)
+                            bail()
                         } else {
                             do {
-                                print("Trying to start")
+                                NSLog("Trying to start")
                                 self.initializeConnectionObserver()
                                 try self.vpnManager.connection.startVPNTunnel()
                             } catch let error as NSError {
-                                print(error)
+                                NSLog(error.localizedDescription)
+                                bail()
                             } catch {
-                                print("There was a fatal error")
+                                NSLog("There was a fatal error")
+                                bail()
                             }
                         }
                     })
@@ -57,21 +75,21 @@ class LokinetMain: NSObject {
 
     func initializeConnectionObserver() {
         NotificationCenter.default.addObserver(forName: NSNotification.Name.NEVPNStatusDidChange, object: vpnManager.connection, queue: OperationQueue.main) { _ -> Void in
-
             if self.vpnManager.connection.status == .invalid {
-                print("VPN configuration is invalid")
+                NSLog("VPN configuration is invalid")
             } else if self.vpnManager.connection.status == .disconnected {
-                print("VPN is disconnected.")
+                NSLog("VPN is disconnected.")
             } else if self.vpnManager.connection.status == .connecting {
-                print("VPN is connecting...")
+                NSLog("VPN is connecting...")
             } else if self.vpnManager.connection.status == .reasserting {
-                print("VPN is reasserting...")
+                NSLog("VPN is reasserting...")
             } else if self.vpnManager.connection.status == .disconnecting {
-                print("VPN is disconnecting...")
+                NSLog("VPN is disconnecting...")
             }
         }
     }
 }
 
-let lokinet = LokinetMain()
-lokinet.runMain()
+let delegate = LokinetMain()
+app.delegate = delegate
+app.run()

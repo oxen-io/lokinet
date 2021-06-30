@@ -62,7 +62,7 @@ alternatively you can build from source, make sure you have cmake, libuv and xco
 
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
-    $ ./contrib/mac.sh -DCODESIGN_KEY='insert your key identity here'
+    $ ./contrib/mac.sh -DCODESIGN_KEY='insert your key identity here' -DCODESIGN_TEAM_ID='team id here'
 
 ### Windows
 

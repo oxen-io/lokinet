@@ -1,4 +1,0 @@
-
-module Lokinet {
-    header "lokinet-extension.hpp"
-}

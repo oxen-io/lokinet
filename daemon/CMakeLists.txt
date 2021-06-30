@@ -1,19 +1,17 @@
 if(APPLE)
-  option(WITH_SWIFT "use swift" ON)
-  if(WITH_SWIFT)
-    add_executable(lokinet lokinet.swift)
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Lokinet.modulemap.in ${CMAKE_CURRENT_BINARY_DIR}/swift/LokinetExtension/module.modulemap ESCAPE_QUOTES @ONLY)
-    target_include_directories(lokinet PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/swift)
-  else()
-    add_executable(lokinet lokinet.mm)
-  endif()
+  set(LOKINET_SWIFT_SOURCES lokinet.swift)
+  add_executable(lokinet ${LOKINET_SWIFT_SOURCES})
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Lokinet.modulemap.in ${CMAKE_CURRENT_BINARY_DIR}/swift/LokinetExtension/module.modulemap ESCAPE_QUOTES @ONLY)
+  target_include_directories(lokinet PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/swift)
   target_link_libraries(lokinet PUBLIC lokinet-extension)
+  add_executable(lokinet-old lokinet.cpp)
+  enable_lto(lokinet-old)
 else()
   add_executable(lokinet lokinet.cpp)
+  add_executable(lokinet-vpn lokinet-vpn.cpp)
+  add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+  enable_lto(lokinet lokinet-vpn lokinet-bootstrap)
 endif()
-add_executable(lokinet-vpn lokinet-vpn.cpp)
-add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
-enable_lto(lokinet lokinet-vpn lokinet-bootstrap)
 
 if(TRACY_ROOT)
   target_sources(lokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
@@ -35,16 +33,19 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
-if(NOT WIN32)
-  find_package(OpenSSL REQUIRED)
-  # because debian sid's curl doesn't link against openssl for some godawful cursed reason
-  target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+if(NOT APPLE)
+  target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
+  if(NOT WIN32)
+    find_package(OpenSSL REQUIRED)
+    # because debian sid's curl doesn't link against openssl for some godawful cursed reason
+    target_link_libraries(lokinet-bootstrap PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+  endif()
 endif()
 
-set(exetargets lokinet-vpn lokinet-bootstrap)
-if(NOT APPLE)
-  set(exetargets lokinet ${exes})
+if(APPLE)
+  set(exetargets lokinet-old lokinet)
+else()
+  set(exetargets lokinet lokinet-vpn lokinet-bootstrap)
 endif()
 
 foreach(exe ${exetargets})
@@ -55,11 +56,11 @@ foreach(exe ${exetargets})
   elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     target_link_directories(${exe} PRIVATE /usr/local/lib)
   endif()
-  target_link_libraries(${exe} PRIVATE liblokinet)
+  target_link_libraries(${exe} PUBLIC liblokinet)
   if(WITH_JEMALLOC)
     target_link_libraries(${exe} PUBLIC jemalloc)
   endif()
-  target_include_directories(${exe} PRIVATE ${CMAKE_SOURCE_DIR})
+  target_include_directories(${exe} PUBLIC "${PROJECT_SOURCE_DIR}")
   target_compile_definitions(${exe} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
   add_log_tag(${exe})
   if(should_install)
@@ -87,18 +88,23 @@ if(APPLE)
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_STRING "Lokinet IP Packet Onion Router"
     MACOSX_BUNDLE_BUNDLE_NAME "Lokinet"
-    MACOSX_BUNDLE_BUNDLE_VERSION "${lokinet_VERSION_MAJOR}.${lokinet_VERSION_MINOR}.${lokinet_VERSION_PATCH}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${LOKINET_VERSION}"
     MACOSX_BUNDLE_LONG_VERSION_STRING "${lokinet_VERSION}.$lokinet_VERSION_MINOR}"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${lokinet_VERSION_MAJOR}.${lokinet_VERSION_MINOR}"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "org.lokinet.lokinet"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.loki-project.lokinet"
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/contrib/macos/Info.plist"
     MACOSX_BUNDLE_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns"
     MACOSX_BUNDLE_COPYRIGHT "© 2021, The Loki Project")
   option(CODESIGN_KEY "codesign all the shit with this key" OFF)
-  if (CODESIGN_KEY)
+  if (CODESIGN_KEY AND CODESIGN_TEAM_ID)
     message(STATUS "codesigning with ${CODESIGN_KEY}")
-    set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/Lokinet.app")
-    set(SIGN_ENTITLEMENTS "${CMAKE_SOURCE_DIR}/contrib/macos/lokinet.entitlements.plist")
+    set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/Lokinet.app")    
+    configure_file("${CMAKE_SOURCE_DIR}/contrib/macos/lokinet.entitlements.plist.in"
+      "${CMAKE_BINARY_DIR}/lokinet.entitlements.plist")    
+    configure_file("${CMAKE_SOURCE_DIR}/contrib/macos/lokinet-extension.entitlements.plist.in"
+      "${CMAKE_BINARY_DIR}/lokinet-extension.entitlements.plist")
+    set(LOKINET_ENTITLEMENTS "${CMAKE_BINARY_DIR}/lokinet.entitlements.plist")
+    set(NETEXT_ENTITLEMENTS "${CMAKE_BINARY_DIR}/lokinet-extension.entitlements.plist")
     configure_file(
       "${PROJECT_SOURCE_DIR}/contrib/macos/sign.sh.in"
       "${CMAKE_BINARY_DIR}/sign.sh")

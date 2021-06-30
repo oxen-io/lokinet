@@ -9,7 +9,7 @@
     <key>CFBundleExecutable</key>
     <string>MacOS/lokinet</string>
     <key>CFBundleIdentifier</key>
-    <string>org.lokinet.Daemon</string>
+    <string>com.loki-project.lokinet</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
