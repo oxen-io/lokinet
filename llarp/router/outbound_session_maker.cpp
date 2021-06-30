@@ -80,6 +80,14 @@ namespace llarp
 
     CreatePendingSession(router);
 
+    // short-circuit to success callback if we already have an outbound session
+    // to the remote
+    if (_linkManager->HasOutboundSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+      return;
+    }
+
     LogDebug("Creating session establish attempt to ", router, " .");
 
     auto fn = util::memFn(&OutboundSessionMaker::OnRouterContactResult, this);
@@ -90,21 +98,31 @@ namespace llarp
   void
   OutboundSessionMaker::CreateSessionTo(const RouterContact& rc, RouterCallback on_result)
   {
+    const RouterID router{rc.pubkey};
+
     if (on_result)
     {
       util::Lock l(_mutex);
 
-      auto itr_pair = pendingCallbacks.emplace(rc.pubkey, CallbacksQueue{});
+      auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
       itr_pair.first->second.push_back(on_result);
     }
 
-    if (not HavePendingSessionTo(rc.pubkey))
+    if (not HavePendingSessionTo(router))
     {
-      LogDebug("Creating session establish attempt to ", rc.pubkey, " .");
-      CreatePendingSession(rc.pubkey);
+      LogDebug("Creating session establish attempt to ", router);
+      CreatePendingSession(router);
     }
 
-    GotRouterContact(rc.pubkey, rc);
+    // short-circuit to success callback if we already have an outbound session
+    // to the remote
+    if (_linkManager->HasOutboundSessionTo(router))
+    {
+      FinalizeRequest(router, SessionResult::Establish);
+      return;
+    }
+
+    GotRouterContact(router, rc);
   }
 
   bool
