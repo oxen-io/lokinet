@@ -98,18 +98,20 @@ namespace llarp
   void
   OutboundSessionMaker::CreateSessionTo(const RouterContact& rc, RouterCallback on_result)
   {
+    const RouterID router{rc.pubkey};
+
     if (on_result)
     {
       util::Lock l(_mutex);
 
-      auto itr_pair = pendingCallbacks.emplace(rc.pubkey, CallbacksQueue{});
+      auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
       itr_pair.first->second.push_back(on_result);
     }
 
-    if (not HavePendingSessionTo(rc.pubkey))
+    if (not HavePendingSessionTo(router))
     {
-      LogDebug("Creating session establish attempt to ", rc.pubkey, " .");
-      CreatePendingSession(rc.pubkey);
+      LogDebug("Creating session establish attempt to ", router);
+      CreatePendingSession(router);
     }
 
     // short-circuit to success callback if we already have an outbound session
@@ -120,7 +122,7 @@ namespace llarp
       return;
     }
 
-    GotRouterContact(rc.pubkey, rc);
+    GotRouterContact(router, rc);
   }
 
   bool
