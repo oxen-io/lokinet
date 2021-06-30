@@ -259,16 +259,18 @@ namespace llarp
   {
     if (router == us or not _rcLookup->SessionIsAllowed(router))
       return false;
+    if (_linkManager->HasSessionTo(router))
+      return false;
+    if (_router->IsServiceNode())
+      return true;
+
     size_t numPending = 0;
     {
       util::Lock lock(_mutex);
       if (pendingSessions.find(router) == pendingSessions.end())
         numPending += pendingSessions.size();
     }
-    if (_linkManager->HasOutboundSessionTo(router))
-      return false;
-    if (_router->IsServiceNode())
-      return true;
+
     return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
   }
 
