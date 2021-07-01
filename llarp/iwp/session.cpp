@@ -331,7 +331,9 @@ namespace llarp
       if (m_State == State::Ready || m_State == State::LinkIntro)
       {
         return now > m_LastRX
-            && now - m_LastRX > (m_Inbound ? DefaultLinkSessionLifetime : SessionAliveTimeout);
+            && now - m_LastRX
+            > (m_Inbound and not m_RemoteRC.IsPublicRouter() ? DefaultLinkSessionLifetime
+                                                             : SessionAliveTimeout);
       }
       return now - m_CreatedAt >= LinkLayerConnectTimeout;
     }
