@@ -35,10 +35,10 @@ namespace llarp
   OutboundSessionMaker::OnSessionEstablished(ILinkSession* session)
   {
     // TODO: do we want to keep it
-
+    const RouterContact rc = session->GetRemoteRC();
     const auto router = RouterID(session->GetPubKey());
     const bool isOutbound = not session->IsInbound();
-    const std::string remoteType = session->GetRemoteRC().IsPublicRouter() ? "router" : "client";
+    const std::string remoteType = rc.IsPublicRouter() ? "router" : "client";
     LogInfo(
         "session with ", remoteType, " [", router, "] ", isOutbound ? "established" : "received");
 
@@ -48,9 +48,12 @@ namespace llarp
       return false;
     }
 
-    work([this, rc = session->GetRemoteRC()] { VerifyRC(rc); });
-
-    return true;
+    if (isOutbound)
+    {
+      work([this, rc] { VerifyRC(rc); });
+      return true;
+    }
+    return _rcLookup->CheckRC(rc);
   }
 
   void
@@ -204,12 +207,10 @@ namespace llarp
     }
 
     const auto& job = itr->second;
-    if (!job->link->TryEstablishTo(job->rc))
+    if (not job->link->TryEstablishTo(job->rc))
     {
-      // TODO: maybe different failure type?
-
       l.unlock();
-      FinalizeRequest(router, SessionResult::NoLink);
+      FinalizeRequest(router, SessionResult::EstablishFail);
     }
   }
 
@@ -229,7 +230,7 @@ namespace llarp
 
       LinkLayer_ptr link = _linkManager->GetCompatibleLink(rc);
 
-      if (!link)
+      if (not link)
       {
         l.unlock();
         FinalizeRequest(router, SessionResult::NoLink);

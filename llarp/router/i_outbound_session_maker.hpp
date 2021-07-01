@@ -17,7 +17,8 @@ namespace llarp
     Timeout,
     RouterNotFound,
     InvalidRouter,
-    NoLink
+    NoLink,
+    EstablishFail
   };
 
   inline std::ostream&
@@ -35,6 +36,8 @@ namespace llarp
         return out << "invalid router";
       case SessionResult::RouterNotFound:
         return out << "not found";
+      case SessionResult::EstablishFail:
+        return out << "establish failed";
     }
     return out;
   }
