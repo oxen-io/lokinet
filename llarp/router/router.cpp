@@ -674,14 +674,6 @@ namespace llarp
       hiddenServiceContext().AddEndpoint(conf);
     }
 
-    // peer stats
-    if (IsServiceNode())
-    {
-      LogInfo("Initializing peerdb...");
-      m_peerDb = std::make_shared<PeerDb>();
-      m_peerDb->configure(conf.router);
-    }
-
     // Logging config
     LogContext::Instance().Initialize(
         conf.logging.m_logLevel,
