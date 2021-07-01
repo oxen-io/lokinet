@@ -83,10 +83,6 @@ namespace llarp
   {
     if (_running)
     {
-      util::StatusObject peerStatsObj = nullptr;
-      if (m_peerDb)
-        peerStatsObj = m_peerDb->ExtractStatus();
-
       return util::StatusObject{
           {"running", true},
           {"numNodesKnown", _nodedb->NumLoaded()},
@@ -94,8 +90,7 @@ namespace llarp
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
           {"links", _linkManager.ExtractStatus()},
-          {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
-          {"peerStats", peerStatsObj}};
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
     else
     {
