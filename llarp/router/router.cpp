@@ -1220,7 +1220,8 @@ namespace llarp
                       router,
                       " (",
                       previous_fails + 1,
-                      " consecutive failures)");
+                      " consecutive failures) result=",
+                      result);
                 }
                 else
                 {
