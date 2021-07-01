@@ -34,6 +34,15 @@ namespace llarp::iwp
     return "iwp";
   }
 
+  std::string
+  LinkLayer::PrintableName() const
+  {
+    if (m_Inbound)
+      return "inbound iwp link";
+    else
+      return "outbound iwp link";
+  }
+
   uint16_t
   LinkLayer::Rank() const
   {
@@ -60,7 +69,7 @@ namespace llarp::iwp
     }
     else
     {
-      if(auto s_itr = m_AuthedLinks.find(itr->second); s_itr != m_AuthedLinks.end())
+      if (auto s_itr = m_AuthedLinks.find(itr->second); s_itr != m_AuthedLinks.end())
         session = s_itr->second;
     }
     if (session)
@@ -92,7 +101,7 @@ namespace llarp::iwp
   std::shared_ptr<ILinkSession>
   LinkLayer::NewOutboundSession(const RouterContact& rc, const AddressInfo& ai)
   {
-    if(m_Inbound)
+    if (m_Inbound)
       throw std::logic_error{"inbound link cannot make outbound sessions"};
     return std::make_shared<Session>(this, rc, ai);
   }

@@ -56,6 +56,9 @@ namespace llarp::iwp
     void
     AddWakeup(std::weak_ptr<Session> peer);
 
+    std::string
+    PrintableName() const;
+
    private:
     void
     HandleWakeupPlaintext();

@@ -91,6 +91,7 @@ namespace llarp
         LogError("ident key mismatch");
         return false;
       }
+
       m_RemoteRC = msg->rc;
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
       auto self = shared_from_this();
@@ -171,7 +172,7 @@ namespace llarp
         m_Parent->UnmapAddr(m_RemoteAddr);
       m_State = State::Closed;
       EncryptAndSend(std::move(close_msg));
-      LogInfo("closing connection to ", m_RemoteAddr);
+      LogInfo(m_Parent->PrintableName(), " closing connection to ", m_RemoteAddr);
     }
 
     bool
@@ -448,13 +449,15 @@ namespace llarp
     {
       if (not DecryptMessageInPlace(pkt))
       {
-        LogError("failed to decrypt session request from ", m_RemoteAddr);
+        LogError(
+            m_Parent->PrintableName(), " failed to decrypt session request from ", m_RemoteAddr);
         return;
       }
       if (pkt.size() < token.size() + PacketOverhead)
       {
         LogError(
-            "bad session request size, ",
+            m_Parent->PrintableName(),
+            " bad session request size, ",
             pkt.size(),
             " < ",
             token.size() + PacketOverhead,
@@ -465,7 +468,7 @@ namespace llarp
       const auto begin = pkt.data() + PacketOverhead;
       if (not std::equal(begin, begin + token.size(), token.data()))
       {
-        LogError("token mismatch from ", m_RemoteAddr);
+        LogError(m_Parent->PrintableName(), " token mismatch from ", m_RemoteAddr);
         return;
       }
       m_LastRX = m_Parent->Now();
@@ -478,7 +481,7 @@ namespace llarp
     {
       if (pkt.size() < (Introduction::SIZE + PacketOverhead))
       {
-        LogWarn("intro too small from ", m_RemoteAddr);
+        LogWarn(m_Parent->PrintableName(), " intro too small from ", m_RemoteAddr);
         return;
       }
       byte_t* ptr = pkt.data() + PacketOverhead;
@@ -495,7 +498,7 @@ namespace llarp
           pkt.data() + PacketOverhead, Introduction::SIZE - Signature::SIZE);
       if (!CryptoManager::instance()->verify(m_ExpectedIdent, verifybuf, Z))
       {
-        LogError("intro verify failed from ", m_RemoteAddr);
+        LogError(m_Parent->PrintableName(), " intro verify failed from ", m_RemoteAddr);
         return;
       }
       const PubKey pk = m_Parent->TransportSecretKey().toPublic();
@@ -529,7 +532,8 @@ namespace llarp
       if (pkt.size() < (token.size() + PacketOverhead))
       {
         LogError(
-            "bad intro ack size ",
+            m_Parent->PrintableName(),
+            " bad intro ack size ",
             pkt.size(),
             " < ",
             token.size() + PacketOverhead,
@@ -540,7 +544,7 @@ namespace llarp
       Packet_t reply(token.size() + PacketOverhead);
       if (not DecryptMessageInPlace(pkt))
       {
-        LogError("intro ack decrypt failed from ", m_RemoteAddr);
+        LogError(m_Parent->PrintableName(), " intro ack decrypt failed from ", m_RemoteAddr);
         return;
       }
       m_LastRX = m_Parent->Now();
@@ -575,7 +579,8 @@ namespace llarp
       if (H != expected)
       {
         LogError(
-            "keyed hash mismatch ",
+            m_Parent->PrintableName(),
+            " keyed hash mismatch ",
             H,
             " != ",
             expected,
