@@ -63,7 +63,7 @@ namespace llarp::iwp
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
     std::unordered_map<SockAddr, std::weak_ptr<Session>> m_PlaintextRecv;
     std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
-    const bool permitInbound;
+    const bool m_Inbound;
   };
 
   using LinkLayer_ptr = std::shared_ptr<LinkLayer>;

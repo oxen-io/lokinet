@@ -24,7 +24,7 @@ namespace llarp::iwp
           keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
       , m_Wakeup{ev->make_waker([this]() { HandleWakeupPlaintext(); })}
       , m_PlaintextRecv{1024}
-      , permitInbound{allowInbound}
+      , m_Inbound{allowInbound}
 
   {}
 
@@ -48,10 +48,10 @@ namespace llarp::iwp
     bool isNewSession = false;
     if (itr == m_AuthedAddrs.end())
     {
-      Lock_t lock(m_PendingMutex);
+      Lock_t lock{m_PendingMutex};
       if (m_Pending.count(from) == 0)
       {
-        if (not permitInbound)
+        if (not m_Inbound)
           return;
         isNewSession = true;
         m_Pending.insert({from, std::make_shared<Session>(this, from)});
@@ -60,14 +60,13 @@ namespace llarp::iwp
     }
     else
     {
-      Lock_t lock(m_AuthedLinksMutex);
-      auto range = m_AuthedLinks.equal_range(itr->second);
-      session = range.first->second;
+      if(auto s_itr = m_AuthedLinks.find(itr->second); s_itr != m_AuthedLinks.end())
+        session = s_itr->second;
     }
     if (session)
     {
       bool success = session->Recv_LL(std::move(pkt));
-      if (!success and isNewSession)
+      if (not success and isNewSession)
       {
         LogWarn("Brand new session failed; removing from pending sessions list");
         m_Pending.erase(m_Pending.find(from));
@@ -78,7 +77,7 @@ namespace llarp::iwp
   bool
   LinkLayer::MapAddr(const RouterID& r, ILinkSession* s)
   {
-    if (!ILinkLayer::MapAddr(r, s))
+    if (not ILinkLayer::MapAddr(r, s))
       return false;
     m_AuthedAddrs.emplace(s->GetRemoteEndpoint(), r);
     return true;
@@ -93,6 +92,8 @@ namespace llarp::iwp
   std::shared_ptr<ILinkSession>
   LinkLayer::NewOutboundSession(const RouterContact& rc, const AddressInfo& ai)
   {
+    if(m_Inbound)
+      throw std::logic_error{"inbound link cannot make outbound sessions"};
     return std::make_shared<Session>(this, rc, ai);
   }
 
