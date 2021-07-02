@@ -572,7 +572,7 @@ def main():
     )
     if args.introset_filter:
         mon.introset_filter = lambda x : re.match(args.introset_filter, x) is not None
-    if args.path_fiter:
+    if args.path_filter:
         mon.path_filter = lambda x :re.match(args.path_filter, x) is not None
     mon.run()
 
