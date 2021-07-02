@@ -88,7 +88,8 @@ def ip_to_flag(ip):
 class Monitor:
 
     _sample_size = 12
-    introset_filter = None
+    introset_filter = lambda x: True
+    path_filter = lambda x: True
 
     def __init__(self, url, introsetMode=False):
         self.txrate = 0
@@ -208,15 +209,18 @@ class Monitor:
         paths = status["paths"]
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
-            y_pos = self._render_path(y_pos, path, "inbound")
+            if self.path_filter('inbound'):
+                y_pos = self._render_path(y_pos, path, "inbound")
         for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
-                y_pos = self._render_path(
-                    y_pos, path, "[active] {}".format(session["currentConvoTag"])
-                )
+                if self.path_filter(session["remoteIdentity"]):
+                    y_pos = self._render_path(
+                        y_pos, path, "[active] {}".format(session["currentConvoTag"])
+                    )
         for session in (status["snodeSessions"] or []):
             for path in session["paths"]:
-                y_pos = self._render_path(y_pos, path, "[snode]")
+                if self.path_filter(session["endpoint"]):
+                    y_pos = self._render_path(y_pos, path, "[snode]")
         return y_pos
 
     def display_links(self, y_pos, data):
@@ -558,15 +562,18 @@ def main():
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
     ap.add_argument('--introset-filter', default=None, type=str, help="while in introset inspection mode filter results by regex")
 
+    ap.add_argument('--path-filter', default=None, type=str, help="regex to filter out paths")
+
     args = ap.parse_args()
 
     mon = Monitor(
         args.url,
         args.introset
     )
-    mon.introset_filter = lambda x : True
     if args.introset_filter:
         mon.introset_filter = lambda x : re.match(args.introset_filter, x) is not None
+    if args.path_fiter:
+        mon.path_filter = lambda x :re.match(args.path_filter, x) is not None
     mon.run()
 
 if __name__ == "__main__":
