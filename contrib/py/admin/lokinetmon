@@ -88,8 +88,7 @@ def ip_to_flag(ip):
 class Monitor:
 
     _sample_size = 12
-    introset_filter = lambda x : True
-    path_filter = lambda x : True
+    filter = lambda x : True
 
     def __init__(self, url, introsetMode=False):
         self.txrate = 0
@@ -209,17 +208,17 @@ class Monitor:
         paths = status["paths"]
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
-            if self.path_filter('localhost.loki'):
+            if self.filter('localhost.loki'):
                 y_pos = self._render_path(y_pos, path, "localhost.loki")
         for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
-                if self.path_filter(session["remoteIdentity"]):
+                if self.filter(session["remoteIdentity"]):
                     y_pos = self._render_path(
                         y_pos, path, "[active] {}".format(session["currentConvoTag"])
                     )
         for session in (status["snodeSessions"] or []):
             for path in session["paths"]:
-                if self.path_filter(session["endpoint"]):
+                if self.filter(session["endpoint"]):
                     y_pos = self._render_path(y_pos, path, "[snode]")
         return y_pos
 
@@ -418,13 +417,13 @@ class Monitor:
         """
         y_pos += 1
         self.win.move(y_pos, 1)
-        if self.introset_filter("localhost.loki"):
+        if self.filter("localhost.loki"):
             self.win.addstr("localhost.loki")
             y_pos = self._display_our_introset(y_pos, service)
             y_pos += 1
         remotes = service['remoteSessions'] or []
         for session in remotes:
-            if self.introset_filter(session['remoteIdentity']):
+            if self.filter(session['remoteIdentity']):
                 y_pos = self._display_session_introset(y_pos, session)
 
     def _display_intro(self, y_pos, intro, label, paths):
@@ -560,9 +559,7 @@ def main():
 
     ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
-    ap.add_argument('--introset-filter', default='.+', type=str, help="while in introset inspection mode filter results by regex")
-
-    ap.add_argument('--path-filter', default='.+', type=str, help="regex to filter out paths")
+    ap.add_argument('--filter', default='.+', type=str, help="regex to filter entries")
 
     args = ap.parse_args()
 
@@ -571,8 +568,7 @@ def main():
         args.introset
     )
 
-    mon.introset_filter = lambda x : re.match(args.introset_filter, x) is not None
-    mon.path_filter = lambda x : re.match(args.path_filter, x) is not None
+    mon.filter = lambda x : re.match(args.filter, x) is not None
     mon.run()
 
 if __name__ == "__main__":
