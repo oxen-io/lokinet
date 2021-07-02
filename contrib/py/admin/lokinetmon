@@ -88,8 +88,8 @@ def ip_to_flag(ip):
 class Monitor:
 
     _sample_size = 12
-    introset_filter = lambda x: True
-    path_filter = lambda x: True
+    introset_filter = lambda x : True
+    path_filter = lambda x : True
 
     def __init__(self, url, introsetMode=False):
         self.txrate = 0
@@ -148,7 +148,7 @@ class Monitor:
             self.win.addstr(" {} ->".format(hopstr))
 
         self.win.addstr(" [{} ms latency]".format(path["intro"]["latency"]))
-        self.win.addstr(" [{} until expire]".format(self.time_to(path["expiresAt"])))
+        self.win.addstr(" [expires: {}]".format(self.time_to(path["expiresAt"])))
         if path["expiresSoon"]:
             self.win.addstr("(expiring)")
         elif path["expired"]:
@@ -560,9 +560,9 @@ def main():
 
     ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
-    ap.add_argument('--introset-filter', default=None, type=str, help="while in introset inspection mode filter results by regex")
+    ap.add_argument('--introset-filter', default='.+', type=str, help="while in introset inspection mode filter results by regex")
 
-    ap.add_argument('--path-filter', default=None, type=str, help="regex to filter out paths")
+    ap.add_argument('--path-filter', default='.+', type=str, help="regex to filter out paths")
 
     args = ap.parse_args()
 
@@ -570,10 +570,9 @@ def main():
         args.url,
         args.introset
     )
-    if args.introset_filter:
-        mon.introset_filter = lambda x : re.match(args.introset_filter, x) is not None
-    if args.path_filter:
-        mon.path_filter = lambda x :re.match(args.path_filter, x) is not None
+
+    mon.introset_filter = lambda x : re.match(args.introset_filter, x) is not None
+    mon.path_filter = lambda x : re.match(args.path_filter, x) is not None
     mon.run()
 
 if __name__ == "__main__":
