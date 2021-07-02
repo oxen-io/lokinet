@@ -209,8 +209,8 @@ class Monitor:
         paths = status["paths"]
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
-            if self.path_filter('inbound'):
-                y_pos = self._render_path(y_pos, path, "inbound")
+            if self.path_filter('localhost.loki'):
+                y_pos = self._render_path(y_pos, path, "localhost.loki")
         for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
                 if self.path_filter(session["remoteIdentity"]):
