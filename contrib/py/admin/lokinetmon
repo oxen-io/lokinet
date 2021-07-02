@@ -166,7 +166,7 @@ class Monitor:
             if val < 0:
                 return "{:.2f} {} ago".format(0-val, unit)
             else:
-                return "{:.2f} {}".format(val, unit)
+                return "in {:.2f} {}".format(val, unit)
         else:
             return 'never'
 
