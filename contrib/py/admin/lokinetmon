@@ -560,6 +560,7 @@ def main():
     ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
     ap.add_argument('--filter', default='.+', type=str, help="regex to filter entries")
+    ap.add_argument('--invert-filter', const=True, default=False, action='store_const', help='invert regex filter matching')
 
     args = ap.parse_args()
 
@@ -567,8 +568,10 @@ def main():
         args.url,
         args.introset
     )
-
     mon.filter = lambda x : re.match(args.filter, x) is not None
+    if args.invert_filter:
+        old_filter = mon.filter
+        mon.filter = lambda x : not old_filter(x)
     mon.run()
 
 if __name__ == "__main__":
