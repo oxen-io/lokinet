@@ -470,7 +470,7 @@ class Monitor:
         #print(context.keys())
         y_pos += 1
         self.win.move(y_pos, 1)
-        readyState = context['readyToSend'] and '✔️' or '❌'
+        readyState = context['readyToSend'] and '️✅' or '❌'
         self.win.addstr('{} ({}) [{}]'.format(context['remoteIdentity'], context['currentConvoTag'], readyState))
         y_pos += 1
         self.win.move(y_pos, 1)
