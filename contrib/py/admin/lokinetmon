@@ -156,13 +156,17 @@ class Monitor:
 
     @staticmethod
     def time_to(timestamp):
-        """ return time until timestamp in seconds formatted"""
+        """ return time until timestamp formatted"""
         if timestamp:
+            unit = 'seconds'
             val = (timestamp - now()) / 1000.0
+            if abs(val) > 60.0:
+                val /= 60.0
+                unit = 'minutes'
             if val < 0:
-                return "{} seconds ago".format(0-val)
+                return "{:.2f} {} ago".format(0-val, unit)
             else:
-                return "{} seconds".format(val)
+                return "{:.2f} {}".format(val, unit)
         else:
             return 'never'
 
@@ -423,7 +427,7 @@ class Monitor:
         y_pos += 1
         self.win.move(y_pos, 1)
         path = 'path' in intro and intro['path'][:4] or '????'
-        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
+        self.win.addstr('{}: ({}|{}) [expires: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
         return y_pos
 
     @staticmethod
@@ -464,6 +468,9 @@ class Monitor:
         self.win.move(y_pos, 1)
         readyState = context['readyToSend'] and '✔️' or '❌'
         self.win.addstr('{} ({}) [{}]'.format(context['remoteIdentity'], context['currentConvoTag'], readyState))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('created: {}'.format(self.time_to(context['sessionCreatedAt'])))
         y_pos += 1
         self.win.move(y_pos, 1)
         self.win.addstr('last good send: {}'.format(self.time_to(context['lastGoodSend'])))
