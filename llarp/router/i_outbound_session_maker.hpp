@@ -39,7 +39,7 @@ namespace llarp
       case SessionResult::EstablishFail:
         return out << "establish failed";
     }
-    return out;
+    return out << "???";
   }
 
   using RouterCallback = std::function<void(const RouterID&, const SessionResult)>;

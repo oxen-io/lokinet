@@ -154,8 +154,8 @@ namespace llarp
       case SessionResult::NoLink:
         return SendStatus::NoLink;
     }
-    // fall through case to appease compiler
-    return SendStatus::Congestion;
+    throw std::invalid_argument{
+        stringify("SessionResult ", result, " has no corrispoding SendStatus when transforming")};
   }
 
   void
