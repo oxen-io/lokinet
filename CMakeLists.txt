@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.9.4
+    VERSION 0.9.5
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
