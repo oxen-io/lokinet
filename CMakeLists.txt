@@ -141,7 +141,7 @@ if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
   target_link_libraries(libuv INTERFACE PkgConfig::LIBUV)
 else()
   if(NOT BUILD_STATIC_DEPS)
-    message(FATAL_ERROR "Could not find libu >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
+    message(FATAL_ERROR "Could not find libuv >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
   endif()
 endif()
 
