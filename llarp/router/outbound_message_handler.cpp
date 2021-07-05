@@ -137,7 +137,7 @@ namespace llarp
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
 
-  constexpr SendStatus
+  static inline SendStatus
   ToSendStatus(const SessionResult result)
   {
     switch (result)
