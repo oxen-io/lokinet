@@ -12,8 +12,6 @@ static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
-  static constexpr size_t MaxSessionsPerKey = 16;
-
   ILinkLayer::ILinkLayer(
       std::shared_ptr<KeyManager> keyManager,
       GetRCFunc getrc,
@@ -241,7 +239,7 @@ namespace llarp
     auto itr = m_Pending.find(addr);
     if (itr != m_Pending.end())
     {
-      if (m_AuthedLinks.count(pk) > MaxSessionsPerKey)
+      if (m_AuthedLinks.count(pk))
       {
         LogWarn("too many session for ", pk);
         s->Close();
@@ -303,21 +301,24 @@ namespace llarp
   {
     {
       Lock_t l(m_AuthedLinksMutex);
-      if (m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
+      if (m_AuthedLinks.count(rc.pubkey))
       {
-        LogDebug("Too many links to ", RouterID{rc.pubkey}, ", not establishing another one");
+        LogWarn("Too many links to ", RouterID{rc.pubkey}, ", not establishing another one");
         return false;
       }
     }
     llarp::AddressInfo to;
-    if (!PickAddress(rc, to))
+    if (not PickAddress(rc, to))
+    {
+      LogWarn("router ", RouterID{rc.pubkey}, " has no acceptable inbound addresses");
       return false;
+    }
     const SockAddr address{to};
     {
       Lock_t l(m_PendingMutex);
-      if (m_Pending.count(address) >= MaxSessionsPerKey)
+      if (m_Pending.count(address))
       {
-        LogDebug(
+        LogWarn(
             "Too many pending connections to ",
             address,
             " while establishing to ",
@@ -331,12 +332,12 @@ namespace llarp
     {
       BeforeConnect(std::move(rc));
     }
-    if (PutSession(s))
+    if (not PutSession(s))
     {
-      s->Start();
-      return true;
+      return false;
     }
-    return false;
+    s->Start();
+    return true;
   }
 
   bool

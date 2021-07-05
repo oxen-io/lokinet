@@ -46,6 +46,7 @@ namespace llarp
       obj["lastExitUse"] = to_json(m_LastUse);
       auto pub = m_ExitIdentity.toPublic();
       obj["exitIdentity"] = pub.ToString();
+      obj["endpoint"] = m_ExitRouter.ToString();
       return obj;
     }
 

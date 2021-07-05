@@ -137,61 +137,31 @@ namespace llarp
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
 
-  void
-  OutboundMessageHandler::OnSessionEstablished(const RouterID& router)
+  static inline SendStatus
+  ToSendStatus(const SessionResult result)
   {
-    FinalizeSessionRequest(router, SendStatus::Success);
-  }
-
-  void
-  OutboundMessageHandler::OnConnectTimeout(const RouterID& router)
-  {
-    FinalizeSessionRequest(router, SendStatus::Timeout);
-  }
-
-  void
-  OutboundMessageHandler::OnRouterNotFound(const RouterID& router)
-  {
-    FinalizeSessionRequest(router, SendStatus::RouterNotFound);
-  }
-
-  void
-  OutboundMessageHandler::OnInvalidRouter(const RouterID& router)
-  {
-    FinalizeSessionRequest(router, SendStatus::InvalidRouter);
-  }
-
-  void
-  OutboundMessageHandler::OnNoLink(const RouterID& router)
-  {
-    FinalizeSessionRequest(router, SendStatus::NoLink);
+    switch (result)
+    {
+      case SessionResult::Establish:
+        return SendStatus::Success;
+      case SessionResult::Timeout:
+      case SessionResult::EstablishFail:
+        return SendStatus::Timeout;
+      case SessionResult::RouterNotFound:
+        return SendStatus::RouterNotFound;
+      case SessionResult::InvalidRouter:
+        return SendStatus::InvalidRouter;
+      case SessionResult::NoLink:
+        return SendStatus::NoLink;
+    }
+    throw std::invalid_argument{
+        stringify("SessionResult ", result, " has no corrispoding SendStatus when transforming")};
   }
 
   void
   OutboundMessageHandler::OnSessionResult(const RouterID& router, const SessionResult result)
   {
-    switch (result)
-    {
-      case SessionResult::Establish:
-        OnSessionEstablished(router);
-        break;
-      case SessionResult::Timeout:
-        OnConnectTimeout(router);
-        break;
-      case SessionResult::RouterNotFound:
-        OnRouterNotFound(router);
-        break;
-      case SessionResult::InvalidRouter:
-        OnInvalidRouter(router);
-        break;
-      case SessionResult::NoLink:
-        OnNoLink(router);
-        break;
-      default:
-        LogError("Impossible situation: enum class value out of bounds.");
-        std::abort();
-        break;
-    }
+    FinalizeSessionRequest(router, ToSendStatus(result));
   }
 
   void
