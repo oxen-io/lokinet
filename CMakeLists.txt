@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(lokinet
-    VERSION 0.9.4
+    VERSION 0.9.5
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -141,7 +141,7 @@ if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
   target_link_libraries(libuv INTERFACE PkgConfig::LIBUV)
 else()
   if(NOT BUILD_STATIC_DEPS)
-    message(FATAL_ERROR "Could not find libu >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
+    message(FATAL_ERROR "Could not find libuv >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
   endif()
 endif()
 
@@ -301,6 +301,19 @@ endif()
 
 add_subdirectory(external)
 include_directories(SYSTEM external/sqlite_orm/include)
+
+option(USE_JEMALLOC "Link to jemalloc for memory allocations, if found" ON)
+if(USE_JEMALLOC AND NOT STATIC_LINK)
+  pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
+  if(JEMALLOC_FOUND)
+    target_link_libraries(base_libs INTERFACE PkgConfig::JEMALLOC)
+  else()
+    message(STATUS "jemalloc not found, not linking to jemalloc")
+  endif()
+else()
+  message(STATUS "jemalloc support disabled")
+endif()
+
 
 if(ANDROID)
   target_link_libraries(base_libs INTERFACE log)
