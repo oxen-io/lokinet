@@ -6,6 +6,7 @@ import sys
 import time
 import platform
 import os
+import re
 from argparse import ArgumentParser as AP
 
 is_windows = lambda : platform.system().lower() == 'windows'
@@ -40,12 +41,13 @@ except ImportError:
         print("for other linuxs do:")
         print("\tpip3 install --user geoip")
         print("for other linuxs you are responsible for obtaining your owen geoip databases, glhf")
+        time.sleep(1)
     else:
         print("install it with:")
         print("\tpip3 install --user geoip")
-    print("")
-    print("press enter to continue without geoip")
-    sys.stdin.read(1)
+        print()
+        print("press enter to continue without geoip")
+        sys.stdin.read(1)
 else:
     try:
         geoip_env_var = 'GEOIP_DB_FILE'
@@ -86,6 +88,7 @@ def ip_to_flag(ip):
 class Monitor:
 
     _sample_size = 12
+    filter = lambda x : True
 
     def __init__(self, url, introsetMode=False):
         self.txrate = 0
@@ -144,7 +147,7 @@ class Monitor:
             self.win.addstr(" {} ->".format(hopstr))
 
         self.win.addstr(" [{} ms latency]".format(path["intro"]["latency"]))
-        self.win.addstr(" [{} until expire]".format(self.time_to(path["expiresAt"])))
+        self.win.addstr(" [expires: {}]".format(self.time_to(path["expiresAt"])))
         if path["expiresSoon"]:
             self.win.addstr("(expiring)")
         elif path["expired"]:
@@ -153,13 +156,17 @@ class Monitor:
 
     @staticmethod
     def time_to(timestamp):
-        """ return time until timestamp in seconds formatted"""
+        """ return time until timestamp formatted"""
         if timestamp:
+            unit = 'seconds'
             val = (timestamp - now()) / 1000.0
+            if abs(val) > 60.0:
+                val /= 60.0
+                unit = 'minutes'
             if val < 0:
-                return "{} seconds ago".format(0-val)
+                return "{:.2f} {} ago".format(0-val, unit)
             else:
-                return "{} seconds".format(val)
+                return "in {:.2f} {}".format(val, unit)
         else:
             return 'never'
 
@@ -201,15 +208,18 @@ class Monitor:
         paths = status["paths"]
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
-            y_pos = self._render_path(y_pos, path, "inbound")
+            if self.filter('localhost.loki'):
+                y_pos = self._render_path(y_pos, path, "localhost.loki")
         for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
-                y_pos = self._render_path(
-                    y_pos, path, "[active] {}".format(session["currentConvoTag"])
-                )
+                if self.filter(session["remoteIdentity"]):
+                    y_pos = self._render_path(
+                        y_pos, path, "[active] {}".format(session["currentConvoTag"])
+                    )
         for session in (status["snodeSessions"] or []):
             for path in session["paths"]:
-                y_pos = self._render_path(y_pos, path, "[snode]")
+                if self.filter(session["endpoint"]):
+                    y_pos = self._render_path(y_pos, path, "[snode]")
         return y_pos
 
     def display_links(self, y_pos, data):
@@ -407,18 +417,20 @@ class Monitor:
         """
         y_pos += 1
         self.win.move(y_pos, 1)
-        self.win.addstr("localhost.loki")
-        y_pos = self._display_our_introset(y_pos, service)
-        y_pos += 1
+        if self.filter("localhost.loki"):
+            self.win.addstr("localhost.loki")
+            y_pos = self._display_our_introset(y_pos, service)
+            y_pos += 1
         remotes = service['remoteSessions'] or []
         for session in remotes:
-            y_pos = self._display_session_introset(y_pos, session)
+            if self.filter(session['remoteIdentity']):
+                y_pos = self._display_session_introset(y_pos, session)
 
     def _display_intro(self, y_pos, intro, label, paths):
         y_pos += 1
         self.win.move(y_pos, 1)
         path = 'path' in intro and intro['path'][:4] or '????'
-        self.win.addstr('{}: ({}|{}) [expires in: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
+        self.win.addstr('{}: ({}|{}) [expires: {}] [{} paths]'.format(label, intro['router'][:8], path, self.time_to(intro['expiresAt']), self.count_endpoints_in_path(paths, intro['router'])))
         return y_pos
 
     @staticmethod
@@ -457,8 +469,11 @@ class Monitor:
         #print(context.keys())
         y_pos += 1
         self.win.move(y_pos, 1)
-        readyState = context['readyToSend'] and '✔️' or '❌'
+        readyState = context['readyToSend'] and '️✅' or '❌'
         self.win.addstr('{} ({}) [{}]'.format(context['remoteIdentity'], context['currentConvoTag'], readyState))
+        y_pos += 1
+        self.win.move(y_pos, 1)
+        self.win.addstr('created: {}'.format(self.time_to(context['sessionCreatedAt'])))
         y_pos += 1
         self.win.move(y_pos, 1)
         self.win.addstr('last good send: {}'.format(self.time_to(context['lastGoodSend'])))
@@ -544,6 +559,8 @@ def main():
 
     ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
+    ap.add_argument('--filter', default='.+', type=str, help="regex to filter entries")
+    ap.add_argument('--invert-filter', const=True, default=False, action='store_const', help='invert regex filter matching')
 
     args = ap.parse_args()
 
@@ -551,6 +568,10 @@ def main():
         args.url,
         args.introset
     )
+    mon.filter = lambda x : re.match(args.filter, x) is not None
+    if args.invert_filter:
+        old_filter = mon.filter
+        mon.filter = lambda x : not old_filter(x)
     mon.run()
 
 if __name__ == "__main__":
