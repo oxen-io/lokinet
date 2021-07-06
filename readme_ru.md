@@ -8,9 +8,9 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
 Почитать спецификацию протокола LLARP [здесь](docs/proto_v0.txt)
 
-Почитать документацию о том, как начать работу [здесь](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/)
+Почитать документацию о том, как начать работу [здесь](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/)
 
-[![Build Status](https://drone.lokinet.dev/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/loki-project/loki-network)
+[![Build Status](https://drone.lokinet.dev/api/badges/oxen-io/lokinet/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/oxen-io/lokinet)
 
 ## Использование
 
@@ -71,8 +71,8 @@ Lokinet - реализация LLARP (протокол анонимной мар
 сборка:
 
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
@@ -87,8 +87,8 @@ Lokinet - реализация LLARP (протокол анонимной мар
 сборка:
     убедитесь, что у вас установлены инструменты командной строки cmake, libuv и xcode
 
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
@@ -113,8 +113,8 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
 сборка:
 
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build-windows
     $ cd build-windows
     $ cmake -DBUILD_STATIC_DEPS=ON -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
@@ -133,8 +133,8 @@ Lokinet - реализация LLARP (протокол анонимной мар
     $ sudo pkg install build-essential gcc8 wget tuntap cmake (optional: ninja ccache - from omnios extra) (OmniOS CE)
     $ sudo pkg install base-developer-utilities developer-gnu developer-studio-utilities gcc-7 wget cmake (Oracle Solaris, see note)
     $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake ..
@@ -149,8 +149,8 @@ Lokinet - реализация LLARP (протокол анонимной мар
 сборка:
 
     $ pkg install cmake git curl libuv libsodium pkgconf libunbound
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cmake -DCMAKE_BUILD_TYPE=Release ..
     $ make

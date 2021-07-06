@@ -17,8 +17,30 @@ namespace llarp
     Timeout,
     RouterNotFound,
     InvalidRouter,
-    NoLink
+    NoLink,
+    EstablishFail
   };
+
+  inline std::ostream&
+  operator<<(std::ostream& out, const SessionResult& st)
+  {
+    switch (st)
+    {
+      case SessionResult::Establish:
+        return out << "success";
+      case SessionResult::Timeout:
+        return out << "timeout";
+      case SessionResult::NoLink:
+        return out << "no link";
+      case SessionResult::InvalidRouter:
+        return out << "invalid router";
+      case SessionResult::RouterNotFound:
+        return out << "not found";
+      case SessionResult::EstablishFail:
+        return out << "establish failed";
+    }
+    return out << "???";
+  }
 
   using RouterCallback = std::function<void(const RouterID&, const SessionResult)>;
 

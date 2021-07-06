@@ -114,22 +114,6 @@ namespace llarp
      * the messages are dropped and their send status callbacks are invoked with
      * the appropriate send status.
      */
-
-    void
-    OnSessionEstablished(const RouterID& router);
-
-    void
-    OnConnectTimeout(const RouterID& router);
-
-    void
-    OnRouterNotFound(const RouterID& router);
-
-    void
-    OnInvalidRouter(const RouterID& router);
-
-    void
-    OnNoLink(const RouterID& router);
-
     void
     OnSessionResult(const RouterID& router, const SessionResult result);
 
