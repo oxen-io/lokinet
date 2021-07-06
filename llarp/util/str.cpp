@@ -84,7 +84,7 @@ namespace llarp
         last = next;
 
         // advance to next non-delimiter
-        while (str[last] == delimiter and last < str_size)
+        while (last < str_size and str[last] == delimiter)
           last++;
       }
       else

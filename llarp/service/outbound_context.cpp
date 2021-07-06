@@ -404,6 +404,10 @@ namespace llarp
         m_ReadyHooks.clear();
       }
 
+      if (m_LastInboundTraffic > 0s and lastGoodSend > 0s
+          and now >= sendTimeout + m_LastInboundTraffic)
+        return true;
+
       const auto timeout = std::max(lastGoodSend, m_LastInboundTraffic);
       if (lastGoodSend > 0s and now >= timeout + (sendTimeout / 2))
       {

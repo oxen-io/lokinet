@@ -12,7 +12,7 @@ You can view documentation on how to get started [here](https://docs.oxen.io/pro
 
 A simple demo application that is lokinet "aware" can be found [here](https://github.com/majestrate/lokinet-aware-demos)
 
-[![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/loki-network/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/loki-network)
+[![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/lokinet/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/lokinet)
 
 ## Building
 
@@ -43,8 +43,8 @@ You can install these using:
 If you are not on a platform supported by the debian packages or if you want to build a dev build, this is the most "portable" way to do it:
 
     $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
@@ -60,8 +60,8 @@ You can get the latest stable macos relase from https://lokinet.org/ or check th
 
 alternatively you can build from source, make sure you have cmake, libuv and xcode command line tools installed:
 
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
@@ -88,8 +88,8 @@ setup:
 
 building:
 
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ ./contrib/windows.sh
 
 ### Solaris 2.10+
@@ -105,8 +105,8 @@ build:
     $ sudo pkg install build-essential gcc8 wget tuntap cmake (optional: ninja ccache - from omnios extra) (OmniOS CE)
     $ sudo pkg install base-developer-utilities developer-gnu developer-studio-utilities gcc-7 wget cmake (Oracle Solaris, see note)
     $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake ..
@@ -121,8 +121,8 @@ install:
 build:
 
     $ pkg install cmake git pkgconf
-    $ git clone --recursive https://github.com/loki-project/loki-network
-    $ cd loki-network
+    $ git clone --recursive https://github.com/oxen-io/lokinet
+    $ cd lokinet
     $ mkdir build
     $ cd build
     $ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DBUILD_SHARED_DEPS=ON ..
