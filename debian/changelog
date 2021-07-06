@@ -1,3 +1,55 @@
+lokinet (0.9.5-1~deb11) bullseye; urgency=medium
+
+  [ Jeff ]
+  * fix up docs generation
+
+  [ Jason Rhinelander ]
+  * Link to jemalloc for better memory usage
+
+  [ Thomas Winget ]
+  * fix minor oversight/inefficiency with already established connections
+
+  [ Jeff Becker ]
+  * update urls
+  * refactor to use RouterID instead of rc.pubkey
+  * add docker image for nodejs
+  * add wine as dependancy because god made windows so that man may suffer
+  * if we have an inbound session don't fail with NoLink
+  * establish outbound sessions when we have no outbound session. when we have an inbound session we still want to make an outbound session.
+  * * add log warn * throw if inbound link makes outbound session
+  * more information in logs
+  * inbound sessions from CLIENTS should only have an elevated lifetime
+  * dont give peer stats in rpc
+  * disable peer status entirely
+  * add string representation to SessionResult
+  * * add establish fail enum * dont call outbound session hooks for inbound sessions
+  * update lokinetmon
+  * expunge outbound contexts that have not gotten inbound traffic for a long while
+  * add age to outbound contexts in lokinetmon better time foratting in lokinetmon
+  * add path filter in lokinetmon
+  * make filters consistent for localhost.loki
+  * typofix
+  * fixes for lokinetmon filters
+  * fix unicode char
+  * unify introset-filter and path-filter
+  * better time formatting for future times
+  * add option to invert regex filter results
+  * * make tranform function for SessionResult to SendStatus * add case for SessionResult::EstablishFail * clean up outbound message handler to use transform function instead of many private member functions
+  * bump up the jam, bump it up, while your feet are jumping.
+  * * throw exception on invalid SessionResult when transforming to SendStatus * add case for printing unknown SessionResult
+
+  [ Jason Rhinelander ]
+  * Fix typo in libuv error message
+
+  [ Jeff Becker ]
+  * dont use constexpr
+  * fix issue with excessively pedantic stl on archlinux
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 06 Jul 2021 10:24:19 -0300
+
 lokinet (0.9.4-2~deb11) bullseye; urgency=medium
 
   * Link to jemalloc for better memory usage
