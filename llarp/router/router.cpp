@@ -83,10 +83,6 @@ namespace llarp
   {
     if (_running)
     {
-      util::StatusObject peerStatsObj = nullptr;
-      if (m_peerDb)
-        peerStatsObj = m_peerDb->ExtractStatus();
-
       return util::StatusObject{
           {"running", true},
           {"numNodesKnown", _nodedb->NumLoaded()},
@@ -94,8 +90,7 @@ namespace llarp
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
           {"links", _linkManager.ExtractStatus()},
-          {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
-          {"peerStats", peerStatsObj}};
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
     else
     {
@@ -679,14 +674,6 @@ namespace llarp
       hiddenServiceContext().AddEndpoint(conf);
     }
 
-    // peer stats
-    if (IsServiceNode())
-    {
-      LogInfo("Initializing peerdb...");
-      m_peerDb = std::make_shared<PeerDb>();
-      m_peerDb->configure(conf.router);
-    }
-
     // Logging config
     LogContext::Instance().Initialize(
         conf.logging.m_logLevel,
@@ -1233,7 +1220,8 @@ namespace llarp
                       router,
                       " (",
                       previous_fails + 1,
-                      " consecutive failures)");
+                      " consecutive failures) result=",
+                      result);
                 }
                 else
                 {
