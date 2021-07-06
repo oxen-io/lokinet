@@ -4,7 +4,7 @@ if (NOT DOXYGEN)
     return()
 endif()
 find_program(SPHINX_BUILD sphinx-build)
-if (NOT DOXYGEN)
+if (NOT SPHINX_BUILD)
     message(STATUS "Documentation generation disabled (sphinx-build not found)")
     return()
   endif()
@@ -22,7 +22,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT html/index.html
-    COMMAND ${SPHINX_BUILD}
+    COMMAND ${SPHINX_BUILD} -j auto
         -Dbreathe_projects.lokinet=${CMAKE_CURRENT_BINARY_DIR}/doxyxml
         -Dversion=${lokinet_VERSION} -Drelease=${lokinet_VERSION}
         -Aversion=${lokinet_VERSION} -Aversions=${lokinet_VERSION_MAJOR},${lokinet_VERSION_MINOR},${lokinet_VERSION_PATCH}
