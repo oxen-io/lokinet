@@ -11,7 +11,7 @@ include /usr/share/dpkg/architecture.mk
 ifeq ($(DEB_TARGET_ARCH),$(filter $(DEB_TARGET_ARCH),amd64 i386))
     DEB_CMAKE_ARCH_OPTIONS=-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" -DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell"
 else ifeq ($(DEB_TARGET_ARCH),arm64)
-    DEB_CMAKE_ARCH_OPTIONS=-DNON_PC_TARGET=ON -DCMAKE_CXX_FLAGS="-march=armv8-a+crc -mtune=cortex-a72" -DCMAKE_C_FLAGS="-march=armv8-a+crc -mtune=cortex-a72"
+    DEB_CMAKE_ARCH_OPTIONS=-DUSE_LTO=OFF -DNON_PC_TARGET=ON -DCMAKE_CXX_FLAGS="-march=armv8-a+crc -mtune=cortex-a72" -DCMAKE_C_FLAGS="-march=armv8-a+crc -mtune=cortex-a72"
 else ifeq ($(DEB_TARGET_ARCH),armhf)
     DEB_CMAKE_ARCH_OPTIONS=-DNON_PC_TARGET=ON -DCMAKE_CXX_FLAGS="-marm -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp" -DCMAKE_C_FLAGS="-marm -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp"
 else
