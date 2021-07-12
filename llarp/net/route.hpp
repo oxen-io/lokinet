@@ -25,4 +25,12 @@ namespace llarp::net
   void
   DelDefaultRouteViaInterface(std::string ifname);
 
+  /// add route blackhole for all traffic
+  void
+  AddBlackhole();
+
+  /// delete route blackhole for all traffic
+  void
+  DelBlackhole();
+
 }  // namespace llarp::net
