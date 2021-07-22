@@ -1,4 +1,4 @@
 debian/00-lokinet.conf /etc/systemd/resolved.conf.d
 contrib/lokinet-resolvconf /usr/sbin
-contrib/systemd-resolved/lokinet.pkla /var/lib/polkit-1/localauthority/10-vendor.d/lokinet.pkla
+contrib/systemd-resolved/lokinet.pkla /var/lib/polkit-1/localauthority/10-vendor.d
 contrib/systemd-resolved/lokinet.rules /usr/share/polkit-1/rules.d
