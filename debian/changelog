@@ -1,3 +1,11 @@
+lokinet (0.9.5-2~ubuntu2004) focal; urgency=medium
+
+  * Disable LTO on focal/arm64
+  * Install polkit files for systemd-resolved support
+  * Update lokinetmon required packages
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 22 Jul 2021 13:08:32 -0300
+
 lokinet (0.9.5-1~ubuntu2004) focal; urgency=medium
 
   [ Jeff ]
