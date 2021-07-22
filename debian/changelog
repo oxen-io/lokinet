@@ -1,3 +1,9 @@
+lokinet (0.9.5-3~deb10) buster; urgency=medium
+
+  * Fix lokinet.pkla install path
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 22 Jul 2021 15:12:46 -0300
+
 lokinet (0.9.5-2~deb10) buster; urgency=medium
 
   * Install polkit files for systemd-resolved support
