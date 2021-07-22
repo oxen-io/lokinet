@@ -1,3 +1,10 @@
+lokinet (0.9.5-2) unstable; urgency=medium
+
+  * Install polkit files for systemd-resolved support
+  * Update lokinetmon required packages
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 22 Jul 2021 13:08:23 -0300
+
 lokinet (0.9.5-1) unstable; urgency=medium
 
   [ Jeff ]
