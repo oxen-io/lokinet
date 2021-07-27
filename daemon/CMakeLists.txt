@@ -4,8 +4,6 @@ if(APPLE)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Lokinet.modulemap.in ${CMAKE_CURRENT_BINARY_DIR}/swift/LokinetExtension/module.modulemap ESCAPE_QUOTES @ONLY)
   target_include_directories(lokinet PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/swift)
   target_link_libraries(lokinet PUBLIC lokinet-extension)
-  add_executable(lokinet-old lokinet.cpp)
-  enable_lto(lokinet-old)
 else()
   add_executable(lokinet lokinet.cpp)
   add_executable(lokinet-vpn lokinet-vpn.cpp)
@@ -42,10 +40,9 @@ if(NOT APPLE)
   endif()
 endif()
 
-if(APPLE)
-  set(exetargets lokinet-old lokinet)
-else()
-  set(exetargets lokinet lokinet-vpn lokinet-bootstrap)
+set(exetargets lokinet)
+if(NOT APPLE)
+  list(APPEND exetargets lokinet-vpn lokinet-bootstrap)
 endif()
 
 foreach(exe ${exetargets})
@@ -65,7 +62,7 @@ foreach(exe ${exetargets})
   add_log_tag(${exe})
   if(should_install)
     if(APPLE)
-      install(TARGETS ${exe} BUNDLE DESTINATION "${CMAKE_BINARY_DIR}" COMPONENT lokinet)
+      install(TARGETS ${exe} BUNDLE DESTINATION "${PROJECT_BINARY_DIR}" COMPONENT lokinet)
     else()
       install(TARGETS ${exe} RUNTIME DESTINATION bin COMPONENT lokinet)
     endif()
@@ -73,48 +70,50 @@ foreach(exe ${exetargets})
 endforeach()
 
 if(APPLE)
-#  add_custom_command(TARGET lokinet
-#    POST_BUILD
-#    COMMAND ${CMAKE_COMMAND} -E echo "setting rpath"
-#    COMMAND ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "@executable_path/../Frameworks/" $<TARGET_FILE:lokinet>
-#    )
+
+  set(CODESIGN_KEY "" CACHE STRING "codesign the macos app using this key identity")
+
   add_custom_target(icons ALL
     COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns
     DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
   add_dependencies(lokinet icons lokinet-extension)
-  install(TARGETS lokinet-extension FRAMEWORK DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Lokinet.app/Contents/Frameworks" COMPONENT lokinet)
+  add_custom_command(TARGET lokinet
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "setting rpath"
+    COMMAND ${CMAKE_COMMAND} -E echo ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "@executable_path/../Frameworks/" $<TARGET_FILE:lokinet>
+    COMMAND ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "@executable_path/../Frameworks/" $<TARGET_FILE:lokinet>
+    COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/Contents/Frameworks
+    COMMAND cp -au $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/Frameworks/
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/macos/lokinet.provisionprofile
+        $<TARGET_BUNDLE_DIR:lokinet>/Contents/embedded.provisionprofile
+    )
+
   set_target_properties(lokinet
     PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_STRING "Lokinet IP Packet Onion Router"
     MACOSX_BUNDLE_BUNDLE_NAME "Lokinet"
     MACOSX_BUNDLE_BUNDLE_VERSION "${LOKINET_VERSION}"
-    MACOSX_BUNDLE_LONG_VERSION_STRING "${lokinet_VERSION}.$lokinet_VERSION_MINOR}"
+    MACOSX_BUNDLE_LONG_VERSION_STRING "${lokinet_VERSION}"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${lokinet_VERSION_MAJOR}.${lokinet_VERSION_MINOR}"
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.loki-project.lokinet"
-    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/contrib/macos/Info.plist"
+    MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/contrib/macos/Info.plist"
     MACOSX_BUNDLE_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns"
-    MACOSX_BUNDLE_COPYRIGHT "© 2021, The Loki Project")
-  option(CODESIGN_KEY "codesign all the shit with this key" OFF)
-  if (CODESIGN_KEY AND CODESIGN_TEAM_ID)
+    MACOSX_BUNDLE_COPYRIGHT "© 2021, The Oxen Project")
+  if (CODESIGN_KEY)
     message(STATUS "codesigning with ${CODESIGN_KEY}")
-    set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/Lokinet.app")    
-    configure_file("${CMAKE_SOURCE_DIR}/contrib/macos/lokinet.entitlements.plist.in"
-      "${CMAKE_BINARY_DIR}/lokinet.entitlements.plist")    
-    configure_file("${CMAKE_SOURCE_DIR}/contrib/macos/lokinet-extension.entitlements.plist.in"
-      "${CMAKE_BINARY_DIR}/lokinet-extension.entitlements.plist")
-    set(LOKINET_ENTITLEMENTS "${CMAKE_BINARY_DIR}/lokinet.entitlements.plist")
-    set(NETEXT_ENTITLEMENTS "${CMAKE_BINARY_DIR}/lokinet-extension.entitlements.plist")
+    set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/lokinet.app")
     configure_file(
       "${PROJECT_SOURCE_DIR}/contrib/macos/sign.sh.in"
-      "${CMAKE_BINARY_DIR}/sign.sh")
+      "${PROJECT_BINARY_DIR}/sign.sh"
+      @ONLY)
     add_custom_target(
       sign
-      DEPENDS "${CMAKE_BINARY_DIR}/sign.sh" lokinet lokinet-extension
-      COMMAND "${CMAKE_BINARY_DIR}/sign.sh"
+      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
+      COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
   else()
-    message(STATUS "will not codesign")
+    message(WARNING "Not codesigning: CODESIGN_KEY is not set")
   endif()
 endif()
 

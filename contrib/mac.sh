@@ -22,7 +22,7 @@ cmake \
       -DFORCE_OXENMQ_SUBMODULE=ON \
       -DSUBMODULE_CHECK=OFF \
       -DWITH_LTO=OFF \
-      -DCMAKE_INSTALL_PREFIX=$(pwd) \
       -DCMAKE_BUILD_TYPE=Release \
-      $@ ..
+      "$@" \
+      ..
 ninja install && ninja sign

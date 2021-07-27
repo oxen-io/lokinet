@@ -21,7 +21,7 @@
 	  <string>lokinet</string>
 
 	  <key>CFBundleVersion</key>
-	  <string>${LOKINET_VERSION}</string>
+	  <string>@LOKINET_VERSION@</string>
 
 	  <key>ITSAppUsesNonExemptEncryption</key>
 	  <false/>
