@@ -26,6 +26,12 @@ project(lokinet
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES ${LANGS})
 
+if(APPLE)
+    # Apple build number: must be incremented to submit a new build for the same lokinet version,
+    # should be reset to 0 when the lokinet version increments.
+    set(LOKINET_APPLE_BUILD 0)
+endif()
+
 set(RELEASE_MOTTO "A Series of Tubes" CACHE STRING "Release motto")
 
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})

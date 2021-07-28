@@ -280,14 +280,11 @@ if(APPLE)
     ${COREFOUNDATION}
     ${NETEXT})
 
-  configure_file(${PROJECT_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist.in
-    ${CMAKE_CURRENT_BINARY_DIR}/LokinetExtension.Info.plist @ONLY)
-  
   set_target_properties(lokinet-extension PROPERTIES
     FRAMEWORK TRUE
     FRAMEWORK_VERSION ${lokinet_VERSION}
     MACOSX_FRAMEWORK_IDENTIFIER com.loki-project.lokinet.network-extension
-    MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_CURRENT_BINARY_DIR}/LokinetExtension.Info.plist
+    MACOSX_FRAMEWORK_INFO_PLIST ${PROJECT_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist.in
     # "current version" in semantic format in Mach-O binary file
     VERSION ${lokinet_VERSION}
     # "compatibility version" in semantic format in Mach-O binary file
