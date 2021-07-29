@@ -186,6 +186,7 @@ StringViewToData(std::string_view data)
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
              completionHandler:(void (^)(NSError*))completionHandler
 {
+  NSLog(@"OMG startTunnelWithOptions");
   m_Context = new ContextWrapper{self};
   m_Context->Start();
   [self setTunnelNetworkSettings:nullptr completionHandler:completionHandler];
@@ -194,6 +195,7 @@ StringViewToData(std::string_view data)
 - (void)stopTunnelWithReason:(NEProviderStopReason)reason
            completionHandler:(void (^)(void))completionHandler
 {
+  NSLog(@"STOP TUNNEL");
   if (m_Context)
   {
     m_Context->Stop();

@@ -273,28 +273,28 @@ if(APPLE)
   find_library(NETEXT NetworkExtension REQUIRED)
   find_library(COREFOUNDATION CoreFoundation REQUIRED)
 
-  add_library(lokinet-extension SHARED
-    framework.mm)
+  add_executable(lokinet-extension MACOSX_BUNDLE framework.mm)
   target_link_libraries(lokinet-extension PUBLIC
     liblokinet
     ${COREFOUNDATION}
     ${NETEXT})
 
   set_target_properties(lokinet-extension PROPERTIES
-    FRAMEWORK TRUE
-    FRAMEWORK_VERSION ${lokinet_VERSION}
-    MACOSX_FRAMEWORK_IDENTIFIER com.loki-project.lokinet.network-extension
-    MACOSX_FRAMEWORK_INFO_PLIST ${PROJECT_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist.in
-    # "current version" in semantic format in Mach-O binary file
-    VERSION ${lokinet_VERSION}
-    # "compatibility version" in semantic format in Mach-O binary file
-    SOVERSION ${lokinet_VERSION}
-    PUBLIC_HEADER ${CMAKE_SOURCE_DIR}/include/lokinet-extension.hpp)
+    BUNDLE TRUE
+    BUNDLE_EXTENSION appex
+    MACOSX_BUNDLE_INFO_PLIST ${PROJECT_SOURCE_DIR}/contrib/macos/LokinetExtension.Info.plist.in
+    XCODE_PRODUCT_TYPE com.apple.product-type.app-extension
+    )
+
+  # Not sure what -fapplication-extension does, but XCode puts it in so...
+  # -e _NSExtensionMain because it has that instead of a `main` function entry point, of course.
+  target_link_options(lokinet-extension PRIVATE -fapplication-extension -e _NSExtensionMain)
+  target_compile_options(lokinet-extension PRIVATE -fapplication-extension)
 
   add_custom_command(TARGET lokinet-extension
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/macos/lokinet-extension.provisionprofile
-    $<TARGET_BUNDLE_DIR:lokinet-extension>/Versions/Current/embedded.provisionprofile
+    $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/embedded.provisionprofile
     )
 
   

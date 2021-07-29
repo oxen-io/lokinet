@@ -36,13 +36,16 @@ class LokinetMain: NSObject, NSApplicationDelegate {
                 }
             }
             let providerProtocol = NETunnelProviderProtocol()
-            providerProtocol.serverAddress = ""
+            providerProtocol.serverAddress = "loki.loki" // Needs to be set to some non-null dummy value
             providerProtocol.username = "anonymous"
             providerProtocol.providerBundleIdentifier = self.lokinetComponent
-            providerProtocol.includeAllNetworks = true
+            // macos seems to have trouble when this is true, and reports are that this breaks and
+            // doesn't do what it says on the tin in the first place.  Needs more testing.
+            providerProtocol.includeAllNetworks = false
             self.vpnManager.protocolConfiguration = providerProtocol
             self.vpnManager.isEnabled = true
             self.vpnManager.isOnDemandEnabled = true
+            self.vpnManager.localizedDescription = "lokinet"
             self.vpnManager.saveToPreferences(completionHandler: { error -> Void in
                 if error != nil {
                     NSLog("Error saving to preferences")
