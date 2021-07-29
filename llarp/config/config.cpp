@@ -1453,7 +1453,6 @@ namespace llarp
     auto config = std::make_shared<Config>(fs::path{});
     config->Load();
     config->logging.m_logLevel = eLogInfo;
-    config->api.m_enableRPCServer = false;
     config->network.m_saveProfiles = false;
     config->bootstrap.files.clear();
     return config;

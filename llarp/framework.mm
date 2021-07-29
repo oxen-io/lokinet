@@ -5,8 +5,13 @@
 #include <llarp/ev/vpn.hpp>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/logging/apple_logger.hpp>
+#include <llarp/util/logging/buffer.hpp>
+#include <llarp/net/ip_range.hpp>
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/apple.hpp>
 
-#include <string>
+const llarp::SockAddr DefaultDNSBind{"127.0.0.1:1153"};
+const llarp::SockAddr DefaultUpstreamDNS{"9.9.9.9:53"};
 
 namespace llarp::apple
 {
@@ -21,7 +26,7 @@ namespace llarp::apple
     makeVPNPlatform() override;
 
     void
-    Start();
+    Start(std::string_view bootstrap);
 
    private:
     NEPacketTunnelProvider* const m_Tunnel;
@@ -42,20 +47,39 @@ namespace llarp::apple
       llarp::net::IPPacket pkt;
       const llarp_buffer_t buf{static_cast<const uint8_t*>(data.bytes), data.length};
       if (pkt.Load(buf))
+      {
         m_ReadQueue.tryPushBack(std::move(pkt));
+      }
+      else
+      {
+        LogError("invalid IP packet: ", llarp::buffer_printer(DataAsStringView(data)));
+      }
     }
 
    public:
-    explicit VPNInterface(NEPacketTunnelProvider* tunnel)
+    explicit VPNInterface(NEPacketTunnelProvider* tunnel, llarp::Context* context)
         : m_Tunnel{tunnel}, m_ReadQueue{PacketQueueSize}
     {
-      auto handler = [this](NSArray<NSData*>* packets, NSArray<NSNumber*>*) {
-        NSUInteger num = [packets count];
-        for (NSUInteger idx = 0; idx < num; ++idx)
-        {
-          NSData* pkt = [packets objectAtIndex:idx];
-          OfferReadPacket(pkt);
-        }
+      context->loop->call_soon([this]() { Read(); });
+    }
+
+    void
+    HandleReadEvent(NSArray<NSData*>* packets, NSArray<NSNumber*>* protos)
+    {
+      NSUInteger num = [packets count];
+      for (NSUInteger idx = 0; idx < num; ++idx)
+      {
+        NSData* pkt = [packets objectAtIndex:idx];
+        OfferReadPacket(pkt);
+      }
+      Read();
+    }
+
+    void
+    Read()
+    {
+      auto handler = [this](NSArray<NSData*>* packets, NSArray<NSNumber*>* protos) {
+        HandleReadEvent(packets, protos);
       };
       [m_Tunnel.packetFlow readPacketsWithCompletionHandler:handler];
     }
@@ -84,27 +108,27 @@ namespace llarp::apple
     bool
     WritePacket(net::IPPacket pkt) override
     {
-      const sa_family_t fam = pkt.IsV6() ? AF_INET6 : AF_INET;
-      const uint8_t* pktbuf = pkt.buf;
+      NSNumber* fam = [NSNumber numberWithInteger:(pkt.IsV6() ? AF_INET6 : AF_INET)];
+      void* pktbuf = pkt.buf;
       const size_t pktsz = pkt.sz;
-      NSData* datapkt = [NSData dataWithBytes:pktbuf length:pktsz];
-      NEPacket* npkt = [[NEPacket alloc] initWithData:datapkt protocolFamily:fam];
-      NSArray* pkts = @[npkt];
-      return [m_Tunnel.packetFlow writePacketObjects:pkts];
+      NSData* datapkt = [NSData dataWithBytesNoCopy:pktbuf length:pktsz];
+      return [m_Tunnel.packetFlow writePackets:@[datapkt] withProtocols:@[fam]];
     }
   };
 
   class VPNPlatform final : public vpn::Platform
   {
     NEPacketTunnelProvider* const m_Tunnel;
+    Context* const m_Context;
 
    public:
-    explicit VPNPlatform(NEPacketTunnelProvider* tunnel) : m_Tunnel{tunnel}
+    explicit VPNPlatform(NEPacketTunnelProvider* tunnel, Context* context)
+        : m_Tunnel{tunnel}, m_Context{context}
     {}
 
     std::shared_ptr<vpn::NetworkInterface> ObtainInterface(vpn::InterfaceInfo) override
     {
-      return std::make_shared<VPNInterface>(m_Tunnel);
+      return std::make_shared<VPNInterface>(m_Tunnel, m_Context);
     }
   };
 
@@ -113,16 +137,20 @@ namespace llarp::apple
   {}
 
   void
-  FrameworkContext::Start()
+  FrameworkContext::Start(std::string_view bootstrap)
   {
     std::promise<void> result;
 
-    m_Runner = std::make_unique<std::thread>([&result, this]() {
+    m_Runner = std::make_unique<std::thread>([&result, bootstrap = std::string{bootstrap}, this]() {
       const RuntimeOptions opts{};
       try
       {
+        auto config = llarp::Config::NetworkExtensionConfig();
+        config->bootstrap.files.emplace_back(bootstrap);
+        config->dns.m_bind = DefaultDNSBind;
+        config->dns.m_upstreamDNS.push_back(DefaultUpstreamDNS);
+        Configure(std::move(config));
         Setup(opts);
-        Configure(llarp::Config::NetworkExtensionConfig());
       }
       catch (std::exception&)
       {
@@ -140,7 +168,7 @@ namespace llarp::apple
   std::shared_ptr<vpn::Platform>
   FrameworkContext::makeVPNPlatform()
   {
-    return std::make_shared<VPNPlatform>(m_Tunnel);
+    return std::make_shared<VPNPlatform>(m_Tunnel, this);
   }
 }
 
@@ -154,9 +182,10 @@ struct ContextWrapper
   {}
 
   void
-  Start()
+  Start(std::string_view bootstrap)
   {
-    m_Context->Start();
+    llarp::LogContext::Instance().logStream.reset(new llarp::NSLogStream{});
+    m_Context->Start(std::move(bootstrap));
   }
 
   void
@@ -167,35 +196,42 @@ struct ContextWrapper
   }
 };
 
-static std::string_view
-DataAsStringView(NSData* data)
-{
-  return std::string_view{reinterpret_cast<const char*>(data.bytes), data.length};
-}
-
-static NSData*
-StringViewToData(std::string_view data)
-{
-  const char* ptr = data.data();
-  const size_t sz = data.size();
-  return [NSData dataWithBytes:ptr length:sz];
-}
-
 @implementation LLARPPacketTunnel
 
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
              completionHandler:(void (^)(NSError*))completionHandler
 {
-  NSLog(@"OMG startTunnelWithOptions");
+  llarp::huint32_t addr_{};
+  llarp::huint32_t mask_{};
+  if (auto maybe = llarp::FindFreeRange())
+  {
+    addr_ = llarp::net::TruncateV6(maybe->addr);
+    mask_ = llarp::net::TruncateV6(maybe->netmask_bits);
+  }
+  NSString* addr = StringToNSString(addr_.ToString());
+  NSString* mask = StringToNSString(mask_.ToString());
+
+  NSBundle* main = [NSBundle mainBundle];
+  NSString* res = [main pathForResource:@"bootstrap" ofType:@"signed"];
+  NSData* path = [res dataUsingEncoding:NSUTF8StringEncoding];
+
   m_Context = new ContextWrapper{self};
-  m_Context->Start();
-  [self setTunnelNetworkSettings:nullptr completionHandler:completionHandler];
+  m_Context->Start(DataAsStringView(path));
+
+  NEPacketTunnelNetworkSettings* settings =
+      [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"127.0.0.1"];
+  NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[addr]];
+  NEIPv4Settings* ipv4 = [[NEIPv4Settings alloc] initWithAddresses:@[addr]
+                                                       subnetMasks:@[@"255.255.255.255"]];
+  ipv4.includedRoutes = @[[[NEIPv4Route alloc] initWithDestinationAddress:addr subnetMask:mask]];
+  settings.IPv4Settings = ipv4;
+  settings.DNSSettings = dns;
+  [self setTunnelNetworkSettings:settings completionHandler:completionHandler];
 }
 
 - (void)stopTunnelWithReason:(NEProviderStopReason)reason
            completionHandler:(void (^)(void))completionHandler
 {
-  NSLog(@"STOP TUNNEL");
   if (m_Context)
   {
     m_Context->Stop();
@@ -209,9 +245,6 @@ StringViewToData(std::string_view data)
        completionHandler:(void (^)(NSData* responseData))completionHandler
 {
   const auto data = DataAsStringView(messageData);
-  LogInfo("app message: ", data);
-
   completionHandler(StringViewToData("ok"));
 }
-
 @end

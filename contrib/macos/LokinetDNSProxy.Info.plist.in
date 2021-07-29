@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundleDisplayName</key>
+    <string>Lokinet</string>
+
+    <key>CFBundleExecutable</key>
+	  <string>lokinet-dnsproxy</string>
+
+	  <key>CFBundleIdentifier</key>
+	  <string>com.loki-project.lokinet.dns-proxy</string>
+
+	  <key>CFBundleInfoDictionaryVersion</key>
+	  <string>6.0</string>
+
+    <key>CFBundlePackageType</key>
+    <string>XPC!</string>
+    
+	  <key>CFBundleName</key>
+	  <string>lokinet</string>
+
+	  <key>CFBundleVersion</key>
+	  <string>@LOKINET_VERSION@</string>
+
+	  <key>ITSAppUsesNonExemptEncryption</key>
+	  <false/>
+
+	  <key>LSMinimumSystemVersion</key>
+	  <string>11.0</string>
+
+    <key>NSExtension</key>
+	  <dict>
+		  <key>NSExtensionPointIdentifier</key>
+		  <string>com.apple.networkextension.dns-proxy</string>
+		  <key>NSExtensionPrincipalClass</key>
+		  <string>DNSProvider</string>
+    </dict>
+  </dict>
+</plist>

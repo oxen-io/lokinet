@@ -1,13 +1,16 @@
+
+add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
   set(LOKINET_SWIFT_SOURCES lokinet.swift)
   add_executable(lokinet ${LOKINET_SWIFT_SOURCES})
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Lokinet.modulemap.in ${CMAKE_CURRENT_BINARY_DIR}/swift/LokinetExtension/module.modulemap ESCAPE_QUOTES @ONLY)
   target_include_directories(lokinet PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/swift)
 else()
   add_executable(lokinet lokinet.cpp)
-  add_executable(lokinet-vpn lokinet-vpn.cpp)
   add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
   enable_lto(lokinet lokinet-vpn lokinet-bootstrap)
 endif()
+
 
 if(TRACY_ROOT)
   target_sources(lokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
@@ -38,9 +41,9 @@ if(NOT APPLE)
   endif()
 endif()
 
-set(exetargets lokinet)
+set(exetargets lokinet lokinet-vpn)
 if(NOT APPLE)
-  list(APPEND exetargets lokinet-vpn lokinet-bootstrap)
+  list(APPEND exetargets lokinet-bootstrap)
 endif()
 
 foreach(exe ${exetargets})
@@ -76,10 +79,14 @@ if(APPLE)
     COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns
     DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
   add_dependencies(lokinet icons lokinet-extension)
+  file(DOWNLOAD "https://seed.lokinet.org/lokinet.signed" ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.signed)
   add_custom_command(TARGET lokinet
     POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.signed 
+        $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
     COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns
-    COMMAND cp -au $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
+    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
+    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-dnsproxy> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/macos/lokinet.provisionprofile
         $<TARGET_BUNDLE_DIR:lokinet>/Contents/embedded.provisionprofile
     )
@@ -105,7 +112,7 @@ if(APPLE)
       @ONLY)
     add_custom_target(
       sign
-      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
+      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension lokinet-dnsproxy
       COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
   else()

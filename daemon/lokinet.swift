@@ -8,7 +8,7 @@ let app = NSApplication.shared
 class LokinetMain: NSObject, NSApplicationDelegate {
     var vpnManager = NETunnelProviderManager()
     let lokinetComponent = "com.loki-project.lokinet.network-extension"
-    var lokinetAdminTimer: DispatchSourceTimer?
+    var dnsComponent = "com.loki-project.lokinet.dns-proxy"
 
     func applicationDidFinishLaunching(_: Notification) {
         setupVPNJizz()
@@ -18,12 +18,67 @@ class LokinetMain: NSObject, NSApplicationDelegate {
         app.terminate(self)
     }
 
+    func setupDNSJizz() {
+        NSLog("setting up dns settings")
+        let dns = NEDNSSettingsManager.shared()
+        let settings = NEDNSSettings(servers: ["172.16.0.1"])
+        dns.dnsSettings = settings
+        dns.loadFromPreferences { [self] (error: Error?) -> Void in
+            if let error = error {
+                NSLog(error.localizedDescription)
+                bail()
+                return
+            }
+            dns.saveToPreferences { [self] (error: Error?) -> Void in
+                if let error = error {
+                    NSLog(error.localizedDescription)
+                    bail()
+                    return
+                }
+                NSLog("dns setting set up probably")
+            }
+        }
+    }
+
+    func setupDNSProxyJizz() {
+        NSLog("setting up dns proxy")
+        let dns = NEDNSProxyManager.shared()
+        let provider = NEDNSProxyProviderProtocol()
+        provider.providerBundleIdentifier = dnsComponent
+        provider.username = "Anonymous"
+        provider.serverAddress = "loki.loki"
+        provider.includeAllNetworks = true
+        provider.enforceRoutes = true
+        dns.providerProtocol = provider
+        dns.localizedDescription = "lokinet dns"
+        dns.loadFromPreferences { [self] (error: Error?) -> Void in
+            if let error = error {
+                NSLog(error.localizedDescription)
+                bail()
+                return
+            }
+            provider.includeAllNetworks = true
+            provider.enforceRoutes = true
+            dns.isEnabled = true
+            dns.saveToPreferences { [self] (error: Error?) -> Void in
+                if let error = error {
+                    NSLog(error.localizedDescription)
+                    bail()
+                    return
+                }
+                self.initDNSObserver()
+                NSLog("dns is up probably")
+            }
+        }
+    }
+
     func setupVPNJizz() {
         NSLog("Starting up lokinet")
         NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
             if let error = error {
                 NSLog(error.localizedDescription)
                 bail()
+                return
             }
 
             if let savedManagers = savedManagers {
@@ -44,7 +99,10 @@ class LokinetMain: NSObject, NSApplicationDelegate {
             providerProtocol.includeAllNetworks = false
             self.vpnManager.protocolConfiguration = providerProtocol
             self.vpnManager.isEnabled = true
-            self.vpnManager.isOnDemandEnabled = true
+            // self.vpnManager.isOnDemandEnabled = true
+            let rules = NEAppRule()
+            rules.matchDomains = ["*.snode", "*.loki"]
+            self.vpnManager.appRules = [rules]
             self.vpnManager.localizedDescription = "lokinet"
             self.vpnManager.saveToPreferences(completionHandler: { error -> Void in
                 if error != nil {
@@ -76,6 +134,13 @@ class LokinetMain: NSObject, NSApplicationDelegate {
         }
     }
 
+    func initDNSObserver() {
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.NEDNSProxyConfigurationDidChange, object: NEDNSProxyManager.shared(), queue: OperationQueue.main) { _ -> Void in
+            let dns = NEDNSProxyManager.shared()
+            NSLog("%@", dns)
+        }
+    }
+
     func initializeConnectionObserver() {
         NotificationCenter.default.addObserver(forName: NSNotification.Name.NEVPNStatusDidChange, object: vpnManager.connection, queue: OperationQueue.main) { _ -> Void in
             if self.vpnManager.connection.status == .invalid {
@@ -88,6 +153,9 @@ class LokinetMain: NSObject, NSApplicationDelegate {
                 NSLog("VPN is reasserting...")
             } else if self.vpnManager.connection.status == .disconnecting {
                 NSLog("VPN is disconnecting...")
+            } else if self.vpnManager.connection.status == .connected {
+                NSLog("VPN Connected")
+                self.setupDNSJizz()
             }
         }
     }

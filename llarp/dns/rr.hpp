@@ -22,11 +22,16 @@ namespace llarp
       ResourceRecord(const ResourceRecord& other);
       ResourceRecord(ResourceRecord&& other);
 
+      explicit ResourceRecord(Name_t name, RRType_t type, RR_RData_t rdata);
+
       bool
       Encode(llarp_buffer_t* buf) const override;
 
       bool
       Decode(llarp_buffer_t* buf) override;
+
+      util::StatusObject
+      ToJSON() const override;
 
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;

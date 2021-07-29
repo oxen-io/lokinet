@@ -48,6 +48,12 @@ namespace llarp
       return true;
     }
 
+    util::StatusObject
+    MessageHeader::ToJSON() const
+    {
+      return util::StatusObject{};
+    }
+
     Message::Message(Message&& other)
         : hdr_id(std::move(other.hdr_id))
         , hdr_fields(std::move(other.hdr_fields))
@@ -72,6 +78,11 @@ namespace llarp
       answers.resize(size_t(hdr.an_count));
       authorities.resize(size_t(hdr.ns_count));
       additional.resize(size_t(hdr.ar_count));
+    }
+
+    Message::Message(const Question& question) : hdr_id{0}, hdr_fields{}
+    {
+      questions.emplace_back(question);
     }
 
     bool
@@ -120,6 +131,22 @@ namespace llarp
         }
       }
       return true;
+    }
+
+    util::StatusObject
+    Message::ToJSON() const
+    {
+      std::vector<util::StatusObject> ques;
+      std::vector<util::StatusObject> ans;
+      for (const auto& q : questions)
+      {
+        ques.push_back(q.ToJSON());
+      }
+      for (const auto& a : answers)
+      {
+        ans.push_back(a.ToJSON());
+      }
+      return util::StatusObject{{"questions", ques}, {"answers", ans}};
     }
 
     OwnedBuffer
