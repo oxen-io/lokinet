@@ -70,7 +70,7 @@ endforeach()
 if(APPLE)
 
   set(CODESIGN_APP "" CACHE STRING "codesign the macos app using this key identity")
-  set(CODESIGN_DEV "" CACHE STRING "codesign the internal extension using this key identity")
+  set(CODESIGN_APPEX "${CODESIGN_APP}" CACHE STRING "codesign the internal extension using this key identity; defaults to CODESIGN_APP if empty")
 
   add_custom_target(icons ALL
     COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns
@@ -96,8 +96,8 @@ if(APPLE)
     MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/contrib/macos/Info.plist.in"
     MACOSX_BUNDLE_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns"
     MACOSX_BUNDLE_COPYRIGHT "© 2021, The Oxen Project")
-  if (CODESIGN_APP AND CODESIGN_DEV)
-    message(STATUS "codesigning with ${CODESIGN_APP} (app) ${CODESIGN_DEV} (appex)")
+  if (CODESIGN_APP AND CODESIGN_APPEX)
+    message(STATUS "codesigning with ${CODESIGN_APP} (app) ${CODESIGN_APPEX} (appex)")
     set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/lokinet.app")
     configure_file(
       "${PROJECT_SOURCE_DIR}/contrib/macos/sign.sh.in"
@@ -109,7 +109,7 @@ if(APPLE)
       COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
   else()
-    message(WARNING "Not codesigning: CODESIGN_APP (=${CODESIGN_APP}) and/or CODESIGN_DEV (=${CODESIGN_DEV}) are not set")
+    message(WARNING "Not codesigning: CODESIGN_APP (=${CODESIGN_APP}) and/or CODESIGN_APPEX (=${CODESIGN_APPEX}) are not set")
   endif()
 endif()
 

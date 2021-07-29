@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-codesign --verbose=4 --force -s "@CODESIGN_DEV@" \
+codesign --verbose=4 --force -s "@CODESIGN_APPEX@" \
   --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.entitlements.plist" \
   --deep --strict --timestamp --options=runtime "@SIGN_TARGET@/Contents/PlugIns/lokinet-extension.appex"
 for file in "@SIGN_TARGET@/Contents/MacOS/lokinet" "@SIGN_TARGET@" ; do
