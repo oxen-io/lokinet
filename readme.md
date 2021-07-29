@@ -153,11 +153,16 @@ to configure as relay:
 
 ## Running on Linux
 
-**DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
+**DO NOT RUN AS ROOT**, run as normal user. 
 
 to run, after you create default config:
 
     $ lokinet
+
+This requires the binary to have the proper capabilities which is usually set by `make install` on the binary. If you have errors regarding permissions to open a new interface this can be resolved using:
+
+    $ sudo setcap cap_net_admin,cap_net_bind_service=+eip /usr/local/bin/lokinet
+
 
 ## Running on macOS/UNIX/BSD
 
