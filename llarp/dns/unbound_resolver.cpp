@@ -13,6 +13,7 @@ namespace llarp::dns
     Message msg;
     SockAddr resolverAddr;
     SockAddr askerAddr;
+    int id;
   };
 
   void
@@ -24,9 +25,18 @@ namespace llarp::dns
   void
   UnboundResolver::Reset()
   {
-    started = false;
     if (runner)
     {
+      // cancel all pending lookups
+      for (auto id : pending_resolve_jobs)
+      {
+        if (unboundContext)
+          ub_cancel(unboundContext, id);
+      }
+
+      pending_resolve_jobs.clear();
+      started = false;
+
       runner->join();
       runner.reset();
     }
@@ -53,6 +63,9 @@ namespace llarp::dns
     auto this_ptr = lookup->resolver.lock();
     if (not this_ptr)
       return;  // resolver is gone, so we don't reply.
+
+    // remove from pending jobs
+    this_ptr->pending_resolve_jobs.erase(lookup->id);
 
     if (err != 0)
     {
@@ -94,6 +107,7 @@ namespace llarp::dns
     }
 
     ub_ctx_async(unboundContext, 1);
+    started = true;
     runner = std::make_unique<std::thread>([&]() {
       while (started)
       {
@@ -102,7 +116,6 @@ namespace llarp::dns
         std::this_thread::sleep_for(25ms);
       }
     });
-    started = true;
     return true;
   }
 
@@ -148,9 +161,8 @@ namespace llarp::dns
       failFunc(to, from, std::move(msg));
       return;
     }
-
     const auto& q = msg.questions[0];
-    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, to, from};
+    auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, to, from, 0};
     int err = ub_resolve_async(
         unboundContext,
         q.Name().c_str(),
@@ -158,7 +170,7 @@ namespace llarp::dns
         q.qclass,
         (void*)lookup,
         &UnboundResolver::Callback,
-        nullptr);
+        &lookup->id);
 
     if (err != 0)
     {
@@ -166,6 +178,7 @@ namespace llarp::dns
       failFunc(to, from, std::move(msg));
       return;
     }
+    pending_resolve_jobs.emplace(lookup->id);
   }
 
 }  // namespace llarp::dns

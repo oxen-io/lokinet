@@ -1100,13 +1100,14 @@ namespace llarp
 
     bool
     Endpoint::HandleDataMessage(
-        path::Path_ptr, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
+        path::Path_ptr p, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
     {
       PutSenderFor(msg->tag, msg->sender, true);
       Introduction intro = msg->introReply;
       if (HasInboundConvo(msg->sender.Addr()))
       {
         intro.pathID = from;
+        intro.router = p->Endpoint();
       }
       PutReplyIntroFor(msg->tag, intro);
       ConvoTagRX(msg->tag);

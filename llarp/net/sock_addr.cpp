@@ -209,7 +209,8 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr);
+    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr)
+        or (m_addr.sin6_port < other.m_addr.sin6_port);
   }
 
   bool

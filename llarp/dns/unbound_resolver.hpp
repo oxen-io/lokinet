@@ -5,6 +5,7 @@
 #include <atomic>
 #include <memory>
 #include <queue>
+#include <unordered_set>
 
 #include <llarp/ev/ev.hpp>
 #include <llarp/util/fs.hpp>
@@ -32,6 +33,8 @@ namespace llarp::dns
 
     ReplyFunction replyFunc;
     FailFunction failFunc;
+
+    std::unordered_set<int> pending_resolve_jobs;
 
     void
     Reset();
