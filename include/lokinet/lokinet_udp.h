@@ -35,17 +35,23 @@ extern "C"
     int local_port;
   };
 
+  /// information about a udp endpoint
+  struct lokinet_udp_addr
+  {
+    /// the peer's .loki or .snode address
+    char addr[256];
+    /// the peer's "real" port
+    int port;
+  };
+
   /// establish an outbound udp flow
-  /// remoteHost is the remote .loki or .snode address conneting to
-  /// remotePort is either a string integer or an srv record name to lookup, e.g. thingservice in
-  /// which we do a srv lookup for _udp.thingservice.remotehost.tld and use the "best" port provided
-  /// localAddr is the local ip:port to bind our socket to, if localAddr is NULL then
-  /// lokinet_udp_sendmmsg MUST be used to send packets return 0 on success return nonzero on fail,
-  /// containing an errno value
+  /// remoteAddr is the remote host:port tuple we are making a flow for
+  /// localAddr is the local ip:port to bind our socket to.
+  /// flow will be populated with this flow's information
+  /// return 0 on success return nonzero on fail containing an errno value
   int EXPORT
   lokinet_udp_establish(
-      char* remoteHost,
-      char* remotePort,
+      char* remoteAddr,
       char* localAddr,
       struct lokinet_udp_flow* flow,
       struct lokinet_context* ctx);
@@ -55,50 +61,25 @@ extern "C"
   {
     /// a socket id used to close a lokinet udp socket
     int socket_id;
+    /// local socket address
+    struct lokinet_udp_addr sockname;
   };
 
   /// inbound listen udp socket
-  /// expose udp port exposePort to the void
-  /// if srv is not NULL add an srv record for this port, the format being "thingservice" in which
-  /// will add a srv record "_udp.thingservice.ouraddress.tld" that advertises this port provide
-  /// localAddr to forward inbound udp packets to "ip:port" if localAddr is NULL then the resulting
-  /// socket MUST be drained by lokinet_udp_recvmmsg
-  ///
-  /// returns 0 on success
-  /// returns nonzero on error in which it is an errno value
+  /// expose udp port exposePort to the network, any .loki traffic for udp on that port will be
+  /// forwarded localAddr to forward inbound udp packets to "ip:port" returns 0 on success returns
+  /// nonzero on error in which it is an errno value
   int EXPORT
   lokinet_udp_bind(
-      int exposedPort,
-      char* srv,
+      int exposePort,
       char* localAddr,
       struct lokinet_udp_listen_result* result,
       struct lokinet_context* ctx);
 
-  /// poll many udp sockets for activity
-  /// returns 0 on sucess
-  ///
-  /// returns non zero errno on error
+  /// look up the remote endpoint of a local udp mapping for inbound sockets
   int EXPORT
-  lokinet_udp_poll(
-      const int* socket_ids,
-      size_t numsockets,
-      const struct timespec* timeout,
-      struct lokinet_context* ctx);
-
-  struct lokinet_udp_pkt
-  {
-    char remote_addr[256];
-    int remote_port;
-    struct iovec pkt;
-  };
-
-  /// analog to recvmmsg
-  ssize_t EXPORT
-  lokinet_udp_recvmmsg(
-      int socket_id,
-      struct lokinet_udp_pkt* events,
-      size_t max_events,
-      struct lokient_context* ctx);
+  lokinet_udp_peername(
+      int socket_id, char* localaddr, struct lokinet_udp_addr* peer, struct lokinet_context* ctx);
 
 #ifdef __cplusplus
 }
