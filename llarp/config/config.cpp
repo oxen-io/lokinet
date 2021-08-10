@@ -3,7 +3,6 @@
 
 #include "config/definition.hpp"
 #include "ini.hpp"
-#include <llarp/constants/defaults.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
