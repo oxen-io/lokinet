@@ -1,0 +1,21 @@
+[Unit]
+Description=LokiNET: Anonymous Network layer thingydoo, client
+AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=_lokinet
+Type=notify
+WatchdogSec=30s
+SyslogIdentifier=lokinet
+WorkingDirectory=/var/lib/lokinet
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
+Environment=LOKINET_NETID=lokinet
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
