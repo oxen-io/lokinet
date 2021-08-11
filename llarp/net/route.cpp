@@ -558,7 +558,7 @@ namespace llarp::net
     std::ifstream inf("/proc/net/route");
     for (std::string line; std::getline(inf, line);)
     {
-      const auto parts = split(line, '\t');
+      const auto parts = split(line, "\t");
       if (parts[1].find_first_not_of('0') == std::string::npos and parts[0] != ifname)
       {
         const auto& ip = parts[2];

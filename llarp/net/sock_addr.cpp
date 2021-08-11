@@ -244,7 +244,7 @@ namespace llarp
 
     // NOTE: this potentially involves multiple memory allocations,
     //       reimplement without split() if it is performance bottleneck
-    auto splits = split(str, ':');
+    auto splits = split(str, ":");
 
     // TODO: having ":port" at the end makes this ambiguous with IPv6
     //       come up with a strategy for implementing
@@ -260,7 +260,7 @@ namespace llarp
     assert(splits.size() > 0);
 
     // splits[0] should be dot-separated IPv4
-    auto ipSplits = split(splits[0], '.');
+    auto ipSplits = split(splits[0], ".");
     if (ipSplits.size() != 4)
       throw std::invalid_argument(stringify(str, " is not a valid IPv4 address"));
 
