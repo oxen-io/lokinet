@@ -798,7 +798,7 @@ namespace llarp
     {
       info.interface = std::string{name};
 
-      std::vector<std::string_view> splits = split(value, ',');
+      std::vector<std::string_view> splits = split(value, ",");
       for (std::string_view str : splits)
       {
         int asNum = std::atoi(str.data());

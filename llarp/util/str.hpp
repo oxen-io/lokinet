@@ -35,14 +35,6 @@ namespace llarp
     return o.str();
   }
 
-  /// Split a string on a given delimiter
-  //
-  /// @param str is the string to split
-  /// @param delimiter is the character to split on
-  /// @return a vector of std::string_views with the split words, excluding the delimeter
-  std::vector<std::string_view>
-  split(const std::string_view str, char delimiter);
-
   using namespace std::literals;
 
   /// Returns true if the first string is equal to the second string, compared case-insensitively.
