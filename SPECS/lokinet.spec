@@ -1,6 +1,6 @@
 Name:           lokinet
 Version:        0.9.5
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
 License:        GPLv3+
@@ -161,6 +161,9 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Thu Aug 12 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.5-6
+- Change default dns port from 1053 to 953 so that it is still privileged.
+
 * Wed Aug 11 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.5-5
 - Apply default upstream dns patch from PR #1715
 
