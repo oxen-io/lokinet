@@ -197,12 +197,7 @@ local mac_builder(name,
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
                 'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
-                'mkdir build',
-                'cd build',
-                'cmake .. -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'VERBOSE=1 make -j' + jobs,
-                './test/testAll --use-colour yes',
+                './contrib/mac.sh'
             ] + extra_cmds,
         }
     ]
