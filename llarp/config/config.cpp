@@ -711,7 +711,7 @@ namespace llarp
     constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
     if (!m_upstreamDNS.back().getPort())
-        m_upstreamDNS.back().setPort(53);
+      m_upstreamDNS.back().setPort(53);
 
     conf.defineOption<std::string>(
         "dns",
