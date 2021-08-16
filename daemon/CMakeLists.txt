@@ -117,6 +117,10 @@ if(APPLE)
       )
   else()
     message(WARNING "Not codesigning: CODESIGN_APP (=${CODESIGN_APP}) and/or CODESIGN_APPEX (=${CODESIGN_APPEX}) are not set")
+    add_custom_target(
+      sign
+      DEPENDS lokinet lokinet-extension lokinet-dnsproxy
+      COMMAND "true")
   endif()
 endif()
 

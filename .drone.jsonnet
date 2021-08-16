@@ -275,9 +275,4 @@ local mac_builder(name,
     // Macos builds:
     mac_builder('macOS (Release)'),
     mac_builder('macOS (Debug)', build_type='Debug'),
-    mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
-                extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    '../contrib/ci/drone-static-upload.sh'
-                ]),
 ]

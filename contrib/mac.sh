@@ -35,5 +35,5 @@ cmake \
 ninja sign
 
 echo -e "Build complete, your app is here:\n"
-ls -lad daemon/lokinet.app
+ls -lad $(pwd)/daemon/lokinet.app
 echo ""
