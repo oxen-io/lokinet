@@ -262,7 +262,7 @@ namespace llarp
 
 #ifdef __APPLE__
     static std::shared_ptr<Config>
-    NetworkExtensionConfig();
+    NetworkExtensionConfig(std::string exit);
 #endif
 
    private:

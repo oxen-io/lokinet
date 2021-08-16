@@ -26,7 +26,7 @@ namespace llarp::apple
     makeVPNPlatform() override;
 
     void
-    Start(std::string_view bootstrap);
+    Start(std::string_view bootstrap, std::string exit);
 
    private:
     NEPacketTunnelProvider* const m_Tunnel;
@@ -137,29 +137,30 @@ namespace llarp::apple
   {}
 
   void
-  FrameworkContext::Start(std::string_view bootstrap)
+  FrameworkContext::Start(std::string_view bootstrap, std::string exit)
   {
     std::promise<void> result;
 
-    m_Runner = std::make_unique<std::thread>([&result, bootstrap = std::string{bootstrap}, this]() {
-      const RuntimeOptions opts{};
-      try
-      {
-        auto config = llarp::Config::NetworkExtensionConfig();
-        config->bootstrap.files.emplace_back(bootstrap);
-        config->dns.m_bind = DefaultDNSBind;
-        config->dns.m_upstreamDNS.push_back(DefaultUpstreamDNS);
-        Configure(std::move(config));
-        Setup(opts);
-      }
-      catch (std::exception&)
-      {
-        result.set_exception(std::current_exception());
-        return;
-      }
-      result.set_value();
-      Run(opts);
-    });
+    m_Runner =
+        std::make_unique<std::thread>([&result, bootstrap = std::string{bootstrap}, exit, this]() {
+          const RuntimeOptions opts{};
+          try
+          {
+            auto config = llarp::Config::NetworkExtensionConfig(exit);
+            config->bootstrap.files.emplace_back(bootstrap);
+            config->dns.m_bind = DefaultDNSBind;
+            config->dns.m_upstreamDNS.push_back(DefaultUpstreamDNS);
+            Configure(std::move(config));
+            Setup(opts);
+          }
+          catch (std::exception&)
+          {
+            result.set_exception(std::current_exception());
+            return;
+          }
+          result.set_value();
+          Run(opts);
+        });
 
     auto ftr = result.get_future();
     ftr.get();
@@ -182,10 +183,10 @@ struct ContextWrapper
   {}
 
   void
-  Start(std::string_view bootstrap)
+  Start(std::string_view bootstrap, std::string exit)
   {
     llarp::LogContext::Instance().logStream.reset(new llarp::NSLogStream{});
-    m_Context->Start(std::move(bootstrap));
+    m_Context->Start(std::move(bootstrap), std::move(exit));
   }
 
   void
@@ -210,20 +211,29 @@ struct ContextWrapper
   }
   NSString* addr = StringToNSString(addr_.ToString());
   NSString* mask = StringToNSString(mask_.ToString());
+  llarp::huint32_t dnsaddr_{addr_ & mask_};
+  NSString* dnsaddr = StringToNSString(dnsaddr_.ToString());
+  NSLog(@"%@", dnsaddr);
 
   NSBundle* main = [NSBundle mainBundle];
   NSString* res = [main pathForResource:@"bootstrap" ofType:@"signed"];
   NSData* path = [res dataUsingEncoding:NSUTF8StringEncoding];
 
   m_Context = new ContextWrapper{self};
-  m_Context->Start(DataAsStringView(path));
+  m_Context->Start(DataAsStringView(path), "exit.loki");
 
   NEPacketTunnelNetworkSettings* settings =
       [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"127.0.0.1"];
-  NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[addr]];
+  NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[dnsaddr]];
+  dns.domainName = @"localhost.loki";
+  dns.matchDomains = @[@"*.snode", @"*.loki"];
+  dns.matchDomainsNoSearch = true;
+  dns.searchDomains = @[];
+  // dns.dnsProtocol = NEDNSProtocolCleartext;
   NEIPv4Settings* ipv4 = [[NEIPv4Settings alloc] initWithAddresses:@[addr]
                                                        subnetMasks:@[@"255.255.255.255"]];
-  ipv4.includedRoutes = @[[[NEIPv4Route alloc] initWithDestinationAddress:addr subnetMask:mask]];
+  ipv4.includedRoutes = @[[NEIPv4Route defaultRoute]];
+  // ipv4.includedRoutes = @[[[NEIPv4Route alloc] initWithDestinationAddress:addr subnetMask:mask]];
   settings.IPv4Settings = ipv4;
   settings.DNSSettings = dns;
   [self setTunnelNetworkSettings:settings completionHandler:completionHandler];

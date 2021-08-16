@@ -22,6 +22,9 @@ class LokinetMain: NSObject, NSApplicationDelegate {
         NSLog("setting up dns settings")
         let dns = NEDNSSettingsManager.shared()
         let settings = NEDNSSettings(servers: ["172.16.0.1"])
+        settings.matchDomains = ["*.loki", "*.snode"]
+        settings.matchDomainsNoSearch = true
+        settings.domainName = "localhost.loki"
         dns.dnsSettings = settings
         dns.loadFromPreferences { [self] (error: Error?) -> Void in
             if let error = error {
@@ -94,6 +97,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
             providerProtocol.serverAddress = "loki.loki" // Needs to be set to some non-null dummy value
             providerProtocol.username = "anonymous"
             providerProtocol.providerBundleIdentifier = self.lokinetComponent
+            providerProtocol.enforceRoutes = true
             // macos seems to have trouble when this is true, and reports are that this breaks and
             // doesn't do what it says on the tin in the first place.  Needs more testing.
             providerProtocol.includeAllNetworks = false
@@ -155,7 +159,6 @@ class LokinetMain: NSObject, NSApplicationDelegate {
                 NSLog("VPN is disconnecting...")
             } else if self.vpnManager.connection.status == .connected {
                 NSLog("VPN Connected")
-                self.setupDNSJizz()
             }
         }
     }
