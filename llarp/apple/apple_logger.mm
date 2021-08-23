@@ -1,6 +1,5 @@
-#ifdef __APPLE__
 #include "apple_logger.hpp"
-#include "logger_internal.hpp"
+#include <llarp/util/logging/logger_internal.hpp>
 
 #include <Foundation/Foundation.h>
 
@@ -35,4 +34,3 @@ namespace llarp
   {}
 
 }  // namespace llarp
-#endif

@@ -4,7 +4,7 @@
 #include <llarp/config/config.hpp>
 #include <llarp/ev/vpn.hpp>
 #include <llarp/util/thread/queue.hpp>
-#include <llarp/util/logging/apple_logger.hpp>
+#include <llarp/apple/apple_logger.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/sock_addr.hpp>

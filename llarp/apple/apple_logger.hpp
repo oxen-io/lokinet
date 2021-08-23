@@ -1,6 +1,6 @@
 #pragma once
-#ifdef __APPLE__
-#include "logstream.hpp"
+
+#include <llarp/util/logging/logstream.hpp>
 
 namespace llarp
 {
@@ -28,5 +28,3 @@ namespace llarp
     {}
   };
 }  // namespace llarp
-
-#endif
