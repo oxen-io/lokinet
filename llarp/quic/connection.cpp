@@ -275,17 +275,13 @@ namespace llarp::quic
       return 0;
     }
 
-    int
-    rand(
-        uint8_t* dest,
-        size_t destlen,
-        const ngtcp2_rand_ctx* rand_ctx,
-        [[maybe_unused]] ngtcp2_rand_usage usage)
+    void
+    rand(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx* rand_ctx)
     {
       LogTrace("######################", __func__);
       randombytes_buf(dest, destlen);
-      return 0;
     }
+
     int
     get_new_connection_id(
         ngtcp2_conn* conn_, ngtcp2_cid* cid_, uint8_t* token, size_t cidlen, void* user_data)
