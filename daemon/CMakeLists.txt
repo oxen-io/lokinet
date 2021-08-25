@@ -75,9 +75,11 @@ if(APPLE)
   set(CODESIGN_APP "" CACHE STRING "codesign the macos app using this key identity")
   set(CODESIGN_APPEX "${CODESIGN_APP}" CACHE STRING "codesign the internal extension using this key identity; defaults to CODESIGN_APP if empty")
 
-  add_custom_target(icons ALL
-    COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns
+  set(mac_icon ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns)
+  add_custom_command(OUTPUT ${mac_icon}
+    COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${mac_icon}
     DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
+  add_custom_target(icons DEPENDS ${mac_icon})
   add_dependencies(lokinet icons lokinet-extension)
   file(DOWNLOAD "https://seed.lokinet.org/lokinet.signed" ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.signed)
   add_custom_command(TARGET lokinet
@@ -101,7 +103,7 @@ if(APPLE)
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${lokinet_VERSION_MAJOR}.${lokinet_VERSION_MINOR}"
     MACOSX_BUNDLE_GUI_IDENTIFIER "com.loki-project.lokinet"
     MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/contrib/macos/Info.plist.in"
-    MACOSX_BUNDLE_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns"
+    MACOSX_BUNDLE_ICON_FILE "${mac_icon}"
     MACOSX_BUNDLE_COPYRIGHT "© 2021, The Oxen Project")
   if (CODESIGN_APP AND CODESIGN_APPEX)
     message(STATUS "codesigning with ${CODESIGN_APP} (app) ${CODESIGN_APPEX} (appex)")
