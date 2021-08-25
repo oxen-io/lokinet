@@ -1,9 +1,6 @@
 #include "apple_logger.hpp"
-#include <llarp/util/logging/logger_internal.hpp>
 
-#include <Foundation/Foundation.h>
-
-namespace llarp
+namespace llarp::apple
 {
   void
   NSLogStream::PreLog(
@@ -22,15 +19,7 @@ namespace llarp
   void
   NSLogStream::Print(LogLevel, const char*, const std::string& msg)
   {
-    const char* msg_ptr = msg.c_str();
-    const char* msg_fmt = "%s";
-    NSString* fmt = [[NSString alloc] initWithUTF8String:msg_ptr];
-    NSString* str = [[NSString alloc] initWithUTF8String:msg_fmt];
-    NSLog(fmt, str);
+    ns_logger(msg.c_str());
   }
 
-  void
-  NSLogStream::PostLog(std::stringstream&) const
-  {}
-
-}  // namespace llarp
+}  // namespace llarp::apple

@@ -18,7 +18,7 @@ fi
 
 cd "$(dirname $0)/../"
 if [ "$1" = "verify" ] ; then
-    if [ $($binary --output-replacements-xml $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|mm)$' | grep -v '\#') | grep '</replacement>' | wc -l) -ne 0 ] ; then
+    if [ $($binary --output-replacements-xml $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|mm?)$' | grep -v '\#') | grep '</replacement>' | wc -l) -ne 0 ] ; then
         exit 1
     fi
 else

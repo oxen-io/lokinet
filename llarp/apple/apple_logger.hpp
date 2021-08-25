@@ -1,11 +1,17 @@
 #pragma once
 
+#include <llarp/util/logging/logger.hpp>
 #include <llarp/util/logging/logstream.hpp>
 
-namespace llarp
+namespace llarp::apple
 {
   struct NSLogStream : public ILogStream
   {
+    using ns_logger_callback = void (*)(const char* log_this);
+
+    NSLogStream(ns_logger_callback logger) : ns_logger{logger}
+    {}
+
     void
     PreLog(
         std::stringstream& s,
@@ -18,13 +24,17 @@ namespace llarp
     Print(LogLevel lvl, const char* tag, const std::string& msg) override;
 
     void
-    PostLog(std::stringstream& ss) const override;
+    PostLog(std::stringstream& ss) const override
+    {}
 
-    virtual void
+    void
     ImmediateFlush() override
     {}
 
     void Tick(llarp_time_t) override
     {}
+
+   private:
+    ns_logger_callback ns_logger;
   };
-}  // namespace llarp
+}  // namespace llarp::apple

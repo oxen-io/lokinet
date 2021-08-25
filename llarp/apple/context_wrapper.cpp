@@ -1,0 +1,162 @@
+#include <cstdint>
+#include <cstring>
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/logging/buffer.hpp>
+#include "vpn_interface.hpp"
+#include "context_wrapper.h"
+#include "context.hpp"
+#include "apple_logger.hpp"
+
+namespace
+{
+  // The default 127.0.0.1:53 won't work (because we run unprivileged) so remap it to this (unless
+  // specifically overridden to something else in the config):
+  const llarp::SockAddr DefaultDNSBind{"127.0.0.1:1153"};
+
+  struct instance_data
+  {
+    llarp::apple::Context context;
+    std::thread runner;
+
+    std::weak_ptr<llarp::apple::VPNInterface> iface;
+  };
+
+}  // namespace
+
+void*
+llarp_apple_init(
+    ns_logger_callback ns_logger,
+    const char* config_dir_,
+    const char* default_bootstrap,
+    char* ip,
+    char* netmask,
+    char* dns)
+{
+  llarp::LogContext::Instance().logStream = std::make_unique<llarp::apple::NSLogStream>(ns_logger);
+
+  try
+  {
+    auto config_dir = fs::u8path(config_dir_);
+    auto config = std::make_shared<llarp::Config>(config_dir);
+    std::optional<fs::path> config_path = config_dir / "lokinet.ini";
+    if (!fs::exists(*config_path))
+      config_path.reset();
+    config->Load(config_path);
+
+    // If no range is specified then go look for a free one, set that in the config, and then return
+    // it to the caller via the char* parameters.
+    auto& range = config->network.m_ifaddr;
+    if (!range.addr.h)
+    {
+      if (auto maybe = llarp::FindFreeRange())
+        range = *maybe;
+      else
+        throw std::runtime_error{"Could not find any free IP range"};
+    }
+    auto addr = llarp::net::TruncateV6(range.addr).ToString();
+    auto mask = llarp::net::TruncateV6(range.netmask_bits).ToString();
+    if (addr.size() > 15 || mask.size() > 15)
+      throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
+    std::strcpy(ip, addr.c_str());
+    std::strcpy(netmask, mask.c_str());
+    // XXX possibly DNS needs to be the .0 instead of the .1 because mac reasons?
+    std::strcpy(dns, addr.c_str());
+
+    // The default DNS bind setting just isn't something we can use as a non-root network extension
+    // so remap the default value to a high port unless explicitly set to something else.
+    if (config->dns.m_bind == llarp::SockAddr{"127.0.0.1:53"})
+      config->dns.m_bind = DefaultDNSBind;
+
+    // If no explicit bootstrap then set the system default one included with the app bundle
+    if (config->bootstrap.files.empty())
+      config->bootstrap.files.push_back(fs::u8path(default_bootstrap));
+
+    auto inst = std::make_unique<instance_data>();
+    inst->context.Configure(std::move(config));
+    return inst.release();
+  }
+  catch (const std::exception& e)
+  {
+    LogError("Failed to initialize lokinet from config: ", e.what());
+  }
+  return nullptr;
+}
+
+int
+llarp_apple_start(
+    void* lokinet,
+    packet_writer_callback packet_writer,
+    start_reading_callback start_reading,
+    void* callback_context)
+{
+  auto* inst = static_cast<instance_data*>(lokinet);
+  inst->context.m_PacketWriter = [inst, packet_writer, callback_context](
+                                     int af_family, void* data, size_t size) {
+    packet_writer(af_family, data, size, callback_context);
+    return true;
+  };
+
+  inst->context.m_OnReadable =
+      [inst, start_reading, callback_context](llarp::apple::VPNInterface& iface) {
+        inst->iface = iface.weak_from_this();
+        start_reading(callback_context);
+      };
+
+  std::promise<void> result;
+  inst->runner = std::thread{[inst, &result] {
+    const llarp::RuntimeOptions opts{};
+    try
+    {
+      inst->context.Setup(opts);
+    }
+    catch (...)
+    {
+      result.set_exception(std::current_exception());
+      return;
+    }
+    result.set_value();
+    inst->context.Run(opts);
+  }};
+
+  try
+  {
+    result.get_future().get();
+  }
+  catch (const std::exception& e)
+  {
+    LogError("Failed to initialize lokinet: ", e.what());
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+llarp_apple_incoming(void* lokinet, const void* bytes, size_t size)
+{
+  auto& inst = *static_cast<instance_data*>(lokinet);
+
+  auto iface = inst.iface.lock();
+  if (!iface)
+    return -2;
+
+  llarp_buffer_t buf{static_cast<const uint8_t*>(bytes), size};
+  if (iface->OfferReadPacket(buf))
+    return 0;
+
+  LogError("invalid IP packet: ", llarp::buffer_printer(buf));
+  return -1;
+}
+
+void
+llarp_apple_shutdown(void* lokinet)
+{
+  auto* inst = static_cast<instance_data*>(lokinet);
+
+  inst->context.CloseAsync();
+  inst->context.Wait();
+  inst->runner.join();
+  delete inst;
+}

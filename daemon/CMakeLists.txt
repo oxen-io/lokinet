@@ -88,7 +88,6 @@ if(APPLE)
         $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
     COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns
     COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
-    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-dnsproxy> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/macos/lokinet.provisionprofile
         $<TARGET_BUNDLE_DIR:lokinet>/Contents/embedded.provisionprofile
     )
@@ -114,14 +113,14 @@ if(APPLE)
       @ONLY)
     add_custom_target(
       sign
-      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension lokinet-dnsproxy
+      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
       COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
   else()
     message(WARNING "Not codesigning: CODESIGN_APP (=${CODESIGN_APP}) and/or CODESIGN_APPEX (=${CODESIGN_APPEX}) are not set")
     add_custom_target(
       sign
-      DEPENDS lokinet lokinet-extension lokinet-dnsproxy
+      DEPENDS lokinet lokinet-extension
       COMMAND "true")
   endif()
 endif()
