@@ -40,9 +40,9 @@ llarp_apple_init(
   {
     auto config_dir = fs::u8path(config_dir_);
     auto config = std::make_shared<llarp::Config>(config_dir);
-    std::optional<fs::path> config_path = config_dir / "lokinet.ini";
-    if (!fs::exists(*config_path))
-      config_path.reset();
+    fs::path config_path = config_dir / "lokinet.ini";
+    if (!fs::exists(config_path))
+      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/ false, /*router=*/ false);
     config->Load(config_path);
 
     // If no range is specified then go look for a free one, set that in the config, and then return
