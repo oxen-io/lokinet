@@ -87,8 +87,8 @@ namespace llarp
 
         OwnedBuffer buf{pkt.sz - (8 + ip_header_size)};
         std::copy_n(ptr + 8, buf.sz, buf.buf.get());
-        if (m_Resolver->ShouldHandlePacket(raddr, laddr, buf))
-          m_Resolver->HandlePacket(raddr, laddr, buf);
+        if (m_Resolver->ShouldHandlePacket(laddr, raddr, buf))
+          m_Resolver->HandlePacket(laddr, raddr, buf);
         else
           HandleGotUserPacket(std::move(pkt));
       });
