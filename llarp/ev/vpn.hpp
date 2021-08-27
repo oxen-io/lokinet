@@ -83,6 +83,12 @@ namespace llarp::vpn
     virtual void
     DelDefaultRouteViaInterface(std::string ifname) = 0;
 
+    virtual void
+    AddRouteViaInterface(std::string ifname, IPRange range) = 0;
+
+    virtual void
+    DelRouteViaInterface(std::string ifname, IPRange range) = 0;
+
     virtual std::vector<IPVariant_t>
     GetGatewaysNotOnInterface(std::string ifname) = 0;
 

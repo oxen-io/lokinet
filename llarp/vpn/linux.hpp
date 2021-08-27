@@ -178,14 +178,14 @@ namespace llarp::vpn
       unsigned char bitlen;
       unsigned char data[sizeof(struct in6_addr)];
 
-      _inet_addr(huint32_t addr, int bits = 32)
+      _inet_addr(huint32_t addr, size_t bits = 32)
       {
         family = AF_INET;
         bitlen = bits;
         htobe32buf(data, addr.h);
       }
 
-      _inet_addr(huint128_t addr, int bits = 128)
+      _inet_addr(huint128_t addr, size_t bits = 128)
       {
         family = AF_INET6;
         bitlen = bits;
@@ -314,6 +314,34 @@ namespace llarp::vpn
     }
 
     void
+    RouteViaInterface(int cmd, int flags, std::string ifname, IPRange range)
+    {
+      int if_idx = if_nametoindex(ifname.c_str());
+      if (range.IsV4())
+      {
+        const auto maybe = GetInterfaceAddr(ifname);
+        if (not maybe)
+          throw std::runtime_error{"we dont have our own network interface?"};
+
+        const _inet_addr gateway{maybe->asIPv4()};
+
+        const _inet_addr addr{
+            net::TruncateV6(range.addr), bits::count_bits(net::TruncateV6(range.netmask_bits))};
+
+        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, if_idx);
+      }
+      else
+      {
+        const auto maybe = GetInterfaceIPv6Address(ifname);
+        if (not maybe)
+          throw std::runtime_error{"we dont have our own network interface?"};
+        const _inet_addr gateway{*maybe, 128};
+        const _inet_addr addr{range.addr, bits::count_bits(range.netmask_bits)};
+        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, if_idx);
+      }
+    }
+
+    void
     Route(int cmd, int flags, IPVariant_t ip, IPVariant_t gateway)
     {
       // do bullshit double std::visit because lol variants
@@ -364,6 +392,18 @@ namespace llarp::vpn
     DelDefaultRouteViaInterface(std::string ifname) override
     {
       DefaultRouteViaInterface(ifname, RTM_DELROUTE, 0);
+    }
+
+    void
+    AddRouteViaInterface(std::string ifname, IPRange range) override
+    {
+      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ifname, range);
+    }
+
+    void
+    DelRouteViaInterface(std::string ifname, IPRange range) override
+    {
+      RouteViaInterface(RTM_DELROUTE, 0, ifname, range);
     }
 
     std::vector<IPVariant_t>

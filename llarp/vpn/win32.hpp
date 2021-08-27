@@ -544,6 +544,25 @@ namespace llarp::vpn
       Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname);
     }
 
+    void
+    RouteViaInterface(std::string ifname, IPRange range, std::string cmd)
+    {
+      if (range.IsV4())
+      {
+        const huint32_t addr4 = net::TruncateV6(range.addr);
+        const huint32_t mask4 = net::TruncateV6(range.netmask_bits);
+        Execute(
+            RouteCommand() + " " + cmd + " " + addr4.ToString() + " MASK " + mask4.ToString() + " "
+            + ifname);
+      }
+      else
+      {
+        Execute(
+            RouteCommand() + " " + cmd + range.addr.ToString() + " MASK "
+            + range.netmask_bits.ToString() + " " + ifname);
+      }
+    }
+
    public:
     void
     AddRoute(IPVariant_t ip, IPVariant_t gateway) override
@@ -555,6 +574,18 @@ namespace llarp::vpn
     DelRoute(IPVariant_t ip, IPVariant_t gateway) override
     {
       Route(ip, gateway, "DELETE");
+    }
+
+    void
+    AddRouteViaInterface(std::string ifname, IPRange range) override
+    {
+      RouteViaInterface(ifname, range, "ADD");
+    }
+
+    void
+    DelRouteViaInterface(std::string ifname, IPRange range) override
+    {
+      RouteViaInterface(ifname, range, "DELETE");
     }
 
     void
