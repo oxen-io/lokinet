@@ -175,7 +175,7 @@ namespace llarp::vpn
     std::vector<std::thread> m_Threads;
     thread::Queue<net::IPPacket> m_ReadQueue;
 
-    const InterfaceInfo m_Info;
+    InterfaceInfo m_Info;
 
     static std::wstring
     get_win_sys_path()
@@ -274,6 +274,7 @@ namespace llarp::vpn
           IPADDR sock[3]{};
           const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
           ip = net::TruncateV6(ifaddr.range.addr);
+          m_Info.ifname = ip.ToString();
           const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
           LogInfo("address ", addr, " netmask ", mask);
           sock[0] = addr.n;
@@ -409,7 +410,7 @@ namespace llarp::vpn
     std::string
     IfName() const override
     {
-      return "";
+      return m_Info.ifname;
     }
 
     void
@@ -577,15 +578,15 @@ namespace llarp::vpn
     }
 
     void
-    AddRouteViaInterface(std::string ifname, IPRange range) override
+    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(ifname, range, "ADD");
+      RouteViaInterface(vpn.IfName(), range, "ADD");
     }
 
     void
-    DelRouteViaInterface(std::string ifname, IPRange range) override
+    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(ifname, range, "DELETE");
+      RouteViaInterface(vpn.IfName(), range, "DELETE");
     }
 
     std::vector<IPVariant_t>

@@ -395,15 +395,15 @@ namespace llarp::vpn
     }
 
     void
-    AddRouteViaInterface(std::string ifname, IPRange range) override
+    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ifname, range);
+      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn.IfName(), range);
     }
 
     void
-    DelRouteViaInterface(std::string ifname, IPRange range) override
+    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_DELROUTE, 0, ifname, range);
+      RouteViaInterface(RTM_DELROUTE, 0, vpn.IfName(), range);
     }
 
     std::vector<IPVariant_t>
