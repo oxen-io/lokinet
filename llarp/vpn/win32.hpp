@@ -588,12 +588,6 @@ namespace llarp::vpn
       RouteViaInterface(ifname, range, "DELETE");
     }
 
-    void
-    AddBlackhole() override{};
-
-    void
-    DelBlackhole() override{};
-
     std::vector<IPVariant_t>
     GetGatewaysNotOnInterface(std::string ifname) override
     {

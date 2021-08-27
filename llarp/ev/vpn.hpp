@@ -93,10 +93,10 @@ namespace llarp::vpn
     GetGatewaysNotOnInterface(std::string ifname) = 0;
 
     virtual void
-    AddBlackhole() = 0;
+    AddBlackhole(){};
 
     virtual void
-    DelBlackhole() = 0;
+    DelBlackhole(){};
   };
 
   /// a vpn platform
