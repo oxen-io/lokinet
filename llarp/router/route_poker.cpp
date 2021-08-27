@@ -30,13 +30,15 @@ namespace llarp
   void
   RoutePoker::DisableRoute(huint32_t ip, huint32_t gateway)
   {
-    net::DelRoute(ip.ToString(), gateway.ToString());
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+    route.DelRoute(ip, gateway);
   }
 
   void
   RoutePoker::EnableRoute(huint32_t ip, huint32_t gateway)
   {
-    net::AddRoute(ip.ToString(), gateway.ToString());
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+    route.AddRoute(ip, gateway);
   }
 
   void
@@ -86,12 +88,13 @@ namespace llarp
 
   RoutePoker::~RoutePoker()
   {
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
     for (const auto& [ip, gateway] : m_PokedRoutes)
     {
       if (gateway.h)
-        net::DelRoute(ip.ToString(), gateway.ToString());
+        route.DelRoute(ip, gateway);
     }
-    net::DelBlackhole();
+    route.DelBlackhole();
   }
 
   std::optional<huint32_t>
@@ -101,14 +104,17 @@ namespace llarp
       throw std::runtime_error("Attempting to use RoutePoker before calling Init");
 
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
-    const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+    const auto gateways = route.GetGatewaysNotOnInterface(ep->GetIfName());
     if (gateways.empty())
     {
       return std::nullopt;
     }
-    huint32_t addr{};
-    addr.FromString(gateways[0]);
-    return addr;
+    if (auto* ptr = std::get_if<huint32_t>(&gateways[0]))
+    {
+      return huint32_t{*ptr};
+    }
+    return std::nullopt;
   }
 
   void
@@ -186,15 +192,17 @@ namespace llarp
   void
   RoutePoker::Up()
   {
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+
     // black hole all routes by default
-    net::AddBlackhole();
+    route.AddBlackhole();
     // explicit route pokes for first hops
     m_Router->ForEachPeer(
         [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },
         false);
     // add default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
-    net::AddDefaultRouteViaInterface(ep->GetIfName());
+    route.AddDefaultRouteViaInterface(ep->GetIfName());
   }
 
   void
@@ -206,9 +214,11 @@ namespace llarp
         false);
     // remove default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
-    net::DelDefaultRouteViaInterface(ep->GetIfName());
+    vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+
+    route.DelDefaultRouteViaInterface(ep->GetIfName());
     // delete route blackhole
-    net::DelBlackhole();
+    route.DelBlackhole();
   }
 
 }  // namespace llarp

@@ -4,6 +4,8 @@
 #include <llarp/net/ip_packet.hpp>
 #include <set>
 
+#include <oxenmq/variant.h>
+
 namespace llarp
 {
   struct Context;
@@ -59,6 +61,38 @@ namespace llarp::vpn
     WritePacket(net::IPPacket pkt) = 0;
   };
 
+  class IRouteManager
+  {
+   public:
+    using IPVariant_t = std::variant<huint32_t, huint128_t>;
+
+    IRouteManager() = default;
+    IRouteManager(const IRouteManager&) = delete;
+    IRouteManager(IRouteManager&&) = delete;
+    virtual ~IRouteManager() = default;
+
+    virtual void
+    AddRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+
+    virtual void
+    DelRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+
+    virtual void
+    AddDefaultRouteViaInterface(std::string ifname) = 0;
+
+    virtual void
+    DelDefaultRouteViaInterface(std::string ifname) = 0;
+
+    virtual std::vector<IPVariant_t>
+    GetGatewaysNotOnInterface(std::string ifname) = 0;
+
+    virtual void
+    AddBlackhole() = 0;
+
+    virtual void
+    DelBlackhole() = 0;
+  };
+
   /// a vpn platform
   /// responsible for obtaining vpn interfaces
   class Platform
@@ -73,6 +107,10 @@ namespace llarp::vpn
     /// blocks until ready, throws on error
     virtual std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) = 0;
+
+    /// get owned ip route manager for managing routing table
+    virtual IRouteManager&
+    RouteManager() = 0;
   };
 
   /// create native vpn platform
