@@ -117,6 +117,57 @@ namespace llarp::vpn
     return deviceid;
   }
 
+  template <typename Visit>
+  void
+  ForEachWIN32Interface(Visit visit)
+  {
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+    MIB_IPFORWARDTABLE* pIpForwardTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
+    if (pIpForwardTable == nullptr)
+      return;
+
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
+    {
+      FREE(pIpForwardTable);
+      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
+      if (pIpForwardTable == nullptr)
+      {
+        return;
+      }
+    }
+
+    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
+    {
+      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+      {
+        visit(&pIpForwardTable->table[i]);
+      }
+    }
+    FREE(pIpForwardTable);
+#undef MALLOC
+#undef FREE
+  }
+
+  std::optional<int>
+  GetInterfaceIndex(huint32_t ip)
+  {
+    std::optional<int> ret = std::nullopt;
+    ForEachWIN32Interface([&ret, n = ToNet(ip)](auto* iface) {
+      if (ret.has_value())
+        return;
+      if (iface->dwForwardNextHop == n.n)
+      {
+        ret = iface->dwForwardIfIndex;
+      }
+    });
+    return ret;
+  }
+
   class Win32Interface final : public NetworkInterface
   {
     std::atomic<bool> m_Run;
@@ -316,7 +367,7 @@ namespace llarp::vpn
       {
         if (ifaddr.fam == AF_INET6)
         {
-          const auto maybe = net::GetInterfaceIndex(ip);
+          const auto maybe = GetInterfaceIndex(ip);
           if (maybe.has_value())
           {
             NetSH(
@@ -442,42 +493,6 @@ namespace llarp::vpn
       }
     }
   };
-
-  template <typename Visit>
-  void
-  ForEachWIN32Interface(Visit visit)
-  {
-#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-    MIB_IPFORWARDTABLE* pIpForwardTable;
-    DWORD dwSize = 0;
-    DWORD dwRetVal = 0;
-
-    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
-    if (pIpForwardTable == nullptr)
-      return;
-
-    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
-    {
-      FREE(pIpForwardTable);
-      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
-      if (pIpForwardTable == nullptr)
-      {
-        return;
-      }
-    }
-
-    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
-    {
-      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
-      {
-        visit(&pIpForwardTable->table[i]);
-      }
-    }
-    FREE(pIpForwardTable);
-#undef MALLOC
-#undef FREE
-  }
 
   class Win32RouteManager : public IRouteManager
   {
