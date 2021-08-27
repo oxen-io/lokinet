@@ -159,6 +159,16 @@ namespace llarp::vpn
     }
 
    public:
+    static std::string
+    RouteCommand()
+    {
+      std::wstring wcmd = get_win_sys_path() + L"\\route.exe";
+
+      using convert_type = std::codecvt_utf8<wchar_t>;
+      std::wstring_convert<convert_type, wchar_t> converter;
+      return converter.to_bytes(wcmd);
+    }
+
     Win32Interface(InterfaceInfo info) : m_ReadQueue{1024}, m_Info{std::move(info)}
     {
       DWORD len;
@@ -433,8 +443,149 @@ namespace llarp::vpn
     }
   };
 
+  template <typename Visit>
+  void
+  ForEachWIN32Interface(Visit visit)
+  {
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+    MIB_IPFORWARDTABLE* pIpForwardTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
+    if (pIpForwardTable == nullptr)
+      return;
+
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
+    {
+      FREE(pIpForwardTable);
+      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
+      if (pIpForwardTable == nullptr)
+      {
+        return;
+      }
+    }
+
+    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
+    {
+      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+      {
+        visit(&pIpForwardTable->table[i]);
+      }
+    }
+    FREE(pIpForwardTable);
+#undef MALLOC
+#undef FREE
+  }
+
+  class Win32RouteManager : public IRouteManager
+  {
+    void
+    Execute(std::string cmd) const
+    {
+      LogInfo(cmd);
+      ::system(cmd.c_str());
+    }
+
+    static std::string
+    RouteCommand()
+    {
+      return Win32Interface::RouteCommand();
+    }
+
+    void
+    Route(IPVariant_t ip, IPVariant_t gateway, std::string cmd)
+    {
+      std::stringstream ss;
+      std::string ip_str;
+      std::string gateway_str;
+
+      std::visit([&ip_str](auto&& ip) { ip_str = ip.ToString(); }, ip);
+      std::visit([&gateway_str](auto&& gateway) { gateway_str = gateway.ToString(); }, gateway);
+
+      ss << RouteCommand() << " " << cmd << " " << ip_str << " MASK 255.255.255.255 " << gateway_str
+         << " METRIC 2";
+      Execute(ss.str());
+    }
+
+    void
+    DefaultRouteViaInterface(std::string ifname, std::string cmd)
+    {
+      // poke hole for loopback bacause god is dead on windows
+      Execute(RouteCommand() + " " + cmd + " 127.0.0.0 MASK 255.0.0.0 0.0.0.0");
+
+      huint32_t ip{};
+      ip.FromString(ifname);
+      const auto ipv6 = net::ExpandV4Lan(ip);
+
+      Execute(RouteCommand() + " " + cmd + " ::/2 " + ipv6.ToString());
+      Execute(RouteCommand() + " " + cmd + " 4000::/2 " + ipv6.ToString());
+      Execute(RouteCommand() + " " + cmd + " 8000::/2 " + ipv6.ToString());
+      Execute(RouteCommand() + " " + cmd + " c000::/2 " + ipv6.ToString());
+
+      ifname.back()++;
+      Execute(RouteCommand() + " " + cmd + " 0.0.0.0 MASK 128.0.0.0 " + ifname);
+      Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    }
+
+   public:
+    void
+    AddRoute(IPVariant_t ip, IPVariant_t gateway) override
+    {
+      Route(ip, gateway, "ADD");
+    }
+
+    void
+    DelRoute(IPVariant_t ip, IPVariant_t gateway) override
+    {
+      Route(ip, gateway, "DELETE");
+    }
+
+    void
+    AddBlackhole() override{};
+
+    void
+    DelBlackhole() override{};
+
+    std::vector<IPVariant_t>
+    GetGatewaysNotOnInterface(std::string ifname) override
+    {
+      std::vector<IPVariant_t> gateways;
+      ForEachWIN32Interface([&](auto w32interface) {
+        struct in_addr gateway, interface_addr;
+        gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
+        interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
+        std::string interface_name{inet_ntoa(interface_addr)};
+        if ((!gateway.S_un.S_addr) and interface_name != ifname)
+        {
+          llarp::LogTrace(
+              "Win32 find gateway: Adding gateway (", interface_name, ") to list of gateways.");
+          huint32_t x{};
+          if (x.FromString(interface_name))
+            gateways.push_back(x);
+        }
+      });
+      return gateways;
+    }
+
+    void
+    AddDefaultRouteViaInterface(std::string ifname) override
+    {
+      DefaultRouteViaInterface(ifname, "ADD");
+    }
+
+    void
+    DelDefaultRouteViaInterface(std::string ifname) override
+    {
+      DefaultRouteViaInterface(ifname, "DELETE");
+    }
+  };
+
   class Win32Platform : public Platform
   {
+    Win32RouteManager _routeManager{};
+
    public:
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) override
@@ -443,6 +594,11 @@ namespace llarp::vpn
       netif->Start();
       return netif;
     };
+    IRouteManager&
+    RouteManager() override
+    {
+      return _routeManager;
+    }
   };
 
 }  // namespace llarp::vpn
