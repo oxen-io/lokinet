@@ -76,17 +76,38 @@ namespace llarp
     DHTImmediateMessage gossip;
     gossip.msgs.emplace_back(new dht::GotRouterMessage(dht::Key_t{}, 0, {rc}, false));
 
-    // send it to everyone
+    constexpr size_t MaxGossipPeers = 20;
+
+    std::unordered_set<RouterID> gossipTo;
+
+    // connect peers to gossip to
+    m_LinkManager->ForEachPeer(
+        [&](const ILinkSession* peerSession, bool) {
+          // ensure connected session
+          if (not(peerSession && peerSession->IsEstablished()))
+            return;
+          // check if public router
+          const auto other_rc = peerSession->GetRemoteRC();
+          if (not other_rc.IsPublicRouter())
+            return;
+
+          if (gossipTo.size() >= MaxGossipPeers)
+            return;
+
+          gossipTo.insert(other_rc.pubkey);
+        },
+        true);
+
     m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
-      // ensure connected session
       if (not(peerSession && peerSession->IsEstablished()))
         return;
-      // check if public router
-      const auto other_rc = peerSession->GetRemoteRC();
-      if (not other_rc.IsPublicRouter())
+
+      // exclude from gossip as we have not selected to use it
+      if (gossipTo.count(peerSession->GetPubKey()) == 0)
         return;
+
       // encode message
-      ILinkSession::Message_t msg;
+      ILinkSession::Message_t msg{};
       msg.resize(MAX_LINK_MSG_SIZE / 2);
       llarp_buffer_t buf(msg);
       if (not gossip.BEncode(&buf))
