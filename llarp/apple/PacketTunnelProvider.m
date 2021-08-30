@@ -96,6 +96,7 @@ void start_packet_reader(void* ctx) {
   dns.searchDomains = @[];
   NEIPv4Settings* ipv4 = [[NEIPv4Settings alloc] initWithAddresses:@[ip]
                                                        subnetMasks:@[mask]];
+  ipv4.includedRoutes = @[[[NEIPv4Route alloc] initWithDestinationAddress:ip subnetMask: mask]];
   settings.IPv4Settings = ipv4;
   settings.DNSSettings = dns;
   [self setTunnelNetworkSettings:settings completionHandler:^(NSError* err) {
