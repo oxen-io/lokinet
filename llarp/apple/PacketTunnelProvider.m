@@ -154,10 +154,6 @@ void del_default_route(void* ctx) {
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
              completionHandler:(void (^)(NSError*))completionHandler
 {
-  char ip_buf[16];
-  char mask_buf[16];
-  char dns_buf[16];
-
   NSString* default_bootstrap = [NSBundle.mainBundle pathForResource:@"bootstrap" ofType:@"signed"];
   NSString* home = NSHomeDirectory();
 

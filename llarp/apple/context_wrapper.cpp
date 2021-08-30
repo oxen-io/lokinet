@@ -57,7 +57,6 @@ llarp_apple_init(llarp_apple_config* appleconf)
       throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
     std::strcpy(appleconf->tunnel_ipv4_ip, addr.c_str());
     std::strcpy(appleconf->tunnel_ipv4_netmask, mask.c_str());
-    // XXX possibly DNS needs to be the .0 instead of the .1 because mac reasons?
     std::strcpy(appleconf->tunnel_dns, addr.c_str());
 
     // The default DNS bind setting just isn't something we can use as a non-root network extension
