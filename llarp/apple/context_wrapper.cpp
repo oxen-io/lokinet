@@ -19,6 +19,8 @@ namespace
   {
     llarp::apple::Context context;
     std::thread runner;
+    packet_writer_callback packet_writer;
+    start_reading_callback start_reading;
 
     std::weak_ptr<llarp::apple::VPNInterface> iface;
   };
@@ -26,19 +28,13 @@ namespace
 }  // namespace
 
 void*
-llarp_apple_init(
-    ns_logger_callback ns_logger,
-    const char* config_dir_,
-    const char* default_bootstrap,
-    char* ip,
-    char* netmask,
-    char* dns)
+llarp_apple_init(llarp_apple_config* appleconf)
 {
-  llarp::LogContext::Instance().logStream = std::make_unique<llarp::apple::NSLogStream>(ns_logger);
+  llarp::LogContext::Instance().logStream = std::make_unique<llarp::apple::NSLogStream>(appleconf->ns_logger);
 
   try
   {
-    auto config_dir = fs::u8path(config_dir_);
+    auto config_dir = fs::u8path(appleconf->config_dir);
     auto config = std::make_shared<llarp::Config>(config_dir);
     fs::path config_path = config_dir / "lokinet.ini";
     if (!fs::exists(config_path))
@@ -59,10 +55,10 @@ llarp_apple_init(
     auto mask = llarp::net::TruncateV6(range.netmask_bits).ToString();
     if (addr.size() > 15 || mask.size() > 15)
       throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
-    std::strcpy(ip, addr.c_str());
-    std::strcpy(netmask, mask.c_str());
+    std::strcpy(appleconf->tunnel_ipv4_ip, addr.c_str());
+    std::strcpy(appleconf->tunnel_ipv4_netmask, mask.c_str());
     // XXX possibly DNS needs to be the .0 instead of the .1 because mac reasons?
-    std::strcpy(dns, addr.c_str());
+    std::strcpy(appleconf->tunnel_dns, addr.c_str());
 
     // The default DNS bind setting just isn't something we can use as a non-root network extension
     // so remap the default value to a high port unless explicitly set to something else.
@@ -71,10 +67,16 @@ llarp_apple_init(
 
     // If no explicit bootstrap then set the system default one included with the app bundle
     if (config->bootstrap.files.empty())
-      config->bootstrap.files.push_back(fs::u8path(default_bootstrap));
+      config->bootstrap.files.push_back(fs::u8path(appleconf->default_bootstrap));
 
     auto inst = std::make_unique<instance_data>();
     inst->context.Configure(std::move(config));
+    inst->context.route_callbacks = appleconf->route_callbacks;
+
+    inst->packet_writer = appleconf->packet_writer;
+    inst->start_reading = appleconf->start_reading;
+
+
     return inst.release();
   }
   catch (const std::exception& e)
@@ -87,21 +89,22 @@ llarp_apple_init(
 int
 llarp_apple_start(
     void* lokinet,
-    packet_writer_callback packet_writer,
-    start_reading_callback start_reading,
     void* callback_context)
 {
   auto* inst = static_cast<instance_data*>(lokinet);
-  inst->context.m_PacketWriter = [inst, packet_writer, callback_context](
-                                     int af_family, void* data, size_t size) {
-    packet_writer(af_family, data, size, callback_context);
-    return true;
+
+  inst->context.callback_context = callback_context;
+
+  inst->context.m_PacketWriter = [inst, callback_context](
+          int af_family, void* data, size_t size) {
+      inst->packet_writer(af_family, data, size, callback_context);
+      return true;
   };
 
   inst->context.m_OnReadable =
-      [inst, start_reading, callback_context](llarp::apple::VPNInterface& iface) {
+      [inst, callback_context](llarp::apple::VPNInterface& iface) {
         inst->iface = iface.weak_from_this();
-        start_reading(callback_context);
+        inst->start_reading(callback_context);
       };
 
   std::promise<void> result;
