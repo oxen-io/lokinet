@@ -92,13 +92,10 @@ namespace llarp
         },
         true);
 
-    // limit the number of peers we gossip to
-    if (gossipTo.size() > MaxGossipPeers)
-    {
-      gossipTo.resize(MaxGossipPeers);
-    }
-
-    const std::unordered_set<RouterID> keys{gossipTo.begin(), gossipTo.end()};
+    std::unordered_set<RouterID> keys;
+    // grab the keys we want to use
+    std::sample(
+        gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers, CSRNG{});
 
     m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
       if (not(peerSession && peerSession->IsEstablished()))
