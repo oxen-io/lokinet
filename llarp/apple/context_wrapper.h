@@ -10,6 +10,7 @@ extern "C"
 
 #include <unistd.h>
 #include <sys/socket.h>
+#include <uv.h>
 
   /// C callback function for us to invoke when we need to write a packet
   typedef void(*packet_writer_callback)(int af, const void* data, size_t size, void* ctx);
@@ -66,8 +67,10 @@ extern "C"
       char tunnel_ipv4_ip[16];
       /// llarp_apple_init writes the netmask of the tunnel address here, null-terminated.
       char tunnel_ipv4_netmask[16];
-      /// The DNS server IPv4 address the OS should use.  Null-terminated.
-      char tunnel_dns[16];
+      /// The first upstream DNS server's IPv4 address the OS should use when in exit mode.
+      /// (Currently on mac in exit mode we only support querying the first such configured server).
+      char upstream_dns[16];
+      uint16_t upstream_dns_port;
 
       /// \defgroup callbacks Callbacks
       /// Callbacks we invoke for various operations that require glue into the Apple network
@@ -118,6 +121,10 @@ extern "C"
   /// \returns 0 on succesful startup, -1 on failure.
   int
   llarp_apple_start(void* lokinet, void* callback_context);
+
+  /// Returns a pointer to the uv event loop.  Must have called llarp_apple_start already.
+  uv_loop_t*
+  llarp_apple_get_uv_loop(void* lokinet);
 
   /// Called to deliver an incoming packet from the apple layer into lokinet; returns 0 on success,
   /// -1 if the packet could not be parsed, -2 if there is no current active VPNInterface associated

@@ -1,9 +1,11 @@
 #include <cstdint>
 #include <cstring>
+#include <cassert>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/logging/buffer.hpp>
+#include <uvw/loop.h>
 #include "vpn_interface.hpp"
 #include "context_wrapper.h"
 #include "context.hpp"
@@ -57,7 +59,15 @@ llarp_apple_init(llarp_apple_config* appleconf)
       throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
     std::strcpy(appleconf->tunnel_ipv4_ip, addr.c_str());
     std::strcpy(appleconf->tunnel_ipv4_netmask, mask.c_str());
-    std::strcpy(appleconf->tunnel_dns, addr.c_str());
+
+    appleconf->upstream_dns[0] = '\0';
+    for (auto& upstream : config->dns.m_upstreamDNS) {
+      if (upstream.isIPv4()) {
+        std::strcpy(appleconf->upstream_dns, upstream.hostString().c_str());
+        appleconf->upstream_dns_port = upstream.getPort();
+        break;
+      }
+    }
 
     // The default DNS bind setting just isn't something we can use as a non-root network extension
     // so remap the default value to a high port unless explicitly set to something else.
@@ -133,6 +143,15 @@ llarp_apple_start(
   }
 
   return 0;
+}
+
+uv_loop_t*
+llarp_apple_get_uv_loop(void* lokinet)
+{
+  auto& inst = *static_cast<instance_data*>(lokinet);
+  auto uvw = inst.context.loop->MaybeGetUVWLoop();
+  assert(uvw);
+  return uvw->raw();
 }
 
 int

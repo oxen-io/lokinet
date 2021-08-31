@@ -1,14 +1,18 @@
 #include <Foundation/Foundation.h>
 #include <NetworkExtension/NetworkExtension.h>
 #include "context_wrapper.h"
+#include "DNSTrampoline.h"
 
-NSString* error_domain = @"com.loki-project.lokinet";
+// Port (on localhost) for our DNS trampoline for bouncing DNS requests through the exit route when
+// in exit mode.
+const uint16_t dns_trampoline_port = 1053;
 
 @interface LLARPPacketTunnel : NEPacketTunnelProvider
 {
   void* lokinet;
   @public NEPacketTunnelNetworkSettings* settings;
   @public NEIPv4Route* tun_route4;
+  LLARPDNSTrampoline* dns_tramp;
 }
 
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
@@ -26,9 +30,9 @@ NSString* error_domain = @"com.loki-project.lokinet";
 
 @end
 
-void nslogger(const char* msg) { NSLog(@"%s", msg); }
+static void nslogger(const char* msg) { NSLog(@"%s", msg); }
 
-void packet_writer(int af, const void* data, size_t size, void* ctx) {
+static void packet_writer(int af, const void* data, size_t size, void* ctx) {
   if (ctx == nil || data == nil)
     return;
 
@@ -38,7 +42,7 @@ void packet_writer(int af, const void* data, size_t size, void* ctx) {
   [t.packetFlow writePacketObjects:@[packet]];
 }
 
-void start_packet_reader(void* ctx) {
+static void start_packet_reader(void* ctx) {
   if (ctx == nil)
     return;
 
@@ -46,7 +50,7 @@ void start_packet_reader(void* ctx) {
   [t readPackets];
 }
 
-void add_ipv4_route(const char* addr, const char* netmask, void* ctx) {
+static void add_ipv4_route(const char* addr, const char* netmask, void* ctx) {
   NEIPv4Route* route = [[NEIPv4Route alloc]
     initWithDestinationAddress: [NSString stringWithUTF8String:addr]
                     subnetMask: [NSString stringWithUTF8String:netmask]];
@@ -63,7 +67,7 @@ void add_ipv4_route(const char* addr, const char* netmask, void* ctx) {
   [t updateNetworkSettings];
 }
 
-void del_ipv4_route(const char* addr, const char* netmask, void* ctx) {
+static void del_ipv4_route(const char* addr, const char* netmask, void* ctx) {
   NEIPv4Route* route = [[NEIPv4Route alloc]
     initWithDestinationAddress: [NSString stringWithUTF8String:addr]
                     subnetMask: [NSString stringWithUTF8String:netmask]];
@@ -84,7 +88,7 @@ void del_ipv4_route(const char* addr, const char* netmask, void* ctx) {
   }
 }
 
-void add_ipv6_route(const char* addr, int prefix, void* ctx) {
+static void add_ipv6_route(const char* addr, int prefix, void* ctx) {
   NEIPv6Route* route = [[NEIPv6Route alloc]
     initWithDestinationAddress: [NSString stringWithUTF8String:addr]
            networkPrefixLength: [NSNumber numberWithInt:prefix]];
@@ -100,7 +104,8 @@ void add_ipv6_route(const char* addr, int prefix, void* ctx) {
 
   [t updateNetworkSettings];
 }
-void del_ipv6_route(const char* addr, int prefix, void* ctx) {
+
+static void del_ipv6_route(const char* addr, int prefix, void* ctx) {
   NEIPv6Route* route = [[NEIPv6Route alloc]
     initWithDestinationAddress: [NSString stringWithUTF8String:addr]
            networkPrefixLength: [NSNumber numberWithInt:prefix]];
@@ -120,7 +125,8 @@ void del_ipv6_route(const char* addr, int prefix, void* ctx) {
     [t updateNetworkSettings];
   }
 }
-void add_default_route(void* ctx) {
+
+static void add_default_route(void* ctx) {
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*) ctx;
 
   t->settings.IPv4Settings.includedRoutes = @[NEIPv4Route.defaultRoute];
@@ -128,7 +134,8 @@ void add_default_route(void* ctx) {
 
   [t updateNetworkSettings];
 }
-void del_default_route(void* ctx) {
+
+static void del_default_route(void* ctx) {
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*) ctx;
 
   t->settings.IPv4Settings.includedRoutes = @[t->tun_route4];
@@ -182,13 +189,13 @@ void del_default_route(void* ctx) {
 
   NSString* ip = [NSString stringWithUTF8String:conf.tunnel_ipv4_ip];
   NSString* mask = [NSString stringWithUTF8String:conf.tunnel_ipv4_netmask];
-  NSString* dnsaddr = [NSString stringWithUTF8String:conf.tunnel_dns];
 
   // We don't have a fixed address so just stick some bogus value here:
   settings = [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"127.3.2.1"];
 
-  NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[dnsaddr]];
+  NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[ip]];
   dns.domainName = @"localhost.loki";
+  dns.matchDomains = @[@""];
   // In theory, matchDomains is supposed to be set to DNS suffixes that we resolve.  This seems
   // highly unreliable, though: often it just doesn't work at all (perhaps only if we make ourselves
   // the default route?), and even when it does work, it seems there are secret reasons that some
@@ -203,6 +210,11 @@ void del_default_route(void* ctx) {
   dns.matchDomains = @[@""];
   dns.matchDomainsNoSearch = true;
   dns.searchDomains = @[];
+
+  NWHostEndpoint* upstreamdns_ep;
+  if (strlen(conf.upstream_dns))
+    upstreamdns_ep = [NWHostEndpoint endpointWithHostname:[NSString stringWithUTF8String:conf.upstream_dns] port:@(conf.upstream_dns_port).stringValue];
+
   NEIPv4Settings* ipv4 = [[NEIPv4Settings alloc] initWithAddresses:@[ip]
                                                        subnetMasks:@[mask]];
   tun_route4 = [[NEIPv4Route alloc] initWithDestinationAddress:ip subnetMask: mask];
@@ -226,7 +238,18 @@ void del_default_route(void* ctx) {
       lokinet = nil;
       return completionHandler(start_failure);
     }
-    completionHandler(nil);
+
+    NWUDPSession* upstreamdns = [strongSelf createUDPSessionThroughTunnelToEndpoint:upstreamdns_ep fromEndpoint:nil];
+    strongSelf->dns_tramp = [LLARPDNSTrampoline alloc];
+    [strongSelf->dns_tramp
+      startWithUpstreamDns:upstreamdns
+                listenPort:dns_trampoline_port
+                    uvLoop:llarp_apple_get_uv_loop(strongSelf->lokinet)
+         completionHandler:^(NSError* error) {
+           if (error)
+             NSLog(@"Error starting dns trampoline: %@", error);
+           return completionHandler(error);
+         }];
     }];
 }
 

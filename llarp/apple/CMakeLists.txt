@@ -19,6 +19,7 @@ target_sources(lokinet-platform PRIVATE vpn_interface.cpp route_manager.cpp cont
 
 add_executable(lokinet-extension MACOSX_BUNDLE
   PacketTunnelProvider.m
+  DNSTrampoline.m
   )
 target_link_libraries(lokinet-extension PRIVATE
   liblokinet
