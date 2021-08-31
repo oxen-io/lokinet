@@ -4,7 +4,6 @@
 #include <nlohmann/json.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/net/route.hpp>
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
