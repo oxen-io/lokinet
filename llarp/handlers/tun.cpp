@@ -35,8 +35,8 @@ namespace llarp
   namespace handlers
   {
     // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
-    // Android where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible because of OS
-    // restrictions, but a tun interface *is* available.
+    // Android and macOS where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible
+    // because of OS restrictions, but a tun interface *is* available.
     class DnsInterceptor : public dns::PacketHandler
     {
      public:
@@ -61,6 +61,20 @@ namespace llarp
         m_Endpoint->HandleWriteIPPacket(
             pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }
+
+#ifdef __APPLE__
+      // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
+      // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
+      // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver
+      // won't work for us.  However when active the mac also only queries the main tunnel IP for
+      // DNS, so we consider anything else to be upstream-bound DNS to let it through the tunnel.
+      bool
+      IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
+      {
+          LogError("IsUpstreamResolver? ", to.asIPv6(), " != ", m_Endpoint->GetIfAddr(), ", from=", from);
+          return to.asIPv6() != m_Endpoint->GetIfAddr();
+      }
+#endif
     };
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
@@ -134,6 +148,17 @@ namespace llarp
     {
       if (m_Resolver)
         m_Resolver->Restart();
+    }
+
+    std::vector<SockAddr>
+    TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
+    {
+        std::swap(m_UpstreamResolvers, servers);
+        m_Resolver->Stop();
+        if (!m_Resolver->Start(
+                    m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
+            llarp::LogError(Name(), " failed to reconfigure DNS server");
+        return servers;
     }
 
     bool

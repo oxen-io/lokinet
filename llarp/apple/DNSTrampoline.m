@@ -128,7 +128,7 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 
 - (void) dealloc
 {
-  NSLog(@"Shutting down DNS trampoline");
+  NSLog(@"Stopping DNS trampoline");
   uv_close((uv_handle_t*) &request_socket, NULL);
   uv_close((uv_handle_t*) &write_trigger, NULL);
 }

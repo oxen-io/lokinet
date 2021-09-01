@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llarp/router/abstractrouter.hpp>
 #include <llarp/ev/vpn.hpp>
 #include "context_wrapper.h"
 
@@ -7,8 +8,8 @@ namespace llarp::apple {
 
 class RouteManager final : public llarp::vpn::IRouteManager {
 public:
-    RouteManager(llarp_route_callbacks rcs, void* callback_context)
-        : route_callbacks{std::move(rcs)}, callback_context{callback_context} {}
+    RouteManager(llarp::Context& ctx, llarp_route_callbacks rcs, void* callback_context)
+        : context{ctx}, route_callbacks{std::move(rcs)}, callback_context{callback_context} {}
 
     /// These are called for poking route holes, but we don't have to do that at all on macos
     /// because the appex isn't subject to its own rules.
@@ -38,6 +39,13 @@ public:
         ret.push_back(huint32_t{0});
         return ret;
     }
+
+private:
+
+    llarp::Context& context;
+    bool trampoline_active = false;
+    std::vector<llarp::SockAddr> saved_upstream_dns;
+    void check_trampoline(bool enable);
 
     void* callback_context = nullptr;
     llarp_route_callbacks route_callbacks;

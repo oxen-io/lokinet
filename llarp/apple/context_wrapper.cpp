@@ -29,6 +29,8 @@ namespace
 
 }  // namespace
 
+const uint16_t dns_trampoline_port = 1053;
+
 void*
 llarp_apple_init(llarp_apple_config* appleconf)
 {

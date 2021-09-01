@@ -3,10 +3,6 @@
 #include "context_wrapper.h"
 #include "DNSTrampoline.h"
 
-// Port (on localhost) for our DNS trampoline for bouncing DNS requests through the exit route when
-// in exit mode.
-const uint16_t dns_trampoline_port = 1053;
-
 @interface LLARPPacketTunnel : NEPacketTunnelProvider
 {
   void* lokinet;
@@ -239,6 +235,7 @@ static void del_default_route(void* ctx) {
       return completionHandler(start_failure);
     }
 
+    NSLog(@"Starting DNS exit mode trampoline to %@ on 127.0.0.1:%d", upstreamdns_ep, dns_trampoline_port);
     NWUDPSession* upstreamdns = [strongSelf createUDPSessionThroughTunnelToEndpoint:upstreamdns_ep fromEndpoint:nil];
     strongSelf->dns_tramp = [LLARPDNSTrampoline alloc];
     [strongSelf->dns_tramp

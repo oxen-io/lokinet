@@ -140,7 +140,8 @@ namespace llarp::dns
   UnboundResolver::AddUpstreamResolver(const SockAddr& upstreamResolver)
   {
     std::stringstream ss;
-    ss << upstreamResolver.hostString();
+    auto hoststr = upstreamResolver.hostString();
+    ss << hoststr;
 
     if (const auto port = upstreamResolver.getPort(); port != 53)
       ss << "@" << port;
@@ -151,6 +152,24 @@ namespace llarp::dns
       Reset();
       return false;
     }
+
+#ifdef __APPLE__
+    // On Apple, we configure a localhost resolver to trampoline requests through the tunnel to the
+    // actual upstream (because the network extension itself cannot route through the tunnel using
+    // normal sockets but instead we "get" to use Apple's interfaces, hurray).
+    if (hoststr == "127.0.0.1") {
+        // Not at all clear why this is needed but without it we get "send failed: Can't assign
+        // requested address" when unbound tries to connect to the localhost address using a source
+        // address of 0.0.0.0.  Yay apple.
+        ub_ctx_set_option(unboundContext, "outgoing-interface:", hoststr.c_str());
+
+        // The trampoline expects just a single source port (and sends everything back to it)
+        ub_ctx_set_option(unboundContext, "outgoing-range:", "1");
+        ub_ctx_set_option(unboundContext, "outgoing-port-avoid:", "0-65535");
+        ub_ctx_set_option(unboundContext, "outgoing-port-permit:", "1253");
+    }
+#endif
+
     return true;
   }
 

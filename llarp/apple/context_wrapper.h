@@ -12,6 +12,10 @@ extern "C"
 #include <sys/socket.h>
 #include <uv.h>
 
+  // Port (on localhost) for our DNS trampoline for bouncing DNS requests through the exit route
+  // when in exit mode.
+  extern const uint16_t dns_trampoline_port;
+
   /// C callback function for us to invoke when we need to write a packet
   typedef void(*packet_writer_callback)(int af, const void* data, size_t size, void* ctx);
 

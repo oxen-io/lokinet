@@ -14,17 +14,9 @@ namespace llarp::apple
         VPNInterface::packet_write_callback packet_writer,
         VPNInterface::on_readable_callback on_readable,
         llarp_route_callbacks route_callbacks,
-        void* callback_context)
-        : m_Context{ctx}
-        , m_RouteManager{std::move(route_callbacks), callback_context}
-        , m_PacketWriter{std::move(packet_writer)}
-        , m_OnReadable{std::move(on_readable)}
-    {}
+        void* callback_context);
 
-    std::shared_ptr<vpn::NetworkInterface> ObtainInterface(vpn::InterfaceInfo) override
-    {
-      return std::make_shared<VPNInterface>(m_Context, m_PacketWriter, m_OnReadable);
-    }
+    std::shared_ptr<vpn::NetworkInterface> ObtainInterface(vpn::InterfaceInfo) override;
 
     vpn::IRouteManager& RouteManager() override { return m_RouteManager; }
 
