@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unbound.h>
 #include <mutex>
 #include <atomic>
 #include <memory>
@@ -16,6 +15,12 @@
 #else
 #include <uvw.hpp>
 #endif
+
+extern "C"
+{
+  struct ub_ctx;
+  struct ub_result;
+}
 
 namespace llarp::dns
 {

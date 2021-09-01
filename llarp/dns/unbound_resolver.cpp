@@ -5,6 +5,8 @@
 #include <sstream>
 #include <llarp/util/str.hpp>
 
+#include <unbound.h>
+
 namespace llarp::dns
 {
   struct PendingUnboundLookup
