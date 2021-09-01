@@ -60,7 +60,7 @@ namespace llarp::dns
     auto failFunc = [self = weak_from_this()](
                         const SockAddr& from, const SockAddr& to, Message msg) {
       if (auto this_ptr = self.lock())
-        this_ptr->SendServerMessageBufferTo(from, to, msg.ToBuffer());
+        this_ptr->SendServerMessageBufferTo(to, from, msg.ToBuffer());
     };
 
     auto replyFunc = [self = weak_from_this()](auto&&... args) {
@@ -95,7 +95,8 @@ namespace llarp::dns
   }
 
   void
-  Proxy::SendServerMessageBufferTo(const SockAddr&, const SockAddr& to, llarp_buffer_t buf)
+  Proxy::SendServerMessageBufferTo(
+      const SockAddr& to, [[maybe_unused]] const SockAddr& from, llarp_buffer_t buf)
   {
     if (!m_Server->send(to, buf))
       llarp::LogError("dns reply failed");
@@ -157,7 +158,7 @@ namespace llarp::dns
         // yea it is, let's turn off DoH because god is dead.
         msg.AddNXReply();
         // press F to pay respects
-        SendServerMessageBufferTo(resolver, from, msg.ToBuffer());
+        SendServerMessageBufferTo(from, resolver, msg.ToBuffer());
         return;
       }
     }
@@ -165,7 +166,7 @@ namespace llarp::dns
     if (m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
     {
       auto reply = [self = shared_from_this(), to = from, resolver](dns::Message msg) {
-        self->SendServerMessageBufferTo(resolver, to, msg.ToBuffer());
+        self->SendServerMessageBufferTo(to, resolver, msg.ToBuffer());
       };
       if (!m_QueryHandler->HandleHookedDNSMessage(std::move(msg), reply))
       {
@@ -177,7 +178,7 @@ namespace llarp::dns
       // no upstream resolvers
       // let's serv fail it
       msg.AddServFail();
-      SendServerMessageBufferTo(resolver, from, msg.ToBuffer());
+      SendServerMessageBufferTo(from, resolver, msg.ToBuffer());
     }
     else
     {
