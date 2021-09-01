@@ -104,7 +104,7 @@ namespace llarp::dns
   }
 
   bool
-  PacketHandler::IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const
+  PacketHandler::IsUpstreamResolver(const SockAddr& to, [[maybe_unused]] const SockAddr& from) const
   {
     return m_Resolvers.count(to);
   }
