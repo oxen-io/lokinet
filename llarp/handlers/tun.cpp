@@ -974,6 +974,7 @@ namespace llarp
     TunEndpoint::Stop()
     {
       // save address map if applicable
+#ifndef ANDROID
       if (m_PersistAddrMapFile)
       {
         const auto& file = *m_PersistAddrMapFile;
@@ -994,6 +995,7 @@ namespace llarp
           maybe->write(data.data(), data.size());
         }
       }
+#endif
       if (m_Resolver)
         m_Resolver->Stop();
       return llarp::service::Endpoint::Stop();
