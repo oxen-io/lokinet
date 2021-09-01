@@ -25,11 +25,18 @@ namespace llarp::dns
   UnboundResolver::Reset()
   {
     started = false;
-    if (runner)
+#ifdef _WIN32
+    if (runner.joinable())
     {
-      runner->join();
-      runner.reset();
+      runner.join();
     }
+#else
+    if (udp)
+    {
+      udp->close();
+    }
+    udp.reset();
+#endif
     if (unboundContext)
     {
       ub_ctx_delete(unboundContext);
@@ -37,12 +44,16 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  UnboundResolver::UnboundResolver(EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
-      : unboundContext(nullptr)
-      , started(false)
-      , replyFunc(loop->make_caller(std::move(reply)))
-      , failFunc(loop->make_caller(std::move(fail)))
-  {}
+  UnboundResolver::UnboundResolver(EventLoop_ptr _loop, ReplyFunction reply, FailFunction fail)
+      : unboundContext{nullptr}
+      , started{false}
+      , replyFunc{_loop->make_caller(std::move(reply))}
+      , failFunc{_loop->make_caller(std::move(fail))}
+  {
+#ifndef _WIN32
+    loop = _loop->MaybeGetUVWLoop();
+#endif
+  }
 
   // static callback
   void
@@ -94,14 +105,33 @@ namespace llarp::dns
     }
 
     ub_ctx_async(unboundContext, 1);
-    runner = std::make_unique<std::thread>([&]() {
+#ifdef _WIN32
+    runner = std::thread{[&]() {
       while (started)
       {
         if (unboundContext)
           ub_wait(unboundContext);
         std::this_thread::sleep_for(25ms);
       }
-    });
+      if (unboundContext)
+        ub_process(unboundContext);
+    }};
+#else
+    if (auto loop_ptr = loop.lock())
+    {
+      udp = loop_ptr->resource<uvw::PollHandle>(ub_fd(unboundContext));
+      udp->on<uvw::PollEvent>([ptr = weak_from_this()](auto&, auto&) {
+        if (auto self = ptr.lock())
+        {
+          if (self->unboundContext)
+          {
+            ub_process(self->unboundContext);
+          }
+        }
+      });
+      udp->start(uvw::PollHandle::Event::READABLE);
+    }
+#endif
     started = true;
     return true;
   }
