@@ -25,19 +25,23 @@ extern NSString* error_domain;
   uv_udp_t request_socket;
   // The reply address.  This is a bit hacky: we configure libunbound to just use single address
   // (rather than a range) so that we don't have to worry about tracking different reply addresses.
-  @public struct sockaddr reply_addr;
+ @public
+  struct sockaddr reply_addr;
   // UDP "session" aimed at the upstream DNS
-  @public NWUDPSession* upstream;
+ @public
+  NWUDPSession* upstream;
   // Apple docs say writes could take time *and* the crappy Apple datagram write methods aren't
   // callable again until the previous write finishes.  Deal with this garbage API by queuing
   // everything than using a uv_async to process the queue.
-  @public int write_ready;
-  @public NSMutableArray<NSData*>* pending_writes;
+ @public
+  int write_ready;
+ @public
+  NSMutableArray<NSData*>* pending_writes;
   uv_async_t write_trigger;
 }
-- (void)startWithUpstreamDns:(NWUDPSession*) dns
-                  listenPort:(uint16_t) listenPort
-                      uvLoop:(uv_loop_t*) loop
+- (void)startWithUpstreamDns:(NWUDPSession*)dns
+                  listenPort:(uint16_t)listenPort
+                      uvLoop:(uv_loop_t*)loop
            completionHandler:(void (^)(NSError* error))completionHandler;
 
 - (void)flushWrites;
@@ -45,4 +49,3 @@ extern NSString* error_domain;
 - (void)dealloc;
 
 @end
-

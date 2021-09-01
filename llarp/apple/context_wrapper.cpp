@@ -34,7 +34,8 @@ const uint16_t dns_trampoline_port = 1053;
 void*
 llarp_apple_init(llarp_apple_config* appleconf)
 {
-  llarp::LogContext::Instance().logStream = std::make_unique<llarp::apple::NSLogStream>(appleconf->ns_logger);
+  llarp::LogContext::Instance().logStream =
+      std::make_unique<llarp::apple::NSLogStream>(appleconf->ns_logger);
 
   try
   {
@@ -42,7 +43,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto config = std::make_shared<llarp::Config>(config_dir);
     fs::path config_path = config_dir / "lokinet.ini";
     if (!fs::exists(config_path))
-      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/ false, /*router=*/ false);
+      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/false, /*router=*/false);
     config->Load(config_path);
 
     // If no range is specified then go look for a free one, set that in the config, and then return
@@ -63,8 +64,10 @@ llarp_apple_init(llarp_apple_config* appleconf)
     std::strcpy(appleconf->tunnel_ipv4_netmask, mask.c_str());
 
     appleconf->upstream_dns[0] = '\0';
-    for (auto& upstream : config->dns.m_upstreamDNS) {
-      if (upstream.isIPv4()) {
+    for (auto& upstream : config->dns.m_upstreamDNS)
+    {
+      if (upstream.isIPv4())
+      {
         std::strcpy(appleconf->upstream_dns, upstream.hostString().c_str());
         appleconf->upstream_dns_port = upstream.getPort();
         break;
@@ -87,7 +90,6 @@ llarp_apple_init(llarp_apple_config* appleconf)
     inst->packet_writer = appleconf->packet_writer;
     inst->start_reading = appleconf->start_reading;
 
-
     return inst.release();
   }
   catch (const std::exception& e)
@@ -98,25 +100,21 @@ llarp_apple_init(llarp_apple_config* appleconf)
 }
 
 int
-llarp_apple_start(
-    void* lokinet,
-    void* callback_context)
+llarp_apple_start(void* lokinet, void* callback_context)
 {
   auto* inst = static_cast<instance_data*>(lokinet);
 
   inst->context.callback_context = callback_context;
 
-  inst->context.m_PacketWriter = [inst, callback_context](
-          int af_family, void* data, size_t size) {
-      inst->packet_writer(af_family, data, size, callback_context);
-      return true;
+  inst->context.m_PacketWriter = [inst, callback_context](int af_family, void* data, size_t size) {
+    inst->packet_writer(af_family, data, size, callback_context);
+    return true;
   };
 
-  inst->context.m_OnReadable =
-      [inst, callback_context](llarp::apple::VPNInterface& iface) {
-        inst->iface = iface.weak_from_this();
-        inst->start_reading(callback_context);
-      };
+  inst->context.m_OnReadable = [inst, callback_context](llarp::apple::VPNInterface& iface) {
+    inst->iface = iface.weak_from_this();
+    inst->start_reading(callback_context);
+  };
 
   std::promise<void> result;
   inst->runner = std::thread{[inst, &result] {

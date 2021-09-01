@@ -103,7 +103,9 @@ namespace llarp::dns
       llarp::LogError("dns reply failed");
   }
 
-  bool PacketHandler::IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const {
+  bool
+  PacketHandler::IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const
+  {
     return m_Resolvers.count(to);
   }
 

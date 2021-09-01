@@ -71,8 +71,9 @@ namespace llarp
       bool
       IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
       {
-          LogError("IsUpstreamResolver? ", to.asIPv6(), " != ", m_Endpoint->GetIfAddr(), ", from=", from);
-          return to.asIPv6() != m_Endpoint->GetIfAddr();
+        LogError(
+            "IsUpstreamResolver? ", to.asIPv6(), " != ", m_Endpoint->GetIfAddr(), ", from=", from);
+        return to.asIPv6() != m_Endpoint->GetIfAddr();
       }
 #endif
     };
@@ -153,12 +154,12 @@ namespace llarp
     std::vector<SockAddr>
     TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
     {
-        std::swap(m_UpstreamResolvers, servers);
-        m_Resolver->Stop();
-        if (!m_Resolver->Start(
-                    m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
-            llarp::LogError(Name(), " failed to reconfigure DNS server");
-        return servers;
+      std::swap(m_UpstreamResolvers, servers);
+      m_Resolver->Stop();
+      if (!m_Resolver->Start(
+              m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
+        llarp::LogError(Name(), " failed to reconfigure DNS server");
+      return servers;
     }
 
     bool

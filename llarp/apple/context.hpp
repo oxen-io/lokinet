@@ -11,7 +11,8 @@ namespace llarp::apple
     std::shared_ptr<vpn::Platform>
     makeVPNPlatform() override
     {
-      return std::make_shared<VPNPlatform>(*this, m_PacketWriter, m_OnReadable, route_callbacks, callback_context);
+      return std::make_shared<VPNPlatform>(
+          *this, m_PacketWriter, m_OnReadable, route_callbacks, callback_context);
     }
 
     // Callbacks that must be set for packet handling *before* calling Setup/Configure/Run; the main

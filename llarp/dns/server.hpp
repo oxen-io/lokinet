@@ -58,7 +58,8 @@ namespace llarp
 
       // Returns true if this packet is something that looks like it's going to an upstream
       // resolver, i.e. matches a configured resolver.
-      virtual bool IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const;
+      virtual bool
+      IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const;
 
      private:
       void

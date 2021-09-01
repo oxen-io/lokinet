@@ -17,90 +17,90 @@ extern "C"
   extern const uint16_t dns_trampoline_port;
 
   /// C callback function for us to invoke when we need to write a packet
-  typedef void(*packet_writer_callback)(int af, const void* data, size_t size, void* ctx);
+  typedef void (*packet_writer_callback)(int af, const void* data, size_t size, void* ctx);
 
   /// C callback function to invoke once we are ready to start receiving packets
-  typedef void(*start_reading_callback)(void* ctx);
+  typedef void (*start_reading_callback)(void* ctx);
 
   /// C callback that bridges things into NSLog
-  typedef void(*ns_logger_callback)(const char* msg);
+  typedef void (*ns_logger_callback)(const char* msg);
 
   /// C callbacks to add/remove specific and default routes to the tunnel
-  typedef void(*llarp_route_ipv4_callback)(const char* addr, const char* netmask, void* ctx);
-  typedef void(*llarp_route_ipv6_callback)(const char* addr, int prefix, void* ctx);
-  typedef void(*llarp_default_route_callback)(void* ctx);
-  typedef struct llarp_route_callbacks {
-      /// Callback invoked to set up an IPv4 range that should be routed through the tunnel
-      /// interface.  Called with the address and netmask.
-      llarp_route_ipv4_callback add_ipv4_route;
+  typedef void (*llarp_route_ipv4_callback)(const char* addr, const char* netmask, void* ctx);
+  typedef void (*llarp_route_ipv6_callback)(const char* addr, int prefix, void* ctx);
+  typedef void (*llarp_default_route_callback)(void* ctx);
+  typedef struct llarp_route_callbacks
+  {
+    /// Callback invoked to set up an IPv4 range that should be routed through the tunnel
+    /// interface.  Called with the address and netmask.
+    llarp_route_ipv4_callback add_ipv4_route;
 
-      /// Callback invoked to set the tunnel as the default IPv4 route.
-      llarp_default_route_callback add_ipv4_default_route;
+    /// Callback invoked to set the tunnel as the default IPv4 route.
+    llarp_default_route_callback add_ipv4_default_route;
 
-      /// Callback invoked to remove a specific range from the tunnel IPv4 routes.  Called with the
-      /// address and netmask.
-      llarp_route_ipv4_callback del_ipv4_route;
+    /// Callback invoked to remove a specific range from the tunnel IPv4 routes.  Called with the
+    /// address and netmask.
+    llarp_route_ipv4_callback del_ipv4_route;
 
-      /// Callback invoked to set up an IPv6 range that should be routed through the tunnel
-      /// interface.  Called with the address and netmask.
-      llarp_route_ipv6_callback add_ipv6_route;
+    /// Callback invoked to set up an IPv6 range that should be routed through the tunnel
+    /// interface.  Called with the address and netmask.
+    llarp_route_ipv6_callback add_ipv6_route;
 
-      /// Callback invoked to remove a specific range from the tunnel IPv6 routes.  Called with the
-      /// address and netmask.
-      llarp_route_ipv6_callback del_ipv6_route;
+    /// Callback invoked to remove a specific range from the tunnel IPv6 routes.  Called with the
+    /// address and netmask.
+    llarp_route_ipv6_callback del_ipv6_route;
 
-      /// Callback invoked to set the tunnel as the default IPv4/IPv6 route.
-      llarp_default_route_callback add_default_route;
+    /// Callback invoked to set the tunnel as the default IPv4/IPv6 route.
+    llarp_default_route_callback add_default_route;
 
-      /// Callback invoked to remove the tunnel as the default IPv4/IPv6 route.
-      llarp_default_route_callback del_default_route;
+    /// Callback invoked to remove the tunnel as the default IPv4/IPv6 route.
+    llarp_default_route_callback del_default_route;
   } llarp_route_callbacks;
 
   /// Pack of crap to be passed into llarp_apple_init to initialize
   typedef struct llarp_apple_config
   {
-      /// lokinet configuration directory, expected to be the application-specific "home" directory,
-      /// which is where state files are stored and the lokinet.ini will be loaded (or created if it
-      /// doesn't exist).
-      const char* config_dir;
-      /// path to the default bootstrap.signed file included in installation, which will be used by
-      /// default when no specific bootstrap is in the config file.
-      const char* default_bootstrap;
-      /// llarp_apple_init writes the IP address for the primary tunnel IP address here,
-      /// null-terminated.
-      char tunnel_ipv4_ip[16];
-      /// llarp_apple_init writes the netmask of the tunnel address here, null-terminated.
-      char tunnel_ipv4_netmask[16];
-      /// The first upstream DNS server's IPv4 address the OS should use when in exit mode.
-      /// (Currently on mac in exit mode we only support querying the first such configured server).
-      char upstream_dns[16];
-      uint16_t upstream_dns_port;
+    /// lokinet configuration directory, expected to be the application-specific "home" directory,
+    /// which is where state files are stored and the lokinet.ini will be loaded (or created if it
+    /// doesn't exist).
+    const char* config_dir;
+    /// path to the default bootstrap.signed file included in installation, which will be used by
+    /// default when no specific bootstrap is in the config file.
+    const char* default_bootstrap;
+    /// llarp_apple_init writes the IP address for the primary tunnel IP address here,
+    /// null-terminated.
+    char tunnel_ipv4_ip[16];
+    /// llarp_apple_init writes the netmask of the tunnel address here, null-terminated.
+    char tunnel_ipv4_netmask[16];
+    /// The first upstream DNS server's IPv4 address the OS should use when in exit mode.
+    /// (Currently on mac in exit mode we only support querying the first such configured server).
+    char upstream_dns[16];
+    uint16_t upstream_dns_port;
 
-      /// \defgroup callbacks Callbacks
-      /// Callbacks we invoke for various operations that require glue into the Apple network
-      /// extension APIs.  All of these except for ns_logger are passed the pointer provided to
-      /// llarp_apple_start when invoked.
-      /// @{
+    /// \defgroup callbacks Callbacks
+    /// Callbacks we invoke for various operations that require glue into the Apple network
+    /// extension APIs.  All of these except for ns_logger are passed the pointer provided to
+    /// llarp_apple_start when invoked.
+    /// @{
 
-      /// simple wrapper around NSLog for lokinet message logging
-      ns_logger_callback ns_logger;
+    /// simple wrapper around NSLog for lokinet message logging
+    ns_logger_callback ns_logger;
 
-      /// C function callback that will be called when we need to write a packet to the packet
-      /// tunnel.  Will be passed AF_INET or AF_INET6, a void pointer to the data, and the size of
-      /// the data in bytes.
-      packet_writer_callback packet_writer;
+    /// C function callback that will be called when we need to write a packet to the packet
+    /// tunnel.  Will be passed AF_INET or AF_INET6, a void pointer to the data, and the size of
+    /// the data in bytes.
+    packet_writer_callback packet_writer;
 
-      /// C function callback that will be called when lokinet is setup and ready to start receiving
-      /// packets from the packet tunnel.  This should set up the read handler to deliver packets
-      /// via llarp_apple_incoming.
-      start_reading_callback start_reading;
+    /// C function callback that will be called when lokinet is setup and ready to start receiving
+    /// packets from the packet tunnel.  This should set up the read handler to deliver packets
+    /// via llarp_apple_incoming.
+    start_reading_callback start_reading;
 
-      /// Callbacks invoked to add/remove routes to the tunnel.
-      llarp_route_callbacks route_callbacks;
+    /// Callbacks invoked to add/remove routes to the tunnel.
+    llarp_route_callbacks route_callbacks;
 
-      /// @}
+    /// @}
   } llarp_apple_config;
-
 
   /// Initializes a lokinet instance by initializing various objects and loading the configuration
   /// (if <config_dir>/lokinet.ini exists).  Does not actually start lokinet (call llarp_apple_start
