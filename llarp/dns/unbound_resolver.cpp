@@ -58,7 +58,7 @@ namespace llarp::dns
     {
       Message& msg = lookup->msg;
       msg.AddServFail();
-      this_ptr->failFunc(lookup->resolverAddr, lookup->askerAddr, msg);
+      this_ptr->failFunc(lookup->askerAddr, lookup->resolverAddr, msg);
       ub_resolve_free(result);
       return;
     }
@@ -73,7 +73,7 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    this_ptr->replyFunc(lookup->resolverAddr, lookup->askerAddr, std::move(pkt));
+    this_ptr->replyFunc(lookup->askerAddr, lookup->resolverAddr, std::move(pkt));
 
     ub_resolve_free(result);
   }
@@ -145,7 +145,7 @@ namespace llarp::dns
     if (not unboundContext)
     {
       msg.AddServFail();
-      failFunc(to, from, std::move(msg));
+      failFunc(from, to, std::move(msg));
       return;
     }
 
@@ -163,7 +163,7 @@ namespace llarp::dns
     if (err != 0)
     {
       msg.AddServFail();
-      failFunc(to, from, std::move(msg));
+      failFunc(from, to, std::move(msg));
       return;
     }
   }

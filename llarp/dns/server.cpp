@@ -58,7 +58,7 @@ namespace llarp::dns
       return true;
 
     auto failFunc = [self = weak_from_this()](
-                        const SockAddr& from, const SockAddr& to, Message msg) {
+                        const SockAddr& to, const SockAddr& from, Message msg) {
       if (auto this_ptr = self.lock())
         this_ptr->SendServerMessageBufferTo(to, from, msg.ToBuffer());
     };
