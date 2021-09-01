@@ -13,6 +13,8 @@
 
 #ifdef _WIN32
 #include <thread>
+#else
+#include <uvw.hpp>
 #endif
 
 namespace llarp::dns
@@ -28,11 +30,16 @@ namespace llarp::dns
     ub_ctx* unboundContext;
 
     std::atomic<bool> started;
-    std::unique_ptr<std::thread> runner;
+
+#ifdef _WIN32
+    std::thread runner;
+#else
+    std::weak_ptr<uvw::Loop> loop;
+    std::shared_ptr<uvw::PollHandle> udp;
+#endif
 
     ReplyFunction replyFunc;
     FailFunction failFunc;
-
     void
     Reset();
 
