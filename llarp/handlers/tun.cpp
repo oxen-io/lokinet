@@ -71,8 +71,6 @@ namespace llarp
       bool
       IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
       {
-        LogError(
-            "IsUpstreamResolver? ", to.asIPv6(), " != ", m_Endpoint->GetIfAddr(), ", from=", from);
         return to.asIPv6() != m_Endpoint->GetIfAddr();
       }
 #endif
