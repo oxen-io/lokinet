@@ -132,6 +132,7 @@ namespace llarp::dns
       // intercept it to route it through our caching libunbound server (which then redirects the
       // request to the lokinet-configured upstream, if not cached).
 #ifdef ANDROID
+    LogError("android dns ", to);
     return IsUpstreamResolver(to, from);
 #else
     return !IsUpstreamResolver(to, from);
