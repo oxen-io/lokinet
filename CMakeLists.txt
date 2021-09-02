@@ -357,6 +357,6 @@ if(NOT TARGET uninstall)
 endif()
 
 
-if(BUILD_PACKAGE)
+if(BUILD_PACKAGE AND NOT APPLE)
     include(cmake/installer.cmake)
 endif()

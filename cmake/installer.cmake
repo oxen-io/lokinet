@@ -7,10 +7,6 @@ if(WIN32)
   include(cmake/win32_installer_deps.cmake)
 endif()
 
-if(APPLE)
-  include(cmake/macos_installer_deps.cmake)
-endif()
-  
 
 # This must always be last!
 include(CPack)
