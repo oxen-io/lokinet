@@ -39,11 +39,10 @@ if [ -e build-windows ]; then
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
-elif [ -e build-android ] ; then
+elif [ -e lokinet.apk ] ; then
     # android af ngl
-    cp -av *.apk "$base"
-    archive="$base.tar.xz"
-    tar cJvf "$archive" "$base"
+    archive="$base.apk"
+    cp -av lokinet.apk "$archive"
 else
     cp -av daemon/lokinet daemon/lokinet-vpn daemon/lokinet-bootstrap "$base"
     # tar dat shiz up yo
