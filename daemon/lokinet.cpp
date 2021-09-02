@@ -11,10 +11,6 @@
 #include <dbghelp.h>
 #endif
 
-#ifdef __APPLE__
-#include <llarp/util/logging/apple_logger.hpp>
-#endif
-
 #include <csignal>
 
 #include <cxxopts.hpp>
@@ -400,10 +396,6 @@ lokinet_main(int argc, char* argv[])
   {
     return result;
   }
-#ifdef __APPLE__
-  llarp::LogContext::Instance().logStream.reset(new llarp::NSLogStream{});
-#endif
-
   llarp::RuntimeOptions opts;
 
 #ifdef _WIN32

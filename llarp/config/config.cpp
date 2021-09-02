@@ -1446,17 +1446,4 @@ namespace llarp
     return config;
   }
 
-#ifdef __APPLE__
-  std::shared_ptr<Config>
-  Config::NetworkExtensionConfig(std::string exit)
-  {
-    auto config = std::make_shared<Config>(fs::path{});
-    config->Load();
-    config->logging.m_logLevel = eLogInfo;
-    config->bootstrap.files.clear();
-    config->network.m_LNSExitMap.Insert(IPRange{}, exit);
-    return config;
-  }
-#endif
-
 }  // namespace llarp

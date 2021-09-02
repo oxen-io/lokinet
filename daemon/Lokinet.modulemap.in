@@ -1,4 +1,0 @@
-
-module LokinetExtension {
-       header "@CMAKE_SOURCE_DIR@/include/lokinet-extension.hpp"
-}

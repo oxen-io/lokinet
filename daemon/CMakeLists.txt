@@ -1,10 +1,7 @@
 
 add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
-  set(LOKINET_SWIFT_SOURCES lokinet.swift)
-  add_executable(lokinet ${LOKINET_SWIFT_SOURCES})
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Lokinet.modulemap.in ${CMAKE_CURRENT_BINARY_DIR}/swift/LokinetExtension/module.modulemap ESCAPE_QUOTES @ONLY)
-  target_include_directories(lokinet PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/swift)
+  add_executable(lokinet lokinet.swift)
   enable_lto(lokinet)
 else()
   add_executable(lokinet lokinet.cpp)
