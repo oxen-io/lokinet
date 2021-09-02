@@ -21,6 +21,7 @@ add_executable(lokinet-extension MACOSX_BUNDLE
   PacketTunnelProvider.m
   DNSTrampoline.m
   )
+enable_lto(lokinet-extension)
 target_link_libraries(lokinet-extension PRIVATE
   liblokinet
   ${COREFOUNDATION}
