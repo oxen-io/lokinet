@@ -127,6 +127,10 @@ namespace llarp::dns
 
     if (m_QueryHandler and m_QueryHandler->ShouldHookDNSMessage(msg))
       return true;
+      // If this request is going to an upstream resolver then we want to let it through (i.e. don't
+      // handle it), and so want to return false.  If we have something else then we want to
+      // intercept it to route it through our caching libunbound server (which then redirects the
+      // request to the lokinet-configured upstream, if not cached).
 #ifdef ANDROID
     return IsUpstreamResolver(to, from);
 #else
