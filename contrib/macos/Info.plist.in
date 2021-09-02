@@ -17,8 +17,8 @@
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>@LOKINET_VERSION@</string>
+    <string>@lokinet_VERSION@</string>
     <key>CFBundleVersion</key>
-    <string>@LOKINET_VERSION@.@LOKINET_APPLE_BUILD@</string>
+    <string>@lokinet_VERSION@.@LOKINET_APPLE_BUILD@</string>
   </dict>
 </plist>
