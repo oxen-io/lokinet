@@ -127,8 +127,11 @@ namespace llarp::dns
 
     if (m_QueryHandler and m_QueryHandler->ShouldHookDNSMessage(msg))
       return true;
-
+#ifdef ANDROID
+    return IsUpstreamResolver(to, from);
+#else
     return !IsUpstreamResolver(to, from);
+#endif
   }
 
   void
