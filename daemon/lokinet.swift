@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import LokinetExtension
 import NetworkExtension
 
 let app = NSApplication.shared
