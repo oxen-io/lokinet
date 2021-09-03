@@ -941,14 +941,17 @@ namespace llarp
         LogError(Name(), " failed to add network interface");
         return false;
       }
-
+#ifdef __APPLE__
+      m_OurIPv6 = llarp::huint128_t{
+          llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(m_OurRange.addr).h}};
+#else
       const auto maybe = GetInterfaceIPv6Address(m_IfName);
       if (maybe.has_value())
       {
         m_OurIPv6 = *maybe;
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
-
+#endif
       Router()->loop()->add_ticker([this] { Flush(); });
 
       // Attempt to register DNS on the interface
