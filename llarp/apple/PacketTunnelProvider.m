@@ -8,6 +8,7 @@
   void* lokinet;
   @public NEPacketTunnelNetworkSettings* settings;
   @public NEIPv4Route* tun_route4;
+  @public NEIPv6Route* tun_route6;
   LLARPDNSTrampoline* dns_tramp;
 }
 
@@ -135,7 +136,7 @@ static void del_default_route(void* ctx) {
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*) ctx;
 
   t->settings.IPv4Settings.includedRoutes = @[t->tun_route4];
-  t->settings.IPv6Settings.includedRoutes = @[]; // No tun_route6 yet.
+  t->settings.IPv6Settings.includedRoutes = @[t->tun_route6];
 
   [t updateNetworkSettings];
 }
@@ -206,6 +207,7 @@ static void del_default_route(void* ctx) {
   dns.matchDomains = @[@""];
   dns.matchDomainsNoSearch = true;
   dns.searchDomains = @[];
+  settings.DNSSettings = dns;
 
   NWHostEndpoint* upstreamdns_ep;
   if (strlen(conf.upstream_dns))
@@ -216,7 +218,16 @@ static void del_default_route(void* ctx) {
   tun_route4 = [[NEIPv4Route alloc] initWithDestinationAddress:ip subnetMask: mask];
   ipv4.includedRoutes = @[tun_route4];
   settings.IPv4Settings = ipv4;
-  settings.DNSSettings = dns;
+
+  NSString* ip6 = [NSString stringWithUTF8String:conf.tunnel_ipv6_ip];
+  NSNumber* ip6_prefix = [NSNumber numberWithUnsignedInt:conf.tunnel_ipv6_prefix];
+  NEIPv6Settings* ipv6 = [[NEIPv6Settings alloc] initWithAddresses:@[ip6]
+                                              networkPrefixLengths:@[ip6_prefix]];
+  tun_route6 = [[NEIPv6Route alloc] initWithDestinationAddress:ip6
+                                           networkPrefixLength:ip6_prefix];
+  ipv6.includedRoutes = @[tun_route6];
+  settings.IPv6Settings = ipv6;
+
   __weak LLARPPacketTunnel* weakSelf = self;
   [self setTunnelNetworkSettings:settings completionHandler:^(NSError* err) {
     if (err) {

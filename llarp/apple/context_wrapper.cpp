@@ -60,8 +60,16 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto mask = llarp::net::TruncateV6(range.netmask_bits).ToString();
     if (addr.size() > 15 || mask.size() > 15)
       throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
-    std::strcpy(appleconf->tunnel_ipv4_ip, addr.c_str());
-    std::strcpy(appleconf->tunnel_ipv4_netmask, mask.c_str());
+    std::strncpy(appleconf->tunnel_ipv4_ip, addr.c_str(), sizeof(appleconf->tunnel_ipv4_ip));
+    std::strncpy(appleconf->tunnel_ipv4_netmask, mask.c_str(), sizeof(appleconf->tunnel_ipv4_netmask));
+
+    // TODO: in the future we want to do this properly with our pubkey (see issue #1705), but that's
+    // going to take a bit more work because we currently can't *get* the (usually) ephemeral pubkey
+    // at this stage of lokinet configuration.  So for now we just stick our IPv4 address into it
+    // until #1705 gets implemented.
+    llarp::huint128_t ipv6{llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(range.addr).h}};
+    std::strncpy(appleconf->tunnel_ipv6_ip, ipv6.ToString().c_str(), sizeof(appleconf->tunnel_ipv6_ip));
+    appleconf->tunnel_ipv6_prefix = 48;
 
     appleconf->upstream_dns[0] = '\0';
     for (auto& upstream : config->dns.m_upstreamDNS)

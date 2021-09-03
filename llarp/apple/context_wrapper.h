@@ -69,12 +69,17 @@ extern "C"
     const char* default_bootstrap;
     /// llarp_apple_init writes the IP address for the primary tunnel IP address here,
     /// null-terminated.
-    char tunnel_ipv4_ip[16];
+    char tunnel_ipv4_ip[INET_ADDRSTRLEN];
     /// llarp_apple_init writes the netmask of the tunnel address here, null-terminated.
-    char tunnel_ipv4_netmask[16];
+    char tunnel_ipv4_netmask[INET_ADDRSTRLEN];
+    /// Writes the IPv6 address for the tunnel here, null-terminated.
+    char tunnel_ipv6_ip[INET6_ADDRSTRLEN];
+    /// IPv6 address prefix.
+    uint16_t tunnel_ipv6_prefix;
+
     /// The first upstream DNS server's IPv4 address the OS should use when in exit mode.
     /// (Currently on mac in exit mode we only support querying the first such configured server).
-    char upstream_dns[16];
+    char upstream_dns[INET_ADDRSTRLEN];
     uint16_t upstream_dns_port;
 
     /// \defgroup callbacks Callbacks
