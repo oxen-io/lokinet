@@ -197,12 +197,7 @@ local mac_builder(name,
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
                 'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
-                'mkdir build',
-                'cd build',
-                'cmake .. -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'VERBOSE=1 make -j' + jobs,
-                './test/testAll --use-colour yes',
+                './contrib/mac.sh'
             ] + extra_cmds,
         }
     ]
@@ -280,9 +275,4 @@ local mac_builder(name,
     // Macos builds:
     mac_builder('macOS (Release)'),
     mac_builder('macOS (Debug)', build_type='Debug'),
-    mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
-                extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    '../contrib/ci/drone-static-upload.sh'
-                ]),
 ]

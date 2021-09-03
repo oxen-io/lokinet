@@ -10,6 +10,7 @@
 #include <llarp/service/auth.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/dns/dns.hpp>
 
 namespace llarp::rpc
 {
@@ -559,6 +560,47 @@ namespace llarp::rpc
                   }
                   reply(CreateJSONResponse("OK"));
                 });
+              });
+            })
+        .add_request_command(
+            "dns_query",
+            [&](oxenmq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                std::string endpoint{"default"};
+                if (const auto itr = obj.find("endpoint"); itr != obj.end())
+                {
+                  endpoint = itr->get<std::string>();
+                }
+                std::string qname{};
+                dns::QType_t qtype = dns::qTypeA;
+                if (const auto itr = obj.find("qname"); itr != obj.end())
+                {
+                  qname = itr->get<std::string>();
+                }
+
+                if (const auto itr = obj.find("qtype"); itr != obj.end())
+                {
+                  qtype = itr->get<dns::QType_t>();
+                }
+
+                dns::Message msg{dns::Question{qname, qtype}};
+
+                if (auto ep_ptr = (GetEndpointByName(r, endpoint)))
+                {
+                  if (auto ep = reinterpret_cast<dns::IQueryHandler*>(ep_ptr.get()))
+                  {
+                    if (ep->ShouldHookDNSMessage(msg))
+                    {
+                      ep->HandleHookedDNSMessage(std::move(msg), [reply](dns::Message msg) {
+                        reply(CreateJSONResponse(msg.ToJSON()));
+                      });
+                      return;
+                    }
+                  }
+                  reply(CreateJSONError("dns query not accepted by endpoint"));
+                  return;
+                }
+                reply(CreateJSONError("no such endpoint for dns query"));
               });
             })
         .add_request_command("config", [&](oxenmq::Message& msg) {

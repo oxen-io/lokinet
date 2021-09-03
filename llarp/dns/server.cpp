@@ -70,6 +70,7 @@ namespace llarp::dns
 
     m_UnboundResolver =
         std::make_shared<UnboundResolver>(m_Loop, std::move(replyFunc), std::move(failFunc));
+    m_Resolvers.clear();
     if (not m_UnboundResolver->Init())
     {
       llarp::LogError("Failed to initialize upstream DNS resolver.");
@@ -103,8 +104,14 @@ namespace llarp::dns
   }
 
   bool
+  PacketHandler::IsUpstreamResolver(const SockAddr& to, [[maybe_unused]] const SockAddr& from) const
+  {
+    return m_Resolvers.count(to);
+  }
+
+  bool
   PacketHandler::ShouldHandlePacket(
-      const SockAddr& to, [[maybe_unused]] const SockAddr& from, llarp_buffer_t buf) const
+      const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) const
   {
     MessageHeader hdr;
     if (not hdr.Decode(&buf))
@@ -120,12 +127,11 @@ namespace llarp::dns
 
     if (m_QueryHandler and m_QueryHandler->ShouldHookDNSMessage(msg))
       return true;
-
-    if (m_Resolvers.find(to) != m_Resolvers.end())
-    {
-      return false;
-    }
-    return true;
+    // If this request is going to an upstream resolver then we want to let it through (i.e. don't
+    // handle it), and so want to return false.  If we have something else then we want to
+    // intercept it to route it through our caching libunbound server (which then redirects the
+    // request to the lokinet-configured upstream, if not cached).
+    return !IsUpstreamResolver(to, from);
   }
 
   void

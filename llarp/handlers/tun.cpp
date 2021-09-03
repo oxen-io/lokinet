@@ -35,8 +35,8 @@ namespace llarp
   namespace handlers
   {
     // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
-    // Android where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible because of OS
-    // restrictions, but a tun interface *is* available.
+    // Android and macOS where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible
+    // because of OS restrictions, but a tun interface *is* available.
     class DnsInterceptor : public dns::PacketHandler
     {
      public:
@@ -61,6 +61,27 @@ namespace llarp
         m_Endpoint->HandleWriteIPPacket(
             pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }
+
+#ifdef ANDROID
+      bool
+      IsUpstreamResolver(const SockAddr&, const SockAddr&) const override
+      {
+        return true;
+      }
+#endif
+
+#ifdef __APPLE__
+      // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
+      // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
+      // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver
+      // won't work for us.  However when active the mac also only queries the main tunnel IP for
+      // DNS, so we consider anything else to be upstream-bound DNS to let it through the tunnel.
+      bool
+      IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
+      {
+        return to.asIPv6() != m_Endpoint->GetIfAddr();
+      }
+#endif
     };
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
@@ -74,7 +95,7 @@ namespace llarp
       });
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
-#ifdef ANDROID
+#if defined(ANDROID) || defined(__APPLE__)
       m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);
@@ -134,6 +155,17 @@ namespace llarp
     {
       if (m_Resolver)
         m_Resolver->Restart();
+    }
+
+    std::vector<SockAddr>
+    TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
+    {
+      std::swap(m_UpstreamResolvers, servers);
+      m_Resolver->Stop();
+      if (!m_Resolver->Start(
+              m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
+        llarp::LogError(Name(), " failed to reconfigure DNS server");
+      return servers;
     }
 
     bool
@@ -909,14 +941,17 @@ namespace llarp
         LogError(Name(), " failed to add network interface");
         return false;
       }
-
+#ifdef __APPLE__
+      m_OurIPv6 = llarp::huint128_t{
+          llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(m_OurRange.addr).h}};
+#else
       const auto maybe = GetInterfaceIPv6Address(m_IfName);
       if (maybe.has_value())
       {
         m_OurIPv6 = *maybe;
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
-
+#endif
       Router()->loop()->add_ticker([this] { Flush(); });
 
       // Attempt to register DNS on the interface
