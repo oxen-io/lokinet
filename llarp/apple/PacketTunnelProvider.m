@@ -135,7 +135,7 @@ static void del_default_route(void* ctx) {
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*) ctx;
 
   t->settings.IPv4Settings.includedRoutes = @[t->tun_route4];
-  t->settings.IPv4Settings.includedRoutes = @[]; // No tun_route6 yet.
+  t->settings.IPv6Settings.includedRoutes = @[]; // No tun_route6 yet.
 
   [t updateNetworkSettings];
 }
