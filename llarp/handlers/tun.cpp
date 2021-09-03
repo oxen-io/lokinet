@@ -62,6 +62,14 @@ namespace llarp
             pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }
 
+#ifdef ANDROID
+      bool
+      IsUpstreamResolver(const SockAddr&, const SockAddr&) const override
+      {
+        return true;
+      }
+#endif
+
 #ifdef __APPLE__
       // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
       // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
