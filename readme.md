@@ -62,14 +62,7 @@ alternatively you can build from source, make sure you have cmake, libuv and xco
 
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
-    $ mkdir build
-    $ cd build
-    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
-    $ make -j$(sysctl -n hw.ncpu)
-
-install:
-
-    $ sudo make install
+    $ ./contrib/mac.sh -DCODESIGN_KEY='insert your key identity here' -DCODESIGN_TEAM_ID='team id here'
 
 ### Windows
 
@@ -153,11 +146,16 @@ to configure as relay:
 
 ## Running on Linux
 
-**DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
+**DO NOT RUN AS ROOT**, run as normal user. 
 
 to run, after you create default config:
 
     $ lokinet
+
+This requires the binary to have the proper capabilities which is usually set by `make install` on the binary. If you have errors regarding permissions to open a new interface this can be resolved using:
+
+    $ sudo setcap cap_net_admin,cap_net_bind_service=+eip /usr/local/bin/lokinet
+
 
 ## Running on macOS/UNIX/BSD
 

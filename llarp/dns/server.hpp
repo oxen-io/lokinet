@@ -54,7 +54,12 @@ namespace llarp
 
      protected:
       virtual void
-      SendServerMessageBufferTo(const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) = 0;
+      SendServerMessageBufferTo(const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) = 0;
+
+      // Returns true if this packet is something that looks like it's going to an upstream
+      // resolver, i.e. matches a configured resolver.
+      virtual bool
+      IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const;
 
      private:
       void
@@ -84,7 +89,7 @@ namespace llarp
      protected:
       void
       SendServerMessageBufferTo(
-          const SockAddr& from, const SockAddr& to, llarp_buffer_t buf) override;
+          const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) override;
 
      private:
       std::shared_ptr<UDPHandle> m_Server;

@@ -3,6 +3,7 @@
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/printer.hpp>
 #include <llarp/util/str.hpp>
+#include "dns.hpp"
 
 namespace llarp
 {
@@ -16,6 +17,13 @@ namespace llarp
     Question::Question(const Question& other)
         : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
     {}
+
+    Question::Question(std::string name, QType_t type)
+        : qname{std::move(name)}, qtype{type}, qclass{qClassIN}
+    {
+      if (qname.empty())
+        throw std::invalid_argument{"qname cannot be empty"};
+    }
 
     bool
     Question::Encode(llarp_buffer_t* buf) const
@@ -46,6 +54,12 @@ namespace llarp
         return false;
       }
       return true;
+    }
+
+    util::StatusObject
+    Question::ToJSON() const
+    {
+      return util::StatusObject{{"qname", qname}, {"qtype", qtype}, {"qclass", qclass}};
     }
 
     bool
