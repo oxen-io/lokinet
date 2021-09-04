@@ -1,3 +1,134 @@
+lokinet (0.9.6~pre1-1~ubuntu2104) hirsute; urgency=medium
+
+  [ Jeff Becker ]
+  * fix dns on android
+  * add / remove route blackhole so we dont leak if we crash
+
+  [ Sean ]
+  * Update readme.md
+
+  [ Jason Rhinelander ]
+  * bencode-dump.py: support reading from stdin
+  * Remove unused defaults.hpp
+  * Rediff patches
+  * Remove old unused lokinet-bootstrap script
+  * Remove unneeded split(str, char) method
+  * Fix default upstream DNS not working
+
+  [ Jeff Becker ]
+  * format
+  * initial routing table refactor
+  * initial win32 port of route manager
+  * remove old routing table maniuplation code
+  * introduce add/del route via interface to route manager
+  * make add/del blackhole default to empty implementation
+  * use vpn::NetworkInterface for add/del route via interface instead of string
+  * add NOP implementation of VPN route manager for android
+
+  [ Jason Rhinelander ]
+  * SockAddr string optimization
+
+  [ Jeff Becker ]
+  * bump openssl static deps version for upstream security update
+
+  [ Jason Rhinelander ]
+  * Revert "fix dns on android"
+  * Reapply "fix dns on android" + fix argument order
+
+  [ Jeff Becker ]
+  * dont save addrmap on android as it hangs
+  * redo dns to use event loop on non windows and threading bullshit on windows
+
+  [ Jason Rhinelander ]
+  * Unbound callbacks also need arguments reversed
+  * Stop using deprecated OMQ connect_remote overload
+
+  [ Jeff Becker ]
+  * make ci try building the flutter apk in the android apk pipeline
+  * correct lokinet flutter url
+  * dont bundle raw jni libs
+  * upload bare apk as ci artifact
+
+  [ jeff ]
+  * initial network extension code for macos probably does not work
+  * add swift version bullshit file and additional bullshittery
+
+  [ Jason Rhinelander ]
+  * Various cmake build cleanups/refactors
+  * Set version into Info.plist, don't manually configure
+  * Switch extension from a framework to an appex
+  * Default CODESIGN_APPEX to CODESIGN_APP
+
+  [ jeff ]
+  * macos sort of works now
+  * make ci run ./contrib/mac.sh with no codesigning
+  * add dummy sign target for ci when we don't have signing keys remove static macos from ci pipeline
+  * it works
+
+  [ Jason Rhinelander ]
+  * Consolidate apple-specific bits into llarp/apple
+  * Tweak icns generation to only run when necessary
+  * Apple OS interface cleanup & refactoring
+  * Remove swift version (do not squash)
+  * format.sh: support macports clang-format
+  * Remove no-longer-used framework.mm
+  * Generate a default client lokinet.ini on startup if it doesn't exist
+  * Remove more unused dns-proxy files
+  * Remove unused/empty/no longer used apple headers
+  * Add lokinet subnet to default routes
+  * Add RouteManager; make exit on/off work
+  * Remove unused vars
+  * Add DNS trampoline
+  * Remove debug
+  * Unleak exit mode DNS via unbound DNS trampoline on (macOS)
+  * Reformat
+  * Silence warnings
+  * Remove dead code
+
+  [ Jeff Becker ]
+  * disable language ASM, yolo
+
+  [ Jason Rhinelander ]
+  * Forward-declare ub_ctx/ub_result
+
+  [ Jeff Becker ]
+  * invert logic for android dns hook
+
+  [ Jason Rhinelander ]
+  * Re-enable LTO; target macos 10.12+
+  * Remove debugging
+  * LOKINET_VERSION -> built in lokinet_VERSION
+  * Remove old mac installer packaging
+  * Remove advertising of big crappy company
+  * Remove obsolete bigs
+
+  [ Jeff Becker ]
+  * add comment about android dns
+  * tmp commit for debugging (revert me)
+  * remove unused import
+
+  [ Jason Rhinelander ]
+  * Fix IPv4 routes are disabling exit
+
+  [ Jeff Becker ]
+  * override ShouldHandlePacket on android to bypass non .snode/.loki dns hooking.
+
+  [ Jason Rhinelander ]
+  * Add IPv6 addr/routing for macos
+
+  [ Jeff Becker ]
+  * set ipv6 address on apple to hardcoded value
+  * format
+  * limit RC gossip to 20 peers max
+  * try not to prefer outbound vs inbound link sessions before when we get the list of router ids for gossip it was highly bias towards outbound sessions. instead now we get a full list of link session router ids in random order, truncate them to be at most MaxGossipPeers number of keys, and then put them into an unordered set
+  * use std::sample to grab MaxGossipPeers when populating std::unordered_set
+
+  [ Jason Rhinelander ]
+  * Disable tests on static bionic
+  * Bump dev branch version
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 03 Sep 2021 23:08:25 -0300
+
 lokinet (0.9.5-3~ubuntu2104) hirsute; urgency=medium
 
   * Fix lokinet.pkla install path
