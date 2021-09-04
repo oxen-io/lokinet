@@ -12,7 +12,6 @@
 #include <llarp/link/server.hpp>
 #include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/net/route.hpp>
 #include <stdexcept>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging/file_logger.hpp>
