@@ -11,7 +11,6 @@
 #include "identity.hpp"
 #include "pendingbuffer.hpp"
 #include "protocol.hpp"
-#include "quic/server.hpp"
 #include "sendcontext.hpp"
 #include "service/protocol_type.hpp"
 #include "session.hpp"
