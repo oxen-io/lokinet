@@ -60,9 +60,32 @@ namespace llarp::vpn
     }
   };
 
+  class AndroidRouteManager : public IRouteManager
+  {
+    void AddRoute(IPVariant_t, IPVariant_t) override{};
+
+    void DelRoute(IPVariant_t, IPVariant_t) override{};
+
+    void AddDefaultRouteViaInterface(std::string) override{};
+
+    void DelDefaultRouteViaInterface(std::string) override{};
+
+    void
+    AddRouteViaInterface(NetworkInterface&, IPRange) override{};
+
+    void
+    DelRouteViaInterface(NetworkInterface&, IPRange) override{};
+
+    std::vector<IPVariant_t> GetGatewaysNotOnInterface(std::string) override
+    {
+      return std::vector<IPVariant_t>{};
+    };
+  };
+
   class AndroidPlatform : public Platform
   {
     const int fd;
+    AndroidRouteManager _routeManager{};
 
    public:
     AndroidPlatform(llarp::Context* ctx) : fd(ctx->androidFD)
@@ -72,6 +95,11 @@ namespace llarp::vpn
     ObtainInterface(InterfaceInfo info) override
     {
       return std::make_shared<AndroidInterface>(std::move(info), fd);
+    }
+    IRouteManager&
+    RouteManager() override
+    {
+      return _routeManager;
     }
   };
 

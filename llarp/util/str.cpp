@@ -67,35 +67,6 @@ namespace llarp
     return str;
   }
 
-  std::vector<std::string_view>
-  split(const std::string_view str, char delimiter)
-  {
-    std::vector<std::string_view> splits;
-    const auto str_size = str.size();
-    size_t last = 0;
-    size_t next = 0;
-    while (last < str_size and next < std::string_view::npos)
-    {
-      next = str.find_first_of(delimiter, last);
-      if (next > last)
-      {
-        splits.push_back(str.substr(last, next - last));
-
-        last = next;
-
-        // advance to next non-delimiter
-        while (last < str_size and str[last] == delimiter)
-          last++;
-      }
-      else
-      {
-        break;
-      }
-    }
-
-    return splits;
-  }
-
   using namespace std::literals;
 
   std::vector<std::string_view>
