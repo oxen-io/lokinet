@@ -14,6 +14,9 @@ namespace llarp
     struct Question : public Serialize
     {
       Question() = default;
+
+      explicit Question(std::string name, QType_t type);
+
       Question(Question&& other);
       Question(const Question& other);
       bool
@@ -58,6 +61,9 @@ namespace llarp
       /// determine if we are using this TLD
       bool
       HasTLD(const std::string& tld) const;
+
+      util::StatusObject
+      ToJSON() const override;
     };
 
     inline std::ostream&
