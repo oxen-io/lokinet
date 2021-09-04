@@ -22,7 +22,7 @@ namespace llarp::rpc
     if (m_AuthURL.empty() or m_AuthMethod.empty())
       return;
     m_LMQ->connect_remote(
-        m_AuthURL,
+        oxenmq::address{m_AuthURL},
         [self = shared_from_this()](oxenmq::ConnectionID c) {
           self->m_Conn = std::move(c);
           LogInfo("connected to endpoint auth server via ", *self->m_Conn);

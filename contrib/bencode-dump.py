@@ -3,11 +3,13 @@
 import sys
 import pprint
 
-if len(sys.argv) != 2 or sys.argv[1].startswith('-'):
+if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == '-'):
+    f = sys.stdin.buffer
+elif len(sys.argv) != 2 or sys.argv[1].startswith('-'):
     print("Usage: {} FILE -- dumps a bencoded file".format(sys.argv[0]), file=sys.stderr)
     sys.exit(1)
-
-f = open(sys.argv[1], 'rb')
+else:
+    f = open(sys.argv[1], 'rb')
 
 class HexPrinter():
     def __init__(self, data):

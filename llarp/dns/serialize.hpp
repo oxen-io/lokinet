@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp/util/buffer.hpp>
-
+#include <llarp/util/status.hpp>
 #include <vector>
 
 namespace llarp
@@ -20,6 +20,10 @@ namespace llarp
       /// decode entity from buffer
       virtual bool
       Decode(llarp_buffer_t* buf) = 0;
+
+      /// convert this whatever into json
+      virtual util::StatusObject
+      ToJSON() const = 0;
     };
 
     bool

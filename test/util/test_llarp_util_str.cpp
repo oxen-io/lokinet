@@ -91,7 +91,7 @@ TEST_CASE("neither true nor false string values", "[str][nottruefalse]") {
 }
 
 TEST_CASE("split strings with multiple matches", "[str]") {
-  auto splits = llarp::split("this is a test", ' ');
+  auto splits = llarp::split("this is a test", " ");
   REQUIRE(splits.size() == 4);
   REQUIRE(splits[0] == "this");
   REQUIRE(splits[1] == "is");
@@ -100,13 +100,13 @@ TEST_CASE("split strings with multiple matches", "[str]") {
 }
 
 TEST_CASE("split strings with single match", "[str]") {
-  auto splits = llarp::split("uno", ';');
+  auto splits = llarp::split("uno", ";");
   REQUIRE(splits.size() == 1);
   REQUIRE(splits[0] == "uno");
 }
 
-TEST_CASE("split strings with consecutive delimiters", "[str]") {
-  auto splits = llarp::split("a  o   e    u", ' ');
+TEST_CASE("split_any strings with consecutive delimiters", "[str]") {
+  auto splits = llarp::split_any("a  o   e    u", " ");
   REQUIRE(splits.size() == 4);
   REQUIRE(splits[0] == "a");
   REQUIRE(splits[1] == "o");
@@ -115,14 +115,35 @@ TEST_CASE("split strings with consecutive delimiters", "[str]") {
 }
 
 TEST_CASE("split delimiter-only string", "[str]") {
-  auto splits = llarp::split("    ", ' ');
-  REQUIRE(splits.size() == 0);
+  {
+    auto splits = llarp::split("    ", " ");
+    REQUIRE(splits.size() == 5);
+  }
 
-  splits = llarp::split(" ", ' ');
-  REQUIRE(splits.size() == 0);
+  {
+    auto splits = llarp::split_any("    ", " ");
+    REQUIRE(splits.size() == 2);
+  }
+
+  {
+    auto splits = llarp::split("    ", " ", true);
+    REQUIRE(splits.size() == 0);
+  }
+
+  {
+    auto splits = llarp::split_any("    ", " ", true);
+    REQUIRE(splits.size() == 0);
+  }
 }
 
 TEST_CASE("split empty string", "[str]") {
-  auto splits = llarp::split("", ' ');
-  REQUIRE(splits.size() == 0);
+  {
+    auto splits = llarp::split("", " ");
+    REQUIRE(splits.size() == 1);
+  }
+
+  {
+    auto splits = llarp::split("", " ", true);
+    REQUIRE(splits.size() == 0);
+  }
 }
