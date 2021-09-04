@@ -43,9 +43,9 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3"), "1.2.3 is not a valid IPv4 address");
 
-  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3."), "1.2.3. is not a valid IPv4 address");
+  CHECK_THROWS_WITH(llarp::SockAddr("1.2.3."), "1.2.3. contains invalid numeric value");
 
-  CHECK_THROWS_WITH(llarp::SockAddr(".1.2.3"), ".1.2.3 is not a valid IPv4 address");
+  CHECK_THROWS_WITH(llarp::SockAddr(".1.2.3"), ".1.2.3 contains invalid numeric value");
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4.5"), "1.2.3.4.5 is not a valid IPv4 address");
 

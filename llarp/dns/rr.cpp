@@ -24,6 +24,14 @@ namespace llarp
         , rData(std::move(other.rData))
     {}
 
+    ResourceRecord::ResourceRecord(Name_t name, RRType_t type, RR_RData_t data)
+        : rr_name{std::move(name)}
+        , rr_type{type}
+        , rr_class{qClassIN}
+        , ttl{1}
+        , rData{std::move(data)}
+    {}
+
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const
     {
@@ -75,6 +83,17 @@ namespace llarp
         return false;
       }
       return true;
+    }
+
+    util::StatusObject
+    ResourceRecord::ToJSON() const
+    {
+      return util::StatusObject{
+          {"name", rr_name},
+          {"type", rr_type},
+          {"class", rr_class},
+          {"ttl", ttl},
+          {"rdata", std::string{reinterpret_cast<const char*>(rData.data()), rData.size()}}};
     }
 
     std::ostream&
