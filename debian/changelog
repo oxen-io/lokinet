@@ -1,3 +1,13 @@
+lokinet (0.9.6-1~deb11) bullseye; urgency=medium
+
+  [ Jeff Becker ]
+  * add --help and -h flags to lokinet-bootstrap to show help message
+
+  [ Jason Rhinelander ]
+  * Update wording and wrap help message
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 08 Sep 2021 20:53:55 -0300
+
 lokinet (0.9.6~pre1-1~deb11) bullseye; urgency=medium
 
   [ Jeff Becker ]
