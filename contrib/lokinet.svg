@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 189.4 189.4" style="enable-background:new 0 0 189.4 189.4;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FFFFFF;}
+</style>
+<g>
+	<polygon class="st0" points="113.6,132.6 94.7,151.5 75.8,132.6 56.8,151.5 94.7,189.4 132.6,151.5 	"/>
+	<polygon class="st0" points="132.6,113.6 151.5,94.7 132.6,75.8 151.5,56.8 189.4,94.7 151.5,132.6 	"/>
+	<polygon class="st0" points="56.8,75.8 37.9,94.7 56.8,113.6 37.9,132.6 0,94.7 37.9,56.8 	"/>
+	<polygon class="st0" points="75.8,56.8 94.7,37.9 113.6,56.8 132.6,37.9 94.7,0 56.8,37.9 	"/>
+	
+		<rect x="100.2" y="100.2" transform="matrix(0.7071 0.7071 -0.7071 0.7071 113.6329 -47.0683)" class="st0" width="26.8" height="26.8"/>
+	
+		<rect x="62.4" y="62.4" transform="matrix(0.7071 0.7071 -0.7071 0.7071 75.7552 -31.3789)" class="st0" width="26.8" height="26.8"/>
+	
+		<rect x="100.2" y="62.4" transform="matrix(0.7071 0.7071 -0.7071 0.7071 86.8493 -58.1624)" class="st0" width="26.8" height="26.8"/>
+	
+		<rect x="62.4" y="100.2" transform="matrix(0.7071 0.7071 -0.7071 0.7071 102.5388 -20.2848)" class="st0" width="26.8" height="26.8"/>
+</g>
+</svg>

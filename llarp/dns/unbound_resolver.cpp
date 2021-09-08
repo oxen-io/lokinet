@@ -5,6 +5,8 @@
 #include <sstream>
 #include <llarp/util/str.hpp>
 
+#include <unbound.h>
+
 namespace llarp::dns
 {
   struct PendingUnboundLookup
@@ -25,11 +27,18 @@ namespace llarp::dns
   UnboundResolver::Reset()
   {
     started = false;
-    if (runner)
+#ifdef _WIN32
+    if (runner.joinable())
     {
-      runner->join();
-      runner.reset();
+      runner.join();
     }
+#else
+    if (udp)
+    {
+      udp->close();
+    }
+    udp.reset();
+#endif
     if (unboundContext)
     {
       ub_ctx_delete(unboundContext);
@@ -37,12 +46,16 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  UnboundResolver::UnboundResolver(EventLoop_ptr loop, ReplyFunction reply, FailFunction fail)
-      : unboundContext(nullptr)
-      , started(false)
-      , replyFunc(loop->make_caller(std::move(reply)))
-      , failFunc(loop->make_caller(std::move(fail)))
-  {}
+  UnboundResolver::UnboundResolver(EventLoop_ptr _loop, ReplyFunction reply, FailFunction fail)
+      : unboundContext{nullptr}
+      , started{false}
+      , replyFunc{_loop->make_caller(std::move(reply))}
+      , failFunc{_loop->make_caller(std::move(fail))}
+  {
+#ifndef _WIN32
+    loop = _loop->MaybeGetUVWLoop();
+#endif
+  }
 
   // static callback
   void
@@ -58,7 +71,7 @@ namespace llarp::dns
     {
       Message& msg = lookup->msg;
       msg.AddServFail();
-      this_ptr->failFunc(lookup->resolverAddr, lookup->askerAddr, msg);
+      this_ptr->failFunc(lookup->askerAddr, lookup->resolverAddr, msg);
       ub_resolve_free(result);
       return;
     }
@@ -73,7 +86,7 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    this_ptr->replyFunc(lookup->resolverAddr, lookup->askerAddr, std::move(pkt));
+    this_ptr->replyFunc(lookup->askerAddr, lookup->resolverAddr, std::move(pkt));
 
     ub_resolve_free(result);
   }
@@ -94,14 +107,33 @@ namespace llarp::dns
     }
 
     ub_ctx_async(unboundContext, 1);
-    runner = std::make_unique<std::thread>([&]() {
+#ifdef _WIN32
+    runner = std::thread{[&]() {
       while (started)
       {
         if (unboundContext)
           ub_wait(unboundContext);
         std::this_thread::sleep_for(25ms);
       }
-    });
+      if (unboundContext)
+        ub_process(unboundContext);
+    }};
+#else
+    if (auto loop_ptr = loop.lock())
+    {
+      udp = loop_ptr->resource<uvw::PollHandle>(ub_fd(unboundContext));
+      udp->on<uvw::PollEvent>([ptr = weak_from_this()](auto&, auto&) {
+        if (auto self = ptr.lock())
+        {
+          if (self->unboundContext)
+          {
+            ub_process(self->unboundContext);
+          }
+        }
+      });
+      udp->start(uvw::PollHandle::Event::READABLE);
+    }
+#endif
     started = true;
     return true;
   }
@@ -110,7 +142,8 @@ namespace llarp::dns
   UnboundResolver::AddUpstreamResolver(const SockAddr& upstreamResolver)
   {
     std::stringstream ss;
-    ss << upstreamResolver.hostString();
+    auto hoststr = upstreamResolver.hostString();
+    ss << hoststr;
 
     if (const auto port = upstreamResolver.getPort(); port != 53)
       ss << "@" << port;
@@ -121,6 +154,25 @@ namespace llarp::dns
       Reset();
       return false;
     }
+
+#ifdef __APPLE__
+    // On Apple, we configure a localhost resolver to trampoline requests through the tunnel to the
+    // actual upstream (because the network extension itself cannot route through the tunnel using
+    // normal sockets but instead we "get" to use Apple's interfaces, hurray).
+    if (hoststr == "127.0.0.1")
+    {
+      // Not at all clear why this is needed but without it we get "send failed: Can't assign
+      // requested address" when unbound tries to connect to the localhost address using a source
+      // address of 0.0.0.0.  Yay apple.
+      ub_ctx_set_option(unboundContext, "outgoing-interface:", hoststr.c_str());
+
+      // The trampoline expects just a single source port (and sends everything back to it)
+      ub_ctx_set_option(unboundContext, "outgoing-range:", "1");
+      ub_ctx_set_option(unboundContext, "outgoing-port-avoid:", "0-65535");
+      ub_ctx_set_option(unboundContext, "outgoing-port-permit:", "1253");
+    }
+#endif
+
     return true;
   }
 
@@ -145,7 +197,7 @@ namespace llarp::dns
     if (not unboundContext)
     {
       msg.AddServFail();
-      failFunc(to, from, std::move(msg));
+      failFunc(from, to, std::move(msg));
       return;
     }
 
@@ -163,7 +215,7 @@ namespace llarp::dns
     if (err != 0)
     {
       msg.AddServFail();
-      failFunc(to, from, std::move(msg));
+      failFunc(from, to, std::move(msg));
       return;
     }
   }

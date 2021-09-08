@@ -1,3 +1,6 @@
+
+#include <llarp/ev/vpn.hpp>
+
 #ifdef _WIN32
 #include "win32.hpp"
 #endif
@@ -8,9 +11,8 @@
 #include "linux.hpp"
 #endif
 #endif
-#ifdef __APPLE__
-#include "apple.hpp"
-#endif
+
+#include <exception>
 
 namespace llarp::vpn
 {
@@ -30,7 +32,7 @@ namespace llarp::vpn
 #endif
 #endif
 #ifdef __APPLE__
-    plat = std::make_shared<vpn::ApplePlatform>();
+    throw std::runtime_error{"not supported"};
 #endif
     return plat;
   }

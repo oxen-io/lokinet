@@ -22,6 +22,7 @@ local debian_pipeline(name, image,
         cmake_extra='',
         extra_cmds=[],
         jobs=6,
+        tests=true,
         loki_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
@@ -55,10 +56,12 @@ local debian_pipeline(name, image,
                 'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
+                    (if tests then '' else '-DWITH_TESTS=OFF ') +
                 cmake_extra,
                 'VERBOSE=1 make -j' + jobs,
-                '../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes',
-            ] + extra_cmds,
+            ]
+            + (if tests then ['../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes'] else [])
+            + extra_cmds,
         }
     ],
 };
@@ -76,7 +79,13 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
             commands: [
-                'VERBOSE=1 JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh'
+              'VERBOSE=1 JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh',
+              'git clone https://github.com/majestrate/lokinet-mobile',
+              'cp -av lokinet-jni-*/* lokinet-mobile/lokinet_lib/android/src/main/jniLibs/',
+              'cd lokinet-mobile',
+              'flutter build apk --debug',
+              'cd  ..',
+              'cp lokinet-mobile/build/app/outputs/apk/debug/app-debug.apk lokinet.apk'
             ] + extra_cmds
         }
     ]
@@ -191,12 +200,7 @@ local mac_builder(name,
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
                 'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
-                'mkdir build',
-                'cd build',
-                'cmake .. -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
-                'VERBOSE=1 make -j' + jobs,
-                './test/testAll --use-colour yes',
+                './contrib/mac.sh'
             ] + extra_cmds,
         }
     ]
@@ -252,7 +256,7 @@ local mac_builder(name,
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (bionic amd64)", docker_base+'ubuntu-bionic', deps='g++-8 python3-dev automake libtool', lto=true,
+    debian_pipeline("Static (bionic amd64)", docker_base+'ubuntu-bionic', deps='g++-8 python3-dev automake libtool', lto=true, tests=false,
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" -DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" -DNATIVE_BUILD=OFF ' +
                         '-DWITH_SYSTEMD=OFF',
@@ -274,9 +278,4 @@ local mac_builder(name,
     // Macos builds:
     mac_builder('macOS (Release)'),
     mac_builder('macOS (Debug)', build_type='Debug'),
-    mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
-                extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    '../contrib/ci/drone-static-upload.sh'
-                ]),
 ]

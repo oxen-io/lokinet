@@ -244,7 +244,7 @@ namespace llarp::uv
       std::shared_ptr<llarp::vpn::NetworkInterface> netif,
       std::function<void(llarp::net::IPPacket)> handler)
   {
-#ifndef _WIN32
+#ifdef __linux__
     using event_t = uvw::PollEvent;
     auto handle = m_Impl->resource<uvw::PollHandle>(netif->PollFD());
 #else
@@ -264,7 +264,7 @@ namespace llarp::uv
       }
     });
 
-#ifndef _WIN32
+#ifdef __linux__
     handle->start(uvw::PollHandle::Event::READABLE);
 #else
     handle->start();
