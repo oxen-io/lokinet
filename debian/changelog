@@ -1,3 +1,13 @@
+lokinet (0.9.6-1) unstable; urgency=medium
+
+  [ Jeff Becker ]
+  * add --help and -h flags to lokinet-bootstrap to show help message
+
+  [ Jason Rhinelander ]
+  * Update wording and wrap help message
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 08 Sep 2021 20:53:45 -0300
+
 lokinet (0.9.6~pre1-1) unstable; urgency=medium
 
   [ Jeff Becker ]
