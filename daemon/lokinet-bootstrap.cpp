@@ -35,13 +35,15 @@ namespace
   {
     std::cout << R"(Lokinet bootstrap.signed fetchy program thing
 
-Downloads the initial bootstrap.signed for lokinet into a local file from a default or user defined server via the reachable network.
+Downloads the initial bootstrap.signed for lokinet into a local file from a
+default or user defined server via the reachable network.
 
 Usage: )" << exe
               << R"( [bootstrap_url [output_file]]
 
-bootstrap_url can be a named value in which we will use a predefined url that
-holds a bootstrap file
+bootstrap_url can be specified as a full URL, or a special named value
+("mainnet" or "testnet") to download from the pre-defined mainnet or testnet
+bootstrap URLs.
 
 )";
     return 0;
