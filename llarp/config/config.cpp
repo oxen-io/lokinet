@@ -3,7 +3,6 @@
 
 #include "config/definition.hpp"
 #include "ini.hpp"
-#include <llarp/constants/defaults.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
@@ -711,6 +710,8 @@ namespace llarp
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
     constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
+    if (!m_upstreamDNS.back().getPort())
+      m_upstreamDNS.back().setPort(53);
 
     conf.defineOption<std::string>(
         "dns",

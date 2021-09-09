@@ -299,24 +299,17 @@ namespace llarp
   SockAddr::hostString() const
   {
     std::string str;
-
+    char buf[INET6_ADDRSTRLEN] = {0x0};
     if (isIPv4())
     {
       // handle IPv4 mapped addrs
-      constexpr auto MaxIPv4PlusPortStringSize = 22;
-      str.reserve(MaxIPv4PlusPortStringSize);
-      char buf[128] = {0x0};
       inet_ntop(AF_INET, &m_addr4.sin_addr.s_addr, buf, sizeof(buf));
-      str.append(buf);
+      str = buf;
     }
     else
     {
-      constexpr auto MaxIPv6PlusPortStringSize = 128;
-      str.reserve(MaxIPv6PlusPortStringSize);
-
-      char buf[128] = {0x0};
       inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf, sizeof(buf));
-
+      str.reserve(std::strlen(buf) + 2);
       str.append("[");
       str.append(buf);
       str.append("]");

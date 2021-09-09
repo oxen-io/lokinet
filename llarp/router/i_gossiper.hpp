@@ -3,6 +3,9 @@
 
 namespace llarp
 {
+  /// The maximum number of peers we will flood a gossiped RC to when propagating an RC
+  constexpr size_t MaxGossipPeers = 20;
+
   struct I_RCGossiper
   {
     virtual ~I_RCGossiper() = default;

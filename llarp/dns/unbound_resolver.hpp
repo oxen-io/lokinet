@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unbound.h>
 #include <mutex>
 #include <atomic>
 #include <memory>
@@ -13,14 +12,22 @@
 
 #ifdef _WIN32
 #include <thread>
+#else
+#include <uvw.hpp>
 #endif
+
+extern "C"
+{
+  struct ub_ctx;
+  struct ub_result;
+}
 
 namespace llarp::dns
 {
   using ReplyFunction =
-      std::function<void(const SockAddr& resolver, const SockAddr& source, OwnedBuffer buf)>;
+      std::function<void(const SockAddr& reply_to, const SockAddr& from_resolver, OwnedBuffer buf)>;
   using FailFunction =
-      std::function<void(const SockAddr& resolver, const SockAddr& source, Message msg)>;
+      std::function<void(const SockAddr& reply_to, const SockAddr& from_resolver, Message msg)>;
 
   class UnboundResolver : public std::enable_shared_from_this<UnboundResolver>
   {
@@ -28,11 +35,16 @@ namespace llarp::dns
     ub_ctx* unboundContext;
 
     std::atomic<bool> started;
-    std::unique_ptr<std::thread> runner;
+
+#ifdef _WIN32
+    std::thread runner;
+#else
+    std::weak_ptr<uvw::Loop> loop;
+    std::shared_ptr<uvw::PollHandle> udp;
+#endif
 
     ReplyFunction replyFunc;
     FailFunction failFunc;
-
     void
     Reset();
 

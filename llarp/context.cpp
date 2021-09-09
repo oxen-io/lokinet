@@ -138,8 +138,8 @@ namespace llarp
     if (IsStopping())
       return;
 
-    if (CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
-      closeWaiter = std::make_unique<std::promise<void>>();
+    loop->call([this]() { HandleSignal(SIGTERM); });
+    closeWaiter = std::make_unique<std::promise<void>>();
   }
 
   bool

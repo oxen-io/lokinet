@@ -1,7 +1,6 @@
 include(Version)
 
 add_library(lokinet-util
-  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
@@ -23,8 +22,9 @@ add_library(lokinet-util
   util/str.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp
-  util/time.cpp
-)
+  util/time.cpp)
+
+
 add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR})
@@ -52,7 +52,6 @@ add_library(lokinet-platform
   net/ip_range.cpp
   net/net.cpp
   net/net_int.cpp
-  net/route.cpp
   net/sock_addr.cpp
   vpn/packet_router.cpp
   vpn/platform.cpp
@@ -261,6 +260,10 @@ if(BUILD_LIBLOKINET)
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
   add_log_tag(lokinet-shared)
+endif()
+
+if(APPLE)
+  add_subdirectory(apple)
 endif()
 
 foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
