@@ -1,6 +1,6 @@
 Name:           lokinet
-Version:        0.9.5
-Release:        6%{?dist}
+Version:        0.9.6
+Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
 License:        GPLv3+
@@ -27,8 +27,6 @@ Patch1: version-as-rpm-version.patch
 # Changes the default dns listener to 127.0.0.1:1053 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
 Patch2: default-dns.patch
-# Backport default upstream dns not working from PR 1715:
-Patch3: default-upstream-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -97,6 +95,7 @@ install -m755 contrib/py/admin/lokinetmon $RPM_BUILD_ROOT/%{_bindir}/
 install -Dm644 SOURCES/lokinet.service $RPM_BUILD_ROOT/%{_unitdir}/lokinet.service
 install -Dm644 contrib/systemd-resolved/lokinet.rules $RPM_BUILD_ROOT/%{_datadir}/polkit-1/rules.d/50-lokinet.rules
 install -Dm644 SOURCES/dnssec-lokinet.negative $RPM_BUILD_ROOT%{_exec_prefix}/lib/dnssec-trust-anchors.d/lokinet.negative
+install -Dm644 SOURCES/bootstrap.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokinet/bootstrap.signed
 
 
 %files
@@ -112,6 +111,7 @@ install -Dm644 SOURCES/dnssec-lokinet.negative $RPM_BUILD_ROOT%{_exec_prefix}/li
 %{_bindir}/lokinet-bootstrap
 %{_bindir}/lokinet-vpn
 %{_exec_prefix}/lib/dnssec-trust-anchors.d/lokinet.negative
+%{_sharedstatedir}/lokinet/bootstrap.signed
 
 %files monitor
 
@@ -139,11 +139,6 @@ datadir=/var/lib/lokinet
 mkdir -p $datadir
 chown _lokinet:_loki $datadir
 
-if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-    /usr/bin/lokinet-bootstrap lokinet /var/lib/lokinet/bootstrap.signed
-    chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
-fi
-
 if ! [ -e /etc/loki/lokinet.ini ]; then
     mkdir -p /etc/loki
     /usr/bin/lokinet -g /etc/loki/lokinet.ini
@@ -161,6 +156,11 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Thu Sep 09 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.6-1
+- 0.9.6 release.
+- bundle bootstrap.signed instead of downloading
+- drop default upstream dns patch (fixed in 0.9.6)
+
 * Thu Aug 12 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.5-6
 - Change default dns port from 1053 to 953 so that it is still privileged.
 
