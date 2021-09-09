@@ -31,7 +31,7 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
                 'pip3 install git-archive-all',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
                 'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',
-                zypper(rpmarch) + 'addrepo https://rpm.oxen.io/opensuse/oxen.repo',
+                zypper(rpmarch) + 'addrepo https://rpm.oxen.io/opensuse/tumbleweed.repo oxen',
                 zypper(rpmarch) + '-n install $(rpmspec --parse SPECS/lokinet.spec | grep BuildRequires | sed -e "s/^BuildRequires: *//")',
                 'if [ -n "$CCACHE_DIR" ]; then mkdir -pv ~/.cache; ln -sv "$CCACHE_DIR" ~/.cache/ccache; fi',
                 'rpmbuild --define "_topdir $(pwd)" -bb SPECS/lokinet.spec',
