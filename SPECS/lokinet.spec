@@ -20,7 +20,7 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  libcurl-devel
 BuildRequires:  jemalloc-devel
-BuildRequires:  libsqlite3x-devel
+BuildRequires:  sqlite3-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
@@ -160,6 +160,7 @@ fi
 - 0.9.6 release.
 - bundle bootstrap.signed instead of downloading
 - drop default upstream dns patch (fixed in 0.9.6)
+- Clone/update fedora/34 build for opensuse 15.3
 
 * Thu Aug 12 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.5-6
 - Change default dns port from 1053 to 953 so that it is still privileged.
