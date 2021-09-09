@@ -13,16 +13,6 @@ if [ "$1" = configure ]; then
             chown _lokinet:_loki $d
     done
 
-    if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap lokinet /var/lib/lokinet/bootstrap.signed
-        chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
-    fi
-
-    if ! [ -e /var/lib/lokinet/testnet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap testnet /var/lib/lokinet/testnet/bootstrap.signed
-        chown _lokinet:_loki /var/lib/lokinet/testnet/bootstrap.signed
-    fi
-
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
     /usr/bin/lokinet -r -g $tmpdir/lokinet.ini
     perl -pi -e "
