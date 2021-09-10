@@ -26,8 +26,8 @@ callgrind.*
 
 *.sig
 *.signed
-!/debian/mainnet/bootstrap.signed
-!/debian/testnet/bootstrap.signed
+!/contrib/bootstrap/mainnet.signed
+!/contrib/bootstrap/testnet.signed
 *.key
 
 shadow.data
