@@ -2,3 +2,4 @@ external/date/test export-ignore
 external/nlohmann/doc export-ignore
 external/nlohmann/test export-ignore
 external/nlohmann/benchmarks/data export-ignore
+*.signed binary
