@@ -1,3 +1,8 @@
+set(DEFAULT_WITH_BOOTSTRAP ON)
+if(APPLE)
+  set(DEFAULT_WITH_BOOTSTRAP OFF)
+endif()
+option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 
 add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
@@ -5,8 +10,12 @@ if(APPLE)
   enable_lto(lokinet)
 else()
   add_executable(lokinet lokinet.cpp)
-  add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
-  enable_lto(lokinet lokinet-vpn lokinet-bootstrap)
+  enable_lto(lokinet lokinet-vpn)
+
+  if(WITH_BOOTSTRAP)
+    add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+    enable_lto(lokinet-bootstrap)
+  endif()
 endif()
 
 
@@ -30,7 +39,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-if(NOT APPLE)
+if(WITH_BOOTSTRAP)
   target_link_libraries(lokinet-bootstrap PUBLIC cpr::cpr)
   if(NOT WIN32)
     find_package(OpenSSL REQUIRED)
@@ -40,7 +49,7 @@ if(NOT APPLE)
 endif()
 
 set(exetargets lokinet lokinet-vpn)
-if(NOT APPLE)
+if(WITH_BOOTSTRAP)
   list(APPEND exetargets lokinet-bootstrap)
 endif()
 
@@ -79,10 +88,9 @@ if(APPLE)
     DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
   add_custom_target(icons DEPENDS ${mac_icon})
   add_dependencies(lokinet icons lokinet-extension)
-  file(DOWNLOAD "https://seed.lokinet.org/lokinet.signed" ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.signed)
   add_custom_command(TARGET lokinet
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/bootstrap.signed 
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed
         $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
     COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns
     COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
