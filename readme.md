@@ -53,6 +53,7 @@ If you are not on a platform supported by the debian packages or if you want to 
 If you dont want to do a static build install the dependancies and run:
 
     $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+    $ make -j$(nproc)
 
 install:
 
@@ -60,7 +61,9 @@ install:
 
 ### macOS
 
-Lokinet ~~is~~ will be available on the Apple App store.
+Lokinet ~~is~~ will be available on the Apple App store. 
+
+Source code compilation of lokinet is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information.
 
 ### Windows
 
