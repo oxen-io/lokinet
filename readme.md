@@ -131,24 +131,16 @@ install (root):
 
 When running from debian package the following steps are not needed as it is already ready to use.
 
-## Create default config
-
-to configure as client:
-
-    $ lokinet -g
-    $ lokinet-bootstrap
-
-to configure as relay:
-
-    $ lokinet -r -g
-    $ lokinet-bootstrap
-
-
-## Running on Linux
+## Running on Linux (without debs)
 
 **DO NOT RUN AS ROOT**, run as normal user. 
 
-to run, after you create default config:
+set up the initial configs:
+
+    $ lokinet -g 
+    $ lokinet-bootstrap
+
+after you create default config, run it:
 
     $ lokinet
 
