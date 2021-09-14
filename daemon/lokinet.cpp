@@ -18,32 +18,6 @@
 #include <iostream>
 #include <future>
 
-#ifdef USE_JEMALLOC
-#include <new>
-#include <jemalloc/jemalloc.h>
-
-void*
-operator new(std::size_t sz)
-{
-  void* ptr = malloc(sz);
-  if (ptr)
-    return ptr;
-  else
-    throw std::bad_alloc{};
-}
-void
-operator delete(void* ptr) noexcept
-{
-  free(ptr);
-}
-
-void
-operator delete(void* ptr, size_t) noexcept
-{
-  free(ptr);
-}
-#endif
-
 int
 lokinet_main(int, char**);
 
