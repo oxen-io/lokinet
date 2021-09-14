@@ -54,7 +54,7 @@ namespace llarp
       return true;
     }
 
-    constexpr auto OutboundContextNumPaths = 2;
+    constexpr auto OutboundContextNumPaths = 4;
 
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
         : path::Builder{parent->Router(), OutboundContextNumPaths, parent->numHops}
@@ -65,11 +65,15 @@ namespace llarp
 
     {
       updatingIntroSet = false;
-      for (const auto& intro : introset.intros)
+
+      // pick random first intro
+      std::vector<Introduction> intros = introset.intros;
+      if (intros.size() > 1)
       {
-        if (m_NextIntro.latency == 0s or m_NextIntro.latency > intro.latency)
-          m_NextIntro = intro;
+        std::shuffle(intros.begin(), intros.end(), CSRNG{});
       }
+      m_NextIntro = intros[0];
+
       currentConvoTag.Randomize();
       lastShift = Now();
       // add send and connect timeouts to the parent endpoints path alignment timeout
@@ -197,12 +201,16 @@ namespace llarp
       path::Builder::HandlePathBuilt(p);
       p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
         if (auto ptr = self.lock())
+        {
           return ptr->HandleHiddenServiceFrame(path, frame);
+        }
+        LogWarn("no weak_ptr on data handler");
         return false;
       });
       p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
         if (auto ptr = self.lock())
           return ptr->HandleDataDrop(path, id, seqno);
+        LogWarn("no weak_ptr on data drop");
         return false;
       });
       if (markedBad)
@@ -333,6 +341,7 @@ namespace llarp
       Encrypted<64> tmp;
       tmp.Randomize();
       SendPacketToRemote(tmp, ProtocolType::Control);
+      m_LastKeepAliveAt = Now();
     }
 
     bool
@@ -348,7 +357,10 @@ namespace llarp
         // expunge
         SharedSecret discardme;
         if (not m_DataHandler->GetCachedSessionKeyFor(currentConvoTag, discardme))
+        {
+          LogWarn(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
           return true;
+        }
       }
 
       if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
@@ -404,21 +416,33 @@ namespace llarp
         m_ReadyHooks.clear();
       }
 
-      if (m_LastInboundTraffic > 0s and lastGoodSend > 0s
-          and now >= sendTimeout + m_LastInboundTraffic)
-        return true;
-
       const auto timeout = std::max(lastGoodSend, m_LastInboundTraffic);
       if (lastGoodSend > 0s and now >= timeout + (sendTimeout / 2))
       {
         // send a keep alive to keep this session alive
         KeepAlive();
         if (markedBad)
+        {
+          LogWarn(Name(), " keepalive timeout hit");
           return true;
+        }
+      }
+
+      // check for half open state where we can send but we get nothing back
+      if (m_LastInboundTraffic == 0s and now - createdAt > connectTimeout)
+      {
+        LogWarn(Name(), " half open state, we can send but we got nothing back");
+        return true;
       }
       // if we are dead return true so we are removed
-      return timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
-                          : (now >= createdAt && now - createdAt > connectTimeout);
+      const bool removeIt = timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
+                                         : (now >= createdAt && now - createdAt > connectTimeout);
+      if (removeIt)
+      {
+        LogInfo(Name(), " session is stale");
+        return true;
+      }
+      return false;
     }
 
     void
@@ -582,6 +606,25 @@ namespace llarp
             BuildOneAlignedTo(m_NextIntro.router);
         }
       }
+    }
+
+    bool
+    OutboundContext::ShouldKeepAlive(llarp_time_t now) const
+    {
+      const auto SendKeepAliveInterval = sendTimeout / 2;
+      if (not m_GotInboundTraffic)
+        return false;
+      if (m_LastInboundTraffic == 0s)
+        return false;
+      return (now - m_LastKeepAliveAt) >= SendKeepAliveInterval;
+    }
+
+    void
+    OutboundContext::Tick(llarp_time_t now)
+    {
+      path::Builder::Tick(now);
+      if (ShouldKeepAlive(now))
+        KeepAlive();
     }
 
     bool
