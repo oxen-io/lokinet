@@ -1,3 +1,11 @@
+lokinet (0.9.6-2~ubuntu2104) hirsute; urgency=medium
+
+  * Bundle default bootstrap.signed in deb
+  * Add mainnet/testnet bootstrap files into repo
+  * Install bootstrap files from contrib
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 16 Sep 2021 19:15:51 -0300
+
 lokinet (0.9.6-1~ubuntu2104) hirsute; urgency=medium
 
   [ Jeff Becker ]
