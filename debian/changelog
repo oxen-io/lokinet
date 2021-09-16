@@ -1,3 +1,11 @@
+lokinet (0.9.6-2~deb11) bullseye; urgency=medium
+
+  * Bundle default bootstrap.signed in deb
+  * Add mainnet/testnet bootstrap files into repo
+  * Install bootstrap files from contrib
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 16 Sep 2021 19:15:45 -0300
+
 lokinet (0.9.6-1~deb11) bullseye; urgency=medium
 
   [ Jeff Becker ]
