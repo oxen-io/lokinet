@@ -1,5 +1,5 @@
 /usr/bin/lokinet
 /usr/bin/lokinet-bootstrap
 /usr/bin/lokinet-vpn
-debian/mainnet/bootstrap.signed /var/lib/lokinet
-debian/testnet/bootstrap.signed /var/lib/lokinet/testnet
+/var/lib/lokinet/bootstrap.signed
+/var/lib/lokinet/testnet/bootstrap.signed
