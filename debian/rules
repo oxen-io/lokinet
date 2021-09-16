@@ -42,6 +42,11 @@ override_dh_auto_configure:
 		-DWITH_TESTS=OFF -DBUILD_SHARED_LIBS=OFF \
 		-DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_SETCAP=OFF
 
+override_dh_install:
+	dh_install
+	install contrib/bootstrap/mainnet.signed debian/tmp/var/lib/lokinet
+	install contrib/bootstrap/testnet.signed debian/tmp/var/lib/lokinet/testnet
+
 override_dh_installsystemd:
 	dh_installsystemd --name=lokinet
 	dh_installsystemd --name=lokinet-router
