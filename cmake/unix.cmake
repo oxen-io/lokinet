@@ -7,15 +7,6 @@ endif()
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
 
-if(WITH_JEMALLOC)
-  find_package(Jemalloc REQUIRED)
-  if(NOT JEMALLOC_FOUND)
-    message(FATAL_ERROR "did not find jemalloc")
-  endif()
-  add_definitions(-DUSE_JEMALLOC)
-  message(STATUS "using jemalloc")
-endif()
-
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
