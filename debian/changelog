@@ -24,6 +24,9 @@ lokinet (0.9.6-3~ubuntu1804) bionic; urgency=medium
   [ Jeff Becker ]
   * SystemD DNS fix:
 
+  [ Jason Rhinelander ]
+  * Fix install order and give it the D
+
  -- Jason Rhinelander <jason@imaginary.ca>  Fri, 17 Sep 2021 11:07:23 -0300
 
 lokinet (0.9.6-2~ubuntu1804) bionic; urgency=medium
