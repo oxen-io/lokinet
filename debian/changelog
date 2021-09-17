@@ -27,6 +27,9 @@ lokinet (0.9.6-3~ubuntu2010) groovy; urgency=medium
   [ Jeff Becker ]
   * SystemD DNS fix:
 
+  [ Jason Rhinelander ]
+  * Fix install order and give it the D
+
  -- Jason Rhinelander <jason@imaginary.ca>  Fri, 17 Sep 2021 11:09:39 -0300
 
 lokinet (0.9.6-1~ubuntu2010) groovy; urgency=medium
