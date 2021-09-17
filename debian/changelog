@@ -1,3 +1,34 @@
+lokinet (0.9.6-3~ubuntu2010) groovy; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Bundle default bootstrap.signed in deb
+
+  [ Jeff Becker ]
+  * make lokinet-bootstrap target toggleable
+
+  [ Jason Rhinelander ]
+  * Redo how we build ngtcp2 lib
+  * Apply suggestions from code review
+  * Add mainnet/testnet bootstrap files into repo
+
+  [ Jeff ]
+  * Update exit-setup.md
+
+  [ Jason Rhinelander ]
+  * Remove duplicate handling of jemalloc
+
+  [ Jeff ]
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+
+  [ Jeff Becker ]
+  * SystemD DNS fix:
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 17 Sep 2021 11:09:39 -0300
+
 lokinet (0.9.6-1~ubuntu2010) groovy; urgency=medium
 
   [ Jeff Becker ]
