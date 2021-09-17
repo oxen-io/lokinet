@@ -1,6 +1,6 @@
-local distro = "hirsute";
-local distro_name = 'Ubuntu 21.04';
-local distro_docker = 'ubuntu:hirsute';
+local distro = "impish";
+local distro_name = 'Ubuntu 21.10';
+local distro_docker = 'ubuntu:impish';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 

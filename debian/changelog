@@ -1,4 +1,7 @@
-lokinet (0.9.6-3~ubuntu2104) hirsute; urgency=medium
+lokinet (0.9.6-3~ubuntu2110) impish; urgency=medium
+
+  [ Jason Rhinelander ]
+  * New build for Ubuntu 21.10
 
   [ Jeff Becker ]
   * make lokinet-bootstrap target toggleable
