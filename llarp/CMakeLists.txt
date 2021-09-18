@@ -1,6 +1,7 @@
 include(Version)
 
 add_library(lokinet-util
+  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
