@@ -137,16 +137,7 @@ namespace llarp::rpc
             "get_status",
             [&](oxenmq::Message& msg) {
               m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
-                std::string data;
-                if (r->IsRunning())
-                {
-                  data = CreateJSONResponse(r->ExtractSummaryStatus());
-                }
-                else
-                {
-                  data = CreateJSONError("router not yet ready");
-                }
-                defer.reply(data);
+                defer.reply(CreateJSONResponse(r->ExtractSummaryStatus()));
               });
             })
         .add_request_command(

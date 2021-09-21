@@ -126,27 +126,7 @@ namespace llarp
         }
       }
 
-      std::string loki_address = services["default"]["identity"];
-
-      std::string exit_node;
-      auto exit_map = services["default"]["exitMap"];
-      if (!exit_map.is_null())
-      {
-        // exitMap should be of length 1 only, but it's an object with keys an IP (not as string)
-        // so easier to parse it like this
-        for (auto it = exit_map.begin(); it != exit_map.end(); it++)
-          exit_node = it.value();
-      }
-
-      auto auth_codes = services["default"]["authCodes"];
-      std::string auth;
-      if (!auth_codes.is_null())
-      {
-        for (const auto& loki_exit : auth_codes)
-          auth = loki_exit;
-      }
-
-      // compute all stats on all path builders on the default endpoint
+      // Compute all stats on all path builders on the default endpoint
       // Merge snodeSessions, remoteSessions and default into a single array
       std::vector<nlohmann::json> builders;
       auto snode_sessions = services["default"]["snodeSessions"];
@@ -165,23 +145,22 @@ namespace llarp
       int attempts = 0;
       for (const auto& builder : builders)
       {
-        if (!builder.is_null())
-        {
-          if (builder["length"].is_number())
-            paths += builder["length"].get<int>();
-          if (builder["success"].is_number())
-            success += builder["success"].get<int>();
-          if (builder["attempts"].is_number())
-            attempts += builder["attempts"].get<int>();
-        }
+        if (builder.is_null())
+          continue;
+        if (builder["length"].is_number())
+          paths += builder["length"].get<int>();
+        if (builder["success"].is_number())
+          success += builder["success"].get<int>();
+        if (builder["attempts"].is_number())
+          attempts += builder["attempts"].get<int>();
       }
-      float ratio = ceil((success * 100) / (attempts + 1));
+      double ratio = static_cast<double>(success) / (attempts + 1);
 
       return util::StatusObject{
           {"running", true},
-          {"exitAuthCode", auth},
-          {"exitNode", exit_node},
-          {"lokiAddress", loki_address},
+          {"authCodes", services["default"]["authCodes"]},
+          {"exitMap", services["default"]["exitMap"]},
+          {"lokiAddress", services["default"]["identity"]},
           {"numPathsBuilt", paths},
           {"numPeersConnected", peers},
           {"numRoutersKnown", _nodedb->NumLoaded()},
