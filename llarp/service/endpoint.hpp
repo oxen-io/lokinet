@@ -28,6 +28,8 @@
 
 #include <oxenmq/variant.h>
 
+#include <llarp/vpn/egres_packet_router.hpp>
+
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -167,6 +169,12 @@ namespace llarp
 
       void
       HandlePathDied(path::Path_ptr p) override;
+
+      virtual vpn::EgresPacketRouter*
+      EgresPacketRouter()
+      {
+        return nullptr;
+      };
 
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;

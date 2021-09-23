@@ -13,7 +13,7 @@ extern "C"
     /// remote endpoint's .loki or .snode address
     char remote_host[256];
     /// remote endpont's port
-    int remote_port;
+    uint16_t remote_port;
     /// the socket id for this flow used for i/o purposes and closing this socket
     int socket_id;
   };
@@ -32,10 +32,14 @@ extern "C"
       void** /* flow-userdata */,
       int* /* timeout seconds */);
 
+  /// callback to make a new outbound flow
+  typedef void(lokinet_udp_create_flow_func)(
+      void* /*userdata*/, void** /*flow userdata*/, int* /* flowtimeout */);
+
   /// hook function for handling packets
   typedef void (*lokinet_udp_flow_recv_func)(
       const struct lokinet_udp_flowinfo* /* remote address */,
-      char* /* data pointer */,
+      const char* /* data pointer */,
       size_t /* data length */,
       void* /* flow-userdata */);
 
@@ -59,7 +63,7 @@ extern "C"
   /// @returns nonzero on error in which it is an errno value
   int EXPORT
   lokinet_udp_bind(
-      int exposedPort,
+      uint16_t exposedPort,
       lokinet_udp_flow_filter filter,
       lokinet_udp_flow_recv_func recv,
       lokinet_udp_flow_timeout_func timeout,
@@ -69,13 +73,21 @@ extern "C"
 
   /// @brief establish a udp flow to remote endpoint
   ///
+  /// @param create_flow the callback to create the new flow if we establish one
+  ///
+  /// @param user passed to new_flow as user data
+  ///
   /// @param remote the remote address to establish to
   ///
   /// @param ctx the lokinet context to use
   ///
   /// @return 0 on success, non zero errno on fail
   int EXPORT
-  lokinet_udp_establish(const struct lokinet_udp_flowinfo* remote, struct lokinet_context* ctx);
+  lokinet_udp_establish(
+      lokinet_udp_create_flow_func create_flow,
+      void* user,
+      const struct lokinet_udp_flowinfo* remote,
+      struct lokinet_context* ctx);
 
   /// @brief send on an established flow to remote endpoint
   ///
