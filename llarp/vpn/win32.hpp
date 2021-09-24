@@ -500,7 +500,7 @@ namespace llarp::vpn
     void
     Execute(std::string cmd) const
     {
-      LogInfo(cmd);
+      llarp::LogInfo("exec: ", cmd);
       ::system(cmd.c_str());
     }
 
