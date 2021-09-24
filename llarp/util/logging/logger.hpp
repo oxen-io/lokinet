@@ -78,34 +78,36 @@ namespace llarp
   LogLevel
   GetLogLevel();
 
-  /** internal */
-  template <typename... TArgs>
-  inline static void
-  _log(LogLevel lvl, const slns::source_location& location, TArgs&&... args) noexcept
+  namespace
   {
-    auto& log = LogContext::Instance();
-    if (log.curLevel > lvl || log.logStream == nullptr)
-      return;
-    std::ostringstream ss;
-    if constexpr (sizeof...(args) > 0)
-      LogAppend(ss, std::forward<TArgs>(args)...);
-    log.logStream->AppendLog(
-        lvl,
-        strip_prefix(location.file_name(), SOURCE_ROOT),
-        location.line(),
-        log.nodeName,
-        ss.str());
-  }
+    /** internal */
+    template <typename... TArgs>
+    inline static void
+    _log(LogLevel lvl, const slns::source_location& location, TArgs&&... args) noexcept
+    {
+      auto& log = LogContext::Instance();
+      if (log.curLevel > lvl || log.logStream == nullptr)
+        return;
+      std::ostringstream ss;
+      if constexpr (sizeof...(args) > 0)
+        LogAppend(ss, std::forward<TArgs>(args)...);
+      log.logStream->AppendLog(
+          lvl,
+          strip_prefix(location.file_name(), SOURCE_ROOT),
+          location.line(),
+          log.nodeName,
+          ss.str());
+    }
+  }  // namespace
 
   template <typename... T>
   struct LogTrace
   {
-    LogTrace(T... args, const slns::source_location& location = slns::source_location::current())
+    LogTrace(
+        [[maybe_unused]] T... args,
+        [[maybe_unused]] const slns::source_location& location = slns::source_location::current())
     {
-#ifdef NDEBUG
-      const auto discard = [](auto&&...) {};
-      discard(location, std::forward<T>(args)...);
-#else
+#ifndef NDEBUG
       _log(eLogTrace, location, std::forward<T>(args)...);
 #endif
     }
@@ -119,12 +121,7 @@ namespace llarp
   {
     LogDebug(T... args, const slns::source_location& location = slns::source_location::current())
     {
-#ifdef NDEBUG
-      const auto discard = [](auto&&...) {};
-      discard(location, std::forward<T>(args)...);
-#else
       _log(eLogDebug, location, std::forward<T>(args)...);
-#endif
     }
   };
 
