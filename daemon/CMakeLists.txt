@@ -110,7 +110,7 @@ if(APPLE)
       @ONLY)
     add_custom_target(
       sign
-      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
+      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension lokinet-shared
       COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
   else()
