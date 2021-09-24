@@ -255,8 +255,8 @@ struct lokinet_context
     auto id = udp->m_SocketID;
     std::promise<bool> result;
 
-    impl->router->loop()->call([ep, &result, udp]() {
-      if (auto pkt = ep->GetEgresPacketRouter())
+    impl->router->loop()->call([ep, &result, udp, exposePort]() {
+      if (auto pkt = ep->EgresPacketRouter())
       {
         pkt->AddUDPHandler(exposePort, [udp = std::weak_ptr{udp}](auto from, auto pkt) {
           if (auto ptr = udp.lock())
@@ -294,10 +294,11 @@ struct lokinet_context
     {
       udp->KillAllFlows();
       // remove packet handler
-      impl->router->loop()->call([ep = udp->m_Endpoint.lock(), locaport = udp->m_LocalPort]() {
-        if (auto pkt = ep->EgresPacketRouter())
-          pkt->RemoveUDPHandler(localport);
-      });
+      impl->router->loop()->call(
+          [ep = udp->m_Endpoint.lock(), localport = llarp::ToHost(udp->m_LocalPort)]() {
+            if (auto pkt = ep->EgresPacketRouter())
+              pkt->RemoveUDPHandler(localport);
+          });
     }
   }
 

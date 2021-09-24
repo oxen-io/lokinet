@@ -129,7 +129,7 @@ namespace llarp
     }
 
     std::optional<nuint16_t>
-    IPPacket::SrctPort() const
+    IPPacket::SrcPort() const
     {
       switch (IPProtocol{Header()->protocol})
       {
