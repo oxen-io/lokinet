@@ -43,6 +43,12 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+set(DEFAULT_WITH_BOOTSTRAP ON)
+if(APPLE)
+  set(DEFAULT_WITH_BOOTSTRAP OFF)
+endif()
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -61,7 +67,7 @@ option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
-option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ON)
+option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 
 include(cmake/enable_lto.cmake)
 

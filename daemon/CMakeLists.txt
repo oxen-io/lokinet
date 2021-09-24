@@ -1,8 +1,3 @@
-set(DEFAULT_WITH_BOOTSTRAP ON)
-if(APPLE)
-  set(DEFAULT_WITH_BOOTSTRAP OFF)
-endif()
-option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 
 add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
@@ -11,11 +6,10 @@ if(APPLE)
 else()
   add_executable(lokinet lokinet.cpp)
   enable_lto(lokinet lokinet-vpn)
-
-  if(WITH_BOOTSTRAP)
-    add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
-    enable_lto(lokinet-bootstrap)
-  endif()
+endif()
+if(WITH_BOOTSTRAP)
+  add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+  enable_lto(lokinet-bootstrap)
 endif()
 
 
