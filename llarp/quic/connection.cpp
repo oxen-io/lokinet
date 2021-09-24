@@ -244,6 +244,7 @@ namespace llarp::quic
     int
     stream_close_cb(
         ngtcp2_conn* conn,
+        uint32_t flags,
         int64_t stream_id,
         uint64_t app_error_code,
         void* user_data,
@@ -402,7 +403,7 @@ namespace llarp::quic
 
     settings.initial_ts = get_timestamp();
     // FIXME: IPv6
-    settings.max_udp_payload_size = NGTCP2_MAX_PKTLEN_IPV4;
+    settings.max_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
     // settings.initial_rtt = ???; # NGTCP2's default is 333ms
 
@@ -1181,8 +1182,7 @@ namespace llarp::quic
     ngtcp2_conn_get_local_transport_params(*this, &tparams);
 
     assert(conn_buffer.empty());
-    static_assert(NGTCP2_MAX_PKTLEN_IPV4 > NGTCP2_MAX_PKTLEN_IPV6);
-    conn_buffer.resize(NGTCP2_MAX_PKTLEN_IPV4);
+    conn_buffer.resize(Endpoint::max_pkt_size_v4);
 
     auto* buf = u8data(conn_buffer);
     auto* bufend = buf + conn_buffer.size();
