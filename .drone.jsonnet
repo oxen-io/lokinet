@@ -80,7 +80,7 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, ANDROID: "android" },
             commands: [
               'VERBOSE=1 JOBS='+jobs+' NDK=/usr/lib/android-ndk ./contrib/android.sh',
-              'git clone https://github.com/majestrate/lokinet-mobile',
+              'git clone https://github.com/oxen-io/lokinet-flutter-app lokinet-mobile',
               'cp -av lokinet-jni-*/* lokinet-mobile/lokinet_lib/android/src/main/jniLibs/',
               'cd lokinet-mobile',
               'flutter build apk --debug',
