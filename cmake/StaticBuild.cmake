@@ -277,12 +277,15 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
-
+if(WIN32)
+  # fickleness from cross compile and some nodejs dipshittery causes this to be required
+  set(unbound_extra_opts --disable-gost --disable-ecdsa)
+endif()
 build_external(unbound
   DEPENDS openssl_external expat_external
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
-  --disable-gost
+  ${unbound_extra_opts}
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
   "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
