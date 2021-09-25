@@ -282,6 +282,7 @@ build_external(unbound
   DEPENDS openssl_external expat_external
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
+  --disable-gost
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
   "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
