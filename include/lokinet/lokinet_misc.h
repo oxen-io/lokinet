@@ -21,6 +21,12 @@ extern "C"
   int EXPORT
   lokinet_log_level(const char*);
 
+  typedef void (*lokinet_logger_func)(const char*, void*);
+
+  /// set a custom logger function
+  void EXPORT
+  lokinet_set_logger(lokinet_logger_func func, void* user);
+
   /// @brief take in hex and turn it into base32z
   /// @return value must be free()'d later
   char* EXPORT

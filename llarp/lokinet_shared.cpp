@@ -22,6 +22,33 @@
 
 namespace
 {
+  struct Logger : public llarp::ILogStream
+  {
+    lokinet_logger_func func;
+    void* user;
+
+    explicit Logger(lokinet_logger_func _func, void* _user) : func{_func}, user{_user}
+    {}
+
+    void
+    PreLog(std::stringstream&, llarp::LogLevel, const char*, int, const std::string&) const override
+    {}
+
+    void
+    Print(llarp::LogLevel, const char*, const std::string& msg) override
+    {
+      func(msg.c_str(), user);
+    }
+
+    void
+    PostLog(std::stringstream&) const override{};
+
+    void
+    ImmediateFlush() override{};
+
+    void Tick(llarp_time_t) override{};
+  };
+
   struct Context : public llarp::Context
   {
     using llarp::Context::Context;
@@ -1027,5 +1054,11 @@ extern "C"
         return ETIMEDOUT;
     }
     return EINVAL;
+  }
+
+  void EXPORT
+  lokinet_set_logger(lokinet_logger_func func, void* user)
+  {
+    llarp::LogContext::Instance().logStream.reset(new Logger{func, user});
   }
 }
