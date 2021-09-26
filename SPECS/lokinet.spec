@@ -163,7 +163,7 @@ fi
 %changelog
 * Sat Sep 25 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Remove libcurl-devel from required build dependencies which is to be provided by
-  building and installing curl v7.79.1. If libcurl-devel is installed remove the package prior to
+  building and installing curl v7.79.1 with --ssl. If libcurl-devel is installed remove the package prior to
   installation of v7.79.1.
 - Add epel-release to build dependencies in order to provide *-devel libs source required.
 - enable powertools `dnf config-manager --set-enabled powertools` to provide access to installation of libuv-devel
