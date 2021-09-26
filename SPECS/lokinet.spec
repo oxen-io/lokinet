@@ -18,13 +18,13 @@ BuildRequires:  unbound-devel
 BuildRequires:  libsodium-devel
 BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
-BuildRequires:  libcurl-devel
 BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
+BuildRequires:  epel-release
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
-# Changes the default dns listener to 127.0.0.1:1053 because Fedora's systemd-resolved doesn't like
+# Changes the default dns listener to 127.0.0.1:1053 because systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
 Patch2: default-dns.patch
 # Backport default upstream dns not working from PR 1715:
@@ -125,7 +125,7 @@ if ! getent group _loki >/dev/null; then
     groupadd --system _loki
 fi
 if ! getent passwd _lokinet >/dev/null; then
-    useradd --badnames --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
+    useradd --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
 fi
 
 # Make sure the _lokinet user is part of the _loki group (in case it already existed)
@@ -161,6 +161,15 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Sat Sep 25 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
+- Remove libcurl-devel from required build dependencies which is to be provided by
+  building and installing curl v7.79.1. If libcurl-devel is installed remove the package prior to
+  installation of v7.79.1.
+- Add epel-release to build dependencies in order to provide *-devel libs source required.
+- enable powertools `dnf config-manager --set-enabled powertools` to provide access to installation of libuv-devel
+  or install via `dnf --enablerepo=powertools install libuv-devel`
+- remove `--badnames` from useradd in postinst
+
 * Thu Aug 12 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.5-6
 - Change default dns port from 1053 to 953 so that it is still privileged.
 
