@@ -60,6 +60,9 @@ add_library(lokinet-platform
 
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs uvw)
 
+if(WIN32)
+  target_sources(lokinet-platform PRIVATE win32/exception.cpp)
+endif()
 
 if (ANDROID)
   target_sources(lokinet-platform PRIVATE android/ifaddrs.c)

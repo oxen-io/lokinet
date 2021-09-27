@@ -566,7 +566,7 @@ namespace llarp
     }
 
     // IWP config
-    m_OutboundPort = conf.links.m_OutboundLink.port;
+    m_OutboundPort = conf.links.m_OutboundLink.m_port;
     // Router config
     _rc.SetNick(conf.router.m_nickname);
     _outboundSessionMaker.maxConnectedRouters = conf.router.m_maxConnectedRouters;
@@ -737,9 +737,9 @@ namespace llarp
           util::memFn(&AbstractRouter::QueueWork, this));
 
       const std::string& key = serverConfig.m_interface;
-      int af = serverConfig.addressFamily;
-      uint16_t port = serverConfig.port;
-      if (!server->Configure(this, key, af, port))
+      int af = serverConfig.m_addressFamily;
+      uint16_t port = serverConfig.m_port;
+      if (not server->Configure(loop(), key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }

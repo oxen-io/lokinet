@@ -815,17 +815,17 @@ namespace llarp
     // v: a comma-separated list of values, an int indicating port (everything else ignored)
     //    this is somewhat of a backwards- and forwards-compatibility thing
 
-    LinkInfo info;
-    info.port = 0;
-    info.addressFamily = AF_INET;
+    LinkInfo info{};
+    info.m_addressFamily = AF_INET;
 
     if (name == "address")
     {
       const IpAddress addr{value};
       if (not addr.hasPort())
-        throw std::invalid_argument("no port provided in link address");
+
+        throw std::invalid_argument{"no port provided in link address"};
       info.m_interface = addr.toHost();
-      info.port = *addr.getPort();
+      info.m_port = *addr.getPort();
     }
     else
     {
@@ -836,9 +836,7 @@ namespace llarp
       {
         int asNum = std::atoi(str.data());
         if (asNum > 0)
-          info.port = asNum;
-
-        // otherwise, ignore ("future-proofing")
+          info.m_port = asNum;
       }
     }
 
@@ -905,7 +903,7 @@ namespace llarp
 
           LinkInfo info = LinkInfoFromINIValues(name, value);
 
-          if (info.port <= 0)
+          if (info.m_port <= 0)
             throw std::invalid_argument(
                 stringify("Invalid [bind] port specified on interface", name));
 

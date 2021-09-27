@@ -69,6 +69,14 @@ set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
 set(CURL_HASH SHA256=a067b688d1645183febc31309ec1f3cdce9213d02136b6a6de3d50f69c95a7d3
   CACHE STRING "curl source hash")
 
+if(WIN32)
+  set(WINTUN_VERSION 0.13 CACHE STRING "wintun version")
+  set(WINTUN_MIRROR ${LOCAL_MIRROR} https://www.wintun.net/builds CACHE STRING "wintun download mirror(s)")
+  set(WINTUN_SOURCE wintun-${WINTUN_VERSION}.zip)
+  set(WINTUN_HASH SHA256=34afe7d0de1fdb781af3defc0a75fd8c97daa756279b42dd6be6a1bd8ccdc7f0
+    CACHE STRING "wintun zipfile hash")
+endif()
+
 include(ExternalProject)
 
 set(DEPS_DESTDIR ${CMAKE_BINARY_DIR}/static-deps)
@@ -443,3 +451,12 @@ endif()
 set_target_properties(CURL::libcurl PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libcurl_link_libs}"
   INTERFACE_COMPILE_DEFINITIONS "CURL_STATICLIB")
+
+
+if(WIN32)
+  build_external(wintun
+    CONFIGURE_COMMAND true
+    BUILD_COMMAND true
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DEPS_SOURCEDIR}/src/wintun_external/include/wintun.h ${DEPS_DESTDIR}/include/wintun.h && ${CMAKE_COMMAND} -E copy_if_different ${DEPS_SOURCEDIR}/src/wintun_external/bin/amd64/wintun.dll ${CMAKE_BINARY_DIR}/wintun.dll
+    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/wintun.dll ${DEPS_DESTDIR}/include/wintun.h)
+endif()

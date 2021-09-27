@@ -152,8 +152,8 @@ namespace llarp
     struct LinkInfo
     {
       std::string m_interface;
-      int addressFamily = -1;
-      uint16_t port = -1;
+      int m_addressFamily = -1;
+      uint16_t m_port = -1;
     };
     /// Create a LinkInfo from the given string.
     /// @throws if str does not represent a LinkInfo.
