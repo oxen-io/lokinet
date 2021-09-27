@@ -123,7 +123,7 @@ namespace llarp::quic
     };
 
     // Packet data storage for a packet we are currently sending
-    std::array<std::byte, NGTCP2_MAX_PKTLEN_IPV4> send_buffer{};
+    std::array<std::byte, NGTCP2_MAX_UDP_PAYLOAD_SIZE> send_buffer{};
     size_t send_buffer_size = 0;
     ngtcp2_pkt_info send_pkt_info{};
 
