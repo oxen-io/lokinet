@@ -31,7 +31,7 @@ namespace llarp::win32
     return message;
   }
 
-  last_error::last_error() : std::runtime_error{errorMessage(GetLastError())}
+  last_error::last_error(std::string msg) : std::runtime_error{msg + errorMessage(GetLastError())}
   {}
 
 }  // namespace llarp::win32

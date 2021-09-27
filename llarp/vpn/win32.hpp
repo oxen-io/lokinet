@@ -87,7 +87,7 @@ namespace llarp::vpn
     struct API
     {
       WINTUN_OPEN_ADAPTER_FUNC _openAdapter;
-      WINTUN_DELETE_ADAPTER_FUNC _closeAdapter;
+      WINTUN_DELETE_ADAPTER_FUNC _deleteAdapter;
       WINTUN_FREE_ADAPTER_FUNC _freeAdapter;
 
       WINTUN_START_SESSION_FUNC _startSession;
@@ -97,21 +97,22 @@ namespace llarp::vpn
       {
         auto handle = ::LoadLibrary(wintunlib);
         if (handle == nullptr)
-          throw llarp::win32::last_error{};
+          throw llarp::win32::last_error{"failed to open library " + std::string{wintunlib} + ": "};
 
-        const std::unordered_map<std::string, FARPROC*> funcs{
+        const std::map<std::string, FARPROC*> funcs{
             {"WintunOpenAdapter", (FARPROC*)&_openAdapter},
-            {"WintunCloseAdapter", (FARPROC*)&_closeAdapter},
+            {"WintunDeleteAdapter", (FARPROC*)&_deleteAdapter},
             {"WintunFreeAdapter", (FARPROC*)&_freeAdapter},
             {"WintunStartSession", (FARPROC*)&_startSession},
             {"WintunEndSession", (FARPROC*)&_endSession}};
 
         for (auto& [procname, ptr] : funcs)
         {
+          LogInfo("wintun loading ", procname);
           if (FARPROC funcptr = GetProcAddress(handle, procname.c_str()))
             *ptr = funcptr;
           else
-            throw llarp::win32::last_error{};
+            throw llarp::win32::last_error{"could not find function " + procname + ": "};
         }
       }
 
@@ -121,7 +122,7 @@ namespace llarp::vpn
         const auto name = llarp::to_width<std::wstring>(info.ifname);
         if (auto ptr = _openAdapter(L"Lokinet", name.c_str()))
           return Adapter_ptr{ptr, _freeAdapter};
-        throw llarp::win32::last_error{};
+        throw llarp::win32::last_error{"could not open adapter: "};
       }
 
       [[nodiscard]] auto
@@ -129,7 +130,7 @@ namespace llarp::vpn
       {
         if (auto ptr = _startSession(adapter.get(), WINTUN_MAX_RING_CAPACITY))
           return Session_ptr{ptr, _endSession};
-        throw llarp::win32::last_error{};
+        throw llarp::win32::last_error{"could not open session: "};
       }
     };
   }  // namespace wintun

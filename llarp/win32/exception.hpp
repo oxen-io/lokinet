@@ -10,7 +10,7 @@ namespace llarp::win32
   class last_error : public std::runtime_error
   {
    public:
-    last_error();
+    explicit last_error(std::string msg = "");
   };
 
 }  // namespace llarp::win32
