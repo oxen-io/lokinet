@@ -27,10 +27,10 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 dnf(rpmarch) + 'distro-sync',
-                dnf(rpmarch) + 'install rpm-build epel-release dnf-plugins-core ccache',
+                dnf(rpmarch) + 'install rpm-build epel-release dnf-plugins-core',
                 dnf(rpmarch) + 'config-manager --add-repo https://rpm.oxen.io/centos/oxen.repo',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
-                'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',
+                'git archive -o SOURCES/$pkg_src_base.src.tar.gz --prefix $pkg_src_base/',
                 dnf(rpmarch) + 'builddep --spec SPECS/lokinet.spec',
                 'if [ -n "$CCACHE_DIR" ]; then mkdir -pv ~/.cache; ln -sv "$CCACHE_DIR" ~/.cache/ccache; fi',
                 'rpmbuild --define "_topdir $(pwd)" -bb SPECS/lokinet.spec',
