@@ -106,9 +106,9 @@ namespace llarp
     auto services = _hiddenServiceContext.ExtractStatus();
     auto link_types = _linkManager.ExtractStatus();
 
-    int64_t tx_rate = 0;
-    int64_t rx_rate = 0;
-    int peers = 0;
+    uint64_t tx_rate = 0;
+    uint64_t rx_rate = 0;
+    uint64_t peers = 0;
     for (const auto& links : link_types)
     {
       for (const auto& link : links)
@@ -117,8 +117,8 @@ namespace llarp
           continue;
         for (const auto& peer : link["sessions"]["established"])
         {
-          tx_rate += peer["tx"].get<int64_t>();
-          rx_rate += peer["rx"].get<int64_t>();
+          tx_rate += peer["tx"].get<uint64_t>();
+          rx_rate += peer["rx"].get<uint64_t>();
           peers++;
         }
       }
@@ -138,19 +138,19 @@ namespace llarp
     builders.push_back(services["default"]["buildStats"]);
 
     // Iterate over all items on this array to build the global pathStats
-    int paths = 0;
-    int success = 0;
-    int attempts = 0;
+    uint64_t paths = 0;
+    uint64_t success = 0;
+    uint64_t attempts = 0;
     for (const auto& builder : builders)
     {
       if (builder.is_null())
         continue;
       if (builder["length"].is_number())
-        paths += builder["length"].get<int>();
+        paths += builder["length"].get<uint64_t>();
       if (builder["success"].is_number())
-        success += builder["success"].get<int>();
+        success += builder["success"].get<uint64_t>();
       if (builder["attempts"].is_number())
-        attempts += builder["attempts"].get<int>();
+        attempts += builder["attempts"].get<uint64_t>();
     }
     double ratio = static_cast<double>(success) / (attempts + 1);
 
