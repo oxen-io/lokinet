@@ -24,11 +24,8 @@ BuildRequires:  epel-release
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
-# Changes the default dns listener to 127.0.0.1:1053 because systemd-resolved doesn't like
-# talking to 127.3.2.1:53 for unknown reasons.
-Patch2: default-dns.patch
 # Backport default upstream dns not working from PR 1715:
-Patch3: default-upstream-dns.patch
+Patch2: default-upstream-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -161,6 +158,10 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+
+* Monday Sep 27 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
+- Remove dns listener port patch used for Fedora use standard 127.0.0.1:53 tested working.
+
 * Sat Sep 25 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Remove libcurl-devel from required build dependencies which is to be provided by
   building and installing curl v7.79.1 with --ssl. If libcurl-devel is installed remove the package prior to
