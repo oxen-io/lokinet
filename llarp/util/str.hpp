@@ -158,13 +158,4 @@ namespace llarp
   std::string
   friendly_duration(std::chrono::nanoseconds dur);
 
-  /// convert between std::string or std::wstring
-  template <typename OutStr, typename InStr>
-  OutStr
-  to_width(const InStr& str)
-  {
-    std::wstring_convert<std::codecvt_utf8_utf16<typename OutStr::value_type>> converter{};
-    return OutStr{converter.from_bytes(str)};
-  }
-
 }  // namespace llarp
