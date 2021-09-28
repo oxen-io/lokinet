@@ -161,6 +161,7 @@ fi
 
 * Monday Sep 27 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
 - Remove dns listener port patch used for Fedora use standard 127.0.0.1:53 tested working.
+- postinst requires changes
 
 * Sat Sep 25 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Remove libcurl-devel from required build dependencies which is to be provided by
