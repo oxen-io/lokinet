@@ -332,16 +332,7 @@ namespace llarp::quic
 #ifndef NDEBUG
   extern "C" inline void
   ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
-  {
-    va_list ap;
-    va_start(ap, fmt);
-    if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
-    {
-      LogTrace{msg};
-      std::free(msg);
-    }
-    va_end(ap);
-  }
+  {}
 #endif
 
   io_result

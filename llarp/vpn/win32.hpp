@@ -17,81 +17,57 @@ namespace llarp::vpn
 {
   namespace
   {
-    template <typename T>
-    struct win32_deleter
-    {
-      void
-      operator()(T* ptr) const
-      {
-        if (ptr)
-          HeapFree(GetCurrentProcess(), 0, ptr);
-      }
-    };
-
-    /// @brief bullshit replacement for std::make_unique because win32 is special
-    template <typename T>
-    [[nodiscard]] auto
-    MakeUniquePtr()
-    {
-      return std::unique_ptr<T, win32_deleter<T>>(
-          static_cast<T*>(HeapAlloc(GetProcessHeap(), 0, sizeof(T))));
-    }
-
     template <typename Visit>
     void
     ForEachWIN32Interface(Visit visit)
     {
-      auto table = MakeUniquePtr<MIB_IPFORWARDTABLE>();
       DWORD dwSize{};
-      DWORD dwRetVal{};
+      if (GetIpForwardTable(nullptr, &dwSize, 0) != ERROR_INSUFFICIENT_BUFFER)
+        throw llarp::win32::last_error{};
 
-      if (GetIpForwardTable(table.get(), &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
-      {
-        // resset pointer because windows or whatever
-        table = MakeUniquePtr<MIB_IPFORWARDTABLE>();
-        if (table.get() == nullptr)
-          throw llarp::win32::last_error{};
-      }
+      auto table = std::make_unique<MIB_IPFORWARDTABLE[]>(dwSize / sizeof(MIB_IPFORWARDTABLE));
+      MIB_IPFORWARDTABLE* ptr = table.get();
+      if (GetIpForwardTable(ptr, &dwSize, 0) != NO_ERROR)
+        throw llarp::win32::last_error{};
 
-      if ((dwRetVal = GetIpForwardTable(table.get(), &dwSize, 0)) == NO_ERROR)
-      {
-        for (int i = 0; i < (int)table->dwNumEntries; i++)
-        {
-          visit(&table->table[i]);
-        }
-      }
+      for (DWORD idx = 0; idx < ptr->dwNumEntries; idx++)
+        visit(&ptr->table[idx]);
     }
   }  // namespace
 
   namespace wintun
   {
-
-    template <typename T, typename Closer>
+    template <typename T>
     struct Deleter
     {
-      Closer _close;
-      explicit Deleter(Closer func) : _close{func}
+      std::function<void(T*)> _close;
+      Deleter(std::function<void(T*)> func) : _close{func}
       {}
 
       void
       operator()(T* ptr) const
       {
         if (ptr)
-          _close(ptr, false, nullptr);
+          _close(ptr);
       }
     };
 
-    using Adapter_ptr = std::unique_ptr<_WINTUN_ADAPTER, WINTUN_FREE_ADAPTER_FUNC>;
+    using Adapter_ptr = std::unique_ptr<_WINTUN_ADAPTER, Deleter<_WINTUN_ADAPTER>>;
     using Session_ptr = std::unique_ptr<_TUN_SESSION, WINTUN_END_SESSION_FUNC>;
 
     struct API
     {
+      WINTUN_CREATE_ADAPTER_FUNC _createAdapter;
       WINTUN_OPEN_ADAPTER_FUNC _openAdapter;
       WINTUN_DELETE_ADAPTER_FUNC _deleteAdapter;
       WINTUN_FREE_ADAPTER_FUNC _freeAdapter;
 
       WINTUN_START_SESSION_FUNC _startSession;
       WINTUN_END_SESSION_FUNC _endSession;
+
+      WINTUN_ENUM_ADAPTERS_FUNC _iterAdapters;
+
+      static constexpr auto PoolName = L"Lokinet";
 
       explicit API(const char* wintunlib)
       {
@@ -100,7 +76,9 @@ namespace llarp::vpn
           throw llarp::win32::last_error{"failed to open library " + std::string{wintunlib} + ": "};
 
         const std::map<std::string, FARPROC*> funcs{
+            {"WintunEnumAdapters", (FARPROC*)&_iterAdapters},
             {"WintunOpenAdapter", (FARPROC*)&_openAdapter},
+            {"WintunCreateAdapter", (FARPROC*)&_createAdapter},
             {"WintunDeleteAdapter", (FARPROC*)&_deleteAdapter},
             {"WintunFreeAdapter", (FARPROC*)&_freeAdapter},
             {"WintunStartSession", (FARPROC*)&_startSession},
@@ -108,21 +86,41 @@ namespace llarp::vpn
 
         for (auto& [procname, ptr] : funcs)
         {
-          LogInfo("wintun loading ", procname);
           if (FARPROC funcptr = GetProcAddress(handle, procname.c_str()))
             *ptr = funcptr;
           else
             throw llarp::win32::last_error{"could not find function " + procname + ": "};
         }
+
+        // remove all existing adapters
+        _iterAdapters(
+            PoolName,
+            [](WINTUN_ADAPTER_HANDLE handle, LPARAM user) -> int {
+              ((API*)(user))->_deleteAdapter(handle, true, nullptr);
+              return TRUE;
+            },
+            (LPARAM)this);
       }
 
       [[nodiscard]] auto
       MakeAdapterPtr(const InterfaceInfo& info) const
       {
         const auto name = llarp::to_width<std::wstring>(info.ifname);
-        if (auto ptr = _openAdapter(L"Lokinet", name.c_str()))
-          return Adapter_ptr{ptr, _freeAdapter};
-        throw llarp::win32::last_error{"could not open adapter: "};
+
+        Deleter<_WINTUN_ADAPTER> deleter{[this](auto* ptr) {
+          _deleteAdapter(ptr, true, nullptr);
+          _freeAdapter(ptr);
+        }};
+
+        if (auto ptr = _openAdapter(PoolName, name.c_str()))
+          return Adapter_ptr{ptr, std::move(deleter)};
+        // reset error code
+        SetLastError(0);
+
+        if (auto ptr = _createAdapter(PoolName, name.c_str(), nullptr, nullptr))
+          return Adapter_ptr{ptr, std::move(deleter)};
+
+        throw llarp::win32::last_error{"could not create adapter: "};
       }
 
       [[nodiscard]] auto
@@ -190,7 +188,9 @@ namespace llarp::vpn
 
     bool
     WritePacket(net::IPPacket pkt) override
-    {}
+    {
+      return false;
+    }
   };
 
   /// \brief FWPMRouterManager is heavily based off wireguard's windows port's firewall code
