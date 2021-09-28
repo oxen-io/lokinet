@@ -61,7 +61,7 @@ of a running lokinet instance.
 
 %prep
 %setup -q
-wget dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 rpm -ivh epel-release-latest-8.noarch.rpm
 
 %autosetup -p1
