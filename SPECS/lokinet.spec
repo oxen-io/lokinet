@@ -20,7 +20,6 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
-BuildRequires:  epel-release
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
@@ -61,6 +60,9 @@ This package contains the lokinetmon command-line tool for advanced monitoring
 of a running lokinet instance.
 
 %prep
+%setup -q
+wget dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+rpm -ivh epel-release-latest-8.noarch.rpm
 
 %autosetup -p1
 
@@ -159,7 +161,7 @@ fi
 
 %changelog
 
-* Monday Sep 27 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
+* Mon Sep 27 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
 - Remove dns listener port patch used for Fedora use standard 127.0.0.1:53 tested working.
 - postinst requires changes
 
