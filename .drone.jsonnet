@@ -1,6 +1,6 @@
-local distro = "fedora-34";
-local distro_name = 'Fedora 34';
-local distro_docker = 'fedora:34';
+local distro = "CentOS-8";
+local distro_name = 'CentOS 8';
+local distro_docker = 'centos:centos8';
 
 local submodules = {
     name: 'submodules',
