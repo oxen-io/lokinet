@@ -22,10 +22,10 @@ namespace llarp::apple
     {}
 
     void
-    AddDefaultRouteViaInterface(std::string ifname) override;
+    AddDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
 
     void
-    DelDefaultRouteViaInterface(std::string ifname) override;
+    DelDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
 
     void
     AddRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
@@ -34,7 +34,7 @@ namespace llarp::apple
     DelRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
 
     virtual std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) override
+    GetGatewaysNotOnInterface(vpn::NetworkInterface&) override
     {
       // We can't get this on mac from our sandbox, but we don't actually need it because we
       // ignore the gateway for AddRoute/DelRoute anyway, so just return a zero IP.

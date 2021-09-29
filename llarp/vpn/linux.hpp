@@ -191,6 +191,13 @@ namespace llarp::vpn
         const nuint128_t net = ToNet(addr);
         std::memcpy(data, &net, 16);
       }
+
+      bool
+      IsZero() const
+      {
+        const decltype(data) zero{};
+        return memcmp(data, &zero, sizeof(data)) == 0;
+      }
     };
 
     void
@@ -268,48 +275,20 @@ namespace llarp::vpn
         /* Set interface */
         nl_request.AddData(RTA_OIF, &if_idx, sizeof(int));
       }
-      if (mode == GatewayMode::eUpperDefault)
+
+      if (dst.family == AF_INET)
       {
-        if (dst.family == AF_INET)
-        {
+        if (not dst.IsZero())
           nl_request.AddData(RTA_DST, &dst.data, sizeof(uint32_t));
-        }
-        else
-        {
-          nl_request.AddData(RTA_OIF, &if_idx, sizeof(int));
-          nl_request.AddData(RTA_DST, &dst.data, sizeof(in6_addr));
-        }
       }
+      else
+      {
+        nl_request.AddData(RTA_OIF, &if_idx, sizeof(int));
+        nl_request.AddData(RTA_DST, &dst.data, sizeof(in6_addr));
+      }
+
       /* Send message to the netlink */
       send(fd, &nl_request, sizeof(nl_request), 0);
-    }
-
-    void
-    DefaultRouteViaInterface(std::string ifname, int cmd, int flags)
-    {
-      int if_idx = if_nametoindex(ifname.c_str());
-      const auto maybe = GetInterfaceAddr(ifname);
-      if (not maybe)
-        throw std::runtime_error{"we dont have our own network interface?"};
-
-      const _inet_addr gateway{maybe->asIPv4()};
-      const _inet_addr lower{ipaddr_ipv4_bits(0, 0, 0, 0), 1};
-      const _inet_addr upper{ipaddr_ipv4_bits(128, 0, 0, 0), 1};
-
-      Route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, if_idx);
-      Route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, if_idx);
-
-      if (const auto maybe6 = GetInterfaceIPv6Address(ifname))
-      {
-        const _inet_addr gateway6{*maybe6, 128};
-        for (const std::string str : {"::", "4000::", "8000::", "c000::"})
-        {
-          huint128_t _hole{};
-          _hole.FromString(str);
-          const _inet_addr hole6{_hole, 2};
-          Route(cmd, flags, hole6, gateway6, GatewayMode::eUpperDefault, if_idx);
-        }
-      }
     }
 
     void
@@ -382,18 +361,6 @@ namespace llarp::vpn
     }
 
     void
-    AddDefaultRouteViaInterface(std::string ifname) override
-    {
-      DefaultRouteViaInterface(ifname, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL);
-    }
-
-    void
-    DelDefaultRouteViaInterface(std::string ifname) override
-    {
-      DefaultRouteViaInterface(ifname, RTM_DELROUTE, 0);
-    }
-
-    void
     AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
       RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn.IfName(), range);
@@ -406,8 +373,9 @@ namespace llarp::vpn
     }
 
     std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) override
+    GetGatewaysNotOnInterface(NetworkInterface& vpn) override
     {
+      const auto ifname = vpn.IfName();
       std::vector<IPVariant_t> gateways{};
       std::ifstream inf{"/proc/net/route"};
       for (std::string line; std::getline(inf, line);)

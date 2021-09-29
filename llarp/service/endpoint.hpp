@@ -319,6 +319,12 @@ namespace llarp
         return DefaultPathAlignmentTimeout;
       }
 
+      virtual vpn::NetworkInterface*
+      GetVPNInterface()
+      {
+        return nullptr;
+      }
+
       bool
       EnsurePathTo(
           std::variant<Address, RouterID> addr,

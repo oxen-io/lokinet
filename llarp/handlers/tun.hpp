@@ -148,6 +148,12 @@ namespace llarp
         return m_PathAlignmentTimeout;
       }
 
+      vpn::NetworkInterface*
+      GetVPNInterface() override
+      {
+        return m_NetIf.get();
+      }
+
       /// ip packet against any exit policies we have
       /// returns false if this traffic is disallowed by any of those policies
       /// returns true otherwise

@@ -1,5 +1,6 @@
 #pragma once
 
+// define this because wintun is retaded ?
 #define _Post_maybenull_
 
 #include <wintun.h>
@@ -35,21 +36,13 @@ namespace llarp::vpn
       return ostr;
     }
 
-    template <typename Visit>
-    void
-    ForEachWIN32Interface(Visit visit)
+    std::shared_ptr<MIB_IPFORWARD_TABLE2>
+    GetIPForwards()
     {
-      DWORD dwSize{};
-      if (GetIpForwardTable(nullptr, &dwSize, 0) != ERROR_INSUFFICIENT_BUFFER)
-        throw llarp::win32::last_error{};
-
-      auto table = std::make_unique<MIB_IPFORWARDTABLE[]>(dwSize / sizeof(MIB_IPFORWARDTABLE));
-      MIB_IPFORWARDTABLE* ptr = table.get();
-      if (GetIpForwardTable(ptr, &dwSize, 0) != NO_ERROR)
-        throw llarp::win32::last_error{};
-
-      for (DWORD idx = 0; idx < ptr->dwNumEntries; idx++)
-        visit(&ptr->table[idx]);
+      MIB_IPFORWARD_TABLE2* table = nullptr;
+      if (auto err = GetIpForwardTable2(AF_UNSPEC, &table); err != ERROR_SUCCESS)
+        throw win32::error{err, "cannot get ip forwad table: "};
+      return std::shared_ptr<MIB_IPFORWARD_TABLE2>{table, [](auto* ptr) { FreeMibTable(ptr); }};
     }
 
     std::unique_ptr<IP_ADAPTER_ADDRESSES_LH[]>
@@ -72,6 +65,34 @@ namespace llarp::vpn
     }
 
   }  // namespace
+
+  bool
+  operator==(const IP_ADDRESS_PREFIX& prefix, const InterfaceAddress& addr)
+  {
+    if (prefix.Prefix.si_family != addr.fam)
+      return false;
+    IPRange range{};
+    if (prefix.Prefix.si_family == AF_INET)
+    {
+      range = IPRange{
+          net::ExpandV4(ToHost(nuint32_t{prefix.Prefix.Ipv4.sin_addr.s_addr})),
+          net::ExpandV4(netmask_ipv4_bits(prefix.PrefixLength))};
+    }
+    else if (prefix.Prefix.si_family == AF_INET6)
+    {
+      range = IPRange{
+          net::In6ToHUInt(prefix.Prefix.Ipv6.sin6_addr), netmask_ipv6_bits(prefix.PrefixLength)};
+    }
+    else
+      return false;
+    return range == addr.range;
+  }
+
+  bool
+  operator!=(const IP_ADDRESS_PREFIX& prefix, const InterfaceAddress& addr)
+  {
+    return not(prefix == addr);
+  }
 
   namespace wintun
   {
@@ -172,6 +193,14 @@ namespace llarp::vpn
       }
 
       [[nodiscard]] auto
+      GetAdapterUID(const Adapter_ptr& adapter)
+      {
+        NET_LUID _uid{};
+        _getAdapterLUID(adapter.get(), &_uid);
+        return _uid;
+      }
+
+      [[nodiscard]] auto
       ReadPacket(const Session_ptr& session)
       {
         Packet_ptr ptr;
@@ -254,6 +283,24 @@ namespace llarp::vpn
         AddressRow.DadState = IpDadStatePreferred;
         if (auto err = CreateUnicastIpAddressEntry(&AddressRow); err != ERROR_SUCCESS)
           throw llarp::win32::error{err, "failed to set interface address: "};
+      }
+
+      void
+      DelAdapterAddress(const Adapter_ptr& adapter, const InterfaceAddress& addr)
+      {
+        const auto uid = GetAdapterUID(adapter);
+        auto table = GetIPForwards();
+        for (ULONG idx = 0; idx < table->NumEntries; ++idx)
+        {
+          if (table->Table[idx].InterfaceLuid.Value != uid.Value)
+            continue;
+
+          if (table->Table[idx].DestinationPrefix != addr)
+            continue;
+
+          if (auto err = DeleteIpForwardEntry2(&table->Table[idx]); err != ERROR_SUCCESS)
+            throw win32::error{err, "failed to remove interface address: "};
+        }
       }
     };
 
@@ -369,6 +416,20 @@ namespace llarp::vpn
         m_RevertDNS.emplace_back(ifaddr, dnsaddr);
     }
 
+    void
+    AddAddressRange(IPRange range)
+    {
+      m_API->AddAdapterAddress(
+          m_Adapter, InterfaceAddress{range, range.IsV4() ? AF_INET : AF_INET6});
+    }
+
+    void
+    DelAddressRange(IPRange range)
+    {
+      m_API->DelAdapterAddress(
+          m_Adapter, InterfaceAddress{range, range.IsV4() ? AF_INET : AF_INET6});
+    }
+
     /// @brief start wintun session
     /// this is a separate function so that if the constructor throws we don't call this
     void
@@ -416,6 +477,12 @@ namespace llarp::vpn
     {
       m_API->WritePacket(m_Session, pkt);
       return true;
+    }
+
+    NET_LUID
+    GetUID() const
+    {
+      return m_API->GetAdapterUID(m_Adapter);
     }
   };
 
@@ -574,6 +641,7 @@ namespace llarp::vpn
       HANDLE m_Handle;
 
       std::unordered_map<uint64_t, std::unique_ptr<Filter>> m_Filters;
+      std::unordered_multimap<SockAddr, uint64_t> m_Holes;
 
      public:
       Firewall(HANDLE handle)
@@ -593,6 +661,7 @@ namespace llarp::vpn
 
       ~Firewall()
       {
+        m_Filters.clear();
         FwpmSubLayerDeleteByKey0(m_Handle, &_sublayer.subLayerKey);
         FwpmProviderDeleteByKey0(m_Handle, &_provider.providerKey);
       }
@@ -626,9 +695,26 @@ namespace llarp::vpn
       {
         m_Filters.erase(id);
       }
+
+      void
+      AddHole(SockAddr addr, uint64_t id)
+      {
+        m_Holes.emplace(addr, id);
+      }
+
+      void
+      DelHoles(SockAddr addr)
+      {
+        const auto range = m_Holes.equal_range(addr);
+        for (auto itr = range.first; itr != range.second; itr = m_Holes.erase(itr))
+        {
+          DropFilter(itr->second);
+        }
+      }
     };
 
     std::unique_ptr<Firewall> m_Firewall;
+    std::vector<NET_LUID> m_Interfaces;
 
     void
     PermitLoopback()
@@ -676,26 +762,159 @@ namespace llarp::vpn
     void
     PermitDHCP()
     {
-      std::vector<FWPM_FILTER_CONDITION0_> outboundDHCP{};
-      outboundDHCP.emplace_back(win32::MakeCondition<uint8_t>(
+      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
+
+      conditions.emplace_back(win32::MakeCondition<uint8_t>(
           win32::FWPM_CONDITION_IP_PROTOCOL(), FWP_MATCH_EQUAL, 0x11));
 
-      outboundDHCP.emplace_back(win32::MakeCondition<huint16_t>(
+      conditions.emplace_back(win32::MakeCondition<huint16_t>(
           win32::FWPM_CONDITION_IP_LOCAL_PORT(), FWP_MATCH_EQUAL, huint16_t{68}));
 
-      outboundDHCP.emplace_back(win32::MakeCondition<huint16_t>(
-          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{69}));
+      conditions.emplace_back(win32::MakeCondition<huint16_t>(
+          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{67}));
 
-      outboundDHCP.emplace_back(win32::MakeCondition<huint32_t>(
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
+          12,
+          conditions,
+          L"Allow inbound ipv4 DHCP",
+          L"");
+
+      conditions.emplace_back(win32::MakeCondition<huint32_t>(
           win32::FWPM_CONDITION_IP_REMOTE_ADDRESS(),
           FWP_MATCH_EQUAL,
           ipaddr_ipv4_bits(255, 255, 255, 255)));
-      ;
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
+          12,
+          conditions,
+          L"Allow outbound ipv4 DHCP",
+          L"");
     }
 
     void
-    PermitTunInterface()
-    {}
+    AddRouteHole(SockAddr addr)
+    {
+      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
+
+      conditions.emplace_back(win32::MakeCondition<uint8_t>(
+          win32::FWPM_CONDITION_IP_PROTOCOL(), FWP_MATCH_EQUAL, 0x11));
+
+      conditions.emplace_back(win32::MakeCondition<huint16_t>(
+          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{addr.getPort()}));
+
+      conditions.emplace_back(win32::MakeCondition<huint32_t>(
+          win32::FWPM_CONDITION_IP_REMOTE_ADDRESS(), FWP_MATCH_EQUAL, addr.asIPv4()));
+
+      const auto outID = m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
+          8,
+          conditions,
+          L"Allow IWP traffic to edge router",
+          L"");
+
+      const auto inID = m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
+          8,
+          conditions,
+          L"Allow IWP traffic from edge router",
+          L"");
+
+      m_Firewall->AddHole(addr, inID);
+      m_Firewall->AddHole(addr, outID);
+    }
+
+    void
+    DelRouteHole(SockAddr addr)
+    {
+      m_Firewall->DelHoles(addr);
+    }
+
+    void
+    PermitViaInterface(uint64_t* uid)
+    {
+      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
+
+      conditions.emplace_back(win32::MakeCondition<uint64_t*>(
+          win32::FWPM_CONDITION_IP_LOCAL_INTERFACE(), FWP_MATCH_EQUAL, uid));
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
+          10,
+          conditions,
+          L"Permit outbound IPV4 on Lokinet",
+          L"");
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
+          10,
+          conditions,
+          L"Permit inbound IPV4 on Lokinet",
+          L"");
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
+          10,
+          conditions,
+          L"Permit outbound IPV6 on Lokinet",
+          L"");
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
+          10,
+          conditions,
+          L"Permit inbound IPV6 on Lokinet",
+          L"");
+    }
+
+    void
+    DropAll()
+    {
+      m_Firewall->AddFilter(
+          FWP_ACTION_BLOCK,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
+          0,
+          {},
+          L"Drop outbound IPV4 Traffic",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_BLOCK,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
+          0,
+          {},
+          L"Drop inbound IPV4 Traffic",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_BLOCK,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
+          0,
+          {},
+          L"Drop outbound IPV6 Traffic",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_BLOCK,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
+          0,
+          {},
+          L"Drop inbound IPV6 Traffic",
+          L"");
+    }
+
+   protected:
+    void
+    AddInterface(NET_LUID uid)
+    {
+      m_Interfaces.emplace_back(std::move(uid));
+    }
 
    public:
     FWPMRouteManager()
@@ -719,6 +938,9 @@ namespace llarp::vpn
         m_Firewall = std::make_unique<Firewall>(m_Handle);
         PermitLoopback();
         PermitDHCP();
+        for (auto& uid : m_Interfaces)
+          PermitViaInterface((uint64_t*)&uid);
+        DropAll();
       });
     }
 
@@ -729,57 +951,62 @@ namespace llarp::vpn
     }
 
     void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t remoteport) override
-    {}
+    AddRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
+    {
+      var::visit(
+          [this, port](auto&& ip) {
+            RunTransaction([this, addr = SockAddr{ip, port}]() { AddRouteHole(addr); });
+          },
+          ip);
+    }
 
     void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t remoteport) override
-    {}
-
-    void
-    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
-    {}
-
-    void
-    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override
-    {}
+    DelRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
+    {
+      var::visit(
+          [this, port](auto&& ip) {
+            RunTransaction([this, addr = SockAddr{ip, port}]() { DelRouteHole(addr); });
+          },
+          ip);
+    }
 
     std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) override
+    GetGatewaysNotOnInterface(NetworkInterface& vpn) override
     {
+      const auto uid = dynamic_cast<WintunInterface&>(vpn).GetUID();
       std::vector<IPVariant_t> gateways;
-      ForEachWIN32Interface([&](auto w32interface) {
-        struct in_addr gateway, interface_addr;
-        gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
-        interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
-        std::string interface_name{inet_ntoa(interface_addr)};
-        if ((!gateway.S_un.S_addr) and interface_name != ifname)
-        {
-          llarp::LogTrace(
-              "Win32 find gateway: Adding gateway (", interface_name, ") to list of gateways.");
-          huint32_t x{};
-          if (x.FromString(interface_name))
-            gateways.push_back(x);
-        }
-      });
+      auto table = GetIPForwards();
+      for (ULONG idx = 0UL; idx < table->NumEntries; ++idx)
+      {
+        if (table->Table[idx].InterfaceLuid.Value == uid.Value)
+          continue;
+        if (table->Table[idx].DestinationPrefix.PrefixLength)
+          continue;
+        if (table->Table[idx].NextHop.si_family == AF_INET)
+          gateways.emplace_back(ToHost(nuint32_t{table->Table[idx].NextHop.Ipv4.sin_addr.s_addr}));
+        else if (table->Table[idx].NextHop.si_family == AF_INET6)
+          gateways.emplace_back(net::In6ToHUInt(table->Table[idx].NextHop.Ipv6.sin6_addr));
+      };
       return gateways;
     }
 
     void
-    AddDefaultRouteViaInterface(std::string ifname) override
-    {}
+    AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
+    {
+      dynamic_cast<WintunInterface&>(iface).AddAddressRange(range);
+    }
 
     void
-    DelDefaultRouteViaInterface(std::string ifname) override
-    {}
+    DelRouteViaInterface(NetworkInterface& iface, IPRange range) override
+    {
+      dynamic_cast<WintunInterface&>(iface).DelAddressRange(range);
+    }
   };
 
-  class Win32Platform : public wintun::API, public Platform
+  class Win32Platform : public wintun::API, public Platform, public FWPMRouteManager
   {
-    FWPMRouteManager _routeManager{};
-
    public:
-    Win32Platform() : API{"wintun.dll"}, Platform{}
+    Win32Platform() : API{"wintun.dll"}, Platform{}, FWPMRouteManager{}
     {}
 
     std::shared_ptr<NetworkInterface>
@@ -790,6 +1017,7 @@ namespace llarp::vpn
 =======
       auto ptr = std::make_shared<WintunInterface>(this, info);
       ptr->Start();
+      AddInterface(ptr->GetUID());
       return ptr;
 >>>>>>> 48f9abee8 (route poker updates)
     };
@@ -797,7 +1025,7 @@ namespace llarp::vpn
     IRouteManager&
     RouteManager() override
     {
-      return _routeManager;
+      return *this;
     }
   };
 

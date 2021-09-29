@@ -62,13 +62,15 @@ namespace llarp::vpn
 
   class AndroidRouteManager : public IRouteManager
   {
-    void AddRoute(IPVariant_t, IPVariant_t) override{};
+    void AddRoute(IPVariant_t, IPVariant_t, huint16_t) override{};
 
-    void DelRoute(IPVariant_t, IPVariant_t) override{};
+    void DelRoute(IPVariant_t, IPVariant_t, huint16_t) override{};
 
-    void AddDefaultRouteViaInterface(std::string) override{};
+    void
+    AddDefaultRouteViaInterface(NetworkInterface&) override{};
 
-    void DelDefaultRouteViaInterface(std::string) override{};
+    void
+    DelDefaultRouteViaInterface(NetworkInterface&) override{};
 
     void
     AddRouteViaInterface(NetworkInterface&, IPRange) override{};
@@ -76,7 +78,8 @@ namespace llarp::vpn
     void
     DelRouteViaInterface(NetworkInterface&, IPRange) override{};
 
-    std::vector<IPVariant_t> GetGatewaysNotOnInterface(std::string) override
+    std::vector<IPVariant_t>
+    GetGatewaysNotOnInterface(NetworkInterface&) override
     {
       return std::vector<IPVariant_t>{};
     };

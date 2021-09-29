@@ -68,6 +68,18 @@ namespace llarp::vpn
 
   class IRouteManager
   {
+    [[nodiscard]] static auto
+    DefaultRouteRanges()
+    {
+      return std::vector<IPRange>{
+          IPRange::FromIPv4(0, 0, 0, 0, 1),
+          IPRange::FromIPv4(128, 0, 0, 0, 1),
+          IPRange{huint128_t{0}, netmask_ipv6_bits(2)},
+          IPRange{huint128_t{0x4000'0000'0000'0000UL}, netmask_ipv6_bits(2)},
+          IPRange{huint128_t{0x8000'0000'0000'0000UL}, netmask_ipv6_bits(2)},
+          IPRange{huint128_t{0xc000'0000'0000'0000UL}, netmask_ipv6_bits(2)}};
+    }
+
    public:
     using IPVariant_t = std::variant<huint32_t, huint128_t>;
 
@@ -83,10 +95,18 @@ namespace llarp::vpn
     DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t udpport) = 0;
 
     virtual void
-    AddDefaultRouteViaInterface(std::string ifname) = 0;
+    AddDefaultRouteViaInterface(NetworkInterface& vpn)
+    {
+      for (auto range : DefaultRouteRanges())
+        AddRouteViaInterface(vpn, range);
+    }
 
     virtual void
-    DelDefaultRouteViaInterface(std::string ifname) = 0;
+    DelDefaultRouteViaInterface(NetworkInterface& vpn)
+    {
+      for (auto range : DefaultRouteRanges())
+        DelRouteViaInterface(vpn, range);
+    }
 
     virtual void
     AddRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
@@ -95,7 +115,7 @@ namespace llarp::vpn
     DelRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
 
     virtual std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) = 0;
+    GetGatewaysNotOnInterface(NetworkInterface& vpn) = 0;
 
     virtual void
     AddBlackhole(){};
