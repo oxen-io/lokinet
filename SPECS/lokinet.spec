@@ -12,7 +12,7 @@ Source0:        %{name}-%{version}.src.tar.gz
 BuildRequires:  cmake
 BuildRequires:  gcc-c++
 #BuildRequires:  pkgconfig
-BuildRequires:  libuv-devel
+#BuildRequires:  libuv-devel
 BuildRequires:  oxenmq-devel
 BuildRequires:  unbound-devel
 BuildRequires:  libsodium-devel
