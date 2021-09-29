@@ -11,12 +11,12 @@ Source0:        %{name}-%{version}.src.tar.gz
 
 BuildRequires:  cmake
 BuildRequires:  gcc-c++
-#BuildRequires:  pkgconfig
-#BuildRequires:  libuv-devel
+BuildRequires:  pkgconfig
+BuildRequires:  libuv-devel
 BuildRequires:  oxenmq-devel
 BuildRequires:  unbound-devel
 BuildRequires:  libsodium-devel
-#BuildRequires:  systemd-devel
+BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
