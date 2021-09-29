@@ -61,10 +61,6 @@ This package contains the lokinetmon command-line tool for advanced monitoring
 of a running lokinet instance.
 
 %prep
-%setup -q
-dnf install wget -y
-wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-rpm -ivh epel-release-latest-8.noarch.rpm
 
 %autosetup -p1
 
