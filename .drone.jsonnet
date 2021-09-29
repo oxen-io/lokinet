@@ -30,6 +30,7 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
                 dnf(rpmarch) + 'install rpm-build python3-pip epel-release dnf-plugins-core git make',
                 'pip3 install git-archive-all',
                 dnf(rpmarch) + 'config-manager --add-repo https://rpm.oxen.io/centos/oxen.repo',
+                dnf(rpmarch) + 'config-manager --set-enabled PowerTools',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
                 'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',
                 dnf(rpmarch) + 'builddep --spec SPECS/lokinet.spec',
