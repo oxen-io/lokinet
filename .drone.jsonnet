@@ -33,7 +33,7 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
                 dnf(rpmarch) + 'config-manager --set-enabled powertools',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
                 'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',
-                dnf(rpmarch) + 'remove libcurl',
+                dnf(rpmarch) + 'remove libcurl-devel',
                 'wget https://curl.haxx.se/download/curl-7.79.1.tar.gz',
                 'gunzip -c curl-7.67.0.tar.gz | tar xvf -',
                 dnf(rpmarch) + 'builddep --spec SPECS/lokinet.spec',
