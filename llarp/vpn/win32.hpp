@@ -12,7 +12,7 @@
 #include <llarp/ev/vpn.hpp>
 #include <llarp/router/abstractrouter.hpp
 #include <llarp/win32/exception.hpp>
-#include <fwpmu.h>
+#include <llarp/win32/fwpm.hpp>
 
 namespace llarp::vpn
 {
@@ -58,8 +58,8 @@ namespace llarp::vpn
       DWORD sz{};
       if (auto err = GetAdaptersAddresses(
               AF_UNSPEC, GAA_FLAG_INCLUDE_ALL_INTERFACES, nullptr, nullptr, &sz);
-          err != ERROR_INSUFFICIENT_BUFFER)
-        throw win32::error{err, "cannot get adapter addresses: "};
+          err != ERROR_BUFFER_OVERFLOW)
+        throw win32::error{err, "cannot allocate adapter addresses: "};
 
       auto table =
           std::make_unique<IP_ADAPTER_ADDRESSES_LH[]>(sz / sizeof(IP_ADAPTER_ADDRESSES_LH));
@@ -90,29 +90,23 @@ namespace llarp::vpn
       }
     };
 
-    template <typename Releaser>
     struct Packet
     {
-      Releaser _release;
-      BYTE* _data;
+      std::unique_ptr<BYTE[], Deleter<BYTE>> _data;
       DWORD _sz;
 
-      explicit Packet(BYTE* pkt, DWORD sz, Releaser del)
-          : _release{std::move(del)}, _data{pkt}, _sz{sz}
+      explicit Packet(BYTE* pkt, DWORD sz, Deleter<BYTE> deleter)
+          : _data{pkt, std::move(deleter)}, _sz{sz}
       {}
 
       llarp_buffer_t
       ConstBuffer() const
       {
-        return llarp_buffer_t{_data, _sz};
-      }
-
-      ~Packet()
-      {
-        _release(_data);
+        return llarp_buffer_t{_data.get(), _sz};
       }
     };
 
+    using Packet_ptr = std::unique_ptr<Packet>;
     using Adapter_ptr = std::shared_ptr<_WINTUN_ADAPTER>;
     using Session_ptr = std::shared_ptr<_TUN_SESSION>;
 
@@ -180,11 +174,17 @@ namespace llarp::vpn
       [[nodiscard]] auto
       ReadPacket(const Session_ptr& session)
       {
-        auto release = [ptr = session.get(), del = _releaseRead](auto* pkt) { del(ptr, pkt); };
-        std::unique_ptr<Packet<decltype(release)>> ptr;
+        Packet_ptr ptr;
         DWORD sz{};
         if (auto* pkt = _readPacket(session.get(), &sz))
-          ptr.reset(new Packet<decltype(release)>{pkt, sz, std::move(release)});
+        {
+          ptr = std::make_unique<Packet>(
+              pkt, sz, Deleter<BYTE>{[ptr = session.get(), this](auto* pkt) {
+                _releaseRead(ptr, pkt);
+              }});
+        }
+        else  // clear last error
+          SetLastError(0);
         return ptr;
       }
 
@@ -195,7 +195,10 @@ namespace llarp::vpn
         {
           std::copy_n(pkt.buf, pkt.sz, ptr);
           _writePacket(session.get(), ptr);
+          return;
         }
+        // clear errors
+        SetLastError(0);
       }
 
       [[nodiscard]] auto
@@ -233,15 +236,16 @@ namespace llarp::vpn
         MIB_UNICASTIPADDRESS_ROW AddressRow{};
         InitializeUnicastIpAddressEntry(&AddressRow);
         _getAdapterLUID(adapter.get(), &AddressRow.InterfaceLuid);
-        AddressRow.Address.Ipv4.sin_family = addr.fam;
         AddressRow.OnLinkPrefixLength = addr.range.HostmaskBits();
         switch (addr.fam)
         {
           case AF_INET:
+            AddressRow.Address.Ipv4.sin_family = addr.fam;
             AddressRow.Address.Ipv4.sin_addr.S_un.S_addr =
                 ToNet(net::TruncateV6(addr.range.addr)).n;
             break;
           case AF_INET6:
+            AddressRow.Address.Ipv6.sin6_family = addr.fam;
             AddressRow.Address.Ipv6.sin6_addr = net::HUIntToIn6(addr.range.addr);
             break;
           default:
@@ -281,21 +285,25 @@ namespace llarp::vpn
       Exec(NetshExe() + L" " + cmd);
     }
 
-    struct DNSSettings
+    struct DNSRevert
     {
-      DNSSettings() = default;
+      DNSRevert() = default;
 
-      explicit DNSSettings(std::wstring _ifname, llarp::SockAddr _nameserver)
+      explicit DNSRevert(std::wstring _ifname, llarp::SockAddr _nameserver)
           : ifname{std::move(_ifname)}, nameserver{std::move(_nameserver)}
       {}
-      std::wstring ifname;
-      llarp::SockAddr nameserver;
+      const std::wstring ifname;
+      const llarp::SockAddr nameserver;
 
-      ~DNSSettings()
+      ~DNSRevert()
       {
-        NetSH(
-            std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6") + L" set dns \""
-            + ifname + L"\" \"" + to_width<std::wstring>(nameserver.hostString()) + L"\"");
+        if (not ifname.empty())
+        {
+          NetSH(
+              std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6")
+              + L" set dns \"" + ifname + L"\" \"" + to_width<std::wstring>(nameserver.hostString())
+              + L"\"");
+        }
       }
     };
 
@@ -304,13 +312,11 @@ namespace llarp::vpn
   class WintunInterface : public NetworkInterface
   {
     wintun::API* const m_API;
-    wintun::Adapter_ptr m_Adapter;
     wintun::Session_ptr m_Session;
+    wintun::Adapter_ptr m_Adapter;
     const InterfaceInfo m_Info;
     AbstractRouter* const _router;
-
-    std::vector<wintun::DNSSettings> m_OldDNSSettings;
-    std::thread m_ReaderThread;
+    std::vector<wintun::DNSRevert> m_RevertDNS;
 
     void
     SetAdapterDNS(std::wstring adapter, llarp::SockAddr nameserver)
@@ -323,42 +329,51 @@ namespace llarp::vpn
     }
 
    public:
-    explicit WintunInterface(wintun::API* api, const InterfaceInfo& info, AbstractRouter* router)
-        : m_API{api}, m_Info{info}, _router{router}
+    explicit WintunInterface(wintun::API* api, InterfaceInfo info, AbstractRouter* router)
+        : m_API{api}, m_Info{std::move(info)}, _router{router}
     {
       auto table = AdapterTable();
       // get existing dns settings so we can restore them when we destruct
+      std::unordered_map<std::wstring, llarp::SockAddr> dnsAddrs;
+
+      for (auto* row = table.get(); row->Next; row = row->Next)
       {
-        auto* row = table.get();
-        do
+        if (row->FirstDnsServerAddress and row->FriendlyName)
         {
-          llarp::SockAddr saddr{
-              *static_cast<const sockaddr*>(row->FirstDnsServerAddress->Address.lpSockaddr)};
-          m_OldDNSSettings.emplace_back(
-              to_width<std::wstring>(std::string{row->AdapterName}), std::move(saddr));
-          row = row->Next;
-        } while (row);
+          LogInfo(to_width<std::string>(std::wstring{row->FriendlyName}));
+          dnsAddrs.emplace(
+              row->FriendlyName,
+              *static_cast<const sockaddr*>(row->FirstDnsServerAddress->Address.lpSockaddr));
+        }
       }
 
       // make our adapter
       m_Adapter = m_API->MakeAdapterPtr(m_Info);
 
       // set our interface addresses
-      for (const auto& addr : info.addrs)
+      for (const auto& addr : m_Info.addrs)
       {
         m_API->AddAdapterAddress(m_Adapter, addr);
       }
 
       // set new dns settings on every adapter
+      for (auto* row = table.get(); row->Next; row = row->Next)
       {
-        auto* row = table.get();
-        do
+        if (row->FriendlyName)
         {
-          SetAdapterDNS(to_width<std::wstring>(std::string{row->AdapterName}), m_Info.dnsaddr);
-          row = row->Next;
-        } while (row);
+          SetAdapterDNS(row->FriendlyName, m_Info.dnsaddr);
+        }
       }
+      // set up dns reverting
+      for (const auto& [ifaddr, dnsaddr] : dnsAddrs)
+        m_RevertDNS.emplace_back(ifaddr, dnsaddr);
+    }
 
+    /// @brief start wintun session
+    /// this is a separate function so that if the constructor throws we don't call this
+    void
+    Start()
+    {
       m_Session = m_API->MakeSessionPtr(m_Adapter);
     }
 
@@ -492,9 +507,73 @@ namespace llarp::vpn
       }
     };
 
+    class Filter
+    {
+      std::wstring _name, _description;
+      std::vector<FWPM_FILTER_CONDITION0_> _conditions;
+      FWPM_FILTER0 _filter;
+      HANDLE _engine;
+      uint64_t _ID;
+
+     public:
+      explicit Filter(
+          HANDLE engineHandle,
+          FWPM_SUBLAYER0* sublayer,
+          FWP_ACTION_TYPE action,
+          GUID layerKey,
+          std::vector<FWPM_FILTER_CONDITION0_> conditions,
+          uint8_t weight,
+          std::wstring name,
+          std::wstring description)
+          : _name{std::move(name)}
+          , _description{std::move(description)}
+          , _conditions{std::move(conditions)}
+          , _engine{engineHandle}
+      {
+        _filter.layerKey = layerKey;
+        _filter.action.type = action;
+        _filter.subLayerKey = sublayer->subLayerKey;
+        _filter.weight.uint8 = weight;
+        _filter.weight.type = FWP_UINT8;
+        _filter.numFilterConditions = _conditions.size();
+        if (not conditions.empty())
+          _filter.filterCondition = _conditions.data();
+
+        _filter.displayData.name = _name.data();
+        _filter.displayData.description = _description.data();
+        if (auto err = FwpmFilterAdd0(_engine, &_filter, nullptr, &_ID); err != ERROR_SUCCESS)
+          throw win32::error{err, "failed to add fwpm filter: "};
+      }
+
+      ~Filter()
+      {
+        FwpmFilterDeleteById0(_engine, _ID);
+      }
+
+      bool
+      operator<(const Filter& other) const
+      {
+        return _ID < other._ID;
+      }
+
+      bool
+      Matches(FWP_ACTION_TYPE type, const GUID layerKey) const
+      {
+        return _filter.action.type == type and _filter.layerKey == layerKey;
+      }
+
+      uint64_t
+      ID() const
+      {
+        return _ID;
+      }
+    };
+
     class Firewall : public Provider, public SubLayer
     {
       HANDLE m_Handle;
+
+      std::unordered_map<uint64_t, std::unique_ptr<Filter>> m_Filters;
 
      public:
       Firewall(HANDLE handle)
@@ -517,17 +596,102 @@ namespace llarp::vpn
         FwpmSubLayerDeleteByKey0(m_Handle, &_sublayer.subLayerKey);
         FwpmProviderDeleteByKey0(m_Handle, &_provider.providerKey);
       }
+
+      uint64_t
+      AddFilter(
+          FWP_ACTION_TYPE action,
+          GUID layerKey,
+          uint8_t weight,
+          std::vector<FWPM_FILTER_CONDITION0> conditions,
+          std::wstring name,
+          std::wstring description)
+      {
+        auto filter = std::make_unique<Filter>(
+            m_Handle,
+            *this,
+            std::move(action),
+            std::move(layerKey),
+            std::move(conditions),
+            std::move(weight),
+            std::move(name),
+            std::move(description));
+
+        const auto id = filter->ID();
+        m_Filters[id] = std::move(filter);
+        return id;
+      }
+
+      void
+      DropFilter(uint64_t id)
+      {
+        m_Filters.erase(id);
+      }
     };
 
     std::unique_ptr<Firewall> m_Firewall;
 
     void
-    PermitLokinetService()
-    {}
+    PermitLoopback()
+    {
+      FWPM_FILTER_CONDITION0_ condition = win32::MakeCondition<huint32_t>(
+          win32::FWPM_CONDITION_FLAGS(),
+          FWP_MATCH_FLAGS_ALL_SET,
+          huint32_t{FWP_CONDITION_FLAG_IS_LOOPBACK});
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
+          13,
+          {condition},
+          L"Allow outbound v4 loopback",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
+          13,
+          {condition},
+          L"Allow inbound v4 loopback",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
+          13,
+          {condition},
+
+          L"Allow outbound v6 loopback",
+          L"");
+
+      m_Firewall->AddFilter(
+          FWP_ACTION_PERMIT,
+          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
+          13,
+          {condition},
+
+          L"Allow inbound v6 loopback",
+          L"");
+    }
 
     void
-    PermitLoopback()
-    {}
+    PermitDHCP()
+    {
+      std::vector<FWPM_FILTER_CONDITION0_> outboundDHCP{};
+      outboundDHCP.emplace_back(win32::MakeCondition<uint8_t>(
+          win32::FWPM_CONDITION_IP_PROTOCOL(), FWP_MATCH_EQUAL, 0x11));
+
+      outboundDHCP.emplace_back(win32::MakeCondition<huint16_t>(
+          win32::FWPM_CONDITION_IP_LOCAL_PORT(), FWP_MATCH_EQUAL, huint16_t{68}));
+
+      outboundDHCP.emplace_back(win32::MakeCondition<huint16_t>(
+          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{69}));
+
+      outboundDHCP.emplace_back(win32::MakeCondition<huint32_t>(
+          win32::FWPM_CONDITION_IP_REMOTE_ADDRESS(),
+          FWP_MATCH_EQUAL,
+          ipaddr_ipv4_bits(255, 255, 255, 255)));
+      ;
+    }
 
     void
     PermitTunInterface()
@@ -553,8 +717,8 @@ namespace llarp::vpn
     {
       RunTransaction([&]() {
         m_Firewall = std::make_unique<Firewall>(m_Handle);
-        PermitLokinetService();
         PermitLoopback();
+        PermitDHCP();
       });
     }
 
@@ -565,11 +729,11 @@ namespace llarp::vpn
     }
 
     void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) override
+    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t remoteport) override
     {}
 
     void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) override
+    DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t remoteport) override
     {}
 
     void
@@ -621,7 +785,13 @@ namespace llarp::vpn
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
+<<<<<<< HEAD
       return std::make_shared<WintunInterface>(this, info, router);
+=======
+      auto ptr = std::make_shared<WintunInterface>(this, info);
+      ptr->Start();
+      return ptr;
+>>>>>>> 48f9abee8 (route poker updates)
     };
 
     IRouteManager&

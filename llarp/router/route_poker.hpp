@@ -14,10 +14,10 @@ namespace llarp
   struct RoutePoker
   {
     void
-    AddRoute(huint32_t ip);
+    AddRoute(SockAddr addr);
 
     void
-    DelRoute(huint32_t ip);
+    DelRoute(SockAddr addr);
 
     void
     Init(AbstractRouter* router, bool enable = false);
@@ -56,15 +56,16 @@ namespace llarp
     EnableAllRoutes();
 
     void
-    EnableRoute(huint32_t ip, huint32_t gateway);
+    EnableRoute(huint32_t ip, huint32_t gateway, huint16_t port);
 
     void
-    DisableRoute(huint32_t ip, huint32_t gateway);
+    DisableRoute(huint32_t ip, huint32_t gateway, huint16_t port);
 
     std::optional<huint32_t>
     GetDefaultGateway() const;
 
     std::unordered_map<huint32_t, huint32_t> m_PokedRoutes;
+    std::unordered_multimap<huint32_t, huint16_t> m_IPToPort;
     huint32_t m_CurrentGateway;
 
     bool m_Enabled = false;

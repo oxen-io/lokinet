@@ -7,9 +7,16 @@
 namespace llarp
 {
   void
-  RoutePoker::AddRoute(huint32_t ip)
+  RoutePoker::AddRoute(SockAddr addr)
   {
+    const auto ip = addr.asIPv4();
+
+    const huint16_t port{addr.getPort()};
+
     m_PokedRoutes[ip] = m_CurrentGateway;
+
+    m_IPToPort.emplace(ip, port);
+
     if (m_CurrentGateway.h == 0)
     {
       llarp::LogDebug("RoutePoker::AddRoute no current gateway, cannot enable route.");
@@ -17,8 +24,13 @@ namespace llarp
     else if (m_Enabled or m_Enabling)
     {
       llarp::LogInfo(
-          "RoutePoker::AddRoute enabled, enabling route to ", ip, " via ", m_CurrentGateway);
-      EnableRoute(ip, m_CurrentGateway);
+          "RoutePoker::AddRoute enabled, enabling route to ",
+          ip,
+          ":",
+          port,
+          " via ",
+          m_CurrentGateway);
+      EnableRoute(ip, m_CurrentGateway, port);
     }
     else
     {
@@ -27,28 +39,42 @@ namespace llarp
   }
 
   void
-  RoutePoker::DisableRoute(huint32_t ip, huint32_t gateway)
+  RoutePoker::DisableRoute(huint32_t ip, huint32_t gateway, huint16_t port)
   {
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-    route.DelRoute(ip, gateway);
+    route.DelRoute(ip, gateway, port);
   }
 
   void
-  RoutePoker::EnableRoute(huint32_t ip, huint32_t gateway)
+  RoutePoker::EnableRoute(huint32_t ip, huint32_t gateway, huint16_t port)
   {
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-    route.AddRoute(ip, gateway);
+    route.AddRoute(ip, gateway, port);
   }
 
   void
-  RoutePoker::DelRoute(huint32_t ip)
+  RoutePoker::DelRoute(SockAddr addr)
+
   {
+    const auto ip = addr.asIPv4();
+    const huint16_t port{addr.getPort()};
+
     const auto itr = m_PokedRoutes.find(ip);
     if (itr == m_PokedRoutes.end())
       return;
 
+    /// remove appropriate ip to port mappings
+    const auto range = m_IPToPort.equal_range(ip);
+    for (auto range_itr = range.first; range_itr != range.second;)
+    {
+      if (range_itr->second == port)
+        range_itr = m_IPToPort.erase(range_itr);
+      else
+        ++range_itr;
+    }
+
     if (m_Enabled)
-      DisableRoute(itr->first, itr->second);
+      DisableRoute(itr->first, itr->second, port);
     m_PokedRoutes.erase(itr);
   }
 
@@ -63,16 +89,22 @@ namespace llarp
   void
   RoutePoker::DeleteAllRoutes()
   {
-    // DelRoute will check enabled, so no need here
-    for (const auto& [ip, gateway] : m_PokedRoutes)
-      DelRoute(ip);
+    if (m_Enabled)
+      DisableAllRoutes();
+
+    m_PokedRoutes.clear();
+    m_IPToPort.clear();
   }
 
   void
   RoutePoker::DisableAllRoutes()
   {
     for (const auto& [ip, gateway] : m_PokedRoutes)
-      DisableRoute(ip, gateway);
+    {
+      const auto range = m_IPToPort.equal_range(ip);
+      for (auto itr = range.first; itr != range.second; ++itr)
+        DisableRoute(itr->first, gateway, itr->second);
+    }
   }
 
   void
@@ -81,7 +113,9 @@ namespace llarp
     for (auto& [ip, gateway] : m_PokedRoutes)
     {
       gateway = m_CurrentGateway;
-      EnableRoute(ip, m_CurrentGateway);
+      const auto range = m_IPToPort.equal_range(ip);
+      for (auto itr = range.first; itr != range.second; ++itr)
+        EnableRoute(itr->first, m_CurrentGateway, itr->second);
     }
   }
 
@@ -94,7 +128,11 @@ namespace llarp
     for (const auto& [ip, gateway] : m_PokedRoutes)
     {
       if (gateway.h)
-        route.DelRoute(ip, gateway);
+      {
+        const auto range = m_IPToPort.equal_range(ip);
+        for (auto itr = range.first; itr != range.second; ++itr)
+          route.DelRoute(itr->first, gateway, itr->second);
+      }
     }
     route.DelBlackhole();
   }
@@ -208,8 +246,7 @@ namespace llarp
 
     // explicit route pokes for first hops
     m_Router->ForEachPeer(
-        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },
-        false);
+        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint()); }, false);
     // add default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     route.AddDefaultRouteViaInterface(ep->GetIfName());
@@ -223,8 +260,7 @@ namespace llarp
 
     // unpoke routes for first hops
     m_Router->ForEachPeer(
-        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint().asIPv4()); },
-        false);
+        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint()); }, false);
     // remove default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();

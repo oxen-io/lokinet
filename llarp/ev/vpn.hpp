@@ -77,10 +77,10 @@ namespace llarp::vpn
     virtual ~IRouteManager() = default;
 
     virtual void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t udpport) = 0;
 
     virtual void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+    DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t udpport) = 0;
 
     virtual void
     AddDefaultRouteViaInterface(std::string ifname) = 0;

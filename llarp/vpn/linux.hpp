@@ -370,13 +370,13 @@ namespace llarp::vpn
     }
 
     void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) override
+    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
       Route(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ip, gateway);
     }
 
     void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) override
+    DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
       Route(RTM_DELROUTE, 0, ip, gateway);
     }
