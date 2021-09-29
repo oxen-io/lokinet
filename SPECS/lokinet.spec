@@ -61,8 +61,6 @@ This package contains the lokinetmon command-line tool for advanced monitoring
 of a running lokinet instance.
 
 %prep
-%setup
-dnf --enablerepo=epel --setopt=epel.module_hotfixes=true install libuv-devel
 
 %autosetup -p1
 
