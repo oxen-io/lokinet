@@ -30,7 +30,7 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
                 dnf(rpmarch) + 'install epel-release dnf-plugins-core',
                 dnf(rpmarch) + 'config-manager --add-repo https://rpm.oxen.io/centos/oxen.repo',
                 dnf(rpmarch) + 'config-manager --set-enabled powertools',
-                dnf(rpmarch) + 'install rpm-build python3-pip git make wget gcc openssl-devel gzip ccache',
+                dnf(rpmarch) + 'install rpm-build python3-pip git make wget gcc openssl-devel gzip ccache automake',
                 'pip3 install git-archive-all',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
                 'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',
