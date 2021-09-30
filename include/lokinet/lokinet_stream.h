@@ -37,7 +37,7 @@ extern "C"
   /// return 0 to accept
   /// return -1 to explicitly reject
   /// return -2 to silently drop
-  typedef int (*lokinet_stream_filter)(const char* remote, uint16_t port, void*);
+  typedef int (*lokinet_stream_filter)(const char* remote, uint16_t port, void* userdata);
 
   /// set stream accepter filter
   /// passes user parameter into stream filter as void *
