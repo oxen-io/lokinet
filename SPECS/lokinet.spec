@@ -61,8 +61,6 @@ This package contains the lokinetmon command-line tool for advanced monitoring
 of a running lokinet instance.
 
 %prep
-%setup
-sed -e '/void set_zmq_context_option(zmq::ctxopt option, int value)/ s/^#*/#/' -i /usr/include/oxenmq/oxenmq.h
 
 %autosetup -p1
 
