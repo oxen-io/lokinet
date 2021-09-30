@@ -14,7 +14,7 @@ namespace llarp::vpn
     void
     AddSubHandler(nuint16_t localport, EgresPacketHandlerFunc handler) override
     {
-      m_LocalPorts.emplace(localport, std::move(handler));
+      m_LocalPorts.emplace(std::move(localport), std::move(handler));
     }
 
     void
@@ -26,14 +26,15 @@ namespace llarp::vpn
     void
     HandleIPPacketFrom(AddressVariant_t from, net::IPPacket pkt) override
     {
-      const uint8_t* ptr = pkt.buf + (pkt.Header()->ihl * 4) + 2;
-      const nuint16_t dstPort{*reinterpret_cast<const uint16_t*>(ptr)};
-      if (auto itr = m_LocalPorts.find(dstPort); itr != m_LocalPorts.end())
+      if (auto dstPort = pkt.DstPort())
       {
-        itr->second(std::move(from), std::move(pkt));
+        if (auto itr = m_LocalPorts.find(*dstPort); itr != m_LocalPorts.end())
+        {
+          itr->second(std::move(from), std::move(pkt));
+          return;
+        }
       }
-      else
-        m_BaseHandler(std::move(from), std::move(pkt));
+      m_BaseHandler(std::move(from), std::move(pkt));
     }
   };
 
@@ -80,7 +81,7 @@ namespace llarp::vpn
     {
       m_IPProtoHandler.emplace(udp_proto, std::make_unique<EgresUDPPacketHandler>(m_BaseHandler));
     }
-    m_IPProtoHandler[udp_proto]->AddSubHandler(ToNet(localport), func);
+    m_IPProtoHandler[udp_proto]->AddSubHandler(ToNet(localport), std::move(func));
   }
 
   void

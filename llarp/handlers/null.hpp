@@ -14,7 +14,13 @@ namespace llarp::handlers
   {
     NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
         : llarp::service::Endpoint{r, parent}
-        , m_PacketRouter{new vpn::EgresPacketRouter{[](auto, auto) {}}}
+        , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
+          var::visit(
+              [&pkt](auto&& from) {
+                LogError("unhandled traffic from: ", from, " of ", pkt.sz, " bytes");
+              },
+              from);
+        }}}
     {
       r->loop()->add_ticker([this] { Pump(Now()); });
     }
