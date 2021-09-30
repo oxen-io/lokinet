@@ -8,7 +8,6 @@ extern "C"
 #endif
 
   /// the result of a lokinet stream mapping attempt
-#pragma pack(1)
   struct lokinet_stream_result
   {
     /// set to zero on success otherwise the error that happened
@@ -23,7 +22,6 @@ extern "C"
     /// the id of the stream we created
     int stream_id;
   };
-#pragma pack()
 
   /// connect out to a remote endpoint
   /// remoteAddr is in the form of "name:port"
