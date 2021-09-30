@@ -90,8 +90,9 @@ extern "C"
       struct lokinet_context* ctx);
 
   /// @brief send on an established flow to remote endpoint
+  /// blocks until we have sent the packet
   ///
-  /// @param flowinfo populated after call on success
+  /// @param flowinfo remote flow to use for sending
   ///
   /// @param ptr pointer to data to send
   ///
