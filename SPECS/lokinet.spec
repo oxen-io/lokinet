@@ -20,8 +20,6 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
-BuildRequires:  ccache
-BuildRequires:  cppzmq-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
