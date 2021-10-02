@@ -150,6 +150,8 @@ if ! [ -e /etc/loki/lokinet.ini ]; then
 fi
 
 %systemd_post lokinet.service
+systemctl enable lokinet
+systemctl start lokinet
 
 %preun
 %systemd_preun lokinet.service
