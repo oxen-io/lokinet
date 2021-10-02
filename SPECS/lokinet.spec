@@ -82,7 +82,7 @@ export CFLAGS="%{optflags} -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu
 %endif
 
 %undefine __cmake_in_source_build
-%cmake -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DGIT_VERSION="%{release}" -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF
+%cmake -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DGIT_VERSION="%{release}" -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF -DWITH_LTO=OFF
 %cmake_build
 
 %install
