@@ -41,6 +41,7 @@ connect to lokinet as a client or SNapp.
 
 %package bin
 Summary: Lokinet anonymous, decentralized overlay network -- binaries
+Requires: epel-release
 
 %description bin
 
