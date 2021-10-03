@@ -470,6 +470,7 @@ namespace llarp
       if (itr == Sessions().end())
         return false;
       si = itr->second.remote;
+      si.UpdateAddr();
       return true;
     }
 
