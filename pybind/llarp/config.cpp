@@ -86,7 +86,7 @@ namespace llarp
             "addInboundLink",
             [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
               LinksConfig::LinkInfo info;
-              info.minterface = std::move(_interface);
+              info.m_interface = std::move(_interface);
               info.addressFamily = family;
               info.port = port;
               self.m_InboundLinks.push_back(info);
