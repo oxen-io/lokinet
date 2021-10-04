@@ -75,18 +75,18 @@ namespace llarp
         .def(py::init<>())
         .def(
             "setOutboundLink",
-            [](LinksConfig& self, std::string interface, int family, uint16_t port) {
+            [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
               LinksConfig::LinkInfo info;
-              info.m_interface = std::move(interface);
+              info.m_interface = std::move(_interface);
               info.addressFamily = family;
               info.port = port;
               self.m_OutboundLink = std::move(info);
             })
         .def(
             "addInboundLink",
-            [](LinksConfig& self, std::string interface, int family, uint16_t port) {
+            [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
               LinksConfig::LinkInfo info;
-              info.m_interface = std::move(interface);
+              info.minterface = std::move(_interface);
               info.addressFamily = family;
               info.port = port;
               self.m_InboundLinks.push_back(info);
