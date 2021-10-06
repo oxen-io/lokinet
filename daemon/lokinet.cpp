@@ -233,7 +233,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
   try
   {
     std::shared_ptr<llarp::Config> conf;
-    if (confFile.has_value())
+    if (confFile)
     {
       llarp::LogInfo("Using config file: ", *confFile);
       conf = std::make_shared<llarp::Config>(confFile->parent_path());
@@ -242,8 +242,12 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     {
       conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
     }
-    if (!conf->Load(confFile, opts.isSNode))
-      throw std::runtime_error{"Config file parsing failed"};
+    if (not conf->Load(confFile, opts.isSNode))
+    {
+      llarp::LogError("failed to parse configuration");
+      exit_code.set_value(1);
+      return;
+    }
 
     ctx = std::make_shared<llarp::Context>();
     ctx->Configure(std::move(conf));
@@ -255,7 +259,17 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     signal(SIGUSR1, handle_signal);
 #endif
 
-    ctx->Setup(opts);
+    try
+    {
+      ctx->Setup(opts);
+    }
+    catch (std::exception& ex)
+    {
+      llarp::LogError(
+          "failed to set up lokinet: ", ex.what(), ", is lokinet already running? 🤔");
+      exit_code.set_value(1);
+      return;
+    }
 
     llarp::util::SetThreadName("llarp-mainloop");
 
