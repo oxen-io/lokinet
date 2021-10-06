@@ -1,0 +1,32 @@
+From: Jeff Becker <jeff@i2p.rocks>
+Date: Wed, 6 Oct 2021 17:48:18 -0400
+Subject: catch ipv6 ioctl throwing when someone runs lokinet with no ipv6
+
+---
+ llarp/vpn/linux.hpp | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/llarp/vpn/linux.hpp b/llarp/vpn/linux.hpp
+index 5401ef1..0f47636 100644
+--- a/llarp/vpn/linux.hpp
++++ b/llarp/vpn/linux.hpp
+@@ -57,7 +57,6 @@ namespace llarp::vpn
+       control.ioctl(SIOCGIFINDEX, &ifr);
+       const int ifindex = ifr.ifr_ifindex;
+ 
+-      IOCTL control6{AF_INET6};
+       for (const auto& ifaddr : m_Info.addrs)
+       {
+         if (ifaddr.fam == AF_INET)
+@@ -78,9 +77,9 @@ namespace llarp::vpn
+           ifr6.ifindex = ifindex;
+           try
+           {
+-            control6.ioctl(SIOCSIFADDR, &ifr6);
++            IOCTL{AF_INET6}.ioctl(SIOCSIFADDR, &ifr6);
+           }
+-          catch (permission_error& ex)
++          catch (std::exception& ex)
+           {
+             LogError("we are not allowed to use IPv6 on this system: ", ex.what());
+           }
