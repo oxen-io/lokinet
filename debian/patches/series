@@ -1,2 +1,3 @@
 0007-Pass-debian-version-as-GIT_VERSION.patch
 0002-set-base-v6-address-to-nullopt-when-explicit-empty-s.patch
+0003-catch-ipv6-ioctl-throwing-when-someone-runs-lokinet-.patch
