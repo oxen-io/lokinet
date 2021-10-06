@@ -103,11 +103,12 @@ namespace llarp
   template <typename... T>
   struct LogTrace
   {
-    LogTrace(
-        [[maybe_unused]] T... args,
-        [[maybe_unused]] const slns::source_location& location = slns::source_location::current())
+    LogTrace(T... args, const slns::source_location& location = slns::source_location::current())
     {
-#ifndef NDEBUG
+#ifdef NDEBUG
+      ((void)args, ...);
+      (void)location;
+#else
       _log(eLogTrace, location, std::forward<T>(args)...);
 #endif
     }
