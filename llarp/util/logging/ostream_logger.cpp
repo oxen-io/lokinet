@@ -11,7 +11,7 @@ namespace llarp
   OStreamLogStream::PreLog(
       std::stringstream& ss,
       LogLevel lvl,
-      const char* fname,
+      std::string_view filename,
       int lineno,
       const std::string& nodename) const
   {
@@ -38,7 +38,7 @@ namespace llarp
     }
     ss << "[" << LogLevelToString(lvl) << "] ";
     ss << "[" << nodename << "]"
-       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << filename << ":" << lineno
        << "\t";
   }
 
@@ -51,7 +51,7 @@ namespace llarp
   }
 
   void
-  OStreamLogStream::Print(LogLevel, const char*, const std::string& msg)
+  OStreamLogStream::Print(LogLevel, std::string_view, const std::string& msg)
   {
     m_Out << msg << std::flush;
   }

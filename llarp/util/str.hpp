@@ -70,6 +70,15 @@ namespace llarp
     return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
   }
 
+  /// removes a prefix from a string if it exists
+  inline std::string_view
+  strip_prefix(std::string_view str, std::string_view prefix)
+  {
+    if (starts_with(str, prefix))
+      return str.substr(prefix.size());
+    return str;
+  }
+
   /// Splits a string on some delimiter string and returns a vector of string_view's pointing into
   /// the pieces of the original string.  The pieces are valid only as long as the original string
   /// remains valid.  Leading and trailing empty substrings are not removed.  If delim is empty you

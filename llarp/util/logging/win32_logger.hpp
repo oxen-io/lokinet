@@ -14,7 +14,7 @@ namespace llarp
     PreLog(
         std::stringstream& s,
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename) const override;
 
@@ -24,7 +24,7 @@ namespace llarp
     void Tick(llarp_time_t) override{};
 
     void
-    Print(LogLevel lvl, const char*, const std::string& msg) override;
+    Print(LogLevel lvl, std::string_view, const std::string& msg) override;
 
    private:
     std::ostream& m_Out;
