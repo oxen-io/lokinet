@@ -1,0 +1,27 @@
+From: Jeff Becker <jeff@i2p.rocks>
+Date: Wed, 6 Oct 2021 16:21:42 -0400
+Subject: set base v6 address to nullopt when explicit empty string is
+ provided
+
+---
+ llarp/config/config.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/llarp/config/config.cpp b/llarp/config/config.cpp
+index 4e1b4c8..52d0185 100644
+--- a/llarp/config/config.cpp
++++ b/llarp/config/config.cpp
+@@ -569,7 +569,13 @@ namespace llarp
+         IP6RangeDefault,
+         [this](std::string arg) {
+           if (arg.empty())
++          {
++            LogError(
++                "!!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
++                "de-anonymization as lokinet will no longer carry your ipv6 traffic !!!");
++            m_baseV6Address = std::nullopt;
+             return;
++          }
+           m_baseV6Address = huint128_t{};
+           if (not m_baseV6Address->FromString(arg))
+             throw std::invalid_argument(
