@@ -72,7 +72,7 @@ namespace llarp
           break;
         if (ent->d_name[0] == '.')
           continue;
-        entries.emplace(path / fs::path(ent->d_name));
+        entries.emplace(path / fs::path{ent->d_name});
       } while (ent);
       closedir(d);
 
