@@ -569,7 +569,13 @@ namespace llarp
         IP6RangeDefault,
         [this](std::string arg) {
           if (arg.empty())
+          {
+            LogError(
+                "!!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
+                "de-anonymization as lokinet will no longer carry your ipv6 traffic !!!");
+            m_baseV6Address = std::nullopt;
             return;
+          }
           m_baseV6Address = huint128_t{};
           if (not m_baseV6Address->FromString(arg))
             throw std::invalid_argument(
