@@ -26,6 +26,7 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
             },
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
+                dnf(rpmarch) + 'clean packages'
                 dnf(rpmarch) + 'distro-sync',
                 dnf(rpmarch) + 'install epel-release dnf-plugins-core',
                 dnf(rpmarch) + 'config-manager --add-repo https://rpm.oxen.io/centos/oxen.repo',
