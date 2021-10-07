@@ -43,8 +43,8 @@ override_dh_auto_configure:
 		-DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_SETCAP=OFF
 
 override_dh_install:
-	install -D contrib/bootstrap/mainnet.signed debian/tmp/var/lib/lokinet/bootstrap.signed
-	install -D contrib/bootstrap/testnet.signed debian/tmp/var/lib/lokinet/testnet/bootstrap.signed
+	install -D contrib/bootstrap/mainnet.signed -m 644 debian/tmp/var/lib/lokinet/bootstrap.signed
+	install -D contrib/bootstrap/testnet.signed -m 644 debian/tmp/var/lib/lokinet/testnet/bootstrap.signed
 	dh_install
 
 override_dh_installsystemd:
