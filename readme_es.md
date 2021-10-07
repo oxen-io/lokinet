@@ -73,6 +73,7 @@ Requerimientos de compilación:
 * libsodium >= 1.0.18
 * libunbound
 * libzmq
+* cppzmq
 * sqlite3
 
 ### Linux
