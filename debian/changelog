@@ -1,3 +1,9 @@
+lokinet (0.9.6-6~ubuntu2110) impish; urgency=medium
+
+  * Fix installed bootstrap permissions (remove +x)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 07 Oct 2021 20:03:10 -0300
+
 lokinet (0.9.6-5~ubuntu2110) impish; urgency=medium
 
   * catch ipv6 ioctl throwing when someone runs lokinet with no ipv6
