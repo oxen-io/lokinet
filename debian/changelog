@@ -1,3 +1,9 @@
+lokinet (0.9.6-6~deb10) buster; urgency=medium
+
+  * Fix installed bootstrap permissions (remove +x)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 07 Oct 2021 20:02:45 -0300
+
 lokinet (0.9.6-5~deb10) buster; urgency=medium
 
   * catch ipv6 ioctl throwing when someone runs lokinet with no ipv6
