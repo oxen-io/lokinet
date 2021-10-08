@@ -24,7 +24,7 @@ BuildRequires:  libsqlite3x-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
-# Changes the default dns listener to 127.0.0.1:1053 because Fedora's systemd-resolved doesn't like
+# Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
 Patch2: default-dns.patch
 # Backport default upstream dns not working from PR 1715:
