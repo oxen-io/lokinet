@@ -161,6 +161,10 @@ systemctl start lokinet
 
 %changelog
 
+* Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
+- Build with -DWITH_LTO=OFF
+- Enable and start service with POSTINST
+
 * Mon Sep 27 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
 - Remove dns listener port patch used for Fedora use standard 127.0.0.1:53 tested working.
 - postinst requires changes
