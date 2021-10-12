@@ -1,15 +1,15 @@
-local distro = "impish";
+local distro = 'impish';
 local distro_name = 'Ubuntu 21.10';
 local distro_docker = 'ubuntu:impish';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
-local repo_suffix = '/staging'; // can be /beta or /staging for non-primary repo deps
+local repo_suffix = '/staging';  // can be /beta or /staging for non-primary repo deps
 
 local submodules = {
     name: 'submodules',
     image: 'drone/git',
-    commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1']
+    commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1'],
 };
 
 local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
@@ -22,7 +22,7 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
         {
             name: 'build',
             image: image,
-            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
@@ -36,15 +36,15 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
                 'cd debian',
                 'eatmydata mk-build-deps -i -r --tool="' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y" control',
                 'cd ..',
-                'eatmydata gbp buildpackage --git-no-pbuilder --git-builder=\'debuild --preserve-envvar=CCACHE_*\' --git-upstream-tag=HEAD -us -uc -j' + jobs,
+                "eatmydata gbp buildpackage --git-no-pbuilder --git-builder='debuild --preserve-envvar=CCACHE_*' --git-upstream-tag=HEAD -us -uc -j" + jobs,
                 './debian/ci-upload.sh ' + distro + ' ' + debarch,
             ],
-        }
-    ]
+        },
+    ],
 };
 
 [
     deb_pipeline(distro_docker),
-    deb_pipeline("arm64v8/" + distro_docker, buildarch='arm64', debarch="arm64", jobs=4),
-    deb_pipeline("arm32v7/" + distro_docker, buildarch='arm64', debarch="armhf", jobs=4),
+    deb_pipeline('arm64v8/' + distro_docker, buildarch='arm64', debarch='arm64', jobs=4),
+    deb_pipeline('arm32v7/' + distro_docker, buildarch='arm64', debarch='armhf', jobs=4),
 ]
