@@ -64,16 +64,17 @@ namespace llarp
         , currentIntroSet{introset}
 
     {
+      assert(not introset.intros.empty());
       updatingIntroSet = false;
 
       // pick random first intro
-      std::vector<Introduction> intros = introset.intros;
-      if (intros.size() > 1)
+      auto it = introset.intros.begin();
+      if (introset.intros.size() > 1)
       {
-        std::shuffle(intros.begin(), intros.end(), CSRNG{});
+        CSRNG rng{};
+        it += std::uniform_int_distribution<size_t>{0, introset.intros.size() - 1}(rng);
       }
-      m_NextIntro = intros[0];
-
+      m_NextIntro = *it;
       currentConvoTag.Randomize();
       lastShift = Now();
       // add send and connect timeouts to the parent endpoints path alignment timeout
@@ -201,16 +202,12 @@ namespace llarp
       path::Builder::HandlePathBuilt(p);
       p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
         if (auto ptr = self.lock())
-        {
           return ptr->HandleHiddenServiceFrame(path, frame);
-        }
-        LogWarn("no weak_ptr on data handler");
         return false;
       });
       p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
         if (auto ptr = self.lock())
           return ptr->HandleDataDrop(path, id, seqno);
-        LogWarn("no weak_ptr on data drop");
         return false;
       });
       if (markedBad)
@@ -358,7 +355,7 @@ namespace llarp
         SharedSecret discardme;
         if (not m_DataHandler->GetCachedSessionKeyFor(currentConvoTag, discardme))
         {
-          LogWarn(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
+          LogError(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
           return true;
         }
       }
