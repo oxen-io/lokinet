@@ -6,6 +6,7 @@
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/logging/ostream_logger.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/ev/vpn.hpp>
 
 #ifdef _WIN32
 #include <dbghelp.h>
@@ -213,12 +214,15 @@ uninstall_win32_daemon()
   }
 
   // Delete the service.
-  if (!DeleteService(schService))
+  if (not DeleteService(schService))
   {
     llarp::LogError("DeleteService failed ", GetLastError());
   }
   else
-    llarp::LogInfo("Service deleted successfully\n");
+  {
+    llarp::LogInfo("Service deleted successfully");
+  }
+  llarp::vpn::CleanUpPlatform();
 
   CloseServiceHandle(schService);
   CloseServiceHandle(schSCManager);

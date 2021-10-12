@@ -2,8 +2,8 @@
 
 // define this because wintun is retaded ?
 #define _Post_maybenull_
-
 #include <wintun.h>
+#undef _Post_maybenull_
 #include <iphlpapi.h>
 #include <netioapi.h>
 #include <io.h>
@@ -133,6 +133,7 @@ namespace llarp::vpn
 
     struct API
     {
+      const HMODULE _handle;
       WINTUN_CREATE_ADAPTER_FUNC _createAdapter;
       WINTUN_OPEN_ADAPTER_FUNC _openAdapter;
       WINTUN_DELETE_ADAPTER_FUNC _deleteAdapter;
@@ -153,10 +154,9 @@ namespace llarp::vpn
 
       static constexpr auto PoolName = L"Lokinet";
 
-      explicit API(const char* wintunlib)
+      explicit API(const char* wintunlib = "wintun.dll") : _handle{LoadLibrary(wintunlib)}
       {
-        auto handle = ::LoadLibrary(wintunlib);
-        if (handle == nullptr)
+        if (not _handle)
           throw llarp::win32::last_error{"failed to open library " + std::string{wintunlib} + ": "};
 
         const std::map<std::string, FARPROC*> funcs{
@@ -176,7 +176,7 @@ namespace llarp::vpn
 
         for (auto& [procname, ptr] : funcs)
         {
-          if (FARPROC funcptr = GetProcAddress(handle, procname.c_str()))
+          if (FARPROC funcptr = GetProcAddress(_handle, procname.c_str()))
             *ptr = funcptr;
           else
             throw llarp::win32::last_error{"could not find function " + procname + ": "};
@@ -190,6 +190,11 @@ namespace llarp::vpn
               return TRUE;
             },
             (LPARAM)this);
+      }
+
+      ~API()
+      {
+        FreeLibrary(_handle);
       }
 
       [[nodiscard]] auto
@@ -1006,7 +1011,7 @@ namespace llarp::vpn
   class Win32Platform : public wintun::API, public Platform, public FWPMRouteManager
   {
    public:
-    Win32Platform() : API{"wintun.dll"}, Platform{}, FWPMRouteManager{}
+    Win32Platform() : API{}, Platform{}, FWPMRouteManager{}
     {}
 
     std::shared_ptr<NetworkInterface>

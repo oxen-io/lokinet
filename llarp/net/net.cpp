@@ -230,7 +230,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
   /* contiguous block for adapter list */
   struct _llarp_nt_ifaddrs_t* ifa = llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
   struct _llarp_nt_ifaddrs_t* ift = ifa;
-  int val = 0;
+  [[maybe_unused]] int val = 0;
   /* now populate list */
   for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
   {

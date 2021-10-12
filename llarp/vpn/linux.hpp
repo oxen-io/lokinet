@@ -196,7 +196,7 @@ namespace llarp::vpn
       IsZero() const
       {
         const decltype(data) zero{};
-        return memcmp(data, &zero, sizeof(data)) == 0;
+        return memcmp(data, zero, sizeof(data)) == 0;
       }
     };
 

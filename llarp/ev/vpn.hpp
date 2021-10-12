@@ -148,4 +148,8 @@ namespace llarp::vpn
   std::shared_ptr<Platform>
   MakeNativePlatform(llarp::Context* ctx);
 
+  /// clean up excess junk from vpn platform on uninstall
+  void
+  CleanUpPlatform();
+
 }  // namespace llarp::vpn
