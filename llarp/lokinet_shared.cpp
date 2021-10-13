@@ -31,11 +31,12 @@ namespace
     {}
 
     void
-    PreLog(std::stringstream&, llarp::LogLevel, const char*, int, const std::string&) const override
+    PreLog(std::stringstream&, llarp::LogLevel, std::string_view, int, const std::string&)
+        const override
     {}
 
     void
-    Print(llarp::LogLevel, const char*, const std::string& msg) override
+    Print(llarp::LogLevel, std::string_view, const std::string& msg) override
     {
       func(msg.c_str(), user);
     }
@@ -1002,7 +1003,7 @@ extern "C"
       auto lock = ctx->acquire();
       if (ctx->impl->router->loop()->inEventLoop())
       {
-        LogError("cannot call udp_establish from internal event loop");
+        llarp::LogError("cannot call udp_establish from internal event loop");
         return EINVAL;
       }
       if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
