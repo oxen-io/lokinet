@@ -822,8 +822,22 @@ extern "C"
   char* EXPORT
   lokinet_hex_to_base32z(const char* hex)
   {
-    const auto base32z = oxenmq::to_base32z(oxenmq::from_hex(std::string{hex}));
-    return strdup(base32z.c_str());
+    std::string_view hexview{hex};
+    if (not oxenmq::is_hex(hexview))
+      return nullptr;
+
+    const size_t byte_len = hexview.size() / 2;
+    const size_t b32z_len = (byte_len * 8 + 4) / 5;  // = ⌈N×8÷5⌉ because 5 bits per 32z char
+    auto buf = std::make_unique<char[]>(b32z_len + 1);
+    char* end = buf.get() + b32z_len;
+    *end = 0;  // null terminate
+    // Write the bytes into the *end* of the buffer so that when we rewrite the final b32z chars
+    // into the buffer we won't overwrite any byte values until after we've consumed them.
+    char* bytepos = end - byte_len;
+    oxenmq::from_hex(hexview.begin(), hexview.end(), bytepos);
+    // In-place conversion into the buffer
+    oxenmq::to_base32z(bytepos, end, buf.get());
+    return buf.release();  // leak the buffer to the caller
   }
 
   void EXPORT
