@@ -35,7 +35,8 @@ namespace llarp
 
     explicit NetID(const byte_t* val);
 
-    explicit NetID(const NetID& other) = default;
+    NetID(const NetID& other) = default;
+    NetID& operator=(const NetID& other) = default;
 
     bool
     operator==(const NetID& other) const;
