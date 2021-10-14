@@ -176,6 +176,26 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
     ]
 };
 
+local clang(version) = debian_pipeline(
+    'Debian sid/clang-' + version + ' (amd64)',
+    docker_base + 'debian-sid',
+    deps='clang-' + version + ' ' + default_deps_nocxx,
+    cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + ' '
+);
+
+local full_llvm(version) = debian_pipeline(
+    'Debian sid/llvm-' + version + ' (amd64)',
+    'debian:sid',
+    deps='clang-' + version + ' lld-' + version + ' libc++-' + version + '-dev libc++abi-' + version + '-dev '
+        + default_deps_nocxx,
+    cmake_extra='-DCMAKE_C_COMPILER=clang-' + version +
+                ' -DCMAKE_CXX_COMPILER=clang++-' + version +
+                ' -DCMAKE_CXX_FLAGS=-stdlib=libc++ ' +
+                std.join(' ', [
+                    '-DCMAKE_' + type + '_LINKER_FLAGS=-fuse-ld=lld-' + version
+                    for type in ['EXE', 'MODULE', 'SHARED']
+                ])
+);
 
 // Macos build
 local mac_builder(name,
@@ -226,8 +246,8 @@ local mac_builder(name,
     // Various debian builds
     debian_pipeline("Debian sid (amd64)", "debian:sid"),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian sid/clang-11 (amd64)", docker_base+'debian-sid', deps='clang-11 '+default_deps_nocxx,
-                    cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 '),
+    clang(13),
+    full_llvm(13),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Ubuntu focal (amd64)", docker_base+'ubuntu-focal'),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
