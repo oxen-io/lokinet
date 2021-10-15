@@ -160,7 +160,7 @@ systemctl enable --now lokinet
 
 %changelog
 
-* Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
+* Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Build with -DWITH_LTO=OFF
 - Enable and start service with POSTINST using systemctl enable --now
 
@@ -192,8 +192,8 @@ systemctl enable --now lokinet
 - Updated for rpm.oxen.io packaging
 - Split into lokinet/lokinet-bin/lokinet-monitor packages
 
-* Thu Jul 22 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.9.5
+* Thu Jul 22 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.9.5
 - Build with systemd-resolved and binary lokinet-bootstrap
 
-* Sun Mar 07 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.8.2
+* Sun Mar 07 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.8.2
 - First Lokinet RPM
