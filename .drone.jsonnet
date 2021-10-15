@@ -1,7 +1,19 @@
-local default_deps_base = 'libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev libcurl4-openssl-dev make';
-local default_deps_nocxx = 'libsodium-dev ' + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
-local default_deps = 'g++ ' + default_deps_nocxx;
-local default_windows_deps = 'mingw-w64 zip nsis';
+local default_deps_base = [
+  'libsystemd-dev',
+  'python3-dev',
+  'libuv1-dev',
+  'libunbound-dev',
+  'nettle-dev',
+  'libssl-dev',
+  'libevent-dev',
+  'libsqlite3-dev',
+  'libcurl4-openssl-dev',
+  'libzmq3-dev',
+  'make',
+];
+local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
+local default_deps = ['g++'] + default_deps_nocxx;
+local default_windows_deps = ['mingw-w64', 'zip', 'nsis'];
 local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
 local submodules = {
@@ -52,7 +64,7 @@ local debian_pipeline(name,
                   ] else []
                 ) + [
                   'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                  'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git pkg-config ccache ' + deps,
+                  'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git pkg-config ccache ' + std.join(' ', deps),
                   'mkdir build',
                   'cd build',
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
@@ -182,14 +194,14 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
 local clang(version) = debian_pipeline(
   'Debian sid/clang-' + version + ' (amd64)',
   docker_base + 'debian-sid',
-  deps='clang-' + version + ' ' + default_deps_nocxx,
+  deps=['clang-' + version] + default_deps_nocxx,
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + ' '
 );
 
 local full_llvm(version) = debian_pipeline(
   'Debian sid/llvm-' + version + ' (amd64)',
   'debian:sid',
-  deps='clang-' + version + ' lld-' + version + ' libc++-' + version + '-dev libc++abi-' + version + '-dev '
+  deps=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev']
        + default_deps_nocxx,
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version +
               ' -DCMAKE_CXX_COMPILER=clang++-' + version +
@@ -257,7 +269,7 @@ local mac_builder(name,
   debian_pipeline('Ubuntu focal (amd64)', docker_base + 'ubuntu-focal'),
   debian_pipeline('Ubuntu bionic (amd64)',
                   'ubuntu:bionic',
-                  deps='g++-8 ' + default_deps_nocxx,
+                  deps=['g++-8'] + default_deps_nocxx,
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8',
                   loki_repo=true),
 
@@ -268,7 +280,7 @@ local mac_builder(name,
   debian_pipeline('Static (buster armhf)',
                   'arm32v7/debian:buster',
                   arch='arm64',
-                  deps='g++ python3-dev automake libtool',
+                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" -DNATIVE_BUILD=OFF ' +
                               '-DWITH_SYSTEMD=OFF',
@@ -291,7 +303,7 @@ local mac_builder(name,
   // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
   debian_pipeline('Static (bionic amd64)',
                   docker_base + 'ubuntu-bionic',
-                  deps='g++-8 python3-dev automake libtool',
+                  deps=['g++-8', 'python3-dev', 'automake', 'libtool'],
                   lto=true,
                   tests=false,
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
@@ -305,7 +317,7 @@ local mac_builder(name,
   // integration tests
   debian_pipeline('Router Hive',
                   'ubuntu:focal',
-                  deps='python3-dev python3-pytest python3-pybind11 ' + default_deps,
+                  deps=['python3-dev', 'python3-pytest', 'python3-pybind11'] + default_deps,
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
