@@ -41,3 +41,14 @@ if [ $? -eq 0 ]; then
     fi
 
 fi
+
+jsonnet_format=$(command -v jsonnetfmt 2>/dev/null)
+if [ $? -eq 0 ]; then
+    if [ "$1" = "verify" ]; then
+        if ! $jsonnet_format --test .drone.jsonnet; then
+            exit 4
+        fi
+    else
+        $jsonnet_format --in-place .drone.jsonnet
+    fi
+fi
