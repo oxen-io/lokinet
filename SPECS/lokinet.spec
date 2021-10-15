@@ -24,7 +24,7 @@ BuildRequires:  libsqlite3x-devel
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
 # Backport default upstream dns not working from PR 1715:
-Patch2: default-upstream-dns.patch
+# Patch2: default-upstream-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -159,6 +159,8 @@ systemctl enable --now lokinet
 %systemd_postun lokinet.service
 
 %changelog
+* Thu Oct 14 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
+- Remove Patch2: default-upstream-dns.patch
 
 * Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Build with -DWITH_LTO=OFF
