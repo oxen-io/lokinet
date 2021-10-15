@@ -23,8 +23,6 @@ BuildRequires:  libsqlite3x-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
-# Backport default upstream dns not working from PR 1715:
-# Patch2: default-upstream-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
