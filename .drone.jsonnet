@@ -193,14 +193,14 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
 
 local clang(version) = debian_pipeline(
   'Debian sid/clang-' + version + ' (amd64)',
-  docker_base + 'debian-sid',
+  docker_base + 'debian-sid-clang',
   deps=['clang-' + version] + default_deps_nocxx,
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + ' '
 );
 
 local full_llvm(version) = debian_pipeline(
   'Debian sid/llvm-' + version + ' (amd64)',
-  'debian:sid',
+  docker_base + 'debian-sid-clang',
   deps=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev']
        + default_deps_nocxx,
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version +
@@ -249,7 +249,7 @@ local mac_builder(name,
     type: 'docker',
     steps: [{
       name: 'build',
-      image: 'registry.oxen.rocks/lokinet-ci-lint',
+      image: docker_base + 'lint',
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         apt_get_quiet + ' update',
@@ -261,21 +261,21 @@ local mac_builder(name,
   },
 
   // Various debian builds
-  debian_pipeline('Debian sid (amd64)', 'debian:sid'),
-  debian_pipeline('Debian sid/Debug (amd64)', 'debian:sid', build_type='Debug'),
+  debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
+  debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
   clang(13),
   full_llvm(13),
-  debian_pipeline('Debian buster (i386)', 'i386/debian:buster', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+  debian_pipeline('Debian bullseye (i386)', 'i386/debian:bullseye', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
   debian_pipeline('Ubuntu focal (amd64)', docker_base + 'ubuntu-focal'),
   debian_pipeline('Ubuntu bionic (amd64)',
-                  'ubuntu:bionic',
+                  docker_base + 'ubuntu-bionic',
                   deps=['g++-8'] + default_deps_nocxx,
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8',
                   loki_repo=true),
 
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', 'debian:sid', arch='arm64', jobs=4),
-  debian_pipeline('Debian buster (armhf)', 'arm32v7/debian:buster', arch='arm64', cmake_extra='-DDOWNLOAD_SODIUM=ON', jobs=4),
+  debian_pipeline('Debian bullseye (armhf)', 'arm32v7/debian:bullseye', arch='arm64', cmake_extra='-DDOWNLOAD_SODIUM=ON', jobs=4),
   // Static armhf build (gets uploaded)
   debian_pipeline('Static (buster armhf)',
                   'arm32v7/debian:buster',
@@ -290,7 +290,7 @@ local mac_builder(name,
                   ],
                   jobs=4),
   // android apk builder
-  apk_builder('android apk', 'registry.oxen.rocks/lokinet-ci-android', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
+  apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
   // Windows builds (x64)
   windows_cross_pipeline('Windows (amd64)',
@@ -321,9 +321,10 @@ local mac_builder(name,
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
-  deb_builder('debian:sid', 'sid', 'debian/sid'),
-  deb_builder('debian:buster', 'buster', 'debian/buster'),
-  deb_builder('ubuntu:focal', 'focal', 'ubuntu/focal'),
+  deb_builder(docker_base + 'debian-sid', 'sid', 'debian/sid'),
+  deb_builder(docker_base + 'debian-bullseye', 'bullseye', 'debian/bullseye'),
+  deb_builder(docker_base + 'ubuntu-impish', 'impish', 'ubuntu/impish'),
+  deb_builder(docker_base + 'ubuntu-focal', 'focal', 'ubuntu/focal'),
   deb_builder('debian:sid', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:

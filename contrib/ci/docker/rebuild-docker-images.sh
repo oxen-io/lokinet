@@ -1,13 +1,19 @@
 #!/bin/bash
 
-# the registry server to use
-registry=$1
+set -o errexit
 
-test "x$registry" != "x" || exit 1
+registry=registry.oxen.rocks
 
-for file in ${@:2} ; do
-    name="$(echo $file | cut -d'.' -f1)"
-    echo "rebuild $name"
-    docker build -f $file -t $registry/lokinet-ci-$name .
+if [[ $# -eq 0 ]]; then
+    files=(*.dockerfile)
+else
+    files=("$@")
+fi
+
+for file in "${files[@]}"; do
+    name="${file#[0-9][0-9]-}" # s/^\d\d-//
+    name="${name%.dockerfile}" # s/\.dockerfile$//
+    echo -e "\e[32;1mrebuilding $name\e[0m"
+    docker build --pull -f $file -t $registry/lokinet-ci-$name .
     docker push $registry/lokinet-ci-$name
 done
