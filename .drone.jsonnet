@@ -58,8 +58,8 @@ local debian_pipeline(name,
                 ] + (
                   if loki_repo then [
                     'eatmydata ' + apt_get_quiet + ' install -y lsb-release',
-                    'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
-                    'echo deb http://deb.loki.network $$(lsb_release -sc) main >/etc/apt/sources.list.d/loki.network.list',
+                    'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
+                    'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
                     'eatmydata ' + apt_get_quiet + ' update',
                   ] else []
                 ) + [
@@ -160,8 +160,8 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
       ] + (if loki_repo then [
-             'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
-             'echo deb http://deb.loki.network $${distro} main >/etc/apt/sources.list.d/loki.network.list',
+             'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
+             'echo deb http://deb.oxen.io $${distro} main >/etc/apt/sources.list.d/oxen.list',
            ] else []) + [
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
