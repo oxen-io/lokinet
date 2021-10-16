@@ -199,7 +199,7 @@ namespace llarp::quic
   void
   Endpoint::send_version_negotiation(const version_info& vi, const Address& source)
   {
-    std::array<std::byte, NGTCP2_MAX_PKTLEN_IPV4> buf;
+    std::array<std::byte, Endpoint::max_pkt_size_v4> buf;
     std::array<uint32_t, NGTCP2_PROTO_VER_MAX - NGTCP2_PROTO_VER_MIN + 2> versions;
     std::iota(versions.begin() + 1, versions.end(), NGTCP2_PROTO_VER_MIN);
     // we're supposed to send some 0x?a?a?a?a version to trigger version negotiation
@@ -234,11 +234,13 @@ namespace llarp::quic
       Path path;
       ngtcp2_pkt_info pi;
 
-      auto write_close_func =
-          application ? ngtcp2_conn_write_application_close : ngtcp2_conn_write_connection_close;
+      auto write_close_func = application ? ngtcp2_conn_write_application_close_versioned
+                                          : ngtcp2_conn_write_connection_close_versioned;
+
       auto written = write_close_func(
           conn,
           path,
+          NGTCP2_PKT_INFO_VERSION,
           &pi,
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),

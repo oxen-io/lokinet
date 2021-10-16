@@ -26,6 +26,7 @@ Build requirements:
 * libcurl (for lokinet-bootstrap)
 * libunbound
 * libzmq
+* cppzmq
 * sqlite3
 
 ### Linux
@@ -42,12 +43,17 @@ You can install these using:
 
 If you are not on a platform supported by the debian packages or if you want to build a dev build, this is the most "portable" way to do it:
 
-    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool
+    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
     $ mkdir build
     $ cd build
-    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release
+    $ make -j$(nproc)
+    
+If you dont want to do a static build install the dependancies and run:
+
+    $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
     $ make -j$(nproc)
 
 install:
@@ -56,13 +62,9 @@ install:
 
 ### macOS
 
-You can get the latest stable macos relase from https://lokinet.org/ or check the releases page on github.
+Lokinet ~~is~~ will be available on the Apple App store. 
 
-alternatively you can build from source, make sure you have cmake, libuv and xcode command line tools installed:
-
-    $ git clone --recursive https://github.com/oxen-io/lokinet
-    $ cd lokinet
-    $ ./contrib/mac.sh -DCODESIGN_KEY='insert your key identity here' -DCODESIGN_TEAM_ID='team id here'
+Source code compilation of Lokinet by end users is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information. If you find this disagreeable consider using a platform that permits compiling from source.
 
 ### Windows
 
@@ -77,37 +79,13 @@ additional build requirements:
 
 setup:
 
-    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis ninja-build
+    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis cpack automake libtool
 
 building:
 
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
     $ ./contrib/windows.sh
-
-### Solaris 2.10+
-
-NOTE: Oracle Solaris users need to download/compile the TAP driver from http://www.whiteboard.ne.jp/~admin2/tuntap/
-
-The generated binaries _may_ work on Solaris 2.10 or earlier, you're on your own. (Recommended: `-static-libstdc++ -static-libgcc`, and the TAP driver if not already installed on the target system.)
-
-Building on a v2.10 or earlier system is unsupported, and may not even work; recent GCC releases have progressively dropped support for older system releases.
-
-build:
-
-    $ sudo pkg install build-essential gcc8 wget tuntap cmake (optional: ninja ccache - from omnios extra) (OmniOS CE)
-    $ sudo pkg install base-developer-utilities developer-gnu developer-studio-utilities gcc-7 wget cmake (Oracle Solaris, see note)
-    $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
-    $ git clone --recursive https://github.com/oxen-io/lokinet
-    $ cd lokinet
-    $ mkdir build
-    $ cd build
-    $ cmake ..
-    $ make -j$(nproc)
-
-install:
-
-    $ sudo make install
 
 ### FreeBSD
 
@@ -131,24 +109,16 @@ install (root):
 
 When running from debian package the following steps are not needed as it is already ready to use.
 
-## Create default config
-
-to configure as client:
-
-    $ lokinet -g
-    $ lokinet-bootstrap
-
-to configure as relay:
-
-    $ lokinet -r -g
-    $ lokinet-bootstrap
-
-
-## Running on Linux
+## Running on Linux (without debs)
 
 **DO NOT RUN AS ROOT**, run as normal user. 
 
-to run, after you create default config:
+set up the initial configs:
+
+    $ lokinet -g 
+    $ lokinet-bootstrap
+
+after you create default config, run it:
 
     $ lokinet
 
