@@ -48,6 +48,7 @@ local debian_pipeline(name,
     {
       name: 'build',
       image: image,
+      pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
       commands: [
@@ -90,6 +91,7 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
     {
       name: 'build',
       image: image,
+      pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, ANDROID: 'android' },
       commands: [
@@ -126,6 +128,7 @@ local windows_cross_pipeline(name,
     {
       name: 'build',
       image: image,
+      pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: toolchain + 'bit' },
       commands: [
@@ -154,6 +157,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
     {
       name: 'build',
       image: image,
+      pull: 'always',
       failure: 'ignore',
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
       commands: [
@@ -250,6 +254,7 @@ local mac_builder(name,
     steps: [{
       name: 'build',
       image: docker_base + 'lint',
+      pull: 'always',
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         apt_get_quiet + ' update',
