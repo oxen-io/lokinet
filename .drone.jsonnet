@@ -270,7 +270,7 @@ local mac_builder(name,
   debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
   clang(13),
   full_llvm(13),
-  debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable:i386'),
+  debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable/i386'),
   debian_pipeline('Debian buster (amd64)', docker_base + 'debian-buster', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
   debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
   debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
@@ -282,10 +282,10 @@ local mac_builder(name,
 
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
-  debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable:arm32v7', arch='arm64', jobs=4),
+  debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
   // Static armhf build (gets uploaded)
   debian_pipeline('Static (buster armhf)',
-                  docker_base + 'debian-buster:arm32v7',
+                  docker_base + 'debian-buster/arm32v7',
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
