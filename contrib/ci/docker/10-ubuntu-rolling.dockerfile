@@ -4,6 +4,7 @@ RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-s
 RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
     && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
     && apt-get -o=Dpkg::Use-Pty=0 --no-install-recommends -q install -y \
+        automake \
         ccache \
         cmake \
         eatmydata \
@@ -17,12 +18,14 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
         libevent-dev \
         libgtest-dev \
         libhidapi-dev \
+        libjemalloc-dev \
         libminiupnpc-dev \
         libreadline-dev \
         libsodium-dev \
         libsqlite3-dev \
         libssl-dev \
         libsystemd-dev \
+        libtool \
         libunbound-dev \
         libunwind8-dev \
         libusb-1.0.0-dev \

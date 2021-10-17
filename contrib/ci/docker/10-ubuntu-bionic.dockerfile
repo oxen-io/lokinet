@@ -14,6 +14,7 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
         gdb \
         git \
         gperf \
+        libjemalloc-dev \
         libpgm-dev \
         libtool \
         libuv1-dev \
