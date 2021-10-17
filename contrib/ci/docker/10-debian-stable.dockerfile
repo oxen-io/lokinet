@@ -1,3 +1,36 @@
 ARG ARCH=amd64
 FROM registry.oxen.rocks/lokinet-ci-debian-stable-base/${ARCH}
-RUN /bin/bash -c 'apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y eatmydata gdb cmake make patch git ninja-build pkg-config ccache g++ libsodium-dev libzmq3-dev libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev libboost-thread-dev libboost-serialization-dev libboost-program-options-dev libgtest-dev libminiupnpc-dev libunwind8-dev libreadline-dev libhidapi-dev libusb-1.0.0-dev qttools5-dev libcurl4-openssl-dev lsb-release openssh-client'
+RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
+        ccache \
+        cmake \
+        eatmydata \
+        g++ \
+        gdb \
+        git \
+        libboost-program-options-dev \
+        libboost-serialization-dev \
+        libboost-thread-dev \
+        libcurl4-openssl-dev \
+        libevent-dev \
+        libgtest-dev \
+        libhidapi-dev \
+        libminiupnpc-dev \
+        libreadline-dev \
+        libsodium-dev \
+        libsqlite3-dev \
+        libssl-dev \
+        libsystemd-dev \
+        libunbound-dev \
+        libunwind8-dev \
+        libusb-1.0.0-dev \
+        libuv1-dev \
+        libzmq3-dev \
+        lsb-release \
+        make \
+        nettle-dev \
+        ninja-build \
+        openssh-client \
+        patch \
+        pkg-config \
+        python3-dev \
+        qttools5-dev
