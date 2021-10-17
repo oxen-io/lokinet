@@ -169,7 +169,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
         |||
           # Look for the debian branch in this repo first, try upstream if that fails.
           if ! git checkout $${distro_branch}; then
-              git remote add --fetch upstream https://github.com/oxen-io/loki-network.git &&
+              git remote add --fetch upstream https://github.com/oxen-io/lokinet.git &&
               git checkout $${distro_branch}
           fi
         |||,
@@ -323,11 +323,11 @@ local mac_builder(name,
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
-  deb_builder(docker_base + 'debian-sid', 'sid', 'debian/sid'),
-  deb_builder(docker_base + 'debian-bullseye', 'bullseye', 'debian/bullseye'),
-  deb_builder(docker_base + 'ubuntu-impish', 'impish', 'ubuntu/impish'),
-  deb_builder(docker_base + 'ubuntu-focal', 'focal', 'ubuntu/focal'),
-  deb_builder(docker_base + 'debian-sid', 'sid', 'debian/sid', arch='arm64'),
+  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid'),
+  deb_builder(docker_base + 'debian-bullseye-debhelper', 'bullseye', 'debian/bullseye'),
+  deb_builder(docker_base + 'ubuntu-impish-debhelper', 'impish', 'ubuntu/impish'),
+  deb_builder(docker_base + 'ubuntu-focal-debhelper', 'focal', 'ubuntu/focal'),
+  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
   mac_builder('macOS (Release)'),

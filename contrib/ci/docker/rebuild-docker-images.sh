@@ -40,3 +40,5 @@ for latest in "${!manifests[@]}"; do
     docker manifest create $latest ${manifests[$latest]}
     docker manifest push $latest
 done
+
+echo -e "\n\n\n\e[32;1mAll done!\e[1m\n\n"
