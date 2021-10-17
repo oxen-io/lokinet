@@ -265,8 +265,10 @@ local mac_builder(name,
   debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
   clang(13),
   full_llvm(13),
-  debian_pipeline('Debian bullseye (i386)', 'i386/debian:bullseye', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
-  debian_pipeline('Ubuntu focal (amd64)', docker_base + 'ubuntu-focal'),
+  debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable:i386'),
+  debian_pipeline('Debian buster (amd64)', docker_base + 'debian-buster', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+  debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
+  debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
   debian_pipeline('Ubuntu bionic (amd64)',
                   docker_base + 'ubuntu-bionic',
                   deps=['g++-8'] + default_deps_nocxx,
@@ -274,11 +276,11 @@ local mac_builder(name,
                   loki_repo=true),
 
   // ARM builds (ARM64 and armhf)
-  debian_pipeline('Debian sid (ARM64)', 'debian:sid', arch='arm64', jobs=4),
-  debian_pipeline('Debian bullseye (armhf)', 'arm32v7/debian:bullseye', arch='arm64', cmake_extra='-DDOWNLOAD_SODIUM=ON', jobs=4),
+  debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
+  debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable:arm32v7', arch='arm64', jobs=4),
   // Static armhf build (gets uploaded)
   debian_pipeline('Static (buster armhf)',
-                  'arm32v7/debian:buster',
+                  docker_base + 'debian-buster:arm32v7',
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
@@ -316,7 +318,7 @@ local mac_builder(name,
 
   // integration tests
   debian_pipeline('Router Hive',
-                  'ubuntu:focal',
+                  docker_base + 'ubuntu-lts',
                   deps=['python3-dev', 'python3-pytest', 'python3-pybind11'] + default_deps,
                   cmake_extra='-DWITH_HIVE=ON'),
 
@@ -325,7 +327,7 @@ local mac_builder(name,
   deb_builder(docker_base + 'debian-bullseye', 'bullseye', 'debian/bullseye'),
   deb_builder(docker_base + 'ubuntu-impish', 'impish', 'ubuntu/impish'),
   deb_builder(docker_base + 'ubuntu-focal', 'focal', 'ubuntu/focal'),
-  deb_builder('debian:sid', 'sid', 'debian/sid', arch='arm64'),
+  deb_builder(docker_base + 'debian-sid', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
   mac_builder('macOS (Release)'),
