@@ -57,14 +57,14 @@ local debian_pipeline(name,
                   apt_get_quiet + ' install -y eatmydata',
                 ] + (
                   if loki_repo then [
-                    'eatmydata ' + apt_get_quiet + ' install -y lsb-release',
+                    'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y lsb-release',
                     'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
                     'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
                     'eatmydata ' + apt_get_quiet + ' update',
                   ] else []
                 ) + [
                   'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                  'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git pkg-config ccache ' + std.join(' ', deps),
+                  'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y gdb cmake git pkg-config ccache ' + std.join(' ', deps),
                   'mkdir build',
                   'cd build',
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
@@ -133,7 +133,7 @@ local windows_cross_pipeline(name,
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
         'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh',
@@ -165,7 +165,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
            ] else []) + [
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install -y git devscripts equivs ccache git-buildpackage python3-dev',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git devscripts equivs ccache git-buildpackage python3-dev',
         |||
           # Look for the debian branch in this repo first, try upstream if that fails.
           if ! git checkout $${distro_branch}; then
@@ -254,7 +254,7 @@ local mac_builder(name,
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install -y git clang-format-11 jsonnet',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-11 jsonnet',
         './contrib/ci/drone-format-verify.sh',
       ],
     }],
@@ -284,8 +284,8 @@ local mac_builder(name,
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
-                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" -DNATIVE_BUILD=OFF ' +
-                              '-DWITH_SYSTEMD=OFF',
+                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF',
                   extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
                     'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
@@ -308,9 +308,11 @@ local mac_builder(name,
                   deps=['g++-8', 'python3-dev', 'automake', 'libtool'],
                   lto=true,
                   tests=false,
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
-                              '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" -DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" -DNATIVE_BUILD=OFF ' +
-                              '-DWITH_SYSTEMD=OFF',
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                              '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
+                              '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
+                              '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF',
                   extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
                     '../contrib/ci/drone-static-upload.sh',
