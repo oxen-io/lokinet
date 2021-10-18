@@ -16,10 +16,11 @@ local default_deps = ['g++'] + default_deps_nocxx;
 local default_windows_deps = ['mingw-w64', 'zip', 'nsis'];
 local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
+local submodule_commands = ['git fetch --tags', 'git submodule update --init --recursive --depth=1 --jobs=4'];
 local submodules = {
   name: 'submodules',
   image: 'drone/git',
-  commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1'],
+  commands: submodule_commands,
 };
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
@@ -229,7 +230,7 @@ local mac_builder(name,
   name: name,
   platform: { os: 'darwin', arch: 'amd64' },
   steps: [
-    { name: 'submodules', commands: ['git fetch --tags', 'git submodule update --init --recursive'] },
+    { name: 'submodules', commands: submodule_commands },
     {
       name: 'build',
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
