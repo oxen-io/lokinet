@@ -289,7 +289,7 @@ local mac_builder(name,
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
-                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
+                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF',
                   extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
