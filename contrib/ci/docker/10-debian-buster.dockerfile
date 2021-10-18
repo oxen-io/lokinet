@@ -36,4 +36,5 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
         patch \
         pkg-config \
         python3-dev \
-        qttools5-dev
+        qttools5-dev \
+        xz-utils
