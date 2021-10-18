@@ -283,19 +283,6 @@ local mac_builder(name,
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
   debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
-  // Static armhf build (gets uploaded)
-  debian_pipeline('Static (buster armhf)',
-                  docker_base + 'debian-buster/arm32v7',
-                  arch='arm64',
-                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
-                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
-                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF',
-                  extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
-                  ],
-                  jobs=4),
   // android apk builder
   apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
@@ -322,6 +309,19 @@ local mac_builder(name,
                     '../contrib/ci/drone-check-static-libs.sh',
                     '../contrib/ci/drone-static-upload.sh',
                   ]),
+  // Static armhf build (gets uploaded)
+  debian_pipeline('Static (buster armhf)',
+                  docker_base + 'debian-buster/arm32v7',
+                  arch='arm64',
+                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF',
+                  extra_cmds=[
+                    '../contrib/ci/drone-check-static-libs.sh',
+                    'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
+                  ],
+                  jobs=4),
 
   // integration tests
   debian_pipeline('Router Hive',
