@@ -10,18 +10,18 @@ namespace llarp
   SysLogStream::PreLog(
       std::stringstream& ss,
       LogLevel lvl,
-      const char* fname,
+      std::string_view filename,
       int lineno,
       const std::string& nodename) const
   {
     ss << "[" << LogLevelToString(lvl) << "] ";
     ss << "[" << nodename << "]"
-       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << filename << ":" << lineno
        << "\t";
   }
 
   void
-  SysLogStream::Print(LogLevel lvl, const char*, const std::string& msg)
+  SysLogStream::Print(LogLevel lvl, std::string_view, const std::string& msg)
   {
     switch (lvl)
     {

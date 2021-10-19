@@ -26,6 +26,7 @@ Build requirements:
 * libcurl (for lokinet-bootstrap)
 * libunbound
 * libzmq
+* cppzmq
 * sqlite3
 
 ### Linux
