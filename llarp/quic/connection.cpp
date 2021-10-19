@@ -244,6 +244,7 @@ namespace llarp::quic
     int
     stream_close_cb(
         ngtcp2_conn* conn,
+        uint32_t flags,
         int64_t stream_id,
         uint64_t app_error_code,
         void* user_data,
@@ -275,17 +276,13 @@ namespace llarp::quic
       return 0;
     }
 
-    int
-    rand(
-        uint8_t* dest,
-        size_t destlen,
-        const ngtcp2_rand_ctx* rand_ctx,
-        [[maybe_unused]] ngtcp2_rand_usage usage)
+    void
+    rand(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx* rand_ctx)
     {
       LogTrace("######################", __func__);
       randombytes_buf(dest, destlen);
-      return 0;
     }
+
     int
     get_new_connection_id(
         ngtcp2_conn* conn_, ngtcp2_cid* cid_, uint8_t* token, size_t cidlen, void* user_data)
@@ -340,7 +337,7 @@ namespace llarp::quic
     va_start(ap, fmt);
     if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
     {
-      LogTraceExplicit("external/ngtcp2/*.c", 0, msg);
+      LogTrace{msg};
       std::free(msg);
     }
     va_end(ap);
@@ -406,7 +403,7 @@ namespace llarp::quic
 
     settings.initial_ts = get_timestamp();
     // FIXME: IPv6
-    settings.max_udp_payload_size = NGTCP2_MAX_PKTLEN_IPV4;
+    settings.max_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
     // settings.initial_rtt = ???; # NGTCP2's default is 333ms
 
@@ -1185,8 +1182,7 @@ namespace llarp::quic
     ngtcp2_conn_get_local_transport_params(*this, &tparams);
 
     assert(conn_buffer.empty());
-    static_assert(NGTCP2_MAX_PKTLEN_IPV4 > NGTCP2_MAX_PKTLEN_IPV6);
-    conn_buffer.resize(NGTCP2_MAX_PKTLEN_IPV4);
+    conn_buffer.resize(Endpoint::max_pkt_size_v4);
 
     auto* buf = u8data(conn_buffer);
     auto* bufend = buf + conn_buffer.size();

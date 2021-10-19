@@ -75,7 +75,7 @@ namespace llarp
     {
       if (!item.BDecode(buf))
       {
-        llarp::LogWarnTag("llarp/bencode.hpp", "failed to decode key ", k, " for entry in dict");
+        llarp::LogWarn("failed to decode key ", k, " for entry in dict");
 
         return false;
       }
@@ -94,7 +94,7 @@ namespace llarp
       uint64_t read_i;
       if (!bencode_read_integer(buf, &read_i))
       {
-        llarp::LogWarnTag("llarp/BEncode.hpp", "failed to decode key ", k, " for integer in dict");
+        llarp::LogWarn("failed to decode key ", k, " for integer in dict");
         return false;
       }
 
@@ -210,8 +210,7 @@ namespace llarp
             return true;
           if (sink.DecodeKey(*key, buffer))
             return true;
-          llarp::LogWarnTag(
-              "llarp/bencode.hpp", "undefined key '", *key->cur, "' for entry in dict");
+          llarp::LogWarn("undefined key '", *key->cur, "' for entry in dict");
 
           return false;
         },

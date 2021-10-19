@@ -10,7 +10,7 @@ to configure lokinet to be an exit add into `lokinet.ini`:
     keyfile=/var/lib/lokinet/exit.private
     reachable=1
     ifaddr=10.0.0.1/16
-    hops=1
+    hops=2
     paths=8
 
 
