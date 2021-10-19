@@ -15,12 +15,12 @@ namespace llarp
     PreLog(
         std::stringstream& s,
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename) const override;
 
     virtual void
-    Print(LogLevel lvl, const char* tag, const std::string& msg) override;
+    Print(LogLevel lvl, std::string_view tag, const std::string& msg) override;
 
     void
     PostLog(std::stringstream& ss) const override;

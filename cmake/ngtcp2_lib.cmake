@@ -12,6 +12,8 @@ function(add_ngtcp2_lib)
   HexVersion(PACKAGE_VERSION_NUM ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3})
   configure_file("ngtcp2/lib/includes/ngtcp2/version.h.in" "ngtcp2/lib/includes/ngtcp2/version.h" @ONLY)
 
+  set(BUILD_SHARED_LIBS OFF)
+
   # Checks for header files.
   include(CheckIncludeFile)
   check_include_file("arpa/inet.h"   HAVE_ARPA_INET_H)
@@ -48,5 +50,3 @@ function(add_ngtcp2_lib)
 
   target_compile_definitions(ngtcp2 PRIVATE -DHAVE_CONFIG_H -D_GNU_SOURCE)
 endfunction()
-
-

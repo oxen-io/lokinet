@@ -1,6 +1,7 @@
 include(Version)
 
 add_library(lokinet-util
+  STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
@@ -9,7 +10,6 @@ add_library(lokinet-util
   util/logging/android_logger.cpp
   util/logging/buffer.cpp
   util/logging/file_logger.cpp
-  util/logging/json_logger.cpp
   util/logging/logger.cpp
   util/logging/logger_internal.cpp
   util/logging/loglevel.cpp

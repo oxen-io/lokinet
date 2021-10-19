@@ -748,11 +748,14 @@ namespace llarp
         LogError("short XMIT from ", m_RemoteAddr);
         return;
       }
-      uint16_t sz = bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
-      uint64_t rxid = bufbe64toh(data.data() + CommandOverhead + sizeof(uint16_t) + PacketOverhead);
-      ShortHash h{
-          data.data() + CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t) + PacketOverhead};
-      LogTrace("rxid=", rxid, " sz=", sz, " h=", h.ToHex(), " from ", m_RemoteAddr);
+      auto* pos = data.data() + CommandOverhead + PacketOverhead;
+      uint16_t sz = bufbe16toh(pos);
+      pos += sizeof(sz);
+      uint64_t rxid = bufbe64toh(pos);
+      pos += sizeof(rxid);
+      auto p2 = pos + ShortHash::SIZE;
+      assert(p2 == data.data() + XMITOverhead);
+      LogTrace("rxid=", rxid, " sz=", sz, " h=", oxenmq::to_hex(pos, p2), " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
       {
         // check for replay
@@ -769,8 +772,8 @@ namespace llarp
         auto itr = m_RXMsgs.find(rxid);
         if (itr == m_RXMsgs.end())
         {
-          itr =
-              m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()}).first;
+          itr = m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, ShortHash{pos}, m_Parent->Now()})
+                    .first;
           sz = std::min(sz, uint16_t{FragmentSize});
           if ((data.size() - XMITOverhead) == sz)
           {
