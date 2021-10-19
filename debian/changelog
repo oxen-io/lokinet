@@ -1,3 +1,88 @@
+lokinet (0.9.7-1~ubuntu2110) impish; urgency=medium
+
+  [ Jeff ]
+  * make lokinet-util library static
+
+  [ Jeff Becker ]
+  * bump ngtcp2 submodule
+  * make it compile again (squashme)
+  * update submodule
+  * make it compile again
+  * update ci to use main lokinet mobile repo
+  * always build ngtcp2 as static
+  * refactor logging to use std::source_location
+
+  [ jeff ]
+  * make source location happy on macos * because of course apple doesn't provide any implementation (lmao) we provide one ourself
+
+  [ Jeff Becker ]
+  * use inline source_location implementation for android too
+  * for some reason [[maybe_unused]] is hated by buster 32 bit x86 so we do something else to appease that compiler.
+  * fix up gripes in source_location
+  * refactor for apple
+  * update log statement for win32
+  * use llarp:: prefix for LogError
+  * fix up logging, put _log into anonynous namespace, make only log trace nop in release builds
+  * some compilers hated [[maybe_unused]] so use (void) when they are unused
+  * iterate through directory entries in lexigraphical order
+
+  [ Jeff ]
+  * Update fs.hpp
+
+  [ Jeff Becker ]
+  * handle exceptions on setup and config load without aborting
+  * set base v6 address to nullopt when explicit empty string is provided
+  * catch ipv6 ioctl throwing when someone runs lokinet with no ipv6
+
+  [ Nuc1eoN ]
+  * Add missing dep 'cppzmq' (#1764)
+
+  [ Jason Rhinelander ]
+  * Reformat
+  * Override debs to not use zstd
+
+  [ Jeff ]
+  * prevent bizare half open state. (#1754)
+
+  [ Sean ]
+  * RPC call for summary get_status (#1742)
+
+  [ Jeff Becker ]
+  * fix debian sid compiler error
+
+  [ Jason Rhinelander ]
+  * Another gcc-11 fix
+  * Update clang build to 13; add full llvm-13 build
+  * Add missing deprecated copy assignment operator
+  * Add jsonnet formatting (if jsonnet is installed)
+  * make format
+  * which => command -v; different format.sh exit codes
+  * Remove windows linefeeds
+  * Add libzmq3-dev; change deps into arrays
+  * Docker image updates
+  * Update deb repo dns name
+  * CI docker multiarch
+  * Docker package updates:
+  * Reformat RUN commands to make editing easier
+  * Update Catch2 to latest to fix build on impish
+  * Add automake, libtool, libjemalloc-dev
+  * Add cached images with debhelper & related tools for deb pipelines
+  * No recommends
+  * Make sure we always pull the latest image
+  * Fix arch-specific docker repo names
+  * Disable ABI warnings on buster/armhf
+  * Add missing xz-utils to buster
+  * Reorder pipelines to put static builds together
+  * Fetch CI submodules in parallel
+
+  [ Jeff Becker ]
+  * version bump to 0.9.7
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 19 Oct 2021 16:27:51 -0300
+
 lokinet (0.9.6-6~ubuntu2110) impish; urgency=medium
 
   * Fix installed bootstrap permissions (remove +x)
