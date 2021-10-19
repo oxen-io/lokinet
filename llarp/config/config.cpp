@@ -1062,7 +1062,7 @@ namespace llarp
 
     constexpr Default DefaultLogType{"file"};
     constexpr Default DefaultLogFile{""};
-    constexpr Default DefaultLogLevel{"warn"};
+    constexpr Default DefaultLogLevel{"info"};
 
     conf.defineOption<std::string>(
         "logging",
