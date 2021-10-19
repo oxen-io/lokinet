@@ -384,21 +384,6 @@ namespace llarp::vpn
     explicit WintunInterface(wintun::API* api, InterfaceInfo info, AbstractRouter* router)
         : m_API{api}, m_Info{std::move(info)}, _router{router}
     {
-      auto table = AdapterTable();
-      // get existing dns settings so we can restore them when we destruct
-      std::unordered_map<std::wstring, llarp::SockAddr> dnsAddrs;
-
-      for (auto* row = table.get(); row->Next; row = row->Next)
-      {
-        if (row->FirstDnsServerAddress and row->FriendlyName)
-        {
-          LogInfo(to_width<std::string>(std::wstring{row->FriendlyName}));
-          dnsAddrs.emplace(
-              row->FriendlyName,
-              *static_cast<const sockaddr*>(row->FirstDnsServerAddress->Address.lpSockaddr));
-        }
-      }
-
       // make our adapter
       m_Adapter = m_API->MakeAdapterPtr(m_Info);
 
@@ -407,18 +392,6 @@ namespace llarp::vpn
       {
         m_API->AddAdapterAddress(m_Adapter, addr);
       }
-
-      // set new dns settings on every adapter
-      for (auto* row = table.get(); row->Next; row = row->Next)
-      {
-        if (row->FriendlyName)
-        {
-          SetAdapterDNS(row->FriendlyName, m_Info.dnsaddr);
-        }
-      }
-      // set up dns reverting
-      for (const auto& [ifaddr, dnsaddr] : dnsAddrs)
-        m_RevertDNS.emplace_back(ifaddr, dnsaddr);
     }
 
     void
