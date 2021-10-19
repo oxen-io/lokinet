@@ -493,7 +493,6 @@ namespace llarp::vpn
       {
         LogError("failed to run fwpm transaction: ", ex.what());
         FwpmTransactionAbort0(m_Handle);
-        throw std::current_exception();
       }
     }
 
@@ -590,6 +589,9 @@ namespace llarp::vpn
 
         _filter.displayData.name = _name.data();
         _filter.displayData.description = _description.data();
+
+        LogInfo("adding firewall filter: ", to_width<std::string>(_name));
+
         if (auto err = FwpmFilterAdd0(_engine, &_filter, nullptr, &_ID); err != ERROR_SUCCESS)
           throw win32::error{err, "failed to add fwpm filter: "};
       }
@@ -657,6 +659,7 @@ namespace llarp::vpn
           std::wstring name,
           std::wstring description)
       {
+        LogInfo("adding filter ", to_width<std::string>(name));
         auto filter = std::make_unique<Filter>(
             m_Handle,
             *this,
@@ -916,14 +919,22 @@ namespace llarp::vpn
     void
     AddBlackhole() override
     {
+      LogInfo("firewall going up...");
       RunTransaction([&]() {
         m_Firewall = std::make_unique<Firewall>(m_Handle);
+        LogInfo("Allow loopback...");
         PermitLoopback();
+        LogInfo("Permit DHCP...");
         PermitDHCP();
         for (auto& uid : m_Interfaces)
+        {
+          LogInfo("permit interface");
           PermitViaInterface((uint64_t*)&uid);
+        }
+        LogInfo("drop the rest on the floor");
         DropAll();
       });
+      LogInfo("firewall setup over");
     }
 
     void
