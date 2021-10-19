@@ -205,7 +205,7 @@ namespace llarp::vpn
     NetSH(std::string commands)
     {
       commands = NetSHCommand() + " interface IPv6 " + commands;
-      LogInfo(commands);
+      LogInfo("exec: ", commands);
       ::system(commands.c_str());
     }
 
@@ -500,7 +500,7 @@ namespace llarp::vpn
     void
     Execute(std::string cmd) const
     {
-      LogInfo(cmd);
+      llarp::LogInfo("exec: ", cmd);
       ::system(cmd.c_str());
     }
 

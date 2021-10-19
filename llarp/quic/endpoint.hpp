@@ -64,8 +64,8 @@ namespace llarp::quic
     // Max theoretical size of a UDP packet is 2^16-1 minus IP/UDP header overhead
     static constexpr size_t max_buf_size = 64 * 1024;
     // Max size of a UDP packet that we'll send
-    static constexpr size_t max_pkt_size_v4 = NGTCP2_MAX_PKTLEN_IPV4;
-    static constexpr size_t max_pkt_size_v6 = NGTCP2_MAX_PKTLEN_IPV6;
+    static constexpr size_t max_pkt_size_v4 = NGTCP2_MAX_UDP_PAYLOAD_SIZE;
+    static constexpr size_t max_pkt_size_v6 = NGTCP2_MAX_UDP_PAYLOAD_SIZE;
 
     using primary_conn_ptr = std::shared_ptr<Connection>;
     using alias_conn_ptr = std::weak_ptr<Connection>;

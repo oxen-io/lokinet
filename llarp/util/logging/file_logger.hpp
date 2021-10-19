@@ -23,12 +23,12 @@ namespace llarp
     PreLog(
         std::stringstream& out,
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename) const override;
 
     void
-    Print(LogLevel, const char*, const std::string& msg) override;
+    Print(LogLevel, std::string_view filename, const std::string& msg) override;
 
     void
     Tick(llarp_time_t now) override;
@@ -39,7 +39,7 @@ namespace llarp
     void
     AppendLog(
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename,
         const std::string msg) override;

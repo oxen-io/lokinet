@@ -57,7 +57,6 @@ namespace llarp::vpn
       control.ioctl(SIOCGIFINDEX, &ifr);
       const int ifindex = ifr.ifr_ifindex;
 
-      IOCTL control6{AF_INET6};
       for (const auto& ifaddr : m_Info.addrs)
       {
         if (ifaddr.fam == AF_INET)
@@ -78,9 +77,9 @@ namespace llarp::vpn
           ifr6.ifindex = ifindex;
           try
           {
-            control6.ioctl(SIOCSIFADDR, &ifr6);
+            IOCTL{AF_INET6}.ioctl(SIOCSIFADDR, &ifr6);
           }
-          catch (permission_error& ex)
+          catch (std::exception& ex)
           {
             LogError("we are not allowed to use IPv6 on this system: ", ex.what());
           }

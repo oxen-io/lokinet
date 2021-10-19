@@ -117,16 +117,16 @@ namespace llarp
       {
         if (!qd.Decode(buf))
         {
-          llarp::LogError("failed to decode question");
+          LogError("failed to decode question");
           return false;
         }
-        llarp::LogDebug(qd);
+        LogDebug("dns question: ", qd);
       }
       for (auto& an : answers)
       {
         if (not an.Decode(buf))
         {
-          llarp::LogDebug("failed to decode answer");
+          LogDebug("failed to decode answer");
           return false;
         }
       }
