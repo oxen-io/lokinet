@@ -8,7 +8,8 @@ namespace llarp
 {
   void
   AndroidLogStream::PreLog(
-      std::stringstream& ss, LogLevel lvl, const char* fname, int lineno, const std::string&) const
+      std::stringstream& ss, LogLevel lvl, std::string_view fname, int lineno, const std::string&)
+      const
   {
     switch (lvl)
     {
@@ -43,7 +44,7 @@ namespace llarp
   {}
 
   void
-  AndroidLogStream::Print(LogLevel lvl, const char* tag, const std::string& msg)
+  AndroidLogStream::Print(LogLevel lvl, std::string_view tag, const std::string& msg)
   {
     std::string str("lokinet|");
     str += tag;
@@ -61,6 +62,8 @@ namespace llarp
         return;
       case eLogError:
         __android_log_write(ANDROID_LOG_ERROR, str.c_str(), msg.c_str());
+        return;
+      default:
         return;
     }
 

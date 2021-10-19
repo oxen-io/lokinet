@@ -13,7 +13,7 @@ namespace llarp
   {
     struct Introduction
     {
-      PubKey router;
+      RouterID router;
       PathID_t pathID;
       llarp_time_t latency = 0s;
       llarp_time_t expiresAt = 0s;
