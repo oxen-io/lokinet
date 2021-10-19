@@ -105,7 +105,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
   }
   catch (const std::exception& e)
   {
-    LogError("Failed to initialize lokinet from config: ", e.what());
+    llarp::LogError("Failed to initialize lokinet from config: ", e.what());
   }
   return nullptr;
 }
@@ -149,7 +149,7 @@ llarp_apple_start(void* lokinet, void* callback_context)
   }
   catch (const std::exception& e)
   {
-    LogError("Failed to initialize lokinet: ", e.what());
+    llarp::LogError("Failed to initialize lokinet: ", e.what());
     return -1;
   }
 
@@ -178,7 +178,7 @@ llarp_apple_incoming(void* lokinet, const void* bytes, size_t size)
   if (iface->OfferReadPacket(buf))
     return 0;
 
-  LogError("invalid IP packet: ", llarp::buffer_printer(buf));
+  llarp::LogError("invalid IP packet: ", llarp::buffer_printer(buf));
   return -1;
 }
 

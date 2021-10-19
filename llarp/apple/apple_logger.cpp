@@ -6,7 +6,7 @@ namespace llarp::apple
   NSLogStream::PreLog(
       std::stringstream& ss,
       LogLevel lvl,
-      const char* fname,
+      std::string_view fname,
       int lineno,
       const std::string& nodename) const
   {
@@ -17,7 +17,7 @@ namespace llarp::apple
   }
 
   void
-  NSLogStream::Print(LogLevel, const char*, const std::string& msg)
+  NSLogStream::Print(LogLevel, std::string_view, const std::string& msg)
   {
     ns_logger(msg.c_str());
   }

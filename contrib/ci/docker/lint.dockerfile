@@ -1,3 +1,7 @@
-FROM debian:sid
-RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
-RUN /bin/bash -c 'apt-get -o=Dpkg::Use-Pty=0 -q update && apt-get -o=Dpkg::Use-Pty=0 -q install -y eatmydata git clang-format-11'
+ARG ARCH=amd64
+FROM registry.oxen.rocks/lokinet-ci-debian-sid-base/${ARCH}
+RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
+    clang-format-11 \
+    eatmydata \
+    git \
+    jsonnet
