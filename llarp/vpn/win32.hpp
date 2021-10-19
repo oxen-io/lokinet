@@ -186,8 +186,8 @@ namespace llarp::vpn
         _iterAdapters(
             PoolName,
             [](WINTUN_ADAPTER_HANDLE handle, LPARAM user) -> int {
-              ((API*)(user))->_deleteAdapter(handle, true, nullptr);
-              return TRUE;
+              ((API*)(user))->_deleteAdapter(handle, false, nullptr);
+              return 1;
             },
             (LPARAM)this);
       }
@@ -240,13 +240,17 @@ namespace llarp::vpn
       {
         const auto name = to_width<std::wstring>(info.ifname);
 
-        Deleter<_WINTUN_ADAPTER> deleter{[this](auto* ptr) {
-          _deleteAdapter(ptr, true, nullptr);
+        Deleter<_WINTUN_ADAPTER> deleter{[this, name = info.ifname](auto* ptr) {
+          LogInfo("deleting adapter ", name);
           _freeAdapter(ptr);
+          _deleteAdapter(ptr, false, nullptr);
         }};
 
         if (auto ptr = _openAdapter(PoolName, name.c_str()))
           return Adapter_ptr{ptr, std::move(deleter)};
+
+        llarp::LogInfo("creating new wintun adapter: ", info.ifname);
+
         // reset error code
         SetLastError(0);
 
