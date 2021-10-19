@@ -333,7 +333,7 @@ mult96x8_float(__m256 h[192], const __m256 f[96], const __m256 g[96])
 /* 96*(16*int8 stored in 32*int8) g inputs between -8 and 8 */
 /* 192*16*int16 h outputs between -2400 and 2400 */
 static void
-mult96x16(__m256i h[192], const __m256i f[96], const __m256i g[96])
+mult96x16(__m256i * h, const __m256i * f, const __m256i * g)
 {
   __m256 hfloat[192];
   __m256 gfloat[96];

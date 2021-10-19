@@ -16,15 +16,15 @@ namespace llarp::apple
     PreLog(
         std::stringstream& s,
         LogLevel lvl,
-        const char* fname,
+        std::string_view fname,
         int lineno,
         const std::string& nodename) const override;
 
     void
-    Print(LogLevel lvl, const char* tag, const std::string& msg) override;
+    Print(LogLevel lvl, std::string_view tag, const std::string& msg) override;
 
     void
-    PostLog(std::stringstream& ss) const override
+    PostLog(std::stringstream&) const override
     {}
 
     void
