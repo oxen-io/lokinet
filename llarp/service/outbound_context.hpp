@@ -23,6 +23,9 @@ namespace llarp
 
       ~OutboundContext() override;
 
+      void
+      Tick(llarp_time_t now) override;
+
       util::StatusObject
       ExtractStatus() const;
 
@@ -129,6 +132,9 @@ namespace llarp
       void
       KeepAlive();
 
+      bool
+      ShouldKeepAlive(llarp_time_t now) const;
+
       const IntroSet&
       GetCurrentIntroSet() const
       {
@@ -170,6 +176,7 @@ namespace llarp
       bool sentIntro = false;
       std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
+      llarp_time_t m_LastKeepAliveAt = 0s;
     };
   }  // namespace service
 

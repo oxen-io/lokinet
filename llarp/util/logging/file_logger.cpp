@@ -65,18 +65,18 @@ namespace llarp
   FileLogStream::PreLog(
       std::stringstream& ss,
       LogLevel lvl,
-      const char* fname,
+      std::string_view filename,
       int lineno,
       const std::string& nodename) const
   {
     ss << "[" << LogLevelToString(lvl) << "] ";
     ss << "[" << nodename << "]"
-       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << filename << ":" << lineno
        << "\t";
   }
 
   void
-  FileLogStream::Print(LogLevel, const char*, const std::string& msg)
+  FileLogStream::Print(LogLevel, std::string_view, const std::string& msg)
   {
     m_Lines.pushBack(msg);
   }
@@ -84,12 +84,12 @@ namespace llarp
   void
   FileLogStream::AppendLog(
       LogLevel lvl,
-      const char* fname,
+      std::string_view filename,
       int lineno,
       const std::string& nodename,
       const std::string msg)
   {
-    ILogStream::AppendLog(lvl, fname, lineno, nodename, msg);
+    ILogStream::AppendLog(lvl, filename, lineno, nodename, msg);
     Tick(llarp::time_now_ms());
   }
 
