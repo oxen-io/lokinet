@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.6
+Version:        0.9.7
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -157,6 +157,9 @@ systemctl enable --now lokinet
 %systemd_postun lokinet.service
 
 %changelog
+* Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
+- bump version
+
 * Thu Oct 14 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Remove Patch2: default-upstream-dns.patch
 
