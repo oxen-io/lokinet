@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.6
+Version:        0.9.7
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -156,6 +156,9 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
+- bump version
+
 * Thu Sep 09 2021 Jason Rhinelander <jason@imaginary.ca> - 0.9.6-1
 - 0.9.6 release.
 - bundle bootstrap.signed instead of downloading
@@ -176,8 +179,8 @@ fi
 - Updated for rpm.oxen.io packaging
 - Split into lokinet/lokinet-bin/lokinet-monitor packages
 
-* Thu Jul 22 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.9.5
+* Thu Jul 22 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.9.5
 - Build with systemd-resolved and binary lokinet-bootstrap
 
-* Sun Mar 07 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.8.2
+* Sun Mar 07 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.8.2
 - First Lokinet RPM
