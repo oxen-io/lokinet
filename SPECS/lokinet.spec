@@ -153,6 +153,9 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
+- bump version
+
 * Thu Oct 14 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6~1
 - Remove Patch2: default-dns.patch
 
