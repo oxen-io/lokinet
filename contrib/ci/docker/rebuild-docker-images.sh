@@ -28,7 +28,7 @@ for file in "${files[@]}"; do
     namearch=$registry/lokinet-ci-$name/$arch
     latest=$registry/lokinet-ci-$name:latest
     echo -e "\e[32;1mrebuilding \e[35;1m$namearch\e[0m"
-    docker build --pull -f $file -t $namearch --build-arg ARCH=$arch .
+    docker build --pull -f $file -t $namearch --build-arg ARCH=$arch $DOCKER_BUILD_OPTS .
     docker push $namearch
 
     manifests[$latest]="${manifests[$latest]} $namearch"

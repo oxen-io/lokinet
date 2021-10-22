@@ -26,6 +26,11 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
         openssh-client \
         patch \
         pkg-config \
+        pybind11-dev \
         python3-dev \
+        python3-pip \
+        python3-pybind11 \
+        python3-pytest \
+        python3-setuptools \
         qttools5-dev \
     && mkdir -p /usr/lib/x86_64-linux-gnu/pgm-5.2/include
