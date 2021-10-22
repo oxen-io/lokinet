@@ -35,5 +35,10 @@ RUN apt-get -o=Dpkg::Use-Pty=0 --no-install-recommends -q install -y \
         openssh-client \
         patch \
         pkg-config \
+        pybind11-dev \
         python3-dev \
+        python3-pip \
+        python3-pybind11 \
+        python3-pytest \
+        python3-setuptools \
         qttools5-dev
