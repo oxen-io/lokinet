@@ -1,6 +1,8 @@
 ARG ARCH=amd64
 FROM registry.oxen.rocks/lokinet-ci-debian-bullseye-base/${ARCH}
-RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
+RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
+    && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
+    && apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
         automake \
         ccache \
         cmake \
