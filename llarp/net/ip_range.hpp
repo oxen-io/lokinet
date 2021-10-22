@@ -63,6 +63,13 @@ namespace llarp
       return bits::count_bits(netmask_bits);
     }
 
+    /// return true if our range and other intersect
+    constexpr bool
+    operator*(const IPRange& other) const
+    {
+      return Contains(other) or other.Contains(*this);
+    }
+
     /// return true if the other range is inside our range
     constexpr bool
     Contains(const IPRange& other) const
