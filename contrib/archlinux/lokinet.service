@@ -1,0 +1,31 @@
+[Unit]
+Description=Lokinet: Anonymous Network layer thingydoo
+Wants=network-online.target
+After=network-online.target
+Wants=lokinet-bootstrap.service
+After=lokinet-bootstrap.service
+Wants=lokinet-default-config.service
+After=lokinet-default-config.service
+
+[Service]
+Type=notify
+WatchdogSec=30s
+User=lokinet
+SyslogIdentifier=lokinet
+WorkingDirectory=/var/lib/lokinet
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
+Restart=always
+RestartSec=5s
+
+# Hardening
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ReadWritePaths=/var/lib/lokinet
+
+[Install]
+WantedBy=multi-user.target
