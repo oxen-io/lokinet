@@ -46,7 +46,7 @@ package() {
 	install -D -m 644 "$srcdir/contrib/archlinux/lokinet-resume.service"         "$pkgdir/usr/lib/systemd/system/lokinet-resume.service"
 	install -D -m 644 "$srcdir/contrib/archlinux/lokinet.sysusers"               "$pkgdir/usr/lib/sysusers.d/lokinet.conf"
 	install -D -m 644 "$srcdir/contrib/archlinux/lokinet.tmpfiles"               "$pkgdir/usr/lib/tmpfiles.d/lokinet.conf"
-	install -D -m 644 "$srcdir/contrib/archlinux/lokinet.pkla"                   "$pkgdir/var/lib/polkit-1/localauthority/10-vendor.d/lokinet.pkla"
+	install -D -m 644 "$srcdir/contrib/systemd-resolved/lokinet.pkla"            "$pkgdir/var/lib/polkit-1/localauthority/10-vendor.d/lokinet.pkla"
 	install -D -m 750 -d "$pkgdir/usr/share/polkit-1/rules.d"
-	install -D -m 644 "$srcdir/contrib/archlinux/lokinet.rules"                  "$pkgdir/usr/share/polkit-1/rules.d/lokinet.rules"
+	install -D -m 644 "$srcdir/contrib/systemd-resolved/lokinet.rules"           "$pkgdir/usr/share/polkit-1/rules.d/lokinet.rules"
 }
