@@ -1,6 +1,5 @@
 # Maintainer: jeff <jeff@oxen.io>
 pkgname=lokinet-git
-pkgver=420.69.poggerinos.yoloswag.fresh.af.from.git
 pkgrel=3
 pkgdesc="Anonymous, decentralized and IP based overlay network for the internet."
 arch=('x86_64' 'aarch64')
@@ -11,6 +10,11 @@ makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet' 'lokinet-bin')
 source=("lokinet-git::git+https://github.com/oxen-io/lokinet#branch=makepkg")
 b2sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/lokinet-git"
+    printf 'r%s.%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
 
 prepare() {
           cd lokinet-git
