@@ -1,4 +1,4 @@
-# Maintainer: jeff <jeff@oxen.io>
+# Maintainer: jason <jason@oxen.io>
 pkgname=lokinet-git
 pkgver=git
 pkgrel=3
@@ -9,7 +9,7 @@ license=('GPL3')
 depends=('libuv' 'libsodium' 'curl' 'unbound' 'sqlite' 'jemalloc' 'libsystemd')
 makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet' 'lokinet-bin')
-source=("lokinet-git::git+https://github.com/oxen-io/lokinet#branch=makepkg")
+source=("lokinet-git::git+https://github.com/oxen-io/lokinet#branch=stable")
 b2sums=('SKIP')
 
 pkgver() {
