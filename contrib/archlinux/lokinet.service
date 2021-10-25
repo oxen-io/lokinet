@@ -20,11 +20,6 @@ Restart=always
 RestartSec=5s
 
 # Hardening
-PrivateTmp=yes
-ProtectHome=yes
-ProtectSystem=strict
-ProtectHostname=yes
-ProtectKernelLogs=yes
 ReadWritePaths=/var/lib/lokinet
 
 [Install]
