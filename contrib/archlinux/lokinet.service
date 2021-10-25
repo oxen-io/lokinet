@@ -15,7 +15,6 @@ SyslogIdentifier=lokinet
 WorkingDirectory=/var/lib/lokinet
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-ExecStartPre=/usr/bin/modprobe tun
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
 Restart=always
 RestartSec=5s
