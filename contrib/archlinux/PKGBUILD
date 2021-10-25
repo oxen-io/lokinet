@@ -6,7 +6,7 @@ pkgdesc="Anonymous, decentralized and IP based overlay network for the internet.
 arch=('x86_64' 'aarch64')
 url="https://lokinet.org"
 license=('GPL3')
-depends=('libuv' 'libsodium' 'curl' 'unbound' 'sqlite' 'jemalloc' 'libsystemd')
+depends=('libuv' 'libsodium' 'curl' 'unbound' 'sqlite' 'jemalloc' 'libsystemd' 'zeromq')
 makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet' 'lokinet-bin')
 source=("$pkgname::git+https://github.com/oxen-io/lokinet#branch=makepkg")
@@ -31,7 +31,7 @@ build() {
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_C_FLAGS="$CFLAGS" \
         -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
-        -DBUILD_SHARED_LIBS=OFF \
+        -DFORCE_OXENMQ_SUBMODULE=ON \
         -DWITH_TESTS=OFF \
         -DWITH_SYSTEMD=ON \
         -DWITH_SETCAP=OFF \
