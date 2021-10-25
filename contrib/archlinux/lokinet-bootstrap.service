@@ -1,0 +1,11 @@
+[Unit]
+Description=Lokinet bootstrap
+ConditionFileNotEmpty=!/var/lib/lokinet/bootstrap.signed
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=_lokinet
+WorkingDirectory=/var/lib/lokinet
+ExecStart=/usr/bin/lokinet-bootstrap lokinet bootstrap.signed

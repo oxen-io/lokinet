@@ -1,0 +1,14 @@
+[Unit]
+Description=Lokinet VPN tunnel: shove all traffic over lokinet
+Requires=lokinet.service
+After=lokinet.service
+
+[Service]
+User=_lokinet
+Type=oneshot
+ExecStart=/usr/bin/lokinet-vpn --up --exit %i
+ExecStop=/usr/bin/lokinet-vpn --down
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

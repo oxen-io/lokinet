@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart lokinet on resume from sleep
+After=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart lokinet
+
+[Install]
+WantedBy=sleep.target
