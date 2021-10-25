@@ -9,7 +9,7 @@ license=('GPL3')
 depends=('libuv' 'libsodium' 'curl' 'unbound' 'sqlite' 'jemalloc' 'libsystemd')
 makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet' 'lokinet-bin')
-source=("lokinet-git::git+https://github.com/oxen-io/lokinet#branch=makepkg")
+source=("$pkgname::git+https://github.com/oxen-io/lokinet#branch=makepkg")
 b2sums=('SKIP')
 
 pkgver() {
