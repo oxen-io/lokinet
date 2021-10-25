@@ -1,0 +1,10 @@
+[Unit]
+Description=Lokinet default config generator
+ConditionPathExists=!/var/lib/lokinet/lokinet.ini
+Wants=local-fs.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=_lokinet
+ExecStart=/usr/bin/lokinet -g /var/lib/lokinet/lokinet.ini
