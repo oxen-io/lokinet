@@ -29,6 +29,7 @@ build() {
 		-DWITH_TESTS=OFF \
 		-DWITH_SYSTEMD=ON \
         -DWITH_SETCAP=OFF \
+        -DBUILD_LIBLOKINET=OFF \
 		..
 	make
 }
