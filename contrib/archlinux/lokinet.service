@@ -7,6 +7,7 @@ After=lokinet-bootstrap.service
 Wants=lokinet-default-config.service
 After=lokinet-default-config.service
 Requires=modprobe@tun.services
+After=modprobe@tun.services
 
 [Service]
 Type=notify
