@@ -1,1 +1,0 @@
-../00-ubuntu-bionic-base.dockerfile
