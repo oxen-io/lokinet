@@ -264,7 +264,7 @@ executor = ThreadPoolExecutor(max_workers=max(options.parallel, 1))
 jobs = [executor.submit(b) for b in (android_builds, lint_build, nodejs_build)]
 
 for d in distros:
-    for a in arches(distros):
+    for a in arches(d):
         jobs.append(executor.submit(distro_build, d, a))
 while len(jobs):
     j = jobs.pop(0)
