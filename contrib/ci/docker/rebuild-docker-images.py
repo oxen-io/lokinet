@@ -12,6 +12,9 @@ parser.add_option("--no-cache", action="store_true",
                   help="Run `docker build` with the `--no-cache` option to ignore existing images")
 parser.add_option("--parallel", "-j", type="int", default=1,
                   help="Run up to this many builds in parallel")
+parser.add_option("--distro", type="string", default="",
+                  help="Build only this distro; should be DISTRO-CODE or DISTRO-CODE/ARCH, "
+                       "e.g. debian-sid/amd64")
 (options, args) = parser.parse_args()
 
 registry_base = 'registry.oxen.rocks/lokinet-ci-'
@@ -19,15 +22,35 @@ registry_base = 'registry.oxen.rocks/lokinet-ci-'
 distros = [*(('debian', x) for x in ('sid', 'stable', 'testing', 'bullseye', 'buster')),
            *(('ubuntu', x) for x in ('rolling', 'lts', 'impish', 'hirsute', 'focal', 'bionic'))]
 
+if options.distro:
+    d = options.distro.split('-')
+    if len(d) != 2 or d[0] not in ('debian', 'ubuntu') or not d[1]:
+        print("Bad --distro value '{}'".format(options.distro), file=sys.stderr)
+        sys.exit(1)
+    distros = [(d[0], d[1].split('/')[0])]
+
+
 manifests = {}  # "image:latest": ["image/amd64", "image/arm64v8", ...]
 manifestlock = threading.Lock()
 
 
 def arches(distro):
+    if options.distro and '/' in options.distro:
+        arch = options.distro.split('/')
+        if arch not in ('amd64', 'i386', 'arm64v8', 'arm32v7'):
+            print("Bad --distro value '{}'".format(options.distro), file=sys.stderr)
+            sys.exit(1)
+        return [arch]
+
     a = ['amd64', 'arm64v8', 'arm32v7']
     if distro[0] == 'debian' or distro == ('ubuntu', 'bionic'):
         a.append('i386')  # i386 builds don't work on later ubuntu
     return a
+
+
+hacks = {
+    registry_base + 'ubuntu-bionic-builder': '&& mkdir -p /usr/lib/x86_64-linux-gnu/pgm-5.2/include'
+}
 
 
 failure = False
@@ -101,8 +124,9 @@ FROM {}/{}:{}
 RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
 RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
     && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
-    && apt-get -o=Dpkg::Use-Pty=0 -q autoremove -y
-    """.format(arch, distro[0], codename))
+    && apt-get -o=Dpkg::Use-Pty=0 -q autoremove -y \
+        {hacks}
+""".format(arch, distro[0], codename, hacks=hacks.get(tag, '')))
 
 
 def distro_build(distro, arch):
@@ -127,8 +151,9 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
         g++ \
         git \
         git-buildpackage \
-        openssh-client
-""".format(**fmtargs))
+        openssh-client \
+        {hacks}
+""".format(**fmtargs, hacks=hacks.get(prefix + '-builder', '')))
 
     # (distro)-(codename): Basic image we use for most builds.  This takes the -builder and adds
     # most dependencies found in our packages.
@@ -177,8 +202,9 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
         python3-pybind11 \
         python3-pytest \
         python3-setuptools \
-        qttools5-dev
-""".format(**fmtargs))
+        qttools5-dev \
+        {hacks}
+""".format(**fmtargs, hacks=hacks.get(prefix, '')))
 
 
 # Android and flutter builds on top of debian-stable-base and adds a ton of android crap; we
@@ -257,11 +283,15 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
 
 # Start debian-stable-base/amd64 on its own, because other builds depend on it and we want to get
 # those (especially android/flutter) fired off as soon as possible (because it's slow and huge).
-base_distro_build(['debian', 'stable'], 'amd64')
+if ('debian', 'stable') in distros:
+    base_distro_build(['debian', 'stable'], 'amd64')
 
 executor = ThreadPoolExecutor(max_workers=max(options.parallel, 1))
 
-jobs = [executor.submit(b) for b in (android_builds, lint_build, nodejs_build)]
+if options.distro:
+    jobs = []
+else:
+    jobs = [executor.submit(b) for b in (android_builds, lint_build, nodejs_build)]
 
 for d in distros:
     for a in arches(d):
