@@ -5,6 +5,7 @@ import tempfile
 import optparse
 import sys
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 parser = optparse.OptionParser()
 parser.add_option("--no-cache", action="store_true",
@@ -19,6 +20,7 @@ distros = [*(('debian', x) for x in ('sid', 'stable', 'testing', 'bullseye', 'bu
            *(('ubuntu', x) for x in ('rolling', 'lts', 'impish', 'hirsute', 'focal', 'bionic'))]
 
 manifests = {}  # "image:latest": ["image/amd64", "image/arm64v8", ...]
+manifestlock = threading.Lock()
 
 
 def arches(distro):
@@ -30,45 +32,65 @@ def arches(distro):
 
 failure = False
 
+lineno = 0
+linelock = threading.Lock()
 
-def run_or_report(*args):
+
+def print_line(myline, value):
+    linelock.acquire()
+    global lineno
+    if myline != lineno and sys.__stdout__.isatty():
+        jump = lineno - myline
+        print("\033[{jump}A\r\033[K{value}\033[{jump}B\r".format(jump=jump, value=value), end='')
+        sys.stdout.flush()
+    else:
+        print(value)
+        lineno += 1
+    linelock.release()
+
+
+def run_or_report(*args, myline):
     try:
         subprocess.run(
             args, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
     except subprocess.CalledProcessError as e:
         with tempfile.NamedTemporaryFile(suffix=".log", delete=False) as log:
+            log.write("Error running {}: {}\n\nOutput:\n\n".format(' '.join(args), e).encode())
             log.write(e.output.encode())
             global failure
             failure = True
-            print("""
-\033[31;1mAn error occured ({}) running:
-    {}
-See {} for the command log.\033[0m
-""".format(e, ' '.join(args), log.name), file=sys.stderr)
+            print_line(myline, "\033[31;1mError! See {} for details", log.name)
             raise e
 
 
 def build_tag(tag_base, arch, contents):
     if failure:
         raise ChildProcessError()
+
+    linelock.acquire()
+    myline = lineno
+    linelock.release()
+
     with tempfile.NamedTemporaryFile() as dockerfile:
         dockerfile.write(contents.encode())
         dockerfile.flush()
 
         tag = '{}/{}'.format(tag_base, arch)
-        print("\033[33;1mrebuilding \033[35;1m{}\033[0m".format(tag))
+        print_line(myline, "\033[33;1mRebuilding     \033[35;1m{}\033[0m".format(tag))
         run_or_report('docker', 'build', '--pull', '-f', dockerfile.name, '-t', tag,
-                      *(('--no-cache',) if options.no_cache else ()), '.')
-        print("\033[33;1mpushing \033[35;1m{}\033[0m".format(tag))
-        run_or_report('docker', 'push', tag)
-        print("\033[32;1mFinished \033[35;1m{}\033[0m".format(tag))
+                      *(('--no-cache',) if options.no_cache else ()), '.', myline=myline)
+        print_line(myline, "\033[33;1mPushing        \033[35;1m{}\033[0m".format(tag))
+        run_or_report('docker', 'push', tag, myline=myline)
+        print_line(myline, "\033[32;1mFinished build \033[35;1m{}\033[0m".format(tag))
 
         latest = tag_base + ':latest'
         global manifests
+        manifestlock.acquire()
         if latest in manifests:
             manifests[latest].append(tag)
         else:
             manifests[latest] = [tag]
+        manifestlock.release()
 
 
 def base_distro_build(distro, arch):
@@ -258,10 +280,35 @@ if failure:
     sys.exit(1)
 
 
-for latest, tags in manifests.items():
-    print("\033[32;1mpushing new manifest for \033[33;1m{}[\033[35;1m{}\033[33;1m]\033[0m".format(
-          latest, ', '.join(tags)))
+print("\n\n\033[32;1mAll builds finished successfully; pushing manifests...\033[0m\n")
+
+
+def push_manifest(latest, tags):
+    if failure:
+        raise ChildProcessError()
+
+    linelock.acquire()
+    myline = lineno
+    linelock.release()
 
     subprocess.run(['docker', 'manifest', 'rm', latest], stderr=subprocess.DEVNULL, check=False)
-    run_or_report('docker', 'manifest', 'create', latest, *tags)
-    run_or_report('docker', 'manifest', 'push', latest)
+    print_line(myline, "\033[33;1mCreating manifest \033[35;1m{}\033[0m".format(latest))
+    run_or_report('docker', 'manifest', 'create', latest, *tags, myline=myline)
+    print_line(myline, "\033[33;1mPushing manifest  \033[35;1m{}\033[0m".format(latest))
+    run_or_report('docker', 'manifest', 'push', latest, myline=myline)
+    print_line(myline, "\033[32;1mFinished manifest \033[35;1m{}\033[0m".format(latest))
+
+
+for latest, tags in manifests.items():
+    jobs.append(executor.submit(push_manifest, latest, tags))
+
+while len(jobs):
+    j = jobs.pop(0)
+    try:
+        j.result()
+    except (ChildProcessError, subprocess.CalledProcessError):
+        for k in jobs:
+            k.cancel()
+
+
+print("\n\n\033[32;1mAll done!\n")
