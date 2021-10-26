@@ -1,5 +1,5 @@
 # Maintainer: jason <jason@oxen.io>
-pkgname=lokinet-official
+pkgname=lokinet
 pkgver=0.9.7
 pkgrel=1
 pkgdesc="Anonymous, decentralized and IP based overlay network for the internet."
