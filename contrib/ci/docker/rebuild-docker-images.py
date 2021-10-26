@@ -2,8 +2,12 @@
 
 import subprocess
 import tempfile
+import optparse
 
-no_cache = True  # Whether to build with --no-cache
+parser = optparse.OptionParser()
+parser.add_option("--no-cache", action="store_true",
+                  help="Run `docker build` with the `--no-cache` option to ignore existing images")
+(options, args) = parser.parse_args()
 
 registry_base = 'registry.oxen.rocks/lokinet-ci-'
 
@@ -28,7 +32,7 @@ def build_tag(tag_base, arch, contents):
         tag = '{}/{}'.format(tag_base, arch)
         print("\033[32;1mrebuilding \033[35;1m{}\033[0m".format(tag))
         subprocess.run(['docker', 'build', '--pull', '-f', dockerfile.name, '-t', tag,
-                        *(('--no-cache',) if no_cache else ()), '.'],
+                        *(('--no-cache',) if options.no_cache else ()), '.'],
                        check=True)
         subprocess.run(['docker', 'push', tag], check=True)
 
@@ -246,6 +250,6 @@ for latest, tags in manifests.items():
     print("\033[32;1mpushing new manifest for \033[33;1m{}[\033[35;1m{}\033[33;1m]\033[0m".format(
           latest, ', '.join(tags)))
 
-    subprocess.run(['manifest', 'rm', latest], stderr=DEVNULL, check=False)
-    subprocess.run(['manifest', 'create', latest, *tags], check=True)
-    subprocess.run(['manifest', 'push', latest], check=True)
+    subprocess.run(['docker', 'manifest', 'rm', latest], stderr=subprocess.DEVNULL, check=False)
+    subprocess.run(['docker', 'manifest', 'create', latest, *tags], check=True)
+    subprocess.run(['docker', 'manifest', 'push', latest], check=True)
