@@ -1,6 +1,6 @@
 local distro = 'buster';
-local distro_name = 'Debian 10';
-local distro_docker = 'debian:buster';
+local distro_name = 'Debian ' + distro;
+local distro_docker = 'registry.oxen.rocks/lokinet-ci-debian-' + distro + '-builder';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
@@ -44,7 +44,7 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
 
 [
   deb_pipeline(distro_docker),
-  deb_pipeline('i386/' + distro_docker, buildarch='amd64', debarch='i386'),
-  deb_pipeline('arm64v8/' + distro_docker, buildarch='arm64', debarch='arm64', jobs=4),
-  deb_pipeline('arm32v7/' + distro_docker, buildarch='arm64', debarch='armhf', jobs=4),
+  deb_pipeline(distro_docker + '/i386', buildarch='amd64', debarch='i386'),
+  deb_pipeline(distro_docker + '/arm64v8', buildarch='arm64', debarch='arm64', jobs=4),
+  deb_pipeline(distro_docker + '/arm32v7', buildarch='arm64', debarch='armhf', jobs=4),
 ]
