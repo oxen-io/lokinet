@@ -3,44 +3,84 @@
 import subprocess
 import tempfile
 import optparse
+import sys
+from concurrent.futures import ThreadPoolExecutor
 
 parser = optparse.OptionParser()
 parser.add_option("--no-cache", action="store_true",
                   help="Run `docker build` with the `--no-cache` option to ignore existing images")
+parser.add_option("--parallel", "-j", type="int", default=1,
+                  help="Run up to this many builds in parallel")
 (options, args) = parser.parse_args()
 
 registry_base = 'registry.oxen.rocks/lokinet-ci-'
 
-distros = [*(['debian', x] for x in ('sid', 'stable', 'testing', 'bullseye', 'buster')),
-           *(['ubuntu', x] for x in ('rolling', 'lts', 'impish', 'hirsute', 'focal', 'bionic'))]
+distros = [*(('debian', x) for x in ('sid', 'stable', 'testing', 'bullseye', 'buster')),
+           *(('ubuntu', x) for x in ('rolling', 'lts', 'impish', 'hirsute', 'focal', 'bionic'))]
 
 manifests = {}  # "image:latest": ["image/amd64", "image/arm64v8", ...]
 
 
 def arches(distro):
     a = ['amd64', 'arm64v8', 'arm32v7']
-    if distro[0] == 'debian' or distro == ['ubuntu', 'bionic']:
+    if distro[0] == 'debian' or distro == ('ubuntu', 'bionic'):
         a.append('i386')  # i386 builds don't work on later ubuntu
     return a
 
 
+failure = False
+
+
+def run_or_report(*args):
+    try:
+        subprocess.run(
+            args, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf8')
+    except subprocess.CalledProcessError as e:
+        with tempfile.NamedTemporaryFile(suffix=".log", delete=False) as log:
+            log.write(e.output.encode())
+            global failure
+            failure = True
+            print("""
+\033[31;1mAn error occured ({}) running:
+    {}
+See {} for the command log.\033[0m
+""".format(e, ' '.join(args), log.name), file=sys.stderr)
+            raise e
+
+
 def build_tag(tag_base, arch, contents):
+    if failure:
+        raise ChildProcessError()
     with tempfile.NamedTemporaryFile() as dockerfile:
         dockerfile.write(contents.encode())
         dockerfile.flush()
 
         tag = '{}/{}'.format(tag_base, arch)
-        print("\033[32;1mrebuilding \033[35;1m{}\033[0m".format(tag))
-        subprocess.run(['docker', 'build', '--pull', '-f', dockerfile.name, '-t', tag,
-                        *(('--no-cache',) if options.no_cache else ()), '.'],
-                       check=True)
-        subprocess.run(['docker', 'push', tag], check=True)
+        print("\033[33;1mrebuilding \033[35;1m{}\033[0m".format(tag))
+        run_or_report('docker', 'build', '--pull', '-f', dockerfile.name, '-t', tag,
+                      *(('--no-cache',) if options.no_cache else ()), '.')
+        print("\033[33;1mpushing \033[35;1m{}\033[0m".format(tag))
+        run_or_report('docker', 'push', tag)
+        print("\033[32;1mFinished \033[35;1m{}\033[0m".format(tag))
 
         latest = tag_base + ':latest'
+        global manifests
         if latest in manifests:
             manifests[latest].append(tag)
         else:
             manifests[latest] = [tag]
+
+
+def base_distro_build(distro, arch):
+    tag = '{r}{distro[0]}-{distro[1]}-base'.format(r=registry_base, distro=distro)
+    codename = 'latest' if distro == ('ubuntu', 'lts') else distro[1]
+    build_tag(tag, arch, """
+FROM {}/{}:{}
+RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
+RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
+    && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
+    && apt-get -o=Dpkg::Use-Pty=0 -q autoremove -y
+    """.format(arch, distro[0], codename))
 
 
 def distro_build(distro, arch):
@@ -48,13 +88,8 @@ def distro_build(distro, arch):
     fmtargs = dict(arch=arch, distro=distro, prefix=prefix)
 
     # (distro)-(codename)-base: Base image from upstream: we sync the repos, but do nothing else.
-    build_tag(prefix + '-base', arch, """
-FROM {arch}/{distro[0]}:{codename}
-RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
-RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
-    && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
-    && apt-get -o=Dpkg::Use-Pty=0 -q autoremove -y
-""".format(**fmtargs, codename='latest' if distro == ['ubuntu', 'lts'] else distro[1]))
+    if (distro, arch) != (('debian', 'stable'), 'amd64'):  # debian-stable-base/amd64 already built
+        base_distro_build(distro, arch)
 
     # (distro)-(codename)-builder: Deb builder image used for building debs; we add the basic tools
     # we use to build debs, not including things that should come from the dependencies in the
@@ -124,48 +159,11 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
 """.format(**fmtargs))
 
 
-for d in distros:
-    for a in arches(distros):
-        distro_build(d, a)
-
-
-# Other images:
-
-# lint is a tiny build with just formatting checking tools
-
-build_tag(registry_base + 'lint', 'amd64', """
-FROM {r}debian-stable-base
-RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
-    clang-format-11 \
-    eatmydata \
-    git \
-    jsonnet
-""".format(r=registry_base))
-
-# nodejs
-build_tag(registry_base + 'nodejs', 'amd64', """
-FROM node:14.16.1
-RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
-RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
-    && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
-    && apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
-        ccache \
-        cmake \
-        eatmydata \
-        g++ \
-        gdb \
-        git \
-        make \
-        ninja-build \
-        openssh-client \
-        patch \
-        pkg-config \
-        wine
-""")
-
-
-# Android builds on debian-stable-base and adds a ton of android crap:
-build_tag(registry_base + 'android', 'amd64', """
+# Android and flutter builds on top of debian-stable-base and adds a ton of android crap; we
+# schedule this job as soon as the debian-sid-base/amd64 build finishes, because they easily take
+# the longest and are by far the biggest images.
+def android_builds():
+    build_tag(registry_base + 'android', 'amd64', """
 FROM {r}debian-stable-base
 RUN /bin/bash -c 'sed -i "s/main/main contrib/g" /etc/apt/sources.list'
 RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
@@ -191,9 +189,7 @@ RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
     && rm -rf /tmp/android-sdk-licenses
 """.format(r=registry_base))
 
-
-# Flutter image takes android and adds even more crap:
-build_tag(registry_base + 'flutter', 'amd64', """
+    build_tag(registry_base + 'flutter', 'amd64', """
 FROM {r}android
 RUN cd /opt \
     && curl https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_2.2.2-stable.tar.xz \
@@ -203,47 +199,63 @@ RUN cd /opt \
 """.format(r=registry_base))
 
 
-# debian-sid-clang adds clang + libc++ to debian-sid (amd64 only)
-build_tag(registry_base + 'debian-sid-clang', 'amd64', """
-FROM {r}debian-sid
-RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
-    && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
-    && apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
-        clang-13 \
-        libc++-13-dev \
-        libc++abi-13-dev \
-        lld-13
+# lint is a tiny build (on top of debian-stable-base) with just formatting checking tools
+def lint_build():
+    build_tag(registry_base + 'lint', 'amd64', """
+FROM {r}debian-stable-base
+RUN apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
+    clang-format-11 \
+    eatmydata \
+    git \
+    jsonnet
 """.format(r=registry_base))
 
 
-# debian-win32-cross is debian-testing-base + stuff for compiling windows binaries
-build_tag(registry_base + 'debian-win32-cross', 'amd64', """
-FROM {r}debian-testing-base
+def nodejs_build():
+    build_tag(registry_base + 'nodejs', 'amd64', """
+FROM node:14.16.1
+RUN /bin/bash -c 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
 RUN apt-get -o=Dpkg::Use-Pty=0 -q update \
     && apt-get -o=Dpkg::Use-Pty=0 -q dist-upgrade -y \
     && apt-get -o=Dpkg::Use-Pty=0 -q install --no-install-recommends -y \
-        autoconf \
-        automake \
-        build-essential \
         ccache \
         cmake \
         eatmydata \
-        file \
-        g++-mingw-w64-x86-64-posix \
+        g++ \
+        gdb \
         git \
-        gperf \
-        libtool \
         make \
         ninja-build \
-        nsis \
         openssh-client \
         patch \
         pkg-config \
-        qttools5-dev \
-        zip \
-    && update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix \
-    && update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
-""".format(r=registry_base))
+        wine
+""")
+
+
+# Start debian-stable-base/amd64 on its own, because other builds depend on it and we want to get
+# those (especially android/flutter) fired off as soon as possible (because it's slow and huge).
+base_distro_build(['debian', 'stable'], 'amd64')
+
+executor = ThreadPoolExecutor(max_workers=max(options.parallel, 1))
+
+jobs = [executor.submit(b) for b in (android_builds, lint_build, nodejs_build)]
+
+for d in distros:
+    for a in arches(distros):
+        jobs.append(executor.submit(distro_build, d, a))
+while len(jobs):
+    j = jobs.pop(0)
+    try:
+        j.result()
+    except (ChildProcessError, subprocess.CalledProcessError):
+        for k in jobs:
+            k.cancel()
+
+
+if failure:
+    print("Error(s) occured, aborting!", file=sys.stderr)
+    sys.exit(1)
 
 
 for latest, tags in manifests.items():
@@ -251,5 +263,5 @@ for latest, tags in manifests.items():
           latest, ', '.join(tags)))
 
     subprocess.run(['docker', 'manifest', 'rm', latest], stderr=subprocess.DEVNULL, check=False)
-    subprocess.run(['docker', 'manifest', 'create', latest, *tags], check=True)
-    subprocess.run(['docker', 'manifest', 'push', latest], check=True)
+    run_or_report('docker', 'manifest', 'create', latest, *tags)
+    run_or_report('docker', 'manifest', 'push', latest)
