@@ -148,7 +148,6 @@ if ! [ -e /etc/loki/lokinet.ini ]; then
 fi
 
 %systemd_post lokinet.service
-systemctl enable --now lokinet
 
 %preun
 %systemd_preun lokinet.service
