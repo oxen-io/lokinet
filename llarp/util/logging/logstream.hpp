@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <string_view>
 
 namespace llarp
 {
@@ -18,12 +19,12 @@ namespace llarp
     PreLog(
         std::stringstream& out,
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename) const = 0;
 
     virtual void
-    Print(LogLevel lvl, const char* filename, const std::string& msg) = 0;
+    Print(LogLevel lvl, std::string_view filename, const std::string& msg) = 0;
 
     virtual void
     PostLog(std::stringstream& out) const = 0;
@@ -31,16 +32,16 @@ namespace llarp
     virtual void
     AppendLog(
         LogLevel lvl,
-        const char* fname,
+        std::string_view filename,
         int lineno,
         const std::string& nodename,
         const std::string msg)
     {
       std::stringstream ss;
-      PreLog(ss, lvl, fname, lineno, nodename);
+      PreLog(ss, lvl, filename, lineno, nodename);
       ss << msg;
       PostLog(ss);
-      Print(lvl, fname, ss.str());
+      Print(lvl, filename, ss.str());
     }
 
     /// A blocking call to flush to disk. Should only be called in rare circumstances.

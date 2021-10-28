@@ -57,7 +57,7 @@ TEST_CASE("BEncode", "[RouterVersion]")
   CHECK(v1235.BEncode(&buf));
 
   std::string s((const char*)buf.begin(), (buf.end() - buf.begin()));
-  LogInfo("bencoded: ", buf.begin());
+  llarp::LogInfo("bencoded: ", buf.begin());
 
   CHECK_THAT((const char*)buf.begin(), Equals("li5ei1ei2ei3ee"));
 }
