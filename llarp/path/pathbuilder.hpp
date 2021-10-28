@@ -110,7 +110,7 @@ namespace llarp
       llarp_time_t
       Now() const override;
 
-      void
+      virtual void
       Tick(llarp_time_t now) override;
 
       void

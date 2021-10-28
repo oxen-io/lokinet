@@ -26,6 +26,9 @@ callgrind.*
 
 *.sig
 *.signed
+!/contrib/bootstrap/mainnet.signed
+!/contrib/bootstrap/testnet.signed
+!/SOURCES/bootstrap.signed
 *.key
 
 shadow.data

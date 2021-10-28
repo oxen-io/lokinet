@@ -5,16 +5,11 @@ endif()
 
 set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
 set(TUNTAP_EXE "${CMAKE_BINARY_DIR}/tuntap-install.exe")
-set(BOOTSTRAP_URL "https://seed.lokinet.org/lokinet.signed")
-set(BOOTSTRAP_FILE "${CMAKE_BINARY_DIR}/bootstrap.signed")
+set(BOOTSTRAP_FILE "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed")
 
 file(DOWNLOAD
     ${TUNTAP_URL}
     ${TUNTAP_EXE})
-
-file(DOWNLOAD
-    ${BOOTSTRAP_URL}
-    ${BOOTSTRAP_FILE})
 
 file(DOWNLOAD
     ${GUI_ZIP_URL}
@@ -26,7 +21,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-g
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
 install(PROGRAMS ${TUNTAP_EXE} DESTINATION bin COMPONENT tuntap)
-install(FILES ${BOOTSTRAP_FILE} DESTINATION share COMPONENT lokinet)
+install(FILES ${BOOTSTRAP_FILE} DESTINATION share COMPONENT lokinet RENAME bootstrap.signed)
 
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")

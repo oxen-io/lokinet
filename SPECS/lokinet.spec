@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.6
+Version:        0.9.7
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -23,8 +23,6 @@ BuildRequires:  libsqlite3x-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 Patch1: version-as-rpm-version.patch
-# Backport default upstream dns not working from PR 1715:
-Patch2: default-upstream-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -159,8 +157,13 @@ systemctl enable --now lokinet
 %systemd_postun lokinet.service
 
 %changelog
+* Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
+- bump version
 
-* Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com - 0.9.6
+* Thu Oct 14 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
+- Remove Patch2: default-upstream-dns.patch
+
+* Mon Oct 11 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.6
 - Build with -DWITH_LTO=OFF
 - Enable and start service with POSTINST using systemctl enable --now
 
@@ -192,8 +195,8 @@ systemctl enable --now lokinet
 - Updated for rpm.oxen.io packaging
 - Split into lokinet/lokinet-bin/lokinet-monitor packages
 
-* Thu Jul 22 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.9.5
+* Thu Jul 22 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.9.5
 - Build with systemd-resolved and binary lokinet-bootstrap
 
-* Sun Mar 07 2021 Technical Tumbleweed (necro_nemesis@hotmail.com) Lokinet 0.8.2
+* Sun Mar 07 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> Lokinet 0.8.2
 - First Lokinet RPM
