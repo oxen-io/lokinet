@@ -62,13 +62,12 @@ linelock = threading.Lock()
 def print_line(myline, value):
     linelock.acquire()
     global lineno
-    if myline != lineno and sys.__stdout__.isatty():
+    if sys.__stdout__.isatty():
         jump = lineno - myline
         print("\033[{jump}A\r\033[K{value}\033[{jump}B\r".format(jump=jump, value=value), end='')
         sys.stdout.flush()
     else:
         print(value)
-        lineno += 1
     linelock.release()
 
 
@@ -91,7 +90,10 @@ def build_tag(tag_base, arch, contents):
         raise ChildProcessError()
 
     linelock.acquire()
+    global lineno
     myline = lineno
+    lineno += 1
+    print()
     linelock.release()
 
     with tempfile.NamedTemporaryFile() as dockerfile:
@@ -318,7 +320,10 @@ def push_manifest(latest, tags):
         raise ChildProcessError()
 
     linelock.acquire()
+    global lineno
     myline = lineno
+    lineno += 1
+    print()
     linelock.release()
 
     subprocess.run(['docker', 'manifest', 'rm', latest], stderr=subprocess.DEVNULL, check=False)
