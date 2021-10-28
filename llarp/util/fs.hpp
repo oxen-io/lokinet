@@ -1,12 +1,7 @@
 #pragma once
 
 #include <functional>
-
-#if defined(WIN32) || defined(_WIN32)
-#define PATH_SEP "\\"
-#else
-#define PATH_SEP "/"
-#endif
+#include <set>
 
 #ifdef USE_GHC_FILESYSTEM
 #include <ghc/filesystem.hpp>
@@ -61,36 +56,31 @@ namespace llarp
       return std::make_optional<T>(pathname, mode);
     }
 
-    using PathVisitor = std::function<bool(const fs::path&)>;
-    using PathIter = std::function<void(const fs::path&, PathVisitor)>;
-
-    static PathIter IterDir = [](const fs::path& path, PathVisitor visit) {
-#ifdef _MSC_VER
-      for (auto& p : fs::directory_iterator(path))
-      {
-        if (!visit(p.path()))
-        {
-          break;
-        }
-      }
-#else
+    template <typename PathVisitor>
+    static void
+    IterDir(const fs::path& path, PathVisitor visit)
+    {
       DIR* d = opendir(path.string().c_str());
       if (d == nullptr)
         return;
       struct dirent* ent = nullptr;
+      std::set<fs::path> entries;
       do
       {
         ent = readdir(d);
-        if (!ent)
+        if (not ent)
           break;
         if (ent->d_name[0] == '.')
           continue;
-        fs::path p = path / fs::path(ent->d_name);
-        if (!visit(p))
-          break;
+        entries.emplace(path / fs::path{ent->d_name});
       } while (ent);
       closedir(d);
-#endif
+
+      for (const auto& p : entries)
+      {
+        if (not visit(p))
+          return;
+      }
     };
   }  // namespace util
 }  // namespace llarp

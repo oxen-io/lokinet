@@ -2,7 +2,6 @@
 #include "ostream_logger.hpp"
 #include "logger_syslog.hpp"
 #include "file_logger.hpp"
-#include "json_logger.hpp"
 #if defined(_WIN32)
 #include "win32_logger.hpp"
 #endif
@@ -36,8 +35,6 @@ namespace llarp
       return LogType::Unknown;
     else if (str == "file")
       return LogType::File;
-    else if (str == "json")
-      return LogType::Json;
     else if (str == "syslog")
       return LogType::Syslog;
 
@@ -111,7 +108,7 @@ namespace llarp
     {
       logfile = stdout;
     }
-    else
+    else if (type != LogType::Syslog)
     {
       logfile = ::fopen(file.c_str(), "a");
       if (not logfile)
@@ -141,26 +138,10 @@ namespace llarp
         }
 
         break;
-      case LogType::Json:
-        LogInfo("Switching logger to JSON with file: ", file);
-        std::cout << std::flush;
-
-        LogContext::Instance().logStream =
-            std::make_unique<JSONLogStream>(io, logfile, 100ms, logfile != stdout);
-        break;
       case LogType::Syslog:
-        if (logfile)
-        {
-          // TODO: this logic should be handled in Config
-          // TODO: this won't even work because of default value for 'file' (== "stdout")
-          ::fclose(logfile);
-          throw std::invalid_argument("Cannot mix log type=syslog and file=*");
-        }
 #if defined(_WIN32)
         throw std::runtime_error("syslog not supported on win32");
 #else
-        LogInfo("Switching logger to syslog");
-        std::cout << std::flush;
         LogContext::Instance().logStream = std::make_unique<SysLogStream>();
 #endif
         break;

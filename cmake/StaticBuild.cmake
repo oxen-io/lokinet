@@ -388,6 +388,7 @@ foreach(curl_arch ${curl_arches})
     --disable-progress-meter --without-brotli --with-zlib=${DEPS_DESTDIR} ${curl_ssl_opts}
     --without-libmetalink --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
     --without-zsh-functions-dir --without-fish-functions-dir
+    --without-nghttp3 --without-zstd
     "CC=${deps_cc}" "CFLAGS=${deps_noarch_CFLAGS}${cflags_extra}" ${curl_extra}
     BUILD_COMMAND true
     INSTALL_COMMAND ${_make} -C lib install && ${_make} -C include install
