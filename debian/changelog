@@ -1,3 +1,11 @@
+lokinet (0.9.7-2~ubuntu2104) hirsute; urgency=medium
+
+  * update deb repo signature filename
+  * Switch to cached ci base image
+  * do not requeue nodes for testing from failing queue if we do not have them marked as failing anymore
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 29 Oct 2021 11:55:37 -0300
+
 lokinet (0.9.7-1~ubuntu2104) hirsute; urgency=medium
 
   [ Jeff ]
