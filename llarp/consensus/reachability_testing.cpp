@@ -124,7 +124,8 @@ namespace llarp::consensus
       auto& [pk, retest_time, failures] = failing_queue.top();
       if (retest_time > now)
         break;
-      result.emplace_back(pk, failures);
+      if (failing.count(pk))
+        result.emplace_back(pk, failures);
       failing_queue.pop();
     }
     return result;
