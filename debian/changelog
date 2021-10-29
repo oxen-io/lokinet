@@ -1,3 +1,11 @@
+lokinet (0.9.7-2~deb10) buster; urgency=medium
+
+  * update deb repo signature filename
+  * Switch to cached ci base image
+  * do not requeue nodes for testing from failing queue if we do not have them marked as failing anymore
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 29 Oct 2021 11:55:28 -0300
+
 lokinet (0.9.7-1~deb10) buster; urgency=medium
 
   [ Jeff ]
