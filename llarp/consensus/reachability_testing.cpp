@@ -109,7 +109,7 @@ namespace llarp::consensus
 
     std::shuffle(testing_queue.begin(), testing_queue.end(), rng);
 
-    // Recurse with the rebuild list, but don't let it try rebuilding again
+    // Recurse with the rebuilt list, but don't let it try rebuilding again
     return next_random(router, now, false);
   }
 
