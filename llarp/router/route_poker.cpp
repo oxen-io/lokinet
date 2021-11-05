@@ -240,15 +240,23 @@ namespace llarp
     const auto& enablePoker = m_Router->GetConfig()->network.m_EnableRoutePoker;
     if (auto vpn = ep->GetVPNInterface(); vpn and enablePoker)
     {
+      LogInfo("route poker putting up firewall");
       vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-
-      // black hole all routes by default
-      route.AddBlackhole();
-      // explicit route pokes for first hops
-      m_Router->ForEachPeer(
-          [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint()); }, false);
-      // add default route
-      route.AddDefaultRouteViaInterface(*vpn);
+      try
+      {
+        // black hole all routes by default
+        route.AddBlackhole();
+        // explicit route pokes for first hops
+        m_Router->ForEachPeer(
+            [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint()); }, false);
+        // add default route
+        route.AddDefaultRouteViaInterface(*vpn);
+      }
+      catch (std::exception& ex)
+      {
+        LogError("failed to put up firewall: ", ex.what());
+        Down();
+      }
     }
   }
 
@@ -257,19 +265,36 @@ namespace llarp
   {
     if (not m_Router->GetConfig()->network.m_EnableRoutePoker)
       return;
-
+    LogInfo("route poker removing firewall...");
     // unpoke routes for first hops
     m_Router->ForEachPeer(
-        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint()); }, false);
+        [&](auto session, auto) mutable {
+          auto addr = session->GetRemoteEndpoint();
+          try
+          {
+            DelRoute(addr);
+          }
+          catch (std::exception& ex)
+          {
+            LogError("Failed to remove route hole for ", addr, ": ", ex.what());
+          }
+        },
+        false);
     // remove default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     if (auto vpn = ep->GetVPNInterface())
     {
       vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-
-      route.DelDefaultRouteViaInterface(*vpn);
-      // delete route blackhole
-      route.DelBlackhole();
+      try
+      {
+        route.DelDefaultRouteViaInterface(*vpn);
+        // delete route blackhole
+        route.DelBlackhole();
+      }
+      catch (std::exception& ex)
+      {
+        LogError("Failed to tear down firewall: ", ex.what());
+      }
     }
   }
 

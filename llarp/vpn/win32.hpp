@@ -21,23 +21,6 @@ namespace llarp::vpn
 {
   namespace
   {
-    /// convert between std::string or std::wstring
-    /// XXX: this function is shit
-    template <typename OutStr, typename InStr>
-    OutStr
-    to_width(const InStr& str)
-    {
-      OutStr ostr{};
-      typename OutStr::value_type buf[2] = {};
-
-      for (const auto& ch : str)
-      {
-        buf[0] = static_cast<typename OutStr::value_type>(ch);
-        ostr.append(buf);
-      }
-      return ostr;
-    }
-
     std::shared_ptr<MIB_IPFORWARD_TABLE2>
     GetIPForwards()
     {
@@ -194,7 +177,7 @@ namespace llarp::vpn
             {"WintunSendPacket", (FARPROC*)&_writePacket},
             {"WintunAllocateSendPacket", (FARPROC*)&_allocWrite},
             {"WintunSetLogger", (FARPROC*)&_setLogger},
-            {"WintunDeletePool", (FARPROC*)&_deletePool}};
+            {"WintunDeletePoolDriver", (FARPROC*)&_deletePool}};
 
         for (auto& [procname, ptr] : funcs)
         {
@@ -560,20 +543,21 @@ namespace llarp::vpn
     {
       if (auto err = FwpmTransactionBegin0(m_Handle, 0); err != ERROR_SUCCESS)
       {
-        throw std::runtime_error{"FwpmTransactionBegin0 failed"};
+        throw win32::error{err, "FwpmTransactionBegin0 failed: "};
       }
       try
       {
         tx();
         if (auto err = FwpmTransactionCommit0(m_Handle); err != ERROR_SUCCESS)
         {
-          throw std::runtime_error{"FwpmTransactionCommit0 failed"};
+          throw win32::error{err, "FwpmTransactionCommit0 failed: "};
         }
       }
       catch (std::exception& ex)
       {
         LogError("failed to run fwpm transaction: ", ex.what());
         FwpmTransactionAbort0(m_Handle);
+        throw std::runtime_error{ex.what()};
       }
     }
 
@@ -590,20 +574,19 @@ namespace llarp::vpn
     {
       std::wstring _name;
       std::wstring _description;
-
-     protected:
       FWPM_PROVIDER0 _provider;
 
      public:
       explicit Provider(const wchar_t* name, const wchar_t* description, DWORD flags = 0)
-          : _name{name}, _description{description}
+          : _name{name}, _description{description}, _provider{}
       {
         GenerateUUID(_provider.providerKey);
         _provider.displayData.name = _name.data();
         _provider.displayData.description = _description.data();
         _provider.flags = flags;
-        _provider.serviceName = nullptr;
       }
+
+      GUID& providerKey{_provider.providerKey};
 
       operator FWPM_PROVIDER0*()
       {
@@ -615,13 +598,11 @@ namespace llarp::vpn
     {
       std::wstring _name;
       std::wstring _description;
-
-     protected:
       FWPM_SUBLAYER0 _sublayer;
 
      public:
       explicit SubLayer(const wchar_t* name, const wchar_t* description, GUID* providerKey)
-          : _name{name}, _description{description}
+          : _name{name}, _description{description}, _sublayer{}
       {
         GenerateUUID(_sublayer.subLayerKey);
         _sublayer.providerKey = providerKey;
@@ -629,6 +610,8 @@ namespace llarp::vpn
         _sublayer.displayData.description = _description.data();
         _sublayer.weight = 0xffff;
       }
+
+      GUID& subLayerKey{_sublayer.subLayerKey};
 
       operator FWPM_SUBLAYER0*()
       {
@@ -643,13 +626,14 @@ namespace llarp::vpn
       FWPM_FILTER0 _filter;
       HANDLE _engine;
       uint64_t _ID;
+      GUID _providerKey;
 
      public:
       explicit Filter(
           HANDLE engineHandle,
           FWPM_SUBLAYER0* sublayer,
           FWP_ACTION_TYPE action,
-          GUID layerKey,
+          GUID key,
           std::vector<FWPM_FILTER_CONDITION0_> conditions,
           uint8_t weight,
           std::wstring name,
@@ -657,10 +641,13 @@ namespace llarp::vpn
           : _name{std::move(name)}
           , _description{std::move(description)}
           , _conditions{std::move(conditions)}
+          , _filter{}
           , _engine{engineHandle}
+          , _ID{}
+          , _providerKey{key}
       {
-        _filter.layerKey = layerKey;
         _filter.action.type = action;
+        _filter.providerKey = &_providerKey;
         _filter.subLayerKey = sublayer->subLayerKey;
         _filter.weight.uint8 = weight;
         _filter.weight.type = FWP_UINT8;
@@ -701,8 +688,10 @@ namespace llarp::vpn
       }
     };
 
-    class Firewall : public Provider, public SubLayer
+    class Firewall
     {
+      Provider _provider;
+      SubLayer _sublayer;
       HANDLE m_Handle;
 
       std::unordered_map<uint64_t, std::unique_ptr<Filter>> m_Filters;
@@ -710,17 +699,17 @@ namespace llarp::vpn
 
      public:
       Firewall(HANDLE handle)
-          : Provider{L"Lokinet", L"Lokinet Provider"}
-          , SubLayer{L"Lokinet Filters", L"RoutePoker Filters", &_provider.providerKey}
+          : _provider{L"Lokinet", L"Lokinet Provider"}
+          , _sublayer{L"Lokinet Filters", L"RoutePoker Filters", &_provider.providerKey}
           , m_Handle{handle}
       {
-        if (auto err = FwpmProviderAdd0(m_Handle, *this, 0); err != ERROR_SUCCESS)
+        if (auto err = FwpmProviderAdd0(m_Handle, _provider, 0); err != ERROR_SUCCESS)
         {
-          throw std::runtime_error{"fwpmProviderAdd0 failed"};
+          throw win32::error{err, "fwpmProviderAdd0 failed: "};
         }
-        if (auto err = FwpmSubLayerAdd0(m_Handle, *this, 0); err != ERROR_SUCCESS)
+        if (auto err = FwpmSubLayerAdd0(m_Handle, _sublayer, 0); err != ERROR_SUCCESS)
         {
-          throw std::runtime_error{"fwpmSubLayerAdd0 failed"};
+          throw win32::error{err, "fwpmSubLayerAdd0 failed: "};
         }
       }
 
@@ -740,10 +729,12 @@ namespace llarp::vpn
           std::wstring name,
           std::wstring description)
       {
-        LogInfo("adding filter ", to_width<std::string>(name));
+        const auto guid = oxenmq::to_hex(
+            std::string_view{reinterpret_cast<const char*>(&layerKey), sizeof(layerKey)});
+        LogInfo("adding filter ", to_width<std::string>(name), "guid=", guid);
         auto filter = std::make_unique<Filter>(
             m_Handle,
-            *this,
+            _sublayer,
             std::move(action),
             std::move(layerKey),
             std::move(conditions),
@@ -771,6 +762,7 @@ namespace llarp::vpn
       void
       DelHoles(SockAddr addr)
       {
+        LogInfo("remove hole to ", addr);
         const auto range = m_Holes.equal_range(addr);
         for (auto itr = range.first; itr != range.second; itr = m_Holes.erase(itr))
         {
@@ -864,6 +856,8 @@ namespace llarp::vpn
     void
     AddRouteHole(SockAddr addr)
     {
+      if (m_Firewall == nullptr)
+        return;
       std::vector<FWPM_FILTER_CONDITION0_> conditions{};
 
       conditions.emplace_back(win32::MakeCondition<uint8_t>(
@@ -898,7 +892,8 @@ namespace llarp::vpn
     void
     DelRouteHole(SockAddr addr)
     {
-      m_Firewall->DelHoles(addr);
+      if (m_Firewall)
+        m_Firewall->DelHoles(addr);
     }
 
     void
@@ -1023,6 +1018,7 @@ namespace llarp::vpn
     AddBlackhole() override
     {
       LogInfo("firewall going up...");
+
       RunTransaction([&]() {
         m_Firewall = std::make_unique<Firewall>(m_Handle);
         LogInfo("Allow loopback...");
@@ -1034,8 +1030,6 @@ namespace llarp::vpn
           LogInfo("permit interface");
           PermitViaInterface((uint64_t*)&uid);
         }
-        LogInfo("drop the rest on the floor");
-        DropAll();
       });
       LogInfo("firewall setup over");
     }
@@ -1049,21 +1043,29 @@ namespace llarp::vpn
     void
     AddRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
     {
-      var::visit(
-          [this, port](auto&& ip) {
-            RunTransaction([this, addr = SockAddr{ip, port}]() { AddRouteHole(addr); });
-          },
-          ip);
+      const auto addr = var::visit([port](auto&& ip) { return SockAddr{ip, port}; }, ip);
+      try
+      {
+        RunTransaction([this, addr]() { AddRouteHole(addr); });
+      }
+      catch (std::exception& ex)
+      {
+        LogError("add route to ", addr, " failed: ", ex.what());
+      }
     }
 
     void
     DelRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
     {
-      var::visit(
-          [this, port](auto&& ip) {
-            RunTransaction([this, addr = SockAddr{ip, port}]() { DelRouteHole(addr); });
-          },
-          ip);
+      const auto addr = var::visit([port](auto&& ip) { return SockAddr{ip, port}; }, ip);
+      try
+      {
+        RunTransaction([this, addr]() { DelRouteHole(addr); });
+      }
+      catch (std::exception& ex)
+      {
+        LogError("del route to ", addr, " failed: ", ex.what());
+      }
     }
 
     std::vector<IPVariant_t>
@@ -1084,6 +1086,13 @@ namespace llarp::vpn
           gateways.emplace_back(net::In6ToHUInt(table->Table[idx].NextHop.Ipv6.sin6_addr));
       };
       return gateways;
+    }
+
+    void
+    AddDefaultRouteViaInterface(NetworkInterface& iface) override
+    {
+      IRouteManager::AddDefaultRouteViaInterface(iface);
+      RunTransaction([&]() { DropAll(); });
     }
 
     void
