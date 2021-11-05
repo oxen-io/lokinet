@@ -41,14 +41,14 @@ namespace llarp::vpn
   CleanUpPlatform()
   {
 #ifdef _WIN32
-    LogInfo("cleaning up all our wintun jizz...");
     try
     {
-      wintun::API{};
+      wintun::API api{};
+      api.CleanUpForUninstall();
     }
-    catch (...)
+    catch (std::exception& ex)
     {
-      LogError("failed to clean up our wintun jizz?");
+      LogError("failed to clean up our wintun jizz? ", ex.what());
     }
 #endif
   }

@@ -15,6 +15,8 @@
 #include <llarp/win32/exception.hpp>
 #include <llarp/win32/fwpm.hpp>
 
+#include <llarp/crypto/crypto.hpp>
+
 namespace llarp::vpn
 {
   namespace
@@ -127,15 +129,30 @@ namespace llarp::vpn
       }
     };
 
-    using Packet_ptr = std::unique_ptr<Packet>;
+    using Packet_ptr = std::shared_ptr<Packet>;
     using Adapter_ptr = std::shared_ptr<_WINTUN_ADAPTER>;
     using Session_ptr = std::shared_ptr<_TUN_SESSION>;
+
+    /// @brief given a container of data hash it and make it into a GUID so we have a way to
+    /// deterministically generate GUIDs
+    template <typename Data>
+    static GUID
+    MakeDeterministicGUID(Data data)
+    {
+      ShortHash h{};
+      CryptoManager::instance()->shorthash(h, llarp_buffer_t{data});
+      GUID guid{};
+      std::copy_n(
+          h.begin(), std::min(sizeof(GUID), sizeof(ShortHash)), reinterpret_cast<uint8_t*>(&guid));
+      return guid;
+    }
 
     struct API
     {
       const HMODULE _handle;
       WINTUN_CREATE_ADAPTER_FUNC _createAdapter;
       WINTUN_OPEN_ADAPTER_FUNC _openAdapter;
+      WINTUN_GET_ADAPTER_NAME_FUNC _getAdapterName;
       WINTUN_DELETE_ADAPTER_FUNC _deleteAdapter;
       WINTUN_FREE_ADAPTER_FUNC _freeAdapter;
 
@@ -152,6 +169,9 @@ namespace llarp::vpn
       WINTUN_ALLOCATE_SEND_PACKET_FUNC _allocWrite;
       WINTUN_SEND_PACKET_FUNC _writePacket;
 
+      WINTUN_DELETE_POOL_DRIVER_FUNC _deletePool;
+      WINTUN_SET_LOGGER_FUNC _setLogger;
+
       static constexpr auto PoolName = L"Lokinet";
 
       explicit API(const char* wintunlib = "wintun.dll") : _handle{LoadLibrary(wintunlib)}
@@ -165,6 +185,7 @@ namespace llarp::vpn
             {"WintunCreateAdapter", (FARPROC*)&_createAdapter},
             {"WintunDeleteAdapter", (FARPROC*)&_deleteAdapter},
             {"WintunFreeAdapter", (FARPROC*)&_freeAdapter},
+            {"WintunGetAdapterName", (FARPROC*)&_getAdapterName},
             {"WintunStartSession", (FARPROC*)&_startSession},
             {"WintunEndSession", (FARPROC*)&_endSession},
             {"WintunGetAdapterLUID", (FARPROC*)&_getAdapterLUID},
@@ -172,7 +193,8 @@ namespace llarp::vpn
             {"WintunReleaseReceivePacket", (FARPROC*)&_releaseRead},
             {"WintunSendPacket", (FARPROC*)&_writePacket},
             {"WintunAllocateSendPacket", (FARPROC*)&_allocWrite},
-        };
+            {"WintunSetLogger", (FARPROC*)&_setLogger},
+            {"WintunDeletePool", (FARPROC*)&_deletePool}};
 
         for (auto& [procname, ptr] : funcs)
         {
@@ -182,19 +204,53 @@ namespace llarp::vpn
             throw llarp::win32::last_error{"could not find function " + procname + ": "};
         }
 
-        // remove all existing adapters
-        _iterAdapters(
-            PoolName,
-            [](WINTUN_ADAPTER_HANDLE handle, LPARAM user) -> int {
-              ((API*)(user))->_deleteAdapter(handle, false, nullptr);
-              return 1;
-            },
-            (LPARAM)this);
+        // set wintun logger function
+        _setLogger([](WINTUN_LOGGER_LEVEL lvl, LPCWSTR _msg) {
+          std::string msg = to_width<std::string>(std::wstring{_msg});
+          switch (lvl)
+          {
+            case WINTUN_LOG_INFO:
+              LogInfo(">> ", msg);
+              return;
+            case WINTUN_LOG_WARN:
+              LogWarn(">> ", msg);
+              return;
+            case WINTUN_LOG_ERR:
+              LogError(">> ", msg);
+              return;
+          }
+        });
       }
 
       ~API()
       {
         FreeLibrary(_handle);
+      }
+
+      /// @brief remove all existing adapters on our pool
+      void
+      RemoveAllAdapters()
+      {
+        _iterAdapters(
+            PoolName,
+            [](WINTUN_ADAPTER_HANDLE handle, LPARAM user) -> int {
+              API* self = (API*)user;
+
+              LogInfo("deleting adapter: ", self->GetAdapterName(handle));
+
+              self->_deleteAdapter(handle, false, nullptr);
+              return 1;
+            },
+            (LPARAM)this);
+      }
+
+      /// @brief called when we uninstall the lokinet service to remove all traces of wintun
+      void
+      CleanUpForUninstall()
+      {
+        LogInfo("cleaning up all our wintun jizz...");
+        _deletePool(PoolName, nullptr);
+        LogInfo("wintun jizz should be gone now");
       }
 
       [[nodiscard]] auto
@@ -208,18 +264,20 @@ namespace llarp::vpn
       [[nodiscard]] auto
       ReadPacket(const Session_ptr& session)
       {
-        Packet_ptr ptr;
         DWORD sz{};
         if (auto* pkt = _readPacket(session.get(), &sz))
         {
-          ptr = std::make_unique<Packet>(
-              pkt, sz, Deleter<BYTE>{[ptr = session.get(), this](auto* pkt) {
-                _releaseRead(ptr, pkt);
-              }});
+          return std::make_shared<Packet>(pkt, sz, Deleter<BYTE>{[session, this](auto* pkt) {
+                                            _releaseRead(session.get(), pkt);
+                                          }});
         }
-        else  // clear last error
+        if (auto err = GetLastError(); err == ERROR_NO_MORE_ITEMS)
+        {
           SetLastError(0);
-        return ptr;
+        }
+        else
+          throw win32::last_error{"failed to read packet: "};
+        return std::shared_ptr<Packet>{nullptr};
       }
 
       void
@@ -232,7 +290,12 @@ namespace llarp::vpn
           return;
         }
         // clear errors
-        SetLastError(0);
+        if (auto err = GetLastError(); err == ERROR_BUFFER_OVERFLOW)
+        {
+          SetLastError(0);
+        }
+        else
+          throw win32::last_error{"failed to write packet: "};
       }
 
       [[nodiscard]] auto
@@ -243,7 +306,6 @@ namespace llarp::vpn
         Deleter<_WINTUN_ADAPTER> deleter{[this, name = info.ifname](auto* ptr) {
           LogInfo("deleting adapter ", name);
           _freeAdapter(ptr);
-          _deleteAdapter(ptr, false, nullptr);
         }};
 
         if (auto ptr = _openAdapter(PoolName, name.c_str()))
@@ -254,12 +316,15 @@ namespace llarp::vpn
         // reset error code
         SetLastError(0);
 
-        if (auto ptr = _createAdapter(PoolName, name.c_str(), nullptr, nullptr))
+        const GUID adapterGUID = MakeDeterministicGUID(info.ifname);
+
+        if (auto ptr = _createAdapter(PoolName, name.c_str(), &adapterGUID, nullptr))
           return Adapter_ptr{ptr, std::move(deleter)};
 
         throw llarp::win32::last_error{"could not create adapter: "};
       }
 
+      /// @brief make a wintun session smart pointer on a wintun adapter
       [[nodiscard]] auto
       MakeSessionPtr(const Adapter_ptr& adapter) const
       {
@@ -268,6 +333,17 @@ namespace llarp::vpn
         throw llarp::win32::last_error{"could not open session: "};
       }
 
+      /// @brief get the name of an adapter
+      [[nodiscard]] std::string
+      GetAdapterName(WINTUN_ADAPTER_HANDLE adapter) const
+      {
+        std::wstring buf(MAX_ADAPTER_NAME, '\x00');
+        if (_getAdapterName(adapter, buf.data()))
+          return to_width<std::string>(buf);
+        throw win32::last_error{"cannot get adapter name: "};
+      }
+
+      /// @brief add an interface address to a wintun adapter
       void
       AddAdapterAddress(const Adapter_ptr& adapter, const InterfaceAddress& addr)
       {
@@ -313,6 +389,7 @@ namespace llarp::vpn
       }
     };
 
+    /// @brief execute a shell command
     static void
     Exec(std::wstring wcmd)
     {
@@ -320,6 +397,7 @@ namespace llarp::vpn
       ::_wsystem(wcmd.c_str());
     }
 
+    /// @brief get path to win32 system directory
     static std::wstring
     SysrootPath()
     {
@@ -329,18 +407,21 @@ namespace llarp::vpn
       return path;
     }
 
+    /// @brief get path to netsh.exe
     static std::wstring
     NetshExe()
     {
       return SysrootPath() + L"\\netsh.exe";
     }
 
+    /// @brief executes netsh.exe with arguments
     static void
-    NetSH(std::wstring cmd)
+    NetSH(std::wstring args)
     {
-      Exec(NetshExe() + L" " + cmd);
+      Exec(NetshExe() + L" " + args);
     }
 
+    /// @brief raii wrapper that sets dns settings to an original state on destruction
     struct DNSRevert
     {
       DNSRevert() = default;
@@ -514,13 +595,13 @@ namespace llarp::vpn
       FWPM_PROVIDER0 _provider;
 
      public:
-      explicit Provider(const wchar_t* name, const wchar_t* description)
+      explicit Provider(const wchar_t* name, const wchar_t* description, DWORD flags = 0)
           : _name{name}, _description{description}
       {
         GenerateUUID(_provider.providerKey);
         _provider.displayData.name = _name.data();
         _provider.displayData.description = _description.data();
-        _provider.flags = 0;
+        _provider.flags = flags;
         _provider.serviceName = nullptr;
       }
 
@@ -901,13 +982,35 @@ namespace llarp::vpn
       m_Interfaces.emplace_back(std::move(uid));
     }
 
-   public:
-    FWPMRouteManager()
+    class Session
     {
-      if (auto result = FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, nullptr, &m_Handle);
+      std::wstring _name;
+      std::wstring _description;
+      FWPM_SESSION0 _session;
+
+     public:
+      explicit Session(const wchar_t* name, const wchar_t* description)
+          : _name{name}, _description{description}, _session{}
+      {
+        _session.displayData.name = _name.data();
+        _session.displayData.description = _description.data();
+      }
+
+      operator const FWPM_SESSION0*() const
+      {
+        return &_session;
+      }
+    };
+
+    Session m_Session;
+
+   public:
+    FWPMRouteManager() : m_Session{L"lokinet route manager", L"manager of lokinet route poking"}
+    {
+      if (auto result = FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, m_Session, &m_Handle);
           result != ERROR_SUCCESS)
       {
-        throw std::runtime_error{"cannot open fwpm engine"};
+        throw win32::error{result, "cannot open fwpm engine: "};
       }
     }
 
@@ -1000,19 +1103,17 @@ namespace llarp::vpn
   {
    public:
     Win32Platform() : API{}, Platform{}, FWPMRouteManager{}
-    {}
+    {
+      RemoveAllAdapters();
+    }
 
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
-<<<<<<< HEAD
-      return std::make_shared<WintunInterface>(this, info, router);
-=======
-      auto ptr = std::make_shared<WintunInterface>(this, info);
-      ptr->Start();
-      AddInterface(ptr->GetUID());
-      return ptr;
->>>>>>> 48f9abee8 (route poker updates)
+      auto adapter = std::make_shared<WintunInterface>(this, info, router);
+      adapter->Start();
+      AddInterface(adapter->GetUID());
+      return adapter;
     };
 
     IRouteManager&
