@@ -254,7 +254,7 @@ namespace llarp
       // so check here if the pathid was recently removed.
       if (recentlyRemovedPaths.Contains(entry.pathid))
       {
-        return;
+        continue;
       }
 
       auto [queue_itr, is_new] = outboundMessageQueues.emplace(entry.pathid, MessageQueue());
