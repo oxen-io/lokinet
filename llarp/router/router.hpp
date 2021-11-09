@@ -76,6 +76,8 @@ namespace llarp
 
     path::BuildLimiter m_PathBuildLimiter;
 
+    std::shared_ptr<EventLoopWakeup> m_Pump;
+
     path::BuildLimiter&
     pathBuildLimiter() override
     {
