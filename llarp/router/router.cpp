@@ -69,7 +69,11 @@ namespace llarp
     _running.store(false);
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
-    m_Pump = _loop->make_waker([this]() { PumpLLNonIdempotent(); });
+    m_Pump = _loop->make_waker([this]() {
+      paths.PumpDownstream();
+      paths.PumpUpstream();
+      PumpLLNonIdempotent();
+    });
   }
 
   Router::~Router()
@@ -83,8 +87,6 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
       return;
-    paths.PumpDownstream();
-    paths.PumpUpstream();
     _outboundMessageHandler.Tick();
     _linkManager.PumpLinks();
     llarp::LogTrace("Router::PumpLL() end");
