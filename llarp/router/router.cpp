@@ -661,7 +661,7 @@ namespace llarp
       LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
+    _outboundMessageHandler.Init(this);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,

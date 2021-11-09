@@ -17,8 +17,7 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  struct ILinkManager;
-  struct I_RCLookupHandler;
+  struct AbstractRouter;
   enum class SessionResult;
 
   struct OutboundMessageHandler final : public IOutboundMessageHandler
@@ -72,7 +71,7 @@ namespace llarp
     ExtractStatus() const override;
 
     void
-    Init(ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, EventLoop_ptr loop);
+    Init(AbstractRouter* router);
 
    private:
     using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
@@ -160,14 +159,17 @@ namespace llarp
     ProcessOutboundQueue();
 
     /*
-     * Sends all routing messages that have been queued, indicated by pathid 0 when queued.
+     * Sends routing messages that have been queued, indicated by pathid 0 when queued.
      *
      * Sends messages from path queues until all are empty or a set cap has been reached.
      * This will send one message from each queue in a round-robin fashion such that they
      * all have roughly equal access to bandwidth.  A notion of priority may be introduced
      * at a later time, but for now only routing messages get priority.
+     *
+     * Returns true if there is more to send (i.e. we hit the limit before emptying all path
+     * queues), false if all queues were drained.
      */
-    void
+    bool
     SendRoundRobin();
 
     /* Invoked when an outbound session establish attempt has concluded.
@@ -193,9 +195,7 @@ namespace llarp
 
     std::queue<PathID_t> roundRobinOrder;
 
-    ILinkManager* _linkManager;
-    I_RCLookupHandler* _lookupHandler;
-    EventLoop_ptr _loop;
+    AbstractRouter* _router;
 
     util::ContentionKiller m_Killer;
 
