@@ -286,6 +286,9 @@ namespace llarp
     void
     PumpLL() override;
 
+    void
+    PumpLLNonIdempotent();
+
     const oxenmq::address DefaultRPCBindAddr = oxenmq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
     oxenmq::address rpcBindAddr = DefaultRPCBindAddr;

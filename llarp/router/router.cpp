@@ -69,21 +69,25 @@ namespace llarp
     _running.store(false);
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
-    m_Pump = _loop->make_waker([this]() {
-      llarp::LogTrace("Router::PumpLL() start");
-      if (_stopping.load())
-        return;
-      paths.PumpDownstream();
-      paths.PumpUpstream();
-      _outboundMessageHandler.Tick();
-      _linkManager.PumpLinks();
-      llarp::LogTrace("Router::PumpLL() end");
-    });
+    m_Pump = _loop->make_waker([this]() { PumpLLNonIdempotent(); });
   }
 
   Router::~Router()
   {
     llarp_dht_context_free(_dht);
+  }
+
+  void
+  Router::PumpLLNonIdempotent()
+  {
+    llarp::LogTrace("Router::PumpLL() start");
+    if (_stopping.load())
+      return;
+    paths.PumpDownstream();
+    paths.PumpUpstream();
+    _outboundMessageHandler.Tick();
+    _linkManager.PumpLinks();
+    llarp::LogTrace("Router::PumpLL() end");
   }
 
   util::StatusObject
@@ -1241,9 +1245,9 @@ namespace llarp
 
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
-    _loop->add_ticker([this] { PumpLL(); });
+    _loop->add_ticker([this] { PumpLLNonIdempotent(); });
 #else
-    _loop->set_pump_function([this] { PumpLL(); });
+    _loop->set_pump_function([this] { PumpLLNonIdempotent(); });
 #endif
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
