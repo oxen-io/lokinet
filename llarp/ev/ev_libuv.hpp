@@ -31,6 +31,12 @@ namespace llarp::uv
     bool
     running() const override;
 
+    llarp_time_t
+    time_now() const override
+    {
+      return m_Impl->now();
+    }
+
     void
     call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 

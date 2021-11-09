@@ -75,11 +75,11 @@ namespace llarp
     virtual bool
     running() const = 0;
 
+    // Returns a current steady clock time value representing the current time with event loop tick
+    // granularity.  That is, the value is typically only updated at the beginning of an event loop
+    // tick.
     virtual llarp_time_t
-    time_now() const
-    {
-      return llarp::time_now_ms();
-    }
+    time_now() const = 0;
 
     // Calls a function/lambda/etc.  If invoked from within the event loop itself this calls the
     // given lambda immediately; otherwise it passes it to `call_soon()` to be queued to run at the
