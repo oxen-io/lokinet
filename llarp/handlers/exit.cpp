@@ -92,8 +92,7 @@ namespace llarp
         }
         return std::nullopt;
       }
-      else
-        return std::nullopt;
+      return std::nullopt;
     }
 
     const EventLoop_ptr&
@@ -112,16 +111,13 @@ namespace llarp
           return false;
         if (auto* rid = std::get_if<RouterID>(&*maybeAddr))
         {
-          auto range = m_ActiveExits.equal_range(PubKey{*rid});
-          auto itr = range.first;
-          while (itr != range.second)
+          for (auto [itr, end] = m_ActiveExits.equal_range(PubKey{*rid}); itr != end; ++itr)
           {
             if (not itr->second->LooksDead(Now()))
             {
               if (itr->second->QueueInboundTraffic(ManagedBuffer{payload}, type))
                 return true;
             }
-            ++itr;
           }
 
           if (not m_Router->PathToRouterAllowed(*rid))
@@ -136,8 +132,7 @@ namespace llarp
         }
         return true;
       }
-      else
-        return false;
+      return false;
     }
 
     bool
@@ -357,13 +352,9 @@ namespace llarp
     ExitEndpoint::VisitEndpointsFor(
         const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const
     {
-      auto range = m_ActiveExits.equal_range(pk);
-      auto itr = range.first;
-      while (itr != range.second)
+      for (auto [itr, end] = m_ActiveExits.equal_range(pk); itr != end; ++itr)
       {
-        if (visit(itr->second.get()))
-          ++itr;
-        else
+        if (not visit(itr->second.get()))
           return true;
       }
       return false;
@@ -422,25 +413,17 @@ namespace llarp
               " as we have no working endpoints");
         }
       });
+      for (auto& [pubkey, endpoint] : m_ActiveExits)
       {
-        auto itr = m_ActiveExits.begin();
-        while (itr != m_ActiveExits.end())
+        if (!endpoint->Flush())
         {
-          if (!itr->second->Flush())
-          {
-            LogWarn("exit session with ", itr->first, " dropped packets");
-          }
-          ++itr;
+          LogWarn("exit session with ", pubkey, " dropped packets");
         }
       }
+      for (auto& [id, session] : m_SNodeSessions)
       {
-        auto itr = m_SNodeSessions.begin();
-        while (itr != m_SNodeSessions.end())
-        {
-          itr->second->FlushUpstream();
-          itr->second->FlushDownstream();
-          ++itr;
-        }
+        session->FlushUpstream();
+        session->FlushDownstream();
       }
       m_Router->PumpLL();
     }
@@ -558,15 +541,13 @@ namespace llarp
       // find oldest activity ip address
       huint128_t found = {0};
       llarp_time_t min = std::numeric_limits<llarp_time_t>::max();
-      auto itr = m_IPActivity.begin();
-      while (itr != m_IPActivity.end())
+      for (const auto& [addr, time] : m_IPActivity)
       {
-        if (itr->second < min)
+        if (time < min)
         {
-          found.h = itr->first.h;
-          min = itr->second;
+          found.h = addr.h;
+          min = time;
         }
-        ++itr;
       }
       // kick old ident off exit
       // TODO: DoS
@@ -620,9 +601,9 @@ namespace llarp
     ExitEndpoint::AllRemoteEndpoints() const
     {
       std::unordered_set<AddressVariant_t> remote;
-      for (auto itr = m_Paths.begin(); itr != m_Paths.end(); ++itr)
+      for (const auto& [path, pubkey] : m_Paths)
       {
-        remote.insert(RouterID{itr->second});
+        remote.insert(RouterID{pubkey});
       }
       return remote;
     }
@@ -640,9 +621,7 @@ namespace llarp
       huint128_t ip = m_KeyToIP[pk];
       m_KeyToIP.erase(pk);
       m_IPToKey.erase(ip);
-      auto range = m_ActiveExits.equal_range(pk);
-      auto exit_itr = range.first;
-      while (exit_itr != range.second)
+      for (auto [exit_itr, end] = m_ActiveExits.equal_range(pk); exit_itr != end;)
         exit_itr = m_ActiveExits.erase(exit_itr);
     }
 
@@ -677,19 +656,14 @@ namespace llarp
     {
       exit::Endpoint* endpoint = nullptr;
       PubKey pk;
-      {
-        auto itr = m_Paths.find(path);
-        if (itr == m_Paths.end())
-          return nullptr;
+      if (auto itr = m_Paths.find(path); itr != m_Paths.end())
         pk = itr->second;
-      }
+      else
+        return nullptr;
+      if (auto itr = m_ActiveExits.find(pk); itr != m_ActiveExits.end())
       {
-        auto itr = m_ActiveExits.find(pk);
-        if (itr != m_ActiveExits.end())
-        {
-          if (itr->second->PubKey() == pk)
-            endpoint = itr->second.get();
-        }
+        if (itr->second->PubKey() == pk)
+          endpoint = itr->second.get();
       }
       return endpoint;
     }
@@ -698,8 +672,7 @@ namespace llarp
     ExitEndpoint::UpdateEndpointPath(const PubKey& remote, const PathID_t& next)
     {
       // check if already mapped
-      auto itr = m_Paths.find(next);
-      if (itr != m_Paths.end())
+      if (auto itr = m_Paths.find(next); itr != m_Paths.end())
         return false;
       m_Paths.emplace(next, remote);
       return true;
@@ -780,7 +753,7 @@ namespace llarp
       {
         auto session = std::make_shared<exit::SNodeSession>(
             other,
-            std::bind(&ExitEndpoint::QueueSNodePacket, this, std::placeholders::_1, ip),
+            [this, ip](const auto& buf) { return QueueSNodePacket(buf, ip); },
             GetRouter(),
             2,
             1,
@@ -837,18 +810,14 @@ namespace llarp
     void
     ExitEndpoint::RemoveExit(const exit::Endpoint* ep)
     {
-      auto range = m_ActiveExits.equal_range(ep->PubKey());
-      auto itr = range.first;
-      while (itr != range.second)
+      for (auto [itr, end] = m_ActiveExits.equal_range(ep->PubKey()); itr != end; ++itr)
       {
         if (itr->second->GetCurrentPath() == ep->GetCurrentPath())
         {
-          itr = m_ActiveExits.erase(itr);
+          m_ActiveExits.erase(itr);
           // now ep is gone af
           return;
         }
-
-        ++itr;
       }
     }
 
