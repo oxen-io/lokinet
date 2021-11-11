@@ -130,5 +130,8 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    virtual void
+    HandlePlaintext() = 0;
   };
 }  // namespace llarp

@@ -1248,6 +1248,7 @@ namespace llarp
 #else
     _loop->set_pump_function([this] { PumpLLNonIdempotent(); });
 #endif
+    //_loop->call_every(10ms, weak_from_this(), [this] { PumpLLNonIdempotent(); });
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
     _startedAt = Now();

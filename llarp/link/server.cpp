@@ -408,8 +408,7 @@ namespace llarp
       Lock_t l(m_AuthedLinksMutex);
       RouterID r = remote;
       llarp::LogInfo("Closing all to ", r);
-      auto [itr, end] = m_AuthedLinks.equal_range(r);
-      while (itr != end)
+      for (auto [itr, end] = m_AuthedLinks.equal_range(r); itr != end;)
       {
         itr->second->Close();
         m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
@@ -493,7 +492,6 @@ namespace llarp
     if (m_Pending.count(address))
       return false;
     m_Pending.emplace(address, s);
-    m_Router->PumpLL();
     return true;
   }
 

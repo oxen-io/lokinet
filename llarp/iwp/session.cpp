@@ -40,6 +40,7 @@ namespace llarp
         , m_PlaintextRecv{PlaintextQueueSize}
     {
       token.Zero();
+      m_PlaintextEmpty.test_and_set();
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(rc.pubkey));
     }
@@ -53,6 +54,7 @@ namespace llarp
         , m_PlaintextRecv{PlaintextQueueSize}
     {
       token.Randomize();
+      m_PlaintextEmpty.test_and_set();
       GotLIM = util::memFn(&Session::GotInboundLIM, this);
       const PubKey pk = m_Parent->GetOurRC().pubkey;
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(pk));
@@ -267,7 +269,6 @@ namespace llarp
 
       if (not m_DecryptNext.empty())
       {
-        m_Parent->AddWakeup(weak_from_this());
         m_Parent->QueueWork([self, data = m_DecryptNext] { self->DecryptWorker(data); });
         m_DecryptNext.clear();
       }
@@ -648,12 +649,15 @@ namespace llarp
         ++itr;
       }
       m_PlaintextRecv.tryPushBack(std::move(msgs));
+      m_PlaintextEmpty.clear();
       m_Parent->WakeupPlaintext();
     }
 
     void
     Session::HandlePlaintext()
     {
+      if (m_PlaintextEmpty.test_and_set())
+        return;
       while (auto maybe_queue = m_PlaintextRecv.tryPopFront())
       {
         for (auto& result : *maybe_queue)
@@ -688,7 +692,7 @@ namespace llarp
         }
       }
       SendMACK();
-      TriggerPump();
+      m_Parent->WakeupPlaintext();
     }
 
     void

@@ -23,9 +23,7 @@ namespace llarp::iwp
       : ILinkLayer(
           keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
       , m_Wakeup{ev->make_waker([this]() { HandleWakeupPlaintext(); })}
-      , m_PlaintextRecv{1024}
       , m_Inbound{allowInbound}
-
   {}
 
   const char*
@@ -81,6 +79,7 @@ namespace llarp::iwp
         LogWarn("Brand new session failed; removing from pending sessions list");
         m_Pending.erase(from);
       }
+      WakeupPlaintext();
     }
   }
 
@@ -108,13 +107,6 @@ namespace llarp::iwp
   }
 
   void
-  LinkLayer::AddWakeup(std::weak_ptr<Session> session)
-  {
-    if (auto ptr = session.lock())
-      m_PlaintextRecv[ptr->GetRemoteEndpoint()] = session;
-  }
-
-  void
   LinkLayer::WakeupPlaintext()
   {
     m_Wakeup->Trigger();
@@ -123,13 +115,15 @@ namespace llarp::iwp
   void
   LinkLayer::HandleWakeupPlaintext()
   {
-    for (const auto& [addr, session] : m_PlaintextRecv)
-    {
-      auto ptr = session.lock();
-      if (ptr)
-        ptr->HandlePlaintext();
-    }
-    m_PlaintextRecv.clear();
+    // Copy bare pointers out first because HandlePlaintext can end up removing themselves from the
+    // structures.
+    m_WakingUp.clear();  // Reused to minimize allocations.
+    for (const auto& [router_id, session] : m_AuthedLinks)
+      m_WakingUp.push_back(session.get());
+    for (const auto& [addr, session] : m_Pending)
+      m_WakingUp.push_back(session.get());
+    for (auto* session : m_WakingUp)
+      session->HandlePlaintext();
     PumpDone();
   }
 

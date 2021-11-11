@@ -132,7 +132,7 @@ namespace llarp
         return m_Inbound;
       }
       void
-      HandlePlaintext();
+      HandlePlaintext() override;
 
      private:
       enum class State
@@ -201,6 +201,7 @@ namespace llarp
       CryptoQueue_t m_EncryptNext;
       CryptoQueue_t m_DecryptNext;
 
+      std::atomic_flag m_PlaintextEmpty;
       llarp::thread::Queue<CryptoQueue_t> m_PlaintextRecv;
 
       void

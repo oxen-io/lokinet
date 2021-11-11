@@ -53,9 +53,6 @@ namespace llarp::iwp
     void
     WakeupPlaintext();
 
-    void
-    AddWakeup(std::weak_ptr<Session> peer);
-
     std::string
     PrintableName() const;
 
@@ -64,8 +61,8 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
-    std::unordered_map<SockAddr, std::weak_ptr<Session>> m_PlaintextRecv;
     std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
+    std::vector<ILinkSession*> m_WakingUp;
     const bool m_Inbound;
   };
 
