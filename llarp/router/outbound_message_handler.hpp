@@ -34,9 +34,9 @@ namespace llarp
      * router, one is created.
      *
      * If there is a session to the destination router, the message is placed on the shared
-     * outbound message queue to be processed on Tick().
+     * outbound message queue to be processed on Pump().
      *
-     * When this class' Tick() is called, that queue is emptied and the messages there
+     * When this class' Pump() is called, that queue is emptied and the messages there
      * are placed in their paths' respective individual queues.
      *
      * Returns false if encoding the message into a buffer fails, true otherwise.
@@ -47,7 +47,7 @@ namespace llarp
     QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
-    /* Called once per event loop tick.
+    /* Called when pumping output queues, typically scheduled via a call to Router::PumpLL().
      *
      * Processes messages on the shared message queue into their paths' respective
      * individual queues.
@@ -59,7 +59,7 @@ namespace llarp
      * Sends messages from path queues until all are empty or a set cap has been reached.
      */
     void
-    Tick() override;
+    Pump() override;
 
     /* Called from outside this class to inform it that a path has died / expired
      * and its queue should be discarded.
@@ -145,7 +145,7 @@ namespace llarp
      * If the queue is full, the message is dropped and the message's status
      * callback is invoked with a congestion status.
      *
-     * When this class' Tick() is called, that queue is emptied and the messages there
+     * When this class' Pump() is called, that queue is emptied and the messages there
      * are placed in their paths' respective individual queues.
      */
     bool

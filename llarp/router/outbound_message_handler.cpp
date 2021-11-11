@@ -81,7 +81,7 @@ namespace llarp
   }
 
   void
-  OutboundMessageHandler::Tick()
+  OutboundMessageHandler::Pump()
   {
     m_Killer.TryAccess([this]() {
       recentlyRemovedPaths.Decay();

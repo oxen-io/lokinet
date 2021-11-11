@@ -42,7 +42,7 @@ namespace llarp
     virtual void
     OnLinkEstablished(ILinkLayer*){};
 
-    /// called every event loop tick
+    /// called during pumping
     virtual void
     Pump() = 0;
 

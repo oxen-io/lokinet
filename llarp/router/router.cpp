@@ -87,7 +87,7 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
       return;
-    _outboundMessageHandler.Tick();
+    _outboundMessageHandler.Pump();
     _linkManager.PumpLinks();
     llarp::LogTrace("Router::PumpLL() end");
   }
@@ -106,10 +106,7 @@ namespace llarp
           {"links", _linkManager.ExtractStatus()},
           {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
-    else
-    {
-      return util::StatusObject{{"running", false}};
-    }
+    return util::StatusObject{{"running", false}};
   }
 
   util::StatusObject
@@ -716,7 +713,7 @@ namespace llarp
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
-      if (!server->Configure(loop(), key, af, port))
+      if (!server->Configure(this, key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
@@ -1521,7 +1518,7 @@ namespace llarp
 
     for (const auto af : {AF_INET, AF_INET6})
     {
-      if (not link->Configure(loop(), "*", af, m_OutboundPort))
+      if (not link->Configure(this, "*", af, m_OutboundPort))
         continue;
 
 #if defined(ANDROID)

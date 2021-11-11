@@ -48,8 +48,11 @@ namespace llarp
       /// inbound session
       Session(LinkLayer* parent, const SockAddr& from);
 
-      ~Session() = default;
+      // Signal the event loop that a pump is needed (idempotent)
+      void
+      TriggerPump();
 
+      // Does the actual pump
       void
       Pump() override;
 
@@ -191,7 +194,7 @@ namespace llarp
       /// maps rxid to time recieved
       std::unordered_map<uint64_t, llarp_time_t> m_ReplayFilter;
       /// rx messages to send in next round of multiacks
-      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> m_SendMACKs;
+      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<>> m_SendMACKs;
 
       using CryptoQueue_t = std::vector<Packet_t>;
 

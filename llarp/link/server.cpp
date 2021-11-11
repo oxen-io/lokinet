@@ -7,6 +7,7 @@
 #include <llarp/util/fs.hpp>
 #include <utility>
 #include <unordered_set>
+#include <llarp/router/abstractrouter.hpp>
 
 static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
@@ -38,7 +39,11 @@ namespace llarp
       , m_SecretKey(keyManager->transportKey)
   {}
 
-  ILinkLayer::~ILinkLayer() = default;
+  llarp_time_t
+  ILinkLayer::Now() const
+  {
+    return m_Router->loop()->time_now();
+  }
 
   bool
   ILinkLayer::HasSessionTo(const RouterID& id)
@@ -124,10 +129,10 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Configure(EventLoop_ptr loop, const std::string& ifname, int af, uint16_t port)
+  ILinkLayer::Configure(AbstractRouter* router, const std::string& ifname, int af, uint16_t port)
   {
-    m_Loop = std::move(loop);
-    m_udp = m_Loop->make_udp(
+    m_Router = router;
+    m_udp = m_Router->loop()->make_udp(
         [this]([[maybe_unused]] UDPHandle& udp, const SockAddr& from, llarp_buffer_t buf) {
           ILinkSession::Packet_t pkt;
           pkt.resize(buf.sz);
@@ -163,7 +168,6 @@ namespace llarp
     if (not m_udp->listen(m_ourAddr))
       return false;
 
-    m_Loop->add_ticker([this] { Pump(); });
     return true;
   }
 
@@ -247,6 +251,7 @@ namespace llarp
       }
       m_AuthedLinks.emplace(pk, itr->second);
       itr = m_Pending.erase(itr);
+      m_Router->PumpLL();
       return true;
     }
     return false;
@@ -345,7 +350,8 @@ namespace llarp
   {
     // Tie the lifetime of this repeater to this arbitrary shared_ptr:
     m_repeater_keepalive = std::make_shared<int>(0);
-    m_Loop->call_every(LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
+    m_Router->loop()->call_every(
+        LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
     return true;
   }
 
@@ -487,6 +493,7 @@ namespace llarp
     if (m_Pending.count(address))
       return false;
     m_Pending.emplace(address, s);
+    m_Router->PumpLL();
     return true;
   }
 

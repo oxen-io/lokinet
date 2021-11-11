@@ -3,6 +3,7 @@
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/util/meta/memfn.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -136,6 +137,7 @@ namespace llarp
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
       m_EncryptNext.emplace_back(std::move(data));
+      TriggerPump();
       if (!IsEstablished())
       {
         EncryptWorker(std::move(m_EncryptNext));
@@ -190,6 +192,7 @@ namespace llarp
       const auto bufsz = buf.size();
       auto& msg = m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed})
                       .first->second;
+      TriggerPump();
       EncryptAndSend(msg.XMIT());
       if (bufsz > FragmentSize)
       {
@@ -226,6 +229,12 @@ namespace llarp
     }
 
     void
+    Session::TriggerPump()
+    {
+      m_Parent->Router()->PumpLL();
+    }
+
+    void
     Session::Pump()
     {
       const auto now = m_Parent->Now();
@@ -233,18 +242,18 @@ namespace llarp
       {
         if (ShouldPing())
           SendKeepAlive();
-        for (auto& item : m_RXMsgs)
+        for (auto& [id, msg] : m_RXMsgs)
         {
-          if (item.second.ShouldSendACKS(now))
+          if (msg.ShouldSendACKS(now))
           {
-            item.second.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
+            msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
           }
         }
-        for (auto& item : m_TXMsgs)
+        for (auto& [id, msg] : m_TXMsgs)
         {
-          if (item.second.ShouldFlush(now))
+          if (msg.ShouldFlush(now))
           {
-            item.second.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
+            msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
           }
         }
       }
@@ -613,6 +622,7 @@ namespace llarp
     Session::HandleSessionData(Packet_t pkt)
     {
       m_DecryptNext.emplace_back(std::move(pkt));
+      TriggerPump();
     }
 
     void
@@ -679,7 +689,7 @@ namespace llarp
         }
       }
       SendMACK();
-      Pump();
+      TriggerPump();
     }
 
     void
@@ -774,6 +784,8 @@ namespace llarp
         {
           itr = m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, ShortHash{pos}, m_Parent->Now()})
                     .first;
+          TriggerPump();
+
           sz = std::min(sz, uint16_t{FragmentSize});
           if ((data.size() - XMITOverhead) == sz)
           {
