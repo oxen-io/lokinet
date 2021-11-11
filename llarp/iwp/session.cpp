@@ -654,10 +654,9 @@ namespace llarp
     void
     Session::HandlePlaintext()
     {
-      while (not m_PlaintextRecv.empty())
+      while (auto maybe_queue = m_PlaintextRecv.tryPopFront())
       {
-        auto queue = m_PlaintextRecv.popFront();
-        for (auto& result : queue)
+        for (auto& result : *maybe_queue)
         {
           LogTrace("Command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
           switch (result[PacketOverhead + 1])
