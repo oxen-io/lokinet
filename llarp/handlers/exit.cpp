@@ -425,7 +425,6 @@ namespace llarp
         session->FlushUpstream();
         session->FlushDownstream();
       }
-      m_Router->PumpLL();
     }
 
     bool
