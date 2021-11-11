@@ -58,14 +58,15 @@ namespace llarp::iwp
     if (itr == m_AuthedAddrs.end())
     {
       Lock_t lock{m_PendingMutex};
-      if (m_Pending.count(from) == 0)
+      auto it = m_Pending.find(from);
+      if (it == m_Pending.end())
       {
         if (not m_Inbound)
           return;
         isNewSession = true;
-        m_Pending.insert({from, std::make_shared<Session>(this, from)});
+        it = m_Pending.emplace(from, std::make_shared<Session>(this, from)).first;
       }
-      session = m_Pending.find(from)->second;
+      session = it->second;
     }
     else
     {
@@ -78,7 +79,7 @@ namespace llarp::iwp
       if (not success and isNewSession)
       {
         LogWarn("Brand new session failed; removing from pending sessions list");
-        m_Pending.erase(m_Pending.find(from));
+        m_Pending.erase(from);
       }
     }
   }
