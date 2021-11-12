@@ -1091,14 +1091,12 @@ namespace llarp
           service::Address addr{};
           for (const auto& [range, exitAddr] : exitEntries)
           {
-            if (range.BogonRange() and range.Contains(dst))
+            if (
+                // we permit this because it matches our rules and we allow bogons:
+                (range.BogonRange() and range.Contains(dst))
+                // allow because the destination is not a bogon and the mapped range is not a bogon
+                or not IsBogon(dst))
             {
-              // we permit this because it matches our rules and we allow bogons
-              addr = exitAddr;
-            }
-            else if (not IsBogon(dst))
-            {
-              // allow because the destination is not a bogon and the mapped range is not a bogon
               addr = exitAddr;
             }
             // we do not permit bogons when they don't explicitly match a permitted bogon range
@@ -1162,7 +1160,7 @@ namespace llarp
               if (not maybe)
               {
                 var::visit(
-                    [&](auto&& addr) {
+                    [this](auto&& addr) {
                       LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
                     },
                     to);
@@ -1174,7 +1172,7 @@ namespace llarp
               else
               {
                 var::visit(
-                    [&](auto&& addr) {
+                    [this](auto&& addr) {
                       LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
                     },
                     to);
