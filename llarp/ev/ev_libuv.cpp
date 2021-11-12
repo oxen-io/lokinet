@@ -111,14 +111,12 @@ namespace llarp::uv
   {
     llarp::LogTrace("ticking event loop.");
     FlushLogic();
-    if (PumpLL)
-      PumpLL();
     auto& log = llarp::LogContext::Instance();
     if (log.logStream)
       log.logStream->Tick(time_now());
   }
 
-  Loop::Loop(size_t queue_size) : llarp::EventLoop{}, PumpLL{nullptr}, m_LogicCalls{queue_size}
+  Loop::Loop(size_t queue_size) : llarp::EventLoop{}, m_LogicCalls{queue_size}
   {
     if (!(m_Impl = uvw::Loop::create()))
       throw std::runtime_error{"Failed to construct libuv loop"};
@@ -160,12 +158,6 @@ namespace llarp::uv
   Loop::wakeup()
   {
     m_WakeUp->send();
-  }
-
-  void
-  Loop::set_pump_function(std::function<void(void)> pump)
-  {
-    PumpLL = std::move(pump);
   }
 
   std::shared_ptr<llarp::UDPHandle>

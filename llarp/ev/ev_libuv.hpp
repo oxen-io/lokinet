@@ -32,9 +32,6 @@ namespace llarp::uv
     running() const override;
 
     void
-    wakeup() override;
-
-    void
     call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void
@@ -54,9 +51,6 @@ namespace llarp::uv
     void
     call_soon(std::function<void(void)> f) override;
 
-    void
-    set_pump_function(std::function<void(void)> pumpll) override;
-
     std::shared_ptr<llarp::EventLoopWakeup>
     make_waker(std::function<void()> callback) override;
 
@@ -68,8 +62,6 @@ namespace llarp::uv
 
     void
     FlushLogic();
-
-    std::function<void(void)> PumpLL;
 
     std::shared_ptr<uvw::Loop>
     MaybeGetUVWLoop() override;
@@ -95,6 +87,9 @@ namespace llarp::uv
     std::unordered_map<int, std::shared_ptr<uvw::PollHandle>> m_Polls;
 
     std::optional<std::thread::id> m_EventLoopThreadID;
+
+    void
+    wakeup() override;
   };
 
 }  // namespace llarp::uv

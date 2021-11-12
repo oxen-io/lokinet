@@ -488,7 +488,7 @@ namespace llarp
           LogDebug("failed to send upstream to ", Upstream());
         }
       }
-      r->linkManager().PumpLinks();
+      r->PumpLL();
     }
 
     void
@@ -600,7 +600,7 @@ namespace llarp
         m_RXRate += buf.sz;
         if (HandleRoutingMessage(buf, r))
         {
-          r->loop()->wakeup();
+          r->PumpLL();
           m_LastRecvMessage = r->Now();
         }
       }
