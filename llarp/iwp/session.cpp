@@ -27,7 +27,7 @@ namespace llarp
       return pkt;
     }
 
-    constexpr size_t PlaintextQueueSize = 32;
+    constexpr size_t PlaintextQueueSize = 512;
 
     Session::Session(LinkLayer* p, const RouterContact& rc, const AddressInfo& ai)
         : m_State{State::Initial}
