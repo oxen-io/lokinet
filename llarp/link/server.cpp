@@ -251,7 +251,7 @@ namespace llarp
       }
       m_AuthedLinks.emplace(pk, itr->second);
       itr = m_Pending.erase(itr);
-      m_Router->PumpLL();
+      m_Router->TriggerPump();
       return true;
     }
     return false;

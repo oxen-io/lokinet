@@ -233,7 +233,7 @@ namespace llarp
     void
     Session::TriggerPump()
     {
-      m_Parent->Router()->PumpLL();
+      m_Parent->Router()->TriggerPump();
     }
 
     void

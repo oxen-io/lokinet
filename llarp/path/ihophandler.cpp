@@ -16,7 +16,7 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->PumpLL();
+      r->TriggerPump();
       return true;
     }
 
@@ -31,7 +31,7 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->PumpLL();
+      r->TriggerPump();
       return true;
     }
 

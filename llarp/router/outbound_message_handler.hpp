@@ -47,7 +47,7 @@ namespace llarp
     QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
-    /* Called when pumping output queues, typically scheduled via a call to Router::PumpLL().
+    /* Called when pumping output queues, typically scheduled via a call to Router::TriggerPump().
      *
      * Processes messages on the shared message queue into their paths' respective
      * individual queues.

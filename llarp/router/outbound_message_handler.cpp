@@ -87,7 +87,7 @@ namespace llarp
       recentlyRemovedPaths.Decay();
       ProcessOutboundQueue();
       if (/*bool more = */ SendRoundRobin())
-        _router->PumpLL();
+        _router->TriggerPump();
     });
   }
 

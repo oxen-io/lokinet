@@ -1587,7 +1587,7 @@ namespace llarp
           if (*ptr == m_Identity.pub.Addr())
           {
             ConvoTagTX(tag);
-            m_state->m_Router->PumpLL();
+            m_state->m_Router->TriggerPump();
             if (not HandleInboundPacket(tag, pkt, t, 0))
               return false;
             ConvoTagRX(tag);
@@ -1596,7 +1596,7 @@ namespace llarp
         }
         if (not SendToOrQueue(*maybe, pkt, t))
           return false;
-        m_state->m_Router->PumpLL();
+        m_state->m_Router->TriggerPump();
         return true;
       }
       LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
@@ -1673,7 +1673,7 @@ namespace llarp
       }
 
       UpstreamFlush(router);
-      router->PumpLL();
+      router->TriggerPump();
     }
 
     std::optional<ConvoTag>

@@ -284,10 +284,10 @@ namespace llarp
     RoutePoker m_RoutePoker;
 
     void
-    PumpLL() override;
+    TriggerPump() override;
 
     void
-    PumpLLNonIdempotent();
+    PumpLL();
 
     const oxenmq::address DefaultRPCBindAddr = oxenmq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;

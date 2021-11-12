@@ -200,7 +200,7 @@ namespace llarp
           r->SendToOrQueue(info.upstream, msg);
         }
       }
-      r->PumpLL();
+      r->TriggerPump();
     }
 
     void
@@ -217,7 +217,7 @@ namespace llarp
             info.downstream);
         r->SendToOrQueue(info.downstream, msg);
       }
-      r->PumpLL();
+      r->TriggerPump();
     }
 
     void

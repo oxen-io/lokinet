@@ -72,7 +72,7 @@ namespace llarp
     m_Pump = _loop->make_waker([this]() {
       paths.PumpDownstream();
       paths.PumpUpstream();
-      PumpLLNonIdempotent();
+      PumpLL();
     });
   }
 
@@ -82,7 +82,7 @@ namespace llarp
   }
 
   void
-  Router::PumpLLNonIdempotent()
+  Router::PumpLL()
   {
     llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
@@ -256,7 +256,7 @@ namespace llarp
   }
 
   void
-  Router::PumpLL()
+  Router::TriggerPump()
   {
     m_Pump->Trigger();
   }
@@ -707,7 +707,7 @@ namespace llarp
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&Router::ConnectionTimedOut, this),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this),
+          util::memFn(&AbstractRouter::TriggerPump, this),
           util::memFn(&AbstractRouter::QueueWork, this));
 
       const std::string& key = serverConfig.interface;
@@ -1244,7 +1244,7 @@ namespace llarp
 
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
-    _loop->add_ticker([this] { PumpLLNonIdempotent(); });
+    _loop->add_ticker([this] { PumpLL(); });
 #endif
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
@@ -1508,7 +1508,7 @@ namespace llarp
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
         util::memFn(&Router::ConnectionTimedOut, this),
         util::memFn(&AbstractRouter::SessionClosed, this),
-        util::memFn(&AbstractRouter::PumpLL, this),
+        util::memFn(&AbstractRouter::TriggerPump, this),
         util::memFn(&AbstractRouter::QueueWork, this));
 
     if (!link)
