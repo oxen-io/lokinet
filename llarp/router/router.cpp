@@ -89,6 +89,7 @@ namespace llarp
       return;
     _outboundMessageHandler.Pump();
     _linkManager.PumpLinks();
+    _hiddenServiceContext.Pump();
     llarp::LogTrace("Router::PumpLL() end");
   }
 

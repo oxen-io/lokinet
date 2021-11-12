@@ -1596,7 +1596,6 @@ namespace llarp
         }
         if (not SendToOrQueue(*maybe, pkt, t))
           return false;
-        m_state->m_Router->TriggerPump();
         return true;
       }
       LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
@@ -1610,12 +1609,14 @@ namespace llarp
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
-      EnsurePathToSNode(addr, [=](RouterID, exit::BaseSession_ptr s, ConvoTag) {
-        if (s)
-        {
-          s->SendPacketToRemote(pkt->ConstBuffer(), t);
-        }
-      });
+      EnsurePathToSNode(
+          addr, [this, t, pkt = std::move(pkt)](RouterID, exit::BaseSession_ptr s, ConvoTag) {
+            if (s)
+            {
+              s->SendPacketToRemote(pkt->ConstBuffer(), t);
+              Router()->TriggerPump();
+            }
+          });
       return true;
     }
 
@@ -1673,7 +1674,6 @@ namespace llarp
       }
 
       UpstreamFlush(router);
-      router->TriggerPump();
     }
 
     std::optional<ConvoTag>
@@ -1885,6 +1885,7 @@ namespace llarp
               return;
             }
             self->m_SendQueue.tryPushBack(SendEvent_t{transfer, p});
+            self->Router()->TriggerPump();
           });
           return true;
         }
