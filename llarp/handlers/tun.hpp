@@ -112,10 +112,6 @@ namespace llarp
       HandleWriteIPPacket(
           const llarp_buffer_t& buf, huint128_t src, huint128_t dst, uint64_t seqno);
 
-      /// queue outbound packet to the world
-      bool
-      QueueOutboundTraffic(llarp::net::IPPacket&& pkt);
-
       /// we got a packet from the user
       void
       HandleGotUserPacket(llarp::net::IPPacket pkt);
