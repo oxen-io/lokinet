@@ -1167,6 +1167,7 @@ namespace llarp
           || (msg->proto == ProtocolType::QUIC and m_quic))
       {
         m_InboundTrafficQueue.tryPushBack(std::move(msg));
+        Router()->TriggerPump();
         return true;
       }
       if (msg->proto == ProtocolType::Control)

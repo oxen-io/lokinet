@@ -244,10 +244,6 @@ namespace llarp
           std::string service,
           std::function<void(std::vector<dns::SRVData>)> resultHandler) override;
 
-      /// called when something needs a pump to trigger the pump idempotently
-      void
-      TriggerPump();
-
       /// called on event loop pump
       virtual void
       Pump(llarp_time_t now);
