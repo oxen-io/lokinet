@@ -43,22 +43,19 @@ namespace llarp
       std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
       auto rttRMS = 0ms;
       {
-        do
+        while (auto maybe = m_SendQueue.tryPopFront())
         {
-          auto maybe = m_SendQueue.tryPopFront();
-          if (not maybe)
-            break;
-          auto& item = *maybe;
-          item.first->S = item.second->NextSeqNo();
-          if (item.second->SendRoutingMessage(*item.first, r))
+          auto& [msg, path] = *maybe;
+          msg->S = path->NextSeqNo();
+          if (path->SendRoutingMessage(*msg, r))
           {
             lastGoodSend = r->Now();
-            flushpaths.emplace(item.second);
-            m_Endpoint->ConvoTagTX(item.first->T.T);
-            const auto rtt = (item.second->intro.latency + remoteIntro.latency) * 2;
+            flushpaths.emplace(path);
+            m_Endpoint->ConvoTagTX(msg->T.T);
+            const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
             rttRMS += rtt * rtt.count();
           }
-        } while (not m_SendQueue.empty());
+        }
       }
       // flush the select path's upstream
       for (const auto& path : flushpaths)
