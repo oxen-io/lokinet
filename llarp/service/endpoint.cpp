@@ -1097,6 +1097,7 @@ namespace llarp
         m_router->loop()->call_soon([this] { FlushRecvData(); });
       }
       m_RecvQueue.tryPushBack(std::move(ev));
+      Router()->TriggerPump();
     }
 
     bool
