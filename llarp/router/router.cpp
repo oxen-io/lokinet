@@ -87,9 +87,9 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
       return;
+    _hiddenServiceContext.Pump();
     _outboundMessageHandler.Pump();
     _linkManager.PumpLinks();
-    _hiddenServiceContext.Pump();
     llarp::LogTrace("Router::PumpLL() end");
   }
 
