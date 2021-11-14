@@ -1877,15 +1877,14 @@ namespace llarp
           f.S = m->seqno;
           f.F = p->intro.pathID;
           transfer->P = replyIntro.pathID;
-          auto self = this;
-          Router()->QueueWork([transfer, p, m, K, self]() {
-            if (not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
+          Router()->QueueWork([transfer, p, m, K, this]() {
+            if (not transfer->T.EncryptAndSign(*m, K, m_Identity))
             {
               LogError("failed to encrypt and sign for sessionn T=", transfer->T.T);
               return;
             }
-            self->m_SendQueue.tryPushBack(SendEvent_t{transfer, p});
-            self->Router()->TriggerPump();
+            m_SendQueue.tryPushBack(SendEvent_t{transfer, p});
+            Router()->TriggerPump();
           });
           return true;
         }
@@ -1927,10 +1926,10 @@ namespace llarp
       traffic[remote].emplace_back(data, t);
       EnsurePathToService(
           remote,
-          [self = this](Address addr, OutboundContext* ctx) {
+          [this](Address addr, OutboundContext* ctx) {
             if (ctx)
             {
-              for (auto& pending : self->m_state->m_PendingTraffic[addr])
+              for (auto& pending : m_state->m_PendingTraffic[addr])
               {
                 ctx->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
               }
@@ -1939,7 +1938,7 @@ namespace llarp
             {
               LogWarn("no path made to ", addr);
             }
-            self->m_state->m_PendingTraffic.erase(addr);
+            m_state->m_PendingTraffic.erase(addr);
           },
           PathAlignmentTimeout());
       return true;
