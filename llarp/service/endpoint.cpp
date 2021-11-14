@@ -1621,7 +1621,8 @@ namespace llarp
       return true;
     }
 
-    void Endpoint::Pump(llarp_time_t)
+    void
+    Endpoint::Pump(llarp_time_t now)
     {
       FlushRecvData();
       // send downstream packets to user for snode
@@ -1660,7 +1661,10 @@ namespace llarp
       auto router = Router();
       // TODO: locking on this container
       for (const auto& [addr, outctx] : m_state->m_RemoteSessions)
+      {
         outctx->FlushUpstream();
+        outctx->Pump(now);
+      }
       // TODO: locking on this container
       for (const auto& [router, session] : m_state->m_SNodeSessions)
         session->FlushUpstream();
