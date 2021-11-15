@@ -1092,10 +1092,6 @@ namespace llarp
     void
     Endpoint::QueueRecvData(RecvDataEvent ev)
     {
-      if (m_RecvQueue.full() or m_RecvQueue.empty())
-      {
-        m_router->loop()->call_soon([this] { FlushRecvData(); });
-      }
       m_RecvQueue.tryPushBack(std::move(ev));
       Router()->TriggerPump();
     }
