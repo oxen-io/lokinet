@@ -1070,7 +1070,6 @@ namespace llarp
           // send icmp unreachable as we dont have any exits for this ip
           if (const auto icmp = pkt.MakeICMPUnreachable())
           {
-            /// ?
             HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
           }
           return;
