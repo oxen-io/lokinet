@@ -1077,11 +1077,7 @@ namespace llarp
         service::Address addr{};
         for (const auto& [range, exitAddr] : exitEntries)
         {
-          if (
-              // we permit this because it matches our rules and we allow bogons:
-              (range.BogonRange() and range.Contains(dst))
-              // allow because the destination is not a bogon and the mapped range is not a bogon
-              or not IsBogon(dst))
+          if (not IsBogon(dst) or range.BogonContains(dst))
           {
             addr = exitAddr;
           }
@@ -1274,7 +1270,7 @@ namespace llarp
         bool allow = false;
         for (const auto& [range, exitAddr] : mapped)
         {
-          if ((range.BogonRange() and range.Contains(src)) or not IsBogon(src))
+          if (not IsBogon(src) or range.BogonContains(src))
           {
             // allow if this address matches the endpoint we think it should be
             allow = exitAddr == fromAddr;
