@@ -21,19 +21,20 @@ namespace llarp
         , m_Endpoint(ep)
         , createdAt(ep->Now())
         , m_SendQueue(SendContextQueueSize)
-    {
-      m_FlushWakeup = ep->Loop()->make_waker([this] { FlushUpstream(); });
-    }
+    {}
 
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)
     {
-      if (not path->IsReady())
-        return false;
-      m_FlushWakeup->Trigger();
-      return m_SendQueue.tryPushBack(std::make_pair(
-                 std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path))
-          == thread::QueueReturn::Success;
+      if (path->IsReady()
+          and m_SendQueue.tryPushBack(std::make_pair(
+                  std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.pathID), path))
+              == thread::QueueReturn::Success)
+      {
+        m_Endpoint->Router()->TriggerPump();
+        return true;
+      }
+      return false;
     }
 
     void
@@ -42,19 +43,17 @@ namespace llarp
       auto r = m_Endpoint->Router();
       std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
       auto rttRMS = 0ms;
+      while (auto maybe = m_SendQueue.tryPopFront())
       {
-        while (auto maybe = m_SendQueue.tryPopFront())
+        auto& [msg, path] = *maybe;
+        msg->S = path->NextSeqNo();
+        if (path->SendRoutingMessage(*msg, r))
         {
-          auto& [msg, path] = *maybe;
-          msg->S = path->NextSeqNo();
-          if (path->SendRoutingMessage(*msg, r))
-          {
-            lastGoodSend = r->Now();
-            flushpaths.emplace(path);
-            m_Endpoint->ConvoTagTX(msg->T.T);
-            const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
-            rttRMS += rtt * rtt.count();
-          }
+          lastGoodSend = r->Now();
+          flushpaths.emplace(path);
+          m_Endpoint->ConvoTagTX(msg->T.T);
+          const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
+          rttRMS += rtt * rtt.count();
         }
       }
       // flush the select path's upstream

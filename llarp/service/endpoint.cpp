@@ -1079,14 +1079,11 @@ namespace llarp
     void
     Endpoint::FlushRecvData()
     {
-      do
+      while (auto maybe = m_RecvQueue.tryPopFront())
       {
-        auto maybe = m_RecvQueue.tryPopFront();
-        if (not maybe)
-          return;
-        auto ev = std::move(*maybe);
+        auto& ev = *maybe;
         ProtocolMessage::ProcessAsync(ev.fromPath, ev.pathid, ev.msg);
-      } while (true);
+      }
     }
 
     void
