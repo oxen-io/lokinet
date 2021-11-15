@@ -288,9 +288,8 @@ namespace llarp
       auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
       if (path)
       {
-        for (auto& item : m_Upstream)
+        for (auto& [i, queue] : m_Upstream)
         {
-          auto& queue = item.second;
           while (queue.size())
           {
             auto& msg = queue.front();
@@ -305,8 +304,8 @@ namespace llarp
         if (m_Upstream.size())
           llarp::LogWarn("no path for exit session");
         // discard upstream
-        for (auto& item : m_Upstream)
-          item.second.clear();
+        for (auto& [i, queue] : m_Upstream)
+          queue.clear();
         m_Upstream.clear();
         if (numHops == 1)
         {

@@ -81,12 +81,6 @@ namespace llarp
       return llarp::time_now_ms();
     }
 
-    // Triggers an event loop wakeup; use when something has been done that requires the event loop
-    // to wake up (e.g. adding to queues).  This is called implicitly by call() and call_soon().
-    // Idempotent and thread-safe.
-    virtual void
-    wakeup() = 0;
-
     // Calls a function/lambda/etc.  If invoked from within the event loop itself this calls the
     // given lambda immediately; otherwise it passes it to `call_soon()` to be queued to run at the
     // next event loop iteration.
@@ -196,10 +190,6 @@ namespace llarp
     virtual std::shared_ptr<UDPHandle>
     make_udp(UDPReceiveFunc on_recv) = 0;
 
-    /// set the function that is called once per cycle the flush all the queues
-    virtual void
-    set_pump_function(std::function<void(void)> pumpll) = 0;
-
     /// Make a thread-safe event loop waker (an "async" in libuv terminology) on this event loop;
     /// you can call `->Trigger()` on the returned shared pointer to fire the callback at the next
     /// available event loop iteration.  (Multiple Trigger calls invoked before the call is actually
@@ -227,6 +217,13 @@ namespace llarp
     {
       return nullptr;
     }
+
+   protected:
+    // Triggers an event loop wakeup; use when something has been done that requires the event loop
+    // to wake up (e.g. adding to queues).  This is called implicitly by call() and call_soon().
+    // Idempotent and thread-safe.
+    virtual void
+    wakeup() = 0;
   };
 
   using EventLoop_ptr = std::shared_ptr<EventLoop>;

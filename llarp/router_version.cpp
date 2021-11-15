@@ -56,7 +56,7 @@ namespace llarp
     Clear();
     size_t idx = 0;
     if (not bencode_read_list(
-            [self = this, &idx](llarp_buffer_t* buffer, bool has) {
+            [this, &idx](llarp_buffer_t* buffer, bool has) {
               if (has)
               {
                 uint64_t i;
@@ -65,14 +65,14 @@ namespace llarp
                   uint64_t val = -1;
                   if (not bencode_read_integer(buffer, &val))
                     return false;
-                  self->m_ProtoVersion = val;
+                  m_ProtoVersion = val;
                 }
                 else if (bencode_read_integer(buffer, &i))
                 {
                   // prevent overflow (note that idx includes version too)
-                  if (idx > self->m_Version.max_size())
+                  if (idx > m_Version.max_size())
                     return false;
-                  self->m_Version[idx - 1] = i;
+                  m_Version[idx - 1] = i;
                 }
                 else
                   return false;
