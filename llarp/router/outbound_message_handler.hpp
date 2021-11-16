@@ -17,8 +17,7 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  struct ILinkManager;
-  struct I_RCLookupHandler;
+  struct AbstractRouter;
   enum class SessionResult;
 
   struct OutboundMessageHandler final : public IOutboundMessageHandler
@@ -35,9 +34,9 @@ namespace llarp
      * router, one is created.
      *
      * If there is a session to the destination router, the message is placed on the shared
-     * outbound message queue to be processed on Tick().
+     * outbound message queue to be processed on Pump().
      *
-     * When this class' Tick() is called, that queue is emptied and the messages there
+     * When this class' Pump() is called, that queue is emptied and the messages there
      * are placed in their paths' respective individual queues.
      *
      * Returns false if encoding the message into a buffer fails, true otherwise.
@@ -48,7 +47,7 @@ namespace llarp
     QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
-    /* Called once per event loop tick.
+    /* Called when pumping output queues, typically scheduled via a call to Router::TriggerPump().
      *
      * Processes messages on the shared message queue into their paths' respective
      * individual queues.
@@ -60,7 +59,7 @@ namespace llarp
      * Sends messages from path queues until all are empty or a set cap has been reached.
      */
     void
-    Tick() override;
+    Pump() override;
 
     /* Called from outside this class to inform it that a path has died / expired
      * and its queue should be discarded.
@@ -72,7 +71,7 @@ namespace llarp
     ExtractStatus() const override;
 
     void
-    Init(ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, EventLoop_ptr loop);
+    Init(AbstractRouter* router);
 
    private:
     using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
@@ -146,7 +145,7 @@ namespace llarp
      * If the queue is full, the message is dropped and the message's status
      * callback is invoked with a congestion status.
      *
-     * When this class' Tick() is called, that queue is emptied and the messages there
+     * When this class' Pump() is called, that queue is emptied and the messages there
      * are placed in their paths' respective individual queues.
      */
     bool
@@ -160,14 +159,17 @@ namespace llarp
     ProcessOutboundQueue();
 
     /*
-     * Sends all routing messages that have been queued, indicated by pathid 0 when queued.
+     * Sends routing messages that have been queued, indicated by pathid 0 when queued.
      *
      * Sends messages from path queues until all are empty or a set cap has been reached.
      * This will send one message from each queue in a round-robin fashion such that they
      * all have roughly equal access to bandwidth.  A notion of priority may be introduced
      * at a later time, but for now only routing messages get priority.
+     *
+     * Returns true if there is more to send (i.e. we hit the limit before emptying all path
+     * queues), false if all queues were drained.
      */
-    void
+    bool
     SendRoundRobin();
 
     /* Invoked when an outbound session establish attempt has concluded.
@@ -193,9 +195,7 @@ namespace llarp
 
     std::queue<PathID_t> roundRobinOrder;
 
-    ILinkManager* _linkManager;
-    I_RCLookupHandler* _lookupHandler;
-    EventLoop_ptr _loop;
+    AbstractRouter* _router;
 
     util::ContentionKiller m_Killer;
 
