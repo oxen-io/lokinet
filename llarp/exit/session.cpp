@@ -137,6 +137,9 @@ namespace llarp
     void
     BaseSession::CallPendingCallbacks(bool success)
     {
+      if (m_PendingCallbacks.empty())
+        return;
+
       if (success)
       {
         auto self = shared_from_this();

@@ -97,9 +97,8 @@ namespace llarp
 
       m_RemoteRC = msg->rc;
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
-      auto self = shared_from_this();
-      assert(self.use_count() > 1);
-      SendOurLIM([self](ILinkSession::DeliveryStatus st) {
+      assert(shared_from_this().use_count() > 1);
+      SendOurLIM([self = shared_from_this()](ILinkSession::DeliveryStatus st) {
         if (st == ILinkSession::DeliveryStatus::eDeliverySuccess)
         {
           self->m_State = State::Ready;
@@ -259,17 +258,18 @@ namespace llarp
           }
         }
       }
-      auto self = shared_from_this();
-      assert(self.use_count() > 1);
+      assert(shared_from_this().use_count() > 1);
       if (not m_EncryptNext.empty())
       {
-        m_Parent->QueueWork([self, data = m_EncryptNext] { self->EncryptWorker(data); });
+        m_Parent->QueueWork(
+            [self = shared_from_this(), data = m_EncryptNext] { self->EncryptWorker(data); });
         m_EncryptNext.clear();
       }
 
       if (not m_DecryptNext.empty())
       {
-        m_Parent->QueueWork([self, data = m_DecryptNext] { self->DecryptWorker(data); });
+        m_Parent->QueueWork(
+            [self = shared_from_this(), data = m_DecryptNext] { self->DecryptWorker(data); });
         m_DecryptNext.clear();
       }
     }
