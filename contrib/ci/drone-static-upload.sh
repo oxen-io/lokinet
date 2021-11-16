@@ -44,7 +44,8 @@ elif [ -e lokinet.apk ] ; then
     archive="$base.apk"
     cp -av lokinet.apk "$archive"
 else
-    cp -av daemon/lokinet daemon/lokinet-vpn daemon/lokinet-bootstrap "$base"
+    cp -av daemon/lokinet daemon/lokinet-vpn "$base"
+    cp -av ../contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"
     # tar dat shiz up yo
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"

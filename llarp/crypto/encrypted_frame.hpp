@@ -80,7 +80,7 @@ namespace llarp
     AsyncDecrypt(const EncryptedFrame& frame, User_ptr u, WorkerFunction_t worker)
     {
       target = frame;
-      worker(std::bind(&AsyncFrameDecrypter<User>::Decrypt, this, std::move(u)));
+      worker([this, u = std::move(u)]() mutable { Decrypt(std::move(u)); });
     }
   };
 }  // namespace llarp

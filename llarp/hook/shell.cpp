@@ -136,7 +136,7 @@ namespace llarp
     {
       auto job = std::make_shared<ExecShellHookJob>(shared_from_this(), std::move(params));
 
-      m_ThreadPool.addJob(std::bind(&ExecShellHookJob::Exec, job));
+      m_ThreadPool.addJob([job = std::move(job)] { job->Exec(); });
     }
 
     Backend_ptr
