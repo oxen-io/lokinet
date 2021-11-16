@@ -733,13 +733,14 @@ namespace llarp
       if (not m_PublishIntroSet)
         return false;
 
-      auto next_pub = m_state->m_LastPublishAttempt
+      const auto lastEventAt = std::max(m_state->m_LastPublishAttempt, m_state->m_LastPublish);
+      const auto next_pub = lastEventAt
           + (m_state->m_IntroSet.HasStaleIntros(
                  now, path::default_lifetime - path::intro_path_spread)
                  ? IntrosetPublishRetryCooldown
                  : IntrosetPublishInterval);
 
-      return now >= next_pub and m_LastIntrosetRegenAttempt + 1s <= now;
+      return now >= next_pub;
     }
 
     void
