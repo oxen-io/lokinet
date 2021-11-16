@@ -52,6 +52,14 @@ namespace llarp
       return IsBogon(addr) or IsBogon(HighestAddr());
     }
 
+    /// return true if we intersect with a bogon range *and* we contain the given address
+    template <typename Addr>
+    bool
+    BogonContains(Addr&& addr) const
+    {
+      return BogonRange() and Contains(std::forward<Addr>(addr));
+    }
+
     /// return the number of bits set in the hostmask
     constexpr int
     HostmaskBits() const
@@ -61,6 +69,13 @@ namespace llarp
         return bits::count_bits(net::TruncateV6(netmask_bits));
       }
       return bits::count_bits(netmask_bits);
+    }
+
+    /// return true if our range and other intersect
+    constexpr bool
+    operator*(const IPRange& other) const
+    {
+      return Contains(other) or other.Contains(*this);
     }
 
     /// return true if the other range is inside our range

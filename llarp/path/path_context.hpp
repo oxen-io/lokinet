@@ -125,8 +125,11 @@ namespace llarp
         Mutex_t first;  // protects second
         TransitHopsMap_t second GUARDED_BY(first);
 
+        /// Invokes a callback for each transit path; visit must be invokable with a `const
+        /// TransitHop_ptr&` argument.
+        template <typename TransitHopVisitor>
         void
-        ForEach(std::function<void(const TransitHop_ptr&)> visit) EXCLUDES(first)
+        ForEach(TransitHopVisitor&& visit) EXCLUDES(first)
         {
           Lock_t lock(first);
           for (const auto& item : second)
@@ -142,8 +145,11 @@ namespace llarp
         util::Mutex first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 
+        /// Invokes a callback for each owned path; visit must be invokable with a `const Path_ptr&`
+        /// argument.
+        template <typename OwnedHopVisitor>
         void
-        ForEach(std::function<void(const Path_ptr&)> visit)
+        ForEach(OwnedHopVisitor&& visit)
         {
           util::Lock lock(first);
           for (const auto& item : second)

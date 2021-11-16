@@ -103,12 +103,10 @@ namespace llarp
       void
       CalculateTrafficStats(Stats& stats)
       {
-        auto itr = m_ActiveExits.begin();
-        while (itr != m_ActiveExits.end())
+        for (auto& [pubkey, endpoint] : m_ActiveExits)
         {
-          stats[itr->first].first += itr->second->TxRate();
-          stats[itr->first].second += itr->second->RxRate();
-          ++itr;
+          stats[pubkey].first += endpoint->TxRate();
+          stats[pubkey].second += endpoint->RxRate();
         }
       }
 

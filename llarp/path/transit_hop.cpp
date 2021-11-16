@@ -104,7 +104,7 @@ namespace llarp
     }
 
     void
-    TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    TransitHop::DownstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayDownstreamMessage> msgs;
@@ -114,7 +114,7 @@ namespace llarp
         }
         self->HandleAllDownstream(std::move(msgs), r);
       };
-      for (auto& ev : *msgs)
+      for (auto& ev : msgs)
       {
         RelayDownstreamMessage msg;
         const llarp_buffer_t buf(ev.first);
@@ -140,17 +140,9 @@ namespace llarp
     }
 
     void
-    TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    TransitHop::UpstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
-      auto flushIt = [self = shared_from_this(), r]() {
-        std::vector<RelayUpstreamMessage> msgs;
-        while (auto maybe = self->m_UpstreamGather.tryPopFront())
-        {
-          msgs.push_back(*maybe);
-        }
-        self->HandleAllUpstream(std::move(msgs), r);
-      };
-      for (auto& ev : *msgs)
+      for (auto& ev : msgs)
       {
         const llarp_buffer_t buf(ev.first);
         RelayUpstreamMessage msg;
@@ -158,14 +150,19 @@ namespace llarp
         msg.pathid = info.txID;
         msg.Y = ev.second ^ nonceXOR;
         msg.X = buf;
-        if (m_UpstreamGather.full())
-        {
-          r->loop()->call(flushIt);
-        }
-        if (m_UpstreamGather.enabled())
-          m_UpstreamGather.pushBack(msg);
+        if (m_UpstreamGather.tryPushBack(msg) != thread::QueueReturn::Success)
+          break;
       }
-      r->loop()->call(flushIt);
+
+      // Flush it:
+      r->loop()->call([self = shared_from_this(), r] {
+        std::vector<RelayUpstreamMessage> msgs;
+        while (auto maybe = self->m_UpstreamGather.tryPopFront())
+        {
+          msgs.push_back(*maybe);
+        }
+        self->HandleAllUpstream(std::move(msgs), r);
+      });
     }
 
     void
@@ -188,7 +185,6 @@ namespace llarp
           other->FlushDownstream(r);
         }
         m_FlushOthers.clear();
-        r->loop()->wakeup();
       }
       else
       {
@@ -203,8 +199,8 @@ namespace llarp
               info.upstream);
           r->SendToOrQueue(info.upstream, msg);
         }
-        r->linkManager().PumpLinks();
       }
+      r->TriggerPump();
     }
 
     void
@@ -221,31 +217,29 @@ namespace llarp
             info.downstream);
         r->SendToOrQueue(info.downstream, msg);
       }
-      r->linkManager().PumpLinks();
+      r->TriggerPump();
     }
 
     void
     TransitHop::FlushUpstream(AbstractRouter* r)
     {
-      if (m_UpstreamQueue && not m_UpstreamQueue->empty())
+      if (not m_UpstreamQueue.empty())
       {
-        r->QueueWork([self = shared_from_this(), data = std::move(m_UpstreamQueue), r]() mutable {
-          self->UpstreamWork(std::move(data), r);
-        });
+        r->QueueWork([self = shared_from_this(),
+                      data = std::exchange(m_UpstreamQueue, {}),
+                      r]() mutable { self->UpstreamWork(std::move(data), r); });
       }
-      m_UpstreamQueue = nullptr;
     }
 
     void
     TransitHop::FlushDownstream(AbstractRouter* r)
     {
-      if (m_DownstreamQueue && not m_DownstreamQueue->empty())
+      if (not m_DownstreamQueue.empty())
       {
-        r->QueueWork([self = shared_from_this(), data = std::move(m_DownstreamQueue), r]() mutable {
-          self->DownstreamWork(std::move(data), r);
-        });
+        r->QueueWork([self = shared_from_this(),
+                      data = std::exchange(m_DownstreamQueue, {}),
+                      r]() mutable { self->DownstreamWork(std::move(data), r); });
       }
-      m_DownstreamQueue = nullptr;
     }
 
     /// this is where a DHT message is handled at the end of a path, that is,
