@@ -503,10 +503,10 @@ namespace llarp
               IPRange{net::ExpandV4(xntohl(ifaddr)), net::ExpandV4(xntohl(ifmask))});
       }
     });
-    auto ownsRange = [&currentRanges](IPRange range) -> bool {
+    auto ownsRange = [&currentRanges](const IPRange& range) -> bool {
       for (const auto& ownRange : currentRanges)
       {
-        if (ownRange.Contains(range))
+        if (ownRange * range)
           return true;
       }
       return false;
