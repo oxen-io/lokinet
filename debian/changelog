@@ -1,3 +1,81 @@
+lokinet (0.9.8-1) unstable; urgency=medium
+
+  [ Jeff Becker ]
+  * check for intersecting ip ranges correctly, add unit test
+
+  [ Jason Rhinelander ]
+  * Add python build deps to ci images
+  * Make sure we apt-get update in the build
+  * Pass DOCKER_BUILD_OPTS env var to docker build
+
+  [ Jeff Becker ]
+  * bump libunbound static dep hashpin
+
+  [ Jason Rhinelander ]
+  * Add a bunch of base CI images for building debs
+  * Replace dockerfiles with a Python script
+  * Add --no-cache option; fix manifest generation
+  * Parallelize builds
+  * Make it snazzy
+  * Fix i386 builds
+  * Add hacks; add --distro to rebuild just one
+  * Fix race condition in interactive output
+  * Install g++-8 on bionic
+
+  [ Jeff Becker ]
+  * do not requeue nodes for testing from failing queue if we do not have them marked as failing anymore
+
+  [ Jason Rhinelander ]
+  * Fix comment typo
+
+  [ Jeff Becker ]
+  * make PumpLL idempotent to reduce cpu use a bit
+  * prevent 100% cpu usage on service nodes
+  * make event loop pump function non idempotent
+  * only pump path context in idempotent pumpll
+
+  [ Jason Rhinelander ]
+  * Allow a nullptr callback for event loop PumpLL
+  * Make outbound message queue PumpLL again if it doesn't send all
+  * outbound_message_handler: skip instead of aborting on removed paths
+  * transit hop: drop instead of flushing when full
+  * Simplifications & C++17
+  * Triggered pumping
+  * Remove another unwanted unconditional PumpLL
+  * Combine empty + pop into single call
+  * Simplify
+  * Fix link layer delivery race condition (fix random ping delays)
+  * Get rid of external event loop direct wakeups
+  * Rename PumpLL -> TriggerPump
+  * Increase plaintext queue size from 32 to 512
+  * Cleanups
+  * Fix packet delay creep
+  * Cleanup: avoid pointless copy of `this` pointer
+  * Remove dead declaration
+  * Pump hidden context sooner
+  * Simplify
+  * Add missing inbound traffic pump trigger
+  * Pump outbound context
+  * Add another missing pump trigger
+  * Remove hopeless flush
+  * Fix client latency bug; De-shared_ptr IHopHandler queues
+  * Remove broken test
+  * Remove debug comment
+  * Abstract & simplify logic
+  * Move paths pumping into PumpLL
+  * Avoid std::function in hot pump code
+  * Optimization: eliminate unneeded shared_ptrs
+  * Use libuv's cached current time for `time_now()`
+
+  [ Jeff Becker ]
+  * in static linux ci pipeline disable building lokinet-bootstrap and bundle a bootstrap.signed
+
+  [ Jason Rhinelander ]
+  * Bump version
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 16 Nov 2021 19:53:46 -0400
+
 lokinet (0.9.7-2) unstable; urgency=medium
 
   * update deb repo signature filename
