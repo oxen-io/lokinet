@@ -69,11 +69,26 @@ namespace llarp
     _running.store(false);
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
+    m_Pump = _loop->make_waker([this]() { PumpLL(); });
   }
 
   Router::~Router()
   {
     llarp_dht_context_free(_dht);
+  }
+
+  void
+  Router::PumpLL()
+  {
+    llarp::LogTrace("Router::PumpLL() start");
+    if (_stopping.load())
+      return;
+    paths.PumpDownstream();
+    paths.PumpUpstream();
+    _hiddenServiceContext.Pump();
+    _outboundMessageHandler.Pump();
+    _linkManager.PumpLinks();
+    llarp::LogTrace("Router::PumpLL() end");
   }
 
   util::StatusObject
@@ -90,10 +105,7 @@ namespace llarp
           {"links", _linkManager.ExtractStatus()},
           {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
-    else
-    {
-      return util::StatusObject{{"running", false}};
-    }
+    return util::StatusObject{{"running", false}};
   }
 
   util::StatusObject
@@ -243,16 +255,9 @@ namespace llarp
   }
 
   void
-  Router::PumpLL()
+  Router::TriggerPump()
   {
-    llarp::LogTrace("Router::PumpLL() start");
-    if (_stopping.load())
-      return;
-    paths.PumpDownstream();
-    paths.PumpUpstream();
-    _outboundMessageHandler.Tick();
-    _linkManager.PumpLinks();
-    llarp::LogTrace("Router::PumpLL() end");
+    m_Pump->Trigger();
   }
 
   bool
@@ -652,7 +657,7 @@ namespace llarp
       LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _loop);
+    _outboundMessageHandler.Init(this);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,
@@ -701,13 +706,13 @@ namespace llarp
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&Router::ConnectionTimedOut, this),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this),
+          util::memFn(&AbstractRouter::TriggerPump, this),
           util::memFn(&AbstractRouter::QueueWork, this));
 
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
-      if (!server->Configure(loop(), key, af, port))
+      if (!server->Configure(this, key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
@@ -1239,8 +1244,6 @@ namespace llarp
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
     _loop->add_ticker([this] { PumpLL(); });
-#else
-    _loop->set_pump_function([this] { PumpLL(); });
 #endif
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
@@ -1464,10 +1467,7 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    if (m_isServiceNode)
-      _loop->call_soon(std::move(func));
-    else
-      m_lmq->job(std::move(func));
+    m_lmq->job(std::move(func));
   }
 
   void
@@ -1507,7 +1507,7 @@ namespace llarp
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
         util::memFn(&Router::ConnectionTimedOut, this),
         util::memFn(&AbstractRouter::SessionClosed, this),
-        util::memFn(&AbstractRouter::PumpLL, this),
+        util::memFn(&AbstractRouter::TriggerPump, this),
         util::memFn(&AbstractRouter::QueueWork, this));
 
     if (!link)
@@ -1515,7 +1515,7 @@ namespace llarp
 
     for (const auto af : {AF_INET, AF_INET6})
     {
-      if (not link->Configure(loop(), "*", af, m_OutboundPort))
+      if (not link->Configure(this, "*", af, m_OutboundPort))
         continue;
 
 #if defined(ANDROID)

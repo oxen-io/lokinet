@@ -42,7 +42,7 @@ namespace llarp
     virtual void
     OnLinkEstablished(ILinkLayer*){};
 
-    /// called every event loop tick
+    /// called during pumping
     virtual void
     Pump() = 0;
 
@@ -130,5 +130,8 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    virtual void
+    HandlePlaintext() = 0;
   };
 }  // namespace llarp

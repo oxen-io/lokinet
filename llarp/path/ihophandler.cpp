@@ -9,14 +9,11 @@ namespace llarp
     bool
     IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
-      if (m_UpstreamQueue == nullptr)
-        m_UpstreamQueue = std::make_shared<TrafficQueue_t>();
-      m_UpstreamQueue->emplace_back();
-      auto& pkt = m_UpstreamQueue->back();
+      auto& pkt = m_UpstreamQueue.emplace_back();
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->loop()->wakeup();
+      r->TriggerPump();
       return true;
     }
 
@@ -24,14 +21,11 @@ namespace llarp
     bool
     IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
     {
-      if (m_DownstreamQueue == nullptr)
-        m_DownstreamQueue = std::make_shared<TrafficQueue_t>();
-      m_DownstreamQueue->emplace_back();
-      auto& pkt = m_DownstreamQueue->back();
+      auto& pkt = m_DownstreamQueue.emplace_back();
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->loop()->wakeup();
+      r->TriggerPump();
       return true;
     }
 
