@@ -31,12 +31,12 @@ namespace llarp
         uint64_t _status,
         HopHandler_ptr _hop,
         AbstractRouter* _router,
-        const PathID_t& pathid)
+        PathID_t pathid)
         : frames{std::move(_frames)}
         , status{_status}
         , hop{std::move(_hop)}
         , router{_router}
-        , pathid{pathid}
+        , pathid{std::move(pathid)}
     {}
 
     ~LRSM_AsyncHandler() = default;
@@ -51,7 +51,7 @@ namespace llarp
     void
     queue_handle()
     {
-      auto func = std::bind(&llarp::LRSM_AsyncHandler::handle, shared_from_this());
+      auto func = [self = shared_from_this()] { self->handle(); };
       router->QueueWork(func);
     }
   };
