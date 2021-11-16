@@ -104,8 +104,7 @@ namespace llarp
       std::set<Introduction, CompareIntroTimestamp> intros;
       if (const auto maybe =
               GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
-                return not intro.ExpiresSoon(
-                    now, path::default_lifetime - path::min_intro_lifetime);
+                return not intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread);
               }))
       {
         intros.insert(maybe->begin(), maybe->end());
