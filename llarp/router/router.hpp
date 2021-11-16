@@ -76,6 +76,8 @@ namespace llarp
 
     path::BuildLimiter m_PathBuildLimiter;
 
+    std::shared_ptr<EventLoopWakeup> m_Pump;
+
     path::BuildLimiter&
     pathBuildLimiter() override
     {
@@ -282,7 +284,10 @@ namespace llarp
     RoutePoker m_RoutePoker;
 
     void
-    PumpLL() override;
+    TriggerPump() override;
+
+    void
+    PumpLL();
 
     const oxenmq::address DefaultRPCBindAddr = oxenmq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;

@@ -109,7 +109,7 @@ namespace llarp::consensus
 
     std::shuffle(testing_queue.begin(), testing_queue.end(), rng);
 
-    // Recurse with the rebuild list, but don't let it try rebuilding again
+    // Recurse with the rebuilt list, but don't let it try rebuilding again
     return next_random(router, now, false);
   }
 
@@ -124,7 +124,8 @@ namespace llarp::consensus
       auto& [pk, retest_time, failures] = failing_queue.top();
       if (retest_time > now)
         break;
-      result.emplace_back(pk, failures);
+      if (failing.count(pk))
+        result.emplace_back(pk, failures);
       failing_queue.pop();
     }
     return result;
