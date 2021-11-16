@@ -86,13 +86,7 @@ namespace llarp
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
-        , m_UserToNetworkPktQueue("endpoint_sendq", r->loop(), r->loop())
     {
-      m_PacketSendWaker = r->loop()->make_waker([this]() { FlushWrite(); });
-      m_MessageSendWaker = r->loop()->make_waker([this]() {
-        FlushSend();
-        Pump(Now());
-      });
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
 #if defined(ANDROID) || defined(__APPLE__)
@@ -362,15 +356,7 @@ namespace llarp
     }
 
     void
-    TunEndpoint::Flush()
-    {
-      FlushSend();
-      Pump(Now());
-      FlushWrite();
-    }
-
-    void
-    TunEndpoint::FlushWrite()
+    TunEndpoint::Pump(llarp_time_t now)
     {
       // flush network to user
       while (not m_NetworkToUserPktQueue.empty())
@@ -378,6 +364,8 @@ namespace llarp
         m_NetIf->WritePacket(m_NetworkToUserPktQueue.top().pkt);
         m_NetworkToUserPktQueue.pop();
       }
+
+      service::Endpoint::Pump(now);
     }
 
     static bool
@@ -952,7 +940,6 @@ namespace llarp
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
 #endif
-      Router()->loop()->add_ticker([this] { Flush(); });
 
       // Attempt to register DNS on the interface
       systemd_resolved_set_dns(
@@ -1037,151 +1024,146 @@ namespace llarp
     }
 
     void
-    TunEndpoint::FlushSend()
+    TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
     {
-      m_UserToNetworkPktQueue.Process([&](net::IPPacket& pkt) {
-        huint128_t dst, src;
-        if (pkt.IsV4())
+      huint128_t dst, src;
+      if (pkt.IsV4())
+      {
+        dst = pkt.dst4to6();
+        src = pkt.src4to6();
+      }
+      else
+      {
+        dst = pkt.dstv6();
+        src = pkt.srcv6();
+      }
+      // this is for ipv6 slaac on ipv6 exits
+      /*
+      constexpr huint128_t ipv6_multicast_all_nodes =
+          huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};
+      constexpr huint128_t ipv6_multicast_all_routers =
+          huint128_t{uint128_t{0xff01'0000'0000'0000UL, 2UL}};
+      if (dst == ipv6_multicast_all_nodes and m_state->m_ExitEnabled)
+      {
+        // send ipv6 multicast
+        for (const auto& [ip, addr] : m_IPToAddr)
         {
-          dst = pkt.dst4to6();
-          src = pkt.src4to6();
+          (void)ip;
+          SendToOrQueue(
+              service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
         }
-        else
+        return;
+      }
+
+      */
+      if (m_state->m_ExitEnabled)
+      {
+        dst = net::ExpandV4(net::TruncateV6(dst));
+      }
+      auto itr = m_IPToAddr.find(dst);
+      if (itr == m_IPToAddr.end())
+      {
+        // find all ranges that match the destination ip
+        const auto exitEntries = m_ExitMap.FindAllEntries(dst);
+        if (exitEntries.empty())
         {
-          dst = pkt.dstv6();
-          src = pkt.srcv6();
-        }
-        // this is for ipv6 slaac on ipv6 exits
-        /*
-        constexpr huint128_t ipv6_multicast_all_nodes =
-            huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};
-        constexpr huint128_t ipv6_multicast_all_routers =
-            huint128_t{uint128_t{0xff01'0000'0000'0000UL, 2UL}};
-        if (dst == ipv6_multicast_all_nodes and m_state->m_ExitEnabled)
-        {
-          // send ipv6 multicast
-          for (const auto& [ip, addr] : m_IPToAddr)
+          // send icmp unreachable as we dont have any exits for this ip
+          if (const auto icmp = pkt.MakeICMPUnreachable())
           {
-            (void)ip;
-            SendToOrQueue(
-                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
+            HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
           }
           return;
         }
-
-        */
-        if (m_state->m_ExitEnabled)
+        service::Address addr{};
+        for (const auto& [range, exitAddr] : exitEntries)
         {
-          dst = net::ExpandV4(net::TruncateV6(dst));
+          if (not IsBogon(dst) or range.BogonContains(dst))
+          {
+            addr = exitAddr;
+          }
+          // we do not permit bogons when they don't explicitly match a permitted bogon range
         }
-        auto itr = m_IPToAddr.find(dst);
-        if (itr == m_IPToAddr.end())
-        {
-          // find all ranges that match the destination ip
-          const auto exitEntries = m_ExitMap.FindAllEntries(dst);
-          if (exitEntries.empty())
-          {
-            // send icmp unreachable as we dont have any exits for this ip
-            if (const auto icmp = pkt.MakeICMPUnreachable())
-            {
-              HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
-            }
-            return;
-          }
-          service::Address addr{};
-          for (const auto& [range, exitAddr] : exitEntries)
-          {
-            if (range.BogonRange() and range.Contains(dst))
-            {
-              // we permit this because it matches our rules and we allow bogons
-              addr = exitAddr;
-            }
-            else if (not IsBogon(dst))
-            {
-              // allow because the destination is not a bogon and the mapped range is not a bogon
-              addr = exitAddr;
-            }
-            // we do not permit bogons when they don't explicitly match a permitted bogon range
-          }
-          if (addr.IsZero())  // drop becase no exit was found that matches our rules
-            return;
-          pkt.ZeroSourceAddress();
-          MarkAddressOutbound(addr);
-          EnsurePathToService(
-              addr,
-              [pkt](service::Address addr, service::OutboundContext* ctx) {
-                if (ctx)
-                {
-                  ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
-                  return;
-                }
-                LogWarn("cannot ensure path to exit ", addr, " so we drop some packets");
-              },
-              PathAlignmentTimeout());
+        if (addr.IsZero())  // drop becase no exit was found that matches our rules
           return;
-        }
-        std::variant<service::Address, RouterID> to;
-        service::ProtocolType type;
-        if (m_SNodes.at(itr->second))
-        {
-          to = RouterID{itr->second.as_array()};
-          type = service::ProtocolType::TrafficV4;
-        }
-        else
-        {
-          to = service::Address{itr->second.as_array()};
-          type = m_state->m_ExitEnabled and src != m_OurIP ? service::ProtocolType::Exit
-                                                           : pkt.ServiceProtocol();
-        }
-
-        // prepare packet for insertion into network
-        // this includes clearing IP addresses, recalculating checksums, etc
-        // this does not happen for exits because the point is they don't rewrite addresses
-        if (type != service::ProtocolType::Exit)
-        {
-          if (pkt.IsV4())
-            pkt.UpdateIPv4Address({0}, {0});
-          else
-            pkt.UpdateIPv6Address({0}, {0});
-        }
-        // try sending it on an existing convotag
-        // this succeds for inbound convos, probably.
-        if (auto maybe = GetBestConvoTagFor(to))
-        {
-          if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
-          {
-            MarkIPActive(dst);
-            return;
-          }
-        }
-        // try establishing a path to this guy
-        // will fail if it's an inbound convo
-        EnsurePathTo(
-            to,
-            [pkt, type, dst, to, this](auto maybe) {
-              if (not maybe)
+        pkt.ZeroSourceAddress();
+        MarkAddressOutbound(addr);
+        EnsurePathToService(
+            addr,
+            [pkt, this](service::Address addr, service::OutboundContext* ctx) {
+              if (ctx)
               {
-                var::visit(
-                    [&](auto&& addr) {
-                      LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
-                    },
-                    to);
+                ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
+                Router()->TriggerPump();
+                return;
               }
-              if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
-              {
-                MarkIPActive(dst);
-              }
-              else
-              {
-                var::visit(
-                    [&](auto&& addr) {
-                      LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
-                    },
-                    to);
-              }
+              LogWarn("cannot ensure path to exit ", addr, " so we drop some packets");
             },
             PathAlignmentTimeout());
-      });
+        return;
+      }
+      std::variant<service::Address, RouterID> to;
+      service::ProtocolType type;
+      if (m_SNodes.at(itr->second))
+      {
+        to = RouterID{itr->second.as_array()};
+        type = service::ProtocolType::TrafficV4;
+      }
+      else
+      {
+        to = service::Address{itr->second.as_array()};
+        type = m_state->m_ExitEnabled and src != m_OurIP ? service::ProtocolType::Exit
+                                                         : pkt.ServiceProtocol();
+      }
+
+      // prepare packet for insertion into network
+      // this includes clearing IP addresses, recalculating checksums, etc
+      // this does not happen for exits because the point is they don't rewrite addresses
+      if (type != service::ProtocolType::Exit)
+      {
+        if (pkt.IsV4())
+          pkt.UpdateIPv4Address({0}, {0});
+        else
+          pkt.UpdateIPv6Address({0}, {0});
+      }
+      // try sending it on an existing convotag
+      // this succeds for inbound convos, probably.
+      if (auto maybe = GetBestConvoTagFor(to))
+      {
+        if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+        {
+          MarkIPActive(dst);
+          Router()->TriggerPump();
+          return;
+        }
+      }
+      // try establishing a path to this guy
+      // will fail if it's an inbound convo
+      EnsurePathTo(
+          to,
+          [pkt, type, dst, to, this](auto maybe) {
+            if (not maybe)
+            {
+              var::visit(
+                  [this](auto&& addr) {
+                    LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
+                  },
+                  to);
+            }
+            if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+            {
+              MarkIPActive(dst);
+              Router()->TriggerPump();
+            }
+            else
+            {
+              var::visit(
+                  [this](auto&& addr) {
+                    LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
+                  },
+                  to);
+            }
+          },
+          PathAlignmentTimeout());
     }
 
     bool
@@ -1288,7 +1270,7 @@ namespace llarp
         bool allow = false;
         for (const auto& [range, exitAddr] : mapped)
         {
-          if ((range.BogonRange() and range.Contains(src)) or not IsBogon(src))
+          if (not IsBogon(src) or range.BogonContains(src))
           {
             // allow if this address matches the endpoint we think it should be
             allow = exitAddr == fromAddr;
@@ -1335,8 +1317,8 @@ namespace llarp
         pkt.UpdateIPv6Address(src, dst);
       }
       m_NetworkToUserPktQueue.push(std::move(write));
-      // wake up packet flushing event so we ensure that all packets are written to user
-      m_PacketSendWaker->Trigger();
+      // wake up so we ensure that all packets are written to user
+      Router()->TriggerPump();
       return true;
     }
 
@@ -1439,13 +1421,6 @@ namespace llarp
     TunEndpoint::MarkIPActiveForever(huint128_t ip)
     {
       m_IPActivity[ip] = std::numeric_limits<llarp_time_t>::max();
-    }
-
-    void
-    TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
-    {
-      m_UserToNetworkPktQueue.Emplace(std::move(pkt));
-      m_MessageSendWaker->Trigger();
     }
 
     TunEndpoint::~TunEndpoint() = default;

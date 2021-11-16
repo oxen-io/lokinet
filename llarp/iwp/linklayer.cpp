@@ -23,9 +23,7 @@ namespace llarp::iwp
       : ILinkLayer(
           keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
       , m_Wakeup{ev->make_waker([this]() { HandleWakeupPlaintext(); })}
-      , m_PlaintextRecv{1024}
       , m_Inbound{allowInbound}
-
   {}
 
   const char*
@@ -58,14 +56,15 @@ namespace llarp::iwp
     if (itr == m_AuthedAddrs.end())
     {
       Lock_t lock{m_PendingMutex};
-      if (m_Pending.count(from) == 0)
+      auto it = m_Pending.find(from);
+      if (it == m_Pending.end())
       {
         if (not m_Inbound)
           return;
         isNewSession = true;
-        m_Pending.insert({from, std::make_shared<Session>(this, from)});
+        it = m_Pending.emplace(from, std::make_shared<Session>(this, from)).first;
       }
-      session = m_Pending.find(from)->second;
+      session = it->second;
     }
     else
     {
@@ -78,8 +77,9 @@ namespace llarp::iwp
       if (not success and isNewSession)
       {
         LogWarn("Brand new session failed; removing from pending sessions list");
-        m_Pending.erase(m_Pending.find(from));
+        m_Pending.erase(from);
       }
+      WakeupPlaintext();
     }
   }
 
@@ -107,13 +107,6 @@ namespace llarp::iwp
   }
 
   void
-  LinkLayer::AddWakeup(std::weak_ptr<Session> session)
-  {
-    if (auto ptr = session.lock())
-      m_PlaintextRecv[ptr->GetRemoteEndpoint()] = session;
-  }
-
-  void
   LinkLayer::WakeupPlaintext()
   {
     m_Wakeup->Trigger();
@@ -122,13 +115,15 @@ namespace llarp::iwp
   void
   LinkLayer::HandleWakeupPlaintext()
   {
-    for (const auto& [addr, session] : m_PlaintextRecv)
-    {
-      auto ptr = session.lock();
-      if (ptr)
-        ptr->HandlePlaintext();
-    }
-    m_PlaintextRecv.clear();
+    // Copy bare pointers out first because HandlePlaintext can end up removing themselves from the
+    // structures.
+    m_WakingUp.clear();  // Reused to minimize allocations.
+    for (const auto& [router_id, session] : m_AuthedLinks)
+      m_WakingUp.push_back(session.get());
+    for (const auto& [addr, session] : m_Pending)
+      m_WakingUp.push_back(session.get());
+    for (auto* session : m_WakingUp)
+      session->HandlePlaintext();
     PumpDone();
   }
 
