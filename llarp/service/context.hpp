@@ -36,6 +36,10 @@ namespace llarp
       void
       ForEachService(std::function<bool(const std::string&, const Endpoint_ptr&)> visit) const;
 
+      /// Pumps the hidden service endpoints, called during Router::PumpLL
+      void
+      Pump();
+
       /// add endpoint via config
       void
       AddEndpoint(const Config& conf, bool autostart = false);
