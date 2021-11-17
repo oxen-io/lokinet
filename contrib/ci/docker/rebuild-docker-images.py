@@ -82,7 +82,7 @@ def run_or_report(*args, myline):
             log.write(e.output.encode())
             global failure
             failure = True
-            print_line(myline, "\033[31;1mError! See {} for details", log.name)
+            print_line(myline, "\033[31;1mError! See {} for details".format(log.name))
             raise e
 
 
