@@ -94,8 +94,7 @@ namespace llarp
 
     if (shouldDoLookup)
     {
-      auto fn =
-          std::bind(&RCLookupHandler::HandleDHTLookupResult, this, router, std::placeholders::_1);
+      auto fn = [this, router](const auto& res) { HandleDHTLookupResult(router, res); };
 
       // if we are a client try using the hidden service endpoints
       if (!isServiceNode)
@@ -232,7 +231,7 @@ namespace llarp
     if (!SessionIsAllowed(newrc.pubkey))
       return false;
 
-    auto func = std::bind(&RCLookupHandler::CheckRC, this, newrc);
+    auto func = [this, newrc] { CheckRC(newrc); };
     _work(func);
 
     // update dht if required

@@ -60,6 +60,17 @@ TEST_CASE("Range")
     REQUIRE(!llarp::IPRange::FromIPv4(192, 168, 0, 1, 24)
                  .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
   }
+  SECTION("Intersecting networks")
+  {
+      const auto range_16 = llarp::IPRange::FromIPv4(10,9,0,1, 16);
+      const auto range_24a = llarp::IPRange::FromIPv4(10,9,0,1, 24);
+      const auto range_24b = llarp::IPRange::FromIPv4(10,9,1,1, 24);
+      const auto range_unrelated = llarp::IPRange::FromIPv4(1,9,1,1, 8);
+      REQUIRE(range_16 * range_24a);
+      REQUIRE(range_16 * range_24b);
+      REQUIRE(not(range_24a * range_24b));
+      REQUIRE(not(range_16 * range_unrelated));
+  }
 }
 
 TEST_CASE("IPv4 netmask")

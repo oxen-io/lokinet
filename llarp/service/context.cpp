@@ -80,6 +80,14 @@ namespace llarp
       }
     }
 
+    void
+    Context::Pump()
+    {
+      auto now = time_now_ms();
+      for (auto& [name, endpoint] : m_Endpoints)
+        endpoint->Pump(now);
+    }
+
     bool
     Context::RemoveEndpoint(const std::string& name)
     {

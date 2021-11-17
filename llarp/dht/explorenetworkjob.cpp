@@ -30,14 +30,13 @@ namespace llarp
       llarp::LogDebug("got ", valuesFound.size(), " routers from exploration");
 
       auto router = parent->GetRouter();
-      using std::placeholders::_1;
       for (const auto& pk : valuesFound)
       {
         // lookup router
         if (router and router->nodedb()->Has(pk))
           continue;
         parent->LookupRouter(
-            pk, std::bind(&AbstractRouter::HandleDHTLookupForExplore, router, pk, _1));
+            pk, [router, pk](const auto& res) { router->HandleDHTLookupForExplore(pk, res); });
       }
     }
   }  // namespace dht

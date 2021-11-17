@@ -85,14 +85,11 @@ namespace llarp
         SessionClosedHandler closed,
         PumpDoneHandler pumpDone,
         WorkerFunc_t doWork);
-    virtual ~ILinkLayer();
+    virtual ~ILinkLayer() = default;
 
     /// get current time via event loop
     llarp_time_t
-    Now() const
-    {
-      return m_Loop->time_now();
-    }
+    Now() const;
 
     bool
     HasSessionTo(const RouterID& pk);
@@ -108,7 +105,7 @@ namespace llarp
     SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
     virtual bool
-    Configure(EventLoop_ptr loop, const std::string& ifname, int af, uint16_t port);
+    Configure(AbstractRouter* loop, const std::string& ifname, int af, uint16_t port);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
@@ -225,6 +222,13 @@ namespace llarp
     std::optional<int>
     GetUDPFD() const;
 
+    // Gets a pointer to the router owning us.
+    AbstractRouter*
+    Router() const
+    {
+      return m_Router;
+    }
+
    private:
     const SecretKey& m_RouterEncSecret;
 
@@ -239,7 +243,7 @@ namespace llarp
     bool
     PutSession(const std::shared_ptr<ILinkSession>& s);
 
-    EventLoop_ptr m_Loop;
+    AbstractRouter* m_Router;
     SockAddr m_ourAddr;
     std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
