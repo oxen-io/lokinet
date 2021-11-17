@@ -112,10 +112,6 @@ namespace llarp
       HandleWriteIPPacket(
           const llarp_buffer_t& buf, huint128_t src, huint128_t dst, uint64_t seqno);
 
-      /// queue outbound packet to the world
-      bool
-      QueueOutboundTraffic(llarp::net::IPPacket&& pkt);
-
       /// we got a packet from the user
       void
       HandleGotUserPacket(llarp::net::IPPacket pkt);
@@ -172,10 +168,6 @@ namespace llarp
       huint128_t
       ObtainIPForAddr(std::variant<service::Address, RouterID> addr) override;
 
-      /// flush network traffic
-      void
-      Flush();
-
       void
       ResetInternalState() override;
 
@@ -186,9 +178,6 @@ namespace llarp
           net::IPPacket::PutTime,
           net::IPPacket::CompareOrder,
           net::IPPacket::GetNow>;
-
-      /// queue for sending packets over the network from us
-      PacketQueue_t m_UserToNetworkPktQueue;
 
       struct WritePacket
       {
@@ -204,6 +193,10 @@ namespace llarp
 
       /// queue for sending packets to user from network
       std::priority_queue<WritePacket> m_NetworkToUserPktQueue;
+
+      void
+      Pump(llarp_time_t now) override;
+
       /// return true if we have a remote loki address for this ip address
       bool
       HasRemoteForIP(huint128_t ipv4) const;
@@ -215,10 +208,6 @@ namespace llarp
       /// mark this address as active forever
       void
       MarkIPActiveForever(huint128_t ip);
-
-      /// flush ip packets
-      virtual void
-      FlushSend();
 
       /// flush writing ip packets to interface
       void
@@ -292,11 +281,6 @@ namespace llarp
       std::set<IPRange> m_OwnedRanges;
       /// how long to wait for path alignment
       llarp_time_t m_PathAlignmentTimeout;
-      /// idempotent wakeup for writing packets to user
-      std::shared_ptr<EventLoopWakeup> m_PacketSendWaker;
-
-      /// idempotent wakeup for writing messages to network
-      std::shared_ptr<EventLoopWakeup> m_MessageSendWaker;
 
       /// a file to load / store the ephemeral address map to
       std::optional<fs::path> m_PersistAddrMapFile;

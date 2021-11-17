@@ -153,18 +153,18 @@ struct lokinet_srv_lookup_private
       auto lock = ctx->acquire();
       if (ctx->impl and ctx->impl->IsUp())
       {
-        ctx->impl->CallSafe([host, service, &promise, ctx, self = this]() {
+        ctx->impl->CallSafe([host, service, &promise, ctx, this]() {
           auto ep = ctx->endpoint();
           if (ep == nullptr)
           {
             promise.set_value(ENOTSUP);
             return;
           }
-          ep->LookupServiceAsync(host, service, [self, &promise, host](auto results) {
+          ep->LookupServiceAsync(host, service, [this, &promise, host](auto results) {
             for (const auto& result : results)
             {
               if (auto maybe = SRVFromData(result, host))
-                self->results.emplace_back(*maybe);
+                this->results.emplace_back(*maybe);
             }
             promise.set_value(0);
           });
