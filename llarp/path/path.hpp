@@ -388,10 +388,10 @@ namespace llarp
 
      protected:
       void
-      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
 
       void
       HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
