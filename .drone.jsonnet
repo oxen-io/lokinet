@@ -27,7 +27,8 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 zypper(rpmarch) + 'up',
-                zypper(rpmarch) + 'install rpm-build=4.17.0-1.1 python38-pip ccache git',
+                zypper(rpmarch) + 'install rpm-build python38-pip ccache git',
+                #zypper(rpmarch) + 'install rpm-build=4.17.0-1.1 python38-pip ccache git',
                 'pip3 install git-archive-all',
                 'pkg_src_base="$(rpm -q --queryformat=\'%{NAME}-%{VERSION}\n\' --specfile SPECS/lokinet.spec | head -n 1)"',
                 'git-archive-all --prefix $pkg_src_base/ SOURCES/$pkg_src_base.src.tar.gz',

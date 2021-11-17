@@ -29,7 +29,7 @@ namespace llarp
         std::weak_ptr<PathSet> pathset,
         PathRole startingRoles,
         std::string shortName)
-        : m_PathSet{pathset}, _role{startingRoles}, m_shortName{std::move(shortName)}
+        : m_PathSet{std::move(pathset)}, _role{startingRoles}, m_shortName{std::move(shortName)}
 
     {
       hops.resize(h.size());
@@ -488,15 +488,15 @@ namespace llarp
           LogDebug("failed to send upstream to ", Upstream());
         }
       }
-      r->linkManager().PumpLinks();
+      r->TriggerPump();
     }
 
     void
-    Path::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    Path::UpstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
-      std::vector<RelayUpstreamMessage> sendmsgs(msgs->size());
+      std::vector<RelayUpstreamMessage> sendmsgs(msgs.size());
       size_t idx = 0;
-      for (auto& ev : *msgs)
+      for (auto& ev : msgs)
       {
         const llarp_buffer_t buf(ev.first);
         TunnelNonce n = ev.second;
@@ -519,24 +519,22 @@ namespace llarp
     void
     Path::FlushUpstream(AbstractRouter* r)
     {
-      if (m_UpstreamQueue && not m_UpstreamQueue->empty())
+      if (not m_UpstreamQueue.empty())
       {
-        TrafficQueue_ptr data = nullptr;
-        std::swap(m_UpstreamQueue, data);
-        r->QueueWork(
-            [self = shared_from_this(), data, r]() { self->UpstreamWork(std::move(data), r); });
+        r->QueueWork([self = shared_from_this(),
+                      data = std::exchange(m_UpstreamQueue, {}),
+                      r]() mutable { self->UpstreamWork(std::move(data), r); });
       }
     }
 
     void
     Path::FlushDownstream(AbstractRouter* r)
     {
-      if (m_DownstreamQueue && not m_DownstreamQueue->empty())
+      if (not m_DownstreamQueue.empty())
       {
-        TrafficQueue_ptr data = nullptr;
-        std::swap(m_DownstreamQueue, data);
-        r->QueueWork(
-            [self = shared_from_this(), data, r]() { self->DownstreamWork(std::move(data), r); });
+        r->QueueWork([self = shared_from_this(),
+                      data = std::exchange(m_DownstreamQueue, {}),
+                      r]() mutable { self->DownstreamWork(std::move(data), r); });
       }
     }
 
@@ -570,11 +568,11 @@ namespace llarp
     }
 
     void
-    Path::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    Path::DownstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
-      std::vector<RelayDownstreamMessage> sendMsgs(msgs->size());
+      std::vector<RelayDownstreamMessage> sendMsgs(msgs.size());
       size_t idx = 0;
-      for (auto& ev : *msgs)
+      for (auto& ev : msgs)
       {
         const llarp_buffer_t buf(ev.first);
         sendMsgs[idx].Y = ev.second;
@@ -600,7 +598,7 @@ namespace llarp
         m_RXRate += buf.sz;
         if (HandleRoutingMessage(buf, r))
         {
-          r->loop()->wakeup();
+          r->TriggerPump();
           m_LastRecvMessage = r->Now();
         }
       }
