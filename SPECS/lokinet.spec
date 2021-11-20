@@ -158,6 +158,7 @@ fi
 %changelog
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
+- bumped to build Sat Nov 20 2021
 
 * Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
 - bump version
