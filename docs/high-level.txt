@@ -1,3 +1,6 @@
+THIS DOCUMENT IS 3 YEARS OUT OF DATE AND NEEDS TO BE REWRITTEN
+
+
 LLARP - Low Latency Anon Routing Protocol
 
 	TL;DR edition: an onion router with a tun interface for transporting ip packets
