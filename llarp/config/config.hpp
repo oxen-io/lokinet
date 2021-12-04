@@ -129,6 +129,8 @@ namespace llarp
 
     std::optional<fs::path> m_AddrMapPersistFile;
 
+    bool m_EnableRoutePoker;
+
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
