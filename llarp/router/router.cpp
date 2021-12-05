@@ -739,7 +739,7 @@ namespace llarp
       const std::string& key = serverConfig.m_interface;
       int af = serverConfig.m_addressFamily;
       uint16_t port = serverConfig.m_port;
-      if (not server->Configure(loop(), key, af, port))
+      if (not server->Configure(this, key, af, port))
       {
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
