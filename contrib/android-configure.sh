@@ -2,7 +2,7 @@
 set -e
 set +x
 
-default_abis="armeabi-v7a arm64-v8a x86 x86_64"
+default_abis="armeabi-v7a arm64-v8a x86_64"
 build_abis=${ABIS:-$default_abis}
 
 test x$NDK = x && echo "NDK env var not set"
