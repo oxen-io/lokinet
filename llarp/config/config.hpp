@@ -147,7 +147,7 @@ namespace llarp
   {
     struct LinkInfo
     {
-      std::string interface;
+      std::string m_interface;
       int addressFamily = -1;
       uint16_t port = -1;
     };

@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/ev/vpn.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
@@ -177,6 +178,8 @@ namespace llarp::vpn
 
     InterfaceInfo m_Info;
 
+    AbstractRouter* const _router;
+
     static std::wstring
     get_win_sys_path()
     {
@@ -220,7 +223,8 @@ namespace llarp::vpn
       return converter.to_bytes(wcmd);
     }
 
-    Win32Interface(InterfaceInfo info) : m_ReadQueue{1024}, m_Info{std::move(info)}
+    Win32Interface(InterfaceInfo info, AbstractRouter* router)
+        : m_ReadQueue{1024}, m_Info{std::move(info)}, _router{router}
     {
       DWORD len;
 
@@ -401,6 +405,12 @@ namespace llarp::vpn
         thread.join();
     }
 
+    virtual void
+    MaybeWakeUpperLayers() const override
+    {
+      _router->TriggerPump();
+    }
+
     int
     PollFD() const override
     {
@@ -541,8 +551,8 @@ namespace llarp::vpn
       Execute(RouteCommand() + " " + cmd + " c000::/2 " + ipv6.ToString());
 
       ifname.back()++;
-      Execute(RouteCommand() + " " + cmd + " 0.0.0.0 MASK 128.0.0.0 " + ifname);
-      Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname);
+      Execute(RouteCommand() + " " + cmd + " 0.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
+      Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
     }
 
     void
@@ -629,12 +639,13 @@ namespace llarp::vpn
 
    public:
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info) override
+    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
-      auto netif = std::make_shared<Win32Interface>(std::move(info));
+      auto netif = std::make_shared<Win32Interface>(std::move(info), router);
       netif->Start();
       return netif;
     };
+
     IRouteManager&
     RouteManager() override
     {

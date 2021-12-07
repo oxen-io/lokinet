@@ -798,12 +798,12 @@ namespace llarp
       const IpAddress addr{value};
       if (not addr.hasPort())
         throw std::invalid_argument("no port provided in link address");
-      info.interface = addr.toHost();
+      info.m_interface = addr.toHost();
       info.port = *addr.getPort();
     }
     else
     {
-      info.interface = std::string{name};
+      info.m_interface = std::string{name};
 
       std::vector<std::string_view> splits = split(value, ",");
       for (std::string_view str : splits)

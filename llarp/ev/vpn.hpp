@@ -9,7 +9,8 @@
 namespace llarp
 {
   struct Context;
-}
+  struct AbstractRouter;
+}  // namespace llarp
 
 namespace llarp::vpn
 {
@@ -59,6 +60,10 @@ namespace llarp::vpn
     /// returns false if we dropped it
     virtual bool
     WritePacket(net::IPPacket pkt) = 0;
+
+    /// idempotently wake up the upper layers as needed (platform dependant)
+    virtual void
+    MaybeWakeUpperLayers() const {};
   };
 
   class IRouteManager
@@ -112,7 +117,7 @@ namespace llarp::vpn
     /// get a new network interface fully configured given the interface info
     /// blocks until ready, throws on error
     virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info) = 0;
+    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
 
     /// get owned ip route manager for managing routing table
     virtual IRouteManager&
