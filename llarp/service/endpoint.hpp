@@ -323,10 +323,15 @@ namespace llarp
       // nullptr if the path was not made before the timeout
       using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
 
+      static constexpr auto DefaultPathEnsureTimeout = 2s;
+
       /// return false if we have already called this function before for this
       /// address
       bool
-      EnsurePathToService(const Address remote, PathEnsureHook h, llarp_time_t timeoutMS);
+      EnsurePathToService(
+          const Address remote,
+          PathEnsureHook h,
+          llarp_time_t timeoutMS = DefaultPathEnsureTimeout);
 
       using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 

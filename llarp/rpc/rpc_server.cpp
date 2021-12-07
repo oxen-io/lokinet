@@ -512,8 +512,7 @@ namespace llarp::rpc
                                   }
                                   onGoodResult(result.reason);
                                 });
-                          },
-                          2s);
+                          });
                     };
                     if (exit.has_value())
                     {
