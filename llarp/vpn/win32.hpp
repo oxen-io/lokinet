@@ -11,7 +11,7 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/ev/vpn.hpp>
-#include <llarp/router/abstractrouter.hpp
+#include <llarp/router/abstractrouter.hpp>
 #include <llarp/win32/exception.hpp>
 #include <llarp/win32/fwpm.hpp>
 
