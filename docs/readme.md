@@ -1,34 +1,21 @@
-# Lokinet Internals docs
+# Lokinet Docs
 
-this is the area of the repo for documentation of lokinet internals
+this is the area of the repo for documentation of lokinet 
+
+## High level
+
+[How is Lokinet different to \[insert network technology name here\] ?](net-comparisons.md)
+[How Do I use Lokinet?](lokinet-ideal-ux.md)
 
 
+## Lokinet (SN)Application Developer Portal
 
 
+[What are "SNApps" and how to develop them.](snapps-dev-guide.md)
+[How do I embed lokinet into my application?](liblokinet-dev-guide.md)
 
-## Doxygen
 
-building doxygen docs requires the following:
+## Lokinet Internals
 
-* cmake
-* doxygen
-* sphinx-build
-* sphinx readthedocs theme
-* breathe
-* exhale
+[Build Doxygen Docs for internals](doxygen.md)
 
-install packages:
-
-    $ sudo apt install doxygen python3-sphinx python3-sphinx-rtd-theme python3-breathe python3-pip
-    $ pip3 install --user exhale
-    
-build docs:
-
-    $ mkdir -p build-docs
-    $ cd build-docs
-    $ cmake .. && make doc 
-
-serve built docs via http, will be served at http://127.0.0.1:8000/
-
-    $ python3 -m http.server -d docs/html
-    
