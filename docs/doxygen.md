@@ -12,7 +12,7 @@ building doxygen docs requires the following:
 
 install packages:
 
-    $ sudo apt install doxygen python3-sphinx python3-sphinx-rtd-theme python3-breathe python3-pip
+    $ sudo apt install make cmake doxygen python3-sphinx python3-sphinx-rtd-theme python3-breathe python3-pip
     $ pip3 install --user exhale
     
 build docs:
