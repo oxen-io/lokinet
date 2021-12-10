@@ -8,15 +8,15 @@ Lokinet does not provide a web browser at this time because that is not a small 
 
 ## Tor/Onion Services
 
-While Tor Browser is the main user facing product made by Tor Project the main powerhouse is Tor itself which provides a way to anonymize tcp connections made by an inititor and optionally additionally the recipiant in the case of when using a .onion address. Lokinet provides a similar feature set but can carry anything that can be encapsulated in an IP packet (currently only unicast traffic). 
+While Tor Browser is the main user facing product made by Tor Project, the main powerhouse is Tor itself. Tor provides a way to anonymize tcp connections made by an initiator and optionally additionally the recipient, when using a .onion address. Lokinet provides a similar feature set but can carry anything that can be encapsulated in an IP packet (currently only unicast traffic). 
 
-Lokinet differs greatly from the UX side vs Tor as by default we do not provide exit connectivity by default. This is primarily because we cannot do this by default as in practice each user's threat model greatly varies in scope and breadth thus there exists no one size fits all way to do exits that works for everyone. Users obtain their exit node information out of band at the moment. In the future We want to add decentralized network wide service discovery not limited to just exit providers but this is currently un implemented. We think that by being hands of on exit node requirements a far more diverse set of exit nodes can exist. In addition to having totally open unrestrcited exits, permitting "specialized" exit providers that are allowed to do excessive filtering or geo blocking for security theatre checkbox compliance is something Tor does not seem to be able to provide at this time.
+The Lokinet UX differs greatly from that of Tor. By default we do not provide exit connectivity. Because each user's threat model greatly varies in scope and breadth, there exists no one size fits all way to do exit connectivity. Users obtain their exit node information out-of-band at the moment. In the future we want to add decentralized network wide service discovery not limited to just exit providers, but this is currently unimplemented. We think that by being hands-off with respect to exit node requirements a far more diverse set of exit nodes can exist. In addition to having totally open unrestrcited exits, there is merit to permitting "specialized" exit providers that are allowed to do excessive filtering or geo blocking for security theatre checkbox compliance.
 
-Lokinet additionally encourges the manual selection and pinning of edge connections to fit each user's threat model.
+Lokinet additionally encourages the manual selection and pinning of edge connections to fit each user's threat model.
 
 ## I2P
 
-Integrating applications to opt into i2p's network layer is painful and greatly stunts mainstream adoption.
+Integrating applications to utilize i2p's network layer is painful and greatly stunts mainstream adoption.
 Lokinet takes the inverse approach of i2p: make app integration in lokinet should require zero custom shims or modifications to code to make it work.
 
 ## DVPNs / Commercial VPN Proxies

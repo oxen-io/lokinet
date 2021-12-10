@@ -1,12 +1,14 @@
 # Lokinet Docs
 
-this is the area of the repo for documentation of lokinet 
+This is where Lokinet documentation lives.
 
 ## High level
 
 [How is Lokinet different to \[insert network technology name here\] ?](net-comparisons.md)
 
-[How Do I use Lokinet?](lokinet-ideal-ux.md)
+[How Do I use Lokinet?](ideal-ux.md)
+
+[What Lokinet can't do](we-cannot-make-sandwiches.md)
 
 
 ## Lokinet (SN)Application Developer Portal
