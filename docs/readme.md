@@ -5,6 +5,7 @@ this is the area of the repo for documentation of lokinet
 ## High level
 
 [How is Lokinet different to \[insert network technology name here\] ?](net-comparisons.md)
+
 [How Do I use Lokinet?](lokinet-ideal-ux.md)
 
 
@@ -12,6 +13,7 @@ this is the area of the repo for documentation of lokinet
 
 
 [What are "SNApps" and how to develop them.](snapps-dev-guide.md)
+
 [How do I embed lokinet into my application?](liblokinet-dev-guide.md)
 
 
