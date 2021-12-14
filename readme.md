@@ -42,7 +42,7 @@ You can install these using:
     $ sudo apt install lokinet
 
 
-If you are not on a platform supported by the debian packages or if you want to build a dev build, this is the most "portable" way to do it:
+If you want to build from source:
 
     $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev
     $ git clone --recursive https://github.com/oxen-io/lokinet
