@@ -23,6 +23,7 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
+* libssl (for lokinet-bootstrap)
 * libcurl (for lokinet-bootstrap)
 * libunbound
 * libzmq
@@ -48,11 +49,6 @@ If you are not on a platform supported by the debian packages or if you want to 
     $ cd lokinet
     $ mkdir build
     $ cd build
-    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release
-    $ make -j$(nproc)
-    
-If you dont want to do a static build install the dependancies and run:
-
     $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
     $ make -j$(nproc)
 
