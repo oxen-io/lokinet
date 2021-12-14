@@ -119,13 +119,3 @@ This requires the binary to have the proper capabilities which is usually set by
 
     $ sudo setcap cap_net_admin,cap_net_bind_service=+eip /usr/local/bin/lokinet
 
-
-## Running on macOS/UNIX/BSD
-
-**YOU HAVE TO RUN AS ROOT**, run using sudo. Elevated privileges are needed to create the virtual tunnel interface.
-
-The macOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
-
-to run, after you create default config:
-
-    $ sudo lokinet
