@@ -51,9 +51,6 @@ If you want to build from source:
     $ cd build
     $ cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
     $ make -j$(nproc)
-
-install:
-
     $ sudo make install
 
 ### macOS
