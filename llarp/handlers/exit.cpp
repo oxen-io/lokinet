@@ -443,7 +443,7 @@ namespace llarp
         info.ifname = m_ifname;
         info.addrs.emplace(m_OurRange);
 
-        m_NetIf = GetRouter()->GetVPNPlatform()->ObtainInterface(std::move(info));
+        m_NetIf = GetRouter()->GetVPNPlatform()->ObtainInterface(std::move(info), m_Router);
         if (not m_NetIf)
         {
           llarp::LogError("Could not create interface");

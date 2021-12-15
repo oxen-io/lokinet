@@ -512,8 +512,7 @@ namespace llarp::rpc
                                   }
                                   onGoodResult(result.reason);
                                 });
-                          },
-                          5s);
+                          });
                     };
                     if (exit.has_value())
                     {
@@ -564,8 +563,8 @@ namespace llarp::rpc
                   {
                     r->routePoker().Down();
                     ep->UnmapExitRange(range);
+                    reply(CreateJSONResponse("OK"));
                   }
-                  reply(CreateJSONResponse("OK"));
                 });
               });
             })

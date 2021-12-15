@@ -709,7 +709,7 @@ namespace llarp
           util::memFn(&AbstractRouter::TriggerPump, this),
           util::memFn(&AbstractRouter::QueueWork, this));
 
-      const std::string& key = serverConfig.interface;
+      const std::string& key = serverConfig.m_interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
       if (!server->Configure(this, key, af, port))
@@ -1241,10 +1241,6 @@ namespace llarp
 
     LogInfo("have ", _nodedb->NumLoaded(), " routers");
 
-#ifdef _WIN32
-    // windows uses proactor event loop so we need to constantly pump
-    _loop->add_ticker([this] { PumpLL(); });
-#endif
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _running.store(true);
     _startedAt = Now();
