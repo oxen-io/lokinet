@@ -222,7 +222,20 @@ namespace llarp
       /// a hidden service
       std::unordered_map<AlignedBuffer<32>, bool> m_SNodes;
 
+      /// maps ip address to an exit endpoint, useful when we have multiple exits on a range
+      std::unordered_map<huint128_t, service::Address> m_ExitIPToExitAddress;
+
      private:
+      /// given an ip address that is not mapped locally find the address it shall be forwarded to
+      /// optionally provide a custom selection strategy, if none is provided it will choose a
+      /// random entry from the available choices
+      /// return std::nullopt if we cannot route this address to an exit
+      std::optional<service::Address>
+      ObtainExitAddressFor(
+          huint128_t ip,
+          std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat =
+              nullptr);
+
       template <typename Addr_t, typename Endpoint_t>
       void
       SendDNSReply(

@@ -454,6 +454,7 @@ namespace llarp
         "network",
         "exit-node",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify a `.loki` address and an optional ip range to use as an exit broker.",
             "Example:",
@@ -496,12 +497,13 @@ namespace llarp
         "network",
         "exit-auth",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify an optional authentication code required to use a non-public exit node.",
             "For example:",
             "    exit-auth=myfavouriteexit.loki:abc",
             "uses the authentication code `abc` whenever myfavouriteexit.loki is accessed.",
-            "Can be specified multiple time to store codes for different exit nodes.",
+            "Can be specified multiple times to store codes for different exit nodes.",
         },
         [this](std::string arg) {
           if (arg.empty())

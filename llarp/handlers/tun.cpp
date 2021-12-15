@@ -1,7 +1,5 @@
 #include <algorithm>
 #include <variant>
-// harmless on other platforms
-#define __USE_MINGW_ANSI_STDIO 1
 #include "tun.hpp"
 #include <sys/types.h>
 #ifndef _WIN32
@@ -1023,6 +1021,38 @@ namespace llarp
       return llarp::service::Endpoint::Stop();
     }
 
+    std::optional<service::Address>
+    TunEndpoint::ObtainExitAddressFor(
+        huint128_t ip,
+        std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat)
+    {
+      // is it already mapped? return the mapping
+      if (auto itr = m_ExitIPToExitAddress.find(ip); itr != m_ExitIPToExitAddress.end())
+        return itr->second;
+      // build up our candidates to choose
+      std::unordered_set<service::Address> candidates;
+      for (const auto& entry : m_ExitMap.FindAllEntries(ip))
+      {
+        // make sure it is allowed by the range if the ip is a bogon
+        if (not IsBogon(ip) or entry.first.BogonContains(ip))
+          candidates.emplace(entry.second);
+      }
+      // no candidates? bail.
+      if (candidates.empty())
+        return std::nullopt;
+      if (not exitSelectionStrat)
+      {
+        // default strat to random choice
+        exitSelectionStrat = [](auto candidates) {
+          auto itr = candidates.begin();
+          std::advance(itr, llarp::randint() % candidates.size());
+          return *itr;
+        };
+      }
+      // map the exit and return the endpoint we mapped it to
+      return m_ExitIPToExitAddress.emplace(ip, exitSelectionStrat(candidates)).first->second;
+    }
+
     void
     TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
     {
@@ -1037,25 +1067,7 @@ namespace llarp
         dst = pkt.dstv6();
         src = pkt.srcv6();
       }
-      // this is for ipv6 slaac on ipv6 exits
-      /*
-      constexpr huint128_t ipv6_multicast_all_nodes =
-          huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};
-      constexpr huint128_t ipv6_multicast_all_routers =
-          huint128_t{uint128_t{0xff01'0000'0000'0000UL, 2UL}};
-      if (dst == ipv6_multicast_all_nodes and m_state->m_ExitEnabled)
-      {
-        // send ipv6 multicast
-        for (const auto& [ip, addr] : m_IPToAddr)
-        {
-          (void)ip;
-          SendToOrQueue(
-              service::Address{addr.as_array()}, pkt.ConstBuffer(), service::ProtocolType::Exit);
-        }
-        return;
-      }
 
-      */
       if (m_state->m_ExitEnabled)
       {
         dst = net::ExpandV4(net::TruncateV6(dst));
@@ -1063,28 +1075,18 @@ namespace llarp
       auto itr = m_IPToAddr.find(dst);
       if (itr == m_IPToAddr.end())
       {
-        // find all ranges that match the destination ip
-        const auto exitEntries = m_ExitMap.FindAllEntries(dst);
-        if (exitEntries.empty())
+        service::Address addr{};
+
+        if (auto maybe = ObtainExitAddressFor(dst))
+          addr = *maybe;
+        else
         {
           // send icmp unreachable as we dont have any exits for this ip
           if (const auto icmp = pkt.MakeICMPUnreachable())
-          {
             HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
-          }
+
           return;
         }
-        service::Address addr{};
-        for (const auto& [range, exitAddr] : exitEntries)
-        {
-          if (not IsBogon(dst) or range.BogonContains(dst))
-          {
-            addr = exitAddr;
-          }
-          // we do not permit bogons when they don't explicitly match a permitted bogon range
-        }
-        if (addr.IsZero())  // drop becase no exit was found that matches our rules
-          return;
         pkt.ZeroSourceAddress();
         MarkAddressOutbound(addr);
         EnsurePathToService(
@@ -1266,24 +1268,14 @@ namespace llarp
         }
         else  // don't allow snode
           return false;
-        const auto mapped = m_ExitMap.FindAllEntries(src);
-        bool allow = false;
-        for (const auto& [range, exitAddr] : mapped)
+        // make sure the mapping matches
+        if (auto itr = m_ExitIPToExitAddress.find(src); itr != m_ExitIPToExitAddress.end())
         {
-          if (not IsBogon(src) or range.BogonContains(src))
-          {
-            // allow if this address matches the endpoint we think it should be
-            allow = exitAddr == fromAddr;
-            break;
-          }
+          if (itr->second != fromAddr)
+            return false;
         }
-        if (not allow)
-        {
-          var::visit(
-              [&](auto&& address) { LogWarn(Name(), " does not allow ", src, " from ", address); },
-              addr);
+        else
           return false;
-        }
       }
       else
       {
