@@ -44,7 +44,7 @@ You can install these using:
 
 If you want to build from source:
 
-    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev
+    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev libssl-dev
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
     $ mkdir build
