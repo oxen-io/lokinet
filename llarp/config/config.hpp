@@ -118,6 +118,7 @@ namespace llarp
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
     std::unordered_set<service::Address> m_AuthWhitelist;
+    std::unordered_set<std::string> m_AuthStaticTokens;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
 

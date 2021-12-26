@@ -366,6 +366,16 @@ namespace llarp
           m_AuthWhitelist.emplace(std::move(addr));
         });
 
+    conf.defineOption<std::string>(
+        "network",
+        "auth-static",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "manually add a static auth code to accept for endpoint auth",
+        },
+        [this](std::string arg) { m_AuthStaticTokens.emplace(std::move(arg)); });
+
     conf.defineOption<bool>(
         "network",
         "reachable",

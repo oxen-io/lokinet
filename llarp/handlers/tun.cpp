@@ -183,7 +183,12 @@ namespace llarp
           method = *conf.m_AuthMethod;
         }
         auto auth = std::make_shared<rpc::EndpointAuthRPC>(
-            url, method, conf.m_AuthWhitelist, Router()->lmq(), shared_from_this());
+            url,
+            method,
+            conf.m_AuthWhitelist,
+            conf.m_AuthStaticTokens,
+            Router()->lmq(),
+            shared_from_this());
         auth->Start();
         m_AuthPolicy = std::move(auth);
       }
