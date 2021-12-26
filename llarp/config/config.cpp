@@ -533,6 +533,19 @@ namespace llarp
           m_ExitAuths.emplace(exit, auth);
         });
 
+    conf.defineOption<bool>(
+        "network",
+        "auto-routing",
+        ClientOnly,
+        Default{true},
+        Comment{
+            "Enable / disable automatic route configuration.",
+            "When this is enabled and an exit is used Lokinet will automatically configure "
+            "operating system routes to route traffic through the exit node.",
+            "This is enabled by default, but can be disabled to perform advanced exit routing "
+            "configuration manually."},
+        AssignmentAcceptor(m_EnableRoutePoker));
+
     conf.defineOption<std::string>(
         "network",
         "ifname",
