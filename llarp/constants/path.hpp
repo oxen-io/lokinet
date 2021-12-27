@@ -24,6 +24,9 @@ namespace llarp
     constexpr auto intro_spread_slices = 4;
     /// spacing frequency at which we try to build paths for introductions
     constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / intro_spread_slices;
+    /// how long away from expiration in millseconds do we consider an intro to become stale
+    constexpr std::chrono::milliseconds intro_stale_threshold =
+        default_lifetime - intro_path_spread;
     /// Minimum paths to keep around for intros; mainly used at startup (the
     /// spread, above, should be able to maintain more than this number of paths
     /// normally once things are going).
