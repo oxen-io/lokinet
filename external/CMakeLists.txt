@@ -25,75 +25,7 @@ if(SUBMODULE_CHECK)
     check_submodule(uvw)
     check_submodule(cpr)
     check_submodule(ngtcp2)
-    if(WIN32)
-      check_submodule(mullvad-windows-libraries)
-      check_submodule(mullvad-libwfp)
-    endif()
   endif()
-endif()
-
-if(WIN32)
-  set(mullvad_wincommon_src
-    libcommon/fileenumerator.cpp
-    libcommon/process/process.cpp
-    libcommon/process/applicationrunner.cpp
-    libcommon/logging/logsink.cpp
-    libcommon/registry/registrykey.cpp
-    libcommon/registry/registry.cpp
-    libcommon/registry/registrymonitor.cpp
-    libcommon/registry/registrypath.cpp
-    libcommon/filesystem.cpp
-    libcommon/string.cpp
-    libcommon/trace/consoletracesink.cpp
-    libcommon/trace/trace.cpp
-    libcommon/trace/filetracesink.cpp
-    libcommon/serialization/deserializer.cpp
-    libcommon/serialization/serializer.cpp
-    libcommon/binarycomposer.cpp
-    libcommon/security.cpp
-    libcommon/guid.cpp
-    libcommon/network.cpp
-    libcommon/burstguard.cpp
-    libcommon/error.cpp
-    libcommon/resourcedata.cpp
-    libcommon/stdafx.cpp
-    libcommon/network/adapters.cpp)
-
-  set(mullvad_wincommon_root mullvad-windows-libraries/src/)
-  list(TRANSFORM mullvad_wincommon_src PREPEND ${mullvad_wincommon_root})
-
-  set(mullvad_libwfp_src
-    libwfp/conditionbuilder.cpp
-    libwfp/sublayerbuilder.cpp
-    libwfp/internal/conditionassembler.cpp
-    libwfp/ipnetwork.cpp
-    libwfp/filterbuilder.cpp
-    libwfp/ipaddress.cpp
-    libwfp/objectexplorer.cpp
-    libwfp/objectinstaller.cpp
-    libwfp/providerbuilder.cpp
-    libwfp/filterengine.cpp
-    libwfp/objectmonitor.cpp
-    libwfp/objectenumerator.cpp
-    libwfp/conditions/conditionip.cpp
-    libwfp/conditions/conditionport.cpp
-    libwfp/conditions/conditionportrange.cpp
-    libwfp/conditions/conditionicmp.cpp
-    libwfp/conditions/conditiondirection.cpp
-    libwfp/conditions/conditionapplication.cpp
-    libwfp/conditions/conditionprotocol.cpp
-    libwfp/conditions/conditioninterface.cpp
-    libwfp/conditions/conditionloopback.cpp
-    libwfp/objectdeleter.cpp
-    libwfp/transaction.cpp
-    libwfp/stdafx.cpp
-    libwfp/layerconditions.cpp)
-
-  set(mullvad_libwfp_root mullvad-libwfp/src/)
-  list(TRANSFORM mullvad_libwfp_src PREPEND ${mullvad_libwfp_root})
-
-  add_library(mullvad_wfp ${mullvad_wincommon_src} ${mullvad_libwfp_src})
-  target_include_directories(mullvad_wfp PUBLIC ${mullvad_wincommon_root} ${mullvad_libwfp_root})
 endif()
 
 if(WITH_HIVE)
