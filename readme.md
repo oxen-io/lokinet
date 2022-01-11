@@ -14,6 +14,12 @@ A simple demo application that is lokinet "aware" can be found [here](https://gi
 
 [![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/lokinet/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/lokinet)
 
+## Installing
+
+If you are simply looking to install Lokinet and don't want to compile it yourself the [Oxen Docs
+Lokinet Guides](https://docs.oxen.io/products-built-on-oxen/lokinet/guides) for gentler
+instructions to get up and running.
+
 ## Building
 
 Build requirements:
@@ -100,7 +106,9 @@ install (root):
 
 ### Debian / Ubuntu packages
 
-When running from debian package the following steps are not needed as it is already ready to use.
+When running from debian package the following steps are not needed as it is already running and
+ready to use.  You can stop/start/restart it using `systemctl start lokinet`, `systemctl stop
+lokinet`, etc.
 
 ## Running on Linux (without debs)
 
