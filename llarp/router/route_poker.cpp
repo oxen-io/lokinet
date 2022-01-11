@@ -87,9 +87,7 @@ namespace llarp
 
   RoutePoker::~RoutePoker()
   {
-    if (m_Router == nullptr)
-      return;
-    if (m_Router->GetVPNPlatform() == nullptr)
+    if (not m_Router or not m_Router->GetVPNPlatform())
       return;
 
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
