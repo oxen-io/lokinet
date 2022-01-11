@@ -87,6 +87,9 @@ namespace llarp
 
   RoutePoker::~RoutePoker()
   {
+    if (not m_Router or not m_Router->GetVPNPlatform())
+      return;
+
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
     for (const auto& [ip, gateway] : m_PokedRoutes)
     {
