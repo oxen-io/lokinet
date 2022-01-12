@@ -404,6 +404,12 @@ namespace llarp::vpn
       Exec(NetshExe() + L" " + args);
     }
 
+    static void
+    RouteExec(std::string args)
+    {
+      Exec(SysrootPath() + L"\\route.exe" + L" " + to_width<std::wstring>(args));
+    }
+
     /// @brief raii wrapper that sets dns settings to an original state on destruction
     struct DNSRevert
     {
@@ -784,22 +790,6 @@ namespace llarp::vpn
 
       m_Firewall->AddFilter(
           FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
-          13,
-          {condition},
-          L"Allow outbound v4 loopback",
-          L"");
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
-          13,
-          {condition},
-          L"Allow inbound v4 loopback",
-          L"");
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
           win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
           13,
           {condition},
@@ -815,85 +805,6 @@ namespace llarp::vpn
 
           L"Allow inbound v6 loopback",
           L"");
-    }
-
-    void
-    PermitDHCP()
-    {
-      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
-
-      conditions.emplace_back(win32::MakeCondition<uint8_t>(
-          win32::FWPM_CONDITION_IP_PROTOCOL(), FWP_MATCH_EQUAL, 0x11));
-
-      conditions.emplace_back(win32::MakeCondition<huint16_t>(
-          win32::FWPM_CONDITION_IP_LOCAL_PORT(), FWP_MATCH_EQUAL, huint16_t{68}));
-
-      conditions.emplace_back(win32::MakeCondition<huint16_t>(
-          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{67}));
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
-          12,
-          conditions,
-          L"Allow inbound ipv4 DHCP",
-          L"");
-
-      conditions.emplace_back(win32::MakeCondition<huint32_t>(
-          win32::FWPM_CONDITION_IP_REMOTE_ADDRESS(),
-          FWP_MATCH_EQUAL,
-          ipaddr_ipv4_bits(255, 255, 255, 255)));
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
-          12,
-          conditions,
-          L"Allow outbound ipv4 DHCP",
-          L"");
-    }
-
-    void
-    AddRouteHole(SockAddr addr)
-    {
-      if (m_Firewall == nullptr)
-        return;
-      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
-
-      conditions.emplace_back(win32::MakeCondition<uint8_t>(
-          win32::FWPM_CONDITION_IP_PROTOCOL(), FWP_MATCH_EQUAL, 0x11));
-
-      conditions.emplace_back(win32::MakeCondition<huint16_t>(
-          win32::FWPM_CONDITION_IP_REMOTE_PORT(), FWP_MATCH_EQUAL, huint16_t{addr.getPort()}));
-
-      conditions.emplace_back(win32::MakeCondition<huint32_t>(
-          win32::FWPM_CONDITION_IP_REMOTE_ADDRESS(), FWP_MATCH_EQUAL, addr.asIPv4()));
-
-      const auto outID = m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
-          8,
-          conditions,
-          L"Allow IWP traffic to edge router",
-          L"");
-
-      const auto inID = m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
-          8,
-          conditions,
-          L"Allow IWP traffic from edge router",
-          L"");
-
-      m_Firewall->AddHole(addr, inID);
-      m_Firewall->AddHole(addr, outID);
-    }
-
-    void
-    DelRouteHole(SockAddr addr)
-    {
-      if (m_Firewall)
-        m_Firewall->DelHoles(addr);
     }
 
     void
@@ -1016,56 +927,26 @@ namespace llarp::vpn
 
     void
     AddBlackhole() override
-    {
-      LogInfo("firewall going up...");
-
-      RunTransaction([&]() {
-        m_Firewall = std::make_unique<Firewall>(m_Handle);
-        LogInfo("Allow loopback...");
-        PermitLoopback();
-        LogInfo("Permit DHCP...");
-        PermitDHCP();
-        for (auto& uid : m_Interfaces)
-        {
-          LogInfo("permit interface");
-          PermitViaInterface((uint64_t*)&uid);
-        }
-      });
-      LogInfo("firewall setup over");
-    }
+    {}
 
     void
     DelBlackhole() override
+    {}
+
+    void
+    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
-      RunTransaction([&]() { m_Firewall.reset(); });
+      const auto ip_str = std::visit([](auto&& ip) { return ip.ToString(); }, ip);
+      const auto gateway_str = std::visit([](auto&& ip) { return ip.ToString(); }, gateway);
+      wintun::RouteExec("ADD " + ip_str + " MASK 255.255.255.255 " + gateway_str + " METRIC 2");
     }
 
     void
-    AddRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
+    DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
-      const auto addr = var::visit([port](auto&& ip) { return SockAddr{ip, port}; }, ip);
-      try
-      {
-        RunTransaction([this, addr]() { AddRouteHole(addr); });
-      }
-      catch (std::exception& ex)
-      {
-        LogError("add route to ", addr, " failed: ", ex.what());
-      }
-    }
-
-    void
-    DelRoute(IPVariant_t ip, IPVariant_t, huint16_t port) override
-    {
-      const auto addr = var::visit([port](auto&& ip) { return SockAddr{ip, port}; }, ip);
-      try
-      {
-        RunTransaction([this, addr]() { DelRouteHole(addr); });
-      }
-      catch (std::exception& ex)
-      {
-        LogError("del route to ", addr, " failed: ", ex.what());
-      }
+      const auto ip_str = std::visit([](auto&& ip) { return ip.ToString(); }, ip);
+      const auto gateway_str = std::visit([](auto&& ip) { return ip.ToString(); }, gateway);
+      wintun::RouteExec("DELETE " + ip_str + " MASK 255.255.255.255 " + gateway_str + " METRIC 2");
     }
 
     std::vector<IPVariant_t>
@@ -1088,12 +969,13 @@ namespace llarp::vpn
       return gateways;
     }
 
-    void
-    AddDefaultRouteViaInterface(NetworkInterface& iface) override
-    {
-      IRouteManager::AddDefaultRouteViaInterface(iface);
-      RunTransaction([&]() { DropAll(); });
-    }
+    /*
+  void
+  AddDefaultRouteViaInterface(NetworkInterface& iface) override
+  {
+    IRouteManager::AddDefaultRouteViaInterface(iface);
+  }
+    */
 
     void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
