@@ -508,6 +508,12 @@ namespace llarp::vpn
       return m_Info.ifname;
     }
 
+    std::string
+    InterfaceAddressString() const
+    {
+      return net::TruncateV6(m_Info.addrs.begin()->range.addr).ToString();
+    }
+
     net::IPPacket
     ReadNextPacket() override
     {
@@ -808,62 +814,8 @@ namespace llarp::vpn
     }
 
     void
-    PermitViaInterface(uint64_t* uid)
+    DropV6()
     {
-      std::vector<FWPM_FILTER_CONDITION0_> conditions{};
-
-      conditions.emplace_back(win32::MakeCondition<uint64_t*>(
-          win32::FWPM_CONDITION_IP_LOCAL_INTERFACE(), FWP_MATCH_EQUAL, uid));
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
-          10,
-          conditions,
-          L"Permit outbound IPV4 on Lokinet",
-          L"");
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
-          10,
-          conditions,
-          L"Permit inbound IPV4 on Lokinet",
-          L"");
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
-          10,
-          conditions,
-          L"Permit outbound IPV6 on Lokinet",
-          L"");
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
-          10,
-          conditions,
-          L"Permit inbound IPV6 on Lokinet",
-          L"");
-    }
-
-    void
-    DropAll()
-    {
-      m_Firewall->AddFilter(
-          FWP_ACTION_BLOCK,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V4(),
-          0,
-          {},
-          L"Drop outbound IPV4 Traffic",
-          L"");
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_BLOCK,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4(),
-          0,
-          {},
-          L"Drop inbound IPV4 Traffic",
-          L"");
-
       m_Firewall->AddFilter(
           FWP_ACTION_BLOCK,
           win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
@@ -980,13 +932,19 @@ namespace llarp::vpn
     void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      dynamic_cast<WintunInterface&>(iface).AddAddressRange(range);
+      const auto netif_str = dynamic_cast<const WintunInterface&>(iface).InterfaceAddressString();
+      wintun::RouteExec(
+          "ADD " + range.BaseAddressString() + " MASK "
+          + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
     }
 
     void
     DelRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      dynamic_cast<WintunInterface&>(iface).DelAddressRange(range);
+      const auto netif_str = dynamic_cast<const WintunInterface&>(iface).InterfaceAddressString();
+      wintun::RouteExec(
+          "DELETE " + range.BaseAddressString() + " MASK "
+          + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
     }
   };
 
