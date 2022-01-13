@@ -334,7 +334,7 @@ namespace llarp::vpn
         InitializeUnicastIpAddressEntry(&AddressRow);
         _getAdapterLUID(adapter.get(), &AddressRow.InterfaceLuid);
         AddressRow.OnLinkPrefixLength = addr.range.HostmaskBits();
-        AddressRow.Family = addr.fam;
+        AddressRow.Address.si_family = addr.fam;
         switch (addr.fam)
         {
           case AF_INET:
