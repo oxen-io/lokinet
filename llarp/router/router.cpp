@@ -822,12 +822,18 @@ namespace llarp
       else
       {
         ss << " client | known/connected: " << nodedb()->NumLoaded() << "/"
-           << NumberOfConnectedRouters() << " | path success: ";
-        hiddenServiceContext().ForEachService([&ss](const auto& name, const auto& ep) {
-          ss << " [" << name << " " << std::setprecision(4)
-             << (100.0 * ep->CurrentBuildStats().SuccessRatio()) << "%]";
-          return true;
-        });
+           << NumberOfConnectedRouters();
+        if (auto ep = hiddenServiceContext().GetDefault())
+        {
+          ss << " | paths/endpoints " << pathContext().CurrentOwnedPaths() << "/"
+             << ep->UniqueEndpoints();
+          auto success_rate = ep->CurrentBuildStats().SuccessRatio();
+          if (success_rate < 0.5)
+          {
+            ss << " [ !!! Low Build Success Rate (" << std::setprecision(4)
+               << (100.0 * success_rate) << "%) !!! ] ";
+          }
+        };
       }
       const auto status = ss.str();
       ::sd_notify(0, status.c_str());
