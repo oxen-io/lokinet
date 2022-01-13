@@ -758,29 +758,6 @@ namespace llarp::vpn
         m_Filters[id] = std::move(filter);
         return id;
       }
-
-      void
-      DropFilter(uint64_t id)
-      {
-        m_Filters.erase(id);
-      }
-
-      void
-      AddHole(SockAddr addr, uint64_t id)
-      {
-        m_Holes.emplace(addr, id);
-      }
-
-      void
-      DelHoles(SockAddr addr)
-      {
-        LogInfo("remove hole to ", addr);
-        const auto range = m_Holes.equal_range(addr);
-        for (auto itr = range.first; itr != range.second; itr = m_Holes.erase(itr))
-        {
-          DropFilter(itr->second);
-        }
-      }
     };
 
     std::unique_ptr<Firewall> m_Firewall;
@@ -879,11 +856,16 @@ namespace llarp::vpn
 
     void
     AddBlackhole() override
-    {}
+    {
+      m_Firewall = std::make_unique<Firewall>(m_Handle);
+      RunTransaction([this]() { DropV6(); });
+    }
 
     void
     DelBlackhole() override
-    {}
+    {
+      m_Firewall.reset();
+    }
 
     void
     AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
@@ -920,14 +902,6 @@ namespace llarp::vpn
       };
       return gateways;
     }
-
-    /*
-  void
-  AddDefaultRouteViaInterface(NetworkInterface& iface) override
-  {
-    IRouteManager::AddDefaultRouteViaInterface(iface);
-  }
-    */
 
     void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
