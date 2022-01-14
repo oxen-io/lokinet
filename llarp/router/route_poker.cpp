@@ -202,8 +202,10 @@ namespace llarp
 
     vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
 
-    // black hole all routes by default
-    route.AddBlackhole();
+    // black hole all routes if enabled
+    if (m_Router->GetConfig()->network.m_BlackholeRoutes)
+      route.AddBlackhole();
+
     // explicit route pokes for first hops
     m_Router->ForEachPeer(
         [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },

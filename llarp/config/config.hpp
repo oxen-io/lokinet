@@ -130,6 +130,7 @@ namespace llarp
     std::optional<fs::path> m_AddrMapPersistFile;
 
     bool m_EnableRoutePoker;
+    bool m_BlackholeRoutes;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
