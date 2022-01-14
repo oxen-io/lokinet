@@ -695,6 +695,12 @@ namespace llarp
       }
     }
 
+    size_t
+    Endpoint::UniqueEndpoints() const
+    {
+      return m_state->m_RemoteSessions.size() + m_state->m_SNodeSessions.size();
+    }
+
     constexpr auto PublishIntrosetTimeout = 20s;
 
     bool

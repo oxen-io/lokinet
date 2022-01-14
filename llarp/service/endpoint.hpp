@@ -396,6 +396,10 @@ namespace llarp
       std::optional<uint64_t>
       GetSeqNoForConvo(const ConvoTag& tag);
 
+      /// count unique endpoints we are talking to
+      size_t
+      UniqueEndpoints() const;
+
       bool
       HasExit() const;
 
