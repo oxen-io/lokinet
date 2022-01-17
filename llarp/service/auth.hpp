@@ -71,12 +71,18 @@ namespace llarp::service
     /// manual whitelist
     eAuthTypeWhitelist,
     /// LMQ server
-    eAuthTypeLMQ
+    eAuthTypeLMQ,
+    /// plain file
+    eAuthTypeFile,
   };
 
   /// get an auth type from a string
   /// throws std::invalid_argument if arg is invalid
   AuthType
   ParseAuthType(std::string arg);
+
+  /// make an IAuthPolicy that reads out of a static file
+  std::shared_ptr<IAuthPolicy>
+  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files);
 
 }  // namespace llarp::service

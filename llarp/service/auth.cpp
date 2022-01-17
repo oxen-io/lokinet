@@ -1,6 +1,11 @@
 #include "auth.hpp"
 #include <unordered_map>
 
+#include <llarp/router/abstractrouter.hpp>
+#include "protocol.hpp"
+#include <llarp/util/str.hpp>
+#include <llarp/util/fs.hpp>
+
 namespace llarp::service
 {
   /// maybe get auth result from string
@@ -22,6 +27,7 @@ namespace llarp::service
   ParseAuthType(std::string data)
   {
     std::unordered_map<std::string, AuthType> values = {
+        {"file", AuthType::eAuthTypeFile},
         {"lmq", AuthType::eAuthTypeLMQ},
         {"whitelist", AuthType::eAuthTypeWhitelist},
         {"none", AuthType::eAuthTypeNone}};
@@ -56,6 +62,92 @@ namespace llarp::service
       default:
         return std::nullopt;
     }
+  }
+
+  class FileAuthPolicy : public IAuthPolicy, public std::enable_shared_from_this<FileAuthPolicy>
+  {
+    const std::set<fs::path> m_Files;
+    AbstractRouter* const m_Router;
+    mutable util::Mutex m_Access;
+    std::unordered_set<ConvoTag> m_Pending;
+    /// returns an auth result for a auth info challange, opens every file until it finds a token
+    /// matching it
+    /// this is expected to be done in the IO thread
+    AuthResult
+    CheckFiles(const AuthInfo& info) const
+    {
+      for (const auto& f : m_Files)
+      {
+        fs::ifstream i{f};
+        std::string line{};
+        while (std::getline(i, line))
+        {
+          // split off comments
+          const auto parts = split_any(line, "#;", true);
+          if (auto part = parts[0]; not parts.empty() and not parts[0].empty())
+          {
+            // split off whitespaces
+            if (TrimWhitespace(part) == info.token)
+              return AuthResult{AuthResultCode::eAuthAccepted, "accepted by whitelist"};
+          }
+        }
+      }
+      return AuthResult{AuthResultCode::eAuthRejected, "rejected by whitelist"};
+    }
+
+   public:
+    FileAuthPolicy(AbstractRouter* r, std::set<fs::path> files)
+        : m_Files{std::move(files)}, m_Router{r}
+    {}
+
+    void
+    AuthenticateAsync(
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) override
+    {
+      auto reply = m_Router->loop()->make_caller(
+          [tag = msg->tag, hook, self = shared_from_this()](AuthResult result) {
+            {
+              util::Lock _lock{self->m_Access};
+              self->m_Pending.erase(tag);
+            }
+            hook(result);
+          });
+      {
+        util::Lock _lock{m_Access};
+        m_Pending.emplace(msg->tag);
+      }
+      if (msg->proto == ProtocolType::Auth)
+      {
+        m_Router->QueueDiskIO(
+            [self = shared_from_this(),
+             auth = AuthInfo{std::string{
+                 reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()}},
+             reply]() {
+              try
+              {
+                reply(self->CheckFiles(auth));
+              }
+              catch (std::exception& ex)
+              {
+                reply(AuthResult{AuthResultCode::eAuthFailed, ex.what()});
+              }
+            });
+      }
+      else
+        reply(AuthResult{AuthResultCode::eAuthRejected, "protocol error"});
+    }
+    bool
+    AsyncAuthPending(ConvoTag tag) const override
+    {
+      util::Lock _lock{m_Access};
+      return m_Pending.count(tag);
+    }
+  };
+
+  std::shared_ptr<IAuthPolicy>
+  MakeFileAuthPolicy(AbstractRouter* r, std::set<fs::path> files)
+  {
+    return std::make_shared<FileAuthPolicy>(r, std::move(files));
   }
 
 }  // namespace llarp::service

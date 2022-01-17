@@ -317,7 +317,7 @@ namespace llarp
         ClientOnly,
         Comment{
             "Set the endpoint authentication mechanism.",
-            "none/whitelist/lmq",
+            "none/whitelist/lmq/file",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -366,13 +366,30 @@ namespace llarp
           m_AuthWhitelist.emplace(std::move(addr));
         });
 
+    conf.defineOption<fs::path>(
+        "network",
+        "auth-file",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Read auth tokens from file to accept endpoint auth",
+            "Can be provided multiple times",
+        },
+        [this](fs::path arg) {
+          if (not fs::exists(arg))
+            throw std::invalid_argument{
+                stringify("cannot load auth file ", arg, " as it does not seem to exist")};
+          m_AuthFiles.emplace(std::move(arg));
+        });
+
     conf.defineOption<std::string>(
         "network",
         "auth-static",
         ClientOnly,
         MultiValue,
         Comment{
-            "manually add a static auth code to accept for endpoint auth",
+            "Manually add a static auth code to accept for endpoint auth",
+            "Can be provided multiple times",
         },
         [this](std::string arg) { m_AuthStaticTokens.emplace(std::move(arg)); });
 
