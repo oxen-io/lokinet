@@ -57,7 +57,7 @@ option(WITH_COVERAGE "generate coverage data" OFF)
 option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 option(TRACY_ROOT "include tracy profiler source" OFF)
-option(WITH_TESTS "build unit tests" ON)
+option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 
