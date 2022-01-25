@@ -72,7 +72,7 @@ local debian_pipeline(name,
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
                   (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                   '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
-                  (if tests then '' else '-DWITH_TESTS=OFF ') +
+                  '-DWITH_TESTS=' + (if tests then 'ON ' else 'OFF ') +
                   cmake_extra,
                   'VERBOSE=1 make -j' + jobs,
                 ]
