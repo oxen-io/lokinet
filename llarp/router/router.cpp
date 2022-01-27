@@ -807,6 +807,13 @@ namespace llarp
       return;
     // LogDebug("tick router");
     const auto now = Now();
+    constexpr auto TimeskipDetectedDuration = 1min;
+    if (const auto delta = now - _lastTick; _lastTick != 0s and delta > TimeskipDetectedDuration)
+    {
+      // we detected a time skip into the futre, thaw the network
+      LogWarn("Timeskip of ", delta, " detected. Resetting network state");
+      Thaw();
+    }
 
 #if defined(WITH_SYSTEMD)
     {
