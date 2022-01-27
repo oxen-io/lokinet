@@ -4,6 +4,7 @@
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/files.hpp>
+#include <llarp/constants/time.hpp>
 #include <llarp/crypto/crypto_libsodium.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dht/context.hpp>
@@ -807,7 +808,6 @@ namespace llarp
       return;
     // LogDebug("tick router");
     const auto now = Now();
-    constexpr auto TimeskipDetectedDuration = 1min;
     if (const auto delta = now - _lastTick; _lastTick != 0s and delta > TimeskipDetectedDuration)
     {
       // we detected a time skip into the futre, thaw the network
