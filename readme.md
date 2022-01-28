@@ -110,7 +110,7 @@ When running from debian package the following steps are not needed as it is alr
 ready to use.  You can stop/start/restart it using `systemctl start lokinet`, `systemctl stop
 lokinet`, etc.
 
-## Running on Linux (without debs)
+### Running on Linux (without debs)
 
 **DO NOT RUN AS ROOT**, run as normal user. 
 
