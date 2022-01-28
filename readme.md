@@ -127,3 +127,18 @@ This requires the binary to have the proper capabilities which is usually set by
 
     $ sudo setcap cap_net_admin,cap_net_bind_service=+eip /usr/local/bin/lokinet
 
+
+----
+
+# License
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+```
+Copyright © 2018-2022 The Oxen Project
+Copyright © 2018-2022 Jeff Becker
+Copyright © 2018-2020 Rick V. (Historical Windows NT port and portions)
+```
