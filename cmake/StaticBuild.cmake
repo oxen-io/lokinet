@@ -384,7 +384,7 @@ foreach(curl_arch ${curl_arches})
     --enable-crypto-auth --disable-ntlm-wb --disable-tls-srp --disable-unix-sockets --disable-cookies
     --enable-http-auth --enable-doh --disable-mime --enable-dateparse --disable-netrc --without-libidn2
     --disable-progress-meter --without-brotli --with-zlib=${DEPS_DESTDIR} ${curl_ssl_opts}
-    --without-libmetalink --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
+    --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
     --without-zsh-functions-dir --without-fish-functions-dir
     --without-nghttp3 --without-zstd
     "CC=${deps_cc}" "CFLAGS=${deps_noarch_CFLAGS}${cflags_extra}" ${curl_extra}
