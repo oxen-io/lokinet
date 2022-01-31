@@ -245,6 +245,8 @@ namespace llarp::quic
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),
           code,
+          nullptr,  // reason
+          0,        // reason length
           get_timestamp());
       if (written <= 0)
       {
