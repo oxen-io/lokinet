@@ -5,32 +5,32 @@
 
 set(LOCAL_MIRROR "" CACHE STRING "local mirror path/URL for lib downloads")
 
-set(OPENSSL_VERSION 1.1.1l CACHE STRING "openssl version")
+set(OPENSSL_VERSION 1.1.1m CACHE STRING "openssl version")
 set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://www.openssl.org/source CACHE STRING "openssl download mirror(s)")
 set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
-set(OPENSSL_HASH SHA256=0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1
+set(OPENSSL_HASH SHA256=f89199be8b23ca45fc7cb9f1d8d3ee67312318286ad030f5316aca6462db6c96
     CACHE STRING "openssl source hash")
 
-set(EXPAT_VERSION 2.3.0 CACHE STRING "expat version")
+set(EXPAT_VERSION 2.4.4 CACHE STRING "expat version")
 string(REPLACE "." "_" EXPAT_TAG "R_${EXPAT_VERSION}")
 set(EXPAT_MIRROR ${LOCAL_MIRROR} https://github.com/libexpat/libexpat/releases/download/${EXPAT_TAG}
     CACHE STRING "expat download mirror(s)")
 set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
-set(EXPAT_HASH SHA512=dde8a9a094b18d795a0e86ca4aa68488b352dc67019e0d669e8b910ed149628de4c2a49bc3a5b832f624319336a01f9e4debe03433a43e1c420f36356d886820
+set(EXPAT_HASH SHA256=b5d25d6e373351c2ed19b562b4732d01d2589ac8c8e9e7962d8df1207cc311b8
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.13.2 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.14.0 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=0a13b547f3b92a026b5ebd0423f54c991e5718037fd9f72445817f6a040e1a83
+set(UNBOUND_HASH SHA256=6ef91cbf02d5299eab39328c0857393de7b4885a2fe7233ddfe3c124ff5a89c8
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3350500 CACHE STRING "sqlite3 version")
-set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2021
+set(SQLITE3_VERSION 3370200 CACHE STRING "sqlite3 version")
+set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA512=039af796f79fc4517be0bd5ba37886264d49da309e234ae6fccdb488ef0109ed2b917fc3e6c1fc7224dff4f736824c653aaf8f0a37550c5ebc14d035cb8ac737
-    CACHE STRING "sqlite3 source hash")
+set(SQLITE3_HASH SHA3_256=3764f471d188ef4e7a70a120f6cb80014dc50bb5fa53406b566508390a32e745
+  CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
 set(SODIUM_MIRROR ${LOCAL_MIRROR}
@@ -48,11 +48,11 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
 
-set(LIBUV_VERSION 1.41.0 CACHE STRING "libuv version")
+set(LIBUV_VERSION 1.43.0 CACHE STRING "libuv version")
 set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
     CACHE STRING "libuv mirror(s)")
 set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
-set(LIBUV_HASH SHA512=33613fa28e8136507300eba374351774849b6b39aab4e53c997a918d3bc1d1094c6123e0e509535095b14dc5daa885eadb1a67bed46622ad3cc79d62dc817e84
+set(LIBUV_HASH SHA256=90d72bb7ae18de2519d0cac70eb89c319351146b90cd3f91303a492707e693a4
     CACHE STRING "libuv source hash")
 
 set(ZLIB_VERSION 1.2.11 CACHE STRING "zlib version")
@@ -62,14 +62,12 @@ set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_HASH SHA512=73fd3fff4adeccd4894084c15ddac89890cd10ef105dd5e1835e1e9bbb6a49ff229713bd197d203edfa17c2727700fce65a2a235f07568212d820dca88b528ae
     CACHE STRING "zlib source hash")
   
-set(CURL_VERSION 7.76.1 CACHE STRING "curl version")
+set(CURL_VERSION 7.81.0 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
 set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
-set(CURL_HASH SHA256=64bb5288c39f0840c07d077e30d9052e1cbb9fa6c2dc52523824cc859e679145
+set(CURL_HASH SHA256=a067b688d1645183febc31309ec1f3cdce9213d02136b6a6de3d50f69c95a7d3
   CACHE STRING "curl source hash")
-
-
 
 include(ExternalProject)
 
@@ -386,7 +384,7 @@ foreach(curl_arch ${curl_arches})
     --enable-crypto-auth --disable-ntlm-wb --disable-tls-srp --disable-unix-sockets --disable-cookies
     --enable-http-auth --enable-doh --disable-mime --enable-dateparse --disable-netrc --without-libidn2
     --disable-progress-meter --without-brotli --with-zlib=${DEPS_DESTDIR} ${curl_ssl_opts}
-    --without-libmetalink --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
+    --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
     --without-zsh-functions-dir --without-fish-functions-dir
     --without-nghttp3 --without-zstd
     "CC=${deps_cc}" "CFLAGS=${deps_noarch_CFLAGS}${cflags_extra}" ${curl_extra}

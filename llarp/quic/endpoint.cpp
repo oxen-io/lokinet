@@ -225,7 +225,8 @@ namespace llarp::quic
   }
 
   void
-  Endpoint::close_connection(Connection& conn, uint64_t code, bool application)
+  Endpoint::close_connection(
+      Connection& conn, uint64_t code, bool application, std::string_view close_reason)
   {
     LogDebug("Closing connection ", conn.base_cid);
     if (!conn.closing)
@@ -245,6 +246,8 @@ namespace llarp::quic
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),
           code,
+          reinterpret_cast<const uint8_t*>(close_reason.data()),
+          close_reason.size(),
           get_timestamp());
       if (written <= 0)
       {

@@ -35,3 +35,4 @@
 [submodule "external/ngtcp2"]
 	path = external/ngtcp2
 	url = https://github.com/ngtcp2/ngtcp2.git
+	branch = v0.1.0
