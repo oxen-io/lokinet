@@ -8,10 +8,11 @@ die() {
     exit 1
 }
 
+platform=${PLATFORM:-Linux}
 root="$(readlink -e $(dirname $0)/../)"
 cd $root
 set -e
-set -x
+set +x
 test $# = 0 && die no targets provided
 mkdir -p build-cross
 echo "all: $@" > build-cross/Makefile
@@ -20,9 +21,11 @@ for targ in $@ ; do
     cd $root/build-cross/build-$targ
     cmake \
         -G 'Unix Makefiles' \
+        -DCROSS_PLATFORM=$platform \
+        -DCROSS_PREFIX=$targ \
         -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
         -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always\
-        -DCMAKE_TOOLCHAIN_FILE=$root/contrib/cross/$targ.toolchain.cmake\
+        -DCMAKE_TOOLCHAIN_FILE=$root/contrib/cross/cross.toolchain.cmake\
         -DBUILD_STATIC_DEPS=ON \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTING=OFF \
