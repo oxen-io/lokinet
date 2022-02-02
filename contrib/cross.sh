@@ -12,7 +12,6 @@ platform=${PLATFORM:-Linux}
 root="$(readlink -e $(dirname $0)/../)"
 cd $root
 set -e
-set +x
 test $# = 0 && die no targets provided
 mkdir -p build-cross
 echo "all: $@" > build-cross/Makefile
