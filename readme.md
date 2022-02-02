@@ -80,9 +80,7 @@ current cross targets:
 * mipsel-linux-gnu
 * powerpc64le-linux-gnu
 
-
-
-install the toolchain (this one is for `aarch64-linux-gnu`)
+install the toolchain (this one is for `aarch64-linux-gnu`, you can provide your own toolchain if you want)
 
     $ sudo apt install g{cc,++}-aarch64-linux-gnu
 
