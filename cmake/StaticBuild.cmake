@@ -253,6 +253,9 @@ if(CMAKE_CROSSCOMPILING)
   elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
     # cross compile arm64
     set(openssl_system_env SYSTEM=Linux MACHINE=aarch64)
+  elseif(ARCH_TRIPLET MATCHES arm-linux)
+    # cross compile armhf
+    set(openssl_system_env SYSTEM=Linux MACHINE=armv4)
   endif()
 elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
