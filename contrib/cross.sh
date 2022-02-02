@@ -11,18 +11,18 @@ die() {
 root="$(readlink -e $(dirname $0)/../)"
 cd $root
 set -e
-set +x
+set -x
 test $# = 0 && die no targets provided
 mkdir -p build-cross
 echo "all: $@" > build-cross/Makefile
 for targ in $@ ; do
-    mkdir -p build-$targ
-    cd build-$targ
+    mkdir -p $root/build-cross/build-$targ
+    cd $root/build-cross/build-$targ
     cmake \
         -G 'Unix Makefiles' \
         -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
         -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always\
-        -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/$targ.toolchain.cmake\
+        -DCMAKE_TOOLCHAIN_FILE=$root/contrib/cross/$targ.toolchain.cmake\
         -DBUILD_STATIC_DEPS=ON \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTING=OFF \
@@ -36,10 +36,10 @@ for targ in $@ ; do
         -DWITH_LTO=OFF \
         -DWITH_BOOTSTRAP=OFF \
         -DCMAKE_BUILD_TYPE=Release \
-        ..
-    cd -
-    echo -ne "$targ:\n\t\$(MAKE) -C $root/build-$targ\n" >> build-cross/Makefile
+        $root
+    cd $root/build-cross
+    echo -ne "$targ:\n\t\$(MAKE) -C  build-$targ\n" >> $root/build-cross/Makefile
 
 done
-
+cd $root
 make -j${JOBS:-$(nproc)} -C build-cross
