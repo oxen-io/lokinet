@@ -59,9 +59,28 @@ If you want to build from source:
     $ make -j$(nproc)
     $ sudo make install
 
+#### Cross Compile
+
+supported cross targets:
+
+* aarch64
+* armhf
+* mips
+* mips64
+* mipsel
+* ppc64le
+
+install the toolchain for `$arch` this example is `aarch64`
+
+    $ sudo apt install g{cc,++}-aarch64-linux-gnu
+
+build 1 or many cross targets:
+
+    $ ./contrib/cross.sh arch_1 arch_2 ... arch_n
+
 ### macOS
 
-Lokinet ~~is~~ will be available on the Apple App store. 
+Lokinet ~~is~~ will be available on the Apple App store.
 
 Source code compilation of Lokinet by end users is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information. If you find this disagreeable consider using a platform that permits compiling from source.
 
@@ -112,11 +131,11 @@ lokinet`, etc.
 
 ### Running on Linux (without debs)
 
-**DO NOT RUN AS ROOT**, run as normal user. 
+**DO NOT RUN AS ROOT**, run as normal user.
 
 set up the initial configs:
 
-    $ lokinet -g 
+    $ lokinet -g
     $ lokinet-bootstrap
 
 after you create default config, run it:

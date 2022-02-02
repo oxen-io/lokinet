@@ -234,6 +234,7 @@ add_static_target(zlib zlib_external libz.a)
 
 
 set(openssl_system_env "")
+set(openssl_configure_command ./config)
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
     set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
@@ -242,13 +243,25 @@ if(CMAKE_CROSSCOMPILING)
   elseif(ANDROID)
     set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
+  elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
+    set(openssl_configure_command ./Configure linux64-mips64)
+  elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mips)
+  elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mipsel)
+  elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
+    # cross compile arm64
+    set(openssl_system_env SYSTEM=Linux MACHINE=aarch64)
   endif()
 elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
   set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
+
+
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
     --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
