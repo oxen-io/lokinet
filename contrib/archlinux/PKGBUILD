@@ -1,7 +1,7 @@
 # Maintainer: jason <jason@oxen.io>
 pkgname=lokinet
 pkgver=0.9.8
-pkgrel=1
+pkgrel=2
 pkgdesc="Anonymous, decentralized and IP based overlay network for the internet."
 arch=('x86_64' 'aarch64')
 url="https://lokinet.org"
@@ -11,11 +11,6 @@ makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet' 'lokinet-bin')
 source=("$pkgname::git+https://github.com/oxen-io/lokinet#branch=makepkg")
 b2sums=('SKIP')
-
-pkgver() {
-    cd "$srcdir/$pkgname"
-    printf "v${pkgver}_%s" "$(git log -n1 --pretty='%h')"
-}
 
 prepare() {
           cd "$srcdir/$pkgname"
