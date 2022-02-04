@@ -1,7 +1,5 @@
 site_name: Lokinet
 theme:
   name: 'readthedocs'
-markdown_extensions:
-  - admonition
 docs_dir: markdown
 site_dir: html
