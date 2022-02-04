@@ -287,6 +287,10 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
       ],
     }],
   },
+  // documentation builder
+  docs_pipeline('Documentation',
+                docker_base + 'docbuilder',
+                extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
   // Various debian builds
   debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
@@ -345,11 +349,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                     'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
                   ],
                   jobs=4),
-
-  // documentation builder
-  docs_pipeline('Documentation',
-                docker_base + 'docbuilder',
-                extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
   // integration tests
   debian_pipeline('Router Hive',
