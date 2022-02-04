@@ -60,13 +60,14 @@ add_custom_command(
 
 add_custom_target(doc DEPENDS html)
 
+configure_file(Doxyfile.in Doxyfile @ONLY)
+configure_file(index.md.in index.md @ONLY)
+
+configure_file(config.json config.json COPYONLY)
+configure_file(mkdocs.yml mkdocs.yml COPYONLY)
+
 # we seperate this step out so we force clean_markdown to run before markdown target
 add_custom_command(
   OUTPUT markdown/index.md
   COMMAND ${CMAKE_COMMAND} -E copy index.md markdown/index.md
   DEPENDS clean_markdown)
-
-configure_file(Doxyfile.in Doxyfile @ONLY)
-configure_file(config.json config.json @ONLY)
-configure_file(mkdocs.yml mkdocs.yml @ONLY)
-configure_file(index.md.in index.md @ONLY)
