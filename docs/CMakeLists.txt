@@ -25,28 +25,33 @@ add_custom_command(
         ${lokinet_doc_sources}
 )
 
+# find doxybook2
+find_program(DOXYBOOK2 doxybook2)
+if(NOT DOXYBOOK2)
+  if(NOT DOXYBOOK2_ZIP_URL)
+    set(DOXYBOOK2_VERSION v1.4.0 CACHE STRING "doxybook2 version")
+    set(DOXYBOOK2_ZIP_URL "https://github.com/matusnovak/doxybook2/releases/download/${DOXYBOOK2_VERSION}/doxybook2-linux-amd64-${DOXYBOOK2_VERSION}.zip")
+    set(DOXYBOOK2_ZIP_HASH_OPTS EXPECTED_HASH SHA256=bab9356f5daa550cbf21d8d9b554ea59c8be039716a2caf6e96dee52713fccb0)
+  endif()
 
-if(NOT DOXYBOOK2_ZIP_URL)
-  set(DOXYBOOK2_VERSION v1.4.0 CACHE STRING "doxybook2 version")
-  set(DOXYBOOK2_ZIP_URL "https://github.com/matusnovak/doxybook2/releases/download/${DOXYBOOK2_VERSION}/doxybook2-linux-amd64-${DOXYBOOK2_VERSION}.zip")
-  set(DOXYBOOK2_ZIP_HASH_OPTS EXPECTED_HASH SHA256=bab9356f5daa550cbf21d8d9b554ea59c8be039716a2caf6e96dee52713fccb0)
-endif()
-
-file(DOWNLOAD
+  file(DOWNLOAD
     ${DOXYBOOK2_ZIP_URL}
     ${CMAKE_CURRENT_BINARY_DIR}/doxybook2.zip
     ${DOXYBOOK2_ZIP_HASH_OPTS})
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_CURRENT_BINARY_DIR}/doxybook2.zip
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_CURRENT_BINARY_DIR}/doxybook2.zip
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set(DOXYBOOK2 ${CMAKE_CURRENT_BINARY_DIR}/bin/doxybook2)
+  set(doxybook_localbin ${DOXYBOOK2})
+endif()
 
 add_custom_command(
     OUTPUT markdown
-    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/bin/doxybook2 --input ${CMAKE_CURRENT_BINARY_DIR}/doxyxml --output ${CMAKE_CURRENT_BINARY_DIR}/markdown --config config.json
+    COMMAND ${DOXYBOOK2} --input ${CMAKE_CURRENT_BINARY_DIR}/doxyxml --output ${CMAKE_CURRENT_BINARY_DIR}/markdown --config config.json
     DEPENDS
+    ${doxybook_localbin}
     ${CMAKE_CURRENT_BINARY_DIR}/markdown/index.md
     ${CMAKE_CURRENT_BINARY_DIR}/config.json
-    ${CMAKE_CURRENT_BINARY_DIR}/bin/doxybook2
     ${CMAKE_CURRENT_BINARY_DIR}/doxyxml/index.xml)
 
 add_custom_target(clean_html COMMAND ${CMAKE_COMMAND} -E rm -rf html)
