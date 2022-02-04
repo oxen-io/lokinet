@@ -45,7 +45,7 @@ elif [ -e lokinet.apk ] ; then
     cp -av lokinet.apk "$archive"
 elif [ -e build-docs ]; then
     archive="$base.tar.xz"
-    cp -a build-docs/docs/markdown "$base"
+    cp -av build-docs/docs/mkdocs.yml build-docs/docs/markdown "$base"
     tar cJvf "$archive" "$base"
 else
     cp -av daemon/lokinet daemon/lokinet-vpn "$base"
