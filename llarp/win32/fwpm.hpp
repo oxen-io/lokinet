@@ -95,21 +95,6 @@ namespace llarp::win32
     return MakeGUID("3971ef2b-623e-4f9a-8cb1-6e79b806b9a7");
   }
 
-  template <typename Value_t>
-  static inline FWP_CONDITION_VALUE0_ MakeValue(Value_t);
-
-  template <typename Value_t>
-  static inline FWPM_FILTER_CONDITION0_
-  MakeCondition(GUID key, FWP_MATCH_TYPE matchType, Value_t val)
-  {
-    FWPM_FILTER_CONDITION0_ condition{};
-    condition.fieldKey = key;
-    condition.matchType = matchType;
-    condition.conditionValue = MakeValue<Value_t>(val);
-    return condition;
-  }
-
-  template <>
   inline FWP_CONDITION_VALUE0_
   MakeValue(uint8_t val)
   {
@@ -119,7 +104,6 @@ namespace llarp::win32
     return _ret;
   }
 
-  template <>
   inline FWP_CONDITION_VALUE0_
   MakeValue(huint16_t val)
   {
@@ -129,7 +113,6 @@ namespace llarp::win32
     return _ret;
   }
 
-  template <>
   inline FWP_CONDITION_VALUE0_
   MakeValue(huint32_t val)
   {
@@ -139,7 +122,6 @@ namespace llarp::win32
     return _ret;
   }
 
-  template <>
   inline FWP_CONDITION_VALUE0_
   MakeValue(uint64_t* val)
   {
@@ -148,4 +130,15 @@ namespace llarp::win32
     _ret.uint64 = val;
     return _ret;
   }
+  template <typename Value_t>
+  static inline FWPM_FILTER_CONDITION0_
+  MakeCondition(GUID key, FWP_MATCH_TYPE matchType, Value_t val)
+  {
+    FWPM_FILTER_CONDITION0_ condition{};
+    condition.fieldKey = key;
+    condition.matchType = matchType;
+    condition.conditionValue = MakeValue(val);
+    return condition;
+  }
+
 }  // namespace llarp::win32

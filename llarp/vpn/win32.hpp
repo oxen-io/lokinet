@@ -302,7 +302,9 @@ namespace llarp::vpn
         const GUID adapterGUID = MakeDeterministicGUID(info.ifname);
 
         if (auto ptr = _createAdapter(PoolName, name.c_str(), &adapterGUID, nullptr))
+        {
           return Adapter_ptr{ptr, std::move(deleter)};
+        }
 
         throw llarp::win32::last_error{"could not create adapter: "};
       }
@@ -330,7 +332,8 @@ namespace llarp::vpn
       void
       AddAdapterAddress(const Adapter_ptr& adapter, const InterfaceAddress& addr)
       {
-        MIB_UNICASTIPADDRESS_ROW AddressRow{};
+        const auto name = GetAdapterName(adapter.get());
+        MIB_UNICASTIPADDRESS_ROW AddressRow;
         InitializeUnicastIpAddressEntry(&AddressRow);
         _getAdapterLUID(adapter.get(), &AddressRow.InterfaceLuid);
         AddressRow.OnLinkPrefixLength = addr.range.HostmaskBits();
@@ -343,13 +346,13 @@ namespace llarp::vpn
                 ToNet(net::TruncateV6(addr.range.addr)).n;
             break;
           case AF_INET6:
-            AddressRow.Address.Ipv6.sin6_family = addr.fam;
-            AddressRow.Address.Ipv6.sin6_addr = net::HUIntToIn6(addr.range.addr);
-            break;
+            LogInfo("skipping ipv6 address assignment on ", name);
+            return;
           default:
             throw std::invalid_argument{llarp::stringify("invalid address family: ", addr.fam)};
         }
         AddressRow.DadState = IpDadStatePreferred;
+        LogInfo("setting address ", addr.range, " on ", name);
         if (auto err = CreateUnicastIpAddressEntry(&AddressRow); err != ERROR_SUCCESS)
           throw llarp::win32::error{err, "failed to set interface address: "};
       }
@@ -661,7 +664,7 @@ namespace llarp::vpn
       {
         _filter.action.type = action;
         _filter.providerKey = &_providerKey;
-        _filter.subLayerKey = sublayer->subLayerKey;
+        std::copy_n(&sublayer->subLayerKey, sizeof(_filter.subLayerKey), &_filter.subLayerKey);
         _filter.weight.uint8 = weight;
         _filter.weight.type = FWP_UINT8;
         _filter.numFilterConditions = _conditions.size();
@@ -767,7 +770,7 @@ namespace llarp::vpn
     void
     PermitLoopback()
     {
-      FWPM_FILTER_CONDITION0_ condition = win32::MakeCondition<huint32_t>(
+      FWPM_FILTER_CONDITION0_ condition = win32::MakeCondition(
           win32::FWPM_CONDITION_FLAGS(),
           FWP_MATCH_FLAGS_ALL_SET,
           huint32_t{FWP_CONDITION_FLAG_IS_LOOPBACK});
