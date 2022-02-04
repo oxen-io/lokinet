@@ -1,0 +1,9 @@
+{
+    "baseUrl": "/internals/",
+    "indexInFolders": false,
+    "linkSuffix": "/",
+    "mainPageInRoot": false,
+    "mainPageName": "index",
+    "linkLowercase": true,
+    "foldersToGenerate": ["files", "classes", "namespaces"]
+}

@@ -246,6 +246,28 @@ local mac_builder(name,
   ],
 };
 
+local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'docker',
+  name: name,
+  platform: { arch: 'amd64' },
+  trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+  steps: [
+    submodules,
+    {
+      name: 'build',
+      image: image,
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
+      commands: [
+        'cmake -S . -B build-docs',
+        'make -C build-docs doc',
+      ] + extra_cmds,
+    },
+  ],
+};
+
 
 [
   {
@@ -323,6 +345,11 @@ local mac_builder(name,
                     'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
                   ],
                   jobs=4),
+
+  // documentation builder
+  docs_pipeline('Documentation',
+                docker_base + 'docbuilder',
+                extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
   // integration tests
   debian_pipeline('Router Hive',
