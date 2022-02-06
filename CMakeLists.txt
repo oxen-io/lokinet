@@ -5,8 +5,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
+option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
+
+
 set(LANGS C CXX)
-if(APPLE)
+if(APPLE AND BUILD_DAEMON)
   set(LANGS ${LANGS} OBJC Swift)
 endif()
 
@@ -43,6 +46,12 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+set(DEFAULT_WITH_BOOTSTRAP ON)
+if(APPLE)
+  set(DEFAULT_WITH_BOOTSTRAP OFF)
+endif()
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -60,6 +69,7 @@ option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
+option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 
 include(cmake/enable_lto.cmake)
 
@@ -182,7 +192,7 @@ if(OXENMQ_FOUND)
   message(STATUS "Found system liboxenmq ${OXENMQ_VERSION}")
 else()
   message(STATUS "using oxenmq submodule")
-  add_subdirectory(${CMAKE_SOURCE_DIR}/external/oxen-mq)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/oxen-mq)
 endif()
 
 
@@ -327,8 +337,9 @@ endif()
 
 add_subdirectory(crypto)
 add_subdirectory(llarp)
-add_subdirectory(daemon)
-
+if(BUILD_DAEMON)
+  add_subdirectory(daemon)
+endif()
 
 if(WITH_HIVE)
   add_subdirectory(pybind)

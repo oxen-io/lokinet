@@ -293,6 +293,14 @@ namespace llarp
       std::optional<nuint16_t>
       DstPort() const;
 
+      /// get source port if applicable
+      std::optional<nuint16_t>
+      SrcPort() const;
+
+      /// get pointer and size of layer 4 data
+      std::optional<std::pair<const char*, size_t>>
+      L4Data() const;
+
       void
       UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 

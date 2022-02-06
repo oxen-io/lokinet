@@ -15,7 +15,7 @@
 #include <queue>
 #include <type_traits>
 #include <variant>
-#include "service/protocol_type.hpp"
+#include <llarp/service/protocol_type.hpp>
 
 namespace llarp
 {

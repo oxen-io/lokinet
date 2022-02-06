@@ -128,6 +128,19 @@ namespace llarp
       }
     }
 
+    std::optional<nuint16_t>
+    IPPacket::SrcPort() const
+    {
+      switch (IPProtocol{Header()->protocol})
+      {
+        case IPProtocol::TCP:
+        case IPProtocol::UDP:
+          return nuint16_t{*reinterpret_cast<const uint16_t*>(buf + (Header()->ihl * 4))};
+        default:
+          return std::nullopt;
+      }
+    }
+
     huint32_t
     IPPacket::srcv4() const
     {
@@ -569,6 +582,26 @@ namespace llarp
         return pkt;
       }
       return std::nullopt;
+    }
+
+    std::optional<std::pair<const char*, size_t>>
+    IPPacket::L4Data() const
+    {
+      const auto* hdr = Header();
+      size_t l4_HeaderSize = 0;
+      if (hdr->protocol == 0x11)
+      {
+        l4_HeaderSize = 8;
+      }
+      else
+        return std::nullopt;
+
+      // check for invalid size
+      if (sz < (hdr->ihl * 4) + l4_HeaderSize)
+        return std::nullopt;
+
+      const uint8_t* ptr = buf + ((hdr->ihl * 4) + l4_HeaderSize);
+      return std::make_pair(reinterpret_cast<const char*>(ptr), std::distance(ptr, buf + sz));
     }
 
     IPPacket

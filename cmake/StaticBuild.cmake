@@ -294,7 +294,6 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
-
 build_external(unbound
   DEPENDS openssl_external expat_external
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
@@ -351,6 +350,10 @@ endif()
 set_target_properties(libzmq PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
   INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
+
+if(NOT WITH_BOOTSTRAP)
+  return()
+endif()
 
 set(curl_extra)
 if(WIN32)
