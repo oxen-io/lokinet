@@ -34,7 +34,7 @@ namespace llarp::win32
   error::error(DWORD code, std::string msg) : std::runtime_error{msg + errorMessage(code)}
   {}
 
-  last_error::last_error(std::string msg) : error{GetLastError(), msg}
+  error::error(std::string msg) : error{GetLastError(), std::move(msg)}
   {}
 
 }  // namespace llarp::win32

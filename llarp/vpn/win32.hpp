@@ -160,7 +160,7 @@ namespace llarp::vpn
       explicit API(const char* wintunlib = "wintun.dll") : _handle{LoadLibrary(wintunlib)}
       {
         if (not _handle)
-          throw llarp::win32::last_error{"failed to open library " + std::string{wintunlib} + ": "};
+          throw llarp::win32::error{"failed to open library " + std::string{wintunlib} + ": "};
 
         const std::map<std::string, FARPROC*> funcs{
             {"WintunEnumAdapters", (FARPROC*)&_iterAdapters},
@@ -184,7 +184,7 @@ namespace llarp::vpn
           if (FARPROC funcptr = GetProcAddress(_handle, procname.c_str()))
             *ptr = funcptr;
           else
-            throw llarp::win32::last_error{"could not find function " + procname + ": "};
+            throw llarp::win32::error{"could not find function " + procname + ": "};
         }
 
         // set wintun logger function
@@ -259,7 +259,7 @@ namespace llarp::vpn
           SetLastError(0);
         }
         else
-          throw win32::last_error{"failed to read packet: "};
+          throw win32::error{"failed to read packet: "};
         return std::shared_ptr<Packet>{nullptr};
       }
 
@@ -278,7 +278,7 @@ namespace llarp::vpn
           SetLastError(0);
         }
         else
-          throw win32::last_error{"failed to write packet: "};
+          throw win32::error{"failed to write packet: "};
       }
 
       [[nodiscard]] auto
@@ -306,7 +306,7 @@ namespace llarp::vpn
           return Adapter_ptr{ptr, std::move(deleter)};
         }
 
-        throw llarp::win32::last_error{"could not create adapter: "};
+        throw llarp::win32::error{"could not create adapter: "};
       }
 
       /// @brief make a wintun session smart pointer on a wintun adapter
@@ -315,7 +315,7 @@ namespace llarp::vpn
       {
         if (auto ptr = _startSession(adapter.get(), WINTUN_MAX_RING_CAPACITY))
           return Session_ptr{ptr, _endSession};
-        throw llarp::win32::last_error{"could not open session: "};
+        throw llarp::win32::error{"could not open session: "};
       }
 
       /// @brief get the name of an adapter
@@ -325,7 +325,7 @@ namespace llarp::vpn
         std::wstring buf(MAX_ADAPTER_NAME, '\x00');
         if (_getAdapterName(adapter, buf.data()))
           return to_width<std::string>(buf);
-        throw win32::last_error{"cannot get adapter name: "};
+        throw win32::error{"cannot get adapter name: "};
       }
 
       /// @brief add an interface address to a wintun adapter
