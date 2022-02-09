@@ -78,8 +78,8 @@ namespace llarp
             [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
               LinksConfig::LinkInfo info;
               info.m_interface = std::move(_interface);
-              info.addressFamily = family;
-              info.port = port;
+              info.m_addressFamily = family;
+              info.m_port = port;
               self.m_OutboundLink = std::move(info);
             })
         .def(
@@ -87,8 +87,8 @@ namespace llarp
             [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
               LinksConfig::LinkInfo info;
               info.m_interface = std::move(_interface);
-              info.addressFamily = family;
-              info.port = port;
+              info.m_addressFamily = family;
+              info.m_port = port;
               self.m_InboundLinks.push_back(info);
             });
 
