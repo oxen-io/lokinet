@@ -642,7 +642,6 @@ namespace llarp::vpn
       FWPM_FILTER0 _filter;
       HANDLE _engine;
       uint64_t _ID;
-      GUID _providerKey;
 
      public:
       explicit Filter(
@@ -654,29 +653,37 @@ namespace llarp::vpn
           uint8_t weight,
           std::wstring name,
           std::wstring description)
-          : _name{std::move(name)}
-          , _description{std::move(description)}
-          , _conditions{std::move(conditions)}
+          : _name{name}
+          , _description{description}
+          , _conditions{conditions}
           , _filter{}
           , _engine{engineHandle}
           , _ID{}
-          , _providerKey{key}
       {
         _filter.action.type = action;
-        _filter.providerKey = &_providerKey;
-        std::copy_n(&sublayer->subLayerKey, sizeof(_filter.subLayerKey), &_filter.subLayerKey);
-        _filter.weight.uint8 = weight;
-        _filter.weight.type = FWP_UINT8;
+        _filter.layerKey = key;
+        if (sublayer)
+        {
+          _filter.subLayerKey = sublayer->subLayerKey;
+        }
+        else
+          throw std::invalid_argument{"no sublayer provided"};
+
+        if (weight)
+        {
+          _filter.weight.uint8 = weight;
+          _filter.weight.type = FWP_UINT8;
+        }
+        else
+          _filter.weight.type = FWP_EMPTY;
+
         _filter.numFilterConditions = _conditions.size();
-        if (not conditions.empty())
-          _filter.filterCondition = _conditions.data();
+        _filter.filterCondition = _conditions.data();
 
         _filter.displayData.name = _name.data();
         _filter.displayData.description = _description.data();
 
-        LogInfo("adding firewall filter: ", to_width<std::string>(_name));
-
-        if (auto err = FwpmFilterAdd0(_engine, &_filter, nullptr, &_ID); err != ERROR_SUCCESS)
+        if (auto err = FwpmFilterAdd0(engineHandle, &_filter, nullptr, &_ID); err != ERROR_SUCCESS)
           throw win32::error{err, "failed to add fwpm filter: "};
       }
 
@@ -706,7 +713,6 @@ namespace llarp::vpn
 
     class Firewall
     {
-      Provider _provider;
       SubLayer _sublayer;
       HANDLE m_Handle;
 
@@ -715,14 +721,8 @@ namespace llarp::vpn
 
      public:
       Firewall(HANDLE handle)
-          : _provider{L"Lokinet", L"Lokinet Provider"}
-          , _sublayer{L"Lokinet Filters", L"RoutePoker Filters", &_provider.providerKey}
-          , m_Handle{handle}
+          : _sublayer{L"Lokinet Filters", L"RoutePoker Filters", nullptr}, m_Handle{handle}
       {
-        if (auto err = FwpmProviderAdd0(m_Handle, _provider, 0); err != ERROR_SUCCESS)
-        {
-          throw win32::error{err, "fwpmProviderAdd0 failed: "};
-        }
         if (auto err = FwpmSubLayerAdd0(m_Handle, _sublayer, 0); err != ERROR_SUCCESS)
         {
           throw win32::error{err, "fwpmSubLayerAdd0 failed: "};
@@ -733,7 +733,6 @@ namespace llarp::vpn
       {
         m_Filters.clear();
         FwpmSubLayerDeleteByKey0(m_Handle, &_sublayer.subLayerKey);
-        FwpmProviderDeleteByKey0(m_Handle, &_provider.providerKey);
       }
 
       uint64_t
@@ -749,14 +748,7 @@ namespace llarp::vpn
             std::string_view{reinterpret_cast<const char*>(&layerKey), sizeof(layerKey)});
         LogInfo("adding filter ", to_width<std::string>(name), "guid=", guid);
         auto filter = std::make_unique<Filter>(
-            m_Handle,
-            _sublayer,
-            std::move(action),
-            std::move(layerKey),
-            std::move(conditions),
-            std::move(weight),
-            std::move(name),
-            std::move(description));
+            m_Handle, _sublayer, action, layerKey, conditions, weight, name, description);
 
         const auto id = filter->ID();
         m_Filters[id] = std::move(filter);
