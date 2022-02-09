@@ -331,7 +331,7 @@ namespace llarp::quic
 
 #ifndef NDEBUG
   extern "C" inline void
-  ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
+  ngtcp_trace_logger([[maybe_unused]] void* user_data, [[maybe_unused]] const char* fmt, ...)
   {}
 #endif
 
