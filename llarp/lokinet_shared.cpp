@@ -193,7 +193,7 @@ namespace
       }
       lokinet_udp_flowinfo flow_addr{};
       // set flow remote address
-      std::string addrstr = var::visit([&flow_addr](auto&& from) { return from.ToString(); }, from);
+      std::string addrstr = var::visit([](auto&& from) { return from.ToString(); }, from);
 
       std::copy_n(
           addrstr.data(),
