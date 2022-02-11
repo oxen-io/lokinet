@@ -399,16 +399,14 @@ namespace llarp
       return hops;
     }
 
-    bool
+    void
     Builder::BuildOneAlignedTo(const RouterID remote)
     {
-      if (const auto maybe = GetHopsAlignedToForBuild(remote); maybe.has_value())
+      if (const auto maybe = GetHopsAlignedToForBuild(remote))
       {
         LogInfo(Name(), " building path to ", remote);
         Build(*maybe);
-        return true;
       }
-      return false;
     }
 
     llarp_time_t

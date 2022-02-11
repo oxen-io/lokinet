@@ -280,7 +280,7 @@ namespace llarp
       virtual void
       ResetInternalState() = 0;
 
-      virtual bool
+      virtual void
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void

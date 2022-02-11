@@ -116,7 +116,7 @@ namespace llarp
       void
       BuildOne(PathRole roles = ePathRoleAny) override;
 
-      bool
+      void
       BuildOneAlignedTo(const RouterID endpoint) override;
 
       std::optional<std::vector<RouterContact>>

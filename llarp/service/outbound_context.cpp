@@ -477,9 +477,7 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if (markedBad or path::Builder::BuildCooldownHit(now))
-        return false;
-      if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
+      if (markedBad or not path::Builder::ShouldBuildMore(now))
         return false;
 
       size_t numValidPaths = 0;
