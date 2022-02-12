@@ -18,9 +18,9 @@ A simple demo application that is lokinet "aware" can be found [here](https://gi
 
 If you are simply looking to install Lokinet and don't want to compile it yourself we provide several options:
 
-* [Linux](./#linux-install)
-* [Windows](./#windows-install)
-* [macOS](./#mac-install)
+* [Linux](#linux-install)
+* [Windows](#windows-install)
+* [macOS](#mac-install)
 
 ## Building
 
