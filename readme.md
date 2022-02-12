@@ -16,9 +16,11 @@ A simple demo application that is lokinet "aware" can be found [here](https://gi
 
 ## Installing
 
-If you are simply looking to install Lokinet and don't want to compile it yourself the [Oxen Docs
-Lokinet Guides](https://docs.oxen.io/products-built-on-oxen/lokinet/guides) for gentler
-instructions to get up and running.
+If you are simply looking to install Lokinet and don't want to compile it yourself we provide several options:
+
+* [Linux](./#linux-install)
+* [Windows](./#windows-install)
+* [macOS](./#mac-install)
 
 ## Building
 
@@ -36,7 +38,7 @@ Build requirements:
 * cppzmq
 * sqlite3
 
-### Linux
+### Linux <span id="linux-install" />
 
 You do not have to build from source if you are on debian or ubuntu as we have apt repositories with pre-built lokinet packages on `deb.oxen.io`.
 
@@ -78,13 +80,13 @@ build 1 or many cross targets:
 
     $ ./contrib/cross.sh arch_1 arch_2 ... arch_n
 
-### macOS
+### macOS <span id="macos-install" />
 
 Lokinet ~~is~~ will be available on the Apple App store.
 
 Source code compilation of Lokinet by end users is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information. If you find this disagreeable consider using a platform that permits compiling from source.
 
-### Windows
+### Windows <span id="windows-install" />
 
 You can get the latest stable windows release from https://lokinet.org/ or check the releases page on github.
 
