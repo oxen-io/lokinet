@@ -80,7 +80,7 @@ build 1 or many cross targets:
 
     $ ./contrib/cross.sh arch_1 arch_2 ... arch_n
 
-### macOS <span id="macos-install" />
+### macOS <span id="mac-install" />
 
 Lokinet ~~is~~ will be available on the Apple App store.
 
