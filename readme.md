@@ -4,23 +4,30 @@
 
 Lokinet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
 
-You can learn more about the high level design of LLARP [here](docs/high-level.txt)
-
-And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
-
-You can view documentation on how to get started [here](https://docs.oxen.io/products-built-on-oxen/lokinet) .
-
-A simple demo application that is lokinet "aware" can be found [here](https://github.com/majestrate/lokinet-aware-demos)
+You can learn more about the high level design of LLARP [here](docs/)
 
 [![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/lokinet/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/lokinet)
 
 ## Installing
 
-If you are simply looking to install Lokinet and don't want to compile it yourself we provide several options:
+If you are simply looking to install Lokinet and don't want to compile it yourself we provide several options for platforms to run on:
+
+Tier 1:
 
 * [Linux](#linux-install)
+* [Android](#apk-install)
+
+Tier 2:
+
 * [Windows](#windows-install)
-* [macOS](#mac-install)
+* [MacOS](#mac-install)
+* [FreeBSD](#freebsd-install)
+
+Currently Unsupproted Platforms: (maintainers welcome)
+
+* Apple iPhone 
+* Homebrew
+* \[Insert Flavor of the Month windows package manager here\]
 
 ## Building
 
@@ -40,9 +47,9 @@ Build requirements:
 
 ### Linux <span id="linux-install" />
 
-You do not have to build from source if you are on debian or ubuntu as we have apt repositories with pre-built lokinet packages on `deb.oxen.io`.
+You do not have to build from source if you are on debian or ubuntu as we have apt repositories with pre-built lokinet packages on `deb.oxen.io` or `rpm.oxen.io`.
 
-You can install these using:
+You can install debian packages using:
 
     $ sudo curl -so /etc/apt/trusted.gpg.d/oxen.gpg https://deb.oxen.io/pub.gpg
     $ echo "deb https://deb.oxen.io $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/oxen.list
@@ -52,7 +59,7 @@ You can install these using:
 
 If you want to build from source:
 
-    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev libssl-dev
+    $ sudo apt install build-essential cmake git libcap-dev pkg-config automake libtool libuv1-dev libsodium-dev libzmq3-dev libcurl4-openssl-dev libevent-dev nettle-dev libunbound-dev libsqlite3-dev libssl-dev nlohmann-json3-dev
     $ git clone --recursive https://github.com/oxen-io/lokinet
     $ cd lokinet
     $ mkdir build
@@ -61,16 +68,7 @@ If you want to build from source:
     $ make -j$(nproc)
     $ sudo make install
 
-#### Cross Compile
-
-supported cross targets:
-
-* aarch64
-* armhf
-* mips
-* mips64
-* mipsel
-* ppc64le
+#### Cross Compile For Linux <span id="linux-cross" />
 
 install the toolchain for `$arch` this example is `aarch64`
 
@@ -80,7 +78,7 @@ build 1 or many cross targets:
 
     $ ./contrib/cross.sh arch_1 arch_2 ... arch_n
 
-### macOS <span id="mac-install" />
+### MacOS <span id="mac-install" />
 
 Lokinet ~~is~~ will be available on the Apple App store.
 
@@ -88,7 +86,11 @@ Source code compilation of Lokinet by end users is not supported or permitted by
 
 ### Windows <span id="windows-install" />
 
-You can get the latest stable windows release from https://lokinet.org/ or check the releases page on github.
+You can get the latest stable windows release from https://lokinet.org/ or check the [releases page on github](https://github.com/oxen-io/lokinet/releases).
+
+nightly builds for the brave or impatient can be found from our CI pipeline [here](https://oxen.rocks/oxen-io/lokinet/)
+
+#### Building For Windows <span id="win32-cross" />
 
 windows builds are cross compiled from debian/ubuntu linux
 
@@ -107,7 +109,9 @@ building:
     $ cd lokinet
     $ ./contrib/windows.sh
 
-### FreeBSD
+### FreeBSD <span id="freebsd-install" />
+
+Currently has no VPN Platform code, see #1513
 
 build:
 
@@ -122,16 +126,25 @@ build:
 install (root):
 
     # make install
+    
+### Android <span id="apk-install" />
+
+We have an Android APK for lokinet VPN via android VPN API. 
+
+Coming to F-Droid whenever that happens. [[issue]](https://github.com/oxen-io/lokinet-flutter-app/issues/8)
+
+* [source code](https://github.com/oxen-io/lokinet-flutter-app)
+* [CI builds](https://oxen.rocks/oxen-io/lokinet/)
 
 ## Usage
 
-### Debian / Ubuntu packages
+### Debian / Ubuntu packages <span id="systemd-linux-usage" />
 
 When running from debian package the following steps are not needed as it is already running and
 ready to use.  You can stop/start/restart it using `systemctl start lokinet`, `systemctl stop
 lokinet`, etc.
 
-### Running on Linux (without debs)
+### Running on Linux (without debs) <span id="arcane-linux-usage" />
 
 **DO NOT RUN AS ROOT**, run as normal user.
 
