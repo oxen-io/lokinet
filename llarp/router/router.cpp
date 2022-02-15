@@ -139,30 +139,45 @@ namespace llarp
     // Compute all stats on all path builders on the default endpoint
     // Merge snodeSessions, remoteSessions and default into a single array
     std::vector<nlohmann::json> builders;
-    auto snode_sessions = services["default"]["snodeSessions"];
+
+    auto serviceDefault = services["default"];
+    builders.push_back(serviceDefault);
+
+    auto snode_sessions = serviceDefault["snodeSessions"];
     for (const auto& session : snode_sessions)
-      builders.push_back(session["buildStats"]);
+      builders.push_back(session);
 
-    auto remote_sessions = services["default"]["remoteSessions"];
+    auto remote_sessions = serviceDefault["remoteSessions"];
     for (const auto& session : remote_sessions)
-      builders.push_back(session["buildStats"]);
+      builders.push_back(session);
 
-    builders.push_back(services["default"]["buildStats"]);
+
 
     // Iterate over all items on this array to build the global pathStats
-    uint64_t paths = 0;
+    uint64_t pathsCount = 0;
     uint64_t success = 0;
     uint64_t attempts = 0;
     for (const auto& builder : builders)
     {
       if (builder.is_null())
         continue;
-      if (builder["length"].is_number())
-        paths += builder["length"].get<uint64_t>();
-      if (builder["success"].is_number())
-        success += builder["success"].get<uint64_t>();
-      if (builder["attempts"].is_number())
-        attempts += builder["attempts"].get<uint64_t>();
+
+      auto paths = builder["paths"];
+      if (paths.is_array()) {
+        for (auto& [key, value] : paths.items()) {
+          if (!value.is_null() && value["status"].is_string() && value["status"] == "established")
+              pathsCount++;
+        }
+      }
+
+      auto buildStats = builder["buildStats"];
+      if (buildStats.is_null())
+        continue;
+
+      if (buildStats["success"].is_number())
+        success += buildStats["success"].get<uint64_t>();
+      if (buildStats["attempts"].is_number())
+        attempts += buildStats["attempts"].get<uint64_t>();
     }
     double ratio = static_cast<double>(success) / (attempts + 1);
 
@@ -171,7 +186,7 @@ namespace llarp
         {"authCodes", services["default"]["authCodes"]},
         {"exitMap", services["default"]["exitMap"]},
         {"lokiAddress", services["default"]["identity"]},
-        {"numPathsBuilt", paths},
+        {"numPathsBuilt", pathsCount},
         {"numPeersConnected", peers},
         {"numRoutersKnown", _nodedb->NumLoaded()},
         {"ratio", ratio},
