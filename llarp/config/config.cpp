@@ -740,7 +740,7 @@ namespace llarp
 #endif
 
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
-    constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
+    constexpr Default DefaultUpstreamDNS{"9.9.9.10"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
     if (!m_upstreamDNS.back().getPort())
       m_upstreamDNS.back().setPort(53);
