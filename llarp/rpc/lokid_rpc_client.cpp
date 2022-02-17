@@ -334,8 +334,8 @@ namespace llarp
               {
                 service::EncryptedName result;
                 const auto j = nlohmann::json::parse(data[1]);
-                result.ciphertext = oxenmq::from_hex(j["encrypted_value"].get<std::string>());
-                const auto nonce = oxenmq::from_hex(j["nonce"].get<std::string>());
+                result.ciphertext = oxenc::from_hex(j["encrypted_value"].get<std::string>());
+                const auto nonce = oxenc::from_hex(j["nonce"].get<std::string>());
                 if (nonce.size() != result.nonce.size())
                 {
                   throw std::invalid_argument(stringify(
@@ -392,7 +392,7 @@ namespace llarp
           }
 
           std::vector<std::string> routerIdStrings;
-          oxenmq::bt_deserialize(msg.data[0], routerIdStrings);
+          oxenc::bt_deserialize(msg.data[0], routerIdStrings);
 
           std::vector<RouterID> routerIds;
           routerIds.reserve(routerIdStrings.size());

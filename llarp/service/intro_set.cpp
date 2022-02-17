@@ -2,7 +2,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path.hpp>
 
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 
 namespace llarp::service
 {
@@ -235,9 +235,9 @@ namespace llarp::service
 
       try
       {
-        oxenmq::bt_deserialize(srvString, SRVs);
+        oxenc::bt_deserialize(srvString, SRVs);
       }
-      catch (const oxenmq::bt_deserialize_invalid& err)
+      catch (const oxenc::bt_deserialize_invalid& err)
       {
         LogError("Error decoding SRV records from IntroSet: ", err.what());
         return false;
@@ -321,7 +321,7 @@ namespace llarp::service
     // srv records
     if (not SRVs.empty())
     {
-      std::string serial = oxenmq::bt_serialize(SRVs);
+      std::string serial = oxenc::bt_serialize(SRVs);
       if (!bencode_write_bytestring(buf, "s", 1))
         return false;
       if (!buf->write(serial.begin(), serial.end()))

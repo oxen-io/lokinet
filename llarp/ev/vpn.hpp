@@ -4,7 +4,7 @@
 #include <llarp/net/ip_packet.hpp>
 #include <set>
 
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 
 namespace llarp
 {

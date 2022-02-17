@@ -12,7 +12,7 @@
 #include <variant>
 
 #include <uvw/timer.h>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 
 extern "C"
 {

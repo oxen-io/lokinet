@@ -274,7 +274,7 @@ namespace llarp
           {
             std::string_view bdata{data.data(), data.size()};
             LogDebug(Name(), " parsing address map data: ", bdata);
-            const auto parsed = oxenmq::bt_deserialize<oxenmq::bt_dict>(bdata);
+            const auto parsed = oxenc::bt_deserialize<oxenc::bt_dict>(bdata);
             for (const auto& [key, value] : parsed)
             {
               huint128_t ip{};
@@ -1011,7 +1011,7 @@ namespace llarp
                 addrmap[ip.ToString()] = a.ToString();
             }
           }
-          const auto data = oxenmq::bt_serialize(addrmap);
+          const auto data = oxenc::bt_serialize(addrmap);
           maybe->write(data.data(), data.size());
         }
       }

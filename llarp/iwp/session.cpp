@@ -768,7 +768,7 @@ namespace llarp
       pos += sizeof(rxid);
       auto p2 = pos + ShortHash::SIZE;
       assert(p2 == data.data() + XMITOverhead);
-      LogTrace("rxid=", rxid, " sz=", sz, " h=", oxenmq::to_hex(pos, p2), " from ", m_RemoteAddr);
+      LogTrace("rxid=", rxid, " sz=", sz, " h=", oxenc::to_hex(pos, p2), " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
       {
         // check for replay
