@@ -744,7 +744,7 @@ namespace llarp::vpn
           std::wstring name,
           std::wstring description)
       {
-        const auto guid = oxenmq::to_hex(
+        const auto guid = oxenc::to_hex(
             std::string_view{reinterpret_cast<const char*>(&layerKey), sizeof(layerKey)});
         LogInfo("adding filter ", to_width<std::string>(name), "guid=", guid);
         auto filter = std::make_unique<Filter>(
