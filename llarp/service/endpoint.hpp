@@ -20,13 +20,11 @@
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include "endpoint_types.hpp"
 #include "llarp/endpoint_base.hpp"
 
 #include "auth.hpp"
-
-#include <oxenmq/variant.h>
 
 #include <llarp/vpn/egres_packet_router.hpp>
 
