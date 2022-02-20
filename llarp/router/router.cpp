@@ -151,8 +151,6 @@ namespace llarp
     for (const auto& session : remote_sessions)
       builders.push_back(session);
 
-
-
     // Iterate over all items on this array to build the global pathStats
     uint64_t pathsCount = 0;
     uint64_t success = 0;
@@ -163,10 +161,12 @@ namespace llarp
         continue;
 
       auto paths = builder["paths"];
-      if (paths.is_array()) {
-        for (auto& [key, value] : paths.items()) {
+      if (paths.is_array())
+      {
+        for (auto& [key, value] : paths.items())
+        {
           if (!value.is_null() && value["status"].is_string() && value["status"] == "established")
-              pathsCount++;
+            pathsCount++;
         }
       }
 
@@ -183,6 +183,8 @@ namespace llarp
 
     return util::StatusObject{
         {"running", true},
+        {"version", llarp::VERSION_FULL},
+        {"uptime", to_json(this->Uptime())},
         {"authCodes", services["default"]["authCodes"]},
         {"exitMap", services["default"]["exitMap"]},
         {"lokiAddress", services["default"]["identity"]},
