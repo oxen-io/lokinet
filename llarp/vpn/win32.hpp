@@ -900,6 +900,20 @@ namespace llarp::vpn
     }
 
     void
+    AddDefaultRouteViaInterface(NetworkInterface& vpn) override
+    {
+      wintun::RouteExec("ADD 127.0.0.0 255.0.0.0 0.0.0.0");
+      IRouteManager::AddDefaultRouteViaInterface(vpn);
+    }
+
+    void
+    DelDefaultRouteViaInterface(NetworkInterface& vpn) override
+    {
+      IRouteManager::DelDefaultRouteViaInterface(vpn);
+      wintun::RouteExec("REMOVE 127.0.0.0 255.0.0.0 0.0.0.0");
+    }
+
+    void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
       const auto netif_str = dynamic_cast<const WintunInterface&>(iface).InterfaceAddressString();
