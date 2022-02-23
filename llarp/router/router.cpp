@@ -194,7 +194,6 @@ namespace llarp
         {"txRate", tx_rate},
         {"rxRate", rx_rate},
     };
-
     if (services.is_object())
     {
       stats["authCodes"] = services["default"]["authCodes"];
