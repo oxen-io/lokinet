@@ -116,6 +116,9 @@ namespace llarp
       return util::StatusObject{{"running", false}};
 
     auto services = _hiddenServiceContext.ExtractStatus();
+    if (services.is_null())
+      return util::StatusObject{{"running", false}};
+
     auto link_types = _linkManager.ExtractStatus();
 
     uint64_t tx_rate = 0;
