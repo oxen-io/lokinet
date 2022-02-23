@@ -95,18 +95,17 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    if (_running)
-    {
-      return util::StatusObject{
-          {"running", true},
-          {"numNodesKnown", _nodedb->NumLoaded()},
-          {"dht", _dht->impl->ExtractStatus()},
-          {"services", _hiddenServiceContext.ExtractStatus()},
-          {"exit", _exitContext.ExtractStatus()},
-          {"links", _linkManager.ExtractStatus()},
-          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
-    }
-    return util::StatusObject{{"running", false}};
+    if (not _running)
+      util::StatusObject{{"running", false}};
+
+    return util::StatusObject{
+        {"running", true},
+        {"numNodesKnown", _nodedb->NumLoaded()},
+        {"dht", _dht->impl->ExtractStatus()},
+        {"services", _hiddenServiceContext.ExtractStatus()},
+        {"exit", _exitContext.ExtractStatus()},
+        {"links", _linkManager.ExtractStatus()},
+        {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
   }
 
   util::StatusObject
@@ -116,6 +115,7 @@ namespace llarp
       return util::StatusObject{{"running", false}};
 
     auto services = _hiddenServiceContext.ExtractStatus();
+
     auto link_types = _linkManager.ExtractStatus();
 
     uint64_t tx_rate = 0;
@@ -140,16 +140,19 @@ namespace llarp
     // Merge snodeSessions, remoteSessions and default into a single array
     std::vector<nlohmann::json> builders;
 
-    const auto& serviceDefault = services.at("default");
-    builders.push_back(serviceDefault);
+    if (services.is_object())
+    {
+      const auto& serviceDefault = services.at("default");
+      builders.push_back(serviceDefault);
 
-    auto snode_sessions = serviceDefault.at("snodeSessions");
-    for (const auto& session : snode_sessions)
-      builders.push_back(session);
+      auto snode_sessions = serviceDefault.at("snodeSessions");
+      for (const auto& session : snode_sessions)
+        builders.push_back(session);
 
-    auto remote_sessions = serviceDefault.at("remoteSessions");
-    for (const auto& session : remote_sessions)
-      builders.push_back(session);
+      auto remote_sessions = serviceDefault.at("remoteSessions");
+      for (const auto& session : remote_sessions)
+        builders.push_back(session);
+    }
 
     // Iterate over all items on this array to build the global pathStats
     uint64_t pathsCount = 0;
@@ -180,13 +183,10 @@ namespace llarp
     }
     double ratio = static_cast<double>(success) / (attempts + 1);
 
-    return util::StatusObject{
+    util::StatusObject stats{
         {"running", true},
         {"version", llarp::VERSION_FULL},
         {"uptime", to_json(Uptime())},
-        {"authCodes", services["default"]["authCodes"]},
-        {"exitMap", services["default"]["exitMap"]},
-        {"lokiAddress", services["default"]["identity"]},
         {"numPathsBuilt", pathsCount},
         {"numPeersConnected", peers},
         {"numRoutersKnown", _nodedb->NumLoaded()},
@@ -194,6 +194,14 @@ namespace llarp
         {"txRate", tx_rate},
         {"rxRate", rx_rate},
     };
+
+    if (services.is_object())
+    {
+      stats["authCodes"] = services["default"]["authCodes"];
+      stats["exitMap"] = services["default"]["exitMap"];
+      stats["lokiAddress"] = services["default"]["identity"];
+    }
+    return stats;
   }
 
   bool
