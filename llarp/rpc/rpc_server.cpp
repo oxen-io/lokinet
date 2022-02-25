@@ -95,6 +95,210 @@ namespace llarp::rpc
   }
 
   void
+  HandleJSONCommand(
+      oxenmq::Message& msg,
+      std::string replyCmd,
+      std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
+  {
+    const auto maybe = MaybeParseJSON(msg);
+    if (not maybe.has_value())
+    {
+      msg.send_back(replyCmd, CreateJSONError("failed to parse json"));
+      return;
+    }
+    if (not maybe->is_object())
+    {
+      msg.send_back(replyCmd, CreateJSONError("data not a json object"));
+      return;
+    }
+    try
+    {
+      handleRequest(*maybe, [defer = msg.send_later(), cmd = replyCmd](std::string result) {
+        defer(cmd, result);
+      });
+    }
+    catch (std::exception& ex)
+    {
+      msg.send_back(replyCmd, CreateJSONError(ex.what()));
+    }
+  }
+
+  void
+  GetExit(AbstractRouter* r, nlohmann::json obj, ReplyFunction_t reply)
+  {
+    if (r->IsServiceNode())
+    {
+      reply(CreateJSONError("not supported"));
+      return;
+    }
+    std::optional<llarp::service::Address> exit;
+    std::optional<std::string> lnsExit;
+    IPRange range;
+    bool map = true;
+    const auto exit_itr = obj.find("exit");
+    if (exit_itr != obj.end())
+    {
+      service::Address addr;
+      const auto exit_str = exit_itr->get<std::string>();
+      if (service::NameIsValid(exit_str) or exit_str == "null")
+      {
+        lnsExit = exit_str;
+      }
+      else if (not addr.FromString(exit_str))
+      {
+        reply(CreateJSONError("invalid exit address"));
+        return;
+      }
+      else
+      {
+        exit = addr;
+      }
+    }
+
+    const auto unmap_itr = obj.find("unmap");
+    if (unmap_itr != obj.end() and unmap_itr->get<bool>())
+    {
+      map = false;
+    }
+    const auto range_itr = obj.find("range");
+    if (range_itr == obj.end())
+    {
+      range.FromString("0.0.0.0/0");
+    }
+    else if (not range.FromString(range_itr->get<std::string>()))
+    {
+      reply(CreateJSONError("invalid ip range"));
+      return;
+    }
+    std::optional<std::string> token;
+    const auto token_itr = obj.find("token");
+    if (token_itr != obj.end())
+    {
+      token = token_itr->get<std::string>();
+    }
+
+    std::string endpoint = "default";
+    const auto endpoint_itr = obj.find("endpoint");
+    if (endpoint_itr != obj.end())
+    {
+      endpoint = endpoint_itr->get<std::string>();
+    }
+    r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
+      auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+      if (ep == nullptr)
+      {
+        reply(CreateJSONError("no endpoint with name " + endpoint));
+        return;
+      }
+      if (map and (exit.has_value() or lnsExit.has_value()))
+      {
+        auto mapExit = [=](service::Address addr) mutable {
+          ep->MapExitRange(range, addr);
+          r->routePoker().Enable();
+          r->routePoker().Up();
+          bool shouldSendAuth = false;
+          if (token.has_value())
+          {
+            shouldSendAuth = true;
+            ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
+          }
+          auto onGoodResult = [r, reply](std::string reason) {
+            if (r->HasClientExit())
+              reply(CreateJSONResponse(reason));
+            else
+              reply(CreateJSONError("we dont have an exit?"));
+          };
+          auto onBadResult = [r, reply, ep, range](std::string reason) {
+            r->routePoker().Down();
+            ep->UnmapExitRange(range);
+            reply(CreateJSONError(reason));
+          };
+          if (addr.IsZero())
+          {
+            onGoodResult("added null exit");
+            return;
+          }
+          ep->MarkAddressOutbound(addr);
+          ep->EnsurePathToService(
+              addr,
+              [onBadResult, onGoodResult, shouldSendAuth, addrStr = addr.ToString()](
+                  auto, service::OutboundContext* ctx) {
+                if (ctx == nullptr)
+                {
+                  onBadResult("could not find exit");
+                  return;
+                }
+                if (not shouldSendAuth)
+                {
+                  onGoodResult("OK: connected to " + addrStr);
+                  return;
+                }
+                ctx->AsyncSendAuth([onGoodResult, onBadResult](service::AuthResult result) {
+                  // TODO: refactor this code.  We are 5 lambdas deep here!
+                  if (result.code != service::AuthResultCode::eAuthAccepted)
+                  {
+                    onBadResult(result.reason);
+                    return;
+                  }
+                  onGoodResult(result.reason);
+                });
+              });
+        };
+        if (exit.has_value())
+        {
+          mapExit(*exit);
+        }
+        else if (lnsExit.has_value())
+        {
+          const std::string name = *lnsExit;
+          if (name == "null")
+          {
+            service::Address nullAddr{};
+            mapExit(nullAddr);
+            return;
+          }
+          ep->LookupNameAsync(name, [reply, mapExit](auto maybe) mutable {
+            if (not maybe.has_value())
+            {
+              reply(CreateJSONError("we could not find an exit with that name"));
+              return;
+            }
+            if (auto ptr = std::get_if<service::Address>(&*maybe))
+            {
+              if (ptr->IsZero())
+                reply(CreateJSONError("name does not exist"));
+              else
+                mapExit(*ptr);
+            }
+            else
+            {
+              reply(CreateJSONError("lns name resolved to a snode"));
+            }
+          });
+        }
+        else
+        {
+          reply(
+              CreateJSONError("WTF inconsistent request, no exit address or lns "
+                              "name provided?"));
+        }
+        return;
+      }
+      else if (map and not exit.has_value())
+      {
+        reply(CreateJSONError("no exit address provided"));
+        return;
+      }
+      else if (not map)
+      {
+        r->routePoker().Down();
+        ep->UnmapExitRange(range);
+        reply(CreateJSONResponse("OK"));
+      }
+    });
+  }
+
+  void
   RpcServer::AsyncServeRPC(oxenmq::address url)
   {
     m_LMQ->listen_plain(url.zmq_address());
@@ -391,181 +595,19 @@ namespace llarp::rpc
                 });
               });
             })
+        .add_command(
+            "async-exit",
+            [&](oxenmq::Message& msg) {
+              HandleJSONCommand(
+                  msg, "inform-exit", [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                    GetExit(r, std::move(obj), std::move(reply));
+                  });
+            })
         .add_request_command(
             "exit",
             [&](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                if (r->IsServiceNode())
-                {
-                  reply(CreateJSONError("not supported"));
-                  return;
-                }
-                std::optional<service::Address> exit;
-                std::optional<std::string> lnsExit;
-                IPRange range;
-                bool map = true;
-                const auto exit_itr = obj.find("exit");
-                if (exit_itr != obj.end())
-                {
-                  service::Address addr;
-                  const auto exit_str = exit_itr->get<std::string>();
-                  if (service::NameIsValid(exit_str) or exit_str == "null")
-                  {
-                    lnsExit = exit_str;
-                  }
-                  else if (not addr.FromString(exit_str))
-                  {
-                    reply(CreateJSONError("invalid exit address"));
-                    return;
-                  }
-                  else
-                  {
-                    exit = addr;
-                  }
-                }
-
-                const auto unmap_itr = obj.find("unmap");
-                if (unmap_itr != obj.end() and unmap_itr->get<bool>())
-                {
-                  map = false;
-                }
-                const auto range_itr = obj.find("range");
-                if (range_itr == obj.end())
-                {
-                  range.FromString("0.0.0.0/0");
-                }
-                else if (not range.FromString(range_itr->get<std::string>()))
-                {
-                  reply(CreateJSONError("invalid ip range"));
-                  return;
-                }
-                std::optional<std::string> token;
-                const auto token_itr = obj.find("token");
-                if (token_itr != obj.end())
-                {
-                  token = token_itr->get<std::string>();
-                }
-
-                std::string endpoint = "default";
-                const auto endpoint_itr = obj.find("endpoint");
-                if (endpoint_itr != obj.end())
-                {
-                  endpoint = endpoint_itr->get<std::string>();
-                }
-                r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
-                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                  if (ep == nullptr)
-                  {
-                    reply(CreateJSONError("no endpoint with name " + endpoint));
-                    return;
-                  }
-                  if (map and (exit.has_value() or lnsExit.has_value()))
-                  {
-                    auto mapExit = [=](service::Address addr) mutable {
-                      ep->MapExitRange(range, addr);
-                      r->routePoker().Enable();
-                      r->routePoker().Up();
-                      bool shouldSendAuth = false;
-                      if (token.has_value())
-                      {
-                        shouldSendAuth = true;
-                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
-                      }
-                      auto onGoodResult = [r, reply](std::string reason) {
-                        if (r->HasClientExit())
-                          reply(CreateJSONResponse(reason));
-                        else
-                          reply(CreateJSONError("we dont have an exit?"));
-                      };
-                      auto onBadResult = [r, reply, ep, range](std::string reason) {
-                        r->routePoker().Down();
-                        ep->UnmapExitRange(range);
-                        reply(CreateJSONError(reason));
-                      };
-                      if (addr.IsZero())
-                      {
-                        onGoodResult("added null exit");
-                        return;
-                      }
-                      ep->MarkAddressOutbound(addr);
-                      ep->EnsurePathToService(
-                          addr,
-                          [onBadResult, onGoodResult, shouldSendAuth, addrStr = addr.ToString()](
-                              auto, service::OutboundContext* ctx) {
-                            if (ctx == nullptr)
-                            {
-                              onBadResult("could not find exit");
-                              return;
-                            }
-                            if (not shouldSendAuth)
-                            {
-                              onGoodResult("OK: connected to " + addrStr);
-                              return;
-                            }
-                            ctx->AsyncSendAuth(
-                                [onGoodResult, onBadResult](service::AuthResult result) {
-                                  // TODO: refactor this code.  We are 5 lambdas deep here!
-                                  if (result.code != service::AuthResultCode::eAuthAccepted)
-                                  {
-                                    onBadResult(result.reason);
-                                    return;
-                                  }
-                                  onGoodResult(result.reason);
-                                });
-                          });
-                    };
-                    if (exit.has_value())
-                    {
-                      mapExit(*exit);
-                    }
-                    else if (lnsExit.has_value())
-                    {
-                      const std::string name = *lnsExit;
-                      if (name == "null")
-                      {
-                        service::Address nullAddr{};
-                        mapExit(nullAddr);
-                        return;
-                      }
-                      ep->LookupNameAsync(name, [reply, mapExit](auto maybe) mutable {
-                        if (not maybe.has_value())
-                        {
-                          reply(CreateJSONError("we could not find an exit with that name"));
-                          return;
-                        }
-                        if (auto ptr = std::get_if<service::Address>(&*maybe))
-                        {
-                          if (ptr->IsZero())
-                            reply(CreateJSONError("name does not exist"));
-                          else
-                            mapExit(*ptr);
-                        }
-                        else
-                        {
-                          reply(CreateJSONError("lns name resolved to a snode"));
-                        }
-                      });
-                    }
-                    else
-                    {
-                      reply(
-                          CreateJSONError("WTF inconsistent request, no exit address or lns "
-                                          "name provided?"));
-                    }
-                    return;
-                  }
-                  else if (map and not exit.has_value())
-                  {
-                    reply(CreateJSONError("no exit address provided"));
-                    return;
-                  }
-                  else if (not map)
-                  {
-                    r->routePoker().Down();
-                    ep->UnmapExitRange(range);
-                    reply(CreateJSONResponse("OK"));
-                  }
-                });
+                GetExit(r, std::move(obj), std::move(reply));
               });
             })
         .add_request_command(
