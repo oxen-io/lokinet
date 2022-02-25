@@ -38,5 +38,15 @@ namespace llarp
     IParser*
     MakeParser(size_t contentSize);
 
+    /// maybe get a sub element in a dict by key or return a fallback
+    template <typename T>
+    std::optional<T>
+    maybe_get(
+        const nlohmann::json& obj, std::string_view data, std::optional<T> fallback = std::nullopt)
+    {
+      if (auto itr = obj.find(data); itr != obj.end())
+        return itr->get<T>();
+      return fallback;
+    }
   }  // namespace json
 }  // namespace llarp
