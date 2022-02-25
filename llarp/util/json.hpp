@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <iostream>
+#include <optional>
 
 namespace llarp
 {
