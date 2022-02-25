@@ -155,8 +155,7 @@ namespace llarp::rpc
       }
     }
 
-    const auto unmap_itr = obj.find("unmap");
-    if (unmap_itr != obj.end() and unmap_itr->get<bool>())
+    if (auto it = obj.find("unmap"); it != obj.end() and it->get<bool>())
     {
       map = false;
     }
