@@ -382,22 +382,23 @@ namespace llarp::rpc
             "quic_listener",
             [this](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                std::string endpoint;
+                std::string endpoint{};
                 if (auto maybe = json::maybe_get<std::string>(obj, "endpoint", "default"))
                   endpoint = *maybe;
 
-                std::string remote;
+                std::string remote{};
                 if (auto maybe = json::maybe_get<std::string>(obj, "host", "127.0.0.1"))
                   remote = *maybe;
 
-                uint16_t port;
+                uint16_t port{};
                 if (auto maybe = json::maybe_get<uint16_t>(obj, "port", 0))
                   port = *maybe;
-                int closeID;
+
+                int closeID{};
                 if (auto maybe = json::maybe_get<int>(obj, "close", 0))
                   closeID = *maybe;
 
-                std::string srvProto;
+                std::string srvProto{};
                 if (auto maybe = json::maybe_get<std::string>(obj, "srv-proto", ""))
                   srvProto = *maybe;
 
@@ -554,12 +555,12 @@ namespace llarp::rpc
             "dns_query",
             [this](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                std::string endpoint;
+                std::string endpoint{};
                 if (auto maybe = json::maybe_get<std::string>(obj, "endpoint", "default"))
                   endpoint = *maybe;
 
-                std::string qname;
-                dns::QType_t qtype;
+                std::string qname{};
+                dns::QType_t qtype{};
                 if (auto maybe = json::maybe_get<std::string>(obj, "qname"))
                   qname = *maybe;
                 else
