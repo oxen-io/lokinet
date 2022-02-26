@@ -27,7 +27,7 @@
 #include <llarp/util/endian.hpp>
 
 #include <llarp/dns/srv_data.hpp>
-
+#include <oxenc/bt.h>
 namespace llarp
 {
   namespace handlers
