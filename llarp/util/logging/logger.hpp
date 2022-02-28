@@ -93,7 +93,7 @@ namespace llarp
         LogAppend(ss, std::forward<TArgs>(args)...);
       log.logStream->AppendLog(
           lvl,
-          strip_prefix(location.file_name(), SOURCE_ROOT),
+          strip_prefix(strip_prefix(location.file_name(), SOURCE_ROOT), ".."),
           location.line(),
           log.nodeName,
           ss.str());
