@@ -10,8 +10,18 @@ file(DOWNLOAD
     ${CMAKE_BINARY_DIR}/lokinet-gui.zip
     ${GUI_ZIP_HASH_OPTS})
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-gui.zip
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/gui)
+
+if(GUI_EXE_URL)
+  #TODO: set GUI_EXE_HASH_OPTS
+  file(DOWNLOAD
+    ${GUI_EXE_URL}
+    ${CMAKE_BINARY_DIR}/gui/lokinet-gui.exe
+    ${GUI_EXE_HASH_OPTS})
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-gui.zip
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gui)
+endif()
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
 install(FILES ${BOOTSTRAP_FILE} DESTINATION share COMPONENT lokinet RENAME bootstrap.signed)
