@@ -5,20 +5,19 @@ endif()
 
 set(BOOTSTRAP_FILE "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed")
 
-file(DOWNLOAD
-    ${GUI_ZIP_URL}
-    ${CMAKE_BINARY_DIR}/lokinet-gui.zip
-    ${GUI_ZIP_HASH_OPTS})
-
-file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/gui)
 
 if(GUI_EXE_URL)
   #TODO: set GUI_EXE_HASH_OPTS
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/gui)
   file(DOWNLOAD
     ${GUI_EXE_URL}
     ${CMAKE_BINARY_DIR}/gui/lokinet-gui.exe
     ${GUI_EXE_HASH_OPTS})
 else()
+  file(DOWNLOAD
+    ${GUI_ZIP_URL}
+    ${CMAKE_BINARY_DIR}/lokinet-gui.zip
+    ${GUI_ZIP_HASH_OPTS})
   execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-gui.zip
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gui)
 endif()
