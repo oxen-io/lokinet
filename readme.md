@@ -23,7 +23,7 @@ Tier 2:
 * [MacOS](#mac-install)
 * [FreeBSD](#freebsd-install)
 
-Currently Unsupproted Platforms: (maintainers welcome)
+Currently Unsupported Platforms: (maintainers welcome)
 
 * Apple iPhone 
 * Homebrew
