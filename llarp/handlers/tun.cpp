@@ -987,6 +987,20 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
+      auto exitLooksBad = [this](const auto& addr) -> bool {
+        return m_state->m_DeadSessions.count(addr);
+      };
+      // kill bad exit mappings
+      for (auto itr = m_ExitIPToExitAddress.begin(); itr != m_ExitIPToExitAddress.end();)
+      {
+        if (exitLooksBad(itr->second))
+        {
+          LogInfo(Name(), " killing dead exit mapping to ", itr->second);
+          itr = m_ExitIPToExitAddress.erase(itr);
+        }
+        else
+          ++itr;
+      }
       Endpoint::Tick(now);
     }
 
