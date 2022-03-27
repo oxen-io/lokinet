@@ -990,7 +990,8 @@ namespace llarp
       auto exitLooksBad = [this](const auto& addr) -> bool {
         return m_state->m_DeadSessions.count(addr);
       };
-      // kill bad exit mappings
+      // unmap exit allocations to .loki addresses we think are dead so that next time we try to
+      // send on the ip we remap it to something not dead
       for (auto itr = m_ExitIPToExitAddress.begin(); itr != m_ExitIPToExitAddress.end();)
       {
         if (exitLooksBad(itr->second))
