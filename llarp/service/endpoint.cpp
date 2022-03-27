@@ -1658,13 +1658,20 @@ namespace llarp
       }
 
       auto router = Router();
-      // TODO: locking on this container
-      for (const auto& [addr, outctx] : m_state->m_RemoteSessions)
+
+      for (auto itr = m_state->m_RemoteSessions.begin(); itr != m_state->m_RemoteSessions.end();)
       {
-        outctx->FlushUpstream();
-        outctx->Pump(now);
+        itr->second->FlushUpstream();
+        if (itr->second->Pump(now))
+        {
+          itr->second->Stop();
+          m_state->m_DeadSessions.emplace(*itr);
+          itr = m_state->m_RemoteSessions.erase(itr);
+        }
+        else
+          ++itr;
       }
-      // TODO: locking on this container
+
       for (const auto& [router, session] : m_state->m_SNodeSessions)
         session->FlushUpstream();
 
