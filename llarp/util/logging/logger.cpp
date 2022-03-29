@@ -75,6 +75,7 @@ namespace llarp
   {
     LogContext::Instance().curLevel = lvl;
     LogContext::Instance().runtimeLevel = lvl;
+    LogContext::Instance().startupLevel = lvl;
   }
 
   LogLevel

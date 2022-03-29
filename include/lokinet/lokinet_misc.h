@@ -32,6 +32,10 @@ extern "C"
   char* EXPORT
   lokinet_hex_to_base32z(const char* hex);
 
+  /// @brief return lokinet version string
+  const char* EXPORT
+  lokinet_version_str();
+
 #ifdef __cplusplus
 }
 #endif

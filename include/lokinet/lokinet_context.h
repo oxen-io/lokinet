@@ -17,6 +17,11 @@ extern "C"
   struct lokinet_context* EXPORT
   lokinet_context_new();
 
+  /// turn a constructed llarp::Context * into a lokinet_context *
+  /// returns nullptr if we dont pass in a well formed llarp::Context *
+  struct lokinet_context* EXPORT
+  lokinet_context_cast(void*);
+
   /// free a context allocated by lokinet_context_new
   void EXPORT
   lokinet_context_free(struct lokinet_context*);

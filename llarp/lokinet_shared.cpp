@@ -233,6 +233,10 @@ struct lokinet_context
       : impl{std::make_shared<Context>()}, config{llarp::Config::EmbeddedConfig()}, _socket_id{0}
   {}
 
+  explicit lokinet_context(llarp::Context* ctx)
+      : impl{ctx}, config{llarp::Config::EmbeddedConfig()}, _socket_id{0}
+  {}
+
   ~lokinet_context()
   {
     if (runner)
@@ -547,10 +551,17 @@ extern "C"
     return new lokinet_context{};
   }
 
+  struct lokinet_context* EXPORT
+  lokinet_context_cast(void* ctx)
+  {
+    return new lokinet_context{static_cast<llarp::Context*>(ctx)};
+  }
+
   void EXPORT
   lokinet_context_free(struct lokinet_context* ctx)
   {
-    lokinet_context_stop(ctx);
+    if (lokinet_status(ctx) != -3)
+      lokinet_context_stop(ctx);
     delete ctx;
   }
 
@@ -1074,5 +1085,11 @@ extern "C"
   lokinet_set_logger(lokinet_logger_func func, void* user)
   {
     llarp::LogContext::Instance().logStream.reset(new Logger{func, user});
+  }
+
+  const char* EXPORT
+  lokinet_version_str()
+  {
+    return llarp::VERSION_FULL;
   }
 }

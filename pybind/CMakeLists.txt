@@ -1,21 +1,9 @@
-pybind11_add_module(pyllarp MODULE
+
+pybind11_add_module(pylokinet MODULE
   module.cpp
-  llarp/context.cpp
-  llarp/router.cpp
-  llarp/router_id.cpp
-  llarp/router_contact.cpp
-  llarp/crypto/types.cpp
-  llarp/config.cpp
-  llarp/logger.cpp
-  llarp/peerstats.cpp
-  llarp/dht/dht_types.cpp
-  llarp/path/path_types.cpp
-  llarp/path/path_hop_config.cpp
-  llarp/handlers/pyhandler.cpp
-  llarp/tooling/router_hive.cpp
-  llarp/tooling/router_event.cpp
-  llarp/service/address.cpp
+  lokinet/context.cpp
+  lokinet/socket.cpp
 )
-target_link_libraries(pyllarp PUBLIC liblokinet)
-target_include_directories(pyllarp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_log_tag(pyllarp)
+target_link_libraries(pylokinet PUBLIC lokinet-shared)
+target_include_directories(pylokinet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_log_tag(pylokinet)

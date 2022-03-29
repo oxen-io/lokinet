@@ -21,6 +21,7 @@ namespace llarp
 {
   class NodeDB
   {
+   protected:
     struct Entry
     {
       const RouterContact rc;
@@ -40,7 +41,7 @@ namespace llarp
     mutable util::NullMutex m_Access;
 
     /// asynchronously remove the files for a set of rcs on disk given their public ident key
-    void
+    virtual void
     AsyncRemoveManyFromDisk(std::unordered_set<RouterID> idents) const;
 
     /// get filename of an RC file given its public ident key
@@ -54,11 +55,11 @@ namespace llarp
     NodeDB();
 
     /// load all entries from disk syncrhonously
-    void
+    virtual void
     LoadFromDisk();
 
     /// explicit save all RCs to disk synchronously
-    void
+    virtual void
     SaveToDisk() const;
 
     /// the number of RCs that are loaded from disk
