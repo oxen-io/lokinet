@@ -387,13 +387,15 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   jobs=4),
 
   // integration tests
-  debian_pipeline('pybind',
-                  docker_base + 'debian-stable',
-                  deps=['python3-dev', 'python3-pytest', 'python3-pybind11', 'python3-requests'] + default_deps,
-                  cmake_extra='-DWITH_PYBIND=ON',
-                  extra_cmds=[
-                    'PYTHONPATH=pybind pytest-3 ../pybind/'
-                 ),
+  debian_pipeline(
+    'pybind',
+    docker_base + 'debian-stable',
+    deps=['python3-dev', 'python3-pytest', 'python3-pybind11', 'python3-requests'] + default_deps,
+    cmake_extra='-DWITH_PYBIND=ON',
+    extra_cmds=[
+      'PYTHONPATH=pybind pytest-3 ../pybind/',
+    ]
+  ),
 
   // Deb builds:
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid'),
