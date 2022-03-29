@@ -55,12 +55,12 @@ set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
 set(LIBUV_HASH SHA256=90d72bb7ae18de2519d0cac70eb89c319351146b90cd3f91303a492707e693a4
     CACHE STRING "libuv source hash")
 
-set(ZLIB_VERSION 1.2.11 CACHE STRING "zlib version")
+set(ZLIB_VERSION 1.2.12 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
-set(ZLIB_HASH SHA512=73fd3fff4adeccd4894084c15ddac89890cd10ef105dd5e1835e1e9bbb6a49ff229713bd197d203edfa17c2727700fce65a2a235f07568212d820dca88b528ae
-    CACHE STRING "zlib source hash")
+set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
+  CACHE STRING "zlib source hash")
   
 set(CURL_VERSION 7.81.0 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
