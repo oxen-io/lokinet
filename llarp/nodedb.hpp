@@ -50,7 +50,7 @@ namespace llarp
 
    public:
     explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller);
-
+    virtual ~NodeDB() = default;
     /// in memory nodedb
     NodeDB();
 
