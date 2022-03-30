@@ -393,7 +393,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
     deps=['python3-dev', 'python3-pytest', 'python3-pybind11', 'python3-requests'] + default_deps,
     cmake_extra='-DWITH_PYBIND=ON -DUSE_JEMALLOC=OFF',
     extra_cmds=[
-      'PYTHONPATH=pybind ../contrib/ci/drone-gdb.sh pytest-3 ../pybind/',
+      'PYTHONPATH=pybind ../contrib/ci/drone-gdb.sh python3 -m pytest ../pybind/',
     ]
   ),
 
