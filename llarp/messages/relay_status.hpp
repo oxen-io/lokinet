@@ -118,7 +118,7 @@ namespace llarp
     virtual uint16_t
     Priority() const override
     {
-      return 6;
+      return 5;
     }
   };
 }  // namespace llarp
