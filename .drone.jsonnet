@@ -1,4 +1,4 @@
-local distro = 'impish';
+local distro = 'jammy';
 local distro_name = 'Ubuntu ' + distro;
 local distro_docker = 'registry.oxen.rocks/lokinet-ci-ubuntu-' + distro + '-builder';
 

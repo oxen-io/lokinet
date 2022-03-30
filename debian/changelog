@@ -1,3 +1,9 @@
+lokinet (0.9.8-1~ubuntu2204) jammy; urgency=medium
+
+  * New build for Ubuntu jammy (22.04).
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Mar 2022 21:12:29 -0300
+
 lokinet (0.9.8-1~ubuntu2110) impish; urgency=medium
 
   [ Jeff Becker ]
