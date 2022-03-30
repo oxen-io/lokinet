@@ -246,6 +246,28 @@ local mac_builder(name,
   ],
 };
 
+local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'docker',
+  name: name,
+  platform: { arch: 'amd64' },
+  trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+  steps: [
+    submodules,
+    {
+      name: 'build',
+      image: image,
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
+      commands: [
+        'cmake -S . -B build-docs',
+        'make -C build-docs doc',
+      ] + extra_cmds,
+    },
+  ],
+};
+
 
 [
   {
@@ -265,6 +287,10 @@ local mac_builder(name,
       ],
     }],
   },
+  // documentation builder
+  docs_pipeline('Documentation',
+                docker_base + 'docbuilder',
+                extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
   // Various debian builds
   debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
