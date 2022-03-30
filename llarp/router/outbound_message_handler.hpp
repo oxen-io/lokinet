@@ -74,15 +74,14 @@ namespace llarp
     Init(AbstractRouter* router);
 
    private:
-    using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
-
     /* A message that has been queued for sending, but not yet
      * processed into an individual path's message queue.
      */
     struct MessageQueueEntry
     {
       uint16_t priority;
-      Message message;
+      std::vector<byte_t> message;
+      SendStatusHandler inform;
       PathID_t pathid;
       RouterID router;
 
@@ -131,14 +130,14 @@ namespace llarp
      * returns the result of the call to LinkManager::SendTo()
      */
     bool
-    Send(const RouterID& remote, const Message& msg);
+    Send(const MessageQueueEntry& ent);
 
     /* Sends the message along to the link layer if we have a session to the remote
      *
      * returns the result of the Send() call, or false if no session.
      */
     bool
-    SendIfSession(const RouterID& remote, const Message& msg);
+    SendIfSession(const MessageQueueEntry& ent);
 
     /* queues a message to the shared outbound message queue.
      *
@@ -149,8 +148,7 @@ namespace llarp
      * are placed in their paths' respective individual queues.
      */
     bool
-    QueueOutboundMessage(
-        const RouterID& remote, Message&& msg, const PathID_t& pathid, uint16_t priority = 0);
+    QueueOutboundMessage(MessageQueueEntry entry);
 
     /* Processes messages on the shared message queue into their paths' respective
      * individual queues.

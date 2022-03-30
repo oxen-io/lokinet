@@ -440,7 +440,10 @@ namespace llarp
 
   bool
   ILinkLayer::SendTo(
-      const RouterID& remote, const llarp_buffer_t& buf, ILinkSession::CompletionHandler completed)
+      const RouterID& remote,
+      const llarp_buffer_t& buf,
+      ILinkSession::CompletionHandler completed,
+      uint16_t priority)
   {
     std::shared_ptr<ILinkSession> s;
     {
@@ -459,7 +462,7 @@ namespace llarp
     }
     ILinkSession::Message_t pkt(buf.sz);
     std::copy_n(buf.base, buf.sz, pkt.begin());
-    return s && s->SendMessageBuffer(std::move(pkt), completed);
+    return s && s->SendMessageBuffer(std::move(pkt), completed, priority);
   }
 
   bool

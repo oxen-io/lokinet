@@ -116,7 +116,7 @@ namespace llarp
       m_router->NotifyRouterEvent<tooling::RCGossipSentEvent>(m_router->pubkey(), rc);
 
       // send message
-      peerSession->SendMessageBuffer(std::move(msg), nullptr);
+      peerSession->SendMessageBuffer(std::move(msg), nullptr, gossip.Priority());
     });
     return true;
   }
