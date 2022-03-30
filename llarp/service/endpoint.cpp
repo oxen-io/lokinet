@@ -463,6 +463,14 @@ namespace llarp
       return removed;
     }
 
+    std::variant<const PrivateKey, const SecretKey>
+    Endpoint::IdentitySigningKey() const
+    {
+      PrivateKey priv{};
+      CryptoManager::instance()->derive_subkey_private(priv, m_Identity.signkey, 3);
+      return priv;
+    }
+
     bool
     Endpoint::GetSenderFor(const ConvoTag& tag, ServiceInfo& si) const
     {
@@ -571,11 +579,9 @@ namespace llarp
     bool
     Endpoint::Start()
     {
-      // how can I tell if a m_Identity isn't loaded?
-      if (!m_DataHandler)
-      {
+      if (not m_DataHandler)
         m_DataHandler = this;
-      }
+
       // this does network isolation
       while (m_state->m_OnInit.size())
       {
@@ -587,6 +593,8 @@ namespace llarp
           return false;
         }
       }
+
+      Tick(Now());
       return true;
     }
 
@@ -1539,9 +1547,8 @@ namespace llarp
               return false;
             },
             Router(),
-            1,
+            2,
             numHops,
-            false,
             this);
         m_state->m_SNodeSessions[snode] = session;
       }

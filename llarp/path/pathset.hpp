@@ -122,11 +122,11 @@ namespace llarp
       GetWeak() = 0;
 
       virtual void
-      BuildOne(PathRole roles = ePathRoleAny) = 0;
+      BuildOne(std::optional<PathRole> roles = std::nullopt) = 0;
 
       /// manual build on these hops
       virtual void
-      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) = 0;
+      Build(std::vector<RouterContact> hops, std::optional<PathRole> roles = std::nullopt) = 0;
 
       /// tick owned paths
       virtual void
@@ -269,6 +269,10 @@ namespace llarp
       std::optional<std::set<service::Introduction>>
       GetCurrentIntroductionsWithFilter(
           std::function<bool(const service::Introduction&)> filter) const;
+
+      /// return a copy of the signing key assiocated with this pathset
+      virtual std::variant<const PrivateKey, const SecretKey>
+      IdentitySigningKey() const = 0;
 
       virtual bool
       PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)

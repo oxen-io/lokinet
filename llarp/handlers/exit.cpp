@@ -757,9 +757,8 @@ namespace llarp
             other,
             [this, ip](const auto& buf) { return QueueSNodePacket(buf, ip); },
             GetRouter(),
-            2,
             1,
-            true,
+            1,
             this);
         // this is a new service node make an outbound session to them
         m_SNodeSessions[other] = session;
@@ -789,8 +788,7 @@ namespace llarp
         // mark it as such so we don't make an outbound session to them
         m_SNodeKeys.emplace(pk.as_array());
       }
-      m_ActiveExits.emplace(
-          pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
+      m_ActiveExits.emplace(pk, std::make_unique<exit::Endpoint>(pk, handler, ip, this));
 
       m_Paths[path] = pk;
 

@@ -11,6 +11,7 @@
 #include <llarp/tooling/path_event.hpp>
 #include <llarp/link/link_manager.hpp>
 
+#include <oxenc/variant.h>
 #include <functional>
 
 namespace llarp
@@ -52,33 +53,38 @@ namespace llarp
       }
       // generate nonceXOR valueself->hop->pathKey
       crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
+      // advance the index
       ++idx;
 
       bool isFarthestHop = idx == path->hops.size();
 
-      LR_CommitRecord record;
-      if (isFarthestHop)
-      {
-        hop.upstream = hop.rc.pubkey;
-      }
-      else
-      {
-        hop.upstream = path->hops[idx].rc.pubkey;
-        record.nextRC = std::make_unique<RouterContact>(path->hops[idx].rc);
-      }
+      LR_CommitRecord record{};
       // build record
       record.lifetime = path::default_lifetime;
       record.version = LLARP_PROTO_VERSION;
       record.txid = hop.txID;
       record.rxid = hop.rxID;
       record.tunnelNonce = hop.nonce;
-      record.nextHop = hop.upstream;
       record.commkey = seckey_topublic(hop.commkey);
+      const auto& next_rc = isFarthestHop ? hop.rc : path->hops[idx].rc;
+      record.nextHop = hop.upstream = next_rc.pubkey;
 
-      llarp_buffer_t buf(frame.data(), frame.size());
+      // sign fast open if we are requesting a snode session
+      if (isFarthestHop and (path->Role() & path::ePathRoleSVC) == path::ePathRoleSVC)
+      {
+        bool was_signed = var::visit(
+            [&record](auto&& ident) { return record.Sign(ident); }, pathset->IdentitySigningKey());
+        if (not was_signed)
+        {
+          LogError(pathset->Name(), " failed to sign snode session LRCM");
+          return;
+        }
+      }
+
+      llarp_buffer_t buf{frame.data(), frame.size()};
       buf.cur = buf.base + EncryptedFrameOverheadSize;
       // encode record
-      if (!record.BEncode(&buf))
+      if (not record.BEncode(&buf))
       {
         // failed to encode?
         LogError(pathset->Name(), " Failed to generate Commit Record");
@@ -88,7 +94,7 @@ namespace llarp
       // use ephemeral keypair for frame
       SecretKey framekey;
       crypto->encryption_keygen(framekey);
-      if (!frame.EncryptInPlace(framekey, hop.rc.enckey))
+      if (not frame.EncryptInPlace(framekey, hop.rc.enckey))
       {
         LogError(pathset->Name(), " Failed to encrypt LRCR");
         return;
@@ -323,7 +329,7 @@ namespace llarp
     }
 
     void
-    Builder::BuildOne(PathRole roles)
+    Builder::BuildOne(std::optional<PathRole> roles)
     {
       if (const auto maybe = GetHopsForBuild())
         Build(*maybe, roles);
@@ -419,10 +425,16 @@ namespace llarp
     }
 
     void
-    Builder::Build(std::vector<RouterContact> hops, PathRole roles)
+    Builder::Build(std::vector<RouterContact> hops, std::optional<PathRole> maybe)
     {
       if (IsStopped())
         return;
+
+      PathRole roles = GetRoles();
+
+      if (maybe)
+        roles = *maybe;
+
       lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
       if (not m_router->pathBuildLimiter().Attempt(edge))
@@ -508,11 +520,11 @@ namespace llarp
     }
 
     void
-    Builder::ManualRebuild(size_t num, PathRole roles)
+    Builder::ManualRebuild(size_t num)
     {
       LogDebug(Name(), " manual rebuild ", num);
       while (num--)
-        BuildOne(roles);
+        BuildOne();
     }
 
   }  // namespace path

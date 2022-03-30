@@ -13,6 +13,7 @@
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/tooling/path_event.hpp>
+#include <llarp/exit/context.hpp>
 
 #include <functional>
 #include <optional>
@@ -79,34 +80,37 @@ namespace llarp
   bool
   LR_CommitRecord::BEncode(llarp_buffer_t* buf) const
   {
-    if (!bencode_start_dict(buf))
+    if (not bencode_start_dict(buf))
       return false;
 
-    if (!BEncodeWriteDictEntry("c", commkey, buf))
+    if (not BEncodeWriteDictEntry("c", commkey, buf))
       return false;
-    if (!BEncodeWriteDictEntry("i", nextHop, buf))
+    if (not BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
     if (lifetime > 10s && lifetime < path::default_lifetime)
     {
-      if (!BEncodeWriteDictInt("i", lifetime.count(), buf))
+      if (not BEncodeWriteDictInt("i", lifetime.count(), buf))
         return false;
     }
-    if (!BEncodeWriteDictEntry("n", tunnelNonce, buf))
+    if (not BEncodeWriteDictEntry("n", tunnelNonce, buf))
       return false;
-    if (!BEncodeWriteDictEntry("r", rxid, buf))
+    if (not BEncodeWriteDictEntry("r", rxid, buf))
       return false;
-    if (!BEncodeWriteDictEntry("t", txid, buf))
+    if (not BEncodeWriteDictEntry("t", txid, buf))
       return false;
     if (nextRC)
     {
-      if (!BEncodeWriteDictEntry("u", *nextRC, buf))
+      if (not BEncodeWriteDictEntry("u", *nextRC, buf))
         return false;
     }
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+    if (not bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
-    if (work && !BEncodeWriteDictEntry("w", *work, buf))
+    if (work and not BEncodeWriteDictEntry("w", *work, buf))
       return false;
-
+    if (identity and not BEncodeWriteDictEntry("x", *identity, buf))
+      return false;
+    if (sig and not BEncodeWriteDictEntry("z", *sig, buf))
+      return false;
     return bencode_end(buf);
   }
 
@@ -132,8 +136,11 @@ namespace llarp
       return false;
     if (*key == "u")
     {
-      nextRC = std::make_unique<RouterContact>();
-      return nextRC->BDecode(buffer);
+      RouterContact rc{};
+      if (not rc.BDecode(buffer))
+        return false;
+      nextRC = rc;
+      return true;
     }
     if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key, buffer))
       return false;
@@ -145,9 +152,24 @@ namespace llarp
         llarp::LogWarn("duplicate POW in LRCR");
         return false;
       }
-
-      work = std::make_unique<PoW>();
+      work = PoW{};
       return bencode_decode_dict(*work, buffer);
+    }
+    if (*key == "x")
+    {
+      PubKey pk{};
+      if (not pk.BDecode(buffer))
+        return false;
+      identity = pk;
+      return true;
+    }
+    if (*key == "z")
+    {
+      Signature z{};
+      if (not z.BDecode(buffer))
+        return false;
+      sig = z;
+      return true;
     }
     return read;
   }
@@ -168,6 +190,69 @@ namespace llarp
     }
     return nextHop == other.nextHop && commkey == other.commkey && txid == other.txid
         && rxid == other.rxid;
+  }
+
+  bool
+  LR_CommitRecord::Sign(const PrivateKey& ident)
+  {
+    PubKey pk;
+    if (not ident.toPublic(pk))
+      return false;
+    identity = pk;
+    sig = std::nullopt;
+    std::array<byte_t, EncryptedFrameBodySize> tmp;
+    llarp_buffer_t buf{tmp};
+    if (not BEncode(&buf))
+      return false;
+    // rewind
+    buf.sz = buf.cur - buf.base;
+    buf.cur = buf.base;
+    Signature gensig;
+    if (not CryptoManager::instance()->sign(gensig, ident, buf))
+      return false;
+    sig = gensig;
+    return true;
+  }
+
+  bool
+  LR_CommitRecord::Sign(const SecretKey& ident)
+  {
+    PubKey pk{seckey_topublic(ident)};
+    identity = pk;
+    sig = std::nullopt;
+    std::array<byte_t, EncryptedFrameBodySize> tmp;
+    llarp_buffer_t buf{tmp};
+    if (not BEncode(&buf))
+      return false;
+    // rewind
+    buf.sz = buf.cur - buf.base;
+    buf.cur = buf.base;
+    Signature gensig;
+    if (not CryptoManager::instance()->sign(gensig, ident, buf))
+      return false;
+    sig = gensig;
+    return true;
+  }
+
+  bool
+  LR_CommitRecord::VerifySig() const
+  {
+    if (not identity)
+      return false;
+    if (not sig)
+      return false;
+
+    LR_CommitRecord copy{*this};
+
+    copy.sig = std::nullopt;
+    std::array<byte_t, EncryptedFrameBodySize> tmp;
+    llarp_buffer_t buf{tmp};
+    if (not copy.BEncode(&buf))
+      return false;
+    // rewind
+    buf.sz = buf.cur - buf.base;
+    buf.cur = buf.base;
+    return CryptoManager::instance()->verify(*identity, buf, *sig);
   }
 
   struct LRCMFrameDecrypt
@@ -336,14 +421,64 @@ namespace llarp
       }
       else
       {
+        auto router = self->context->Router();
         // persist session to downstream until path expiration
-        self->context->Router()->PersistSessionUntil(
-            self->hop->info.downstream, self->hop->ExpireTime() + 10s);
-        // put hop
+        router->PersistSessionUntil(self->hop->info.downstream, self->hop->ExpireTime() + 10s);
+        // put hope
         self->context->PutTransitHop(self->hop);
+        // allocate snode session if they asked for one
+        if (self->record.identity)
+        {
+          const auto themKey = *self->record.identity;
+          if (self->record.VerifySig())
+          {
+            if (themKey == self->hop->info.downstream)
+            {
+              // they claim to be in 1 hop mode
+              if (router->PathToRouterAllowed(themKey))
+              {
+                // 1 hop mode and is good
+                router->exitContext().ObtainNewExit(themKey, self->hop->RXID(), false);
+              }
+              else
+              {
+                // 1 hop mode and not permitted
+                LogWarn(
+                    "Not allocating temp session for snode ",
+                    themKey,
+                    " as they are not permitted to due to network policy");
+                status = LR_StatusRecord::FAIL_DEST_INVALID;
+              }
+            }
+            else
+            {
+              // they dont claim to be in 1 hop mode
+              if (auto maybe = router->nodedb()->Get(themKey);
+                  router->PathToRouterAllowed(themKey) or (maybe and maybe->IsPublicRouter()))
+              {
+                // they claim they are a public router we know of, no bueno.
+                LogWarn(
+                    "Not allocating temp session for indirect request from ",
+                    themKey,
+                    " they seem to be a router");
+                status = LR_StatusRecord::FAIL_DEST_INVALID;
+              }
+              else
+              {
+                // they are a client or something probably fine
+                router->exitContext().ObtainNewExit(themKey, self->hop->RXID(), false);
+              }
+            }
+          }
+          else
+          {
+            LogWarn("Not allocating session from ", themKey, " invalid signature");
+            status = LR_StatusRecord::FAIL_DEST_INVALID;
+          }
+        }
       }
 
-      if (!LR_StatusMessage::CreateAndSend(
+      if (not LR_StatusMessage::CreateAndSend(
               self->context->Router(),
               self->hop,
               self->hop->info.rxID,

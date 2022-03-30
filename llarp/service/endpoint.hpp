@@ -214,6 +214,9 @@ namespace llarp
       bool
       HasPendingPathToService(const Address& remote) const;
 
+      std::variant<const PrivateKey, const SecretKey>
+      IdentitySigningKey() const override;
+
       bool
       HandleDataMessage(
           path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) override;

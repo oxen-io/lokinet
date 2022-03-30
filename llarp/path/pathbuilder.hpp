@@ -114,7 +114,7 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       void
-      BuildOne(PathRole roles = ePathRoleAny) override;
+      BuildOne(std::optional<PathRole> roles = std::nullopt) override;
 
       bool
       BuildOneAlignedTo(const RouterID endpoint) override;
@@ -123,7 +123,7 @@ namespace llarp
       GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude = {});
 
       void
-      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) override;
+      Build(std::vector<RouterContact> hops, std::optional<PathRole> roles = std::nullopt) override;
 
       /// pick a first hop
       std::optional<RouterContact>
@@ -133,7 +133,7 @@ namespace llarp
       GetHopsForBuild() override;
 
       void
-      ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
+      ManualRebuild(size_t N);
 
       virtual const SecretKey&
       GetTunnelEncryptionSecretKey() const;
