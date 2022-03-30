@@ -1,0 +1,98 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Wed, 30 Mar 2022 17:40:50 -0300
+Subject: add missing oxenmq headers
+
+The old headers were using implicit indirect includes that don't work
+properly with oxenmq 1.2.11's compatibility headers.
+
+(Temporary fix; this will be reverted in the next lokinet release, which
+uses oxenc directly).
+---
+ llarp/dht/messages/findname.cpp | 1 +
+ llarp/dht/messages/gotname.cpp  | 1 +
+ llarp/handlers/tun.cpp          | 2 ++
+ llarp/peerstats/types.cpp       | 1 +
+ llarp/quic/connection.cpp       | 1 +
+ llarp/router_contact.hpp        | 6 +-----
+ 6 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/llarp/dht/messages/findname.cpp b/llarp/dht/messages/findname.cpp
+index 929db0e..49753fb 100644
+--- a/llarp/dht/messages/findname.cpp
++++ b/llarp/dht/messages/findname.cpp
+@@ -1,5 +1,6 @@
+ #include "findname.hpp"
+ #include <oxenmq/bt_serialize.h>
++#include <oxenmq/bt_value.h>
+ #include <llarp/dht/context.hpp>
+ #include "gotname.hpp"
+ #include <llarp/router/abstractrouter.hpp>
+diff --git a/llarp/dht/messages/gotname.cpp b/llarp/dht/messages/gotname.cpp
+index 47efe58..a3231f1 100644
+--- a/llarp/dht/messages/gotname.cpp
++++ b/llarp/dht/messages/gotname.cpp
+@@ -1,5 +1,6 @@
+ #include "gotname.hpp"
+ #include <oxenmq/bt_serialize.h>
++#include <oxenmq/bt_value.h>
+ #include <llarp/dht/context.hpp>
+ #include <llarp/router/abstractrouter.hpp>
+ #include <llarp/path/path_context.hpp>
+diff --git a/llarp/handlers/tun.cpp b/llarp/handlers/tun.cpp
+index 5677fc1..5cc3042 100644
+--- a/llarp/handlers/tun.cpp
++++ b/llarp/handlers/tun.cpp
+@@ -30,6 +30,8 @@
+ 
+ #include <llarp/dns/srv_data.hpp>
+ 
++#include <oxenmq/bt_value.h>
++
+ namespace llarp
+ {
+   namespace handlers
+diff --git a/llarp/peerstats/types.cpp b/llarp/peerstats/types.cpp
+index e66918b..7390801 100644
+--- a/llarp/peerstats/types.cpp
++++ b/llarp/peerstats/types.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <llarp/util/str.hpp>
+ #include <oxenmq/bt_serialize.h>
++#include <oxenmq/bt_value.h>
+ #include <stdexcept>
+ 
+ namespace llarp
+diff --git a/llarp/quic/connection.cpp b/llarp/quic/connection.cpp
+index 7789083..045832b 100644
+--- a/llarp/quic/connection.cpp
++++ b/llarp/quic/connection.cpp
+@@ -17,6 +17,7 @@
+ #include <iterator>
+ #include <oxenmq/hex.h>
+ #include <oxenmq/bt_serialize.h>
++#include <oxenmq/bt_value.h>
+ 
+ extern "C"
+ {
+diff --git a/llarp/router_contact.hpp b/llarp/router_contact.hpp
+index bb500df..89eee2b 100644
+--- a/llarp/router_contact.hpp
++++ b/llarp/router_contact.hpp
+@@ -14,15 +14,11 @@
+ #include <functional>
+ #include <nlohmann/json.hpp>
+ #include <vector>
++#include <oxenmq/bt_serialize.h>
+ 
+ #define MAX_RC_SIZE (1024)
+ #define NICKLEN (32)
+ 
+-namespace oxenmq
+-{
+-  class bt_list_consumer;
+-}  // namespace oxenmq
+-
+ namespace llarp
+ {
+   /// NetID
