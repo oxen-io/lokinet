@@ -148,7 +148,8 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed);
+        ILinkSession::CompletionHandler completed,
+        uint16_t priority);
 
     virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;

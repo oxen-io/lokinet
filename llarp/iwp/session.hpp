@@ -60,7 +60,10 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       bool
-      SendMessageBuffer(ILinkSession::Message_t msg, CompletionHandler resultHandler) override;
+      SendMessageBuffer(
+          ILinkSession::Message_t msg,
+          CompletionHandler resultHandler,
+          uint16_t priority = 0) override;
 
       void
       Send_LL(const byte_t* buf, size_t sz);

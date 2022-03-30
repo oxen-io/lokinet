@@ -10,12 +10,14 @@ namespace llarp
         uint64_t msgid,
         ILinkSession::Message_t msg,
         llarp_time_t now,
-        ILinkSession::CompletionHandler handler)
+        ILinkSession::CompletionHandler handler,
+        uint16_t priority)
         : m_Data{std::move(msg)}
         , m_MsgID{msgid}
         , m_Completed{handler}
         , m_LastFlush{now}
         , m_StartedAt{now}
+        , m_ResendPriority{priority}
     {
       const llarp_buffer_t buf(m_Data);
       CryptoManager::instance()->shorthash(m_Digest, buf);

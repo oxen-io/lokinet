@@ -5,6 +5,8 @@
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/router/abstractrouter.hpp>
 
+#include <queue>
+
 namespace llarp
 {
   namespace iwp
@@ -127,7 +129,7 @@ namespace llarp
       {
         LogError("failed to encode LIM for ", m_RemoteAddr);
       }
-      if (!SendMessageBuffer(std::move(data), h))
+      if (not SendMessageBuffer(std::move(data), h))
       {
         LogError("failed to send LIM to ", m_RemoteAddr);
       }
@@ -183,7 +185,7 @@ namespace llarp
 
     bool
     Session::SendMessageBuffer(
-        ILinkSession::Message_t buf, ILinkSession::CompletionHandler completed)
+        ILinkSession::Message_t buf, ILinkSession::CompletionHandler completed, uint16_t priority)
     {
       if (m_TXMsgs.size() >= MaxSendQueueSize)
       {
@@ -194,8 +196,9 @@ namespace llarp
       const auto now = m_Parent->Now();
       const auto msgid = m_TXID++;
       const auto bufsz = buf.size();
-      auto& msg = m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed})
-                      .first->second;
+      auto& msg =
+          m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed, priority})
+              .first->second;
       TriggerPump();
       EncryptAndSend(msg.XMIT());
       if (bufsz > FragmentSize)
@@ -253,15 +256,19 @@ namespace llarp
             msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
           }
         }
+        std::priority_queue<
+            OutboundMessage*,
+            std::vector<OutboundMessage*>,
+            ComparePtr<OutboundMessage*>>
+            resend;
         for (auto& [id, msg] : m_TXMsgs)
         {
           if (msg.ShouldFlush(now))
-          {
-            msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
-          }
+            resend.push(&msg);
         }
+        for (auto& msg = resend.top(); not resend.empty(); resend.pop())
+          msg->FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
-      assert(shared_from_this().use_count() > 1);
       if (not m_EncryptNext.empty())
       {
         m_Parent->QueueWork(
