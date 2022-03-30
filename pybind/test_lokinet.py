@@ -4,7 +4,7 @@ import pylokinet
 from pylokinet import Context as Lokinet
 
 import os
-from timeit import timeit
+import time
 
 import requests
 
@@ -18,6 +18,8 @@ def del_nodedb_entry(k):
     print(f'delete entry from nodedb: {k}')
 
 def test_lokinet_run():
+    wait_for = 10
+    endat = time.time() + wait_for
     pylokinet.set_log_level('trace')
     ctx = Lokinet()
     ctx.nodedb_load = load_nodedb
@@ -28,5 +30,5 @@ def test_lokinet_run():
     print("starting....")
     ctx.start()
     while not ctx.wait_for_ready(100):
-        pass
+        assert endat >= time.time()
     print(f"we are {ctx.localaddr()}")
