@@ -45,6 +45,12 @@ namespace llarp
 
       ~BaseSession() override;
 
+      path::PathRole
+      GetRoles() const override
+      {
+        return path::ePathRoleSVC;
+      }
+
       std::shared_ptr<path::PathSet>
       GetSelf() override
       {
@@ -56,6 +62,9 @@ namespace llarp
       {
         return weak_from_this();
       }
+
+      std::variant<const PrivateKey, const SecretKey>
+      IdentitySigningKey() const override;
 
       void
       BlacklistSNode(const RouterID snode) override;
@@ -100,12 +109,6 @@ namespace llarp
       /// flush downstream to user via tun
       void
       FlushDownstream();
-
-      path::PathRole
-      GetRoles() const override
-      {
-        return path::ePathRoleExit;
-      }
 
       /// send close and stop session
       bool
@@ -193,36 +196,6 @@ namespace llarp
       CallPendingCallbacks(bool success);
     };
 
-    struct ExitSession final : public BaseSession
-    {
-      ExitSession(
-          const llarp::RouterID& snodeRouter,
-          std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
-          size_t numpaths,
-          size_t hoplen,
-          EndpointBase* parent)
-          : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
-      {}
-
-      ~ExitSession() override = default;
-
-      std::string
-      Name() const override;
-
-      virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
-
-     protected:
-      void
-      PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
-      {
-        // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 1;
-      }
-    };
-
     struct SNodeSession final : public BaseSession
     {
       SNodeSession(
@@ -231,7 +204,6 @@ namespace llarp
           AbstractRouter* r,
           size_t numpaths,
           size_t hoplen,
-          bool useRouterSNodeKey,
           EndpointBase* parent);
 
       ~SNodeSession() override = default;
@@ -246,7 +218,6 @@ namespace llarp
       void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
-        // TODO: set expiration time
         msg.X = 0;
         msg.E = 0;
       }

@@ -11,6 +11,7 @@
 #include <llarp/tooling/path_event.hpp>
 #include <llarp/link/link_manager.hpp>
 
+#include <oxenc/variant.h>
 #include <functional>
 
 namespace llarp
@@ -57,23 +58,36 @@ namespace llarp
       bool isFarthestHop = idx == path->hops.size();
 
       LR_CommitRecord record;
-      if (isFarthestHop)
-      {
-        hop.upstream = hop.rc.pubkey;
-      }
-      else
-      {
-        hop.upstream = path->hops[idx].rc.pubkey;
-        record.nextRC = std::make_unique<RouterContact>(path->hops[idx].rc);
-      }
       // build record
       record.lifetime = path::default_lifetime;
       record.version = LLARP_PROTO_VERSION;
       record.txid = hop.txID;
       record.rxid = hop.rxID;
       record.tunnelNonce = hop.nonce;
-      record.nextHop = hop.upstream;
       record.commkey = seckey_topublic(hop.commkey);
+
+      if (isFarthestHop)
+      {
+        hop.upstream = hop.rc.pubkey;
+        record.nextHop = hop.upstream;
+        // sign fast open if we are requesting a snode session
+        if ((path->Role() & path::ePathRoleSVC) == path::ePathRoleSVC)
+        {
+          bool was_signed = var::visit(
+              [&record](auto&& ident) { return record.Sign(ident); },
+              pathset->IdentitySigningKey());
+          if (not was_signed)
+          {
+            LogError(pathset->Name(), " failed to sign snode session LRCM");
+            return;
+          }
+        }
+      }
+      else
+      {
+        hop.upstream = path->hops[idx].rc.pubkey;
+        record.nextHop = hop.upstream;
+      }
 
       llarp_buffer_t buf(frame.data(), frame.size());
       buf.cur = buf.base + EncryptedFrameOverheadSize;
@@ -323,7 +337,7 @@ namespace llarp
     }
 
     void
-    Builder::BuildOne(PathRole roles)
+    Builder::BuildOne(std::optional<PathRole> roles)
     {
       if (const auto maybe = GetHopsForBuild())
         Build(*maybe, roles);
@@ -419,10 +433,16 @@ namespace llarp
     }
 
     void
-    Builder::Build(std::vector<RouterContact> hops, PathRole roles)
+    Builder::Build(std::vector<RouterContact> hops, std::optional<PathRole> maybe)
     {
       if (IsStopped())
         return;
+
+      PathRole roles = GetRoles();
+
+      if (maybe)
+        roles = *maybe;
+
       lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
       if (not m_router->pathBuildLimiter().Attempt(edge))
@@ -508,11 +528,11 @@ namespace llarp
     }
 
     void
-    Builder::ManualRebuild(size_t num, PathRole roles)
+    Builder::ManualRebuild(size_t num)
     {
       LogDebug(Name(), " manual rebuild ", num);
       while (num--)
-        BuildOne(roles);
+        BuildOne();
     }
 
   }  // namespace path

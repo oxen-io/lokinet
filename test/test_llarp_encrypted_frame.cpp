@@ -29,6 +29,42 @@ class FrameTest : public test::LlarpTest<>
   SecretKey alice, bob;
 };
 
+TEST_CASE_METHOD(FrameTest, "Frame sign/verify")
+{
+  auto crypto = CryptoManager::instance();
+  SecretKey sk{};
+  crypto->identity_keygen(sk);
+  LRCR rec_in{}, rec_out{};
+  REQUIRE(rec_in.Sign(sk));
+
+  std::array<byte_t, 1024> tmp;
+  llarp_buffer_t buf{tmp};
+  REQUIRE(rec_in.BEncode(&buf));
+  buf.sz = buf.cur - buf.base;
+  buf.cur = buf.base;
+  REQUIRE(rec_out.BDecode(&buf));
+  REQUIRE(rec_out.VerifySig());
+}
+
+TEST_CASE_METHOD(FrameTest, "Frame sign/verify blind")
+{
+  auto crypto = CryptoManager::instance();
+  SecretKey sk{};
+  crypto->identity_keygen(sk);
+  PrivateKey priv{};
+  crypto->derive_subkey_private(priv, sk, 3);
+  LRCR rec_in{}, rec_out{};
+  REQUIRE(rec_in.Sign(priv));
+
+  std::array<byte_t, 1024> tmp;
+  llarp_buffer_t buf{tmp};
+  REQUIRE(rec_in.BEncode(&buf));
+  buf.sz = buf.cur - buf.base;
+  buf.cur = buf.base;
+  REQUIRE(rec_out.BDecode(&buf));
+  REQUIRE(rec_out.VerifySig());
+}
+
 TEST_CASE_METHOD(FrameTest, "Frame crypto")
 {
   EncryptedFrame f{256};

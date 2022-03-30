@@ -8,6 +8,7 @@
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <utility>
+#include <llarp/service/context.hpp>
 
 namespace llarp
 {
@@ -27,12 +28,19 @@ namespace llarp
         , m_LastUse{r->Now()}
         , m_BundleRC{false}
         , m_Parent{parent}
-    {
-      CryptoManager::instance()->identity_keygen(m_ExitIdentity);
-    }
+
+    {}
 
     BaseSession::~BaseSession() = default;
 
+    std::variant<const PrivateKey, const SecretKey>
+    BaseSession::IdentitySigningKey() const
+    {
+      if (m_router->IsServiceNode())
+        return SecretKey{m_router->identity()};
+      else
+        return m_router->hiddenServiceContext().GetDefault()->IdentitySigningKey();
+    }
     void
     BaseSession::HandlePathDied(path::Path_ptr p)
     {
@@ -99,21 +107,9 @@ namespace llarp
       p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
       p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
       p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
-      p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
-
-      routing::ObtainExitMessage obtain;
-      obtain.S = p->NextSeqNo();
-      obtain.T = llarp::randint();
-      PopulateRequest(obtain);
-      if (!obtain.Sign(m_ExitIdentity))
-      {
-        llarp::LogError("Failed to sign exit request");
-        return;
-      }
-      if (p->SendExitRequest(obtain, m_router))
-        llarp::LogInfo("asking ", m_ExitRouter, " for exit");
-      else
-        llarp::LogError("failed to send exit request");
+      llarp::LogInfo("obtained an exit via ", p->Endpoint());
+      m_CurrentPath = p->RXID();
+      CallPendingCallbacks(true);
     }
 
     void
@@ -344,26 +340,14 @@ namespace llarp
         AbstractRouter* r,
         size_t numpaths,
         size_t hoplen,
-        bool useRouterSNodeKey,
         EndpointBase* parent)
         : BaseSession{snodeRouter, writepkt, r, numpaths, hoplen, parent}
-    {
-      if (useRouterSNodeKey)
-      {
-        m_ExitIdentity = r->identity();
-      }
-    }
+    {}
 
     std::string
     SNodeSession::Name() const
     {
       return "SNode::" + m_ExitRouter.ToString();
-    }
-
-    std::string
-    ExitSession::Name() const
-    {
-      return "Exit::" + m_ExitRouter.ToString();
     }
 
     void
@@ -376,14 +360,5 @@ namespace llarp
       QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }
 
-    void
-    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
-    {
-      net::IPPacket pkt;
-      if (not pkt.Load(buf))
-        return;
-      pkt.ZeroSourceAddress();
-      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
-    }
   }  // namespace exit
 }  // namespace llarp

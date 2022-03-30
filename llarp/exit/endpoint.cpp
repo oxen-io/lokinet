@@ -12,7 +12,6 @@ namespace llarp
     Endpoint::Endpoint(
         const llarp::PubKey& remoteIdent,
         const llarp::path::HopHandler_ptr& beginPath,
-        bool rewriteIP,
         huint128_t ip,
         llarp::handlers::ExitEndpoint* parent)
         : createdAt{parent->Now()}
@@ -20,7 +19,7 @@ namespace llarp
         , m_remoteSignKey{remoteIdent}
         , m_CurrentPath{beginPath}
         , m_IP{ip}
-        , m_RewriteSource{rewriteIP}
+        , m_RewriteSource{true}
     {
       m_LastActive = parent->Now();
     }

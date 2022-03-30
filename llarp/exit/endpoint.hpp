@@ -27,7 +27,6 @@ namespace llarp
       explicit Endpoint(
           const llarp::PubKey& remoteIdent,
           const llarp::path::HopHandler_ptr& path,
-          bool rewriteIP,
           huint128_t ip,
           llarp::handlers::ExitEndpoint* parent);
 

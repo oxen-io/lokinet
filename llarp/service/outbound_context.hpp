@@ -26,6 +26,9 @@ namespace llarp
       void
       Tick(llarp_time_t now) override;
 
+      std::variant<const PrivateKey, const SecretKey>
+      IdentitySigningKey() const override;
+
       util::StatusObject
       ExtractStatus() const;
 

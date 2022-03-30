@@ -26,10 +26,12 @@ namespace llarp
     TunnelNonce tunnelNonce;
     PathID_t txid, rxid;
 
-    std::unique_ptr<RouterContact> nextRC;
-    std::unique_ptr<PoW> work;
+    std::optional<RouterContact> nextRC;
+    std::optional<PoW> work;
     uint64_t version = 0;
     llarp_time_t lifetime = 0s;
+    std::optional<PubKey> identity;
+    std::optional<Signature> sig;
 
     bool
     BDecode(llarp_buffer_t* buf);
@@ -39,6 +41,15 @@ namespace llarp
 
     bool
     operator==(const LR_CommitRecord& other) const;
+
+    bool
+    VerifySig() const;
+
+    bool
+    Sign(const PrivateKey& ident);
+
+    bool
+    Sign(const SecretKey& ident);
 
    private:
     bool

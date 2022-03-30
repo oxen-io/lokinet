@@ -32,6 +32,12 @@ namespace llarp
       return AvailablePaths(path::ePathRoleAny) == 0 && ShouldRemove();
     }
 
+    std::variant<const PrivateKey, const SecretKey>
+    OutboundContext::IdentitySigningKey() const
+    {
+      return m_Endpoint->IdentitySigningKey();
+    }
+
     bool
     OutboundContext::ShouldBundleRC() const
     {
