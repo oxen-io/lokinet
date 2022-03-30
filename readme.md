@@ -68,9 +68,19 @@ If you want to build from source:
     $ make -j$(nproc)
     $ sudo make install
 
+
 #### Cross Compile For Linux <span id="linux-cross" />
 
-install the toolchain for `$arch` this example is `aarch64`
+current cross targets:
+
+* aarch64-linux-gnu
+* arm-linux-gnueabihf
+* mips-linux-gnu
+* mips64-linux-gnuabi64
+* mipsel-linux-gnu
+* powerpc64le-linux-gnu
+
+install the toolchain (this one is for `aarch64-linux-gnu`, you can provide your own toolchain if you want)
 
     $ sudo apt install g{cc,++}-aarch64-linux-gnu
 

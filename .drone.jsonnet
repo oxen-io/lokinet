@@ -146,6 +146,36 @@ local windows_cross_pipeline(name,
   ],
 };
 
+// linux cross compile on debian
+local linux_cross_pipeline(name,
+                           cross_targets,
+                           arch='amd64',
+                           build_type='Release',
+                           cmake_extra='',
+                           extra_cmds=[],
+                           jobs=6,
+                           allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'docker',
+  name: name,
+  platform: { arch: arch },
+  trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+  steps: [
+    submodules,
+    {
+      name: 'build',
+      image: docker_base + 'debian-stable-cross',
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
+      ] + extra_cmds,
+    },
+  ],
+};
+
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
 local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = {
   kind: 'pipeline',
@@ -310,6 +340,12 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
   debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
+
+  // cross compile targets
+  linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
+  linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
+  linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
+
   // android apk builder
   apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
