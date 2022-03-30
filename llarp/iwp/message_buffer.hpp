@@ -55,9 +55,7 @@ namespace llarp
       bool
       operator<(const OutboundMessage& msg) const
       {
-        // yes, the first order is reversed as higher means more important
-        // second part is for queue order
-        return msg.m_ResendPriority < m_ResendPriority or m_MsgID < msg.m_MsgID;
+        return msg.m_ResendPriority < m_ResendPriority;
       }
 
       ILinkSession::Packet_t
