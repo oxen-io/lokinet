@@ -367,7 +367,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                               '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
-                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
                   extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
                     '../contrib/ci/drone-static-upload.sh',
@@ -393,11 +393,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
-  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid'),
-  deb_builder(docker_base + 'debian-bullseye-debhelper', 'bullseye', 'debian/bullseye'),
-  deb_builder(docker_base + 'ubuntu-impish-debhelper', 'impish', 'ubuntu/impish'),
-  deb_builder(docker_base + 'ubuntu-focal-debhelper', 'focal', 'ubuntu/focal'),
-  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid', arch='arm64'),
+  deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid'),
+  deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
+  deb_builder(docker_base + 'ubuntu-impish-builder', 'impish', 'ubuntu/impish'),
+  deb_builder(docker_base + 'ubuntu-focal-builder', 'focal', 'ubuntu/focal'),
+  deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
   mac_builder('macOS (Release)'),

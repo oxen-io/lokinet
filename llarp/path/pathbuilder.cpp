@@ -191,10 +191,11 @@ namespace llarp
       lastBuild = 0s;
     }
 
-    void Builder::Tick(llarp_time_t)
+    void
+    Builder::Tick(llarp_time_t now)
     {
-      const auto now = llarp::time_now_ms();
-
+      PathSet::Tick(now);
+      now = llarp::time_now_ms();
       m_router->pathBuildLimiter().Decay(now);
 
       ExpirePaths(now, m_router);
