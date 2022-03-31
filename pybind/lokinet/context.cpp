@@ -17,7 +17,7 @@ namespace lokinet
     {
       py::gil_scoped_acquire gil{};
       for (const auto& key : idents)
-        _del(key.ToString());
+        _del(py::str{key.ToString()});
     }
 
    public:
