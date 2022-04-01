@@ -243,7 +243,13 @@ if(WITH_HIVE)
 endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static)
-target_link_libraries(liblokinet PRIVATE libunbound crypt)
+target_link_libraries(liblokinet PRIVATE libunbound)
+if(NOT WIN32)
+  pkg_check_modules(CRYPT libcrypt REQUIRED IMPORTED_TARGET)
+  add_library(libcrypt INTERFACE)
+  target_link_libraries(libcrypt INTERFACE PkgConfig::CRYPT)
+  target_link_libraries(liblokinet PRIVATE libcrypt)
+endif()
 
 
 if(BUILD_LIBLOKINET)

@@ -48,6 +48,8 @@ TEST_CASE("PQ crypto")
   REQUIRE(otherShared == shared);
 }
 
+#ifndef _WIN32
+
 TEST_CASE("passwd hash valid")
 {
   llarp::sodium::CryptoLibSodium crypto;
@@ -88,3 +90,5 @@ TEST_CASE("passwd hash malformed")
   for (const auto& hash : invalid_hashes)
     REQUIRE(not crypto.check_passwd_hash(hash, "stevejobs"));
 }
+
+#endif
