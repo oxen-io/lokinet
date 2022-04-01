@@ -84,6 +84,7 @@ def ip_to_flag(ip):
     flag = ''.join(chr(0x1f1e6 + ord(i) - ord('A')) for i in cc)
     return '({}) {}'.format(cc, flag)
 
+bits = False
 
 class Monitor:
 
@@ -173,13 +174,16 @@ class Monitor:
     @staticmethod
     def speed_of(rate):
         """turn int speed into string formatted"""
-        units = ["b", "Kb", "Mb", "Gb"]
+        units = ["", "K", "M", "G"]
         idx = 0
-        rate *= 8
+        unit = 'B'
+        if bits:
+            rate *= 8
+            unit = 'b'
         while rate > 1000 and idx < len(units):
             rate /= 1000.0
             idx += 1
-        return "{} {}ps".format("%.2f" % rate, units[idx])
+        return "{} {}{}ps".format("%.2f" % rate, units[idx], unit)
 
     def get_all_paths(self):
         """ yield all paths in current data """
@@ -238,21 +242,21 @@ class Monitor:
             y_pos = self.display_link(y_pos, link)
         y_pos += 2
         self.win.move(y_pos, 1)
+        tx, rx = self.path_bw()
         self.win.addstr(
             "throughput:\t\t[{}\ttx]\t[{}\trx]".format(
                 self.speed_of(self.txrate), self.speed_of(self.rxrate)
             )
         )
-        bloat_tx, bloat_rx = self.calculate_bloat(self.data['links']['outbound'])
         y_pos += 1
         self.win.move(y_pos, 1)
         self.win.addstr("goodput:\t\t[{}\ttx]\t[{}\trx]".format(
-            self.speed_of(self.txrate-bloat_tx), self.speed_of(self.rxrate-bloat_rx)))
+            self.speed_of(abs(self.txrate - tx)), self.speed_of(abs(self.rxrate - rx))))
         y_pos += 1
         self.win.move(y_pos, 1)
         self.win.addstr("overhead:\t\t[{}\ttx]\t[{}\trx]".format(
-            self.speed_of(bloat_tx), self.speed_of(bloat_rx)))
-        self._speed_samples.append((self.txrate, self.rxrate, bloat_tx, bloat_rx))
+            self.speed_of(tx), self.speed_of(rx)))
+        self._speed_samples.append((self.txrate, self.rxrate, tx, rx))
         while len(self._speed_samples) > self._sample_size:
             self._speed_samples.pop(0)
         return self.display_speedgraph(y_pos + 2)
@@ -316,30 +320,16 @@ class Monitor:
             self.win.addstr(rxpad)
         return y_pos + 2
 
-    def calculate_bloat(self, links):
+    def path_bw(self):
         """
-        calculate bandwith overhead
+        calculate path bandwidth usage
         """
-        paths = self.get_all_paths()
-        lltx = 0
-        llrx = 0
         _tx = 0
         _rx = 0
-        for link in links:
-            sessions = link["sessions"]["established"]
-            for sess in sessions:
-                lltx += sess['tx']
-                llrx += sess['rx']
-        for path in paths:
+        for path in self.get_all_paths():
             _tx += path['txRateCurrent']
             _rx += path['rxRateCurrent']
-        lltx -= _tx
-        llrx -= _rx
-        if lltx < 0:
-            lltx = 0
-        if llrx < 0:
-            llrx = 0
-        return lltx, llrx
+        return _tx, _rx
 
     def display_link(self, y_pos, link):
         """ display links """
@@ -561,13 +551,14 @@ def main():
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
     ap.add_argument('--filter', default='.+', type=str, help="regex to filter entries")
     ap.add_argument('--invert-filter', const=True, default=False, action='store_const', help='invert regex filter matching')
-
+    ap.add_argument('--bits', const=True, default=False, action='store_const', help='show units in bits not bytes')
     args = ap.parse_args()
 
     mon = Monitor(
         args.url,
         args.introset
     )
+    bits = args.bits
     mon.filter = lambda x : re.match(args.filter, x) is not None
     if args.invert_filter:
         old_filter = mon.filter
