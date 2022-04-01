@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 #include <iostream>
 
 using namespace std::chrono_literals;

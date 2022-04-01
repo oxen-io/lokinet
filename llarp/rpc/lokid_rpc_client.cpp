@@ -5,9 +5,9 @@
 
 #include <llarp/router/abstractrouter.hpp>
 
-#include <nlohmann/json.hpp>
 #include <oxenc/bt.h>
 #include <oxenc/hex.h>
+#include <llarp/util/json.hpp>
 #include <llarp/util/time.hpp>
 
 namespace llarp

@@ -7,12 +7,12 @@
 #include "llarp/util/aligned.hpp"
 #include "llarp/util/bencode.hpp"
 #include "llarp/util/status.hpp"
+#include "llarp/util/json.hpp"
 #include "router_version.hpp"
 
 #include "llarp/dns/srv_data.hpp"
 
 #include <functional>
-#include <nlohmann/json.hpp>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)

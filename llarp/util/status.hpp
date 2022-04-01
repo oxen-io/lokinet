@@ -1,11 +1,8 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 
-namespace llarp
+namespace llarp::util
 {
-  namespace util
-  {
-    using StatusObject = nlohmann::json;
-  }  // namespace util
-}  // namespace llarp
+  using StatusObject = nlohmann::json;
+}  // namespace llarp::util
