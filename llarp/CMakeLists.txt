@@ -244,11 +244,13 @@ endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static)
 target_link_libraries(liblokinet PRIVATE libunbound)
-if(NOT WIN32)
-  pkg_check_modules(CRYPT libcrypt REQUIRED IMPORTED_TARGET)
+pkg_check_modules(CRYPT libcrypt IMPORTED_TARGET)
+if(CRYPT_FOUND AND NOT WIN32 AND NOT ANDROID)
+  add_definitions(-DHAVE_CRYPT)
   add_library(libcrypt INTERFACE)
   target_link_libraries(libcrypt INTERFACE PkgConfig::CRYPT)
   target_link_libraries(liblokinet PRIVATE libcrypt)
+  message(STATUS "using libcrypt ${CRYPT_VERSION}")
 endif()
 
 

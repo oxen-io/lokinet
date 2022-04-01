@@ -49,7 +49,7 @@ namespace llarp::service
     const auto itr = values.find(data);
     if (itr == values.end())
       throw std::invalid_argument("no such auth file type: " + data);
-#ifdef _WIN32
+#ifndef HAVE_CRYPT
     if (itr->second == AuthFileType::eAuthFileHashes)
       throw std::invalid_argument("unsupported auth file type: " + data);
 #endif

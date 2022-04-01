@@ -48,7 +48,7 @@ TEST_CASE("PQ crypto")
   REQUIRE(otherShared == shared);
 }
 
-#ifndef _WIN32
+#ifdef HAVE_CRYPT
 
 TEST_CASE("passwd hash valid")
 {
