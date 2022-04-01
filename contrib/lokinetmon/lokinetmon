@@ -84,20 +84,21 @@ def ip_to_flag(ip):
     flag = ''.join(chr(0x1f1e6 + ord(i) - ord('A')) for i in cc)
     return '({}) {}'.format(cc, flag)
 
-bits = False
-
 class Monitor:
 
     _sample_size = 12
-    filter = lambda x : True
+    filter = lambda _: True
+    bits = False
 
-    def __init__(self, url, introsetMode=False):
+    def __init__(self, url, introsetMode=False, monochrome=False):
         self.txrate = 0
         self.rxrate = 0
+        self._mono = monochrome
         self.data = dict()
         self.win = curses.initscr()
-        curses.start_color()
-        curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
+        if not self._mono:
+            curses.start_color()
+            curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         self._rpc_context = zmq.Context()
         self._rpc_socket = self._rpc_context.socket(zmq.DEALER)
         self._rpc_socket.setsockopt(zmq.CONNECT_TIMEOUT, 5000)
@@ -171,13 +172,13 @@ class Monitor:
         else:
             return 'never'
 
-    @staticmethod
-    def speed_of(rate):
+
+    def speed_of(self, rate):
         """turn int speed into string formatted"""
         units = ["", "K", "M", "G"]
         idx = 0
         unit = 'B'
-        if bits:
+        if self.bits:
             rate *= 8
             unit = 'b'
         while rate > 1000 and idx < len(units):
@@ -270,10 +271,10 @@ class Monitor:
 
 
     @staticmethod
-    def _makebar(samp, badsamp, maxsamp):
-        barstr = "#" * (samp - badsamp)
+    def _makebar(samp, badsamp, maxsamp, chars='##'):
+        barstr = chars[0] * (samp - badsamp)
         pad = " " * (maxsamp - samp)
-        return pad, barstr, '#' * badsamp
+        return pad, barstr, chars[1] * badsamp
 
     def display_speedgraph(self, y_pos, maxsz=40):
         """ display global speed graph """
@@ -309,14 +310,21 @@ class Monitor:
         for _tx, _rx, b_tx, b_rx in self._speed_samples:
             y_pos += 1
             self.win.move(y_pos, 1)
-            txpad, txbar, btxbar = self._makebar(self._scale(_tx, txscale), self._scale(b_tx, txscale), int(txmax))
-            rxpad, rxbar, brxbar = self._makebar(self._scale(_rx, rxscale), self._scale(b_rx, rxscale), int(rxmax))
+            chars='=-' if self._mono else '##'
+            txpad, txbar, btxbar = self._makebar(self._scale(_tx, txscale), self._scale(b_tx, txscale), int(txmax), chars)
+            rxpad, rxbar, brxbar = self._makebar(self._scale(_rx, rxscale), self._scale(b_rx, rxscale), int(rxmax), chars)
             self.win.addstr(txpad)
-            self.win.addstr(btxbar, curses.color_pair(1))
+            if self._mono:
+                self.win.addstr(btxbar)
+            else:
+                self.win.addstr(btxbar, curses.color_pair(1))
             self.win.addstr(txbar)
             self.win.addstr('|')
             self.win.addstr(rxbar)
-            self.win.addstr(brxbar, curses.color_pair(1))
+            if self._mono:
+                self.win.addstr(brxbar)
+            else:
+                self.win.addstr(brxbar, curses.color_pair(1))
             self.win.addstr(rxpad)
         return y_pos + 2
 
@@ -550,19 +558,18 @@ def main():
     ap.add_argument("--introset", action='store_const', const=True, default=False, help="run in introset inspection mode")
     ap.add_argument("--url", default='tcp://127.0.0.1:1190', type=str, help='url to lokinet rpc')
     ap.add_argument('--filter', default='.+', type=str, help="regex to filter entries")
-    ap.add_argument('--invert-filter', const=True, default=False, action='store_const', help='invert regex filter matching')
     ap.add_argument('--bits', const=True, default=False, action='store_const', help='show units in bits not bytes')
+    ap.add_argument('--mono', const=True, default=False, action='store_const', help='monchrome output with no coloring')
     args = ap.parse_args()
 
     mon = Monitor(
         args.url,
-        args.introset
+        args.introset,
+        args.mono
     )
-    bits = args.bits
-    mon.filter = lambda x : re.match(args.filter, x) is not None
-    if args.invert_filter:
-        old_filter = mon.filter
-        mon.filter = lambda x : not old_filter(x)
+    mon.bits = args.bits
+    if args.filter:
+        mon.filter = lambda x : re.match(args.filter, x) is not None
     mon.run()
 
 if __name__ == "__main__":
