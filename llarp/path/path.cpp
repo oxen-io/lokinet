@@ -472,6 +472,11 @@ namespace llarp
           EnterState(ePathTimeout, now);
         }
       }
+      if (_status == ePathIgnore and now - m_LastRecvMessage >= path::alive_timeout)
+      {
+        // clean up this path as we dont use it anymore
+        EnterState(ePathExpired, now);
+      }
     }
 
     void
