@@ -479,7 +479,8 @@ namespace llarp
     {
       if (markedBad or path::Builder::BuildCooldownHit(now))
         return false;
-      if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
+
+      if (NumInStatus(path::ePathBuilding) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
         return false;
 
       size_t numValidPaths = 0;
