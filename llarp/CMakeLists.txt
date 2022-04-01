@@ -6,7 +6,6 @@ add_library(lokinet-util
   util/bencode.cpp
   util/buffer.cpp
   util/fs.cpp
-  util/json.cpp
   util/logging/android_logger.cpp
   util/logging/buffer.cpp
   util/logging/file_logger.cpp
