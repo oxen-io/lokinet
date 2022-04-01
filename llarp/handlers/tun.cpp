@@ -176,7 +176,7 @@ namespace llarp
 
       if (conf.m_AuthType == service::AuthType::eAuthTypeFile)
       {
-        m_AuthPolicy = service::MakeFileAuthPolicy(m_router, conf.m_AuthFiles);
+        m_AuthPolicy = service::MakeFileAuthPolicy(m_router, conf.m_AuthFiles, conf.m_AuthFileType);
       }
       else if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
       {

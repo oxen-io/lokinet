@@ -72,8 +72,15 @@ namespace llarp::service
     eAuthTypeWhitelist,
     /// LMQ server
     eAuthTypeLMQ,
-    /// plain file
+    /// static file
     eAuthTypeFile,
+  };
+
+  /// how to interpret an file for auth
+  enum class AuthFileType
+  {
+    eAuthFilePlain,
+    eAuthFileHashes,
   };
 
   /// get an auth type from a string
@@ -81,8 +88,13 @@ namespace llarp::service
   AuthType
   ParseAuthType(std::string arg);
 
+  /// get an auth file type from a string
+  /// throws std::invalid_argument if arg is invalid
+  AuthFileType
+  ParseAuthFileType(std::string arg);
+
   /// make an IAuthPolicy that reads out of a static file
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files);
+  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files, AuthFileType fileType);
 
 }  // namespace llarp::service

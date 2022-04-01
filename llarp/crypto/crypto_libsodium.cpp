@@ -13,6 +13,9 @@
 #include <llarp/util/str.hpp>
 #include <cassert>
 #include <cstring>
+#include <crypt.h>
+
+#include <llarp/util/str.hpp>
 
 extern "C"
 {
@@ -462,6 +465,21 @@ namespace llarp
     {
       auto d = keypair.data();
       crypto_kem_keypair(d + PQ_SECRETKEYSIZE, d);
+    }
+
+    bool
+    CryptoLibSodium::check_passwd_hash(std::string pwhash, std::string challenge)
+    {
+      bool ret = false;
+      auto pos = pwhash.find_last_of('$');
+      auto settings = pwhash.substr(0, pos);
+      crypt_data data{};
+      if (char* ptr = crypt_r(challenge.c_str(), settings.c_str(), &data))
+      {
+        ret = ptr == pwhash;
+      }
+      sodium_memzero(&data, sizeof(data));
+      return ret;
     }
   }  // namespace sodium
 

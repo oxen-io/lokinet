@@ -37,6 +37,21 @@ namespace llarp::service
     return itr->second;
   }
 
+  AuthFileType
+  ParseAuthFileType(std::string data)
+  {
+    std::unordered_map<std::string, AuthFileType> values = {
+        {"plain", AuthFileType::eAuthFilePlain},
+        {"plaintext", AuthFileType::eAuthFilePlain},
+        {"hashed", AuthFileType::eAuthFileHashes},
+        {"hashes", AuthFileType::eAuthFileHashes},
+        {"hash", AuthFileType::eAuthFileHashes}};
+    const auto itr = values.find(data);
+    if (itr == values.end())
+      throw std::invalid_argument("no such auth file type: " + data);
+    return itr->second;
+  }
+
   /// turn an auth result code into an int
   uint64_t
   AuthResultCodeAsInt(AuthResultCode code)
@@ -67,6 +82,7 @@ namespace llarp::service
   class FileAuthPolicy : public IAuthPolicy, public std::enable_shared_from_this<FileAuthPolicy>
   {
     const std::set<fs::path> m_Files;
+    const AuthFileType m_Type;
     AbstractRouter* const m_Router;
     mutable util::Mutex m_Access;
     std::unordered_set<ConvoTag> m_Pending;
@@ -86,8 +102,8 @@ namespace llarp::service
           const auto parts = split_any(line, "#;", true);
           if (auto part = parts[0]; not parts.empty() and not parts[0].empty())
           {
-            // split off whitespaces
-            if (TrimWhitespace(part) == info.token)
+            // split off whitespaces and check password
+            if (CheckPasswd(std::string{TrimWhitespace(part)}, info.token))
               return AuthResult{AuthResultCode::eAuthAccepted, "accepted by whitelist"};
           }
         }
@@ -95,9 +111,24 @@ namespace llarp::service
       return AuthResult{AuthResultCode::eAuthRejected, "rejected by whitelist"};
     }
 
+    bool
+    CheckPasswd(std::string hash, std::string challenge) const
+    {
+      switch (m_Type)
+      {
+        case AuthFileType::eAuthFilePlain:
+          return hash == challenge;
+        case AuthFileType::eAuthFileHashes:
+          return CryptoManager::instance()->check_passwd_hash(
+              std::move(hash), std::move(challenge));
+        default:
+          return false;
+      }
+    }
+
    public:
-    FileAuthPolicy(AbstractRouter* r, std::set<fs::path> files)
-        : m_Files{std::move(files)}, m_Router{r}
+    FileAuthPolicy(AbstractRouter* r, std::set<fs::path> files, AuthFileType filetype)
+        : m_Files{std::move(files)}, m_Type{filetype}, m_Router{r}
     {}
 
     void
@@ -145,9 +176,9 @@ namespace llarp::service
   };
 
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter* r, std::set<fs::path> files)
+  MakeFileAuthPolicy(AbstractRouter* r, std::set<fs::path> files, AuthFileType filetype)
   {
-    return std::make_shared<FileAuthPolicy>(r, std::move(files));
+    return std::make_shared<FileAuthPolicy>(r, std::move(files), filetype);
   }
 
 }  // namespace llarp::service

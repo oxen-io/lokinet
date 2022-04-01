@@ -243,7 +243,7 @@ if(WITH_HIVE)
 endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static)
-target_link_libraries(liblokinet PRIVATE libunbound)
+target_link_libraries(liblokinet PRIVATE libunbound crypt)
 
 
 if(BUILD_LIBLOKINET)
