@@ -450,9 +450,9 @@ class Monitor:
 
 
     @staticmethod
-    def make_bar(timestamp, scale=1, char='#'):
+    def make_bar(timestamp, scale=1, char='#', maxsize=60):
         if timestamp > 0:
-            return int((abs(timestamp - now()) / 1000) / scale) * char
+            return max(maxsize, int((abs(timestamp - now()) / 1000) / scale)) * char
         return ''
 
     def _display_our_introset(self, y_pos, context):
