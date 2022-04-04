@@ -260,15 +260,15 @@ namespace llarp
             OutboundMessage*,
             std::vector<OutboundMessage*>,
             ComparePtr<OutboundMessage*>>
-            resend;
+            to_resend;
         for (auto& [id, msg] : m_TXMsgs)
         {
           if (msg.ShouldFlush(now))
-            resend.push(&msg);
+            to_resend.push(&msg);
         }
-        if (not resend.empty())
+        if (not to_resend.empty())
         {
-          for (auto& msg = resend.top(); not resend.empty(); resend.pop())
+          for (auto& msg = to_resend.top(); not to_resend.empty(); to_resend.pop())
             msg->FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
         }
       }

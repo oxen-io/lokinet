@@ -6,12 +6,12 @@
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/path/path_types.hpp>
+#include <llarp/util/priority_queue.hpp>
 #include <llarp/router_id.hpp>
 
 #include <list>
 #include <unordered_map>
 #include <utility>
-#include <queue>
 
 struct llarp_buffer_t;
 
@@ -86,9 +86,9 @@ namespace llarp
       RouterID router;
 
       bool
-      operator<(const MessageQueueEntry& other) const
+      operator>(const MessageQueueEntry& other) const
       {
-        return other.priority < priority;
+        return priority > other.priority;
       }
     };
 
@@ -103,7 +103,7 @@ namespace llarp
       uint32_t numTicks = 0;
     };
 
-    using MessageQueue = std::priority_queue<MessageQueueEntry>;
+    using MessageQueue = util::ascending_priority_queue<MessageQueueEntry>;
 
     /* If a session is not yet created with the destination router for a message,
      * a special queue is created for that router and an attempt is made to
