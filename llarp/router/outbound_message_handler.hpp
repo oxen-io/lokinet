@@ -5,9 +5,11 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/priority_queue.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/util/priority_queue.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 #include <list>
 #include <unordered_map>
