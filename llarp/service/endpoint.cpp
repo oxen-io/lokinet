@@ -31,6 +31,7 @@
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/tunnel.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 #include <optional>
 #include <utility>
@@ -1636,7 +1637,7 @@ namespace llarp
         session->FlushDownstream();
 
       // handle inbound traffic sorted
-      std::priority_queue<ProtocolMessage> queue;
+      util::ascending_priority_queue<ProtocolMessage> queue;
       while (not m_InboundTrafficQueue.empty())
       {
         // succ it out
