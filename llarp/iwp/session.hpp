@@ -8,8 +8,8 @@
 #include <map>
 #include <unordered_set>
 #include <deque>
-#include <queue>
 
+#include <llarp/util/priority_queue.hpp>
 #include <llarp/util/thread/queue.hpp>
 
 namespace llarp
@@ -197,7 +197,7 @@ namespace llarp
       /// maps rxid to time recieved
       std::unordered_map<uint64_t, llarp_time_t> m_ReplayFilter;
       /// rx messages to send in next round of multiacks
-      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<>> m_SendMACKs;
+      util::ascending_priority_queue<uint64_t> m_SendMACKs;
 
       using CryptoQueue_t = std::vector<Packet_t>;
 
