@@ -1,13 +1,3 @@
-if (WITH_HIVE)
-  add_custom_target(hive_build DEPENDS liblokinet pyllarp)
-  add_custom_target(hive ${CMAKE_COMMAND} -E
-      env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pybind"
-      ${PYTHON_EXECUTABLE} -m pytest
-      ${CMAKE_CURRENT_SOURCE_DIR}/hive
-      DEPENDS
-      hive_build)
-endif()
-
 add_subdirectory(Catch2)
 
 add_executable(testAll
@@ -62,4 +52,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     target_link_directories(testAll PRIVATE /usr/local/lib)
 endif()
 
-add_custom_target(check COMMAND testAll)
+add_custom_target(run_testAll COMMAND testAll)
+set(othertests)
+if(WITH_PYBIND)
+  set(othertests pylokinet_test)
+endif()
+add_custom_target(check DEPENDS run_testAll ${othertests})
