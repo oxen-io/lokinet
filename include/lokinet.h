@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lokinet/lokinet_config.h"
 #include "lokinet/lokinet_context.h"
 #include "lokinet/lokinet_srv.h"
 #include "lokinet/lokinet_misc.h"

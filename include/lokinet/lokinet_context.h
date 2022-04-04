@@ -55,6 +55,10 @@ extern "C"
   int EXPORT
   lokinet_add_bootstrap_rc(const char*, size_t, struct lokinet_context*);
 
+  /// return pointer to lokinet configuration used by liblokinet
+  struct lokinet_config* EXPORT
+  lokinet_get_config(struct lokinet_context*);
+
 #ifdef __cplusplus
 }
 #endif

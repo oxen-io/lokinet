@@ -146,6 +146,12 @@ namespace lokinet
     {
       return lokinet_address(_impl);
     }
+
+    void
+    SetConfigOpt(std::string section, std::string key, std::string val)
+    {
+      lokinet_config_add_opt(lokinet_get_config(_impl), section.c_str(), key.c_str(), val.c_str());
+    }
   };
 
   std::shared_ptr<llarp::NodeDB>
@@ -164,6 +170,7 @@ namespace lokinet
         .def_readwrite("nodedb_load", &PyContext::load)
         .def_readwrite("nodedb_store", &PyContext::store)
         .def_readwrite("nodedb_del", &PyContext::del)
+        .def("set_config_opt", &PyContext::SetConfigOpt)
         .def("start", &PyContext::Start)
         .def("add_bootstrap_rc", &PyContext::AddBootstrapRC)
         .def("stop", &PyContext::Stop)

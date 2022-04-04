@@ -3,6 +3,8 @@
 import pylokinet
 from pylokinet import Context as Lokinet
 
+pylokinet.set_net_id("gamma")
+
 import os
 import time
 
@@ -25,7 +27,7 @@ def test_lokinet_run():
     ctx.nodedb_load = load_nodedb
     ctx.nodedb_store = store_nodedb
     ctx.nodedb_del = del_nodedb_entry
-    req = requests.get("https://seed.lokinet.org/lokinet.signed", stream=True)
+    req = requests.get("https://seed.lokinet.org/testnet.signed", stream=True)
     ctx.add_bootstrap_rc(req.content)
     print("starting....")
     ctx.start()

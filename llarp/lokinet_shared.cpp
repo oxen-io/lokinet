@@ -218,6 +218,20 @@ namespace
   };
 }  // namespace
 
+struct lokinet_config
+{
+  std::shared_ptr<llarp::Config>& impl;
+
+  explicit lokinet_config(std::shared_ptr<llarp::Config>& c) : impl{c}
+  {}
+
+  void
+  AddOpt(std::string sect, std::string key, std::string val)
+  {
+    impl->AddDefault(sect, key, val);
+  }
+};
+
 struct lokinet_context
 {
   std::mutex m_access;
@@ -226,6 +240,8 @@ struct lokinet_context
   std::shared_ptr<llarp::Config> config;
 
   std::unique_ptr<std::thread> runner;
+
+  lokinet_config config_ptr{config};
 
   int _socket_id;
 
@@ -1091,5 +1107,20 @@ extern "C"
   lokinet_version_str()
   {
     return llarp::VERSION_FULL;
+  }
+
+  void EXPORT
+  lokinet_config_add_opt(
+      struct lokinet_config* config, const char* section, const char* key, const char* val)
+
+  {
+    config->AddOpt(section, key, val);
+  }
+
+  struct lokinet_config* EXPORT
+  lokinet_get_config(struct lokinet_context* ctx)
+
+  {
+    return &ctx->config_ptr;
   }
 }
