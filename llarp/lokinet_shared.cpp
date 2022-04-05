@@ -634,7 +634,12 @@ extern "C"
       return -1;
     if (not ctx->impl->LooksAlive())
       return -2;
-    return ctx->endpoint()->IsReady() ? 0 : -1;
+    auto check_ready = [ep = ctx->endpoint(), impl = ctx->impl]() -> bool {
+      std::promise<bool> pr;
+      impl->CallSafe([&pr, ep]() { pr.set_value(ep->IsReady()); });
+      return pr.get_future().get();
+    };
+    return check_ready() ? 0 : -1;
   }
 
   int EXPORT
@@ -652,12 +657,19 @@ extern "C"
       ms = 10;
       iterations = 1;
     }
-    while (not ep->IsReady() and iterations > 0)
+    auto check_ready = [ep, impl = ctx->impl]() -> bool {
+      if (not impl->IsUp())
+        return false;
+      std::promise<bool> pr;
+      impl->CallSafe([&pr, ep]() { pr.set_value(ep->IsReady()); });
+      return pr.get_future().get();
+    };
+    while (not check_ready() and iterations > 0)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds{ms / 10});
       iterations--;
     }
-    return ep->IsReady() ? 0 : -1;
+    return check_ready() ? 0 : -1;
   }
 
   void EXPORT

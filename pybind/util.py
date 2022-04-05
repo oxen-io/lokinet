@@ -25,39 +25,50 @@ class Waiter(Thread):
         Thread.__init__(self)
         self._wait_for = wait_for
         self._work_completed = False
+        self._work_over = False
         self._finished = finish
 
     def done(self):
         self._work_completed = True
 
+    @property
+    def working(self):
+        return not self._work_completed and not self._work_over
+
     def run(self):
         time.sleep(self._wait_for)
+        self._work_over = True
         if self._finished:
             self._finished(self._work_completed)
 
-def _ended(ctx, good):
+def hook(ctx, good):
     ctx.stop()
     assert good
 
-def lokinet_run(wait_for, snode="55fxnzi5myfm1ypnx5w4c5714jgo15tks45dgf6isgut9onnduxo.snode:35515"):
+def lokinet_run(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode:35520"):
     ctx = Lokinet()
-    waiter = Waiter(wait_for, lambda good: _ended(ctx, good))
+    waiter = Waiter(wait_for, lambda good: hook(ctx, good))
     waiter.start()
-    ctx.set_config_opt('network', 'hops', '2')
+    # pin first hops
+    if pin_hops:
+        for hop in ('55fxngtbfyfsjxy1tnw6qruzjm64rr96pews7bmg5an39zihnrxo.snode', '55fxypc8dkw7t364ekxu1hehg1xuonnyitfdyijosso3agd3g4yo.snode'):
+            ctx.set_config_opt('network', 'strict-connect', hop)
+    ctx.set_config_opt('router', 'min-routers', '2')
     ctx.set_config_opt('network', 'reachable', 'false')
     ctx.set_config_opt('api', 'enabled', 'false')
-    ctx.set_config_opt('logging', 'level', 'trace')
+    ctx.set_config_opt('logging', 'level', 'info')
     ctx.set_config_opt('network', 'profiling', 'false')
 
-    ctx.nodedb_load = load_nodedb
-    ctx.nodedb_store = store_nodedb
-    ctx.nodedb_del = del_nodedb_entry
+    if custom_nodedb:
+        ctx.nodedb_load = load_nodedb
+        ctx.nodedb_store = store_nodedb
+        ctx.nodedb_del = del_nodedb_entry
     req = requests.get("https://seed.lokinet.org/testnet.signed", stream=True)
     ctx.add_bootstrap_rc(req.content)
     print("starting....")
     ctx.start()
     while not ctx.wait_for_ready(100):
-        pass
+        assert waiter.working
     print(f"we are {ctx.localaddr()}")
     id = None
     try:
