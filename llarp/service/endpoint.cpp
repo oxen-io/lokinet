@@ -1629,7 +1629,10 @@ namespace llarp
           }
         }
         if (not SendToOrQueue(*maybe, pkt, t))
+        {
+          LogWarn("SendToOrQueue failed: message not sent");
           return false;
+        }
         return true;
       }
       LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
@@ -1640,6 +1643,17 @@ namespace llarp
     Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
       LogTrace("SendToOrQueue: sending to snode ", addr);
+      if (t == ProtocolType::QUIC)
+      {
+        return EnsurePathToSNode(
+            addr, [this, pkt = buf.copy(), t, r = Router()](auto, auto session, auto) {
+              if (session)
+              {
+                session->SendPacketToRemote(llarp_buffer_t{pkt}, t);
+                r->TriggerPump();
+              }
+            });
+      }
       auto pkt = std::make_shared<net::IPPacket>();
       if (!pkt->Load(buf))
         return false;
