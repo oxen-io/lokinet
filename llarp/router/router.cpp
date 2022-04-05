@@ -71,6 +71,10 @@ namespace llarp
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
     m_Pump = _loop->make_waker([this]() { PumpLL(); });
+    m_PumpLinks = _loop->make_waker([this]() {
+      _outboundMessageHandler.Pump();
+      _linkManager.PumpLinks();
+    });
   }
 
   Router::~Router()
@@ -288,7 +292,12 @@ namespace llarp
   bool
   Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
   {
-    return _outboundMessageHandler.QueueMessage(remote, msg, handler);
+    if (not _outboundMessageHandler.QueueMessage(remote, msg, handler))
+      return false;
+    // TODO: uncomment me when we know _stopping is set to true after sending path close messages
+    // if (not _stopping.load())
+    m_PumpLinks->Trigger();
+    return true;
   }
 
   void
