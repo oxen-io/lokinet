@@ -655,17 +655,16 @@ extern "C"
   {
     if (not ctx)
       return;
+    if (not ctx->runner)
+      return;
     auto lock = ctx->acquire();
-
     if (ctx->impl->IsStopping())
       return;
 
     ctx->impl->CloseAsync();
-    ctx->impl->Wait();
-
     if (ctx->runner)
       ctx->runner->join();
-
+    ctx->impl->Wait();
     ctx->runner.reset();
   }
 
