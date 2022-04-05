@@ -321,7 +321,16 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   docs_pipeline('Documentation',
                 docker_base + 'docbuilder',
                 extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
-
+  // integration tests
+  debian_pipeline(
+    'pybind',
+    docker_base + 'ubuntu-lts',
+    deps=['python3-dev', 'python3-pytest', 'python3-pybind11', 'python3-requests'] + default_deps,
+    cmake_extra='-DWITH_PYBIND=ON -DUSE_JEMALLOC=OFF',
+    extra_cmds=[
+      'PYTHONPATH=pybind ../contrib/ci/drone-gdb.sh python3 -m pytest ../pybind/',
+    ]
+  ),
   // Various debian builds
   debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
   debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
@@ -385,17 +394,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                     'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
                   ],
                   jobs=4),
-
-  // integration tests
-  debian_pipeline(
-    'pybind',
-    docker_base + 'ubuntu-lts',
-    deps=['python3-dev', 'python3-pytest', 'python3-pybind11', 'python3-requests'] + default_deps,
-    cmake_extra='-DWITH_PYBIND=ON -DUSE_JEMALLOC=OFF',
-    extra_cmds=[
-      'PYTHONPATH=pybind ../contrib/ci/drone-gdb.sh python3 -m pytest ../pybind/',
-    ]
-  ),
 
   // Deb builds:
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid'),
