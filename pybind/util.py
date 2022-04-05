@@ -49,7 +49,7 @@ def hook(ctx, good, trial, check=True):
     if check:
         assert good
 
-def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), target=("55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode", 35520), check=True):
+def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), target=("55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode", 35520), check=True, loglevel='trace'):
     ctx = Lokinet()
     waiter = Waiter(wait_for, lambda good: hook(ctx, good, trial, check))
     waiter.start()
@@ -59,9 +59,9 @@ def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), target=("55f
             ctx.set_config_opt('network', 'strict-connect', hop)
         ctx.set_config_opt('router', 'min-routers', f'len(pin_hops)')
         ctx.set_config_opt('router', 'max-routers', f'len(pin_hops)')
-    #ctx.set_config_opt('network', 'reachable', 'false')
+    ctx.set_config_opt('network', 'reachable', 'false')
     ctx.set_config_opt('api', 'enabled', 'false')
-    ctx.set_config_opt('logging', 'level', 'none')
+    ctx.set_config_opt('logging', 'level', f'{loglevel}')
     ctx.set_config_opt('network', 'profiling', 'false')
 
     if nodedb is not None:
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     pylokinet.set_log_level('none')
     for n in range(times):
         try:
-            if run_lokinet(timeout, target=('blocks.loki', 80), nodedb=db, check=False, trial=f'{datetime.now()} | test {1+n}'):
+            if run_lokinet(timeout, target=('blocks.loki', 80), nodedb=db, check=False, trial=f'{datetime.now()} | test {1+n}', loglevel='none'):
                 good += 1
             else:
                 fails += 1
