@@ -87,6 +87,12 @@ namespace llarp
       return hops[hops.size() - 1].rc.pubkey;
     }
 
+    PathID_t
+    Path::EndpointTag() const
+    {
+      return hops[hops.size() - 1].rxID;
+    }
+
     PubKey
     Path::EndpointPubKey() const
     {

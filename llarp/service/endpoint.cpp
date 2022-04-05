@@ -225,11 +225,15 @@ namespace llarp
 
       for (const auto& item : m_state->m_SNodeSessions)
       {
-        if (const auto maybe = item.second->CurrentPath())
-        {
-          if (ConvoTag{maybe->as_array()} == tag)
-            return item.first;
-        }
+        bool found{false};
+        item.second->ForEachPath([want = PathID_t{tag.as_array()}, &found](const auto& path) {
+          if (found)
+            return;
+          found = path->EndpointTag() == want;
+        });
+
+        if (found)
+          return item.first;
       }
       return std::nullopt;
     }

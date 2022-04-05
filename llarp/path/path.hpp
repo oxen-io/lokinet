@@ -353,6 +353,9 @@ namespace llarp
       RouterID
       Endpoint() const;
 
+      PathID_t
+      EndpointTag() const;
+
       PubKey
       EndpointPubKey() const;
 
