@@ -411,7 +411,7 @@ namespace llarp::quic
     // FIXME: IPv6
     settings.max_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
-    // settings.initial_rtt = ???; # NGTCP2's default is 333ms
+    settings.initial_rtt = 100;
 
     ngtcp2_transport_params_default(&tparams);
 
