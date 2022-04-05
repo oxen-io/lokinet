@@ -1525,57 +1525,61 @@ namespace llarp
       auto& nodeSessions = m_state->m_SNodeSessions;
 
       using namespace std::placeholders;
-      if (nodeSessions.count(snode) == 0)
+      std::shared_ptr<exit::BaseSession> session;
+      if (nodeSessions.count(snode))
       {
-        const auto src = xhtonl(net::TruncateV6(GetIfAddr()));
-        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode)));
+        session = nodeSessions[snode];
+      }
+      else
+      {
+        EnsureRouterIsKnown(snode);
+        const auto src = GetIfAddr();
+        const auto dst = ObtainIPForAddr(snode);
 
-        auto session = std::make_shared<exit::SNodeSession>(
+        session = std::make_shared<exit::SNodeSession>(
             snode,
-            [=](const llarp_buffer_t& buf) -> bool {
-              net::IPPacket pkt;
+            [this, src, dst, snode](const llarp_buffer_t& buf) -> bool {
+              net::IPPacket pkt{};
               if (not pkt.Load(buf))
                 return false;
-              pkt.UpdateIPv4Address(src, dst);
-              /// TODO: V6
+              if (pkt.IsV6())
+              {
+                pkt.UpdateIPv6Address(src, dst);
+              }
+              else if (pkt.IsV4())
+              {
+                pkt.UpdateIPv4Address(ToNet(net::TruncateV6(src)), ToNet(net::TruncateV6(dst)));
+              }
+              else
+                return false;
+
               auto itr = m_state->m_SNodeSessions.find(snode);
               if (itr == m_state->m_SNodeSessions.end())
                 return false;
               if (const auto maybe = itr->second->CurrentPath())
                 return HandleInboundPacket(
-                    ConvoTag{maybe->as_array()}, pkt.ConstBuffer(), ProtocolType::TrafficV4, 0);
+                    ConvoTag{maybe->as_array()}, pkt.ConstBuffer(), pkt.ServiceProtocol(), 0);
               return false;
             },
             Router(),
             2,
             numHops,
             this);
-        m_state->m_SNodeSessions[snode] = session;
+
+        nodeSessions[snode] = session;
       }
-      EnsureRouterIsKnown(snode);
-      auto range = nodeSessions.equal_range(snode);
-      auto itr = range.first;
-      while (itr != range.second)
-      {
-        if (itr->second->IsReady())
-          h(snode, itr->second, ConvoTag{itr->second->CurrentPath()->as_array()});
+
+      session->AddReadyHook([h, snode](auto session) {
+        if (session)
+        {
+          h(snode, session, ConvoTag{session->CurrentPath()->as_array()});
+        }
         else
         {
-          itr->second->AddReadyHook([h, snode](auto session) {
-            if (session)
-            {
-              h(snode, session, ConvoTag{session->CurrentPath()->as_array()});
-            }
-            else
-            {
-              h(snode, nullptr, ConvoTag{});
-            }
-          });
-          if (not itr->second->BuildCooldownHit(Now()))
-            itr->second->BuildOne();
+          h(snode, nullptr, ConvoTag{});
         }
-        ++itr;
-      }
+      });
+
       return true;
     }
 
