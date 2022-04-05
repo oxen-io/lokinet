@@ -701,6 +701,9 @@ namespace llarp
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
         MarkActive(now);
+        // we are established if we are doing a sode build
+        if ((_role & ePathRoleSVC) == ePathRoleSVC)
+          EnterState(ePathEstablished, now);
         return SendLatencyMessage(r);
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(), " rx=", RXID());
