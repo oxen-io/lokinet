@@ -159,11 +159,11 @@ namespace lokinet
     }
 
     std::tuple<std::string, int, int>
-    ResolveOutbound(std::string remoteAddr)
+    ResolveOutbound(std::string remoteAddr, int timeout)
     {
       py::gil_scoped_release gil{};
       lokinet_stream_result result{};
-      lokinet_outbound_stream(&result, remoteAddr.c_str(), nullptr, _impl);
+      lokinet_outbound_stream(&result, remoteAddr.c_str(), nullptr, timeout, _impl);
       if (result.error)
         throw std::runtime_error{strerror(result.error)};
       return std::make_tuple(result.local_address, result.local_port, result.stream_id);

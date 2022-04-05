@@ -72,7 +72,7 @@ def lokinet_run(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxryb
     print(f"we are {ctx.localaddr()}")
     id = None
     try:
-        addr, port, id = ctx.resolve(snode)
+        addr, port, id = ctx.resolve(snode, wait_for)
         print(f"resolved {snode} as {addr}:{port} on {id}")
         resp = requests.get(f"https://{addr}:{port}/", verify=False)
         print(resp.text)

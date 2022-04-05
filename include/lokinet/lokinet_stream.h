@@ -25,12 +25,14 @@ extern "C"
 
   /// connect out to a remote endpoint
   /// remoteAddr is in the form of "name:port"
+  /// timeout is the number of seconds to wait for connection, must be posative.
   /// localAddr is either NULL for any or in the form of "ip:port" to bind to an explicit address
   void EXPORT
   lokinet_outbound_stream(
       struct lokinet_stream_result* result,
       const char* remoteAddr,
       const char* localAddr,
+      int timeout,
       struct lokinet_context* context);
 
   /// stream accept filter determines if we should accept a stream or not

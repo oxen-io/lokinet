@@ -695,8 +695,14 @@ extern "C"
       struct lokinet_stream_result* result,
       const char* remote,
       const char* local,
+      int timeout,
       struct lokinet_context* ctx)
   {
+    if (timeout <= 0)
+    {
+      stream_error(result, EINVAL);
+      return;
+    }
     if (ctx == nullptr)
     {
       stream_error(result, EHOSTDOWN);
@@ -750,37 +756,58 @@ extern "C"
                    endpoint,
                    localAddr]() {
         auto ep = ctx->endpoint();
+        auto fail = [result, &promise](int code) {
+          stream_error(result, code);
+          promise.set_value();
+        };
         if (ep == nullptr)
         {
-          stream_error(result, ENOTSUP);
-          promise.set_value();
+          fail(ENOTSUP);
           return;
         }
+
         auto* quic = ep->GetQUICTunnel();
+
         if (quic == nullptr)
         {
-          stream_error(result, ENOTSUP);
-          promise.set_value();
+          fail(ENOTSUP);
           return;
         }
-        try
-        {
-          auto [addr, id] = quic->open(
-              remotehost, remoteport, [](auto) {}, localAddr);
-          auto [host, port] = split_host_port(addr.toString());
-          ctx->outbound_stream(id);
-          stream_okay(result, host, port, id);
-        }
-        catch (std::exception& ex)
-        {
-          std::cout << ex.what() << std::endl;
-          stream_error(result, ECANCELED);
-        }
-        catch (int err)
-        {
-          stream_error(result, err);
-        }
-        promise.set_value();
+
+        auto callback =
+            [quic, remotehost, remoteport, localAddr, endpoint, ctx, result, fail, &promise](
+                auto maybe) {
+              if (not maybe)
+              {
+                fail(EHOSTDOWN);
+                return;
+              }
+              try
+              {
+                auto [addr, id] = quic->open(
+                    remotehost, remoteport, [](auto) {}, localAddr);
+                auto [host, port] = split_host_port(addr.toString());
+                ctx->outbound_stream(id);
+                stream_okay(result, host, port, id);
+              }
+              catch (std::exception& ex)
+              {
+                std::cout << ex.what() << std::endl;
+                fail(ECANCELED);
+              }
+              catch (int err)
+              {
+                fail(err);
+              }
+            };
+        ep->LookupNameAsync(remotehost, [callback, fail, ep](auto maybe) {
+          if (not maybe)
+          {
+            fail(EHOSTUNREACH);
+            return;
+          }
+          ep->EnsurePathTo(*maybe, callback, 5s);
+        });
       };
 
       ctx->impl->CallSafe([call]() {

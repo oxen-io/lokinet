@@ -196,7 +196,9 @@ namespace llarp
       if (not m_router->IsReady())
         return false;
       if (not m_PublishIntroSet)
-        return true;
+      {
+        return NumInStatus(path::ePathEstablished) > 0;
+      }
       const auto now = Now();
       if (introSet().intros.empty())
         return false;
@@ -945,6 +947,11 @@ namespace llarp
         std::string name,
         std::function<void(std::optional<std::variant<Address, RouterID>>)> handler)
     {
+      if (auto maybe = ParseAddress(name))
+      {
+        handler(*maybe);
+        return;
+      }
       if (not NameIsValid(name))
       {
         handler(std::nullopt);
