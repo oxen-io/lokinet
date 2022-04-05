@@ -80,6 +80,7 @@ def lokinet_run(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxryb
         if id:
             ctx.unresolve(id)
     waiter.done()
+    del ctx
 
 if __name__ == '__main__':
     lokinet_run(30)
