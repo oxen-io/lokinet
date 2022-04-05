@@ -16,7 +16,7 @@ add_log_tag(pylokinet)
 
 if (WITH_TESTS)
   add_custom_target(pylokinet_build DEPENDS liblokinet pylokinet)
-  add_custom_target(pylokinet_test ${CMAKE_COMMAND} -E
+  add_custom_target(pytest ${CMAKE_COMMAND} -E
       env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pybind"
       ${PYTHON_EXECUTABLE} -m pytest
       ${CMAKE_CURRENT_SOURCE_DIR}

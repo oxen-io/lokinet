@@ -354,7 +354,9 @@ struct lokinet_context
   [[nodiscard]] auto
   endpoint(std::string name = "default") const
   {
-    return impl->router->hiddenServiceContext().GetEndpointByName(name);
+    if (impl and impl->router)
+      return impl->router->hiddenServiceContext().GetEndpointByName(name);
+    return std::shared_ptr<llarp::service::Endpoint>{nullptr};
   }
 
   std::unordered_map<int, bool> streams;
@@ -578,7 +580,8 @@ extern "C"
   {
     if (lokinet_status(ctx) != -3)
       lokinet_context_stop(ctx);
-    delete ctx;
+    if (ctx)
+      delete ctx;
   }
 
   int EXPORT
@@ -587,8 +590,13 @@ extern "C"
     if (not ctx)
       return -1;
     auto lock = ctx->acquire();
-    ctx->config->router.m_netId = lokinet_get_netid();
-    ctx->config->logging.m_logLevel = llarp::GetLogLevel();
+    if (not ctx->config->Load())
+      return -2;
+
+    // make sure these are set always
+    ctx->config->network.m_endpointType = "null";
+    ctx->config->network.m_saveProfiles = false;
+
     ctx->runner = std::make_unique<std::thread>([ctx]() {
       llarp::util::SetThreadName("llarp-mainloop");
       ctx->impl->Configure(ctx->config);
@@ -607,12 +615,6 @@ extern "C"
         ctx->impl->CloseAsync();
       }
     });
-    while (not ctx->impl->IsUp())
-    {
-      if (ctx->impl->IsStopping())
-        return -1;
-      std::this_thread::sleep_for(50ms);
-    }
     return 0;
   }
 
@@ -623,7 +625,7 @@ extern "C"
       return -3;
     auto lock = ctx->acquire();
     if (not ctx->impl->IsUp())
-      return -3;
+      return -1;
     if (not ctx->impl->LooksAlive())
       return -2;
     return ctx->endpoint()->IsReady() ? 0 : -1;
@@ -636,6 +638,8 @@ extern "C"
       return -1;
     auto lock = ctx->acquire();
     auto ep = ctx->endpoint();
+    if (ep == nullptr)
+      return -1;
     int iterations = ms / 10;
     if (iterations <= 0)
     {

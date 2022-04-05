@@ -66,6 +66,17 @@ namespace llarp
     bool
     Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
     {
+      if (conf.m_reachable)
+      {
+        m_PublishIntroSet = true;
+        LogInfo(Name(), " setting to be reachable by default");
+      }
+      else
+      {
+        m_PublishIntroSet = false;
+        LogInfo(Name(), " setting to be not reachable by default");
+      }
+
       if (conf.m_Paths.has_value())
         numDesiredPaths = *conf.m_Paths;
 
@@ -182,6 +193,8 @@ namespace llarp
     bool
     Endpoint::IsReady() const
     {
+      if (not m_PublishIntroSet)
+        return true;
       const auto now = Now();
       if (introSet().intros.empty())
         return false;

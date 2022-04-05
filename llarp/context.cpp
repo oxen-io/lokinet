@@ -138,7 +138,7 @@ namespace llarp
     if (IsStopping())
       return;
 
-    loop->call([this]() { HandleSignal(SIGTERM); });
+    loop->call_soon([this]() { HandleSignal(SIGTERM); });
     closeWaiter = std::make_unique<std::promise<void>>();
   }
 

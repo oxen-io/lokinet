@@ -28,7 +28,8 @@ extern "C"
 
   /// spawn all the threads needed for operation and start running
   /// return 0 on success
-  /// return non zero on fail
+  /// return -1 on bad state
+  /// return -2 on bad configuration
   int EXPORT
   lokinet_context_start(struct lokinet_context*);
 

@@ -163,17 +163,6 @@ namespace llarp
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
-      if (conf.m_reachable)
-      {
-        m_PublishIntroSet = true;
-        LogInfo(Name(), " setting to be reachable by default");
-      }
-      else
-      {
-        m_PublishIntroSet = false;
-        LogInfo(Name(), " setting to be not reachable by default");
-      }
-
       if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
       {
         std::string url, method;

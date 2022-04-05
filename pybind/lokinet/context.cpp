@@ -96,18 +96,19 @@ namespace lokinet
       lokinet_context_free(_impl);
     }
 
-    bool
+    void
     Start()
     {
       py::gil_scoped_release gil{};
-      return lokinet_context_start(_impl) == 0;
+      if (lokinet_context_start(_impl))
+        throw std::runtime_error{"cannot start liblokinet context"};
     }
 
     void
     Stop()
     {
       py::gil_scoped_release gil{};
-      return lokinet_context_stop(_impl);
+      lokinet_context_stop(_impl);
     }
 
     std::string
@@ -131,6 +132,7 @@ namespace lokinet
     void
     AddBootstrapRC(std::string_view data)
     {
+      py::gil_scoped_release gil{};
       if (lokinet_add_bootstrap_rc(data.data(), data.size(), _impl))
         throw std::runtime_error{"failed to set boostrap data"};
     }
@@ -138,18 +140,21 @@ namespace lokinet
     bool
     WaitForReady(int N)
     {
+      py::gil_scoped_release gil{};
       return lokinet_wait_for_ready(N, _impl) == 0;
     }
 
     std::string
     LocalAddress()
     {
+      py::gil_scoped_release gil{};
       return lokinet_address(_impl);
     }
 
     void
     SetConfigOpt(std::string section, std::string key, std::string val)
     {
+      py::gil_scoped_release gil{};
       lokinet_config_add_opt(lokinet_get_config(_impl), section.c_str(), key.c_str(), val.c_str());
     }
   };

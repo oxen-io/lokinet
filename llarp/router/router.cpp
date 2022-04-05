@@ -1280,7 +1280,9 @@ namespace llarp
 
     LogInfo("have ", _nodedb->NumLoaded(), " routers");
 
-    _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
+    auto call_tick = [this] { Tick(); };
+
+    _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), call_tick);
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1357,6 +1359,8 @@ namespace llarp
       });
     }
     LogContext::Instance().DropToRuntimeLevel();
+    // queue a tick to start the path building
+    _loop->call_soon(call_tick);
     return _running;
   }
 
