@@ -307,6 +307,17 @@ namespace llarp
       return false;
     };
 
+    /// returns true if we are in a state were we are able to start talking to the network
+    bool
+    IsReady() const
+    {
+      if (IsServiceNode())
+        return true;
+      if (auto config = GetConfig())
+        return NumberOfConnectedRouters() >= config->router.m_minConnectedRouters;
+      return false;
+    }
+
     virtual path::BuildLimiter&
     pathBuildLimiter() = 0;
 

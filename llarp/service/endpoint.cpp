@@ -193,6 +193,8 @@ namespace llarp
     bool
     Endpoint::IsReady() const
     {
+      if (not m_router->IsReady())
+        return false;
       if (not m_PublishIntroSet)
         return true;
       const auto now = Now();
@@ -1998,6 +2000,8 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
+      if (not m_router->IsReady())
+        return false;
       if (BuildCooldownHit(now))
         return false;
       const auto requiredPaths = std::max(numDesiredPaths, path::min_intro_paths);

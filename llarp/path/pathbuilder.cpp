@@ -321,6 +321,8 @@ namespace llarp
     bool
     Builder::ShouldBuildMore(llarp_time_t now) const
     {
+      if (not m_router->IsReady())
+        return false;
       if (IsStopped())
         return false;
       if (BuildCooldownHit(now))

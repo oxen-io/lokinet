@@ -1286,7 +1286,10 @@ namespace llarp
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "READY=1");
+    if (IsReady())
+      ::sd_notify(0, "READY=1");
+    else
+      ::sd_notify(0, "READY=0");
 #endif
     if (whitelistRouters)
     {
