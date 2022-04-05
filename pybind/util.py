@@ -30,6 +30,7 @@ class Waiter(Thread):
 
     def done(self):
         self._work_completed = True
+        self.join()
 
     @property
     def working(self):
@@ -43,26 +44,28 @@ class Waiter(Thread):
 
 def hook(ctx, good):
     ctx.stop()
+    print(f'test was {"" if good else "no"} bueno')
     assert good
 
-def run_lokinet(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode:35520"):
+def run_lokinet(wait_for, *, nodedb_class=dict, pin_hops=list(), snode="55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode:35520"):
     ctx = Lokinet()
     waiter = Waiter(wait_for, lambda good: hook(ctx, good))
     waiter.start()
     # pin first hops
     if pin_hops:
-        for hop in ('55fxngtbfyfsjxy1tnw6qruzjm64rr96pews7bmg5an39zihnrxo.snode', '55fxypc8dkw7t364ekxu1hehg1xuonnyitfdyijosso3agd3g4yo.snode'):
+        for hop in pin_hops:
             ctx.set_config_opt('network', 'strict-connect', hop)
-    ctx.set_config_opt('router', 'min-routers', '2')
+        ctx.set_config_opt('router', 'min-routers', f'len(pin_hops)')
     ctx.set_config_opt('network', 'reachable', 'false')
     ctx.set_config_opt('api', 'enabled', 'false')
     ctx.set_config_opt('logging', 'level', 'info')
     ctx.set_config_opt('network', 'profiling', 'false')
-
-    if custom_nodedb:
-        ctx.nodedb_load = load_nodedb
-        ctx.nodedb_store = store_nodedb
-        ctx.nodedb_del = del_nodedb_entry
+    db = None
+    if nodedb_class:
+        db = nodedb_class()
+        ctx.nodedb_load = lambda : db
+        ctx.nodedb_store = db.__setitem__
+        ctx.nodedb_del = db.__delitem__
     req = requests.get("https://seed.lokinet.org/testnet.signed", stream=True)
     ctx.add_bootstrap_rc(req.content)
     print("starting....")
@@ -76,11 +79,15 @@ def run_lokinet(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxryb
         print(f"resolved {snode} as {addr}:{port} on {id}")
         resp = requests.get(f"https://{addr}:{port}/", verify=False)
         print(resp.text)
+    except Exception as ex:
+        print(f'failed: {ex}')
     finally:
         if id:
             ctx.unresolve(id)
     waiter.done()
     del ctx
+    print(f'we have {len(db)} nodedb entries left over')
+    print(f'{list(db.keys())}')
 
 if __name__ == '__main__':
     run_lokinet(30)
