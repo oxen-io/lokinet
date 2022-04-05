@@ -445,6 +445,7 @@ namespace llarp
                     "Not allocating temp session for snode ",
                     themKey,
                     " as they are not permitted to due to network policy");
+                status = LR_StatusRecord::FAIL_DEST_INVALID;
               }
             }
             else
@@ -458,6 +459,7 @@ namespace llarp
                     "Not allocating temp session for indirect request from ",
                     themKey,
                     " they seem to be a router");
+                status = LR_StatusRecord::FAIL_DEST_INVALID;
               }
               else
               {
@@ -469,7 +471,7 @@ namespace llarp
           else
           {
             LogWarn("Not allocating session from ", themKey, " invalid signature");
-            status = LR_StatusRecord::FAIL_MALFORMED_RECORD;
+            status = LR_StatusRecord::FAIL_DEST_INVALID;
           }
         }
       }

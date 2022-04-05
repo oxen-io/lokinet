@@ -53,11 +53,12 @@ namespace llarp
       }
       // generate nonceXOR valueself->hop->pathKey
       crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
+      // advance the index
       ++idx;
 
       bool isFarthestHop = idx == path->hops.size();
 
-      LR_CommitRecord record;
+      LR_CommitRecord record{};
       // build record
       record.lifetime = path::default_lifetime;
       record.version = LLARP_PROTO_VERSION;
@@ -85,14 +86,13 @@ namespace llarp
       }
       else
       {
-        hop.upstream = path->hops[idx].rc.pubkey;
-        record.nextHop = hop.upstream;
+        hop.upstream = record.nextHop = path->hops[idx].rc.pubkey;
       }
 
       llarp_buffer_t buf(frame.data(), frame.size());
       buf.cur = buf.base + EncryptedFrameOverheadSize;
       // encode record
-      if (!record.BEncode(&buf))
+      if (not record.BEncode(&buf))
       {
         // failed to encode?
         LogError(pathset->Name(), " Failed to generate Commit Record");
@@ -102,7 +102,7 @@ namespace llarp
       // use ephemeral keypair for frame
       SecretKey framekey;
       crypto->encryption_keygen(framekey);
-      if (!frame.EncryptInPlace(framekey, hop.rc.enckey))
+      if (not frame.EncryptInPlace(framekey, hop.rc.enckey))
       {
         LogError(pathset->Name(), " Failed to encrypt LRCR");
         return;
