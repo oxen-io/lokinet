@@ -615,6 +615,12 @@ extern "C"
         ctx->impl->CloseAsync();
       }
     });
+    while (not ctx->impl->IsUp())
+    {
+      if (ctx->impl->IsStopping())
+        return -1;
+      std::this_thread::sleep_for(50ms);
+    }
     return 0;
   }
 

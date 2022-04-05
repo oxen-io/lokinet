@@ -157,6 +157,23 @@ namespace lokinet
       py::gil_scoped_release gil{};
       lokinet_config_add_opt(lokinet_get_config(_impl), section.c_str(), key.c_str(), val.c_str());
     }
+
+    std::tuple<std::string, int, int>
+    ResolveOutbound(std::string remoteAddr)
+    {
+      py::gil_scoped_release gil{};
+      lokinet_stream_result result{};
+      lokinet_outbound_stream(&result, remoteAddr.c_str(), nullptr, _impl);
+      if (result.error)
+        throw std::runtime_error{strerror(result.error)};
+      return std::make_tuple(result.local_address, result.local_port, result.stream_id);
+    }
+
+    void
+    CloseSocket(int id)
+    {
+      lokinet_close_stream(id, _impl);
+    }
   };
 
   std::shared_ptr<llarp::NodeDB>
@@ -181,7 +198,9 @@ namespace lokinet
         .def("stop", &PyContext::Stop)
         .def("status", &PyContext::Status)
         .def("wait_for_ready", &PyContext::WaitForReady)
-        .def("localaddr", &PyContext::LocalAddress);
+        .def("localaddr", &PyContext::LocalAddress)
+        .def("resolve", &PyContext::ResolveOutbound)
+        .def("unresolve", &PyContext::CloseSocket);
   }
 
 }  // namespace lokinet

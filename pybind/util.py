@@ -18,7 +18,7 @@ def store_nodedb(k, v):
 def del_nodedb_entry(k):
     print(f'delete entry from nodedb: {k}')
 
-def lokinet_run(wait_for):
+def lokinet_run(wait_for, snode="55fxnzi5myfm1ypnx5w4c5714jgo15tks45dgf6isgut9onnduxo.snode:35515"):
     endat = time.time() + wait_for
     ctx = Lokinet()
     ctx.set_config_opt('network', 'hops', '2')
@@ -37,7 +37,15 @@ def lokinet_run(wait_for):
     while not ctx.wait_for_ready(100):
         assert endat >= time.time()
     print(f"we are {ctx.localaddr()}")
-
+    id = None
+    try:
+        addr, port, id = ctx.resolve(snode)
+        print(f"resolved {snode} as {addr}:{port} on {id}")
+        resp = requests.get(f"https://{addr}:{port}/", verify=False)
+        print(resp.text)
+    finally:
+        if id:
+            ctx.unresolve(id)
 
 if __name__ == '__main__':
     lokinet_run(5)
