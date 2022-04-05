@@ -197,7 +197,7 @@ namespace llarp
         service::ProtocolType t)
     {
       const service::ConvoTag tag{path->RXID().as_array()};
-
+      LogTrace(path->Name(), " handling traffic on ", tag, " proto ", t, " seqno ", counter);
       if (t == service::ProtocolType::QUIC)
       {
         auto quic = m_Parent->GetQUICTunnel();

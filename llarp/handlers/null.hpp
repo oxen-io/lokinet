@@ -56,8 +56,12 @@ namespace llarp::handlers
           return false;
         }
       }
+
       if (t != service::ProtocolType::QUIC)
+      {
+        LogWarn("incoming traffic not quic traffic: type=", t, " T=", tag);
         return false;
+      }
 
       auto* quic = GetQUICTunnel();
       if (!quic)
