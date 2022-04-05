@@ -189,6 +189,7 @@ namespace llarp
     {
       if (m_TXMsgs.size() >= MaxSendQueueSize)
       {
+        LogTrace("dropped message to ", m_RemoteAddr, " priority ", static_cast<int>(priority));
         if (completed)
           completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
         return false;
@@ -206,7 +207,8 @@ namespace llarp
         msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
       m_Stats.totalInFlightTX++;
-      LogDebug("send message ", msgid, " to ", m_RemoteAddr);
+      LogTrace(
+          "send message ", msgid, " to ", m_RemoteAddr, " priority ", static_cast<int>(priority));
       return true;
     }
 

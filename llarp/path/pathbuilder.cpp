@@ -150,14 +150,10 @@ namespace llarp
       {
         path->EnterState(path::ePathFailed, router->Now());
       }
+      LogTrace("send status ", static_cast<int>(status), " for LRCM to ", path->Upstream());
     };
-    if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
-    {
-      // persist session with router until this path is done
-      if (ctx->path)
-        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-    }
-    else
+    ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+    if (not ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
     {
       LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
       sentHandler(SendStatus::NoLink);

@@ -23,6 +23,7 @@ namespace llarp
   OutboundMessageHandler::QueueMessage(
       const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
   {
+    LogTrace("queue messgae to ", remote);
     // if the destination is invalid, callback with failure and return
     if (not _router->linkManager().SessionIsClient(remote)
         and not _router->rcLookupHandler().SessionIsAllowed(remote))
@@ -44,9 +45,15 @@ namespace llarp
       return false;
     }
 
-    ent.message.resize(buf.sz);
-
-    std::copy_n(buf.base, buf.sz, ent.message.data());
+    ent.message = buf.copy();
+    LogTrace(
+        "queue messgae to ",
+        remote,
+        " priority ",
+        ent.priority,
+        " containing ",
+        ent.message.size(),
+        " bytes");
 
     // if we have a session to the destination, queue the message and return
     if (_router->linkManager().HasSessionTo(remote))
@@ -64,7 +71,7 @@ namespace llarp
       util::Lock l{_mutex};
 
       // create queue for <remote> if it doesn't exist, and get iterator
-      auto [queue_itr, is_new] = pendingSessionMessageQueues.emplace(remote, MessageQueue());
+      auto [queue_itr, is_new] = pendingSessionMessageQueues.emplace(remote, MessageQueue{});
       queue_itr->second.push(std::move(ent));
 
       shouldCreateSession = is_new;
@@ -168,6 +175,7 @@ namespace llarp
   void
   OutboundMessageHandler::QueueSessionCreation(const RouterID& remote)
   {
+    LogTrace("queue create session to ", remote);
     auto fn = util::memFn(&OutboundMessageHandler::OnSessionResult, this);
     _router->linkManager().GetSessionMaker()->CreateSessionTo(remote, fn);
   }
@@ -175,7 +183,7 @@ namespace llarp
   bool
   OutboundMessageHandler::EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf)
   {
-    if (!msg.BEncode(&buf))
+    if (not msg.BEncode(&buf))
     {
       LogWarn("failed to encode outbound message, buffer size left: ", buf.size_left());
       return false;
@@ -191,6 +199,7 @@ namespace llarp
   OutboundMessageHandler::Send(const MessageQueueEntry& ent)
   {
     const llarp_buffer_t buf{ent.message};
+    LogTrace("send ", buf.sz, " bytes to ", ent.router, " priority ", ent.priority);
     m_queueStats.sent++;
     SendStatusHandler callback = ent.inform;
     return _router->linkManager().SendTo(
