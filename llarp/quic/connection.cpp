@@ -395,6 +395,12 @@ namespace llarp::quic
     cb.get_new_connection_id = get_new_connection_id;
     cb.remove_connection_id = remove_connection_id;
     cb.update_key = update_key;
+    cb.delete_crypto_aead_ctx = [](ngtcp2_conn*, ngtcp2_crypto_aead_ctx*, void*) {};
+    cb.delete_crypto_cipher_ctx = [](ngtcp2_conn*, ngtcp2_crypto_cipher_ctx*, void*) {};
+    cb.get_path_challenge_data = [](ngtcp2_conn*, uint8_t* data, void*) {
+      randombytes(data, NGTCP2_PATH_CHALLENGE_DATALEN);
+      return 0;
+    };
 
     ngtcp2_settings_default(&settings);
 #ifndef NDEBUG
