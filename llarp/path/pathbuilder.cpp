@@ -66,30 +66,22 @@ namespace llarp
       record.rxid = hop.rxID;
       record.tunnelNonce = hop.nonce;
       record.commkey = seckey_topublic(hop.commkey);
+      const auto& next_rc = isFarthestHop ? hop.rc : path->hops[idx].rc;
+      record.nextHop = hop.upstream = next_rc.pubkey;
 
-      if (isFarthestHop)
+      // sign fast open if we are requesting a snode session
+      if (isFarthestHop and (path->Role() & path::ePathRoleSVC) == path::ePathRoleSVC)
       {
-        hop.upstream = hop.rc.pubkey;
-        record.nextHop = hop.upstream;
-        // sign fast open if we are requesting a snode session
-        if ((path->Role() & path::ePathRoleSVC) == path::ePathRoleSVC)
+        bool was_signed = var::visit(
+            [&record](auto&& ident) { return record.Sign(ident); }, pathset->IdentitySigningKey());
+        if (not was_signed)
         {
-          bool was_signed = var::visit(
-              [&record](auto&& ident) { return record.Sign(ident); },
-              pathset->IdentitySigningKey());
-          if (not was_signed)
-          {
-            LogError(pathset->Name(), " failed to sign snode session LRCM");
-            return;
-          }
+          LogError(pathset->Name(), " failed to sign snode session LRCM");
+          return;
         }
       }
-      else
-      {
-        hop.upstream = record.nextHop = path->hops[idx].rc.pubkey;
-      }
 
-      llarp_buffer_t buf(frame.data(), frame.size());
+      llarp_buffer_t buf{frame.data(), frame.size()};
       buf.cur = buf.base + EncryptedFrameOverheadSize;
       // encode record
       if (not record.BEncode(&buf))
