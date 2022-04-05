@@ -78,6 +78,12 @@ namespace llarp
         version = 0;
       }
 
+      std::string
+      Name() const override
+      {
+        return "DataDiscardMessage";
+      }
+
       bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override
       {

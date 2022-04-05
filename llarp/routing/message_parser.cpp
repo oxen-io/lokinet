@@ -125,9 +125,9 @@ namespace llarp
         msg->from = from;
         LogDebug("handle routing message ", msg->S, " from ", from);
         result = msg->HandleMessage(h, r);
-        if (!result)
+        if (not result)
         {
-          llarp::LogWarn("Failed to handle inbound routing message ", ourKey);
+          llarp::LogWarn("Failed to handle inbound routing message '", msg->Name(), "'");
         }
       }
       else

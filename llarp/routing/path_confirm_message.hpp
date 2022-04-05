@@ -31,6 +31,12 @@ namespace llarp
         pathCreated = 0s;
         version = 0;
       }
+
+      std::string
+      Name() const override
+      {
+        return "PathConfirmMessage";
+      }
     };
   }  // namespace routing
 }  // namespace llarp

@@ -158,6 +158,12 @@ namespace llarp
         version = LLARP_PROTO_VERSION;
       }
 
+      std::string
+      Name() const override
+      {
+        return "ServiceProtocolFrame";
+      }
+
       bool
       Verify(const ServiceInfo& from) const;
 

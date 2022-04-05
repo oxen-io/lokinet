@@ -24,7 +24,11 @@ namespace llarp
       {}
 
       ~ObtainExitMessage() override = default;
-
+      std::string
+      Name() const override
+      {
+        return "ObtainExitMessage";
+      }
       void
       Clear() override
       {
@@ -62,6 +66,11 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
+      std::string
+      Name() const override
+      {
+        return "GrantExitMessage";
+      }
       bool
       BEncode(llarp_buffer_t* buf) const override;
 
@@ -95,6 +104,11 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
+      std::string
+      Name() const override
+      {
+        return "RejectExitMessage";
+      }
       void
       Clear() override
       {
@@ -130,6 +144,12 @@ namespace llarp
 
       ~UpdateExitVerifyMessage() override = default;
 
+      std::string
+      Name() const override
+      {
+        return "UpdateExitVerifyMessage";
+      }
+
       void
       Clear() override
       {
@@ -155,6 +175,12 @@ namespace llarp
       uint64_t T;
       Nonce_t Y;
       llarp::Signature Z;
+
+      std::string
+      Name() const override
+      {
+        return "UpdateExitMessage";
+      }
 
       bool
       Sign(const llarp::SecretKey& sk);
@@ -187,6 +213,12 @@ namespace llarp
 
       Nonce_t Y;
       llarp::Signature Z;
+
+      std::string
+      Name() const override
+      {
+        return "CloseExitMessage";
+      }
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

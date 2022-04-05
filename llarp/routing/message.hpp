@@ -4,6 +4,7 @@
 #include <llarp/path/path_types.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
+#include <string>
 
 namespace llarp
 {
@@ -33,6 +34,9 @@ namespace llarp
 
       virtual void
       Clear() = 0;
+
+      virtual std::string
+      Name() const = 0;
 
       bool
       operator<(const IMessage& other) const

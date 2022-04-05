@@ -34,6 +34,11 @@ namespace llarp
         return _size;
       }
 
+      std::string
+      Name() const override
+      {
+        return "TransferTrafficMessage";
+      }
       /// append buffer to X
       bool
       PutBuffer(const llarp_buffer_t& buf, uint64_t counter);

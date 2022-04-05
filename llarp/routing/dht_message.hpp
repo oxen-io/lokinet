@@ -31,6 +31,12 @@ namespace llarp
         M.clear();
         V = 0;
       }
+
+      std::string
+      Name() const override
+      {
+        return "DHTMessage";
+      }
     };
   }  // namespace routing
 }  // namespace llarp

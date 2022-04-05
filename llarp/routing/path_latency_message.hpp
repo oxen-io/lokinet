@@ -25,7 +25,11 @@ namespace llarp
         L = 0;
         version = 0;
       }
-
+      std::string
+      Name() const override
+      {
+        return "PathLatecyMessage";
+      }
       bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
     };

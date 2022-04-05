@@ -39,6 +39,12 @@ namespace llarp
         Y.Zero();
         version = 0;
       }
+
+      std::string
+      Name() const override
+      {
+        return "PathTransferMessage";
+      }
     };
 
   }  // namespace routing
