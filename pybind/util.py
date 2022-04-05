@@ -45,7 +45,7 @@ def hook(ctx, good):
     ctx.stop()
     assert good
 
-def lokinet_run(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode:35520"):
+def run_lokinet(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode:35520"):
     ctx = Lokinet()
     waiter = Waiter(wait_for, lambda good: hook(ctx, good))
     waiter.start()
@@ -83,4 +83,4 @@ def lokinet_run(wait_for, *, custom_nodedb=False, pin_hops=False, snode="55fxryb
     del ctx
 
 if __name__ == '__main__':
-    lokinet_run(30)
+    run_lokinet(30)
