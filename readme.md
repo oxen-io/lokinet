@@ -68,6 +68,9 @@ If you want to build from source:
     $ make -j$(nproc)
     $ sudo make install
 
+#### Arch Linux <span id="mom-cancel-my-meetings-arch-linux-broke-again" />
+
+Due to [circumstances beyond our control](https://github.com/oxen-io/lokinet/discussions/1823) a working `PKGBUILD` can be found [here](https://raw.githubusercontent.com/oxen-io/lokinet/makepkg/contrib/archlinux/PKGBUILD).
 
 #### Cross Compile For Linux <span id="linux-cross" />
 
