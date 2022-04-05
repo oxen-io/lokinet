@@ -49,7 +49,7 @@ def hook(ctx, good, trial, check=True):
     if check:
         assert good
 
-def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), target=("55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode", 35520), check=True, loglevel='trace'):
+def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), proto='https', target=("55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode", 35520), check=True, loglevel='trace'):
     ctx = Lokinet()
     waiter = Waiter(wait_for, lambda good: hook(ctx, good, trial, check))
     waiter.start()
@@ -82,7 +82,7 @@ def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), target=("55f
         print(f'[{trial}] trying to resolve {target[0]}')
         addr, port, id = ctx.resolve(f'{target[0]}:{target[1]}', 5)
         print(f"[{trial}] resolved {target[0]} as {addr}:{port} on {id}")
-        resp = requests.get(f"http://{addr}:{port}/", headers={'host': target[0]})
+        resp = requests.get(f"{proto}://{addr}:{port}/", verify=False, headers={'host': target[0]})
         assert resp.status_code < 300
         success = True
     except Exception as ex:
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     pylokinet.set_log_level('none')
     for n in range(times):
         try:
-            if run_lokinet(timeout, target=('blocks.loki', 80), nodedb=db, check=False, trial=f'{datetime.now()} | test {1+n}', loglevel='none'):
+            if run_lokinet(timeout, nodedb=db, check=False, trial=f'{datetime.now()} | test {1+n}', loglevel='none'):
                 good += 1
             else:
                 fails += 1
