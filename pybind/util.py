@@ -96,6 +96,7 @@ def run_lokinet(wait_for, *, trial=0, nodedb=None, pin_hops=list(), proto='https
     if nodedb:
         print(f'[{trial}] we have {len(nodedb)} nodedb entries left over')
         #print(f'[{trial}] {list(nodedb.keys())}')
+    time.sleep(1)
     return success
 
 if __name__ == '__main__':
@@ -115,6 +116,5 @@ if __name__ == '__main__':
         except:
             fails += 1
             errors += 1
-        time.sleep(1)
     print(f'started up {times-errors} of {times} ({float(float(times-errors) / times) * 100}%)')
     print(f'succeeded {times-fails} of {times} ({float(float(times-fails) / times) * 100}%)')
