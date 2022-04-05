@@ -3,6 +3,5 @@ from util import run_lokinet
 
 
 def test_lokinet_is_fast_af():
-    run_lokinet(5)
-
+    assert run_lokinet(5)
 
