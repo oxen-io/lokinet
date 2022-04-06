@@ -31,7 +31,7 @@ namespace llarp::vpn
     }
 
     std::unique_ptr<IP_ADAPTER_ADDRESSES_LH[]>
-    AdapterTable()
+    GetAdapterTable()
     {
       DWORD sz{};
       if (auto err = GetAdaptersAddresses(
@@ -245,6 +245,16 @@ namespace llarp::vpn
       }
 
       [[nodiscard]] auto
+      GetInterfaceIndex(const Adapter_ptr& adapter)
+      {
+        const auto luid = GetAdapterUID(adapter);
+        NET_IFINDEX index{};
+        if (auto err = ConvertInterfaceLuidToIndex(&luid, &index); err != NO_ERROR)
+          throw win32::error{err, "cannot get interface index"};
+        return index;
+      }
+
+      [[nodiscard]] auto
       ReadPacket(const Session_ptr& session)
       {
         DWORD sz{};
@@ -414,6 +424,15 @@ namespace llarp::vpn
       Exec(SysrootPath() + L"\\route.exe" + L" " + to_width<std::wstring>(args));
     }
 
+    static void
+    SetDNS(std::wstring adapter, llarp::SockAddr nameserver)
+    {
+      wintun::NetSH(
+          std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6")
+          + L" set dnsservers name=\"" + adapter + L"\" source=static \""
+          + to_width<std::wstring>(nameserver.hostString()) + L" primary");
+    }
+
     /// @brief raii wrapper that sets dns settings to an original state on destruction
     struct DNSRevert
     {
@@ -429,10 +448,7 @@ namespace llarp::vpn
       {
         if (not ifname.empty())
         {
-          NetSH(
-              std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6")
-              + L" set dns \"" + ifname + L"\" \"" + to_width<std::wstring>(nameserver.hostString())
-              + L"\"");
+          SetDNS(ifname, nameserver);
         }
       }
     };
@@ -448,20 +464,25 @@ namespace llarp::vpn
     AbstractRouter* const _router;
     std::vector<wintun::DNSRevert> m_RevertDNS;
 
-    void
-    SetAdapterDNS(std::wstring adapter, llarp::SockAddr nameserver)
-    {
-      // netsh interface ipv{4,6} set dns "$adapter" static "$ip" primary
-      wintun::NetSH(
-          std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6") + L" set dns \""
-          + adapter + L"\" static ip \"" + to_width<std::wstring>(nameserver.hostString())
-          + L"\" primary");
-    }
-
    public:
     explicit WintunInterface(wintun::API* api, InterfaceInfo info, AbstractRouter* router)
         : m_API{api}, m_Info{std::move(info)}, _router{router}
     {
+      // prepare dns revert
+      {
+        auto table = GetAdapterTable();
+        for (auto* ent = table.get(); ent and ent->Next; ent = ent->Next)
+        {
+          if (auto* dns = ent->FirstDnsServerAddress;
+              dns and dns->Address.iSockaddrLength and dns->Address.lpSockaddr)
+          {
+            m_RevertDNS.emplace_back(
+                to_width<std::wstring>(std::to_string(ent->IfIndex)),
+                llarp::SockAddr{static_cast<SOCKADDR&>(*dns->Address.lpSockaddr)});
+          }
+        }
+      };
+
       // make our adapter
       m_Adapter = m_API->MakeAdapterPtr(m_Info);
 
@@ -470,6 +491,19 @@ namespace llarp::vpn
       {
         m_API->AddAdapterAddress(m_Adapter, addr);
       }
+
+      const llarp::SockAddr dns{m_Info.dnsaddr};
+
+      // set dns
+      for (const auto& ent : m_RevertDNS)
+        wintun::SetDNS(ent.ifname, dns);
+      wintun::SetDNS(to_width<std::wstring>(std::to_string(InterfaceIndex())), dns);
+    }
+
+    [[nodiscard]] NET_IFINDEX
+    InterfaceIndex() const
+    {
+      return m_API->GetInterfaceIndex(m_Adapter);
     }
 
     void
@@ -513,9 +547,15 @@ namespace llarp::vpn
     }
 
     std::string
-    InterfaceAddressString() const
+    InterfaceAddressStringV4() const
     {
       return net::TruncateV6(m_Info.addrs.begin()->range.addr).ToString();
+    }
+
+    std::string
+    InterfaceAddressStringV6() const
+    {
+      return m_Info.addrs.begin()->range.ToString();
     }
 
     net::IPPacket
@@ -548,321 +588,9 @@ namespace llarp::vpn
     }
   };
 
-  /// \brief FWPMRouterManager is heavily based off wireguard's windows port's firewall code
-  class FWPMRouteManager : public IRouteManager
+  class Win32RouteManager : public IRouteManager
   {
-    HANDLE m_Handle;
-
-    template <typename Operation>
-    void
-    RunTransaction(Operation tx)
-    {
-      if (auto err = FwpmTransactionBegin0(m_Handle, 0); err != ERROR_SUCCESS)
-      {
-        throw win32::error{err, "FwpmTransactionBegin0 failed: "};
-      }
-      try
-      {
-        tx();
-        if (auto err = FwpmTransactionCommit0(m_Handle); err != ERROR_SUCCESS)
-        {
-          throw win32::error{err, "FwpmTransactionCommit0 failed: "};
-        }
-      }
-      catch (std::exception& ex)
-      {
-        LogError("failed to run fwpm transaction: ", ex.what());
-        FwpmTransactionAbort0(m_Handle);
-        throw std::runtime_error{ex.what()};
-      }
-    }
-
-    static void
-    GenerateUUID(UUID& uuid)
-    {
-      if (auto err = UuidCreateSequential(&uuid); err != RPC_S_OK)
-      {
-        throw std::runtime_error{"cannot generate uuid"};
-      }
-    }
-
-    class Provider
-    {
-      std::wstring _name;
-      std::wstring _description;
-      FWPM_PROVIDER0 _provider;
-
-     public:
-      explicit Provider(const wchar_t* name, const wchar_t* description, DWORD flags = 0)
-          : _name{name}, _description{description}, _provider{}
-      {
-        GenerateUUID(_provider.providerKey);
-        _provider.displayData.name = _name.data();
-        _provider.displayData.description = _description.data();
-        _provider.flags = flags;
-      }
-
-      GUID& providerKey{_provider.providerKey};
-
-      operator FWPM_PROVIDER0*()
-      {
-        return &_provider;
-      }
-    };
-
-    class SubLayer
-    {
-      std::wstring _name;
-      std::wstring _description;
-      FWPM_SUBLAYER0 _sublayer;
-
-     public:
-      explicit SubLayer(const wchar_t* name, const wchar_t* description, GUID* providerKey)
-          : _name{name}, _description{description}, _sublayer{}
-      {
-        GenerateUUID(_sublayer.subLayerKey);
-        _sublayer.providerKey = providerKey;
-        _sublayer.displayData.name = _name.data();
-        _sublayer.displayData.description = _description.data();
-        _sublayer.weight = 0xffff;
-      }
-
-      GUID& subLayerKey{_sublayer.subLayerKey};
-
-      operator FWPM_SUBLAYER0*()
-      {
-        return &_sublayer;
-      }
-    };
-
-    class Filter
-    {
-      std::wstring _name, _description;
-      std::vector<FWPM_FILTER_CONDITION0_> _conditions;
-      FWPM_FILTER0 _filter;
-      HANDLE _engine;
-      uint64_t _ID;
-
-     public:
-      explicit Filter(
-          HANDLE engineHandle,
-          FWPM_SUBLAYER0* sublayer,
-          FWP_ACTION_TYPE action,
-          GUID key,
-          std::vector<FWPM_FILTER_CONDITION0_> conditions,
-          uint8_t weight,
-          std::wstring name,
-          std::wstring description)
-          : _name{name}
-          , _description{description}
-          , _conditions{conditions}
-          , _filter{}
-          , _engine{engineHandle}
-          , _ID{}
-      {
-        _filter.action.type = action;
-        _filter.layerKey = key;
-        if (sublayer)
-        {
-          _filter.subLayerKey = sublayer->subLayerKey;
-        }
-        else
-          throw std::invalid_argument{"no sublayer provided"};
-
-        if (weight)
-        {
-          _filter.weight.uint8 = weight;
-          _filter.weight.type = FWP_UINT8;
-        }
-        else
-          _filter.weight.type = FWP_EMPTY;
-
-        _filter.numFilterConditions = _conditions.size();
-        _filter.filterCondition = _conditions.data();
-
-        _filter.displayData.name = _name.data();
-        _filter.displayData.description = _description.data();
-
-        if (auto err = FwpmFilterAdd0(engineHandle, &_filter, nullptr, &_ID); err != ERROR_SUCCESS)
-          throw win32::error{err, "failed to add fwpm filter: "};
-      }
-
-      ~Filter()
-      {
-        FwpmFilterDeleteById0(_engine, _ID);
-      }
-
-      bool
-      operator<(const Filter& other) const
-      {
-        return _ID < other._ID;
-      }
-
-      bool
-      Matches(FWP_ACTION_TYPE type, const GUID layerKey) const
-      {
-        return _filter.action.type == type and _filter.layerKey == layerKey;
-      }
-
-      uint64_t
-      ID() const
-      {
-        return _ID;
-      }
-    };
-
-    class Firewall
-    {
-      SubLayer _sublayer;
-      HANDLE m_Handle;
-
-      std::unordered_map<uint64_t, std::unique_ptr<Filter>> m_Filters;
-      std::unordered_multimap<SockAddr, uint64_t> m_Holes;
-
-     public:
-      Firewall(HANDLE handle)
-          : _sublayer{L"Lokinet Filters", L"RoutePoker Filters", nullptr}, m_Handle{handle}
-      {
-        if (auto err = FwpmSubLayerAdd0(m_Handle, _sublayer, 0); err != ERROR_SUCCESS)
-        {
-          throw win32::error{err, "fwpmSubLayerAdd0 failed: "};
-        }
-      }
-
-      ~Firewall()
-      {
-        m_Filters.clear();
-        FwpmSubLayerDeleteByKey0(m_Handle, &_sublayer.subLayerKey);
-      }
-
-      uint64_t
-      AddFilter(
-          FWP_ACTION_TYPE action,
-          GUID layerKey,
-          uint8_t weight,
-          std::vector<FWPM_FILTER_CONDITION0> conditions,
-          std::wstring name,
-          std::wstring description)
-      {
-        const auto guid = oxenc::to_hex(
-            std::string_view{reinterpret_cast<const char*>(&layerKey), sizeof(layerKey)});
-        LogInfo("adding filter ", to_width<std::string>(name), "guid=", guid);
-        auto filter = std::make_unique<Filter>(
-            m_Handle, _sublayer, action, layerKey, conditions, weight, name, description);
-
-        const auto id = filter->ID();
-        m_Filters[id] = std::move(filter);
-        return id;
-      }
-    };
-
-    std::unique_ptr<Firewall> m_Firewall;
-    std::vector<NET_LUID> m_Interfaces;
-
-    void
-    PermitLoopback()
-    {
-      FWPM_FILTER_CONDITION0_ condition = win32::MakeCondition(
-          win32::FWPM_CONDITION_FLAGS(),
-          FWP_MATCH_FLAGS_ALL_SET,
-          huint32_t{FWP_CONDITION_FLAG_IS_LOOPBACK});
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
-          13,
-          {condition},
-
-          L"Allow outbound v6 loopback",
-          L"");
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_PERMIT,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
-          13,
-          {condition},
-
-          L"Allow inbound v6 loopback",
-          L"");
-    }
-
-    void
-    DropV6()
-    {
-      m_Firewall->AddFilter(
-          FWP_ACTION_BLOCK,
-          win32::FWPM_LAYER_ALE_AUTH_CONNECT_V6(),
-          0,
-          {},
-          L"Drop outbound IPV6 Traffic",
-          L"");
-
-      m_Firewall->AddFilter(
-          FWP_ACTION_BLOCK,
-          win32::FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6(),
-          0,
-          {},
-          L"Drop inbound IPV6 Traffic",
-          L"");
-    }
-
-   protected:
-    void
-    AddInterface(NET_LUID uid)
-    {
-      m_Interfaces.emplace_back(std::move(uid));
-    }
-
-    class Session
-    {
-      std::wstring _name;
-      std::wstring _description;
-      FWPM_SESSION0 _session;
-
-     public:
-      explicit Session(const wchar_t* name, const wchar_t* description)
-          : _name{name}, _description{description}, _session{}
-      {
-        _session.displayData.name = _name.data();
-        _session.displayData.description = _description.data();
-      }
-
-      operator const FWPM_SESSION0*() const
-      {
-        return &_session;
-      }
-    };
-
-    Session m_Session;
-
    public:
-    FWPMRouteManager() : m_Session{L"lokinet route manager", L"manager of lokinet route poking"}
-    {
-      if (auto result = FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, m_Session, &m_Handle);
-          result != ERROR_SUCCESS)
-      {
-        throw win32::error{result, "cannot open fwpm engine: "};
-      }
-    }
-
-    ~FWPMRouteManager()
-    {
-      FwpmEngineClose0(m_Handle);
-    }
-
-    void
-    AddBlackhole() override
-    {
-      m_Firewall = std::make_unique<Firewall>(m_Handle);
-      RunTransaction([this]() { DropV6(); });
-    }
-
-    void
-    DelBlackhole() override
-    {
-      m_Firewall.reset();
-    }
-
     void
     AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
@@ -902,6 +630,7 @@ namespace llarp::vpn
     void
     AddDefaultRouteViaInterface(NetworkInterface& vpn) override
     {
+      // add loopback as exception as god is dead
       wintun::RouteExec("ADD 127.0.0.0 255.0.0.0 0.0.0.0");
       IRouteManager::AddDefaultRouteViaInterface(vpn);
     }
@@ -910,32 +639,49 @@ namespace llarp::vpn
     DelDefaultRouteViaInterface(NetworkInterface& vpn) override
     {
       IRouteManager::DelDefaultRouteViaInterface(vpn);
+      // remove loopback exception and pray for forgiveness
       wintun::RouteExec("REMOVE 127.0.0.0 255.0.0.0 0.0.0.0");
+    }
+
+    void
+    ModifyRouteViaInterface(std::string modifier, NetworkInterface& iface, IPRange range)
+    {
+      if (range.IsV4())
+      {
+        const auto netif_str =
+            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV4();
+        wintun::RouteExec(
+            modifier + " " + range.BaseAddressString() + " MASK "
+            + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
+      }
+      else
+      {
+        const auto netif_str =
+            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV6();
+        const auto interface_str =
+            std::to_string(dynamic_cast<const WintunInterface&>(iface).InterfaceIndex());
+        wintun::RouteExec(
+            modifier + " " + range.ToString() + " " + netif_str + " IF " + interface_str
+            + " METRIC 2");
+      }
     }
 
     void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      const auto netif_str = dynamic_cast<const WintunInterface&>(iface).InterfaceAddressString();
-      wintun::RouteExec(
-          "ADD " + range.BaseAddressString() + " MASK "
-          + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
+      ModifyRouteViaInterface("ADD", iface, range);
     }
-
     void
     DelRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      const auto netif_str = dynamic_cast<const WintunInterface&>(iface).InterfaceAddressString();
-      wintun::RouteExec(
-          "DELETE " + range.BaseAddressString() + " MASK "
-          + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
+      ModifyRouteViaInterface("REMOVE", iface, range);
     }
   };
 
-  class Win32Platform : public wintun::API, public Platform, public FWPMRouteManager
+  class Win32Platform : public wintun::API, public Platform, public Win32RouteManager
   {
    public:
-    Win32Platform() : API{}, Platform{}, FWPMRouteManager{}
+    Win32Platform() : API{}, Platform{}, Win32RouteManager{}
     {
       RemoveAllAdapters();
     }
@@ -945,7 +691,6 @@ namespace llarp::vpn
     {
       auto adapter = std::make_shared<WintunInterface>(this, info, router);
       adapter->Start();
-      AddInterface(adapter->GetUID());
       return adapter;
     };
 
