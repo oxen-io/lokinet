@@ -39,8 +39,7 @@ namespace llarp::vpn
           err != ERROR_BUFFER_OVERFLOW)
         throw win32::error{err, "cannot allocate adapter addresses: "};
 
-      auto table =
-          std::make_unique<IP_ADAPTER_ADDRESSES_LH[]>(sz / sizeof(IP_ADAPTER_ADDRESSES_LH));
+      std::unique_ptr<IP_ADAPTER_ADDRESSES_LH[]> table{new IP_ADAPTER_ADDRESSES_LH[sz]};
       if (auto err = GetAdaptersAddresses(
               AF_UNSPEC, GAA_FLAG_INCLUDE_ALL_INTERFACES, nullptr, table.get(), &sz);
           err != ERROR_SUCCESS)
@@ -467,38 +466,7 @@ namespace llarp::vpn
    public:
     explicit WintunInterface(wintun::API* api, InterfaceInfo info, AbstractRouter* router)
         : m_API{api}, m_Info{std::move(info)}, _router{router}
-    {
-      // prepare dns revert
-      {
-        auto table = GetAdapterTable();
-        for (auto* ent = table.get(); ent and ent->Next; ent = ent->Next)
-        {
-          if (auto* dns = ent->FirstDnsServerAddress;
-              dns and dns->Address.iSockaddrLength and dns->Address.lpSockaddr)
-          {
-            m_RevertDNS.emplace_back(
-                to_width<std::wstring>(std::to_string(ent->IfIndex)),
-                llarp::SockAddr{static_cast<SOCKADDR&>(*dns->Address.lpSockaddr)});
-          }
-        }
-      };
-
-      // make our adapter
-      m_Adapter = m_API->MakeAdapterPtr(m_Info);
-
-      // set our interface addresses
-      for (const auto& addr : m_Info.addrs)
-      {
-        m_API->AddAdapterAddress(m_Adapter, addr);
-      }
-
-      const llarp::SockAddr dns{m_Info.dnsaddr};
-
-      // set dns
-      for (const auto& ent : m_RevertDNS)
-        wintun::SetDNS(ent.ifname, dns);
-      wintun::SetDNS(to_width<std::wstring>(std::to_string(InterfaceIndex())), dns);
-    }
+    {}
 
     [[nodiscard]] NET_IFINDEX
     InterfaceIndex() const
@@ -525,6 +493,48 @@ namespace llarp::vpn
     void
     Start()
     {
+      // prepare dns revert
+      {
+        auto table = GetAdapterTable();
+        for (auto* ent = table.get(); ent->Next; ent = ent->Next)
+        {
+          if (auto* dns = ent->FirstDnsServerAddress;
+              dns and dns->Address.iSockaddrLength and dns->Address.lpSockaddr)
+          {
+            auto* addr = static_cast<SOCKADDR*>(dns->Address.lpSockaddr);
+            llarp::SockAddr saddr{};
+            switch (addr->sa_family)
+            {
+              case AF_INET:
+                saddr = *reinterpret_cast<sockaddr_in*>(addr);
+                break;
+              case AF_INET6:
+                saddr = *reinterpret_cast<sockaddr_in6*>(addr);
+                break;
+              default:
+                continue;
+            }
+            m_RevertDNS.emplace_back(to_width<std::wstring>(std::to_string(ent->IfIndex)), saddr);
+          }
+        }
+      };
+
+      // make our adapter
+      m_Adapter = m_API->MakeAdapterPtr(m_Info);
+
+      // set our interface addresses
+      for (const auto& addr : m_Info.addrs)
+      {
+        m_API->AddAdapterAddress(m_Adapter, addr);
+      }
+
+      const llarp::SockAddr dns{m_Info.dnsaddr};
+
+      // set dns
+      for (const auto& ent : m_RevertDNS)
+        wintun::SetDNS(ent.ifname, dns);
+      wintun::SetDNS(to_width<std::wstring>(std::to_string(InterfaceIndex())), dns);
+
       m_Session = m_API->MakeSessionPtr(m_Adapter);
     }
 
