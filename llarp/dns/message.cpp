@@ -414,5 +414,17 @@ namespace llarp
           fmt::format("{}", fmt::join(additional, ",")));
     }
 
+    std::optional<Message>
+    MaybeParseDNSMessage(llarp_buffer_t buf)
+    {
+      MessageHeader hdr{};
+      if (not hdr.Decode(&buf))
+        return std::nullopt;
+
+      Message msg{hdr};
+      if (not msg.Decode(&buf))
+        return std::nullopt;
+      return msg;
+    }
   }  // namespace dns
 }  // namespace llarp

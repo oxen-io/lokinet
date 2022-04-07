@@ -5,7 +5,6 @@
 #include <memory>
 #include <optional>
 #include <llarp/net/net_int.hpp>
-#include "systemd_resolved.hpp"
 
 namespace llarp
 {
@@ -44,6 +43,11 @@ namespace llarp
     /// explicitly put routes down
     void
     Down();
+
+    /// set dns resolver
+    /// pass in if we are using exit node mode right now  as a bool
+    void
+    SetDNSMode(bool using_exit_mode) const;
 
    private:
     void

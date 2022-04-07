@@ -69,12 +69,12 @@ namespace llarp
     py::class_<LinksConfig>(mod, "LinksConfig")
         .def(py::init<>())
         .def(
-            "setOutboundLink",
-            [](LinksConfig& self, std::string addr) {
-              self.OutboundLinks.emplace_back(std::move(addr));
+            "addOutboundLink",
+            [](LinksConfig& self, std::string _addr) {
+              self.OutboundLinks.emplace_back(std::move(_addr));
             })
-        .def("addInboundLink", [](LinksConfig& self, std::string addr) {
-          self.InboundListenAddrs.emplace_back(std::move(addr));
+        .def("addInboundLink", [](LinksConfig& self, std::string _addr) {
+          self.InboundLinks.emplace_back(std::move(_addr));
         });
 
     py::class_<ApiConfig>(mod, "ApiConfig")

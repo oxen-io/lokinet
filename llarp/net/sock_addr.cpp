@@ -16,6 +16,12 @@ namespace llarp
   {
     return memcmp(&lh, &rh, sizeof(in6_addr)) == 0;
   }
+
+  bool
+  operator<(const in6_addr& lh, const in6_addr& rh)
+  {
+    return memcmp(&lh, &rh, sizeof(in6_addr)) < 0;
+  }
   /// shared utility functions
   ///
 
@@ -112,7 +118,8 @@ namespace llarp
     else if (other.sa_family == AF_INET)
       *this = reinterpret_cast<const sockaddr_in&>(other);
     else
-      throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
+      throw std::invalid_argument{
+          fmt::format("Invalid sockaddr (not AF_INET or AF_INET6) was {}", other.sa_family)};
 
     return *this;
   }
@@ -209,11 +216,8 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return memcmp(
-               m_addr.sin6_addr.s6_addr,
-               other.m_addr.sin6_addr.s6_addr,
-               sizeof(m_addr.sin6_addr.s6_addr))
-        < 0;
+    return (m_addr.sin6_addr < other.m_addr.sin6_addr)
+        or (m_addr.sin6_port < other.m_addr.sin6_port);
   }
 
   bool

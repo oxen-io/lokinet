@@ -85,7 +85,7 @@ add_library(liblokinet
   dns/serialize.cpp
   dns/server.cpp
   dns/srv_data.cpp
-  dns/unbound_resolver.cpp
+  dns/resolver.cpp
 
   consensus/table.cpp
   consensus/reachability_testing.cpp
@@ -151,7 +151,7 @@ add_library(liblokinet
   peerstats/types.cpp
   pow.cpp
   profiling.cpp
-
+  
   quic/address.cpp
   quic/client.cpp
   quic/connection.cpp
@@ -171,7 +171,7 @@ add_library(liblokinet
   router/rc_gossiper.cpp
   router/router.cpp
   router/route_poker.cpp
-  router/systemd_resolved.cpp
+  
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp

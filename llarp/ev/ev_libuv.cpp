@@ -72,6 +72,13 @@ namespace llarp::uv
     bool
     send(const SockAddr& dest, const llarp_buffer_t& buf) override;
 
+    std::optional<SockAddr>
+    LocalAddr() const override
+    {
+      auto addr = handle->sock<uvw::IPv4>();
+      return SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+    }
+
     std::optional<int>
     file_descriptor() override
     {
