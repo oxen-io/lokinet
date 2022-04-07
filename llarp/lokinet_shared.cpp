@@ -228,7 +228,7 @@ struct lokinet_context
   [[nodiscard]] std::optional<int>
   make_udp_handler(
       const std::shared_ptr<llarp::service::Endpoint>& ep,
-      llarp::huint16_t exposePort,
+      llarp::net::port_t exposePort,
       lokinet_udp_flow_filter filter,
       lokinet_udp_flow_recv_func recv,
       lokinet_udp_flow_timeout_func timeout,
@@ -245,16 +245,16 @@ struct lokinet_context
         }
       });
     }
-
+    std::weak_ptr<llarp::service::Endpoint> weak{ep};
     auto udp = std::make_shared<UDPHandler>(
-        next_socket_id(), llarp::ToNet(exposePort), filter, recv, timeout, user, std::weak_ptr{ep});
+        next_socket_id(), exposePort, filter, recv, timeout, user, weak);
     auto id = udp->m_SocketID;
     std::promise<bool> result;
 
     impl->router->loop()->call([ep, &result, udp, exposePort]() {
       if (auto pkt = ep->EgresPacketRouter())
       {
-        pkt->AddUDPHandler(exposePort, [udp](auto from, auto pkt) {
+        pkt->AddUDPHandler(llarp::net::ToHost(exposePort), [udp](auto from, auto pkt) {
           udp->HandlePacketFrom(std::move(from), std::move(pkt));
         });
         result.set_value(true);
@@ -903,8 +903,8 @@ extern "C"
     auto lock = ctx->acquire();
     if (auto ep = ctx->endpoint())
     {
-      if (auto maybe =
-              ctx->make_udp_handler(ep, llarp::huint16_t{exposedPort}, filter, recv, timeout, user))
+      if (auto maybe = ctx->make_udp_handler(
+              ep, llarp::net::port_t::from_host(exposedPort), filter, recv, timeout, user))
       {
         result->socket_id = *maybe;
         return 0;
@@ -934,7 +934,7 @@ extern "C"
       return EINVAL;
     std::shared_ptr<llarp::EndpointBase> ep;
     llarp::nuint16_t srcport{0};
-    llarp::nuint16_t dstport{llarp::ToNet(llarp::huint16_t{remote->remote_port})};
+    auto dstport = llarp::net::port_t::from_host(remote->remote_port);
     {
       auto lock = ctx->acquire();
       if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())

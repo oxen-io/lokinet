@@ -776,21 +776,24 @@ namespace llarp
     // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
     // 127.0.0.1:53.
 #ifdef __linux__
+#ifdef WITH_SYSTEMD
+    // when we have systemd support add a random high port on loopback
+    // see https://github.com/oxen-io/lokinet/issues/1887#issuecomment-1091897282
+    constexpr Default DefaultDNSBind{"127.0.0.1:0"};
+#else
     constexpr Default DefaultDNSBind{"127.3.2.1:53"};
+#endif
 #else
     constexpr Default DefaultDNSBind{"127.0.0.1:53"};
 #endif
 
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
-    constexpr Default DefaultUpstreamDNS{"9.9.9.10"};
+    constexpr Default DefaultUpstreamDNS{"9.9.9.10:53"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
-    if (!m_upstreamDNS.back().getPort())
-      m_upstreamDNS.back().setPort(53);
 
     conf.defineOption<std::string>(
         "dns",
         "upstream",
-        DefaultUpstreamDNS,
         MultiValue,
         Comment{
             "Upstream resolver(s) to use as fallback for non-loki addresses.",
@@ -802,10 +805,10 @@ namespace llarp
             m_upstreamDNS.clear();
             first = false;
           }
-          if (!arg.empty())
+          if (not arg.empty())
           {
             auto& entry = m_upstreamDNS.emplace_back(std::move(arg));
-            if (!entry.getPort())
+            if (not entry.getPort())
               entry.setPort(53);
           }
         });
@@ -818,9 +821,12 @@ namespace llarp
             "Address to bind to for handling DNS requests.",
         },
         [=](std::string arg) {
-          m_bind = SockAddr{std::move(arg)};
-          if (!m_bind.getPort())
-            m_bind.setPort(53);
+          SockAddr addr{arg};
+          // set dns port if no explicit port specified
+          // explicit :0 allowed
+          if (not addr.getPort() and not ends_with(arg, ":0"))
+            addr.setPort(53);
+          m_bind.emplace_back(addr);
         });
 
     conf.defineOption<fs::path>(
@@ -847,6 +853,11 @@ namespace llarp
             "(This is not used directly by lokinet itself, but by the lokinet init scripts",
             "on systems which use resolveconf)",
         });
+
+    // forwad the rest to libunbound
+    conf.addUndeclaredHandler("dns", [this](auto, std::string_view key, std::string_view val) {
+      m_ExtraOpts.emplace(key, val);
+    });
   }
 
   void

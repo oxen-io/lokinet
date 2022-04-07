@@ -211,9 +211,6 @@ namespace llarp
     bool
     ShouldTestOtherRouters() const;
 
-    int
-    OutboundUDPSocket() const override;
-
     std::optional<SockAddr> _ourAddress;
 
     EventLoop_ptr _loop;

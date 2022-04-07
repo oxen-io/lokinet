@@ -250,6 +250,12 @@ namespace llarp
     explicit OwnedBuffer(size_t sz) : OwnedBuffer{std::make_unique<byte_t[]>(sz), sz}
     {}
 
+    // copy content from existing memory
+    explicit OwnedBuffer(const byte_t* ptr, size_t sz) : OwnedBuffer{sz}
+    {
+      std::copy_n(ptr, sz, buf.get());
+    }
+
     OwnedBuffer(const OwnedBuffer&) = delete;
     OwnedBuffer&
     operator=(const OwnedBuffer&) = delete;
@@ -273,6 +279,10 @@ namespace llarp
     // cur), for when a llarp_buffer_t is used in write mode.
     static OwnedBuffer
     copy_used(const llarp_buffer_t& b);
+
+    /// copy everything in this owned buffer into a vector
+    std::vector<byte_t>
+    copy() const;
   };
 
 }  // namespace llarp

@@ -143,6 +143,16 @@ operator==(const llarp_buffer_t& buff, const char* c_str)
 
 namespace llarp
 {
+  std::vector<byte_t>
+  OwnedBuffer::copy() const
+  {
+    std::vector<byte_t> ret;
+    ret.resize(sz);
+    const auto* ptr = buf.get();
+    std::copy(ptr, ptr + sz, ret.data());
+    return ret;
+  }
+
   OwnedBuffer
   OwnedBuffer::copy_from(const llarp_buffer_t& b)
   {

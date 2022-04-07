@@ -10,8 +10,33 @@ namespace llarp
   struct AbstractRouter;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::IQueryHandler, public EndpointBase
+    struct ExitEndpoint : public dns::Resolver_Base, public EndpointBase
     {
+      int
+      Rank() const override
+      {
+        return 0;
+      };
+
+      std::string_view
+      ResolverName() const override
+      {
+        return "snode";
+      }
+
+      void
+      ResetInternalState() override{};
+
+      void
+      CancelPendingQueries() override{};
+
+      bool
+      MaybeHookDNS(
+          std::weak_ptr<dns::PacketSource_Base> source,
+          const dns::Message& query,
+          const SockAddr& to,
+          const SockAddr& from) override;
+
       ExitEndpoint(std::string name, AbstractRouter* r);
       ~ExitEndpoint() override;
 
@@ -66,10 +91,10 @@ namespace llarp
       SupportsV6() const;
 
       bool
-      ShouldHookDNSMessage(const dns::Message& msg) const override;
+      ShouldHookDNSMessage(const dns::Message& msg) const;
 
       bool
-      HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>) override;
+      HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>);
 
       void
       LookupServiceAsync(
@@ -174,7 +199,7 @@ namespace llarp
       KickIdentOffExit(const PubKey& pk);
 
       AbstractRouter* m_Router;
-      std::shared_ptr<dns::Proxy> m_Resolver;
+      std::shared_ptr<dns::Server> m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;

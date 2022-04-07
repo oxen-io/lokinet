@@ -1,17 +1,17 @@
-#include "systemd_resolved.hpp"
+#include "resolver.hpp"
 #include <llarp/util/logging.hpp>
 
 #ifndef WITH_SYSTEMD
 
-namespace llarp
+namespace llarp::dns
 {
   bool
-  systemd_resolved_set_dns(std::string, llarp::SockAddr, bool)
+  set_resolver(std::string, llarp::SockAddr, bool)
   {
     LogDebug("lokinet is not built with systemd support, cannot set systemd resolved DNS");
     return false;
   }
-}  // namespace llarp
+}  // namespace llarp::dns
 
 #else
 
@@ -25,7 +25,7 @@ extern "C"
 
 using namespace std::literals;
 
-namespace llarp
+namespace llarp::dns
 {
   namespace
   {
@@ -64,7 +64,7 @@ namespace llarp
   }  // namespace
 
   bool
-  systemd_resolved_set_dns(std::string ifname, llarp::SockAddr dns, bool global)
+  set_resolver(std::string ifname, llarp::SockAddr dns, bool global)
   {
     unsigned int if_ndx = if_nametoindex(ifname.c_str());
     if (if_ndx == 0)
@@ -204,6 +204,6 @@ namespace llarp
     return false;
   }
 
-}  // namespace llarp
+}  // namespace llarp::dns
 
 #endif  // WITH_SYSTEMD

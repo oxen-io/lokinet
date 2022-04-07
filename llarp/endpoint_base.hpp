@@ -23,6 +23,11 @@ namespace llarp
     class TunnelManager;
   }
 
+  namespace dns
+  {
+    class Server;
+  }
+
   class EndpointBase
   {
     std::unordered_set<dns::SRVData> m_SRVRecords;
@@ -71,6 +76,13 @@ namespace llarp
     /// add an srv record to this endpoint's descriptor
     void
     PutSRVRecord(dns::SRVData srv);
+
+    /// get dns serverr if we have on on this endpoint
+    virtual std::shared_ptr<dns::Server>
+    DNS() const
+    {
+      return nullptr;
+    };
 
     /// called when srv data changes in some way
     virtual void

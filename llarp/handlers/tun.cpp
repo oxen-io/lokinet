@@ -12,7 +12,7 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/systemd_resolved.hpp>
+#include <llarp/router/route_poker.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
@@ -26,26 +26,46 @@
 #include <llarp/util/str.hpp>
 #include <llarp/dns/srv_data.hpp>
 
+#include <llarp/constants/platform.hpp>
+
 #include <oxenc/bt.h>
 
 namespace llarp
 {
   namespace handlers
   {
+    bool
+    TunEndpoint::MaybeHookDNS(
+        std::weak_ptr<dns::PacketSource_Base> source,
+        const dns::Message& query,
+        const SockAddr& to,
+        const SockAddr& from)
+    {
+      if (not ShouldHookDNSMessage(query))
+        return false;
+
+      auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
+      if (not HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
+        job->Cancel();
+      return true;
+    }
     // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
-    // Android and macOS where binding to a DNS port (i.e. via llarp::dns::Proxy) isn't possible
+    // Android and macOS where binding to a low port isn't possible
     // because of OS restrictions, but a tun interface *is* available.
-    class DnsInterceptor : public dns::PacketHandler
+    class DnsInterceptor : public dns::PacketSource_Base
     {
      public:
       TunEndpoint* const m_Endpoint;
+      llarp::DnsConfig m_Config;
 
-      explicit DnsInterceptor(AbstractRouter* router, TunEndpoint* ep)
-          : dns::PacketHandler{router->loop(), ep}, m_Endpoint{ep} {};
+      explicit DnsInterceptor(TunEndpoint* ep, llarp::DnsConfig conf)
+          : m_Endpoint{ep}, m_Config{conf}
+      {}
+
+      virtual ~DnsInterceptor() = default;
 
       void
-      SendServerMessageBufferTo(
-          const SockAddr& to, const SockAddr& from, llarp_buffer_t buf) override
+      SendTo(const SockAddr& to, const SockAddr& from, OwnedBuffer buf) const override
       {
         const auto pkt = net::IPPacket::UDP(
             from.getIPv4(),
@@ -60,11 +80,20 @@ namespace llarp
             pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
       }
 
+      void
+      Stop() override{};
+
+      std::optional<SockAddr>
+      BoundOn() const override
+      {
+        return std::nullopt;
+      }
+
 #ifdef ANDROID
       bool
-      IsUpstreamResolver(const SockAddr&, const SockAddr&) const override
+      WouldLoop(const SockAddr&, const SockAddr&) const override
       {
-        return true;
+        return false;
       }
 #endif
 
@@ -75,21 +104,57 @@ namespace llarp
       // won't work for us.  However when active the mac also only queries the main tunnel IP for
       // DNS, so we consider anything else to be upstream-bound DNS to let it through the tunnel.
       bool
-      IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
+      WouldLoop(const SockAddr& to, const SockAddr&) const override
       {
         return to.asIPv6() != m_Endpoint->GetIfAddr();
       }
 #endif
     };
 
+#if defined(ANDROID) || defined(__APPLE__)
+    class TunDNS : public dns::Server
+    {
+      TunEndpoint* const m_Endpoint;
+
+     public:
+      std::weak_ptr<dns::PacketSource_Base> PacketSource;
+
+      virtual ~TunDNS() = default;
+      explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
+          : dns::Server{ep->Router()->loop(), conf}, m_Endpoint{ep}
+      {}
+
+      std::shared_ptr<dns::PacketSource_Base>
+      MakePacketSourceOn(const SockAddr&, const llarp::DnsConfig& conf) override
+      {
+        auto ptr = std::make_shared<DnsInterceptor>(m_Endpoint, conf);
+        PacketSource = ptr;
+        return ptr;
+      }
+
+      std::shared_ptr<dns::Resolver_Base>
+      MakeDefaultResolver() override
+      {
+        // android will not cache dns via unbound it only intercepts .loki
+        return nullptr;
+      }
+    };
+#endif
+
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
     {
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
+    }
+
+    void
+    TunEndpoint::SetupDNS()
+    {
 #if defined(ANDROID) || defined(__APPLE__)
-      m_Resolver = std::make_shared<DnsInterceptor>(r, this);
-      m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
+      auto dns = std::make_shared<TunDNS>(this, m_DnsConfig);
+      m_DNS = dns;
+      m_PacketRouter->AddUDPHandler(huint16_t{53}, [this, dns](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);
 
         const uint8_t* ptr = pkt.buf + ip_header_size;
@@ -100,14 +165,17 @@ namespace llarp
 
         OwnedBuffer buf{pkt.sz - (8 + ip_header_size)};
         std::copy_n(ptr + 8, buf.sz, buf.buf.get());
-        if (m_Resolver->ShouldHandlePacket(raddr, laddr, buf))
-          m_Resolver->HandlePacket(raddr, laddr, buf);
-        else
-          HandleGotUserPacket(std::move(pkt));
+
+        if (dns->MaybeHandlePacket(dns->PacketSource, raddr, laddr, std::move(buf)))
+          return;
+
+        HandleGotUserPacket(std::move(pkt));
       });
 #else
-      m_Resolver = std::make_shared<dns::Proxy>(r->loop(), this);
+      m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig);
 #endif
+      m_DNS->AddResolver(weak_from_this());
+      m_DNS->Start();
     }
 
     util::StatusObject
@@ -116,11 +184,21 @@ namespace llarp
       auto obj = service::Endpoint::ExtractStatus();
       obj["ifaddr"] = m_OurRange.ToString();
       obj["ifname"] = m_IfName;
-      std::vector<std::string> resolvers;
-      for (const auto& addr : m_UpstreamResolvers)
-        resolvers.emplace_back(addr.ToString());
-      obj["ustreamResolvers"] = resolvers;
-      obj["localResolver"] = m_LocalResolverAddr.ToString();
+
+      std::vector<std::string> upstreamRes;
+      for (const auto& ent : m_DnsConfig.m_upstreamDNS)
+        upstreamRes.emplace_back(ent.ToString());
+      obj["ustreamResolvers"] = upstreamRes;
+
+      std::vector<std::string> localRes;
+      for (const auto& ent : m_DnsConfig.m_bind)
+        localRes.emplace_back(ent.ToString());
+      obj["localResolvers"] = localRes;
+
+      // for backwards compat
+      if (not m_DnsConfig.m_bind.empty())
+        obj["localResolver"] = localRes[0];
+
       util::StatusObject ips{};
       for (const auto& item : m_IPActivity)
       {
@@ -145,18 +223,14 @@ namespace llarp
     void
     TunEndpoint::Thaw()
     {
-      if (m_Resolver)
-        m_Resolver->Restart();
+      if (m_DNS)
+        m_DNS->Reset();
     }
 
     std::vector<SockAddr>
     TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
     {
-      std::swap(m_UpstreamResolvers, servers);
-      m_Resolver->Stop();
-      if (!m_Resolver->Start(
-              m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
-        llarp::LogError(Name(), " failed to reconfigure DNS server");
+      // TODO: implement me
       return servers;
     }
 
@@ -197,12 +271,9 @@ namespace llarp
         m_AuthPolicy = std::move(auth);
       }
 
+      m_DnsConfig = dnsConf;
       m_TrafficPolicy = conf.m_TrafficPolicy;
       m_OwnedRanges = conf.m_OwnedRanges;
-
-      m_LocalResolverAddr = dnsConf.m_bind;
-      m_UpstreamResolvers = dnsConf.m_upstreamDNS;
-      m_hostfiles = dnsConf.m_hostfiles;
 
       m_BaseV6Address = conf.m_baseV6Address;
 
@@ -352,7 +423,6 @@ namespace llarp
           return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
         });
       }
-
       return Endpoint::Configure(conf, dnsConf);
     }
 
@@ -860,11 +930,8 @@ namespace llarp
     bool
     TunEndpoint::Start()
     {
-      if (!Endpoint::Start())
-      {
-        llarp::LogWarn("Couldn't start endpoint");
+      if (not Endpoint::Start())
         return false;
-      }
       return SetupNetworking();
     }
 
@@ -902,7 +969,12 @@ namespace llarp
       }
 
       info.ifname = m_IfName;
-      info.dnsaddr.FromString(m_LocalResolverAddr.toHost());
+
+      LogInfo(Name(), " setting up dns...");
+      SetupDNS();
+
+      if (auto maybe_addr = m_DNS->FirstBoundPacketSourceAddr())
+        info.dnsaddr = maybe_addr->asIPv4();
 
       LogInfo(Name(), " setting up network...");
 
@@ -929,23 +1001,20 @@ namespace llarp
         LogError(Name(), " failed to add network interface");
         return false;
       }
-#ifdef __APPLE__
+
       m_OurIPv6 = llarp::huint128_t{
           llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(m_OurRange.addr).h}};
-#else
-      const auto maybe = m_router->Net().GetInterfaceIPv6Address(m_IfName);
-      if (maybe.has_value())
-      {
-        m_OurIPv6 = *maybe;
-        LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
-      }
-#endif
 
-      // Attempt to register DNS on the interface
-      systemd_resolved_set_dns(
-          m_IfName,
-          m_LocalResolverAddr.createSockAddr(),
-          false /* just .loki/.snode DNS initially */);
+      if constexpr (not llarp::platform::is_apple)
+      {
+        if (auto maybe = m_router->Net().GetInterfaceIPv6Address(m_IfName))
+        {
+          m_OurIPv6 = *maybe;
+          LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
+        }
+      }
+
+      m_router->routePoker().SetDNSMode(false);
 
       return HasAddress(ourAddr);
     }
@@ -968,18 +1037,7 @@ namespace llarp
     TunEndpoint::SetupNetworking()
     {
       llarp::LogInfo("Set Up networking for ", Name());
-      if (!SetupTun())
-      {
-        llarp::LogError(Name(), " failed to set up network interface");
-        return false;
-      }
-      if (!m_Resolver->Start(
-              m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers, m_hostfiles))
-      {
-        llarp::LogError(Name(), " failed to start DNS server");
-        return false;
-      }
-      return true;
+      return SetupTun();
     }
 
     void
@@ -1014,8 +1072,8 @@ namespace llarp
         }
       }
 #endif
-      if (m_Resolver)
-        m_Resolver->Stop();
+      if (m_DNS)
+        m_DNS->Stop();
       return llarp::service::Endpoint::Stop();
     }
 

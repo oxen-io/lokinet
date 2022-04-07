@@ -18,6 +18,8 @@ namespace
   // specifically overridden to something else in the config):
   const llarp::SockAddr DefaultDNSBind{"127.0.0.1:1153"};
 
+  const llarp::SockAddr LoopBack53{"127.0.0.1:53"};
+
   struct instance_data
   {
     llarp::apple::Context context;
@@ -91,8 +93,11 @@ llarp_apple_init(llarp_apple_config* appleconf)
 
     // The default DNS bind setting just isn't something we can use as a non-root network extension
     // so remap the default value to a high port unless explicitly set to something else.
-    if (config->dns.m_bind == llarp::SockAddr{"127.0.0.1:53"})
-      config->dns.m_bind = DefaultDNSBind;
+    for (auto& entry : config->dns.m_bind)
+    {
+      if (entry == LoopBack53)
+        entry = DefaultDNSBind;
+    }
 
     // If no explicit bootstrap then set the system default one included with the app bundle
     if (config->bootstrap.files.empty())

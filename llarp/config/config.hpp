@@ -155,9 +155,10 @@ namespace llarp
 
   struct DnsConfig
   {
-    SockAddr m_bind;
+    std::vector<SockAddr> m_bind;
     std::vector<SockAddr> m_upstreamDNS;
     std::vector<fs::path> m_hostfiles;
+    std::unordered_multimap<std::string, std::string> m_ExtraOpts;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

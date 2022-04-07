@@ -18,11 +18,7 @@ namespace llarp
   namespace handlers
   {
     ExitEndpoint::ExitEndpoint(std::string name, AbstractRouter* r)
-        : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
-        , m_Name(std::move(name))
-        , m_LocalResolverAddr{"127.0.0.1:53"}
-        , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
+        : m_Router(r), m_Name(std::move(name)), m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
     {
       m_ShouldInitTun = true;
       m_QUIC = std::make_shared<quic::TunnelManager>(*this);
@@ -209,6 +205,22 @@ namespace llarp
           return true;
       }
       return false;
+    }
+
+    bool
+    ExitEndpoint::MaybeHookDNS(
+        std::weak_ptr<dns::PacketSource_Base> source,
+        const dns::Message& query,
+        const SockAddr& to,
+        const SockAddr& from)
+    {
+      if (not ShouldHookDNSMessage(query))
+        return false;
+
+      auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
+      if (not HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
+        job->Cancel();
+      return true;
     }
 
     bool
@@ -459,9 +471,7 @@ namespace llarp
         }
 
         GetRouter()->loop()->add_ticker([this] { Flush(); });
-
-        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr);
-        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers, {});
+        m_Resolver->Start();
       }
       return true;
     }
@@ -703,8 +713,7 @@ namespace llarp
         m_ShouldInitTun = false;
       }
 
-      m_LocalResolverAddr = dnsConfig.m_bind;
-      m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
+      m_Resolver = std::make_shared<dns::Server>(m_Router->loop(), dnsConfig);
 
       m_OurRange = networkConfig.m_ifaddr;
       if (!m_OurRange.addr.h)

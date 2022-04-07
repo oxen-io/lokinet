@@ -12,11 +12,18 @@ namespace mocks
   class MockUDPHandle : public llarp::UDPHandle
   {
     Network* const _net;
+    std::optional<llarp::SockAddr> _addr;
 
    public:
     MockUDPHandle(Network* net, llarp::UDPHandle::ReceiveFunc recv)
         : llarp::UDPHandle{recv}, _net{net}
     {}
+
+    std::optional<llarp::SockAddr>
+    LocalAddr() const override
+    {
+      return _addr;
+    }
 
     bool
     listen(const llarp::SockAddr& addr) override;
@@ -186,7 +193,10 @@ namespace mocks
   bool
   MockUDPHandle::listen(const llarp::SockAddr& addr)
   {
-    return _net->HasInterfaceAddress(addr.getIP());
+    if (not _net->HasInterfaceAddress(addr.getIP()))
+      return false;
+    _addr = addr;
+    return true;
   }
 
 }  // namespace mocks

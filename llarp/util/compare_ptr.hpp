@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include <memory>
 
 namespace llarp
 {
@@ -16,4 +17,16 @@ namespace llarp
       return Compare()(left, right);
     }
   };
+
+  /// type for comparing weak_ptr
+  template <typename Type_t, typename Compare = std::less<>>
+  struct CompareWeakPtr
+  {
+    bool
+    operator()(const std::weak_ptr<Type_t>& left, const std::weak_ptr<Type_t>& right) const
+    {
+      return ComparePtr<std::shared_ptr<Type_t>, Compare>{}(left.lock(), right.lock());
+    }
+  };
+
 }  // namespace llarp

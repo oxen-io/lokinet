@@ -74,6 +74,12 @@ namespace llarp
     bool
     operator==(const SockAddr& other) const;
 
+    bool
+    operator!=(const SockAddr& other) const
+    {
+      return not(*this == other);
+    };
+
     void
     fromString(std::string_view str, bool allow_port = true);
 
