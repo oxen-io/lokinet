@@ -275,7 +275,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
       return;
     }
 
-    llarp::util::SetThreadName("llarp-mainloop");
+    llarp::util::SetThreadName("mainloop");
 
     auto result = ctx->Run(opts);
     exit_code.set_value(result);
@@ -552,6 +552,8 @@ lokinet_main(int argc, char* argv[])
   ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 #endif
 
+  llarp::util::SetThreadName(argv[0]);
+
   do
   {
     // do periodic non lokinet related tasks here
@@ -648,9 +650,10 @@ SvcCtrlHandler(DWORD dwCtrl)
   switch (dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
+      handle_signal(SIGINT);
+      std::this_thread::sleep_for(1s);
       ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
       // Signal the service to stop.
-      handle_signal(SIGINT);
       return;
 
     case SERVICE_CONTROL_INTERROGATE:

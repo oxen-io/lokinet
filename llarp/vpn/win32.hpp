@@ -39,7 +39,8 @@ namespace llarp::vpn
           err != ERROR_BUFFER_OVERFLOW)
         throw win32::error{err, "cannot allocate adapter addresses: "};
 
-      std::unique_ptr<IP_ADAPTER_ADDRESSES_LH[]> table{new IP_ADAPTER_ADDRESSES_LH[sz]};
+      std::unique_ptr<IP_ADAPTER_ADDRESSES_LH[]> table{
+          new IP_ADAPTER_ADDRESSES_LH[(sz / sizeof(IP_ADAPTER_ADDRESSES_LH)) + 1]};
       if (auto err = GetAdaptersAddresses(
               AF_UNSPEC, GAA_FLAG_INCLUDE_ALL_INTERFACES, nullptr, table.get(), &sz);
           err != ERROR_SUCCESS)
@@ -428,7 +429,7 @@ namespace llarp::vpn
     {
       wintun::NetSH(
           std::wstring{L"interface "} + (nameserver.isIPv4() ? L"ipv4" : L"ipv6")
-          + L" set dnsservers name=\"" + adapter + L"\" source=static \""
+          + L" set dnsservers name=" + adapter + L" source=static "
           + to_width<std::wstring>(nameserver.hostString()) + L" primary");
     }
 
@@ -650,7 +651,7 @@ namespace llarp::vpn
     {
       IRouteManager::DelDefaultRouteViaInterface(vpn);
       // remove loopback exception and pray for forgiveness
-      wintun::RouteExec("REMOVE 127.0.0.0 255.0.0.0 0.0.0.0");
+      wintun::RouteExec("DELETE 127.0.0.0 255.0.0.0 0.0.0.0");
     }
 
     void
@@ -684,7 +685,7 @@ namespace llarp::vpn
     void
     DelRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      ModifyRouteViaInterface("REMOVE", iface, range);
+      ModifyRouteViaInterface("DELETE", iface, range);
     }
   };
 
