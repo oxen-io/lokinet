@@ -108,15 +108,19 @@ namespace llarp
   uint64_t
   randint();
 
+  /// extract a pointer to the public key form a secretkey buffer
   const byte_t*
   seckey_topublic(const SecretKey& secret);
 
+  /// extract a pointer to the public key component from a pqkeypair
   const byte_t*
   pq_keypair_to_public(const PQKeyPair& keypair);
 
+  /// extract a pointer to the secret key componentx from a pqkeypair
   const byte_t*
   pq_keypair_to_secret(const PQKeyPair& keypair);
 
+  /// crypto implementation singleton manager
   struct CryptoManager
   {
    private:
@@ -125,16 +129,19 @@ namespace llarp
     Crypto* m_prevCrypto;
 
    public:
+    /// push a new crypto implementation
     explicit CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
     {
       m_crypto = crypto;
     }
 
+    /// pop crypto implementation
     ~CryptoManager()
     {
       m_crypto = m_prevCrypto;
     }
 
+    /// obtain our current crypto implementation singleton
     static Crypto*
     instance()
     {
