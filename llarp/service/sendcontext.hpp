@@ -20,6 +20,8 @@ namespace llarp
 
     struct SendContext
     {
+      virtual ~SendContext() = default;
+
       SendContext(ServiceInfo ident, const Introduction& intro, path::PathSet* send, Endpoint* ep);
 
       void

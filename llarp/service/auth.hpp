@@ -44,7 +44,7 @@ namespace llarp::service
 
   struct IAuthPolicy
   {
-    ~IAuthPolicy() = default;
+    virtual ~IAuthPolicy() = default;
 
     /// asynchronously determine if we accept new convotag from remote service, call hook with
     /// result later

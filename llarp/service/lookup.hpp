@@ -103,6 +103,8 @@ namespace llarp
 
     struct ILookupHolder
     {
+      virtual ~ILookupHolder() = default;
+
       virtual void
       PutLookup(IServiceLookup* l, uint64_t txid) = 0;
     };

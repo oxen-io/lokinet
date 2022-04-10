@@ -267,9 +267,13 @@ if(APPLE)
   add_subdirectory(apple)
 endif()
 
-foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
+foreach(lokinet_lib liblokinet lokinet-platform lokinet-util)
   add_log_tag(${lokinet_lib})
+  # add elevated compiler warnings
+  target_compile_options(${lokinet_lib} BEFORE PRIVATE -Werror -Wextra -Wnon-virtual-dtor -Woverloaded-virtual)
 endforeach()
+
+add_log_tag(lokinet-cryptography)
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 

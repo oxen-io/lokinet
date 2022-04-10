@@ -113,6 +113,8 @@ namespace llarp
       /// @params numDesiredPaths the number of paths to maintain
       PathSet(size_t numDesiredPaths);
 
+      virtual ~PathSet() = default;
+
       /// get a shared_ptr of ourself
       virtual PathSet_ptr
       GetSelf() = 0;

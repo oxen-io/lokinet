@@ -24,6 +24,8 @@ namespace llarp
     struct ProtocolMessage;
     struct IDataHandler
     {
+      virtual ~IDataHandler() = default;
+
       virtual bool
       HandleDataMessage(
           path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) = 0;
