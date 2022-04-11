@@ -5,6 +5,8 @@
 #include <winuser.h>
 #include <stdio.h>
 
+#include <string>
+
 extern "C" int
 Lokinet_INIT(void)
 {
@@ -16,7 +18,7 @@ Lokinet_INIT(void)
           "dont run lokinet in wine like wtf man we support linux.\n"
           "This Program Will now crash lmao.";
       const std::string title = "srsly fam wtf";
-      MessageBoxA(NULL, text.c_str(), title.c_str(), MB_ICONHAND);
+      MessageBoxA(nullptr, text.c_str(), title.c_str(), MB_ICONHAND);
       abort();
     }
   }
