@@ -270,7 +270,7 @@ endif()
 foreach(lokinet_lib liblokinet lokinet-platform lokinet-util)
   add_log_tag(${lokinet_lib})
   # add elevated compiler warnings
-  target_compile_options(${lokinet_lib} BEFORE PRIVATE -Werror -Wextra -Wnon-virtual-dtor -Woverloaded-virtual)
+  target_compile_options(${lokinet_lib} BEFORE PRIVATE -Werror -Wextra -Wnon-virtual-dtor -Woverloaded-virtual -Wno-error=attributes)
 endforeach()
 
 add_log_tag(lokinet-cryptography)
