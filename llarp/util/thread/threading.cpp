@@ -47,7 +47,8 @@ namespace llarp
 #elif _MSC_VER
       ::SetThreadName(::GetCurrentThreadId(), name.c_str());
 #elif __MINGW32__
-      const int rc = pthread_setname_np(pthread_self(), name.c_str());
+      if (auto rc = pthread_setname_np(pthread_self(), name.c_str()))
+        LogError("failed to set thread name: ", strerror(rc));
 #else
       LogInfo("Thread name setting not supported on this platform");
       (void)name;
