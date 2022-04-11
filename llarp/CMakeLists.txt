@@ -16,7 +16,7 @@ add_library(lokinet-util
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
-  util/lokinet_init.c
+  util/lokinet_init.cpp
   util/mem.cpp
   util/printer.cpp
   util/str.cpp
