@@ -221,24 +221,35 @@ namespace llarp
       std::shared_ptr<path::TransitHop> hop)
   {
     router->loop()->call([router, nextHop, msg = std::move(msg), hop = std::move(hop)] {
-      SendMessage(router, nextHop, msg);
-      // destroy hop as needed
-      if ((msg->status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
-      {
-        hop->QueueDestroySelf(router);
-      }
+      SendMessage(router, nextHop, msg, hop);
     });
   }
 
   void
   LR_StatusMessage::SendMessage(
-      AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
+      AbstractRouter* router,
+      const RouterID nextHop,
+      std::shared_ptr<LR_StatusMessage> msg,
+      std::shared_ptr<path::TransitHop> hop)
   {
     llarp::LogDebug("Attempting to send LR_Status message to (", nextHop, ")");
-    if (not router->SendToOrQueue(nextHop, *msg))
-    {
-      llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop, " failed");
-    }
+
+    auto resultCallback = [hop, router, msg, nextHop](auto status) {
+      if ((msg->status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS
+          or status != SendStatus::Success)
+      {
+        llarp::LogError("Failed to propagate LR_Status message to ", nextHop);
+        hop->QueueDestroySelf(router);
+      }
+    };
+
+    // send the status message to previous hop
+    // if it fails we are hitting a failure case we can't cope with so ... drop.
+    if (not router->SendToOrQueue(nextHop, *msg, resultCallback))
+      resultCallback(SendStatus::Congestion);
+
+    // trigger idempotent pump to make sure stuff gets sent
+    router->TriggerPump();
   }
 
   bool
