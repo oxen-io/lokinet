@@ -228,7 +228,8 @@ namespace llarp::vpn
     {
       DWORD len;
 
-      const auto device_id = reg_query(NETWORK_ADAPTERS);
+      // this strdup leaks and i dont care
+      const auto device_id = reg_query(strdup(NETWORK_ADAPTERS));
       if (device_id == nullptr)
       {
         LogError("cannot query registry");
