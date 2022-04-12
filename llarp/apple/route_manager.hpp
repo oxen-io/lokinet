@@ -15,12 +15,10 @@ namespace llarp::apple
 
     /// These are called for poking route holes, but we don't have to do that at all on macos
     /// because the appex isn't subject to its own rules.
-    void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) override
+    void AddRoute(IPVariant_t, IPVariant_t) override
     {}
 
-    void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) override
+    void DelRoute(IPVariant_t, IPVariant_t) override
     {}
 
     void
@@ -35,8 +33,7 @@ namespace llarp::apple
     void
     DelRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
 
-    virtual std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) override
+    virtual std::vector<IPVariant_t> GetGatewaysNotOnInterface(std::string) override
     {
       // We can't get this on mac from our sandbox, but we don't actually need it because we
       // ignore the gateway for AddRoute/DelRoute anyway, so just return a zero IP.

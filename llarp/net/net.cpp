@@ -230,7 +230,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
   /* contiguous block for adapter list */
   struct _llarp_nt_ifaddrs_t* ifa = llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
   struct _llarp_nt_ifaddrs_t* ift = ifa;
-  int val = 0;
+
   /* now populate list */
   for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
   {
@@ -242,8 +242,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 
       /* address */
       ift->_ifa.ifa_addr = (struct sockaddr*)&ift->_addr;
-      val = llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String, ift->_ifa.ifa_addr);
-      assert(1 == val);
+      llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String, ift->_ifa.ifa_addr);
 
       /* name */
 #ifdef DEBUG
@@ -259,8 +258,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 
       /* netmask */
       ift->_ifa.ifa_netmask = (sockaddr*)&ift->_netmask;
-      val = llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask);
-      assert(1 == val);
+      llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask);
 
       /* next */
       if (k++ < (n - 1))
