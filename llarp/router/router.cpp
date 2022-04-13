@@ -1424,7 +1424,6 @@ namespace llarp
       return;
 
     _stopping.store(true);
-    LogContext::Instance().RevertRuntimeLevel();
     LogInfo("stopping router");
 #if defined(WITH_SYSTEMD)
     sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
@@ -1434,6 +1433,8 @@ namespace llarp
     paths.PumpUpstream();
     _linkManager.PumpLinks();
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
+    if (_vpnPlatform)
+      _vpnPlatform->TearDown();
   }
 
   bool

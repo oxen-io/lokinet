@@ -142,6 +142,10 @@ namespace llarp::vpn
     /// get owned ip route manager for managing routing table
     virtual IRouteManager&
     RouteManager() = 0;
+
+    /// tear down vpn platform before destruction
+    virtual void
+    TearDown(){};
   };
 
   /// create native vpn platform

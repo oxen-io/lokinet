@@ -264,13 +264,15 @@ namespace llarp::vpn
                                             _releaseRead(session.get(), pkt);
                                           }});
         }
-        if (auto err = GetLastError(); err == ERROR_NO_MORE_ITEMS)
+
+        const std::unordered_set<DWORD> acceptable{ERROR_NO_MORE_ITEMS, ERROR_HANDLE_EOF};
+        if (acceptable.count(GetLastError()))
         {
           SetLastError(0);
+          return std::shared_ptr<Packet>{nullptr};
         }
-        else
-          throw win32::error{"failed to read packet: "};
-        return std::shared_ptr<Packet>{nullptr};
+
+        throw win32::error{"failed to read packet: "};
       }
 
       void
@@ -418,6 +420,13 @@ namespace llarp::vpn
       Exec(NetshExe() + L" " + args);
     }
 
+    /// @brief executes netsh.exe with arguments
+    static void
+    NetSH(std::string args)
+    {
+      NetSH(to_width<std::wstring>(args));
+    }
+
     static void
     RouteExec(std::string args)
     {
@@ -433,23 +442,84 @@ namespace llarp::vpn
           + to_width<std::wstring>(nameserver.hostString()) + L" primary");
     }
 
-    /// @brief raii wrapper that sets dns settings to an original state on destruction
-    struct DNSRevert
+    /// RAII type for restoring network settings on windows using netsh
+    class NetRestore
     {
-      DNSRevert() = default;
+      std::optional<fs::path> script;
 
-      explicit DNSRevert(std::wstring _ifname, llarp::SockAddr _nameserver)
-          : ifname{std::move(_ifname)}, nameserver{std::move(_nameserver)}
-      {}
-      const std::wstring ifname;
-      const llarp::SockAddr nameserver;
-
-      ~DNSRevert()
+     public:
+      NetRestore(fs::path script_file = "C:\\programdata\\lokinet\\restore.txt")
+          : script{script_file}
       {
-        if (not ifname.empty())
+        if (fs::exists(*script))
         {
-          SetDNS(ifname, nameserver);
+          // restore any old settings and bail because it was a non clean shutdown
+          LogInfo("restoring old network setting...");
+          NetSH("exec " + script->u8string());
+          fs::remove(*script);
+          script = std::nullopt;
+          return;
         }
+        // dump current settings so we can restore them later
+        // calls popen beceause we cant save it to a file we read it from stdout
+        // thanks 1990s windows tech debt! very cool.
+        const auto cmd = to_width<std::string>(NetshExe()) + " interface dump";
+        LogInfo("[win32 popen]: ", cmd);
+        if (auto* f = ::popen(cmd.c_str(), "rb"))
+        {
+          std::array<char, 1024> tmp{};
+          std::ofstream outf{*script, std::ios::binary};
+          size_t n;
+          size_t written{};
+          do
+          {
+            if (n = fread(tmp.data(), 1, tmp.size(), f); n > 0)
+            {
+              outf.write(tmp.data(), n);
+              written += n;
+            }
+          } while (n > 0);
+          ::pclose(f);
+          LogInfo("wrote ", written, " bytes to ", *script);
+        }
+        else
+          throw std::runtime_error{stringify("cannot execute netsh: ", strerror(errno))};
+      }
+
+      ~NetRestore()
+      {
+        if (script)
+        {
+          NetSH("exec " + script->u8string());
+          fs::remove(*script);
+        }
+      }
+    };
+
+    /// raii wrapper to run a route command on destruction
+    class RouteRestore
+    {
+      const std::string cmd;
+
+     public:
+      explicit RouteRestore(std::string cmd_) : cmd{std::move(cmd_)}
+      {}
+
+      ~RouteRestore()
+      {
+        RouteExec(cmd);
+      }
+    };
+
+    /// raii wrapper to add a rule and remove it on desctruction
+    class Route
+    {
+      const RouteRestore m_Restore;
+
+     public:
+      Route(std::string route) : m_Restore{"DELETE " + route}
+      {
+        RouteExec("ADD " + route);
       }
     };
 
@@ -462,7 +532,6 @@ namespace llarp::vpn
     wintun::Adapter_ptr m_Adapter;
     const InterfaceInfo m_Info;
     AbstractRouter* const _router;
-    std::vector<wintun::DNSRevert> m_RevertDNS;
 
    public:
     explicit WintunInterface(wintun::API* api, InterfaceInfo info, AbstractRouter* router)
@@ -494,29 +563,13 @@ namespace llarp::vpn
     void
     Start()
     {
-      // prepare dns revert
+      // collect network adapters
+      std::set<std::wstring> adapters;
       {
         auto table = GetAdapterTable();
         for (auto* ent = table.get(); ent->Next; ent = ent->Next)
         {
-          if (auto* dns = ent->FirstDnsServerAddress;
-              dns and dns->Address.iSockaddrLength and dns->Address.lpSockaddr)
-          {
-            auto* addr = static_cast<SOCKADDR*>(dns->Address.lpSockaddr);
-            llarp::SockAddr saddr{};
-            switch (addr->sa_family)
-            {
-              case AF_INET:
-                saddr = *reinterpret_cast<sockaddr_in*>(addr);
-                break;
-              case AF_INET6:
-                saddr = *reinterpret_cast<sockaddr_in6*>(addr);
-                break;
-              default:
-                continue;
-            }
-            m_RevertDNS.emplace_back(to_width<std::wstring>(std::to_string(ent->IfIndex)), saddr);
-          }
+          adapters.emplace(to_width<std::wstring>(std::to_string(ent->IfIndex)));
         }
       };
 
@@ -532,8 +585,8 @@ namespace llarp::vpn
       const llarp::SockAddr dns{m_Info.dnsaddr};
 
       // set dns
-      for (const auto& ent : m_RevertDNS)
-        wintun::SetDNS(ent.ifname, dns);
+      for (const auto& ad : adapters)
+        wintun::SetDNS(ad, dns);
       wintun::SetDNS(to_width<std::wstring>(std::to_string(InterfaceIndex())), dns);
 
       m_Session = m_API->MakeSessionPtr(m_Adapter);
@@ -601,21 +654,64 @@ namespace llarp::vpn
 
   class Win32RouteManager : public IRouteManager
   {
-   public:
-    void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
+    std::unordered_map<std::string, wintun::Route> m_Routes;
+    const std::string m_Loopback{"127.0.0.0 255.0.0.0 0.0.0.0"};
+
+    std::string
+    MakeRouteHoleStr(IPVariant_t ip, IPVariant_t gateway)
     {
       const auto ip_str = std::visit([](auto&& ip) { return ip.ToString(); }, ip);
       const auto gateway_str = std::visit([](auto&& ip) { return ip.ToString(); }, gateway);
-      wintun::RouteExec("ADD " + ip_str + " MASK 255.255.255.255 " + gateway_str + " METRIC 2");
+      return ip_str + " MASK 255.255.255.255 " + gateway_str + " METRIC 2";
+    }
+    std::string
+    ModifyRouteViaInterfaceStr(NetworkInterface& iface, IPRange range)
+    {
+      if (range.IsV4())
+      {
+        const auto netif_str =
+            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV4();
+        return range.BaseAddressString() + " MASK "
+            + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2";
+      }
+      else
+      {
+        const auto netif_str =
+            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV6();
+        const auto interface_str =
+            std::to_string(dynamic_cast<const WintunInterface&>(iface).InterfaceIndex());
+        return range.ToString() + " " + netif_str + " IF " + interface_str + " METRIC 2";
+      }
+    }
+
+   protected:
+    /// removes all routes currently set up
+    void
+    TearDownRoutes()
+    {
+      m_Routes.clear();
+    }
+
+    void
+    MaybeAddRoute(std::string route)
+    {
+      if (m_Routes.count(route) == 0)
+        m_Routes.emplace(route, route);
+    }
+
+   public:
+    virtual ~Win32RouteManager() = default;
+
+    void
+    AddRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
+    {
+      MaybeAddRoute(MakeRouteHoleStr(ip, gateway));
     }
 
     void
     DelRoute(IPVariant_t ip, IPVariant_t gateway, huint16_t) override
     {
-      const auto ip_str = std::visit([](auto&& ip) { return ip.ToString(); }, ip);
-      const auto gateway_str = std::visit([](auto&& ip) { return ip.ToString(); }, gateway);
-      wintun::RouteExec("DELETE " + ip_str + " MASK 255.255.255.255 " + gateway_str + " METRIC 2");
+      m_Routes.erase(MakeRouteHoleStr(ip, gateway));
     }
 
     std::vector<IPVariant_t>
@@ -642,7 +738,7 @@ namespace llarp::vpn
     AddDefaultRouteViaInterface(NetworkInterface& vpn) override
     {
       // add loopback as exception as god is dead
-      wintun::RouteExec("ADD 127.0.0.0 255.0.0.0 0.0.0.0");
+      MaybeAddRoute(m_Loopback);
       IRouteManager::AddDefaultRouteViaInterface(vpn);
     }
 
@@ -651,55 +747,44 @@ namespace llarp::vpn
     {
       IRouteManager::DelDefaultRouteViaInterface(vpn);
       // remove loopback exception and pray for forgiveness
-      wintun::RouteExec("DELETE 127.0.0.0 255.0.0.0 0.0.0.0");
-    }
-
-    void
-    ModifyRouteViaInterface(std::string modifier, NetworkInterface& iface, IPRange range)
-    {
-      if (range.IsV4())
-      {
-        const auto netif_str =
-            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV4();
-        wintun::RouteExec(
-            modifier + " " + range.BaseAddressString() + " MASK "
-            + netmask_ipv4_bits(range.HostmaskBits()).ToString() + " " + netif_str + " METRIC 2");
-      }
-      else
-      {
-        const auto netif_str =
-            dynamic_cast<const WintunInterface&>(iface).InterfaceAddressStringV6();
-        const auto interface_str =
-            std::to_string(dynamic_cast<const WintunInterface&>(iface).InterfaceIndex());
-        wintun::RouteExec(
-            modifier + " " + range.ToString() + " " + netif_str + " IF " + interface_str
-            + " METRIC 2");
-      }
+      m_Routes.erase(m_Loopback);
     }
 
     void
     AddRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      ModifyRouteViaInterface("ADD", iface, range);
+      MaybeAddRoute(ModifyRouteViaInterfaceStr(iface, range));
     }
+
     void
     DelRouteViaInterface(NetworkInterface& iface, IPRange range) override
     {
-      ModifyRouteViaInterface("DELETE", iface, range);
+      const auto route = ModifyRouteViaInterfaceStr(iface, range);
+      m_Routes.erase(route);
     }
   };
 
   class Win32Platform : public wintun::API, public Platform, public Win32RouteManager
   {
+    std::unique_ptr<wintun::NetRestore> m_Restore;
+
    public:
     Win32Platform() : API{}, Platform{}, Win32RouteManager{}
     {
       RemoveAllAdapters();
     }
 
+    virtual ~Win32Platform() = default;
+
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
+      // make sure we dont double init
+      if (m_Restore)
+        throw std::logic_error{"already set up wintun"};
+      // set up raii manager for restoring network settings to what they were before
+      m_Restore.reset(new wintun::NetRestore{});
+
       auto adapter = std::make_shared<WintunInterface>(this, info, router);
       adapter->Start();
       return adapter;
@@ -709,6 +794,15 @@ namespace llarp::vpn
     RouteManager() override
     {
       return *this;
+    }
+
+    void
+    TearDown() override
+    {
+      LogInfo("tearing down win32 vpn platform");
+      TearDownRoutes();
+      m_Restore.reset();
+      LogInfo("win32 vpn platform is gone");
     }
   };
 

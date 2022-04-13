@@ -227,6 +227,25 @@ uninstall_win32_daemon()
   CloseServiceHandle(schService);
   CloseServiceHandle(schSCManager);
 }
+
+BOOL WINAPI
+_SigHandler(DWORD ev)
+{
+  const std::unordered_map<DWORD, int> evmap{
+      {CTRL_BREAK_EVENT, SIGINT},
+      {CTRL_C_EVENT, SIGINT},
+      {CTRL_CLOSE_EVENT, SIGTERM},
+      {CTRL_SHUTDOWN_EVENT, SIGTERM}};
+
+  if (auto itr = evmap.find(ev); itr != evmap.end())
+  {
+    handle_signal(itr->second);
+    return true;
+  }
+  llarp::LogError("unknown console handler event: ", ev);
+  return false;
+}
+
 #endif
 
 /// this sets up, configures and runs the main context
@@ -256,13 +275,15 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     ctx = std::make_shared<llarp::Context>();
     ctx->Configure(std::move(conf));
 
+#ifdef _WIN32
+    if (not SetConsoleCtrlHandler((PHANDLER_ROUTINE)_SigHandler, true))
+      throw std::runtime_error{"cannot set up signal handler"};
+#else
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
-#ifndef _WIN32
     signal(SIGHUP, handle_signal);
     signal(SIGUSR1, handle_signal);
 #endif
-
     try
     {
       ctx->Setup(opts);
