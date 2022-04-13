@@ -5,7 +5,7 @@
 #include <memory>
 #include <optional>
 #include <llarp/net/net_int.hpp>
-#include "systemd_resolved.hpp"
+#include <llarp/net/sock_addr.hpp>
 
 namespace llarp
 {
