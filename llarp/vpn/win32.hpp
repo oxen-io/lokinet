@@ -641,9 +641,9 @@ namespace llarp::vpn
     using Platform::Platform;
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
+    ObtainInterface(InterfaceInfo info) override
     {
-      auto netif = std::make_shared<Win32Interface>(std::move(info), router);
+      auto netif = std::make_shared<Win32Interface>(std::move(info), m_OwnedContext->router);
       netif->Start();
       return netif;
     };
