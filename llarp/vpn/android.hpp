@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include <llarp/ev/vpn.hpp>
-#include "common.hpp"
 #include <llarp.hpp>
 
 namespace llarp::vpn

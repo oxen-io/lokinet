@@ -643,7 +643,7 @@ namespace llarp::vpn
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) override
     {
-      auto netif = std::make_shared<Win32Interface>(std::move(info), m_OwnedContext->router);
+      auto netif = std::make_shared<Win32Interface>(std::move(info), m_OwningContext->router);
       netif->Start();
       return netif;
     };
