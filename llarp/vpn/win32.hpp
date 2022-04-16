@@ -809,4 +809,9 @@ namespace llarp::vpn
     }
   };
 
+  namespace win32
+  {
+    using VPNPlatform = Win32Platform;
+  }
+
 }  // namespace llarp::vpn

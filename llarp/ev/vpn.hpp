@@ -133,8 +133,9 @@ namespace llarp::vpn
     llarp::Context* const m_OwningContext;
 
    public:
-    Platform(llarp::Context* ctx) : m_OwningContext{ctx}
+    explicit Platform(llarp::Context* ctx) : m_OwningContext{ctx}
     {}
+
     Platform(const Platform&) = delete;
     Platform(Platform&&) = delete;
     virtual ~Platform() = default;

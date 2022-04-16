@@ -87,23 +87,27 @@ namespace llarp::vpn
 
   class AndroidPlatform : public Platform
   {
-    const int fd;
     AndroidRouteManager _routeManager{};
 
    public:
-    AndroidPlatform(llarp::Context* ctx) : fd(ctx->androidFD)
-    {}
+    using Platform::Platform;
 
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) override
     {
-      return std::make_shared<AndroidInterface>(std::move(info), fd);
+      return std::make_shared<AndroidInterface>(std::move(info), m_OwningContext->androidFD);
     }
+
     IRouteManager&
     RouteManager() override
     {
       return _routeManager;
     }
   };
+
+  namespace android
+  {
+    using VPNPlatform = AndroidPlatform;
+  }
 
 }  // namespace llarp::vpn

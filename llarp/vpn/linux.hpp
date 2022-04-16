@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include "common.hpp"
+#include "ioctl.hpp"
 #include <net/if.h>
 #include <linux/if_tun.h>
 
@@ -415,6 +415,8 @@ namespace llarp::vpn
     LinuxRouteManager _routeManager{};
 
    public:
+    using Platform::Platform;
+
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) override
     {
@@ -427,5 +429,10 @@ namespace llarp::vpn
       return _routeManager;
     }
   };
+
+  namespace linux
+  {
+    using VPNPlatform = LinuxPlatform;
+  }
 
 }  // namespace llarp::vpn

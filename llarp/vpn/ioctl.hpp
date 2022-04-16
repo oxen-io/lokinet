@@ -32,7 +32,14 @@ namespace llarp::vpn
     void
     ioctl(Command cmd, Args&&... args)
     {
-      if (::ioctl(_fd, cmd, std::forward<Args>(args)...) == -1)
+      IOCTL::attempt(_fd, cmd, std::forward<Args>(args)...);
+    }
+
+    template <typename Command, typename... Args>
+    static void
+    attempt(int fd, Command cmd, Args&&... args)
+    {
+      if (::ioctl(fd, cmd, std::forward<Args>(args)...) == -1)
       {
         if (errno == EACCES)
         {

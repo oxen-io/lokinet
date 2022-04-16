@@ -254,15 +254,30 @@ namespace llarp
         return Version() == 6;
       }
 
+      /// return the address family for this packet
+      inline int
+      AddressFamily() const
+      {
+        if (IsV4())
+          return AF_INET;
+        if (IsV6())
+          return AF_INET6;
+        return AF_UNSPEC;
+      }
+
+      /// return the service protocol type
       inline service::ProtocolType
       ServiceProtocol() const
       {
-        if (IsV4())
-          return service::ProtocolType::TrafficV4;
-        if (IsV6())
-          return service::ProtocolType::TrafficV6;
-
-        return service::ProtocolType::Control;
+        switch (AddressFamily())
+        {
+          case AF_INET:
+            return service::ProtocolType::TrafficV4;
+          case AF_INET6:
+            return service::ProtocolType::TrafficV6;
+          default:
+            return service::ProtocolType::Control;
+        }
       }
 
       huint128_t
