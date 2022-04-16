@@ -638,6 +638,8 @@ namespace llarp::vpn
     Win32RouteManager _routeManager{};
 
    public:
+    using Platform::Platform;
+
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
@@ -652,5 +654,10 @@ namespace llarp::vpn
       return _routeManager;
     }
   };
+
+  namespace win32
+  {
+    using VPNPlatform = Win32Platform;
+  }
 
 }  // namespace llarp::vpn

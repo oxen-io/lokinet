@@ -108,8 +108,14 @@ namespace llarp::vpn
   /// responsible for obtaining vpn interfaces
   class Platform
   {
+   protected:
+    /// a pointer to the context that owns the platform
+    [[maybe_unused]] llarp::Context* const m_OwningContext;
+
    public:
-    Platform() = default;
+    explicit Platform(llarp::Context* ctx) : m_OwningContext{ctx}
+    {}
+
     Platform(const Platform&) = delete;
     Platform(Platform&&) = delete;
     virtual ~Platform() = default;
