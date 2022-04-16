@@ -128,8 +128,13 @@ namespace llarp::vpn
   /// responsible for obtaining vpn interfaces
   class Platform
   {
+   protected:
+    /// a pointer to the context that owns the platform
+    llarp::Context* const m_OwningContext;
+
    public:
-    Platform() = default;
+    explicit Platform(llarp::Context* ctx) : m_OwningContext{ctx}
+    {}
     Platform(const Platform&) = delete;
     Platform(Platform&&) = delete;
     virtual ~Platform() = default;
@@ -137,7 +142,7 @@ namespace llarp::vpn
     /// get a new network interface fully configured given the interface info
     /// blocks until ready, throws on error
     virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
+    ObtainInterface(InterfaceInfo info) = 0;
 
     /// get owned ip route manager for managing routing table
     virtual IRouteManager&

@@ -770,7 +770,7 @@ namespace llarp::vpn
     std::unique_ptr<wintun::NetRestore> m_Restore;
 
    public:
-    Win32Platform() : API{}, Platform{}, Win32RouteManager{}
+    Win32Platform(llarp::Context* ctx) : API{}, Platform{ctx}, Win32RouteManager{}
     {
       RemoveAllAdapters();
     }
@@ -778,7 +778,7 @@ namespace llarp::vpn
     virtual ~Win32Platform() = default;
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
+    ObtainInterface(InterfaceInfo info) override
     {
       // make sure we dont double init
       if (m_Restore)
@@ -786,7 +786,8 @@ namespace llarp::vpn
       // set up raii manager for restoring network settings to what they were before
       m_Restore.reset(new wintun::NetRestore{});
 
-      auto adapter = std::make_shared<WintunInterface>(this, info, router);
+      auto adapter =
+          std::make_shared<WintunInterface>(this, std::move(info), m_OwnedContext->router);
       adapter->Start();
       return adapter;
     };

@@ -906,7 +906,7 @@ namespace llarp
 
       try
       {
-        m_NetIf = Router()->GetVPNPlatform()->ObtainInterface(std::move(info), Router());
+        m_NetIf = Router()->GetVPNPlatform()->ObtainInterface(std::move(info));
       }
       catch (std::exception& ex)
       {
