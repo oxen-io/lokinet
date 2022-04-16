@@ -831,20 +831,29 @@ namespace llarp
       }
       else if (msg.questions[0].qtype == dns::qTypeSRV)
       {
-        llarp::service::Address addr;
-
+        auto srv_for = msg.questions[0].Subdomains();
+        auto name = msg.questions[0].qname;
         if (is_localhost_loki(msg))
         {
-          msg.AddSRVReply(introSet().GetMatchingSRVRecords(msg.questions[0].Subdomains()));
+          msg.AddSRVReply(introSet().GetMatchingSRVRecords(srv_for));
           reply(msg);
           return true;
         }
-        else if (addr.FromString(qname, ".loki"))
-        {
-          llarp::LogDebug("SRV request for: ", qname);
-
-          return ReplyToLokiSRVWhenReady(addr, std::make_shared<dns::Message>(msg));
-        }
+        LookupServiceAsync(
+            name,
+            srv_for,
+            [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
+              if (records.empty())
+              {
+                msg->AddNXReply();
+              }
+              else
+              {
+                msg->AddSRVReply(records);
+              }
+              reply(*msg);
+            });
+        return true;
       }
       else
       {
