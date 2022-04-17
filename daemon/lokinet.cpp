@@ -36,14 +36,14 @@ SERVICE_STATUS_HANDLE SvcStatusHandle;
 bool start_as_daemon = false;
 #endif
 
-std::shared_ptr<llarp::Context> ctx;
+std::unique_ptr<llarp::Context> ctx;
 std::promise<int> exit_code;
 
 void
 handle_signal(int sig)
 {
   if (ctx)
-    ctx->loop->call([sig] { ctx->HandleSignal(sig); });
+    ctx->loop->call([sig, ctx = ctx.get()] { ctx->HandleSignal(sig); });
   else
     std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }
@@ -272,7 +272,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
       return;
     }
 
-    ctx = std::make_shared<llarp::Context>();
+    ctx = std::make_unique<llarp::Context>();
     ctx->Configure(std::move(conf));
 
 #ifdef _WIN32
@@ -631,10 +631,10 @@ lokinet_main(int argc, char* argv[])
   }
 
   llarp::LogContext::Instance().ImmediateFlush();
-  if (ctx)
-  {
-    ctx.reset();
-  }
+  ctx.reset();
+#ifdef _WIN32
+  TellWindowsServiceStopped();
+#endif
   return code;
 }
 
@@ -667,12 +667,16 @@ VOID FAR PASCAL
 SvcCtrlHandler(DWORD dwCtrl)
 {
   // Handle the requested control code.
-
   switch (dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
-      handle_signal(SIGINT);
-      std::this_thread::sleep_for(1s);
+      if (ctx)
+      {
+        // end the daemon
+        ctx->CloseAsync();
+        // wait for the daemon to end
+        ctx->Wait();
+      }
       ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
       // Signal the service to stop.
       return;
