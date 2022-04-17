@@ -569,7 +569,8 @@ namespace llarp::vpn
         auto table = GetAdapterTable();
         for (auto* ent = table.get(); ent->Next; ent = ent->Next)
         {
-          adapters.emplace(to_width<std::wstring>(std::to_string(ent->IfIndex)));
+          if (ent->Dhcpv4Enabled)
+            adapters.emplace(to_width<std::wstring>(std::to_string(ent->IfIndex)));
         }
       };
 
