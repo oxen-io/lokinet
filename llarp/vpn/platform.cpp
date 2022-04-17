@@ -23,7 +23,7 @@ namespace llarp::vpn
     (void)ctx;
     std::shared_ptr<Platform> plat;
 #ifdef _WIN32
-    plat = std::make_shared<Win32Platform>();
+    plat = std::make_shared<Win32Platform>(ctx);
 #endif
 #ifdef __linux__
 #ifdef ANDROID

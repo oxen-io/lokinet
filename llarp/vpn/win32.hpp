@@ -16,6 +16,7 @@
 #include <llarp/win32/fwpm.hpp>
 
 #include <llarp/crypto/crypto.hpp>
+#include <llarp.hpp>
 
 namespace llarp::vpn
 {
@@ -765,12 +766,12 @@ namespace llarp::vpn
     }
   };
 
-  class Win32Platform : public wintun::API, public Platform, public Win32RouteManager
+  class Win32Platform : public Platform, public Win32RouteManager, public wintun::API
   {
     std::unique_ptr<wintun::NetRestore> m_Restore;
 
    public:
-    Win32Platform(llarp::Context* ctx) : API{}, Platform{ctx}, Win32RouteManager{}
+    Win32Platform(llarp::Context* ctx) : Platform{ctx}, Win32RouteManager{}, API{}
     {
       RemoveAllAdapters();
     }
@@ -787,7 +788,7 @@ namespace llarp::vpn
       m_Restore.reset(new wintun::NetRestore{});
 
       auto adapter =
-          std::make_shared<WintunInterface>(this, std::move(info), m_OwnedContext->router);
+          std::make_shared<WintunInterface>(this, std::move(info), m_OwningContext->router.get());
       adapter->Start();
       return adapter;
     };
