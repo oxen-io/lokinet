@@ -1,6 +1,8 @@
 
 #include <llarp/ev/vpn.hpp>
 
+#include <type_traits>
+
 #ifdef _WIN32
 #include "win32.hpp"
 #endif
@@ -44,11 +46,12 @@ namespace llarp::vpn
 #endif
 #endif
 #ifdef __APPLE__
-
 #undef NO_VPN_PLAT
+
+    // we do not expose this type here
     struct VPNPlatform
     {};
-    throw std::runtime_error{"not supported"};
+
 #endif
 #ifdef __FreeBSD__
 #undef NO_VPN_PLAT
@@ -58,7 +61,15 @@ namespace llarp::vpn
 #ifdef NO_VPN_PLAT
 #error "no vpn platform implemented for this target"
 #else
-    return std::make_shared<VPNPlatform>(ctx);
+    if constexpr (std::is_base_of_v<Platform, VPNPlatform>)
+    {
+      return std::make_shared<VPNPlatform>(ctx);
+    }
+    else
+    {
+      (void)ctx;
+      throw std::runtime_error{"not supported"};
+    }
 #endif
   }
 

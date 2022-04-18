@@ -9,7 +9,7 @@ namespace llarp::apple
       VPNInterface::on_readable_callback on_readable,
       llarp_route_callbacks route_callbacks,
       void* callback_context)
-      : Platform{&ctx}
+      : vpn::Platform{&ctx}
       , m_Context{ctx}
       , m_RouteManager{ctx, std::move(route_callbacks), callback_context}
       , m_PacketWriter{std::move(packet_writer)}
@@ -19,6 +19,6 @@ namespace llarp::apple
   std::shared_ptr<vpn::NetworkInterface> VPNPlatform::ObtainInterface(vpn::InterfaceInfo)
   {
     return std::make_shared<VPNInterface>(
-        m_Context, m_PacketWriter, m_OnReadable, m_OwnedContext->router);
+        m_Context, m_PacketWriter, m_OnReadable, m_OwningContext->router.get());
   }
 }  // namespace llarp::apple
