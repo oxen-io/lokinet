@@ -45,11 +45,10 @@ namespace llarp
       if (dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
         LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
-        MarkCurrentIntroBad(Now());
-        ShiftIntroduction(false);
-        UpdateIntroSet();
-        SwapIntros();
         markedBad = remoteIntro.IsExpired(Now());
+        MarkCurrentIntroBad(Now());
+        ShiftIntroRouter(p->Endpoint());
+        UpdateIntroSet();
       }
       return true;
     }
