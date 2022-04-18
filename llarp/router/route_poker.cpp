@@ -2,6 +2,7 @@
 #include "abstractrouter.hpp"
 #include <llarp/service/context.hpp>
 #include <unordered_set>
+#include "systemd_resolved.hpp"
 
 namespace llarp
 {
