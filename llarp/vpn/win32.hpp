@@ -169,18 +169,9 @@ namespace llarp::vpn
     return ret;
   }
 
-  class Win32Interface final : public NetworkInterface
+  namespace
   {
-    std::atomic<bool> m_Run;
-    HANDLE m_Device, m_IOCP;
-    std::vector<std::thread> m_Threads;
-    thread::Queue<net::IPPacket> m_ReadQueue;
-
-    InterfaceInfo m_Info;
-
-    AbstractRouter* const _router;
-
-    static std::wstring
+    std::wstring
     get_win_sys_path()
     {
       wchar_t win_sys_path[MAX_PATH] = {0};
@@ -193,6 +184,18 @@ namespace llarp::vpn
       }
       return win_sys_path;
     }
+  }  // namespace
+
+  class Win32Interface final : public NetworkInterface
+  {
+    std::atomic<bool> m_Run;
+    HANDLE m_Device, m_IOCP;
+    std::vector<std::thread> m_Threads;
+    thread::Queue<net::IPPacket> m_ReadQueue;
+
+    InterfaceInfo m_Info;
+
+    AbstractRouter* const _router;
 
     static std::string
     NetSHCommand()
@@ -515,6 +518,17 @@ namespace llarp::vpn
     }
 
     static std::string
+    PowerShell()
+    {
+      std::wstring wcmd =
+          get_win_sys_path() + L"\\WindowsPowerShell\\v1.0\\powershell.exe -Command ";
+
+      using convert_type = std::codecvt_utf8<wchar_t>;
+      std::wstring_convert<convert_type, wchar_t> converter;
+      return converter.to_bytes(wcmd);
+    }
+
+    static std::string
     RouteCommand()
     {
       return Win32Interface::RouteCommand();
@@ -623,12 +637,16 @@ namespace llarp::vpn
     void
     AddDefaultRouteViaInterface(std::string ifname) override
     {
+      // kill ipv6
+      Execute(PowerShell() + R"(Disable-NetAdapterBinding -Name "*" -ComponentID ms_tcpip6)");
       DefaultRouteViaInterface(ifname, "ADD");
     }
 
     void
     DelDefaultRouteViaInterface(std::string ifname) override
     {
+      // restore ipv6
+      Execute(PowerShell() + R"(Enable-NetAdapterBinding -Name "*" -ComponentID ms_tcpip6)");
       DefaultRouteViaInterface(ifname, "DELETE");
     }
   };
