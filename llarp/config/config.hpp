@@ -115,9 +115,12 @@ namespace llarp
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
+    service::AuthFileType m_AuthFileType = service::AuthFileType::eAuthFileHashes;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
     std::unordered_set<service::Address> m_AuthWhitelist;
+    std::unordered_set<std::string> m_AuthStaticTokens;
+    std::set<fs::path> m_AuthFiles;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
 
