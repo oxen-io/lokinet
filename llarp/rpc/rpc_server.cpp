@@ -12,6 +12,9 @@
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/dns/dns.hpp>
 
+#include <tuple>
+#include <vector>
+
 namespace llarp::rpc
 {
   RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r) : m_LMQ(std::move(lmq)), m_Router(r)
@@ -570,26 +573,32 @@ namespace llarp::rpc
                   qtype = *maybe;
 
                 dns::Message msg{dns::Question{qname, qtype}};
-                // TODO: race condition
-                if (auto ep_ptr = (GetEndpointByName(r, endpoint)))
-                {
-                  if (auto ep = reinterpret_cast<dns::IQueryHandler*>(ep_ptr.get()))
+
+                r->loop()->call([r, endpoint, msg = std::move(msg), reply]() {
+                  if (auto ep_ptr = GetEndpointByName(r, endpoint))
                   {
-                    if (ep->ShouldHookDNSMessage(msg))
+                    if (auto ep = reinterpret_cast<dns::IQueryHandler*>(ep_ptr.get()))
                     {
-                      ep->HandleHookedDNSMessage(std::move(msg), [reply](dns::Message msg) {
-                        reply(JSONResponse(msg.ToJSON()));
-                      });
-                      return;
+                      if (ep->ShouldHookDNSMessage(msg))
+                      {
+                        ep->HandleHookedDNSMessage(std::move(msg), [reply](dns::Message msg) {
+                          reply(JSONResponse(msg.ToJSON()));
+                        });
+                        return;
+                      }
                     }
+                    reply(JSONError("dns query not accepted by endpoint"));
+                    return;
                   }
-                  throw std::runtime_error{"dns query not accepted by endpoint"};
-                }
-                throw std::runtime_error{"no such endpoint for dns query"};
+                  reply(JSONError("no such endpoint for dns query"));
+                });
               });
             })
         .add_request_command("config", [this](oxenmq::Message& msg) {
           HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+            std::vector<std::tuple<std::string, std::string, std::string>> values;
+
+            // parse request
             if (auto maybe = json::maybe_get<nlohmann::json>(obj, "override"))
             {
               if (not maybe->is_object())
@@ -606,17 +615,26 @@ namespace llarp::rpc
                   if (not value.is_string())
                     throw std::runtime_error{
                         stringify("failed to set [", section, "]:", key, " value is not a string")};
-                  // TODO: race condition
-                  r->GetConfig()->Override(section, key, value.get<std::string>());
+
+                  values.emplace_back(section, key, value.get<std::string>());
                 }
               }
             }
 
-            if (auto maybe = json::maybe_get<bool>(obj, "reload", false); *maybe)
-            {
-              r->QueueDiskIO([conf = r->GetConfig()]() { conf->Save(); });
-            }
-            reply(JSONResponse("OK"));
+            // change config in logic thread
+            r->loop()->call([values = std::move(values),
+                             r,
+                             reply,
+                             reload = *json::maybe_get<bool>(obj, "reload", false)]() {
+              auto conf = r->GetConfig();
+              for (const auto& [sect, key, val] : values)
+                conf->Override(sect, key, val);
+              if (reload)
+              {
+                r->QueueDiskIO([conf]() { conf->Save(); });
+              }
+              reply(JSONResponse("OK"));
+            });
           });
         });
   }
