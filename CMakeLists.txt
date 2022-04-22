@@ -35,7 +35,7 @@ if(APPLE)
     set(LOKINET_APPLE_BUILD 0)
 endif()
 
-set(RELEASE_MOTTO "A Series of Tubes" CACHE STRING "Release motto")
+set(RELEASE_MOTTO "Packets Go Brrrr Haha" CACHE STRING "Release motto")
 
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})

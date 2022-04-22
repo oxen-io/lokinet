@@ -73,12 +73,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non-Linux targets"
-            VALUE "CompanyName", "Loki Foundation"
+            VALUE "CompanyName", "OPTF"
             VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
             VALUE "FileVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)
-            VALUE "InternalName", "llarpd"
-            VALUE "LegalCopyright", "Copyright ©2018-2020 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
-            VALUE "OriginalFilename", "llarpd.exe"
+            VALUE "InternalName", "lokinet"
+            VALUE "LegalCopyright", "Copyright ©2018-2022 Jeff Becker, Rick V for the OPTF. All rights reserved. This software is provided under the terms of the GPL3 License."
+            VALUE "OriginalFilename", "lokinet.exe"
             VALUE "ProductName", "LokiNET for Windows"
             VALUE "ProductVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)
         END
