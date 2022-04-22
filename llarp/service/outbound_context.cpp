@@ -9,7 +9,8 @@
 #include <llarp/util/meta/memfn.hpp>
 
 #include "endpoint_util.hpp"
-#include "service/protocol_type.hpp"
+#include "protocol_type.hpp"
+#include "protocol_utils.hpp"
 
 #include <random>
 #include <algorithm>
@@ -80,6 +81,19 @@ namespace llarp
       // this will make it so that there is less of a chance for timing races
       sendTimeout += parent->PathAlignmentTimeout();
       connectTimeout += parent->PathAlignmentTimeout();
+
+      m_SendBatched = m_Endpoint->Loop()->make_waker([weak = weak_from_this()]() {
+        if (auto ptr = weak.lock())
+        {
+          // collect all packets per type and pack them
+          for (auto& [proto, traffics] : ptr->m_BatchedQueues)
+          {
+            for (auto& pkt : PackAll(std::move(traffics)))
+              ptr->AsyncEncryptAndSendTo(pkt, proto);
+          }
+          ptr->m_BatchedQueues.clear();
+        }
+      });
     }
 
     OutboundContext::~OutboundContext() = default;
@@ -711,9 +725,44 @@ namespace llarp
     void
     OutboundContext::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
-      AsyncEncryptAndSendTo(buf, t);
+      if (auto optimal = SelectOptimalProtocol(t))
+      {
+        if (IsBatchedProto(*optimal))
+          QueueBatchedTraffic(buf, *optimal);
+        else
+          AsyncEncryptAndSendTo(buf, *optimal);
+      }
     }
 
+    void
+    OutboundContext::QueueBatchedTraffic(const llarp_buffer_t& buf, service::ProtocolType t)
+    {
+      auto& queue = m_BatchedQueues[t];
+      queue.emplace_back(OwnedBuffer::copy_from(buf));
+      m_SendBatched->Trigger();
+    }
+
+    bool
+    OutboundContext::SupportsProto(ProtocolType t) const
+    {
+      return currentIntroSet.SupportsProto(t);
+    }
+
+    std::optional<ProtocolType>
+    OutboundContext::SelectOptimalProtocol(ProtocolType t) const
+    {
+      switch (t)
+      {
+        case ProtocolType::Exit:
+          return SupportsProto(ProtocolType::PacketsExit) ? ProtocolType::PacketsExit : t;
+        case ProtocolType::TrafficV4:
+          return SupportsProto(ProtocolType::PacketsV4) ? ProtocolType::PacketsV4 : t;
+        case ProtocolType::TrafficV6:
+          return SupportsProto(ProtocolType::PacketsV6) ? ProtocolType::PacketsV6 : t;
+        default:
+          return SupportsProto(t) ? std::optional<ProtocolType>{t} : std::nullopt;
+      }
+    }
   }  // namespace service
 
 }  // namespace llarp

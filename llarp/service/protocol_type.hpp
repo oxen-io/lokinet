@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <ostream>
+#include <optional>
 
 namespace llarp::service
 {
@@ -16,8 +17,23 @@ namespace llarp::service
     Exit = 3UL,
     Auth = 4UL,
     QUIC = 5UL,
-
+    PacketsV4 = 6UL,
+    PacketsV6 = 7UL,
+    PacketsExit = 8UL,
   };
+
+  /// returns the anolog protocol type for a batched traffic if it exists
+  std::optional<ProtocolType>
+  BatchedProtoAsUnderlying(ProtocolType t);
+
+  inline bool
+  IsBatchedProto(ProtocolType t)
+  {
+    return BatchedProtoAsUnderlying(t) != std::nullopt;
+  }
+
+  std::optional<ProtocolType>
+  ToBatchedProto(ProtocolType t);
 
   std::ostream&
   operator<<(std::ostream& o, ProtocolType t);

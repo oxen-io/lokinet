@@ -128,20 +128,30 @@ namespace llarp
         if (ipv6_is_mapped_ipv4(ourIP))
         {
           introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
+          introSet().supportedProtocols.push_back(ProtocolType::PacketsV4);
         }
         else
         {
           introSet().supportedProtocols.push_back(ProtocolType::TrafficV6);
+          introSet().supportedProtocols.push_back(ProtocolType::PacketsV6);
         }
 
         // exit related stuffo
         if (m_state->m_ExitEnabled)
         {
           introSet().supportedProtocols.push_back(ProtocolType::Exit);
+          introSet().supportedProtocols.push_back(ProtocolType::PacketsExit);
           introSet().exitTrafficPolicy = GetExitPolicy();
           introSet().ownedRanges = GetOwnedRanges();
         }
       }
+
+      // advertise auth protocol
+      if (m_AuthPolicy)
+      {
+        introSet().supportedProtocols.push_back(ProtocolType::Auth);
+      }
+
       // add quic ethertype if we have listeners set up
       if (auto* quic = GetQUICTunnel())
       {
@@ -1648,7 +1658,11 @@ namespace llarp
             msg.seqno);
         if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
         {
+          // mark got data
           ConvoTagRX(msg.tag);
+          // mark if they support batched messages
+          if (IsBatchedProto(msg.proto))
+            Sessions()[msg.tag].supportsBatched = true;
         }
         else
         {
@@ -1857,11 +1871,17 @@ namespace llarp
                 tag);
             return false;
           }
-
-          f.T = tag;
-          // TODO: check expiration of our end
           auto m = std::make_shared<ProtocolMessage>(f.T);
           m->PutBuffer(data);
+          // if this guy supports packet batching we'll use that too
+          if (Sessions().at(tag).supportsBatched)
+          {
+            if (auto maybe = ToBatchedProto(t))
+              t = *maybe;
+          }
+
+          f.T = tag;
+
           f.N.Randomize();
           f.C.Zero();
           f.R = 0;

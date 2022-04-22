@@ -250,6 +250,12 @@ namespace llarp
     explicit OwnedBuffer(size_t sz) : OwnedBuffer{std::make_unique<byte_t[]>(sz), sz}
     {}
 
+    // Create a new owned buffer of the given size and copy contents from ptr
+    explicit OwnedBuffer(const byte_t* ptr, size_t sz) : OwnedBuffer{sz}
+    {
+      std::copy_n(ptr, sz, buf.get());
+    }
+
     OwnedBuffer(const OwnedBuffer&) = delete;
     OwnedBuffer&
     operator=(const OwnedBuffer&) = delete;

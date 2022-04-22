@@ -449,4 +449,11 @@ namespace llarp::service
 
     return stream;
   }
+
+  bool
+  IntroSet::SupportsProto(ProtocolType t) const
+  {
+    const auto& protos = supportedProtocols;
+    return std::find(protos.begin(), protos.end(), t) != std::end(protos);
+  }
 }  // namespace llarp::service

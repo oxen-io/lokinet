@@ -216,6 +216,7 @@ add_library(liblokinet
   service/outbound_context.cpp
   service/protocol.cpp
   service/protocol_type.cpp
+  service/protocol_utils.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp

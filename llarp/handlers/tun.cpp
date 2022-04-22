@@ -18,6 +18,8 @@
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/service/protocol_type.hpp>
+#include <llarp/service/protocol_utils.hpp>
+
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/quic/tunnel.hpp>
@@ -1214,9 +1216,8 @@ namespace llarp
         quic->receive_packet(tag, buf);
         return true;
       }
-
-      if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
-          && t != service::ProtocolType::Exit)
+      if (not service::IsBatchedProto(t) and t != service::ProtocolType::TrafficV4
+          and t != service::ProtocolType::TrafficV6 and t != service::ProtocolType::Exit)
         return false;
       std::variant<service::Address, RouterID> addr;
       if (auto maybe = GetEndpointWithConvoTag(tag))
@@ -1225,74 +1226,91 @@ namespace llarp
       }
       else
         return false;
-      huint128_t src, dst;
 
-      net::IPPacket pkt;
-      if (not pkt.Load(buf))
-        return false;
+      std::vector<net::IPPacket> pkts;
 
-      if (m_state->m_ExitEnabled)
+      if (auto maybe = service::BatchedProtoAsUnderlying(t))
       {
-        // exit side from exit
-
-        // check packet against exit policy and if as needed
-        if (not ShouldAllowTraffic(pkt))
-          return false;
-
-        src = ObtainIPForAddr(addr);
-        if (t == service::ProtocolType::Exit)
+        t = *maybe;
+        for (auto& part : service::Unpack(OwnedBuffer::copy_from(buf)))
         {
-          if (pkt.IsV4())
-            dst = pkt.dst4to6();
-          else if (pkt.IsV6())
-          {
-            dst = pkt.dstv6();
-            src = net::ExpandV4Lan(net::TruncateV6(src));
-          }
+          auto& pkt = pkts.emplace_back();
+          if (not pkt.Load(part))
+            pkts.pop_back();
         }
-        else
-        {
-          // non exit traffic on exit
-          dst = m_OurIP;
-        }
-      }
-      else if (t == service::ProtocolType::Exit)
-      {
-        // client side exit traffic from exit
-        if (pkt.IsV4())
-        {
-          dst = m_OurIP;
-          src = pkt.src4to6();
-        }
-        else if (pkt.IsV6())
-        {
-          dst = m_OurIPv6;
-          src = pkt.srcv6();
-        }
-        // find what exit we think this should be for
-        service::Address fromAddr{};
-        if (const auto* ptr = std::get_if<service::Address>(&addr))
-        {
-          fromAddr = *ptr;
-        }
-        else  // don't allow snode
-          return false;
-        // make sure the mapping matches
-        if (auto itr = m_ExitIPToExitAddress.find(src); itr != m_ExitIPToExitAddress.end())
-        {
-          if (itr->second != fromAddr)
-            return false;
-        }
-        else
-          return false;
       }
       else
       {
-        // snapp traffic
-        src = ObtainIPForAddr(addr);
-        dst = m_OurIP;
+        auto& pkt = pkts.emplace_back();
+        if (not pkt.Load(buf))
+          return false;
       }
-      HandleWriteIPPacket(buf, src, dst, seqno);
+      for (const auto& pkt : pkts)
+      {
+        huint128_t src, dst;
+        if (m_state->m_ExitEnabled)
+        {
+          // exit side from exit
+
+          // check packet against exit policy and if as needed
+          if (not ShouldAllowTraffic(pkt))
+            return false;
+
+          src = ObtainIPForAddr(addr);
+          if (t == service::ProtocolType::Exit)
+          {
+            if (pkt.IsV4())
+              dst = pkt.dst4to6();
+            else if (pkt.IsV6())
+            {
+              dst = pkt.dstv6();
+              src = net::ExpandV4Lan(net::TruncateV6(src));
+            }
+          }
+          else
+          {
+            // non exit traffic on exit
+            dst = m_OurIP;
+          }
+        }
+        else if (t == service::ProtocolType::Exit)
+        {
+          // client side exit traffic from exit
+          if (pkt.IsV4())
+          {
+            dst = m_OurIP;
+            src = pkt.src4to6();
+          }
+          else if (pkt.IsV6())
+          {
+            dst = m_OurIPv6;
+            src = pkt.srcv6();
+          }
+          // find what exit we think this should be for
+          service::Address fromAddr{};
+          if (const auto* ptr = std::get_if<service::Address>(&addr))
+          {
+            fromAddr = *ptr;
+          }
+          else  // don't allow snode
+            return false;
+          // make sure the mapping matches
+          if (auto itr = m_ExitIPToExitAddress.find(src); itr != m_ExitIPToExitAddress.end())
+          {
+            if (itr->second != fromAddr)
+              return false;
+          }
+          else
+            return false;
+        }
+        else
+        {
+          // snapp traffic
+          src = ObtainIPForAddr(addr);
+          dst = m_OurIP;
+        }
+        HandleWriteIPPacket(pkt.ConstBuffer(), src, dst, seqno);
+      }
       return true;
     }
 

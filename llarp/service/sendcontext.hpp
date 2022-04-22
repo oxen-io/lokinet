@@ -75,6 +75,15 @@ namespace llarp
       void
       AsyncSendAuth(std::function<void(AuthResult)> replyHandler);
 
+      virtual bool
+      SupportsProto(ProtocolType t) const = 0;
+
+     protected:
+      /// given a protocol type, select the best new type to use given the remote endpoint
+      /// returns nullopt if we are trying to send a new proto to something it does not support
+      virtual std::optional<ProtocolType>
+      SelectOptimalProtocol(ProtocolType t) const = 0;
+
      private:
       virtual bool
       IntroGenerated() const = 0;

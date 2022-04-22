@@ -71,6 +71,10 @@ namespace llarp
     void
     SendContext::EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t)
     {
+      // upgrade protocol type as needed
+      if (auto maybe = SelectOptimalProtocol(t))
+        t = *maybe;
+
       SharedSecret shared;
       auto f = std::make_shared<ProtocolFrame>();
       f->R = 0;
@@ -141,7 +145,18 @@ namespace llarp
     {
       if (IntroSent())
       {
-        EncryptAndSendTo(data, protocol);
+        if (auto maybe = SelectOptimalProtocol(protocol))
+        {
+          EncryptAndSendTo(data, *maybe);
+        }
+        else
+        {
+          LogError(
+              m_PathSet->Name(),
+              " cannot send ",
+              protocol,
+              " type traffic to remote as they dont claim to support it");
+        }
         return;
       }
       // have we generated the initial intro but not sent it yet? bail here so we don't cause
@@ -154,8 +169,7 @@ namespace llarp
             "to prevent bullshittery");
         return;
       }
-      const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
-      if (maybe.has_value())
+      if (auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr()))
       {
         // send auth message
         const llarp_buffer_t authdata(maybe->token);
@@ -166,6 +180,7 @@ namespace llarp
         AsyncGenIntro(data, protocol);
       }
     }
+
   }  // namespace service
 
 }  // namespace llarp

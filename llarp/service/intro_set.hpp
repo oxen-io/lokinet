@@ -51,6 +51,10 @@ namespace llarp
       Signature signature;
       uint64_t version = LLARP_PROTO_VERSION;
 
+      /// returns true if this introset advertises that it supports a protocol
+      bool
+      SupportsProto(ProtocolType t) const;
+
       bool
       OtherIsNewer(const IntroSet& other) const
       {

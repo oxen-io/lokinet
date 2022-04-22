@@ -152,6 +152,13 @@ namespace llarp
           llarp_time_t,
           uint64_t relayOrder);
 
+      bool
+      SupportsProto(ProtocolType t) const override;
+
+     protected:
+      std::optional<ProtocolType>
+      SelectOptimalProtocol(ProtocolType t) const override;
+
      private:
       /// swap remoteIntro with next intro
       void
@@ -161,6 +168,9 @@ namespace llarp
       IntroGenerated() const override;
       bool
       IntroSent() const override;
+
+      void
+      QueueBatchedTraffic(const llarp_buffer_t& buf, service::ProtocolType t);
 
       const dht::Key_t location;
       const Address addr;
@@ -177,6 +187,8 @@ namespace llarp
       std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
       llarp_time_t m_LastIntrosetUpdateAt = 0s;
       llarp_time_t m_LastKeepAliveAt = 0s;
+      std::unordered_map<ProtocolType, std::vector<OwnedBuffer>> m_BatchedQueues;
+      std::shared_ptr<EventLoopWakeup> m_SendBatched;
     };
   }  // namespace service
 

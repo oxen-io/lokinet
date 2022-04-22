@@ -36,6 +36,8 @@ namespace llarp
       Duration_t lastSend{};
       Duration_t lastRecv{};
 
+      bool supportsBatched = false;
+
       util::StatusObject
       ExtractStatus() const;
 
