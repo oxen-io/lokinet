@@ -4,31 +4,70 @@ import NetworkExtension
 
 let app = NSApplication.shared
 
+let START = "--start"
+let STOP = "--stop"
+
+let HELP_STRING = "usage: lokinet [--start|--stop]"
+
 class LokinetMain: NSObject, NSApplicationDelegate {
     var vpnManager = NETunnelProviderManager()
     let lokinetComponent = "com.loki-project.lokinet.network-extension"
+    var mode = ""
 
     func applicationDidFinishLaunching(_: Notification) {
-        setupVPNJizz()
+        if self.mode == START {
+            setupVPNTunnel()
+        }
+        else if self.mode == STOP {
+            tearDownVPNTunnel()
+        } else {
+            self.result(msg: HELP_STRING)
+        }
+
     }
 
     func bail() {
         app.terminate(self)
     }
 
-    func setupVPNJizz() {
-        NSLog("Starting up lokinet")
+    func result(msg: String) {
+        NSLog(msg)
+        // TODO: does lokinet continue after this?
+        self.bail()
+    }
+
+    func tearDownVPNTunnel() {
+        NSLog("Stopping Lokinet")
         NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
             if let error = error {
-                NSLog(error.localizedDescription)
-                bail()
+                self.result(msg: error.localizedDescription)
                 return
             }
 
             if let savedManagers = savedManagers {
                 for manager in savedManagers {
                     if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.lokinetComponent {
-                        NSLog("%@", manager)
+                        manager.isEnabled = false
+                        self.result(msg: "Lokinet Down")
+                        return
+                    }
+                }
+            }
+            self.result(msg: "Lokinet is not up")
+        }
+    }
+
+    func setupVPNTunnel() {
+        NSLog("Starting up Lokinet")
+        NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
+            if let error = error {
+                self.result(msg: error.localizedDescription)
+                return
+            }
+
+            if let savedManagers = savedManagers {
+                for manager in savedManagers {
+                    if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.lokinetComponent {
                         NSLog("Found saved VPN Manager")
                         self.vpnManager = manager
                     }
@@ -46,28 +85,24 @@ class LokinetMain: NSObject, NSApplicationDelegate {
             self.vpnManager.isEnabled = true
             // self.vpnManager.isOnDemandEnabled = true
             self.vpnManager.localizedDescription = "lokinet"
-            self.vpnManager.saveToPreferences(completionHandler: { error -> Void in
+            self.vpnManager.saveToPreferences(completionHandler: { [self] error -> Void in
                 if error != nil {
                     NSLog("Error saving to preferences")
-                    NSLog(error!.localizedDescription)
-                    bail()
+                    self.result(msg: error!.localizedDescription)
                 } else {
                     self.vpnManager.loadFromPreferences(completionHandler: { error in
                         if error != nil {
                             NSLog("Error loading from preferences")
-                            NSLog(error!.localizedDescription)
-                            bail()
+                            self.result(msg: error!.localizedDescription)
                         } else {
                             do {
                                 NSLog("Trying to start")
                                 self.initializeConnectionObserver()
                                 try self.vpnManager.connection.startVPNTunnel()
                             } catch let error as NSError {
-                                NSLog(error.localizedDescription)
-                                bail()
+                               self.result(msg: error.localizedDescription)
                             } catch {
-                                NSLog("There was a fatal error")
-                                bail()
+                                self.result(msg: "There was a fatal error")
                             }
                         }
                     })
@@ -77,11 +112,11 @@ class LokinetMain: NSObject, NSApplicationDelegate {
     }
 
     func initializeConnectionObserver() {
-        NotificationCenter.default.addObserver(forName: NSNotification.Name.NEVPNStatusDidChange, object: vpnManager.connection, queue: OperationQueue.main) { _ -> Void in
+        NotificationCenter.default.addObserver(forName: NSNotification.Name.NEVPNStatusDidChange, object: vpnManager.connection, queue: OperationQueue.main) { [self] _ -> Void in
             if self.vpnManager.connection.status == .invalid {
-                NSLog("VPN configuration is invalid")
+                self.result(msg: "VPN configuration is invalid")
             } else if self.vpnManager.connection.status == .disconnected {
-                NSLog("VPN is disconnected.")
+                self.result(msg: "VPN is disconnected.")
             } else if self.vpnManager.connection.status == .connecting {
                 NSLog("VPN is connecting...")
             } else if self.vpnManager.connection.status == .reasserting {
@@ -89,12 +124,19 @@ class LokinetMain: NSObject, NSApplicationDelegate {
             } else if self.vpnManager.connection.status == .disconnecting {
                 NSLog("VPN is disconnecting...")
             } else if self.vpnManager.connection.status == .connected {
-                NSLog("VPN Connected")
+                self.result(msg: "VPN Connected")
             }
         }
     }
 }
 
-let delegate = LokinetMain()
-app.delegate = delegate
-app.run()
+let args = CommandLine.arguments
+
+if args.count > 1 {
+    let delegate = LokinetMain()
+    delegate.mode = args[1]
+    app.delegate = delegate
+    app.run()
+} else {
+    NSLog(HELP_STRING)
+}
