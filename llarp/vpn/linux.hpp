@@ -9,7 +9,7 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 
-#include <string.h>
+#include <cstring>
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -18,6 +18,8 @@
 #include <llarp/net/net.hpp>
 #include <llarp/util/str.hpp>
 #include <exception>
+
+#include <oxenc/endian.h>
 
 namespace llarp::vpn
 {
@@ -181,7 +183,7 @@ namespace llarp::vpn
       {
         family = AF_INET;
         bitlen = bits;
-        htobe32buf(data, addr.h);
+        oxenc::write_host_as_big(addr.h, data);
       }
 
       _inet_addr(huint128_t addr, size_t bits = 128)

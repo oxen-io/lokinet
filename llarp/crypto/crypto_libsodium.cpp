@@ -8,8 +8,8 @@
 #include <sodium/crypto_aead_xchacha20poly1305.h>
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
+#include <oxenc/endian.h>
 #include <llarp/util/mem.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/util/str.hpp>
 #include <cassert>
 #include <cstring>
@@ -295,7 +295,7 @@ namespace llarp
       std::array<byte_t, 160 + K::SIZE + sizeof(uint64_t)> buf;
       std::copy(derived_key_hash_str, derived_key_hash_str + 160, buf.begin());
       std::copy(k.begin(), k.end(), buf.begin() + 160);
-      htole64buf(buf.data() + 160 + K::SIZE, i);
+      oxenc::write_host_as_little(i, buf.data() + 160 + K::SIZE);
       // n = H(b)
       // h = make_point(n)
       ShortHash n;

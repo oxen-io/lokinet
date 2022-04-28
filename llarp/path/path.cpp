@@ -14,8 +14,9 @@
 #include <llarp/routing/path_latency_message.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/tooling/path_event.hpp>
+
+#include <oxenc/endian.h>
 
 #include <deque>
 #include <queue>
@@ -894,7 +895,7 @@ namespace llarp
       {
         if (pkt.size() <= 8)
           return false;
-        uint64_t counter = bufbe64toh(pkt.data());
+        auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
         if (m_ExitTrafficHandler(
                 self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
         {
