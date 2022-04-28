@@ -184,7 +184,7 @@ endif()
 
 option(FORCE_OXENC_SUBMODULE "force using oxen-encoding submodule" OFF)
 if(NOT FORCE_OXENC_SUBMODULE)
-  pkg_check_modules(OXENC liboxenc>=1.0.1 IMPORTED_TARGET)
+  pkg_check_modules(OXENC liboxenc>=1.0.2 IMPORTED_TARGET)
 endif()
 
 if(OXENC_FOUND)

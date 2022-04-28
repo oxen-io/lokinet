@@ -2,12 +2,13 @@
 #include "ip.hpp"
 
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
+
+#include <oxenc/endian.h>
 
 #include <algorithm>
 #include <map>
@@ -564,11 +565,11 @@ namespace llarp
         // code	'Destination host unknown error'
         *itr++ = 7;
         // checksum + unused
-        htobe32buf(itr, 0);
+        oxenc::write_host_as_big<uint32_t>(0, itr);
         checksum = (uint16_t*)itr;
         itr += 4;
         // next hop mtu is ignored but let's put something here anyways just in case tm
-        htobe16buf(itr, 1500);
+        oxenc::write_host_as_big<uint16_t>(1500, itr);
         itr += 2;
         // copy ip header and first 8 bytes of datagram for icmp rject
         std::copy_n(buf, l4_PacketSize + l3_HeaderSize, itr);
@@ -637,9 +638,9 @@ namespace llarp
       ptr += 2;
       std::memcpy(ptr, &dstport.n, 2);
       ptr += 2;
-      htobe16buf(ptr, static_cast<uint16_t>(buf.sz + 8));
+      oxenc::write_host_as_big(static_cast<uint16_t>(buf.sz + 8), ptr);
       ptr += 2;
-      htobe16buf(ptr, uint16_t{0});  // checksum
+      oxenc::write_host_as_big(uint16_t{0}, ptr);  // checksum
       ptr += 2;
       std::copy_n(buf.base, buf.sz, ptr);
 

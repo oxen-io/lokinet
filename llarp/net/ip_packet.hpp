@@ -4,6 +4,7 @@
 #include "net.hpp"
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
+#include <oxenc/endian.h>  // Guarantees __{LITTLE,BIG}_ENDIAN__ defines
 
 #ifndef _WIN32
 // unix, linux
@@ -16,11 +17,9 @@ struct ip_header
 #ifdef __LITTLE_ENDIAN__
   unsigned int ihl : 4;
   unsigned int version : 4;
-#elif defined(__BIG_ENDIAN__)
+#else
   unsigned int version : 4;
   unsigned int ihl : 4;
-#else
-#error "Please fix <bits/endian.h>"
 #endif
 
 #if defined(__linux__)
