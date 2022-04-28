@@ -982,17 +982,17 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (decom)
+    // complain about being deregistered
+    if (decom and now >= m_NextDecommissionWarn)
     {
-      // complain about being deregistered
-      if (now >= m_NextDecommissionWarn)
-      {
-        constexpr auto DecommissionWarnInterval = 30s;
-        LogError("We are running as a service node but we seem to be decommissioned");
-        m_NextDecommissionWarn = now + DecommissionWarnInterval;
-      }
+      constexpr auto DecommissionWarnInterval = 30s;
+      LogError("We are running as a service node but we seem to be decommissioned");
+      m_NextDecommissionWarn = now + DecommissionWarnInterval;
     }
-    else if (connected < connectToNum)
+
+    // if we need more sessions to routers and we are not a service node kicked from the network
+    // we shall connect out to others
+    if (connected < connectToNum and not(isSvcNode and not SessionToRouterAllowed(pubkey())))
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
