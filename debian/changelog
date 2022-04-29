@@ -1,3 +1,9 @@
+lokinet (0.9.8-2~deb11) bullseye; urgency=medium
+
+  * oxenc compatibility
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 29 Apr 2022 18:40:18 -0300
+
 lokinet (0.9.8-1~deb11) bullseye; urgency=medium
 
   [ Jeff Becker ]
