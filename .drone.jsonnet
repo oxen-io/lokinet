@@ -173,7 +173,8 @@ local linux_cross_pipeline(name,
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + ' -- ' + ci_mirror_opts + cmake_extra,
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
+      ],
     },
   ],
 };
