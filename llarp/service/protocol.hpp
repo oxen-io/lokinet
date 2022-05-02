@@ -64,9 +64,9 @@ namespace llarp
       ProcessAsync(path::Path_ptr p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
 
       bool
-      operator<(const ProtocolMessage& other) const
+      operator>(const ProtocolMessage& other) const
       {
-        return other.seqno < seqno;
+        return seqno > other.seqno;
       }
     };
 
