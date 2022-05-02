@@ -145,8 +145,8 @@ namespace llarp
   void
   LR_StatusMessage::SetDummyFrames()
   {
-    // TODO
-    return;
+    for (auto& f : frames)
+      f.Randomize();
   }
 
   // call this from a worker thread

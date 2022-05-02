@@ -319,6 +319,8 @@ namespace llarp
         self->hop = nullptr;
       };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
+      // trigger idempotent pump to ensure that the build messages propagate
+      self->context->Router()->TriggerPump();
     }
 
     // this is called from the logic thread
