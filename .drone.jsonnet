@@ -23,6 +23,9 @@ local submodules = {
   commands: submodule_commands,
 };
 
+// cmake options for static deps mirror
+local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps';
+
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
 // Regular build on a debian-like system:
@@ -140,7 +143,7 @@ local windows_cross_pipeline(name,
         'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh',
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh ' + ci_mirror_opts,
       ] + extra_cmds,
     },
   ],
@@ -270,7 +273,7 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh',
+        './contrib/mac.sh ' + ci_mirror_opts,
       ] + extra_cmds,
     },
   ],
