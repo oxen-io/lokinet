@@ -24,7 +24,7 @@ local submodules = {
 };
 
 // cmake options for static deps mirror
-local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps';
+local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps ';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
@@ -173,8 +173,7 @@ local linux_cross_pipeline(name,
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
-      ] + extra_cmds,
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + ' -- ' + ci_mirror_opts + cmake_extra,
     },
   ],
 };
