@@ -128,10 +128,12 @@ namespace llarp
       if (not msg.BEncode(&buf))
       {
         LogError("failed to encode LIM for ", m_RemoteAddr);
+        return;
       }
       if (not SendMessageBuffer(std::move(data), h))
       {
         LogError("failed to send LIM to ", m_RemoteAddr);
+        return;
       }
       LogTrace("sent LIM to ", m_RemoteAddr);
     }
