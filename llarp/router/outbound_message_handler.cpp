@@ -84,7 +84,10 @@ namespace llarp
     m_Killer.TryAccess([this]() {
       recentlyRemovedPaths.Decay();
       ProcessOutboundQueue();
-      if (SendRoundRobin())
+      // TODO: this probably shouldn't be pumping, as it defeats the purpose
+      // of having a limit on sends per tick, but chaning it is potentially bad
+      // and requires testing so it should be changed later.
+      if (/*bool more = */ SendRoundRobin())
         _router->TriggerPump();
     });
   }
