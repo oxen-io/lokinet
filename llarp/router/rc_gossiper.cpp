@@ -27,9 +27,7 @@ namespace llarp
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
-    bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
-    LogWarn("ShouldGossipOurRC: ", should);
-    return should;
+    return now >= (m_LastGossipedOurRC + GossipOurRCInterval);
   }
 
   bool
@@ -42,6 +40,14 @@ namespace llarp
   RCGossiper::Decay(Time_t now)
   {
     m_Filter.Decay(now);
+  }
+
+  void
+  RCGossiper::Forget(const RouterID& pk)
+  {
+    m_Filter.Remove(pk);
+    if (m_OurRouterID == pk)
+      m_LastGossipedOurRC = 0s;
   }
 
   bool

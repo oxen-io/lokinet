@@ -27,5 +27,9 @@ namespace llarp
     /// return true if that rc is owned by us
     virtual bool
     IsOurRC(const RouterContact& rc) const = 0;
+
+    /// forget the replay filter entry given pubkey
+    virtual void
+    Forget(const RouterID& router) = 0;
   };
 }  // namespace llarp

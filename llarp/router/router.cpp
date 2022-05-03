@@ -495,7 +495,7 @@ namespace llarp
       return true;
     if (not _rcLookupHandler.HaveReceivedWhitelist())
       return false;
-    return _rcLookupHandler.PathIsAllowed(pubkey());
+    return _rcLookupHandler.SessionIsAllowed(pubkey());
   }
 
   bool
@@ -908,15 +908,24 @@ namespace llarp
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
     const bool decom = LooksDecommissioned();
+    bool shouldGossip = isSvcNode and whitelistRouters and gotWhitelist
+        and _rcLookupHandler.SessionIsAllowed(pubkey());
 
-    if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
-        || (now - _rc.last_updated) > rcRegenInterval)
+    if (isSvcNode
+        and (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000)) or (now - _rc.last_updated) > rcRegenInterval))
     {
       LogInfo("regenerating RC");
-      if (!UpdateOurRC(false))
-        LogError("Failed to update our RC");
+      if (UpdateOurRC())
+      {
+        // our rc changed so we should gossip it
+        shouldGossip = true;
+        // remove our replay entry so it goes out
+        _rcGossiper.Forget(pubkey());
+      }
+      else
+        LogError("failed to update our RC");
     }
-    else if (whitelistRouters and gotWhitelist and _rcLookupHandler.SessionIsAllowed(pubkey()))
+    if (shouldGossip)
     {
       // if we have the whitelist enabled, we have fetched the list and we are in either
       // the white or grey list, we want to gossip our RC
@@ -1316,7 +1325,7 @@ namespace llarp
         if (not _running)
           return;
         // dont run tests if we think we should not test other routers
-        // this occurs when we are decomissions, deregistered or do not have the service node list
+        // this occurs when we are deregistered or do not have the service node list
         // yet when we expect to have one.
         if (not ShouldTestOtherRouters())
           return;
