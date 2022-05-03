@@ -399,7 +399,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid'),
   deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
   deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
-  deb_builder(docker_base + 'ubuntu-focal-builder', 'focal', 'ubuntu/focal'),
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
