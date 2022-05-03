@@ -197,6 +197,14 @@ namespace llarp
     bool
     LooksDecommissioned() const;
 
+    /// return true if we look like we are a deregistered service node
+    bool
+    LooksDeregistered() const;
+
+    /// return true if we look like we are allowed and able to test other routers
+    bool
+    ShouldTestOtherRouters() const;
+
     std::optional<SockAddr> _ourAddress;
 
     EventLoop_ptr _loop;

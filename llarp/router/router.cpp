@@ -480,6 +480,25 @@ namespace llarp
   }
 
   bool
+  Router::LooksDeregistered() const
+  {
+    return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
+        and not _rcLookupHandler.SessionIsAllowed(pubkey());
+  }
+
+  bool
+  Router::ShouldTestOtherRouters() const
+  {
+    if (not IsServiceNode())
+      return false;
+    if (not whitelistRouters)
+      return true;
+    if (not _rcLookupHandler.HaveReceivedWhitelist())
+      return false;
+    return _rcLookupHandler.PathIsAllowed(pubkey());
+  }
+
+  bool
   Router::SessionToRouterAllowed(const RouterID& router) const
   {
     return _rcLookupHandler.SessionIsAllowed(router);
@@ -982,17 +1001,19 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    // complain about being deregistered
-    if (decom and now >= m_NextDecommissionWarn)
+    if (auto dereg = LooksDeregistered(); (dereg or decom) and now >= m_NextDecommissionWarn)
     {
+      // complain about being deregistered
       constexpr auto DecommissionWarnInterval = 30s;
-      LogError("We are running as a service node but we seem to be decommissioned");
+      LogError(
+          "We are running as a service node but we seem to be ",
+          dereg ? "deregistered" : "decommissioned");
       m_NextDecommissionWarn = now + DecommissionWarnInterval;
     }
 
     // if we need more sessions to routers and we are not a service node kicked from the network
     // we shall connect out to others
-    if (connected < connectToNum and not(isSvcNode and not SessionToRouterAllowed(pubkey())))
+    if (connected < connectToNum and not LooksDeregistered())
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
@@ -1013,7 +1034,8 @@ namespace llarp
     if (m_peerDb)
     {
       // TODO: throttle this?
-      // TODO: need to capture session stats when session terminates / is removed from link manager
+      // TODO: need to capture session stats when session terminates / is removed from link
+      // manager
       _linkManager.updatePeerDb(m_peerDb);
 
       if (m_peerDb->shouldFlush(now))
@@ -1293,8 +1315,10 @@ namespace llarp
         // dont run tests if we are not running or we are stopping
         if (not _running)
           return;
-        // dont run tests if we are decommissioned
-        if (LooksDecommissioned())
+        // dont run tests if we think we should not test other routers
+        // this occurs when we are decomissions, deregistered or do not have the service node list
+        // yet when we expect to have one.
+        if (not ShouldTestOtherRouters())
           return;
         auto tests = m_routerTesting.get_failing();
         if (auto maybe = m_routerTesting.next_random(this))
