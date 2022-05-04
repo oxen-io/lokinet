@@ -869,7 +869,16 @@ namespace llarp
         ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths | "
-           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0);
+           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0) << " | gossip: "
+           << "(next/last) " << _rcGossiper.NextGossipAt() << "/";
+        if (auto maybe = _rcGossiper.LastGossipAt())
+        {
+          ss << *maybe;
+        }
+        else
+        {
+          ss << "never";
+        }
       }
       else
       {

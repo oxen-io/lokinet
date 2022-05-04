@@ -50,6 +50,22 @@ namespace llarp
       m_LastGossipedOurRC = 0s;
   }
 
+  TimePoint_t
+  RCGossiper::NextGossipAt() const
+  {
+    if (auto maybe = LastGossipAt())
+      return *maybe + GossipOurRCInterval;
+    return DateClock_t::now();
+  }
+
+  std::optional<TimePoint_t>
+  RCGossiper::LastGossipAt() const
+  {
+    if (m_LastGossipedOurRC == 0s)
+      return std::nullopt;
+    return DateClock_t::time_point{m_LastGossipedOurRC};
+  }
+
   bool
   RCGossiper::GossipRC(const RouterContact& rc)
   {

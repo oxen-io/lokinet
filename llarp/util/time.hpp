@@ -26,4 +26,7 @@ namespace llarp
   nlohmann::json
   to_json(const Duration_t& t);
 
+  std::ostream&
+  operator<<(std::ostream& out, const TimePoint_t& t);
+
 }  // namespace llarp

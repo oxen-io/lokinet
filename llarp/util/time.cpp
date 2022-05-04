@@ -1,20 +1,24 @@
 #include "time.hpp"
 #include <chrono>
+#include <iomanip>
 
 namespace llarp
 {
-  using Clock_t = std::chrono::system_clock;
-
-  template <typename Res, typename Clock>
-  static Duration_t
-  time_since_epoch(std::chrono::time_point<Clock> point)
+  namespace
   {
-    return std::chrono::duration_cast<Res>(point.time_since_epoch());
-  }
+    using Clock_t = std::chrono::system_clock;
 
-  const static auto started_at_system = Clock_t::now();
+    template <typename Res, typename Clock>
+    static Duration_t
+    time_since_epoch(std::chrono::time_point<Clock> point)
+    {
+      return std::chrono::duration_cast<Res>(point.time_since_epoch());
+    }
 
-  const static auto started_at_steady = std::chrono::steady_clock::now();
+    const static auto started_at_system = Clock_t::now();
+
+    const static auto started_at_steady = std::chrono::steady_clock::now();
+  }  // namespace
 
   uint64_t
   ToMS(Duration_t ms)
@@ -73,5 +77,12 @@ namespace llarp
     out << ms.count();
     out.fill(old_fill);
     return out << "s";
+  }
+
+  std::ostream&
+  operator<<(std::ostream& out, const TimePoint_t& tp)
+  {
+    auto t = TimePoint_t::clock::to_time_t(tp);
+    return out << std::put_time(std::localtime(&t), "%c %Z");
   }
 }  // namespace llarp
