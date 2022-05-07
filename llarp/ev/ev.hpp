@@ -184,6 +184,11 @@ namespace llarp
 
     virtual ~EventLoop() = default;
 
+    /// queue heavy work to run in a worker thread, optionally call a function in logic thread
+    /// after the heavy work is done
+    virtual void
+    work(std::function<void(void)> job, std::function<void(void)> after = nullptr) = 0;
+
     using UDPReceiveFunc = std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
 
     // Constructs a UDP socket that can be used for sending and/or receiving
@@ -204,7 +209,7 @@ namespace llarp
 
     // Constructs and initializes a new default (libuv) event loop
     static std::shared_ptr<EventLoop>
-    create(size_t queueLength = event_loop_queue_size);
+    create(int threads = 0);
 
     // Returns true if called from within the event loop thread, false otherwise.
     virtual bool

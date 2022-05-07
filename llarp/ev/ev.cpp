@@ -12,8 +12,18 @@
 namespace llarp
 {
   EventLoop_ptr
-  EventLoop::create(size_t queueLength)
+  EventLoop::create(int threads)
   {
-    return std::make_shared<llarp::uv::Loop>(queueLength);
+#ifndef _WIN32
+#ifdef __linux__
+    if (threads <= 0)
+      threads = std::thread::hardware_concurrency();
+
+    auto threads_str = std::to_string(threads);
+    ::setenv("UV_THREADPOOL_SIZE", threads_str.c_str(), 1);
+#endif
+#endif
+    (void)threads;
+    return std::make_shared<llarp::uv::Loop>(event_loop_queue_size);
   }
 }  // namespace llarp

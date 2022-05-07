@@ -57,6 +57,9 @@ namespace llarp::uv
     void
     call_soon(std::function<void(void)> f) override;
 
+    void
+    work(std::function<void(void)> f, std::function<void(void)> after = nullptr) override;
+
     std::shared_ptr<llarp::EventLoopWakeup>
     make_waker(std::function<void()> callback) override;
 

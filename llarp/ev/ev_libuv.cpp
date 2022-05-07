@@ -153,6 +153,14 @@ namespace llarp::uv
     m_Impl.reset();
     llarp::LogInfo("we have stopped");
   }
+  void
+  Loop::work(std::function<void(void)> job, std::function<void(void)> after)
+  {
+    auto work = m_Impl->resource<uvw::WorkReq>(std::move(job));
+    if (after)
+      work->once<uvw::WorkEvent>([after = std::move(after)](auto&, auto&) { after(); });
+    work->queue();
+  }
 
   void
   Loop::wakeup()

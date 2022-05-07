@@ -65,8 +65,8 @@ namespace llarp
     llarp::LogInfo("starting up");
     if (!loop)
     {
-      auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
-      loop = EventLoop::create(jobQueueSize);
+      auto threads = std::max(0, config->router.m_workerThreads);
+      loop = EventLoop::create(threads);
     }
 
     crypto = std::make_shared<sodium::CryptoLibSodium>();
