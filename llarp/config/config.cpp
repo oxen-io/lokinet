@@ -41,6 +41,12 @@ namespace llarp
     constexpr Default DefaultWorkerThreads{0};
     constexpr Default DefaultBlockBogons{true};
 
+#if defined(__linux__) && !defined(_WIN32) && !defined(ANDROID)
+    constexpr Default DefaultThreadPoolImpl{"libuv"};
+#else
+    constexpr Default DefaultThreadPoolImpl{"zmq"};
+#endif
+
     conf.defineOption<int>(
         "router", "job-queue-size", DefaultJobQueueSize, Hidden, [this](int arg) {
           if (arg < 1024)
@@ -186,6 +192,15 @@ namespace llarp
 
           m_workerThreads = arg;
         });
+
+    conf.defineOption<std::string>(
+        "router",
+        "threadpool",
+        DefaultThreadPoolImpl,
+        Comment{
+            "use custom threadpool implementation on runtime.",
+        },
+        [this](std::string arg) { m_use_libuv_threadpool = arg == "libuv"; });
 
     // Hidden option because this isn't something that should ever be turned off occasionally when
     // doing dev/testing work.

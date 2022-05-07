@@ -395,7 +395,14 @@ namespace llarp
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
-    m_lmq->set_general_threads(1);
+    _use_libuv_threadpool = conf.router.m_use_libuv_threadpool;
+    if (not _use_libuv_threadpool)
+    {
+      if (conf.router.m_workerThreads > 0)
+        m_lmq->set_general_threads(conf.router.m_workerThreads);
+    }
+    else
+      m_lmq->set_general_threads(1);
 
     m_lmq->start();
 
@@ -1501,7 +1508,12 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    _loop->work(std::move(func));
+    if (_use_libuv_threadpool)
+    {
+      _loop->work(std::move(func));
+    }
+    else
+      m_lmq->job(std::move(func));
   }
 
   void

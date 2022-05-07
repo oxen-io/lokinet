@@ -67,6 +67,7 @@ namespace llarp
     std::string m_transportKeyFile;
 
     bool m_isRelay = false;
+    bool m_use_libuv_threadpool = false;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

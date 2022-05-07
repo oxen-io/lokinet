@@ -72,6 +72,9 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
+    /// if true use libuv's threadpool otherwise use zmq's
+    bool _use_libuv_threadpool{false};
+
     LMQ_ptr m_lmq;
 
     path::BuildLimiter m_PathBuildLimiter;
