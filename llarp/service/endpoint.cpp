@@ -102,13 +102,24 @@ namespace llarp
     {
       const auto now = llarp::time_now_ms();
       m_LastIntrosetRegenAttempt = now;
-      std::set<Introduction, CompareIntroTimestamp> intros;
+      std::vector<Introduction> intros;
       if (const auto maybe =
               GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
                 return not intro.ExpiresSoon(now, path::intro_stale_threshold);
-              }))
+              });
+          maybe and maybe->size() >= numDesiredPaths)
       {
-        intros.insert(maybe->begin(), maybe->end());
+        // get the higest timestamp ("best") intro and save it
+        auto itr = maybe->end();
+        --itr;
+        auto best = *itr;
+        --itr;
+
+        // insert the rest of the intros and shuffle their order so we get some spread
+        intros.insert(intros.cbegin(), maybe->begin(), itr);
+        util::shuffle_all(intros);
+        // add the "best" intro as the first entry so we are sure to use it
+        intros[0] = std::move(best);
       }
       else
       {
@@ -742,10 +753,13 @@ namespace llarp
 
       const auto lastEventAt = std::max(m_state->m_LastPublishAttempt, m_state->m_LastPublish);
       const auto next_pub = lastEventAt
-          + (m_state->m_IntroSet.HasStaleIntros(now, path::intro_stale_threshold)
-                 ? IntrosetPublishRetryCooldown
-                 : IntrosetPublishInterval);
-
+          + (m_state->m_IntroSet.HasStaleIntros(
+                 now, path::intro_stale_threshold)       // if we have stale intros ...
+                 ? (now - m_state->m_LastPublish         // and we have not published ...
+                            > IntrosetPublishInterval    // within our desired time frame...
+                        ? IntrosetRegenCooldown          // we do it as soon as we can
+                        : now - m_state->m_LastPublish)  // otherwise when do we need to...
+                 : IntrosetPublishInterval);  // and if we dont have stale intros we do it later
       return now >= next_pub;
     }
 

@@ -178,4 +178,15 @@ namespace llarp
     };
   };
 
+  namespace util
+  {
+    /// helper that shuffles a vector in place using secure random
+    template <typename T>
+    void
+    shuffle_all(std::vector<T>& c)
+    {
+      std::shuffle(c.begin(), c.end(), CSRNG{});
+    }
+  }  // namespace util
+
 }  // namespace llarp

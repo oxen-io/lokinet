@@ -55,6 +55,8 @@ namespace llarp
 
     /// how aggressively should we retry looking up introsets
     static constexpr auto IntrosetLookupCooldown = 250ms;
+    /// limiter on how often we should regen our introset
+    static constexpr auto IntrosetRegenCooldown = 5s;
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,

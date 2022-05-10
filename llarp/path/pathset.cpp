@@ -314,14 +314,13 @@ namespace llarp
     {
       std::set<service::Introduction> intros;
       Lock_t l{m_PathsMutex};
-      auto itr = m_Paths.begin();
-      while (itr != m_Paths.end())
+
+      for (const auto& [id, path] : m_Paths)
       {
-        if (itr->second->IsReady() and filter(itr->second->intro))
+        if (path->IsReady() and filter(path->intro))
         {
-          intros.insert(itr->second->intro);
+          intros.insert(path->intro);
         }
-        ++itr;
       }
       if (intros.empty())
         return std::nullopt;
