@@ -199,6 +199,7 @@ if(OXENC_FOUND)
 else()
   message(STATUS "using oxen-encoding submodule")
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/oxen-encoding)
+  add_library(oxenc::oxenc ALIAS oxenc)
 endif()
 
 option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)

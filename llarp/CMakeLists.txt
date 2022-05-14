@@ -34,7 +34,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
-  oxenmq::oxenmq
+  oxenc::oxenc
 )
 
 if(ANDROID)
@@ -59,7 +59,7 @@ add_library(lokinet-platform
 )
 
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs uvw)
-
+target_link_libraries(lokinet-platform PRIVATE oxenmq::oxenmq)
 
 if (ANDROID)
   target_sources(lokinet-platform PRIVATE android/ifaddrs.c)
@@ -242,7 +242,7 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static)
+target_link_libraries(liblokinet PUBLIC cxxopts oxenc::oxenc lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static oxenmq::oxenmq)
 target_link_libraries(liblokinet PRIVATE libunbound)
 pkg_check_modules(CRYPT libcrypt IMPORTED_TARGET)
 if(CRYPT_FOUND AND NOT CMAKE_CROSSCOMPILING)
