@@ -1,3 +1,9 @@
+lokinet (0.9.8-1~ubuntu2204.3) jammy; urgency=medium
+
+  * backport dev fix: use ::/0 to fixing missing ipv6 routing
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 18 May 2022 13:17:53 -0300
+
 lokinet (0.9.8-1~ubuntu2204.2) jammy; urgency=medium
 
   * add missing oxenmq headers
