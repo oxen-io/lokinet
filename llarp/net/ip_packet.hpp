@@ -112,7 +112,8 @@ namespace llarp::net
     static constexpr size_t MaxSize = 1500;
     llarp_time_t timestamp;
     size_t sz;
-    byte_t buf[MaxSize];
+
+    alignas(ip_header) byte_t buf[MaxSize];
 
     static IPPacket
     UDP(nuint32_t srcaddr,
