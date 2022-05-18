@@ -1,3 +1,10 @@
+lokinet (0.9.8-1~ubuntu2204.2) jammy; urgency=medium
+
+  * add missing oxenmq headers
+  * Change default DNS to 127.0.0.1:953
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 18 May 2022 12:55:44 -0300
+
 lokinet (0.9.8-1~ubuntu2204) jammy; urgency=medium
 
   * New build for Ubuntu jammy (22.04).
