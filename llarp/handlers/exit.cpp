@@ -23,8 +23,6 @@ namespace llarp
         , m_Name(std::move(name))
         , m_LocalResolverAddr{"127.0.0.1:53"}
         , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
-        , m_InetToNetwork(name + "_exit_rx", r->loop(), r->loop())
-
     {
       m_ShouldInitTun = true;
       m_QUIC = std::make_shared<quic::TunnelManager>(*this);
@@ -363,7 +361,11 @@ namespace llarp
     void
     ExitEndpoint::Flush()
     {
-      m_InetToNetwork.Process([&](Pkt_t& pkt) {
+      while (not m_InetToNetwork.empty())
+      {
+        net::IPPacket pkt{m_InetToNetwork.top()};
+        m_InetToNetwork.pop();
+
         PubKey pk;
         {
           auto itr = m_IPToKey.find(pkt.dstv6());
@@ -371,7 +373,7 @@ namespace llarp
           {
             // drop
             LogWarn(Name(), " dropping packet, has no session at ", pkt.dstv6());
-            return;
+            continue;
           }
           pk = itr->second;
         }
@@ -385,7 +387,7 @@ namespace llarp
           if (itr != m_SNodeSessions.end())
           {
             itr->second->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::TrafficV4);
-            return;
+            continue;
           }
         }
         auto tryFlushingTraffic = [&](exit::Endpoint* const ep) -> bool {
@@ -412,7 +414,8 @@ namespace llarp
               pk,
               " as we have no working endpoints");
         }
-      });
+      }
+
       for (auto& [pubkey, endpoint] : m_ActiveExits)
       {
         if (!endpoint->Flush())
@@ -633,7 +636,7 @@ namespace llarp
     void
     ExitEndpoint::OnInetPacket(net::IPPacket pkt)
     {
-      m_InetToNetwork.Emplace(std::move(pkt));
+      m_InetToNetwork.emplace(std::move(pkt));
     }
 
     bool
