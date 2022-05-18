@@ -432,7 +432,7 @@ namespace llarp::rpc
                 const auto range_itr = obj.find("range");
                 if (range_itr == obj.end())
                 {
-                  range.FromString("0.0.0.0/0");
+                  range.FromString("::/0");
                 }
                 else if (not range.FromString(range_itr->get<std::string>()))
                 {
