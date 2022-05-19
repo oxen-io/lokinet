@@ -7,7 +7,6 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/util/codel.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
 
@@ -174,13 +173,6 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      using PacketQueue_t = llarp::util::CoDelQueue<
-          net::IPPacket,
-          net::IPPacket::GetTime,
-          net::IPPacket::PutTime,
-          net::IPPacket::CompareOrder,
-          net::IPPacket::GetNow>;
-
       struct WritePacket
       {
         uint64_t seqno;
