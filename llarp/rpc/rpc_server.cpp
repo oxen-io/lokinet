@@ -1,5 +1,6 @@
 #include "rpc_server.hpp"
 #include <llarp/router/route_poker.hpp>
+#include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
 #include <llarp/exit/context.hpp>
@@ -432,11 +433,25 @@ namespace llarp::rpc
                 const auto range_itr = obj.find("range");
                 if (range_itr == obj.end())
                 {
-                  range.FromString("::/0");
+                  // platforms without ipv6 support will shit themselves
+                  // here if we give them an exit mapping that is ipv6
+                  if constexpr (platform::supports_ipv6)
+                  {
+                    range.FromString("::/0");
+                  }
+                  else
+                  {
+                    range.FromString("0.0.0.0/0");
+                  }
                 }
                 else if (not range.FromString(range_itr->get<std::string>()))
                 {
                   reply(CreateJSONError("invalid ip range"));
+                  return;
+                }
+                if (not platform::supports_ipv6 and not range.IsV4())
+                {
+                  reply(CreateJSONError("ipv6 ranges not supported on this platform"));
                   return;
                 }
                 std::optional<std::string> token;
