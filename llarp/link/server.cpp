@@ -192,6 +192,7 @@ namespace llarp
           llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()), " timed out");
           itr->second->Close();
           closedSessions.emplace(itr->first);
+          UnmapAddr(itr->second->GetRemoteEndpoint());
           itr = m_AuthedLinks.erase(itr);
         }
       }
@@ -210,6 +211,7 @@ namespace llarp
         else
         {
           LogInfo("pending session at ", itr->first, " timed out");
+          UnmapAddr(itr->second->GetRemoteEndpoint());
           // defer call so we can acquire mutexes later
           closedPending.emplace_back(std::move(itr->second));
           itr = m_Pending.erase(itr);
@@ -234,6 +236,12 @@ namespace llarp
     }
   }
 
+  void
+  ILinkLayer::UnmapAddr(const SockAddr& addr)
+  {
+    m_AuthedAddrs.erase(addr);
+  }
+
   bool
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
@@ -249,6 +257,7 @@ namespace llarp
         s->Close();
         return false;
       }
+      m_AuthedAddrs.emplace(addr, pk);
       m_AuthedLinks.emplace(pk, itr->second);
       itr = m_Pending.erase(itr);
       m_Router->TriggerPump();
@@ -435,7 +444,8 @@ namespace llarp
   void
   ILinkLayer::SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt)
   {
-    m_udp->send(to, pkt);
+    if (not m_udp->send(to, pkt))
+      LogError("could not send udp packet to ", to);
   }
 
   bool

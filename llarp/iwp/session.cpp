@@ -175,8 +175,7 @@ namespace llarp
       if (m_State == State::Closed)
         return;
       auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
-      if (m_State == State::Ready)
-        m_Parent->UnmapAddr(m_RemoteAddr);
+      m_Parent->UnmapAddr(m_RemoteAddr);
       m_State = State::Closed;
       if (m_SentClosed.test_and_set())
         return;
