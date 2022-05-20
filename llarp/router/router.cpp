@@ -870,10 +870,11 @@ namespace llarp
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths | "
            << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0) << " | gossip: "
-           << "(next/last) " << _rcGossiper.NextGossipAt() << "/";
+           << "(next/last) " << time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()}
+           << " / ";
         if (auto maybe = _rcGossiper.LastGossipAt())
         {
-          ss << *maybe;
+          ss << time_delta<std::chrono::seconds>{*maybe};
         }
         else
         {
