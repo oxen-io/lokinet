@@ -102,6 +102,9 @@ namespace llarp
       return _dht;
     }
 
+    std::optional<std::variant<nuint32_t, nuint128_t>>
+    OurPublicIP() const override;
+
     util::StatusObject
     ExtractStatus() const override;
 

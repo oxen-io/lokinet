@@ -108,7 +108,7 @@ namespace llarp
     SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
     virtual bool
-    Configure(AbstractRouter* loop, const std::string& ifname, int af, uint16_t port);
+    Configure(AbstractRouter* loop, std::string ifname, int af, uint16_t port);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;

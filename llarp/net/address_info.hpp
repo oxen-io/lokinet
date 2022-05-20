@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <oxenc/variant.h>
+
 /**
  * address_info.hpp
  *
@@ -46,6 +48,10 @@ namespace llarp
     /// Updates our ip and port to reflect that of the given SockAddr
     void
     fromSockAddr(const SockAddr& address);
+
+    /// get this as an explicit v4 or explicit v6
+    std::variant<nuint32_t, nuint128_t>
+    IP() const;
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;

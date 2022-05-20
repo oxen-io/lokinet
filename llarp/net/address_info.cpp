@@ -27,6 +27,12 @@ namespace llarp
     return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }
 
+  std::variant<nuint32_t, nuint128_t>
+  AddressInfo::IP() const
+  {
+    return SockAddr{ip}.getIP();
+  }
+
   bool
   AddressInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {

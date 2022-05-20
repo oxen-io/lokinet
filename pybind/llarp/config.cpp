@@ -39,11 +39,6 @@ namespace llarp
             [](RouterConfig& self) { return self.m_dataDir.c_str(); },
             [](RouterConfig& self, std::string dir) { self.m_dataDir = dir; })
         .def_readwrite("blockBogons", &RouterConfig::m_blockBogons)
-        .def(
-            "overrideAddress",
-            [](RouterConfig& self, std::string addr) {
-              self.m_publicAddress = llarp::IpAddress(addr);
-            })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
         .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);

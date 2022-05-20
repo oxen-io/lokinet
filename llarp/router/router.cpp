@@ -415,9 +415,6 @@ namespace llarp
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");
 
-    if (!InitOutboundLinks())
-      throw std::runtime_error("InitOutboundLinks() failed");
-
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
 
@@ -596,8 +593,8 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    if (not conf.router.m_publicAddress.isEmpty())
-      _ourAddress = conf.router.m_publicAddress.createSockAddr();
+    if (auto maybe = conf.router.m_PublicIP)
+      _ourAddress = SockAddr{*maybe, conf.router.m_PublicPort};
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
@@ -728,14 +725,15 @@ namespace llarp
 
     if (inboundLinks.empty() and m_isServiceNode)
     {
-      const auto& publicAddr = conf.router.m_publicAddress;
-      if (publicAddr.isEmpty() or not publicAddr.hasPort())
+      if (_ourAddress)
       {
-        throw std::runtime_error(
-            "service node enabled but could not find a public IP to bind to; you need to set the "
-            "public-ip= and public-port= options");
+        inboundLinks.push_back(LinksConfig::LinkInfo{
+            _ourAddress->hostString(), _ourAddress->Family(), _ourAddress->getPort()});
       }
-      inboundLinks.push_back(LinksConfig::LinkInfo{"0.0.0.0", AF_INET, *publicAddr.getPort()});
+      else
+        throw std::runtime_error{
+            "service node enabled but could not find a public IP to bind to; you need to set the "
+            "public-ip= and public-port= options"};
     }
 
     // create inbound links, if we are a service node
@@ -1253,6 +1251,12 @@ namespace llarp
       return false;
     }
 
+    if (not InitOutboundLinks())
+    {
+      LogError("failed to init outbound links");
+      return false;
+    }
+
     if (IsServiceNode())
     {
       if (!SaveRC())
@@ -1561,6 +1565,22 @@ namespace llarp
       return false;
     const auto ep = hiddenServiceContext().GetDefault();
     return ep and ep->HasExit();
+  }
+
+  std::optional<std::variant<nuint32_t, nuint128_t>>
+  Router::OurPublicIP() const
+  {
+    if (_ourAddress)
+      return _ourAddress->getIP();
+    std::optional<std::variant<nuint32_t, nuint128_t>> found;
+    _linkManager.ForEachInboundLink([&found](const auto& link) {
+      if (found)
+        return;
+      AddressInfo ai;
+      if (link->GetOurAddressInfo(ai))
+        found = ai.IP();
+    });
+    return found;
   }
 
   bool
