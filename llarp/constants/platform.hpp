@@ -11,6 +11,14 @@ namespace llarp::platform
       false
 #endif
       ;
+  ///  we have systemd ?
+  inline constexpr bool has_systemd =
+#ifdef WITH_SYSTEMD
+      true
+#else
+      false
+#endif
+      ;
 
   ///  are we freebsd ?
   inline constexpr bool is_freebsd =
