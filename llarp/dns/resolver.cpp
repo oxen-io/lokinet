@@ -1,92 +1,50 @@
 #include "resolver.hpp"
 #include <llarp/util/logging.hpp>
-
-#ifndef WITH_SYSTEMD
+#include <llarp/constants/platform.hpp>
 
 namespace llarp::dns
 {
-  bool
-  set_resolver(std::string, llarp::SockAddr, bool)
+  class Null_SystemSettings : public I_SystemSettings
   {
-    LogDebug("lokinet is not built with systemd support, cannot set systemd resolved DNS");
-    return false;
-  }
+    void
+    set_resolver(std::string, llarp::SockAddr, bool) override
+    {
+      LogDebug("lokinet is not built with systemd support, cannot set systemd resolved DNS");
+    }
+  };
 }  // namespace llarp::dns
 
-#else
-
-#include <stdexcept>
-
+#ifdef WITH_SYSTEMD
 extern "C"
 {
-#include <systemd/sd-bus.h>
 #include <net/if.h>
 }
+
+#include <llarp/linux/dbus.hpp>
 
 using namespace std::literals;
 
 namespace llarp::dns
 {
-  namespace
+  class SD_SystemSettings : public I_SystemSettings
   {
-    template <typename... T>
+   public:
     void
-    resolved_call(sd_bus* bus, const char* method, const char* arg_format, T... args)
+    set_resolver(std::string ifname, llarp::SockAddr dns, bool global) override
     {
-      sd_bus_error error = SD_BUS_ERROR_NULL;
-      sd_bus_message* msg = nullptr;
-      int r = sd_bus_call_method(
-          bus,
+      unsigned int if_ndx = if_nametoindex(ifname.c_str());
+      if (if_ndx == 0)
+      {
+        throw std::runtime_error{"No such interface '" + ifname + "'"};
+      }
+
+      linux::DBUS _dbus{
           "org.freedesktop.resolve1",
           "/org/freedesktop/resolve1",
-          "org.freedesktop.resolve1.Manager",
-          method,
-          &error,
-          &msg,
-          arg_format,
-          args...);
-
-      if (r < 0)
-        throw std::runtime_error{"sdbus resolved "s + method + " failed: " + strerror(-r)};
-
-      sd_bus_message_unref(msg);
-      sd_bus_error_free(&error);
-    }
-
-    struct sd_bus_deleter
-    {
-      void
-      operator()(sd_bus* ptr) const
-      {
-        sd_bus_unref(ptr);
-      }
-    };
-  }  // namespace
-
-  bool
-  set_resolver(std::string ifname, llarp::SockAddr dns, bool global)
-  {
-    unsigned int if_ndx = if_nametoindex(ifname.c_str());
-    if (if_ndx == 0)
-    {
-      LogWarn("No such interface '", ifname, "'");
-      return false;
-    }
-
-    // Connect to the system bus
-    sd_bus* bus = nullptr;
-    int r = sd_bus_open_system(&bus);
-    if (r < 0)
-    {
-      LogWarn("Failed to connect to system bus to set DNS: ", strerror(-r));
-      return false;
-    }
-    std::unique_ptr<sd_bus, sd_bus_deleter> bus_ptr{bus};
-
-    try
-    {
-      // This passing address by bytes and using two separate calls for ipv4/ipv6 is gross, but the
-      // alternative is to build up a bunch of crap with va_args, which is slightly more gross.
+          "org.freedesktop.resolve1.Manager"};
+      // This passing address by bytes and using two separate calls for ipv4/ipv6 is gross, but
+      // the alternative is to build up a bunch of crap with va_args, which is slightly more
+      // gross.
       const bool isStandardDNSPort = dns.getPort() == 53;
       if (dns.isIPv6())
       {
@@ -95,8 +53,7 @@ namespace llarp::dns
         auto* a = reinterpret_cast<const uint8_t*>(&ipv6);
         if (isStandardDNSPort)
         {
-          resolved_call(
-              bus,
+          _dbus(
               "SetLinkDNS",
               "ia(iay)",
               (int32_t)if_ndx,
@@ -111,8 +68,7 @@ namespace llarp::dns
         }
         else
         {
-          resolved_call(
-              bus,
+          _dbus(
               "SetLinkDNSEx",
               "ia(iayqs)",
               (int32_t)if_ndx,
@@ -135,8 +91,7 @@ namespace llarp::dns
         auto* a = reinterpret_cast<const uint8_t*>(&ipv4);
         if (isStandardDNSPort)
         {
-          resolved_call(
-              bus,
+          _dbus(
               "SetLinkDNS",
               "ia(iay)",
               (int32_t)if_ndx,
@@ -150,8 +105,7 @@ namespace llarp::dns
         }
         else
         {
-          resolved_call(
-              bus,
+          _dbus(
               "SetLinkDNSEx",
               "ia(iayqs)",
               (int32_t)if_ndx,
@@ -171,8 +125,7 @@ namespace llarp::dns
         // Setting "." as a routing domain gives this DNS server higher priority in resolution
         // compared to dns servers that are set without a domain (e.g. the default for a
         // DHCP-configured DNS server)
-        resolved_call(
-            bus,
+        _dbus(
             "SetLinkDomains",
             "ia(sb)",
             (int32_t)if_ndx,
@@ -180,11 +133,10 @@ namespace llarp::dns
             "."      // global DNS root
         );
       else
-        // Only resolve .loki and .snode through lokinet (so you keep using your local DNS server
-        // for everything else, which is nicer than forcing everything though lokinet's upstream
-        // DNS).
-        resolved_call(
-            bus,
+        // Only resolve .loki and .snode through lokinet (so you keep using your local DNS
+        // server for everything else, which is nicer than forcing everything though lokinet's
+        // upstream DNS).
+        _dbus(
             "SetLinkDomains",
             "ia(sb)",
             (int32_t)if_ndx,
@@ -194,16 +146,75 @@ namespace llarp::dns
             "snode",  // domain
             (int)1    // routing domain = true
         );
+    }
+  };
 
-      return true;
-    }
-    catch (const std::exception& e)
+  /// network manager dns setter
+  class NM_SystemSettings : public I_SystemSettings
+  {
+   public:
+    void
+    set_resolver(std::string ifname, llarp::SockAddr dns, bool global) override
     {
-      LogWarn("Failed to set DNS via systemd-resolved: ", e.what());
+      unsigned int if_ndx = if_nametoindex(ifname.c_str());
+      if (if_ndx == 0)
+      {
+        throw std::runtime_error{"No such interface '" + ifname + "'"};
+      }
+      (void)dns;
+      (void)global;
+      // TODO: implement network manager shit
     }
-    return false;
-  }
+  };
 
 }  // namespace llarp::dns
 
 #endif  // WITH_SYSTEMD
+
+namespace llarp::dns
+{
+  class MultiSettings : public I_SystemSettings
+  {
+    std::vector<std::unique_ptr<I_SystemSettings>> m_Impls;
+
+   public:
+    void
+    add_impl(std::unique_ptr<I_SystemSettings> impl)
+    {
+      m_Impls.emplace_back(std::move(impl));
+    }
+
+    void
+    set_resolver(std::string ifname, llarp::SockAddr dns, bool global) override
+    {
+      size_t fails{0};
+      for (const auto& ptr : m_Impls)
+      {
+        try
+        {
+          ptr->set_resolver(ifname, dns, global);
+        }
+        catch (std::exception& ex)
+        {
+          LogWarn(ex.what());
+          fails++;
+        }
+      }
+      if (fails == m_Impls.size())
+        throw std::runtime_error{"tried all ways to set resolver and failed"};
+    }
+  };
+
+  std::shared_ptr<I_SystemSettings>
+  MakeSystemSettings()
+  {
+    auto settings = std::make_shared<MultiSettings>();
+    settings->add_impl(std::make_unique<Null_SystemSettings>());
+    if constexpr (llarp::platform::has_systemd)
+    {
+      settings->add_impl(std::make_unique<SD_SystemSettings>());
+      settings->add_impl(std::make_unique<NM_SystemSettings>());
+    }
+    return settings;
+  }
+}  // namespace llarp::dns
