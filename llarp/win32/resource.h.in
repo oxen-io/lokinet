@@ -13,3 +13,5 @@
 #define _APS_NEXT_SYMED_VALUE 101
 #endif
 #endif
+// clang-format off
+#define lokinet_VERSION @lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@, 0

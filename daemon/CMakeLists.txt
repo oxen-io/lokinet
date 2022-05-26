@@ -49,7 +49,7 @@ endif()
 
 foreach(exe ${exetargets})
   if(WIN32 AND NOT MSVC_VERSION)
-    target_sources(${exe} PRIVATE ../llarp/win32/version.rc)
+    target_sources(${exe} PRIVATE ${CMAKE_BINARY_DIR}/version.rc)
     target_link_libraries(${exe} PRIVATE -static-libstdc++ -static-libgcc --static -Wl,--pic-executable,-e,mainCRTStartup,--subsystem,console:5.00)
     target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
   elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
