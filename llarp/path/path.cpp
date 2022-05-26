@@ -646,7 +646,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       // should help prevent bad paths with uninitialized members
       // FIXME: Why would we get uninitialized IMessages?
-      if (msg.version != LLARP_PROTO_VERSION)
+      if (msg.version != llarp::constants::proto_version)
         return false;
       if (!msg.BEncode(&buf))
       {

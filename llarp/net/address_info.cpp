@@ -105,7 +105,7 @@ namespace llarp
     {
       if (!bencode_read_integer(buf, &i))
         return false;
-      return i == LLARP_PROTO_VERSION;
+      return i == llarp::constants::proto_version;
     }
 
     // bad key
@@ -149,7 +149,7 @@ namespace llarp
       return false;
 
     /** version */
-    if (!bencode_write_uint64_entry(buff, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buff, "v", 1, llarp::constants::proto_version))
       return false;
     /** end */
     return bencode_end(buff);

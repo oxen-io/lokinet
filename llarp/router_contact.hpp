@@ -101,7 +101,7 @@ namespace llarp
     llarp::AlignedBuffer<NICKLEN> nickname;
 
     llarp_time_t last_updated = 0s;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
     std::optional<RouterVersion> routerVersion;
     /// should we serialize the exit info?
     const static bool serializeExit = true;

@@ -68,7 +68,7 @@ namespace llarp
       }
       // build record
       record.lifetime = path::default_lifetime;
-      record.version = LLARP_PROTO_VERSION;
+      record.version = llarp::constants::proto_version;
       record.txid = hop.txID;
       record.rxid = hop.rxID;
       record.tunnelNonce = hop.nonce;

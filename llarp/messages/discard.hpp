@@ -69,7 +69,7 @@ namespace llarp
       DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
       {
         S = s;
-        version = LLARP_PROTO_VERSION;
+        version = llarp::constants::proto_version;
       }
 
       void

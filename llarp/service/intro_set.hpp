@@ -49,7 +49,7 @@ namespace llarp
       std::optional<net::TrafficPolicy> exitTrafficPolicy;
 
       Signature signature;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
 
       bool
       OtherIsNewer(const IntroSet& other) const

@@ -1210,7 +1210,7 @@ namespace llarp
     // set router version if service node
     if (IsServiceNode())
     {
-      _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
+      _rc.routerVersion = RouterVersion(llarp::VERSION, llarp::constants::proto_version);
     }
 
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
