@@ -424,7 +424,7 @@ namespace llarp
         auto router = self->context->Router();
         // persist session to downstream until path expiration
         router->PersistSessionUntil(self->hop->info.downstream, self->hop->ExpireTime() + 10s);
-        // put hope
+        // put hop
         self->context->PutTransitHop(self->hop);
         // allocate snode session if they asked for one
         if (self->record.identity)
@@ -453,10 +453,10 @@ namespace llarp
             else
             {
               // they dont claim to be in 1 hop mode
-              if (auto maybe = router->nodedb()->Get(themKey);
-                  router->PathToRouterAllowed(themKey) or (maybe and maybe->IsPublicRouter()))
+              if (router->PathToRouterAllowed(themKey))
               {
                 // they claim they are a public router we know of, no bueno.
+                // we only let clients do multi hop stuff
                 LogWarn(
                     "Not allocating temp session for indirect request from ",
                     themKey,
