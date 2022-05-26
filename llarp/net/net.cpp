@@ -591,11 +591,15 @@ namespace llarp
           addr.sin_port = htons(0);
           return SockAddr{addr};
         }
-        sockaddr_in6 addr6{};
-        addr6.sin6_family = AF_INET6;
-        addr6.sin6_port = htons(0);
-        addr6.sin6_addr = IN6ADDR_ANY_INIT;
-        return SockAddr{addr6};
+        if (af == AF_INET6)
+        {
+          sockaddr_in6 addr6{};
+          addr6.sin6_family = AF_INET6;
+          addr6.sin6_port = htons(0);
+          addr6.sin6_addr = IN6ADDR_ANY_INIT;
+          return SockAddr{addr6};
+        }
+        throw llarp::make_exception<std::invalid_argument>(af, " is not a valid address family");
       }
     }  // namespace
 
