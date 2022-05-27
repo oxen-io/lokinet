@@ -6,7 +6,10 @@
 //
 // Microsoft Visual C++ generated resource script.
 //
-#include "lokinet_resource.h"
+
+// clang-format off
+#define lokinet_VERSION @lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@, 0
+
 #ifdef __GNUC__ // make windows rc accept this
 #include <winresrc.h>
 #endif
@@ -72,7 +75,7 @@ BEGIN
             VALUE "FileVersion", "@lokinet_VERSION@"
             VALUE "InternalName", "lokinet"
             VALUE "LegalCopyright", "Copyright (c) 2018-2022 Jeff Becker, Rick V for the OPTF. This software is provided under the terms of the GPL3; see the file LICENSE for details."
-            VALUE "OriginalFilename", "lokinet.exe"
+            VALUE "OriginalFilename", "@lokinet_EXE_NAME@"
             VALUE "ProductName", "LokiNET for Windows"
             VALUE "ProductVersion", "@lokinet_VERSION@"
         END
