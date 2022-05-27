@@ -8,6 +8,7 @@
 #include <utility>
 #include <unordered_set>
 #include <llarp/router/abstractrouter.hpp>
+#include <oxenc/variant.h>
 
 static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
@@ -129,7 +130,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Configure(AbstractRouter* router, const std::string& ifname, int af, uint16_t port)
+  ILinkLayer::Configure(AbstractRouter* router, std::string ifname, int af, uint16_t port)
   {
     m_Router = router;
     m_udp = m_Router->loop()->make_udp(
@@ -142,11 +143,42 @@ namespace llarp
 
     if (ifname == "*")
     {
-      if (!AllInterfaces(af, m_ourAddr))
+      if (router->IsServiceNode())
+      {
+        if (auto maybe = router->OurPublicIP())
+        {
+          auto addr = var::visit([](auto&& addr) { return SockAddr{addr}; }, *maybe);
+          // service node outbound link
+          if (HasInterfaceAddress(addr.getIP()))
+          {
+            // we have our ip claimed on a local net interface
+            m_ourAddr = addr;
+          }
+          else if (auto maybe = net::AllInterfaces(addr))
+          {
+            // we do not have our claimed ip, nat or something?
+            m_ourAddr = *maybe;
+          }
+          else
+            return false;  // the ultimate failure case
+        }
+        else
+          return false;
+      }
+      else if (auto maybe = net::AllInterfaces(SockAddr{"0.0.0.0"}))
+      {
+        // client outbound link
+        m_ourAddr = *maybe;
+      }
+      else
         return false;
     }
     else
     {
+      if (ifname == "0.0.0.0" and not GetBestNetIF(ifname))
+        throw std::invalid_argument{
+            "0.0.0.0 provided and we cannot find a valid ip to use, please set one "
+            "explicitly instead in the bind section instead of 0.0.0.0"};
       if (const auto maybe = GetInterfaceAddr(ifname, af))
       {
         m_ourAddr = *maybe;
@@ -157,10 +189,11 @@ namespace llarp
         {
           m_ourAddr = SockAddr{ifname + ":0"};
         }
-        catch (const std::exception& e)
+        catch (const std::exception& ex)
         {
-          LogError(stringify("Could not use ifname ", ifname, " to configure ILinkLayer"));
-          throw e;
+          LogError(
+              stringify("Could not use ifname ", ifname, " to configure ILinkLayer: ", ex.what()));
+          throw ex;
         }
       }
     }

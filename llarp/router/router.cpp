@@ -415,9 +415,6 @@ namespace llarp
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");
 
-    if (!InitOutboundLinks())
-      throw std::runtime_error("InitOutboundLinks() failed");
-
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
 
@@ -477,6 +474,25 @@ namespace llarp
   {
     return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
         and _rcLookupHandler.IsGreylisted(pubkey());
+  }
+
+  bool
+  Router::LooksDeregistered() const
+  {
+    return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
+        and not _rcLookupHandler.SessionIsAllowed(pubkey());
+  }
+
+  bool
+  Router::ShouldTestOtherRouters() const
+  {
+    if (not IsServiceNode())
+      return false;
+    if (not whitelistRouters)
+      return true;
+    if (not _rcLookupHandler.HaveReceivedWhitelist())
+      return false;
+    return _rcLookupHandler.SessionIsAllowed(pubkey());
   }
 
   bool
@@ -577,8 +593,8 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    if (not conf.router.m_publicAddress.isEmpty())
-      _ourAddress = conf.router.m_publicAddress.createSockAddr();
+    if (auto maybe = conf.router.m_PublicIP)
+      _ourAddress = SockAddr{*maybe, conf.router.m_PublicPort};
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
@@ -709,14 +725,15 @@ namespace llarp
 
     if (inboundLinks.empty() and m_isServiceNode)
     {
-      const auto& publicAddr = conf.router.m_publicAddress;
-      if (publicAddr.isEmpty() or not publicAddr.hasPort())
+      if (_ourAddress)
       {
-        throw std::runtime_error(
-            "service node enabled but could not find a public IP to bind to; you need to set the "
-            "public-ip= and public-port= options");
+        inboundLinks.push_back(LinksConfig::LinkInfo{
+            _ourAddress->hostString(), _ourAddress->Family(), _ourAddress->getPort()});
       }
-      inboundLinks.push_back(LinksConfig::LinkInfo{"0.0.0.0", AF_INET, *publicAddr.getPort()});
+      else
+        throw std::runtime_error{
+            "service node enabled but could not find a public IP to bind to; you need to set the "
+            "public-ip= and public-port= options"};
     }
 
     // create inbound links, if we are a service node
@@ -850,7 +867,17 @@ namespace llarp
         ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths | "
-           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0);
+           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0) << " | gossip: "
+           << "(next/last) " << time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()}
+           << " / ";
+        if (auto maybe = _rcGossiper.LastGossipAt())
+        {
+          ss << time_delta<std::chrono::seconds>{*maybe};
+        }
+        else
+        {
+          ss << "never";
+        }
       }
       else
       {
@@ -889,15 +916,24 @@ namespace llarp
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
     const bool decom = LooksDecommissioned();
+    bool shouldGossip = isSvcNode and whitelistRouters and gotWhitelist
+        and _rcLookupHandler.SessionIsAllowed(pubkey());
 
-    if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
-        || (now - _rc.last_updated) > rcRegenInterval)
+    if (isSvcNode
+        and (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000)) or (now - _rc.last_updated) > rcRegenInterval))
     {
       LogInfo("regenerating RC");
-      if (!UpdateOurRC(false))
-        LogError("Failed to update our RC");
+      if (UpdateOurRC())
+      {
+        // our rc changed so we should gossip it
+        shouldGossip = true;
+        // remove our replay entry so it goes out
+        _rcGossiper.Forget(pubkey());
+      }
+      else
+        LogError("failed to update our RC");
     }
-    else if (whitelistRouters and gotWhitelist and _rcLookupHandler.SessionIsAllowed(pubkey()))
+    if (shouldGossip)
     {
       // if we have the whitelist enabled, we have fetched the list and we are in either
       // the white or grey list, we want to gossip our RC
@@ -982,17 +1018,19 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (decom)
+    if (auto dereg = LooksDeregistered(); (dereg or decom) and now >= m_NextDecommissionWarn)
     {
       // complain about being deregistered
-      if (now >= m_NextDecommissionWarn)
-      {
-        constexpr auto DecommissionWarnInterval = 30s;
-        LogError("We are running as a service node but we seem to be decommissioned");
-        m_NextDecommissionWarn = now + DecommissionWarnInterval;
-      }
+      constexpr auto DecommissionWarnInterval = 30s;
+      LogError(
+          "We are running as a service node but we seem to be ",
+          dereg ? "deregistered" : "decommissioned");
+      m_NextDecommissionWarn = now + DecommissionWarnInterval;
     }
-    else if (connected < connectToNum)
+
+    // if we need more sessions to routers and we are not a service node kicked from the network
+    // we shall connect out to others
+    if (connected < connectToNum and not LooksDeregistered())
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
@@ -1013,7 +1051,8 @@ namespace llarp
     if (m_peerDb)
     {
       // TODO: throttle this?
-      // TODO: need to capture session stats when session terminates / is removed from link manager
+      // TODO: need to capture session stats when session terminates / is removed from link
+      // manager
       _linkManager.updatePeerDb(m_peerDb);
 
       if (m_peerDb->shouldFlush(now))
@@ -1212,6 +1251,12 @@ namespace llarp
       return false;
     }
 
+    if (not InitOutboundLinks())
+    {
+      LogError("failed to init outbound links");
+      return false;
+    }
+
     if (IsServiceNode())
     {
       if (!SaveRC())
@@ -1293,8 +1338,10 @@ namespace llarp
         // dont run tests if we are not running or we are stopping
         if (not _running)
           return;
-        // dont run tests if we are decommissioned
-        if (LooksDecommissioned())
+        // dont run tests if we think we should not test other routers
+        // this occurs when we are deregistered or do not have the service node list
+        // yet when we expect to have one.
+        if (not ShouldTestOtherRouters())
           return;
         auto tests = m_routerTesting.get_failing();
         if (auto maybe = m_routerTesting.next_random(this))
@@ -1518,6 +1565,22 @@ namespace llarp
       return false;
     const auto ep = hiddenServiceContext().GetDefault();
     return ep and ep->HasExit();
+  }
+
+  std::optional<std::variant<nuint32_t, nuint128_t>>
+  Router::OurPublicIP() const
+  {
+    if (_ourAddress)
+      return _ourAddress->getIP();
+    std::optional<std::variant<nuint32_t, nuint128_t>> found;
+    _linkManager.ForEachInboundLink([&found](const auto& link) {
+      if (found)
+        return;
+      AddressInfo ai;
+      if (link->GetOurAddressInfo(ai))
+        found = ai.IP();
+    });
+    return found;
   }
 
   bool

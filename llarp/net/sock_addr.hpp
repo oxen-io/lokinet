@@ -12,6 +12,7 @@
 #include <string_view>
 #include <string>
 #include "net_int.hpp"
+#include <oxenc/variant.h>
 
 namespace llarp
 {
@@ -81,6 +82,14 @@ namespace llarp
     std::string
     hostString() const;
 
+    inline int
+    Family() const
+    {
+      if (isIPv6())
+        return AF_INET6;
+      return AF_INET;
+    }
+
     /// Returns true if this is an empty SockAddr, defined by having no IP address set. An empty IP
     /// address with a valid port is still considered empty.
     ///
@@ -133,6 +142,8 @@ namespace llarp
     getIPv6() const;
     nuint32_t
     getIPv4() const;
+    std::variant<nuint32_t, nuint128_t>
+    getIP() const;
 
     /// in host order
     huint128_t

@@ -54,7 +54,8 @@ namespace llarp
 
     bool m_blockBogons = false;
 
-    IpAddress m_publicAddress;
+    std::optional<nuint32_t> m_PublicIP;
+    nuint16_t m_PublicPort;
 
     int m_workerThreads = -1;
     int m_numNetThreads = -1;
