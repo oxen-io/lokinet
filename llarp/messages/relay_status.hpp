@@ -32,6 +32,7 @@ namespace llarp
     static constexpr uint64_t FAIL_DEST_INVALID = 1 << 6;
     static constexpr uint64_t FAIL_CANNOT_CONNECT = 1 << 7;
     static constexpr uint64_t FAIL_DUPLICATE_HOP = 1 << 8;
+    static constexpr uint64_t FAIL_SRC_INVALID = 1 << 9;
 
     uint64_t status = 0;
     uint64_t version = 0;

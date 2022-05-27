@@ -435,7 +435,7 @@ namespace llarp
             if (themKey == self->hop->info.downstream)
             {
               // they claim to be in 1 hop mode
-              if (router->PathToRouterAllowed(themKey))
+              if (router->SessionToRouterAllowed(themKey))
               {
                 // 1 hop mode and is good
                 router->exitContext().ObtainNewExit(themKey, self->hop->RXID(), false);
@@ -447,13 +447,13 @@ namespace llarp
                     "Not allocating temp session for snode ",
                     themKey,
                     " as they are not permitted to due to network policy");
-                status = LR_StatusRecord::FAIL_DEST_INVALID;
+                status = LR_StatusRecord::FAIL_SRC_INVALID;
               }
             }
             else
             {
               // they dont claim to be in 1 hop mode
-              if (router->PathToRouterAllowed(themKey))
+              if (router->SessionToRouterAllowed(themKey))
               {
                 // they claim they are a public router we know of, no bueno.
                 // we only let clients do multi hop stuff
@@ -461,7 +461,7 @@ namespace llarp
                     "Not allocating temp session for indirect request from ",
                     themKey,
                     " they seem to be a router");
-                status = LR_StatusRecord::FAIL_DEST_INVALID;
+                status = LR_StatusRecord::FAIL_SRC_INVALID;
               }
               else
               {

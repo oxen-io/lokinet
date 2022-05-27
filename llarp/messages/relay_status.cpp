@@ -299,7 +299,9 @@ namespace llarp
         {LR_StatusRecord::FAIL_MALFORMED_RECORD, "malformed record"},
         {LR_StatusRecord::FAIL_DEST_INVALID, "destination invalid"},
         {LR_StatusRecord::FAIL_CANNOT_CONNECT, "cannot connect"},
-        {LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"}};
+        {LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"},
+        {LR_StatusRecord::FAIL_SRC_INVALID, "source invalid"},
+    };
     std::stringstream ss;
     ss << "[";
     bool found = false;
