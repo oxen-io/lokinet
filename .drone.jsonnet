@@ -23,6 +23,9 @@ local submodules = {
   commands: submodule_commands,
 };
 
+// cmake options for static deps mirror
+local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps ';
+
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
 // Regular build on a debian-like system:
@@ -37,7 +40,7 @@ local debian_pipeline(name,
                       extra_cmds=[],
                       jobs=6,
                       tests=true,
-                      loki_repo=false,
+                      oxen_repo=false,
                       allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
@@ -58,7 +61,7 @@ local debian_pipeline(name,
                   apt_get_quiet + ' update',
                   apt_get_quiet + ' install -y eatmydata',
                 ] + (
-                  if loki_repo then [
+                  if oxen_repo then [
                     'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y lsb-release',
                     'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
                     'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
@@ -72,7 +75,7 @@ local debian_pipeline(name,
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
                   (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                   '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
-                  (if tests then '' else '-DWITH_TESTS=OFF ') +
+                  '-DWITH_TESTS=' + (if tests then 'ON ' else 'OFF ') +
                   cmake_extra,
                   'VERBOSE=1 make -j' + jobs,
                 ]
@@ -98,7 +101,7 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
       commands: [
         'VERBOSE=1 JOBS=' + jobs + ' NDK=/usr/lib/android-ndk ./contrib/android.sh',
         'git clone https://github.com/oxen-io/lokinet-flutter-app lokinet-mobile',
-        'cp -av lokinet-jni-*/* lokinet-mobile/lokinet_lib/android/src/main/jniLibs/',
+        'cp -av build-android/out/* lokinet-mobile/lokinet_lib/android/src/main/jniLibs/',
         'cd lokinet-mobile',
         'flutter build apk --debug',
         'cd  ..',
@@ -140,14 +143,44 @@ local windows_cross_pipeline(name,
         'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh',
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh ' + ci_mirror_opts,
       ] + extra_cmds,
     },
   ],
 };
 
+// linux cross compile on debian
+local linux_cross_pipeline(name,
+                           cross_targets,
+                           arch='amd64',
+                           build_type='Release',
+                           cmake_extra='',
+                           extra_cmds=[],
+                           jobs=6,
+                           allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'docker',
+  name: name,
+  platform: { arch: arch },
+  trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+  steps: [
+    submodules,
+    {
+      name: 'build',
+      image: docker_base + 'debian-stable-cross',
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
+      ],
+    },
+  ],
+};
+
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
-local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = {
+local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=true) = {
   kind: 'pipeline',
   type: 'docker',
   name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
@@ -164,7 +197,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-      ] + (if loki_repo then [
+      ] + (if oxen_repo then [
              'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
              'echo deb http://deb.oxen.io $${distro} main >/etc/apt/sources.list.d/oxen.list',
            ] else []) + [
@@ -240,7 +273,29 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh',
+        './contrib/mac.sh ' + ci_mirror_opts,
+      ] + extra_cmds,
+    },
+  ],
+};
+
+local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'docker',
+  name: name,
+  platform: { arch: 'amd64' },
+  trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+  steps: [
+    submodules,
+    {
+      name: 'build',
+      image: image,
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
+      commands: [
+        'cmake -S . -B build-docs',
+        'make -C build-docs doc',
       ] + extra_cmds,
     },
   ],
@@ -265,6 +320,10 @@ local mac_builder(name,
       ],
     }],
   },
+  // documentation builder
+  docs_pipeline('Documentation',
+                docker_base + 'docbuilder',
+                extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
   // Various debian builds
   debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
@@ -279,11 +338,17 @@ local mac_builder(name,
                   docker_base + 'ubuntu-bionic',
                   deps=['g++-8'] + default_deps_nocxx,
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8',
-                  loki_repo=true),
+                  oxen_repo=true),
 
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
   debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
+
+  // cross compile targets
+  linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
+  linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
+  linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
+
   // android apk builder
   apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
@@ -301,11 +366,12 @@ local mac_builder(name,
                   deps=['g++-8', 'python3-dev', 'automake', 'libtool'],
                   lto=true,
                   tests=false,
+                  oxen_repo=true,
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
-                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
                   extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
                     '../contrib/ci/drone-static-upload.sh',
@@ -331,11 +397,10 @@ local mac_builder(name,
                   cmake_extra='-DWITH_HIVE=ON'),
 
   // Deb builds:
-  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid'),
-  deb_builder(docker_base + 'debian-bullseye-debhelper', 'bullseye', 'debian/bullseye'),
-  deb_builder(docker_base + 'ubuntu-impish-debhelper', 'impish', 'ubuntu/impish'),
-  deb_builder(docker_base + 'ubuntu-focal-debhelper', 'focal', 'ubuntu/focal'),
-  deb_builder(docker_base + 'debian-sid-debhelper', 'sid', 'debian/sid', arch='arm64'),
+  deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid'),
+  deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
+  deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
+  deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
   mac_builder('macOS (Release)'),

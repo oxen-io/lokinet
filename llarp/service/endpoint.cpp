@@ -31,6 +31,7 @@
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/tunnel.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 #include <optional>
 #include <utility>
@@ -104,8 +105,7 @@ namespace llarp
       std::set<Introduction, CompareIntroTimestamp> intros;
       if (const auto maybe =
               GetCurrentIntroductionsWithFilter([now](const service::Introduction& intro) -> bool {
-                return not intro.ExpiresSoon(
-                    now, path::default_lifetime - path::min_intro_lifetime);
+                return not intro.ExpiresSoon(now, path::intro_stale_threshold);
               }))
       {
         intros.insert(maybe->begin(), maybe->end());
@@ -696,6 +696,12 @@ namespace llarp
       }
     }
 
+    size_t
+    Endpoint::UniqueEndpoints() const
+    {
+      return m_state->m_RemoteSessions.size() + m_state->m_SNodeSessions.size();
+    }
+
     constexpr auto PublishIntrosetTimeout = 20s;
 
     bool
@@ -734,13 +740,13 @@ namespace llarp
       if (not m_PublishIntroSet)
         return false;
 
-      auto next_pub = m_state->m_LastPublishAttempt
-          + (m_state->m_IntroSet.HasStaleIntros(
-                 now, path::default_lifetime - path::intro_path_spread)
+      const auto lastEventAt = std::max(m_state->m_LastPublishAttempt, m_state->m_LastPublish);
+      const auto next_pub = lastEventAt
+          + (m_state->m_IntroSet.HasStaleIntros(now, path::intro_stale_threshold)
                  ? IntrosetPublishRetryCooldown
                  : IntrosetPublishInterval);
 
-      return now >= next_pub and m_LastIntrosetRegenAttempt + 1s <= now;
+      return now >= next_pub;
     }
 
     void
@@ -1624,7 +1630,7 @@ namespace llarp
         session->FlushDownstream();
 
       // handle inbound traffic sorted
-      std::priority_queue<ProtocolMessage> queue;
+      util::ascending_priority_queue<ProtocolMessage> queue;
       while (not m_InboundTrafficQueue.empty())
       {
         // succ it out

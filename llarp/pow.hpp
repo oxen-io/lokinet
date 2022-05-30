@@ -12,7 +12,7 @@ namespace llarp
     llarp_time_t timestamp = 0s;
     llarp_time_t extendedLifetime = 0s;
     AlignedBuffer<32> nonce;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     ~PoW();
 
