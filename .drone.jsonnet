@@ -40,7 +40,7 @@ local debian_pipeline(name,
                       extra_cmds=[],
                       jobs=6,
                       tests=true,
-                      loki_repo=false,
+                      oxen_repo=false,
                       allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
@@ -61,7 +61,7 @@ local debian_pipeline(name,
                   apt_get_quiet + ' update',
                   apt_get_quiet + ' install -y eatmydata',
                 ] + (
-                  if loki_repo then [
+                  if oxen_repo then [
                     'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y lsb-release',
                     'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
                     'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
@@ -180,7 +180,7 @@ local linux_cross_pipeline(name,
 };
 
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
-local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = {
+local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=true) = {
   kind: 'pipeline',
   type: 'docker',
   name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
@@ -197,7 +197,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-      ] + (if loki_repo then [
+      ] + (if oxen_repo then [
              'cp contrib/deb.oxen.io.gpg /etc/apt/trusted.gpg.d',
              'echo deb http://deb.oxen.io $${distro} main >/etc/apt/sources.list.d/oxen.list',
            ] else []) + [
@@ -338,7 +338,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   docker_base + 'ubuntu-bionic',
                   deps=['g++-8'] + default_deps_nocxx,
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8',
-                  loki_repo=true),
+                  oxen_repo=true),
 
   // ARM builds (ARM64 and armhf)
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
@@ -366,6 +366,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   deps=['g++-8', 'python3-dev', 'automake', 'libtool'],
                   lto=true,
                   tests=false,
+                  oxen_repo=true,
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +

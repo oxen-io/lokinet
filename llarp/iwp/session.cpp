@@ -24,7 +24,7 @@ namespace llarp
       }
       // randomize nounce
       CryptoManager::instance()->randbytes(pkt.data() + HMACSIZE, TUNNONCESIZE);
-      pkt[PacketOverhead] = LLARP_PROTO_VERSION;
+      pkt[PacketOverhead] = llarp::constants::proto_version;
       pkt[PacketOverhead + 1] = cmd;
       return pkt;
     }
@@ -653,10 +653,13 @@ namespace llarp
           LogError("failed to decrypt session data from ", m_RemoteAddr);
           continue;
         }
-        if (pkt[PacketOverhead] != LLARP_PROTO_VERSION)
+        if (pkt[PacketOverhead] != llarp::constants::proto_version)
         {
           LogError(
-              "protocol version mismatch ", int(pkt[PacketOverhead]), " != ", LLARP_PROTO_VERSION);
+              "protocol version mismatch ",
+              int(pkt[PacketOverhead]),
+              " != ",
+              llarp::constants::proto_version);
           itr = msgs.erase(itr);
           continue;
         }

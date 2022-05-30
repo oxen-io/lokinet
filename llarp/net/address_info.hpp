@@ -27,7 +27,7 @@ namespace llarp
     llarp::PubKey pubkey;
     in6_addr ip = {};
     uint16_t port;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     bool
     BDecode(llarp_buffer_t* buf)

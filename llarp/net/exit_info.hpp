@@ -21,7 +21,7 @@ namespace llarp
     IpAddress ipAddress;
     IpAddress netmask;
     PubKey pubkey;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     ExitInfo() = default;
 

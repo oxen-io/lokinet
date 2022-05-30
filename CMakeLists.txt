@@ -25,7 +25,7 @@ endif()
 
 
 project(lokinet
-    VERSION 0.9.8
+    VERSION 0.9.9
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES ${LANGS})
 
@@ -35,14 +35,7 @@ if(APPLE)
     set(LOKINET_APPLE_BUILD 0)
 endif()
 
-set(RELEASE_MOTTO "A Series of Tubes" CACHE STRING "Release motto")
-
-add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
-add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
-add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
-if(RELEASE_MOTTO AND CMAKE_BUILD_TYPE MATCHES "[Rr][Ee][Ll][Ee][Aa][Ss][Ee]")
-  add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-endif()
+set(RELEASE_MOTTO "Gluten Free Edition" CACHE STRING "Release motto")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -184,7 +177,7 @@ endif()
 
 option(FORCE_OXENC_SUBMODULE "force using oxen-encoding submodule" OFF)
 if(NOT FORCE_OXENC_SUBMODULE)
-  pkg_check_modules(OXENC liboxenc>=1.0.2 IMPORTED_TARGET)
+  pkg_check_modules(OXENC liboxenc>=1.0.3 IMPORTED_TARGET)
 endif()
 
 if(OXENC_FOUND)
@@ -204,7 +197,7 @@ endif()
 
 option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
 if(NOT FORCE_OXENMQ_SUBMODULE)
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.4 IMPORTED_TARGET)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.12 IMPORTED_TARGET)
 endif()
 if(OXENMQ_FOUND)
   add_library(oxenmq::oxenmq ALIAS PkgConfig::OXENMQ)

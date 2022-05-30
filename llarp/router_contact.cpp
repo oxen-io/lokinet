@@ -221,7 +221,7 @@ namespace llarp
     routerVersion = std::optional<RouterVersion>{};
     last_updated = 0s;
     srvRecords.clear();
-    version = LLARP_PROTO_VERSION;
+    version = llarp::constants::proto_version;
   }
 
   util::StatusObject
