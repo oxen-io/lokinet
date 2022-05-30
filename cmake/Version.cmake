@@ -19,28 +19,17 @@ if(EXISTS "${GIT_INDEX_FILE}" AND ( GIT_FOUND OR Git_FOUND) )
                       "-P" "${CMAKE_CURRENT_LIST_DIR}/GenVersion.cmake"
     DEPENDS           "${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in"
                       "${GIT_INDEX_FILE}")
-  if(WIN32)
-    foreach(exe IN ITEMS lokinet lokinet-vpn lokinet-bootstrap)
-      add_custom_command(
-        OUTPUT            "${CMAKE_BINARY_DIR}/${exe}.rc"
-        COMMAND           "${CMAKE_COMMAND}"
-        ${genversion_args}
-        "-D" "lokinet_EXE_NAME=${exe}.exe"
-        "-D" "SRC=${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.in"
-        "-D" "DEST=${CMAKE_BINARY_DIR}/${exe}.rc"
-        "-P" "${CMAKE_CURRENT_LIST_DIR}/GenVersion.cmake"
-        DEPENDS           "${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.in"
-        "${GIT_INDEX_FILE}")
-    endforeach()
-  endif()
 else()
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp" @ONLY)
-  if(WIN32)
-    foreach(exe IN ITEMS lokinet lokinet-vpn lokinet-bootstrap)
-      set(lokinet_EXE_NAME "${exe}.exe")
-      configure_file("${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.in" "${CMAKE_BINARY_DIR}/${exe}.rc" @ONLY)
-    endforeach()
-  endif()
+endif()
+
+
+if(WIN32)
+  foreach(exe IN ITEMS lokinet lokinet-vpn lokinet-bootstrap)
+    set(lokinet_EXE_NAME "${exe}.exe")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.in" "${CMAKE_BINARY_DIR}/${exe}.rc" @ONLY)
+    set_property(SOURCE "${CMAKE_BINARY_DIR}/${exe}.rc" PROPERTY GENERATED 1)
+  endforeach()
 endif()
 
 add_custom_target(genversion_cpp DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")
