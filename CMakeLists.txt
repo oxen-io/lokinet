@@ -25,7 +25,7 @@ endif()
 
 
 project(lokinet
-    VERSION 0.9.8
+    VERSION 0.9.9
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES ${LANGS})
 
@@ -35,7 +35,7 @@ if(APPLE)
     set(LOKINET_APPLE_BUILD 0)
 endif()
 
-set(RELEASE_MOTTO "The Current Thing" CACHE STRING "Release motto")
+set(RELEASE_MOTTO "Gluten Free Edition" CACHE STRING "Release motto")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
