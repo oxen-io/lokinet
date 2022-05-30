@@ -177,7 +177,7 @@ endif()
 
 option(FORCE_OXENC_SUBMODULE "force using oxen-encoding submodule" OFF)
 if(NOT FORCE_OXENC_SUBMODULE)
-  pkg_check_modules(OXENC liboxenc>=1.0.2 IMPORTED_TARGET)
+  pkg_check_modules(OXENC liboxenc>=1.0.3 IMPORTED_TARGET)
 endif()
 
 if(OXENC_FOUND)
@@ -197,7 +197,7 @@ endif()
 
 option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
 if(NOT FORCE_OXENMQ_SUBMODULE)
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.4 IMPORTED_TARGET)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.12 IMPORTED_TARGET)
 endif()
 if(OXENMQ_FOUND)
   add_library(oxenmq::oxenmq ALIAS PkgConfig::OXENMQ)

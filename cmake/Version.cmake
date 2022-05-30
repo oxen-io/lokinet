@@ -2,12 +2,18 @@
 
 set(VERSIONTAG "${GIT_VERSION}")
 set(GIT_INDEX_FILE "${PROJECT_SOURCE_DIR}/.git/index")
-if(EXISTS ${GIT_INDEX_FILE} AND ( GIT_FOUND OR Git_FOUND) )
+find_package(Git)
+if(EXISTS "${GIT_INDEX_FILE}" AND ( GIT_FOUND OR Git_FOUND) )
   message(STATUS "Found Git: ${GIT_EXECUTABLE}")
+  set(genversion_args "-DGIT=${GIT_EXECUTABLE}")
+  foreach(v lokinet_VERSION lokinet_VERSION_MAJOR lokinet_VERSION_MINOR lokinet_VERSION_PATCH RELEASE_MOTTO)
+    list(APPEND genversion_args "-D${v}=${${v}}")
+  endforeach()
+
   add_custom_command(
     OUTPUT            "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp"
     COMMAND           "${CMAKE_COMMAND}"
-                      "-D" "GIT=${GIT_EXECUTABLE}"
+                      ${genversion_args}
                       "-D" "SRC=${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in"
                       "-D" "DEST=${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp"
                       "-P" "${CMAKE_CURRENT_LIST_DIR}/GenVersion.cmake"
@@ -15,11 +21,11 @@ if(EXISTS ${GIT_INDEX_FILE} AND ( GIT_FOUND OR Git_FOUND) )
                       "${GIT_INDEX_FILE}")
   if(WIN32)
     foreach(exe IN ITEMS lokinet lokinet-vpn lokinet-bootstrap)
-      set(lokinet_EXE_NAME "${exe}.exe")
       add_custom_command(
         OUTPUT            "${CMAKE_BINARY_DIR}/${exe}.rc"
         COMMAND           "${CMAKE_COMMAND}"
-        "-D" "GIT=${GIT_EXECUTABLE}"
+        ${genversion_args}
+        "-D" "lokinet_EXE_NAME=${exe}.exe"
         "-D" "SRC=${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.in"
         "-D" "DEST=${CMAKE_BINARY_DIR}/${exe}.rc"
         "-P" "${CMAKE_CURRENT_LIST_DIR}/GenVersion.cmake"
