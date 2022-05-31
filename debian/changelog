@@ -1,3 +1,9 @@
+lokinet (0.9.9-2~ubuntu2004) focal; urgency=medium
+
+  * add additional fallback case
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 31 May 2022 16:32:27 -0300
+
 lokinet (0.9.9-1~ubuntu2004) focal; urgency=medium
 
   [ Jeff Becker ]
