@@ -1,9 +1,9 @@
 #include "message.hpp"
+#include <oxenc/endian.h>
 
 #include "dns.hpp"
 #include "srv_data.hpp"
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/util/logging/logger.hpp>
 #include <llarp/util/printer.hpp>
 #include <llarp/net/ip.hpp>
@@ -197,7 +197,7 @@ namespace llarp
           const auto addr = net::TruncateV6(ip);
           rec.rr_type = qTypeA;
           rec.rData.resize(4);
-          htobe32buf(rec.rData.data(), addr.h);
+          oxenc::write_host_as_big(addr.h, rec.rData.data());
         }
         answers.emplace_back(std::move(rec));
       }

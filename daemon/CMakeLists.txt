@@ -1,8 +1,3 @@
-set(DEFAULT_WITH_BOOTSTRAP ON)
-if(APPLE)
-  set(DEFAULT_WITH_BOOTSTRAP OFF)
-endif()
-option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 
 add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
@@ -11,11 +6,10 @@ if(APPLE)
 else()
   add_executable(lokinet lokinet.cpp)
   enable_lto(lokinet lokinet-vpn)
-
-  if(WITH_BOOTSTRAP)
-    add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
-    enable_lto(lokinet-bootstrap)
-  endif()
+endif()
+if(WITH_BOOTSTRAP)
+  add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+  enable_lto(lokinet-bootstrap)
 endif()
 
 
@@ -55,7 +49,7 @@ endif()
 
 foreach(exe ${exetargets})
   if(WIN32 AND NOT MSVC_VERSION)
-    target_sources(${exe} PRIVATE ../llarp/win32/version.rc)
+    target_sources(${exe} PRIVATE ${CMAKE_BINARY_DIR}/${exe}.rc)
     target_link_libraries(${exe} PRIVATE -static-libstdc++ -static-libgcc --static -Wl,--pic-executable,-e,mainCRTStartup,--subsystem,console:5.00)
     target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
   elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")

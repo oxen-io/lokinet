@@ -1,5 +1,5 @@
 #include "findname.hpp"
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 #include <llarp/dht/context.hpp>
 #include "gotname.hpp"
 #include <llarp/router/abstractrouter.hpp>
@@ -16,7 +16,7 @@ namespace llarp::dht
   bool
   FindNameMessage::BEncode(llarp_buffer_t* buf) const
   {
-    const auto data = oxenmq::bt_serialize(oxenmq::bt_dict{
+    const auto data = oxenc::bt_serialize(oxenc::bt_dict{
         {"A", "N"sv},
         {"H", std::string_view{(char*)NameHash.data(), NameHash.size()}},
         {"T", TxID}});

@@ -24,14 +24,14 @@ TEST_CASE("Compatibility when protocol unequal", "[RouterVersion]")
 
 TEST_CASE("Empty compatibility", "[RouterVersion]")
 {
-  llarp::RouterVersion v1({0, 0, 1}, LLARP_PROTO_VERSION);
+  llarp::RouterVersion v1({0, 0, 1}, llarp::constants::proto_version);
 
   CHECK_FALSE(v1.IsCompatableWith(llarp::emptyRouterVersion));
 }
 
 TEST_CASE("IsEmpty", "[RouterVersion]")
 {
-  llarp::RouterVersion notEmpty({0, 0, 1}, LLARP_PROTO_VERSION);
+  llarp::RouterVersion notEmpty({0, 0, 1}, llarp::constants::proto_version);
   CHECK_FALSE(notEmpty.IsEmpty());
 
   CHECK(llarp::emptyRouterVersion.IsEmpty());
@@ -39,7 +39,7 @@ TEST_CASE("IsEmpty", "[RouterVersion]")
 
 TEST_CASE("Clear", "[RouterVersion]")
 {
-  llarp::RouterVersion version({0, 0, 1}, LLARP_PROTO_VERSION);
+  llarp::RouterVersion version({0, 0, 1}, llarp::constants::proto_version);
   CHECK_FALSE(version.IsEmpty());
 
   version.Clear();

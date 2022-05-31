@@ -1,0 +1,5 @@
+ExecWait 'net stop lokinet'
+ExecWait 'taskkill /f /t /im lokinet-gui.exe'
+ExecWait '$INSTDIR\bin\lokinet.exe --remove'
+RMDir /r /REBOOTOK C:\ProgramData\lokinet
+

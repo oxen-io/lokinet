@@ -73,7 +73,7 @@ namespace llarp
         return bencode_read_integer(val, &txid);
       }
       bool read = false;
-      if (!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, key, val))
+      if (!BEncodeMaybeVerifyVersion("V", version, llarp::constants::proto_version, read, key, val))
         return false;
 
       return read;
