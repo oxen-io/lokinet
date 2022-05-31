@@ -159,6 +159,11 @@ namespace llarp
             // we do not have our claimed ip, nat or something?
             m_ourAddr = *maybe;
           }
+          else if (auto maybe = net::AllInterfaces(SockAddr{"0.0.0.0"}))
+          {
+            // one last fallback
+            m_ourAddr = *maybe;
+          }
           else
             return false;  // the ultimate failure case
         }
