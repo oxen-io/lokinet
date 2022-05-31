@@ -1,3 +1,9 @@
+lokinet (0.9.9-2~deb11) bullseye; urgency=medium
+
+  * add additional fallback case
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 31 May 2022 16:32:16 -0300
+
 lokinet (0.9.9-1~deb11) bullseye; urgency=medium
 
   [ Jeff Becker ]
