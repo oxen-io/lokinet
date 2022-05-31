@@ -15,7 +15,6 @@
 
 #include <cstdlib>  // for itoa
 #include <iostream>
-#include <llarp/util/endian.hpp>
 #include <vector>
 
 #include "uint128.hpp"

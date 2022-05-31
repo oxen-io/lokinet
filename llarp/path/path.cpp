@@ -14,8 +14,9 @@
 #include <llarp/routing/path_latency_message.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/tooling/path_event.hpp>
+
+#include <oxenc/endian.h>
 
 #include <deque>
 #include <queue>
@@ -472,6 +473,11 @@ namespace llarp
           EnterState(ePathTimeout, now);
         }
       }
+      if (_status == ePathIgnore and now - m_LastRecvMessage >= path::alive_timeout)
+      {
+        // clean up this path as we dont use it anymore
+        EnterState(ePathExpired, now);
+      }
     }
 
     void
@@ -640,7 +646,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       // should help prevent bad paths with uninitialized members
       // FIXME: Why would we get uninitialized IMessages?
-      if (msg.version != LLARP_PROTO_VERSION)
+      if (msg.version != llarp::constants::proto_version)
         return false;
       if (!msg.BEncode(&buf))
       {
@@ -889,7 +895,7 @@ namespace llarp
       {
         if (pkt.size() <= 8)
           return false;
-        uint64_t counter = bufbe64toh(pkt.data());
+        auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
         if (m_ExitTrafficHandler(
                 self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
         {
