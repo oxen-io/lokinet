@@ -1,4 +1,4 @@
-lokinet (0.9.9-1~ubuntu2204) jammy; urgency=medium
+lokinet (0.9.9-1~ubuntu2210) kinetic; urgency=medium
 
   [ Jeff Becker ]
   * match timeouts in introset selection spread with logic for publishing
