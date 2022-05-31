@@ -1,4 +1,4 @@
-lokinet (0.9.9-1) unstable; urgency=medium
+lokinet (0.9.9-1~deb12) bookworm; urgency=medium
 
   [ Jeff Becker ]
   * match timeouts in introset selection spread with logic for publishing
