@@ -1,3 +1,287 @@
+lokinet (0.9.9-1~deb11) bullseye; urgency=medium
+
+  [ Jeff Becker ]
+  * match timeouts in introset selection spread with logic for publishing
+
+  [ Jason Rhinelander ]
+  * Also consider last publish; eliminate unwanted condition
+
+  [ Jeff Becker ]
+  * create new constexpr for the staleness window for introsets and use it in publishing introsets and intro selection
+
+  [ Jason Rhinelander ]
+  * docker CI: Fix error message
+
+  [ Jeff Becker ]
+  * paralellize android build much better
+  * demote log statement levels
+
+  [ Jeff ]
+  * Update high-level.txt
+
+  [ Jeff Becker ]
+  * when lokinet looses ip4 connectivity libunbound used to freak out and only use ip6 after such an event. as a result dns queries stop working because we blackhole ip6 routes if exit mode is on. this prevents this case from being hit.
+
+  [ Jeff ]
+  * drop x86 for android as flutter does not support it
+
+  [ Jeff Becker ]
+  * remove old out of date documentation
+
+  [ Jeff ]
+  * * fix up lokinet cli help opts * document doxygen
+  * add big chunks of docs
+  * spaces
+  * more docs
+  * add deps to doxygen
+  * remove duplicate file
+
+  [ majestrate ]
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+
+  [ Jeff ]
+  * match io loop event order on windows/apple to match linux.
+  * do not send buggy reply as rpc
+  * make serivce::Endpoint::EnsurePathToService have a default timeout as a named constant.
+
+  [ Jeff Becker ]
+  * implement exit node pooling, allows users to use multiple exits for an address range.
+  * configurable route poker this allows you to use exit nodes without forcing routes over the interface, useful for using lokinet with an exit and selectively routing over the lokinet interface using an external socks proxy or binding to device explicitly.
+  * reword auto-routing config comment
+
+  [ Benjamin Henrion ]
+  * Add missing libssl-dev
+
+  [ Jeff ]
+  * prevent segfault in route poker if Init() is not called
+
+  [ Jason Rhinelander ]
+  * readme: point to oxen docs; mention systemctl controls
+
+  [ majestrate ]
+  * Update llarp/router/route_poker.cpp
+
+  [ Jeff ]
+  * redo systemd status line to include number of paths and endpoint count. optionally warn about low path success.
+  * route poker: allow not blackholing routes. allow runtime configuration to disable ip blackholing.
+  * disable tests by default make ci enable tests explicitly
+  * wire up sigusr1 to trigger a network thaw on non win32 platforms
+  * detect timeskip and thaw network when we think it happened.
+  * move constant to new header
+  * make it so github sees the repo is gpl3
+  * fix typo in readme, use 3 hashes instead of 2 because it is a sub 3 section
+
+  [ Jeff Becker ]
+  * update header with notes
+  * update liblokinet udp api header
+  * remove dead shit from header
+  * update liblokinet udp header
+  * changes for liblokinet-ffi
+  * fix compile error
+  * lokinet_add_bootstrap_rc
+  * llarp::BootstrapConfig update
+  * typo fix
+  * log errors on decoding
+  * more logging
+  * sanity check
+  * more logging
+  * correct function names
+  * add WITH_BOOTSTRAP option for toggling building lokinet-bootstrap
+  * typo fixes and clarify docs
+  * fix typos add lokinet_udp_close
+  * typofix
+  * typofix
+  * add lokinet_hex_to_base32z
+  * wire up liblokient_udp_*
+  * thread safety stuff
+  * make it compile
+  * move WITH_BOOTSTRAP option to root project CMakeLists.txt
+  * enable liblokinet on macos
+  * build liblokinet on macos
+  * disable gost in static build
+  * nodejs dipshittery
+  * add liblokinet custom logger
+  * dont enable apple languages when not building daemon
+
+  [ Jeff ]
+  * Update mac.sh
+  * Update CMakeLists.txt
+
+  [ Jeff Becker ]
+  * dont pack struct becuase alignment
+  * make function pointer arguments named
+  * docstring update
+  * identify
+  * updates:
+  * cmake fixups
+  * make pybind compile
+  * typofix
+  * make it compile
+  * resolve race condition in udp flow and packet handling
+  * do less allocations in lokinet_hex_tobase32z
+
+  [ Jeff ]
+  * chore: bump static deps versions
+  * libcurl no long users --without-libmetalink so remove the flag
+  * bump ngtcp2 to v0.1.0 tag
+  * add close_reason parameter to quic::Endpoint::close_connection defaulting to emtpy string
+  * add cross compile helpers and update/add toolchains
+  * fix up contrib/cross.sh to put everything in build-cross
+  * fix up ppc64le toolchain, remove suffix
+  * fixup armhf target
+  * fix up ppc64le cross target
+  * dont capture flow_addr, results in compiler error on sid
+
+  [ majestrate ]
+  * fix up readme
+  * Update readme.md
+  * Update readme.md
+  * spruce up README more
+  * Delete llarp.png
+
+  [ Jeff ]
+  * use quad nine as default upstream dns
+
+  [ Audric Ackermann ]
+  * fix numPaths value in Router::ExtractSummaryStatus
+
+  [ Jason Rhinelander ]
+  * Crank oxen-mq to (1.2.)11; switch to oxen-encoding
+
+  [ Jeff ]
+  * make CI pipline generate docs with doxygen, doxybook2 and mkdocs.
+  * use COPYONLY for the non templated configure_file targets
+  * include mkdocs.yml in ci artifacts for docs
+  * move documentation builder closer to the top of the ci jobs
+  * remove markdown extension that is not required
+  * make comments with colins in them not have them in it
+  * make doxybook2 run from PATH if installed on our system
+  * more docs
+
+  [ Audric Ackermann ]
+  * add version and uptime to summary status endpoint
+
+  [ audric ]
+  * summary status: no services means not running
+
+  [ Jeff ]
+  * rpc fixes for lokinet gui only add stats for services when we have them
+  * remove old dead code
+  * cmake workarround for quark in older cmake where pkg config produces non existing targets
+  * oxenc
+  * fix wire protocol race condition
+
+  [ Pebu ]
+  * Fix spelling changes
+
+  [ majestrate ]
+  * Update readme.md
+
+  [ Jeff ]
+  * dry cross compile
+  * remove unneeded line from contrib/cross.sh
+  * redo contrib/cross.sh to take cmake arguments
+  * ci pipeline for cross compile
+  * bump zlib hashpin
+  * Cache best paths determined by GetPathByRouter to reduce cpu usage
+  * disable building fat liblokinet.so on bionic because lto is broken on bionoic still
+  * drone-ci image name fix, use -builder images
+  * try not to spam builds
+  * clean up paths that are ignored and inactive
+
+  [ majestrate ]
+  * add arch linux section to readme
+
+  [ Jeff ]
+  * idempotent flush queues on path builds
+  * add public key in rpc ping
+  * remove bitrotten files
+  * handle edge case better
+  * use the new electron gui in windows build
+  * kill/restore ipv6 with powershell because windows is vile
+  * static endpoint auth codes
+  * add file auth for tokens
+  * make destructor virtual
+  * add hashed password capability to endpoint auth by file
+  * disable hashed auth on windows
+  * make more platforms ignore libcrypt
+  * dont require libcrypt for cross compiled builds
+
+  [ Jason Rhinelander ]
+  * Replace llarp/util/endian.hpp with oxenc/endian.h
+  * Update to oxenc 1.0.2
+
+  [ Jeff ]
+  * add idempotent pump after sending lrcm to very make sure that it is pumped
+  * randomize all frames in lrsm to prevent info leak about hop length
+  * propagate link layer message priority to link layer so it can order retransmissions with that in mind
+  * add util::ascending_priority_queue type
+  * convert priority queues
+
+  [ majestrate ]
+  * Update llarp/iwp/session.cpp
+  * Update llarp/router/outbound_message_handler.cpp
+
+  [ Jeff ]
+  * add mirror for cmake static deps
+  * add static deps mirror to ci
+  * bump libuv version with hashpin
+  * typo
+  * split up link order for oxenmq and oxenc
+
+  [ majestrate ]
+  * use ::/0
+
+  [ Jeff ]
+  * clean up ip packet code
+  * bump oxenc submodule and force oxenc submodule on win32
+  * alignas
+  * fixup edge case on windows
+  * state machine fix for link layer
+
+  [ majestrate ]
+  * use oxenc submodule in android
+  * typofix
+
+  [ Jeff ]
+  * remove unneeded submodule
+  * bump ci to make jammy debs
+  * remove focal deb build from ci
+  * connect to routers even if we are decomissioned
+  * if we are decommissioned or deregistered, do not test other routers so we do not spam them.
+  * publish our rc out to the network when we regenerate them
+  * add gossip info to systemd status
+  * format systemd status as time deltas from now
+  * set source ip on service nodes for outbound link to not use all interfaces
+  * footcannon prevention: check for invalid address family.
+  * replace LLARP_PROTO_VERSION macro
+  * macro removals
+  * generate windows rc for each executable target so we can set the executable name right for each one
+  * move windows nsis parts for cpack into external files
+  * bump verions of all deps
+
+  [ Jason Rhinelander ]
+  * Don't be dynamic for win32 rc crap
+
+  [ Jeff ]
+  * do not build liblokinet in windows, exe gets too big
+
+  [ Jason Rhinelander ]
+  * Add oxen repo to bionic for updated cmake version
+
+  [ Jeff ]
+  * version bump to 0.9.9
+
+  [ Jason Rhinelander ]
+  * gbp compat fix
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 30 May 2022 22:29:29 -0300
+
 lokinet (0.9.8-2~deb11) bullseye; urgency=medium
 
   * oxenc compatibility
