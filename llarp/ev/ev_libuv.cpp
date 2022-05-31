@@ -241,8 +241,11 @@ namespace llarp::uv
     using event_t = uvw::PollEvent;
     auto handle = m_Impl->resource<uvw::PollHandle>(netif->PollFD());
 #else
-    using event_t = uvw::CheckEvent;
-    auto handle = m_Impl->resource<uvw::CheckHandle>();
+    // we use a uv_prepare_t because it fires before blocking for new io events unconditionally
+    // we want to match what linux does, using a uv_check_t does not suffice as the order of
+    // operations is not what we need.
+    using event_t = uvw::PrepareEvent;
+    auto handle = m_Impl->resource<uvw::PrepareHandle>();
 #endif
     if (!handle)
       return false;
@@ -254,6 +257,10 @@ namespace llarp::uv
         LogDebug("got packet ", pkt.sz);
         if (handler)
           handler(std::move(pkt));
+        // on windows/apple, vpn packet io does not happen as an io action that wakes up the event
+        // loop thus, we must manually wake up the event loop when we get a packet on our interface.
+        // on linux this is a nop
+        netif->MaybeWakeUpperLayers();
       }
     });
 

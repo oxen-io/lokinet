@@ -106,6 +106,9 @@ namespace llarp::dns
       return false;
     }
 
+    // disable ip6 for upstream dns
+    ub_ctx_set_option(unboundContext, "prefer-ip6", "0");
+    // enable async
     ub_ctx_async(unboundContext, 1);
 #ifdef _WIN32
     runner = std::thread{[&]() {

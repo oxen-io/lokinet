@@ -68,7 +68,7 @@ namespace llarp
       }
       // build record
       record.lifetime = path::default_lifetime;
-      record.version = LLARP_PROTO_VERSION;
+      record.version = llarp::constants::proto_version;
       record.txid = hop.txID;
       record.rxid = hop.rxID;
       record.tunnelNonce = hop.nonce;
@@ -191,10 +191,11 @@ namespace llarp
       lastBuild = 0s;
     }
 
-    void Builder::Tick(llarp_time_t)
+    void
+    Builder::Tick(llarp_time_t now)
     {
-      const auto now = llarp::time_now_ms();
-
+      PathSet::Tick(now);
+      now = llarp::time_now_ms();
       m_router->pathBuildLimiter().Decay(now);
 
       ExpirePaths(now, m_router);

@@ -5,7 +5,8 @@
 #include <functional>
 
 #include "../util/meta/traits.hpp"
-#include "../util/endian.hpp"
+
+#include <oxenc/endian.h>
 
 namespace llarp
 {
@@ -309,9 +310,9 @@ ntoh128(llarp::uint128_t i)
 #ifdef __BIG_ENDIAN__
   return i;
 #else
-  const auto loSwapped = htobe64(i.lower);
-  const auto hiSwapped = htobe64(i.upper);
-  return {loSwapped, hiSwapped};
+  const auto loSwapped = oxenc::big_to_host(i.lower);
+  const auto hiSwapped = oxenc::big_to_host(i.upper);
+  return {/*upper=*/loSwapped, /*lower=*/hiSwapped};
 #endif
 }
 

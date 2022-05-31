@@ -9,7 +9,7 @@
 
 set -e
 set +x
-if ! [ -f LICENSE.txt ] || ! [ -d llarp ]; then
+if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/mac.sh from the top-level lokinet project directory"
 fi
 

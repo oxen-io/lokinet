@@ -66,10 +66,28 @@ namespace llarp
     PathSet::TickPaths(AbstractRouter* r)
     {
       const auto now = llarp::time_now_ms();
-      Lock_t l(m_PathsMutex);
+      Lock_t l{m_PathsMutex};
       for (auto& item : m_Paths)
       {
         item.second->Tick(now, r);
+      }
+    }
+
+    void PathSet::Tick(llarp_time_t)
+    {
+      std::unordered_set<RouterID> endpoints;
+      for (auto& item : m_Paths)
+      {
+        endpoints.emplace(item.second->Endpoint());
+      }
+
+      m_PathCache.clear();
+      for (const auto& ep : endpoints)
+      {
+        if (auto path = GetPathByRouter(ep))
+        {
+          m_PathCache[ep] = path->weak_from_this();
+        }
       }
     }
 
@@ -150,6 +168,13 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       Path_ptr chosen = nullptr;
+      if (roles == ePathRoleAny)
+      {
+        if (auto itr = m_PathCache.find(id); itr != m_PathCache.end())
+        {
+          return itr->second.lock();
+        }
+      }
       auto itr = m_Paths.begin();
       while (itr != m_Paths.end())
       {

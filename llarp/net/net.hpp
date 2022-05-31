@@ -52,6 +52,12 @@ namespace llarp
   bool
   IsIPv4Bogon(const huint32_t& addr);
 
+  inline bool
+  IsIPv4Bogon(const nuint32_t& addr)
+  {
+    return IsIPv4Bogon(ToHost(addr));
+  }
+
   bool
   IsBogon(const in6_addr& addr);
 
@@ -61,8 +67,25 @@ namespace llarp
   bool
   IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
-  bool
-  AllInterfaces(int af, SockAddr& addr);
+  /// get a sock addr we can use for all interfaces given our public address
+  namespace net
+  {
+    std::optional<SockAddr>
+    AllInterfaces(SockAddr pubaddr);
+  }
+
+  /// compat shim
+  // TODO: remove me
+  inline bool
+  AllInterfaces(int af, SockAddr& addr)
+  {
+    if (auto maybe = net::AllInterfaces(SockAddr{af == AF_INET ? "0.0.0.0" : "::"}))
+    {
+      addr = *maybe;
+      return true;
+    }
+    return false;
+  }
 
   /// get first network interface with public address
   bool
@@ -91,5 +114,9 @@ namespace llarp
     GetInterfaceIndex(huint32_t ip);
   }
 #endif
+
+  /// return true if we have a network interface with this ip
+  bool
+  HasInterfaceAddress(std::variant<nuint32_t, nuint128_t> ip);
 
 }  // namespace llarp

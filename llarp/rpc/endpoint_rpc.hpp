@@ -20,7 +20,8 @@ namespace llarp::rpc
     explicit EndpointAuthRPC(
         std::string url,
         std::string method,
-        Whitelist_t whitelist,
+        Whitelist_t addr_whitelist,
+        std::unordered_set<std::string> token_whitelist,
         LMQ_ptr lmq,
         Endpoint_ptr endpoint);
     virtual ~EndpointAuthRPC() = default;
@@ -40,6 +41,7 @@ namespace llarp::rpc
     const std::string m_AuthURL;
     const std::string m_AuthMethod;
     const Whitelist_t m_AuthWhitelist;
+    const std::unordered_set<std::string> m_AuthStaticTokens;
     LMQ_ptr m_LMQ;
     Endpoint_ptr m_Endpoint;
     std::optional<oxenmq::ConnectionID> m_Conn;
