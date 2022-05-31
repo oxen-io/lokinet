@@ -10,12 +10,14 @@ namespace llarp
         uint64_t msgid,
         ILinkSession::Message_t msg,
         llarp_time_t now,
-        ILinkSession::CompletionHandler handler)
+        ILinkSession::CompletionHandler handler,
+        uint16_t priority)
         : m_Data{std::move(msg)}
         , m_MsgID{msgid}
         , m_Completed{handler}
         , m_LastFlush{now}
         , m_StartedAt{now}
+        , m_ResendPriority{priority}
     {
       const llarp_buffer_t buf(m_Data);
       CryptoManager::instance()->shorthash(m_Digest, buf);
@@ -27,8 +29,9 @@ namespace llarp
     {
       size_t extra = std::min(m_Data.size(), FragmentSize);
       auto xmit = CreatePacket(Command::eXMIT, 10 + 32 + extra, 0, 0);
-      htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
-      htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
+      oxenc::write_host_as_big(
+          static_cast<uint16_t>(m_Data.size()), xmit.data() + CommandOverhead + PacketOverhead);
+      oxenc::write_host_as_big(m_MsgID, xmit.data() + 2 + CommandOverhead + PacketOverhead);
       std::copy_n(
           m_Digest.begin(), m_Digest.size(), xmit.data() + 10 + CommandOverhead + PacketOverhead);
       std::copy_n(m_Data.data(), extra, xmit.data() + 10 + CommandOverhead + PacketOverhead + 32);
@@ -71,8 +74,8 @@ namespace llarp
         {
           const size_t fragsz = idx + FragmentSize < datasz ? FragmentSize : datasz - idx;
           auto frag = CreatePacket(Command::eDATA, fragsz + Overhead, 0, 0);
-          htobe16buf(frag.data() + 2 + PacketOverhead, idx);
-          htobe64buf(frag.data() + 4 + PacketOverhead, m_MsgID);
+          oxenc::write_host_as_big(idx, frag.data() + 2 + PacketOverhead);
+          oxenc::write_host_as_big(m_MsgID, frag.data() + 4 + PacketOverhead);
           std::copy(
               m_Data.begin() + idx,
               m_Data.begin() + idx + fragsz,
@@ -136,7 +139,7 @@ namespace llarp
     InboundMessage::ACKS() const
     {
       auto acks = CreatePacket(Command::eACKS, 9);
-      htobe64buf(acks.data() + CommandOverhead + PacketOverhead, m_MsgID);
+      oxenc::write_host_as_big(m_MsgID, acks.data() + CommandOverhead + PacketOverhead);
       acks[PacketOverhead + 10] = AcksBitmask();
       return acks;
     }

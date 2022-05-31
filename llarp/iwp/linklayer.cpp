@@ -76,26 +76,11 @@ namespace llarp::iwp
       bool success = session->Recv_LL(std::move(pkt));
       if (not success and isNewSession)
       {
-        LogWarn("Brand new session failed; removing from pending sessions list");
+        LogDebug("Brand new session failed; removing from pending sessions list");
         m_Pending.erase(from);
       }
       WakeupPlaintext();
     }
-  }
-
-  bool
-  LinkLayer::MapAddr(const RouterID& r, ILinkSession* s)
-  {
-    if (not ILinkLayer::MapAddr(r, s))
-      return false;
-    m_AuthedAddrs.emplace(s->GetRemoteEndpoint(), r);
-    return true;
-  }
-
-  void
-  LinkLayer::UnmapAddr(const SockAddr& addr)
-  {
-    m_AuthedAddrs.erase(addr);
   }
 
   std::shared_ptr<ILinkSession>

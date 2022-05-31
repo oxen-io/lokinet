@@ -10,7 +10,7 @@
 #include "util/printer.hpp"
 #include "util/time.hpp"
 
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 
 #include <fstream>
 #include "util/fs.hpp"
@@ -221,7 +221,7 @@ namespace llarp
     routerVersion = std::optional<RouterVersion>{};
     last_updated = 0s;
     srvRecords.clear();
-    version = LLARP_PROTO_VERSION;
+    version = llarp::constants::proto_version;
   }
 
   util::StatusObject
@@ -267,7 +267,7 @@ namespace llarp
     try
     {
       std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->size_left());
-      oxenmq::bt_list_consumer btlist(buf_view);
+      oxenc::bt_list_consumer btlist(buf_view);
 
       uint64_t outer_version = btlist.consume_integer<uint64_t>();
 
@@ -301,7 +301,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::DecodeVersion_1(oxenmq::bt_list_consumer& btlist)
+  RouterContact::DecodeVersion_1(oxenc::bt_list_consumer& btlist)
   {
     auto signature_string = btlist.consume_string_view();
     signed_bt_dict = btlist.consume_dict_data();

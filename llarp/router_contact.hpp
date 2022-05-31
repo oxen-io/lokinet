@@ -18,10 +18,10 @@
 #define MAX_RC_SIZE (1024)
 #define NICKLEN (32)
 
-namespace oxenmq
+namespace oxenc
 {
   class bt_list_consumer;
-}  // namespace oxenmq
+}  // namespace oxenc
 
 namespace llarp
 {
@@ -101,7 +101,7 @@ namespace llarp
     llarp::AlignedBuffer<NICKLEN> nickname;
 
     llarp_time_t last_updated = 0s;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
     std::optional<RouterVersion> routerVersion;
     /// should we serialize the exit info?
     const static bool serializeExit = true;
@@ -226,7 +226,7 @@ namespace llarp
     DecodeVersion_0(llarp_buffer_t* buf);
 
     bool
-    DecodeVersion_1(oxenmq::bt_list_consumer& btlist);
+    DecodeVersion_1(oxenc::bt_list_consumer& btlist);
   };
 
   inline std::ostream&
