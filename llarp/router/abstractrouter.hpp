@@ -220,6 +220,10 @@ namespace llarp
     virtual const byte_t*
     pubkey() const = 0;
 
+    /// get what our real public ip is if we can know it
+    virtual std::optional<std::variant<nuint32_t, nuint128_t>>
+    OurPublicIP() const = 0;
+
     /// connect to N random routers
     virtual void
     ConnectToRandomRouters(int N) = 0;

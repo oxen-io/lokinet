@@ -57,7 +57,7 @@ namespace llarp
 
    private:
     Version_t m_Version = {{0, 0, 0}};
-    int64_t m_ProtoVersion = LLARP_PROTO_VERSION;
+    int64_t m_ProtoVersion = llarp::constants::proto_version;
   };
 
   inline std::ostream&

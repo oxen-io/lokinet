@@ -1,0 +1,9 @@
+{
+    "baseUrl": "",
+    "indexInFolders": false,
+    "linkSuffix": ".md",
+    "mainPageInRoot": false,
+    "mainPageName": "index",
+    "linkLowercase": false,
+    "foldersToGenerate": ["files", "classes", "namespaces"]
+}

@@ -1,0 +1,5 @@
+site_name: Lokinet
+theme:
+  name: 'readthedocs'
+docs_dir: markdown
+site_dir: html

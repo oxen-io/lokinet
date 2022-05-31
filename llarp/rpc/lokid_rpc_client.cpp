@@ -6,7 +6,8 @@
 #include <llarp/router/abstractrouter.hpp>
 
 #include <nlohmann/json.hpp>
-
+#include <oxenc/bt.h>
+#include <oxenc/hex.h>
 #include <llarp/util/time.hpp>
 
 namespace llarp
@@ -147,7 +148,12 @@ namespace llarp
       constexpr auto PingInterval = 30s;
       auto makePingRequest = [self = shared_from_this()]() {
         // send a ping
-        nlohmann::json payload = {{"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+        PubKey pk{};
+        if (auto r = self->m_Router.lock())
+          pk = r->pubkey();
+        nlohmann::json payload = {
+            {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
+            {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
         self->Request(
             "admin.lokinet_ping",
             [](bool success, std::vector<std::string> data) {
@@ -334,8 +340,8 @@ namespace llarp
               {
                 service::EncryptedName result;
                 const auto j = nlohmann::json::parse(data[1]);
-                result.ciphertext = oxenmq::from_hex(j["encrypted_value"].get<std::string>());
-                const auto nonce = oxenmq::from_hex(j["nonce"].get<std::string>());
+                result.ciphertext = oxenc::from_hex(j["encrypted_value"].get<std::string>());
+                const auto nonce = oxenc::from_hex(j["nonce"].get<std::string>());
                 if (nonce.size() != result.nonce.size())
                 {
                   throw std::invalid_argument(stringify(
@@ -392,7 +398,7 @@ namespace llarp
           }
 
           std::vector<std::string> routerIdStrings;
-          oxenmq::bt_deserialize(msg.data[0], routerIdStrings);
+          oxenc::bt_deserialize(msg.data[0], routerIdStrings);
 
           std::vector<RouterID> routerIds;
           routerIds.reserve(routerIdStrings.size());

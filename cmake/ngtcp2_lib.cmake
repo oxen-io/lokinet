@@ -45,8 +45,9 @@ function(add_ngtcp2_lib)
 
   configure_file(ngtcp2/cmakeconfig.h.in ngtcp2/config.h)
   include_directories("${CMAKE_CURRENT_BINARY_DIR}/ngtcp2") # for config.h
-
+  set(ENABLE_STATIC_LIB ON FORCE BOOL)
+  set(ENABLE_SHARED_LIB OFF FORCE BOOL)
   add_subdirectory(ngtcp2/lib EXCLUDE_FROM_ALL)
 
-  target_compile_definitions(ngtcp2 PRIVATE -DHAVE_CONFIG_H -D_GNU_SOURCE)
+  target_compile_definitions(ngtcp2_static PRIVATE -DHAVE_CONFIG_H -D_GNU_SOURCE)
 endfunction()

@@ -57,7 +57,7 @@ namespace llarp
 
     /// send a message buffer to the remote endpoint
     virtual bool
-    SendMessageBuffer(Message_t, CompletionHandler handler) = 0;
+    SendMessageBuffer(Message_t, CompletionHandler handler, uint16_t priority) = 0;
 
     /// start the connection
     virtual void

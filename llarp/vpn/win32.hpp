@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/ev/vpn.hpp>
+#include <llarp/router/abstractrouter.hpp>
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
@@ -168,16 +169,9 @@ namespace llarp::vpn
     return ret;
   }
 
-  class Win32Interface final : public NetworkInterface
+  namespace
   {
-    std::atomic<bool> m_Run;
-    HANDLE m_Device, m_IOCP;
-    std::vector<std::thread> m_Threads;
-    thread::Queue<net::IPPacket> m_ReadQueue;
-
-    InterfaceInfo m_Info;
-
-    static std::wstring
+    std::wstring
     get_win_sys_path()
     {
       wchar_t win_sys_path[MAX_PATH] = {0};
@@ -190,6 +184,18 @@ namespace llarp::vpn
       }
       return win_sys_path;
     }
+  }  // namespace
+
+  class Win32Interface final : public NetworkInterface
+  {
+    std::atomic<bool> m_Run;
+    HANDLE m_Device, m_IOCP;
+    std::vector<std::thread> m_Threads;
+    thread::Queue<net::IPPacket> m_ReadQueue;
+
+    InterfaceInfo m_Info;
+
+    AbstractRouter* const _router;
 
     static std::string
     NetSHCommand()
@@ -220,7 +226,8 @@ namespace llarp::vpn
       return converter.to_bytes(wcmd);
     }
 
-    Win32Interface(InterfaceInfo info) : m_ReadQueue{1024}, m_Info{std::move(info)}
+    Win32Interface(InterfaceInfo info, AbstractRouter* router)
+        : m_ReadQueue{1024}, m_Info{std::move(info)}, _router{router}
     {
       DWORD len;
 
@@ -401,6 +408,12 @@ namespace llarp::vpn
         thread.join();
     }
 
+    virtual void
+    MaybeWakeUpperLayers() const override
+    {
+      _router->TriggerPump();
+    }
+
     int
     PollFD() const override
     {
@@ -505,6 +518,17 @@ namespace llarp::vpn
     }
 
     static std::string
+    PowerShell()
+    {
+      std::wstring wcmd =
+          get_win_sys_path() + L"\\WindowsPowerShell\\v1.0\\powershell.exe -Command ";
+
+      using convert_type = std::codecvt_utf8<wchar_t>;
+      std::wstring_convert<convert_type, wchar_t> converter;
+      return converter.to_bytes(wcmd);
+    }
+
+    static std::string
     RouteCommand()
     {
       return Win32Interface::RouteCommand();
@@ -541,8 +565,8 @@ namespace llarp::vpn
       Execute(RouteCommand() + " " + cmd + " c000::/2 " + ipv6.ToString());
 
       ifname.back()++;
-      Execute(RouteCommand() + " " + cmd + " 0.0.0.0 MASK 128.0.0.0 " + ifname);
-      Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname);
+      Execute(RouteCommand() + " " + cmd + " 0.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
+      Execute(RouteCommand() + " " + cmd + " 128.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
     }
 
     void
@@ -613,12 +637,16 @@ namespace llarp::vpn
     void
     AddDefaultRouteViaInterface(std::string ifname) override
     {
+      // kill ipv6
+      Execute(PowerShell() + R"(Disable-NetAdapterBinding -Name "*" -ComponentID ms_tcpip6)");
       DefaultRouteViaInterface(ifname, "ADD");
     }
 
     void
     DelDefaultRouteViaInterface(std::string ifname) override
     {
+      // restore ipv6
+      Execute(PowerShell() + R"(Enable-NetAdapterBinding -Name "*" -ComponentID ms_tcpip6)");
       DefaultRouteViaInterface(ifname, "DELETE");
     }
   };
@@ -629,12 +657,13 @@ namespace llarp::vpn
 
    public:
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info) override
+    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
-      auto netif = std::make_shared<Win32Interface>(std::move(info));
+      auto netif = std::make_shared<Win32Interface>(std::move(info), router);
       netif->Start();
       return netif;
     };
+
     IRouteManager&
     RouteManager() override
     {
