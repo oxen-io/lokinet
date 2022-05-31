@@ -27,6 +27,7 @@ build() {
         -DCMAKE_C_FLAGS="$CFLAGS" \
         -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
         -DFORCE_OXENMQ_SUBMODULE=ON \
+        -DFORCE_OXENC_SUBMODULE=ON \
         -DWITH_TESTS=OFF \
         -DWITH_SYSTEMD=ON \
         -DWITH_SETCAP=OFF \
