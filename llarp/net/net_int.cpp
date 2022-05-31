@@ -2,6 +2,8 @@
 #include "ip.hpp"
 #include <string>
 
+#include <oxenc/endian.h>
+
 namespace llarp
 {
   huint16_t
@@ -46,7 +48,7 @@ namespace llarp
   {
     c.resize(16);
     std::fill(c.begin(), c.end(), 0);
-    htobe32buf(c.data() + 12, h);
+    oxenc::write_host_as_big(h, c.data() + 12);
     c[11] = 0xff;
     c[10] = 0xff;
   }

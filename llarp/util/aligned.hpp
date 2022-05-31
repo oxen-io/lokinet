@@ -5,7 +5,7 @@
 #include <llarp/util/meta/traits.hpp>
 #include "printer.hpp"
 
-#include <oxenmq/hex.h>
+#include <oxenc/hex.h>
 
 #include <array>
 #include <cstddef>
@@ -72,7 +72,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      return out << oxenmq::to_hex(self.begin(), self.end());
+      return out << oxenc::to_hex(self.begin(), self.end());
     }
 
     /// bitwise NOT
@@ -270,21 +270,21 @@ namespace llarp
     std::string
     ToHex() const
     {
-      return oxenmq::to_hex(begin(), end());
+      return oxenc::to_hex(begin(), end());
     }
 
     std::string
     ShortHex() const
     {
-      return oxenmq::to_hex(begin(), begin() + 4);
+      return oxenc::to_hex(begin(), begin() + 4);
     }
 
     bool
     FromHex(std::string_view str)
     {
-      if (str.size() != 2 * size() || !oxenmq::is_hex(str))
+      if (str.size() != 2 * size() || !oxenc::is_hex(str))
         return false;
-      oxenmq::from_hex(str.begin(), str.end(), begin());
+      oxenc::from_hex(str.begin(), str.end(), begin());
       return true;
     }
 

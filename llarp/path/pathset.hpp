@@ -130,7 +130,7 @@ namespace llarp
 
       /// tick owned paths
       virtual void
-      Tick(llarp_time_t now) = 0;
+      Tick(llarp_time_t now);
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
@@ -320,6 +320,9 @@ namespace llarp
       using PathMap_t = std::unordered_map<std::pair<RouterID, PathID_t>, Path_ptr>;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
+
+     private:
+      std::unordered_map<RouterID, std::weak_ptr<path::Path>> m_PathCache;
     };
 
   }  // namespace path

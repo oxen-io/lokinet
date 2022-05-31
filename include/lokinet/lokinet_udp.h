@@ -2,53 +2,21 @@
 
 #include "lokinet_context.h"
 
-#ifdef _WIN32
-extern "C"
-{
-  struct iovec
-  {
-    void* iov_base;
-    size_t iov_len;
-  };
-}
-#else
-#include <sys/uio.h>
-#endif
-
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
   /// information about a udp flow
-  struct lokinet_udp_flow
+  struct lokinet_udp_flowinfo
   {
+    /// remote endpoint's .loki or .snode address
+    char remote_host[256];
+    /// remote endpont's port
+    uint16_t remote_port;
     /// the socket id for this flow used for i/o purposes and closing this socket
     int socket_id;
-    /// remote endpoint's .loki or .snode address
-    char remote_addr[256];
-    /// local endpoint's ip address
-    char local_addr[64];
-    /// remote endpont's port
-    int remote_port;
-    /// local endpoint's port
-    int local_port;
   };
-
-  /// establish an outbound udp flow
-  /// remoteHost is the remote .loki or .snode address conneting to
-  /// remotePort is either a string integer or an srv record name to lookup, e.g. thingservice in
-  /// which we do a srv lookup for _udp.thingservice.remotehost.tld and use the "best" port provided
-  /// localAddr is the local ip:port to bind our socket to, if localAddr is NULL then
-  /// lokinet_udp_sendmmsg MUST be used to send packets return 0 on success return nonzero on fail,
-  /// containing an errno value
-  int EXPORT
-  lokinet_udp_establish(
-      char* remoteHost,
-      char* remotePort,
-      char* localAddr,
-      struct lokinet_udp_flow* flow,
-      struct lokinet_context* ctx);
 
   /// a result from a lokinet_udp_bind call
   struct lokinet_udp_bind_result
@@ -57,48 +25,97 @@ extern "C"
     int socket_id;
   };
 
+  /// flow acceptor hook, return 0 success, return nonzero with errno on failure
+  typedef int (*lokinet_udp_flow_filter)(
+      void* userdata,
+      const struct lokinet_udp_flowinfo* remote_address,
+      void** flow_userdata,
+      int* timeout_seconds);
+
+  /// callback to make a new outbound flow
+  typedef void(lokinet_udp_create_flow_func)(
+      void* userdata, void** flow_userdata, int* timeout_seconds);
+
+  /// hook function for handling packets
+  typedef void (*lokinet_udp_flow_recv_func)(
+      const struct lokinet_udp_flowinfo* remote_address,
+      const char* pkt_data,
+      size_t pkt_length,
+      void* flow_userdata);
+
+  /// hook function for flow timeout
+  typedef void (*lokinet_udp_flow_timeout_func)(
+      const struct lokinet_udp_flowinfo* remote_address, void* flow_userdata);
+
   /// inbound listen udp socket
   /// expose udp port exposePort to the void
-  /// if srv is not NULL add an srv record for this port, the format being "thingservice" in which
-  /// will add a srv record "_udp.thingservice.ouraddress.tld" that advertises this port provide
-  /// localAddr to forward inbound udp packets to "ip:port" if localAddr is NULL then the resulting
-  /// socket MUST be drained by lokinet_udp_recvmmsg
+  ////
+  /// @param filter MUST be non null, pointing to a flow filter for accepting new udp flows, called
+  /// with user data
   ///
-  /// returns 0 on success
-  /// returns nonzero on error in which it is an errno value
+  /// @param recv MUST be non null, pointing to a packet handler function for each flow, called
+  /// with per flow user data provided by filter function if accepted
+  ///
+  /// @param timeout MUST be non null,
+  /// pointing to a cleanup function to clean up a stale flow, staleness determined by the value
+  /// given by the filter function returns 0 on success
+  ///
+  /// @returns nonzero on error in which it is an errno value
   int EXPORT
   lokinet_udp_bind(
-      int exposedPort,
-      char* srv,
-      char* localAddr,
-      struct lokinet_udp_listen_result* result,
+      uint16_t exposedPort,
+      lokinet_udp_flow_filter filter,
+      lokinet_udp_flow_recv_func recv,
+      lokinet_udp_flow_timeout_func timeout,
+      void* user,
+      struct lokinet_udp_bind_result* result,
       struct lokinet_context* ctx);
 
-  /// poll many udp sockets for activity
-  /// returns 0 on sucess
+  /// @brief establish a udp flow to remote endpoint
   ///
-  /// returns non zero errno on error
+  /// @param create_flow the callback to create the new flow if we establish one
+  ///
+  /// @param user passed to new_flow as user data
+  ///
+  /// @param remote the remote address to establish to
+  ///
+  /// @param ctx the lokinet context to use
+  ///
+  /// @return 0 on success, non zero errno on fail
   int EXPORT
-  lokinet_udp_poll(
-      const int* socket_ids,
-      size_t numsockets,
-      const struct timespec* timeout,
+  lokinet_udp_establish(
+      lokinet_udp_create_flow_func create_flow,
+      void* user,
+      const struct lokinet_udp_flowinfo* remote,
       struct lokinet_context* ctx);
 
-  struct lokinet_udp_pkt
-  {
-    char remote_addr[256];
-    int remote_port;
-    struct iovec pkt;
-  };
+  /// @brief send on an established flow to remote endpoint
+  /// blocks until we have sent the packet
+  ///
+  /// @param flowinfo remote flow to use for sending
+  ///
+  /// @param ptr pointer to data to send
+  ///
+  /// @param len the length of the data
+  ///
+  /// @param ctx the lokinet context to use
+  ///
+  /// @returns 0 on success and non zero errno on fail
+  int EXPORT
+  lokinet_udp_flow_send(
+      const struct lokinet_udp_flowinfo* remote,
+      const void* ptr,
+      size_t len,
+      struct lokinet_context* ctx);
 
-  /// analog to recvmmsg
-  ssize_t EXPORT
-  lokinet_udp_recvmmsg(
-      int socket_id,
-      struct lokinet_udp_pkt* events,
-      size_t max_events,
-      struct lokient_context* ctx);
+  /// @brief close a bound udp socket
+  /// closes all flows immediately
+  ///
+  /// @param socket_id the bound udp socket's id
+  ///
+  /// @param ctx lokinet context
+  void EXPORT
+  lokinet_udp_close(int socket_id, struct lokinet_context* ctx);
 
 #ifdef __cplusplus
 }
