@@ -35,6 +35,7 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
         'cd debian',
         'eatmydata mk-build-deps -i -r --tool="' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y" control',
         'cd ..',
+        'mkdir -p /usr/lib/i386-linux-gnu/pgm-5.2/include /usr/lib/x86_64-linux-gnu/pgm-5.2/include',  // broken ubuntu packages
         'patch -i debian/dh-lib.patch /usr/share/perl5/Debian/Debhelper/Dh_Lib.pm',  // patch debian bug #897569
         "eatmydata gbp buildpackage --git-no-pbuilder --git-builder='debuild --preserve-envvar=CCACHE_*' --git-upstream-tag=HEAD -us -uc -j" + jobs,
         './debian/ci-upload.sh ' + distro + ' ' + debarch,
