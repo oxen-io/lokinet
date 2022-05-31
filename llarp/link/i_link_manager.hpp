@@ -30,7 +30,8 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed) = 0;
+        ILinkSession::CompletionHandler completed,
+        uint16_t priority = 0) = 0;
 
     virtual bool
     HasSessionTo(const RouterID& remote) const = 0;

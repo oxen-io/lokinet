@@ -14,6 +14,9 @@ namespace llarp
   /// convert to milliseconds
   uint64_t
   ToMS(Duration_t duration);
+
+  using DateClock_t = std::chrono::system_clock;
+  using TimePoint_t = DateClock_t::time_point;
 }  // namespace llarp
 
 using llarp_time_t = llarp::Duration_t;

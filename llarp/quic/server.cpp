@@ -2,8 +2,7 @@
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/logger.hpp>
 
-#include <oxenmq/hex.h>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include <uvw/loop.h>
 
 #include <stdexcept>
