@@ -4,6 +4,7 @@
 #include <source_location>
 namespace slns = std;
 #else
+#include <cstdint>
 namespace slns
 {
   struct source_location
