@@ -3,6 +3,7 @@
 #include "net/sock_addr.hpp"
 #include <llarp/service/context.hpp>
 #include <unordered_set>
+#include <llarp/link/i_link_manager.hpp>
 
 namespace llarp
 {
@@ -127,13 +128,15 @@ namespace llarp
 
     // check for network
     const auto maybe = GetDefaultGateway();
-    if (not maybe.has_value())
+    if (not maybe)
     {
 #ifndef ANDROID
       LogError("Network is down");
 #endif
       // mark network lost
       m_HasNetwork = false;
+      // close all peer sessions so we re establish them
+      m_Router->linkManager().ForEachPeer([](auto* session) { session->Close(); });
       return;
     }
     const huint32_t gateway = *maybe;
