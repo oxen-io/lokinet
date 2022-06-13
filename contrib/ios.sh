@@ -11,7 +11,7 @@ fi
 mkdir -p build/iphone
 cd build/iphone
 cmake \
-    -G Ninja \
+    -G Xcode \
     -DCMAKE_TOOLCHAIN_FILE=../../external/ios-cmake/ios.toolchain.cmake \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
@@ -25,9 +25,9 @@ cmake \
     -DFORCE_OXENMQ_SUBMODULE=ON \
     -DFORCE_OXENC_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
-    -DWITH_LTO=OFF \
+    -DWITH_LTO=ON \
     -DPLATFORM=OS64COMBINED \
     -DCMAKE_BUILD_TYPE=Release \
     "$@" \
     ../..
-ninja lokinet-shared
+xcrun build lokinet-shared
