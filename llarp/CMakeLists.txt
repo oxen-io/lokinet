@@ -263,6 +263,13 @@ if(BUILD_LIBLOKINET)
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
   add_log_tag(lokinet-shared)
+  if(CMAKE_GENERATOR MATCHES "Xcode")
+    option(CODE_SIGN_IDENT "for codesign magic on ios" "iPhone Developer")
+    option(DEV_TEAM_ID "for codesign magic on ios" "SUQ8J2PCT7")
+    set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CODE_SIGN_IDENT})
+    set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ${DEV_TEAM_ID})
+  endif()
+  
 endif()
 
 if(APPLE)
