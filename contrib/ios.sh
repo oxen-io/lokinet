@@ -3,7 +3,7 @@
 # Build the shit for iphone, only builds embeded lokinet
 
 set -e
-set +x
+set -x
 if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/ios.sh from the top-level lokinet project directory"
 fi
@@ -11,8 +11,8 @@ fi
 mkdir -p build/iphone
 cd build/iphone
 cmake \
-    -G Ninja \
-    -DCMAKE_TOOLCHAIN_FILE=../../external/iso-cmake/ios.toolchain.cmake \
+    -G Xcode \
+    -DCMAKE_TOOLCHAIN_FILE=../../external/ios-cmake/ios.toolchain.cmake \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
     -DBUILD_SHARED_LIBS=OFF \
@@ -26,7 +26,8 @@ cmake \
     -DFORCE_OXENC_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=ON \
+    -DPLATFORM=OS64COMBINED \
     -DCMAKE_BUILD_TYPE=Release \
     "$@" \
     ../..
-ninja lokinet-shared
+xcrun build lokinet-shared

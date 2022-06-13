@@ -13,7 +13,11 @@ if(APPLE AND BUILD_DAEMON)
   set(LANGS ${LANGS} OBJC Swift)
 endif()
 
-find_program(CCACHE_PROGRAM ccache)
+
+if(NOT CMAKE_GENERATOR MATCHES "Xcode")
+  find_program(CCACHE_PROGRAM ccache)
+endif()
+
 if(CCACHE_PROGRAM)
   foreach(lang ${LANGS})
     if(NOT DEFINED CMAKE_${lang}_COMPILER_LAUNCHER AND NOT CMAKE_${lang}_COMPILER MATCHES ".*/ccache")
