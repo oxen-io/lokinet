@@ -14,11 +14,7 @@ if(APPLE AND BUILD_DAEMON)
 endif()
 
 
-option(WITH_CCACHE "enable ccache" ON)
-
-if(WITH_CCACHE)
-  find_program(CCACHE_PROGRAM ccache)
-endif()
+find_program(CCACHE_PROGRAM ccache)
 
 if(CCACHE_PROGRAM)
   foreach(lang ${LANGS})
