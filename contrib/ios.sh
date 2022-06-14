@@ -9,7 +9,6 @@ if ! [ -f LICENSE ] || ! [ -d llarp ]; then
 fi
 
 mkdir -p build/iphone
-cd build/iphone
 cmake \
     -G Xcode \
     -DCMAKE_TOOLCHAIN_FILE=../../external/ios-cmake/ios.toolchain.cmake \
@@ -27,7 +26,8 @@ cmake \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=ON \
     -DPLATFORM=OS64COMBINED \
-    -DCMAKE_BUILD_TYPE=Release \
-    "$@" \
-    ../..
-xcrun build lokinet-shared
+    -DCMAKE_BUILD_TYPE=Debug \
+    -S . -B build/iphone \
+    "$@"
+
+cmake --build build/iphone

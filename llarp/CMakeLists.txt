@@ -130,7 +130,7 @@ add_library(liblokinet
   dht/taglookup.cpp
 
   endpoint_base.cpp
-  
+
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
@@ -223,7 +223,7 @@ add_library(liblokinet
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
 enable_lto(lokinet-util lokinet-platform liblokinet)
-  
+
 if(TRACY_ROOT)
   target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
 endif()
@@ -269,7 +269,7 @@ if(BUILD_LIBLOKINET)
     set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CODE_SIGN_IDENT})
     set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ${DEV_TEAM_ID})
   endif()
-  
+
 endif()
 
 if(APPLE)
