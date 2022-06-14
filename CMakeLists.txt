@@ -14,7 +14,9 @@ if(APPLE AND BUILD_DAEMON)
 endif()
 
 
-if(NOT CMAKE_GENERATOR MATCHES "Xcode")
+option(WITH_CCACHE "enable ccache" ON)
+
+if(WITH_CCACHE)
   find_program(CCACHE_PROGRAM ccache)
 endif()
 
@@ -201,7 +203,15 @@ if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
   include(cmake/cross_compile.cmake)
 endif()
 
-if(NOT APPLE)
+if(APPLE)
+  if(IOS AND ARCH STREQUAL "arm64")
+    message(STATUS "IOS: Changing arch from arm64 to armv8")
+    add_compile_options(-march=armv8)
+  elseif(IOS AND ARCH STREQUAL "x86_64")
+    message(STATUS "IOS: Changing arch from x86_64 to x86-64")
+    add_compile_options(-march=x86-64)
+  endif()
+else()
   if(NATIVE_BUILD)
     if(CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64le)
       add_compile_options(-mcpu=native -mtune=native)

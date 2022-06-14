@@ -8,11 +8,16 @@ if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/ios.sh from the top-level lokinet project directory"
 fi
 
+_sdk=${SDK:-iphoneos}
+
 mkdir -p build/iphone
 cmake \
-    -G Xcode \
-    -DCMAKE_OSX_SYSROOT=$( xcrun --sdk iphoneos --show-sdk-path ) \
-    -DCMAKE_TOOLCHAIN_FILE=external/ios-cmake/ios.toolchain.cmake \
+    -G Ninja \
+    -DWITH_CCACHE=OFF \
+    -DCMAKE_C_COMPILER=$(xcrun --find --sdk ${_sdk} clang ) \
+    -DCMAKE_CXX_COMPILER=$(xcrun --find --sdk ${_sdk} clang++ ) \
+    -DCMAKE_OSX_SYSROOT=$( xcrun --sdk ${_sdk} --show-sdk-path ) \
+    -DCMAKE_TOOLCHAIN_FILE=contrib/cross/ios.toolchain.cmake \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
     -DBUILD_SHARED_LIBS=OFF \
@@ -28,9 +33,7 @@ cmake \
     -DFORCE_OXENC_SUBMODULE=ON \
     -DFORCE_NLOHMANN_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
-    -DWITH_LTO=ON \
-    -DPLATFORM=OS64COMBINED \
-    -DCMAKE_BUILD_TYPE=Debug \
+    -DWITH_LTO=OFF \
     -S . -B build/iphone \
     "$@"
 
