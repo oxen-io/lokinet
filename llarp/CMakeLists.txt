@@ -273,7 +273,7 @@ if(BUILD_EMBEDDED_LOKINET)
     lokinet-embedded-api
     lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
     liblokinet
-    uv::uv
+    uv_a::uv_a
     sodium
     zlib
     OpenSSL::SSL OpenSSL::Crypto
