@@ -48,13 +48,6 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
 
-set(LIBUV_VERSION 1.44.1 CACHE STRING "libuv version")
-set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
-    CACHE STRING "libuv mirror(s)")
-set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
-set(LIBUV_HASH SHA512=b4f8944e2c79e3a6a31ded6cccbe4c0eeada50db6bc8a448d7015642795012a4b80ffeef7ca455bb093c59a8950d0e1430566c3c2fa87b73f82699098162d834
-    CACHE STRING "libuv source hash")
-
 set(ZLIB_VERSION 1.2.12 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
@@ -224,16 +217,6 @@ function(build_external target)
     BUILD_BYPRODUCTS ${arg_BUILD_BYPRODUCTS}
   )
 endfunction()
-
-build_external(libuv
-  CONFIGURE_COMMAND ./autogen.sh && ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --with-pic --disable-shared --enable-static "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
-  BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libuv.a
-    ${DEPS_DESTDIR}/include/uv.h
-  )
-add_static_target(libuv libuv_external libuv.a)
-target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
-
   
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
@@ -286,11 +269,35 @@ elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
 endif()
 
 
+
+set(openssl_configure ./config)
+set(openssl_system_env "")
+set(openssl_cc "${deps_cc}")
+if(CMAKE_CROSSCOMPILING)
+  if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
+    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER})
+  elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
+    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER})
+  elseif(ANDROID)
+    set(openssl_system_env SYSTEM=Linux MACHINE=${openssl_machine} ${cross_rc})
+    set(openssl_extra_opts no-asm)
+  elseif(IOS)
+    get_filename_component(apple_toolchain "${CMAKE_C_COMPILER}" DIRECTORY)
+    get_filename_component(apple_sdk "${CMAKE_OSX_SYSROOT}" NAME)
+    if(NOT ${apple_toolchain} MATCHES Xcode OR NOT ${apple_sdk} MATCHES "iPhone(OS|Simulator)")
+      message(FATAL_ERROR "didn't find your toolchain and sdk correctly from ${CMAKE_C_COMPILER}/${CMAKE_OSX_SYSROOT}: found toolchain=${apple_toolchain}, sdk=${apple_sdk}")
+    endif()
+    set(openssl_system_env CROSS_COMPILE=${apple_toolchain}/ CROSS_TOP=${CMAKE_DEVELOPER_ROOT} CROSS_SDK=${apple_sdk})
+    set(openssl_configure ./Configure iphoneos-cross)
+    set(openssl_cc "clang")
+  endif()
+endif()
+
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
-    --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
-    no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
-    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${openssl_cc} ${openssl_system_env} ${openssl_configure}
+  --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
+  no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3 no-engine
+  no-static-engine no-tests no-weak-ssl-ciphers no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
@@ -301,7 +308,6 @@ add_static_target(OpenSSL::Crypto openssl_external libcrypto.a)
 if(WIN32)
   target_link_libraries(OpenSSL::Crypto INTERFACE "ws2_32;crypt32;iphlpapi")
 endif()
-
 set(OPENSSL_INCLUDE_DIR ${DEPS_DESTDIR}/include)
 set(OPENSSL_CRYPTO_LIBRARY ${DEPS_DESTDIR}/lib/libcrypto.a ${DEPS_DESTDIR}/lib/libssl.a)
 set(OPENSSL_VERSION 1.1.1)
@@ -323,7 +329,7 @@ endif()
 build_external(unbound
   DEPENDS openssl_external expat_external
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
-  --enable-static --with-libunbound-only --with-pic
+  --enable-static --with-libunbound-only --with-pic --disable-gost
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
   "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" ${unbound_extra}
@@ -341,7 +347,10 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
           --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
 add_static_target(sodium sodium_external libsodium.a)
 
-build_external(sqlite3)
+build_external(sqlite3 CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared --disable-readline --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  BUILD_COMMAND true
+  INSTALL_COMMAND make install-includeHEADERS install-libLTLIBRARIES)
+
 add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 

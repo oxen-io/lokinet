@@ -48,11 +48,12 @@ endif()
 
 
 # Core options
-option(USE_AVX2 "enable avx2 code" OFF)
+option(USE_AVX2 "enable avx2 code" ON)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
-option(BUILD_LIBLOKINET "build liblokinet.so" ON)
+option(BUILD_LIBLOKINET "build liblokinet.so" OFF)
+option(BUILD_EMBEDDED_LOKINET "build embedded lokinet" OFF)
 option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
 option(USE_JEMALLOC "Link to jemalloc for memory allocations, if found" ON)
 option(TESTNET "testnet build" OFF)
@@ -73,8 +74,10 @@ option(STATIC_LINK "link statically against dependencies" ${BUILD_STATIC_DEPS})
 if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
   message(FATAL_ERROR "Option BUILD_STATIC_DEPS requires STATIC_LINK to be enabled as well")
 endif()
+
 if(BUILD_STATIC_DEPS)
   set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+  include(cmake/combine_archives.cmake)
   include(StaticBuild)
 endif()
 
@@ -140,6 +143,7 @@ find_package(PkgConfig REQUIRED)
 if(NOT BUILD_STATIC_DEPS)
   pkg_check_modules(LIBUV libuv>=1.18.0 IMPORTED_TARGET)
 endif()
+
 if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
   add_library(libuv INTERFACE)
   target_link_libraries(libuv INTERFACE PkgConfig::LIBUV)

@@ -55,6 +55,7 @@ system_or_submodule(OXENC oxenc liboxenc>=1.0.3 oxen-encoding)
 system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.12 oxen-mq)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
+system_or_submodule(LIBUV uv libuv libuv) # TODO: select better version
 
 
 if(WITH_HIVE)
@@ -75,7 +76,7 @@ target_link_libraries(sqlite_orm INTERFACE sqlite3)
 
 add_library(uvw INTERFACE)
 target_include_directories(uvw INTERFACE uvw/src)
-target_link_libraries(uvw INTERFACE libuv)
+target_link_libraries(uvw INTERFACE uv::uv)
 
 # ngtcp2 needs some massaging to build nicely:
 include(ngtcp2_lib)

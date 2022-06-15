@@ -11,12 +11,13 @@ fi
 mkdir -p build/iphone
 cmake \
     -G Ninja \
+    -DCMAKE_TOOLCHAIN_FILE=./contrib/cross/ios.toolchain.cmake -DPLATFORM=OS -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
     -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_C_COMPILER_LAUNCHER= \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
     -DBUILD_SHARED_LIBS=OFF \
     -DBUILD_TESTING=OFF \
-    -DBUILD_LIBLOKINET=ON \
+    -DBUILD_EMBEDDED_LOKINET=ON \
     -DWITH_TESTS=OFF \
     -DNATIVE_BUILD=OFF \
     -DSTATIC_LINK=ON \
@@ -26,10 +27,10 @@ cmake \
     -DFORCE_OXENMQ_SUBMODULE=ON \
     -DFORCE_OXENC_SUBMODULE=ON \
     -DFORCE_NLOHMANN_SUBMODULE=ON \
+    -DFORCE_LIBUV_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=OFF \
     -S . -B build/iphone \
-    $@ \
-    -DCMAKE_TOOLCHAIN_FILE=contrib/cross/ios.toolchain.cmake
+    $@
 
-cmake --build build/iphone --target lokinet-shared
+cmake --build build/iphone --target lokinet-embedded

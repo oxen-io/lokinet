@@ -263,12 +263,26 @@ if(BUILD_LIBLOKINET)
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
   add_log_tag(lokinet-shared)
-  if(CMAKE_GENERATOR MATCHES "Xcode")
-    option(CODE_SIGN_IDENT "for codesign magic on ios" "iPhone Developer")
-    option(DEV_TEAM_ID "for codesign magic on ios" "SUQ8J2PCT7")
-    set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CODE_SIGN_IDENT})
-    set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ${DEV_TEAM_ID})
-  endif()
+endif()
+
+if(BUILD_EMBEDDED_LOKINET)
+  add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
+  target_link_libraries(lokinet-embedded-api PUBLIC liblokinet)
+  add_log_tag(lokinet-embedded-api)
+  combine_archives(lokinet-embedded
+    lokinet-embedded-api
+    lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
+    liblokinet
+    sodium
+    zlib
+    OpenSSL::SSL OpenSSL::Crypto
+    expat
+    libunbound
+    libzmq
+    oxenmq)
+   install(TARGETS
+        ARCHIVE DESTINATION ${lib_folder}
+        EXCLUDE_FROM_ALL)
 
 endif()
 
