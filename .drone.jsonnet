@@ -279,6 +279,35 @@ local mac_builder(name,
   ],
 };
 
+// iphone builder
+local iphone_builder(name,
+                  build_type='Release',
+                  werror=true,
+                  cmake_extra='',
+                  extra_cmds=[],
+                  jobs=6,
+                  allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'exec',
+  name: name,
+  platform: { os: 'darwin', arch: 'amd64' },
+  steps: [
+    { name: 'submodules', commands: submodule_commands },
+    {
+      name: 'build',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        // If you don't do this then the C compiler doesn't have an include path containing
+        // basic system headers.  WTF apple:
+        'export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"',
+        'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
+        './contrib/ios.sh ' + ci_mirror_opts,
+      ] + extra_cmds,
+    },
+  ],
+};
+
 local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
@@ -405,4 +434,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   // Macos builds:
   mac_builder('macOS (Release)'),
   mac_builder('macOS (Debug)', build_type='Debug'),
+  // iphone builds:
+  iphone_builder('iOS (embedded lokinet)', build_type='Debug'),
 ]
