@@ -47,6 +47,10 @@ elif [ -e build-docs ]; then
     archive="$base.tar.xz"
     cp -av build-docs/docs/mkdocs.yml build-docs/docs/markdown "$base"
     tar cJvf "$archive" "$base"
+elif [ -e build/iphone/ ]; then
+    archive="$base.tar.xz"
+    cp -av build/iphone/ "$base"
+    tar cJvf "$archive" "$base"
 else
     cp -av daemon/lokinet daemon/lokinet-vpn "$base"
     cp -av ../contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"

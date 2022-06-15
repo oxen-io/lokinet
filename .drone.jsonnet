@@ -301,6 +301,7 @@ local iphone_builder(name,
         // If you don't do this then the C compiler doesn't have an include path containing
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"',
+        'export CMAKE_BUILD_PARALLEL_LEVEL=6',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
         './contrib/ios.sh ' + ci_mirror_opts,
       ] + extra_cmds,
@@ -435,5 +436,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   mac_builder('macOS (Release)'),
   mac_builder('macOS (Debug)', build_type='Debug'),
   // iphone builds:
-  iphone_builder('iOS (embedded lokinet)', build_type='Debug'),
+  iphone_builder('iOS (embedded lokinet)', build_type='Debug', extra_cmds=[
+    'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh'
+  ]),
 ]

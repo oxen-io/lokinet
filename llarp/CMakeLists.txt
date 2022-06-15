@@ -273,6 +273,7 @@ if(BUILD_EMBEDDED_LOKINET)
     lokinet-embedded-api
     lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
     liblokinet
+    uv::uv
     sodium
     zlib
     OpenSSL::SSL OpenSSL::Crypto
@@ -280,6 +281,14 @@ if(BUILD_EMBEDDED_LOKINET)
     libunbound
     libzmq
     oxenmq)
+  if(IOS)
+    set(lib_folder lib-${ARCH})
+  else()
+    set(lib_folder lib)
+  endif()
+  install(TARGETS lokinet-embedded
+    ARCHIVE DESTINATION ${lib_folder}
+    EXCLUDE_FROM_ALL)
 endif()
 
 if(APPLE)
