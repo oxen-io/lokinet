@@ -281,12 +281,12 @@ local mac_builder(name,
 
 // iphone builder
 local iphone_builder(name,
-                  build_type='Release',
-                  werror=true,
-                  cmake_extra='',
-                  extra_cmds=[],
-                  jobs=6,
-                  allow_fail=false) = {
+                     build_type='Release',
+                     werror=true,
+                     cmake_extra='',
+                     extra_cmds=[],
+                     jobs=6,
+                     allow_fail=false) = {
   kind: 'pipeline',
   type: 'exec',
   name: name,
@@ -437,6 +437,6 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   mac_builder('macOS (Debug)', build_type='Debug'),
   // iphone builds:
   iphone_builder('iOS (embedded lokinet)', build_type='Debug', extra_cmds=[
-    'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh'
+    'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh',
   ]),
 ]
