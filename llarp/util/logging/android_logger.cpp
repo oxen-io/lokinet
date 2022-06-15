@@ -1,5 +1,3 @@
-#if defined(ANDROID)
-
 #include "android_logger.hpp"
 #include "logger_internal.hpp"
 
@@ -69,4 +67,3 @@ namespace llarp
 
   }  // namespace llarp
 }  // namespace llarp
-#endif

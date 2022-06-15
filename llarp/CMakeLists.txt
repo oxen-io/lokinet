@@ -7,7 +7,6 @@ add_library(lokinet-util
   util/buffer.cpp
   util/fs.cpp
   util/json.cpp
-  util/logging/android_logger.cpp
   util/logging/buffer.cpp
   util/logging/file_logger.cpp
   util/logging/logger.cpp
@@ -15,7 +14,6 @@ add_library(lokinet-util
   util/logging/loglevel.cpp
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
-  util/logging/win32_logger.cpp
   util/lokinet_init.c
   util/mem.cpp
   util/printer.cpp
@@ -38,7 +36,10 @@ target_link_libraries(lokinet-util PUBLIC
 )
 
 if(ANDROID)
+  target_sources(lokinet-util PRIVATE util/logging/android_logger.cpp)
   target_link_libraries(lokinet-util PUBLIC log)
+elseif(WIN32)
+  target_sources(lokinet-util PRIVATE util/logging/win32_logger.cpp)
 endif()
 
 add_library(lokinet-platform

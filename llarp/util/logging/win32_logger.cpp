@@ -1,4 +1,3 @@
-#if defined(_WIN32)
 #include "win32_logger.hpp"
 #include "logger_internal.hpp"
 
@@ -113,4 +112,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-#endif
