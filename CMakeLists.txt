@@ -48,7 +48,7 @@ endif()
 
 
 # Core options
-option(USE_AVX2 "enable avx2 code" ON)
+option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
