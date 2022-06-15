@@ -312,21 +312,6 @@ if(ANDROID)
   add_subdirectory(jni)
 endif()
 
-
-
-if(CMAKE_GENERATOR MATCHES "Xcode")
-  if(NOT CODE_SIGN_IDENT)
-    set(CODE_SIGN_IDENT "iPhone Developer")
-  endif()
-  if(NOT DEV_TEAM_ID)
-    set(DEV_TEAM_ID "SUQ8J2PCT7")
-  endif()
-  message(STATUS "code sign with: ${CODE_SIGN_IDENT} using dev id: ${DEV_TEAM_ID}")
-  set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ${CODE_SIGN_IDENT})
-  set_property (TARGET lokinet-shared PROPERTY XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ${DEV_TEAM_ID})
-endif()
-
-
 add_subdirectory(docs)
 
 # uninstall target

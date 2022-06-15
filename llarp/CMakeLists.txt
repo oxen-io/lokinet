@@ -280,10 +280,6 @@ if(BUILD_EMBEDDED_LOKINET)
     libunbound
     libzmq
     oxenmq)
-   install(TARGETS
-        ARCHIVE DESTINATION ${lib_folder}
-        EXCLUDE_FROM_ALL)
-
 endif()
 
 if(APPLE)
