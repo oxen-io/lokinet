@@ -432,11 +432,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
-  // Macos builds:
-  mac_builder('macOS (Release)'),
-  mac_builder('macOS (Debug)', build_type='Debug'),
   // iphone builds:
   iphone_builder('iOS (embedded lokinet)', build_type='Debug', extra_cmds=[
     'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh',
   ]),
+  // Macos builds:
+  mac_builder('macOS (Release)'),
+  mac_builder('macOS (Debug)', build_type='Debug'),
 ]
