@@ -54,7 +54,7 @@ set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
   CACHE STRING "zlib source hash")
-  
+
 set(CURL_VERSION 7.83.1 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
@@ -217,7 +217,7 @@ function(build_external target)
     BUILD_BYPRODUCTS ${arg_BUILD_BYPRODUCTS}
   )
 endfunction()
-  
+
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
   BUILD_BYPRODUCTS
@@ -244,7 +244,7 @@ if(CMAKE_CROSSCOMPILING)
       message(FATAL_ERROR "didn't find your toolchain and sdk correctly from ${CMAKE_C_COMPILER}/${CMAKE_OSX_SYSROOT}: found toolchain=${apple_toolchain}, sdk=${apple_sdk}")
     endif()
     set(openssl_system_env CROSS_COMPILE=${apple_toolchain} CROSS_TOP=${CMAKE_DEVELOPER_ROOT} CROSS_SDK=${apple_sdk})
-    set(openssl_configure ./Configure iphoneos-cross)
+    set(openssl_configure_command ./Configure iphoneos-cross)
     set(openssl_cc "clang")
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
@@ -268,35 +268,10 @@ elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
 
-
-
-set(openssl_configure ./config)
-set(openssl_system_env "")
-set(openssl_cc "${deps_cc}")
-if(CMAKE_CROSSCOMPILING)
-  if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER})
-  elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER})
-  elseif(ANDROID)
-    set(openssl_system_env SYSTEM=Linux MACHINE=${openssl_machine} ${cross_rc})
-    set(openssl_extra_opts no-asm)
-  elseif(IOS)
-    get_filename_component(apple_toolchain "${CMAKE_C_COMPILER}" DIRECTORY)
-    get_filename_component(apple_sdk "${CMAKE_OSX_SYSROOT}" NAME)
-    if(NOT ${apple_toolchain} MATCHES Xcode OR NOT ${apple_sdk} MATCHES "iPhone(OS|Simulator)")
-      message(FATAL_ERROR "didn't find your toolchain and sdk correctly from ${CMAKE_C_COMPILER}/${CMAKE_OSX_SYSROOT}: found toolchain=${apple_toolchain}, sdk=${apple_sdk}")
-    endif()
-    set(openssl_system_env CROSS_COMPILE=${apple_toolchain}/ CROSS_TOP=${CMAKE_DEVELOPER_ROOT} CROSS_SDK=${apple_sdk})
-    set(openssl_configure ./Configure iphoneos-cross)
-    set(openssl_cc "clang")
-  endif()
-endif()
-
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${openssl_cc} ${openssl_system_env} ${openssl_configure}
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${openssl_cc} ${openssl_system_env} ${openssl_configure_command}
   --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
-  no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3 no-engine
+  no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
   no-static-engine no-tests no-weak-ssl-ciphers no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
@@ -323,7 +298,7 @@ add_static_target(expat expat_external libexpat.a)
 
 set(unbound_extra)
 if(APPLE AND IOS)
-  set(unbound_extra CPP=cpp)		
+  set(unbound_extra CPP=cpp)
 endif()
 
 build_external(unbound
