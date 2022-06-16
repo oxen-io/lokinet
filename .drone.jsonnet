@@ -298,9 +298,6 @@ local iphone_builder(name,
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
-        // If you don't do this then the C compiler doesn't have an include path containing
-        // basic system headers.  WTF apple:
-        'export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"',
         'export CMAKE_BUILD_PARALLEL_LEVEL=6',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
         './contrib/ios.sh ' + ci_mirror_opts,

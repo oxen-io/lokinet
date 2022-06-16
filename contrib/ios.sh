@@ -8,6 +8,8 @@ if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/ios.sh from the top-level lokinet project directory"
 fi
 
+unset SDKROOT
+export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"
 
 mkdir -p build/iphone/{sim,device}
 
