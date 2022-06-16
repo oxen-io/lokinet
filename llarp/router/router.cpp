@@ -345,7 +345,8 @@ namespace llarp
         try
         {
           _identity = RpcClient()->ObtainIdentityKey();
-          LogWarn("Obtained lokid identity keys");
+          const RouterID pk{pubkey()};
+          LogWarn("Obtained lokid identity key: ", pk);
           break;
         }
         catch (const std::exception& e)
