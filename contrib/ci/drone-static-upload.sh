@@ -49,11 +49,7 @@ elif [ -e build-docs ]; then
     tar cJvf "$archive" "$base"
 elif [ -e build/iphone/ ]; then
     archive="$base.tar.xz"
-    mkdir -p "$base/sim"
-    mkdir -p "$base/device"
-    cp -av build/iphone/sim/llarp/liblokinet-embedded.a "$base/sim/liblokinet-embedded.a"
-    cp -av build/iphone/device/llarp/liblokinet-embedded.a "$base/device/liblokinet-embedded.a"
-    tar cJvf "$archive" "$base"
+    mv build/iphone/*.tar.xz "$archive"
 else
     cp -av daemon/lokinet daemon/lokinet-vpn "$base"
     cp -av ../contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"

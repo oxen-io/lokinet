@@ -8,59 +8,28 @@ if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/ios.sh from the top-level lokinet project directory"
 fi
 
-unset SDKROOT
-export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"
 
-mkdir -p build/iphone/{sim,device}
+root="$(readlink -f $(dirname $0)/../)"
 
-cmake \
-    -G Ninja \
-    -DCMAKE_TOOLCHAIN_FILE=./contrib/cross/ios.toolchain.cmake -DPLATFORM=OS -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
-    -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_C_COMPILER_LAUNCHER= \
-    -DBUILD_STATIC_DEPS=ON \
-    -DBUILD_PACKAGE=OFF \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DBUILD_TESTING=OFF \
-    -DBUILD_EMBEDDED_LOKINET=ON \
-    -DWITH_TESTS=OFF \
-    -DNATIVE_BUILD=OFF \
-    -DSTATIC_LINK=ON \
-    -DWITH_SYSTEMD=OFF \
-    -DWITH_BOOTSTRAP=OFF \
-    -DBUILD_DAEMON=OFF \
-    -DFORCE_OXENMQ_SUBMODULE=ON \
-    -DFORCE_OXENC_SUBMODULE=ON \
-    -DFORCE_NLOHMANN_SUBMODULE=ON \
-    -DFORCE_LIBUV_SUBMODULE=ON \
-    -DSUBMODULE_CHECK=ON \
-    -DWITH_LTO=OFF \
-    -S . -B build/iphone/device \
-    $@
+build_dir="$root/build/iphone"
 
-cmake \
-    -G Ninja \
-    -DCMAKE_TOOLCHAIN_FILE=./contrib/cross/ios.toolchain.cmake -DPLATFORM=SIMULATOR64 -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
-    -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_C_COMPILER_LAUNCHER= \
-    -DBUILD_STATIC_DEPS=ON \
-    -DBUILD_PACKAGE=OFF \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DBUILD_TESTING=OFF \
-    -DBUILD_EMBEDDED_LOKINET=ON \
-    -DWITH_TESTS=OFF \
-    -DNATIVE_BUILD=OFF \
-    -DSTATIC_LINK=ON \
-    -DWITH_SYSTEMD=OFF \
-    -DWITH_BOOTSTRAP=OFF \
-    -DBUILD_DAEMON=OFF \
-    -DFORCE_OXENMQ_SUBMODULE=ON \
-    -DFORCE_OXENC_SUBMODULE=ON \
-    -DFORCE_NLOHMANN_SUBMODULE=ON \
-    -DFORCE_LIBUV_SUBMODULE=ON \
-    -DSUBMODULE_CHECK=ON \
-    -DWITH_LTO=OFF \
-    -S . -B build/iphone/sim \
-    $@
+./contrib/ios/ios-configure.sh "$build_dir/device" OS $@
+./contrib/ios/ios-configure.sh "$build_dir/sim" SIMULATORARM64 $@
 
-for targ in device sim ; do
-    cmake --build build/iphone/$targ --target lokinet-embedded
-done
+./contrib/ios/ios-build.sh "$build_dir/device"
+./contrib/ios/ios-build.sh "$build_dir/sim"
+
+pkg_name="iphone_lokinet_embedded_$(date +%s)"
+pkg_dir="$build_dir/$pkg_name"
+mkdir -p "$pkg_dir/include"
+mkdir -p "$pkg_dir/lib/device"
+mkdir -p "$pkg_dir/lib/sim"
+
+cp -a "$build_dir/device/llarp/liblokinet-embedded.a" "$pkg_dir/lib/device/"
+cp -a "$build_dir/sim/llarp/liblokinet-embedded.a" "$pkg_dir/lib/sim/"
+cp -a "$root"/include/lokinet{,/*}.h "$pkg_dir/include/"
+
+cd "$build_dir"
+tar cfv "$pkg_name.tar" $pkg_name
+cd -
+xz -T 0 "$build_dir/$pkg_name.tar"
