@@ -14,7 +14,7 @@ root="$(readlink -f $(dirname $0)/../)"
 build_dir="$root/build/iphone"
 
 ./contrib/ios/ios-configure.sh "$build_dir/device" OS $@
-./contrib/ios/ios-configure.sh "$build_dir/sim" SIMULATORARM64 $@
+./contrib/ios/ios-configure.sh "$build_dir/sim" SIMULATOR64 $@
 
 ./contrib/ios/ios-build.sh "$build_dir/device"
 ./contrib/ios/ios-build.sh "$build_dir/sim"

@@ -2,7 +2,9 @@
 #
 # configure step for ios
 
-root="$(readlink -f $(dirname $0)/../../)"
+set -x
+
+root=$(readlink -f "$( dirname $0 )/../../")
 
 unset SDKROOT
 export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"
@@ -16,7 +18,7 @@ mkdir -p $targ
 
 cmake \
     -G Ninja \
-    -DCMAKE_TOOLCHAIN_FILE=./contrib/cross/ios.toolchain.cmake -DPLATFORM=$plat -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
+    -DCMAKE_TOOLCHAIN_FILE="$root/contrib/cross/ios.toolchain.cmake" -DPLATFORM=$plat -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
     -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_C_COMPILER_LAUNCHER= \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
@@ -35,5 +37,5 @@ cmake \
     -DFORCE_LIBUV_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=OFF \
-    -S $root -B $targ \
+    -S "$root" -B $targ \
     $@
