@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.8
+Version:        0.9.9
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -156,6 +156,9 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Sat Jun 18 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
+- 0.9.9 release
+
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
 
