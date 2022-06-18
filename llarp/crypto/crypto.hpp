@@ -100,6 +100,10 @@ namespace llarp
 
     virtual bool
     check_identity_privkey(const SecretKey&) = 0;
+
+    /// check if a password hash string matches the challenge
+    virtual bool
+    check_passwd_hash(std::string pwhash, std::string challenge) = 0;
   };
 
   inline Crypto::~Crypto() = default;

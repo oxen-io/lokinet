@@ -173,6 +173,10 @@ namespace llarp
       uint64_t
       CurrentTransitPaths();
 
+      /// current number of paths we created in status
+      uint64_t
+      CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
+
      private:
       AbstractRouter* m_Router;
       SyncTransitMap_t m_TransitPaths;

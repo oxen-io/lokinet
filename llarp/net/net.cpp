@@ -576,29 +576,60 @@ namespace llarp
     return addr.asIPv6();
   }
 
-  bool
-  AllInterfaces(int af, SockAddr& result)
+  namespace net
   {
-    if (af == AF_INET)
+    namespace
     {
-      sockaddr_in addr;
-      addr.sin_family = AF_INET;
-      addr.sin_addr.s_addr = htonl(INADDR_ANY);
-      addr.sin_port = htons(0);
-      result = SockAddr{addr};
-      return true;
-    }
-    if (af == AF_INET6)
+      SockAddr
+      All(int af)
+      {
+        if (af == AF_INET)
+        {
+          sockaddr_in addr{};
+          addr.sin_family = AF_INET;
+          addr.sin_addr.s_addr = htonl(INADDR_ANY);
+          addr.sin_port = htons(0);
+          return SockAddr{addr};
+        }
+        if (af == AF_INET6)
+        {
+          sockaddr_in6 addr6{};
+          addr6.sin6_family = AF_INET6;
+          addr6.sin6_port = htons(0);
+          addr6.sin6_addr = IN6ADDR_ANY_INIT;
+          return SockAddr{addr6};
+        }
+        throw llarp::make_exception<std::invalid_argument>(af, " is not a valid address family");
+      }
+    }  // namespace
+
+    std::optional<SockAddr>
+    AllInterfaces(SockAddr pub)
     {
-      sockaddr_in6 addr6;
-      addr6.sin6_family = AF_INET6;
-      addr6.sin6_port = htons(0);
-      addr6.sin6_addr = IN6ADDR_ANY_INIT;
-      result = SockAddr{addr6};
-      return true;
+      std::optional<SockAddr> found;
+      IterAllNetworkInterfaces([pub, &found](auto* ifa) {
+        if (found)
+          return;
+        if (auto ifa_addr = ifa->ifa_addr)
+        {
+          if (ifa_addr->sa_family != pub.Family())
+            return;
+
+          SockAddr addr{*ifa->ifa_addr};
+
+          if (addr == pub)
+            found = addr;
+        }
+      });
+
+      // 0.0.0.0 is used in our compat shim as our public ip so we check for that special case
+      const auto zero = IPRange::FromIPv4(0, 0, 0, 0, 8);
+      // when we cannot find an address but we are looking for 0.0.0.0 just default to the old style
+      if (not found and (pub.isIPv4() and zero.Contains(pub.asIPv4())))
+        found = All(pub.Family());
+      return found;
     }
-    return false;
-  }
+  }  // namespace net
 
 #if !defined(TESTNET)
   static constexpr std::array bogonRanges_v6 = {
@@ -692,5 +723,20 @@ namespace llarp
     return false;
   }
 #endif
+  bool
+  HasInterfaceAddress(std::variant<nuint32_t, nuint128_t> ip)
+  {
+    bool found{false};
+    IterAllNetworkInterfaces([ip, &found](const auto* iface) {
+      if (found or iface == nullptr)
+        return;
+      if (auto addr = iface->ifa_addr;
+          addr and (addr->sa_family == AF_INET or addr->sa_family == AF_INET6))
+      {
+        found = SockAddr{*iface->ifa_addr}.getIP() == ip;
+      }
+    });
+    return found;
+  }
 
 }  // namespace llarp

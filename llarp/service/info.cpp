@@ -56,7 +56,7 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictEntry("s", signkey, buf))
         return false;
-      if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("v", llarp::constants::proto_version, buf))
         return false;
       if (!vanity.IsZero())
       {

@@ -401,19 +401,17 @@ lokinet_main(int argc, char* argv[])
       "and IP based onion routing network");
   // clang-format off
   options.add_options()
-      ("v,verbose", "Verbose", cxxopts::value<bool>())
 #ifdef _WIN32
       ("install", "install win32 daemon to SCM", cxxopts::value<bool>())
       ("remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
 #endif
-      ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())
-      ("g,generate", "generate client config", cxxopts::value<bool>())
-      ("r,router", "run as router instead of client", cxxopts::value<bool>())
-      ("f,force", "overwrite", cxxopts::value<bool>())
+      ("h,help", "print this help message", cxxopts::value<bool>())
+      ("version", "print version string", cxxopts::value<bool>())
+      ("g,generate", "generate default configuration and exit", cxxopts::value<bool>())
+      ("r,router", "run in routing mode instead of client only mode", cxxopts::value<bool>())
+      ("f,force", "force writing config even if it already exists", cxxopts::value<bool>())
       ("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
-      ("b,background", "background mode (start, but do not connect to the network)",
-       cxxopts::value<bool>())
-      ("config", "path to configuration file", cxxopts::value<std::string>())
+      ("config", "path to lokinet.ini configuration file", cxxopts::value<std::string>())
       ;
   // clang-format on
 
@@ -425,12 +423,6 @@ lokinet_main(int argc, char* argv[])
   try
   {
     auto result = options.parse(argc, argv);
-
-    if (result.count("verbose") > 0)
-    {
-      SetLogLevel(llarp::eLogDebug);
-      llarp::LogDebug("debug logging activated");
-    }
 
     if (!result["colour"].as<bool>())
     {
@@ -465,11 +457,6 @@ lokinet_main(int argc, char* argv[])
     if (result.count("generate") > 0)
     {
       genconfigOnly = true;
-    }
-
-    if (result.count("background") > 0)
-    {
-      opts.background = true;
     }
 
     if (result.count("router") > 0)

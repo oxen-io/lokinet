@@ -22,7 +22,7 @@ namespace llarp
       SecretKey signkey;
       PrivateKey derivedSignKey;
       PQKeyPair pq;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
       VanityNonce vanity;
 
       // public service info

@@ -214,15 +214,8 @@ namespace llarp
 
       std::shared_ptr<quic::TunnelManager> m_QUIC;
 
-      using Pkt_t = net::IPPacket;
-      using PacketQueue_t = util::CoDelQueue<
-          Pkt_t,
-          Pkt_t::GetTime,
-          Pkt_t::PutTime,
-          Pkt_t::CompareOrder,
-          Pkt_t::GetNow,
-          util::NullMutex,
-          util::NullLock>;
+      using PacketQueue_t = std::
+          priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;

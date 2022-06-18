@@ -44,12 +44,6 @@ namespace llarp::iwp
     void
     RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) override;
 
-    bool
-    MapAddr(const RouterID& pk, ILinkSession* s) override;
-
-    void
-    UnmapAddr(const SockAddr& addr);
-
     void
     WakeupPlaintext();
 
@@ -61,7 +55,6 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
-    std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
     std::vector<ILinkSession*> m_WakingUp;
     const bool m_Inbound;
   };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <llarp/bootstrap.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/util/fs.hpp>
@@ -53,7 +54,8 @@ namespace llarp
 
     bool m_blockBogons = false;
 
-    IpAddress m_publicAddress;
+    std::optional<nuint32_t> m_PublicIP;
+    nuint16_t m_PublicPort;
 
     int m_workerThreads = -1;
     int m_numNetThreads = -1;
@@ -114,9 +116,12 @@ namespace llarp
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
+    service::AuthFileType m_AuthFileType = service::AuthFileType::eAuthFileHashes;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
     std::unordered_set<service::Address> m_AuthWhitelist;
+    std::unordered_set<std::string> m_AuthStaticTokens;
+    std::set<fs::path> m_AuthFiles;
 
     std::vector<llarp::dns::SRVData> m_SRVRecords;
 
@@ -128,6 +133,9 @@ namespace llarp
     std::optional<llarp_time_t> m_PathAlignmentTimeout;
 
     std::optional<fs::path> m_AddrMapPersistFile;
+
+    bool m_EnableRoutePoker;
+    bool m_BlackholeRoutes;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -147,7 +155,7 @@ namespace llarp
   {
     struct LinkInfo
     {
-      std::string interface;
+      std::string m_interface;
       int addressFamily = -1;
       uint16_t port = -1;
     };
@@ -193,7 +201,7 @@ namespace llarp
   struct BootstrapConfig
   {
     std::vector<fs::path> files;
-    std::set<RouterContact> routers;
+    BootstrapList routers;
     bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

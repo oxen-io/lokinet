@@ -29,6 +29,15 @@ namespace llarp
     void
     Init(ILinkManager*, const RouterID&, AbstractRouter*);
 
+    void
+    Forget(const RouterID& router) override;
+
+    TimePoint_t
+    NextGossipAt() const override;
+
+    std::optional<TimePoint_t>
+    LastGossipAt() const override;
+
    private:
     RouterID m_OurRouterID;
     Time_t m_LastGossipedOurRC = 0s;
