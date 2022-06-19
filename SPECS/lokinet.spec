@@ -24,6 +24,7 @@ BuildRequires:  libsqlite3x-devel
 
 # Puts the rpm version instead of the git tag in the version string:
 # Patch1: version-as-rpm-version.patch
+# Sun Jun 19 2022 Request Jason details to changes lokinet/cmake/Version.cmake
 # Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
 Patch1: default-dns.patch
