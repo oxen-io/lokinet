@@ -23,10 +23,10 @@ BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
 
 # Puts the rpm version instead of the git tag in the version string:
-Patch1: version-as-rpm-version.patch
+# Patch1: version-as-rpm-version.patch
 # Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
-Patch2: default-dns.patch
+Patch1: default-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
