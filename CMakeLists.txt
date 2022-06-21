@@ -82,7 +82,7 @@ endif()
 
 if(BUILD_STATIC_DEPS AND STATIC_LINK)
   message(STATUS "we are building static deps so we won't build shared libs")
-  set(BUILD_SHARED_LIBS OFF)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 endif()
 
 include(CheckCXXSourceCompiles)
