@@ -66,8 +66,6 @@ if (ANDROID)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  target_sources(lokinet-platform PRIVATE linux/netns.cpp)
-
   if(NON_PC_TARGET)
     add_import_library(rt)
     target_link_libraries(lokinet-platform PUBLIC rt)
@@ -139,7 +137,6 @@ add_library(liblokinet
   exit/session.cpp
   handlers/exit.cpp
   handlers/tun.cpp
-  hook/shell.cpp
   iwp/iwp.cpp
   iwp/linklayer.cpp
   iwp/message_buffer.cpp

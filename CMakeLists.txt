@@ -56,9 +56,7 @@ option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=D
 option(USE_JEMALLOC "Link to jemalloc for memory allocations, if found" ON)
 option(TESTNET "testnet build" OFF)
 option(WITH_COVERAGE "generate coverage data" OFF)
-option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
-option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
@@ -106,8 +104,6 @@ if (STATIC_LINK)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
   message(STATUS "setting static library suffix search")
 endif()
-
-add_definitions(-D${CMAKE_SYSTEM_NAME})
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
@@ -198,15 +194,6 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_definitions(-DLOKINET_DEBUG=1)
 endif()
 
-if(WITH_SHELLHOOKS)
-  add_definitions(-DENABLE_SHELLHOOKS)
-endif()
-
-if(TRACY_ROOT)
-  include_directories(${TRACY_ROOT})
-  add_definitions(-DTRACY_ENABLE)
-endif()
-
 
 include(cmake/coverage.cmake)
 
@@ -235,12 +222,6 @@ endif()
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-
-if(USE_NETNS)
-  add_definitions(-DNETNS=1)
-else()
-  add_definitions(-DNETNS=0)
-endif()
 
 if(TESTNET)
   add_definitions(-DTESTNET=1)
@@ -304,10 +285,6 @@ if(ANDROID)
   target_link_libraries(base_libs INTERFACE log)
   target_compile_definitions(base_libs INTERFACE ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
-endif()
-
-if(TRACY_ROOT)
-  target_link_libraries(base_libs INTERFACE dl)
 endif()
 
 if(WITH_HIVE)

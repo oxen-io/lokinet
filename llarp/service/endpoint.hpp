@@ -7,6 +7,7 @@
 #include <llarp/path/path.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include "address.hpp"
+#include "endpoint_state.hpp"
 #include "handler.hpp"
 #include "identity.hpp"
 #include "pendingbuffer.hpp"
@@ -15,7 +16,6 @@
 #include "service/protocol_type.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
-#include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <optional>
 #include <unordered_map>
@@ -62,7 +62,6 @@ namespace llarp
                       public EndpointBase
     {
       Endpoint(AbstractRouter* r, Context* parent);
-      ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void
       bool
@@ -516,9 +515,6 @@ namespace llarp
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
       net::IPRangeMap<service::Address> m_ExitMap;
-      hooks::Backend_ptr m_OnUp;
-      hooks::Backend_ptr m_OnDown;
-      hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
