@@ -355,6 +355,12 @@ namespace llarp
       return m_peerDb;
     }
 
+    inline int
+    OutboundUDPSocket() const override
+    {
+      return m_OutboundUDPSocket;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 

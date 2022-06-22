@@ -1,6 +1,7 @@
 #pragma once
 
 #include "message.hpp"
+#include "platform.hpp"
 #include <llarp/config/config.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
@@ -160,9 +161,13 @@ namespace llarp::dns
     void
     AddResolver(std::shared_ptr<Resolver_Base> resolver);
 
+    /// create the platform dependant dns stuff
+    virtual std::shared_ptr<I_Platform>
+    CreatePlatform() const;
+
    public:
     virtual ~Server() = default;
-    explicit Server(EventLoop_ptr loop, llarp::DnsConfig conf);
+    explicit Server(EventLoop_ptr loop, llarp::DnsConfig conf, std::string netif_name);
 
     /// returns all sockaddr we have from all of our PacketSources
     std::vector<SockAddr>
@@ -210,11 +215,18 @@ namespace llarp::dns
         const SockAddr& from,
         llarp::OwnedBuffer buf);
 
+    /// set which dns mode we are in.
+    /// true for intercepting all queries. false for just .loki and .snode
+    void
+    SetDNSMode(bool all_queries);
+
    protected:
     EventLoop_ptr m_Loop;
     llarp::DnsConfig m_Config;
+    std::shared_ptr<I_Platform> m_Platform;
 
    private:
+    const std::string m_NetifName;
     std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>>
         m_OwnedResolvers;
     std::set<std::weak_ptr<Resolver_Base>, CompareWeakPtr<Resolver_Base>> m_Resolvers;

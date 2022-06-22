@@ -77,12 +77,14 @@ add_library(liblokinet
 
   dns/message.cpp
   dns/name.cpp
+  dns/multi_platform.cpp
+  dns/nm_platform.cpp
+  dns/sd_platform.cpp
   dns/question.cpp
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
   dns/srv_data.cpp
-  dns/resolver.cpp
 
   consensus/table.cpp
   consensus/reachability_testing.cpp
