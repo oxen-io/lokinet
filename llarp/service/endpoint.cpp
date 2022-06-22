@@ -587,6 +587,10 @@ namespace llarp
       return true;
     }
 
+    // Keep this here (rather than the header) so that we don't need to include endpoint_state.hpp
+    // in endpoint.hpp for the unique_ptr member destructor.
+    Endpoint::~Endpoint() = default;
+
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
     {

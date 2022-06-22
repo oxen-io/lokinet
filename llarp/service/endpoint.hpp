@@ -7,7 +7,6 @@
 #include <llarp/path/path.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include "address.hpp"
-#include "endpoint_state.hpp"
 #include "handler.hpp"
 #include "identity.hpp"
 #include "pendingbuffer.hpp"
@@ -62,6 +61,7 @@ namespace llarp
                       public EndpointBase
     {
       Endpoint(AbstractRouter* r, Context* parent);
+      ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void
       bool
