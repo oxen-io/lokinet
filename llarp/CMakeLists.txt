@@ -227,10 +227,6 @@ if(TRACY_ROOT)
   target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
 endif()
 
-if(TESTNET)
-  target_sources(liblokinet PRIVATE testnet.c)
-endif()
-
 if(WITH_HIVE)
   target_sources(liblokinet PRIVATE
     tooling/router_hive.cpp
