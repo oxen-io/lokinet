@@ -351,6 +351,15 @@ set_target_properties(libzmq PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
   INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
 
+
+#
+#
+#
+# Everything that follows is *only* for lokinet-bootstrap (i.e. if adding new deps put them *above*
+# this).
+#
+#
+#
 if(NOT WITH_BOOTSTRAP)
   return()
 endif()

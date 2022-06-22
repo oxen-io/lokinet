@@ -1,7 +1,7 @@
 #include "DNSTrampoline.h"
 #include <uv.h>
 
-NSString* error_domain = @"com.loki-project.lokinet";
+NSString* error_domain = @"org.lokinet";
 
 
 // Receiving an incoming packet, presumably from libunbound.  NB: this is called from the libuv
@@ -68,10 +68,12 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
 @implementation LLARPDNSTrampoline
 
 - (void)startWithUpstreamDns:(NWUDPSession*) dns
+                    listenIp:(NSString*) listenIp
                   listenPort:(uint16_t) listenPort
                       uvLoop:(uv_loop_t*) loop
            completionHandler:(void (^)(NSError* error))completionHandler
 {
+  NSLog(@"Setting up trampoline");
   pending_writes = [[NSMutableArray<NSData*> alloc] init];
   write_trigger.data = (__bridge void*) self;
   uv_async_init(loop, &write_trigger, write_flusher);
@@ -79,7 +81,7 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
   request_socket.data = (__bridge void*) self;
   uv_udp_init(loop, &request_socket);
   struct sockaddr_in recv_addr;
-  uv_ip4_addr("127.0.0.1", listenPort, &recv_addr);
+  uv_ip4_addr(listenIp.UTF8String, listenPort, &recv_addr);
   int ret = uv_udp_bind(&request_socket, (const struct sockaddr*) &recv_addr, UV_UDP_REUSEADDR);
   if (ret < 0) {
     NSString* errstr = [NSString stringWithFormat:@"Failed to start DNS trampoline: %s", uv_strerror(ret)];

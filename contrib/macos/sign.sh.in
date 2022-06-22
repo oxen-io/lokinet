@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
+
 set -e
-codesign --verbose=4 --force -s "@CODESIGN_APPEX@" \
-  --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.entitlements.plist" \
-  --deep --strict --timestamp --options=runtime "@SIGN_TARGET@/Contents/PlugIns/lokinet-extension.appex"
-for file in "@SIGN_TARGET@/Contents/MacOS/lokinet" "@SIGN_TARGET@" ; do
-    codesign --verbose=4 --force -s "@CODESIGN_APP@" \
-      --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet.entitlements.plist" \
-      --deep --strict --timestamp --options=runtime "$file"
+
+if [ -z "@CODESIGN" ]; then
+  echo "Cannot codesign: this build was not configured with codesigning" >&2
+  exit 1
+fi
+
+for ext in systemextension appex; do
+    netext="@lokinet_ext_dir@/org.lokinet.network-extension.$ext"
+    if [ -e "@SIGN_TARGET@/$netext" ]; then
+        echo -e "\n\e[33;1mSigning $netext...\e[0m\n" >&2
+        codesign --verbose=4 --force -s "@CODESIGN_ID@" \
+            --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist" \
+            --deep --strict --timestamp --options=runtime "@SIGN_TARGET@/$netext"
+    fi
+done
+
+for sub in "/Contents/MacOS/Lokinet" "" ; do
+    echo -e "\n\e[33;1mSigning $(basename @SIGN_TARGET@)$sub...\e[0m\n" >&2
+    codesign --verbose=4 --force -s "@CODESIGN_ID@" \
+        --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist" \
+        --deep --strict --timestamp --options=runtime "@SIGN_TARGET@$sub"
 done

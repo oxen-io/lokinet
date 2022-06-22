@@ -18,16 +18,9 @@ cd build-mac
 cmake \
       -G Ninja \
       -DBUILD_STATIC_DEPS=ON \
-      -DBUILD_PACKAGE=ON \
-      -DBUILD_SHARED_LIBS=OFF \
-      -DBUILD_TESTING=OFF \
       -DBUILD_LIBLOKINET=OFF \
       -DWITH_TESTS=OFF \
       -DNATIVE_BUILD=OFF \
-      -DSTATIC_LINK=ON \
-      -DWITH_SYSTEMD=OFF \
-      -DFORCE_OXENMQ_SUBMODULE=ON \
-      -DSUBMODULE_CHECK=OFF \
       -DWITH_LTO=ON \
       -DCMAKE_BUILD_TYPE=Release \
       "$@" \
@@ -35,5 +28,5 @@ cmake \
 ninja sign
 
 echo -e "Build complete, your app is here:\n"
-ls -lad $(pwd)/daemon/lokinet.app
+ls -lad $(pwd)/Lokinet.app
 echo ""

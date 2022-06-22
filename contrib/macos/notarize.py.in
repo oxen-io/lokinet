@@ -4,21 +4,47 @@ import sys
 import plistlib
 import subprocess
 import time
+import os
+import os.path
 
-pkg = "lokinet-@PROJECT_VERSION@-Darwin.pkg"
+def bold_red(x):
+    return "\x1b[31;1m" + x + "\x1b[0m"
+
+if not @notarize_py_is_sysext@:
+    print(bold_red("\nUnable to notarize: this lokinet is not built as a system extension\n"), file=sys.stderr)
+    sys.exit(1)
+
+if not all(("@MACOS_NOTARIZE_USER@", "@MACOS_NOTARIZE_PASS@", "@MACOS_NOTARIZE_ASC@")):
+    print(bold_red("\nUnable to notarize: one or more required notarization variable not set; see contrib/macos/README.txt\n") +
+            "  Called with -DMACOS_NOTARIZE_USER=@MACOS_NOTARIZE_USER@\n"
+            "              -DMACOS_NOTARIZE_PASS=@MACOS_NOTARIZE_PASS@\n"
+            "              -DMACOS_NOTARIZE_ASC=@MACOS_NOTARIZE_ASC@\n",
+            file=sys.stderr)
+    sys.exit(1)
+
+os.chdir("@PROJECT_BINARY_DIR@")
+app = "Lokinet.app"
+zipfile = "Lokinet.app.notarize.zip"
+print(f"Creating lokinet.app.notarize.zip from lokinet.app")
+if os.path.exists(zipfile):
+    os.remove(zipfile)
+subprocess.run(['zip', '-r', zipfile, app])
+
 userpass = ('--username', "@MACOS_NOTARIZE_USER@", '--password', "@MACOS_NOTARIZE_PASS@")
-print("Submitting {} for notarization; this may take a minute...".format(pkg))
+print("Submitting {} for notarization; this may take a minute...".format(zipfile))
 
 started = time.time()
-result = subprocess.run([
+command = [
     'xcrun', 'altool',
     '--notarize-app',
-    '--primary-bundle-id', 'org.lokinet.lokinet.pkg.@PROJECT_VERSION@',
+    '--primary-bundle-id', 'org.lokinet.@PROJECT_VERSION@',
     *userpass,
     '--asc-provider', "@MACOS_NOTARIZE_ASC@",
-    '--file', pkg,
+    '--file', zipfile,
     '--output-format', 'xml'
-    ], stdout=subprocess.PIPE)
+    ]
+print(command)
+result = subprocess.run(command, stdout=subprocess.PIPE)
 
 data = plistlib.loads(result.stdout)
 if 'success-message' not in data or 'notarization-upload' not in data or 'RequestUUID' not in data['notarization-upload']:
@@ -70,7 +96,12 @@ print("\n")
 if not success:
     sys.exit(42)
 
-print("Stapling {}".format(pkg))
-result = subprocess.run(['xcrun', 'stapler', 'staple', pkg])
+if os.path.exists(zipfile):
+    os.remove(zipfile)
+
+print("Stapling {}...".format(app), end='')
+result = subprocess.run(['xcrun', 'stapler', 'staple', app])
 
 result.check_returncode()
+
+print(" success.\n")

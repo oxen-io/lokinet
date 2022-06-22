@@ -72,9 +72,10 @@ namespace llarp
 #ifdef __APPLE__
       // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
       // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
-      // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver
-      // won't work for us.  However when active the mac also only queries the main tunnel IP for
-      // DNS, so we consider anything else to be upstream-bound DNS to let it through the tunnel.
+      // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver,
+      // above, won't work for us).  However when active the mac also only queries the main tunnel
+      // IP for DNS, so we consider anything else to be upstream-bound DNS to let it through the
+      // tunnel.
       bool
       IsUpstreamResolver(const SockAddr& to, const SockAddr& from) const override
       {
@@ -88,7 +89,7 @@ namespace llarp
     {
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
-#if defined(ANDROID) || defined(__APPLE__)
+#if defined(ANDROID) || (defined(__APPLE__) && !defined(MACOS_SYSTEM_EXTENSION))
       m_Resolver = std::make_shared<DnsInterceptor>(r, this);
       m_PacketRouter->AddUDPHandler(huint16_t{53}, [&](net::IPPacket pkt) {
         const size_t ip_header_size = (pkt.Header()->ihl * 4);

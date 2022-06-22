@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import NetworkExtension
+import SystemExtensions
 
 let app = NSApplication.shared
 
@@ -11,14 +12,13 @@ let HELP_STRING = "usage: lokinet [--start|--stop]"
 
 class LokinetMain: NSObject, NSApplicationDelegate {
     var vpnManager = NETunnelProviderManager()
-    let lokinetComponent = "com.loki-project.lokinet.network-extension"
-    var mode = ""
+    var mode = START
+    let netextBundleId = "org.lokinet.network-extension"
 
     func applicationDidFinishLaunching(_: Notification) {
         if self.mode == START {
-            setupVPNTunnel()
-        }
-        else if self.mode == STOP {
+            startNetworkExtension()
+        } else if self.mode == STOP {
             tearDownVPNTunnel()
         } else {
             self.result(msg: HELP_STRING)
@@ -46,7 +46,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
 
             if let savedManagers = savedManagers {
                 for manager in savedManagers {
-                    if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.lokinetComponent {
+                    if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.netextBundleId {
                         manager.isEnabled = false
                         self.result(msg: "Lokinet Down")
                         return
@@ -57,8 +57,21 @@ class LokinetMain: NSObject, NSApplicationDelegate {
         }
     }
 
+    func startNetworkExtension() {
+#if MACOS_SYSTEM_EXTENSION
+        NSLog("Loading Lokinet network extension")
+        // Start by activating the system extension
+        let activationRequest = OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: netextBundleId, queue: .main)
+        activationRequest.delegate = self
+        OSSystemExtensionManager.shared.submitRequest(activationRequest)
+#else
+        setupVPNTunnel()
+#endif
+    }
+
     func setupVPNTunnel() {
-        NSLog("Starting up Lokinet")
+
+        NSLog("Starting up Lokinet tunnel")
         NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
             if let error = error {
                 self.result(msg: error.localizedDescription)
@@ -67,7 +80,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
 
             if let savedManagers = savedManagers {
                 for manager in savedManagers {
-                    if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.lokinetComponent {
+                    if (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier == self.netextBundleId {
                         NSLog("Found saved VPN Manager")
                         self.vpnManager = manager
                     }
@@ -76,7 +89,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
             let providerProtocol = NETunnelProviderProtocol()
             providerProtocol.serverAddress = "loki.loki" // Needs to be set to some non-null dummy value
             providerProtocol.username = "anonymous"
-            providerProtocol.providerBundleIdentifier = self.lokinetComponent
+            providerProtocol.providerBundleIdentifier = self.netextBundleId
             providerProtocol.enforceRoutes = true
             // macos seems to have trouble when this is true, and reports are that this breaks and
             // doesn't do what it says on the tin in the first place.  Needs more testing.
@@ -130,11 +143,42 @@ class LokinetMain: NSObject, NSApplicationDelegate {
     }
 }
 
+#if MACOS_SYSTEM_EXTENSION
+
+extension LokinetMain: OSSystemExtensionRequestDelegate {
+
+    func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
+        guard result == .completed else {
+            NSLog("Unexpected result %d for system extension request", result.rawValue)
+            return
+        }
+        NSLog("Lokinet system extension loaded")
+        setupVPNTunnel()
+    }
+
+    func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
+        NSLog("System extension request failed: %@", error.localizedDescription)
+    }
+
+    func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
+        NSLog("Extension %@ requires user approval", request.identifier)
+    }
+
+    func request(_ request: OSSystemExtensionRequest,
+                 actionForReplacingExtension existing: OSSystemExtensionProperties,
+                 withExtension extension: OSSystemExtensionProperties) -> OSSystemExtensionRequest.ReplacementAction {
+        NSLog("Replacing extension %@ version %@ with version %@", request.identifier, existing.bundleShortVersion, `extension`.bundleShortVersion)
+        return .replace
+    }
+}
+
+#endif
+
 let args = CommandLine.arguments
 
-if args.count > 1 {
+if args.count <= 2 {
     let delegate = LokinetMain()
-    delegate.mode = args[1]
+    delegate.mode = args.count > 1 ? args[1] : START
     app.delegate = delegate
     app.run()
 } else {
