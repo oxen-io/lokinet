@@ -713,8 +713,6 @@ namespace llarp
         m_ShouldInitTun = false;
       }
 
-      m_Resolver = std::make_shared<dns::Server>(m_Router->loop(), dnsConfig);
-
       m_OurRange = networkConfig.m_ifaddr;
       if (!m_OurRange.addr.h)
       {
@@ -745,8 +743,7 @@ namespace llarp
           return llarp::SockAddr{ifaddr, huint16_t{port}};
         });
       }
-      // TODO: "exit-whitelist" and "exit-blacklist"
-      //       (which weren't originally implemented)
+      m_Resolver = std::make_shared<dns::Server>(m_Router->loop(), dnsConfig, m_ifname);
     }
 
     huint128_t

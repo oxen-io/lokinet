@@ -121,7 +121,7 @@ namespace llarp
 
       virtual ~TunDNS() = default;
       explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
-          : dns::Server{ep->Router()->loop(), conf}, m_Endpoint{ep}
+          : dns::Server{ep->Router()->loop(), conf, ep->GetIfName()}, m_Endpoint{ep}
       {}
 
       std::shared_ptr<dns::PacketSource_Base>
@@ -142,7 +142,7 @@ namespace llarp
 #endif
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
-        : service::Endpoint(r, parent)
+        : service::Endpoint{r, parent}
     {
       m_PacketRouter = std::make_unique<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
@@ -172,7 +172,7 @@ namespace llarp
         HandleGotUserPacket(std::move(pkt));
       });
 #else
-      m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig);
+      m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig, GetIfName());
 #endif
       m_DNS->AddResolver(weak_from_this());
       m_DNS->Start();

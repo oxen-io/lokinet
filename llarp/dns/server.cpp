@@ -9,6 +9,10 @@
 #include <unbound.h>
 #include <uvw.hpp>
 
+#include "multi_platform.hpp"
+#include "sd_platform.hpp"
+#include "nm_platform.hpp"
+
 namespace llarp::dns
 {
   void
@@ -398,8 +402,11 @@ namespace llarp::dns
     }
   }  // namespace libunbound
 
-  Server::Server(EventLoop_ptr loop, llarp::DnsConfig conf)
-      : m_Loop{std::move(loop)}, m_Config{std::move(conf)}
+  Server::Server(EventLoop_ptr loop, llarp::DnsConfig conf, std::string netif)
+      : m_Loop{std::move(loop)}
+      , m_Config{std::move(conf)}
+      , m_Platform{CreatePlatform()}
+      , m_NetifName{std::move(netif)}
   {}
 
   void
@@ -415,6 +422,18 @@ namespace llarp::dns
     // add default resolver as needed
     if (auto ptr = MakeDefaultResolver())
       AddResolver(ptr);
+  }
+
+  std::shared_ptr<I_Platform>
+  Server::CreatePlatform() const
+  {
+    auto plat = std::make_shared<Multi_Platform>();
+    if constexpr (llarp::platform::has_systemd)
+    {
+      plat->add_impl(std::make_unique<SD_Platform_t>());
+      plat->add_impl(std::make_unique<NM_Platform_t>());
+    }
+    return plat;
   }
 
   std::shared_ptr<PacketSource_Base>
@@ -506,6 +525,13 @@ namespace llarp::dns
       if (auto ptr = resolver.lock())
         ptr->ResetInternalState();
     }
+  }
+
+  void
+  Server::SetDNSMode(bool all_queries)
+  {
+    if (auto maybe_addr = FirstBoundPacketSourceAddr())
+      m_Platform->set_resolver(m_NetifName, *maybe_addr, all_queries);
   }
 
   bool

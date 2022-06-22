@@ -6,18 +6,13 @@
 
 #include <stdexcept>
 
-namespace llarp
-{
-  struct AbstractRouter;
-}
-
 namespace llarp::dns
 {
   /// sets dns settings in a platform dependant way
-  class I_SystemSettings
+  class I_Platform
   {
    public:
-    virtual ~I_SystemSettings() = default;
+    virtual ~I_Platform() = default;
 
     /// Attempts to set lokinet as the DNS server.
     /// throws if unsupported or fails.
@@ -31,29 +26,5 @@ namespace llarp::dns
     virtual void
     set_resolver(std::string if_name, llarp::SockAddr dns, bool global) = 0;
   };
-
-  /// creates for the current platform
-  std::shared_ptr<I_SystemSettings>
-  MakeSystemSettings();
-
-  /// compat wrapper
-  inline bool
-  set_resolver(std::string if_name, llarp::SockAddr dns, bool global)
-  {
-    try
-    {
-      if (auto settings = MakeSystemSettings())
-      {
-        settings->set_resolver(std::move(if_name), std::move(dns), global);
-        return true;
-      }
-    }
-    catch (std::exception& ex)
-    {
-      LogError("failed to set DNS: ", ex.what());
-    }
-    LogWarn("did not set dns");
-    return false;
-  }
 
 }  // namespace llarp::dns

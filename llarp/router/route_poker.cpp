@@ -2,7 +2,7 @@
 #include "abstractrouter.hpp"
 #include "net/sock_addr.hpp"
 #include <llarp/service/context.hpp>
-#include <llarp/dns/resolver.hpp>
+#include <llarp/dns/platform.hpp>
 #include <unordered_set>
 
 namespace llarp
@@ -163,22 +163,8 @@ namespace llarp
   void
   RoutePoker::SetDNSMode(bool exit_mode_on) const
   {
-    if (auto dns = m_Router->hiddenServiceContext().GetDefault()->DNS())
-    {
-      if (auto maybe_addr = dns->FirstBoundPacketSourceAddr())
-      {
-        if (dns::set_resolver(
-                m_Router->hiddenServiceContext().GetDefault()->GetIfName(),
-                *maybe_addr,
-                exit_mode_on))
-        {
-          LogInfo(
-              "DNS set to ",
-              *maybe_addr,
-              exit_mode_on ? " for all traffic" : " for just lokinet traffic");
-        }
-      }
-    }
+    if (auto dns_server = m_Router->hiddenServiceContext().GetDefault()->DNS())
+      dns_server->SetDNSMode(exit_mode_on);
   }
 
   void
