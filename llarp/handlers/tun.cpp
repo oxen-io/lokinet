@@ -953,10 +953,6 @@ namespace llarp
           m_LocalResolverAddr.createSockAddr(),
           false /* just .loki/.snode DNS initially */);
 
-      if (m_OnUp)
-      {
-        m_OnUp->NotifyAsync(NotifyParams());
-      }
       return HasAddress(ourAddr);
     }
 

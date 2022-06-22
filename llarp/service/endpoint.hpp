@@ -15,7 +15,6 @@
 #include "service/protocol_type.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
-#include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <optional>
 #include <unordered_map>
@@ -516,9 +515,6 @@ namespace llarp
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
       net::IPRangeMap<service::Address> m_ExitMap;
-      hooks::Backend_ptr m_OnUp;
-      hooks::Backend_ptr m_OnDown;
-      hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;

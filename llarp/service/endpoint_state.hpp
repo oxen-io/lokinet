@@ -1,6 +1,5 @@
 #pragma once
 
-#include <llarp/hook/ihook.hpp>
 #include <llarp/router_id.hpp>
 #include "address.hpp"
 #include "pendingbuffer.hpp"
@@ -25,10 +24,6 @@ namespace llarp
   {
     struct EndpointState
     {
-      hooks::Backend_ptr m_OnUp;
-      hooks::Backend_ptr m_OnDown;
-      hooks::Backend_ptr m_OnReady;
-
       std::set<RouterID> m_SnodeBlacklist;
 
       AbstractRouter* m_Router;
