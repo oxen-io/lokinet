@@ -17,8 +17,8 @@ namespace llarp
   {
     {
       std::ifstream f(fname, std::ios::in | std::ios::binary);
-      if (!f.is_open())
-        return false;
+      if (not f.is_open())
+        throw false;
       f.seekg(0, std::ios::end);
       m_Data.resize(f.tellg());
       f.seekg(0, std::ios::beg);
