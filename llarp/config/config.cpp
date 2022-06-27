@@ -1336,15 +1336,25 @@ namespace llarp
   }
 
   void
-  Config::LoadOverrides()
+  Config::LoadOverrides(ConfigDefinition& conf) const
   {
+    ConfigParser parser;
     const auto overridesDir = GetOverridesDir(m_DataDir);
     if (fs::exists(overridesDir))
     {
       util::IterDir(overridesDir, [&](const fs::path& overrideFile) {
         if (overrideFile.extension() == ".ini")
         {
-          m_Parser.LoadFile(overrideFile);
+          ConfigParser parser;
+          if (not parser.LoadFile(overrideFile))
+            throw std::runtime_error{"cannot load '" + overrideFile.u8string() + "'"};
+
+          parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+            for (const auto& pair : values)
+            {
+              conf.addConfigValue(section, pair.first, pair.second);
+            }
+          });
         }
         return true;
       });
@@ -1358,7 +1368,7 @@ namespace llarp
   }
 
   bool
-  Config::LoadString(std::string_view ini, bool isRelay)
+  Config::LoadConfigData(std::string_view ini, std::optional<fs::path> filename, bool isRelay)
   {
     auto params = MakeGenParams();
     params->isRelay = isRelay;
@@ -1366,7 +1376,18 @@ namespace llarp
     ConfigDefinition conf{isRelay};
     initializeConfig(conf, *params);
 
+    for (const auto& item : m_Additional)
+    {
+      conf.addConfigValue(item[0], item[1], item[2]);
+    }
+
     m_Parser.Clear();
+
+    if (filename)
+      m_Parser.Filename(*filename);
+    else
+      m_Parser.Filename(fs::path{});
+
     if (not m_Parser.LoadFromStr(ini))
       return false;
 
@@ -1377,6 +1398,8 @@ namespace llarp
       }
     });
 
+    LoadOverrides(conf);
+
     conf.process();
 
     return true;
@@ -1385,37 +1408,24 @@ namespace llarp
   bool
   Config::Load(std::optional<fs::path> fname, bool isRelay)
   {
-    if (not fname.has_value())
-      return LoadDefault(isRelay);
-    try
+    std::vector<char> ini{};
+    if (fname)
     {
-      auto params = MakeGenParams();
-      params->isRelay = isRelay;
-      params->defaultDataDir = m_DataDir;
-
-      ConfigDefinition conf{isRelay};
-      initializeConfig(conf, *params);
-      m_Parser.Clear();
-      if (!m_Parser.LoadFile(*fname))
-      {
+      if (not fs::exists(*fname))
         return false;
-      }
-      LoadOverrides();
+      fs::ifstream inf{*fname, std::ios::in | std::ios::binary};
+      auto sz = inf.seekg(0, std::ios::end).tellg();
+      inf.seekg(0, std::ios::beg);
+      ini.resize(sz);
+      inf.read(ini.data(), ini.size());
+    }
+    return LoadConfigData(std::string_view{ini.data(), ini.size()}, fname, isRelay);
+  }
 
-      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
-        for (const auto& pair : values)
-        {
-          conf.addConfigValue(section, pair.first, pair.second);
-        }
-      });
-      conf.process();
-      return true;
-    }
-    catch (const std::exception& e)
-    {
-      LogError("Error trying to init and parse config from file: ", e.what());
-      return false;
-    }
+  bool
+  Config::LoadString(std::string_view ini, bool isRelay)
+  {
+    return LoadConfigData(ini, std::nullopt, isRelay);
   }
 
   bool

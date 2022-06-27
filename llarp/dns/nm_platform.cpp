@@ -12,9 +12,6 @@ using namespace std::literals;
 
 namespace llarp::dns::nm
 {
-  Platform::Platform()
-  {}
-
   void
   Platform::set_resolver(std::string, llarp::SockAddr, bool)
   {
