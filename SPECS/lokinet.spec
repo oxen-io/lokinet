@@ -154,8 +154,11 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
-* Sat Jun 18 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
-- 0.9.9 release
+* Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
+- bump version
+- cmake flags for no system library search
+- update port patch
+- remove version patch
 
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
