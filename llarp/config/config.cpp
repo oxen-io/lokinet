@@ -760,10 +760,7 @@ namespace llarp
     // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
     // 127.0.0.1:53.
 #ifdef __linux__
-    // Fedora's systemd-resolved seems unable to connect to 127.3.2.1 for unknown reasons,
-    // however since systemd-resolved is perfectly happy with a different port so listen on
-    // localhost:953 as a workaround.
-    constexpr Default DefaultDNSBind{"127.3.2.1:953"};
+    constexpr Default DefaultDNSBind{"127.3.2.1:53"};
 #else
     constexpr Default DefaultDNSBind{"127.0.0.1:53"};
 #endif
