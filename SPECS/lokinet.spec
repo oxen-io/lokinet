@@ -101,7 +101,7 @@ install -Dm644 SOURCES/bootstrap.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokine
 
 %files
 
-%license LICENSE.txt
+%license LICENSE
 %doc readme.*
 %{_datadir}/polkit-1/rules.d/50-lokinet.rules
 %{_unitdir}/lokinet.service
