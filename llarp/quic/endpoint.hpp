@@ -200,10 +200,16 @@ namespace llarp::quic
     //
     // Takes the iterator to the connection pair from `conns` and optional error parameters: if
     // `application` is false (the default) then we do a hard connection close because of transport
-    // error, if true we do a graceful application close.  For application closes the code is
-    // application-defined; for hard closes the code should be one of the NGTCP2_*_ERROR values.
+    // error, if true we do a graceful application close. `close_reason` can be provided for
+    // propagating reason for close to remote, defaults to empty string. For application closes the
+    // code is application-defined; for hard closes the code should be one of the NGTCP2_*_ERROR
+    // values.
     void
-    close_connection(Connection& conn, uint64_t code = NGTCP2_NO_ERROR, bool application = false);
+    close_connection(
+        Connection& conn,
+        uint64_t code = NGTCP2_NO_ERROR,
+        bool application = false,
+        std::string_view close_reason = ""sv);
 
     /// Puts a connection into draining mode (i.e. after getting a connection close).  This will
     /// keep the connection registered for the recommended 3*Probe Timeout, during which we drop

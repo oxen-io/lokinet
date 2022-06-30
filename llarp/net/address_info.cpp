@@ -27,6 +27,12 @@ namespace llarp
     return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }
 
+  std::variant<nuint32_t, nuint128_t>
+  AddressInfo::IP() const
+  {
+    return SockAddr{ip}.getIP();
+  }
+
   bool
   AddressInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
@@ -99,7 +105,7 @@ namespace llarp
     {
       if (!bencode_read_integer(buf, &i))
         return false;
-      return i == LLARP_PROTO_VERSION;
+      return i == llarp::constants::proto_version;
     }
 
     // bad key
@@ -143,7 +149,7 @@ namespace llarp
       return false;
 
     /** version */
-    if (!bencode_write_uint64_entry(buff, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buff, "v", 1, llarp::constants::proto_version))
       return false;
     /** end */
     return bencode_end(buff);

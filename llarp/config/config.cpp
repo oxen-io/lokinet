@@ -126,32 +126,23 @@ namespace llarp
             "provided the public-port option must also be specified.",
         },
         [this](std::string arg) {
-          if (not arg.empty())
-          {
-            llarp::LogInfo("public ip ", arg, " size ", arg.size());
+          if (arg.empty())
+            return;
+          nuint32_t addr{};
+          if (not addr.FromString(arg))
+            throw std::invalid_argument{stringify(arg, " is not a valid IPv4 address")};
 
-            if (arg.size() > 15)
-              throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
+          if (IsIPv4Bogon(addr))
+            throw std::invalid_argument{
+                stringify(addr, " looks like it is not a publicly routable ip address")};
 
-            m_publicAddress.setAddress(arg);
-          }
+          m_PublicIP = addr;
         });
 
-    conf.defineOption<std::string>("router", "public-address", Hidden, [this](std::string arg) {
-      if (not arg.empty())
-      {
-        llarp::LogWarn(
-            "*** WARNING: The config option [router]:public-address=",
-            arg,
-            " is deprecated, use public-ip=",
-            arg,
-            " instead to avoid this warning and avoid future configuration problems.");
-
-        if (arg.size() > 15)
-          throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
-
-        m_publicAddress.setAddress(arg);
-      }
+    conf.defineOption<std::string>("router", "public-address", Hidden, [](std::string) {
+      throw std::invalid_argument{
+          "[router]:public-address option no longer supported, use [router]:public-ip and "
+          "[router]:public-port instead"};
     });
 
     conf.defineOption<int>(
@@ -166,8 +157,7 @@ namespace llarp
         [this](int arg) {
           if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
             throw std::invalid_argument("public-port must be >= 0 and <= 65536");
-
-          m_publicAddress.setPort(arg);
+          m_PublicPort = ToNet(huint16_t{static_cast<uint16_t>(arg)});
         });
 
     conf.defineOption<int>(
@@ -317,7 +307,7 @@ namespace llarp
         ClientOnly,
         Comment{
             "Set the endpoint authentication mechanism.",
-            "none/whitelist/lmq",
+            "none/whitelist/lmq/file",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -365,6 +355,42 @@ namespace llarp
             throw std::invalid_argument(stringify("bad loki address: ", arg));
           m_AuthWhitelist.emplace(std::move(addr));
         });
+
+    conf.defineOption<fs::path>(
+        "network",
+        "auth-file",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Read auth tokens from file to accept endpoint auth",
+            "Can be provided multiple times",
+        },
+        [this](fs::path arg) {
+          if (not fs::exists(arg))
+            throw std::invalid_argument{
+                stringify("cannot load auth file ", arg, " as it does not seem to exist")};
+          m_AuthFiles.emplace(std::move(arg));
+        });
+    conf.defineOption<std::string>(
+        "network",
+        "auth-file-type",
+        ClientOnly,
+        Comment{
+            "How to interpret the contents of an auth file.",
+            "Possible values: hashes, plaintext",
+        },
+        [this](std::string arg) { m_AuthFileType = service::ParseAuthFileType(std::move(arg)); });
+
+    conf.defineOption<std::string>(
+        "network",
+        "auth-static",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Manually add a static auth code to accept for endpoint auth",
+            "Can be provided multiple times",
+        },
+        [this](std::string arg) { m_AuthStaticTokens.emplace(std::move(arg)); });
 
     conf.defineOption<bool>(
         "network",
@@ -454,6 +480,7 @@ namespace llarp
         "network",
         "exit-node",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify a `.loki` address and an optional ip range to use as an exit broker.",
             "Example:",
@@ -496,12 +523,13 @@ namespace llarp
         "network",
         "exit-auth",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify an optional authentication code required to use a non-public exit node.",
             "For example:",
             "    exit-auth=myfavouriteexit.loki:abc",
             "uses the authentication code `abc` whenever myfavouriteexit.loki is accessed.",
-            "Can be specified multiple time to store codes for different exit nodes.",
+            "Can be specified multiple times to store codes for different exit nodes.",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -530,6 +558,30 @@ namespace llarp
           }
           m_ExitAuths.emplace(exit, auth);
         });
+
+    conf.defineOption<bool>(
+        "network",
+        "auto-routing",
+        ClientOnly,
+        Default{true},
+        Comment{
+            "Enable / disable automatic route configuration.",
+            "When this is enabled and an exit is used Lokinet will automatically configure "
+            "operating system routes to route traffic through the exit node.",
+            "This is enabled by default, but can be disabled to perform advanced exit routing "
+            "configuration manually."},
+        AssignmentAcceptor(m_EnableRoutePoker));
+
+    conf.defineOption<bool>(
+        "network",
+        "blackhole-routes",
+        ClientOnly,
+        Default{true},
+        Comment{
+            "Enable / disable route configuration blackholes.",
+            "When enabled lokinet will drop ip4 and ip6 not included in exit config.",
+            "Enabled by default."},
+        AssignmentAcceptor(m_BlackholeRoutes));
 
     conf.defineOption<std::string>(
         "network",
@@ -714,7 +766,7 @@ namespace llarp
 #endif
 
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
-    constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
+    constexpr Default DefaultUpstreamDNS{"9.9.9.10"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
     if (!m_upstreamDNS.back().getPort())
       m_upstreamDNS.back().setPort(53);
@@ -798,12 +850,12 @@ namespace llarp
       const IpAddress addr{value};
       if (not addr.hasPort())
         throw std::invalid_argument("no port provided in link address");
-      info.interface = addr.toHost();
+      info.m_interface = addr.toHost();
       info.port = *addr.getPort();
     }
     else
     {
-      info.interface = std::string{name};
+      info.m_interface = std::string{name};
 
       std::vector<std::string_view> splits = split(value, ",");
       for (std::string_view str : splits)

@@ -57,4 +57,4 @@ else()
     endif()
 endif()
 
-configure_file("${SRC}" "${DEST}")
+configure_file("${SRC}" "${DEST}" @ONLY)

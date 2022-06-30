@@ -20,13 +20,13 @@
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include "endpoint_types.hpp"
 #include "llarp/endpoint_base.hpp"
 
 #include "auth.hpp"
 
-#include <oxenmq/variant.h>
+#include <llarp/vpn/egres_packet_router.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -167,6 +167,12 @@ namespace llarp
 
       void
       HandlePathDied(path::Path_ptr p) override;
+
+      virtual vpn::EgresPacketRouter*
+      EgresPacketRouter()
+      {
+        return nullptr;
+      };
 
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
@@ -323,10 +329,15 @@ namespace llarp
       // nullptr if the path was not made before the timeout
       using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
 
+      static constexpr auto DefaultPathEnsureTimeout = 2s;
+
       /// return false if we have already called this function before for this
       /// address
       bool
-      EnsurePathToService(const Address remote, PathEnsureHook h, llarp_time_t timeoutMS);
+      EnsurePathToService(
+          const Address remote,
+          PathEnsureHook h,
+          llarp_time_t timeoutMS = DefaultPathEnsureTimeout);
 
       using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
@@ -390,6 +401,10 @@ namespace llarp
 
       std::optional<uint64_t>
       GetSeqNoForConvo(const ConvoTag& tag);
+
+      /// count unique endpoints we are talking to
+      size_t
+      UniqueEndpoints() const;
 
       bool
       HasExit() const;
