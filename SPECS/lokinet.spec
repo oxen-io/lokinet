@@ -1,9 +1,5 @@
 Name:           lokinet
-<<<<<<< HEAD
-Version:        0.9.8
-=======
 Version:        0.9.9
->>>>>>> fedora/34
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -158,11 +154,6 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
-<<<<<<< HEAD
-* Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
-- bump version
-- bumped to build Sat Nov 20 2021
-=======
 * Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
 - bump version
 - cmake flags for no system library search
@@ -171,7 +162,6 @@ fi
 
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
->>>>>>> fedora/34
 
 * Wed Oct 20 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.7-1
 - bump version
