@@ -19,10 +19,9 @@ index 6bff9611..9c89bce6 100644
 +    // Fedora's systemd-resolved seems unable to connect to 127.3.2.1 for unknown reasons,
 +    // however since systemd-resolved is perfectly happy with a different port so listen on
 +    // localhost:953 as a workaround.
-+    constexpr Default DefaultDNSBind{"127.3.2.1:953"};
++    constexpr Default DefaultDNSBind{"127.0.0.1:953"};
  #else
      constexpr Default DefaultDNSBind{"127.0.0.1:53"};
  #endif
--- 
+--
 2.30.2
-
