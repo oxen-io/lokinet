@@ -13,7 +13,6 @@ BuildRequires:  cmake
 BuildRequires:  gcc-c++
 BuildRequires:  pkgconfig
 BuildRequires:  libuv-devel
-BuildRequires:  oxenmq-devel
 BuildRequires:  unbound-devel
 BuildRequires:  libsodium-devel
 BuildRequires:  systemd-devel
