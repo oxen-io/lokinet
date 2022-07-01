@@ -39,7 +39,7 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if (!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("V", llarp::constants::proto_version, buf))
         return false;
 
       return bencode_end(buf);

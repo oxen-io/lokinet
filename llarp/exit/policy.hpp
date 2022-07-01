@@ -11,7 +11,7 @@ namespace llarp
       uint64_t proto = 0;
       uint64_t port = 0;
       uint64_t drop = 0;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
 
       bool
       BDecode(llarp_buffer_t* buf)

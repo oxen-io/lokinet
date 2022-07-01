@@ -43,9 +43,10 @@ namespace llarp
     {
       if (!bencode_read_integer(buf, &version))
         return false;
-      if (version != LLARP_PROTO_VERSION)
+      if (version != llarp::constants::proto_version)
       {
-        llarp::LogWarn("llarp protocol version mismatch ", version, " != ", LLARP_PROTO_VERSION);
+        llarp::LogWarn(
+            "llarp protocol version mismatch ", version, " != ", llarp::constants::proto_version);
         return false;
       }
       llarp::LogDebug("LIM version ", version);
@@ -86,7 +87,7 @@ namespace llarp
     if (!rc.BEncode(buf))
       return false;
 
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
       return false;
 
     if (!bencode_write_bytestring(buf, "z", 1))

@@ -102,10 +102,13 @@ namespace llarp
     ForEachSession(std::function<void(ILinkSession*)> visit) EXCLUDES(m_AuthedLinksMutex);
 
     void
+    UnmapAddr(const SockAddr& addr);
+
+    void
     SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
     virtual bool
-    Configure(AbstractRouter* loop, const std::string& ifname, int af, uint16_t port);
+    Configure(AbstractRouter* loop, std::string ifname, int af, uint16_t port);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
@@ -148,7 +151,8 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed);
+        ILinkSession::CompletionHandler completed,
+        uint16_t priority);
 
     virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;
@@ -182,7 +186,7 @@ namespace llarp
       return false;
     }
 
-    virtual bool
+    bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
     void
@@ -254,7 +258,7 @@ namespace llarp
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
-
+    std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
     std::unordered_map<SockAddr, llarp_time_t> m_RecentlyClosed;
 
    private:

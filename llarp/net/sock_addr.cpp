@@ -351,6 +351,14 @@ namespace llarp
     return a;
   }
 
+  std::variant<nuint32_t, nuint128_t>
+  SockAddr::getIP() const
+  {
+    if (isIPv4())
+      return getIPv4();
+    return getIPv6();
+  }
+
   void
   SockAddr::setIPv4(nuint32_t ip)
   {

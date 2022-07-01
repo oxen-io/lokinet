@@ -1,12 +1,18 @@
 
 #include "vpn_interface.hpp"
 #include "context.hpp"
+#include <llarp/router/abstractrouter.hpp>
 
 namespace llarp::apple
 {
   VPNInterface::VPNInterface(
-      Context& ctx, packet_write_callback packet_writer, on_readable_callback on_readable)
-      : m_PacketWriter{std::move(packet_writer)}, m_OnReadable{std::move(on_readable)}
+      Context& ctx,
+      packet_write_callback packet_writer,
+      on_readable_callback on_readable,
+      AbstractRouter* router)
+      : m_PacketWriter{std::move(packet_writer)}
+      , m_OnReadable{std::move(on_readable)}
+      , _router{router}
   {
     ctx.loop->call_soon([this] { m_OnReadable(*this); });
   }
@@ -19,6 +25,12 @@ namespace llarp::apple
       return false;
     m_ReadQueue.tryPushBack(std::move(pkt));
     return true;
+  }
+
+  void
+  VPNInterface::MaybeWakeUpperLayers() const
+  {
+    _router->TriggerPump();
   }
 
   int

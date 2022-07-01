@@ -102,6 +102,9 @@ namespace llarp
       return _dht;
     }
 
+    std::optional<std::variant<nuint32_t, nuint128_t>>
+    OurPublicIP() const override;
+
     util::StatusObject
     ExtractStatus() const override;
 
@@ -196,6 +199,14 @@ namespace llarp
     /// return true if we look like we are a decommissioned service node
     bool
     LooksDecommissioned() const;
+
+    /// return true if we look like we are a deregistered service node
+    bool
+    LooksDeregistered() const;
+
+    /// return true if we look like we are allowed and able to test other routers
+    bool
+    ShouldTestOtherRouters() const;
 
     std::optional<SockAddr> _ourAddress;
 
