@@ -19,7 +19,7 @@ namespace llarp
       // TODO: may want to add some memory of session failures for a given
       //      router on a given link and not return that link here for a
       //      duration
-      if (!link->IsCompatable(rc))
+      if (not link->IsCompatable(rc))
         continue;
 
       return link;
@@ -36,7 +36,10 @@ namespace llarp
 
   bool
   LinkManager::SendTo(
-      const RouterID& remote, const llarp_buffer_t& buf, ILinkSession::CompletionHandler completed)
+      const RouterID& remote,
+      const llarp_buffer_t& buf,
+      ILinkSession::CompletionHandler completed,
+      uint16_t priority)
   {
     if (stopping)
       return false;
@@ -51,7 +54,7 @@ namespace llarp
       return false;
     }
 
-    return link->SendTo(remote, buf, completed);
+    return link->SendTo(remote, buf, completed, priority);
   }
 
   bool

@@ -9,7 +9,7 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 
-#include <string.h>
+#include <cstring>
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -18,6 +18,8 @@
 #include <llarp/net/net.hpp>
 #include <llarp/util/str.hpp>
 #include <exception>
+
+#include <oxenc/endian.h>
 
 namespace llarp::vpn
 {
@@ -181,7 +183,7 @@ namespace llarp::vpn
       {
         family = AF_INET;
         bitlen = bits;
-        htobe32buf(data, addr.h);
+        oxenc::write_host_as_big(addr.h, data);
       }
 
       _inet_addr(huint128_t addr, size_t bits = 128)
@@ -416,10 +418,10 @@ namespace llarp::vpn
         if (parts[1].find_first_not_of('0') == std::string::npos and parts[0] != ifname)
         {
           const auto& ip = parts[2];
-          if ((ip.size() == sizeof(uint32_t) * 2) and oxenmq::is_hex(ip))
+          if ((ip.size() == sizeof(uint32_t) * 2) and oxenc::is_hex(ip))
           {
             huint32_t x{};
-            oxenmq::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
+            oxenc::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
             gateways.emplace_back(x);
           }
         }
@@ -448,7 +450,7 @@ namespace llarp::vpn
 
    public:
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info) override
+    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
     {
       return std::make_shared<LinuxInterface>(std::move(info));
     };

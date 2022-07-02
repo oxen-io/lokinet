@@ -5,32 +5,32 @@
 
 set(LOCAL_MIRROR "" CACHE STRING "local mirror path/URL for lib downloads")
 
-set(OPENSSL_VERSION 1.1.1l CACHE STRING "openssl version")
+set(OPENSSL_VERSION 1.1.1o CACHE STRING "openssl version")
 set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://www.openssl.org/source CACHE STRING "openssl download mirror(s)")
 set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
-set(OPENSSL_HASH SHA256=0b7a3e5e59c34827fe0c3a74b7ec8baef302b98fa80088d7f9153aa16fa76bd1
+set(OPENSSL_HASH SHA256=9384a2b0570dd80358841464677115df785edb941c71211f75076d72fe6b438f
     CACHE STRING "openssl source hash")
 
-set(EXPAT_VERSION 2.3.0 CACHE STRING "expat version")
+set(EXPAT_VERSION 2.4.8 CACHE STRING "expat version")
 string(REPLACE "." "_" EXPAT_TAG "R_${EXPAT_VERSION}")
 set(EXPAT_MIRROR ${LOCAL_MIRROR} https://github.com/libexpat/libexpat/releases/download/${EXPAT_TAG}
     CACHE STRING "expat download mirror(s)")
 set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
-set(EXPAT_HASH SHA512=dde8a9a094b18d795a0e86ca4aa68488b352dc67019e0d669e8b910ed149628de4c2a49bc3a5b832f624319336a01f9e4debe03433a43e1c420f36356d886820
+set(EXPAT_HASH SHA256=f79b8f904b749e3e0d20afeadecf8249c55b2e32d4ebb089ae378df479dcaf25
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.13.2 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.15.0 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=0a13b547f3b92a026b5ebd0423f54c991e5718037fd9f72445817f6a040e1a83
+set(UNBOUND_HASH SHA256=a480dc6c8937447b98d161fe911ffc76cfaffa2da18788781314e81339f1126f
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3350500 CACHE STRING "sqlite3 version")
-set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2021
+set(SQLITE3_VERSION 3380500 CACHE STRING "sqlite3 version")
+set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA512=039af796f79fc4517be0bd5ba37886264d49da309e234ae6fccdb488ef0109ed2b917fc3e6c1fc7224dff4f736824c653aaf8f0a37550c5ebc14d035cb8ac737
-    CACHE STRING "sqlite3 source hash")
+set(SQLITE3_HASH SHA3_256=ab649fea76f49a6ec7f907f001d87b8bd76dec0679c783e3992284c5a882a98c
+  CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
 set(SODIUM_MIRROR ${LOCAL_MIRROR}
@@ -48,28 +48,26 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
 
-set(LIBUV_VERSION 1.41.0 CACHE STRING "libuv version")
+set(LIBUV_VERSION 1.44.1 CACHE STRING "libuv version")
 set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
     CACHE STRING "libuv mirror(s)")
 set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
-set(LIBUV_HASH SHA512=33613fa28e8136507300eba374351774849b6b39aab4e53c997a918d3bc1d1094c6123e0e509535095b14dc5daa885eadb1a67bed46622ad3cc79d62dc817e84
+set(LIBUV_HASH SHA512=b4f8944e2c79e3a6a31ded6cccbe4c0eeada50db6bc8a448d7015642795012a4b80ffeef7ca455bb093c59a8950d0e1430566c3c2fa87b73f82699098162d834
     CACHE STRING "libuv source hash")
 
-set(ZLIB_VERSION 1.2.11 CACHE STRING "zlib version")
+set(ZLIB_VERSION 1.2.12 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
-set(ZLIB_HASH SHA512=73fd3fff4adeccd4894084c15ddac89890cd10ef105dd5e1835e1e9bbb6a49ff229713bd197d203edfa17c2727700fce65a2a235f07568212d820dca88b528ae
-    CACHE STRING "zlib source hash")
+set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
+  CACHE STRING "zlib source hash")
   
-set(CURL_VERSION 7.76.1 CACHE STRING "curl version")
+set(CURL_VERSION 7.83.1 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
 set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
-set(CURL_HASH SHA256=64bb5288c39f0840c07d077e30d9052e1cbb9fa6c2dc52523824cc859e679145
+set(CURL_HASH SHA256=2cb9c2356e7263a1272fd1435ef7cdebf2cd21400ec287b068396deb705c22c4
   CACHE STRING "curl source hash")
-
-
 
 include(ExternalProject)
 
@@ -236,6 +234,7 @@ add_static_target(zlib zlib_external libz.a)
 
 
 set(openssl_system_env "")
+set(openssl_configure_command ./config)
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
     set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
@@ -244,13 +243,31 @@ if(CMAKE_CROSSCOMPILING)
   elseif(ANDROID)
     set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
+  elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
+    set(openssl_configure_command ./Configure linux64-mips64)
+  elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mips)
+  elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
+    set(openssl_system_env SYSTEM=Linux MACHINE=mipsel)
+  elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
+    # cross compile arm64
+    set(openssl_system_env SYSTEM=Linux MACHINE=aarch64)
+  elseif(ARCH_TRIPLET MATCHES arm-linux)
+    # cross compile armhf
+    set(openssl_system_env SYSTEM=Linux MACHINE=armv4)
+  elseif(ARCH_TRIPLET MATCHES powerpc64le)
+    # cross compile ppc64le
+    set(openssl_system_env SYSTEM=Linux MACHINE=ppc64le)
   endif()
 elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
   set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
+
+
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
     --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
@@ -276,7 +293,6 @@ build_external(expat
   "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
 )
 add_static_target(expat expat_external libexpat.a)
-
 
 build_external(unbound
   DEPENDS openssl_external expat_external
@@ -335,6 +351,10 @@ set_target_properties(libzmq PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
   INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
 
+if(NOT WITH_BOOTSTRAP)
+  return()
+endif()
+
 set(curl_extra)
 if(WIN32)
   set(curl_ssl_opts --without-ssl --with-schannel)
@@ -386,7 +406,7 @@ foreach(curl_arch ${curl_arches})
     --enable-crypto-auth --disable-ntlm-wb --disable-tls-srp --disable-unix-sockets --disable-cookies
     --enable-http-auth --enable-doh --disable-mime --enable-dateparse --disable-netrc --without-libidn2
     --disable-progress-meter --without-brotli --with-zlib=${DEPS_DESTDIR} ${curl_ssl_opts}
-    --without-libmetalink --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
+    --without-librtmp --disable-versioned-symbols --enable-hidden-symbols
     --without-zsh-functions-dir --without-fish-functions-dir
     --without-nghttp3 --without-zstd
     "CC=${deps_cc}" "CFLAGS=${deps_noarch_CFLAGS}${cflags_extra}" ${curl_extra}

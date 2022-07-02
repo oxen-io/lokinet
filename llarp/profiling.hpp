@@ -20,7 +20,7 @@ namespace llarp
     uint64_t pathTimeoutCount = 0;
     llarp_time_t lastUpdated = 0s;
     llarp_time_t lastDecay = 0s;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     bool
     BEncode(llarp_buffer_t* buf) const;

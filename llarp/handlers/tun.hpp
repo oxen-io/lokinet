@@ -7,15 +7,16 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/util/codel.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
 
 #include <future>
-#include <queue>
+
 #include <type_traits>
 #include <variant>
-#include "service/protocol_type.hpp"
+
+#include <llarp/service/protocol_type.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 namespace llarp
 {
@@ -172,27 +173,20 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      using PacketQueue_t = llarp::util::CoDelQueue<
-          net::IPPacket,
-          net::IPPacket::GetTime,
-          net::IPPacket::PutTime,
-          net::IPPacket::CompareOrder,
-          net::IPPacket::GetNow>;
-
       struct WritePacket
       {
         uint64_t seqno;
         net::IPPacket pkt;
 
         bool
-        operator<(const WritePacket& other) const
+        operator>(const WritePacket& other) const
         {
-          return other.seqno < seqno;
+          return seqno > other.seqno;
         }
       };
 
       /// queue for sending packets to user from network
-      std::priority_queue<WritePacket> m_NetworkToUserPktQueue;
+      util::ascending_priority_queue<WritePacket> m_NetworkToUserPktQueue;
 
       void
       Pump(llarp_time_t now) override;
@@ -222,7 +216,20 @@ namespace llarp
       /// a hidden service
       std::unordered_map<AlignedBuffer<32>, bool> m_SNodes;
 
+      /// maps ip address to an exit endpoint, useful when we have multiple exits on a range
+      std::unordered_map<huint128_t, service::Address> m_ExitIPToExitAddress;
+
      private:
+      /// given an ip address that is not mapped locally find the address it shall be forwarded to
+      /// optionally provide a custom selection strategy, if none is provided it will choose a
+      /// random entry from the available choices
+      /// return std::nullopt if we cannot route this address to an exit
+      std::optional<service::Address>
+      ObtainExitAddressFor(
+          huint128_t ip,
+          std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat =
+              nullptr);
+
       template <typename Addr_t, typename Endpoint_t>
       void
       SendDNSReply(

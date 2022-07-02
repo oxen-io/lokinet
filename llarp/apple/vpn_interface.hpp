@@ -17,7 +17,10 @@ namespace llarp::apple
     using on_readable_callback = std::function<void(VPNInterface&)>;
 
     explicit VPNInterface(
-        Context& ctx, packet_write_callback packet_writer, on_readable_callback on_readable);
+        Context& ctx,
+        packet_write_callback packet_writer,
+        on_readable_callback on_readable,
+        AbstractRouter* router);
 
     // Method to call when a packet has arrived to deliver the packet to lokinet
     bool
@@ -35,6 +38,9 @@ namespace llarp::apple
     bool
     WritePacket(net::IPPacket pkt) override;
 
+    void
+    MaybeWakeUpperLayers() const override;
+
    private:
     // Function for us to call when we have a packet to emit.  Should return true if the packet was
     // handed off to the OS successfully.
@@ -46,6 +52,8 @@ namespace llarp::apple
     static inline constexpr auto PacketQueueSize = 1024;
 
     thread::Queue<net::IPPacket> m_ReadQueue{PacketQueueSize};
+
+    AbstractRouter* const _router;
   };
 
 }  // namespace llarp::apple
