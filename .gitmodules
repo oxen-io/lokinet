@@ -17,9 +17,6 @@
 	path = external/pybind11
 	url = https://github.com/pybind/pybind11
 	branch = stable
-[submodule "external/clang-format-hooks"]
-	path = external/clang-format-hooks
-	url = https://github.com/barisione/clang-format-hooks/
 [submodule "external/sqlite_orm"]
 	path = external/sqlite_orm
 	url = https://github.com/fnc12/sqlite_orm
@@ -35,3 +32,7 @@
 [submodule "external/ngtcp2"]
 	path = external/ngtcp2
 	url = https://github.com/ngtcp2/ngtcp2.git
+	branch = v0.1.0
+[submodule "external/oxen-encoding"]
+	path = external/oxen-encoding
+	url = https://github.com/oxen-io/oxen-encoding.git

@@ -7,7 +7,7 @@
 #include <functional>
 #include <string_view>
 #include <type_traits>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include <vector>
 #include <optional>
 #include <uvw/async.h>

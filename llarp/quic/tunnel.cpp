@@ -170,7 +170,7 @@ namespace llarp::quic
       {
         LogWarn(
             "Remote connection returned invalid initial byte (0x",
-            oxenmq::to_hex(bdata.begin(), bdata.begin() + 1),
+            oxenc::to_hex(bdata.begin(), bdata.begin() + 1),
             "); dropping connection");
         stream.close(tunnel::ERROR_BAD_INIT);
         client.close();

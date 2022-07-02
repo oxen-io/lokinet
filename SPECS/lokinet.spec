@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.8
+Version:        0.9.9
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -13,7 +13,6 @@ BuildRequires:  cmake
 BuildRequires:  gcc-c++
 BuildRequires:  pkgconfig
 BuildRequires:  libuv-devel
-BuildRequires:  oxenmq-devel
 BuildRequires:  unbound-devel
 BuildRequires:  libsodium-devel
 BuildRequires:  systemd-devel
@@ -22,11 +21,9 @@ BuildRequires:  libcurl-devel
 BuildRequires:  jemalloc-devel
 BuildRequires:  libsqlite3x-devel
 
-# Puts the rpm version instead of the git tag in the version string:
-Patch1: version-as-rpm-version.patch
 # Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
-Patch2: default-dns.patch
+Patch1: default-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -84,7 +81,7 @@ export CFLAGS="%{optflags} -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu
 %endif
 
 %undefine __cmake_in_source_build
-%cmake -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DGIT_VERSION="%{release}" -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF
+%cmake -DFORCE_OXENC_SUBMODULE=ON -DFORCE_OXENMQ_SUBMODULE=ON -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DLOKINET_VERSIONTAG=%{release} -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF
 %cmake_build
 
 %install
@@ -100,7 +97,7 @@ install -Dm644 SOURCES/bootstrap.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokine
 
 %files
 
-%license LICENSE.txt
+%license LICENSE
 %doc readme.*
 %{_datadir}/polkit-1/rules.d/50-lokinet.rules
 %{_unitdir}/lokinet.service
@@ -156,6 +153,12 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
+- bump version
+- cmake flags for no system library search
+- update port patch
+- remove version patch
+
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
 

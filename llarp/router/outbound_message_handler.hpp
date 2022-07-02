@@ -6,12 +6,12 @@
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/path/path_types.hpp>
+#include <llarp/util/priority_queue.hpp>
 #include <llarp/router_id.hpp>
 
 #include <list>
 #include <unordered_map>
 #include <utility>
-#include <queue>
 
 struct llarp_buffer_t;
 
@@ -74,22 +74,21 @@ namespace llarp
     Init(AbstractRouter* router);
 
    private:
-    using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
-
     /* A message that has been queued for sending, but not yet
      * processed into an individual path's message queue.
      */
     struct MessageQueueEntry
     {
       uint16_t priority;
-      Message message;
+      std::vector<byte_t> message;
+      SendStatusHandler inform;
       PathID_t pathid;
       RouterID router;
 
       bool
-      operator<(const MessageQueueEntry& other) const
+      operator>(const MessageQueueEntry& other) const
       {
-        return other.priority < priority;
+        return priority > other.priority;
       }
     };
 
@@ -104,7 +103,7 @@ namespace llarp
       uint32_t numTicks = 0;
     };
 
-    using MessageQueue = std::priority_queue<MessageQueueEntry>;
+    using MessageQueue = util::ascending_priority_queue<MessageQueueEntry>;
 
     /* If a session is not yet created with the destination router for a message,
      * a special queue is created for that router and an attempt is made to
@@ -131,14 +130,14 @@ namespace llarp
      * returns the result of the call to LinkManager::SendTo()
      */
     bool
-    Send(const RouterID& remote, const Message& msg);
+    Send(const MessageQueueEntry& ent);
 
     /* Sends the message along to the link layer if we have a session to the remote
      *
      * returns the result of the Send() call, or false if no session.
      */
     bool
-    SendIfSession(const RouterID& remote, const Message& msg);
+    SendIfSession(const MessageQueueEntry& ent);
 
     /* queues a message to the shared outbound message queue.
      *
@@ -149,8 +148,7 @@ namespace llarp
      * are placed in their paths' respective individual queues.
      */
     bool
-    QueueOutboundMessage(
-        const RouterID& remote, Message&& msg, const PathID_t& pathid, uint16_t priority = 0);
+    QueueOutboundMessage(MessageQueueEntry entry);
 
     /* Processes messages on the shared message queue into their paths' respective
      * individual queues.

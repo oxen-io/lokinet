@@ -35,6 +35,17 @@ namespace llarp
     return o.str();
   }
 
+  /// util for constructing an exception with a message constructed from a set of whatever passed
+  /// into stringify
+  /// E must be derived from std::exception here
+  template <typename E, typename... T>
+  E
+  make_exception(T&&... stuff)
+  {
+    static_assert(std::is_base_of_v<std::exception, E>);
+    return E{stringify(std::forward<T>(stuff)...)};
+  }
+
   using namespace std::literals;
 
   /// Returns true if the first string is equal to the second string, compared case-insensitively.
