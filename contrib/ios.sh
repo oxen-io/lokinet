@@ -13,20 +13,21 @@ root="$(readlink -f $(dirname $0)/../)"
 
 build_dir="$root/build/iphone"
 
-./contrib/ios/ios-configure.sh "$build_dir/device" OS $@
+./contrib/ios/ios-configure.sh "$build_dir/device" OS64 $@
 ./contrib/ios/ios-configure.sh "$build_dir/sim" SIMULATOR64 $@
 
-./contrib/ios/ios-build.sh "$build_dir/device"
-./contrib/ios/ios-build.sh "$build_dir/sim"
+for targ in device sim ; do
+    ./contrib/ios/ios-build.sh "$build_dir/$targ"
+done
 
 pkg_name="iphone_lokinet_embedded_$(date +%s)"
 pkg_dir="$build_dir/$pkg_name"
-mkdir -p "$pkg_dir/include"
-mkdir -p "$pkg_dir/lib/device"
-mkdir -p "$pkg_dir/lib/sim"
 
-cp -a "$build_dir/device/llarp/liblokinet-embedded.a" "$pkg_dir/lib/device/"
-cp -a "$build_dir/sim/llarp/liblokinet-embedded.a" "$pkg_dir/lib/sim/"
+mkdir -p "$pkg_dir"/{include,lib/{device,sim}}
+for targ in device sim ; do 
+    mkdir -p "$pkg_dir/lib/$targ"
+    cp -av "$build_dir/$targ/llarp/liblokinet-embedded.a" "$pkg_dir/lib/$targ/liblokinet-embedded.a"
+done
 cp -a "$root"/include/lokinet{,/*}.h "$pkg_dir/include/"
 
 cd "$build_dir"

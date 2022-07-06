@@ -19,7 +19,6 @@ mkdir -p $targ
 cmake \
     -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$root/contrib/cross/ios.toolchain.cmake" -DPLATFORM=$plat -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
-    -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_C_COMPILER_LAUNCHER= \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
     -DBUILD_SHARED_LIBS=OFF \
@@ -37,5 +36,7 @@ cmake \
     -DFORCE_LIBUV_SUBMODULE=ON \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=OFF \
+    -DCMAKE_CXX_FLAGS='-Oz' -DCMAKE_C_FLAGS='-Oz' \
+    -DCMAKE_BUILD_TYPE=Release \
     -S "$root" -B $targ \
     $@
