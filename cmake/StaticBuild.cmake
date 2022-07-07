@@ -48,20 +48,13 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
 
-set(LIBUV_VERSION 1.44.1 CACHE STRING "libuv version")
-set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
-    CACHE STRING "libuv mirror(s)")
-set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
-set(LIBUV_HASH SHA512=b4f8944e2c79e3a6a31ded6cccbe4c0eeada50db6bc8a448d7015642795012a4b80ffeef7ca455bb093c59a8950d0e1430566c3c2fa87b73f82699098162d834
-    CACHE STRING "libuv source hash")
-
 set(ZLIB_VERSION 1.2.12 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
   CACHE STRING "zlib source hash")
-  
+
 set(CURL_VERSION 7.83.1 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
@@ -105,15 +98,25 @@ function(add_static_target target ext_target libname)
 endfunction()
 
 
-
 set(cross_host "")
 set(cross_rc "")
+
 if(CMAKE_CROSSCOMPILING)
-  set(cross_host "--host=${ARCH_TRIPLET}")
-  if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
-    set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
+  if(APPLE_TARGET_TRIPLE)
+    if(PLATFORM MATCHES "OS64" OR PLATFORM MATCHES "SIMULATORARM64")
+      set(APPLE_TARGET_TRIPLE aarch64-apple-ios)
+    elseif(PLATFORM MATCHES "SIMULATOR64")
+      set(APPLE_TARGET_TRIPLE x86_64-apple-ios)
+    endif()
+    set(cross_host "--host=${APPLE_TARGET_TRIPLE}")
+  else()
+    set(cross_host "--host=${ARCH_TRIPLET}")
+    if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
+      set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
+    endif()
   endif()
 endif()
+
 if(ANDROID)
   set(android_toolchain_suffix linux-android)
   set(android_compiler_suffix linux-android23)
@@ -162,17 +165,23 @@ if(WITH_LTO)
   set(deps_CFLAGS "${deps_CFLAGS} -flto")
 endif()
 
-if(APPLE)
-  set(deps_CFLAGS "${deps_CFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-  set(deps_CXXFLAGS "${deps_CXXFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-endif()
-
-
 if("${CMAKE_GENERATOR}" STREQUAL "Unix Makefiles")
   set(_make $(MAKE))
 else()
   set(_make make)
 endif()
+
+
+if(APPLE)
+  foreach(lang C CXX)
+    string(APPEND deps_${lang}FLAGS " ${CMAKE_${lang}_SYSROOT_FLAG} ${CMAKE_OSX_SYSROOT} ${CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG}${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    set(deps_noarch_${lang}FLAGS "${deps_${lang}FLAGS}")
+    foreach(arch ${CMAKE_OSX_ARCHITECTURES})
+      string(APPEND deps_${lang}FLAGS " -arch ${arch}")
+    endforeach()
+  endforeach()
+endif()
+
 
 
 # Builds a target; takes the target name (e.g. "readline") and builds it in an external project with
@@ -214,16 +223,6 @@ function(build_external target)
   )
 endfunction()
 
-build_external(libuv
-  CONFIGURE_COMMAND ./autogen.sh && ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --with-pic --disable-shared --enable-static "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
-  BUILD_BYPRODUCTS
-    ${DEPS_DESTDIR}/lib/libuv.a
-    ${DEPS_DESTDIR}/include/uv.h
-  )
-add_static_target(libuv libuv_external libuv.a)
-target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
-
-  
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
   BUILD_BYPRODUCTS
@@ -243,6 +242,15 @@ if(CMAKE_CROSSCOMPILING)
   elseif(ANDROID)
     set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
+  elseif(IOS)
+    get_filename_component(apple_toolchain "${CMAKE_C_COMPILER}" DIRECTORY)
+    get_filename_component(apple_sdk "${CMAKE_OSX_SYSROOT}" NAME)
+    if(NOT ${apple_toolchain} MATCHES Xcode OR NOT ${apple_sdk} MATCHES "iPhone(OS|Simulator)")
+      message(FATAL_ERROR "didn't find your toolchain and sdk correctly from ${CMAKE_C_COMPILER}/${CMAKE_OSX_SYSROOT}: found toolchain=${apple_toolchain}, sdk=${apple_sdk}")
+    endif()
+    set(openssl_system_env CROSS_COMPILE=${apple_toolchain}/ CROSS_TOP=${CMAKE_DEVELOPER_ROOT}/ CROSS_SDK=${apple_sdk}/)
+    set(openssl_configure_command ./Configure iphoneos-cross)
+    set(openssl_cc "clang")
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
     set(openssl_configure_command ./Configure linux64-mips64)
@@ -265,12 +273,11 @@ elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
 
-
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
-    --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
-    no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
-    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${openssl_cc} ${openssl_system_env} ${openssl_configure_command}
+  --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
+  no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
+  no-static-engine no-tests no-weak-ssl-ciphers no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
@@ -281,7 +288,6 @@ add_static_target(OpenSSL::Crypto openssl_external libcrypto.a)
 if(WIN32)
   target_link_libraries(OpenSSL::Crypto INTERFACE "ws2_32;crypt32;iphlpapi")
 endif()
-
 set(OPENSSL_INCLUDE_DIR ${DEPS_DESTDIR}/include)
 set(OPENSSL_CRYPTO_LIBRARY ${DEPS_DESTDIR}/lib/libcrypto.a ${DEPS_DESTDIR}/lib/libssl.a)
 set(OPENSSL_VERSION 1.1.1)
@@ -294,13 +300,19 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
+
+set(unbound_extra)
+if(APPLE AND IOS)
+  set(unbound_extra CPP=cpp)
+endif()
+
 build_external(unbound
   DEPENDS openssl_external expat_external
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
-  --enable-static --with-libunbound-only --with-pic
+  --enable-static --with-libunbound-only --with-pic --disable-gost
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
-  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" ${unbound_extra}
 )
 add_static_target(libunbound unbound_external libunbound.a)
 if(NOT WIN32)
@@ -315,7 +327,10 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
           --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
 add_static_target(sodium sodium_external libsodium.a)
 
-build_external(sqlite3)
+build_external(sqlite3 CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared --disable-readline --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  BUILD_COMMAND true
+  INSTALL_COMMAND make install-includeHEADERS install-libLTLIBRARIES)
+
 add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
@@ -331,10 +346,16 @@ if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
     PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
 endif()
 
+set(zmq_cross_host "${cross_host}")
+if(IOS AND cross_host MATCHES "-ios$")
+  # zmq doesn't like "-ios" for the host, so replace it with -darwin
+  string(REGEX REPLACE "-ios$" "-darwin" zmq_cross_host ${cross_host})
+endif()
+
 build_external(zmq
   DEPENDS sodium_external
   ${zmq_patch}
-  CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
+  CONFIGURE_COMMAND ./configure ${zmq_cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
     --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"

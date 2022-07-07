@@ -47,7 +47,7 @@ set(NTRU_AVX_SRC
 include(CheckCXXCompilerFlag)
 check_cxx_compiler_flag(-mavx2 COMPILER_SUPPORTS_AVX2)
 check_cxx_compiler_flag(-mfma COMPILER_SUPPORTS_FMA)
-if(COMPILER_SUPPORTS_AVX2 AND COMPILER_SUPPORTS_FMA AND (NOT ANDROID))
+if(COMPILER_SUPPORTS_AVX2 AND COMPILER_SUPPORTS_FMA AND (NOT (ANDROID OR IOS)))
   target_sources(lokinet-cryptography PRIVATE ${NTRU_AVX_SRC})
   set_property(SOURCE ${NTRU_AVX_SRC} APPEND PROPERTY COMPILE_FLAGS "-mavx2 -mfma")
   message(STATUS "Building libntrup with runtime AVX2/FMA support")

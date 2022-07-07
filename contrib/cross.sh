@@ -25,7 +25,10 @@ cmake_opts="-DBUILD_STATIC_DEPS=ON \
           -DSTATIC_LINK=ON \
           -DWITH_SYSTEMD=OFF \
           -DFORCE_OXENMQ_SUBMODULE=ON \
-          -DSUBMODULE_CHECK=OFF \
+          -DFORCE_OXENC_SUBMODULE=ON \
+          -DFORCE_NLOHMANN_SUBMODULE=ON \
+          -DFORCE_LIBUV_SUBMODULE=ON \
+          -DSUBMODULE_CHECK=ON \
           -DWITH_LTO=OFF \
           -DWITH_BOOTSTRAP=OFF \
           -DCMAKE_BUILD_TYPE=RelWithDeb"

@@ -130,7 +130,7 @@ add_library(liblokinet
   dht/taglookup.cpp
 
   endpoint_base.cpp
-  
+
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
@@ -223,7 +223,7 @@ add_library(liblokinet
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
 enable_lto(lokinet-util lokinet-platform liblokinet)
-  
+
 if(TRACY_ROOT)
   target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
 endif()
@@ -263,6 +263,32 @@ if(BUILD_LIBLOKINET)
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
   add_log_tag(lokinet-shared)
+endif()
+
+if(BUILD_EMBEDDED_LOKINET)
+  add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
+  target_link_libraries(lokinet-embedded-api PUBLIC liblokinet)
+  add_log_tag(lokinet-embedded-api)
+  combine_archives(lokinet-embedded
+    lokinet-embedded-api
+    lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
+    liblokinet
+    uv_a::uv_a
+    sodium
+    zlib
+    OpenSSL::SSL OpenSSL::Crypto
+    expat
+    libunbound
+    libzmq
+    oxenmq)
+  if(IOS)
+    set(lib_folder lib-${ARCH})
+  else()
+    set(lib_folder lib)
+  endif()
+  install(TARGETS lokinet-embedded
+    ARCHIVE DESTINATION ${lib_folder}
+    EXCLUDE_FROM_ALL)
 endif()
 
 if(APPLE)
