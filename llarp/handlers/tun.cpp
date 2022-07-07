@@ -25,6 +25,7 @@
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/dns/srv_data.hpp>
+#include <llarp/constants/platform.hpp>
 
 #include <oxenc/bt.h>
 
@@ -1064,6 +1065,15 @@ namespace llarp
       {
         dst = pkt.dstv6();
         src = pkt.srcv6();
+      }
+
+      if constexpr (llarp::platform::is_apple)
+      {
+        if (dst == m_OurIP)
+        {
+          HandleWriteIPPacket(pkt.ConstBuffer(), src, dst, 0);
+          return;
+        }
       }
 
       if (m_state->m_ExitEnabled)
