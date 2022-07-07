@@ -39,3 +39,6 @@
 [submodule "external/libuv"]
 	path = external/libuv
 	url = https://github.com/libuv/libuv
+[submodule "external/ios-cmake"]
+	path = external/ios-cmake
+	url = https://github.com/leetal/ios-cmake
