@@ -87,14 +87,14 @@ extern "C"
   {
     auto ptr = GetImpl<llarp::Context>(env, self);
 
-    return ptr->GetUDPSocket();
+    return ptr->router.m_OutboundUDPSocket;
   }
 
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv* env, jclass)
   {
     std::string rangestr{};
-    if (auto maybe = llarp::FindFreeRange())
+    if (auto maybe = llarp::net::Platform::Default().FindFreeRange())
     {
       rangestr = maybe->ToString();
     }

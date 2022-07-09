@@ -89,18 +89,18 @@ namespace llarp
     // fall back to undeclared handler if needed
     auto& sectionDefinitions = secItr->second;
     auto defItr = sectionDefinitions.find(std::string(name));
-    if (defItr == sectionDefinitions.end())
+    if (defItr != sectionDefinitions.end())
     {
-      if (not haveUndeclaredHandler)
-        throw std::invalid_argument{fmt::format("unrecognized option [{}]:{}", section, name)};
-      auto& handler = undItr->second;
-      handler(section, name, value);
+      OptionDefinition_ptr& definition = defItr->second;
+      definition->parseValue(std::string(value));
       return *this;
     }
 
-    OptionDefinition_ptr& definition = defItr->second;
-    definition->parseValue(std::string(value));
+    if (not haveUndeclaredHandler)
+      throw std::invalid_argument{fmt::format("unrecognized option [{}]: {}", section, name)};
 
+    auto& handler = undItr->second;
+    handler(section, name, value);
     return *this;
   }
 
@@ -142,9 +142,9 @@ namespace llarp
   void
   ConfigDefinition::acceptAllOptions()
   {
-    visitSections([&](const std::string& section, const DefinitionMap&) {
+    visitSections([this](const std::string& section, const DefinitionMap&) {
       visitDefinitions(
-          section, [&](const std::string&, const OptionDefinition_ptr& def) { def->tryAccept(); });
+          section, [](const std::string&, const OptionDefinition_ptr& def) { def->tryAccept(); });
     });
   }
 

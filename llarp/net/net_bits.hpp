@@ -48,4 +48,14 @@ namespace llarp
         return false;
     return true;
   }
+  namespace net
+  {
+    inline auto
+    ipaddr_netmask_bits(uint32_t bits, int af)
+    {
+      if (af == AF_INET6)
+        return netmask_ipv6_bits(bits);
+      return ExpandV4(netmask_ipv4_bits(bits));
+    };
+  }  // namespace net
 }  // namespace llarp

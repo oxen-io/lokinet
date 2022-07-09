@@ -70,22 +70,12 @@ namespace llarp
         .def(py::init<>())
         .def(
             "setOutboundLink",
-            [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
-              LinksConfig::LinkInfo info;
-              info.m_interface = std::move(_interface);
-              info.addressFamily = family;
-              info.port = port;
-              self.m_OutboundLink = std::move(info);
+            [](LinksConfig& self, std::string addr) {
+              self.OutboundLinks.emplace_back(std::move(addr));
             })
-        .def(
-            "addInboundLink",
-            [](LinksConfig& self, std::string _interface, int family, uint16_t port) {
-              LinksConfig::LinkInfo info;
-              info.m_interface = std::move(_interface);
-              info.addressFamily = family;
-              info.port = port;
-              self.m_InboundLinks.push_back(info);
-            });
+        .def("addInboundLink", [](LinksConfig& self, std::string addr) {
+          self.InboundListenAddrs.emplace_back(std::move(addr));
+        });
 
     py::class_<ApiConfig>(mod, "ApiConfig")
         .def(py::init<>())

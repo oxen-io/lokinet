@@ -18,14 +18,14 @@ namespace llarp::uv
   class UVWakeup;
   class UVRepeater;
 
-  class Loop final : public llarp::EventLoop
+  class Loop : public llarp::EventLoop
   {
    public:
     using Callback = std::function<void()>;
 
     Loop(size_t queue_size);
 
-    void
+    virtual void
     run() override;
 
     bool
@@ -63,7 +63,7 @@ namespace llarp::uv
     std::shared_ptr<EventLoopRepeater>
     make_repeater() override;
 
-    std::shared_ptr<llarp::UDPHandle>
+    virtual std::shared_ptr<llarp::UDPHandle>
     make_udp(UDPReceiveFunc on_recv) override;
 
     void
@@ -75,8 +75,11 @@ namespace llarp::uv
     bool
     inEventLoop() const override;
 
-   private:
+   protected:
     std::shared_ptr<uvw::Loop> m_Impl;
+    std::optional<std::thread::id> m_EventLoopThreadID;
+
+   private:
     std::shared_ptr<uvw::AsyncHandle> m_WakeUp;
     std::atomic<bool> m_Run;
     using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
@@ -91,8 +94,6 @@ namespace llarp::uv
     std::map<uint32_t, Callback> m_pendingCalls;
 
     std::unordered_map<int, std::shared_ptr<uvw::PollHandle>> m_Polls;
-
-    std::optional<std::thread::id> m_EventLoopThreadID;
 
     void
     wakeup() override;

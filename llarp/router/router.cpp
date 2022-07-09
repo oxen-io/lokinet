@@ -37,6 +37,8 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include <llarp/constants/platform.hpp>
+
 #include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;
@@ -580,8 +582,6 @@ namespace llarp
       _rc.netID = llarp::NetID();
     }
 
-    // IWP config
-    m_OutboundPort = conf.links.m_OutboundLink.port;
     // Router config
     _rc.SetNick(conf.router.m_nickname);
     _outboundSessionMaker.maxConnectedRouters = conf.router.m_maxConnectedRouters;
@@ -592,8 +592,20 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    if (auto maybe = conf.router.m_PublicIP)
-      _ourAddress = SockAddr{*maybe, conf.router.m_PublicPort};
+    if (auto maybe_ip = conf.links.PublicAddress)
+      _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
+    else if (auto maybe_ip = conf.router.PublicIP)
+      _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
+
+    if (_ourAddress)
+    {
+      if (auto maybe_port = conf.links.PublicPort)
+        _ourAddress->setPort(*maybe_port);
+      else if (auto maybe_port = conf.router.PublicPort)
+        _ourAddress->setPort(*maybe_port);
+      else
+        throw std::runtime_error{"public ip provided without public port"};
+    }
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
@@ -720,48 +732,10 @@ namespace llarp
         whitelistRouters,
         m_isServiceNode);
 
-    std::vector<LinksConfig::LinkInfo> inboundLinks = conf.links.m_InboundLinks;
-
-    if (inboundLinks.empty() and m_isServiceNode)
-    {
-      if (_ourAddress)
-      {
-        inboundLinks.push_back(LinksConfig::LinkInfo{
-            _ourAddress->hostString(), _ourAddress->Family(), _ourAddress->getPort()});
-      }
-      else
-        throw std::runtime_error{
-            "service node enabled but could not find a public IP to bind to; you need to set the "
-            "public-ip= and public-port= options"};
-    }
-
-    // create inbound links, if we are a service node
-    for (const LinksConfig::LinkInfo& serverConfig : inboundLinks)
-    {
-      auto server = iwp::NewInboundLink(
-          m_keyManager,
-          loop(),
-          util::memFn(&AbstractRouter::rc, this),
-          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-          util::memFn(&AbstractRouter::Sign, this),
-          nullptr,
-          util::memFn(&Router::ConnectionEstablished, this),
-          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&Router::ConnectionTimedOut, this),
-          util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::TriggerPump, this),
-          util::memFn(&AbstractRouter::QueueWork, this));
-
-      const std::string& key = serverConfig.m_interface;
-      int af = serverConfig.addressFamily;
-      uint16_t port = serverConfig.port;
-      if (!server->Configure(this, key, af, port))
-      {
-        throw std::runtime_error{
-            fmt::format("failed to bind inbound link on {} port {}", key, port)};
-      }
-      _linkManager.AddLink(std::move(server), true);
-    }
+    // inbound links
+    InitInboundLinks();
+    // outbound links
+    InitOutboundLinks();
 
     // profiling
     _profilesFile = conf.router.m_dataDir / "profiles.dat";
@@ -1234,13 +1208,20 @@ namespace llarp
       AddressInfo ai;
       if (link->GetOurAddressInfo(ai))
       {
-        // override ip and port
+        // override ip and port as needed
         if (_ourAddress)
         {
+          if (not Net().IsBogon(ai.ip))
+            throw std::runtime_error{"cannot override public ip, it is already set"};
           ai.fromSockAddr(*_ourAddress);
         }
         if (RouterContact::BlockBogons && IsBogon(ai.ip))
-          return;
+          throw std::runtime_error{var::visit(
+              [](auto&& ip) {
+                return "cannot use " + ip.ToString()
+                    + " as a public ip as it is in a non routable ip range";
+              },
+              ai.IP())};
         LogInfo("adding address: ", ai);
         _rc.addrs.push_back(ai);
       }
@@ -1265,12 +1246,6 @@ namespace llarp
     if (!_rc.Sign(identity()))
     {
       LogError("failed to sign rc");
-      return false;
-    }
-
-    if (not InitOutboundLinks())
-    {
-      LogError("failed to init outbound links");
       return false;
     }
 
@@ -1603,47 +1578,116 @@ namespace llarp
     return found;
   }
 
-  bool
+  void
+  Router::InitInboundLinks()
+  {
+    auto addrs = m_Config->links.InboundListenAddrs;
+    if (m_isServiceNode and addrs.empty())
+    {
+      LogInfo("Inferring Public Address");
+
+      auto maybe_port = m_Config->links.PublicPort;
+      if (m_Config->router.PublicPort and not maybe_port)
+        maybe_port = m_Config->router.PublicPort;
+      if (not maybe_port)
+        maybe_port = net::port_t::from_host(constants::DefaultInboundIWPPort);
+
+      if (auto maybe_addr = Net().MaybeInferPublicAddr(*maybe_port))
+      {
+        LogInfo("Public Address looks to be ", *maybe_addr);
+        addrs.emplace_back(std::move(*maybe_addr));
+      }
+    }
+    if (m_isServiceNode and addrs.empty())
+      throw std::runtime_error{"we are a service node and we have no inbound links configured"};
+
+    // create inbound links, if we are a service node
+    for (auto bind_addr : addrs)
+    {
+      if (bind_addr.getPort() == 0)
+        throw std::invalid_argument{"inbound link cannot use port 0"};
+
+      if (Net().IsWildcardAddress(bind_addr.getIP()))
+      {
+        if (auto maybe_ip = OurPublicIP())
+          bind_addr.setIP(*maybe_ip);
+        else
+          throw std::runtime_error{"no public ip provided for inbound socket"};
+      }
+
+      auto server = iwp::NewInboundLink(
+          m_keyManager,
+          loop(),
+          util::memFn(&AbstractRouter::rc, this),
+          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
+          util::memFn(&AbstractRouter::Sign, this),
+          nullptr,
+          util::memFn(&Router::ConnectionEstablished, this),
+          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
+          util::memFn(&Router::ConnectionTimedOut, this),
+          util::memFn(&AbstractRouter::SessionClosed, this),
+          util::memFn(&AbstractRouter::TriggerPump, this),
+          util::memFn(&AbstractRouter::QueueWork, this));
+
+      server->Bind(this, bind_addr);
+      _linkManager.AddLink(std::move(server), true);
+    }
+  }
+
+  void
   Router::InitOutboundLinks()
   {
-    auto link = iwp::NewOutboundLink(
-        m_keyManager,
-        loop(),
-        util::memFn(&AbstractRouter::rc, this),
-        util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-        util::memFn(&AbstractRouter::Sign, this),
-        [&](llarp::RouterContact rc) {
-          if (IsServiceNode())
-            return;
-          llarp::LogTrace(
-              "Before connect, outbound link adding route to (",
-              rc.addrs[0].toIpAddress().toIP(),
-              ") via gateway.");
-          m_RoutePoker.AddRoute(rc.addrs[0].toIpAddress().toIP());
-        },
-        util::memFn(&Router::ConnectionEstablished, this),
-        util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-        util::memFn(&Router::ConnectionTimedOut, this),
-        util::memFn(&AbstractRouter::SessionClosed, this),
-        util::memFn(&AbstractRouter::TriggerPump, this),
-        util::memFn(&AbstractRouter::QueueWork, this));
+    auto addrs = m_Config->links.OutboundLinks;
+    if (addrs.empty())
+      addrs.emplace_back(Net().Wildcard());
 
-    if (!link)
-      throw std::runtime_error("NewOutboundLink() failed to provide a link");
-
-    for (const auto af : {AF_INET, AF_INET6})
+    for (auto bind_addr : addrs)
     {
-      if (not link->Configure(this, "*", af, m_OutboundPort))
-        continue;
+      auto link = iwp::NewOutboundLink(
+          m_keyManager,
+          loop(),
+          util::memFn(&AbstractRouter::rc, this),
+          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
+          util::memFn(&AbstractRouter::Sign, this),
+          [this](llarp::RouterContact rc) {
+            if (IsServiceNode())
+              return;
+            llarp::LogTrace(
+                "Before connect, outbound link adding route to (",
+                rc.addrs[0].toIpAddress().toIP(),
+                ") via gateway.");
+            m_RoutePoker.AddRoute(rc.addrs[0].toIpAddress().toIP());
+          },
+          util::memFn(&Router::ConnectionEstablished, this),
+          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
+          util::memFn(&Router::ConnectionTimedOut, this),
+          util::memFn(&AbstractRouter::SessionClosed, this),
+          util::memFn(&AbstractRouter::TriggerPump, this),
+          util::memFn(&AbstractRouter::QueueWork, this));
 
-#if defined(ANDROID)
-      m_OutboundUDPSocket = link->GetUDPFD().value_or(-1);
-#endif
+      const auto& net = Net();
+
+      // try to use a public address if we have one set on our inbound links
+      _linkManager.ForEachInboundLink([&bind_addr, &net](const auto& link) {
+        if (not net.IsBogon(bind_addr))
+          return;
+        if (auto addr = link->LocalSocketAddr(); not net.IsBogon(addr))
+          bind_addr.setIP(addr.getIP());
+      });
+
+      link->Bind(this, bind_addr);
+
+      if constexpr (llarp::platform::is_android)
+        m_OutboundUDPSocket = link->GetUDPFD().value_or(-1);
+
       _linkManager.AddLink(std::move(link), false);
-      return true;
     }
-    throw std::runtime_error{
-        fmt::format("Failed to init AF_INET and AF_INET6 on port {}", m_OutboundPort)};
+  }
+
+  const llarp::net::Platform&
+  Router::Net() const
+  {
+    return *llarp::net::Platform::Default_ptr();
   }
 
   void

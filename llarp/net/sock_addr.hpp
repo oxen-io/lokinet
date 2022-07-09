@@ -101,6 +101,15 @@ namespace llarp
     void
     setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
+    inline void
+    setIP(std::variant<nuint32_t, nuint128_t> ip)
+    {
+      if (auto* v4 = std::get_if<nuint32_t>(&ip))
+        setIPv4(*v4);
+      if (auto* v6 = std::get_if<nuint128_t>(&ip))
+        setIPv6(*v6);
+    }
+
     void
     setIPv4(nuint32_t ip);
 
@@ -143,6 +152,7 @@ namespace llarp
     getIPv6() const;
     nuint32_t
     getIPv4() const;
+
     std::variant<nuint32_t, nuint128_t>
     getIP() const;
 

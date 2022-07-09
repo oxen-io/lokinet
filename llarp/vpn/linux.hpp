@@ -21,6 +21,9 @@
 
 #include <oxenc/endian.h>
 
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp.hpp>
+
 namespace llarp::vpn
 {
   struct in6_ifreq
@@ -290,7 +293,7 @@ namespace llarp::vpn
     DefaultRouteViaInterface(std::string ifname, int cmd, int flags)
     {
       int if_idx = if_nametoindex(ifname.c_str());
-      const auto maybe = GetInterfaceAddr(ifname);
+      const auto maybe = Net().GetInterfaceAddr(ifname);
       if (not maybe)
         throw std::runtime_error{"we dont have our own network interface?"};
 
@@ -301,7 +304,7 @@ namespace llarp::vpn
       Route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, if_idx);
       Route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, if_idx);
 
-      if (const auto maybe6 = GetInterfaceIPv6Address(ifname))
+      if (const auto maybe6 = Net().GetInterfaceIPv6Address(ifname))
       {
         const _inet_addr gateway6{*maybe6, 128};
         for (const std::string str : {"::", "4000::", "8000::", "c000::"})
@@ -320,7 +323,7 @@ namespace llarp::vpn
       int if_idx = if_nametoindex(ifname.c_str());
       if (range.IsV4())
       {
-        const auto maybe = GetInterfaceAddr(ifname);
+        const auto maybe = Net().GetInterfaceAddr(ifname);
         if (not maybe)
           throw std::runtime_error{"we dont have our own network interface?"};
 
@@ -333,7 +336,7 @@ namespace llarp::vpn
       }
       else
       {
-        const auto maybe = GetInterfaceIPv6Address(ifname);
+        const auto maybe = Net().GetInterfaceIPv6Address(ifname);
         if (not maybe)
           throw std::runtime_error{"we dont have our own network interface?"};
         const _inet_addr gateway{*maybe, 128};

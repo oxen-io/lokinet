@@ -18,7 +18,8 @@ add_executable(testAll
   config/test_llarp_config_definition.cpp
   config/test_llarp_config_ini.cpp
   config/test_llarp_config_output.cpp
-  crypto/test_llarp_crypto_types.cpp
+  config/test_llarp_config_values.cpp
+  crypto/test_llarp_crypto_types.cpp 
   crypto/test_llarp_crypto.cpp
   crypto/test_llarp_key_manager.cpp
   dns/test_llarp_dns_dns.cpp
@@ -29,7 +30,6 @@ add_executable(testAll
   path/test_path.cpp
   peerstats/test_peer_db.cpp
   peerstats/test_peer_types.cpp
-  regress/2020-06-08-key-backup-bug.cpp
   router/test_llarp_router_version.cpp
   routing/test_llarp_routing_transfer_traffic.cpp
   routing/test_llarp_routing_obtainexitmessage.cpp

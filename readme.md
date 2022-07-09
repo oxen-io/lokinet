@@ -16,11 +16,11 @@ Tier 1:
 
 * [Linux](#linux-install)
 * [Android](#apk-install)
+* [Windows](#windows-install)
+* [MacOS](#mac-install)
 
 Tier 2:
 
-* [Windows](#windows-install)
-* [MacOS](#mac-install)
 * [FreeBSD](#freebsd-install)
 
 Currently Unsupported Platforms: (maintainers welcome)

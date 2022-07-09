@@ -170,7 +170,7 @@ if(NOT TARGET sodium)
 endif()
 
 if(NOT APPLE)
-  add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
+  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-unknown-warning-option)
   endif()

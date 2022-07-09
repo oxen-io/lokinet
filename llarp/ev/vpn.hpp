@@ -76,6 +76,15 @@ namespace llarp::vpn
     IRouteManager(IRouteManager&&) = delete;
     virtual ~IRouteManager() = default;
 
+    virtual const llarp::net::Platform*
+    Net_ptr() const;
+
+    inline const llarp::net::Platform&
+    Net() const
+    {
+      return *Net_ptr();
+    }
+
     virtual void
     AddRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
 

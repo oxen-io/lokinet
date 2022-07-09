@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <llarp/util/formattable.hpp>
+#include <oxenc/variant.h>
 
 #include "uint128.hpp"
 
@@ -105,7 +106,7 @@ namespace llarp
     }
 
     using V6Container = std::vector<uint8_t>;
-    void
+    [[deprecated]] void
     ToV6(V6Container& c);
 
     std::string
@@ -174,7 +175,7 @@ namespace llarp
     }
 
     using V6Container = std::vector<uint8_t>;
-    void
+    [[deprecated]] void
     ToV6(V6Container& c);
 
     std::string
@@ -189,49 +190,86 @@ namespace llarp
       *this = ToNet(x);
       return true;
     }
+
+    inline static nuint_t<UInt_t>
+    from_string(const std::string& str)
+    {
+      nuint_t<UInt_t> x{};
+      if (not x.FromString(str))
+        throw std::invalid_argument{fmt::format("{} is not a valid value")};
+      return x;
+    }
+
+    template <typename... Args_t>
+    inline static nuint_t<UInt_t>
+    from_host(Args_t&&... args)
+    {
+      return ToNet(huint_t<UInt_t>{std::forward<Args_t>(args)...});
+    }
   };
 
-  template <typename UInt_t>
-  inline constexpr bool IsToStringFormattable<huint_t<UInt_t>> = true;
+  namespace net
+  {
+    /// hides the nuint types used with net_port_t / net_ipv4addr_t / net_ipv6addr_t
+    namespace
+    {
+      using n_uint16_t = llarp::nuint_t<uint16_t>;
+      using n_uint32_t = llarp::nuint_t<uint32_t>;
+      using n_uint128_t = llarp::nuint_t<llarp::uint128_t>;
+    }  // namespace
+
+    using port_t = n_uint16_t;
+    using ipv4addr_t = n_uint32_t;
+    using flowlabel_t = n_uint32_t;
+    using ipv6addr_t = n_uint128_t;
+    using ipaddr_t = std::variant<ipv4addr_t, ipv6addr_t>;
+
+    huint16_t ToHost(port_t);
+    huint32_t ToHost(ipv4addr_t);
+    huint128_t ToHost(ipv6addr_t);
+
+    port_t ToNet(huint16_t);
+    ipv4addr_t ToNet(huint32_t);
+    ipv6addr_t ToNet(huint128_t);
+
+  }  // namespace net
+
+  template <>
+  inline constexpr bool IsToStringFormattable<huint128_t> = true;
+  template <>
+  inline constexpr bool IsToStringFormattable<huint32_t> = true;
+  template <>
+  inline constexpr bool IsToStringFormattable<huint16_t> = true;
+  template <>
+  inline constexpr bool IsToStringFormattable<net::ipv6addr_t> = true;
+  template <>
+  inline constexpr bool IsToStringFormattable<net::ipv4addr_t> = true;
+  template <>
+  inline constexpr bool IsToStringFormattable<net::port_t> = true;
+
+  using nuint16_t [[deprecated("use llarp::net::port_t instead")]] = llarp::net::port_t;
+  using nuint32_t [[deprecated("use llarp::net::ipv4addr_t instead")]] = llarp::net::ipv4addr_t;
+  using nuint128_t [[deprecated("use llarp::net::ipv6addr_t instead")]] = llarp::net::ipv6addr_t;
 
   template <typename UInt_t>
-  inline constexpr bool IsToStringFormattable<nuint_t<UInt_t>> = true;
+  [[deprecated("use llarp::net::ToNet instead")]] inline llarp::nuint_t<UInt_t>
+  ToNet(llarp::huint_t<UInt_t> x)
+  {
+    return llarp::net::ToNet(x);
+  }
 
-  using nuint32_t = nuint_t<uint32_t>;
-  using nuint16_t = nuint_t<uint16_t>;
-  using nuint128_t = nuint_t<llarp::uint128_t>;
+  template <typename UInt_t>
+  [[deprecated("use llarp::net::ToHost instead")]] inline llarp::huint_t<UInt_t>
+  ToHost(llarp::nuint_t<UInt_t> x)
+  {
+    return llarp::net::ToHost(x);
+  }
 
-  static inline nuint32_t
+  [[deprecated("use llarp::net::ToHost instead")]] inline net::ipv4addr_t
   xhtonl(huint32_t x)
   {
-    return nuint32_t{htonl(x.h)};
+    return ToNet(x);
   }
-
-  static inline huint32_t
-  xntohl(nuint32_t x)
-  {
-    return huint32_t{ntohl(x.n)};
-  }
-
-  static inline nuint16_t
-  xhtons(huint16_t x)
-  {
-    return nuint16_t{htons(x.h)};
-  }
-
-  static inline huint16_t
-  xntohs(nuint16_t x)
-  {
-    return huint16_t{ntohs(x.n)};
-  }
-
-  huint16_t ToHost(nuint16_t);
-  huint32_t ToHost(nuint32_t);
-  huint128_t ToHost(nuint128_t);
-
-  nuint16_t ToNet(huint16_t);
-  nuint32_t ToNet(huint32_t);
-  nuint128_t ToNet(huint128_t);
 }  // namespace llarp
 
 namespace std
