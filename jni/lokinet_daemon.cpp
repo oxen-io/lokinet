@@ -77,24 +77,24 @@ extern "C"
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv* env, jobject self)
   {
-    auto ptr = GetImpl<llarp::Context>(env, self);
-
-    ptr->androidFD = GetObjectMemberAsInt<int>(env, self, "m_FD");
+    if (auto ptr = GetImpl<llarp::Context>(env, self))
+      ptr->androidFD = GetObjectMemberAsInt<int>(env, self, "m_FD");
   }
 
   JNIEXPORT jint JNICALL
   Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
   {
     auto ptr = GetImpl<llarp::Context>(env, self);
-
-    return ptr->router.m_OutboundUDPSocket;
+    if (const auto& router = ptr->router; ptr and ptr->router)
+      return router->OutboundUDPSocket();
+    return -1;
   }
 
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv* env, jclass)
   {
     std::string rangestr{};
-    if (auto maybe = llarp::net::Platform::Default().FindFreeRange())
+    if (auto maybe = llarp::net::Platform::Default_ptr()->FindFreeRange())
     {
       rangestr = maybe->ToString();
     }

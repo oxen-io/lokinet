@@ -1190,6 +1190,12 @@ namespace llarp
     return true;
   }
 
+  int
+  Router::OutboundUDPSocket() const
+  {
+    return m_OutboundUDPSocket;
+  }
+
   bool
   Router::Run()
   {

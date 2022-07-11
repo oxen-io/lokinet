@@ -100,13 +100,7 @@ namespace llarp
     virtual std::shared_ptr<llarp::vpn::Platform>
     makeVPNPlatform();
 
-#ifdef ANDROID
-
     int androidFD = -1;
-
-    int
-    GetUDPSocket();
-#endif
 
    protected:
     std::shared_ptr<Config> config = nullptr;

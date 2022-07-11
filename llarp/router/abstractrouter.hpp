@@ -354,10 +354,8 @@ namespace llarp
       HandleRouterEvent(std::move(event));
     }
 
-#if defined(ANDROID)
     virtual int
-    GetOutboundUDPSocket() const = 0;
-#endif
+    OutboundUDPSocket() const = 0;
 
    protected:
     /// Virtual function to handle RouterEvent. HiveRouter overrides this in
