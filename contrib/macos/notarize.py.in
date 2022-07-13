@@ -68,24 +68,27 @@ while not done:
         '--notarization-info', uuid,
         *userpass,
         '--output-format', 'xml'
-        ], stdout=subprocess.PIPE)
-    result.check_returncode()
-    data = plistlib.loads(result.stdout)
-    if 'notarization-info' not in data or 'Status' not in data['notarization-info']:
-        status = 'Request failed'
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode == 1 and b'Gateway Timeout' in result.stderr:
+        status = "Apple's servers are trash (aka Gateway Timeout)"
     else:
-        status = data['notarization-info']['Status Message'] if 'Status Message' in data['notarization-info'] else ''
-        st = data['notarization-info']['Status']
-        if st == 'success':
-            success = True
-            done = True
-        elif st == 'invalid':
-            done = True
-        elif st == 'in progress' and len(status) == 0:
-            status = 'Notarization in progress'
+        result.check_returncode()
+        data = plistlib.loads(result.stdout)
+        if 'notarization-info' not in data or 'Status' not in data['notarization-info']:
+            status = 'Request failed'
+        else:
+            status = data['notarization-info']['Status Message'] if 'Status Message' in data['notarization-info'] else ''
+            st = data['notarization-info']['Status']
+            if st == 'success':
+                success = True
+                done = True
+            elif st == 'invalid':
+                done = True
+            elif st == 'in progress' and len(status) == 0:
+                status = 'Notarization in progress'
 
-        if done and 'LogFileURL' in data['notarization-info']:
-            status += '\n\nlog file: {}'.format(data['notarization-info']['LogFileURL'])
+            if done and 'LogFileURL' in data['notarization-info']:
+                status += '\n\nlog file: {}'.format(data['notarization-info']['LogFileURL'])
 
     elapsed = time.time() - started_waiting
     mins, secs = int(elapsed // 60), int(elapsed % 60)
