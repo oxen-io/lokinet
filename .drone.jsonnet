@@ -1,4 +1,5 @@
 // force change distro change
+// jobs < 4 (3)
 local distro = "fedora-36";
 local distro_name = 'Fedora 36';
 local distro_docker = 'fedora:36';
@@ -43,5 +44,5 @@ local rpm_pipeline(image, buildarch='amd64', rpmarch='x86_64', jobs=6) = {
 
 [
      rpm_pipeline(distro_docker),
-     rpm_pipeline("arm64v8/" + distro_docker, buildarch='arm64', rpmarch="aarch64", jobs=4)
+     rpm_pipeline("arm64v8/" + distro_docker, buildarch='arm64', rpmarch="aarch64", jobs=3)
 ]
