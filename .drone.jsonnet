@@ -1,5 +1,3 @@
-// force change distro change
-// jobs < 4 (3)
 local distro = "fedora-36";
 local distro_name = 'Fedora 36';
 local distro_docker = 'fedora:36';
