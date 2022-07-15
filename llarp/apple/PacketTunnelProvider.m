@@ -209,8 +209,12 @@ static void del_default_route(void* ctx) {
   // We don't have a fixed address so just stick some bogus value here:
   settings = [[NEPacketTunnelNetworkSettings alloc] initWithTunnelRemoteAddress:@"127.3.2.1"];
 
+#ifdef MACOS_SYSTEM_EXTENSION
   NSString* dns_ip = [NSString stringWithUTF8String:conf.dns_bind_ip];
-
+#else
+  // TODO: placeholder
+  NSString* dns_ip = @"127.0.0.1";
+#endif
   NSLog(@"setting dns to %@", dns_ip);
   NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[dns_ip]];
   dns.domainName = @"localhost.loki";
