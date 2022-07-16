@@ -1,14 +1,13 @@
 #include "params.h"
-#include <sodium/crypto_uint32.h>
 #include "rq.h"
 
 void
-rq_encoderounded(unsigned char *c, const modq *f)
+rq_encoderounded(unsigned char* c, const modq* f)
 {
   crypto_int32 f0, f1, f2;
   int i;
 
-  for(i = 0; i < p / 3; ++i)
+  for (i = 0; i < p / 3; ++i)
   {
     f0 = *f++ + qshift;
     f1 = *f++ + qshift;
@@ -44,13 +43,13 @@ rq_encoderounded(unsigned char *c, const modq *f)
 }
 
 void
-rq_decoderounded(modq *f, const unsigned char *c)
+rq_decoderounded(modq* f, const unsigned char* c)
 {
   crypto_uint32 c0, c1, c2, c3;
   crypto_uint32 f0, f1, f2;
   int i;
 
-  for(i = 0; i < p / 3; ++i)
+  for (i = 0; i < p / 3; ++i)
   {
     c0 = *c++;
     c1 = *c++;

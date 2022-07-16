@@ -7,11 +7,9 @@
 #include "small.h"
 #include "rq.h"
 #include <sodium/crypto_hash_sha512.h>
-#include <sodium/crypto_kem.h>
 
 int
-crypto_kem_enc_ref(unsigned char *cstr, unsigned char *k,
-                   const unsigned char *pk)
+crypto_kem_enc_ref(unsigned char* cstr, unsigned char* k, const unsigned char* pk)
 {
   small r[p];
   modq h[p];
@@ -25,10 +23,10 @@ crypto_kem_enc_ref(unsigned char *cstr, unsigned char *k,
   {
     int i;
     printf("encrypt r:");
-    for(i = 0; i < p; ++i)
-      if(r[i] == 1)
+    for (i = 0; i < p; ++i)
+      if (r[i] == 1)
         printf(" +%d", i);
-      else if(r[i] == -1)
+      else if (r[i] == -1)
         printf(" -%d", i);
     printf("\n");
   }

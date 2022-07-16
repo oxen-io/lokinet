@@ -83,18 +83,8 @@ namespace llarp
     CryptoLibSodium::CryptoLibSodium()
     {
       if (sodium_init() == -1)
-      {
         throw std::runtime_error("sodium_init() returned -1");
-      }
-      char* avx2 = std::getenv("AVX2_FORCE_DISABLE");
-      if (avx2 && std::string(avx2) == "1")
-      {
-        ntru_init(1);
-      }
-      else
-      {
-        ntru_init(0);
-      }
+
       int seed = 0;
       randombytes(reinterpret_cast<unsigned char*>(&seed), sizeof(seed));
       srand(seed);

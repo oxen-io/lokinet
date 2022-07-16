@@ -2,7 +2,6 @@
 #define mod3_h
 
 #include "small.h"
-#include <sodium/crypto_int32.h>
 
 /* -1 if x is nonzero, 0 otherwise */
 static inline int

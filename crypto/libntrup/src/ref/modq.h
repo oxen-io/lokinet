@@ -1,10 +1,7 @@
 #ifndef modq_h
 #define modq_h
 
-#include <sodium/crypto_int16.h>
-#include <sodium/crypto_int32.h>
-#include <sodium/crypto_uint16.h>
-#include <sodium/crypto_uint32.h>
+#include "details.h"
 
 typedef crypto_int16 modq;
 
@@ -13,7 +10,7 @@ static inline int
 modq_nonzero_mask(modq x)
 {
   crypto_int32 r = (crypto_uint16)x;
-  r              = -r;
+  r = -r;
   r >>= 30;
   return r;
 }
@@ -72,18 +69,18 @@ modq_sum(modq a, modq b)
 static inline modq
 modq_reciprocal(modq a1)
 {
-  modq a2    = modq_square(a1);
-  modq a3    = modq_product(a2, a1);
-  modq a4    = modq_square(a2);
-  modq a8    = modq_square(a4);
-  modq a16   = modq_square(a8);
-  modq a32   = modq_square(a16);
-  modq a35   = modq_product(a32, a3);
-  modq a70   = modq_square(a35);
-  modq a140  = modq_square(a70);
-  modq a143  = modq_product(a140, a3);
-  modq a286  = modq_square(a143);
-  modq a572  = modq_square(a286);
+  modq a2 = modq_square(a1);
+  modq a3 = modq_product(a2, a1);
+  modq a4 = modq_square(a2);
+  modq a8 = modq_square(a4);
+  modq a16 = modq_square(a8);
+  modq a32 = modq_square(a16);
+  modq a35 = modq_product(a32, a3);
+  modq a70 = modq_square(a35);
+  modq a140 = modq_square(a70);
+  modq a143 = modq_product(a140, a3);
+  modq a286 = modq_square(a143);
+  modq a572 = modq_square(a286);
   modq a1144 = modq_square(a572);
   modq a1147 = modq_product(a1144, a3);
   modq a2294 = modq_square(a1147);

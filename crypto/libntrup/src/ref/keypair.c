@@ -4,18 +4,16 @@
 #include "r3.h"
 #include "small.h"
 #include "rq.h"
-#include <sodium/crypto_kem.h>
 
 #if crypto_kem_PUBLICKEYBYTES != rq_encode_len
 #error "crypto_kem_PUBLICKEYBYTES must match rq_encode_len"
 #endif
 #if crypto_kem_SECRETKEYBYTES != rq_encode_len + 2 * small_encode_len
-#error \
-    "crypto_kem_SECRETKEYBYTES must match rq_encode_len + 2 * small_encode_len"
+#error "crypto_kem_SECRETKEYBYTES must match rq_encode_len + 2 * small_encode_len"
 #endif
 
 int
-crypto_kem_keypair_ref(unsigned char *pk, unsigned char *sk)
+crypto_kem_keypair_ref(unsigned char* pk, unsigned char* sk)
 {
   small g[p];
   small grecip[p];
@@ -25,7 +23,7 @@ crypto_kem_keypair_ref(unsigned char *pk, unsigned char *sk)
 
   do
     small_random(g);
-  while(r3_recip(grecip, g) != 0);
+  while (r3_recip(grecip, g) != 0);
 
   small_random_weightw(f);
   rq_recip3(f3recip, f);
