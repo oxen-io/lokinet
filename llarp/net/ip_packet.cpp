@@ -194,6 +194,18 @@ namespace llarp::net
     return ExpandV4Lan(srcv4());
   }
 
+  /// take in a 32 bit int and make sure it's its 16 bit one's complement version
+  static uint16_t
+  ipchksum_reduce(uint32_t sum)
+  {
+    // only need to do it 2 times to be sure
+    // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
+    sum = (sum & 0xFFff) + (sum >> 16);
+    sum += sum >> 16;
+
+    return uint16_t((~sum) & 0xFFff);
+  }
+
   uint16_t
   ipchksum(const byte_t* buf, size_t sz, uint32_t sum)
   {
@@ -211,12 +223,7 @@ namespace llarp::net
       sum += x;
     }
 
-    // only need to do it 2 times to be sure
-    // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
-    sum = (sum & 0xFFff) + (sum >> 16);
-    sum += sum >> 16;
-
-    return uint16_t((~sum) & 0xFFff);
+    return ipchksum_reduce(sum);
   }
 
 #define ADD32CS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
@@ -549,56 +556,103 @@ namespace llarp::net
   }
 
   std::optional<IPPacket>
-  IPPacket::MakeICMPUnreachable() const
+  IPPacket::MakeReject() const
   {
-    if (IsV4())
+    // see: rfc1812 4.3.2.7 ( https://www.rfc-editor.org/rfc/rfc1812#section-4.3.2.7 )
     {
-      constexpr auto icmp_Header_size = 8;
-      constexpr auto ip_Header_size = 20;
-      net::IPPacket pkt{};
-      auto* pkt_Header = pkt.Header();
+      // do not reply to icmp errors
+      if (Header()->protocol == 1 and buf[Header()->ihl * 4] == 3)
+        return std::nullopt;
 
-      pkt_Header->version = 4;
-      pkt_Header->ihl = 0x05;
-      pkt_Header->tos = 0;
-      pkt_Header->check = 0;
-      pkt_Header->tot_len = ntohs(icmp_Header_size + ip_Header_size);
-      pkt_Header->saddr = Header()->daddr;
-      pkt_Header->daddr = Header()->saddr;
-      pkt_Header->protocol = 1;  // ICMP
-      pkt_Header->ttl = 1;
-      pkt_Header->frag_off = htons(0b0100000000000000);
-      // size pf ip header
-      const size_t l3_HeaderSize = Header()->ihl * 4;
-      // size of l4 packet to reflect back
-      const size_t l4_PacketSize = 8;
-      pkt_Header->tot_len += ntohs(l4_PacketSize + l3_HeaderSize);
+      // do not reply to multicast
+      auto multicast = IPRange::FromIPv4(224, 0, 0, 0, 4);
+      if (multicast.Contains(dstv4()))
+        return std::nullopt;
+      // do not reply to broadcast
+      uint32_t broadcast = 0xffff'ffff;
+      if (Header()->daddr == broadcast)
+        return std::nullopt;
+    }
 
+    // TODO: ipv6
+    if (not IsV4())
+      return std::nullopt;
+
+    const bool is_tcp = Header()->protocol == 6;
+
+    constexpr auto icmp_Header_size = 8;
+    constexpr auto tcp_Header_size = 20;
+    net::IPPacket pkt{};
+    auto* pkt_Header = pkt.Header();
+
+    pkt_Header->version = 4;
+    pkt_Header->ihl = 0x05;
+    pkt_Header->tos = 0;
+    pkt_Header->check = 0;
+    pkt_Header->saddr = Header()->daddr;
+    pkt_Header->daddr = Header()->saddr;
+    pkt_Header->ttl = Header()->ttl;
+    pkt_Header->frag_off = htons(0b0100000000000000);
+    // use tcp for tcp otherwise imcp
+    pkt_Header->protocol = is_tcp ? 6 : 1;
+    // size pf ip header
+    const size_t l3_HeaderSize = Header()->ihl * 4;
+    // size of l4 packet to reflect back
+    const size_t l4_PacketSize = is_tcp ? tcp_Header_size : icmp_Header_size;
+    const auto pkt_size = l4_PacketSize + l3_HeaderSize;
+    pkt_Header->tot_len = htons(pkt_size);
+    pkt.sz = pkt_size;
+    uint8_t* itr = pkt.buf + (pkt_Header->ihl * 4);
+    if (is_tcp)
+    {
+      // copy tcp segment
+      std::copy_n(buf + l3_HeaderSize, l4_PacketSize, itr);
+      // zero tcp checksum
+      oxenc::write_host_as_big<uint16_t>(0, itr + 16);
+      // zero data offset and ns bit cleared
+      itr[12] = 0x00;
+      // tcp rst flag set
+      itr[13] = 0x04;
+      // psuedo header
+      uint32_t sum{};
+      uint16_t proto = htons(6);
+      uint16_t tcplen = htons(tcp_Header_size);
+      sum = ipchksum((const byte_t*)&pkt_Header->saddr, 4, sum);
+      sum = ipchksum((const byte_t*)&pkt_Header->daddr, 4, sum);
+      sum = ipchksum((const byte_t*)&proto, 2, sum);
+      sum = ipchksum((const byte_t*)&tcplen, 2, sum);
+      // tcp header
+      sum = ipchksum(itr, tcp_Header_size, sum);
+      // put tcp checksum
+      oxenc::write_host_as_big<uint16_t>(ipchksum_reduce(sum), itr + 16);
+    }
+    else
+    {
       uint16_t* checksum;
-      uint8_t* itr = pkt.buf + (pkt_Header->ihl * 4);
-      uint8_t* icmp_begin = itr;  // type 'destination unreachable'
+      uint8_t* icmp_begin = itr;
+      // type 'destination unreachable'
       *itr++ = 3;
-      // code	'Destination host unknown error'
-      *itr++ = 7;
+      // code	'host unreachable'
+      *itr++ = 1;
       // checksum + unused
       oxenc::write_host_as_big<uint32_t>(0, itr);
-      checksum = (uint16_t*)itr;
+      checksum = reinterpret_cast<uint16_t*>(itr);
       itr += 4;
       // next hop mtu is ignored but let's put something here anyways just in case tm
       oxenc::write_host_as_big<uint16_t>(1500, itr);
       itr += 2;
-      // copy ip header and first 8 bytes of datagram for icmp rject
+
+      // copy ip header and first 8 bytes of datagram for icmp reject
       std::copy_n(buf, l4_PacketSize + l3_HeaderSize, itr);
       itr += l4_PacketSize + l3_HeaderSize;
-      // calculate checksum of ip header
-      pkt_Header->check = ipchksum(pkt.buf, pkt_Header->ihl * 4);
+
       const auto icmp_size = std::distance(icmp_begin, itr);
       // calculate icmp checksum
       *checksum = ipchksum(icmp_begin, icmp_size);
-      pkt.sz = ntohs(pkt_Header->tot_len);
-      return pkt;
     }
-    return std::nullopt;
+    // calculate checksum of ip header
+    pkt.Header()->check = ipchksum(pkt.buf, pkt_Header->ihl * 4);
+    return pkt;
   }
 
   std::optional<std::pair<const char*, size_t>>
