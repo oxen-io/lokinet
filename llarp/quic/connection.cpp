@@ -2,7 +2,7 @@
 #include "client.hpp"
 #include "server.hpp"
 #include <limits>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
 #include <cassert>
@@ -32,10 +32,10 @@ namespace llarp::quic
     std::memmove(data, cid, datalen);
   }
 
-  std::ostream&
-  operator<<(std::ostream& o, const ConnectionID& c)
+  std::string
+  ConnectionID::ToString() const
   {
-    return o << oxenc::to_hex(c.data, c.data + c.datalen);
+    return oxenc::to_hex(data, data + datalen);
   }
 
   ConnectionID

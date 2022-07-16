@@ -40,11 +40,12 @@ namespace llarp
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;
+
+    std::string
+    ToString() const;
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const PoW& p)
-  {
-    return p.print(out, -1, -1);
-  }
+  template <>
+  constexpr inline bool IsToStringFormattable<PoW> = true;
+
 }  // namespace llarp

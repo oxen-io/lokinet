@@ -166,7 +166,7 @@ namespace llarp
   void
   AddressInfo::fromSockAddr(const SockAddr& addr)
   {
-    const sockaddr_in6* addr6 = addr;
+    const auto* addr6 = static_cast<const sockaddr_in6*>(addr);
     memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
     port = addr.getPort();
   }
@@ -182,6 +182,14 @@ namespace llarp
     printer.printAttribute("port", port);
 
     return stream;
+  }
+
+  std::string
+  AddressInfo::ToString() const
+  {
+    std::ostringstream o;
+    print(o, -1, -1);
+    return o.str();
   }
 
   void

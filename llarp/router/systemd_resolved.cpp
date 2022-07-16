@@ -1,5 +1,5 @@
 #include "systemd_resolved.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #ifndef WITH_SYSTEMD
 

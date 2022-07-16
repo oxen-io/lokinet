@@ -1,4 +1,5 @@
 #include "intro.hpp"
+#include "util/time.hpp"
 
 namespace llarp
 {
@@ -77,5 +78,14 @@ namespace llarp
 
       return stream;
     }
+
+    std::string
+    Introduction::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
+    }
+
   }  // namespace service
 }  // namespace llarp

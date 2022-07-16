@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iterator>
 #include <variant>
 #include "tun.hpp"
 #include <sys/types.h>
@@ -117,9 +118,9 @@ namespace llarp
       obj["ifname"] = m_IfName;
       std::vector<std::string> resolvers;
       for (const auto& addr : m_UpstreamResolvers)
-        resolvers.emplace_back(addr.toString());
+        resolvers.emplace_back(addr.ToString());
       obj["ustreamResolvers"] = resolvers;
-      obj["localResolver"] = m_LocalResolverAddr.toString();
+      obj["localResolver"] = m_LocalResolverAddr.ToString();
       util::StatusObject ips{};
       for (const auto& item : m_IPActivity)
       {
@@ -528,10 +529,10 @@ namespace llarp
             }
             else
             {
-              std::stringstream ss;
+              std::string recs;
               for (const auto& rc : found)
-                rc.ToTXTRecord(ss);
-              msg.AddTXTReply(ss.str());
+                recs += rc.ToTXTRecord();
+              msg.AddTXTReply(std::move(recs));
             }
             reply(msg);
           });
@@ -544,11 +545,11 @@ namespace llarp
           {
             if (HasExit())
             {
-              std::stringstream ss;
-              m_ExitMap.ForEachEntry([&ss](const auto& range, const auto& exit) {
-                ss << range.ToString() << "=" << exit.ToString() << "; ";
+              std::string s;
+              m_ExitMap.ForEachEntry([&s](const auto& range, const auto& exit) {
+                fmt::format_to(std::back_inserter(s), "{}={}; ", range, exit);
               });
-              msg.AddTXTReply(ss.str());
+              msg.AddTXTReply(std::move(s));
             }
             else
             {
@@ -557,9 +558,7 @@ namespace llarp
           }
           else if (subdomain == "netid")
           {
-            std::stringstream ss;
-            ss << "netid=" << m_router->rc().netID.ToString() << ";";
-            msg.AddTXTReply(ss.str());
+            msg.AddTXTReply(fmt::format("netid={};", m_router->rc().netID));
           }
           else
           {
@@ -965,7 +964,7 @@ namespace llarp
       env.emplace("IF_NAME", m_IfName);
       std::string strictConnect;
       for (const auto& addr : m_StrictConnectAddrs)
-        strictConnect += addr.toString() + " ";
+        strictConnect += addr.ToString() + " ";
       env.emplace("STRICT_CONNECT_ADDRS", strictConnect);
       return env;
     }

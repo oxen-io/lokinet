@@ -15,9 +15,7 @@
 #include <llarp/net/net.hpp>
 #include <stdexcept>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/file_logger.hpp>
-#include <llarp/util/logging/logger_syslog.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/ev/ev.hpp>
@@ -658,7 +656,7 @@ namespace llarp
       {
         if (not BDecodeReadFile(router, b_list))
         {
-          throw std::runtime_error(stringify("failed to read bootstrap list file '", router, "'"));
+          throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", router)};
         }
       }
       else
@@ -666,8 +664,8 @@ namespace llarp
         RouterContact rc;
         if (not rc.Read(router))
         {
-          throw std::runtime_error(
-              stringify("failed to decode bootstrap RC, file='", router, "' rc=", rc));
+          throw std::runtime_error{
+              fmt::format("failed to decode bootstrap RC, file='{}', rc={}", router, rc)};
         }
         b_list.insert(rc);
       }
@@ -759,7 +757,8 @@ namespace llarp
       uint16_t port = serverConfig.port;
       if (!server->Configure(this, key, af, port))
       {
-        throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
+        throw std::runtime_error{
+            fmt::format("failed to bind inbound link on {} port {}", key, port)};
       }
       _linkManager.AddLink(std::move(server), true);
     }
@@ -794,12 +793,16 @@ namespace llarp
     }
 
     // Logging config
-    LogContext::Instance().Initialize(
-        conf.logging.m_logLevel,
-        conf.logging.m_logType,
-        conf.logging.m_logFile,
-        conf.router.m_nickname,
-        util::memFn(&AbstractRouter::QueueDiskIO, this));
+
+    // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
+    auto log_type = conf.logging.m_logType;
+    if (log_type == log::Type::File
+        && (conf.logging.m_logFile == "stdout" || conf.logging.m_logFile == "-"
+            || conf.logging.m_logFile.empty()))
+      log_type = log::Type::Print;
+
+    log::reset_level(conf.logging.m_logLevel);
+    log::add_sink(log_type, conf.logging.m_logFile);
 
     return true;
   }
@@ -861,42 +864,54 @@ namespace llarp
 
 #if defined(WITH_SYSTEMD)
     {
-      std::stringstream ss;
-      ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
+      std::string status;
+      auto out = std::back_inserter(status);
+      out = fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
       if (IsServiceNode())
       {
-        ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
-           << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
-           << pathContext().CurrentTransitPaths() << " active paths | "
-           << "block " << (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0) << " | gossip: "
-           << "(next/last) " << time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()}
-           << " / ";
+        out = fmt::format_to(
+            out,
+            " snode | known/svc/clients: {}/{}/{}",
+            nodedb()->NumLoaded(),
+            NumberOfConnectedRouters(),
+            NumberOfConnectedClients());
+        out = fmt::format_to(
+            out,
+            " | {} active paths | block {} ",
+            pathContext().CurrentTransitPaths(),
+            (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
+        out = fmt::format_to(
+            out,
+            " | gossip: (next/last) {} / ",
+            time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()});
         if (auto maybe = _rcGossiper.LastGossipAt())
-        {
-          ss << time_delta<std::chrono::seconds>{*maybe};
-        }
+          out = fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
         else
-        {
-          ss << "never";
-        }
+          out = fmt::format_to(out, "never");
       }
       else
       {
-        ss << " client | known/connected: " << nodedb()->NumLoaded() << "/"
-           << NumberOfConnectedRouters();
+        out = fmt::format_to(
+            out,
+            " client | known/connected: {}/{}",
+            nodedb()->NumLoaded(),
+            NumberOfConnectedRouters());
+
         if (auto ep = hiddenServiceContext().GetDefault())
         {
-          ss << " | paths/endpoints " << pathContext().CurrentOwnedPaths() << "/"
-             << ep->UniqueEndpoints();
-          auto success_rate = ep->CurrentBuildStats().SuccessRatio();
-          if (success_rate < 0.5)
+          out = fmt::format_to(
+              out,
+              " | paths/endpoints {}/{}",
+              pathContext().CurrentOwnedPaths(),
+              ep->UniqueEndpoints());
+
+          if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
           {
-            ss << " [ !!! Low Build Success Rate (" << std::setprecision(4)
-               << (100.0 * success_rate) << "%) !!! ] ";
+            out = fmt::format_to(
+                out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
           }
         };
       }
-      const auto status = ss.str();
       ::sd_notify(0, status.c_str());
     }
 #endif
@@ -1194,7 +1209,7 @@ namespace llarp
     if (enableRPCServer)
     {
       m_RPCServer->AsyncServeRPC(rpcBindAddr);
-      LogInfo("Bound RPC server to ", rpcBindAddr);
+      LogInfo("Bound RPC server to ", rpcBindAddr.full_address());
     }
 
     return true;
@@ -1404,7 +1419,7 @@ namespace llarp
         }
       });
     }
-    LogContext::Instance().DropToRuntimeLevel();
+    log::reset_level(log::Level::warn);
     return _running;
   }
 
@@ -1453,7 +1468,7 @@ namespace llarp
       return;
 
     _stopping.store(true);
-    LogContext::Instance().RevertRuntimeLevel();
+    log::reset_level(log::Level::info);
     LogWarn("stopping router hard");
 #if defined(WITH_SYSTEMD)
     sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
@@ -1473,7 +1488,7 @@ namespace llarp
       return;
 
     _stopping.store(true);
-    LogContext::Instance().RevertRuntimeLevel();
+    log::reset_level(log::Level::info);
     LogInfo("stopping router");
 #if defined(WITH_SYSTEMD)
     sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
@@ -1623,8 +1638,8 @@ namespace llarp
       _linkManager.AddLink(std::move(link), false);
       return true;
     }
-    throw std::runtime_error(
-        stringify("Failed to init AF_INET and AF_INET6 on port ", m_OutboundPort));
+    throw std::runtime_error{
+        fmt::format("Failed to init AF_INET and AF_INET6 on port {}", m_OutboundPort)};
   }
 
   void

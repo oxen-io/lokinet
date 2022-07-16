@@ -4,7 +4,7 @@
 #include "dns.hpp"
 #include "srv_data.hpp"
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/printer.hpp>
 #include <llarp/net/ip.hpp>
 

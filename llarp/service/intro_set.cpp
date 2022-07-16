@@ -81,6 +81,14 @@ namespace llarp::service
     return out;
   }
 
+  std::string
+  EncryptedIntroSet::ToString() const
+  {
+    std::ostringstream o;
+    print(o, -1, -1);
+    return o.str();
+  }
+
   std::optional<IntroSet>
   EncryptedIntroSet::MaybeDecrypt(const PubKey& root) const
   {
@@ -155,11 +163,7 @@ namespace llarp::service
         supportedProtocols.begin(),
         supportedProtocols.end(),
         std::back_inserter(protocols),
-        [](const auto& proto) -> util::StatusObject {
-          std::stringstream ss;
-          ss << proto;
-          return ss.str();
-        });
+        [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
     obj["protos"] = protocols;
     std::vector<util::StatusObject> ranges;
     std::transform(
@@ -448,5 +452,13 @@ namespace llarp::service
     printer.printAttribute("sig", signature);
 
     return stream;
+  }
+
+  std::string
+  IntroSet::ToString() const
+  {
+    std::ostringstream o;
+    print(o, -1, -1);
+    return o.str();
   }
 }  // namespace llarp::service

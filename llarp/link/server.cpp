@@ -196,8 +196,7 @@ namespace llarp
         }
         catch (const std::exception& ex)
         {
-          LogError(
-              stringify("Could not use ifname ", ifname, " to configure ILinkLayer: ", ex.what()));
+          LogError("Could not use ifname ", ifname, " to configure ILinkLayer: ", ex.what());
           throw ex;
         }
       }
@@ -344,7 +343,7 @@ namespace llarp
     return {
         {"name", Name()},
         {"rank", uint64_t(Rank())},
-        {"addr", m_ourAddr.toString()},
+        {"addr", m_ourAddr.ToString()},
         {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
   }
 

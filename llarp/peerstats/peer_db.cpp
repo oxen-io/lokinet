@@ -1,6 +1,6 @@
 #include "peer_db.hpp"
 
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 
@@ -105,8 +105,8 @@ namespace llarp
   PeerDb::accumulatePeerStats(const RouterID& routerId, const PeerStats& delta)
   {
     if (routerId != delta.routerId)
-      throw std::invalid_argument(
-          stringify("routerId ", routerId, " doesn't match ", delta.routerId));
+      throw std::invalid_argument{
+          fmt::format("routerId {} doesn't match {}", routerId, delta.routerId)};
 
     std::lock_guard guard(m_statsLock);
     auto itr = m_peerStats.find(routerId);

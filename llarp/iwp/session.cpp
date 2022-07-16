@@ -343,7 +343,7 @@ namespace llarp
           {"replayFilter", m_ReplayFilter.size()},
           {"txMsgQueueSize", m_TXMsgs.size()},
           {"rxMsgQueueSize", m_RXMsgs.size()},
-          {"remoteAddr", m_RemoteAddr.toString()},
+          {"remoteAddr", m_RemoteAddr.ToString()},
           {"remoteRC", m_RemoteRC.ExtractStatus()},
           {"created", to_json(m_CreatedAt)},
           {"uptime", to_json(now - m_CreatedAt)}};

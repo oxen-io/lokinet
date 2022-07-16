@@ -135,10 +135,15 @@ namespace llarp
     std::string
     Path::HopsString() const
     {
-      std::stringstream ss;
+      std::string hops_str;
+      hops_str.reserve(hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
       for (const auto& hop : hops)
-        ss << RouterID(hop.rc.pubkey) << " -> ";
-      return ss.str();
+      {
+        if (!hops.empty())
+          hops_str += " -> ";
+        hops_str += RouterID(hop.rc.pubkey).ToString();
+      }
+      return hops_str;
     }
 
     bool
@@ -568,9 +573,7 @@ namespace llarp
     std::string
     Path::Name() const
     {
-      std::stringstream ss;
-      ss << "TX=" << TXID() << " RX=" << RXID();
-      return ss.str();
+      return fmt::format("TX={} RX={}", TXID(), RXID());
     }
 
     void

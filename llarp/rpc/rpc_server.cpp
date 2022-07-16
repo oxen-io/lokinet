@@ -203,7 +203,7 @@ namespace llarp::rpc
                     auto [addr, id] = quic->open(
                         remoteHost, port, [](auto&&) {}, laddr);
                     util::StatusObject status;
-                    status["addr"] = addr.toString();
+                    status["addr"] = addr.ToString();
                     status["id"] = id;
                     reply(CreateJSONResponse(status));
                   }
@@ -632,7 +632,7 @@ namespace llarp::rpc
               {
                 if (not itr->is_object())
                 {
-                  reply(CreateJSONError(stringify("override is not an object")));
+                  reply(CreateJSONError("override is not an object"));
                   return;
                 }
                 for (const auto& [section, value] : itr->items())
@@ -640,15 +640,15 @@ namespace llarp::rpc
                   if (not value.is_object())
                   {
                     reply(CreateJSONError(
-                        stringify("failed to set [", section, "] section is not an object")));
+                        fmt::format("failed to set [{}]: section is not an object", section)));
                     return;
                   }
                   for (const auto& [key, value] : value.items())
                   {
                     if (not value.is_string())
                     {
-                      reply(CreateJSONError(stringify(
-                          "failed to set [", section, "]:", key, " value is not a string")));
+                      reply(CreateJSONError(fmt::format(
+                          "failed to set [{}]:{}: value is not a string", section, key)));
                       return;
                     }
                     r->GetConfig()->Override(section, key, value.get<std::string>());

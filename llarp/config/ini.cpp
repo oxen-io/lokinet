@@ -1,6 +1,7 @@
 #include "ini.hpp"
 
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/formattable.hpp>
 #include <llarp/util/str.hpp>
 
 #include <cctype>

@@ -107,5 +107,13 @@ namespace llarp
       return stream;
     }
 
+    std::string
+    ServiceInfo::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
+    }
+
   }  // namespace service
 }  // namespace llarp

@@ -65,4 +65,12 @@ namespace llarp
     return stream;
   }
 
+  std::string
+  PoW::ToString() const
+  {
+    std::ostringstream o;
+    print(o, -1, -1);
+    return o.str();
+  }
+
 }  // namespace llarp

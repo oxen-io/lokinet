@@ -36,6 +36,8 @@ namespace llarp
 
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;
@@ -72,12 +74,6 @@ namespace llarp
       }
     };
 
-    inline std::ostream&
-    operator<<(std::ostream& out, const Introduction& i)
-    {
-      return i.print(out, -1, -1);
-    }
-
     /// comparator for introset timestamp
     struct CompareIntroTimestamp
     {
@@ -89,6 +85,9 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::Introduction> = true;
 
 namespace std
 {

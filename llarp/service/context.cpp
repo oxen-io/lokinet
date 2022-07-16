@@ -190,11 +190,12 @@ namespace llarp
       // use factory to create endpoint
       const auto itr = endpointConstructors.find(endpointType);
       if (itr == endpointConstructors.end())
-        throw std::invalid_argument(stringify("Endpoint type ", endpointType, " does not exist"));
+        throw std::invalid_argument{fmt::format("Endpoint type {} does not exist", endpointType)};
 
       auto service = itr->second(m_Router, this);
       if (not service)
-        throw std::runtime_error(stringify("Failed to construct endpoint of type ", endpointType));
+        throw std::runtime_error{
+            fmt::format("Failed to construct endpoint of type {}", endpointType)};
 
       // pass conf to service
       service->Configure(conf.network, conf.dns);

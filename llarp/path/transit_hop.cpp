@@ -33,6 +33,14 @@ namespace llarp
       return stream;
     }
 
+    std::string
+    TransitHopInfo::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
+    }
+
     TransitHop::TransitHop()
         : m_UpstreamGather(transit_hop_queue_size), m_DownstreamGather(transit_hop_queue_size)
     {
@@ -440,6 +448,14 @@ namespace llarp
       printer.printAttribute("started", started.count());
       printer.printAttribute("lifetime", lifetime.count());
       return stream;
+    }
+
+    std::string
+    TransitHop::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
     }
 
     void

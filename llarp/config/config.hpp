@@ -6,6 +6,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/util/logging.hpp>
 #include "ini.hpp"
 #include "definition.hpp"
 #include <llarp/constants/files.hpp>
@@ -209,8 +210,8 @@ namespace llarp
 
   struct LoggingConfig
   {
-    LogType m_logType = LogType::Unknown;
-    LogLevel m_logLevel = eLogNone;
+    log::Type m_logType = log::Type::Unknown;
+    log::Level m_logLevel = log::Level::off;
     std::string m_logFile;
 
     void

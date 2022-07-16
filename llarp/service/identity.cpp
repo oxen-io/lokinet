@@ -104,16 +104,16 @@ namespace llarp
         // write
         auto optional_f = util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
         if (!optional_f)
-          throw std::runtime_error(stringify("can not open ", fname));
+          throw std::runtime_error{fmt::format("can not open {}", fname)};
         auto& f = *optional_f;
         if (!f.is_open())
-          throw std::runtime_error(stringify("did not open ", fname));
+          throw std::runtime_error{fmt::format("did not open {}", fname)};
         f.write((char*)buf.cur, buf.sz);
       }
 
       if (not fs::is_regular_file(fname))
       {
-        throw std::invalid_argument(stringify(fname, " is not a regular file"));
+        throw std::invalid_argument{fmt::format("{} is not a regular file", fname)};
       }
 
       // read file

@@ -4,12 +4,15 @@
 #include "config/definition.hpp"
 #include "ini.hpp"
 #include <llarp/constants/files.hpp>
+#include <llarp/constants/platform.hpp>
+#include <llarp/constants/version.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/router_contact.hpp>
 #include <stdexcept>
 #include <llarp/util/fs.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 
@@ -19,7 +22,6 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include <llarp/constants/version.hpp>
 
 namespace llarp
 {
@@ -58,8 +60,8 @@ namespace llarp
         },
         [this](std::string arg) {
           if (arg.size() > NetID::size())
-            throw std::invalid_argument(
-                stringify("netid is too long, max length is ", NetID::size()));
+            throw std::invalid_argument{
+                fmt::format("netid is too long, max length is {}", NetID::size())};
 
           m_netId = std::move(arg);
         });
@@ -75,7 +77,8 @@ namespace llarp
         },
         [=](int arg) {
           if (arg < minConnections)
-            throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
+            throw std::invalid_argument{
+                fmt::format("min-connections must be >= {}", minConnections)};
 
           m_minConnectedRouters = arg;
         });
@@ -91,7 +94,8 @@ namespace llarp
         },
         [=](int arg) {
           if (arg < maxConnections)
-            throw std::invalid_argument(stringify("max-connections must be >= ", maxConnections));
+            throw std::invalid_argument{
+                fmt::format("max-connections must be >= {}", maxConnections)};
 
           m_maxConnectedRouters = arg;
         });
@@ -110,8 +114,8 @@ namespace llarp
           if (arg.empty())
             throw std::invalid_argument("[router]:data-dir is empty");
           if (not fs::exists(arg))
-            throw std::runtime_error(
-                stringify("Specified [router]:data-dir ", arg, " does not exist"));
+            throw std::runtime_error{
+                fmt::format("Specified [router]:data-dir {} does not exist", arg)};
 
           m_dataDir = std::move(arg);
         });
@@ -130,11 +134,11 @@ namespace llarp
             return;
           nuint32_t addr{};
           if (not addr.FromString(arg))
-            throw std::invalid_argument{stringify(arg, " is not a valid IPv4 address")};
+            throw std::invalid_argument{fmt::format("{} is not a valid IPv4 address", arg)};
 
           if (IsIPv4Bogon(addr))
             throw std::invalid_argument{
-                stringify(addr, " looks like it is not a publicly routable ip address")};
+                fmt::format("{} is not a publicly routable ip address", addr)};
 
           m_PublicIP = addr;
         });
@@ -352,7 +356,7 @@ namespace llarp
         [this](std::string arg) {
           service::Address addr;
           if (not addr.FromString(arg))
-            throw std::invalid_argument(stringify("bad loki address: ", arg));
+            throw std::invalid_argument{fmt::format("bad loki address: {}", arg)};
           m_AuthWhitelist.emplace(std::move(addr));
         });
 
@@ -368,7 +372,7 @@ namespace llarp
         [this](fs::path arg) {
           if (not fs::exists(arg))
             throw std::invalid_argument{
-                stringify("cannot load auth file ", arg, " as it does not seem to exist")};
+                fmt::format("cannot load auth file {}: file does not exist", arg)};
           m_AuthFiles.emplace(std::move(arg));
         });
     conf.defineOption<std::string>(
@@ -514,7 +518,7 @@ namespace llarp
 
           if (arg != "null" and not exit.FromString(arg))
           {
-            throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
+            throw std::invalid_argument{fmt::format("[network]:exit-node bad address: {}", arg)};
           }
           m_ExitMap.Insert(range, exit);
         });
@@ -603,7 +607,7 @@ namespace llarp
         [this](std::string arg) {
           if (not m_ifaddr.FromString(arg))
           {
-            throw std::invalid_argument(stringify("[network]:ifaddr invalid value: '", arg, "'"));
+            throw std::invalid_argument{fmt::format("[network]:ifaddr invalid value: '{}'", arg)};
           }
         });
 
@@ -630,8 +634,8 @@ namespace llarp
           }
           m_baseV6Address = huint128_t{};
           if (not m_baseV6Address->FromString(arg))
-            throw std::invalid_argument(
-                stringify("[network]:ip6-range invalid value: '", arg, "'"));
+            throw std::invalid_argument{
+                fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
         });
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
@@ -653,7 +657,7 @@ namespace llarp
           const auto pos = arg.find(":");
           if (pos == std::string::npos)
           {
-            throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid entry: ", arg));
+            throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid entry: {}", arg)};
           }
           std::string addrstr = arg.substr(0, pos);
           std::string ipstr = arg.substr(pos + 1);
@@ -662,18 +666,19 @@ namespace llarp
             huint32_t ipv4;
             if (not ipv4.FromString(ipstr))
             {
-              throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid ip: ", ipstr));
+              throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid ip: {}", ipstr)};
             }
             ip = net::ExpandV4(ipv4);
           }
           if (not addr.FromString(addrstr))
           {
-            throw std::invalid_argument(
-                stringify("[endpoint]:mapaddr invalid addresss: ", addrstr));
+            throw std::invalid_argument{
+                fmt::format("[endpoint]:mapaddr invalid addresss: {}", addrstr)};
           }
           if (m_mapAddrs.find(ip) != m_mapAddrs.end())
           {
-            throw std::invalid_argument(stringify("[endpoint]:mapaddr ip already mapped: ", ipstr));
+            throw std::invalid_argument{
+                fmt::format("[endpoint]:mapaddr ip already mapped: {}", ipstr)};
           }
           m_mapAddrs[ip] = addr;
         });
@@ -690,11 +695,11 @@ namespace llarp
         [this](std::string arg) {
           RouterID id;
           if (not id.FromString(arg))
-            throw std::invalid_argument(stringify("Invalid RouterID: ", arg));
+            throw std::invalid_argument{fmt::format("Invalid RouterID: {}", arg)};
 
           auto itr = m_snodeBlacklist.emplace(std::move(id));
           if (not itr.second)
-            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
+            throw std::invalid_argument{fmt::format("Duplicate blacklist-snode: {}", arg)};
         });
 
     // TODO: support SRV records for routers, but for now client only
@@ -711,7 +716,7 @@ namespace llarp
         [this](std::string arg) {
           llarp::dns::SRVData newSRV;
           if (not newSRV.fromString(arg))
-            throw std::invalid_argument(stringify("Invalid SRV Record string: ", arg));
+            throw std::invalid_argument{fmt::format("Invalid SRV Record string: {}", arg)};
 
           m_SRVRecords.push_back(std::move(newSRV));
         });
@@ -817,7 +822,7 @@ namespace llarp
             return;
           if (not fs::exists(path))
             throw std::invalid_argument{
-                stringify("cannot add hosts file ", path, " as it does not seem to exist")};
+                fmt::format("cannot add hosts file {} as it does not exist", path)};
           m_hostfiles.emplace_back(std::move(path));
         });
 
@@ -897,7 +902,7 @@ namespace llarp
             "if the 0.0.0.0 all-address IP is given then you must also specify the",
             "public-ip= and public-port= settings in the [router] section with a public",
             "address at which this router can be reached.",
-            ""
+            "",
             "Typically this section can be left blank: if no inbound bind addresses are",
             "configured then lokinet will search for a local network interface with a public",
             "IP address and use that (with port 1090).",
@@ -932,8 +937,8 @@ namespace llarp
           LinkInfo info = LinkInfoFromINIValues(name, value);
 
           if (info.port <= 0)
-            throw std::invalid_argument(
-                stringify("Invalid [bind] port specified on interface", name));
+            throw std::invalid_argument{
+                fmt::format("Invalid [bind] port specified on interface {}", name)};
 
           assert(name != "*");  // handled by defineOption("bind", "*", ...) above
 
@@ -950,14 +955,11 @@ namespace llarp
         "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
           fs::path file{value.begin(), value.end()};
           if (not fs::exists(file))
-            throw std::runtime_error(stringify(
-                "Specified bootstrap file ",
+            throw std::runtime_error{fmt::format(
+                "Specified bootstrap file {} specified in [{}]:{} does not exist",
                 value,
-                "specified in [",
                 section,
-                "]:",
-                name,
-                " does not exist"));
+                name)};
 
           routers.emplace_back(std::move(file));
           return true;
@@ -1088,7 +1090,8 @@ namespace llarp
   {
     (void)params;
 
-    constexpr Default DefaultLogType{"file"};
+    constexpr Default DefaultLogType{
+        platform::is_android or platform::is_apple ? "system" : "print"};
     constexpr Default DefaultLogFile{""};
     constexpr Default DefaultLogLevel{"warn"};
 
@@ -1097,16 +1100,17 @@ namespace llarp
         "type",
         DefaultLogType,
         [this](std::string arg) {
-          LogType type = LogTypeFromString(arg);
-          if (type == LogType::Unknown)
-            throw std::invalid_argument(stringify("invalid log type: ", arg));
+          auto type = log::type_from_string(arg);
+          if (type == log::Type::Unknown)
+            throw std::invalid_argument{fmt::format("invalid log type: {}", arg)};
 
           m_logType = type;
         },
         Comment{
             "Log type (format). Valid options are:",
-            "  file - plaintext formatting",
-            "  syslog - logs directed to syslog",
+            "  print - print logs to standard output",
+            "  system - logs directed to the system logger (syslog/eventlog/etc.)",
+            "  file - plaintext formatting to a file",
         });
 
     conf.defineOption<std::string>(
@@ -1114,9 +1118,9 @@ namespace llarp
         "level",
         DefaultLogLevel,
         [this](std::string arg) {
-          std::optional<LogLevel> level = LogLevelFromString(arg);
+          std::optional<log::Level> level = log::level_from_string(arg);
           if (not level)
-            throw std::invalid_argument(stringify("invalid log level value: ", arg));
+            throw std::invalid_argument{fmt::format("invalid log level value: {}", arg)};
 
           m_logLevel = *level;
         },
@@ -1128,6 +1132,8 @@ namespace llarp
             "  info",
             "  warn",
             "  error",
+            "  critical",
+            "  none",
         });
 
     conf.defineOption<std::string>(
@@ -1136,9 +1142,7 @@ namespace llarp
         DefaultLogFile,
         AssignmentAcceptor(m_logFile),
         Comment{
-            "When using type=file this is the output filename. If given the value 'stdout' or",
-            "left empty then logging is printed as standard output rather than written to a",
-            "file.",
+            "When using type=file this is the output filename.",
         });
   }
 
@@ -1390,7 +1394,7 @@ namespace llarp
     // open a filestream
     auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
     if (not stream or not stream->is_open())
-      throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
+      throw std::runtime_error{fmt::format("Failed to open file {} for writing", confFile)};
 
     *stream << confStr;
     stream->flush();
@@ -1495,7 +1499,7 @@ namespace llarp
   {
     auto config = std::make_shared<Config>(fs::path{});
     config->Load();
-    config->logging.m_logLevel = eLogNone;
+    config->logging.m_logLevel = log::Level::off;
     config->api.m_enableRPCServer = false;
     config->network.m_endpointType = "null";
     config->network.m_saveProfiles = false;

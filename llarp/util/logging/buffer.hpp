@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llarp/util/buffer.hpp>
+#include <llarp/util/formattable.hpp>
 
 #include <string_view>
 #include <type_traits>
@@ -13,7 +14,9 @@ namespace llarp
   // visual representation of the data for logging purposes.  Wraps the string data with a object
   // that prints the buffer format during output; use as:
   //
-  //   out << buffer_printer(my_buffer);
+  //   fmt::print("{}", buffer_printer(my_buffer));
+  //
+  // or similarly in a log statement.
   //
   struct buffer_printer
   {
@@ -48,7 +51,11 @@ namespace llarp
     explicit buffer_printer(const llarp_buffer_t& buf)
         : buffer_printer(std::basic_string_view<byte_t>{buf.base, buf.sz})
     {}
+
+    std::string
+    ToString() const;
   };
-  std::ostream&
-  operator<<(std::ostream& o, const buffer_printer& bp);
+
+  template <>
+  constexpr inline bool IsToStringFormattable<buffer_printer> = true;
 }  // namespace llarp

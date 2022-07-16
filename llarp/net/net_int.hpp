@@ -17,6 +17,8 @@
 #include <iostream>
 #include <vector>
 
+#include <llarp/util/formattable.hpp>
+
 #include "uint128.hpp"
 
 namespace llarp
@@ -111,12 +113,6 @@ namespace llarp
 
     bool
     FromString(const std::string&);
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const huint_t& i)
-    {
-      return out << i.ToString();
-    }
   };
 
   using huint32_t = huint_t<uint32_t>;
@@ -193,13 +189,13 @@ namespace llarp
       *this = ToNet(x);
       return true;
     }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const nuint_t& i)
-    {
-      return out << i.ToString();
-    }
   };
+
+  template <typename UInt_t>
+  inline constexpr bool IsToStringFormattable<huint_t<UInt_t>> = true;
+
+  template <typename UInt_t>
+  inline constexpr bool IsToStringFormattable<nuint_t<UInt_t>> = true;
 
   using nuint32_t = nuint_t<uint32_t>;
   using nuint16_t = nuint_t<uint16_t>;

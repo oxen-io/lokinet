@@ -3,7 +3,7 @@
 #include "buffer.hpp"
 #include "bencode.h"
 #include "fs.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include "mem.hpp"
 
 #include <type_traits>

@@ -111,9 +111,6 @@ namespace llarp::uv
   {
     llarp::LogTrace("ticking event loop.");
     FlushLogic();
-    auto& log = llarp::LogContext::Instance();
-    if (log.logStream)
-      log.logStream->Tick(time_now());
   }
 
   Loop::Loop(size_t queue_size) : llarp::EventLoop{}, m_LogicCalls{queue_size}

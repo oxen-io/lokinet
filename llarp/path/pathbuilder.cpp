@@ -4,6 +4,7 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/nodedb.hpp>
 #include "path_context.hpp"
+#include "util/logging.hpp"
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/router/i_rc_lookup_handler.hpp>
@@ -15,6 +16,11 @@
 
 namespace llarp
 {
+  namespace
+  {
+    auto log_path = log::Cat("path");
+  }
+
   struct AsyncPathKeyExchangeContext : std::enable_shared_from_this<AsyncPathKeyExchangeContext>
   {
     using WorkFunc_t = std::function<void(void)>;
@@ -344,7 +350,7 @@ namespace llarp
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
         {
-          LogWarn(Name(), " has no first hop candidate");
+          log::warning(log_path, "{} has no first hop candidate", Name());
           return std::nullopt;
         }
         hops.emplace_back(*maybe);

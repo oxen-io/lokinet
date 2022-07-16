@@ -1,8 +1,9 @@
 #pragma once
 
 #include "bencode.h"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/traits.hpp>
+#include <llarp/util/formattable.hpp>
 #include "printer.hpp"
 
 #include <oxenc/hex.h>
@@ -67,12 +68,6 @@ namespace llarp
     {
       std::memcpy(m_data.data(), data, sz);
       return *this;
-    }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const AlignedBuffer& self)
-    {
-      return out << oxenc::to_hex(self.begin(), self.end());
     }
 
     /// bitwise NOT
@@ -300,7 +295,42 @@ namespace llarp
    private:
     Data m_data;
   };
+
+  namespace detail
+  {
+    template <size_t Sz>
+    static std::true_type
+    is_aligned_buffer_impl(AlignedBuffer<Sz>*);
+
+    static std::false_type
+    is_aligned_buffer_impl(...);
+  }  // namespace detail
+  // True if T is or is derived from AlignedBuffer<N> for any N
+  template <typename T>
+  constexpr inline bool is_aligned_buffer =
+      decltype(detail::is_aligned_buffer_impl(static_cast<T*>(nullptr)))::value;
+
 }  // namespace llarp
+
+namespace fmt
+{
+  // Any AlignedBuffer<N> (or subclass) gets hex formatted when output:
+  template <typename T>
+  struct formatter<
+      T,
+      char,
+      std::enable_if_t<llarp::is_aligned_buffer<T> && !llarp::IsToStringFormattable<T>>>
+      : formatter<std::string_view>
+  {
+    template <typename FormatContext>
+    auto
+    format(const T& val, FormatContext& ctx)
+    {
+      auto it = oxenc::hex_encoder{val.begin(), val.end()};
+      return std::copy(it, it.end(), ctx.out());
+    }
+  };
+}  // namespace fmt
 
 namespace std
 {

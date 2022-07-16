@@ -1,6 +1,6 @@
 #include "question.hpp"
 
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/printer.hpp>
 #include <llarp/util/str.hpp>
 #include "dns.hpp"
@@ -117,10 +117,18 @@ namespace llarp
           && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
     }
 
+    std::string
+    Question::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
+    }
     std::ostream&
     Question::print(std::ostream& stream, int level, int spaces) const
     {
-      Printer printer(stream, level, spaces);
+      std::ostringstream o;
+      Printer printer(o, level, spaces);
       printer.printAttribute("qname", qname);
       printer.printAttributeAsHex("qtype", qtype);
       printer.printAttributeAsHex("qclass", qclass);

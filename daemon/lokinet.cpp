@@ -3,8 +3,6 @@
 #include <llarp.hpp>
 #include <llarp/util/lokinet_init.h>
 #include <llarp/util/fs.hpp>
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/logging/ostream_logger.hpp>
 #include <llarp/util/str.hpp>
 
 #ifdef _WIN32
@@ -379,11 +377,14 @@ main(int argc, char* argv[])
 int
 lokinet_main(int argc, char* argv[])
 {
-  auto result = Lokinet_INIT();
-  if (result)
-  {
+  if (auto result = Lokinet_INIT())
     return result;
-  }
+
+  // Set up a default, stderr logging for very early logging; we'll replace this later once we read
+  // the desired log info from config.
+  llarp::log::add_sink(llarp::log::Type::Print, "stderr");
+  llarp::log::reset_level(llarp::log::Level::info);
+
   llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
@@ -410,7 +411,6 @@ lokinet_main(int argc, char* argv[])
       ("g,generate", "generate default configuration and exit", cxxopts::value<bool>())
       ("r,router", "run in routing mode instead of client only mode", cxxopts::value<bool>())
       ("f,force", "force writing config even if it already exists", cxxopts::value<bool>())
-      ("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
       ("config", "path to lokinet.ini configuration file", cxxopts::value<std::string>())
       ;
   // clang-format on
@@ -423,12 +423,6 @@ lokinet_main(int argc, char* argv[])
   try
   {
     auto result = options.parse(argc, argv);
-
-    if (!result["colour"].as<bool>())
-    {
-      llarp::LogContext::Instance().logStream =
-          std::make_unique<llarp::OStreamLogStream>(false, std::cerr);
-    }
 
     if (result.count("help"))
     {
@@ -554,6 +548,7 @@ lokinet_main(int argc, char* argv[])
     // do periodic non lokinet related tasks here
     if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
+      auto deadlock_cat = llarp::log::Cat("deadlock");
       for (const auto& wtf :
            {"you have been visited by the mascott of the deadlocked router.",
             "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
@@ -575,8 +570,8 @@ lokinet_main(int argc, char* argv[])
             "file a bug report now or be cursed with this "
             "annoying image in your syslog for all time."})
       {
-        llarp::LogError{wtf};
-        llarp::LogContext::Instance().ImmediateFlush();
+        llarp::log::critical(deadlock_cat, wtf);
+        llarp::log::flush();
       }
 #ifdef _WIN32
       TellWindowsServiceStopped();
@@ -604,7 +599,7 @@ lokinet_main(int argc, char* argv[])
     code = 2;
   }
 
-  llarp::LogContext::Instance().ImmediateFlush();
+  llarp::log::flush();
   if (ctx)
   {
     ctx.reset();

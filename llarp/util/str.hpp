@@ -26,26 +26,6 @@ namespace llarp
   [[nodiscard]] std::string_view
   TrimWhitespace(std::string_view str);
 
-  template <typename... T>
-  std::string
-  stringify(T&&... stuff)
-  {
-    std::ostringstream o;
-    (o << ... << std::forward<T>(stuff));
-    return o.str();
-  }
-
-  /// util for constructing an exception with a message constructed from a set of whatever passed
-  /// into stringify
-  /// E must be derived from std::exception here
-  template <typename E, typename... T>
-  E
-  make_exception(T&&... stuff)
-  {
-    static_assert(std::is_base_of_v<std::exception, E>);
-    return E{stringify(std::forward<T>(stuff)...)};
-  }
-
   using namespace std::literals;
 
   /// Returns true if the first string is equal to the second string, compared case-insensitively.
@@ -68,21 +48,21 @@ namespace llarp
   }
 
   /// Returns true if the first argument begins with the second argument
-  inline bool
+  inline constexpr bool
   starts_with(std::string_view str, std::string_view prefix)
   {
     return str.substr(0, prefix.size()) == prefix;
   }
 
   /// Returns true if the first argument ends with the second argument
-  inline bool
+  inline constexpr bool
   ends_with(std::string_view str, std::string_view suffix)
   {
     return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
   }
 
   /// removes a prefix from a string if it exists
-  inline std::string_view
+  inline constexpr std::string_view
   strip_prefix(std::string_view str, std::string_view prefix)
   {
     if (starts_with(str, prefix))

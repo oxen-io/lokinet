@@ -20,7 +20,7 @@ namespace llarp
 
   IpAddress::IpAddress(const SockAddr& addr)
   {
-    m_ipAddress = addr.toString();
+    m_ipAddress = addr.ToString();
     uint16_t port = addr.getPort();
     if (port > 0)
       m_port = port;
@@ -43,7 +43,7 @@ namespace llarp
   {
     SockAddr addr(other);
 
-    m_ipAddress = addr.toString();
+    m_ipAddress = addr.ToString();
     uint16_t port = addr.getPort();
     if (port > 0)
       m_port = port;
@@ -125,13 +125,13 @@ namespace llarp
   IpAddress::isBogon() const
   {
     SockAddr addr(m_ipAddress);
-    const sockaddr_in6* addr6 = addr;
+    const auto* addr6 = static_cast<const sockaddr_in6*>(addr);
     const uint8_t* raw = addr6->sin6_addr.s6_addr;
     return IsIPv4Bogon(ipaddr_ipv4_bits(raw[12], raw[13], raw[14], raw[15]));
   }
 
   std::string
-  IpAddress::toString() const
+  IpAddress::ToString() const
   {
     return m_ipAddress;  // TODO: port
   }
@@ -180,12 +180,4 @@ namespace llarp
   {
     return createSockAddr() == other.createSockAddr();
   }
-
-  std::ostream&
-  operator<<(std::ostream& out, const IpAddress& address)
-  {
-    out << address.toString();
-    return out;
-  }
-
 }  // namespace llarp

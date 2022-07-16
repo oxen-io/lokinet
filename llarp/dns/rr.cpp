@@ -1,7 +1,7 @@
 #include "rr.hpp"
 #include "dns.hpp"
 #include <llarp/util/mem.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/printer.hpp>
 
 namespace llarp
@@ -107,6 +107,14 @@ namespace llarp
       printer.printAttribute("rdata", rData.size());
 
       return stream;
+    }
+
+    std::string
+    ResourceRecord::ToString() const
+    {
+      std::ostringstream o;
+      print(o, -1, -1);
+      return o.str();
     }
 
     bool

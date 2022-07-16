@@ -66,6 +66,9 @@ namespace llarp
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
 
+      std::string
+      ToString() const;
+
       /// .loki address
       std::string
       Name() const;
@@ -101,11 +104,8 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const ServiceInfo& i)
-    {
-      return i.print(out, -1, -1);
-    }
   }  // namespace service
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::ServiceInfo> = true;

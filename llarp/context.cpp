@@ -10,7 +10,7 @@
 #include "nodedb.hpp"
 #include "router/router.hpp"
 #include "service/context.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 
 #include <cxxopts.hpp>
 #include <csignal>

@@ -101,12 +101,6 @@ namespace llarp
       return Contains(net::ExpandV4(ip));
     }
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const IPRange& a)
-    {
-      return out << a.ToString();
-    }
-
     /// get the highest address on this range
     constexpr huint128_t
     HighestAddr() const
@@ -146,6 +140,9 @@ namespace llarp
     bool
     BDecode(llarp_buffer_t* buf);
   };
+
+  template <>
+  constexpr inline bool IsToStringFormattable<IPRange> = true;
 
 }  // namespace llarp
 
