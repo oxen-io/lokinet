@@ -27,7 +27,6 @@ make_context(std::optional<fs::path> keyfile)
 TEST_CASE("key backup bug regression test", "[regress]")
 {
   // kill logging, this code is noisy
-  llarp::LogSilencer shutup;
   // test 2 explicitly provided keyfiles, empty keyfile and no keyfile
   for (std::optional<fs::path> path : {std::optional<fs::path>{"regress-1.private"},
                                        std::optional<fs::path>{"regress-2.private"},

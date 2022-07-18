@@ -203,7 +203,6 @@ TEST_CASE("Test signing with derived key", "[crypto]")
 
 TEST_CASE("Test sign and encrypt introset", "[crypto]")
 {
-  llarp::LogSilencer shutup;
   CryptoManager manager(new sodium::CryptoLibSodium());
 
   service::Identity ident;

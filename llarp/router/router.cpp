@@ -801,7 +801,8 @@ namespace llarp
             || conf.logging.m_logFile.empty()))
       log_type = log::Type::Print;
 
-    log::reset_level(conf.logging.m_logLevel);
+    if (log::get_level_default() != log::Level::off)
+      log::reset_level(conf.logging.m_logLevel);
     log::add_sink(log_type, conf.logging.m_logFile);
 
     return true;
@@ -1419,7 +1420,8 @@ namespace llarp
         }
       });
     }
-    log::reset_level(log::Level::warn);
+    if (log::get_level_default() != log::Level::off)
+      log::reset_level(log::Level::warn);
     return _running;
   }
 
@@ -1468,7 +1470,8 @@ namespace llarp
       return;
 
     _stopping.store(true);
-    log::reset_level(log::Level::info);
+    if (log::get_level_default() != log::Level::off)
+      log::reset_level(log::Level::info);
     LogWarn("stopping router hard");
 #if defined(WITH_SYSTEMD)
     sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
@@ -1488,7 +1491,8 @@ namespace llarp
       return;
 
     _stopping.store(true);
-    log::reset_level(log::Level::info);
+    if (log::get_level_default() != log::Level::off)
+      log::reset_level(log::Level::info);
     LogInfo("stopping router");
 #if defined(WITH_SYSTEMD)
     sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");

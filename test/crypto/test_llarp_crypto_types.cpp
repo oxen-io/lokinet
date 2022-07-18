@@ -6,6 +6,10 @@
 #include <test_util.hpp>
 #include <catch2/catch.hpp>
 
+extern "C" {
+#include <unistd.h>
+}
+
 // This used to be implied via the headers above *shrug*
 #ifdef _WIN32
 #include <windows.h>

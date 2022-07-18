@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include <oxen/log.hpp>
+#include "oxen/log/internal.hpp"
 
 namespace llarp
 {

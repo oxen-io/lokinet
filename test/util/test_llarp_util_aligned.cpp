@@ -66,20 +66,17 @@ TEMPLATE_LIST_TEST_CASE("AlignedBuffer", "[AlignedBuffer]", TestSizes)
     CHECK_FALSE(d.IsZero());
   }
 
-  SECTION("StreamOut")
+  SECTION("FmtOut")
   {
-    std::stringstream stream;
+    std::string out;
+    out = fmt::format("{}", b);
 
-    stream << b;
-
-    CHECK(stream.str() == std::string(TestType::value * 2, '0'));
-
-    stream.str("");
+    CHECK(out == std::string(TestType::value * 2, '0'));
 
     b.Fill(255);
-    stream << b;
+    out = fmt::format("{}", b);
 
-    CHECK(stream.str() == std::string(TestType::value * 2, 'f'));
+    CHECK(out == std::string(TestType::value * 2, 'f'));
   }
 
   SECTION("BitwiseNot")

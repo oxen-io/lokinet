@@ -52,7 +52,6 @@ add_executable(testAll
 
 target_link_libraries(testAll PUBLIC liblokinet Catch2::Catch2)
 target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_log_tag(testAll)
 if(WIN32)
     target_sources(testAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)
