@@ -8,6 +8,8 @@
 #include <llarp/ev/vpn.hpp>
 #include <llarp/router/abstractrouter.hpp>
 
+#include <fmt/std.h>
+
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
   (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
@@ -237,9 +239,7 @@ namespace llarp::vpn
         LogError("cannot query registry");
         throw std::invalid_argument{"cannot query registery"};
       }
-      std::stringstream ss;
-      ss << "\\\\.\\Global\\" << device_id << ".tap";
-      const auto fname = ss.str();
+      const auto fname = fmt::format(R"(\\.\Global\{}.tap)", device_id);
       m_Device = CreateFile(
           fname.c_str(),
           GENERIC_WRITE | GENERIC_READ,
@@ -537,16 +537,8 @@ namespace llarp::vpn
     void
     Route(IPVariant_t ip, IPVariant_t gateway, std::string cmd)
     {
-      std::stringstream ss;
-      std::string ip_str;
-      std::string gateway_str;
-
-      std::visit([&ip_str](auto&& ip) { ip_str = ip.ToString(); }, ip);
-      std::visit([&gateway_str](auto&& gateway) { gateway_str = gateway.ToString(); }, gateway);
-
-      ss << RouteCommand() << " " << cmd << " " << ip_str << " MASK 255.255.255.255 " << gateway_str
-         << " METRIC 2";
-      Execute(ss.str());
+      Execute(fmt::format(
+          "{} {} {} MASK 255.255.255.255 {} METRIC 2", RouteCommand(), cmd, ip, gateway));
     }
 
     void

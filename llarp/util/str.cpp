@@ -149,45 +149,23 @@ namespace llarp
   std::string
   friendly_duration(std::chrono::nanoseconds dur)
   {
-    std::ostringstream os;
-    bool some = false;
-    if (dur >= 24h)
-    {
-      os << dur / 24h << 'd';
-      dur %= 24h;
-      some = true;
-    }
-    if (dur >= 1h || some)
-    {
-      os << dur / 1h << 'h';
-      dur %= 1h;
-      some = true;
-    }
-    if (dur >= 1min || some)
-    {
-      os << dur / 1min << 'm';
-      dur %= 1min;
-      some = true;
-    }
-    if (some)
-    {
-      // If we have >= minutes then don't bother with fractional seconds
-      os << dur / 1s << 's';
-    }
-    else
-    {
-      double seconds = std::chrono::duration<double>(dur).count();
-      os.precision(3);
-      if (dur >= 1s)
-        os << seconds << "s";
-      else if (dur >= 1ms)
-        os << seconds * 1000 << "ms";
-      else if (dur >= 1us)
-        os << seconds * 1'000'000 << u8"µs";
-      else
-        os << seconds * 1'000'000'000 << "ns";
-    }
-    return os.str();
+    const double dsecs = std::chrono::duration<double>(dur).count();
+    return fmt::format(
+        dur >= 24h        ? "{0}d{1}h{2}m{3}s"
+            : dur >= 1h   ? "{1}h{2}m{3}s"
+            : dur >= 1min ? "{2}m{3}s"
+            : dur >= 1s   ? "{4:.3f}s"
+            : dur >= 1ms  ? "{5:.3f}s"
+            : dur >= 1us  ? u8"{6:.3f}µs"
+                          : "{7}ns",
+        dur / 24h,
+        dur / 1h,
+        dur / 1min,
+        dur / 1s,
+        dsecs,
+        dsecs * 1'000,
+        dsecs * 1'000'000,
+        dur.count());
   }
 
 }  // namespace llarp

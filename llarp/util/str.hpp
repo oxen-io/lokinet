@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string_view>
-#include <sstream>
 #include <vector>
 #include <chrono>
 #include <iterator>
 #include <charconv>
+
+#include <fmt/format.h>
 
 namespace llarp
 {
@@ -96,17 +97,12 @@ namespace llarp
   split_any(std::string_view str, std::string_view delims, bool trim = false);
 
   /// Joins [begin, end) with a delimiter and returns the resulting string.  Elements can be
-  /// anything that can be sent to an ostream via `<<`.
+  /// anything that is fmt formattable.
   template <typename It>
   std::string
   join(std::string_view delimiter, It begin, It end)
   {
-    std::ostringstream o;
-    if (begin != end)
-      o << *begin++;
-    while (begin != end)
-      o << delimiter << *begin++;
-    return o.str();
+    return fmt::format("{}", fmt::join(delimiter, begin, end));
   }
 
   /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.
