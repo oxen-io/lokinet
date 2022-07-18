@@ -196,10 +196,9 @@ namespace llarp
       // always hook ptr for ranges we own
       if (msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint128_t ip;
-        if (!dns::DecodePTR(msg.questions[0].qname, ip))
-          return false;
-        return m_OurRange.Contains(ip);
+        if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+          return m_OurRange.Contains(*ip);
+        return false;
       }
       if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype == dns::qTypeCNAME
           || msg.questions[0].qtype == dns::qTypeAAAA)
@@ -217,8 +216,8 @@ namespace llarp
     {
       if (msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint128_t ip;
-        if (!dns::DecodePTR(msg.questions[0].qname, ip))
+        auto ip = dns::DecodePTR(msg.questions[0].qname);
+        if (not ip)
           return false;
         if (ip == m_IfAddr)
         {
@@ -227,7 +226,7 @@ namespace llarp
         }
         else
         {
-          auto itr = m_IPToKey.find(ip);
+          auto itr = m_IPToKey.find(*ip);
           if (itr != m_IPToKey.end() && m_SNodeKeys.find(itr->second) != m_SNodeKeys.end())
           {
             RouterID them = itr->second;

@@ -24,7 +24,7 @@ namespace llarp
         , rData(std::move(other.rData))
     {}
 
-    ResourceRecord::ResourceRecord(Name_t name, RRType_t type, RR_RData_t data)
+    ResourceRecord::ResourceRecord(std::string name, RRType_t type, RR_RData_t data)
         : rr_name{std::move(name)}
         , rr_type{type}
         , rr_class{qClassIN}
@@ -35,7 +35,7 @@ namespace llarp
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const
     {
-      if (not EncodeName(buf, rr_name))
+      if (not EncodeNameTo(buf, rr_name))
         return false;
       if (!buf->put_uint16(rr_type))
       {
@@ -113,12 +113,10 @@ namespace llarp
     {
       if (rr_type != qTypeCNAME)
         return false;
-      Name_t name;
       llarp_buffer_t buf(rData);
-      if (not DecodeName(&buf, name))
-        return false;
-      return name.find(tld) != std::string::npos
-          && name.rfind(tld) == (name.size() - tld.size()) - 1;
+      if (auto name = DecodeName(&buf))
+        return name->rfind(tld) == name->size() - tld.size() - 1;
+      return false;
     }
 
   }  // namespace dns
