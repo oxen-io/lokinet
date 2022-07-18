@@ -10,7 +10,6 @@ add_library(lokinet-util
   util/logging/buffer.cpp
   util/lokinet_init.c
   util/mem.cpp
-  util/printer.cpp
   util/str.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp

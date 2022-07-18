@@ -53,24 +53,14 @@ namespace llarp
     return true;
   }
 
-  std::ostream&
-  PoW::print(std::ostream& stream, int level, int spaces) const
-  {
-    Printer printer(stream, level, spaces);
-
-    printer.printAttribute("pow timestamp", timestamp.count());
-    printer.printAttribute("lifetime", extendedLifetime.count());
-    printer.printAttribute("nonce", nonce);
-
-    return stream;
-  }
-
   std::string
   PoW::ToString() const
   {
-    std::ostringstream o;
-    print(o, -1, -1);
-    return o.str();
+    return fmt::format(
+        "[PoW timestamp={} lifetime={} nonce={}]",
+        timestamp.count(),
+        extendedLifetime.count(),
+        nonce);
   }
 
 }  // namespace llarp

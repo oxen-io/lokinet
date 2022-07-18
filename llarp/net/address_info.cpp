@@ -7,7 +7,6 @@
 #include "net.hpp"
 #include <llarp/util/bencode.h>
 #include <llarp/util/mem.h>
-#include <llarp/util/printer.hpp>
 
 #include <cstring>
 
@@ -171,25 +170,12 @@ namespace llarp
     port = addr.getPort();
   }
 
-  std::ostream&
-  AddressInfo::print(std::ostream& stream, int level, int spaces) const
-  {
-    char tmp[128] = {0};
-    inet_ntop(AF_INET6, (void*)&ip, tmp, sizeof(tmp));
-
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("ip", tmp);
-    printer.printAttribute("port", port);
-
-    return stream;
-  }
-
   std::string
   AddressInfo::ToString() const
   {
-    std::ostringstream o;
-    print(o, -1, -1);
-    return o.str();
+    char tmp[INET6_ADDRSTRLEN] = {0};
+    inet_ntop(AF_INET6, (void*)&ip, tmp, sizeof(tmp));
+    return fmt::format("[{}]:{}", tmp, port);
   }
 
   void

@@ -63,9 +63,6 @@ namespace llarp
         return Addr() < other.Addr();
       }
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
-
       std::string
       ToString() const;
 

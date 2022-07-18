@@ -53,9 +53,6 @@ namespace llarp
     std::variant<nuint32_t, nuint128_t>
     IP() const;
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
-
     std::string
     ToString() const;
   };

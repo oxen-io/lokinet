@@ -95,24 +95,10 @@ namespace llarp
       return true;
     }
 
-    std::ostream&
-    ServiceInfo::print(std::ostream& stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("e", enckey);
-      printer.printAttribute("s", signkey);
-      printer.printAttribute("v", version);
-      printer.printAttribute("x", vanity);
-
-      return stream;
-    }
-
     std::string
     ServiceInfo::ToString() const
     {
-      std::ostringstream o;
-      print(o, -1, -1);
-      return o.str();
+      return fmt::format("[ServiceInfo e={} s={} v={} x={}]", enckey, signkey, version, vanity);
     }
 
   }  // namespace service

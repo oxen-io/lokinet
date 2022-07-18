@@ -38,9 +38,6 @@ namespace llarp
       return !(*this == other);
     }
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
-
     std::string
     ToString() const;
   };

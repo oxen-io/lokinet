@@ -1,7 +1,6 @@
 #include "question.hpp"
 
 #include <llarp/util/logging.hpp>
-#include <llarp/util/printer.hpp>
 #include <llarp/util/str.hpp>
 #include "dns.hpp"
 
@@ -120,20 +119,7 @@ namespace llarp
     std::string
     Question::ToString() const
     {
-      std::ostringstream o;
-      print(o, -1, -1);
-      return o.str();
-    }
-    std::ostream&
-    Question::print(std::ostream& stream, int level, int spaces) const
-    {
-      std::ostringstream o;
-      Printer printer(o, level, spaces);
-      printer.printAttribute("qname", qname);
-      printer.printAttributeAsHex("qtype", qtype);
-      printer.printAttributeAsHex("qclass", qclass);
-
-      return stream;
+      return fmt::format("[DNSQuestion qname={} qtype={:x} qclass={:x}]", qname, qtype, qclass);
     }
   }  // namespace dns
 }  // namespace llarp

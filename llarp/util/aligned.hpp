@@ -2,9 +2,7 @@
 
 #include "bencode.h"
 #include <llarp/util/logging.hpp>
-#include <llarp/util/meta/traits.hpp>
 #include <llarp/util/formattable.hpp>
-#include "printer.hpp"
 
 #include <oxenc/hex.h>
 
@@ -281,15 +279,6 @@ namespace llarp
         return false;
       oxenc::from_hex(str.begin(), str.end(), begin());
       return true;
-    }
-
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printValue(ToHex());
-
-      return stream;
     }
 
    private:

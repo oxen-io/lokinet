@@ -93,16 +93,8 @@ namespace llarp
       [[nodiscard]] OwnedBuffer
       ToBuffer() const;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
-
       std::string
-      ToString() const
-      {
-        std::ostringstream o;
-        print(o, -1, -1);
-        return o.str();
-      }
+      ToString() const;
 
       MsgID_t hdr_id;
       Fields_t hdr_fields;

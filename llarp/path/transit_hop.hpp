@@ -28,9 +28,6 @@ namespace llarp
       RouterID upstream;
       RouterID downstream;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
-
       std::string
       ToString() const;
     };
@@ -108,8 +105,6 @@ namespace llarp
 
       std::string
       ToString() const;
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
 
       bool
       Expired(llarp_time_t now) const override;

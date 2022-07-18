@@ -34,8 +34,6 @@ namespace llarp
         return IsExpired(now + dlt);
       }
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
       std::string
       ToString() const;
 

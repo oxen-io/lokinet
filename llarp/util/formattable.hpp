@@ -52,7 +52,7 @@ namespace fmt
   {
     template <typename FormatContext>
     auto
-    format(const fs::path& p, FormatContext& ctx)
+    format(const fs::path& p, FormatContext& ctx) const
     {
       return formatter<std::string_view>::format(p.string(), ctx);
     }
@@ -69,7 +69,7 @@ namespace fmt
   {
     template <typename FormatContext>
     auto
-    format(const T& val, FormatContext& ctx)
+    format(const T& val, FormatContext& ctx) const
     {
       if constexpr (llarp::is_scoped_enum_v<T>)
         return formatter<std::string_view>::format(ToString(val), ctx);

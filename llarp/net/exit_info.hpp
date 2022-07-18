@@ -40,9 +40,6 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
-
     std::string
     ToString() const;
   };

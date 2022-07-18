@@ -57,8 +57,6 @@ namespace llarp
         return timestampSignedAt < other.timestampSignedAt;
       }
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
       std::string
       ToString() const;
 
@@ -170,8 +168,6 @@ namespace llarp
       bool
       Verify(llarp_time_t now) const;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
       std::string
       ToString() const;
 

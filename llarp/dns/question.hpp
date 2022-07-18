@@ -27,8 +27,6 @@ namespace llarp
 
       std::string
       ToString() const;
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
 
       bool
       operator==(const Question& other) const

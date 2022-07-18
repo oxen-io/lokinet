@@ -69,24 +69,16 @@ namespace llarp::service
     return signedAt < other.signedAt;
   }
 
-  std::ostream&
-  EncryptedIntroSet::print(std::ostream& out, int levels, int spaces) const
-  {
-    Printer printer(out, levels, spaces);
-    printer.printAttribute("d", derivedSigningKey);
-    printer.printAttribute("n", nounce);
-    printer.printAttribute("s", signedAt.count());
-    printer.printAttribute("x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
-    printer.printAttribute("z", sig);
-    return out;
-  }
-
   std::string
   EncryptedIntroSet::ToString() const
   {
-    std::ostringstream o;
-    print(o, -1, -1);
-    return o.str();
+    return fmt::format(
+        "[EncIntroSet d={} n={} s={} x=[{} bytes] z={}]",
+        derivedSigningKey,
+        nounce,
+        signedAt.count(),
+        introsetPayload.size(),
+        sig);
   }
 
   std::optional<IntroSet>
@@ -427,38 +419,17 @@ namespace llarp::service
     return maxTime;
   }
 
-  std::ostream&
-  IntroSet::print(std::ostream& stream, int level, int spaces) const
-  {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("addressKeys", addressKeys);
-    printer.printAttribute("intros", intros);
-    printer.printAttribute("sntrupKey", sntrupKey);
-
-    std::string _topic = topic.ToString();
-
-    if (!_topic.empty())
-    {
-      printer.printAttribute("topic", _topic);
-    }
-    else
-    {
-      printer.printAttribute("topic", topic);
-    }
-
-    printer.printAttribute("signedAt", timestampSignedAt.count());
-
-    printer.printAttribute("version", version);
-    printer.printAttribute("sig", signature);
-
-    return stream;
-  }
-
   std::string
   IntroSet::ToString() const
   {
-    std::ostringstream o;
-    print(o, -1, -1);
-    return o.str();
+    return fmt::format(
+        "[IntroSet addressKeys={} intros={{{}}} sntrupKey={} topic={} signedAt={} v={} sig={}]",
+        addressKeys,
+        fmt::format("{}", fmt::join(intros, ",")),
+        sntrupKey,
+        topic,
+        timestampSignedAt.count(),
+        version,
+        signature);
   }
 }  // namespace llarp::service

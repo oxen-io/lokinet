@@ -192,9 +192,6 @@ namespace llarp
       return last_updated < other.last_updated;
     }
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
-
     bool
     Read(const fs::path& fname);
 

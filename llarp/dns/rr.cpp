@@ -1,8 +1,8 @@
 #include "rr.hpp"
 #include "dns.hpp"
+#include "util/formattable.hpp"
 #include <llarp/util/mem.hpp>
 #include <llarp/util/logging.hpp>
-#include <llarp/util/printer.hpp>
 
 namespace llarp
 {
@@ -96,25 +96,16 @@ namespace llarp
           {"rdata", std::string{reinterpret_cast<const char*>(rData.data()), rData.size()}}};
     }
 
-    std::ostream&
-    ResourceRecord::print(std::ostream& stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("name", rr_name);
-      printer.printAttribute("type", rr_type);
-      printer.printAttribute("class", rr_class);
-      printer.printAttribute("ttl", ttl);
-      printer.printAttribute("rdata", rData.size());
-
-      return stream;
-    }
-
     std::string
     ResourceRecord::ToString() const
     {
-      std::ostringstream o;
-      print(o, -1, -1);
-      return o.str();
+      return fmt::format(
+          "[RR name={} type={} class={} ttl={} rdata-size={}]",
+          rr_name,
+          rr_type,
+          rr_class,
+          ttl,
+          rData.size());
     }
 
     bool

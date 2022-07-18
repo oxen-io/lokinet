@@ -91,9 +91,8 @@ namespace llarp
     return read;
   }
 
-  std::ostream&
-  ExitInfo::print(
-      std::ostream& stream, [[maybe_unused]] int level, [[maybe_unused]] int spaces) const
+  std::string
+  ExitInfo::ToString() const
   {
     /*
     // TODO: derive these from ipAdress
@@ -119,14 +118,7 @@ namespace llarp
 #endif
     printer.printValue(ss.str());
     */
-    stream << ipAddress.ToString();
-    return stream;
-  }
-
-  std::string
-  ExitInfo::ToString() const
-  {
-    return ipAddress.ToString();
+    return fmt::format("[Exit {}]", ipAddress.ToString());
   }
 
 }  // namespace llarp

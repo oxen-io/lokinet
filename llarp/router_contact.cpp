@@ -7,7 +7,6 @@
 #include "util/buffer.hpp"
 #include "util/logging.hpp"
 #include "util/mem.hpp"
-#include "util/printer.hpp"
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
@@ -573,27 +572,18 @@ namespace llarp
     return BDecode(&buf);
   }
 
-  std::ostream&
-  RouterContact::print(std::ostream& stream, int level, int spaces) const
-  {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("k", pubkey);
-    printer.printAttribute("updated", last_updated.count());
-    printer.printAttribute("netid", netID);
-    printer.printAttribute("v", version);
-    printer.printAttribute("ai", addrs);
-    printer.printAttribute("e", enckey);
-    printer.printAttribute("z", signature);
-
-    return stream;
-  }
-
   std::string
   RouterContact::ToString() const
   {
-    std::ostringstream o;
-    print(o, -1, -1);
-    return o.str();
+    return fmt::format(
+        "[RC k={} updated={} netid={} v={} ai={{{}}} e={} z={}]",
+        pubkey,
+        last_updated.count(),
+        netID,
+        version,
+        fmt::format("{}", fmt::join(addrs, ",")),
+        enckey,
+        signature);
   }
 
 }  // namespace llarp
