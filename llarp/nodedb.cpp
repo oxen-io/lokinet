@@ -123,7 +123,7 @@ namespace llarp
         if (fs::is_regular_file(f) and f.extension() == RC_FILE_EXT)
         {
           RouterContact rc{};
-          if (rc.Read(f) and rc.Verify(time_now_ms()))
+          if (rc.Read(f) and rc.Verify(time_now_ms(), false))
             m_Entries.emplace(rc.pubkey, rc);
         }
         return true;

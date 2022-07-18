@@ -940,6 +940,9 @@ namespace llarp
       // purge this entry
       if (not rc.IsPublicRouter())
         return true;
+      /// clear out a fully expired RC
+      if (rc.IsExpired(now))
+        return true;
       // clients have a notion of a whilelist
       // we short circuit logic here so we dont remove
       // routers that are not whitelisted for first hops
