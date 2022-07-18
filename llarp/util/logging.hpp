@@ -42,47 +42,72 @@ namespace llarp
       return std::string_view{
           concat_args_fmt_impl<std::make_index_sequence<2 * N>>::format.data(), 2 * N};
     }
-
-    template <log::Level level, typename... T>
-    struct LegacyLeveledLogger : log::detail::LeveledLogger<level, T...>
-    {
-      LegacyLeveledLogger(
-          T&&... args, const slns::source_location& location = slns::source_location::current())
-          : log::detail::LeveledLogger<level, T...>::LeveledLogger{
-              legacy_logger, concat_args_fmt<sizeof...(T)>(), std::forward<T>(args)..., location}
-      {}
-    };
   }  // namespace log_detail
 
   template <typename... T>
-  struct LOKINET_LOG_DEPRECATED(Trace) LogTrace
-      : log_detail::LegacyLeveledLogger<log::Level::trace, T...>
+  struct LOKINET_LOG_DEPRECATED(Trace) LogTrace : log::trace<T...>
   {
-    using log_detail::LegacyLeveledLogger<log::Level::trace, T...>::LegacyLeveledLogger;
+    LogTrace(
+        T&&... args,
+        const log::slns::source_location& location = log::slns::source_location::current())
+        : log::trace<T...>::trace{
+            log_detail::legacy_logger,
+            log_detail::concat_args_fmt<sizeof...(T)>(),
+            std::forward<T>(args)...,
+            location}
+    {}
   };
   template <typename... T>
-  struct LOKINET_LOG_DEPRECATED(Debug) LogDebug
-      : log_detail::LegacyLeveledLogger<log::Level::debug, T...>
+  struct LOKINET_LOG_DEPRECATED(Debug) LogDebug : log::debug<T...>
   {
-    using log_detail::LegacyLeveledLogger<log::Level::debug, T...>::LegacyLeveledLogger;
+    LogDebug(
+        T&&... args,
+        const log::slns::source_location& location = log::slns::source_location::current())
+        : log::debug<T...>::debug{
+            log_detail::legacy_logger,
+            log_detail::concat_args_fmt<sizeof...(T)>(),
+            std::forward<T>(args)...,
+            location}
+    {}
   };
   template <typename... T>
-  struct LOKINET_LOG_DEPRECATED(Info) LogInfo
-      : log_detail::LegacyLeveledLogger<log::Level::info, T...>
+  struct LOKINET_LOG_DEPRECATED(Info) LogInfo : log::info<T...>
   {
-    using log_detail::LegacyLeveledLogger<log::Level::info, T...>::LegacyLeveledLogger;
+    LogInfo(
+        T&&... args,
+        const log::slns::source_location& location = log::slns::source_location::current())
+        : log::info<T...>::info{
+            log_detail::legacy_logger,
+            log_detail::concat_args_fmt<sizeof...(T)>(),
+            std::forward<T>(args)...,
+            location}
+    {}
   };
   template <typename... T>
-  struct LOKINET_LOG_DEPRECATED(Warning) LogWarn
-      : log_detail::LegacyLeveledLogger<log::Level::warn, T...>
+  struct LOKINET_LOG_DEPRECATED(Warning) LogWarn : log::warning<T...>
   {
-    using log_detail::LegacyLeveledLogger<log::Level::warn, T...>::LegacyLeveledLogger;
+    LogWarn(
+        T&&... args,
+        const log::slns::source_location& location = log::slns::source_location::current())
+        : log::warning<T...>::warning{
+            log_detail::legacy_logger,
+            log_detail::concat_args_fmt<sizeof...(T)>(),
+            std::forward<T>(args)...,
+            location}
+    {}
   };
   template <typename... T>
-  struct LOKINET_LOG_DEPRECATED(Error) LogError
-      : log_detail::LegacyLeveledLogger<log::Level::err, T...>
+  struct LOKINET_LOG_DEPRECATED(Error) LogError : log::error<T...>
   {
-    using log_detail::LegacyLeveledLogger<log::Level::err, T...>::LegacyLeveledLogger;
+    LogError(
+        T&&... args,
+        const log::slns::source_location& location = log::slns::source_location::current())
+        : log::error<T...>::error{
+            log_detail::legacy_logger,
+            log_detail::concat_args_fmt<sizeof...(T)>(),
+            std::forward<T>(args)...,
+            location}
+    {}
   };
 
   template <typename... T>
