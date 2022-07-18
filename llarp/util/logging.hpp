@@ -4,6 +4,7 @@
 
 #include <string>
 #include <string_view>
+#include <array>
 
 #include <oxen/log.hpp>
 #include "oxen/log/internal.hpp"
