@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include <util/logging.hpp>
 #include <config/config.hpp>
+#include <oxen/log/level.hpp>
 
 using TestString = std::string;
 
@@ -35,9 +36,16 @@ std::vector<TestParseLog> testParseLog{// bad cases
 
 TEST_CASE("parseLevel")
 {
-  const auto data = GENERATE(from_range(testParseLog));
-  const auto maybe = llarp::log::level_from_string(data.input);
-  CHECK(maybe == data.level);
+  const auto& [input, expected] = GENERATE(from_range(testParseLog));
+
+  if (not expected)
+    REQUIRE_THROWS_AS(llarp::log::level_from_string(input), std::invalid_argument);
+  else
+  {
+    llarp::log::Level level;
+    REQUIRE_NOTHROW(level = llarp::log::level_from_string(input));
+    CHECK(level == *expected);
+  }
 }
 
 TEST_CASE("TestLogLevelToString")

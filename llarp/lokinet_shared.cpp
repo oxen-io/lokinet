@@ -17,6 +17,7 @@
 #include <mutex>
 #include <memory>
 #include <chrono>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define EHOSTDOWN ENETDOWN
@@ -453,11 +454,16 @@ extern "C"
   int EXPORT
   lokinet_log_level(const char* level)
   {
-    if (auto maybe = llarp::log::level_from_string(level))
+    try
     {
-      last_log_set = *maybe;
-      llarp::log::reset_level(*maybe);
+      auto new_level = llarp::log::level_from_string(level);
+      llarp::log::reset_level(new_level);
+      last_log_set = new_level;
       return 0;
+    }
+    catch (std::invalid_argument& e)
+    {
+      llarp::LogError(e.what());
     }
     return -1;
   }

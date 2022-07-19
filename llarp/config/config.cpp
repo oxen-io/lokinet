@@ -1099,13 +1099,7 @@ namespace llarp
         "logging",
         "type",
         DefaultLogType,
-        [this](std::string arg) {
-          auto type = log::type_from_string(arg);
-          if (type == log::Type::Unknown)
-            throw std::invalid_argument{fmt::format("invalid log type: {}", arg)};
-
-          m_logType = type;
-        },
+        [this](std::string arg) { m_logType = log::type_from_string(arg); },
         Comment{
             "Log type (format). Valid options are:",
             "  print - print logs to standard output",
@@ -1117,13 +1111,7 @@ namespace llarp
         "logging",
         "level",
         DefaultLogLevel,
-        [this](std::string arg) {
-          std::optional<log::Level> level = log::level_from_string(arg);
-          if (not level)
-            throw std::invalid_argument{fmt::format("invalid log level value: {}", arg)};
-
-          m_logLevel = *level;
-        },
+        [this](std::string arg) { m_logLevel = log::level_from_string(arg); },
         Comment{
             "Minimum log level to print. Logging below this level will be ignored.",
             "Valid log levels, in ascending order, are:",

@@ -210,7 +210,7 @@ namespace llarp
 
   struct LoggingConfig
   {
-    log::Type m_logType = log::Type::Unknown;
+    log::Type m_logType = log::Type::Print;
     log::Level m_logLevel = log::Level::off;
     std::string m_logFile;
 
