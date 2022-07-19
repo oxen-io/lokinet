@@ -18,4 +18,3 @@ pybind11_add_module(pyllarp MODULE
 )
 target_link_libraries(pyllarp PUBLIC liblokinet)
 target_include_directories(pyllarp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_log_tag(pyllarp)
