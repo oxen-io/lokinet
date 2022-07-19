@@ -28,13 +28,6 @@ target_link_libraries(lokinet-util PUBLIC
   oxen::logging
 )
 
-if(ANDROID)
-  target_sources(lokinet-util PRIVATE util/logging/android_logger.cpp)
-  target_link_libraries(lokinet-util PUBLIC log)
-elseif(WIN32)
-  target_sources(lokinet-util PRIVATE util/logging/win32_logger.cpp)
-endif()
-
 add_library(lokinet-platform
   STATIC
   # for networking

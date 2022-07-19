@@ -306,7 +306,6 @@ TellWindowsServiceStopped()
     else
       llarp::LogError("SetServiceStatus failed with an unknown error.");
   }
-  llarp::LogContext::Instance().ImmediateFlush();
 }
 
 class WindowsServiceStopped
