@@ -16,7 +16,10 @@ local default_deps = ['g++'] + default_deps_nocxx;
 local default_windows_deps = ['mingw-w64', 'zip', 'nsis'];
 local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
-local submodule_commands = ['git fetch --tags', 'git submodule update --init --recursive --depth=1 --jobs=4'];
+local submodule_commands = [
+  'git fetch --tags',
+  'git submodule update --init --recursive --depth=1 --jobs=4',
+];
 local submodules = {
   name: 'submodules',
   image: 'drone/git',

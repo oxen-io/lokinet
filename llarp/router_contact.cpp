@@ -5,9 +5,8 @@
 #include "net/net.hpp"
 #include "util/bencode.hpp"
 #include "util/buffer.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 #include "util/mem.hpp"
-#include "util/printer.hpp"
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
@@ -56,8 +55,7 @@ namespace llarp
   std::string
   NetID::ToString() const
   {
-    auto term = std::find(begin(), end(), '\0');
-    return std::string(begin(), term);
+    return {begin(), std::find(begin(), end(), '\0')};
   }
 
   bool
@@ -105,19 +103,17 @@ namespace llarp
     return false;
   }
 
-  std::ostream&
-  RouterContact::ToTXTRecord(std::ostream& out) const
+  std::string
+  RouterContact::ToTXTRecord() const
   {
+    std::string result;
+    auto out = std::back_inserter(result);
     for (const auto& addr : addrs)
-    {
-      out << "ai_addr=" << addr.toIpAddress() << "; ";
-      out << "ai_pk=" << addr.pubkey.ToHex() << "; ";
-    }
-    out << "updated=" << last_updated.count() << "; ";
-    out << "onion_pk=" << enckey.ToHex() << "; ";
+      out = fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
+    out = fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
     if (routerVersion.has_value())
-      out << "router_version=" << routerVersion->ToString() << "; ";
-    return out;
+      out = fmt::format_to(out, "router_version={}; ", *routerVersion);
+    return result;
   }
 
   bool
@@ -576,19 +572,18 @@ namespace llarp
     return BDecode(&buf);
   }
 
-  std::ostream&
-  RouterContact::print(std::ostream& stream, int level, int spaces) const
+  std::string
+  RouterContact::ToString() const
   {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("k", pubkey);
-    printer.printAttribute("updated", last_updated.count());
-    printer.printAttribute("netid", netID);
-    printer.printAttribute("v", version);
-    printer.printAttribute("ai", addrs);
-    printer.printAttribute("e", enckey);
-    printer.printAttribute("z", signature);
-
-    return stream;
+    return fmt::format(
+        "[RC k={} updated={} netid={} v={} ai={{{}}} e={} z={}]",
+        pubkey,
+        last_updated.count(),
+        netID,
+        version,
+        fmt::format("{}", fmt::join(addrs, ",")),
+        enckey,
+        signature);
   }
 
 }  // namespace llarp

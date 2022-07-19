@@ -16,7 +16,7 @@
 
 #include "ip.hpp"
 #include "ip_range.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 
 #ifdef ANDROID
@@ -540,9 +540,7 @@ namespace llarp
     int num = 0;
     while (num < 255)
     {
-      std::stringstream ifname_ss;
-      ifname_ss << "lokitun" << num;
-      std::string iftestname = ifname_ss.str();
+      std::string iftestname = fmt::format("lokitun{}", num);
       bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, nullptr);
       if (!found)
       {
@@ -599,7 +597,7 @@ namespace llarp
           addr6.sin6_addr = IN6ADDR_ANY_INIT;
           return SockAddr{addr6};
         }
-        throw llarp::make_exception<std::invalid_argument>(af, " is not a valid address family");
+        throw std::invalid_argument{fmt::format("{} is not a valid address family", af)};
       }
     }  // namespace
 

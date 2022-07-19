@@ -10,7 +10,7 @@
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/tooling/path_event.hpp>
 

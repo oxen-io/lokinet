@@ -186,7 +186,8 @@ namespace llarp::dns
     const auto str = file.u8string();
     if (auto ret = ub_ctx_hosts(unboundContext, str.c_str()))
     {
-      throw std::runtime_error{stringify("Failed to add host file ", file, ": ", ub_strerror(ret))};
+      throw std::runtime_error{
+          fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
     }
     else
     {

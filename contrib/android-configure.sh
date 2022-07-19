@@ -37,6 +37,8 @@ for abi in $build_abis; do
         -DWITH_SYSTEMD=OFF \
         -DFORCE_OXENMQ_SUBMODULE=ON \
         -DFORCE_OXENC_SUBMODULE=ON \
+        -DFORCE_LOGGING_SUBMODULE=ON \
+        -DFORCE_NLOHMANN_SUBMODULE=ON \
         -DSUBMODULE_CHECK=OFF \
         -DWITH_LTO=OFF \
         -DCMAKE_BUILD_TYPE=Release \

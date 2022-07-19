@@ -96,7 +96,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
-include(cmake/add_log_tag.cmake)
 include(cmake/libatomic.cmake)
 
 if (STATIC_LINK)

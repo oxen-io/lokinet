@@ -37,7 +37,6 @@ add_executable(testAll
   service/test_llarp_service_identity.cpp
   service/test_llarp_service_name.cpp
   util/meta/test_llarp_util_memfn.cpp
-  util/meta/test_llarp_util_traits.cpp
   util/thread/test_llarp_util_queue_manager.cpp
   util/thread/test_llarp_util_queue.cpp
   util/test_llarp_util_aligned.cpp
@@ -45,14 +44,12 @@ add_executable(testAll
   util/test_llarp_util_bits.cpp
   util/test_llarp_util_decaying_hashset.cpp
   util/test_llarp_util_log_level.cpp
-  util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   test_llarp_encrypted_frame.cpp
   test_llarp_router_contact.cpp)
 
 target_link_libraries(testAll PUBLIC liblokinet Catch2::Catch2)
 target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_log_tag(testAll)
 if(WIN32)
     target_sources(testAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)

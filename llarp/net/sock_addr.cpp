@@ -3,7 +3,7 @@
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
 
 #include <charconv>
@@ -262,21 +262,22 @@ namespace llarp
     // splits[0] should be dot-separated IPv4
     auto ipSplits = split(splits[0], ".");
     if (ipSplits.size() != 4)
-      throw std::invalid_argument(stringify(str, " is not a valid IPv4 address"));
+      throw std::invalid_argument(fmt::format("{} is not a valid IPv4 address", str));
 
     std::array<uint8_t, 4> ipBytes;
     for (int i = 0; i < 4; ++i)
       if (not parse_int(ipSplits[i], ipBytes[i]))
-        throw std::runtime_error(stringify(str, " contains invalid numeric value"));
+        throw std::runtime_error(fmt::format("{} contains invalid numeric value", str));
 
     // attempt port before setting IPv4 bytes
     if (splits.size() == 2)
     {
       if (not allow_port)
-        throw std::runtime_error{stringify("invalid ip address (port not allowed here): ", str)};
+        throw std::runtime_error{
+            fmt::format("invalid ip address (port not allowed here): {}", str)};
       uint16_t port;
       if (not parse_int(splits[1], port))
-        throw std::runtime_error{stringify(splits[1], " is not a valid port")};
+        throw std::runtime_error{fmt::format("{} is not a valid port", splits[1])};
       setPort(port);
     }
 
@@ -284,7 +285,7 @@ namespace llarp
   }
 
   std::string
-  SockAddr::toString() const
+  SockAddr::ToString() const
   {
     // TODO: review
     if (isEmpty())
@@ -433,13 +434,6 @@ namespace llarp
   SockAddr::getPort() const
   {
     return ntohs(m_addr.sin6_port);
-  }
-
-  std::ostream&
-  operator<<(std::ostream& out, const SockAddr& address)
-  {
-    out << address.toString();
-    return out;
   }
 
 }  // namespace llarp

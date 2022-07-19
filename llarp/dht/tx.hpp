@@ -3,7 +3,7 @@
 
 #include "key.hpp"
 #include "txowner.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/status.hpp>
 
 #include <set>

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fmt/core.h>
 #include <initializer_list>
 #include <type_traits>
 #include <llarp/util/str.hpp>
@@ -259,8 +260,8 @@ namespace llarp
     getValueAt(size_t index) const
     {
       if (index >= parsedValues.size())
-        throw std::range_error(
-            stringify("no value at index ", index, ", size: ", parsedValues.size()));
+        throw std::range_error{
+            fmt::format("no value at index {}, size: {}", index, parsedValues.size())};
 
       return parsedValues[index];
     }
@@ -293,8 +294,8 @@ namespace llarp
     {
       if (not multiValued and parsedValues.size() > 0)
       {
-        throw std::invalid_argument(
-            stringify("duplicate value for ", name, ", previous value: ", parsedValues[0]));
+        throw std::invalid_argument{
+            fmt::format("duplicate value for {}, previous value: {}", name, parsedValues[0])};
       }
 
       parsedValues.emplace_back(fromString(input));
@@ -313,7 +314,7 @@ namespace llarp
         T t;
         iss >> t;
         if (iss.fail())
-          throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
+          throw std::invalid_argument{fmt::format("{} is not a valid {}", input, typeid(T).name())};
         else
           return t;
       }
@@ -341,12 +342,10 @@ namespace llarp
     {
       if (required and parsedValues.size() == 0)
       {
-        throw std::runtime_error(stringify(
-            "cannot call tryAccept() on [",
+        throw std::runtime_error{fmt::format(
+            "cannot call tryAccept() on [{}]:{} when required but no value available",
             section,
-            "]:",
-            name,
-            " when required but no value available"));
+            name)};
       }
 
       // don't use default value if we are multi-valued and have no value
@@ -472,8 +471,8 @@ namespace llarp
 
       auto derived = dynamic_cast<const OptionDefinition<T>*>(definition.get());
       if (not derived)
-        throw std::invalid_argument(
-            stringify("", typeid(T).name(), " is the incorrect type for [", section, "]:", name));
+        throw std::invalid_argument{
+            fmt::format("{} is the incorrect type for [{}]:{}", typeid(T).name(), section, name)};
 
       return derived->getValue();
     }

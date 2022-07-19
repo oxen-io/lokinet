@@ -1,6 +1,6 @@
 #include "srv_data.hpp"
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <limits>
 

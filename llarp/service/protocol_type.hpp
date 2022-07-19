@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <ostream>
+#include <llarp/util/formattable.hpp>
 
 namespace llarp::service
 {
@@ -19,7 +20,20 @@ namespace llarp::service
 
   };
 
-  std::ostream&
-  operator<<(std::ostream& o, ProtocolType t);
+  constexpr std::string_view
+  ToString(ProtocolType t)
+  {
+    using namespace std::literals;
+    return t == ProtocolType::Control  ? "Control"sv
+        : t == ProtocolType::TrafficV4 ? "TrafficV4"sv
+        : t == ProtocolType::TrafficV6 ? "TrafficV6"sv
+        : t == ProtocolType::Exit      ? "Exit"sv
+        : t == ProtocolType::Auth      ? "Auth"sv
+        : t == ProtocolType::QUIC      ? "QUIC"sv
+                                       : "(unknown-protocol-type)"sv;
+  }
 
 }  // namespace llarp::service
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::ProtocolType> = true;

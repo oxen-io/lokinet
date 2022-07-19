@@ -1,7 +1,7 @@
 #include "lokid_rpc_client.hpp"
 
 #include <stdexcept>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <llarp/router/abstractrouter.hpp>
 
@@ -14,20 +14,23 @@ namespace llarp
 {
   namespace rpc
   {
-    static oxenmq::LogLevel
-    toLokiMQLogLevel(llarp::LogLevel level)
+    static constexpr oxenmq::LogLevel
+    toLokiMQLogLevel(log::Level level)
     {
       switch (level)
       {
-        case eLogError:
+        case log::Level::critical:
+          return oxenmq::LogLevel::fatal;
+        case log::Level::err:
           return oxenmq::LogLevel::error;
-        case eLogWarn:
+        case log::Level::warn:
           return oxenmq::LogLevel::warn;
-        case eLogInfo:
+        case log::Level::info:
           return oxenmq::LogLevel::info;
-        case eLogDebug:
+        case log::Level::debug:
           return oxenmq::LogLevel::debug;
-        case eLogNone:
+        case log::Level::trace:
+        case log::Level::off:
         default:
           return oxenmq::LogLevel::trace;
       }
@@ -58,7 +61,7 @@ namespace llarp
         {
           throw std::runtime_error("we cannot talk to lokid while not a service node");
         }
-        LogInfo("connecting to lokid via LMQ at ", url);
+        LogInfo("connecting to lokid via LMQ at ", url.full_address());
         m_Connection = m_lokiMQ->connect_remote(
             url,
             [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
@@ -344,8 +347,8 @@ namespace llarp
                 const auto nonce = oxenc::from_hex(j["nonce"].get<std::string>());
                 if (nonce.size() != result.nonce.size())
                 {
-                  throw std::invalid_argument(stringify(
-                      "nonce size mismatch: ", nonce.size(), " != ", result.nonce.size()));
+                  throw std::invalid_argument{fmt::format(
+                      "nonce size mismatch: {} != {}", nonce.size(), result.nonce.size())};
                 }
 
                 std::copy_n(nonce.data(), nonce.size(), result.nonce.data());

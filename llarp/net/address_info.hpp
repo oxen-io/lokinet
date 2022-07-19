@@ -53,24 +53,21 @@ namespace llarp
     std::variant<nuint32_t, nuint128_t>
     IP() const;
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
+    std::string
+    ToString() const;
   };
 
   void
   to_json(nlohmann::json& j, const AddressInfo& a);
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const AddressInfo& a)
-  {
-    return a.print(out, -1, -1);
-  }
 
   bool
   operator==(const AddressInfo& lhs, const AddressInfo& rhs);
 
   bool
   operator<(const AddressInfo& lhs, const AddressInfo& rhs);
+
+  template <>
+  constexpr inline bool IsToStringFormattable<AddressInfo> = true;
 
 }  // namespace llarp
 

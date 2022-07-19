@@ -8,15 +8,8 @@ add_library(lokinet-util
   util/fs.cpp
   util/json.cpp
   util/logging/buffer.cpp
-  util/logging/file_logger.cpp
-  util/logging/logger.cpp
-  util/logging/logger_internal.cpp
-  util/logging/loglevel.cpp
-  util/logging/ostream_logger.cpp
-  util/logging/syslog_logger.cpp
   util/lokinet_init.c
   util/mem.cpp
-  util/printer.cpp
   util/str.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp
@@ -31,16 +24,9 @@ target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
   filesystem
-  date::date
   oxenc::oxenc
+  oxen::logging
 )
-
-if(ANDROID)
-  target_sources(lokinet-util PRIVATE util/logging/android_logger.cpp)
-  target_link_libraries(lokinet-util PUBLIC log)
-elseif(WIN32)
-  target_sources(lokinet-util PRIVATE util/logging/win32_logger.cpp)
-endif()
 
 add_library(lokinet-platform
   STATIC
@@ -213,7 +199,6 @@ add_library(liblokinet
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
-  service/protocol_type.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
@@ -236,7 +221,15 @@ if(WITH_HIVE)
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts oxenc::oxenc lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static oxenmq::oxenmq)
+target_link_libraries(liblokinet PUBLIC
+    cxxopts
+    oxenc::oxenc
+    lokinet-platform
+    lokinet-util
+    lokinet-cryptography
+    sqlite_orm
+    ngtcp2_static
+    oxenmq::oxenmq)
 target_link_libraries(liblokinet PRIVATE libunbound)
 pkg_check_modules(CRYPT libcrypt IMPORTED_TARGET)
 if(CRYPT_FOUND AND NOT CMAKE_CROSSCOMPILING)
@@ -262,16 +255,11 @@ if(BUILD_LIBLOKINET)
   else()
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
-  add_log_tag(lokinet-shared)
 endif()
 
 if(APPLE)
   add_subdirectory(apple)
 endif()
-
-foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
-  add_log_tag(${lokinet_lib})
-endforeach()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 

@@ -8,6 +8,8 @@
 
 #include "net_int.hpp"
 
+#include <llarp/util/formattable.hpp>
+
 namespace llarp
 {
   /// A struct that can represent either an IPv4 or IPv6 address. It is meant for representation
@@ -118,7 +120,7 @@ namespace llarp
     ///
     /// @return string representation of this IpAddress
     std::string
-    toString() const;
+    ToString() const;
 
     std::string
     toHost() const;
@@ -147,8 +149,8 @@ namespace llarp
     std::optional<uint16_t> m_port = std::nullopt;
   };
 
-  std::ostream&
-  operator<<(std::ostream& out, const IpAddress& address);
+  template <>
+  constexpr inline bool IsToStringFormattable<IpAddress> = true;
 
 }  // namespace llarp
 
@@ -160,7 +162,7 @@ namespace std
     std::size_t
     operator()(const llarp::IpAddress& address) const noexcept
     {
-      return std::hash<std::string>{}(address.toString());
+      return std::hash<std::string>{}(address.ToString());
     }
   };
 }  // namespace std

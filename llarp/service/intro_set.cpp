@@ -69,16 +69,16 @@ namespace llarp::service
     return signedAt < other.signedAt;
   }
 
-  std::ostream&
-  EncryptedIntroSet::print(std::ostream& out, int levels, int spaces) const
+  std::string
+  EncryptedIntroSet::ToString() const
   {
-    Printer printer(out, levels, spaces);
-    printer.printAttribute("d", derivedSigningKey);
-    printer.printAttribute("n", nounce);
-    printer.printAttribute("s", signedAt.count());
-    printer.printAttribute("x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
-    printer.printAttribute("z", sig);
-    return out;
+    return fmt::format(
+        "[EncIntroSet d={} n={} s={} x=[{} bytes] z={}]",
+        derivedSigningKey,
+        nounce,
+        signedAt.count(),
+        introsetPayload.size(),
+        sig);
   }
 
   std::optional<IntroSet>
@@ -155,11 +155,7 @@ namespace llarp::service
         supportedProtocols.begin(),
         supportedProtocols.end(),
         std::back_inserter(protocols),
-        [](const auto& proto) -> util::StatusObject {
-          std::stringstream ss;
-          ss << proto;
-          return ss.str();
-        });
+        [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
     obj["protos"] = protocols;
     std::vector<util::StatusObject> ranges;
     std::transform(
@@ -423,30 +419,17 @@ namespace llarp::service
     return maxTime;
   }
 
-  std::ostream&
-  IntroSet::print(std::ostream& stream, int level, int spaces) const
+  std::string
+  IntroSet::ToString() const
   {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("addressKeys", addressKeys);
-    printer.printAttribute("intros", intros);
-    printer.printAttribute("sntrupKey", sntrupKey);
-
-    std::string _topic = topic.ToString();
-
-    if (!_topic.empty())
-    {
-      printer.printAttribute("topic", _topic);
-    }
-    else
-    {
-      printer.printAttribute("topic", topic);
-    }
-
-    printer.printAttribute("signedAt", timestampSignedAt.count());
-
-    printer.printAttribute("version", version);
-    printer.printAttribute("sig", signature);
-
-    return stream;
+    return fmt::format(
+        "[IntroSet addressKeys={} intros={{{}}} sntrupKey={} topic={} signedAt={} v={} sig={}]",
+        addressKeys,
+        fmt::format("{}", fmt::join(intros, ",")),
+        sntrupKey,
+        topic,
+        timestampSignedAt.count(),
+        version,
+        signature);
   }
 }  // namespace llarp::service

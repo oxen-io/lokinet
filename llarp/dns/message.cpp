@@ -4,8 +4,7 @@
 #include "dns.hpp"
 #include "srv_data.hpp"
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/printer.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/net/ip.hpp>
 
 #include <array>
@@ -401,19 +400,18 @@ namespace llarp
       }
     }
 
-    std::ostream&
-    Message::print(std::ostream& stream, int level, int spaces) const
+    std::string
+    Message::ToString() const
     {
-      Printer printer(stream, level, spaces);
-
-      printer.printAttributeAsHex("dns message id", hdr_id);
-      printer.printAttributeAsHex("fields", hdr_fields);
-      printer.printAttribute("questions", questions);
-      printer.printAttribute("answers", answers);
-      printer.printAttribute("nameserer", authorities);
-      printer.printAttribute("additional", additional);
-
-      return stream;
+      return fmt::format(
+          "[DNSMessage id={:x} fields={:x} questions={{{}}} answers={{{}}} authorities={{{}}} "
+          "additional={{{}}}]",
+          hdr_id,
+          hdr_fields,
+          fmt::format("{}", fmt::join(questions, ",")),
+          fmt::format("{}", fmt::join(answers, ",")),
+          fmt::format("{}", fmt::join(authorities, ",")),
+          fmt::format("{}", fmt::join(additional, ",")));
     }
 
   }  // namespace dns

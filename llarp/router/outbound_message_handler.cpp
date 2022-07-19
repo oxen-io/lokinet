@@ -152,7 +152,7 @@ namespace llarp
         return SendStatus::NoLink;
     }
     throw std::invalid_argument{
-        stringify("SessionResult ", result, " has no corrispoding SendStatus when transforming")};
+        fmt::format("SessionResult {} has no corresponding SendStatus when transforming", result)};
   }
 
   void

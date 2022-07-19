@@ -5,7 +5,8 @@
 #include "router_contact.hpp"
 #include "util/buffer.hpp"
 #include "util/fs.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
+#include "util/time.hpp"
 #include "util/mem.hpp"
 #include "util/str.hpp"
 #include "dht/kademlia.hpp"
@@ -38,7 +39,7 @@ namespace llarp
     }
 
     if (not fs::is_directory(nodedbDir))
-      throw std::runtime_error(llarp::stringify("nodedb ", nodedbDir, " is not a directory"));
+      throw std::runtime_error{fmt::format("nodedb {} is not a directory", nodedbDir)};
 
     for (const char& ch : skiplist_subdirs)
     {

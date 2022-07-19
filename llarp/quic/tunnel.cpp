@@ -4,8 +4,8 @@
 #include "service/name.hpp"
 #include "stream.hpp"
 #include <limits>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/ev/ev_libuv.hpp>
 #include <memory>
@@ -479,9 +479,8 @@ namespace llarp::quic
     if (failed)
     {
       tcp_tunnel->close();
-      throw std::runtime_error{
-          "Failed to bind/listen local TCP tunnel socket on " + bind_addr.toString() + ": "
-          + failed};
+      throw std::runtime_error{fmt::format(
+          "Failed to bind/listen local TCP tunnel socket on {}: {}", bind_addr, failed)};
     }
 
     auto bound = tcp_tunnel->sock();

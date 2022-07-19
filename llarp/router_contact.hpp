@@ -48,14 +48,6 @@ namespace llarp
       return !(*this == other);
     }
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printValue(ToString());
-      return stream;
-    }
-
     std::string
     ToString() const;
 
@@ -65,12 +57,6 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t* buf) const;
   };
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const NetID& id)
-  {
-    return id.print(out, -1, -1);
-  }
 
   /// RouterContact
   struct RouterContact
@@ -120,10 +106,7 @@ namespace llarp
     }
 
     std::string
-    ToString() const
-    {
-      return ToJson().dump();
-    }
+    ToString() const;
 
     bool
     BEncode(llarp_buffer_t* buf) const;
@@ -131,8 +114,8 @@ namespace llarp
     bool
     BEncodeSignedSection(llarp_buffer_t* buf) const;
 
-    std::ostream&
-    ToTXTRecord(std::ostream& out) const;
+    std::string
+    ToTXTRecord() const;
 
     bool
     operator==(const RouterContact& other) const
@@ -209,9 +192,6 @@ namespace llarp
       return last_updated < other.last_updated;
     }
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
-
     bool
     Read(const fs::path& fname);
 
@@ -229,11 +209,10 @@ namespace llarp
     DecodeVersion_1(oxenc::bt_list_consumer& btlist);
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const RouterContact& rc)
-  {
-    return rc.print(out, -1, -1);
-  }
+  template <>
+  constexpr inline bool IsToStringFormattable<NetID> = true;
+  template <>
+  constexpr inline bool IsToStringFormattable<RouterContact> = true;
 
   using RouterLookupHandler = std::function<void(const std::vector<RouterContact>&)>;
 }  // namespace llarp

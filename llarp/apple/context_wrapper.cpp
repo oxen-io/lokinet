@@ -6,10 +6,11 @@
 #include <llarp/util/fs.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <uvw/loop.h>
+#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging/callback_sink.hpp>
 #include "vpn_interface.hpp"
 #include "context_wrapper.h"
 #include "context.hpp"
-#include "apple_logger.hpp"
 
 namespace
 {
@@ -34,8 +35,10 @@ const uint16_t dns_trampoline_port = 1053;
 void*
 llarp_apple_init(llarp_apple_config* appleconf)
 {
-  llarp::LogContext::Instance().logStream =
-      std::make_unique<llarp::apple::NSLogStream>(appleconf->ns_logger);
+  llarp::log::ReplaceLogger(std::make_shared<llarp::log::CallbackSink_mt>(
+      [](const char* msg, void* nslog) { reinterpret_cast<ns_logger_callback>(nslog)(msg); },
+      nullptr,
+      appleconf->ns_logger));
 
   try
   {
@@ -43,7 +46,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto config = std::make_shared<llarp::Config>(config_dir);
     fs::path config_path = config_dir / "lokinet.ini";
     if (!fs::exists(config_path))
-      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/false, /*router=*/false);
+      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/false, /*asRouter=*/false);
     config->Load(config_path);
 
     // If no range is specified then go look for a free one, set that in the config, and then return

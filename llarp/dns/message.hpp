@@ -93,8 +93,8 @@ namespace llarp
       [[nodiscard]] OwnedBuffer
       ToBuffer() const;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       MsgID_t hdr_id;
       Fields_t hdr_fields;
@@ -103,12 +103,8 @@ namespace llarp
       std::vector<ResourceRecord> authorities;
       std::vector<ResourceRecord> additional;
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const Message& msg)
-    {
-      msg.print(out, -1, -1);
-      return out;
-    }
   }  // namespace dns
+
+  template <>
+  constexpr inline bool IsToStringFormattable<llarp::dns::Message> = true;
 }  // namespace llarp

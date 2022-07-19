@@ -5,7 +5,7 @@
 #include <catch2/catch.hpp>
 #include "peerstats/types.hpp"
 #include "router_contact.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 #include "util/time.hpp"
 
 TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
@@ -41,7 +41,6 @@ TEST_CASE("Test PeerDb flush before load", "[PeerDb]")
 
 TEST_CASE("Test PeerDb load twice", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   llarp::PeerDb db;
   CHECK_NOTHROW(db.loadDatabase(std::nullopt));
   CHECK_THROWS_WITH(db.loadDatabase(std::nullopt), "Reloading database not supported");
@@ -49,7 +48,6 @@ TEST_CASE("Test PeerDb load twice", "[PeerDb]")
 
 TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x01);
 
   llarp::PeerDb db;
@@ -67,7 +65,6 @@ TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
 
 TEST_CASE("Test PeerDb file-backed database reloads properly", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   const std::string filename = "/tmp/peerdb_test_tmp2.db.sqlite";
   const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x02);
 
@@ -97,7 +94,6 @@ TEST_CASE("Test PeerDb file-backed database reloads properly", "[PeerDb]")
 
 TEST_CASE("Test PeerDb modifyPeerStats", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xF2);
 
   int numTimesCalled = 0;
@@ -122,7 +118,6 @@ TEST_CASE("Test PeerDb modifyPeerStats", "[PeerDb]")
 
 TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xCA);
 
   auto rcLifetime = llarp::RouterContact::Lifetime;
@@ -162,7 +157,6 @@ TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
 
 TEST_CASE("Test PeerDb handleGossipedRC expiry calcs", "[PeerDb]")
 {
-  llarp::LogSilencer shutup;
   const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xF9);
 
   // see comments in peer_db.cpp above PeerDb::handleGossipedRC() for some context around these

@@ -1,6 +1,6 @@
 #include "bootstrap.hpp"
 #include "util/bencode.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 #include "util/logging/buffer.hpp"
 
 namespace llarp
