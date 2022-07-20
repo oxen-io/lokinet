@@ -39,8 +39,18 @@ namespace llarp
   /// parameters that need to be passed around.
   struct ConfigGenParameters
   {
+    ConfigGenParameters() = default;
+    virtual ~ConfigGenParameters() = default;
+
+    ConfigGenParameters(const ConfigGenParameters&) = delete;
+    ConfigGenParameters(ConfigGenParameters&&) = delete;
+
     bool isRelay = false;
     fs::path defaultDataDir;
+
+    /// get network platform (virtual for unit test mocks)
+    virtual const llarp::net::Platform*
+    Net_ptr() const = 0;
   };
 
   struct RouterConfig
@@ -55,9 +65,6 @@ namespace llarp
 
     bool m_blockBogons = false;
 
-    std::optional<nuint32_t> m_PublicIP;
-    nuint16_t m_PublicPort;
-
     int m_workerThreads = -1;
     int m_numNetThreads = -1;
 
@@ -69,6 +76,10 @@ namespace llarp
     std::string m_transportKeyFile;
 
     bool m_isRelay = false;
+    /// deprecated
+    std::optional<net::ipaddr_t> PublicIP;
+    /// deprecated
+    std::optional<net::port_t> PublicPort;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -154,19 +165,10 @@ namespace llarp
 
   struct LinksConfig
   {
-    struct LinkInfo
-    {
-      std::string m_interface;
-      int addressFamily = -1;
-      uint16_t port = -1;
-    };
-    /// Create a LinkInfo from the given string.
-    /// @throws if str does not represent a LinkInfo.
-    LinkInfo
-    LinkInfoFromINIValues(std::string_view name, std::string_view value);
-
-    LinkInfo m_OutboundLink;
-    std::vector<LinkInfo> m_InboundLinks;
+    std::optional<net::ipaddr_t> PublicAddress;
+    std::optional<net::port_t> PublicPort;
+    std::vector<SockAddr> OutboundLinks;
+    std::vector<SockAddr> InboundListenAddrs;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -220,9 +222,13 @@ namespace llarp
 
   struct Config
   {
-    explicit Config(fs::path datadir);
+    explicit Config(std::optional<fs::path> datadir = std::nullopt);
 
-    ~Config() = default;
+    virtual ~Config() = default;
+
+    /// create generation params (virtual for unit test mock)
+    virtual std::unique_ptr<ConfigGenParameters>
+    MakeGenParams() const;
 
     RouterConfig router;
     NetworkConfig network;
@@ -249,6 +255,10 @@ namespace llarp
     // Load a config from the given file if the config file is not provided LoadDefault is called
     bool
     Load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+
+    // Load a config from a string of ini, same effects as Config::Load
+    bool
+    LoadString(std::string_view ini, bool isRelay = false);
 
     std::string
     generateBaseClientConfig();

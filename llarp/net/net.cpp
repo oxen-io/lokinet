@@ -2,6 +2,7 @@
 
 #include "net_if.hpp"
 #include <stdexcept>
+#include <llarp/constants/platform.hpp>
 
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>
@@ -22,13 +23,17 @@
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>
 #else
-#ifndef _WIN32
+#ifdef _WIN32
+#include <iphlpapi.h>
+#include <llarp/win32/exception.hpp>
+#else
 #include <ifaddrs.h>
 #endif
 #endif
 
 #include <cstdio>
 #include <list>
+#include <type_traits>
 
 bool
 operator==(const sockaddr& a, const sockaddr& b)
@@ -76,559 +81,408 @@ operator==(const sockaddr_in6& a, const sockaddr_in6& b)
   return a.sin6_port == b.sin6_port && a.sin6_addr == b.sin6_addr;
 }
 
+namespace llarp::net
+{
+  class Platform_Base : public llarp::net::Platform
+  {
+   public:
+    bool
+    IsLoopbackAddress(ipaddr_t ip) const override
+    {
+      return var::visit(
+          [loopback6 = IPRange{huint128_t{uint128_t{0UL, 1UL}}, netmask_ipv6_bits(128)},
+           loopback4 = IPRange::FromIPv4(127, 0, 0, 0, 8)](auto&& ip) {
+            const auto h_ip = ToHost(ip);
+            return loopback4.Contains(h_ip) or loopback6.Contains(h_ip);
+          },
+          ip);
+    }
+
+    SockAddr
+    Wildcard(int af) const override
+    {
+      if (af == AF_INET)
+      {
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        addr.sin_port = htons(0);
+        return SockAddr{addr};
+      }
+      if (af == AF_INET6)
+      {
+        sockaddr_in6 addr6{};
+        addr6.sin6_family = AF_INET6;
+        addr6.sin6_port = htons(0);
+        addr6.sin6_addr = IN6ADDR_ANY_INIT;
+        return SockAddr{addr6};
+      }
+      throw std::invalid_argument{fmt::format("{} is not a valid address family")};
+    }
+
+    bool
+    IsBogon(const llarp::SockAddr& addr) const override
+    {
+      return llarp::IsBogon(addr.asIPv6());
+    }
+
+    bool
+    IsWildcardAddress(ipaddr_t ip) const override
+    {
+      return var::visit([](auto&& ip) { return not ip.n; }, ip);
+    }
+  };
+
 #ifdef _WIN32
-#include <assert.h>
-#include <errno.h>
-#include <iphlpapi.h>
-#include <strsafe.h>
-
-// current strategy: mingw 32-bit builds call an inlined version of the function
-// microsoft c++ and mingw 64-bit builds call the normal function
-#define DEFAULT_BUFFER_SIZE 15000
-
-// in any case, we still need to implement some form of
-// getifaddrs(3) with compatible semantics on NT...
-// daemon.ini section [bind] will have something like
-// [bind]
-// Ethernet=1090
-// inside, since that's what we use in windows to refer to
-// network interfaces
-struct llarp_nt_ifaddrs_t
-{
-  struct llarp_nt_ifaddrs_t* ifa_next; /* Pointer to the next structure.  */
-  char* ifa_name;                      /* Name of this network interface.  */
-  unsigned int ifa_flags;              /* Flags as from SIOCGIFFLAGS ioctl.  */
-  struct sockaddr* ifa_addr;           /* Network address of this interface.  */
-  struct sockaddr* ifa_netmask;        /* Netmask of this interface.  */
-};
-
-// internal struct
-struct _llarp_nt_ifaddrs_t
-{
-  struct llarp_nt_ifaddrs_t _ifa;
-  char _name[256];
-  struct sockaddr_storage _addr;
-  struct sockaddr_storage _netmask;
-};
-
-static inline void*
-_llarp_nt_heap_alloc(const size_t n_bytes)
-{
-  /* Does not appear very safe with re-entrant calls on XP */
-  return HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, n_bytes);
-}
-
-static inline void
-_llarp_nt_heap_free(void* mem)
-{
-  HeapFree(GetProcessHeap(), 0, mem);
-}
-#define llarp_nt_new0(struct_type, n_structs) \
-  ((struct_type*)malloc((size_t)sizeof(struct_type) * (size_t)(n_structs)))
-
-int
-llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
-{
-  struct addrinfo hints;
-  struct addrinfo* result = nullptr;
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_protocol = IPPROTO_TCP;
-  hints.ai_flags = AI_NUMERICHOST;
-  const int status = getaddrinfo(src, nullptr, &hints, &result);
-  if (!status)
+  class Platform_Impl : public Platform_Base
   {
-    memcpy(dst, result->ai_addr, result->ai_addrlen);
-    freeaddrinfo(result);
-    return 1;
-  }
-  return 0;
-}
-
-/* NB: IP_ADAPTER_INFO size varies size due to sizeof (time_t), the API assumes
- * 4-byte datatype whilst compiler uses an 8-byte datatype.  Size can be forced
- * with -D_USE_32BIT_TIME_T with side effects to everything else.
- *
- * Only supports IPv4 addressing similar to SIOCGIFCONF socket option.
- *
- * Interfaces that are not "operationally up" will return the address 0.0.0.0,
- * this includes adapters with static IP addresses but with disconnected cable.
- * This is documented under the GetIpAddrTable API.  Interface status can only
- * be determined by the address, a separate flag is introduced with the
- * GetAdapterAddresses API.
- *
- * The IPv4 loopback interface is not included.
- *
- * Available in Windows 2000 and Wine 1.0.
- */
-static bool
-_llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
-{
-  DWORD dwRet;
-  ULONG ulOutBufLen = DEFAULT_BUFFER_SIZE;
-  PIP_ADAPTER_INFO pAdapterInfo = nullptr;
-  PIP_ADAPTER_INFO pAdapter = nullptr;
-
-  /* loop to handle interfaces coming online causing a buffer overflow
-   * between first call to list buffer length and second call to enumerate.
-   */
-  for (unsigned i = 3; i; i--)
-  {
-#ifdef DEBUG
-    fprintf(stderr, "IP_ADAPTER_INFO buffer length %lu bytes.\n", ulOutBufLen);
-#endif
-    pAdapterInfo = (IP_ADAPTER_INFO*)_llarp_nt_heap_alloc(ulOutBufLen);
-    dwRet = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
-    if (ERROR_BUFFER_OVERFLOW == dwRet)
+    /// visit all adapters (not addresses). windows serves net info per adapter unlink posix which
+    /// gives a list of all distinct addresses.
+    template <typename Visit_t>
+    void
+    iter_adapters(Visit_t&& visit) const
     {
-      _llarp_nt_heap_free(pAdapterInfo);
-      pAdapterInfo = nullptr;
+      constexpr auto flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST
+          | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS
+          | GAA_FLAG_INCLUDE_ALL_INTERFACES;
+
+      ULONG sz{};
+      GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, nullptr, &sz);
+      auto* ptr = new uint8_t[sz];
+      auto* addrs = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(ptr);
+
+      if (auto err = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, addrs, &sz);
+          err != ERROR_SUCCESS)
+        throw llarp::win32::error{err, "GetAdaptersAddresses()"};
+
+      for (auto* addr = addrs; addr and addr->Next; addr = addr->Next)
+        visit(addr);
+
+      delete[] ptr;
     }
-    else
+
+    template <typename adapter_t>
+    bool
+    adapter_has_ip(adapter_t* a, ipaddr_t ip) const
     {
-      break;
-    }
-  }
-
-  switch (dwRet)
-  {
-    case ERROR_SUCCESS: /* NO_ERROR */
-      break;
-    case ERROR_BUFFER_OVERFLOW:
-      errno = ENOBUFS;
-      if (pAdapterInfo)
-        _llarp_nt_heap_free(pAdapterInfo);
-      return false;
-    default:
-      errno = dwRet;
-#ifdef DEBUG
-      fprintf(stderr, "system call failed: %lu\n", GetLastError());
-#endif
-      if (pAdapterInfo)
-        _llarp_nt_heap_free(pAdapterInfo);
-      return false;
-  }
-
-  /* count valid adapters */
-  int n = 0, k = 0;
-  for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
-  {
-    for (IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr; pIPAddr = pIPAddr->Next)
-    {
-      /* skip null adapters */
-      if (strlen(pIPAddr->IpAddress.String) == 0)
-        continue;
-      ++n;
-    }
-  }
-
-#ifdef DEBUG
-  fprintf(stderr, "GetAdaptersInfo() discovered %d interfaces.\n", n);
-#endif
-
-  /* contiguous block for adapter list */
-  struct _llarp_nt_ifaddrs_t* ifa = llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
-  struct _llarp_nt_ifaddrs_t* ift = ifa;
-  int val = 0;
-  /* now populate list */
-  for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
-  {
-    for (IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr; pIPAddr = pIPAddr->Next)
-    {
-      /* skip null adapters */
-      if (strlen(pIPAddr->IpAddress.String) == 0)
-        continue;
-
-      /* address */
-      ift->_ifa.ifa_addr = (struct sockaddr*)&ift->_addr;
-      val = llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String, ift->_ifa.ifa_addr);
-      assert(1 == val);
-
-      /* name */
-#ifdef DEBUG
-      fprintf(stderr, "name:%s IPv4 index:%lu\n", pAdapter->AdapterName, pAdapter->Index);
-#endif
-      ift->_ifa.ifa_name = ift->_name;
-      StringCchCopyN(ift->_ifa.ifa_name, 128, pAdapter->AdapterName, 128);
-
-      /* flags: assume up, broadcast and multicast */
-      ift->_ifa.ifa_flags = IFF_UP | IFF_BROADCAST | IFF_MULTICAST;
-      if (pAdapter->Type == MIB_IF_TYPE_LOOPBACK)
-        ift->_ifa.ifa_flags |= IFF_LOOPBACK;
-
-      /* netmask */
-      ift->_ifa.ifa_netmask = (sockaddr*)&ift->_netmask;
-      val = llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask);
-      assert(1 == val);
-
-      /* next */
-      if (k++ < (n - 1))
+      for (auto* addr = a->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
       {
-        ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
-        ift = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
+        SockAddr saddr{*addr->Address.lpSockaddr};
+        if (saddr.getIP() == ip)
+          return true;
       }
-      else
+      return false;
+    }
+
+    template <typename adapter_t>
+    bool
+    adapter_has_fam(adapter_t* a, int af) const
+    {
+      for (auto* addr = a->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
       {
-        ift->_ifa.ifa_next = nullptr;
+        SockAddr saddr{*addr->Address.lpSockaddr};
+        if (saddr.Family() == af)
+          return true;
       }
+      return false;
     }
-  }
 
-  if (pAdapterInfo)
-    _llarp_nt_heap_free(pAdapterInfo);
-  *ifap = (struct llarp_nt_ifaddrs_t*)ifa;
-  return true;
-}
-
-// an implementation of if_nametoindex(3) based on GetAdapterIndex(2)
-// with a fallback to GetAdaptersAddresses(2) commented out for now
-// unless it becomes evident that the first codepath fails in certain
-// edge cases?
-static unsigned
-_llarp_nt_nametoindex(const char* ifname)
-{
-  ULONG ifIndex;
-  DWORD dwRet;
-  char szAdapterName[256];
-
-  if (!ifname)
-    return 0;
-
-  StringCchCopyN(szAdapterName, sizeof(szAdapterName), ifname, 256);
-  dwRet = GetAdapterIndex((LPWSTR)szAdapterName, &ifIndex);
-
-  if (!dwRet)
-    return ifIndex;
-  else
-    return 0;
-}
-
-// the emulated getifaddrs(3) itself.
-static bool
-llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
-{
-  assert(nullptr != ifap);
-#ifdef DEBUG
-  fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap, (void*)errno);
-#endif
-  return _llarp_nt_getadaptersinfo(ifap);
-}
-
-static void
-llarp_nt_freeifaddrs(struct llarp_nt_ifaddrs_t* ifa)
-{
-  if (!ifa)
-    return;
-  free(ifa);
-}
-
-// emulated if_nametoindex(3)
-static unsigned
-llarp_nt_if_nametoindex(const char* ifname)
-{
-  if (!ifname)
-    return 0;
-  return _llarp_nt_nametoindex(ifname);
-}
-
-// fix up names for win32
-#define ifaddrs llarp_nt_ifaddrs_t
-#define getifaddrs llarp_nt_getifaddrs
-#define freeifaddrs llarp_nt_freeifaddrs
-#define if_nametoindex llarp_nt_if_nametoindex
-#endif
-
-// jeff's original code
-bool
-llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
-{
-  ifaddrs* ifa = nullptr;
-  bool found = false;
-  socklen_t sl = sizeof(sockaddr_in6);
-  if (af == AF_INET)
-    sl = sizeof(sockaddr_in);
-
-#ifndef _WIN32
-  if (getifaddrs(&ifa) == -1)
-#else
-  if (!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
-  {
-    if (addr)
+   public:
+    std::optional<int>
+    GetInterfaceIndex(ipaddr_t ip) const override
     {
-      sockaddr_in* lo = (sockaddr_in*)addr;
-      lo->sin_family = af;
-      lo->sin_port = 0;
-      inet_pton(af, "127.0.0.1", &lo->sin_addr);
+      std::optional<int> found;
+      iter_adapters([&found, ip, this](auto* adapter) {
+        if (found)
+          return;
+        if (adapter_has_ip(adapter, ip))
+          found = adapter->IfIndex;
+      });
+      return found;
     }
-    return true;
-  }
-  if (!getifaddrs(&ifa))
-#endif
-    return false;
-  ifaddrs* i = ifa;
-  while (i)
-  {
-    if (i->ifa_addr)
+
+    std::optional<llarp::SockAddr>
+    GetInterfaceAddr(std::string_view name, int af) const override
     {
-      // llarp::LogInfo(__FILE__, "scanning ", i->ifa_name, " af: ",
-      // std::to_string(i->ifa_addr->sa_family));
-      if (std::string_view{i->ifa_name} == std::string_view{ifname} && i->ifa_addr->sa_family == af)
-      {
-        // can't do this here
-        // llarp::Addr a(*i->ifa_addr);
-        // if(!a.isPrivate())
-        //{
-        // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
-        if (addr)
+      std::optional<SockAddr> found;
+      iter_adapters([name = std::string{name}, af, &found, this](auto* a) {
+        if (found)
+          return;
+        if (std::string{a->AdapterName} != name)
+          return;
+
+        if (adapter_has_fam(a, af))
+          found = SockAddr{*a->FirstUnicastAddress->Address.lpSockaddr};
+      });
+      return found;
+    }
+
+    std::optional<SockAddr>
+    AllInterfaces(SockAddr fallback) const override
+    {
+      // windows seems to not give a shit about source address
+      return fallback.isIPv6() ? SockAddr{"[::]"} : SockAddr{"0.0.0.0"};
+    }
+
+    std::optional<std::string>
+    FindFreeTun() const override
+    {
+      // TODO: implement me ?
+      return std::nullopt;
+    }
+
+    std::optional<std::string>
+    GetBestNetIF(int) const override
+    {
+      // TODO: implement me ?
+      return std::nullopt;
+    }
+
+    std::optional<IPRange>
+    FindFreeRange() const override
+    {
+      std::list<IPRange> currentRanges;
+      iter_adapters([&currentRanges](auto* i) {
+        for (auto* addr = i->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
         {
-          memcpy(addr, i->ifa_addr, sl);
-          if (af == AF_INET6)
-          {
-            // set scope id
-            auto* ip6addr = (sockaddr_in6*)addr;
-            ip6addr->sin6_scope_id = if_nametoindex(ifname);
-            ip6addr->sin6_flowinfo = 0;
-          }
+          SockAddr saddr{*addr->Address.lpSockaddr};
+          currentRanges.emplace_back(
+              saddr.asIPv6(),
+              ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
         }
-        found = true;
-        break;
-      }
-      //}
-    }
-    i = i->ifa_next;
-  }
-  if (ifa)
-    freeifaddrs(ifa);
-  return found;
-}
+      });
 
-namespace llarp
-{
-  static void
-  IterAllNetworkInterfaces(std::function<void(ifaddrs* const)> visit)
-  {
-    ifaddrs* ifa = nullptr;
-#ifndef _WIN32
-    if (getifaddrs(&ifa) == -1)
-#else
-    if (!getifaddrs(&ifa))
-#endif
-      return;
-
-    ifaddrs* i = ifa;
-    while (i)
-    {
-      visit(i);
-      i = i->ifa_next;
-    }
-
-    if (ifa)
-      freeifaddrs(ifa);
-  }
-  namespace net
-  {
-    std::string
-    LoopbackInterfaceName()
-    {
-      const auto loopback = IPRange::FromIPv4(127, 0, 0, 0, 8);
-      std::string ifname;
-      IterAllNetworkInterfaces([&ifname, loopback](ifaddrs* const i) {
-        if (i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+      auto ownsRange = [&currentRanges](const IPRange& range) -> bool {
+        for (const auto& ownRange : currentRanges)
         {
-          llarp::nuint32_t addr{((sockaddr_in*)i->ifa_addr)->sin_addr.s_addr};
-          if (loopback.Contains(xntohl(addr)))
+          if (ownRange * range)
+            return true;
+        }
+        return false;
+      };
+      // generate possible ranges to in order of attempts
+      std::list<IPRange> possibleRanges;
+      for (byte_t oct = 16; oct < 32; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
+      }
+      for (byte_t oct = 0; oct < 255; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
+      }
+      for (byte_t oct = 0; oct < 255; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
+      }
+      // for each possible range pick the first one we don't own
+      for (const auto& range : possibleRanges)
+      {
+        if (not ownsRange(range))
+          return range;
+      }
+      return std::nullopt;
+    }
+    std::string
+    LoopbackInterfaceName() const override
+    {
+      // todo: implement me? does windows even have a loopback?
+      return "";
+    }
+    bool
+    HasInterfaceAddress(ipaddr_t ip) const override
+    {
+      return GetInterfaceIndex(ip) != std::nullopt;
+    }
+  };
+
+#else
+
+  class Platform_Impl : public Platform_Base
+  {
+    template <typename Visit_t>
+    void
+    iter_all(Visit_t&& visit) const
+    {
+      ifaddrs* addrs{nullptr};
+      if (getifaddrs(&addrs))
+        throw std::runtime_error{fmt::format("getifaddrs(): {}", strerror(errno))};
+
+      for (auto next = addrs; addrs and addrs->ifa_next; addrs = addrs->ifa_next)
+        visit(next);
+
+      freeifaddrs(addrs);
+    }
+
+   public:
+    std::string
+    LoopbackInterfaceName() const override
+    {
+      std::string ifname;
+      iter_all([this, &ifname](auto i) {
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+        {
+          const SockAddr addr{*i->ifa_addr};
+          if (IsLoopbackAddress(addr.getIP()))
           {
             ifname = i->ifa_name;
           }
         }
       });
       if (ifname.empty())
-      {
-        throw std::runtime_error(
-            "we have no ipv4 loopback interface for some ungodly reason, yeah idk fam");
-      }
+        throw std::runtime_error{"we have no ipv4 loopback interface for some ungodly reason"};
       return ifname;
     }
-  }  // namespace net
 
-  bool
-  GetBestNetIF(std::string& ifname, int af)
-  {
-    bool found = false;
-    IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if (found)
-        return;
-      if (i->ifa_addr)
-      {
-        if (i->ifa_addr->sa_family == af)
-        {
-          llarp::SockAddr a(*i->ifa_addr);
-          llarp::IpAddress ip(a);
-
-          if (!ip.isBogon())
-          {
-            ifname = i->ifa_name;
-            found = true;
-          }
-        }
-      }
-    });
-    return found;
-  }
-
-  // TODO: ipv6?
-  std::optional<IPRange>
-  FindFreeRange()
-  {
-    std::list<IPRange> currentRanges;
-    IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if (i && i->ifa_addr)
-      {
-        const auto fam = i->ifa_addr->sa_family;
-        if (fam != AF_INET)
-          return;
-        auto* addr = (sockaddr_in*)i->ifa_addr;
-        auto* mask = (sockaddr_in*)i->ifa_netmask;
-        nuint32_t ifaddr{addr->sin_addr.s_addr};
-        nuint32_t ifmask{mask->sin_addr.s_addr};
-#ifdef _WIN32
-        // do not delete, otherwise GCC will do horrible things to this lambda
-        LogDebug("found ", ifaddr, " with mask ", ifmask);
-#endif
-        if (addr->sin_addr.s_addr)
-          // skip unconfig'd adapters (windows passes these through the unix-y
-          // wrapper)
-          currentRanges.emplace_back(
-              IPRange{net::ExpandV4(xntohl(ifaddr)), net::ExpandV4(xntohl(ifmask))});
-      }
-    });
-    auto ownsRange = [&currentRanges](const IPRange& range) -> bool {
-      for (const auto& ownRange : currentRanges)
-      {
-        if (ownRange * range)
-          return true;
-      }
-      return false;
-    };
-    // generate possible ranges to in order of attempts
-    std::list<IPRange> possibleRanges;
-    for (byte_t oct = 16; oct < 32; ++oct)
+    std::optional<std::string>
+    GetBestNetIF(int af) const override
     {
-      possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
-    }
-    for (byte_t oct = 0; oct < 255; ++oct)
-    {
-      possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
-    }
-    for (byte_t oct = 0; oct < 255; ++oct)
-    {
-      possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
-    }
-    // for each possible range pick the first one we don't own
-    for (const auto& range : possibleRanges)
-    {
-      if (not ownsRange(range))
-        return range;
-    }
-    return std::nullopt;
-  }
-
-  std::optional<std::string>
-  FindFreeTun()
-  {
-    int num = 0;
-    while (num < 255)
-    {
-      std::string iftestname = fmt::format("lokitun{}", num);
-      bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, nullptr);
-      if (!found)
-      {
-        return iftestname;
-      }
-      num++;
-    }
-    return std::nullopt;
-  }
-
-  std::optional<SockAddr>
-  GetInterfaceAddr(const std::string& ifname, int af)
-  {
-    sockaddr_storage s;
-    sockaddr* sptr = (sockaddr*)&s;
-    sptr->sa_family = af;
-    if (!llarp_getifaddr(ifname.c_str(), af, sptr))
-      return std::nullopt;
-    return SockAddr{*sptr};
-  }
-
-  std::optional<huint128_t>
-  GetInterfaceIPv6Address(std::string ifname)
-  {
-    sockaddr_storage s;
-    sockaddr* sptr = (sockaddr*)&s;
-    sptr->sa_family = AF_INET6;
-    if (!llarp_getifaddr(ifname.c_str(), AF_INET6, sptr))
-      return std::nullopt;
-    llarp::SockAddr addr{*sptr};
-    return addr.asIPv6();
-  }
-
-  namespace net
-  {
-    namespace
-    {
-      SockAddr
-      All(int af)
-      {
-        if (af == AF_INET)
-        {
-          sockaddr_in addr{};
-          addr.sin_family = AF_INET;
-          addr.sin_addr.s_addr = htonl(INADDR_ANY);
-          addr.sin_port = htons(0);
-          return SockAddr{addr};
-        }
-        if (af == AF_INET6)
-        {
-          sockaddr_in6 addr6{};
-          addr6.sin6_family = AF_INET6;
-          addr6.sin6_port = htons(0);
-          addr6.sin6_addr = IN6ADDR_ANY_INIT;
-          return SockAddr{addr6};
-        }
-        throw std::invalid_argument{fmt::format("{} is not a valid address family", af)};
-      }
-    }  // namespace
-
-    std::optional<SockAddr>
-    AllInterfaces(SockAddr pub)
-    {
-      std::optional<SockAddr> found;
-      IterAllNetworkInterfaces([pub, &found](auto* ifa) {
+      std::optional<std::string> found;
+      iter_all([this, &found, af](auto i) {
         if (found)
           return;
-        if (auto ifa_addr = ifa->ifa_addr)
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == af)
         {
-          if (ifa_addr->sa_family != pub.Family())
-            return;
-
-          SockAddr addr{*ifa->ifa_addr};
-
-          if (addr == pub)
-            found = addr;
+          if (not IsBogon(*i->ifa_addr))
+          {
+            found = i->ifa_name;
+          }
         }
+      });
+
+      return found;
+    }
+
+    std::optional<IPRange>
+    FindFreeRange() const override
+    {
+      std::list<IPRange> currentRanges;
+      iter_all([&currentRanges](auto i) {
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+        {
+          ipv4addr_t addr{reinterpret_cast<sockaddr_in*>(i->ifa_addr)->sin_addr.s_addr};
+          ipv4addr_t mask{reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr};
+          currentRanges.emplace_back(IPRange::FromIPv4(addr, mask));
+        }
+      });
+
+      auto ownsRange = [&currentRanges](const IPRange& range) -> bool {
+        for (const auto& ownRange : currentRanges)
+        {
+          if (ownRange * range)
+            return true;
+        }
+        return false;
+      };
+      // generate possible ranges to in order of attempts
+      std::list<IPRange> possibleRanges;
+      for (byte_t oct = 16; oct < 32; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
+      }
+      for (byte_t oct = 0; oct < 255; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
+      }
+      for (byte_t oct = 0; oct < 255; ++oct)
+      {
+        possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
+      }
+      // for each possible range pick the first one we don't own
+      for (const auto& range : possibleRanges)
+      {
+        if (not ownsRange(range))
+          return range;
+      }
+      return std::nullopt;
+    }
+
+    std::optional<int> GetInterfaceIndex(ipaddr_t) const override
+    {
+      // todo: implement me
+      return std::nullopt;
+    }
+
+    std::optional<std::string>
+    FindFreeTun() const override
+    {
+      int num = 0;
+      while (num < 255)
+      {
+        std::string ifname = fmt::format("lokitun{}", num);
+        if (GetInterfaceAddr(ifname, AF_INET))
+          return ifname;
+        num++;
+      }
+      return std::nullopt;
+    }
+
+    std::optional<SockAddr>
+    GetInterfaceAddr(std::string_view ifname, int af) const override
+    {
+      std::optional<SockAddr> addr;
+      iter_all([&addr, af, ifname = std::string{ifname}](auto i) {
+        if (addr)
+          return;
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == af and i->ifa_name == ifname)
+          addr = llarp::SockAddr{*i->ifa_addr};
+      });
+      return addr;
+    }
+
+    std::optional<SockAddr>
+    AllInterfaces(SockAddr fallback) const override
+    {
+      std::optional<SockAddr> found;
+      iter_all([fallback, &found](auto i) {
+        if (found)
+          return;
+        if (i == nullptr or i->ifa_addr == nullptr)
+          return;
+        if (i->ifa_addr->sa_family != fallback.Family())
+          return;
+        SockAddr addr{*i->ifa_addr};
+        if (addr == fallback)
+          found = addr;
       });
 
       // 0.0.0.0 is used in our compat shim as our public ip so we check for that special case
       const auto zero = IPRange::FromIPv4(0, 0, 0, 0, 8);
-      // when we cannot find an address but we are looking for 0.0.0.0 just default to the old style
-      if (not found and (pub.isIPv4() and zero.Contains(pub.asIPv4())))
-        found = All(pub.Family());
+      // when we cannot find an address but we are looking for 0.0.0.0 just default to the old
+      // style
+      if (not found and (fallback.isIPv4() and zero.Contains(fallback.asIPv4())))
+        found = Wildcard(fallback.Family());
       return found;
     }
-  }  // namespace net
 
+    bool
+    HasInterfaceAddress(ipaddr_t ip) const override
+    {
+      bool found{false};
+      iter_all([&found, ip](auto i) {
+        if (found)
+          return;
+
+        if (not(i and i->ifa_addr))
+          return;
+        const SockAddr addr{*i->ifa_addr};
+        found = addr.getIP() == ip;
+      });
+      return found;
+    }
+  };
+#endif
+
+  const Platform_Impl g_plat{};
+
+  const Platform*
+  Platform::Default_ptr()
+  {
+    return &g_plat;
+  }
+}  // namespace llarp::net
+
+namespace llarp
+{
 #if !defined(TESTNET)
   static constexpr std::array bogonRanges_v6 = {
       // zero
@@ -721,20 +575,5 @@ namespace llarp
     return false;
   }
 #endif
-  bool
-  HasInterfaceAddress(std::variant<nuint32_t, nuint128_t> ip)
-  {
-    bool found{false};
-    IterAllNetworkInterfaces([ip, &found](const auto* iface) {
-      if (found or iface == nullptr)
-        return;
-      if (auto addr = iface->ifa_addr;
-          addr and (addr->sa_family == AF_INET or addr->sa_family == AF_INET6))
-      {
-        found = SockAddr{*iface->ifa_addr}.getIP() == ip;
-      }
-    });
-    return found;
-  }
 
 }  // namespace llarp

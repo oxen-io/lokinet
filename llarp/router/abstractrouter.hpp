@@ -45,6 +45,11 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace net
+  {
+    class Platform;
+  }
+
   namespace exit
   {
     struct Context;
@@ -92,6 +97,9 @@ namespace llarp
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+
+    virtual const net::Platform&
+    Net() const = 0;
 
     virtual const LMQ_ptr&
     lmq() const = 0;
@@ -346,10 +354,8 @@ namespace llarp
       HandleRouterEvent(std::move(event));
     }
 
-#if defined(ANDROID)
     virtual int
-    GetOutboundUDPSocket() const = 0;
-#endif
+    OutboundUDPSocket() const = 0;
 
    protected:
     /// Virtual function to handle RouterEvent. HiveRouter overrides this in

@@ -243,12 +243,9 @@ namespace llarp
     std::optional<T>
     getValue() const
     {
-      if (parsedValues.size())
-        return parsedValues[0];
-      else if (not required and not multiValued)
-        return defaultValue;
-      else
-        return std::nullopt;
+      if (parsedValues.empty())
+        return required ? std::nullopt : defaultValue;
+      return parsedValues.front();
     }
 
     /// Returns the value at the given index.
@@ -340,7 +337,7 @@ namespace llarp
     void
     tryAccept() const override
     {
-      if (required and parsedValues.size() == 0)
+      if (required and parsedValues.empty())
       {
         throw std::runtime_error{fmt::format(
             "cannot call tryAccept() on [{}]:{} when required but no value available",
@@ -348,14 +345,14 @@ namespace llarp
             name)};
       }
 
-      // don't use default value if we are multi-valued and have no value
-      if (multiValued and parsedValues.size() == 0)
-        return;
-
       if (acceptor)
       {
         if (multiValued)
         {
+          // add default value in multi value mode
+          if (defaultValue and parsedValues.empty())
+            acceptor(*defaultValue);
+
           for (auto value : parsedValues)
           {
             acceptor(value);
@@ -365,13 +362,7 @@ namespace llarp
         {
           auto maybe = getValue();
           if (maybe)
-          {
             acceptor(*maybe);
-          }
-          else
-          {
-            assert(not defaultValue);  // maybe should have a value if defaultValue does
-          }
         }
       }
     }
@@ -509,6 +500,14 @@ namespace llarp
     /// @throws if any option's acceptor throws
     void
     acceptAllOptions();
+
+    /// validates and accept all parsed options
+    inline void
+    process()
+    {
+      validateRequiredFields();
+      acceptAllOptions();
+    }
 
     /// Add comments for a given section. Comments are replayed in-order during config file
     /// generation. A proper comment prefix will automatically be applied, and the entire comment

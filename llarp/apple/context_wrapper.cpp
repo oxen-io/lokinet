@@ -54,7 +54,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto& range = config->network.m_ifaddr;
     if (!range.addr.h)
     {
-      if (auto maybe = llarp::FindFreeRange())
+      if (auto maybe = llarp::net::Platform::Default_ptr()->FindFreeRange())
         range = *maybe;
       else
         throw std::runtime_error{"Could not find any free IP range"};

@@ -710,7 +710,7 @@ namespace llarp
       m_OurRange = networkConfig.m_ifaddr;
       if (!m_OurRange.addr.h)
       {
-        const auto maybe = llarp::FindFreeRange();
+        const auto maybe = m_Router->Net().FindFreeRange();
         if (not maybe.has_value())
           throw std::runtime_error("cannot find free interface range");
         m_OurRange = *maybe;
@@ -725,7 +725,7 @@ namespace llarp
       m_ifname = networkConfig.m_ifname;
       if (m_ifname.empty())
       {
-        const auto maybe = llarp::FindFreeTun();
+        const auto maybe = m_Router->Net().FindFreeTun();
         if (not maybe.has_value())
           throw std::runtime_error("cannot find free interface name");
         m_ifname = *maybe;

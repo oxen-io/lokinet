@@ -67,56 +67,89 @@ namespace llarp
   bool
   IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
-  /// get a sock addr we can use for all interfaces given our public address
   namespace net
   {
-    std::optional<SockAddr>
-    AllInterfaces(SockAddr pubaddr);
-  }
-
-  /// compat shim
-  // TODO: remove me
-  inline bool
-  AllInterfaces(int af, SockAddr& addr)
-  {
-    if (auto maybe = net::AllInterfaces(SockAddr{af == AF_INET ? "0.0.0.0" : "::"}))
+    /// network platform (all methods virtual so it can be mocked by unit tests)
+    class Platform
     {
-      addr = *maybe;
-      return true;
-    }
-    return false;
-  }
+     public:
+      Platform() = default;
+      virtual ~Platform() = default;
+      Platform(const Platform&) = delete;
+      Platform(Platform&&) = delete;
 
-  /// get first network interface with public address
-  bool
-  GetBestNetIF(std::string& ifname, int af = AF_INET);
+      /// get a pointer to our signleton instance used by main lokinet
+      /// unit test mocks will not call this
+      static const Platform*
+      Default_ptr();
 
-  /// look at adapter ranges and find a free one
-  std::optional<IPRange>
-  FindFreeRange();
+      virtual std::optional<SockAddr>
+      AllInterfaces(SockAddr pubaddr) const = 0;
 
-  /// look at adapter names and find a free one
-  std::optional<std::string>
-  FindFreeTun();
+      virtual SockAddr
+      Wildcard(int af = AF_INET) const = 0;
 
-  /// get network interface address for network interface with ifname
-  std::optional<SockAddr>
-  GetInterfaceAddr(const std::string& ifname, int af = AF_INET);
+      inline SockAddr
+      WildcardWithPort(port_t port, int af = AF_INET) const
+      {
+        auto addr = Wildcard(af);
+        addr.setPort(port);
+        return addr;
+      }
 
-  /// get an interface's ip6 address
-  std::optional<huint128_t>
-  GetInterfaceIPv6Address(std::string ifname);
+      virtual std::string
+      LoopbackInterfaceName() const = 0;
 
-#ifdef _WIN32
-  namespace net
-  {
-    std::optional<int>
-    GetInterfaceIndex(huint32_t ip);
-  }
-#endif
+      virtual bool
+      HasInterfaceAddress(ipaddr_t ip) const = 0;
 
-  /// return true if we have a network interface with this ip
-  bool
-  HasInterfaceAddress(std::variant<nuint32_t, nuint128_t> ip);
+      /// return true if ip is considered a loopback address
+      virtual bool
+      IsLoopbackAddress(ipaddr_t ip) const = 0;
+
+      /// return true if ip is considered a wildcard address
+      virtual bool
+      IsWildcardAddress(ipaddr_t ip) const = 0;
+
+      virtual std::optional<std::string>
+      GetBestNetIF(int af = AF_INET) const = 0;
+
+      inline std::optional<SockAddr>
+      MaybeInferPublicAddr(port_t default_port, int af = AF_INET) const
+      {
+        std::optional<SockAddr> maybe_addr;
+        if (auto maybe_ifname = GetBestNetIF(af))
+          maybe_addr = GetInterfaceAddr(*maybe_ifname, af);
+
+        if (maybe_addr)
+          maybe_addr->setPort(default_port);
+        return maybe_addr;
+      }
+
+      virtual std::optional<IPRange>
+      FindFreeRange() const = 0;
+
+      virtual std::optional<std::string>
+      FindFreeTun() const = 0;
+
+      virtual std::optional<SockAddr>
+      GetInterfaceAddr(std::string_view ifname, int af = AF_INET) const = 0;
+
+      inline std::optional<huint128_t>
+      GetInterfaceIPv6Address(std::string_view ifname) const
+      {
+        if (auto maybe_addr = GetInterfaceAddr(ifname, AF_INET6))
+          return maybe_addr->asIPv6();
+        return std::nullopt;
+      }
+
+      virtual bool
+      IsBogon(const SockAddr& addr) const = 0;
+
+      virtual std::optional<int>
+      GetInterfaceIndex(ipaddr_t ip) const = 0;
+    };
+
+  }  // namespace net
 
 }  // namespace llarp

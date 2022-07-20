@@ -16,6 +16,12 @@
 
 namespace llarp::vpn
 {
+  const llarp::net::Platform*
+  IRouteManager::Net_ptr() const
+  {
+    return llarp::net::Platform::Default_ptr();
+  }
+
   std::shared_ptr<Platform>
   MakeNativePlatform(llarp::Context* ctx)
   {
