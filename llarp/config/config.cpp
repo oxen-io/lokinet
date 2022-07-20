@@ -969,9 +969,9 @@ namespace llarp
 
     conf.addUndeclaredHandler(
         "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
-          LogError(
-              "using the [bind] section without inbound= or outbound= is deprecated and will stop "
-              "working in a future release");
+          LogWarn(
+              "using the [bind] section with *=/IP=/INTERFACE= is deprecated; use the inbound= "
+              "and/or outbound= settings instead");
           std::optional<SockAddr> addr;
           // special case: wildcard for outbound
           if (key == "*")
