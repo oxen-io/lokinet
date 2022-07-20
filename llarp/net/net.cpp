@@ -307,7 +307,7 @@ namespace llarp::net
       if (getifaddrs(&addrs))
         throw std::runtime_error{fmt::format("getifaddrs(): {}", strerror(errno))};
 
-      for (auto next = addrs; addrs and addrs->ifa_next; addrs = addrs->ifa_next)
+      for (auto next = addrs; next and next->ifa_next; next = next->ifa_next)
         visit(next);
 
       freeifaddrs(addrs);
