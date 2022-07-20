@@ -1159,7 +1159,8 @@ namespace llarp
     constexpr Default DefaultLogType{
         platform::is_android or platform::is_apple ? "system" : "print"};
     constexpr Default DefaultLogFile{""};
-    constexpr Default DefaultLogLevel{"warn"};
+
+    const Default DefaultLogLevel{params.isRelay ? "warn" : "info"};
 
     conf.defineOption<std::string>(
         "logging",
