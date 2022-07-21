@@ -777,6 +777,7 @@ namespace llarp
 
     if (log::get_level_default() != log::Level::off)
       log::reset_level(conf.logging.m_logLevel);
+    log::clear_sinks();
     log::add_sink(log_type, conf.logging.m_logFile);
 
     return true;
