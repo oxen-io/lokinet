@@ -1401,8 +1401,6 @@ namespace llarp
         }
       });
     }
-    if (log::get_level_default() != log::Level::off)
-      log::reset_level(log::Level::warn);
     return _running;
   }
 
