@@ -908,7 +908,8 @@ namespace llarp
                 "to detect it"},
         [this](uint16_t arg) { PublicPort = net::port_t::from_host(arg); });
 
-    auto parse_addr_for_link = [net_ptr](const std::string& arg, net::port_t default_port) {
+    auto parse_addr_for_link = [net_ptr](
+                                   const std::string& arg, net::port_t default_port, bool inbound) {
       std::optional<SockAddr> addr = std::nullopt;
       // explicitly provided value
       if (not arg.empty())
@@ -916,8 +917,9 @@ namespace llarp
         if (arg[0] == ':')
         {
           // port only case
-          auto port = net::port_t::from_string(arg.substr(1));
-          addr = net_ptr->WildcardWithPort(port);
+          default_port = net::port_t::from_string(arg.substr(1));
+          if (!inbound)
+            addr = net_ptr->WildcardWithPort(default_port);
         }
         else
         {
@@ -950,7 +952,7 @@ namespace llarp
         Comment{""},
         [this, parse_addr_for_link](const std::string& arg) {
           auto default_port = net::port_t::from_host(DefaultInboundPort.val);
-          if (auto addr = parse_addr_for_link(arg, default_port))
+          if (auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/true))
             InboundListenAddrs.emplace_back(std::move(*addr));
         });
 
@@ -961,7 +963,7 @@ namespace llarp
         Comment{""},
         [this, net_ptr, parse_addr_for_link](const std::string& arg) {
           auto default_port = net::port_t::from_host(DefaultOutboundPort.val);
-          auto addr = parse_addr_for_link(arg, default_port);
+          auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/false);
           if (not addr)
             addr = net_ptr->WildcardWithPort(default_port);
           OutboundLinks.emplace_back(std::move(*addr));
