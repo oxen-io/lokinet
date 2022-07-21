@@ -855,34 +855,11 @@ namespace llarp
     conf.addSectionComments(
         "bind",
         {
-            "Typically this section can be left blank, but can be used to specify which sockets to "
-            "bind on for inbound and outbound traffic.",
-            "",
-            "If no inbound bind addresses are configured then lokinet will search for a local ",
-            "network interface with a public IP address and use that IP with port 1090.",
-            "If no outbound bind addresses are configured then lokinet will use a wildcard "
-            "address.",
-            "",
-            "Examples:",
-            "",
-            "    inbound=15.5.29.5:443",
-            "    inbound=10.0.2.2",
-            "    outbound=0.0.0.0:9000",
-            "",
-            "The first binds an inbound socket on local ip 15.5.29.5  with port 443; and the "
-            "second binds an inbound socket on local ip 10.0.2.2 with the default port, 1090; and "
-            "the third example binds an outbound socket on all interfaces with a pinned outbound "
-            "port on port 9000.",
-            "",
-            "Inbound sockets with a wildcard address or private range IP address (like the second "
-            "example entry) will require setting the public-ip= and public-port= settings with a "
-            "public address at which this router can be reached.",
-            "Inbound sockets can NOT have ports explicitly set to be 0.",
-            "",
-            "On setups with multiple public ip addresses on a network interface, the first ip will "
-            "be used as a default or when a wildcard is provided, unless explicitly set in config.",
-            "Setting the IP for both inbound and outbound sockets on machines with multiple public "
-            "ip addresses is highly recommended.",
+            "This section allows specifying the IPs that lokinet uses for incoming and outgoing",
+            "connections.  For simple setups it can usually be left blank, but may be required",
+            "for routers with multiple IPs, or routers that must listen on a private IP with",
+            "forwarded public traffic.  It can also be useful for clients that want to use a",
+            "consistent outgoing port for which firewall rules can be configured.",
         });
 
     const auto* net_ptr = params.Net_ptr();
@@ -894,8 +871,11 @@ namespace llarp
         "bind",
         "public-ip",
         RelayOnly,
-        Comment{"set our public ip if it is different than the one we detect or if we are unable "
-                "to detect it"},
+        Comment{
+            "The IP address to advertise to the network instead of the incoming= or auto-detected",
+            "IP.  This is typically required only when incoming= is used to listen on an internal",
+            "private range IP address that received traffic forwarded from the public IP.",
+        },
         [this](std::string_view arg) {
           SockAddr pubaddr{arg};
           PublicAddress = pubaddr.getIP();
@@ -904,8 +884,11 @@ namespace llarp
         "bind",
         "public-port",
         RelayOnly,
-        Comment{"set our public port if it is different than the one we detect or if we are unable "
-                "to detect it"},
+        Comment{
+            "The port to advertise to the network instead of the incoming= (or default) port.",
+            "This is typically required only when incoming= is used to listen on an internal",
+            "private range IP address/port that received traffic forwarded from the public IP.",
+        },
         [this](uint16_t arg) { PublicPort = net::port_t::from_host(arg); });
 
     auto parse_addr_for_link = [net_ptr](
@@ -949,7 +932,21 @@ namespace llarp
         "inbound",
         RelayOnly,
         MultiValue,
-        Comment{""},
+        Comment{
+            "IP and/or port to listen on for incoming connections.",
+            "",
+            "If IP is omitted then lokinet will search for a local network interface with a",
+            "public IP address and use that IP. If port is omitted then lokinet defaults to 1090.",
+            "",
+            "Examples:",
+            "    inbound=15.5.29.5:443",
+            "    inbound=10.0.2.2",
+            "    inbound=:1234",
+            "",
+            "Using a private range IP address (like the second example entry) will require using",
+            "the public-ip= and public-port= to specify the public IP address at which this",
+            "router can be reached.",
+        },
         [this, parse_addr_for_link](const std::string& arg) {
           auto default_port = net::port_t::from_host(DefaultInboundPort.val);
           if (auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/true))
@@ -960,7 +957,21 @@ namespace llarp
         "bind",
         "outbound",
         MultiValue,
-        Comment{""},
+        Comment{
+            "IP and/or port to use for outbound socket connections to lokinet routers.",
+            "",
+            "If no outbound bind IP is configured then lokinet will use a wildcard address to use",
+            "any available local IP.  If no port is given, or port is given as 0, then a random",
+            "high port will be used.",
+            "",
+            "Examples:",
+            "    outbound=1.2.3.4:5678",
+            "    outbound=:9000",
+            "    outbound=8.9.10.11",
+            "",
+            "The second example binds an outbound socket on all interfaces; the third example",
+            "binds on the given IP address using a random high port.",
+        },
         [this, net_ptr, parse_addr_for_link](const std::string& arg) {
           auto default_port = net::port_t::from_host(DefaultOutboundPort.val);
           auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/false);
