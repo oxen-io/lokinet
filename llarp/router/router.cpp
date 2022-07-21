@@ -1645,7 +1645,7 @@ namespace llarp
     if (addrs.empty())
       addrs.emplace_back(Net().Wildcard());
 
-    for (auto bind_addr : addrs)
+    for (auto& bind_addr : addrs)
     {
       auto link = iwp::NewOutboundLink(
           m_keyManager,
@@ -1671,13 +1671,19 @@ namespace llarp
 
       const auto& net = Net();
 
-      // try to use a public address if we have one set on our inbound links
-      _linkManager.ForEachInboundLink([&bind_addr, &net](const auto& link) {
-        if (not net.IsBogon(bind_addr))
-          return;
-        if (auto addr = link->LocalSocketAddr(); not net.IsBogon(addr))
-          bind_addr.setIP(addr.getIP());
-      });
+      // If outbound is set to wildcard and we have just one inbound, then bind to the inbound IP;
+      // if you have more than one inbound you have to be explicit about your outbound.
+      if (net.IsWildcardAddress(bind_addr.getIP()))
+      {
+        bool multiple = false;
+        _linkManager.ForEachInboundLink([&bind_addr, &multiple](const auto& link) {
+          if (multiple)
+            throw std::runtime_error{
+                "outbound= IP address must be specified when using multiple inbound= addresses"};
+          multiple = true;
+          bind_addr.setIP(link->LocalSocketAddr().getIP());
+        });
+      }
 
       link->Bind(this, bind_addr);
 
