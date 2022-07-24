@@ -22,7 +22,7 @@ namespace llarp
       ResourceRecord(const ResourceRecord& other);
       ResourceRecord(ResourceRecord&& other);
 
-      explicit ResourceRecord(Name_t name, RRType_t type, RR_RData_t rdata);
+      explicit ResourceRecord(std::string name, RRType_t type, RR_RData_t rdata);
 
       bool
       Encode(llarp_buffer_t* buf) const override;
@@ -39,7 +39,7 @@ namespace llarp
       bool
       HasCNameForTLD(const std::string& tld) const;
 
-      Name_t rr_name;
+      std::string rr_name;
       RRType_t rr_type;
       RRClass_t rr_class;
       RR_TTL_t ttl;

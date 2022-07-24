@@ -27,7 +27,7 @@ namespace llarp
     bool
     Question::Encode(llarp_buffer_t* buf) const
     {
-      if (!EncodeName(buf, qname))
+      if (!EncodeNameTo(buf, qname))
         return false;
       if (!buf->put_uint16(qtype))
         return false;
@@ -37,7 +37,9 @@ namespace llarp
     bool
     Question::Decode(llarp_buffer_t* buf)
     {
-      if (!DecodeName(buf, qname))
+      if (auto name = DecodeName(buf))
+        qname = *std::move(name);
+      else
       {
         llarp::LogError("failed to decode name");
         return false;

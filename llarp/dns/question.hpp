@@ -34,7 +34,7 @@ namespace llarp
         return qname == other.qname && qtype == other.qtype && qclass == other.qclass;
       }
 
-      Name_t qname;
+      std::string qname;
       QType_t qtype;
       QClass_t qclass;
 

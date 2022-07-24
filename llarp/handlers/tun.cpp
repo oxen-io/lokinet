@@ -479,25 +479,25 @@ namespace llarp
         const auto& answer = msg.answers[0];
         if (answer.HasCNameForTLD(".snode"))
         {
-          dns::Name_t qname;
           llarp_buffer_t buf(answer.rData);
-          if (not dns::DecodeName(&buf, qname, true))
+          auto qname = dns::DecodeName(&buf, true);
+          if (not qname)
             return false;
           RouterID addr;
-          if (not addr.FromString(qname))
+          if (not addr.FromString(*qname))
             return false;
           auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
           return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
         }
         else if (answer.HasCNameForTLD(".loki"))
         {
-          dns::Name_t qname;
           llarp_buffer_t buf(answer.rData);
-          if (not dns::DecodeName(&buf, qname, true))
+          auto qname = dns::DecodeName(&buf, true);
+          if (not qname)
             return false;
 
           service::Address addr;
-          if (not addr.FromString(qname))
+          if (not addr.FromString(*qname))
             return false;
 
           auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
@@ -745,20 +745,16 @@ namespace llarp
       else if (msg.questions[0].qtype == dns::qTypePTR)
       {
         // reverse dns
-        huint128_t ip = {0};
-        if (!dns::DecodePTR(msg.questions[0].qname, ip))
+        if (auto ip = dns::DecodePTR(msg.questions[0].qname))
         {
-          msg.AddNXReply();
-          reply(msg);
-          return true;
+          if (auto maybe = ObtainAddrForIP(*ip))
+          {
+            var::visit([&msg](auto&& result) { msg.AddAReply(result.ToString()); }, *maybe);
+            reply(msg);
+            return true;
+          }
         }
 
-        if (auto maybe = ObtainAddrForIP(ip))
-        {
-          var::visit([&msg](auto&& result) { msg.AddAReply(result.ToString()); }, *maybe);
-          reply(msg);
-          return true;
-        }
         msg.AddNXReply();
         reply(msg);
         return true;
@@ -816,10 +812,9 @@ namespace llarp
         // hook any ranges we own
         if (msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
-          huint128_t ip = {0};
-          if (!dns::DecodePTR(msg.questions[0].qname, ip))
-            return false;
-          return m_OurRange.Contains(ip);
+          if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+            return m_OurRange.Contains(*ip);
+          return false;
         }
       }
       for (const auto& answer : msg.answers)

@@ -218,7 +218,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -243,7 +243,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -268,7 +268,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -294,7 +294,7 @@ namespace llarp
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
         buf.put_uint16(priority);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -346,7 +346,7 @@ namespace llarp
           target = srv.target;
         }
 
-        if (not EncodeName(&buf, target))
+        if (not EncodeNameTo(&buf, target))
         {
           AddNXReply();
           return;
