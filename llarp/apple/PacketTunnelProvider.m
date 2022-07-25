@@ -213,7 +213,7 @@ static void del_default_route(void* ctx) {
   NSString* dns_ip = [NSString stringWithUTF8String:conf.dns_bind_ip];
 #else
   // TODO: placeholder
-  NSString* dns_ip = @"127.0.0.1";
+  NSString* dns_ip = ip;
 #endif
   NSLog(@"setting dns to %@", dns_ip);
   NEDNSSettings* dns = [[NEDNSSettings alloc] initWithServers:@[dns_ip]];

@@ -16,14 +16,13 @@ class LokinetMain: NSObject, NSApplicationDelegate {
     let netextBundleId = "org.lokinet.network-extension"
 
     func applicationDidFinishLaunching(_: Notification) {
-        if self.mode == START {
+        if mode == START {
             startNetworkExtension()
-        } else if self.mode == STOP {
+        } else if mode == STOP {
             tearDownVPNTunnel()
         } else {
-            self.result(msg: HELP_STRING)
+            result(msg: HELP_STRING)
         }
-
     }
 
     func bail() {
@@ -33,7 +32,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
     func result(msg: String) {
         NSLog(msg)
         // TODO: does lokinet continue after this?
-        self.bail()
+        bail()
     }
 
     func tearDownVPNTunnel() {
@@ -58,19 +57,18 @@ class LokinetMain: NSObject, NSApplicationDelegate {
     }
 
     func startNetworkExtension() {
-#if MACOS_SYSTEM_EXTENSION
-        NSLog("Loading Lokinet network extension")
-        // Start by activating the system extension
-        let activationRequest = OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: netextBundleId, queue: .main)
-        activationRequest.delegate = self
-        OSSystemExtensionManager.shared.submitRequest(activationRequest)
-#else
-        setupVPNTunnel()
-#endif
+        #if MACOS_SYSTEM_EXTENSION
+            NSLog("Loading Lokinet network extension")
+            // Start by activating the system extension
+            let activationRequest = OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: netextBundleId, queue: .main)
+            activationRequest.delegate = self
+            OSSystemExtensionManager.shared.submitRequest(activationRequest)
+        #else
+            setupVPNTunnel()
+        #endif
     }
 
     func setupVPNTunnel() {
-
         NSLog("Starting up Lokinet tunnel")
         NETunnelProviderManager.loadAllFromPreferences { [self] (savedManagers: [NETunnelProviderManager]?, error: Error?) in
             if let error = error {
@@ -113,7 +111,7 @@ class LokinetMain: NSObject, NSApplicationDelegate {
                                 self.initializeConnectionObserver()
                                 try self.vpnManager.connection.startVPNTunnel()
                             } catch let error as NSError {
-                               self.result(msg: error.localizedDescription)
+                                self.result(msg: error.localizedDescription)
                             } catch {
                                 self.result(msg: "There was a fatal error")
                             }
@@ -145,32 +143,32 @@ class LokinetMain: NSObject, NSApplicationDelegate {
 
 #if MACOS_SYSTEM_EXTENSION
 
-extension LokinetMain: OSSystemExtensionRequestDelegate {
-
-    func request(_ request: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
-        guard result == .completed else {
-            NSLog("Unexpected result %d for system extension request", result.rawValue)
-            return
+    extension LokinetMain: OSSystemExtensionRequestDelegate {
+        func request(_: OSSystemExtensionRequest, didFinishWithResult result: OSSystemExtensionRequest.Result) {
+            guard result == .completed else {
+                NSLog("Unexpected result %d for system extension request", result.rawValue)
+                return
+            }
+            NSLog("Lokinet system extension loaded")
+            setupVPNTunnel()
         }
-        NSLog("Lokinet system extension loaded")
-        setupVPNTunnel()
-    }
 
-    func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
-        NSLog("System extension request failed: %@", error.localizedDescription)
-    }
+        func request(_: OSSystemExtensionRequest, didFailWithError error: Error) {
+            NSLog("System extension request failed: %@", error.localizedDescription)
+        }
 
-    func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
-        NSLog("Extension %@ requires user approval", request.identifier)
-    }
+        func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
+            NSLog("Extension %@ requires user approval", request.identifier)
+        }
 
-    func request(_ request: OSSystemExtensionRequest,
-                 actionForReplacingExtension existing: OSSystemExtensionProperties,
-                 withExtension extension: OSSystemExtensionProperties) -> OSSystemExtensionRequest.ReplacementAction {
-        NSLog("Replacing extension %@ version %@ with version %@", request.identifier, existing.bundleShortVersion, `extension`.bundleShortVersion)
-        return .replace
+        func request(_ request: OSSystemExtensionRequest,
+                     actionForReplacingExtension existing: OSSystemExtensionProperties,
+                     withExtension extension: OSSystemExtensionProperties) -> OSSystemExtensionRequest.ReplacementAction
+        {
+            NSLog("Replacing extension %@ version %@ with version %@", request.identifier, existing.bundleShortVersion, `extension`.bundleShortVersion)
+            return .replace
+        }
     }
-}
 
 #endif
 

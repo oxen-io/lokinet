@@ -93,9 +93,9 @@ build 1 or many cross targets:
 
 ### MacOS <span id="mac-install" />
 
-Lokinet ~~is~~ will be available on the Apple App store.
+Source code compilation of Lokinet by end users is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information.
 
-Source code compilation of Lokinet by end users is not supported or permitted by apple on their platforms, see [this](contrib/macos/README.txt) for more information. If you find this disagreeable consider using a platform that permits compiling from source.
+If you find this disagreeable consider using a platform that permits compiling from source.
 
 ### Windows <span id="windows-install" />
 

@@ -1,4 +1,3 @@
-
 set(exetargets lokinet)
 
 if(APPLE)
@@ -56,7 +55,6 @@ foreach(exe ${exetargets})
   endif()
   target_link_libraries(${exe} PUBLIC liblokinet)
   target_include_directories(${exe} PUBLIC "${PROJECT_SOURCE_DIR}")
-  add_log_tag(${exe})
   if(should_install)
     if(APPLE)
       install(TARGETS ${exe}
@@ -68,6 +66,36 @@ foreach(exe ${exetargets})
     endif()
   endif()
 endforeach()
+
+set(default_with_gui OFF)
+if(APPLE)
+  set(default_with_gui ON)
+endif()
+
+option(WITH_GUI "build electron gui from source" ${default_with_gui})
+
+if (WITH_GUI)
+  find_program(YARN yarn REQUIRED)
+  message(STATUS "Found yarn: ${YARN}")
+  if(NOT GUI_GIT_REPO)
+    set(GUI_GIT_REPO "https://github.com/oxen-io/lokinet-gui")
+  endif()
+  if(NOT GUI_GIT_BRANCH)
+    set(GUI_GIT_BRANCH "stable")
+  endif()
+  if(NOT YARN_TARGET)
+    set(YARN_TARGET pack:raw)
+    if(APPLE)
+      set(YARN_TARGET macos:raw)
+    endif()
+  endif()
+  message(STATUS "will build gui: ${GUI_GIT_REPO} (branch: ${GUI_GIT_BRANCH}) using ${YARN} ${YARN_TARGET}")
+  add_custom_target(lokinet-gui
+    COMMAND rm -rf "${PROJECT_BINARY_DIR}/lokinet-gui" && git clone "${GUI_GIT_REPO}" -b ${GUI_GIT_BRANCH} "${PROJECT_BINARY_DIR}/lokinet-gui" && cd "${PROJECT_BINARY_DIR}/lokinet-gui" && ${YARN} install --frozen-lockfile && ${YARN} ${YARN_TARGET})
+else()
+  message(STATUS "not building gui")
+  add_custom_target(lokinet-gui COMMAND "true")
+endif()
 
 if(APPLE)
   option(MACOS_SYSTEM_EXTENSION
@@ -154,18 +182,9 @@ if(APPLE)
         $<TARGET_BUNDLE_DIR:lokinet>/Contents/embedded.provisionprofile)
   endif()
 
-  add_custom_command(TARGET lokinet
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed
-        $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
-    COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/${lokinet_ext_dir}
-    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/${lokinet_ext_dir}
-    ${post_build_pp}
-  )
-
   set_target_properties(lokinet
     PROPERTIES
-	OUTPUT_NAME Lokinet
+    OUTPUT_NAME Lokinet
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_STRING "Lokinet IP Packet Onion Router"
     MACOSX_BUNDLE_BUNDLE_NAME "Lokinet"
@@ -178,15 +197,29 @@ if(APPLE)
     MACOSX_BUNDLE_COPYRIGHT "© 2022, The Oxen Project"
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
   )
+  set(copy_gui)
+  if(BUILD_GUI)
+    set(copy_gui COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/lokinet-gui/release/mac/lokinet-gui.app $<TARGET_BUNDLE_DIR:lokinet>)
+  endif()
+
+  add_custom_target(assemble
+    DEPENDS lokinet lokinet-extension lokinet-gui
+    ${copy_gui}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed
+      $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
+    COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/${lokinet_ext_dir}
+    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/${lokinet_ext_dir}
+    ${post_build_pp})
 
   if(NOT CODESIGN)
     message(STATUS "codesigning disabled")
     add_custom_target(
       sign
-      DEPENDS lokinet lokinet-extension
+      DEPENDS assemble
       COMMAND "true")
+
   elseif(CODESIGN)
-    set(SIGN_TARGET "${PROJECT_BINARY_DIR}/lokinet.app")
+    set(SIGN_TARGET "${PROJECT_BINARY_DIR}/Lokinet.app")
     if(MACOS_SYSTEM_EXTENSION)
       set(LOKINET_ENTITLEMENTS_TYPE sysext)
     else()
@@ -198,7 +231,7 @@ if(APPLE)
       @ONLY)
     add_custom_target(
       sign
-      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
+      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" assemble
       COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
       )
 

@@ -9,7 +9,7 @@
 		<string>Lokinet</string>
 
 		<key>CFBundleExecutable</key>
-		<string>Lokinet</string>
+		<string>lokinet-gui</string>
 
 		<key>CFBundleIdentifier</key>
 		<string>org.lokinet</string>
