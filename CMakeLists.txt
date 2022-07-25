@@ -299,6 +299,8 @@ endif()
 
 add_subdirectory(docs)
 
+include(cmake/gui.cmake)
+
 # uninstall target
 if(NOT TARGET uninstall)
   configure_file(
