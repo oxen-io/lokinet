@@ -123,6 +123,12 @@ namespace llarp
   }
 
   bool
+  RouterContact::FromOurNetwork() const
+  {
+    return netID == NetID::DefaultValue();
+  }
+
+  bool
   RouterContact::BEncodeSignedSection(llarp_buffer_t* buf) const
   {
     /* write dict begin */
