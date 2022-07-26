@@ -475,15 +475,10 @@ namespace llarp
           "netid mismatch: '", netID, "' (theirs) != '", NetID::DefaultValue(), "' (ours)");
       return false;
     }
-    if (IsExpired(now))
-    {
-      if (!allowExpired)
-      {
-        llarp::LogError("RC is expired");
-        return false;
-      }
-      llarp::LogWarn("RC is expired");
-    }
+
+    if (IsExpired(now) and not allowExpired)
+      return false;
+
     for (const auto& a : addrs)
     {
       if (IsBogon(a.ip) && BlockBogons)
