@@ -25,17 +25,23 @@ namespace llarp
 
   bool RouterContact::BlockBogons = true;
 
-#ifdef TESTNET
-  // 1 minute for testnet
-  llarp_time_t RouterContact::Lifetime = 1min;
-#else
-  /// 1 day for real network
-  llarp_time_t RouterContact::Lifetime = 24h;
-#endif
+  /// 1 day rc lifespan
+  constexpr auto rc_lifetime = 24h;
   /// an RC inserted long enough ago (4 hrs) is considered stale and is removed
-  llarp_time_t RouterContact::StaleInsertionAge = 4h;
+  constexpr auto rc_stale_age = 4h;
+  /// window of time in which a router wil try to update their RC before it is marked stale
+  constexpr auto rc_update_window = 5min;
   /// update RCs shortly before they are about to expire
-  llarp_time_t RouterContact::UpdateInterval = RouterContact::StaleInsertionAge - 5min;
+  constexpr auto rc_update_interval = rc_stale_age - rc_update_window;
+
+  llarp_time_t RouterContact::Lifetime = rc_lifetime;
+  llarp_time_t RouterContact::StaleInsertionAge = rc_stale_age;
+  llarp_time_t RouterContact::UpdateInterval = rc_update_interval;
+
+  /// how many rc lifetime intervals should we wait until purging an rc
+  constexpr auto expiration_lifetime_generations = 10;
+  /// the max age of an rc before we want to expire it
+  constexpr auto rc_expire_age = rc_lifetime * expiration_lifetime_generations;
 
   NetID::NetID(const byte_t* val)
   {
@@ -114,6 +120,12 @@ namespace llarp
     if (routerVersion.has_value())
       out = fmt::format_to(out, "router_version={}; ", *routerVersion);
     return result;
+  }
+
+  bool
+  RouterContact::FromOurNetwork() const
+  {
+    return netID == NetID::DefaultValue();
   }
 
   bool
@@ -405,9 +417,7 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    (void)now;
-    return false;
-    // return Age(now) >= Lifetime;
+    return Age(now) >= rc_expire_age;
   }
 
   llarp_time_t
@@ -471,15 +481,10 @@ namespace llarp
           "netid mismatch: '", netID, "' (theirs) != '", NetID::DefaultValue(), "' (ours)");
       return false;
     }
-    if (IsExpired(now))
-    {
-      if (!allowExpired)
-      {
-        llarp::LogError("RC is expired");
-        return false;
-      }
-      llarp::LogWarn("RC is expired");
-    }
+
+    if (IsExpired(now) and not allowExpired)
+      return false;
+
     for (const auto& a : addrs)
     {
       if (IsBogon(a.ip) && BlockBogons)

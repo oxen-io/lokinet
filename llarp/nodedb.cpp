@@ -110,6 +110,7 @@ namespace llarp
   {
     if (m_Root.empty())
       return;
+    std::set<fs::path> purge;
 
     for (const char& ch : skiplist_subdirs)
     {
@@ -120,14 +121,49 @@ namespace llarp
       fs::path sub = m_Root / p;
 
       llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-        if (fs::is_regular_file(f) and f.extension() == RC_FILE_EXT)
+        // skip files that are not suffixed with .signed
+        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+          return true;
+
+        RouterContact rc{};
+
+        if (not rc.Read(f))
         {
-          RouterContact rc{};
-          if (rc.Read(f) and rc.Verify(time_now_ms()))
-            m_Entries.emplace(rc.pubkey, rc);
+          // try loading it, purge it if it is junk
+          purge.emplace(f);
+          return true;
         }
+
+        if (not rc.FromOurNetwork())
+        {
+          // skip entries that are not from our network
+          return true;
+        }
+
+        if (rc.IsExpired(time_now_ms()))
+        {
+          // rc expired dont load it and purge it later
+          purge.emplace(f);
+          return true;
+        }
+
+        // validate signature and purge entries with invalid signatures
+        // load ones with valid signatures
+        if (rc.VerifySignature())
+          m_Entries.emplace(rc.pubkey, rc);
+        else
+          purge.emplace(f);
+
         return true;
       });
+    }
+
+    if (not purge.empty())
+    {
+      LogWarn("removing {} invalid RC from disk", purge.size());
+
+      for (const auto& fpath : purge)
+        fs::remove(fpath);
     }
   }
 

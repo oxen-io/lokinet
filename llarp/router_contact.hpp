@@ -201,6 +201,10 @@ namespace llarp
     bool
     VerifySignature() const;
 
+    /// return true if the netid in this rc is for the network id we are using
+    bool
+    FromOurNetwork() const;
+
    private:
     bool
     DecodeVersion_0(llarp_buffer_t* buf);
