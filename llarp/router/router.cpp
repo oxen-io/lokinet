@@ -943,7 +943,7 @@ namespace llarp
       /// clear out a fully expired RC
       if (rc.IsExpired(now))
         return true;
-      // clients have a notion of a whilelist
+      // clients have no notion of a whilelist
       // we short circuit logic here so we dont remove
       // routers that are not whitelisted for first hops
       if (not isSvcNode)
