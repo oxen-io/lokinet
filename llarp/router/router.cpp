@@ -45,6 +45,8 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;
 
 namespace llarp
 {
+  static auto logcat = log::Cat("router");
+
   Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
       , m_lmq(std::make_shared<oxenmq::OxenMQ>())
@@ -935,28 +937,49 @@ namespace llarp
     nodedb()->RemoveIf([&](const RouterContact& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
       if (IsBootstrapNode(rc.pubkey))
+      {
+        log::debug(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
         return false;
+      }
       // if for some reason we stored an RC that isn't a valid router
       // purge this entry
       if (not rc.IsPublicRouter())
+      {
+        log::debug(logcat, "Removing {}: not a valid router", rc.pubkey);
         return true;
+      }
       /// clear out a fully expired RC
       if (rc.IsExpired(now))
+      {
+        log::debug(logcat, "Removing {}: RC is expired", rc.pubkey);
         return true;
+      }
       // clients have no notion of a whilelist
       // we short circuit logic here so we dont remove
       // routers that are not whitelisted for first hops
       if (not isSvcNode)
+      {
+        log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.pubkey);
         return false;
+      }
+
       // if we have a whitelist enabled and we don't
       // have the whitelist yet don't remove the entry
       if (whitelistRouters and not gotWhitelist)
+      {
+        log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.pubkey);
         return false;
+      }
       // if we have no whitelist enabled or we have
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      return not _rcLookupHandler.SessionIsAllowed(rc.pubkey);
+      if (_rcLookupHandler.SessionIsAllowed(rc.pubkey))
+      {
+        log::debug(logcat, "Removing {}: not a valid router", rc.pubkey);
+        return true;
+      }
+      return false;
     });
 
     // find all deregistered relays
