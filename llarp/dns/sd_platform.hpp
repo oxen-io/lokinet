@@ -16,7 +16,7 @@ namespace llarp::dns
       virtual ~Platform() = default;
 
       void
-      set_resolver(std::string ifname, llarp::SockAddr dns, bool global) override;
+      set_resolver(unsigned int if_index, llarp::SockAddr dns, bool global) override;
     };
   }  // namespace sd
   using SD_Platform_t =

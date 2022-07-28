@@ -67,17 +67,62 @@ namespace llarp::dns
     BoundOn() const = 0;
   };
 
+  /// a packet source which will override the sendto function of an wrapped packet source to
+  /// construct a raw ip packet as a reply
+  class PacketSource_Wrapper : public PacketSource_Base
+  {
+    std::weak_ptr<PacketSource_Base> m_Wrapped;
+    std::function<void(net::IPPacket)> m_WritePacket;
+
+   public:
+    explicit PacketSource_Wrapper(
+        std::weak_ptr<PacketSource_Base> wrapped, std::function<void(net::IPPacket)> write_packet)
+        : m_Wrapped{wrapped}, m_WritePacket{write_packet}
+    {}
+
+    bool
+    WouldLoop(const SockAddr& to, const SockAddr& from) const override
+    {
+      if (auto ptr = m_Wrapped.lock())
+        return ptr->WouldLoop(to, from);
+      return true;
+    }
+
+    void
+    SendTo(const SockAddr& to, const SockAddr& from, OwnedBuffer buf) const override
+    {
+      m_WritePacket(net::IPPacket::make_udp(to, from, std::move(buf)));
+    }
+
+    /// stop reading packets and end operation
+    void
+    Stop() override
+    {
+      if (auto ptr = m_Wrapped.lock())
+        ptr->Stop();
+    }
+
+    /// returns the sockaddr we are bound on if applicable
+    std::optional<SockAddr>
+    BoundOn() const override
+    {
+      if (auto ptr = m_Wrapped.lock())
+        return ptr->BoundOn();
+      return std::nullopt;
+    }
+  };
+
   /// non complex implementation of QueryJob_Base for use in things that
   /// only ever called on the mainloop thread
   class QueryJob : public QueryJob_Base, std::enable_shared_from_this<QueryJob>
   {
-    std::weak_ptr<PacketSource_Base> src;
+    std::shared_ptr<PacketSource_Base> src;
     const SockAddr resolver;
     const SockAddr asker;
 
    public:
     explicit QueryJob(
-        std::weak_ptr<PacketSource_Base> source,
+        std::shared_ptr<PacketSource_Base> source,
         const Message& query,
         const SockAddr& to_,
         const SockAddr& from_)
@@ -87,8 +132,7 @@ namespace llarp::dns
     void
     SendReply(llarp::OwnedBuffer replyBuf) const override
     {
-      if (auto ptr = src.lock())
-        ptr->SendTo(asker, resolver, std::move(replyBuf));
+      src->SendTo(asker, resolver, std::move(replyBuf));
     }
   };
 
@@ -119,6 +163,13 @@ namespace llarp::dns
       return Rank() > other.Rank();
     }
 
+    /// get local socket address that queries are sent from
+    virtual std::optional<SockAddr>
+    GetLocalAddr() const
+    {
+      return std::nullopt;
+    }
+
     /// get printable name
     virtual std::string_view
     ResolverName() const = 0;
@@ -134,7 +185,7 @@ namespace llarp::dns
     /// returns true if we consumed this query and it should not be processed again
     virtual bool
     MaybeHookDNS(
-        std::weak_ptr<PacketSource_Base> source,
+        std::shared_ptr<PacketSource_Base> source,
         const Message& query,
         const SockAddr& to,
         const SockAddr& from) = 0;
@@ -167,7 +218,8 @@ namespace llarp::dns
 
    public:
     virtual ~Server() = default;
-    explicit Server(EventLoop_ptr loop, llarp::DnsConfig conf, std::string netif_name);
+
+    explicit Server(EventLoop_ptr loop, llarp::DnsConfig conf, unsigned int netif_index);
 
     /// returns all sockaddr we have from all of our PacketSources
     std::vector<SockAddr>
@@ -205,16 +257,18 @@ namespace llarp::dns
     virtual std::shared_ptr<Resolver_Base>
     MakeDefaultResolver();
 
-    /// feed a packet buffer from a packet source
+    std::vector<std::weak_ptr<Resolver_Base>>
+    GetAllResolvers() const;
+
+    /// feed a packet buffer from a packet source.
     /// returns true if we decided to process the packet and consumed it
     /// returns false if we dont want to process the packet
     bool
     MaybeHandlePacket(
-        std::weak_ptr<PacketSource_Base> pktsource,
+        std::shared_ptr<PacketSource_Base> pktsource,
         const SockAddr& resolver,
         const SockAddr& from,
         llarp::OwnedBuffer buf);
-
     /// set which dns mode we are in.
     /// true for intercepting all queries. false for just .loki and .snode
     void
@@ -226,7 +280,7 @@ namespace llarp::dns
     std::shared_ptr<I_Platform> m_Platform;
 
    private:
-    const std::string m_NetifName;
+    const unsigned int m_NetIfIndex;
     std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>>
         m_OwnedResolvers;
     std::set<std::weak_ptr<Resolver_Base>, CompareWeakPtr<Resolver_Base>> m_Resolvers;

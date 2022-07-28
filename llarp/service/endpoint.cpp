@@ -37,7 +37,6 @@
 
 #include <llarp/quic/server.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/ev/ev_libuv.hpp>
 #include <uvw.hpp>
 #include <variant>
 
@@ -124,8 +123,7 @@ namespace llarp
       // add supported ethertypes
       if (HasIfAddr())
       {
-        const auto ourIP = net::HUIntToIn6(GetIfAddr());
-        if (ipv6_is_mapped_ipv4(ourIP))
+        if (IPRange::V4MappedRange().Contains(GetIfAddr()))
         {
           introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
         }
@@ -2073,6 +2071,11 @@ namespace llarp
       if (not exit.IsZero())
         LogInfo(Name(), " map ", range, " to exit at ", exit);
       m_ExitMap.Insert(range, exit);
+    }
+    bool
+    Endpoint::HasFlowToService(Address addr) const
+    {
+      return HasOutboundConvo(addr) or HasInboundConvo(addr);
     }
 
     void

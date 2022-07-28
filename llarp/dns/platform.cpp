@@ -1,4 +1,4 @@
-#include "multi_platform.hpp"
+#include "platform.hpp"
 
 namespace llarp::dns
 {
@@ -9,14 +9,14 @@ namespace llarp::dns
   }
 
   void
-  Multi_Platform::set_resolver(std::string ifname, llarp::SockAddr dns, bool global)
+  Multi_Platform::set_resolver(unsigned int index, llarp::SockAddr dns, bool global)
   {
     size_t fails{0};
     for (const auto& ptr : m_Impls)
     {
       try
       {
-        ptr->set_resolver(ifname, dns, global);
+        ptr->set_resolver(index, dns, global);
       }
       catch (std::exception& ex)
       {

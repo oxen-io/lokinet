@@ -2,9 +2,11 @@
 
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/ip_packet.hpp>
-#include <set>
-
 #include <oxenc/variant.h>
+
+#include "i_packet_io.hpp"
+
+#include <set>
 
 namespace llarp
 {
@@ -30,36 +32,40 @@ namespace llarp::vpn
   struct InterfaceInfo
   {
     std::string ifname;
+    unsigned int index;
     huint32_t dnsaddr;
-    std::set<InterfaceAddress> addrs;
+    std::vector<InterfaceAddress> addrs;
+
+    /// get address number N
+    inline net::ipaddr_t
+    operator[](size_t idx) const
+    {
+      const auto& range = addrs[idx].range;
+      if (range.IsV4())
+        return ToNet(net::TruncateV6(range.addr));
+      return ToNet(range.addr);
+    }
   };
 
   /// a vpn network interface
-  class NetworkInterface
+  class NetworkInterface : public I_Packet_IO
   {
+   protected:
+    InterfaceInfo m_Info;
+
    public:
-    NetworkInterface() = default;
+    NetworkInterface(InterfaceInfo info) : m_Info{std::move(info)}
+    {}
     NetworkInterface(const NetworkInterface&) = delete;
     NetworkInterface(NetworkInterface&&) = delete;
 
     virtual ~NetworkInterface() = default;
 
-    /// get pollable fd for reading
-    virtual int
-    PollFD() const = 0;
-
-    /// the interface's name
-    virtual std::string
-    IfName() const = 0;
-
-    /// read next ip packet, return an empty packet if there are none ready.
-    virtual net::IPPacket
-    ReadNextPacket() = 0;
-
-    /// write a packet to the interface
-    /// returns false if we dropped it
-    virtual bool
-    WritePacket(net::IPPacket pkt) = 0;
+    const InterfaceInfo&
+    Info() const
+    {
+      return m_Info;
+    }
 
     /// idempotently wake up the upper layers as needed (platform dependant)
     virtual void
@@ -69,8 +75,6 @@ namespace llarp::vpn
   class IRouteManager
   {
    public:
-    using IPVariant_t = std::variant<huint32_t, huint128_t>;
-
     IRouteManager() = default;
     IRouteManager(const IRouteManager&) = delete;
     IRouteManager(IRouteManager&&) = delete;
@@ -86,16 +90,16 @@ namespace llarp::vpn
     }
 
     virtual void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+    AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway) = 0;
 
     virtual void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) = 0;
+    DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway) = 0;
 
     virtual void
-    AddDefaultRouteViaInterface(std::string ifname) = 0;
+    AddDefaultRouteViaInterface(NetworkInterface& vpn) = 0;
 
     virtual void
-    DelDefaultRouteViaInterface(std::string ifname) = 0;
+    DelDefaultRouteViaInterface(NetworkInterface& vpn) = 0;
 
     virtual void
     AddRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
@@ -103,8 +107,8 @@ namespace llarp::vpn
     virtual void
     DelRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
 
-    virtual std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) = 0;
+    virtual std::vector<net::ipaddr_t>
+    GetGatewaysNotOnInterface(NetworkInterface& vpn) = 0;
 
     virtual void
     AddBlackhole(){};
@@ -117,20 +121,43 @@ namespace llarp::vpn
   /// responsible for obtaining vpn interfaces
   class Platform
   {
+   protected:
+    /// get a new network interface fully configured given the interface info
+    /// blocks until ready, throws on error
+    virtual std::shared_ptr<NetworkInterface>
+    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
+
    public:
     Platform() = default;
     Platform(const Platform&) = delete;
     Platform(Platform&&) = delete;
     virtual ~Platform() = default;
 
-    /// get a new network interface fully configured given the interface info
-    /// blocks until ready, throws on error
-    virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
+    /// create and start a network interface
+    inline std::shared_ptr<NetworkInterface>
+    CreateInterface(InterfaceInfo info, AbstractRouter* router)
+    {
+      if (auto netif = ObtainInterface(std::move(info), router))
+      {
+        netif->Start();
+        return netif;
+      }
+      return nullptr;
+    }
 
     /// get owned ip route manager for managing routing table
     virtual IRouteManager&
     RouteManager() = 0;
+
+    /// create a packet io that will read (and optionally write) packets on a network interface the
+    /// lokinet process does not own
+    /// @param index the interface index of the network interface to use or 0 for all
+    /// interfaces on the system
+    virtual std::shared_ptr<I_Packet_IO>
+    create_packet_io(unsigned int)
+    {
+      throw std::runtime_error{"raw packet io is unimplemented"};
+    }
   };
 
   /// create native vpn platform

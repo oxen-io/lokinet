@@ -2,21 +2,19 @@
 
 #include <llarp/dns/server.hpp>
 #include <llarp/ev/ev.hpp>
-#include <llarp/ev/vpn.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/util/thread/threading.hpp>
-#include <llarp/vpn/packet_router.hpp>
-
-#include <future>
-
-#include <type_traits>
-#include <variant>
-
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/priority_queue.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/vpn/packet_router.hpp>
+#include <llarp/vpn/platform.hpp>
+
+#include <future>
+#include <type_traits>
+#include <variant>
 
 namespace llarp
 {
@@ -28,6 +26,12 @@ namespace llarp
     {
       TunEndpoint(AbstractRouter* r, llarp::service::Context* parent);
       ~TunEndpoint() override;
+
+      vpn::NetworkInterface*
+      GetVPNInterface() override
+      {
+        return m_NetIf.get();
+      }
 
       int
       Rank() const override
@@ -43,7 +47,7 @@ namespace llarp
 
       bool
       MaybeHookDNS(
-          std::weak_ptr<dns::PacketSource_Base> source,
+          std::shared_ptr<dns::PacketSource_Base> source,
           const dns::Message& query,
           const SockAddr& to,
           const SockAddr& from) override;
@@ -306,7 +310,7 @@ namespace llarp
 
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
-      std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
+      std::shared_ptr<vpn::PacketRouter> m_PacketRouter;
 
       std::optional<net::TrafficPolicy> m_TrafficPolicy;
       /// ranges we advetise as reachable
@@ -316,6 +320,9 @@ namespace llarp
 
       /// a file to load / store the ephemeral address map to
       std::optional<fs::path> m_PersistAddrMapFile;
+
+      /// for raw packet dns
+      std::shared_ptr<vpn::I_Packet_IO> m_RawDNS;
     };
 
   }  // namespace handlers

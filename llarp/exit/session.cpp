@@ -213,8 +213,8 @@ namespace llarp
 
       if (m_WritePacket)
       {
-        llarp::net::IPPacket pkt;
-        if (!pkt.Load(buf))
+        llarp::net::IPPacket pkt{buf.view()};
+        if (pkt.empty())
           return false;
         m_LastUse = m_router->Now();
         m_Downstream.emplace(counter, pkt);
@@ -235,9 +235,7 @@ namespace llarp
     BaseSession::QueueUpstreamTraffic(
         llarp::net::IPPacket pkt, const size_t N, service::ProtocolType t)
     {
-      const auto pktbuf = pkt.ConstBuffer();
-      const llarp_buffer_t& buf = pktbuf;
-      auto& queue = m_Upstream[buf.sz / N];
+      auto& queue = m_Upstream[pkt.size() / N];
       // queue overflow
       if (queue.size() >= MaxUpstreamQueueLength)
         return false;
@@ -245,18 +243,18 @@ namespace llarp
       {
         queue.emplace_back();
         queue.back().protocol = t;
-        return queue.back().PutBuffer(buf, m_Counter++);
+        return queue.back().PutBuffer(std::move(pkt), m_Counter++);
       }
       auto& back = queue.back();
       // pack to nearest N
-      if (back.Size() + buf.sz > N)
+      if (back.Size() + pkt.size() > N)
       {
         queue.emplace_back();
         queue.back().protocol = t;
-        return queue.back().PutBuffer(buf, m_Counter++);
+        return queue.back().PutBuffer(std::move(pkt), m_Counter++);
       }
       back.protocol = t;
-      return back.PutBuffer(buf, m_Counter++);
+      return back.PutBuffer(std::move(pkt), m_Counter++);
     }
 
     bool
@@ -333,7 +331,7 @@ namespace llarp
       while (m_Downstream.size())
       {
         if (m_WritePacket)
-          m_WritePacket(m_Downstream.top().second.ConstBuffer());
+          m_WritePacket(const_cast<net::IPPacket&>(m_Downstream.top().second).steal());
         m_Downstream.pop();
       }
     }
@@ -369,8 +367,8 @@ namespace llarp
     void
     SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
-      net::IPPacket pkt;
-      if (not pkt.Load(buf))
+      net::IPPacket pkt{buf.view()};
+      if (pkt.empty())
         return;
       pkt.ZeroAddresses();
       QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
@@ -379,9 +377,10 @@ namespace llarp
     void
     ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
-      net::IPPacket pkt;
-      if (not pkt.Load(buf))
+      net::IPPacket pkt{buf.view()};
+      if (pkt.empty())
         return;
+
       pkt.ZeroSourceAddress();
       QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize, t);
     }

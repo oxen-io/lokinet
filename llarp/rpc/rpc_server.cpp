@@ -516,8 +516,8 @@ namespace llarp::rpc
                   {
                     auto mapExit = [=](service::Address addr) mutable {
                       ep->MapExitRange(range, addr);
-                      r->routePoker().Enable();
-                      r->routePoker().Up();
+
+                      r->routePoker()->Up();
                       bool shouldSendAuth = false;
                       if (token.has_value())
                       {
@@ -531,7 +531,7 @@ namespace llarp::rpc
                           reply(CreateJSONError("we dont have an exit?"));
                       };
                       auto onBadResult = [r, reply, ep, range](std::string reason) {
-                        r->routePoker().Down();
+                        r->routePoker()->Down();
                         ep->UnmapExitRange(range);
                         reply(CreateJSONError(reason));
                       };
@@ -614,7 +614,7 @@ namespace llarp::rpc
                   }
                   else if (not map)
                   {
-                    r->routePoker().Down();
+                    r->routePoker()->Down();
                     ep->UnmapExitRange(range);
                     reply(CreateJSONResponse("OK"));
                   }

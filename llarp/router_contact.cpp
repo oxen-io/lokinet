@@ -485,9 +485,11 @@ namespace llarp
     if (IsExpired(now) and not allowExpired)
       return false;
 
+    // TODO: make net* overridable
+    const auto* net = net::Platform::Default_ptr();
     for (const auto& a : addrs)
     {
-      if (IsBogon(a.ip) && BlockBogons)
+      if (net->IsBogon(a.ip) && BlockBogons)
       {
         llarp::LogError("invalid address info: ", a);
         return false;

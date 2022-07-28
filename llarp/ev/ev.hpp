@@ -4,7 +4,7 @@
 #include <llarp/util/time.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/constants/evloop.hpp>
-
+#include <llarp/net/interface_info.hpp>
 #include <algorithm>
 #include <deque>
 #include <list>
@@ -28,8 +28,10 @@ namespace llarp
 
   namespace net
   {
+    class Platform;
+
     struct IPPacket;
-  }
+  }  // namespace net
 
   /// distinct event loop waker upper; used to idempotently schedule a task on the next event loop
   ///
@@ -183,6 +185,9 @@ namespace llarp
     stop() = 0;
 
     virtual ~EventLoop() = default;
+
+    virtual const net::Platform*
+    Net_ptr() const;
 
     using UDPReceiveFunc = std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
 

@@ -9,7 +9,7 @@ namespace mocks
     int _pipes[2];
 
    public:
-    MockInterface(llarp::vpn::InterfaceInfo) : llarp::vpn::NetworkInterface{}
+      MockInterface(llarp::vpn::InterfaceInfo info) : llarp::vpn::NetworkInterface{std::move(info)}
     {
       if (pipe(_pipes))
         throw std::runtime_error{strerror(errno)};
@@ -24,12 +24,6 @@ namespace mocks
     PollFD() const override
     {
       return _pipes[0];
-    };
-
-    std::string
-    IfName() const override
-    {
-      return "ligma";
     };
 
     llarp::net::IPPacket
@@ -64,13 +58,13 @@ namespace mocks
       return &_net;
     };
 
-    void AddRoute(IPVariant_t, IPVariant_t) override{};
+    void AddRoute(llarp::net::ipaddr_t, llarp::net::ipaddr_t) override{};
 
-    void DelRoute(IPVariant_t, IPVariant_t) override{};
+    void DelRoute(llarp::net::ipaddr_t, llarp::net::ipaddr_t) override{};
 
-    void AddDefaultRouteViaInterface(std::string) override{};
+    void AddDefaultRouteViaInterface(llarp::vpn::NetworkInterface&) override{};
 
-    void DelDefaultRouteViaInterface(std::string) override{};
+    void DelDefaultRouteViaInterface(llarp::vpn::NetworkInterface&) override{};
 
     void
     AddRouteViaInterface(llarp::vpn::NetworkInterface&, llarp::IPRange) override{};
@@ -78,9 +72,9 @@ namespace mocks
     void
     DelRouteViaInterface(llarp::vpn::NetworkInterface&, llarp::IPRange) override{};
 
-    std::vector<IPVariant_t> GetGatewaysNotOnInterface(std::string) override
+    std::vector<llarp::net::ipaddr_t> GetGatewaysNotOnInterface(llarp::vpn::NetworkInterface&) override
     {
-      return std::vector<IPVariant_t>{};
+      return std::vector<llarp::net::ipaddr_t>{};
     };
 
     /// get owned ip route manager for managing routing table

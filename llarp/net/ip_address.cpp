@@ -127,7 +127,7 @@ namespace llarp
     SockAddr addr(m_ipAddress);
     const auto* addr6 = static_cast<const sockaddr_in6*>(addr);
     const uint8_t* raw = addr6->sin6_addr.s6_addr;
-    return IsIPv4Bogon(ipaddr_ipv4_bits(raw[12], raw[13], raw[14], raw[15]));
+    return IPRange::V4MappedRange().Contains(ipaddr_ipv4_bits(raw[12], raw[13], raw[14], raw[15]));
   }
 
   std::string

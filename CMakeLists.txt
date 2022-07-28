@@ -61,6 +61,8 @@ option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
+option(STRIP_SYMBOLS "strip off all debug symbols into an external archive for all executables built" OFF)
+
 
 include(cmake/enable_lto.cmake)
 
@@ -79,6 +81,12 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+set(debug OFF)
+if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(debug ON)
+  add_definitions(-DLOKINET_DEBUG)
 endif()
 
 if(BUILD_STATIC_DEPS AND STATIC_LINK)
@@ -171,10 +179,17 @@ if(NOT TARGET sodium)
   export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
 endif()
 
-if(NOT APPLE)
-  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
+if(APPLE)
+  add_compile_options(-Wno-deprecated-declarations)
+else()
+  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werror=vla)
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-unknown-warning-option)
+  endif()
+  if(debug)
+    add_compile_options(-Wdeprecated-declarations)
+  else()
+    add_compile_options(-Wno-deprecated-declarations)
   endif()
 endif()
 
@@ -185,11 +200,6 @@ if(XSAN)
   endforeach()
   message(STATUS "Doing a ${XSAN} sanitizer build")
 endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  add_definitions(-DLOKINET_DEBUG)
-endif()
-
 
 include(cmake/coverage.cmake)
 
@@ -317,6 +327,10 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-if(BUILD_PACKAGE)
-    include(cmake/installer.cmake)
+if(BUILD_PACKAGE AND NOT APPLE)
+  include(cmake/installer.cmake)
+endif()
+
+if(TARGET package)
+  add_dependencies(package assemble_gui)
 endif()

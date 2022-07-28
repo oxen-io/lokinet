@@ -1,12 +1,12 @@
-#include "ev_libuv.hpp"
-#include "vpn.hpp"
+#include "libuv.hpp"
 #include <memory>
 #include <thread>
 #include <type_traits>
+#include <cstring>
+
 #include <llarp/util/exceptions.hpp>
 #include <llarp/util/thread/queue.hpp>
-#include <cstring>
-#include "ev.hpp"
+#include <llarp/vpn/platform.hpp>
 
 #include <uvw.hpp>
 
@@ -251,19 +251,21 @@ namespace llarp::uv
     using event_t = uvw::PrepareEvent;
     auto handle = m_Impl->resource<uvw::PrepareHandle>();
 #endif
+
     if (!handle)
       return false;
 
     handle->on<event_t>([netif = std::move(netif), handler = std::move(handler)](
                             const event_t&, [[maybe_unused]] auto& handle) {
-      for (auto pkt = netif->ReadNextPacket(); pkt.sz > 0; pkt = netif->ReadNextPacket())
+      for (auto pkt = netif->ReadNextPacket(); true; pkt = netif->ReadNextPacket())
       {
-        LogDebug("got packet ", pkt.sz);
+        if (pkt.empty())
+          return;
         if (handler)
           handler(std::move(pkt));
         // on windows/apple, vpn packet io does not happen as an io action that wakes up the event
         // loop thus, we must manually wake up the event loop when we get a packet on our interface.
-        // on linux this is a nop
+        // on linux/android this is a nop
         netif->MaybeWakeUpperLayers();
       }
     });

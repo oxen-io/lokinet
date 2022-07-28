@@ -174,6 +174,12 @@ namespace llarp
         return nullptr;
       };
 
+      virtual vpn::NetworkInterface*
+      GetVPNInterface()
+      {
+        return nullptr;
+      }
+
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
 
@@ -354,6 +360,9 @@ namespace llarp
 
       bool
       HasPathToSNode(const RouterID remote) const;
+
+      bool
+      HasFlowToService(const Address remote) const;
 
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;

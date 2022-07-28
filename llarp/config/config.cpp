@@ -140,14 +140,14 @@ namespace llarp
             "this setting specifies the public IP at which this router is reachable. When",
             "provided the public-port option must also be specified.",
         },
-        [this](std::string arg) {
+        [this, net = params.Net_ptr()](std::string arg) {
           if (arg.empty())
             return;
           nuint32_t addr{};
           if (not addr.FromString(arg))
             throw std::invalid_argument{fmt::format("{} is not a valid IPv4 address", arg)};
 
-          if (IsIPv4Bogon(addr))
+          if (net->IsBogonIP(addr))
             throw std::invalid_argument{
                 fmt::format("{} is not a publicly routable ip address", addr)};
 
@@ -648,6 +648,7 @@ namespace llarp
             throw std::invalid_argument{
                 fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
         });
+
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
         "network",
@@ -812,6 +813,30 @@ namespace llarp
               entry.setPort(53);
           }
         });
+
+    conf.defineOption<bool>(
+        "dns",
+        "l3-intercept",
+        Default{
+            platform::is_windows or platform::is_android
+            or (platform::is_macos and not platform::is_apple_sysex)},
+        Comment{"Intercept all dns traffic (udp/53) going into our lokinet network interface "
+                "instead of binding a local udp socket"},
+        AssignmentAcceptor(m_raw_dns));
+
+    conf.defineOption<std::string>(
+        "dns",
+        "query-bind",
+#ifdef __APPLE__
+        Default{"127.0.0.1:1253"},
+#endif
+#ifdef _WIN32
+        Default{"0.0.0.0:0"},
+#endif
+        Comment{
+            "Address to bind to for sending upstream DNS requests.",
+        },
+        [this](std::string arg) { m_QueryBind = SockAddr{arg}; });
 
     conf.defineOption<std::string>(
         "dns",

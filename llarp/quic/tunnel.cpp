@@ -7,7 +7,7 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/ev/ev_libuv.hpp>
+#include <llarp/ev/libuv.hpp>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>

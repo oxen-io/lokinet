@@ -397,11 +397,9 @@ namespace llarp
           if (pkt.size() <= 8)
             continue;
           auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
-          sent &= endpoint->QueueOutboundTraffic(
-              info.rxID,
-              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
-              counter,
-              msg.protocol);
+          llarp_buffer_t buf{pkt.data() + 8, pkt.size() - 8};
+          sent =
+              endpoint->QueueOutboundTraffic(info.rxID, buf.copy(), counter, msg.protocol) and sent;
         }
         return sent;
       }

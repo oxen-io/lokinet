@@ -9,10 +9,6 @@
 
 namespace llarp
 {
-  /// forward declare
-  bool
-  IsBogon(huint128_t ip);
-
   struct IPRange
   {
     using Addr_t = huint128_t;
@@ -24,6 +20,12 @@ namespace llarp
     constexpr IPRange(huint128_t address, huint128_t netmask)
         : addr{std::move(address)}, netmask_bits{std::move(netmask)}
     {}
+
+    static constexpr IPRange
+    V4MappedRange()
+    {
+      return IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
+    }
 
     static constexpr IPRange
     FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
@@ -42,8 +44,7 @@ namespace llarp
     constexpr bool
     IsV4() const
     {
-      constexpr auto ipv4_map = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
-      return ipv4_map.Contains(addr);
+      return V4MappedRange().Contains(addr);
     }
 
     /// get address family
@@ -53,27 +54,6 @@ namespace llarp
       if (IsV4())
         return AF_INET;
       return AF_INET6;
-    }
-
-    /// return true if we intersect with a bogon range
-    bool
-    BogonRange() const
-    {
-      // special case for 0.0.0.0/0
-      if (IsV4() and netmask_bits == netmask_ipv6_bits(96))
-        return false;
-      // special case for ::/0
-      if (netmask_bits == huint128_t{0})
-        return false;
-      return IsBogon(addr) or IsBogon(HighestAddr());
-    }
-
-    /// return true if we intersect with a bogon range *and* we contain the given address
-    template <typename Addr>
-    bool
-    BogonContains(Addr&& addr) const
-    {
-      return BogonRange() and Contains(std::forward<Addr>(addr));
     }
 
     /// return the number of bits set in the hostmask
@@ -146,6 +126,9 @@ namespace llarp
 
     std::string
     BaseAddressString() const;
+
+    std::string
+    NetmaskString() const;
 
     bool
     FromString(std::string str);

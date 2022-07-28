@@ -25,8 +25,7 @@
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/dns/srv_data.hpp>
-#include <llarp/constants/platform.hpp>
-
+#include <llarp/constants/net.hpp>
 #include <llarp/constants/platform.hpp>
 
 #include <oxenc/bt.h>
@@ -37,7 +36,7 @@ namespace llarp
   {
     bool
     TunEndpoint::MaybeHookDNS(
-        std::weak_ptr<dns::PacketSource_Base> source,
+        std::shared_ptr<dns::PacketSource_Base> source,
         const dns::Message& query,
         const SockAddr& to,
         const SockAddr& from)
@@ -46,21 +45,25 @@ namespace llarp
         return false;
 
       auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
-      if (not HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
+      if (HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
+        Router()->TriggerPump();
+      else
         job->Cancel();
       return true;
     }
-    // Intercepts DNS IP packets going to an IP on the tun interface; this is currently used on
-    // Android and macOS where binding to a low port isn't possible
-    // because of OS restrictions, but a tun interface *is* available.
+
+    /// Intercepts DNS IP packets on platforms where binding to a low port isn't viable.
+    /// (windows/macos/ios/android ... aka everything that is not linux... funny that)
     class DnsInterceptor : public dns::PacketSource_Base
     {
-     public:
-      TunEndpoint* const m_Endpoint;
+      std::function<void(net::IPPacket)> m_Reply;
+      net::ipaddr_t m_OurIP;
       llarp::DnsConfig m_Config;
 
-      explicit DnsInterceptor(TunEndpoint* ep, llarp::DnsConfig conf)
-          : m_Endpoint{ep}, m_Config{conf}
+     public:
+      explicit DnsInterceptor(
+          std::function<void(net::IPPacket)> reply, net::ipaddr_t our_ip, llarp::DnsConfig conf)
+          : m_Reply{std::move(reply)}, m_OurIP{std::move(our_ip)}, m_Config{std::move(conf)}
       {}
 
       virtual ~DnsInterceptor() = default;
@@ -68,17 +71,11 @@ namespace llarp
       void
       SendTo(const SockAddr& to, const SockAddr& from, OwnedBuffer buf) const override
       {
-        const auto pkt = net::IPPacket::UDP(
-            from.getIPv4(),
-            ToNet(huint16_t{from.getPort()}),
-            to.getIPv4(),
-            ToNet(huint16_t{to.getPort()}),
-            buf);
+        auto pkt = net::IPPacket::make_udp(from, to, std::move(buf));
 
-        if (pkt.sz == 0)
+        if (pkt.empty())
           return;
-        m_Endpoint->HandleWriteIPPacket(
-            pkt.ConstBuffer(), net::ExpandV4(from.asIPv4()), net::ExpandV4(to.asIPv4()), 0);
+        m_Reply(std::move(pkt));
       }
 
       void
@@ -90,92 +87,131 @@ namespace llarp
         return std::nullopt;
       }
 
-#ifdef ANDROID
       bool
-      WouldLoop(const SockAddr&, const SockAddr&) const override
+      WouldLoop(const SockAddr& to, const SockAddr& from) const override
       {
-        return false;
-      }
-#endif
-
 #ifdef __APPLE__
-      // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
-      // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
-      // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver,
-      // above, won't work for us).  However when active the mac also only queries the main tunnel
-      // IP for DNS, so we consider anything else to be upstream-bound DNS to let it through the
-      // tunnel.
-      bool
-      WouldLoop(const SockAddr& to, const SockAddr&) const override
-      {
-        return to.asIPv6() != m_Endpoint->GetIfAddr();
-      }
+        (void)from;
+        // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
+        // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
+        // upstream DNS won't be set in our resolvers, which is why the vanilla IsUpstreamResolver
+        // won't work for us.  However when active the mac also only queries the main tunnel IP for
+        // DNS, so we consider anything else to be upstream-bound DNS to let it through the tunnel.
+        return to.asIPv6() != m_OurIP();
+#else
+        if (auto maybe_addr = m_Config.m_QueryBind)
+        {
+          const auto& addr = *maybe_addr;
+          // omit traffic to and from our dns socket
+          return addr == to or addr == from;
+        }
+        return false;
 #endif
+      }
     };
 
-#if defined(ANDROID) || defined(__APPLE__)
     class TunDNS : public dns::Server
     {
+      std::optional<SockAddr> m_QueryBind;
+      net::ipaddr_t m_OurIP;
       TunEndpoint* const m_Endpoint;
 
      public:
-      std::weak_ptr<dns::PacketSource_Base> PacketSource;
+      std::shared_ptr<dns::PacketSource_Base> PacketSource;
 
       virtual ~TunDNS() = default;
+
       explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
-          : dns::Server{ep->Router()->loop(), conf, ep->GetIfName()}, m_Endpoint{ep}
+          : dns::Server{ep->Router()->loop(), conf, 0}
+          , m_QueryBind{conf.m_QueryBind}
+          , m_OurIP{ToNet(ep->GetIfAddr())}
+          , m_Endpoint{ep}
       {}
 
       std::shared_ptr<dns::PacketSource_Base>
       MakePacketSourceOn(const SockAddr&, const llarp::DnsConfig& conf) override
       {
-        auto ptr = std::make_shared<DnsInterceptor>(m_Endpoint, conf);
+        auto ptr = std::make_shared<DnsInterceptor>(
+            [ep = m_Endpoint](auto pkt) {
+              ep->HandleWriteIPPacket(pkt.ConstBuffer(), pkt.srcv6(), pkt.dstv6(), 0);
+            },
+            m_OurIP,
+            conf);
         PacketSource = ptr;
         return ptr;
       }
-
-      std::shared_ptr<dns::Resolver_Base>
-      MakeDefaultResolver() override
-      {
-        // android will not cache dns via unbound it only intercepts .loki
-        return nullptr;
-      }
     };
-#endif
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint{r, parent}
     {
-      m_PacketRouter = std::make_unique<vpn::PacketRouter>(
+      m_PacketRouter = std::make_shared<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
     }
 
     void
     TunEndpoint::SetupDNS()
     {
-#if defined(ANDROID) || defined(__APPLE__) && !defined(MACOS_SYSTEM_EXTENSION))
-      auto dns = std::make_shared<TunDNS>(this, m_DnsConfig);
-      m_DNS = dns;
-      m_PacketRouter->AddUDPHandler(huint16_t{53}, [this, dns](net::IPPacket pkt) {
-        const size_t ip_header_size = (pkt.Header()->ihl * 4);
+      const auto& info = GetVPNInterface()->Info();
+      if (m_DnsConfig.m_raw_dns)
+      {
+        auto dns = std::make_shared<TunDNS>(this, m_DnsConfig);
+        if (auto vpn = Router()->GetVPNPlatform())
+        {
+          // get the first local address we know of
+          std::optional<SockAddr> localaddr;
+          for (auto res : dns->GetAllResolvers())
+          {
+            if (localaddr)
+              continue;
+            if (auto ptr = res.lock())
+              localaddr = ptr->GetLocalAddr();
+          }
+          if (platform::is_windows)
+          {
+            auto dns_io = vpn->create_packet_io(0);
+            LogInfo("doing dns queries from ", *localaddr);
+            Router()->loop()->add_ticker(
+                [r = Router(), dns_io, handler = m_PacketRouter, src = localaddr]() {
+                  net::IPPacket pkt = dns_io->ReadNextPacket();
+                  while (not pkt.empty())
+                  {
+                    // reinject if for upstream dns
+                    if (src and pkt.src() == *src)
+                    {
+                      LogInfo("reinject dns");
+                      std::function<void(net::IPPacket)> reply{std::move(pkt.reply)};
+                      reply(std::move(pkt));
+                    }
+                    else
+                    {
+                      LogInfo("got dns packet from ", pkt.src(), " of size ", pkt.size(), "B");
+                      handler->HandleIPPacket(std::move(pkt));
+                    }
+                    pkt = dns_io->ReadNextPacket();
+                  }
+                });
+            m_RawDNS = dns_io;
+          }
+        }
+        m_DNS = dns;
 
-        const uint8_t* ptr = pkt.buf + ip_header_size;
-        const auto dst = ToNet(pkt.dstv4());
-        const auto src = ToNet(pkt.srcv4());
-        const SockAddr laddr{src, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
-        const SockAddr raddr{dst, nuint16_t{*reinterpret_cast<const uint16_t*>(ptr + 2)}};
+        m_PacketRouter->AddUDPHandler(huint16_t{53}, [this, dns](net::IPPacket pkt) {
+          auto dns_pkt_src = dns->PacketSource;
+          if (const auto& reply = pkt.reply)
+            dns_pkt_src = std::make_shared<dns::PacketSource_Wrapper>(dns_pkt_src, reply);
+          if (dns->MaybeHandlePacket(
+                  std::move(dns_pkt_src), pkt.dst(), pkt.src(), *pkt.L4OwnedBuffer()))
+            return;
 
-        OwnedBuffer buf{pkt.sz - (8 + ip_header_size)};
-        std::copy_n(ptr + 8, buf.sz, buf.buf.get());
+          HandleGotUserPacket(std::move(pkt));
+        });
+      }
+      else
+        m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig, info.index);
 
-        if (dns->MaybeHandlePacket(dns->PacketSource, raddr, laddr, std::move(buf)))
-          return;
-
-        HandleGotUserPacket(std::move(pkt));
-      });
-#else
-      m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig, GetIfName());
-#endif
+      if (m_RawDNS)
+        m_RawDNS->Start();
       m_DNS->AddResolver(weak_from_this());
       m_DNS->Start();
     }
@@ -969,45 +1005,39 @@ namespace llarp
       }
 
       vpn::InterfaceInfo info;
-      info.addrs.emplace(m_OurRange);
+      info.addrs.emplace_back(m_OurRange);
 
       if (m_BaseV6Address)
       {
         IPRange v6range = m_OurRange;
         v6range.addr = (*m_BaseV6Address) | m_OurRange.addr;
         LogInfo(Name(), " using v6 range: ", v6range);
-        info.addrs.emplace(v6range, AF_INET6);
+        info.addrs.emplace_back(v6range, AF_INET6);
       }
 
       info.ifname = m_IfName;
-
-      LogInfo(Name(), " setting up dns...");
-      SetupDNS();
-
-      if (auto maybe_addr = m_DNS->FirstBoundPacketSourceAddr())
-        info.dnsaddr = maybe_addr->asIPv4();
 
       LogInfo(Name(), " setting up network...");
 
       try
       {
-        m_NetIf = Router()->GetVPNPlatform()->ObtainInterface(std::move(info), Router());
+        m_NetIf = Router()->GetVPNPlatform()->CreateInterface(std::move(info), Router());
       }
       catch (std::exception& ex)
       {
         LogError(Name(), " failed to set up network interface: ", ex.what());
-      }
-      if (not m_NetIf)
-      {
-        LogError(Name(), " failed to obtain network interface");
         return false;
       }
-      m_IfName = m_NetIf->IfName();
+
+      m_IfName = m_NetIf->Info().ifname;
       LogInfo(Name(), " got network interface ", m_IfName);
 
-      if (not Router()->loop()->add_network_interface(m_NetIf, [this](net::IPPacket pkt) {
-            m_PacketRouter->HandleIPPacket(std::move(pkt));
-          }))
+      auto handle_packet = [netif = m_NetIf, pkt_router = m_PacketRouter](auto pkt) {
+        pkt.reply = [netif](auto pkt) { netif->WritePacket(std::move(pkt)); };
+        pkt_router->HandleIPPacket(std::move(pkt));
+      };
+
+      if (not Router()->loop()->add_network_interface(m_NetIf, std::move(handle_packet)))
       {
         LogError(Name(), " failed to add network interface");
         return false;
@@ -1025,8 +1055,9 @@ namespace llarp
         }
       }
 
-      m_router->routePoker().SetDNSMode(false);
-
+      LogInfo(Name(), " setting up dns...");
+      SetupDNS();
+      Loop()->call_soon([this]() { m_router->routePoker()->SetDNSMode(false); });
       return HasAddress(ourAddr);
     }
 
@@ -1060,9 +1091,13 @@ namespace llarp
     bool
     TunEndpoint::Stop()
     {
+      // stop vpn tunnel
+      if (m_NetIf)
+        m_NetIf->Stop();
+      if (m_RawDNS)
+        m_RawDNS->Stop();
       // save address map if applicable
-#ifndef ANDROID
-      if (m_PersistAddrMapFile)
+      if (m_PersistAddrMapFile and not platform::is_android)
       {
         const auto& file = *m_PersistAddrMapFile;
         LogInfo(Name(), " saving address map to ", file);
@@ -1082,7 +1117,6 @@ namespace llarp
           maybe->write(data.data(), data.size());
         }
       }
-#endif
       if (m_DNS)
         m_DNS->Stop();
       return llarp::service::Endpoint::Stop();
@@ -1096,12 +1130,18 @@ namespace llarp
       // is it already mapped? return the mapping
       if (auto itr = m_ExitIPToExitAddress.find(ip); itr != m_ExitIPToExitAddress.end())
         return itr->second;
+
+      const auto& net = m_router->Net();
+      const bool is_bogon = net.IsBogonIP(ip);
       // build up our candidates to choose
+
       std::unordered_set<service::Address> candidates;
       for (const auto& entry : m_ExitMap.FindAllEntries(ip))
       {
-        // make sure it is allowed by the range if the ip is a bogon
-        if (not IsBogon(ip) or entry.first.BogonContains(ip))
+        // in the event the exit's range is a bogon range, make sure the ip is located in that range
+        // to allow it
+        if ((is_bogon and net.IsBogonRange(entry.first) and entry.first.Contains(ip))
+            or entry.first.Contains(ip))
           candidates.emplace(entry.second);
       }
       // no candidates? bail.
@@ -1163,13 +1203,20 @@ namespace llarp
 
           return;
         }
+        std::function<void(void)> extra_cb;
+        if (not HasFlowToService(addr))
+        {
+          extra_cb = [poker = Router()->routePoker()]() { poker->Up(); };
+        }
         pkt.ZeroSourceAddress();
         MarkAddressOutbound(addr);
         EnsurePathToService(
             addr,
-            [pkt, this](service::Address addr, service::OutboundContext* ctx) {
+            [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) {
               if (ctx)
               {
+                if (extra_cb)
+                  extra_cb();
                 ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
                 Router()->TriggerPump();
                 return;

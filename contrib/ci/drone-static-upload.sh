@@ -34,8 +34,11 @@ else
 fi
 
 mkdir -v "$base"
-if [ -e build-windows ]; then
-    cp -av build-windows/lokinet-*.exe "$base"
+if [ -e build/win32 ]; then
+    # save debug symbols
+    cp -av build/win32/daemon/debug-symbols.tar.xz "$base-debug-symbols.tar.xz"
+    # save installer
+    cp -av build/win32/*.exe "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
@@ -76,6 +79,10 @@ sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<SFTP
 $mkdirs
 put $archive $upload_to
 SFTP
+
+if [ -e "$base-debug-symbols.tar.xz" ] ; then
+    sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<<"put $base-debug-symbols.tar.xz $upload_to"
+fi
 
 set +o xtrace
 

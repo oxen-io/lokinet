@@ -1,5 +1,5 @@
 
-#include <llarp/ev/vpn.hpp>
+#include "platform.hpp"
 
 #ifdef _WIN32
 #include "win32.hpp"
@@ -28,7 +28,7 @@ namespace llarp::vpn
     (void)ctx;
     std::shared_ptr<Platform> plat;
 #ifdef _WIN32
-    plat = std::make_shared<vpn::Win32Platform>();
+    plat = std::make_shared<llarp::win32::VPNPlatform>(ctx);
 #endif
 #ifdef __linux__
 #ifdef ANDROID

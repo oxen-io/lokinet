@@ -13,7 +13,7 @@ using namespace std::literals;
 namespace llarp::dns::nm
 {
   void
-  Platform::set_resolver(std::string, llarp::SockAddr, bool)
+  Platform::set_resolver(unsigned int, llarp::SockAddr, bool)
   {
     // todo: implement me eventually
   }

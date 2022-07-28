@@ -1,19 +1,9 @@
 #include "net.hpp"
-
 #include "net_if.hpp"
 #include <stdexcept>
 #include <llarp/constants/platform.hpp>
 
-#ifdef ANDROID
-#include <llarp/android/ifaddrs.h>
-#endif
-
-#ifndef _WIN32
 #include <arpa/inet.h>
-#ifndef ANDROID
-#include <ifaddrs.h>
-#endif
-#endif
 
 #include "ip.hpp"
 #include "ip_range.hpp"
@@ -23,116 +13,15 @@
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>
 #else
-#ifdef _WIN32
-#include <iphlpapi.h>
-#include <llarp/win32/exception.hpp>
-#else
 #include <ifaddrs.h>
-#endif
 #endif
 
 #include <cstdio>
 #include <list>
 #include <type_traits>
 
-bool
-operator==(const sockaddr& a, const sockaddr& b)
-{
-  if (a.sa_family != b.sa_family)
-    return false;
-  switch (a.sa_family)
-  {
-    case AF_INET:
-      return *((const sockaddr_in*)&a) == *((const sockaddr_in*)&b);
-    case AF_INET6:
-      return *((const sockaddr_in6*)&a) == *((const sockaddr_in6*)&b);
-    default:
-      return false;
-  }
-}
-
-bool
-operator<(const sockaddr_in6& a, const sockaddr_in6& b)
-{
-  return a.sin6_addr < b.sin6_addr || a.sin6_port < b.sin6_port;
-}
-
-bool
-operator<(const in6_addr& a, const in6_addr& b)
-{
-  return memcmp(&a, &b, sizeof(in6_addr)) < 0;
-}
-
-bool
-operator==(const in6_addr& a, const in6_addr& b)
-{
-  return memcmp(&a, &b, sizeof(in6_addr)) == 0;
-}
-
-bool
-operator==(const sockaddr_in& a, const sockaddr_in& b)
-{
-  return a.sin_port == b.sin_port && a.sin_addr.s_addr == b.sin_addr.s_addr;
-}
-
-bool
-operator==(const sockaddr_in6& a, const sockaddr_in6& b)
-{
-  return a.sin6_port == b.sin6_port && a.sin6_addr == b.sin6_addr;
-}
-
 namespace llarp::net
 {
-  class Platform_Base : public llarp::net::Platform
-  {
-   public:
-    bool
-    IsLoopbackAddress(ipaddr_t ip) const override
-    {
-      return var::visit(
-          [loopback6 = IPRange{huint128_t{uint128_t{0UL, 1UL}}, netmask_ipv6_bits(128)},
-           loopback4 = IPRange::FromIPv4(127, 0, 0, 0, 8)](auto&& ip) {
-            const auto h_ip = ToHost(ip);
-            return loopback4.Contains(h_ip) or loopback6.Contains(h_ip);
-          },
-          ip);
-    }
-
-    SockAddr
-    Wildcard(int af) const override
-    {
-      if (af == AF_INET)
-      {
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = htonl(INADDR_ANY);
-        addr.sin_port = htons(0);
-        return SockAddr{addr};
-      }
-      if (af == AF_INET6)
-      {
-        sockaddr_in6 addr6{};
-        addr6.sin6_family = AF_INET6;
-        addr6.sin6_port = htons(0);
-        addr6.sin6_addr = IN6ADDR_ANY_INIT;
-        return SockAddr{addr6};
-      }
-      throw std::invalid_argument{fmt::format("{} is not a valid address family")};
-    }
-
-    bool
-    IsBogon(const llarp::SockAddr& addr) const override
-    {
-      return llarp::IsBogon(addr.asIPv6());
-    }
-
-    bool
-    IsWildcardAddress(ipaddr_t ip) const override
-    {
-      return var::visit([](auto&& ip) { return not ip.n; }, ip);
-    }
-  };
-
 #ifdef _WIN32
   class Platform_Impl : public Platform_Base
   {
@@ -293,11 +182,30 @@ namespace llarp::net
     {
       return GetInterfaceIndex(ip) != std::nullopt;
     }
+
+    std::vector<InterfaceInfo>
+    AllNetworkInterfaces() const override
+    {
+      std::vector<InterfaceInfo> all;
+      iter_adapters([&all](auto* a) {
+        auto& cur = all.emplace_back();
+        cur.index = a->IfIndex;
+        cur.name = a->AdapterName;
+        for (auto* addr = a->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
+        {
+          SockAddr saddr{*addr->Address.lpSockaddr};
+          cur.addrs.emplace_back(
+              saddr.asIPv6(),
+              ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
+        }
+      });
+      return all;
+    }
   };
 
 #else
 
-  class Platform_Impl : public Platform_Base
+  class Platform_Impl : public Platform
   {
     template <typename Visit_t>
     void
@@ -469,6 +377,33 @@ namespace llarp::net
       });
       return found;
     }
+    std::vector<InterfaceInfo>
+    AllNetworkInterfaces() const override
+    {
+      std::unordered_map<std::string, InterfaceInfo> ifmap;
+      iter_all([&ifmap](auto* i) {
+        if (i == nullptr or i->ifa_addr == nullptr)
+          return;
+
+        const auto fam = i->ifa_addr->sa_family;
+        if (fam != AF_INET and fam != AF_INET6)
+          return;
+
+        auto& ent = ifmap[i->ifa_name];
+        if (ent.name.empty())
+        {
+          ent.name = i->ifa_name;
+          ent.index = if_nametoindex(i->ifa_name);
+        }
+        SockAddr addr{*i->ifa_addr};
+        SockAddr mask{*i->ifa_netmask};
+        ent.addrs.emplace_back(addr.asIPv6(), mask.asIPv6());
+      });
+      std::vector<InterfaceInfo> all;
+      for (auto& [name, ent] : ifmap)
+        all.emplace_back(std::move(ent));
+      return all;
+    }
   };
 #endif
 
@@ -480,100 +415,3 @@ namespace llarp::net
     return &g_plat;
   }
 }  // namespace llarp::net
-
-namespace llarp
-{
-#if !defined(TESTNET)
-  static constexpr std::array bogonRanges_v6 = {
-      // zero
-      IPRange{huint128_t{0}, netmask_ipv6_bits(128)},
-      // loopback
-      IPRange{huint128_t{1}, netmask_ipv6_bits(128)},
-      // yggdrasil
-      IPRange{huint128_t{uint128_t{0x0200'0000'0000'0000UL, 0UL}}, netmask_ipv6_bits(7)},
-      // multicast
-      IPRange{huint128_t{uint128_t{0xff00'0000'0000'0000UL, 0UL}}, netmask_ipv6_bits(8)},
-      // local
-      IPRange{huint128_t{uint128_t{0xfc00'0000'0000'0000UL, 0UL}}, netmask_ipv6_bits(8)},
-      // local
-      IPRange{huint128_t{uint128_t{0xf800'0000'0000'0000UL, 0UL}}, netmask_ipv6_bits(8)}};
-
-  static constexpr std::array bogonRanges_v4 = {
-      IPRange::FromIPv4(0, 0, 0, 0, 8),
-      IPRange::FromIPv4(10, 0, 0, 0, 8),
-      IPRange::FromIPv4(100, 64, 0, 0, 10),
-      IPRange::FromIPv4(127, 0, 0, 0, 8),
-      IPRange::FromIPv4(169, 254, 0, 0, 16),
-      IPRange::FromIPv4(172, 16, 0, 0, 12),
-      IPRange::FromIPv4(192, 0, 0, 0, 24),
-      IPRange::FromIPv4(192, 0, 2, 0, 24),
-      IPRange::FromIPv4(192, 88, 99, 0, 24),
-      IPRange::FromIPv4(192, 168, 0, 0, 16),
-      IPRange::FromIPv4(198, 18, 0, 0, 15),
-      IPRange::FromIPv4(198, 51, 100, 0, 24),
-      IPRange::FromIPv4(203, 0, 113, 0, 24),
-      IPRange::FromIPv4(224, 0, 0, 0, 4),
-      IPRange::FromIPv4(240, 0, 0, 0, 4)};
-
-#endif
-
-  bool
-  IsBogon(const in6_addr& addr)
-  {
-#if defined(TESTNET)
-    (void)addr;
-    return false;
-#else
-    if (not ipv6_is_mapped_ipv4(addr))
-    {
-      const auto ip = net::In6ToHUInt(addr);
-      for (const auto& range : bogonRanges_v6)
-      {
-        if (range.Contains(ip))
-          return true;
-      }
-      return false;
-    }
-    return IsIPv4Bogon(
-        ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13], addr.s6_addr[14], addr.s6_addr[15]));
-#endif
-  }
-
-  bool
-  IsBogon(const huint128_t ip)
-  {
-    const nuint128_t netIP{ntoh128(ip.h)};
-    in6_addr addr{};
-    std::copy_n((const uint8_t*)&netIP.n, 16, &addr.s6_addr[0]);
-    return IsBogon(addr);
-  }
-
-  bool
-  IsBogonRange(const in6_addr& host, const in6_addr&)
-  {
-    // TODO: implement me
-    return IsBogon(host);
-  }
-
-#if !defined(TESTNET)
-  bool
-  IsIPv4Bogon(const huint32_t& addr)
-  {
-    for (const auto& bogon : bogonRanges_v4)
-    {
-      if (bogon.Contains(addr))
-      {
-        return true;
-      }
-    }
-    return false;
-  }
-#else
-  bool
-  IsIPv4Bogon(const huint32_t&)
-  {
-    return false;
-  }
-#endif
-
-}  // namespace llarp

@@ -954,7 +954,7 @@ extern "C"
           dstport,
           llarp_buffer_t{reinterpret_cast<const uint8_t*>(ptr), len});
 
-      if (pkt.sz == 0)
+      if (pkt.empty())
         return EINVAL;
       std::promise<int> ret;
       ctx->impl->router->loop()->call([addr = *maybe, pkt = std::move(pkt), ep, &ret]() {

@@ -32,7 +32,7 @@ namespace llarp
 
       bool
       MaybeHookDNS(
-          std::weak_ptr<dns::PacketSource_Base> source,
+          std::shared_ptr<dns::PacketSource_Base> source,
           const dns::Message& query,
           const SockAddr& to,
           const SockAddr& from) override;
@@ -245,6 +245,7 @@ namespace llarp
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;
       bool m_UseV6;
+      DnsConfig m_DNSConf;
     };
   }  // namespace handlers
 }  // namespace llarp

@@ -13,14 +13,8 @@ using namespace std::literals;
 namespace llarp::dns::sd
 {
   void
-  Platform::set_resolver(std::string ifname, llarp::SockAddr dns, bool global)
+  Platform::set_resolver(unsigned int if_ndx, llarp::SockAddr dns, bool global)
   {
-    unsigned int if_ndx = if_nametoindex(ifname.c_str());
-    if (if_ndx == 0)
-    {
-      throw std::runtime_error{"No such interface '" + ifname + "'"};
-    }
-
     linux::DBUS _dbus{
         "org.freedesktop.resolve1",
         "/org/freedesktop/resolve1",
