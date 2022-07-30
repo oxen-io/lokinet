@@ -277,6 +277,14 @@ namespace llarp
     /// bootstrap RCs
     BootstrapList bootstrapRCList;
 
+    util::DecayingHashSet<TunnelNonce> _replayFilter{500ms};
+
+    util::DecayingHashSet<TunnelNonce>&
+    replayFilter() override
+    {
+      return _replayFilter;
+    }
+
     bool
     ExitEnabled() const
     {

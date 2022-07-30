@@ -32,9 +32,6 @@ namespace llarp
       virtual PathID_t
       RXID() const = 0;
 
-      void
-      DecayFilters(llarp_time_t now);
-
       virtual bool
       Expired(llarp_time_t now) const = 0;
 
@@ -75,8 +72,6 @@ namespace llarp
       uint64_t m_SequenceNum = 0;
       TrafficQueue_t m_UpstreamQueue;
       TrafficQueue_t m_DownstreamQueue;
-      util::DecayingHashSet<TunnelNonce> m_UpstreamReplayFilter;
-      util::DecayingHashSet<TunnelNonce> m_DownstreamReplayFilter;
 
       virtual void
       UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) = 0;

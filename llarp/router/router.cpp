@@ -1101,6 +1101,8 @@ namespace llarp
         [&peersWeHave](const dht::Key_t& k) -> bool { return peersWeHave.count(k) == 0; });
     // expire paths
     paths.ExpirePaths(now);
+    // clear replay filter
+    _replayFilter.Decay(now);
     // update tick timestamp
     _lastTick = llarp::time_now_ms();
   }
@@ -1259,6 +1261,10 @@ namespace llarp
         _rc.addrs.push_back(ai);
       }
     });
+
+    // if we are a service node we will not use a replay filter for path traffic to reduce memory
+    // usage on runtime
+    _replayFilter.nop = IsServiceNode();
 
     if (ExitEnabled() and IsServiceNode())
     {

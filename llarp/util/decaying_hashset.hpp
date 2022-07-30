@@ -12,6 +12,8 @@ namespace llarp
     {
       using Time_t = std::chrono::milliseconds;
 
+      bool nop{false};
+
       DecayingHashSet(Time_t cacheInterval = 1s) : m_CacheInterval(cacheInterval)
       {}
 
@@ -33,6 +35,8 @@ namespace llarp
       bool
       Insert(const Val_t& v, Time_t now = 0s)
       {
+        if (nop)
+          return true;
         if (now == 0s)
           now = llarp::time_now_ms();
         return m_Values.try_emplace(v, now).second;

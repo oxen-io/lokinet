@@ -182,6 +182,9 @@ namespace llarp
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
 
+    virtual util::DecayingHashSet<TunnelNonce>&
+    replayFilter() = 0;
+
     virtual std::shared_ptr<PeerDb>
     peerDb() = 0;
 

@@ -362,10 +362,7 @@ namespace llarp
             itr = map.erase(itr);
           }
           else
-          {
-            itr->second->DecayFilters(now);
             ++itr;
-          }
         }
       }
       {
@@ -379,10 +376,7 @@ namespace llarp
             itr = map.erase(itr);
           }
           else
-          {
-            itr->second->DecayFilters(now);
             ++itr;
-          }
         }
       }
     }
