@@ -253,9 +253,11 @@ namespace llarp::net
     void
     ZeroSourceAddress(std::optional<nuint32_t> flowlabel = std::nullopt);
 
-    /// make an icmp unreachable reply packet based of this ip packet
+    /// make an ip packet that will close or reject whatever upper layer sent it
+    /// makes a tcp rst packet for tcp, otherwise an icmp unreachble packet
+    /// returns nullopt if not implemented or applicable for this packet
     std::optional<IPPacket>
-    MakeICMPUnreachable() const;
+    MakeReject() const;
   };
 
   /// generate ip checksum

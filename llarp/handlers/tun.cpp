@@ -1079,9 +1079,9 @@ namespace llarp
           addr = *maybe;
         else
         {
-          // send icmp unreachable as we dont have any exits for this ip
-          if (const auto icmp = pkt.MakeICMPUnreachable())
-            HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
+          // send rejection as we dont have any exits for this ip
+          if (const auto reply = pkt.MakeReject())
+            HandleWriteIPPacket(reply->ConstBuffer(), dst, src, 0);
 
           return;
         }

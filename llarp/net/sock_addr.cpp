@@ -16,6 +16,12 @@ namespace llarp
   {
     return memcmp(&lh, &rh, sizeof(in6_addr)) == 0;
   }
+
+  bool
+  operator<(const in6_addr& lh, const in6_addr& rh)
+  {
+    return memcmp(&lh, &rh, sizeof(in6_addr)) < 0;
+  }
   /// shared utility functions
   ///
 
@@ -209,7 +215,8 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr);
+    return (m_addr.sin6_addr < other.m_addr.sin6_addr)
+        or (m_addr.sin6_port < other.m_addr.sin6_port);
   }
 
   bool
