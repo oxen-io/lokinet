@@ -55,7 +55,11 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
+        auto before = m_Values.size();
         EraseIf([&](const auto& item) { return (m_CacheInterval + item.second) <= now; });
+        auto after = m_Values.size();
+        if(before > after)
+            m_Values.reserve(after);
       }
 
       Time_t
