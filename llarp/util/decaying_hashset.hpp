@@ -11,10 +11,14 @@ namespace llarp
     struct DecayingHashSet
     {
       using Time_t = std::chrono::milliseconds;
+      /// the minimum number of generations between rehashing the underlying unordered map
+      static inline constexpr int RehashGenerations = 10;
 
       bool nop{false};
 
-      DecayingHashSet(Time_t cacheInterval = 1s) : m_CacheInterval(cacheInterval)
+      DecayingHashSet(Time_t item_lifetime = 1s)
+          : m_CacheInterval{item_lifetime}
+          , m_NextRehash{DateClock_t::now() + (m_CacheInterval * RehashGenerations)}
       {}
 
       size_t
@@ -55,11 +59,17 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
-        auto before = m_Values.size();
+        // decay
+        const auto before = m_Values.size();
         EraseIf([&](const auto& item) { return (m_CacheInterval + item.second) <= now; });
-        auto after = m_Values.size();
-        if(before > after)
-            m_Values.reserve(after);
+        const auto after = m_Values.size();
+        // rehash as needed
+        const time_delta<std::chrono::milliseconds> time{m_NextRehash};
+        if (before > after and time.delta() <= 0s)
+        {
+          m_Values.reserve(after);
+          m_NextRehash = DateClock_t::now() + (m_CacheInterval * RehashGenerations);
+        }
       }
 
       Time_t
@@ -105,6 +115,7 @@ namespace llarp
       }
 
       Time_t m_CacheInterval;
+      TimePoint_t m_NextRehash;
       std::unordered_map<Val_t, Time_t, Hash_t> m_Values;
     };
   }  // namespace util

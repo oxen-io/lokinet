@@ -29,6 +29,13 @@ namespace llarp
   struct time_delta
   {
     const TimePoint_t at;
+
+    /// get the time delta between this time point and now
+    auto
+    delta() const
+    {
+      return std::chrono::duration_cast<Time_Duration>(llarp::TimePoint_t::clock::now() - at);
+    }
   };
 }  // namespace llarp
 
@@ -41,8 +48,7 @@ namespace fmt
     auto
     format(const llarp::time_delta<Time_Duration>& td, FormatContext& ctx)
     {
-      const auto dlt =
-          std::chrono::duration_cast<llarp::Duration_t>(llarp::TimePoint_t::clock::now() - td.at);
+      const auto dlt = td.delta();
       using Parent = formatter<std::string>;
       if (dlt > 0s)
         return Parent::format(fmt::format("{} ago", dlt), ctx);
