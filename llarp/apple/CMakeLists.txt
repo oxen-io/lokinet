@@ -6,13 +6,11 @@ if (BUILD_SHARED_LIBS OR NOT BUILD_STATIC_DEPS OR NOT STATIC_LINK)
   message(FATAL_ERROR "macOS builds require a full static build; perhaps use the contrib/macos.sh script to build?")
 endif()
 
-# god made apple so that man may suffer
-
+# god (steve jobs) made apple so that man may suffer
 find_library(FOUNDATION Foundation REQUIRED)
 find_library(NETEXT NetworkExtension REQUIRED)
 find_library(COREFOUNDATION CoreFoundation REQUIRED)
 
-target_sources(lokinet-util PRIVATE apple_logger.cpp)
 target_link_libraries(lokinet-util PUBLIC ${FOUNDATION})
 
 target_sources(lokinet-platform PRIVATE vpn_platform.cpp vpn_interface.cpp route_manager.cpp context_wrapper.cpp)
