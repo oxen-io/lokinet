@@ -73,23 +73,24 @@ TEST_CASE("test subkey derivation", "[crypto]")
   }};
 
   SecretKey root{seed};
-  CHECK(root.toPublic() == PubKey{root_pub_data});
+  CHECK(root.toPublic().as_array() == root_pub_data.as_array());
 
   PrivateKey root_key;
   CHECK(root.toPrivate(root_key));
-  CHECK(root_key == PrivateKey{root_key_data});
+  CHECK(root_key.as_array() == root_key_data.as_array());
 
   auto crypto = CryptoManager::instance();
 
   PrivateKey aprime; // a'
   CHECK(crypto->derive_subkey_private(aprime, root, 0, &hash));
-  // We use a different signing hash than Tor, so only the private key value (the first 32 bytes)
-  // will match:
-  CHECK(aprime.ToHex().substr(0, 64) == PrivateKey{derived_key_data}.ToHex().substr(0, 64));
+
+  // We use a different signing hash than Tor
+  // only the private key value (the first 32 bytes) will match:
+  CHECK(std::memcmp(aprime.data(), derived_key_data.data(), 32) == 0);
 
   PubKey Aprime; // A'
   CHECK(crypto->derive_subkey(Aprime, root.toPublic(), 0, &hash));
-  CHECK(Aprime == PubKey{derived_pub_data});
+  CHECK(Aprime.as_array() == derived_pub_data.as_array());
 }
 
 TEST_CASE("test root key signing" , "[crypto]")

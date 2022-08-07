@@ -4,9 +4,9 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/util/fs.hpp>
-#include <llarp/util/logging/buffer.hpp>
 #include <uvw/loop.h>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/callback_sink.hpp>
 #include "vpn_interface.hpp"
 #include "context_wrapper.h"
@@ -35,10 +35,11 @@ const uint16_t dns_trampoline_port = 1053;
 void*
 llarp_apple_init(llarp_apple_config* appleconf)
 {
-  llarp::log::ReplaceLogger(std::make_shared<llarp::log::CallbackSink_mt>(
+  llarp::log::clear_sinks();
+  llarp::log::add_sink(std::make_shared<llarp::logging::CallbackSink_mt>(
       [](const char* msg, void* nslog) { reinterpret_cast<ns_logger_callback>(nslog)(msg); },
       nullptr,
-      appleconf->ns_logger));
+      reinterpret_cast<void*>(appleconf->ns_logger)));
 
   try
   {

@@ -57,8 +57,7 @@ namespace llarp
         llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const
     {
       const auto now = ctx->impl->Now();
-      const llarp::dht::Key_t addr(introset.derivedSigningKey);
-      const auto keyStr = addr.ToHex();
+      const llarp::dht::Key_t addr{introset.derivedSigningKey.data()};
 
       auto router = ctx->impl->GetRouter();
       router->NotifyRouterEvent<tooling::PubIntroReceivedEvent>(
@@ -134,7 +133,7 @@ namespace llarp
           return true;
         }
 
-        llarp::LogInfo("Relaying PublishIntroMessage for ", keyStr, ", txid=", txID);
+        llarp::LogInfo("Relaying PublishIntroMessage for ", addr, ", txid=", txID);
 
         propagateIfNotUs(relayOrder);
       }
@@ -156,7 +155,7 @@ namespace llarp
         {
           LogInfo(
               "Received PubIntro for ",
-              keyStr,
+              addr,
               ", txid=",
               txID,
               " and we are candidate ",
@@ -169,7 +168,7 @@ namespace llarp
           LogWarn(
               "!!! Received PubIntro with relayed==false but we aren't"
               " candidate, intro derived key: ",
-              keyStr,
+              addr,
               ", txid=",
               txID,
               ", message from: ",

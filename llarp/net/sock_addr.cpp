@@ -209,7 +209,11 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr);
+    return memcmp(
+               m_addr.sin6_addr.s6_addr,
+               other.m_addr.sin6_addr.s6_addr,
+               sizeof(m_addr.sin6_addr.s6_addr))
+        < 0;
   }
 
   bool
