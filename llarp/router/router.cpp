@@ -974,7 +974,7 @@ namespace llarp
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      if (_rcLookupHandler.SessionIsAllowed(rc.pubkey))
+      if (gotWhitelist and not _rcLookupHandler.SessionIsAllowed(rc.pubkey))
       {
         log::debug(logcat, "Removing {}: not a valid router", rc.pubkey);
         return true;
