@@ -14,6 +14,7 @@ cmake \
     -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector \
     -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always \
     -DCMAKE_TOOLCHAIN_FILE="$root/contrib/cross/mingw64.cmake" \
+    -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=ON \
     -DBUILD_SHARED_LIBS=OFF \

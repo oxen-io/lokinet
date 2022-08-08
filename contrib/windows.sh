@@ -10,5 +10,5 @@ set +x
 
 root="$(readlink -f $(dirname $0)/../)"
 cd "$root"
-./contrib/windows-configure.sh . build-windows $@
+./contrib/windows-configure.sh . build-windows "$@"
 make package -j${JOBS:-$(nproc)} -C build-windows
