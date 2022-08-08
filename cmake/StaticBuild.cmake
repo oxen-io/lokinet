@@ -328,7 +328,9 @@ endif()
 
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch
+        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-unistd.patch)
 endif()
 
 build_external(zmq
@@ -429,7 +431,7 @@ foreach(curl_arch ${curl_arches})
   list(APPEND curl_lib_outputs ${curl_prefix}/lib/libcurl.a)
 endforeach()
 
-message(STATUS "TARGETS: ${curl_lib_targets}")
+
 
 if(IOS AND num_arches GREATER 1)
   # We are building multiple architectures for different iOS devices, so we need to glue the
