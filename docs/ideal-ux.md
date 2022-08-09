@@ -4,6 +4,10 @@ Lokinet is an onion routed authenticated unicast IP network. It exposes an IP tu
 
 Lokinet allows users to tunnel arbitrary ip ranges to go to a `.loki` address to act as a tunnel broker via another network accessible via another lokinet client. This is commonly known as an "exit node" but the way lokinet does this is much more generic so that term is not very accurate given what it actually does.
 
+The `.snode` gtld refers to a router on the network by its public ed25519 key.
+
+The `.loki` gtld refers to clients that publish the existence anonymously to the network by their ed25519 public key. (`.loki` also has the ability to use short names resolved via external consensus method, like a blockchain).
+
 # How Do I use Lokinet?
 
 set system dns resolver to use the dns resolver provided by lokinet, make sure the upstream dns provider that lokinet uses for non lokinet gtlds is set as desired (see lokinet.ini `[dns]` section)
