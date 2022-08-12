@@ -60,6 +60,7 @@ option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
+option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
 
 include(cmake/enable_lto.cmake)
 

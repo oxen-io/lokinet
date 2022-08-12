@@ -315,8 +315,11 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
           --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
 add_static_target(sodium sodium_external libsodium.a)
 
-build_external(sqlite3)
-add_static_target(sqlite3 sqlite3_external libsqlite3.a)
+
+if(WITH_PEERSTATS_BACKEND)
+  build_external(sqlite3)
+  add_static_target(sqlite3 sqlite3_external libsqlite3.a)
+endif()
 
 
 if(ARCH_TRIPLET MATCHES mingw)

@@ -205,6 +205,11 @@ add_library(liblokinet
   service/tag.cpp
 )
 
+if(WITH_PEERSTATS_BACKEND)
+  target_compile_definitions(liblokinet PRIVATE -DLOKINET_PEERSTATS_BACKEND)
+  target_link_libraries(liblokinet PUBLIC sqlite_orm)
+endif()
+
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
 enable_lto(lokinet-util lokinet-platform liblokinet)
@@ -227,7 +232,6 @@ target_link_libraries(liblokinet PUBLIC
     lokinet-platform
     lokinet-util
     lokinet-cryptography
-    sqlite_orm
     ngtcp2_static
     oxenmq::oxenmq)
 target_link_libraries(liblokinet PRIVATE libunbound)
