@@ -14,7 +14,7 @@ done
 mv "${outdir}/icon_1024x1024.png" "${outdir}/icon_512x512@2x.png"
 for size in 16 32 128 256; do
     double=$((size * 2))
-    cp "${outdir}/icon_${double}x${double}.png" "${outdir}/icon_${size}x${size}@2x.png"
+    ln -f "${outdir}/icon_${double}x${double}.png" "${outdir}/icon_${size}x${size}@2x.png"
 done
 
 iconutil -c icns "${outdir}"

@@ -5,11 +5,8 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>en</string>
 
-		<key>CFBundleDisplayName</key>
-		<string>Lokinet</string>
-
 		<key>CFBundleExecutable</key>
-		<string>lokinet-gui</string>
+		<string>Lokinet</string>
 
 		<key>CFBundleIdentifier</key>
 		<string>org.lokinet</string>
@@ -19,6 +16,9 @@
 
 		<key>CFBundleName</key>
 		<string>Lokinet</string>
+
+		<key>CFBundleIconFile</key>
+		<string>icon.icns</string>
 
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
@@ -32,8 +32,14 @@
 		<key>LSMinimumSystemVersion</key>
 		<string>10.15</string>
 
-        <key>NSHumanReadableCopyright</key>
-        <string>Copyright © 2022 The Oxen Project, licensed under GPLv3-or-later</string>
+		<key>NSHumanReadableCopyright</key>
+		<string>Copyright © 2022 The Oxen Project, licensed under GPLv3-or-later</string>
 
-	</dict>
+		<key>LSUIElement</key>
+		<true/>
+
+		<key>LSHasLocalizedDisplayName</key>
+		<true/>
+
+	  </dict>
 </plist>

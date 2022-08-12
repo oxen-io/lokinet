@@ -32,7 +32,7 @@ project(lokinet
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 0)
+    set(LOKINET_APPLE_BUILD 1)
 endif()
 
 set(RELEASE_MOTTO "Gluten Free Edition" CACHE STRING "Release motto")
@@ -106,6 +106,7 @@ endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
+include(cmake/macos.cmake)
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
@@ -301,6 +302,10 @@ endif()
 add_subdirectory(docs)
 
 include(cmake/gui.cmake)
+
+if(APPLE)
+  macos_target_setup()
+endif()
 
 # uninstall target
 if(NOT TARGET uninstall)

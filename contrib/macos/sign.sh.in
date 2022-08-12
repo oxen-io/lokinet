@@ -2,24 +2,71 @@
 
 set -e
 
-if [ -z "@CODESIGN" ]; then
+if [ "@CODESIGN@" != "ON" ]; then
   echo "Cannot codesign: this build was not configured with codesigning" >&2
   exit 1
 fi
 
+signit() {
+    target="$1"
+    entitlements="$2"
+    echo -e "\n\e[33;1mSigning ${target/*\/Lokinet.app/Lokinet.app}...\e[0m" >&2
+    codesign \
+        --verbose=4 \
+        --force \
+        -s "@CODESIGN_ID@" \
+        --entitlements "$entitlements" \
+        --strict \
+        --timestamp \
+        --options=runtime \
+        "$target"
+}
+
+gui_entitlements="@PROJECT_SOURCE_DIR@/gui/node_modules/app-builder-lib/templates/entitlements.mac.plist"
+ext_entitlements="@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist"
+app_entitlements="@PROJECT_SOURCE_DIR@/contrib/macos/lokinet.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist"
+
+SIGN_TARGET="@PROJECT_BINARY_DIR@/Lokinet.app"
+
 for ext in systemextension appex; do
-    netext="@lokinet_ext_dir@/org.lokinet.network-extension.$ext"
-    if [ -e "@SIGN_TARGET@/$netext" ]; then
-        echo -e "\n\e[33;1mSigning $netext...\e[0m\n" >&2
-        codesign --verbose=4 --force -s "@CODESIGN_ID@" \
-            --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist" \
-            --deep --strict --timestamp --options=runtime "@SIGN_TARGET@/$netext"
+    netext="$SIGN_TARGET/@lokinet_ext_dir@/org.lokinet.network-extension.$ext"
+    if [ -e "$netext" ]; then
+        signit "$netext" "$ext_entitlements"
     fi
 done
 
-for sub in "/Contents/MacOS/Lokinet" "" ; do
-    echo -e "\n\e[33;1mSigning $(basename @SIGN_TARGET@)$sub...\e[0m\n" >&2
-    codesign --verbose=4 --force -s "@CODESIGN_ID@" \
-        --entitlements "@PROJECT_SOURCE_DIR@/contrib/macos/lokinet.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist" \
-        --deep --strict --timestamp --options=runtime "@SIGN_TARGET@$sub"
-done
+if [ "@BUILD_GUI@" == "ON" ]; then
+    gui_app="$SIGN_TARGET"/Contents/Helpers/Lokinet-GUI.app
+    gui_sign_targets=()
+    for bundle in \
+        "$gui_app"/Contents/Frameworks/*.framework \
+        "$gui_app"/Contents/Frameworks/*.app
+    do
+
+        if [ -d "$bundle/Libraries" ]; then
+            gui_sign_targets+=("$bundle"/Libraries/*.dylib)
+        fi
+        if [ -d "$bundle/Helpers" ]; then
+            gui_sign_targets+=("$bundle"/Helpers/*)
+        fi
+        if [ -d "$bundle/Resources" ]; then
+            for f in "$bundle/Resources"/*; do
+                if [[ -f "$f" && -x "$f" && "$(file -b "$f")" == Mach-O* ]]; then
+                    gui_sign_targets+=("$f")
+                fi
+            done
+        fi
+
+        gui_sign_targets+=("$bundle")
+    done
+
+    gui_sign_targets+=("$gui_app")
+
+    for target in "${gui_sign_targets[@]}"; do
+        signit "$target" "$gui_entitlements"
+    done
+
+    signit "$SIGN_TARGET"/Contents/MacOS/Lokinet "$app_entitlements"
+fi
+
+signit "$SIGN_TARGET" "$app_entitlements"

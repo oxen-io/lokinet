@@ -20,6 +20,7 @@ cmake \
       -DBUILD_STATIC_DEPS=ON \
       -DBUILD_LIBLOKINET=OFF \
       -DWITH_TESTS=OFF \
+      -DWITH_BOOTSTRAP=OFF \
       -DNATIVE_BUILD=OFF \
       -DWITH_LTO=ON \
       -DCMAKE_BUILD_TYPE=Release \
