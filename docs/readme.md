@@ -6,13 +6,18 @@ This is where Lokinet documentation lives.
 
 [How is Lokinet different to \[insert network technology name here\] ?](net-comparisons.md)
 
+<!-- [How does Lokinet work?](high-level-overview.md) -->
+
 [How Do I use Lokinet?](ideal-ux.md)
+
+[Lokinet and DNS](dns-overview.md)
 
 [What Lokinet can't do](we-cannot-make-sandwiches.md)
 
 ## Lokinet Internals
 
 [High level layout of the git repo](project-structure.md)
+
 
 [Build Doxygen Docs for internals](doxygen.md)
 
