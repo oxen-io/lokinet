@@ -26,7 +26,7 @@ cmake \
       -DCMAKE_BUILD_TYPE=Release \
       "$@" \
       ..
-ninja sign -j1
+ninja -j1
 
 echo -e "Build complete, your app is here:\n"
 ls -lad $(pwd)/Lokinet.app
