@@ -317,7 +317,6 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-
-if(BUILD_PACKAGE AND NOT APPLE)
+if(BUILD_PACKAGE)
     include(cmake/installer.cmake)
 endif()

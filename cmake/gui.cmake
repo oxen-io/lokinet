@@ -1,4 +1,3 @@
-
 set(default_build_gui OFF)
 set(default_gui_target pack)
 if(APPLE)
@@ -15,12 +14,13 @@ set(GUI_YARN_EXTRA_OPTS "" CACHE STRING "extra options to pass into the yarn bui
 
 if (BUILD_GUI)
   message(STATUS "Building lokinet-gui")
-
-  find_program(YARN NAMES yarn yarnpkg REQUIRED)
+  if(NOT YARN)
+    find_program(YARN NAMES yarn yarnpkg REQUIRED)
+  endif()
   message(STATUS "Building lokinet-gui with yarn ${YARN}, target ${GUI_YARN_TARGET}")
   set(wine_env)
   if(WIN32)
-    set(wine_env WINEDEBUG=-all "WINEPREFIX=${PROJECT_BINARY_DIR}/wineprefix")
+    set(wine_env USE_SYSTEM_7ZA=true DISPLAY= WINEDEBUG=-all "WINEPREFIX=${PROJECT_BINARY_DIR}/wineprefix")
   endif()
 
   add_custom_target(lokinet-gui
@@ -48,17 +48,25 @@ if (BUILD_GUI)
 
   elseif(WIN32)
     file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/gui")
-    add_custom_target(copy_gui ALL
-      DEPENDS lokinet lokinet-gui
-      # FIXME: we really shouldn't be building inside the source directory but this is npm...
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    option(GUI_ZIP_FILE "custom lokinet gui for windows from zip file" OFF)
+    if(GUI_ZIP_FILE)
+      message(STATUS "using custom lokinet gui from ${GUI_ZIP_FILE}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${GUI_ZIP_FILE}
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+    else()
+      add_custom_command(OUTPUT "${PROJECT_BINARY_DIR}/gui/lokinet-gui.exe"
+        DEPENDS lokinet lokinet-gui
+        # FIXME: we really shouldn't be building inside the source directory but this is npm...
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_SOURCE_DIR}/gui/release/Lokinet-GUI_portable.exe"
         "${PROJECT_BINARY_DIR}/gui/lokinet-gui.exe"
-    )
+      )
+      add_custom_target(assemble_gui ALL
+        DEPENDS ${PROJECT_BINARY_DIR}/gui/lokinet-gui.exe)
+    endif()
   else()
     message(FATAL_ERROR "Building/bundling the GUI from this repository is not supported on this platform")
   endif()
-
 else()
-  message(STATUS "Not building lokinet-gui")
+  message(STATUS "not building gui")
 endif()
