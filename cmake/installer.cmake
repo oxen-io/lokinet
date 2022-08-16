@@ -5,6 +5,8 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 
 if(WIN32)
   include(cmake/win32_installer_deps.cmake)
+elseif(APPLE)
+  set(CPACK_GENERATOR DragNDrop;ZIP)
 endif()
 
 

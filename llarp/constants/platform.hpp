@@ -32,7 +32,7 @@ namespace llarp::platform
 
   /// are we an apple platform ?
   inline constexpr bool is_apple =
-#ifdef __apple__
+#ifdef __APPLE__
       true
 #else
       false

@@ -44,6 +44,7 @@ if(filesystem_is_good EQUAL 1)
 else()
   # Probably broken AF macos
   message(STATUS "std::filesystem is not available, apparently this compiler isn't C++17 compliant; falling back to ghc::filesystem")
+  set(GHC_FILESYSTEM_WITH_INSTALL OFF CACHE INTERNAL "")
   add_subdirectory(external/ghc-filesystem)
   target_link_libraries(filesystem INTERFACE ghc_filesystem)
   target_compile_definitions(filesystem INTERFACE USE_GHC_FILESYSTEM)

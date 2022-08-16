@@ -260,6 +260,7 @@ local mac_builder(name,
                   cmake_extra='',
                   extra_cmds=[],
                   jobs=6,
+                  codesign='-DCODESIGN=OFF',
                   allow_fail=false) = {
   kind: 'pipeline',
   type: 'exec',
@@ -276,7 +277,7 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh ' + ci_mirror_opts,
+        './contrib/mac.sh ' + ci_mirror_opts + ' ' + codesign,
       ] + extra_cmds,
     },
   ],

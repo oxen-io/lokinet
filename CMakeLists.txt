@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Has to be set before `project()`, and ignored on non-macos:
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
 
@@ -32,7 +32,7 @@ project(lokinet
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 0)
+    set(LOKINET_APPLE_BUILD 1)
 endif()
 
 set(RELEASE_MOTTO "Gluten Free Edition" CACHE STRING "Release motto")
@@ -60,6 +60,7 @@ option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
+option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
 
 include(cmake/enable_lto.cmake)
 
@@ -82,7 +83,7 @@ endif()
 
 if(BUILD_STATIC_DEPS AND STATIC_LINK)
   message(STATUS "we are building static deps so we won't build shared libs")
-  set(BUILD_SHARED_LIBS OFF)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 endif()
 
 include(CheckCXXSourceCompiles)
@@ -105,6 +106,7 @@ endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
+include(cmake/macos.cmake)
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
@@ -299,6 +301,12 @@ endif()
 
 add_subdirectory(docs)
 
+include(cmake/gui.cmake)
+
+if(APPLE)
+  macos_target_setup()
+endif()
+
 # uninstall target
 if(NOT TARGET uninstall)
   configure_file(
@@ -311,6 +319,6 @@ if(NOT TARGET uninstall)
 endif()
 
 
-if(BUILD_PACKAGE AND NOT APPLE)
+if(BUILD_PACKAGE)
     include(cmake/installer.cmake)
 endif()

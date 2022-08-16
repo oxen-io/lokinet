@@ -6,6 +6,8 @@
 
 namespace llarp
 {
+#ifdef LOKINET_PEERSTATS_BACKEND
+
   PeerDb::PeerDb()
   {
     m_lastFlush.store({});
@@ -296,5 +298,67 @@ namespace llarp
     };
     return obj;
   }
+
+#else  // !LOKINET_PEERSTATS
+
+  // Empty stubs
+
+  PeerDb::PeerDb()
+  {
+    throw std::logic_error{"Peer stats backend not enabled!"};
+  }
+
+  void PeerDb::loadDatabase(std::optional<fs::path>)
+  {}
+
+  void
+  PeerDb::flushDatabase()
+  {}
+
+  void
+  PeerDb::accumulatePeerStats(const RouterID&, const PeerStats&)
+  {}
+
+  void
+  PeerDb::modifyPeerStats(const RouterID&, std::function<void(PeerStats&)>)
+  {}
+
+  std::optional<PeerStats>
+  PeerDb::getCurrentPeerStats(const RouterID&) const
+  {
+    return std::nullopt;
+  }
+
+  std::vector<PeerStats>
+  PeerDb::listAllPeerStats() const
+  {
+    return {};
+  }
+
+  std::vector<PeerStats>
+  PeerDb::listPeerStats(const std::vector<RouterID>&) const
+  {
+    return {};
+  }
+
+  void
+  PeerDb::handleGossipedRC(const RouterContact&, llarp_time_t)
+  {}
+
+  void
+  PeerDb::configure(const RouterConfig& routerConfig)
+  {}
+
+  bool
+  PeerDb::shouldFlush(llarp_time_t now)
+  {}
+
+  util::StatusObject
+  PeerDb::ExtractStatus() const
+  {
+    return {};
+  }
+
+#endif
 
 };  // namespace llarp
