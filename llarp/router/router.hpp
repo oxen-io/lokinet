@@ -142,6 +142,9 @@ namespace llarp
     ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
 
     void
+    InvalidAt(std::optional<llarp::TimePoint_t> maybe_future_time) override;
+
+    void
     SetRouterWhitelist(
         const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override;
 
@@ -323,10 +326,7 @@ namespace llarp
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 
-    using Clock_t = std::chrono::steady_clock;
-    using TimePoint_t = Clock_t::time_point;
-
-    TimePoint_t m_NextExploreAt;
+    std::chrono::steady_clock::time_point m_NextExploreAt;
 
     IOutboundMessageHandler&
     outboundMessageHandler() override

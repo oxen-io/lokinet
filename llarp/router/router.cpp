@@ -71,7 +71,7 @@ namespace llarp
     _stopping.store(false);
     _running.store(false);
     _lastTick = llarp::time_now_ms();
-    m_NextExploreAt = Clock_t::now();
+    m_NextExploreAt = std::chrono::steady_clock::now();
     m_Pump = _loop->make_waker([this]() { PumpLL(); });
   }
 
@@ -861,9 +861,12 @@ namespace llarp
         out = fmt::format_to(
             out,
             " | gossip: (next/last) {} / ",
-            time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()});
+
+            std::chrono::duration_cast<std::chrono::seconds>(
+                time_now() - _rcGossiper.NextGossipAt()));
         if (auto maybe = _rcGossiper.LastGossipAt())
-          out = fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
+          out = fmt::format_to(
+              out, "{}", std::chrono::duration_cast<std::chrono::seconds>(time_now() - *maybe));
         else
           out = fmt::format_to(out, "never");
       }
@@ -910,29 +913,12 @@ namespace llarp
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     const bool isSvcNode = IsServiceNode();
     const bool decom = LooksDecommissioned();
-    bool shouldGossip = isSvcNode and whitelistRouters and gotWhitelist
-        and _rcLookupHandler.SessionIsAllowed(pubkey());
 
-    if (isSvcNode
-        and (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000)) or (now - _rc.last_updated) > rcRegenInterval))
-    {
-      LogInfo("regenerating RC");
-      if (UpdateOurRC())
-      {
-        // our rc changed so we should gossip it
-        shouldGossip = true;
-        // remove our replay entry so it goes out
-        _rcGossiper.Forget(pubkey());
-      }
-      else
-        LogError("failed to update our RC");
-    }
-    if (shouldGossip)
-    {
-      // if we have the whitelist enabled, we have fetched the list and we are in either
-      // the white or grey list, we want to gossip our RC
-      GossipRCIfNeeded(_rc);
-    }
+    // we gosip here if we have no whitelist
+    // when we have a whitelist gossips are triggered per block on block notification
+    if (isSvcNode and not whitelistRouters and _rc.Age(now) > rcRegenInterval)
+      ModifyOurRC([](auto rc) { return rc; });
+
     // remove RCs for nodes that are no longer allowed by network policy
     nodedb()->RemoveIf([&](const RouterContact& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
@@ -1023,7 +1009,7 @@ namespace llarp
     }
 
     const int interval = isSvcNode ? 5 : 2;
-    const auto timepoint_now = Clock_t::now();
+    const auto timepoint_now = std::chrono::steady_clock::now();
     if (timepoint_now >= m_NextExploreAt and not decom)
     {
       _rcLookupHandler.ExploreNetwork();
@@ -1142,14 +1128,50 @@ namespace llarp
   void
   Router::ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify)
   {
-    if (auto maybe = modify(rc()))
-    {
-      _rc = *maybe;
-      UpdateOurRC();
-      _rcGossiper.GossipRC(rc());
-    }
+    _loop->call([modify = std::move(modify), this]() {
+      if (auto maybe = modify(rc()))
+      {
+        _rc = *maybe;
+        UpdateOurRC();
+        _rcGossiper.Forget(pubkey());
+        _rcGossiper.GossipRC(rc());
+      }
+    });
   }
 
+  void
+  Router::InvalidAt(std::optional<TimePoint_t> maybe_future_time)
+  {
+    const auto& net = rcLookupHandler();
+    // if we lack a whitelist when it is enabled then we cant really do much
+    if (net.UseWhitelist() and not net.HaveReceivedWhitelist())
+      return;
+    // if we are not in the list of valid nodes then we should not modify the rc
+    if (not net.SessionIsAllowed(pubkey()))
+      return;
+    if (maybe_future_time)
+    {
+      ModifyOurRC(
+          [future_time = *maybe_future_time, rc_age = _rc.Age(Now()), interval = rcRegenInterval](
+              auto rc) -> std::optional<RouterContact> {
+            // do not regen too fast when the invalid at value is already set
+            if (rc.invalid_at and rc_age < interval)
+              return std::nullopt;
+            rc.invalid_at = future_time;
+            return rc;
+          });
+    }
+    else
+    {
+      ModifyOurRC([](auto rc) -> std::optional<RouterContact> {
+        if (rc.invalid_at == std::nullopt)
+          return std::nullopt;
+
+        rc.invalid_at = std::nullopt;
+        return rc;
+      });
+    }
+  }
   bool
   Router::ConnectionEstablished(ILinkSession* session, bool inbound)
   {

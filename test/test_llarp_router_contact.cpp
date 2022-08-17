@@ -9,118 +9,124 @@
 namespace
 {
   llarp::sodium::CryptoLibSodium crypto;
-  llarp::CryptoManager cmanager(&crypto);
 }
 
 namespace llarp
 {
+  TEST_CASE("RouterContact Sign and Verify", "[RC][RouterContact][signature][sign][verify]")
+  {
+    llarp::CryptoManager _m{&crypto};
+    auto* m = llarp::CryptoManager::instance();
+    RouterContact rc;
 
-TEST_CASE("RouterContact Sign and Verify", "[RC][RouterContact][signature][sign][verify]")
-{
-  RouterContact rc;
+    SecretKey sign;
+    m->identity_keygen(sign);
 
-  SecretKey sign;
-  cmanager.instance()->identity_keygen(sign);
+    SecretKey encr;
+    m->encryption_keygen(encr);
 
-  SecretKey encr;
-  cmanager.instance()->encryption_keygen(encr);
+    rc.enckey = encr.toPublic();
+    rc.pubkey = sign.toPublic();
 
-  rc.enckey = encr.toPublic();
-  rc.pubkey = sign.toPublic();
+    REQUIRE(rc.Sign(sign));
+    REQUIRE(rc.Verify(time_now_ms()));
+  }
 
-  REQUIRE(rc.Sign(sign));
-  REQUIRE(rc.Verify(time_now_ms()));
-}
+  TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
+  {
+    llarp::CryptoManager _m{&crypto};
+    auto* m = llarp::CryptoManager::instance();
 
-TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
-{
-  RouterContact rc;
+    RouterContact rc;
 
-  SecretKey sign;
-  cmanager.instance()->identity_keygen(sign);
+    SecretKey sign;
+    m->identity_keygen(sign);
 
-  SecretKey encr;
-  cmanager.instance()->encryption_keygen(encr);
+    SecretKey encr;
+    m->encryption_keygen(encr);
 
-  rc.version = 1;
+    rc.version = 1;
 
-  rc.enckey = encr.toPublic();
-  rc.pubkey = sign.toPublic();
+    rc.enckey = encr.toPublic();
+    rc.pubkey = sign.toPublic();
 
-  REQUIRE(rc.Sign(sign));
+    REQUIRE(rc.Sign(sign));
 
-  std::array<byte_t, 5000> encoded_buffer;
-  llarp_buffer_t encoded_llarp(encoded_buffer);
+    std::array<byte_t, 5000> encoded_buffer;
+    llarp_buffer_t encoded_llarp(encoded_buffer);
 
-  rc.BEncode(&encoded_llarp);
+    rc.BEncode(&encoded_llarp);
 
-  encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
-  encoded_llarp.cur = encoded_llarp.base;
+    encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
+    encoded_llarp.cur = encoded_llarp.base;
 
-  RouterContact decoded_rc;
+    RouterContact decoded_rc{};
 
-  REQUIRE(decoded_rc.BDecode(&encoded_llarp));
+    REQUIRE(decoded_rc.BDecode(&encoded_llarp));
 
-  REQUIRE(decoded_rc.Verify(time_now_ms()));
+    REQUIRE(decoded_rc.Verify(time_now_ms()));
 
-  REQUIRE(decoded_rc == rc);
-}
+    REQUIRE(decoded_rc == rc);
+  }
 
-TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
-{
-  RouterContact rc1, rc2, rc3, rc4;
+  TEST_CASE("RouterContact Decode Mixed Versions", "[RC][RouterContact]")
+  {
+    llarp::CryptoManager _m{&crypto};
+    auto* m = llarp::CryptoManager::instance();
 
-  rc1.version = 0;
-  rc2.version = 1;
-  rc3.version = 0;
-  rc4.version = 1;
+    RouterContact rc1, rc2, rc3, rc4;
 
-  SecretKey sign1, sign2, sign3, sign4;
-  cmanager.instance()->identity_keygen(sign1);
-  cmanager.instance()->identity_keygen(sign2);
-  cmanager.instance()->identity_keygen(sign3);
-  cmanager.instance()->identity_keygen(sign4);
+    rc1.version = 0;
+    rc2.version = 1;
+    rc3.version = 0;
+    rc4.version = 1;
 
-  SecretKey encr1, encr2, encr3, encr4;
-  cmanager.instance()->encryption_keygen(encr1);
-  cmanager.instance()->encryption_keygen(encr2);
-  cmanager.instance()->encryption_keygen(encr3);
-  cmanager.instance()->encryption_keygen(encr4);
+    SecretKey sign1, sign2, sign3, sign4;
+    m->identity_keygen(sign1);
+    m->identity_keygen(sign2);
+    m->identity_keygen(sign3);
+    m->identity_keygen(sign4);
 
-  rc1.enckey = encr1.toPublic();
-  rc2.enckey = encr2.toPublic();
-  rc3.enckey = encr3.toPublic();
-  rc4.enckey = encr4.toPublic();
-  rc1.pubkey = sign1.toPublic();
-  rc2.pubkey = sign2.toPublic();
-  rc3.pubkey = sign3.toPublic();
-  rc4.pubkey = sign4.toPublic();
+    SecretKey encr1, encr2, encr3, encr4;
+    m->encryption_keygen(encr1);
+    m->encryption_keygen(encr2);
+    m->encryption_keygen(encr3);
+    m->encryption_keygen(encr4);
 
-  REQUIRE(rc1.Sign(sign1));
-  REQUIRE(rc2.Sign(sign2));
-  REQUIRE(rc3.Sign(sign3));
-  REQUIRE(rc4.Sign(sign4));
+    rc1.enckey = encr1.toPublic();
+    rc2.enckey = encr2.toPublic();
+    rc3.enckey = encr3.toPublic();
+    rc4.enckey = encr4.toPublic();
+    rc1.pubkey = sign1.toPublic();
+    rc2.pubkey = sign2.toPublic();
+    rc3.pubkey = sign3.toPublic();
+    rc4.pubkey = sign4.toPublic();
 
-  std::vector<RouterContact> rc_vec;
-  rc_vec.push_back(rc1);
-  rc_vec.push_back(rc2);
-  rc_vec.push_back(rc3);
-  rc_vec.push_back(rc4);
+    REQUIRE(rc1.Sign(sign1));
+    REQUIRE(rc2.Sign(sign2));
+    REQUIRE(rc3.Sign(sign3));
+    REQUIRE(rc4.Sign(sign4));
 
-  std::array<byte_t, 20000> encoded_buffer;
-  llarp_buffer_t encoded_llarp(encoded_buffer);
+    std::vector<RouterContact> rc_vec;
+    rc_vec.push_back(rc1);
+    rc_vec.push_back(rc2);
+    rc_vec.push_back(rc3);
+    rc_vec.push_back(rc4);
 
-  BEncodeWriteList(rc_vec.begin(), rc_vec.end(), &encoded_llarp);
-  encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
-  encoded_llarp.cur = encoded_llarp.base;
+    std::array<byte_t, 20000> encoded_buffer;
+    llarp_buffer_t encoded_llarp(encoded_buffer);
 
-  std::vector<RouterContact> rc_vec_out;
+    BEncodeWriteList(rc_vec.begin(), rc_vec.end(), &encoded_llarp);
+    encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
+    encoded_llarp.cur = encoded_llarp.base;
 
-  BEncodeReadList(rc_vec_out, &encoded_llarp);
+    std::vector<RouterContact> rc_vec_out;
 
-  REQUIRE(rc_vec.size() == rc_vec_out.size());
-  for (size_t i=0; i<4; i++)
-    REQUIRE(rc_vec[i] == rc_vec_out[i]);
-}
+    BEncodeReadList(rc_vec_out, &encoded_llarp);
 
-} // namespace llarp
+    REQUIRE(rc_vec.size() == rc_vec_out.size());
+    for (size_t i = 0; i < 4; i++)
+      REQUIRE(rc_vec[i] == rc_vec_out[i]);
+  }
+
+}  // namespace llarp

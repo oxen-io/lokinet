@@ -124,6 +124,12 @@ namespace llarp
   }
 
   bool
+  RCLookupHandler::UseWhitelist() const
+  {
+    return useWhitelist;
+  }
+
+  bool
   RCLookupHandler::IsGreylisted(const RouterID& remote) const
   {
     if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0

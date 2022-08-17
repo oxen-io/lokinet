@@ -129,6 +129,14 @@ struct llarp_buffer_t
     return base + sz;
   }
 
+  inline void
+  advance(size_t n)
+  {
+    if (size_left() < n)
+      throw std::range_error{"cannot advance buffer out of range"};
+    cur += n;
+  }
+
   size_t
   size_left() const;
 

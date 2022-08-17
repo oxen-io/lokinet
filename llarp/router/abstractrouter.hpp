@@ -3,7 +3,7 @@
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
 #include <memory>
-#include <llarp/util/types.hpp>
+#include <llarp/util/time.hpp>
 #include <llarp/util/status.hpp>
 #include "i_outbound_message_handler.hpp"
 #include <vector>
@@ -130,6 +130,10 @@ namespace llarp
     /// published out
     virtual void
     ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) = 0;
+
+    /// mark that think we will be invalid in the future, or nullopt to reset this to normal
+    virtual void
+    InvalidAt(std::optional<llarp::TimePoint_t> maybe_future_time) = 0;
 
     virtual exit::Context&
     exitContext() = 0;

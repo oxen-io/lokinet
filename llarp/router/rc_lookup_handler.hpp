@@ -48,6 +48,9 @@ namespace llarp
     bool
     HaveReceivedWhitelist() const override;
 
+    bool
+    UseWhitelist() const override;
+
     void
     GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) override
         EXCLUDES(_mutex);

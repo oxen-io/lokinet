@@ -142,15 +142,7 @@ namespace llarp
     static Crypto*
     instance()
     {
-#ifdef NDEBUG
       return m_crypto;
-#else
-      if (m_crypto)
-        return m_crypto;
-
-      assert(false && "Cryptomanager::instance() was undefined");
-      abort();
-#endif
     }
   };
 

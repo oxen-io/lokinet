@@ -10,6 +10,7 @@
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
+#include <oxenc/bt_producer.h>
 
 #include <fstream>
 #include "util/fs.hpp"
@@ -119,6 +120,8 @@ namespace llarp
     out = fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
     if (routerVersion.has_value())
       out = fmt::format_to(out, "router_version={}; ", *routerVersion);
+    if (invalid_at)
+      out = fmt::format_to(out, "invalid_at={}; ", *invalid_at);
     return result;
   }
 
@@ -214,6 +217,17 @@ namespace llarp
       if (!signature.BEncode(buf))
         return false;
     }
+    else
+    {
+      // write invalid_at timestamp as needed
+      if (invalid_at)
+      {
+        if (not bencode_write_bytestring(buf, "~i", 2))
+          return false;
+        if (not bencode_write_uint64(buf, to_unix_stamp(*invalid_at)))
+          return false;
+      }
+    }
 
     return bencode_end(buf);
   }
@@ -226,10 +240,11 @@ namespace llarp
     nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
-    routerVersion = std::optional<RouterVersion>{};
+    routerVersion = std::nullopt;
     last_updated = 0s;
+    invalid_at = std::nullopt;
     srvRecords.clear();
-    version = llarp::constants::proto_version;
+    version = llarp::constants::rc_version;
   }
 
   util::StatusObject
@@ -320,7 +335,7 @@ namespace llarp
       return false;
     }
 
-    llarp_buffer_t sigbuf(signature_string.data(), signature_string.size());
+    llarp_buffer_t sigbuf{signature_string.data(), signature_string.size()};
     if (not signature.FromBytestring(&sigbuf))
     {
       llarp::LogDebug("RouterContact serialized signature had invalid length.");
@@ -388,6 +403,15 @@ namespace llarp
 
     if (!BEncodeMaybeReadDictEntry("z", signature, read, key, buf))
       return false;
+
+    if (key == "~i")
+    {
+      // read timestamp for when they think they will be invalid at
+      uint64_t i;
+      if (not bencode_read_integer(buf, &i))
+        return false;
+      invalid_at = to_time_point(std::chrono::milliseconds{i});
+    }
 
     return read or bencode_discard(buf);
   }

@@ -58,6 +58,9 @@ namespace llarp
       void
       UpdateServiceNodeList();
 
+      void
+      UpdateSelfInfo();
+
       template <typename HandlerFunc_t, typename Args_t>
       void
       Request(std::string_view cmd, HandlerFunc_t func, const Args_t& args)
@@ -88,6 +91,7 @@ namespace llarp
 
       std::weak_ptr<AbstractRouter> m_Router;
       std::atomic<bool> m_UpdatingList;
+      std::atomic<bool> m_UpdatingSelfInfo;
 
       std::unordered_map<RouterID, PubKey> m_KeyMap;
 

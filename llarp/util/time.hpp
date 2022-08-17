@@ -10,48 +10,58 @@ using namespace std::chrono_literals;
 
 namespace llarp
 {
-  /// get time right now as milliseconds, this is monotonic
-  Duration_t
-  time_now_ms();
-
   /// get the uptime of the process
   Duration_t
   uptime();
 
-  /// convert to milliseconds
+  /// get time the process started at
+  TimePoint_t
+  started_at();
+
+  /// convert to milliseconds unix stamp
   uint64_t
-  ToMS(Duration_t duration);
+  to_unix_stamp(const Duration_t& duration);
 
   nlohmann::json
   to_json(const Duration_t& t);
 
-  template <typename Time_Duration>
-  struct time_delta
+  template <typename delta_res_t = std::chrono::milliseconds>
+  auto
+  time_until(const TimePoint_t& now, const TimePoint_t& other)
   {
-    const TimePoint_t at;
-  };
+    return std::chrono::duration_cast<delta_res_t>(other - now);
+  }
+
+  /// returns the time now as a time point, this is monotonic
+  inline TimePoint_t
+  time_now()
+  {
+    return started_at() + uptime();
+  }
+
+  /// convert a timepoint to a unix millis stamp
+  uint64_t
+  to_unix_stamp(const TimePoint_t& t);
+
+  /// get time right now as milliseconds, (legacy wrapper)
+  inline Duration_t
+  time_now_ms()
+  {
+    return Duration_t{to_unix_stamp(time_now())};
+  }
+
+  /// convert a legacy time stamp to a time point
+  template <typename Time_Duration = std::chrono::milliseconds>
+  auto
+  to_time_point(llarp_time_t stamp)
+  {
+    const auto now = time_now();
+    return now + (stamp - Duration_t{to_unix_stamp(now)});
+  }
 }  // namespace llarp
 
 namespace fmt
 {
-  template <typename Time_Duration>
-  struct formatter<llarp::time_delta<Time_Duration>> : formatter<std::string>
-  {
-    template <typename FormatContext>
-    auto
-    format(const llarp::time_delta<Time_Duration>& td, FormatContext& ctx)
-    {
-      const auto dlt =
-          std::chrono::duration_cast<llarp::Duration_t>(llarp::TimePoint_t::clock::now() - td.at);
-      using Parent = formatter<std::string>;
-      if (dlt > 0s)
-        return Parent::format(fmt::format("{} ago", dlt), ctx);
-      if (dlt < 0s)
-        return Parent::format(fmt::format("in {}", -dlt), ctx);
-      return Parent::format("now", ctx);
-    }
-  };
-
   template <>
   struct formatter<llarp::Duration_t> : formatter<std::string>
   {

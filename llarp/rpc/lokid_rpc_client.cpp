@@ -44,11 +44,6 @@ namespace llarp
       // new block handler
       m_lokiMQ->add_category("notify", oxenmq::Access{oxenmq::AuthLevel::none})
           .add_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
-
-      // TODO: proper auth here
-      auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
-      lokidCategory.add_request_command(
-          "get_peer_stats", [this](oxenmq::Message& m) { HandleGetPeerStats(m); });
       m_UpdatingList = false;
     }
 
@@ -107,6 +102,46 @@ namespace llarp
       // don't upadate on block notification if an update is pending
       if (not m_UpdatingList)
         UpdateServiceNodeList();
+      // update our own node info, like for requested unlock
+      if (not m_UpdatingSelfInfo)
+        UpdateSelfInfo();
+    }
+
+    void
+    LokidRpcClient::UpdateSelfInfo()
+    {
+      m_UpdatingSelfInfo = true;
+      Request(
+          "rpc.get_service_node_status",
+          [self = shared_from_this()](bool success, std::vector<std::string> data) {
+            self->m_UpdatingSelfInfo = false;
+
+            if (not success)
+              return;
+            if (data.size() < 2)
+              return;
+            auto obj = nlohmann::json::parse(data[1]);
+            auto& j = obj["service_node_states"];
+            // we are not unlocking
+            if (j.count("requested_unlock_height") == 0)
+            {
+              if (auto r = self->m_Router.lock())
+                r->InvalidAt(std::nullopt);
+              return;
+            }
+
+            // guess how far away we are from unlock
+            const auto unlock_at = j["requested_unlock_height"].get<uint64_t>();
+            const auto blocks_from_unlock =
+                std::max(unlock_at, self->m_BlockHeight) - self->m_BlockHeight;
+
+            if (auto r = self->m_Router.lock())
+            {
+              // tell router we will be invalid in the future
+              r->InvalidAt(
+                  TimePoint_t{time_now() + (constants::block_interval * blocks_from_unlock)});
+            }
+          });
     }
 
     void
@@ -173,8 +208,20 @@ namespace llarp
           }
           LogDebug("subscribed to new blocks: ", data[0]);
         });
+        // fetch current blockchain height (to fill systemd status line)
+        self->Request("get_height", [self](bool success, std::vector<std::string> data) {
+          if (not success)
+            return;
+          if (data.size() < 2)
+            return;
+          auto j = nlohmann::json::parse(data[1]);
+          self->m_BlockHeight = j["height"].get<uint64_t>();
+          LogInfo("Backend reported height is: {} ", self->m_BlockHeight);
+        });
       };
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
+      // send our first ping
+      makePingRequest();
       // initial fetch of service node list
       UpdateServiceNodeList();
     }

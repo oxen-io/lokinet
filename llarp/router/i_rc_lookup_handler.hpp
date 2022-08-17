@@ -68,6 +68,9 @@ namespace llarp
 
     virtual bool
     HaveReceivedWhitelist() const = 0;
+
+    virtual bool
+    UseWhitelist() const = 0;
   };
 
 }  // namespace llarp

@@ -6,24 +6,20 @@ namespace llarp
 {
   namespace
   {
-    using Clock_t = std::chrono::system_clock;
-
-    template <typename Res, typename Clock>
-    static Duration_t
-    time_since_epoch(std::chrono::time_point<Clock> point)
-    {
-      return std::chrono::duration_cast<Res>(point.time_since_epoch());
-    }
-
-    const static auto started_at_system = Clock_t::now();
-
     const static auto started_at_steady = std::chrono::steady_clock::now();
+    const static auto started_at_system = DateClock_t::now();
   }  // namespace
 
   uint64_t
   ToMS(Duration_t ms)
   {
     return ms.count();
+  }
+
+  uint64_t
+  to_unix_stamp(const TimePoint_t& t)
+  {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch()).count();
   }
 
   /// get our uptime in ms
@@ -34,14 +30,10 @@ namespace llarp
         std::chrono::steady_clock::now() - started_at_steady);
   }
 
-  Duration_t
-  time_now_ms()
+  TimePoint_t
+  started_at()
   {
-    auto t = uptime();
-#ifdef TESTNET_SPEED
-    t /= uint64_t{TESTNET_SPEED};
-#endif
-    return t + time_since_epoch<Duration_t, Clock_t>(started_at_system);
+    return started_at_system;
   }
 
   nlohmann::json

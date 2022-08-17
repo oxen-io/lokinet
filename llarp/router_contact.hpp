@@ -7,6 +7,7 @@
 #include "llarp/util/aligned.hpp"
 #include "llarp/util/bencode.hpp"
 #include "llarp/util/status.hpp"
+#include "llarp/util/time.hpp"
 #include "router_version.hpp"
 
 #include "llarp/dns/srv_data.hpp"
@@ -87,7 +88,11 @@ namespace llarp
     llarp::AlignedBuffer<NICKLEN> nickname;
 
     llarp_time_t last_updated = 0s;
-    uint64_t version = llarp::constants::proto_version;
+
+    /// an optional time point they think they will be invalid at
+    std::optional<TimePoint_t> invalid_at;
+
+    uint64_t version = llarp::constants::rc_version;
     std::optional<RouterVersion> routerVersion;
     /// should we serialize the exit info?
     const static bool serializeExit = true;
@@ -98,6 +103,14 @@ namespace llarp
 
     util::StatusObject
     ExtractStatus() const;
+
+    /// get the time this was last updated as a time point
+    template <typename resolution_t = std::chrono::milliseconds>
+    auto
+    last_updated_at() const
+    {
+      return to_time_point<resolution_t>(last_updated);
+    }
 
     nlohmann::json
     ToJson() const
