@@ -31,7 +31,7 @@ namespace llarp
 
   struct RuntimeOptions
   {
-    bool background = false;
+    bool showBanner = true;
     bool debug = false;
     bool isSNode = false;
   };

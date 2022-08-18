@@ -2,6 +2,7 @@
 #include <llarp/constants/version.hpp>
 #include <llarp.hpp>
 #include <llarp/util/lokinet_init.h>
+#include <llarp/util/exceptions.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/str.hpp>
 
@@ -227,7 +228,7 @@ uninstall_win32_daemon()
 static void
 run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
 {
-  llarp::LogTrace("start of run_main_context()");
+  llarp::LogInfo(fmt::format("starting up {} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
   try
   {
     std::shared_ptr<llarp::Config> conf;
@@ -261,14 +262,18 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     {
       ctx->Setup(opts);
     }
-    catch (std::exception& ex)
+    catch (llarp::util::bind_socket_error& ex)
     {
-      llarp::LogError(
-          "failed to set up lokinet: ", ex.what(), ", is lokinet already running? 🤔");
+      llarp::LogError(fmt::format("{}, is lokinet already running? 🤔", ex.what()));
       exit_code.set_value(1);
       return;
     }
-
+    catch (std::exception& ex)
+    {
+      llarp::LogError("failed to start up lokinet: {}", ex.what());
+      exit_code.set_value(1);
+      return;
+    }
     llarp::util::SetThreadName("llarp-mainloop");
 
     auto result = ctx->Run(opts);
@@ -385,6 +390,7 @@ lokinet_main(int argc, char* argv[])
   llarp::log::reset_level(llarp::log::Level::info);
 
   llarp::RuntimeOptions opts;
+  opts.showBanner = false;
 
 #ifdef _WIN32
   WindowsServiceStopped stopped_raii;
@@ -428,7 +434,6 @@ lokinet_main(int argc, char* argv[])
       std::cout << options.help() << std::endl;
       return 0;
     }
-
     if (result.count("version"))
     {
       std::cout << llarp::VERSION_FULL << std::endl;

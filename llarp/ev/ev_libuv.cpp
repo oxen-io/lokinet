@@ -3,8 +3,8 @@
 #include <memory>
 #include <thread>
 #include <type_traits>
+#include <llarp/util/exceptions.hpp>
 #include <llarp/util/thread/queue.hpp>
-
 #include <cstring>
 #include "ev.hpp"
 
@@ -315,16 +315,14 @@ namespace llarp::uv
     if (handle->active())
       reset_handle(handle->loop());
 
-    bool good = true;
-    auto err = handle->on<uvw::ErrorEvent>([&](auto& event, auto&) {
-      llarp::LogError("failed to bind and start receiving on ", addr, ": ", event.what());
-      good = false;
+    auto err = handle->on<uvw::ErrorEvent>([addr](auto& event, auto&) {
+      throw llarp::util::bind_socket_error{
+          fmt::format("failed to bind udp socket on {}: {}", addr, event.what())};
     });
     handle->bind(*static_cast<const sockaddr*>(addr));
-    if (good)
-      handle->recv();
+    handle->recv();
     handle->erase(err);
-    return good;
+    return true;
   }
 
   bool
