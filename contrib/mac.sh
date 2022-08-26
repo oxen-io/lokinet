@@ -24,9 +24,12 @@ cmake \
       -DNATIVE_BUILD=OFF \
       -DWITH_LTO=ON \
       -DCMAKE_BUILD_TYPE=Release \
+      -DMACOS_SYSTEM_EXTENSION=ON \
+      -DCODESIGN=ON \
+      -DBUILD_PACKAGE=ON \
       "$@" \
       ..
-ninja -j1
+ninja -j1 notarize
 
 echo -e "Build complete, your app is here:\n"
 ls -lad $(pwd)/Lokinet.app
