@@ -2,8 +2,6 @@
 Description=Lokinet: Anonymous Network layer thingydoo
 Wants=network-online.target
 After=network-online.target
-Wants=lokinet-bootstrap.service
-After=lokinet-bootstrap.service
 Wants=lokinet-default-config.service
 After=lokinet-default-config.service
 Requires=modprobe@tun.service

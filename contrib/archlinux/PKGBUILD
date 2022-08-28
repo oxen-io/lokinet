@@ -6,7 +6,7 @@ pkgdesc="Anonymous, decentralized and IP based overlay network for the internet.
 arch=('x86_64' 'aarch64')
 url="https://lokinet.org"
 license=('GPL3')
-depends=('libuv' 'libsodium' 'curl' 'unbound' 'jemalloc' 'systemd-libs' 'zeromq' 'nlohmann-json' 'spdlog' 'fmt')
+depends=('libuv' 'libsodium' 'unbound' 'jemalloc' 'systemd-libs' 'zeromq' 'nlohmann-json' 'spdlog' 'fmt')
 makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet-bin')
 source=("$pkgname::git+https://github.com/oxen-io/lokinet#branch=makepkg")
@@ -28,6 +28,7 @@ build() {
         -DWITH_TESTS=OFF \
         -DWITH_SYSTEMD=ON \
         -DWITH_SETCAP=OFF \
+        -DWITH_BOOTSTRAP=OFF \
         -DWITH_PEERSTATS_BACKEND=OFF \
         -DBUILD_LIBLOKINET=OFF \
         -S "$srcdir/$pkgname" -B build
@@ -39,9 +40,9 @@ package() {
     install -D -m 644 "$srcdir/$pkgname/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
     make DESTDIR="$pkgdir" install -C build
 
+    install -D -m 644 "$srcdir/$pkgname/contrib/bootstrap/mainnet.signed"                 "$pkgdir/var/lib/lokinet/bootstrap.signed"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet.service"                "$pkgdir/usr/lib/systemd/system/lokinet.service"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet-vpn@.service"           "$pkgdir/usr/lib/systemd/system/lokinet-vpn@.service"
-    install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet-bootstrap.service"      "$pkgdir/usr/lib/systemd/system/lokinet-bootstrap.service"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet-default-config.service" "$pkgdir/usr/lib/systemd/system/lokinet-default-config.service"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet-resume.service"         "$pkgdir/usr/lib/systemd/system/lokinet-resume.service"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet.sysusers"               "$pkgdir/usr/lib/sysusers.d/lokinet.conf"
