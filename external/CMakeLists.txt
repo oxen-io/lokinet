@@ -69,7 +69,22 @@ set(JSON_Install OFF CACHE INTERNAL "")
 system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
 
 if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
-    set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
+  set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
+else()
+
+  pkg_check_modules(FMT fmt>=7.1 IMPORTED_TARGET REQUIRED)
+
+  add_library(fmt INTERFACE)
+  if(NOT TARGET PkgConfig::FMT AND CMAKE_VERSION VERSION_LESS "3.21")
+    # Work around cmake bug 22180 (PkgConfig::THING not set if no flags needed)
+  else()
+    target_link_libraries(fmt INTERFACE PkgConfig::FMT)
+  endif()
+  message(STATUS "Found fmt ${FMT_VERSION}")
+
+  if(NOT TARGET fmt::fmt)
+    add_library(fmt::fmt ALIAS fmt)
+  endif()
 endif()
 
 set(OXEN_LOGGING_SOURCE_ROOT "${PROJECT_SOURCE_DIR}" CACHE INTERNAL "")
