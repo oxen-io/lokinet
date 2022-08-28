@@ -1,12 +1,12 @@
 # Maintainer: jason <jason@oxen.io>
 pkgname=lokinet
 pkgver=0.9.9
-pkgrel=1
+pkgrel=2
 pkgdesc="Anonymous, decentralized and IP based overlay network for the internet."
 arch=('x86_64' 'aarch64')
 url="https://lokinet.org"
 license=('GPL3')
-depends=('libuv' 'libsodium' 'curl' 'unbound' 'sqlite' 'jemalloc' 'libsystemd' 'zeromq')
+depends=('libuv' 'libsodium' 'curl' 'unbound' 'jemalloc' 'systemd-libs' 'zeromq' 'nlohmann-json' 'spdlog' 'fmt')
 makedepends=('git' 'cmake' 'pkgconf')
 conflicts=('lokinet-bin')
 source=("$pkgname::git+https://github.com/oxen-io/lokinet#branch=makepkg")
@@ -18,10 +18,7 @@ prepare() {
 }
 
 build() {
-    cd "$srcdir/$pkgname"
-
-    rm -rf build && mkdir build && cd build
-    cmake \
+    cmake -G "Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_C_FLAGS="$CFLAGS" \
@@ -31,16 +28,16 @@ build() {
         -DWITH_TESTS=OFF \
         -DWITH_SYSTEMD=ON \
         -DWITH_SETCAP=OFF \
+        -DWITH_PEERSTATS_BACKEND=OFF \
         -DBUILD_LIBLOKINET=OFF \
-        ..
-    make
+        -S "$srcdir/$pkgname" -B build
+    make -C build
 }
 
 package() {
-    cd "$srcdir/$pkgname"
-    install -D -m 644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    cd build
-    make DESTDIR="$pkgdir" install
+
+    install -D -m 644 "$srcdir/$pkgname/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    make DESTDIR="$pkgdir" install -C build
 
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet.service"                "$pkgdir/usr/lib/systemd/system/lokinet.service"
     install -D -m 644 "$srcdir/$pkgname/contrib/archlinux/lokinet-vpn@.service"           "$pkgdir/usr/lib/systemd/system/lokinet-vpn@.service"

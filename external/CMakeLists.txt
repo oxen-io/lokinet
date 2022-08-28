@@ -71,6 +71,7 @@ system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
 if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
     set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
 endif()
+
 set(OXEN_LOGGING_SOURCE_ROOT "${PROJECT_SOURCE_DIR}" CACHE INTERNAL "")
 add_subdirectory(oxen-logging)
 
