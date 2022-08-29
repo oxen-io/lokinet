@@ -223,7 +223,6 @@ namespace llarp
       return nullptr;
     }
 
-   protected:
     // Triggers an event loop wakeup; use when something has been done that requires the event loop
     // to wake up (e.g. adding to queues).  This is called implicitly by call() and call_soon().
     // Idempotent and thread-safe.

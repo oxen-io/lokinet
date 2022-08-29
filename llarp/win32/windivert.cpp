@@ -66,6 +66,8 @@ namespace llarp::win32
     HANDLE m_Handle;
     std::thread m_Runner;
     thread::Queue<WD_Packet> m_RecvQueue;
+    // dns packet queue size
+    static constexpr size_t recv_queue_size = 64;
 
    public:
     WinDivert_IO(
@@ -132,7 +134,7 @@ namespace llarp::win32
     virtual net::IPPacket
     ReadNextPacket() override
     {
-      auto w_pkt = recv_packet();
+      auto w_pkt = m_RecvQueue.tryPopFront();
       if (not w_pkt)
         return net::IPPacket{};
       net::IPPacket pkt{std::move(w_pkt->pkt)};
@@ -150,17 +152,21 @@ namespace llarp::win32
         throw std::runtime_error{"windivert thread is already running"};
 
       auto read_loop = [this]() {
-        log::debug(cat, "windivert read loop start");
+        log::info(cat, "windivert read loop start");
         while (true)
         {
           // in the read loop, read packets until they stop coming in
           // each packet is sent off
           if (auto maybe_pkt = recv_packet())
+          {
             m_RecvQueue.pushBack(std::move(*maybe_pkt));
+            // wake up event loop
+            m_Wake();
+          }
           else  // leave loop on read fail
             break;
         }
-        log::debug(cat, "windivert read loop end");
+        log::info(cat, "windivert read loop end");
       };
 
       m_Runner = std::thread{std::move(read_loop)};

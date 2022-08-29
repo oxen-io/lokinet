@@ -1,6 +1,5 @@
 #pragma once
 #include "platform.hpp"
-#include "null_platform.hpp"
 
 #include <llarp/constants/platform.hpp>
 #include <type_traits>
