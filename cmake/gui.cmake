@@ -31,19 +31,19 @@ if (BUILD_GUI)
   if(APPLE)
     add_custom_target(assemble_gui ALL
       DEPENDS assemble lokinet-gui
-      COMMAND mkdir "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Helpers"
-      COMMAND cp -a "${PROJECT_SOURCE_DIR}/gui/release/mac/Lokinet-GUI.app" "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Helpers/"
-      COMMAND mkdir -p "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Resources/en.lproj"
-      COMMAND cp "${PROJECT_SOURCE_DIR}/contrib/macos/InfoPlist.strings" "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Resources/en.lproj/"
-      COMMAND cp "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Resources/icon.icns" "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Helpers/Lokinet-GUI.app/Contents/Resources/icon.icns"
-      COMMAND cp "${PROJECT_SOURCE_DIR}/contrib/macos/InfoPlist.strings" "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Helpers/Lokinet-GUI.app/Contents/Resources/en.lproj/"
+      COMMAND mkdir "${lokinet_app}/Contents/Helpers"
+      COMMAND cp -a "${PROJECT_SOURCE_DIR}/gui/release/mac/Lokinet-GUI.app" "${lokinet_app}/Contents/Helpers/"
+      COMMAND mkdir -p "${lokinet_app}/Contents/Resources/en.lproj"
+      COMMAND cp "${PROJECT_SOURCE_DIR}/contrib/macos/InfoPlist.strings" "${lokinet_app}/Contents/Resources/en.lproj/"
+      COMMAND cp "${lokinet_app}/Contents/Resources/icon.icns" "${lokinet_app}/Contents/Helpers/Lokinet-GUI.app/Contents/Resources/icon.icns"
+      COMMAND cp "${PROJECT_SOURCE_DIR}/contrib/macos/InfoPlist.strings" "${lokinet_app}/Contents/Helpers/Lokinet-GUI.app/Contents/Resources/en.lproj/"
       COMMAND /usr/libexec/PlistBuddy
         -c "Delete :CFBundleDisplayName"
         -c "Add :LSHasLocalizedDisplayName bool true"
         -c "Add :CFBundleDevelopmentRegion string en"
         -c "Set :CFBundleShortVersionString ${lokinet_VERSION}"
         -c "Set :CFBundleVersion ${lokinet_VERSION}.${LOKINET_APPLE_BUILD}"
-        "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Helpers/Lokinet-GUI.app/Contents/Info.plist"
+        "${lokinet_app}/Contents/Helpers/Lokinet-GUI.app/Contents/Info.plist"
     )
 
   elseif(WIN32)

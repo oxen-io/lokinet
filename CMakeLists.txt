@@ -32,7 +32,7 @@ project(lokinet
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 1)
+    set(LOKINET_APPLE_BUILD 3)
 endif()
 
 set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
@@ -319,6 +319,6 @@ if(NOT TARGET uninstall)
 endif()
 
 
-if(BUILD_PACKAGE)
+if(BUILD_PACKAGE AND NOT APPLE)
     include(cmake/installer.cmake)
 endif()
