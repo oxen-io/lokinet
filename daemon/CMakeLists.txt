@@ -2,6 +2,7 @@ set(exetargets lokinet)
 
 if(APPLE)
   add_executable(lokinet lokinet.swift)
+  target_compile_options(lokinet BEFORE PRIVATE -target x86_64-apple-macos${CMAKE_OSX_DEPLOYMENT_TARGET})
 else()
   add_executable(lokinet lokinet.cpp)
 endif()
