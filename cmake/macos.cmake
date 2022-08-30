@@ -74,6 +74,9 @@ message(STATUS "Using ${CODESIGN_EXT_PROFILE} extension provisioning profile")
 
 
 set(lokinet_installer "${PROJECT_BINARY_DIR}/Lokinet ${PROJECT_VERSION}")
+if(NOT CODESIGN)
+  set(lokinet_installer "${lokinet_installer}-UNSIGNED")
+endif()
 set(lokinet_app "${lokinet_installer}/Lokinet.app")
 
 
@@ -203,9 +206,9 @@ function(macos_target_setup)
     COMMAND cp -a "${mac_icon}" "${lokinet_app}/Contents/Resources/icon.icns"
   )
 
-  if(CODESIGN AND BUILD_GUI)
+  if(BUILD_GUI)
     add_dependencies(sign assemble_gui)
-  elseif(CODESIGN)
+  else()
     add_dependencies(sign assemble)
   endif()
 endfunction()
