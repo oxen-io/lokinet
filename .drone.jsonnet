@@ -407,6 +407,9 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
-  mac_builder('macOS (Release)'),
+  mac_builder('macOS (Release)', extra_cmds=[
+    '../contrib/ci/drone-check-static-libs.sh',
+    '../contrib/ci/drone-static-upload.sh',
+  ]),
   mac_builder('macOS (Debug)', build_type='Debug'),
 ]
