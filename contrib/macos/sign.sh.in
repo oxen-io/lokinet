@@ -26,7 +26,7 @@ gui_entitlements="@PROJECT_SOURCE_DIR@/gui/node_modules/app-builder-lib/template
 ext_entitlements="@PROJECT_SOURCE_DIR@/contrib/macos/lokinet-extension.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist"
 app_entitlements="@PROJECT_SOURCE_DIR@/contrib/macos/lokinet.@LOKINET_ENTITLEMENTS_TYPE@.entitlements.plist"
 
-SIGN_TARGET="@PROJECT_BINARY_DIR@/Lokinet Installer/Lokinet.app"
+SIGN_TARGET="@PROJECT_BINARY_DIR@/Lokinet @PROJECT_VERSION@/Lokinet.app"
 
 for ext in systemextension appex; do
     netext="$SIGN_TARGET/@lokinet_ext_dir@/org.lokinet.network-extension.$ext"

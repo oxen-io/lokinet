@@ -73,7 +73,7 @@ message(STATUS "Using ${CODESIGN_EXT_PROFILE} extension provisioning profile")
 
 
 
-set(lokinet_installer "${PROJECT_BINARY_DIR}/Lokinet Installer")
+set(lokinet_installer "${PROJECT_BINARY_DIR}/Lokinet ${PROJECT_VERSION}")
 set(lokinet_app "${lokinet_installer}/Lokinet.app")
 
 
@@ -128,10 +128,11 @@ add_custom_command(OUTPUT "${mac_icon}"
 add_custom_target(icon DEPENDS "${mac_icon}")
 
 if(BUILD_PACKAGE)
+  add_executable(seticon "${PROJECT_SOURCE_DIR}/contrib/macos/seticon.swift")
   add_custom_command(OUTPUT "${lokinet_installer}.dmg"
-    DEPENDS notarize
+    DEPENDS notarize seticon
     COMMAND create-dmg
-      --volname "Lokinet Installer"
+      --volname "Lokinet ${PROJECT_VERSION}"
       --volicon lokinet.icns
       #--background ... FIXME
       --text-size 16
@@ -144,6 +145,7 @@ if(BUILD_PACKAGE)
       --no-internet-enable
       "${lokinet_installer}.dmg"
       "${lokinet_installer}"
+      COMMAND ./seticon lokinet.icns "${lokinet_installer}.dmg"
   )
   add_custom_target(package DEPENDS "${lokinet_installer}.dmg")
 endif()
