@@ -13,6 +13,7 @@ on_request(
     const struct sockaddr* addr,
     unsigned flags)
 {
+  (void)flags;
   if (nread < 0)
   {
     NSLog(@"Read error: %s", uv_strerror(nread));
@@ -42,7 +43,9 @@ on_request(
 static void
 on_sent(uv_udp_send_t* req, int status)
 {
+  (void)status;
   NSArray<NSData*>* datagrams = (__bridge_transfer NSArray<NSData*>*)req->data;
+  (void)datagrams;
   free(req);
 }
 
@@ -73,6 +76,7 @@ write_flusher(uv_async_t* async)
 static void
 alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
 {
+  (void)handle;
   buf->base = malloc(suggested_size);
   buf->len = suggested_size;
 }

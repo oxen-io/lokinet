@@ -91,7 +91,7 @@ del_ipv4_route(const char* addr, const char* netmask, void* ctx)
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
   NSMutableArray<NEIPv4Route*>* routes =
       [NSMutableArray arrayWithArray:t->settings.IPv4Settings.includedRoutes];
-  for (int i = 0; i < routes.count; i++)
+  for (size_t i = 0; i < routes.count; i++)
   {
     if ([routes[i].destinationAddress isEqualToString:route.destinationAddress] &&
         [routes[i].destinationSubnetMask isEqualToString:route.destinationSubnetMask])
@@ -137,7 +137,7 @@ del_ipv6_route(const char* addr, int prefix, void* ctx)
   LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
   NSMutableArray<NEIPv6Route*>* routes =
       [NSMutableArray arrayWithArray:t->settings.IPv6Settings.includedRoutes];
-  for (int i = 0; i < routes.count; i++)
+  for (size_t i = 0; i < routes.count; i++)
   {
     if ([routes[i].destinationAddress isEqualToString:route.destinationAddress] &&
         [routes[i].destinationNetworkPrefixLength
