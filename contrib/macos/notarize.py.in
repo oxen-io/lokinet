@@ -23,8 +23,8 @@ if not all(("@MACOS_NOTARIZE_USER@", "@MACOS_NOTARIZE_PASS@", "@MACOS_NOTARIZE_A
     sys.exit(1)
 
 os.chdir("@PROJECT_BINARY_DIR@")
-app = "Lokinet.app"
-zipfile = f"{app}.notarize.zip"
+app = "@lokinet_app@"
+zipfile = f"Lokinet.app.notarize.zip"
 print(f"Creating {zipfile} from {app}")
 if os.path.exists(zipfile):
     os.remove(zipfile)
@@ -106,5 +106,8 @@ print("Stapling {}...".format(app), end='')
 result = subprocess.run(['xcrun', 'stapler', 'staple', app])
 
 result.check_returncode()
+
+with open("macos-notarized.stamp", 'w'):
+    pass
 
 print(" success.\n")

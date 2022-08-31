@@ -14,6 +14,8 @@ if(MACOS_SYSTEM_EXTENSION)
 endif()
 set(CODESIGN_PROFILE "${PROJECT_SOURCE_DIR}/contrib/macos/lokinet.${default_profile_type}.provisionprofile" CACHE FILEPATH
   "Path to a .provisionprofile to use for the main app")
+set(CODESIGN_EXT_PROFILE "${PROJECT_SOURCE_DIR}/contrib/macos/lokinet-extension.${default_profile_type}.provisionprofile" CACHE FILEPATH
+  "Path to a .provisionprofile to use for the lokinet extension")
 
 if(CODESIGN AND NOT CODESIGN_ID)
   if(MACOS_SYSTEM_EXTENSION)
@@ -59,13 +61,23 @@ else()
 endif()
 
 
-if(NOT CODESIGN_PROFILE)
-  message(WARNING "Missing a CODESIGN_PROFILE provisioning profile: Apple will most likely log an uninformative error message to the system log and then kill harmless kittens if you try to run the result")
+foreach(prof IN ITEMS CODESIGN_PROFILE CODESIGN_EXT_PROFILE)
+  if(NOT ${prof})
+    message(WARNING "Missing a ${prof} provisioning profile: Apple will most likely log an uninformative error message to the system log and then kill harmless kittens if you try to run the result")
+  elseif(NOT EXISTS "${${prof}}")
+    message(FATAL_ERROR "Provisioning profile ${${prof}} does not exist; fix your -D${prof} path")
+  endif()
+endforeach()
+message(STATUS "Using ${CODESIGN_PROFILE} app provisioning profile")
+message(STATUS "Using ${CODESIGN_EXT_PROFILE} extension provisioning profile")
+
+
+
+set(lokinet_installer "${PROJECT_BINARY_DIR}/Lokinet ${PROJECT_VERSION}")
+if(NOT CODESIGN)
+  set(lokinet_installer "${lokinet_installer}-UNSIGNED")
 endif()
-if(NOT EXISTS "${CODESIGN_PROFILE}")
-  message(FATAL_ERROR "Provisioning profile ${CODESIGN_PROFILE} does not exist; fix your -DCODESIGN_PROFILE path")
-endif()
-message(STATUS "Using ${CODESIGN_PROFILE} provisioning profile")
+set(lokinet_app "${lokinet_installer}/Lokinet.app")
 
 
 if(MACOS_SYSTEM_EXTENSION)
@@ -112,6 +124,35 @@ else()
   add_custom_target(notarize DEPENDS sign COMMAND "true")
 endif()
 
+set(mac_icon "${PROJECT_BINARY_DIR}/lokinet.icns")
+add_custom_command(OUTPUT "${mac_icon}"
+  COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet-mac.svg "${mac_icon}"
+  DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
+add_custom_target(icon DEPENDS "${mac_icon}")
+
+if(BUILD_PACKAGE)
+  add_executable(seticon "${PROJECT_SOURCE_DIR}/contrib/macos/seticon.swift")
+  add_custom_command(OUTPUT "${lokinet_installer}.dmg"
+    DEPENDS notarize seticon
+    COMMAND create-dmg
+      --volname "Lokinet ${PROJECT_VERSION}"
+      --volicon lokinet.icns
+      #--background ... FIXME
+      --text-size 16
+      --icon-size 128
+      --window-size 500 300
+      --icon Lokinet.app 100 100
+      --hide-extension Lokinet.app
+      --app-drop-link 350 100
+      --eula "${PROJECT_SOURCE_DIR}/LICENSE"
+      --no-internet-enable
+      "${lokinet_installer}.dmg"
+      "${lokinet_installer}"
+      COMMAND ./seticon lokinet.icns "${lokinet_installer}.dmg"
+  )
+  add_custom_target(package DEPENDS "${lokinet_installer}.dmg")
+endif()
+
 
 # Called later to set things up, after the main lokinet targets are set up
 function(macos_target_setup)
@@ -140,12 +181,6 @@ function(macos_target_setup)
       $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
   )
 
-  set(mac_icon ${PROJECT_BINARY_DIR}/lokinet.icns)
-  add_custom_command(OUTPUT ${mac_icon}
-    COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet-mac.svg ${mac_icon}
-    DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
-  add_custom_target(icon DEPENDS ${mac_icon})
-
 
   add_dependencies(lokinet lokinet-extension icon)
 
@@ -162,15 +197,18 @@ function(macos_target_setup)
 
   add_custom_target(assemble ALL
     DEPENDS lokinet lokinet-extension icon copy_prov_prof copy_bootstrap
-    COMMAND rm -rf "${PROJECT_BINARY_DIR}/Lokinet.app"
-    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet> "${PROJECT_BINARY_DIR}/Lokinet.app"
-    COMMAND mkdir -p "${PROJECT_BINARY_DIR}/Lokinet.app/${lokinet_ext_dir}"
-    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> "${PROJECT_BINARY_DIR}/Lokinet.app/${lokinet_ext_dir}/"
-    COMMAND mkdir -p "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Resources"
-    COMMAND cp -a "${mac_icon}" "${PROJECT_BINARY_DIR}/Lokinet.app/Contents/Resources/icon.icns"
+    COMMAND rm -rf "${lokinet_app}"
+    COMMAND mkdir -p "${lokinet_installer}"
+    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet> "${lokinet_app}"
+    COMMAND mkdir -p "${lokinet_app}/${lokinet_ext_dir}"
+    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> "${lokinet_app}/${lokinet_ext_dir}/"
+    COMMAND mkdir -p "${lokinet_app}/Contents/Resources"
+    COMMAND cp -a "${mac_icon}" "${lokinet_app}/Contents/Resources/icon.icns"
   )
 
-  if(CODESIGN)
+  if(BUILD_GUI)
+    add_dependencies(sign assemble_gui)
+  else()
     add_dependencies(sign assemble)
   endif()
 endfunction()

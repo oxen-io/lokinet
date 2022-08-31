@@ -8,7 +8,8 @@
 #
 
 set -e
-set +x
+set -x
+
 if ! [ -f LICENSE ] || ! [ -d llarp ]; then
     echo "You need to run this as ./contrib/mac.sh from the top-level lokinet project directory"
 fi
@@ -24,10 +25,15 @@ cmake \
       -DNATIVE_BUILD=OFF \
       -DWITH_LTO=ON \
       -DCMAKE_BUILD_TYPE=Release \
+      -DMACOS_SYSTEM_EXTENSION=ON \
+      -DCODESIGN=ON \
+      -DBUILD_PACKAGE=ON \
       "$@" \
       ..
-ninja -j1
+ninja -j1 package
+
+cd ..
 
 echo -e "Build complete, your app is here:\n"
-ls -lad $(pwd)/Lokinet.app
+ls -lad $(pwd)/build-mac/Lokinet\ *
 echo ""

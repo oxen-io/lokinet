@@ -32,7 +32,7 @@ project(lokinet
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 1)
+    set(LOKINET_APPLE_BUILD 4)
 endif()
 
 set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
@@ -259,7 +259,6 @@ if(WITH_SYSTEMD AND (NOT ANDROID))
 endif()
 
 add_subdirectory(external)
-include_directories(SYSTEM external/sqlite_orm/include)
 
 if(USE_JEMALLOC AND NOT STATIC_LINK)
   pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
@@ -319,6 +318,6 @@ if(NOT TARGET uninstall)
 endif()
 
 
-if(BUILD_PACKAGE)
+if(BUILD_PACKAGE AND NOT APPLE)
     include(cmake/installer.cmake)
 endif()

@@ -28,8 +28,6 @@ add_executable(testAll
   net/test_sock_addr.cpp
   nodedb/test_nodedb.cpp
   path/test_path.cpp
-  peerstats/test_peer_db.cpp
-  peerstats/test_peer_types.cpp
   router/test_llarp_router_version.cpp
   routing/test_llarp_routing_transfer_traffic.cpp
   routing/test_llarp_routing_obtainexitmessage.cpp
@@ -47,6 +45,12 @@ add_executable(testAll
   util/test_llarp_util_str.cpp
   test_llarp_encrypted_frame.cpp
   test_llarp_router_contact.cpp)
+
+if(WITH_PEERSTATS)
+  target_sources(testAll PRIVATE
+    peerstats/test_peer_db.cpp
+    peerstats/test_peer_types.cpp)
+endif()
 
 target_link_libraries(testAll PUBLIC liblokinet Catch2::Catch2)
 target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -346,12 +346,13 @@ namespace llarp
   {}
 
   void
-  PeerDb::configure(const RouterConfig& routerConfig)
+  PeerDb::configure(const RouterConfig&)
   {}
 
-  bool
-  PeerDb::shouldFlush(llarp_time_t now)
-  {}
+  bool PeerDb::shouldFlush(llarp_time_t)
+  {
+    return false;
+  }
 
   util::StatusObject
   PeerDb::ExtractStatus() const
