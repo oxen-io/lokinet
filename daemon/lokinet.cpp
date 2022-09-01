@@ -329,8 +329,9 @@ class WindowsServiceStopped
 LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
-  const DWORD flags = MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
-      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo;
+  const auto flags = (MINIDUMP_TYPE)(
+      MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
+      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
   std::stringstream ss;
   ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
