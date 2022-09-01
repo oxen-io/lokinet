@@ -21,11 +21,11 @@ fi
 
 cd "$(dirname $0)/../"
 if [ "$1" = "verify" ] ; then
-    if [ $($binary --output-replacements-xml $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|mm?)$' | grep -v '\#') | grep '</replacement>' | wc -l) -ne 0 ] ; then
+    if [ $($binary --output-replacements-xml $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|m(m)?)$' | grep -v '\#') | grep '</replacement>' | wc -l) -ne 0 ] ; then
         exit 2
     fi
 else
-    $binary -i $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|mm)$' | grep -v '\#') &> /dev/null
+    $binary -i $(find jni daemon llarp include pybind | grep -E '\.([hc](pp)?|m(m)?)$' | grep -v '\#') &> /dev/null
 fi
 
 swift_format=$(command -v swiftformat 2>/dev/null)
