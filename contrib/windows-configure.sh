@@ -2,12 +2,25 @@
 set -e
 set -x
 
-root=$(readlink -f "$1")
-shift
-mkdir -p "$1"
-build=$(readlink -f "$1")
-shift
-cd "$build"
+# Usage: windows-configure.sh [rootdir [builddir]] -DWHATEVER=BLAH ...
+
+if [ $# -ge 1 ] && [[ "$1" != -* ]]; then
+    root="$1"
+    shift
+else
+    root="$(dirname $0)"/..
+fi
+root="$(readlink -f "$root")"
+
+if [ $# -ge 1 ] && [[ "$1" != -* ]]; then
+    build="$(readlink -f "$1")"
+    shift
+else
+    build="$root/build/win32"
+    echo "Setting up build in $build"
+fi
+
+mkdir -p "$build"
 cmake \
     -S "$root" -B "$build" \
     -G 'Unix Makefiles' \
@@ -31,4 +44,4 @@ cmake \
     -DFORCE_SPDLOG_SUBMODULE=ON \
     -DFORCE_NLOHMANN_SUBMODULE=ON \
     -DWITH_LTO=OFF \
-    $@
+    "$@"
