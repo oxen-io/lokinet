@@ -67,6 +67,7 @@ upload_to="oxen.rocks/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
 # -mkdir a/, -mkdir a/b/, -mkdir a/b/c/, ... commands.  The leading `-` allows the command to fail
 # without error.
 upload_dirs=(${upload_to//\// })
+put_debug=
 mkdirs=
 dir_tmp=""
 for p in "${upload_dirs[@]}"; do
@@ -74,15 +75,14 @@ for p in "${upload_dirs[@]}"; do
     mkdirs="$mkdirs
 -mkdir $dir_tmp"
 done
-
+if [ -e "$base-debug-symbols.tar.xz" ] ; then
+    put_debug="put $base-debug-symbols.tar.xz $upload_to"
+fi
 sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<SFTP
 $mkdirs
 put $archive $upload_to
+$put_debug
 SFTP
-
-if [ -e "$base-debug-symbols.tar.xz" ] ; then
-    sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<<"put $base-debug-symbols.tar.xz $upload_to"
-fi
 
 set +o xtrace
 
