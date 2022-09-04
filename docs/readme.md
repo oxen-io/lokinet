@@ -2,13 +2,15 @@
 
 This is where Lokinet documentation lives.
 
+[How Do I install Lokinet?](install.md)
+
+[How Do I use Lokinet?](ideal-ux.md)
+
 ## High level
 
 [How is Lokinet different to \[insert network technology name here\] ?](net-comparisons.md)
 
 <!-- [How does Lokinet work?](high-level-overview.md) -->
-
-[How Do I use Lokinet?](ideal-ux.md)
 
 [Lokinet and DNS](dns-overview.md)
 
