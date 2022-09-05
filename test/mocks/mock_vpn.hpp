@@ -1,5 +1,5 @@
 #pragma once
-#include <llarp/ev/vpn.hpp>
+#include <llarp/vpn/platform.hpp>
 #include "mock_network.hpp"
 
 namespace mocks
