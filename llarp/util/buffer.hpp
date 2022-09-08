@@ -182,7 +182,7 @@ struct llarp_buffer_t
 };
 
 bool
-operator==(const llarp_buffer_t& buff, const char* data);
+operator==(const llarp_buffer_t& buff, std::string_view data);
 
 template <typename OutputIt>
 bool

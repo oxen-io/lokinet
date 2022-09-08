@@ -123,24 +123,15 @@ llarp_buffer_t::copy() const
   std::vector<byte_t> copy;
   copy.resize(sz);
   std::copy_n(base, sz, copy.data());
+
   return copy;
 }
 
 bool
-operator==(const llarp_buffer_t& buff, const char* c_str)
+operator==(const llarp_buffer_t& buff, std::string_view data)
 {
-  const auto* str = reinterpret_cast<const byte_t*>(c_str);
-  ManagedBuffer copy{buff};
-  while (*str && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
-  {
-    if (*copy.underlying.cur != *str)
-      return false;
-    copy.underlying.cur++;
-    str++;
-  }
-  return *str == 0;
+  return std::string_view{reinterpret_cast<const char*>(buff.cur), buff.size_left()} == data;
 }
-
 namespace llarp
 {
   OwnedBuffer
