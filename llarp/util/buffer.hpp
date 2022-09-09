@@ -117,7 +117,14 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
     return base + sz;
   }
 
-  size_t size_left() const;
+  size_t size_left() const
+  {
+    size_t diff = cur - base;
+    assert(diff <= sz);
+    if (diff > sz)
+      return 0;
+    return sz - diff;
+  }
 
   template <typename OutputIt>
   bool read_into(OutputIt begin, OutputIt end);
@@ -149,12 +156,23 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
   /// make a copy of this buffer
   std::vector<byte_t> copy() const;
 
-  /// get a read only view over the entire region
-  llarp::byte_view_t view() const;
-
-  bool operator==(std::string_view data) const
+  /// get a read-only view over the entire region
+  llarp::byte_view_t view_all() const
   {
-    return std::string_view{reinterpret_cast<const char*>(base), sz} == data;
+    return {base, sz};
+  }
+
+  /// get a read-only view over the remaining/unused region
+  llarp::byte_view_t view_remaining() const
+  {
+    return {cur, size_left()};
+  }
+
+  /// Part of the curse.  Returns true if the remaining buffer space starts with the given string view.
+  bool startswith(std::string_view prefix_str) const
+  {
+    llarp::byte_view_t prefix{reinterpret_cast<const byte_t*>(prefix_str.data()), prefix_str.size()};
+    return view_remaining().substr(0, prefix.size()) == prefix;
   }
 
  private:

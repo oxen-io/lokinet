@@ -662,7 +662,7 @@ namespace llarp
     bool
     ExitEndpoint::QueueSNodePacket(const llarp_buffer_t& buf, huint128_t from)
     {
-      net::IPPacket pkt{buf.view()};
+      net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return false;
       // rewrite ip

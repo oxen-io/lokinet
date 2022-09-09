@@ -22,7 +22,7 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == "c")
+    if (key.startswith("c"))
     {
       /// so we dont put it into the shitty queue
       pathid.Fill('c');
@@ -131,7 +131,7 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictEntry("t", txid, read, *key, buffer))
       return false;
-    if (*key == "u")
+    if (key->startswith("u"))
     {
       nextRC = std::make_unique<RouterContact>();
       return nextRC->BDecode(buffer);
@@ -139,7 +139,7 @@ namespace llarp
     if (!BEncodeMaybeVerifyVersion(
             "v", version, llarp::constants::proto_version, read, *key, buffer))
       return false;
-    if (*key == "w")
+    if (key->startswith("w"))
     {
       // check for duplicate
       if (work)

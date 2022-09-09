@@ -60,25 +60,25 @@ namespace llarp
   LR_StatusMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (key == "c")
+    if (key.startswith("c"))
     {
       return BEncodeReadArray(frames, buf);
     }
-    if (key == "p")
+    if (key.startswith("p"))
     {
       if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       {
         return false;
       }
     }
-    else if (key == "s")
+    else if (key.startswith("s"))
     {
       if (!BEncodeMaybeReadDictInt("s", status, read, key, buf))
       {
         return false;
       }
     }
-    else if (key == "v")
+    else if (key.startswith("v"))
     {
       if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       {

@@ -213,7 +213,7 @@ namespace llarp
 
       if (m_WritePacket)
       {
-        llarp::net::IPPacket pkt{buf.view()};
+        llarp::net::IPPacket pkt{buf.view_all()};
         if (pkt.empty())
           return false;
         m_LastUse = m_router->Now();
@@ -367,7 +367,7 @@ namespace llarp
     void
     SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
-      net::IPPacket pkt{buf.view()};
+      net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return;
       pkt.ZeroAddresses();
@@ -377,7 +377,7 @@ namespace llarp
     void
     ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
     {
-      net::IPPacket pkt{buf.view()};
+      net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return;
 

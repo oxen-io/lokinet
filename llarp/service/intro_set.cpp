@@ -38,7 +38,7 @@ namespace llarp::service
   EncryptedIntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (key == "x")
+    if (key.startswith("x"))
     {
       llarp_buffer_t strbuf;
       if (not bencode_read_string(buf, &strbuf))
@@ -178,7 +178,7 @@ namespace llarp::service
     if (!BEncodeMaybeReadDictEntry("a", addressKeys, read, key, buf))
       return false;
 
-    if (key == "e")
+    if (key.startswith("e"))
     {
       net::TrafficPolicy policy;
       if (not policy.BDecode(buf))
@@ -187,7 +187,7 @@ namespace llarp::service
       return true;
     }
 
-    if (key == "i")
+    if (key.startswith("i"))
     {
       return BEncodeReadList(intros, buf);
     }
@@ -197,7 +197,7 @@ namespace llarp::service
     if (!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
       return false;
 
-    if (key == "p")
+    if (key.startswith("p"))
     {
       return bencode_read_list(
           [&](llarp_buffer_t* buf, bool more) {
@@ -213,12 +213,12 @@ namespace llarp::service
           buf);
     }
 
-    if (key == "r")
+    if (key.startswith("r"))
     {
       return BEncodeReadSet(ownedRanges, buf);
     }
 
-    if (key == "s")
+    if (key.startswith("s"))
     {
       byte_t* begin = buf->cur;
       if (not bencode_discard(buf))
