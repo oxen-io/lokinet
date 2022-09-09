@@ -127,12 +127,6 @@ llarp_buffer_t::copy() const
   return copy;
 }
 
-bool
-operator==(const llarp_buffer_t& buff, std::string_view data)
-{
-  return std::string_view{reinterpret_cast<const char*>(buff.cur), buff.size_left()} == data;
-}
-
 llarp::byte_view_t
 llarp_buffer_t::view() const
 {

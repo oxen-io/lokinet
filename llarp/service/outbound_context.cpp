@@ -334,9 +334,10 @@ namespace llarp
     void
     OutboundContext::KeepAlive()
     {
-      Encrypted<64> tmp;
-      tmp.Randomize();
-      SendPacketToRemote(tmp, ProtocolType::Control);
+      std::array<byte_t, 64> tmp;
+      llarp_buffer_t buf{tmp};
+      CryptoManager::instance()->randomize(buf);
+      SendPacketToRemote(buf, ProtocolType::Control);
       m_LastKeepAliveAt = Now();
     }
 

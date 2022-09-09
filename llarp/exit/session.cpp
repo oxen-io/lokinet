@@ -243,7 +243,7 @@ namespace llarp
       {
         queue.emplace_back();
         queue.back().protocol = t;
-        return queue.back().PutBuffer(std::move(pkt), m_Counter++);
+        return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
       }
       auto& back = queue.back();
       // pack to nearest N
@@ -251,10 +251,10 @@ namespace llarp
       {
         queue.emplace_back();
         queue.back().protocol = t;
-        return queue.back().PutBuffer(std::move(pkt), m_Counter++);
+        return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
       }
       back.protocol = t;
-      return back.PutBuffer(std::move(pkt), m_Counter++);
+      return back.PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
     }
 
     bool

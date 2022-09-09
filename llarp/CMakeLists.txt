@@ -117,7 +117,6 @@ target_link_libraries(lokinet-config PUBLIC lokinet-dns lokinet-platform oxenmq:
 
 add_library(lokinet-amalgum
   STATIC
-  consensus/table.cpp
   consensus/reachability_testing.cpp
 
   bootstrap.cpp

@@ -22,6 +22,8 @@ namespace llarp
   using byte_view_t = std::basic_string_view<byte_t>;
 }
 
+struct ManagedBuffer;
+
 /// TODO: replace usage of these with std::span (via a backport until we move to C++20).  That's a
 /// fairly big job, though, as llarp_buffer_t is currently used a bit differently (i.e. maintains
 /// both start and current position, plus has some value reading/writing methods).
@@ -44,29 +46,65 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
   llarp_buffer_t(byte_t * b, byte_t * c, size_t s) : base(b), cur(c), sz(s)
   {}
 
+  llarp_buffer_t(const ManagedBuffer&) = delete;
+  llarp_buffer_t(ManagedBuffer &&) = delete;
+
+  template <typename Byte>
+  static constexpr bool is_basic_byte = sizeof(Byte) == 1 and std::is_trivially_copyable_v<Byte>;
+
   /// Construct referencing some 1-byte, trivially copyable (e.g. char, unsigned char, byte_t)
   /// pointer type and a buffer size.
   template <
-      typename T,
-      typename = std::enable_if_t<sizeof(T) == 1 and std::is_trivially_copyable_v<T>>>
-  llarp_buffer_t(T * buf, size_t _sz)
-      : base(reinterpret_cast<byte_t*>(const_cast<std::remove_const_t<T>*>(buf)))
-      , cur(base)
-      , sz(_sz)
+      typename Byte,
+      typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+  llarp_buffer_t(Byte * buf, size_t sz) : base{reinterpret_cast<byte_t*>(buf)}, cur{base}, sz{sz}
   {}
 
-  /// initialize llarp_buffer_t from containers supporting .data() and .size()
+  /// initialize llarp_buffer_t from vector or array of byte-like values
+  template <
+      typename Byte,
+      typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+  llarp_buffer_t(std::vector<Byte> & b) : llarp_buffer_t{b.data(), b.size()}
+  {}
+
+  template <
+      typename Byte,
+      size_t N,
+      typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+  llarp_buffer_t(std::array<Byte, N> & b) : llarp_buffer_t{b.data(), b.size()}
+  {}
+
+  // These overloads, const_casting away the const, are not just gross but downright dangerous:
+  template <typename Byte, typename = std::enable_if_t<is_basic_byte<Byte>>>
+  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
+      const Byte* buf, size_t sz)
+      : llarp_buffer_t{const_cast<Byte*>(buf), sz}
+  {}
+
+  template <typename Byte, typename = std::enable_if_t<is_basic_byte<Byte>>>
+  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
+      const std::vector<Byte>& b)
+      : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
+  {}
+
+  template <typename Byte, size_t N, typename = std::enable_if_t<is_basic_byte<Byte>>>
+  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
+      const std::array<Byte, N>& b)
+      : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
+  {}
+
+  /// Explicitly construct a llarp_buffer_t from anything with a `.data()` and a `.size()`.  Cursed.
   template <
       typename T,
       typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
-  llarp_buffer_t(T && t) : llarp_buffer_t{t.data(), t.size()}
+  explicit llarp_buffer_t(T && t) : llarp_buffer_t{t.data(), t.size()}
   {}
 
   byte_t* begin()
   {
     return base;
   }
-  byte_t* begin() const
+  const byte_t* begin() const
   {
     return base;
   }
@@ -74,7 +112,7 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
   {
     return base + sz;
   }
-  byte_t* end() const
+  const byte_t* end() const
   {
     return base + sz;
   }
@@ -124,10 +162,6 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
   llarp_buffer_t(const llarp_buffer_t&) = default;
   llarp_buffer_t(llarp_buffer_t &&) = default;
 };
-
-
-bool
-operator==(const llarp_buffer_t& buff, std::string_view data);
 
 template <typename OutputIt>
 bool

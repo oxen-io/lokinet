@@ -185,7 +185,8 @@ namespace llarp::quic
     std::memcpy(&buf_[header_size], data.data(), data.size());
     bstring_view outgoing{buf_.data(), outgoing_len};
 
-    if (service_endpoint.SendToOrQueue(to, outgoing, service::ProtocolType::QUIC))
+    if (service_endpoint.SendToOrQueue(
+            to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
       LogTrace("[", to, "]: sent ", buffer_printer{outgoing});
     }
