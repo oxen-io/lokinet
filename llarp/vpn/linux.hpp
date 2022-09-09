@@ -110,7 +110,7 @@ namespace llarp::vpn
       std::vector<byte_t> pkt;
       pkt.resize(net::IPPacket::MaxSize);
       const auto sz = read(m_fd, pkt.data(), pkt.capacity());
-      if (errno)
+      if (sz < 0)
       {
         if (errno == EAGAIN or errno == EWOULDBLOCK)
         {
