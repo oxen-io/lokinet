@@ -85,7 +85,10 @@ namespace llarp::win32
       init("WintunSetLogger", set_logger);
       init("WintunGetReadWaitEvent", get_adapter_handle);
 
-      log::info(logcat, fmt::format("wintun version {0:x} loaded", get_version()));
+      if (auto wintun_ver = get_version())
+        log::info(logcat, fmt::format("wintun version {0:x} loaded", wintun_ver));
+      else
+        throw win32::error{"Failed to load wintun"};
     }
 
     /// autovivify a wintun adapter handle

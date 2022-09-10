@@ -11,7 +11,7 @@ namespace llarp::win32
   class error : public std::runtime_error
   {
    public:
-    error(std::string msg);
+    explicit error(std::string msg);
     virtual ~error() = default;
     explicit error(DWORD err, std::string msg);
   };
