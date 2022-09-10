@@ -126,21 +126,22 @@ namespace llarp::net
   SockAddr
   IPPacket::src() const
   {
-    auto port = SrcPort();
+    const auto port = SrcPort().value_or(net::port_t{});
+
     if (IsV4())
-      return SockAddr{ToNet(srcv4()), *port};
+      return SockAddr{ToNet(srcv4()), port};
     else
-      return SockAddr{ToNet(srcv6()), *port};
+      return SockAddr{ToNet(srcv6()), port};
   }
 
   SockAddr
   IPPacket::dst() const
   {
-    auto port = DstPort();
+    auto port = *DstPort();
     if (IsV4())
-      return SockAddr{ToNet(dstv4()), *port};
+      return SockAddr{ToNet(dstv4()), port};
     else
-      return SockAddr{ToNet(dstv6()), *port};
+      return SockAddr{ToNet(dstv6()), port};
   }
 
   IPPacket::IPPacket(std::vector<byte_t>&& stolen) : _buf{stolen}
@@ -171,7 +172,8 @@ namespace llarp::net
   std::optional<nuint16_t>
   IPPacket::SrcPort() const
   {
-    switch (IPProtocol{Header()->protocol})
+    IPProtocol proto{Header()->protocol};
+    switch (proto)
     {
       case IPProtocol::TCP:
       case IPProtocol::UDP:

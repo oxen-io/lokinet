@@ -168,10 +168,12 @@ struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
     return {cur, size_left()};
   }
 
-  /// Part of the curse.  Returns true if the remaining buffer space starts with the given string view.
+  /// Part of the curse.  Returns true if the remaining buffer space starts with the given string
+  /// view.
   bool startswith(std::string_view prefix_str) const
   {
-    llarp::byte_view_t prefix{reinterpret_cast<const byte_t*>(prefix_str.data()), prefix_str.size()};
+    llarp::byte_view_t prefix{
+        reinterpret_cast<const byte_t*>(prefix_str.data()), prefix_str.size()};
     return view_remaining().substr(0, prefix.size()) == prefix;
   }
 

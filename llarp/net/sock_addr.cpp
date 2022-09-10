@@ -288,10 +288,7 @@ namespace llarp
     // TODO: review
     if (isEmpty())
       return "";
-    std::string str = hostString();
-    str.append(1, ':');
-    str.append(std::to_string(getPort()));
-    return str;
+    return fmt::format("{}:{}", hostString(), port());
   }
 
   std::string

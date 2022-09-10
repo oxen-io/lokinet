@@ -5,6 +5,7 @@
 #include "handle.hpp"
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/logging/buffer.hpp>
 #include <thread>
 extern "C"
 {

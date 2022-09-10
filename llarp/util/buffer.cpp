@@ -115,7 +115,6 @@ llarp_buffer_t::copy() const
   return copy;
 }
 
-
 namespace llarp
 {
   std::vector<byte_t>

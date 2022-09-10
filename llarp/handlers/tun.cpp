@@ -24,6 +24,7 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/util/logging/buffer.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/constants/net.hpp>
 #include <llarp/constants/platform.hpp>
