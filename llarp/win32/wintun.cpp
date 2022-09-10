@@ -170,7 +170,7 @@ namespace llarp::win32
 
         if (auto err = CreateUnicastIpAddressEntry(&AddressRow); err != ERROR_SUCCESS)
           throw error{err, fmt::format("cannot set address '{}'", addr.range)};
-        LogDebug(fmt::format("added address: '{}'", addr.range));
+        log::info(logcat, "added address: '{}'", addr.range);
       }
     }
 
