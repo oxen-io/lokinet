@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
+cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
