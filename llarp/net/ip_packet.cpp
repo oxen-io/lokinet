@@ -17,22 +17,6 @@ namespace llarp::net
 {
   constexpr uint32_t ipv6_flowlabel_mask = 0b0000'0000'0000'1111'1111'1111'1111'1111;
 
-  template <bool little>
-  struct ipv6_header_preamble
-  {
-    unsigned char pad_small : 4;
-    unsigned char version : 4;
-    uint8_t pad[3];
-  };
-
-  template <>
-  struct ipv6_header_preamble<false>
-  {
-    unsigned char version : 4;
-    unsigned char pad_small : 4;
-    uint8_t pad[3];
-  };
-
   /// get 20 bit truncated flow label in network order
   llarp::nuint32_t
   ipv6_header::FlowLabel() const

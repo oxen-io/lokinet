@@ -1,5 +1,6 @@
 #pragma once
 
+#include <oxenc/endian.h>
 #include <llarp/ev/ev.hpp>
 #include "net.hpp"
 #include <llarp/util/buffer.hpp>
@@ -10,12 +11,10 @@
 
 namespace llarp::net
 {
-#pragma pack(push, 1)
-  template <bool is_little_endian>
   struct ip_header_le
   {
-    unsigned int ihl : 4;
-    unsigned int version : 4;
+    uint8_t ihl : 4;
+    uint8_t version : 4;
     uint8_t tos;
     uint16_t tot_len;
     uint16_t id;
@@ -27,11 +26,10 @@ namespace llarp::net
     uint32_t daddr;
   };
 
-  template <>
-  struct ip_header_le<false>
+  struct ip_header_be
   {
-    unsigned int version : 4;
-    unsigned int ihl : 4;
+    uint8_t version : 4;
+    uint8_t ihl : 4;
     uint8_t tos;
     uint16_t tot_len;
     uint16_t id;
@@ -42,11 +40,11 @@ namespace llarp::net
     uint32_t saddr;
     uint32_t daddr;
   };
-#pragma pack(pop)
 
-  using ip_header = ip_header_le<oxenc::little_endian>;
+  using ip_header = std::conditional_t<oxenc::little_endian, ip_header_le, ip_header_be>;
 
-  template <bool little>
+  static_assert(sizeof(ip_header) == 20);
+
   struct ipv6_header_preamble_le
   {
     unsigned char pad_small : 4;
@@ -54,19 +52,23 @@ namespace llarp::net
     uint8_t pad[3];
   };
 
-  template <>
-  struct ipv6_header_preamble_le<false>
+  struct ipv6_header_preamble_be
   {
     unsigned char version : 4;
     unsigned char pad_small : 4;
     uint8_t pad[3];
   };
 
+  using ipv6_header_preamble =
+      std::conditional_t<oxenc::little_endian, ipv6_header_preamble_le, ipv6_header_preamble_be>;
+
+  static_assert(sizeof(ipv6_header_preamble) == 4);
+
   struct ipv6_header
   {
     union
     {
-      ipv6_header_preamble_le<oxenc::little_endian> preamble;
+      ipv6_header_preamble preamble;
       uint32_t flowlabel;
     } preamble;
 
@@ -82,6 +84,8 @@ namespace llarp::net
     void
     FlowLabel(llarp::nuint32_t label);
   };
+
+  static_assert(sizeof(ipv6_header) == 40);
 
   /// "well known" ip protocols
   /// TODO: extend this to non "well known values"
