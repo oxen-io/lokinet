@@ -8,6 +8,8 @@ namespace llarp
 {
   namespace dns
   {
+    static auto logcat = log::Cat("dns");
+
     ResourceRecord::ResourceRecord(const ResourceRecord& other)
         : rr_name(other.rr_name)
         , rr_type(other.rr_type)
@@ -64,22 +66,22 @@ namespace llarp
         return false;
       if (!buf->read_uint16(rr_type))
       {
-        llarp::LogDebug("failed to decode rr type");
+        log::debug(logcat, "failed to decode rr type");
         return false;
       }
       if (!buf->read_uint16(rr_class))
       {
-        llarp::LogDebug("failed to decode rr class");
+        log::debug(logcat, "failed to decode rr class");
         return false;
       }
       if (!buf->read_uint32(ttl))
       {
-        llarp::LogDebug("failed to decode ttl");
+        log::debug(logcat, "failed to decode ttl");
         return false;
       }
       if (!DecodeRData(buf, rData))
       {
-        llarp::LogDebug("failed to decode rr rdata ", *this);
+        log::debug(logcat, "failed to decode rr rdata {}", *this);
         return false;
       }
       return true;

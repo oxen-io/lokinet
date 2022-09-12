@@ -20,7 +20,7 @@ namespace llarp::dns
       }
       catch (std::exception& ex)
       {
-        LogWarn(ex.what());
+        log::warning(log::Cat("dns"), "{}", ex.what());
         fails++;
       }
     }
