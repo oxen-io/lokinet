@@ -100,7 +100,7 @@ namespace llarp::dns
           SockAddr fromaddr)
           : QueryJob_Base{std::move(query)}
           , parent{parent_}
-          , src{pktsrc}
+          , src{std::move(pktsrc)}
           , resolverAddr{std::move(toaddr)}
           , askerAddr{std::move(fromaddr)}
       {}
@@ -411,22 +411,22 @@ namespace llarp::dns
           }
         }
         // leak bare pointer and try to do the request
-        auto* pending = tmp.release();
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx.get(),
                 q.Name().c_str(),
                 q.qtype,
                 q.qclass,
-                (void*)pending,
+                tmp.get(),
                 &Resolver::Callback,
                 nullptr))
         {
           // take back ownership on fail
           log::warning(
               logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
-          tmp.reset(pending);
           tmp->Cancel();
+        } else {
+            (void) tmp.release();
         }
         return true;
       }
@@ -437,7 +437,7 @@ namespace llarp::dns
     {
       if (auto ptr = parent.lock())
       {
-        ptr->call([this, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
+        ptr->call([src = src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
           src->SendTo(to, from, OwnedBuffer::copy_from(buf));
         });
       }
@@ -561,8 +561,8 @@ namespace llarp::dns
   void
   Server::AddPacketSource(std::shared_ptr<PacketSource_Base> pkt)
   {
-    m_OwnedPacketSources.push_back(pkt);
     AddPacketSource(std::weak_ptr<PacketSource_Base>{pkt});
+    m_OwnedPacketSources.push_back(std::move(pkt));
   }
 
   void
