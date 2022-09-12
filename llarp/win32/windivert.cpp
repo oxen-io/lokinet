@@ -23,7 +23,6 @@ namespace llarp::win32
   {
     namespace
     {
-
       decltype(::WinDivertOpen)* open = nullptr;
       decltype(::WinDivertClose)* close = nullptr;
       decltype(::WinDivertShutdown)* shutdown = nullptr;
@@ -126,8 +125,7 @@ namespace llarp::win32
         return -1;
       }
 
-      virtual bool
-      WritePacket(net::IPPacket) override
+      virtual bool WritePacket(net::IPPacket) override
       {
         return false;
       }

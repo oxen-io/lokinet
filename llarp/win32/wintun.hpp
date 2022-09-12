@@ -17,8 +17,6 @@ namespace llarp::win32::wintun
 {
   /// makes a new vpn interface with a wintun context given info and a router pointer
   std::shared_ptr<vpn::NetworkInterface>
-  make_interface(
-      const vpn::InterfaceInfo& info,
-      AbstractRouter* router);
+  make_interface(const vpn::InterfaceInfo& info, AbstractRouter* router);
 
-}  // namespace llarp::win32
+}  // namespace llarp::win32::wintun
