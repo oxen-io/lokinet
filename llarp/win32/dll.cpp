@@ -8,15 +8,17 @@ namespace llarp::win32
   {
     auto cat = log::Cat("win32-dll");
   }
-  DLL::DLL(std::string dll) : m_Handle{LoadLibraryA(dll.c_str())}
-  {
-    if (not m_Handle)
-      throw win32::error{fmt::format("failed to load '{}'", dll)};
-    log::info(cat, "loaded '{}'", dll);
-  }
 
-  DLL::~DLL()
+  namespace detail
   {
-    FreeLibrary(m_Handle);
-  }
+    HMODULE
+    load_dll(const std::string& dll)
+    {
+      auto handle = LoadLibraryExA(dll.c_str(), NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
+      if (not handle)
+        throw win32::error{fmt::format("failed to load '{}'", dll)};
+      log::info(cat, "loaded '{}'", dll);
+      return handle;
+    }
+  }  // namespace detail
 }  // namespace llarp::win32

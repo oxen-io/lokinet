@@ -5,26 +5,30 @@
 
 namespace llarp::win32
 {
-  class DLL
+  namespace detail
   {
-    const HMODULE m_Handle;
+    HMODULE
+    load_dll(const std::string& dll);
 
-   protected:
-    /// given a name of a function pointer find it and put it into `func`
-    /// throws if the function does not exist in the DLL we openned.
-    template <typename Func_t>
+    template <typename Func, typename... More>
     void
-    init(std::string name, Func_t*& func)
+    load_funcs(HMODULE handle, const std::string& name, Func*& f, More&&... more)
     {
-      auto ptr = GetProcAddress(m_Handle, name.c_str());
-      if (not ptr)
+      if (auto ptr = GetProcAddress(handle, name.c_str()))
+        f = reinterpret_cast<Func*>(ptr);
+      else
         throw win32::error{fmt::format("function '{}' not found", name)};
-      func = reinterpret_cast<Func_t*>(ptr);
+      if constexpr (sizeof...(More) > 0)
+        load_funcs(handle, std::forward<More>(more)...);
     }
+  }  // namespace detail
 
-   public:
-    DLL(std::string dll);
-
-    virtual ~DLL();
-  };
+  // Loads a DLL and extracts function pointers from it.  Takes the dll name and pairs of
+  // name/function pointer arguments.  Throws on failure.
+  template <typename Func, typename... More>
+  void
+  load_dll_functions(const std::string& dll, const std::string& fname, Func*& f, More&&... funcs)
+  {
+    detail::load_funcs(detail::load_dll(dll), fname, f, std::forward<More>(funcs)...);
+  }
 }  // namespace llarp::win32

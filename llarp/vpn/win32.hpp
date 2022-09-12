@@ -87,15 +87,11 @@ namespace llarp::win32
       }
     }
 
-    std::shared_ptr<WintunContext> _wintun;
-
-    WinDivert_API m_WinDivert{};
-
    public:
     VPNPlatform(const VPNPlatform&) = delete;
     VPNPlatform(VPNPlatform&&) = delete;
 
-    VPNPlatform(llarp::Context* ctx) : Platform{}, _ctx{ctx}, _wintun{WintunContext_new()}
+    VPNPlatform(llarp::Context* ctx) : Platform{}, _ctx{ctx}
     {}
 
     virtual ~VPNPlatform() = default;
@@ -169,7 +165,7 @@ namespace llarp::win32
     std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override
     {
-      return WintunInterface_new(_wintun, std::move(info), router);
+      return wintun::make_interface(std::move(info), router);
     }
 
     std::shared_ptr<I_Packet_IO>
@@ -180,7 +176,7 @@ namespace llarp::win32
         throw std::invalid_argument{
             "cannot create packet io on explicitly specified interface, not currently supported on "
             "windows (yet)"};
-      return m_WinDivert.make_intercepter(
+      return WinDivert::make_intercepter(
           "outbound and ( udp.DstPort == 53 or tcp.DstPort == 53 )",
           [router = _ctx->router] { router->TriggerPump(); });
     }
