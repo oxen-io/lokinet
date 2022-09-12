@@ -263,7 +263,7 @@ namespace llarp::dns
             }
             struct sockaddr_storage sas;
             auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
-            socklen_t sa_len;
+            socklen_t sa_len = sizeof(sas);
             if (0 != getsockname(fd, sa, &sa_len))
             {
               close(fd);
