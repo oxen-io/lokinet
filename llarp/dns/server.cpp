@@ -2,6 +2,7 @@
 #include "dns.hpp"
 #include <llarp/crypto/crypto.hpp>
 #include <array>
+#include <stdexcept>
 #include <utility>
 #include <llarp/ev/udp_handle.hpp>
 #include <optional>
@@ -247,19 +248,26 @@ namespace llarp::dns
             // on our system and use it so we KNOW what it is before giving it to unbound to
             // explicitly bind to JUST that port.
 
-            addrinfo hints{};
-            addrinfo* result{nullptr};
-            hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
-            hints.ai_socktype = SOCK_DGRAM;
-            hints.ai_family = AF_INET;
-            if (auto err = getaddrinfo(host.c_str(), nullptr, &hints, &result))
-              throw std::invalid_argument{strerror(err)};
-            addr.setPort(net::port_t{reinterpret_cast<sockaddr_in*>(result->ai_addr)->sin_port});
-            freeaddrinfo(result);
+            int fd = socket(AF_INET, SOCK_DGRAM, 0);
+            if (fd == -1)
+              throw std::invalid_argument{fmt::format("Failed to create UDP socket for unbound: {}", strerror(errno))};
+            if (0 != bind(fd, static_cast<const sockaddr*>(addr), addr.sockaddr_len())) {
+              close(fd);
+              throw std::invalid_argument{fmt::format("Failed to bind UDP socket for unbound: {}", strerror(errno))};
+            }
+            struct sockaddr_storage sas;
+            auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
+            socklen_t sa_len;
+            if (0 != getsockname(fd, sa, &sa_len)) {
+              close(fd);
+              throw std::invalid_argument{fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
+            }
+            addr = SockAddr{*sa};
+            close(fd);
           }
           m_LocalAddr = addr;
 
-          LogInfo(fmt::format("sening dns queries from {}:{}", host, addr.getPort()));
+          LogInfo(fmt::format("sending dns queries from {}:{}", host, addr.getPort()));
           // set up query bind port if needed
           SetOpt("outgoing-interface:", host);
           SetOpt("outgoing-range:", "1");
