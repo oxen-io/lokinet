@@ -58,6 +58,7 @@ endif()
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
     net/win32.cpp
+    vpn/win32.cpp
     win32/exec.cpp)
   add_library(lokinet-win32 STATIC
     win32/dll.cpp
