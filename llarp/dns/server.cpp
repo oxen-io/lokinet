@@ -208,6 +208,9 @@ namespace llarp::dns
       Up(const llarp::DnsConfig& conf)
       {
         // set libunbound settings
+
+        SetOpt("do-tcp:", "no");
+
         for (const auto& [k, v] : conf.m_ExtraOpts)
           SetOpt(k, v);
 
