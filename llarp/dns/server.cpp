@@ -236,6 +236,8 @@ namespace llarp::dns
           if (const auto port = dns.getPort(); port != 53)
             fmt::format_to(std::back_inserter(str), "@{}", port);
 
+          log::info(logcat, "Using upstream dns {}", str);
+
           auto* ctx = m_ctx.get();
           if (auto err = ub_ctx_set_fwd(ctx, str.c_str()))
           {
