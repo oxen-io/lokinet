@@ -19,10 +19,10 @@ set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
 set(EXPAT_HASH SHA256=f79b8f904b749e3e0d20afeadecf8249c55b2e32d4ebb089ae378df479dcaf25
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.15.0 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.16.2 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=a480dc6c8937447b98d161fe911ffc76cfaffa2da18788781314e81339f1126f
+set(UNBOUND_HASH SHA512=0ea65ea63265be677441bd2a28df12098ec5e86c3372240c2874f9bd13752b8b818da81ae6076cf02cbeba3d36e397698a4c2b50570be1a6a8e47f57a0251572
     CACHE STRING "unbound source hash")
 
 set(SQLITE3_VERSION 3380500 CACHE STRING "sqlite3 version")
