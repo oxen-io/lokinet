@@ -1,5 +1,8 @@
 #include "server.hpp"
+#include <llarp/constants/platform.hpp>
+#include <llarp/constants/apple.hpp>
 #include "dns.hpp"
+#include <iterator>
 #include <llarp/crypto/crypto.hpp>
 #include <array>
 #include <stdexcept>
@@ -228,18 +231,45 @@ namespace llarp::dns
         // set up forward dns
         for (const auto& dns : conf.m_upstreamDNS)
         {
-          std::stringstream ss;
-          auto hoststr = dns.hostString();
-          ss << hoststr;
+          std::string str = dns.hostString();
 
           if (const auto port = dns.getPort(); port != 53)
-            ss << "@" << port;
+            fmt::format_to(std::back_inserter(str), "@{}", port);
 
-          const auto str = ss.str();
-          if (auto err = ub_ctx_set_fwd(m_ctx.get(), str.c_str()))
+          auto* ctx = m_ctx.get();
+          if (auto err = ub_ctx_set_fwd(ctx, str.c_str()))
           {
             throw std::runtime_error{
                 fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
+          }
+
+          if constexpr (platform::is_apple)
+          {
+            // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
+            // because, from within the network extension, macOS ignores setting the tunnel as the
+            // default route and would leak all DNS; instead we have to bounce things through the
+            // objective C trampoline code so that it can call into Apple's special snowflake API to
+            // set up a socket that has the magic Apple snowflake sauce added on top so that it
+            // actually routes through the tunnel instead of around it.
+            //
+            // This behaviour is all carefully and explicitly documented by Apple with plenty of
+            // examples and other exposition, of course, just like all of their wonderful new APIs
+            // to reinvent standard unix interfaces.
+            if (dns.hostString() == "127.0.0.1" && dns.getPort() == apple::dns_trampoline_port)
+            {
+              // Not at all clear why this is needed but without it we get "send failed: Can't
+              // assign requested address" when unbound tries to connect to the localhost address
+              // using a source address of 0.0.0.0.  Yay apple.
+              ub_ctx_set_option(ctx, "outgoing-interface:", "127.0.0.1");
+
+              // The trampoline expects just a single source port (and sends everything back to it)
+              ub_ctx_set_option(ctx, "outgoing-range:", "1");
+              ub_ctx_set_option(ctx, "outgoing-port-avoid:", "0-65535");
+              ub_ctx_set_option(
+                  ctx,
+                  "outgoing-port-permit:",
+                  std::to_string(apple::dns_trampoline_source_port).c_str());
+            }
           }
         }
 
