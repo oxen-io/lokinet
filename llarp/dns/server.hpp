@@ -91,7 +91,7 @@ namespace llarp::dns
     void
     SendTo(const SockAddr& to, const SockAddr& from, OwnedBuffer buf) const override
     {
-      m_WritePacket(net::IPPacket::make_udp(to, from, std::move(buf)));
+      m_WritePacket(net::IPPacket::make_udp(from, to, std::move(buf)));
     }
 
     /// stop reading packets and end operation
