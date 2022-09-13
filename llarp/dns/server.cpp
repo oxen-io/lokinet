@@ -153,6 +153,7 @@ namespace llarp::dns
         if (err)
         {
           // some kind of error from upstream
+          log::warning(logcat, "Upstream DNS failure: {}", ub_strerror(err));
           query->Cancel();
           return;
         }
@@ -352,7 +353,7 @@ namespace llarp::dns
           if (auto loop_ptr = loop->MaybeGetUVWLoop())
           {
             m_Poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx.get()));
-            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr<ub_ctx>{m_ctx}](auto&, auto&) {
+            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr{m_ctx}](auto&, auto&) {
               if (auto ctx = ptr.lock())
                 ub_process(ctx.get());
             });
@@ -377,7 +378,7 @@ namespace llarp::dns
           if (auto loop_ptr = loop->MaybeGetUVWLoop())
           {
             m_Poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx.get()));
-            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr<ub_ctx>{m_ctx}](auto&, auto&) {
+            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr{m_ctx}](auto&, auto&) {
               if (auto ctx = ptr.lock())
                 ub_process(ctx.get());
             });
@@ -458,7 +459,6 @@ namespace llarp::dns
             return true;
           }
         }
-        // leak bare pointer and try to do the request
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx.get(),
@@ -469,12 +469,14 @@ namespace llarp::dns
                 &Resolver::Callback,
                 nullptr))
         {
-          // take back ownership on fail
           log::warning(
               logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
           tmp->Cancel();
-        } else {
-            (void) tmp.release();
+        }
+        else
+        {
+          // Leak the bare pointer we gave to unbound; we'll recapture it in Callback
+          (void)tmp.release();
         }
         return true;
       }
@@ -504,10 +506,7 @@ namespace llarp::dns
   std::vector<std::weak_ptr<Resolver_Base>>
   Server::GetAllResolvers() const
   {
-    std::vector<std::weak_ptr<Resolver_Base>> all;
-    for (const auto& res : m_Resolvers)
-      all.push_back(res);
-    return all;
+    return {m_Resolvers.begin(), m_Resolvers.end()};
   }
 
   void
