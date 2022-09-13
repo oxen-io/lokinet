@@ -29,7 +29,7 @@ namespace llarp::win32
     void
     DefaultRouteViaInterface(NetworkInterface& vpn, std::string cmd);
 
-    OneShotExec
+    void
     RouteViaInterface(NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd);
 
    public:
@@ -66,7 +66,8 @@ namespace llarp::win32
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override;
 
     std::shared_ptr<I_Packet_IO>
-    create_packet_io(unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src) override;
+    create_packet_io(
+        unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src) override;
 
     IRouteManager&
     RouteManager() override

@@ -5,7 +5,6 @@
 
 namespace llarp::win32
 {
-
   namespace
   {
     template <typename T>
@@ -27,42 +26,23 @@ namespace llarp::win32
   VPNPlatform::DefaultRouteViaInterface(NetworkInterface& vpn, std::string cmd)
   {
     // route hole for loopback bacause god is dead on windows
-    llarp::win32::Exec(
-        "route.exe", fmt::format("{} 127.0.0.0 MASK 255.0.0.0 0.0.0.0 METRIC {}", cmd, m_Metric));
+    llarp::win32::Exec("route.exe", fmt::format("{} 127.0.0.0 MASK 255.0.0.0 0.0.0.0", cmd));
     // set up ipv4 routes
-    auto lower = RouteViaInterface(vpn, "0.0.0.0", "128.0.0.0", cmd);
-    auto upper = RouteViaInterface(vpn, "128.0.0.0", "128.0.0.0", cmd);
+    RouteViaInterface(vpn, "0.0.0.0", "128.0.0.0", cmd);
+    RouteViaInterface(vpn, "128.0.0.0", "128.0.0.0", cmd);
   }
 
-  OneShotExec
+  void
   VPNPlatform::RouteViaInterface(
       NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
   {
     const auto& info = vpn.Info();
-    auto index = info.index;
-    if (index == 0)
-    {
-      if (auto maybe_idx = net::Platform::Default_ptr()->GetInterfaceIndex(info[0]))
-        index = *maybe_idx;
-    }
-
     auto ifaddr = ip_to_string(info[0]);
     // this changes the last 1 to a 0 so that it routes over the interface
     // this is required because windows is idiotic af
     ifaddr.back()--;
-    if (index)
-    {
-      return OneShotExec{
-          "route.exe",
-          fmt::format(
-              "{} {} MASK {} {} IF {} METRIC {}", cmd, addr, mask, ifaddr, info.index, m_Metric)};
-    }
-    else
-    {
-      return OneShotExec{
-          "route.exe",
-          fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric)};
-    }
+    llarp::win32::Exec(
+        "route.exe", fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
   }
 
   void
@@ -115,7 +95,6 @@ namespace llarp::win32
         "-Command (Disable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
 
     DefaultRouteViaInterface(vpn, "ADD");
-    llarp::win32::Exec("ipconfig.exe", "/flushdns");
   }
 
   void
@@ -127,8 +106,6 @@ namespace llarp::win32
         "-Command (Enable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
 
     DefaultRouteViaInterface(vpn, "DELETE");
-    llarp::win32::Exec("netsh.exe", "winsock reset");
-    llarp::win32::Exec("ipconfig.exe", "/flushdns");
   }
 
   std::shared_ptr<NetworkInterface>
