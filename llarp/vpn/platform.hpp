@@ -154,7 +154,9 @@ namespace llarp::vpn
     /// @param index the interface index of the network interface to use or 0 for all
     /// interfaces on the system
     virtual std::shared_ptr<I_Packet_IO>
-    create_packet_io(unsigned int)
+    create_packet_io(
+        [[maybe_unused]] unsigned int ifindex,
+        [[maybe_unused]] const std::optional<SockAddr>& dns_upstream_src)
     {
       throw std::runtime_error{"raw packet io is unimplemented"};
     }

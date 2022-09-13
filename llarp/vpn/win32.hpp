@@ -1,16 +1,11 @@
 #pragma once
 
+#include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
-#include <io.h>
-#include <fcntl.h>
-#include <llarp/util/thread/queue.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/win32/exec.hpp>
-#include <llarp/win32/windivert.hpp>
-#include <llarp/win32/wintun.hpp>
 #include <llarp.hpp>
-#include <fmt/std.h>
 
 #include "platform.hpp"
 
@@ -71,7 +66,7 @@ namespace llarp::win32
     ObtainInterface(InterfaceInfo info, AbstractRouter* router) override;
 
     std::shared_ptr<I_Packet_IO>
-    create_packet_io(unsigned int ifindex) override;
+    create_packet_io(unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src) override;
 
     IRouteManager&
     RouteManager() override

@@ -69,7 +69,7 @@ namespace llarp::win32
       static constexpr size_t recv_queue_size = 64;
 
      public:
-      IO(std::string filter_spec, std::function<void(void)> wake)
+      IO(const std::string& filter_spec, std::function<void(void)> wake)
           : m_Wake{wake}, m_RecvQueue{recv_queue_size}
       {
         wd::Initialize();
@@ -193,7 +193,7 @@ namespace llarp::win32
     }
 
     std::shared_ptr<llarp::vpn::I_Packet_IO>
-    make_interceptor(std::string filter_spec, std::function<void(void)> wake)
+    make_interceptor(const std::string& filter_spec, std::function<void(void)> wake)
     {
       return std::make_shared<wd::IO>(filter_spec, wake);
     }

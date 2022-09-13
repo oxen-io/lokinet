@@ -286,27 +286,40 @@ namespace llarp::dns
             // on our system and use it so we KNOW what it is before giving it to unbound to
             // explicitly bind to JUST that port.
 
-            int fd = socket(AF_INET, SOCK_DGRAM, 0);
+            auto fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#ifdef _WIN32
+            if (fd == INVALID_SOCKET)
+#else
             if (fd == -1)
+#endif
+            {
               throw std::invalid_argument{
                   fmt::format("Failed to create UDP socket for unbound: {}", strerror(errno))};
+            }
+
+#ifdef _WIN32
+#define CLOSE closesocket
+#else
+#define CLOSE close
+#endif
             if (0 != bind(fd, static_cast<const sockaddr*>(addr), addr.sockaddr_len()))
             {
-              close(fd);
+              CLOSE(fd);
               throw std::invalid_argument{
                   fmt::format("Failed to bind UDP socket for unbound: {}", strerror(errno))};
             }
             struct sockaddr_storage sas;
             auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
             socklen_t sa_len = sizeof(sas);
-            if (0 != getsockname(fd, sa, &sa_len))
+            int rc = getsockname(fd, sa, &sa_len);
+            CLOSE(fd);
+#undef CLOSE
+            if (rc != 0)
             {
-              close(fd);
               throw std::invalid_argument{
                   fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
             }
             addr = SockAddr{*sa};
-            close(fd);
           }
           m_LocalAddr = addr;
 
@@ -323,15 +336,15 @@ namespace llarp::dns
         // setup mainloop
 #ifdef _WIN32
         running = true;
-        runner = std::thread{[this]() {
+        runner = std::thread{[this, ctx = std::weak_ptr{m_ctx}]() {
           while (running)
           {
-            if (m_ctx.get())
-              ub_wait(m_ctx.get());
-            std::this_thread::sleep_for(25ms);
+            if (auto c = ctx.lock())
+              ub_wait(c.get());
+            std::this_thread::sleep_for(10ms);
           }
-          if (m_ctx.get())
-            ub_process(m_ctx.get());
+          if (auto c = ctx.lock())
+            ub_process(c.get());
         }};
 #else
         if (auto loop = m_Loop.lock())

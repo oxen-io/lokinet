@@ -1,4 +1,7 @@
 #include "vpn/win32.hpp"
+#include <llarp/win32/windivert.hpp>
+#include <llarp/win32/wintun.hpp>
+#include <fmt/core.h>
 
 namespace llarp::win32
 {
@@ -135,7 +138,8 @@ namespace llarp::win32
   }
 
   std::shared_ptr<I_Packet_IO>
-  VPNPlatform::create_packet_io(unsigned int ifindex)
+  VPNPlatform::create_packet_io(
+      unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src)
   {
     // we only want do this on all interfaes with windivert
     if (ifindex)
@@ -143,17 +147,13 @@ namespace llarp::win32
           "cannot create packet io on explicitly specified interface, not currently supported on "
           "windows (yet)"};
 
-    std::string filter{"outbound and ( udp.DstPort == 53 or tcp.DstPort == 53 )"};
+    uint16_t upstream_src_port = dns_upstream_src ? dns_upstream_src->getPort() : 0;
+    std::string udp_filter = upstream_src_port != 0
+        ? fmt::format("( udp.DstPort == 53 and udp.SrcPort != {} )", upstream_src_port)
+        : "udp.DstPort == 53";
 
-    if (auto dscp = _ctx->router->GetConfig()->dns.m_queryDSCP.value_or(0))
-    {
-      // DSCP is the first 6 bits of the TOS field (the last 2 are ECN).
-      auto tos = dscp << 2;
-      fmt::format_to(std::back_inserter(filter), " and ip.TOS != {}", tos);
-    }
+    auto filter = "outbound and ( " + udp_filter + " or tcp.DstPort == 53 )";
+
     return WinDivert::make_interceptor(filter, [router = _ctx->router] { router->TriggerPump(); });
   }
-
-};
-
 }  // namespace llarp::win32

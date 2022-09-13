@@ -16,6 +16,6 @@ namespace llarp::win32::WinDivert
   /// we hide all implementation details from other compilation units to prevent issues with
   /// linkage that may arrise.
   std::shared_ptr<llarp::vpn::I_Packet_IO>
-  make_interceptor(std::string filter_spec, std::function<void(void)> wakeup);
+  make_interceptor(const std::string& filter_spec, std::function<void(void)> wakeup);
 
 }  // namespace llarp::win32::WinDivert
