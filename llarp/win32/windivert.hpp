@@ -10,12 +10,12 @@ namespace llarp::win32::WinDivert
   std::string
   format_ip(uint32_t ip);
 
-  /// create a packet intercepter that uses windivert.
+  /// create a packet interceptor that uses windivert.
   /// filter_spec describes the kind of traffic we wish to intercept.
   /// pass in a callable that wakes up the main event loop.
   /// we hide all implementation details from other compilation units to prevent issues with
   /// linkage that may arrise.
   std::shared_ptr<llarp::vpn::I_Packet_IO>
-  make_intercepter(std::string filter_spec, std::function<void(void)> wakeup);
+  make_interceptor(std::string filter_spec, std::function<void(void)> wakeup);
 
 }  // namespace llarp::win32::WinDivert

@@ -176,7 +176,7 @@ namespace llarp::win32
         throw std::invalid_argument{
             "cannot create packet io on explicitly specified interface, not currently supported on "
             "windows (yet)"};
-      return WinDivert::make_intercepter(
+      return WinDivert::make_interceptor(
           "outbound and ( udp.DstPort == 53 or tcp.DstPort == 53 )",
           [router = _ctx->router] { router->TriggerPump(); });
     }

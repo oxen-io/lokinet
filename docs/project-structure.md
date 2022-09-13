@@ -27,7 +27,7 @@ this codebase is a bit large. this is a high level map of the current code struc
 * `/llarp/constants`: contains all compile time constants 
 * `/llarp/crypto`: cryptography interface and implementation, includes various secure helpers
 * `/llarp/dht`: dht message structs, parsing, validation and handlers of dht related parts of the protocol 
-* `/llarp/dns`: dns subsytem, dns udp wire parsers, resolver, server, rewriter/intercepter, the works
+* `/llarp/dns`: dns subsytem, dns udp wire parsers, resolver, server, rewriter/interceptor, the works
 * `/llarp/ev`: event loop interfaces and implementations 
 * `/llarp/exit`: `.snode` endpoint "backend"
 * `/llarp/handlers`: packet endpoint "frontends"
