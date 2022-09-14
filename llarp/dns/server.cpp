@@ -373,18 +373,6 @@ namespace llarp::dns
         runner.join();
 #else
         m_Poller->close();
-        if (auto loop = m_Loop.lock())
-        {
-          if (auto loop_ptr = loop->MaybeGetUVWLoop())
-          {
-            m_Poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx.get()));
-            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr{m_ctx}](auto&, auto&) {
-              if (auto ctx = ptr.lock())
-                ub_process(ctx.get());
-            });
-            m_Poller->start(uvw::PollHandle::Event::READABLE);
-          }
-        }
 #endif
         m_ctx.reset();
       }
