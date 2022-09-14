@@ -97,6 +97,12 @@ namespace llarp
       return Contains(net::ExpandV4(ip));
     }
 
+    inline bool
+    Contains(const net::ipaddr_t& ip) const
+    {
+      return var::visit([this](auto&& ip) { return Contains(ToHost(ip)); }, ip);
+    }
+
     /// get the highest address on this range
     constexpr huint128_t
     HighestAddr() const

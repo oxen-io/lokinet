@@ -72,18 +72,20 @@ namespace llarp::win32
   std::vector<net::ipaddr_t>
   VPNPlatform::GetGatewaysNotOnInterface(NetworkInterface& vpn)
   {
-    std::vector<net::ipaddr_t> gateways;
+    std::set<net::ipaddr_t> gateways;
 
-    auto idx = vpn.Info().index;
-    using UInt_t = decltype(idx);
+    const auto ifaddr = vpn.Info()[0];
     for (const auto& iface : Net().AllNetworkInterfaces())
     {
-      if (static_cast<UInt_t>(iface.index) == idx)
+      if (not iface.gateway)
         continue;
-      if (iface.gateway)
-        gateways.emplace_back(*iface.gateway);
+      for (const auto& range : iface.addrs)
+      {
+        if (not range.Contains(ifaddr))
+          gateways.emplace(*iface.gateway);
+      }
     }
-    return gateways;
+    return {gateways.begin(), gateways.end()};
   }
 
   void

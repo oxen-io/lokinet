@@ -25,6 +25,7 @@ namespace llarp
         DisableRoute(ip, gw);
       // update and add new mapping
       gw = *m_CurrentGateway;
+      log::info(logcat, "add route {} via {}", ip, gw);
       EnableRoute(ip, gw);
     }
     else
@@ -57,7 +58,7 @@ namespace llarp
     const auto itr = m_PokedRoutes.find(ip);
     if (itr == m_PokedRoutes.end())
       return;
-
+    log::info(logcat, "del route {} via {}", itr->first, itr->second);
     DisableRoute(itr->first, itr->second);
     m_PokedRoutes.erase(itr);
   }
@@ -69,7 +70,10 @@ namespace llarp
     if (m_Router->IsServiceNode())
       return;
 
-    m_Router->loop()->call_every(100ms, weak_from_this(), [this]() { Update(); });
+    m_Router->loop()->call_every(100ms, weak_from_this(), [self = weak_from_this()]() {
+      if (auto ptr = self.lock())
+        ptr->Update();
+    });
   }
 
   void
@@ -186,6 +190,8 @@ namespace llarp
         m_CurrentGateway = next_gw;
       }
     }
+    else if (m_Router->HasClientExit())
+      Up();
   }
 
   void
@@ -201,7 +207,7 @@ namespace llarp
   void
   RoutePoker::Up()
   {
-    if (IsEnabled())
+    if (IsEnabled() and m_CurrentGateway and not m_up)
     {
       vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
 
@@ -216,6 +222,9 @@ namespace llarp
       const auto ep = m_Router->hiddenServiceContext().GetDefault();
       if (auto* vpn = ep->GetVPNInterface())
         route.AddDefaultRouteViaInterface(*vpn);
+
+      m_up = true;
+      log::info(logcat, "route poker up");
     }
     SetDNSMode(true);
   }
@@ -229,7 +238,7 @@ namespace llarp
 
     // remove default route
 
-    if (IsEnabled())
+    if (IsEnabled() and m_up)
     {
       vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
       const auto ep = m_Router->hiddenServiceContext().GetDefault();
@@ -238,6 +247,8 @@ namespace llarp
 
       // delete route blackhole
       route.DelBlackhole();
+      m_up = false;
+      log::info(logcat, "route poker down");
     }
     SetDNSMode(false);
   }

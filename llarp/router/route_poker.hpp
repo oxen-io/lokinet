@@ -63,5 +63,6 @@ namespace llarp
     std::optional<net::ipv4addr_t> m_CurrentGateway;
 
     AbstractRouter* m_Router = nullptr;
+    bool m_up{false};
   };
 }  // namespace llarp

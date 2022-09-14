@@ -201,6 +201,11 @@ namespace llarp::net
               saddr.asIPv6(),
               ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
         }
+        if (auto* addr = a->FirstGatewayAddress)
+        {
+          SockAddr gw{*addr->Address.lpSockaddr};
+          cur.gateway = gw.getIP();
+        }
       });
       return all;
     }
