@@ -7,10 +7,7 @@
 
 namespace llarp
 {
-  namespace
-  {
-    auto logcat = log::Cat("route-poker");
-  }
+  static auto logcat = log::Cat("route-poker");
 
   void
   RoutePoker::AddRoute(net::ipv4addr_t ip)
@@ -157,16 +154,8 @@ namespace llarp
         next_gw = *gw_ptr;
     }
 
-    auto is_equal = [](auto lhs, auto rhs) {
-      if (lhs == std::nullopt and rhs == std::nullopt)
-        return true;
-      if (lhs and rhs)
-        return *lhs == *rhs;
-      return false;
-    };
-
     // update current gateway and apply state chnages as needed
-    if (not is_equal(m_CurrentGateway, next_gw))
+    if (not(m_CurrentGateway == next_gw))
     {
       if (next_gw and m_CurrentGateway)
       {
@@ -224,8 +213,8 @@ namespace llarp
         route.AddDefaultRouteViaInterface(*vpn);
       log::info(logcat, "route poker up");
     }
-    if(not m_up)
-        SetDNSMode(true);
+    if (not m_up)
+      SetDNSMode(true);
     m_up = true;
   }
 
@@ -249,8 +238,8 @@ namespace llarp
       route.DelBlackhole();
       log::info(logcat, "route poker down");
     }
-    if(m_up)
-        SetDNSMode(false);
+    if (m_up)
+      SetDNSMode(false);
     m_up = false;
   }
 
