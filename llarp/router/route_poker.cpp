@@ -157,7 +157,7 @@ namespace llarp
     }
 
     // update current gateway and apply state chnages as needed
-    if (not(m_CurrentGateway == next_gw))
+    if (m_CurrentGateway != next_gw)
     {
       if (next_gw and m_CurrentGateway)
       {
