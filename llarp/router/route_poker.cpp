@@ -12,6 +12,8 @@ namespace llarp
   void
   RoutePoker::AddRoute(net::ipv4addr_t ip)
   {
+    if (not m_up)
+      return;
     bool has_existing = m_PokedRoutes.count(ip);
     // set up route and apply as needed
     auto& gw = m_PokedRoutes[ip];
@@ -162,10 +164,7 @@ namespace llarp
         log::info(logcat, "default gateway changed from {} to {}", *m_CurrentGateway, *next_gw);
         m_CurrentGateway = next_gw;
         m_Router->Thaw();
-        if (m_Router->HasClientExit())
-          Up();
-        else
-          RefreshAllRoutes();
+        RefreshAllRoutes();
       }
       else if (m_CurrentGateway)
       {
@@ -196,8 +195,12 @@ namespace llarp
   void
   RoutePoker::Up()
   {
-    if (IsEnabled() and m_CurrentGateway and not m_up)
+    bool was_up = m_up;
+    m_up = true;
+    if (IsEnabled() and m_CurrentGateway and not was_up)
     {
+      log::info(logcat, "RoutePoker coming up; poking routes");
+
       vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
 
       // black hole all routes if enabled
@@ -213,9 +216,8 @@ namespace llarp
         route.AddDefaultRouteViaInterface(*vpn);
       log::info(logcat, "route poker up");
     }
-    if (not m_up)
+    if (not was_up)
       SetDNSMode(true);
-    m_up = true;
   }
 
   void

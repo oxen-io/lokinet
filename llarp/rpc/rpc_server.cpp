@@ -517,7 +517,6 @@ namespace llarp::rpc
                     auto mapExit = [=](service::Address addr) mutable {
                       ep->MapExitRange(range, addr);
 
-                      r->routePoker()->Up();
                       bool shouldSendAuth = false;
                       if (token.has_value())
                       {
