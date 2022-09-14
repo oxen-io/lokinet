@@ -222,11 +222,11 @@ namespace llarp
       const auto ep = m_Router->hiddenServiceContext().GetDefault();
       if (auto* vpn = ep->GetVPNInterface())
         route.AddDefaultRouteViaInterface(*vpn);
-
-      m_up = true;
       log::info(logcat, "route poker up");
     }
-    SetDNSMode(true);
+    if(not m_up)
+        SetDNSMode(true);
+    m_up = true;
   }
 
   void
@@ -247,10 +247,11 @@ namespace llarp
 
       // delete route blackhole
       route.DelBlackhole();
-      m_up = false;
       log::info(logcat, "route poker down");
     }
-    SetDNSMode(false);
+    if(m_up)
+        SetDNSMode(false);
+    m_up = false;
   }
 
 }  // namespace llarp
