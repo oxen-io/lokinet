@@ -64,7 +64,7 @@ namespace llarp
   RoutePoker::Start(AbstractRouter* router)
   {
     m_Router = router;
-    if (m_Router->IsServiceNode())
+    if (not IsEnabled())
       return;
 
     m_Router->loop()->call_every(100ms, weak_from_this(), [self = weak_from_this()]() {
