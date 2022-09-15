@@ -26,15 +26,24 @@ namespace llarp::net
     void
     iter_adapters(Visit_t&& visit, int af = AF_UNSPEC) const
     {
-      ULONG sz{};
-      GetAdaptersAddresses(af, 0, nullptr, nullptr, &sz);
-      auto ptr = std::make_unique<byte_t[]>(sz);
-      auto* addrs = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(ptr.get());
+      ULONG err;
+      ULONG sz = 15000;  // MS-recommended so that it "never fails", but often fails with a too
+                         // large error.
+      std::unique_ptr<byte_t[]> ptr;
+      PIP_ADAPTER_ADDRESSES addr;
+      int tries = 0;
+      do
+      {
+        ptr = std::make_unique<byte_t[]>(sz);
+        addr = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(ptr.get());
+        err = GetAdaptersAddresses(
+            af, GAA_FLAG_INCLUDE_GATEWAYS | GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &sz);
+      } while (err == ERROR_BUFFER_OVERFLOW and ++tries < 4);
 
-      if (auto err = GetAdaptersAddresses(af, 0, nullptr, addrs, &sz); err != ERROR_SUCCESS)
+      if (err != ERROR_SUCCESS)
         throw llarp::win32::error{err, "GetAdaptersAddresses()"};
 
-      for (auto* addr = addrs; addr->Next; addr = addr->Next)
+      for (; addr->Next; addr = addr->Next)
         visit(addr);
     }
 
