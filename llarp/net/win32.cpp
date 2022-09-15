@@ -43,7 +43,7 @@ namespace llarp::net
       if (err != ERROR_SUCCESS)
         throw llarp::win32::error{err, "GetAdaptersAddresses()"};
 
-      for (; addr->Next; addr = addr->Next)
+      for (; addr; addr = addr->Next)
         visit(addr);
     }
 
@@ -51,7 +51,7 @@ namespace llarp::net
     bool
     adapter_has_ip(adapter_t* a, ipaddr_t ip) const
     {
-      for (auto* addr = a->FirstUnicastAddress; addr->Next; addr = addr->Next)
+      for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
       {
         SockAddr saddr{*addr->Address.lpSockaddr};
         LogDebug(fmt::format("'{}' has address '{}'", a->AdapterName, saddr));
@@ -65,7 +65,7 @@ namespace llarp::net
     bool
     adapter_has_fam(adapter_t* a, int af) const
     {
-      for (auto* addr = a->FirstUnicastAddress; addr->Next; addr = addr->Next)
+      for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
       {
         SockAddr saddr{*addr->Address.lpSockaddr};
         if (saddr.Family() == af)
@@ -142,7 +142,7 @@ namespace llarp::net
     {
       std::list<IPRange> currentRanges;
       iter_adapters([&currentRanges](auto* i) {
-        for (auto* addr = i->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
+        for (auto* addr = i->FirstUnicastAddress; addr; addr = addr->Next)
         {
           SockAddr saddr{*addr->Address.lpSockaddr};
           currentRanges.emplace_back(
@@ -203,7 +203,7 @@ namespace llarp::net
         auto& cur = all.emplace_back();
         cur.index = a->IfIndex;
         cur.name = a->AdapterName;
-        for (auto* addr = a->FirstUnicastAddress; addr and addr->Next; addr = addr->Next)
+        for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
         {
           SockAddr saddr{*addr->Address.lpSockaddr};
           cur.addrs.emplace_back(
