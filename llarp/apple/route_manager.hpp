@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/ev/vpn.hpp>
+#include <llarp/vpn/platform.hpp>
 #include "context_wrapper.h"
 
 namespace llarp::apple
@@ -16,18 +16,18 @@ namespace llarp::apple
     /// These are called for poking route holes, but we don't have to do that at all on macos
     /// because the appex isn't subject to its own rules.
     void
-    AddRoute(IPVariant_t /*ip*/, IPVariant_t /*gateway*/) override
+    AddRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
     {}
 
     void
-    DelRoute(IPVariant_t /*ip*/, IPVariant_t /*gateway*/) override
+    DelRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
     {}
 
     void
-    AddDefaultRouteViaInterface(std::string ifname) override;
+    AddDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
 
     void
-    DelDefaultRouteViaInterface(std::string ifname) override;
+    DelDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
 
     void
     AddRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
@@ -35,13 +35,13 @@ namespace llarp::apple
     void
     DelRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
 
-    std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string /*ifname*/) override
+    std::vector<net::ipaddr_t>
+    GetGatewaysNotOnInterface(vpn::NetworkInterface& /*vpn*/) override
     {
       // We can't get this on mac from our sandbox, but we don't actually need it because we
       // ignore the gateway for AddRoute/DelRoute anyway, so just return a zero IP.
-      std::vector<IPVariant_t> ret;
-      ret.push_back(huint32_t{0});
+      std::vector<net::ipaddr_t> ret;
+      ret.emplace_back(net::ipv4addr_t{});
       return ret;
     }
 

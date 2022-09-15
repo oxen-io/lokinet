@@ -38,14 +38,14 @@ namespace llarp::apple
     trampoline_active = enable;
   }
 
-  void RouteManager::AddDefaultRouteViaInterface(std::string)
+  void RouteManager::AddDefaultRouteViaInterface(vpn::NetworkInterface&)
   {
     check_trampoline(true);
     if (callback_context and route_callbacks.add_default_route)
       route_callbacks.add_default_route(callback_context);
   }
 
-  void RouteManager::DelDefaultRouteViaInterface(std::string)
+  void RouteManager::DelDefaultRouteViaInterface(vpn::NetworkInterface&)
   {
     check_trampoline(false);
     if (callback_context and route_callbacks.del_default_route)

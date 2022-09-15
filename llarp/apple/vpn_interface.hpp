@@ -29,9 +29,6 @@ namespace llarp::apple
     int
     PollFD() const override;
 
-    std::string
-    IfName() const override;
-
     net::IPPacket
     ReadNextPacket() override;
 
