@@ -171,10 +171,24 @@ namespace llarp::dns
         query->SendReply(std::move(pkt));
       }
 
-      void ConfigureUpstream(const llarp::DnsConfig& conf)
+      void
+      AddUpstreamResolver(const SockAddr& dns)
       {
-        auto* ctx = m_ctx.get();
+        std::string str = dns.hostString();
 
+        if (const auto port = dns.getPort(); port != 53)
+          fmt::format_to(std::back_inserter(str), "@{}", port);
+
+        if (auto err = ub_ctx_set_fwd(m_ctx.get(), str.c_str()))
+        {
+          throw std::runtime_error{
+              fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
+        }
+      }
+
+      void
+      ConfigureUpstream(const llarp::DnsConfig& conf)
+      {
         if constexpr (platform::is_apple)
         {
           // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
@@ -192,36 +206,21 @@ namespace llarp::dns
           // Not at all clear why this is needed but without it we get "send failed: Can't
           // assign requested address" when unbound tries to connect to the localhost address
           // using a source address of 0.0.0.0.  Yay apple.
-          ub_ctx_set_option(ctx, "outgoing-interface:", "127.0.0.1");
+          SetOpt("outgoing-interface:", "127.0.0.1");
 
           // The trampoline expects just a single source port (and sends everything back to it)
-          ub_ctx_set_option(ctx, "outgoing-range:", "1");
-          ub_ctx_set_option(ctx, "outgoing-port-avoid:", "0-65535");
-          ub_ctx_set_option(
-              ctx,
-              "outgoing-port-permit:",
-              std::to_string(apple::dns_trampoline_source_port).c_str());
+          SetOpt("outgoing-range:", "1");
+          SetOpt("outgoing-port-avoid:", "0-65535");
+          SetOpt("outgoing-port-permit:", "{}", apple::dns_trampoline_source_port);
+
+          AddUpstreamResolver(SockAddr{127, 0, 0, 1, {apple::dns_trampoline_port}});
 
           return;
         }
 
         // set up forward dns
         for (const auto& dns : conf.m_upstreamDNS)
-        {
-          std::string str = dns.hostString();
-
-          if (const auto port = dns.getPort(); port != 53)
-            fmt::format_to(std::back_inserter(str), "@{}", port);
-
-          log::critical(logcat, "Using upstream dns {}", str);
-
-          if (auto err = ub_ctx_set_fwd(ctx, str.c_str()))
-          {
-            throw std::runtime_error{
-                fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
-          }
-
-        }
+          AddUpstreamResolver(dns);
 
         if (auto maybe_addr = conf.m_QueryBind)
         {
@@ -276,14 +275,23 @@ namespace llarp::dns
           SetOpt("outgoing-interface:", host);
           SetOpt("outgoing-range:", "1");
           SetOpt("outgoing-port-avoid:", "0-65535");
-          SetOpt("outgoing-port-permit:", std::to_string(addr.getPort()));
+          SetOpt("outgoing-port-permit:", "{}", addr.getPort());
         }
       }
 
       void
-      SetOpt(std::string key, std::string val)
+      SetOpt(const std::string& key, const std::string& val)
       {
         ub_ctx_set_option(m_ctx.get(), key.c_str(), val.c_str());
+      }
+
+      // Wrapper around the above that takes 3+ arguments: the 2nd arg gets formatted with the
+      // remaining args, and the formatted string passed to the above as `val`.
+      template <typename... FmtArgs, std::enable_if_t<sizeof...(FmtArgs), int> = 0>
+      void
+      SetOpt(const std::string& key, std::string_view format, FmtArgs&&... args)
+      {
+        SetOpt(key, fmt::format(format, std::forward<FmtArgs>(args)...));
       }
 
       llarp::DnsConfig m_conf;

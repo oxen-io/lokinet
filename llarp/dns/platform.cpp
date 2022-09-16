@@ -12,7 +12,7 @@ namespace llarp::dns
   Multi_Platform::set_resolver(unsigned int index, llarp::SockAddr dns, bool global)
   {
     if (m_Impls.empty())
-        return;
+      return;
     size_t fails{0};
     for (const auto& ptr : m_Impls)
     {
