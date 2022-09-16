@@ -828,9 +828,7 @@ namespace llarp
     conf.defineOption<std::string>(
         "dns",
         "query-bind",
-#ifdef __APPLE__
-        Default{"127.0.0.1:1253"},
-#elif defined(_WIN32)
+#if defined(_WIN32)
         Default{"0.0.0.0:0"},
 #else
         Hidden,

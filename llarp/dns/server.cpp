@@ -186,43 +186,61 @@ namespace llarp::dns
         }
       }
 
+      bool
+      ConfigureAppleTrampoline(const SockAddr& dns)
+      {
+        // On Apple, when we turn on exit mode, we tear down and then reestablish the unbound
+        // resolver: in exit mode, we set use upstream to a localhost trampoline that redirects
+        // packets through the tunnel.  In non-exit mode, we directly use the upstream, so we look
+        // here for a reconfiguration to use the trampoline port to check which state we're in.
+        //
+        // We have to do all this crap because we can't directly connect to upstream from here:
+        // within the network extension, macOS ignores the tunnel we are managing and so, if we
+        // didn't do this, all our DNS queries would leak out around the tunnel.  Instead we have to
+        // bounce things through the objective C trampoline code (which is what actually handles the
+        // upstream querying) so that it can call into Apple's special snowflake API to set up a
+        // socket that has the magic Apple snowflake sauce added on top so that it actually routes
+        // through the tunnel instead of around it.
+        //
+        // But the trampoline *always* tries to send the packet through the tunnel, and that will
+        // only work in exit mode.
+        //
+        // All of this macos behaviour is all carefully and explicitly documented by Apple with
+        // plenty of examples and other exposition, of course, just like all of their wonderful new
+        // APIs to reinvent standard unix interfaces with half-baked replacements.
+
+        if constexpr (platform::is_apple)
+        {
+          if (dns.hostString() == "127.0.0.1" and dns.getPort() == apple::dns_trampoline_port)
+          {
+            // macOS is stupid: the default (0.0.0.0) fails with "send failed: Can't assign requested
+            // address" when unbound tries to connect to the localhost address using a source address
+            // of 0.0.0.0.  Yay apple.
+            SetOpt("outgoing-interface:", "127.0.0.1");
+
+            // The trampoline expects just a single source port (and sends everything back to it).
+            SetOpt("outgoing-range:", "1");
+            SetOpt("outgoing-port-avoid:", "0-65535");
+            SetOpt("outgoing-port-permit:", "{}", apple::dns_trampoline_source_port);
+            return true;
+          }
+        }
+        return false;
+      }
+
       void
       ConfigureUpstream(const llarp::DnsConfig& conf)
       {
-        if constexpr (platform::is_apple)
-        {
-          // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
-          // because, from within the network extension, macOS ignores setting the tunnel as the
-          // default route and would leak all DNS; instead we have to bounce things through the
-          // objective C trampoline code (which is what actually handles the upstream querying) so
-          // that it can call into Apple's special snowflake API to set up a socket that has the
-          // magic Apple snowflake sauce added on top so that it actually routes through the tunnel
-          // instead of around it.
-          //
-          // This behaviour is all carefully and explicitly documented by Apple with plenty of
-          // examples and other exposition, of course, just like all of their wonderful new APIs to
-          // reinvent standard unix interfaces.
-
-          // Not at all clear why this is needed but without it we get "send failed: Can't
-          // assign requested address" when unbound tries to connect to the localhost address
-          // using a source address of 0.0.0.0.  Yay apple.
-          SetOpt("outgoing-interface:", "127.0.0.1");
-
-          // The trampoline expects just a single source port (and sends everything back to it)
-          SetOpt("outgoing-range:", "1");
-          SetOpt("outgoing-port-avoid:", "0-65535");
-          SetOpt("outgoing-port-permit:", "{}", apple::dns_trampoline_source_port);
-
-          AddUpstreamResolver(SockAddr{127, 0, 0, 1, {apple::dns_trampoline_port}});
-
-          return;
-        }
+        bool is_apple_tramp = false;
 
         // set up forward dns
         for (const auto& dns : conf.m_upstreamDNS)
+        {
           AddUpstreamResolver(dns);
+          is_apple_tramp = is_apple_tramp or ConfigureAppleTrampoline(dns);
+        }
 
-        if (auto maybe_addr = conf.m_QueryBind)
+        if (auto maybe_addr = conf.m_QueryBind; maybe_addr and not is_apple_tramp)
         {
           SockAddr addr{*maybe_addr};
           std::string host{addr.hostString()};
