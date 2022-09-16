@@ -113,9 +113,9 @@ namespace llarp::dns
     };
 
     /// Resolver_Base that uses libunbound
-    class Resolver : public Resolver_Base, public std::enable_shared_from_this<Resolver>
+    class Resolver final : public Resolver_Base, public std::enable_shared_from_this<Resolver>
     {
-      std::shared_ptr<ub_ctx> m_ctx;
+      ub_ctx* m_ctx = nullptr;
       std::weak_ptr<EventLoop> m_Loop;
 #ifdef _WIN32
       // windows is dumb so we do ub mainloop in a thread
@@ -179,7 +179,7 @@ namespace llarp::dns
         if (const auto port = dns.getPort(); port != 53)
           fmt::format_to(std::back_inserter(str), "@{}", port);
 
-        if (auto err = ub_ctx_set_fwd(m_ctx.get(), str.c_str()))
+        if (auto err = ub_ctx_set_fwd(m_ctx, str.c_str()))
         {
           throw std::runtime_error{
               fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
@@ -300,7 +300,7 @@ namespace llarp::dns
       void
       SetOpt(const std::string& key, const std::string& val)
       {
-        ub_ctx_set_option(m_ctx.get(), key.c_str(), val.c_str());
+        ub_ctx_set_option(m_ctx, key.c_str(), val.c_str());
       }
 
       // Wrapper around the above that takes 3+ arguments: the 2nd arg gets formatted with the
@@ -312,24 +312,21 @@ namespace llarp::dns
         SetOpt(key, fmt::format(format, std::forward<FmtArgs>(args)...));
       }
 
+      // Copy of the DNS config (a copy because on some platforms, like Apple, we change the applied
+      // upstream DNS settings when turning on/off exit mode).
       llarp::DnsConfig m_conf;
 
      public:
       explicit Resolver(const EventLoop_ptr& loop, llarp::DnsConfig conf)
-          : m_ctx{::ub_ctx_create(), ::ub_ctx_delete}, m_Loop{loop}, m_conf{std::move(conf)}
+          : m_Loop{loop}, m_conf{std::move(conf)}
       {
         Up(m_conf);
       }
 
-#ifdef _WIN32
-      virtual ~Resolver()
+      ~Resolver() override
       {
-        running = false;
-        runner.join();
+        Down();
       }
-#else
-      virtual ~Resolver() = default;
-#endif
 
       std::string_view
       ResolverName() const override
@@ -346,6 +343,10 @@ namespace llarp::dns
       void
       Up(const llarp::DnsConfig& conf)
       {
+        if (m_ctx)
+          throw std::logic_error{"Internal error: attempt to Up() dns server multiple times"};
+
+        m_ctx = ::ub_ctx_create();
         // set libunbound settings
 
         SetOpt("do-tcp:", "no");
@@ -357,7 +358,7 @@ namespace llarp::dns
         for (const auto& file : conf.m_hostfiles)
         {
           const auto str = file.u8string();
-          if (auto ret = ub_ctx_hosts(m_ctx.get(), str.c_str()))
+          if (auto ret = ub_ctx_hosts(m_ctx, str.c_str()))
           {
             throw std::runtime_error{
                 fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
@@ -367,15 +368,14 @@ namespace llarp::dns
         ConfigureUpstream(conf);
 
         // set async
-        ub_ctx_async(m_ctx.get(), 1);
+        ub_ctx_async(m_ctx, 1);
         // setup mainloop
 #ifdef _WIN32
         running = true;
-        runner = std::thread{[this, ctx = std::weak_ptr{m_ctx}]() {
+        runner = std::thread{[this]() {
           while (running)
           {
-            if (auto c = ctx.lock())
-              ub_wait(c.get());
+            ub_wait(ctx);
             std::this_thread::sleep_for(10ms);
           }
           if (auto c = ctx.lock())
@@ -386,10 +386,9 @@ namespace llarp::dns
         {
           if (auto loop_ptr = loop->MaybeGetUVWLoop())
           {
-            m_Poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx.get()));
-            m_Poller->on<uvw::PollEvent>([ptr = std::weak_ptr{m_ctx}](auto&, auto&) {
-              if (auto ctx = ptr.lock())
-                ub_process(ctx.get());
+            m_Poller = loop_ptr->resource<uvw::PollHandle>(ub_fd(m_ctx));
+            m_Poller->on<uvw::PollEvent>([this](auto&, auto&) {
+              ub_process(m_ctx);
             });
             m_Poller->start(uvw::PollHandle::Event::READABLE);
             return;
@@ -400,15 +399,19 @@ namespace llarp::dns
       }
 
       void
-      Down()
+      Down() override
       {
 #ifdef _WIN32
-        running = false;
-        runner.join();
+        if (running.exchange(false))
+          runner.join();
 #else
-        m_Poller->close();
+        if (m_Poller)
+          m_Poller->close();
 #endif
-        m_ctx.reset();
+        if (m_ctx) {
+          ::ub_ctx_delete(m_ctx);
+          m_ctx = nullptr;
+        }
       }
 
       int
@@ -418,18 +421,12 @@ namespace llarp::dns
       }
 
       void
-      ResetInternalState(std::optional<std::vector<SockAddr>> replace_upstream) override
+      ResetResolver(std::optional<std::vector<SockAddr>> replace_upstream) override
       {
         Down();
         if (replace_upstream)
-          m_conf.m_upstreamDNS = *replace_upstream;
+          m_conf.m_upstreamDNS = std::move(*replace_upstream);
         Up(m_conf);
-      }
-
-      void
-      CancelPendingQueries() override
-      {
-        Down();
       }
 
       bool
@@ -485,7 +482,7 @@ namespace llarp::dns
         }
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
-                m_ctx.get(),
+                m_ctx,
                 q.Name().c_str(),
                 q.qtype,
                 q.qclass,
@@ -642,7 +639,7 @@ namespace llarp::dns
     for (const auto& resolver : m_Resolvers)
     {
       if (auto ptr = resolver.lock())
-        ptr->CancelPendingQueries();
+        ptr->Down();
     }
   }
 
@@ -652,7 +649,7 @@ namespace llarp::dns
     for (const auto& resolver : m_Resolvers)
     {
       if (auto ptr = resolver.lock())
-        ptr->ResetInternalState();
+        ptr->ResetResolver();
     }
   }
 

@@ -31,10 +31,10 @@ namespace llarp::apple
     }
 
     if (enable)
-      saved_upstream_dns =
-          tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, huint16_t{dns_trampoline_port}}});
+      tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, {dns_trampoline_port}}});
     else
-      tun->ReconfigureDNS(std::move(saved_upstream_dns));
+      tun->ReconfigureDNS(router->GetConfig()->dns.m_upstreamDNS);
+
     trampoline_active = enable;
   }
 

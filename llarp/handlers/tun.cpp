@@ -260,7 +260,7 @@ namespace llarp
         m_DNS->Reset();
     }
 
-    std::vector<SockAddr>
+    void
     TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
     {
       if (m_DNS)
@@ -268,10 +268,9 @@ namespace llarp
         for (auto weak : m_DNS->GetAllResolvers())
         {
           if (auto ptr = weak.lock())
-            ptr->ResetInternalState(servers);
+            ptr->ResetResolver(servers);
         }
       }
-      return servers;
     }
 
     bool
@@ -903,7 +902,7 @@ namespace llarp
       return true;
     }
 
-    void TunEndpoint::ResetInternalState(std::optional<std::vector<SockAddr>>)
+    void TunEndpoint::ResetInternalState()
     {
       service::Endpoint::ResetInternalState();
     }

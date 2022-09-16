@@ -174,16 +174,17 @@ namespace llarp::dns
     virtual std::string_view
     ResolverName() const = 0;
 
-    /// reset state, replace upstream info with new info if desired
+    /// reset the resolver state, optionally replace upstream info with new info.  The default base
+    /// implementation does nothing.
     virtual void
-    ResetInternalState(std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt)
+    ResetResolver([[maybe_unused]] std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt)
     {
-      (void)replace_upstream;
-    };
+    }
 
-    /// cancel all pending requests and ceace further operation
+    /// cancel all pending requests and cease further operation.  Default operation is a no-op.
     virtual void
-    CancelPendingQueries(){};
+    Down(){}
+
     /// attempt to handle a dns message
     /// returns true if we consumed this query and it should not be processed again
     virtual bool
@@ -201,7 +202,7 @@ namespace llarp::dns
       (void)to;
       (void)from;
       return false;
-    };
+    }
   };
 
   // Base class for DNS proxy

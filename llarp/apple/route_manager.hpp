@@ -48,7 +48,6 @@ namespace llarp::apple
    private:
     llarp::Context& context;
     bool trampoline_active = false;
-    std::vector<llarp::SockAddr> saved_upstream_dns;
     void
     check_trampoline(bool enable);
 
