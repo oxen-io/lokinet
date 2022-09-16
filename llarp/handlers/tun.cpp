@@ -67,7 +67,7 @@ namespace llarp
           : m_Reply{std::move(reply)}, m_OurIP{std::move(our_ip)}, m_Config{std::move(conf)}
       {}
 
-       ~DnsInterceptor() override = default;
+      ~DnsInterceptor() override = default;
 
       void
       SendTo(const SockAddr& to, const SockAddr& from, OwnedBuffer buf) const override
@@ -91,14 +91,16 @@ namespace llarp
       bool
       WouldLoop(const SockAddr& to, const SockAddr& from) const override
       {
-          if constexpr (platform::is_apple) {
-        // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send data
-        // through the tunnel we have to proxy DNS requests through Apple APIs (and so our actual
-        // upstream DNS won't be set in our resolvers, which is why the vanilla WouldLoop won't work
-        // for us).  However when active the mac also only queries the main tunnel IP for DNS, so we
-        // consider anything else to be upstream-bound DNS to let it through the tunnel.
-        return to.getIP() != m_OurIP;
-          }
+        if constexpr (platform::is_apple)
+        {
+          // DNS on Apple is a bit weird because in order for the NetworkExtension itself to send
+          // data through the tunnel we have to proxy DNS requests through Apple APIs (and so our
+          // actual upstream DNS won't be set in our resolvers, which is why the vanilla WouldLoop
+          // won't work for us).  However when active the mac also only queries the main tunnel IP
+          // for DNS, so we consider anything else to be upstream-bound DNS to let it through the
+          // tunnel.
+          return to.getIP() != m_OurIP;
+        }
         else if (auto maybe_addr = m_Config.m_QueryBind)
         {
           const auto& addr = *maybe_addr;
@@ -261,7 +263,14 @@ namespace llarp
     std::vector<SockAddr>
     TunEndpoint::ReconfigureDNS(std::vector<SockAddr> servers)
     {
-      // TODO: implement me
+      if (m_DNS)
+      {
+        for (auto weak : m_DNS->GetAllResolvers())
+        {
+          if (auto ptr = weak.lock())
+            ptr->ResetInternalState(servers);
+        }
+      }
       return servers;
     }
 

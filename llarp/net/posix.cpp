@@ -22,7 +22,6 @@
 
 namespace llarp::net
 {
-
   class Platform_Impl : public Platform
   {
     template <typename Visit_t>

@@ -174,9 +174,12 @@ namespace llarp::dns
     virtual std::string_view
     ResolverName() const = 0;
 
-    /// reset state
+    /// reset state, replace upstream info with new info if desired
     virtual void
-    ResetInternalState(){};
+    ResetInternalState(std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt)
+    {
+      (void)replace_upstream;
+    };
 
     /// cancel all pending requests and ceace further operation
     virtual void

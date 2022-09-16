@@ -25,9 +25,6 @@ namespace llarp
       }
 
       void
-      ResetInternalState() override{};
-
-      void
       CancelPendingQueries() override{};
 
       bool

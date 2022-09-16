@@ -400,9 +400,11 @@ namespace llarp::dns
       }
 
       void
-      ResetInternalState() override
+      ResetInternalState(std::optional<std::vector<SockAddr>> replace_upstream) override
       {
         Down();
+        if (replace_upstream)
+          m_conf.m_upstreamDNS = *replace_upstream;
         Up(m_conf);
       }
 
