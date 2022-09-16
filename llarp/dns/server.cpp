@@ -171,6 +171,115 @@ namespace llarp::dns
         query->SendReply(std::move(pkt));
       }
 
+      void ConfigureUpstream(const llarp::DnsConfig& conf)
+      {
+        auto* ctx = m_ctx.get();
+
+        if constexpr (platform::is_apple)
+        {
+          // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
+          // because, from within the network extension, macOS ignores setting the tunnel as the
+          // default route and would leak all DNS; instead we have to bounce things through the
+          // objective C trampoline code (which is what actually handles the upstream querying) so
+          // that it can call into Apple's special snowflake API to set up a socket that has the
+          // magic Apple snowflake sauce added on top so that it actually routes through the tunnel
+          // instead of around it.
+          //
+          // This behaviour is all carefully and explicitly documented by Apple with plenty of
+          // examples and other exposition, of course, just like all of their wonderful new APIs to
+          // reinvent standard unix interfaces.
+
+          // Not at all clear why this is needed but without it we get "send failed: Can't
+          // assign requested address" when unbound tries to connect to the localhost address
+          // using a source address of 0.0.0.0.  Yay apple.
+          ub_ctx_set_option(ctx, "outgoing-interface:", "127.0.0.1");
+
+          // The trampoline expects just a single source port (and sends everything back to it)
+          ub_ctx_set_option(ctx, "outgoing-range:", "1");
+          ub_ctx_set_option(ctx, "outgoing-port-avoid:", "0-65535");
+          ub_ctx_set_option(
+              ctx,
+              "outgoing-port-permit:",
+              std::to_string(apple::dns_trampoline_source_port).c_str());
+
+          return;
+        }
+
+        // set up forward dns
+        for (const auto& dns : conf.m_upstreamDNS)
+        {
+          std::string str = dns.hostString();
+
+          if (const auto port = dns.getPort(); port != 53)
+            fmt::format_to(std::back_inserter(str), "@{}", port);
+
+          log::critical(logcat, "Using upstream dns {}", str);
+
+          if (auto err = ub_ctx_set_fwd(ctx, str.c_str()))
+          {
+            throw std::runtime_error{
+                fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
+          }
+
+        }
+
+        if (auto maybe_addr = conf.m_QueryBind)
+        {
+          SockAddr addr{*maybe_addr};
+          std::string host{addr.hostString()};
+
+          if (addr.getPort() == 0)
+          {
+            // unbound manages their own sockets because of COURSE it does. so we find an open port
+            // on our system and use it so we KNOW what it is before giving it to unbound to
+            // explicitly bind to JUST that port.
+
+            auto fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#ifdef _WIN32
+            if (fd == INVALID_SOCKET)
+#else
+            if (fd == -1)
+#endif
+            {
+              throw std::invalid_argument{
+                  fmt::format("Failed to create UDP socket for unbound: {}", strerror(errno))};
+            }
+
+#ifdef _WIN32
+#define CLOSE closesocket
+#else
+#define CLOSE close
+#endif
+            if (0 != bind(fd, static_cast<const sockaddr*>(addr), addr.sockaddr_len()))
+            {
+              CLOSE(fd);
+              throw std::invalid_argument{
+                  fmt::format("Failed to bind UDP socket for unbound: {}", strerror(errno))};
+            }
+            struct sockaddr_storage sas;
+            auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
+            socklen_t sa_len = sizeof(sas);
+            int rc = getsockname(fd, sa, &sa_len);
+            CLOSE(fd);
+#undef CLOSE
+            if (rc != 0)
+            {
+              throw std::invalid_argument{
+                  fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
+            }
+            addr = SockAddr{*sa};
+          }
+          m_LocalAddr = addr;
+
+          log::info(logcat, "sending dns queries from {}:{}", host, addr.getPort());
+          // set up query bind port if needed
+          SetOpt("outgoing-interface:", host);
+          SetOpt("outgoing-range:", "1");
+          SetOpt("outgoing-port-avoid:", "0-65535");
+          SetOpt("outgoing-port-permit:", std::to_string(addr.getPort()));
+        }
+      }
+
       void
       SetOpt(std::string key, std::string val)
       {
@@ -229,108 +338,7 @@ namespace llarp::dns
           }
         }
 
-        // set up forward dns
-        for (const auto& dns : conf.m_upstreamDNS)
-        {
-          std::string str = dns.hostString();
-
-          if (const auto port = dns.getPort(); port != 53)
-            fmt::format_to(std::back_inserter(str), "@{}", port);
-
-          log::info(logcat, "Using upstream dns {}", str);
-
-          auto* ctx = m_ctx.get();
-          if (auto err = ub_ctx_set_fwd(ctx, str.c_str()))
-          {
-            throw std::runtime_error{
-                fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
-          }
-
-          if constexpr (platform::is_apple)
-          {
-            // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
-            // because, from within the network extension, macOS ignores setting the tunnel as the
-            // default route and would leak all DNS; instead we have to bounce things through the
-            // objective C trampoline code so that it can call into Apple's special snowflake API to
-            // set up a socket that has the magic Apple snowflake sauce added on top so that it
-            // actually routes through the tunnel instead of around it.
-            //
-            // This behaviour is all carefully and explicitly documented by Apple with plenty of
-            // examples and other exposition, of course, just like all of their wonderful new APIs
-            // to reinvent standard unix interfaces.
-            if (dns.hostString() == "127.0.0.1" && dns.getPort() == apple::dns_trampoline_port)
-            {
-              // Not at all clear why this is needed but without it we get "send failed: Can't
-              // assign requested address" when unbound tries to connect to the localhost address
-              // using a source address of 0.0.0.0.  Yay apple.
-              ub_ctx_set_option(ctx, "outgoing-interface:", "127.0.0.1");
-
-              // The trampoline expects just a single source port (and sends everything back to it)
-              ub_ctx_set_option(ctx, "outgoing-range:", "1");
-              ub_ctx_set_option(ctx, "outgoing-port-avoid:", "0-65535");
-              ub_ctx_set_option(
-                  ctx,
-                  "outgoing-port-permit:",
-                  std::to_string(apple::dns_trampoline_source_port).c_str());
-            }
-          }
-        }
-
-        if (auto maybe_addr = conf.m_QueryBind)
-        {
-          SockAddr addr{*maybe_addr};
-          std::string host{addr.hostString()};
-
-          if (addr.getPort() == 0)
-          {
-            // unbound manages their own sockets because of COURSE it does. so we find an open port
-            // on our system and use it so we KNOW what it is before giving it to unbound to
-            // explicitly bind to JUST that port.
-
-            auto fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-#ifdef _WIN32
-            if (fd == INVALID_SOCKET)
-#else
-            if (fd == -1)
-#endif
-            {
-              throw std::invalid_argument{
-                  fmt::format("Failed to create UDP socket for unbound: {}", strerror(errno))};
-            }
-
-#ifdef _WIN32
-#define CLOSE closesocket
-#else
-#define CLOSE close
-#endif
-            if (0 != bind(fd, static_cast<const sockaddr*>(addr), addr.sockaddr_len()))
-            {
-              CLOSE(fd);
-              throw std::invalid_argument{
-                  fmt::format("Failed to bind UDP socket for unbound: {}", strerror(errno))};
-            }
-            struct sockaddr_storage sas;
-            auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
-            socklen_t sa_len = sizeof(sas);
-            int rc = getsockname(fd, sa, &sa_len);
-            CLOSE(fd);
-#undef CLOSE
-            if (rc != 0)
-            {
-              throw std::invalid_argument{
-                  fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
-            }
-            addr = SockAddr{*sa};
-          }
-          m_LocalAddr = addr;
-
-          log::info(logcat, "sending dns queries from {}:{}", host, addr.getPort());
-          // set up query bind port if needed
-          SetOpt("outgoing-interface:", host);
-          SetOpt("outgoing-range:", "1");
-          SetOpt("outgoing-port-avoid:", "0-65535");
-          SetOpt("outgoing-port-permit:", std::to_string(addr.getPort()));
-        }
+        ConfigureUpstream(conf);
 
         // set async
         ub_ctx_async(m_ctx.get(), 1);
