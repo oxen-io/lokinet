@@ -903,8 +903,7 @@ namespace llarp
       return true;
     }
 
-    void
-    TunEndpoint::ResetInternalState()
+    void TunEndpoint::ResetInternalState(std::optional<std::vector<SockAddr>>)
     {
       service::Endpoint::ResetInternalState();
     }

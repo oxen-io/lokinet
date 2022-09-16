@@ -202,7 +202,8 @@ namespace llarp
       ObtainIPForAddr(std::variant<service::Address, RouterID> addr) override;
 
       void
-      ResetInternalState() override;
+      ResetInternalState(
+          std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt) override;
 
      protected:
       struct WritePacket
