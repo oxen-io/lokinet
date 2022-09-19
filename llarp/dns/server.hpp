@@ -177,13 +177,14 @@ namespace llarp::dns
     /// reset the resolver state, optionally replace upstream info with new info.  The default base
     /// implementation does nothing.
     virtual void
-    ResetResolver([[maybe_unused]] std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt)
-    {
-    }
+    ResetResolver(
+        [[maybe_unused]] std::optional<std::vector<SockAddr>> replace_upstream = std::nullopt)
+    {}
 
     /// cancel all pending requests and cease further operation.  Default operation is a no-op.
     virtual void
-    Down(){}
+    Down()
+    {}
 
     /// attempt to handle a dns message
     /// returns true if we consumed this query and it should not be processed again

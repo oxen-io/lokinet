@@ -15,12 +15,10 @@ namespace llarp::apple
 
     /// These are called for poking route holes, but we don't have to do that at all on macos
     /// because the appex isn't subject to its own rules.
-    void
-    AddRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
+    void AddRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
     {}
 
-    void
-    DelRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
+    void DelRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
     {}
 
     void
