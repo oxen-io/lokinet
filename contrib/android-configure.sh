@@ -26,6 +26,7 @@ for abi in $build_abis; do
         -DANDROID_ABI=$abi \
         -DANDROID_ARM_MODE=arm \
         -DANDROID_PLATFORM=android-23 \
+        -DANDROID_API=23 \
         -DANDROID_STL=c++_static \
         -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
         -DBUILD_STATIC_DEPS=ON \
@@ -46,7 +47,7 @@ for abi in $build_abis; do
         -DSUBMODULE_CHECK=OFF \
         -DWITH_LTO=OFF \
         -DCMAKE_BUILD_TYPE=Release \
-        $@
+        "$@"
     cd -
 done
 rm -f $build/Makefile

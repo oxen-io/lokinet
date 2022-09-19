@@ -61,7 +61,7 @@ set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
 set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
   CACHE STRING "zlib source hash")
-  
+
 set(CURL_VERSION 7.83.1 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
@@ -223,7 +223,7 @@ build_external(libuv
 add_static_target(libuv libuv_external libuv.a)
 target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
 
-  
+
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
   BUILD_BYPRODUCTS
@@ -236,6 +236,7 @@ add_static_target(zlib zlib_external libz.a)
 set(openssl_system_env "")
 set(openssl_arch "")
 set(openssl_configure_command ./config)
+set(openssl_flags "CFLAGS=${deps_CFLAGS}")
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
     set(openssl_arch mingw64)
@@ -245,7 +246,8 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ANDROID)
     set(openssl_arch android-${android_machine})
-    set(openssl_system_env LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
+    set(openssl_system_env LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar} ANDROID_NDK_ROOT=${CMAKE_ANDROID_NDK} "PATH=${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}")
+    list(APPEND openssl_flags "CPPFLAGS=-D__ANDROID_API__=${ANDROID_API}")
     set(openssl_extra_opts no-asm)
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_arch linux-mips64)
@@ -274,8 +276,9 @@ build_external(openssl
     --prefix=${DEPS_DESTDIR} --libdir=lib ${openssl_extra_opts}
     no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl3
-    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
+    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic ${openssl_flags}
     ${openssl_arch}
+  BUILD_COMMAND ${CMAKE_COMMAND} -E env ${openssl_system_env} ${_make}
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
