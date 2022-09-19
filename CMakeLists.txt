@@ -181,11 +181,19 @@ if(NOT TARGET sodium)
   export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
 endif()
 
-add_compile_options(
-    "$<$<COMPILE_LANGUAGE:C,CXX>:-Wall;-Wextra;-Wno-unknown-pragmas;-Wno-unused-function;-Werror=vla>"
-    "$<$<COMPILE_LANGUAGE:C,CXX>:-W$<IF:$<BOOL:${WARN_DEPRECATED}>,,no->deprecated-declarations>"
-    "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Wno-unknown-warning-option>"
-)
+set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werror=vla)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  list(APPEND warning_flags -Wno-unknown-warning-option)
+endif()
+if(WARN_DEPRECATED)
+  list(APPEND warning_flags -Wdeprecated-declarations)
+else()
+  list(APPEND warning_flags -Wno-deprecated-declarations)
+endif()
+
+# If we blindly add these directly as compile_options then they get passed to swiftc on Apple and
+# break, so we use a generate expression to set them only for C++/C/ObjC
+add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:OBJC>>:${warning_flags}>")
 
 if(XSAN)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=${XSAN} -fno-omit-frame-pointer -fno-sanitize-recover")
