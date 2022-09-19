@@ -55,6 +55,5 @@ set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "${_extra_install}")
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "${_extra_uninstall}")
 set(CPACK_NSIS_CREATE_ICONS_EXTRA "${_extra_create_icons}")
 set(CPACK_NSIS_DELETE_ICONS_EXTRA "${_extra_delete_icons}")
-set(CPACK_NSIS_MODIFY_PATH ON)
 
 set(CPACK_NSIS_COMPRESSOR "/SOLID lzma")
