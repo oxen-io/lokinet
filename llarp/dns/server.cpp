@@ -375,11 +375,10 @@ namespace llarp::dns
         runner = std::thread{[this]() {
           while (running)
           {
-            ub_wait(ctx);
+            ub_wait(m_ctx);
             std::this_thread::sleep_for(10ms);
           }
-          if (auto c = ctx.lock())
-            ub_process(c.get());
+          ub_process(m_ctx);
         }};
 #else
         if (auto loop = m_Loop.lock())
