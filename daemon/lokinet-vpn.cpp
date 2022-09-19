@@ -74,8 +74,8 @@ main(int argc, char* argv[])
   oxenmq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
   std::string endpoint = "default";
-  std::optional<std::string> token;
-  std::string range = "::/0";
+  std::string token;
+  std::optional<std::string> range;
   oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
@@ -216,20 +216,11 @@ main(int argc, char* argv[])
   }
   if (goUp)
   {
-    std::optional<nlohmann::json> maybe_result;
-    if (token.has_value())
-    {
-      maybe_result = LMQ_Request(
-          lmq,
-          connID,
-          "llarp.exit",
-          nlohmann::json{{"exit", exitAddress}, {"range", range}, {"token", *token}});
-    }
-    else
-    {
-      maybe_result = LMQ_Request(
-          lmq, connID, "llarp.exit", nlohmann::json{{"exit", exitAddress}, {"range", range}});
-    }
+    nlohmann::json opts{{"exit", exitAddress}, {"token", token}};
+    if (range)
+      opts["range"] = *range;
+
+    auto maybe_result = LMQ_Request(lmq, connID, "llarp.exit", opts);
 
     if (not maybe_result.has_value())
     {
@@ -245,7 +236,10 @@ main(int argc, char* argv[])
   }
   if (goDown)
   {
-    LMQ_Request(lmq, connID, "llarp.exit", nlohmann::json{{"range", range}, {"unmap", true}});
+    nlohmann::json opts{{"unmap", true}};
+    if (range)
+      opts["range"] = *range;
+    LMQ_Request(lmq, connID, "llarp.exit", std::move(opts));
   }
 
   return 0;
