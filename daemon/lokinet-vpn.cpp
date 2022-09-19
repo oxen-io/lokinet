@@ -16,11 +16,11 @@
 #include <sys/wait.h>
 #endif
 
-/// do a oxenmq request on an lmq instance blocking style
+/// do a oxenmq request on an omq instance blocking style
 /// returns a json object parsed from the result
 std::optional<nlohmann::json>
-LMQ_Request(
-    oxenmq::OxenMQ& lmq,
+OMQ_Request(
+    oxenmq::OxenMQ& omq,
     const oxenmq::ConnectionID& id,
     std::string_view method,
     std::optional<nlohmann::json> args = std::nullopt)
@@ -37,11 +37,11 @@ LMQ_Request(
   };
   if (args.has_value())
   {
-    lmq.request(id, method, handleRequest, args->dump());
+    omq.request(id, method, handleRequest, args->dump());
   }
   else
   {
-    lmq.request(id, method, handleRequest);
+    omq.request(id, method, handleRequest);
   }
   auto ftr = result_promise.get_future();
   const auto str = ftr.get();
@@ -147,17 +147,17 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  oxenmq::OxenMQ lmq{
+  oxenmq::OxenMQ omq{
       [](oxenmq::LogLevel lvl, const char* file, int line, std::string msg) {
         std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
       },
       logLevel};
 
-  lmq.start();
+  omq.start();
 
   std::promise<bool> connectPromise;
 
-  const auto connID = lmq.connect_remote(
+  const auto connID = omq.connect_remote(
       rpcURL,
       [&connectPromise](auto) { connectPromise.set_value(true); },
       [&connectPromise](auto, std::string_view msg) {
@@ -173,7 +173,7 @@ main(int argc, char* argv[])
 
   if (killDaemon)
   {
-    const auto maybe = LMQ_Request(lmq, connID, "llarp.halt");
+    const auto maybe = OMQ_Request(lmq, connID, "llarp.halt");
     if (not maybe.has_value())
     {
       std::cout << "call to llarp.admin.die failed" << std::endl;
@@ -184,7 +184,7 @@ main(int argc, char* argv[])
 
   if (printStatus)
   {
-    const auto maybe_status = LMQ_Request(lmq, connID, "llarp.status");
+    const auto maybe_status = OMQ_Request(lmq, connID, "llarp.status");
     if (not maybe_status.has_value())
     {
       std::cout << "call to llarp.status failed" << std::endl;
@@ -220,7 +220,7 @@ main(int argc, char* argv[])
     if (range)
       opts["range"] = *range;
 
-    auto maybe_result = LMQ_Request(lmq, connID, "llarp.exit", opts);
+    auto maybe_result = OMQ_Request(omq, connID, "llarp.exit", opts);
 
     if (not maybe_result.has_value())
     {
@@ -239,7 +239,7 @@ main(int argc, char* argv[])
     nlohmann::json opts{{"unmap", true}};
     if (range)
       opts["range"] = *range;
-    LMQ_Request(lmq, connID, "llarp.exit", std::move(opts));
+    OMQ_Request(omq, connID, "llarp.exit", std::move(opts));
   }
 
   return 0;
