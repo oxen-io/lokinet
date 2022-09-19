@@ -125,21 +125,21 @@ if(ANDROID)
     set(android_toolchain_prefix x86_64)
     set(android_toolchain_suffix linux-android)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES x86)
-    set(android_machine i686)
+    set(android_machine x86)
     set(cross_host "--host=i686-linux-android")
     set(android_compiler_prefix i686)
     set(android_compiler_suffix linux-android23)
     set(android_toolchain_prefix i686)
     set(android_toolchain_suffix linux-android)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES armeabi-v7a)
-    set(android_machine armv7)
+    set(android_machine arm)
     set(cross_host "--host=armv7a-linux-androideabi")
     set(android_compiler_prefix armv7a)
     set(android_compiler_suffix linux-androideabi23)
     set(android_toolchain_prefix arm)
     set(android_toolchain_suffix linux-androideabi)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES arm64-v8a)
-    set(android_machine aarch64)
+    set(android_machine arm64)
     set(cross_host "--host=aarch64-linux-android")
     set(android_compiler_prefix aarch64)
     set(android_compiler_suffix linux-android23)
@@ -234,35 +234,38 @@ add_static_target(zlib zlib_external libz.a)
 
 
 set(openssl_system_env "")
+set(openssl_arch "")
 set(openssl_configure_command ./config)
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+    set(openssl_arch mingw64)
+    set(openssl_system_env RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW32 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+    set(openssl_arch mingw)
+    set(openssl_system_env RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ANDROID)
-    set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
+    set(openssl_arch android-${android_machine})
+    set(openssl_system_env LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
-    set(openssl_configure_command ./Configure linux64-mips64)
+    set(openssl_arch linux-mips64)
   elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mips)
+    set(openssl_arch linux-mips32)
   elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mipsel)
+    set(openssl_arch linux-mips)
   elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
     # cross compile arm64
-    set(openssl_system_env SYSTEM=Linux MACHINE=aarch64)
+    set(openssl_arch linux-aarch64)
   elseif(ARCH_TRIPLET MATCHES arm-linux)
     # cross compile armhf
-    set(openssl_system_env SYSTEM=Linux MACHINE=armv4)
+    set(openssl_arch linux-armv4)
   elseif(ARCH_TRIPLET MATCHES powerpc64le)
     # cross compile ppc64le
-    set(openssl_system_env SYSTEM=Linux MACHINE=ppc64le)
+    set(openssl_arch linux-ppc64le)
   endif()
 elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
-  set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
+  set(openssl_arch linux-armv4)
 endif()
 
 
@@ -270,8 +273,9 @@ build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
     --prefix=${DEPS_DESTDIR} --libdir=lib ${openssl_extra_opts}
     no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
-    no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
+    no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
+    ${openssl_arch}
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
