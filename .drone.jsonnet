@@ -278,7 +278,13 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh ' + ci_mirror_opts + (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') + codesign,
+        './contrib/mac-configure.sh ' + ci_mirror_opts + (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') + codesign,
+        'cd build-mac',
+        // We can't use the 'package' target here because making a .dmg requires an active logged in
+        // macos gui to invoke Finder to invoke the partitioning tool to create a partitioned (!)
+        // disk image.  Most likely the GUI is required because if you lose sight of how pretty the
+        // surface of macOS is you might see how ugly the insides are.
+        'ninja -j' + jobs + ' assemble_gui',
       ] + extra_cmds,
     },
   ],
