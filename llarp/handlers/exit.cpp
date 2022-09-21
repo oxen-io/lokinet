@@ -18,11 +18,7 @@ namespace llarp
   namespace handlers
   {
     ExitEndpoint::ExitEndpoint(std::string name, AbstractRouter* r)
-        : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(r->loop(), this))
-        , m_Name(std::move(name))
-        , m_LocalResolverAddr{"127.0.0.1:53"}
-        , m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
+        : m_Router(r), m_Name(std::move(name)), m_QUIC{std::make_shared<quic::TunnelManager>(*this)}
     {
       m_ShouldInitTun = true;
       m_QUIC = std::make_shared<quic::TunnelManager>(*this);
@@ -113,7 +109,7 @@ namespace llarp
           {
             if (not itr->second->LooksDead(Now()))
             {
-              if (itr->second->QueueInboundTraffic(ManagedBuffer{payload}, type))
+              if (itr->second->QueueInboundTraffic(payload.copy(), type))
                 return true;
             }
           }
@@ -121,10 +117,10 @@ namespace llarp
           if (not m_Router->PathToRouterAllowed(*rid))
             return false;
 
-          ObtainSNodeSession(*rid, [data = payload.copy(), type](auto session) {
+          ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
             if (session and session->IsReady())
             {
-              session->SendPacketToRemote(data, type);
+              session->SendPacketToRemote(std::move(pkt), type);
             }
           });
         }
@@ -209,6 +205,22 @@ namespace llarp
           return true;
       }
       return false;
+    }
+
+    bool
+    ExitEndpoint::MaybeHookDNS(
+        std::shared_ptr<dns::PacketSource_Base> source,
+        const dns::Message& query,
+        const SockAddr& to,
+        const SockAddr& from)
+    {
+      if (not ShouldHookDNSMessage(query))
+        return false;
+
+      auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
+      if (not HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
+        job->Cancel();
+      return true;
     }
 
     bool
@@ -362,20 +374,24 @@ namespace llarp
     {
       while (not m_InetToNetwork.empty())
       {
-        net::IPPacket pkt{m_InetToNetwork.top()};
-        m_InetToNetwork.pop();
+        auto& top = m_InetToNetwork.top();
 
-        PubKey pk;
+        // get a session by public key
+        std::optional<PubKey> maybe_pk;
         {
-          auto itr = m_IPToKey.find(pkt.dstv6());
-          if (itr == m_IPToKey.end())
-          {
-            // drop
-            LogWarn(Name(), " dropping packet, has no session at ", pkt.dstv6());
-            continue;
-          }
-          pk = itr->second;
+          auto itr = m_IPToKey.find(top.dstv6());
+          if (itr != m_IPToKey.end())
+            maybe_pk = itr->second;
         }
+
+        auto buf = const_cast<net::IPPacket&>(top).steal();
+        m_InetToNetwork.pop();
+        // we have no session for public key so drop
+        if (not maybe_pk)
+          continue;  // we are in a while loop
+
+        const auto& pk = *maybe_pk;
+
         // check if this key is a service node
         if (m_SNodeKeys.count(pk))
         {
@@ -385,13 +401,14 @@ namespace llarp
           auto itr = m_SNodeSessions.find(pk);
           if (itr != m_SNodeSessions.end())
           {
-            itr->second->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::TrafficV4);
+            itr->second->SendPacketToRemote(std::move(buf), service::ProtocolType::TrafficV4);
+            // we are in a while loop
             continue;
           }
         }
-        auto tryFlushingTraffic = [&](exit::Endpoint* const ep) -> bool {
-          if (!ep->QueueInboundTraffic(
-                  ManagedBuffer{pkt.Buffer()}, service::ProtocolType::TrafficV4))
+        auto tryFlushingTraffic =
+            [this, buf = std::move(buf), pk](exit::Endpoint* const ep) -> bool {
+          if (!ep->QueueInboundTraffic(buf, service::ProtocolType::TrafficV4))
           {
             LogWarn(
                 Name(),
@@ -439,13 +456,14 @@ namespace llarp
       m_IPToKey[ip] = us;
       m_IPActivity[ip] = std::numeric_limits<llarp_time_t>::max();
       m_SNodeKeys.insert(us);
+
       if (m_ShouldInitTun)
       {
         vpn::InterfaceInfo info;
         info.ifname = m_ifname;
-        info.addrs.emplace(m_OurRange);
+        info.addrs.emplace_back(m_OurRange);
 
-        m_NetIf = GetRouter()->GetVPNPlatform()->ObtainInterface(std::move(info), m_Router);
+        m_NetIf = GetRouter()->GetVPNPlatform()->CreateInterface(std::move(info), m_Router);
         if (not m_NetIf)
         {
           llarp::LogError("Could not create interface");
@@ -459,9 +477,12 @@ namespace llarp
         }
 
         GetRouter()->loop()->add_ticker([this] { Flush(); });
+#ifndef _WIN32
+        m_Resolver = std::make_shared<dns::Server>(
+            m_Router->loop(), m_DNSConf, if_nametoindex(m_ifname.c_str()));
+        m_Resolver->Start();
 
-        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr);
-        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers, {});
+#endif
       }
       return true;
     }
@@ -586,7 +607,7 @@ namespace llarp
             rc.srvRecords.clear();
             for (auto& record : srvRecords)
               rc.srvRecords.emplace_back(record);
-            // set the version to 1 because we have srv records
+            // set the verssion to 1 because we have srv records
             rc.version = 1;
             return rc;
           });
@@ -641,8 +662,8 @@ namespace llarp
     bool
     ExitEndpoint::QueueSNodePacket(const llarp_buffer_t& buf, huint128_t from)
     {
-      net::IPPacket pkt;
-      if (!pkt.Load(buf))
+      net::IPPacket pkt{buf.view_all()};
+      if (pkt.empty())
         return false;
       // rewrite ip
       if (m_UseV6)
@@ -698,13 +719,13 @@ namespace llarp
         return true;
       }
        */
+
+      m_DNSConf = dnsConfig;
+
       if (networkConfig.m_endpointType == "null")
       {
         m_ShouldInitTun = false;
       }
-
-      m_LocalResolverAddr = dnsConfig.m_bind;
-      m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
 
       m_OurRange = networkConfig.m_ifaddr;
       if (!m_OurRange.addr.h)
@@ -736,8 +757,6 @@ namespace llarp
           return llarp::SockAddr{ifaddr, huint16_t{port}};
         });
       }
-      // TODO: "exit-whitelist" and "exit-blacklist"
-      //       (which weren't originally implemented)
     }
 
     huint128_t

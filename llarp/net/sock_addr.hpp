@@ -74,6 +74,12 @@ namespace llarp
     bool
     operator==(const SockAddr& other) const;
 
+    bool
+    operator!=(const SockAddr& other) const
+    {
+      return not(*this == other);
+    };
+
     void
     fromString(std::string_view str, bool allow_port = true);
 
@@ -135,9 +141,16 @@ namespace llarp
       setPort(huint16_t{port});
     }
 
-    /// port is always returned in native (host) order
-    uint16_t
-    getPort() const;
+    /// get the port of this sockaddr in network order
+    net::port_t
+    port() const;
+
+    /// port is always returned in host order
+    inline uint16_t
+    getPort() const
+    {
+      return ToHost(port()).h;
+    }
 
     /// True if this stores an IPv6 address, false if IPv4.
     bool

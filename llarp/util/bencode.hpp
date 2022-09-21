@@ -55,7 +55,7 @@ namespace llarp
   BEncodeMaybeReadDictList(
       const char* k, List_t& item, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!BEncodeReadList(item, buf))
       {
@@ -71,7 +71,7 @@ namespace llarp
   BEncodeMaybeReadDictEntry(
       const char* k, Item_t& item, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!item.BDecode(buf))
       {
@@ -89,7 +89,7 @@ namespace llarp
   BEncodeMaybeReadDictInt(
       const char* k, Int_t& i, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       uint64_t read_i;
       if (!bencode_read_integer(buf, &read_i))
@@ -116,7 +116,7 @@ namespace llarp
       const llarp_buffer_t& key,
       llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!bencode_read_integer(buf, &item))
         return false;

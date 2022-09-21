@@ -5,7 +5,6 @@
 #include <chrono>
 #include <iterator>
 #include <charconv>
-
 #include <fmt/format.h>
 
 namespace llarp
@@ -140,5 +139,9 @@ namespace llarp
   /// Converts a duration into a human friendlier string.
   std::string
   friendly_duration(std::chrono::nanoseconds dur);
+
+  /// convert a "normal" string into a wide string
+  std::wstring
+  to_wide(std::string data);
 
 }  // namespace llarp

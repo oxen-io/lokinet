@@ -155,9 +155,13 @@ namespace llarp
 
   struct DnsConfig
   {
-    SockAddr m_bind;
+    bool m_raw_dns;
+    std::vector<SockAddr> m_bind;
     std::vector<SockAddr> m_upstreamDNS;
     std::vector<fs::path> m_hostfiles;
+    std::optional<SockAddr> m_QueryBind;
+
+    std::unordered_multimap<std::string, std::string> m_ExtraOpts;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -294,8 +298,12 @@ namespace llarp
     bool
     LoadDefault(bool isRelay);
 
+    bool
+    LoadConfigData(
+        std::string_view ini, std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+
     void
-    LoadOverrides();
+    LoadOverrides(ConfigDefinition& conf) const;
 
     std::vector<std::array<std::string, 3>> m_Additional;
     ConfigParser m_Parser;

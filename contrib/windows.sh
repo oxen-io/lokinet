@@ -6,9 +6,8 @@
 
 set -e
 set +x
-
-
 root="$(readlink -f $(dirname $0)/../)"
-cd "$root"
-./contrib/windows-configure.sh . build-windows "$@"
-make package -j${JOBS:-$(nproc)} -C build-windows
+mkdir -p $root/build/win32
+$root/contrib/windows-configure.sh $root $root/build/win32 "$@"
+make package -j${JOBS:-$(nproc)} -C $root/build/win32
+

@@ -84,9 +84,8 @@ extern "C"
   JNIEXPORT jint JNICALL
   Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
   {
-    auto ptr = GetImpl<llarp::Context>(env, self);
-    if (const auto& router = ptr->router; ptr and ptr->router)
-      return router->OutboundUDPSocket();
+    if (auto ptr = GetImpl<llarp::Context>(env, self); ptr and ptr->router)
+      return ptr->router->OutboundUDPSocket();
     return -1;
   }
 

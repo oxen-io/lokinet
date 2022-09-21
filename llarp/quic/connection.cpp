@@ -333,13 +333,11 @@ namespace llarp::quic
   extern "C" inline void
   ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
   {
+    std::array<char, 2048> buf{};
     va_list ap;
     va_start(ap, fmt);
-    if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
-    {
-      LogTrace{msg};
-      std::free(msg);
-    }
+    if (vsnprintf(buf.data(), buf.size(), fmt, ap) >= 0)
+      LogTrace(fmt::format("{}", buf.data()));
     va_end(ap);
   }
 #endif

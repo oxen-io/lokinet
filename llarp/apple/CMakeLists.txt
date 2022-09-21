@@ -18,12 +18,9 @@ target_sources(lokinet-platform PRIVATE vpn_platform.cpp vpn_interface.cpp route
 add_executable(lokinet-extension MACOSX_BUNDLE
   PacketTunnelProvider.m
   DNSTrampoline.m
-  )
+)
+
 enable_lto(lokinet-extension)
-target_link_libraries(lokinet-extension PRIVATE
-  liblokinet
-  ${COREFOUNDATION}
-  ${NETEXT})
 
 # -fobjc-arc enables automatic reference counting for objective-C code
 # -e _NSExtensionMain because the appex has that instead of a `main` function entry point, of course.
@@ -42,6 +39,11 @@ else()
     set(bundle_ext appex)
     set(product_type com.apple.product-type.app-extension)
 endif()
+
+target_link_libraries(lokinet-extension PRIVATE
+  lokinet-amalgum
+  ${COREFOUNDATION}
+  ${NETEXT})
 
 set_target_properties(lokinet-extension PROPERTIES
   BUNDLE TRUE

@@ -1,7 +1,9 @@
 #include "sock_addr.hpp"
+#include "ip_range.hpp"
 #include "address_info.hpp"
 #include "ip.hpp"
 #include "net_bits.hpp"
+#include "net.hpp"
 #include <llarp/util/str.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
@@ -11,11 +13,6 @@
 
 namespace llarp
 {
-  bool
-  operator==(const in6_addr& lh, const in6_addr& rh)
-  {
-    return memcmp(&lh, &rh, sizeof(in6_addr)) == 0;
-  }
   /// shared utility functions
   ///
 
@@ -112,7 +109,8 @@ namespace llarp
     else if (other.sa_family == AF_INET)
       *this = reinterpret_cast<const sockaddr_in&>(other);
     else
-      throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
+      throw std::invalid_argument{
+          fmt::format("Invalid sockaddr (not AF_INET or AF_INET6) was {}", other.sa_family)};
 
     return *this;
   }
@@ -149,7 +147,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
-    if (ipv6_is_mapped_ipv4(other.sin6_addr))
+    if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(
           other.sin6_addr.s6_addr[12],
@@ -172,9 +170,8 @@ namespace llarp
   SockAddr::operator=(const in6_addr& other)
   {
     init();
-
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
-    if (ipv6_is_mapped_ipv4(other))
+    if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
       m_addr4.sin_port = m_addr.sin6_port;
@@ -209,11 +206,8 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return memcmp(
-               m_addr.sin6_addr.s6_addr,
-               other.m_addr.sin6_addr.s6_addr,
-               sizeof(m_addr.sin6_addr.s6_addr))
-        < 0;
+    return (m_addr.sin6_addr < other.m_addr.sin6_addr)
+        or (m_addr.sin6_port < other.m_addr.sin6_port);
   }
 
   bool
@@ -294,10 +288,7 @@ namespace llarp
     // TODO: review
     if (isEmpty())
       return "";
-    std::string str = hostString();
-    str.append(1, ':');
-    str.append(std::to_string(getPort()));
-    return str;
+    return fmt::format("{}:{}", hostString(), port());
   }
 
   std::string
@@ -331,7 +322,7 @@ namespace llarp
   bool
   SockAddr::isIPv4() const
   {
-    return ipv6_is_mapped_ipv4(m_addr.sin6_addr);
+    return IPRange::V4MappedRange().Contains(asIPv6());
   }
   bool
   SockAddr::isIPv6() const
@@ -434,10 +425,10 @@ namespace llarp
     setPort(ToNet(port));
   }
 
-  uint16_t
-  SockAddr::getPort() const
+  net::port_t
+  SockAddr::port() const
   {
-    return ntohs(m_addr.sin6_port);
+    return net::port_t{m_addr.sin6_port};
   }
 
 }  // namespace llarp

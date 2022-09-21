@@ -53,6 +53,44 @@ namespace llarp::rpc
     return obj.dump();
   }
 
+  /// fake packet source that serializes repsonses back into dns
+
+  class DummyPacketSource : public dns::PacketSource_Base
+  {
+    std::function<void(std::optional<dns::Message>)> func;
+
+   public:
+    SockAddr dumb;
+
+    template <typename Callable>
+    DummyPacketSource(Callable&& f) : func{std::forward<Callable>(f)}
+    {}
+
+    bool
+    WouldLoop(const SockAddr&, const SockAddr&) const override
+    {
+      return false;
+    };
+
+    /// send packet with src and dst address containing buf on this packet source
+    void
+    SendTo(const SockAddr&, const SockAddr&, OwnedBuffer buf) const override
+    {
+      func(dns::MaybeParseDNSMessage(buf));
+    }
+
+    /// stop reading packets and end operation
+    void
+    Stop() override{};
+
+    /// returns the sockaddr we are bound on if applicable
+    std::optional<SockAddr>
+    BoundOn() const override
+    {
+      return std::nullopt;
+    }
+  };
+
   /// a function that replies to an rpc request
   using ReplyFunction_t = std::function<void(std::string)>;
 
@@ -478,8 +516,7 @@ namespace llarp::rpc
                   {
                     auto mapExit = [=](service::Address addr) mutable {
                       ep->MapExitRange(range, addr);
-                      r->routePoker().Enable();
-                      r->routePoker().Up();
+
                       bool shouldSendAuth = false;
                       if (token.has_value())
                       {
@@ -493,7 +530,7 @@ namespace llarp::rpc
                           reply(CreateJSONError("we dont have an exit?"));
                       };
                       auto onBadResult = [r, reply, ep, range](std::string reason) {
-                        r->routePoker().Down();
+                        r->routePoker()->Down();
                         ep->UnmapExitRange(range);
                         reply(CreateJSONError(reason));
                       };
@@ -576,7 +613,7 @@ namespace llarp::rpc
                   }
                   else if (not map)
                   {
-                    r->routePoker().Down();
+                    r->routePoker()->Down();
                     ep->UnmapExitRange(range);
                     reply(CreateJSONResponse("OK"));
                   }
@@ -606,19 +643,23 @@ namespace llarp::rpc
 
                 dns::Message msg{dns::Question{qname, qtype}};
 
-                if (auto ep_ptr = (GetEndpointByName(r, endpoint)))
+                if (auto ep_ptr = GetEndpointByName(r, endpoint))
                 {
-                  if (auto ep = reinterpret_cast<dns::IQueryHandler*>(ep_ptr.get()))
+                  if (auto dns = ep_ptr->DNS())
                   {
-                    if (ep->ShouldHookDNSMessage(msg))
+                    auto src = std::make_shared<DummyPacketSource>([reply](auto result) {
+                      if (result)
+                        reply(CreateJSONResponse(result->ToJSON()));
+                      else
+                        reply(CreateJSONError("no response from dns"));
+                    });
+                    if (not dns->MaybeHandlePacket(src, src->dumb, src->dumb, msg.ToBuffer()))
                     {
-                      ep->HandleHookedDNSMessage(std::move(msg), [reply](dns::Message msg) {
-                        reply(CreateJSONResponse(msg.ToJSON()));
-                      });
-                      return;
+                      reply(CreateJSONError("dns query not accepted by endpoint"));
                     }
                   }
-                  reply(CreateJSONError("dns query not accepted by endpoint"));
+                  else
+                    reply(CreateJSONError("endpoint does not have dns"));
                   return;
                 }
                 reply(CreateJSONError("no such endpoint for dns query"));

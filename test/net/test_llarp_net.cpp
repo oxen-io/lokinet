@@ -6,6 +6,16 @@
 
 #include <catch2/catch.hpp>
 
+namespace
+{
+    template<typename T>
+    bool IsBogon(T ip)
+    {
+       return llarp::net::Platform::Default_ptr()->IsBogon(ip);
+    }
+}
+
+
 TEST_CASE("In6Addr")
 {
   llarp::huint128_t ip;
@@ -83,30 +93,30 @@ TEST_CASE("Bogon")
 {
   SECTION("Bogon_10_8")
   {
-    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
+    REQUIRE(IsBogon(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
   }
 
   SECTION("Bogon_192_168_16")
   {
-    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
+    REQUIRE(IsBogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
   }
 
   SECTION("Bogon_127_8")
   {
-    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));
+    REQUIRE(IsBogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));
   }
 
   SECTION("Bogon_0_8")
   {
-    REQUIRE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(0, 0, 0, 0)));
+    REQUIRE(IsBogon(llarp::ipaddr_ipv4_bits(0, 0, 0, 0)));
   }
 
   SECTION("Non-bogon")
   {
-    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(1, 1, 1, 1)));
-    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(8, 8, 6, 6)));
-    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(141, 55, 12, 99)));
-    REQUIRE_FALSE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(79, 12, 3, 4)));
+    REQUIRE_FALSE(IsBogon(llarp::ipaddr_ipv4_bits(1, 1, 1, 1)));
+    REQUIRE_FALSE(IsBogon(llarp::ipaddr_ipv4_bits(8, 8, 6, 6)));
+    REQUIRE_FALSE(IsBogon(llarp::ipaddr_ipv4_bits(141, 55, 12, 99)));
+    REQUIRE_FALSE(IsBogon(llarp::ipaddr_ipv4_bits(79, 12, 3, 4)));
   }
 }
 

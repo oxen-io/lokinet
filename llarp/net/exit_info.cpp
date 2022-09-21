@@ -69,7 +69,7 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if (k == "a")
+    if (k.startswith("a"))
     {
       in6_addr tmp;
       if (not bdecode_ip_string(buf, tmp))
@@ -79,7 +79,7 @@ namespace llarp
       ipAddress = IpAddress(addr);
       return true;
     }
-    if (k == "b")
+    if (k.startswith("b"))
     {
       in6_addr tmp;
       if (not bdecode_ip_string(buf, tmp))

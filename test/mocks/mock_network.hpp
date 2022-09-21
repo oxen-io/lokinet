@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 #include <llarp/net/net.hpp>
-#include <llarp/ev/ev_libuv.hpp>
+#include <llarp/ev/libuv.hpp>
 #include <oxenc/variant.h>
 
 namespace mocks
@@ -12,11 +12,18 @@ namespace mocks
   class MockUDPHandle : public llarp::UDPHandle
   {
     Network* const _net;
+    std::optional<llarp::SockAddr> _addr;
 
    public:
-    MockUDPHandle(Network* net, llarp::UDPHandle::ReceiveFunc recv)
+      MockUDPHandle(Network* net, llarp::UDPHandle::ReceiveFunc recv)
         : llarp::UDPHandle{recv}, _net{net}
     {}
+
+    std::optional<llarp::SockAddr>
+    LocalAddr() const override
+    {
+      return _addr;
+    }
 
     bool
     listen(const llarp::SockAddr& addr) override;
@@ -47,6 +54,12 @@ namespace mocks
         , _snode{snode}
     {}
 
+      const llarp::net::Platform*
+    Net_ptr() const override
+    {
+      return this;
+    }
+
     void
     run() override
     {
@@ -73,7 +86,7 @@ namespace mocks
     GetBestNetIF(int af) const override
     {
       for (const auto& [k, range] : _network_interfaces)
-        if (range.Family() == af and not range.BogonRange())
+        if (range.Family() == af and not IsBogonRange(range))
           return k;
       return std::nullopt;
     }
@@ -107,29 +120,6 @@ namespace mocks
     AllInterfaces(llarp::SockAddr fallback) const override
     {
       return m_Default->AllInterfaces(fallback);
-    }
-
-    llarp::SockAddr
-    Wildcard(int af) const override
-    {
-      return m_Default->Wildcard(af);
-    }
-
-    bool
-    IsBogon(const llarp::SockAddr& addr) const override
-    {
-      return m_Default->IsBogon(addr);
-    }
-    bool
-    IsLoopbackAddress(llarp::net::ipaddr_t ip) const override
-    {
-      return m_Default->IsLoopbackAddress(ip);
-    }
-
-    bool
-    IsWildcardAddress(llarp::net::ipaddr_t ip) const override
-    {
-      return m_Default->IsWildcardAddress(ip);
     }
 
     std::optional<int>
@@ -181,12 +171,34 @@ namespace mocks
           return name;
       throw std::runtime_error{"no loopback interface?"};
     }
+
+      std::vector<llarp::net::InterfaceInfo>
+      AllNetworkInterfaces() const override
+      {
+          std::map<std::string, llarp::net::InterfaceInfo> _addrs;
+          for(const auto & [ifname, range] : _network_interfaces)
+          {
+             auto & ent = _addrs[ifname];
+             ent.name = ifname;
+             ent.addrs.emplace_back(range);
+          }
+          std::vector<llarp::net::InterfaceInfo> infos;
+          for(const auto & [name, info] : _addrs)
+          {
+              infos.emplace_back(info);
+              infos.back().index = infos.size();
+          }
+          return infos;
+      }
   };
 
   bool
   MockUDPHandle::listen(const llarp::SockAddr& addr)
   {
-    return _net->HasInterfaceAddress(addr.getIP());
+    if (not _net->HasInterfaceAddress(addr.getIP()))
+      return false;
+    _addr = addr;
+    return true;
   }
 
 }  // namespace mocks

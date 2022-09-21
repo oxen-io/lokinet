@@ -140,14 +140,14 @@ namespace llarp
             "this setting specifies the public IP at which this router is reachable. When",
             "provided the public-port option must also be specified.",
         },
-        [this](std::string arg) {
+        [this, net = params.Net_ptr()](std::string arg) {
           if (arg.empty())
             return;
           nuint32_t addr{};
           if (not addr.FromString(arg))
             throw std::invalid_argument{fmt::format("{} is not a valid IPv4 address", arg)};
 
-          if (IsIPv4Bogon(addr))
+          if (net->IsBogonIP(addr))
             throw std::invalid_argument{
                 fmt::format("{} is not a publicly routable ip address", addr)};
 
@@ -648,6 +648,7 @@ namespace llarp
             throw std::invalid_argument{
                 fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
         });
+
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
         "network",
@@ -775,18 +776,26 @@ namespace llarp
     // Most non-linux platforms have loopback as 127.0.0.1/32, but linux uses 127.0.0.1/8 so that we
     // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
     // 127.0.0.1:53.
-    constexpr Default DefaultDNSBind{platform::is_linux ? "127.3.2.1:53" : "127.0.0.1:53"};
+    constexpr std::array DefaultDNSBind{
+#ifdef __linux__
+#ifdef WITH_SYSTEMD
+        // when we have systemd support add a random high port on loopback as well
+        // see https://github.com/oxen-io/lokinet/issues/1887#issuecomment-1091897282
+        Default{"127.0.0.1:0"},
+#endif
+        Default{"127.3.2.1:53"},
+#else
+        Default{"127.0.0.1:53"},
+#endif
+    };
 
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
-    constexpr Default DefaultUpstreamDNS{"9.9.9.10"};
+    constexpr Default DefaultUpstreamDNS{"9.9.9.10:53"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
-    if (!m_upstreamDNS.back().getPort())
-      m_upstreamDNS.back().setPort(53);
 
     conf.defineOption<std::string>(
         "dns",
         "upstream",
-        DefaultUpstreamDNS,
         MultiValue,
         Comment{
             "Upstream resolver(s) to use as fallback for non-loki addresses.",
@@ -798,25 +807,52 @@ namespace llarp
             m_upstreamDNS.clear();
             first = false;
           }
-          if (!arg.empty())
+          if (not arg.empty())
           {
             auto& entry = m_upstreamDNS.emplace_back(std::move(arg));
-            if (!entry.getPort())
+            if (not entry.getPort())
               entry.setPort(53);
           }
         });
+
+    conf.defineOption<bool>(
+        "dns",
+        "l3-intercept",
+        Default{
+            platform::is_windows or platform::is_android
+            or (platform::is_macos and not platform::is_apple_sysex)},
+        Comment{"Intercept all dns traffic (udp/53) going into our lokinet network interface "
+                "instead of binding a local udp socket"},
+        AssignmentAcceptor(m_raw_dns));
+
+    conf.defineOption<std::string>(
+        "dns",
+        "query-bind",
+#if defined(_WIN32)
+        Default{"0.0.0.0:0"},
+#else
+        Hidden,
+#endif
+        Comment{
+            "Address to bind to for sending upstream DNS requests.",
+        },
+        [this](std::string arg) { m_QueryBind = SockAddr{arg}; });
 
     conf.defineOption<std::string>(
         "dns",
         "bind",
         DefaultDNSBind,
+        MultiValue,
         Comment{
             "Address to bind to for handling DNS requests.",
         },
         [=](std::string arg) {
-          m_bind = SockAddr{std::move(arg)};
-          if (!m_bind.getPort())
-            m_bind.setPort(53);
+          SockAddr addr{arg};
+          // set dns port if no explicit port specified
+          // explicit :0 allowed
+          if (not addr.getPort() and not ends_with(arg, ":0"))
+            addr.setPort(53);
+          m_bind.emplace_back(addr);
         });
 
     conf.defineOption<fs::path>(
@@ -843,6 +879,11 @@ namespace llarp
             "(This is not used directly by lokinet itself, but by the lokinet init scripts",
             "on systems which use resolveconf)",
         });
+
+    // forwad the rest to libunbound
+    conf.addUndeclaredHandler("dns", [this](auto, std::string_view key, std::string_view val) {
+      m_ExtraOpts.emplace(key, val);
+    });
   }
 
   void
@@ -1321,15 +1362,25 @@ namespace llarp
   }
 
   void
-  Config::LoadOverrides()
+  Config::LoadOverrides(ConfigDefinition& conf) const
   {
+    ConfigParser parser;
     const auto overridesDir = GetOverridesDir(m_DataDir);
     if (fs::exists(overridesDir))
     {
       util::IterDir(overridesDir, [&](const fs::path& overrideFile) {
         if (overrideFile.extension() == ".ini")
         {
-          m_Parser.LoadFile(overrideFile);
+          ConfigParser parser;
+          if (not parser.LoadFile(overrideFile))
+            throw std::runtime_error{"cannot load '" + overrideFile.u8string() + "'"};
+
+          parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+            for (const auto& pair : values)
+            {
+              conf.addConfigValue(section, pair.first, pair.second);
+            }
+          });
         }
         return true;
       });
@@ -1343,7 +1394,7 @@ namespace llarp
   }
 
   bool
-  Config::LoadString(std::string_view ini, bool isRelay)
+  Config::LoadConfigData(std::string_view ini, std::optional<fs::path> filename, bool isRelay)
   {
     auto params = MakeGenParams();
     params->isRelay = isRelay;
@@ -1351,7 +1402,18 @@ namespace llarp
     ConfigDefinition conf{isRelay};
     initializeConfig(conf, *params);
 
+    for (const auto& item : m_Additional)
+    {
+      conf.addConfigValue(item[0], item[1], item[2]);
+    }
+
     m_Parser.Clear();
+
+    if (filename)
+      m_Parser.Filename(*filename);
+    else
+      m_Parser.Filename(fs::path{});
+
     if (not m_Parser.LoadFromStr(ini))
       return false;
 
@@ -1362,6 +1424,8 @@ namespace llarp
       }
     });
 
+    LoadOverrides(conf);
+
     conf.process();
 
     return true;
@@ -1370,37 +1434,24 @@ namespace llarp
   bool
   Config::Load(std::optional<fs::path> fname, bool isRelay)
   {
-    if (not fname.has_value())
-      return LoadDefault(isRelay);
-    try
+    std::vector<char> ini{};
+    if (fname)
     {
-      auto params = MakeGenParams();
-      params->isRelay = isRelay;
-      params->defaultDataDir = m_DataDir;
-
-      ConfigDefinition conf{isRelay};
-      initializeConfig(conf, *params);
-      m_Parser.Clear();
-      if (!m_Parser.LoadFile(*fname))
-      {
+      if (not fs::exists(*fname))
         return false;
-      }
-      LoadOverrides();
+      fs::ifstream inf{*fname, std::ios::in | std::ios::binary};
+      auto sz = inf.seekg(0, std::ios::end).tellg();
+      inf.seekg(0, std::ios::beg);
+      ini.resize(sz);
+      inf.read(ini.data(), ini.size());
+    }
+    return LoadConfigData(std::string_view{ini.data(), ini.size()}, fname, isRelay);
+  }
 
-      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
-        for (const auto& pair : values)
-        {
-          conf.addConfigValue(section, pair.first, pair.second);
-        }
-      });
-      conf.process();
-      return true;
-    }
-    catch (const std::exception& e)
-    {
-      LogError("Error trying to init and parse config from file: ", e.what());
-      return false;
-    }
+  bool
+  Config::LoadString(std::string_view ini, bool isRelay)
+  {
+    return LoadConfigData(ini, std::nullopt, isRelay);
   }
 
   bool

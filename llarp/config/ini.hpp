@@ -47,6 +47,12 @@ namespace llarp
     void
     Save();
 
+    inline void
+    Filename(fs::path f)
+    {
+      m_FileName = f;
+    };
+
    private:
     bool
     Parse();

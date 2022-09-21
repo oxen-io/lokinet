@@ -46,15 +46,26 @@ if(WITH_BOOTSTRAP)
   endif()
 endif()
 
+# cmake interface library for bunch of cmake hacks to fix final link order
+add_library(hax_and_shims_for_cmake INTERFACE)
+if(WIN32)
+  target_link_libraries(hax_and_shims_for_cmake INTERFACE uvw oxenmq::oxenmq -lws2_32 -lshlwapi -ldbghelp -luser32 -liphlpapi -lpsapi -luserenv)
+endif()
+
 foreach(exe ${exetargets})
-  if(WIN32 AND NOT MSVC_VERSION)
+  if(WIN32)
     target_sources(${exe} PRIVATE ${CMAKE_BINARY_DIR}/${exe}.rc)
     target_link_libraries(${exe} PRIVATE -static-libstdc++ -static-libgcc --static -Wl,--pic-executable,-e,mainCRTStartup,--subsystem,console:5.00)
-    target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
   elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     target_link_directories(${exe} PRIVATE /usr/local/lib)
   endif()
-  target_link_libraries(${exe} PUBLIC liblokinet)
+  target_link_libraries(${exe} PUBLIC lokinet-amalgum hax_and_shims_for_cmake)
+  if(STRIP_SYMBOLS)
+    add_custom_command(TARGET ${exe}
+      POST_BUILD
+      COMMAND ${CMAKE_OBJCOPY} ARGS --only-keep-debug $<TARGET_FILE:${exe}> $<TARGET_FILE:${exe}>.debug
+      COMMAND ${CMAKE_STRIP} ARGS --strip-all $<TARGET_FILE:${exe}>)
+  endif()
   target_include_directories(${exe} PUBLIC "${PROJECT_SOURCE_DIR}")
   if(should_install)
     if(APPLE)
@@ -70,4 +81,10 @@ endforeach()
 
 if(SETCAP)
   install(CODE "execute_process(COMMAND ${SETCAP} cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+endif()
+
+if(STRIP_SYMBOLS)
+  add_custom_target(symbols ALL
+    COMMAND ${CMAKE_COMMAND} -E tar cJf ${CMAKE_CURRENT_BINARY_DIR}/debug-symbols.tar.xz $<TARGET_FILE:lokinet>.debug
+    DEPENDS lokinet)
 endif()

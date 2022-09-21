@@ -50,8 +50,18 @@ namespace llarp
     fromSockAddr(const SockAddr& address);
 
     /// get this as an explicit v4 or explicit v6
-    std::variant<nuint32_t, nuint128_t>
+    net::ipaddr_t
     IP() const;
+
+    /// get this as an v4 or throw if it is not one
+    inline net::ipv4addr_t
+    IPv4() const
+    {
+      auto ip = IP();
+      if (auto* ptr = std::get_if<net::ipv4addr_t>(&ip))
+        return *ptr;
+      throw std::runtime_error{"no ipv4 address found in address info"};
+    }
 
     std::string
     ToString() const;

@@ -1,11 +1,3 @@
-set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
-set(TUNTAP_EXE "${CMAKE_BINARY_DIR}/tuntap-install.exe")
-set(BOOTSTRAP_FILE "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed")
-
-file(DOWNLOAD
-    ${TUNTAP_URL}
-    ${TUNTAP_EXE})
-
 if(NOT BUILD_GUI)
   if(NOT GUI_ZIP_URL)
     set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/lokinet-gui/dev/lokinet-windows-x64-20220331T180338Z-569f90ad8.zip")
@@ -25,16 +17,25 @@ if(NOT BUILD_GUI)
     message(FATAL_ERROR "Downloaded gui archive from ${GUI_ZIP_URL} does not contain gui/lokinet-gui.exe!")
   endif()
 endif()
-
 install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
-install(PROGRAMS ${TUNTAP_EXE} DESTINATION bin COMPONENT tuntap)
+
+if(WITH_WINDOWS_32)
+  install(FILES ${CMAKE_BINARY_DIR}/wintun/bin/x86/wintun.dll DESTINATION bin COMPONENT lokinet)
+  install(FILES ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/x86/WinDivert.sys DESTINATION lib COMPONENT lokinet)
+  install(FILES ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/x86/WinDivert.dll DESTINATION bin COMPONENT lokinet)
+else()
+  install(FILES ${CMAKE_BINARY_DIR}/wintun/bin/amd64/wintun.dll DESTINATION bin COMPONENT lokinet)
+  install(FILES ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/x64/WinDivert64.sys DESTINATION lib COMPONENT lokinet)
+  install(FILES ${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/x64/WinDivert.dll DESTINATION bin COMPONENT lokinet)
+endif()
+
+set(BOOTSTRAP_FILE "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed")
 install(FILES ${BOOTSTRAP_FILE} DESTINATION share COMPONENT lokinet RENAME bootstrap.signed)
 
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-
 
 function(read_nsis_file filename outvar)
   file(STRINGS "${filename}" _outvar)
@@ -51,9 +52,8 @@ read_nsis_file("${CMAKE_SOURCE_DIR}/win32-setup/extra_delete_icons.nsis" _extra_
 
 set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS "${_extra_preinstall}")
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "${_extra_install}")
-set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS  "${_extra_uninstall}")
+set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "${_extra_uninstall}")
 set(CPACK_NSIS_CREATE_ICONS_EXTRA "${_extra_create_icons}")
 set(CPACK_NSIS_DELETE_ICONS_EXTRA "${_extra_delete_icons}")
 
-get_cmake_property(CPACK_COMPONENTS_ALL COMPONENTS)
-list(REMOVE_ITEM CPACK_COMPONENTS_ALL "Unspecified")
+set(CPACK_NSIS_COMPRESSOR "/SOLID lzma")

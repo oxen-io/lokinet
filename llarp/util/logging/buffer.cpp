@@ -22,7 +22,7 @@ namespace llarp
         auto k = i + j;
         if (j % 4 == 0)
           out.push_back(' ');
-        if (j >= stop)
+        if (k >= stop)
           out.append("  ");
         else
           fmt::format_to(ins, "{:02x}", std::to_integer<uint_fast16_t>(b[k]));

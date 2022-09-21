@@ -211,9 +211,6 @@ namespace llarp
     bool
     ShouldTestOtherRouters() const;
 
-    int
-    OutboundUDPSocket() const override;
-
     std::optional<SockAddr> _ourAddress;
 
     EventLoop_ptr _loop;
@@ -277,27 +274,13 @@ namespace llarp
     /// bootstrap RCs
     BootstrapList bootstrapRCList;
 
-    bool
-    ExitEnabled() const
-    {
-      return false;  // FIXME - have to fix the FIXME because FIXME
-      throw std::runtime_error("FIXME: this needs to be derived from config");
-      /*
-      // TODO: use equal_range ?
-      auto itr = netConfig.find("exit");
-      if (itr == netConfig.end())
-        return false;
-      return IsTrueValue(itr->second.c_str());
-      */
-    }
-
-    RoutePoker&
-    routePoker() override
+    const std::shared_ptr<RoutePoker>&
+    routePoker() const override
     {
       return m_RoutePoker;
     }
 
-    RoutePoker m_RoutePoker;
+    std::shared_ptr<RoutePoker> m_RoutePoker;
 
     void
     TriggerPump() override;
@@ -358,6 +341,12 @@ namespace llarp
       return m_peerDb;
     }
 
+    inline int
+    OutboundUDPSocket() const override
+    {
+      return m_OutboundUDPSocket;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
@@ -397,6 +386,9 @@ namespace llarp
 
     bool
     StartRpcServer() override;
+
+    void
+    Freeze() override;
 
     void
     Thaw() override;

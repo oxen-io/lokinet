@@ -4,18 +4,6 @@
 #include <cstdarg>
 #include <cstdio>
 
-size_t
-llarp_buffer_t::size_left() const
-{
-  size_t diff = cur - base;
-  if (diff > sz)
-  {
-    return 0;
-  }
-
-  return sz - diff;
-}
-
 bool
 llarp_buffer_t::writef(const char* fmt, ...)
 {
@@ -127,13 +115,18 @@ llarp_buffer_t::copy() const
   return copy;
 }
 
-bool
-operator==(const llarp_buffer_t& buff, std::string_view data)
-{
-  return std::string_view{reinterpret_cast<const char*>(buff.cur), buff.size_left()} == data;
-}
 namespace llarp
 {
+  std::vector<byte_t>
+  OwnedBuffer::copy() const
+  {
+    std::vector<byte_t> ret;
+    ret.resize(sz);
+    const auto* ptr = buf.get();
+    std::copy(ptr, ptr + sz, ret.data());
+    return ret;
+  }
+
   OwnedBuffer
   OwnedBuffer::copy_from(const llarp_buffer_t& b)
   {

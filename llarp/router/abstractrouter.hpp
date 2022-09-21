@@ -45,6 +45,11 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace dns
+  {
+    class I_SystemSettings;
+  }
+
   namespace net
   {
     class Platform;
@@ -176,8 +181,8 @@ namespace llarp
     virtual ILinkManager&
     linkManager() = 0;
 
-    virtual RoutePoker&
-    routePoker() = 0;
+    virtual const std::shared_ptr<RoutePoker>&
+    routePoker() const = 0;
 
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
@@ -209,6 +214,10 @@ namespace llarp
     /// stop running the router logic gracefully
     virtual void
     Stop() = 0;
+
+    /// indicate we are about to sleep for a while
+    virtual void
+    Freeze() = 0;
 
     /// thaw from long sleep or network changed event
     virtual void
@@ -355,7 +364,10 @@ namespace llarp
     }
 
     virtual int
-    OutboundUDPSocket() const = 0;
+    OutboundUDPSocket() const
+    {
+      return -1;
+    }
 
    protected:
     /// Virtual function to handle RouterEvent. HiveRouter overrides this in

@@ -11,6 +11,8 @@
 
 namespace llarp::dns
 {
+  static auto logcat = log::Cat("dns");
+
   struct PendingUnboundLookup
   {
     std::weak_ptr<UnboundResolver> resolver;
@@ -156,7 +158,7 @@ namespace llarp::dns
       upstream += std::to_string(port);
     }
 
-    LogError("Adding upstream resolver ", upstream);
+    log::info("Adding upstream resolver ", upstream);
     if (ub_ctx_set_fwd(unboundContext, upstream.c_str()) != 0)
     {
       Reset();
@@ -198,17 +200,12 @@ namespace llarp::dns
   void
   UnboundResolver::AddHostsFile(const fs::path& file)
   {
-    LogDebug("adding hosts file ", file);
+    log::debug(logcat, "adding hosts file {}", file);
     const auto str = file.u8string();
     if (auto ret = ub_ctx_hosts(unboundContext, str.c_str()))
-    {
       throw std::runtime_error{
           fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
-    }
-    else
-    {
-      LogInfo("added hosts file ", file);
-    }
+    log::info(logcat, "added hosts file {}", file);
   }
 
   void

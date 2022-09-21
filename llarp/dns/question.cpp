@@ -8,6 +8,8 @@ namespace llarp
 {
   namespace dns
   {
+    static auto logcat = log::Cat("dns");
+
     Question::Question(Question&& other)
         : qname(std::move(other.qname))
         , qtype(std::move(other.qtype))
@@ -41,17 +43,17 @@ namespace llarp
         qname = *std::move(name);
       else
       {
-        llarp::LogError("failed to decode name");
+        log::error(logcat, "failed to decode name");
         return false;
       }
       if (!buf->read_uint16(qtype))
       {
-        llarp::LogError("failed to decode type");
+        log::error(logcat, "failed to decode type");
         return false;
       }
       if (!buf->read_uint16(qclass))
       {
-        llarp::LogError("failed to decode class");
+        log::error(logcat, "failed to decode class");
         return false;
       }
       return true;

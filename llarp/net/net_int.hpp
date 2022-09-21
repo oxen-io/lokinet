@@ -169,6 +169,12 @@ namespace llarp
     }
 
     constexpr bool
+    operator!=(nuint_t x) const
+    {
+      return n != x.n;
+    }
+
+    constexpr bool
     operator==(nuint_t x) const
     {
       return n == x.n;

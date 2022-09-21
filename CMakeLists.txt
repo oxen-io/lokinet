@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
+cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -61,6 +61,8 @@ option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
+option(STRIP_SYMBOLS "strip off all debug symbols into an external archive for all executables built" OFF)
+
 
 include(cmake/enable_lto.cmake)
 
@@ -80,6 +82,14 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
+
+set(debug OFF)
+if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(debug ON)
+  add_definitions(-DLOKINET_DEBUG)
+endif()
+
+option(WARN_DEPRECATED "show deprecation warnings" ${debug})
 
 if(BUILD_STATIC_DEPS AND STATIC_LINK)
   message(STATUS "we are building static deps so we won't build shared libs")
@@ -171,12 +181,19 @@ if(NOT TARGET sodium)
   export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
 endif()
 
-if(NOT APPLE)
-  add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Wno-unknown-warning-option)
-  endif()
+set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werror=vla)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  list(APPEND warning_flags -Wno-unknown-warning-option)
 endif()
+if(WARN_DEPRECATED)
+  list(APPEND warning_flags -Wdeprecated-declarations)
+else()
+  list(APPEND warning_flags -Wno-deprecated-declarations)
+endif()
+
+# If we blindly add these directly as compile_options then they get passed to swiftc on Apple and
+# break, so we use a generate expression to set them only for C++/C/ObjC
+add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:OBJC>>:${warning_flags}>")
 
 if(XSAN)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=${XSAN} -fno-omit-frame-pointer -fno-sanitize-recover")
@@ -185,11 +202,6 @@ if(XSAN)
   endforeach()
   message(STATUS "Doing a ${XSAN} sanitizer build")
 endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  add_definitions(-DLOKINET_DEBUG)
-endif()
-
 
 include(cmake/coverage.cmake)
 
@@ -317,7 +329,10 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-
 if(BUILD_PACKAGE AND NOT APPLE)
-    include(cmake/installer.cmake)
+  include(cmake/installer.cmake)
+endif()
+
+if(TARGET package)
+  add_dependencies(package assemble_gui)
 endif()

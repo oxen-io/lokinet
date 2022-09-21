@@ -101,7 +101,7 @@ install_win32_daemon()
   // Create the service
   schService = CreateService(
       schSCManager,               // SCM database
-      "lokinet",                  // name of service
+      strdup("lokinet"),          // name of service
       "Lokinet for Windows",      // service name to display
       SERVICE_ALL_ACCESS,         // desired access
       SERVICE_WIN32_OWN_PROCESS,  // service type
@@ -134,10 +134,10 @@ insert_description()
   SC_HANDLE schSCManager;
   SC_HANDLE schService;
   SERVICE_DESCRIPTION sd;
-  LPTSTR szDesc =
+  LPTSTR szDesc = strdup(
       "LokiNET is a free, open source, private, "
       "decentralized, \"market based sybil resistant\" "
-      "and IP based onion routing network";
+      "and IP based onion routing network");
   // Get a handle to the SCM database.
   schSCManager = OpenSCManager(
       NULL,                    // local computer
@@ -270,7 +270,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     }
     catch (std::exception& ex)
     {
-      llarp::LogError("failed to start up lokinet: {}", ex.what());
+      llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
       exit_code.set_value(1);
       return;
     }
@@ -329,8 +329,9 @@ class WindowsServiceStopped
 LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
-  const DWORD flags = MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
-      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo;
+  const auto flags = (MINIDUMP_TYPE)(
+      MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
+      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
   std::stringstream ss;
   ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
@@ -367,7 +368,7 @@ main(int argc, char* argv[])
   return lokinet_main(argc, argv);
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {
-      {"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
+      {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
     start_as_daemon = true;
@@ -680,7 +681,7 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
   // SCM clobbers startup args, regenerate them here
   argc = 2;
-  argv[1] = "c:/programdata/lokinet/lokinet.ini";
+  argv[1] = strdup("c:\\programdata\\lokinet\\lokinet.ini");
   argv[2] = nullptr;
   lokinet_main(argc, argv);
 }

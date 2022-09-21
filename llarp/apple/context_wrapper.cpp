@@ -90,7 +90,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
 #ifdef MACOS_SYSTEM_EXTENSION
     std::strncpy(
         appleconf->dns_bind_ip,
-        config->dns.m_bind.hostString().c_str(),
+        config->dns.m_bind.front().hostString().c_str(),
         sizeof(appleconf->dns_bind_ip));
 #endif
 

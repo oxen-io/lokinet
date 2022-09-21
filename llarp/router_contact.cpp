@@ -344,7 +344,7 @@ namespace llarp
     if (!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
 
-    if (key == "r")
+    if (key.startswith("r"))
     {
       RouterVersion r;
       if (not r.BDecode(buf))
@@ -353,7 +353,7 @@ namespace llarp
       return true;
     }
 
-    if (key == "n")
+    if (key.startswith("n"))
     {
       llarp_buffer_t strbuf;
       if (!bencode_read_string(buf, &strbuf))
@@ -381,7 +381,7 @@ namespace llarp
     if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
-    if (key == "x" and serializeExit)
+    if (key.startswith("x") and serializeExit)
     {
       return bencode_discard(buf);
     }
@@ -485,9 +485,11 @@ namespace llarp
     if (IsExpired(now) and not allowExpired)
       return false;
 
+    // TODO: make net* overridable
+    const auto* net = net::Platform::Default_ptr();
     for (const auto& a : addrs)
     {
-      if (IsBogon(a.ip) && BlockBogons)
+      if (net->IsBogon(a.ip) && BlockBogons)
       {
         llarp::LogError("invalid address info: ", a);
         return false;

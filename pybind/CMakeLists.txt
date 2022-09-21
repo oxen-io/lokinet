@@ -16,5 +16,5 @@ pybind11_add_module(pyllarp MODULE
   llarp/tooling/router_event.cpp
   llarp/service/address.cpp
 )
-target_link_libraries(pyllarp PUBLIC liblokinet)
+target_link_libraries(pyllarp PUBLIC lokinet-amalgum)
 target_include_directories(pyllarp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

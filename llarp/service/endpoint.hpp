@@ -26,6 +26,7 @@
 #include "auth.hpp"
 
 #include <llarp/vpn/egres_packet_router.hpp>
+#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -172,6 +173,12 @@ namespace llarp
       {
         return nullptr;
       };
+
+      virtual vpn::NetworkInterface*
+      GetVPNInterface()
+      {
+        return nullptr;
+      }
 
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
@@ -353,6 +360,9 @@ namespace llarp
 
       bool
       HasPathToSNode(const RouterID remote) const;
+
+      bool
+      HasFlowToService(const Address remote) const;
 
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;

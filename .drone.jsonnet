@@ -76,6 +76,7 @@ local debian_pipeline(name,
                   'mkdir build',
                   'cd build',
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
+                  (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') +
                   (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                   '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                   '-DWITH_TESTS=' + (if tests then 'ON ' else 'OFF ') +
@@ -121,7 +122,7 @@ local windows_cross_pipeline(name,
                              lto=false,
                              werror=false,
                              cmake_extra='',
-                             toolchain='32',
+                             gui_zip_url='',
                              extra_cmds=[],
                              jobs=6,
                              allow_fail=false) = {
@@ -137,16 +138,16 @@ local windows_cross_pipeline(name,
       image: image,
       pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
-      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: toolchain + 'bit' },
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: '64bit' },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y p7zip-full build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh ' + ci_mirror_opts,
+        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh ' + (if std.length(gui_zip_url) > 0 then '-DBUILD_GUI=OFF -DGUI_ZIP_URL=' + gui_zip_url else '') + ' -DSTRIP_SYMBOLS=ON ' + ci_mirror_opts,
       ] + extra_cmds,
     },
   ],
@@ -277,7 +278,13 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh ' + ci_mirror_opts + ' ' + codesign,
+        './contrib/mac-configure.sh ' + ci_mirror_opts + (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') + codesign,
+        'cd build-mac',
+        // We can't use the 'package' target here because making a .dmg requires an active logged in
+        // macos gui to invoke Finder to invoke the partitioning tool to create a partitioned (!)
+        // disk image.  Most likely the GUI is required because if you lose sight of how pretty the
+        // surface of macOS is you might see how ugly the insides are.
+        'ninja -j' + jobs + ' assemble_gui',
       ] + extra_cmds,
     },
   ],
@@ -349,17 +356,17 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
 
   // cross compile targets
-  linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
   linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
   linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
+  // Not currently building successfully:
+  //linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
 
   // android apk builder
   apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
   // Windows builds (x64)
   windows_cross_pipeline('Windows (amd64)',
-                         docker_base + 'debian-win32-cross',
-                         toolchain='64',
+                         docker_base + 'nodejs-lts',
                          extra_cmds=[
                            './contrib/ci/drone-static-upload.sh',
                          ]),
@@ -371,7 +378,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   lto=true,
                   tests=false,
                   oxen_repo=true,
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' + ci_mirror_opts +
                               '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
@@ -385,7 +392,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   docker_base + 'debian-buster/arm32v7',
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' + ci_mirror_opts +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
                   extra_cmds=[

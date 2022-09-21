@@ -2,7 +2,6 @@
 #include <llarp/util/logging.hpp>
 
 #include <iterator>
-#include <sstream>
 #include <stdexcept>
 #include <cassert>
 
@@ -176,12 +175,14 @@ namespace llarp
   std::string
   ConfigDefinition::generateINIConfig(bool useValues)
   {
-    std::ostringstream oss;
+    std::string ini;
+    auto ini_append = std::back_inserter(ini);
 
     int sectionsVisited = 0;
 
     visitSections([&](const std::string& section, const DefinitionMap&) {
-      std::ostringstream sect_out;
+      std::string sect_str;
+      auto sect_append = std::back_inserter(sect_str);
 
       visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
         bool has_comment = false;
@@ -190,44 +191,43 @@ namespace llarp
         //       (i.e. those handled by UndeclaredValueHandler's)
         for (const std::string& comment : m_definitionComments[section][name])
         {
-          sect_out << "\n# " << comment;
+          fmt::format_to(sect_append, "\n# {}", comment);
           has_comment = true;
         }
 
         if (useValues and def->getNumberFound() > 0)
         {
-          sect_out << "\n" << name << "=" << def->valueAsString(false) << "\n";
+          for (const auto& val : def->valuesAsString())
+            fmt::format_to(sect_append, "\n{}={}\n", name, val);
         }
         else if (not(def->hidden and not has_comment))
         {
-          sect_out << "\n";
-          if (not def->required)
-            sect_out << "#";
-          sect_out << name << "=" << def->defaultValueAsString() << "\n";
+          for (const auto& val : def->defaultValuesAsString())
+            fmt::format_to(sect_append, "\n{}{}={}\n", def->required ? "" : "#", name, val);
         }
       });
 
-      auto sect_str = sect_out.str();
       if (sect_str.empty())
         return;  // Skip sections with no options
 
       if (sectionsVisited > 0)
-        oss << "\n\n";
+        ini += "\n\n";
 
-      oss << "[" << section << "]\n";
+      fmt::format_to(ini_append, "[{}]\n", section);
 
       // TODO: this will create empty objects as a side effect of map's operator[]
       // TODO: this also won't handle sections which have no definition
       for (const std::string& comment : m_sectionComments[section])
       {
-        oss << "# " << comment << "\n";
+        fmt::format_to(ini_append, "# {}\n", comment);
       }
-      oss << "\n" << sect_str;
+      ini += "\n";
+      ini += sect_str;
 
       sectionsVisited++;
     });
 
-    return oss.str();
+    return ini;
   }
 
   const OptionDefinition_ptr&

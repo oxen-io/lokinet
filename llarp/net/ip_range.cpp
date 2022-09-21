@@ -90,4 +90,15 @@ namespace llarp
     return addr.ToString();
   }
 
+  std::string
+  IPRange::NetmaskString() const
+  {
+    if (IsV4())
+    {
+      const huint32_t mask = net::TruncateV6(netmask_bits);
+      return mask.ToString();
+    }
+    return netmask_bits.ToString();
+  }
+
 }  // namespace llarp
