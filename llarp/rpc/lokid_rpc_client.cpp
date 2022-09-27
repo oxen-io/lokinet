@@ -183,54 +183,41 @@ namespace llarp
     LokidRpcClient::HandleGotServiceNodeList(std::string data)
     {
       auto j = nlohmann::json::parse(std::move(data));
+      if (const auto itr = j.find("unchanged"); itr != j.end() and itr->get<bool>())
       {
-        const auto itr = j.find("unchanged");
-        if (itr != j.end())
-        {
-          if (itr->get<bool>())
-          {
-            LogDebug("service node list unchanged");
-            return;
-          }
-        }
+        LogDebug("service node list unchanged");
+        return;
       }
       std::unordered_map<RouterID, PubKey> keymap;
       std::vector<RouterID> activeNodeList, nonActiveNodeList;
+      if (const auto itr = j.find("service_node_states"); itr != j.end() and itr->is_array())
       {
-        const auto itr = j.find("service_node_states");
-        if (itr != j.end() and itr->is_array())
+        for (auto& snode : *itr)
         {
-          for (auto j_itr = itr->begin(); j_itr != itr->end(); j_itr++)
-          {
-            const auto ed_itr = j_itr->find("pubkey_ed25519");
-            if (ed_itr == j_itr->end() or not ed_itr->is_string())
-              continue;
-            const auto svc_itr = j_itr->find("service_node_pubkey");
-            if (svc_itr == j_itr->end() or not svc_itr->is_string())
-              continue;
-            const auto funded_itr = j_itr->find("funded");
-            if (funded_itr == j_itr->end() or not funded_itr->is_boolean())
-              continue;
-            const auto active_itr = j_itr->find("active");
-            if (active_itr == j_itr->end() or not active_itr->is_boolean())
-              continue;
-            const bool active = active_itr->get<bool>();
-            const bool funded = funded_itr->get<bool>();
+          // Skip unstaked snodes:
+          if (const auto funded_itr = snode.find("funded"); funded_itr == snode.end()
+              or not funded_itr->is_boolean() or not funded_itr->get<bool>())
+            continue;
 
-            if (not funded)
-              continue;
+          const auto ed_itr = snode.find("pubkey_ed25519");
+          if (ed_itr == snode.end() or not ed_itr->is_string())
+            continue;
+          const auto svc_itr = snode.find("service_node_pubkey");
+          if (svc_itr == snode.end() or not svc_itr->is_string())
+            continue;
+          const auto active_itr = snode.find("active");
+          if (active_itr == snode.end() or not active_itr->is_boolean())
+            continue;
+          const bool active = active_itr->get<bool>();
 
-            RouterID rid;
-            PubKey pk;
-            if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
-            {
-              keymap[rid] = pk;
-              if (active)
-                activeNodeList.emplace_back(std::move(rid));
-              else
-                nonActiveNodeList.emplace_back(std::move(rid));
-            }
-          }
+          RouterID rid;
+          PubKey pk;
+          if (not rid.FromHex(ed_itr->get<std::string_view>())
+              or not pk.FromHex(svc_itr->get<std::string_view>()))
+            continue;
+
+          keymap[rid] = pk;
+          (active ? activeNodeList : nonActiveNodeList).push_back(std::move(rid));
         }
       }
 
