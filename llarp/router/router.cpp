@@ -666,32 +666,7 @@ namespace llarp
     BootstrapList b_list;
     for (const auto& router : configRouters)
     {
-      bool isListFile = false;
-      {
-        std::ifstream inf(router.c_str(), std::ios::binary);
-        if (inf.is_open())
-        {
-          const char ch = inf.get();
-          isListFile = ch == 'l';
-        }
-      }
-      if (isListFile)
-      {
-        if (not BDecodeReadFile(router, b_list))
-        {
-          throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", router)};
-        }
-      }
-      else
-      {
-        RouterContact rc;
-        if (not rc.Read(router))
-        {
-          throw std::runtime_error{
-              fmt::format("failed to decode bootstrap RC, file='{}', rc={}", router, rc)};
-        }
-        b_list.insert(rc);
-      }
+      b_list.AddFromFile(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
@@ -699,19 +674,52 @@ namespace llarp
       b_list.emplace(rc);
     }
 
-    for (auto& rc : b_list)
+    // in case someone has an old bootstrap file and is trying to use a bootstrap
+    // that no longer exists
+    for (auto rc_itr = b_list.begin(); rc_itr != b_list.end();)
     {
-      if (not rc.Verify(Now()))
-      {
-        LogWarn("ignoring invalid RC: ", RouterID(rc.pubkey));
-        continue;
-      }
-      bootstrapRCList.emplace(std::move(rc));
+      if (rc_itr->IsObsoleteBootstrap())
+        b_list.erase(rc_itr);
+      else
+        rc_itr++;
     }
+
+    auto verifyRCs = [&]() {
+      for (auto& rc : b_list)
+      {
+        if (rc.IsObsoleteBootstrap())
+        {
+          LogWarn("ignoring obsolete boostrap RC: ", RouterID(rc.pubkey));
+          continue;
+        }
+        if (not rc.Verify(Now()))
+        {
+          log::warning(logcat, "ignoring invalid RC: {}", RouterID(rc.pubkey));
+          continue;
+        }
+        bootstrapRCList.emplace(std::move(rc));
+      }
+    };
+
+    verifyRCs();
+
+#ifdef BOOTSTRAP_FALLBACK
+    constexpr std::string_view bootstrap_fallback = BOOTSTRAP_FALLBACK;
+#else
+    constexpr std::string_view bootstrap_fallback{};
+#endif  // BOOTSTRAP_FALLBACK
 
     if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
     {
-      throw std::runtime_error{"we have no bootstrap nodes"};
+      if (not bootstrap_fallback.empty())
+      {
+        b_list.clear();
+        b_list.AddFromFile(bootstrap_fallback);
+
+        verifyRCs();
+      }
+      if (bootstrapRCList.empty())  // empty after trying fallback, if set
+        throw std::runtime_error{"we have no bootstrap nodes"};
     }
 
     if (conf.bootstrap.seednode)
@@ -1038,14 +1046,27 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (auto dereg = LooksDeregistered(); (dereg or decom) and now >= m_NextDecommissionWarn)
+    if (now >= m_NextDecommissionWarn)
     {
-      // complain about being deregistered
       constexpr auto DecommissionWarnInterval = 5min;
-      LogError(
-          "We are running as a service node but we seem to be ",
-          dereg ? "deregistered" : "decommissioned");
-      m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      if (auto dereg = LooksDeregistered(); dereg or decom)
+      {
+        // complain about being deregistered
+        LogError(
+            "We are running as a service node but we seem to be ",
+            dereg ? "deregistered" : "decommissioned");
+        m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      }
+      else if (isSvcNode)
+      {
+        constexpr int KnownPeerWarningThreshold = 5;
+        if (nodedb()->NumLoaded() < KnownPeerWarningThreshold)
+          log::error(
+              logcat,
+              "We appear to be an active service node, but have fewer than {} known peers.",
+              KnownPeerWarningThreshold);
+        m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      }
     }
 
     // if we need more sessions to routers and we are not a service node kicked from the network

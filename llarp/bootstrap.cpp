@@ -36,4 +36,35 @@ namespace llarp
   {
     return BEncodeWriteList(begin(), end(), buf);
   }
+
+  void
+  BootstrapList::AddFromFile(fs::path fpath)
+  {
+    bool isListFile = false;
+    {
+      std::ifstream inf(fpath.c_str(), std::ios::binary);
+      if (inf.is_open())
+      {
+        const char ch = inf.get();
+        isListFile = ch == 'l';
+      }
+    }
+    if (isListFile)
+    {
+      if (not BDecodeReadFile(fpath, *this))
+      {
+        throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", fpath)};
+      }
+    }
+    else
+    {
+      RouterContact rc;
+      if (not rc.Read(fpath))
+      {
+        throw std::runtime_error{
+            fmt::format("failed to decode bootstrap RC, file='{}', rc={}", fpath, rc)};
+      }
+      this->insert(rc);
+    }
+  }
 }  // namespace llarp

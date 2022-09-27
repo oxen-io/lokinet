@@ -533,6 +533,20 @@ namespace llarp
     return false;
   }
 
+  static constexpr std::array obsolete_bootstraps = {
+      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv};
+
+  bool
+  RouterContact::IsObsoleteBootstrap() const
+  {
+    for (const auto& k : obsolete_bootstraps)
+    {
+      if (pubkey.ToHex() == k)
+        return true;
+    }
+    return false;
+  }
+
   bool
   RouterContact::Write(const fs::path& fname) const
   {

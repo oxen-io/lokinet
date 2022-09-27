@@ -2,6 +2,7 @@
 
 #include "router_contact.hpp"
 #include <set>
+#include "llarp/util/fs.hpp"
 
 namespace llarp
 {
@@ -12,6 +13,9 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t* buf) const;
+
+    void
+    AddFromFile(fs::path fpath);
 
     void
     Clear();
