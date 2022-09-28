@@ -464,6 +464,25 @@ namespace llarp
     return m_isServiceNode;
   }
 
+  bool
+  Router::TooFewPeers() const
+  {
+    constexpr int KnownPeerWarningThreshold = 5;
+    return nodedb()->NumLoaded() < KnownPeerWarningThreshold;
+  }
+
+  bool
+  Router::IsActiveServiceNode() const
+  {
+    return IsServiceNode() and not(LooksDeregistered() or LooksDecommissioned());
+  }
+
+  bool
+  Router::ShouldPingOxen() const
+  {
+    return IsActiveServiceNode() and not TooFewPeers();
+  }
+
   void
   Router::Close()
   {
@@ -1057,14 +1076,12 @@ namespace llarp
             dereg ? "deregistered" : "decommissioned");
         m_NextDecommissionWarn = now + DecommissionWarnInterval;
       }
-      else if (isSvcNode)
+      else if (isSvcNode and TooFewPeers())
       {
-        constexpr int KnownPeerWarningThreshold = 5;
-        if (nodedb()->NumLoaded() < KnownPeerWarningThreshold)
-          log::error(
-              logcat,
-              "We appear to be an active service node, but have fewer than {} known peers.",
-              KnownPeerWarningThreshold);
+        log::error(
+            logcat,
+            "We appear to be an active service node, but have only {} known peers.",
+            nodedb()->NumLoaded());
         m_NextDecommissionWarn = now + DecommissionWarnInterval;
       }
     }

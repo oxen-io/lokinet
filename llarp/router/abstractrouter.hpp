@@ -200,6 +200,15 @@ namespace llarp
     IsServiceNode() const = 0;
 
     virtual bool
+    IsActiveServiceNode() const = 0;
+
+    /// If we are running as a service node and appear active, i.e. registered and not
+    /// decommissioned, we should *not* ping core if we know of too few peers, to indicate to core
+    /// we are not in a good state.
+    virtual bool
+    ShouldPingOxen() const = 0;
+
+    virtual bool
     StartRpcServer() = 0;
 
     virtual bool

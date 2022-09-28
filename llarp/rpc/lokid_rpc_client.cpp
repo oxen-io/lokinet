@@ -152,18 +152,25 @@ namespace llarp
       auto makePingRequest = [self = shared_from_this()]() {
         // send a ping
         PubKey pk{};
+        bool should_ping = false;
         if (auto r = self->m_Router.lock())
+        {
           pk = r->pubkey();
-        nlohmann::json payload = {
-            {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
-            {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
-        self->Request(
-            "admin.lokinet_ping",
-            [](bool success, std::vector<std::string> data) {
-              (void)data;
-              LogDebug("Received response for ping. Successful: ", success);
-            },
-            payload.dump());
+          should_ping = r->ShouldPingOxen();
+        }
+        if (should_ping)
+        {
+          nlohmann::json payload = {
+              {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
+              {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+          self->Request(
+              "admin.lokinet_ping",
+              [](bool success, std::vector<std::string> data) {
+                (void)data;
+                LogDebug("Received response for ping. Successful: ", success);
+              },
+              payload.dump());
+        }
         // subscribe to block updates
         self->Request("sub.block", [](bool success, std::vector<std::string> data) {
           if (data.empty() or not success)
