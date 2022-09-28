@@ -59,7 +59,7 @@ namespace llarp
       , inbound_link_msg_parser{this}
       , _hiddenServiceContext{this}
       , m_RoutePoker{std::make_shared<RoutePoker>()}
-      , m_RPCServer{new rpc::RpcServer{m_lmq, this}}
+      , m_RPCServer{nullptr}
       , _randomStartDelay{
             platform::is_simulation ? std::chrono::milliseconds{(llarp::randint() % 1250) + 2000}
                                     : 0s}
@@ -791,6 +791,12 @@ namespace llarp
     log::clear_sinks();
     log::add_sink(log_type, conf.logging.m_logFile);
 
+    // re-add rpc log sink if rpc enabled, else free it
+    if (enableRPCServer and llarp::logRingBuffer)
+      log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
+    else
+      llarp::logRingBuffer = nullptr;
+
     return true;
   }
 
@@ -1206,6 +1212,7 @@ namespace llarp
   {
     if (enableRPCServer)
     {
+      m_RPCServer.reset(new rpc::RpcServer{m_lmq, this});
       m_RPCServer->AsyncServeRPC(rpcBindAddr);
       LogInfo("Bound RPC server to ", rpcBindAddr.full_address());
     }
