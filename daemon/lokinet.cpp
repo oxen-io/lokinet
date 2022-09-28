@@ -390,6 +390,9 @@ lokinet_main(int argc, char* argv[])
   llarp::log::add_sink(llarp::log::Type::Print, "stderr");
   llarp::log::reset_level(llarp::log::Level::info);
 
+  llarp::logRingBuffer = std::make_shared<llarp::log::RingBufferSink>(100);
+  llarp::log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
+
   llarp::RuntimeOptions opts;
   opts.showBanner = false;
 
