@@ -18,6 +18,7 @@ fi
 ./contrib/mac-configure.sh "$@"
 
 cd build-mac
+rm -rf Lokinet\ *
 ninja -j${JOBS:-1} package
 cd ..
 
