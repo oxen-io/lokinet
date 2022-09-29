@@ -116,6 +116,12 @@ class LokinetMain: NSObject, NSApplicationDelegate {
                             } catch {
                                 self.result(msg: "There was a fatal error")
                             }
+
+                            // Check if we are already connected because, if so, we won't get a
+                            // status change and will just hang waiting for one.
+                            if self.vpnManager.connection.status == .connected {
+                                self.result(msg: "VPN already connected");
+                            }
                         }
                     })
                 }
