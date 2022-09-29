@@ -746,7 +746,7 @@ namespace llarp::rpc
     }
     else
     {
-      log::info(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn, m.remote);
+      log::debug(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn, m.remote);
       m.send_reply("ALREADY");
     }
   }
