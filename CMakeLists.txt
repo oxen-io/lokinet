@@ -114,6 +114,8 @@ if (STATIC_LINK)
   message(STATUS "setting static library suffix search")
 endif()
 
+include(cmake/gui-option.cmake)
+
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
 include(cmake/macos.cmake)

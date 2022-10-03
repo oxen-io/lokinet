@@ -1,21 +1,14 @@
-set(default_build_gui OFF)
+
 set(default_gui_target pack)
 if(APPLE)
-  set(default_build_gui ON)
   set(default_gui_target macos:raw)
 elseif(WIN32)
-  set(default_build_gui ON)
   set(default_gui_target win32)
+  set(GUI_EXE "" CACHE FILEPATH "path to an externally built lokinet gui.exe")
 endif()
 
-if(WIN32)
-  option(GUI_EXE "path to an externally built lokinet gui.exe" OFF)
-endif()
-
-option(BUILD_GUI "build electron gui from 'gui' submodule source" ${default_build_gui})
 set(GUI_YARN_TARGET "${default_gui_target}" CACHE STRING "yarn target for building the GUI")
 set(GUI_YARN_EXTRA_OPTS "" CACHE STRING "extra options to pass into the yarn build command")
-
 
 if (BUILD_GUI)
   message(STATUS "Building lokinet-gui")
