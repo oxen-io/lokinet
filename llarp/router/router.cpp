@@ -665,20 +665,13 @@ namespace llarp
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
+    // TODO: use constant
+    fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
     if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
-      // TODO: use constant
-      fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
       if (fs::exists(defaultBootstrapFile))
       {
         configRouters.push_back(defaultBootstrapFile);
-      }
-      else if (not conf.bootstrap.seednode)
-      {
-        LogError("No bootstrap files specified in config file, and the default");
-        LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
-        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap)'");
-        throw std::runtime_error("No bootstrap files available.");
       }
     }
 
@@ -708,7 +701,7 @@ namespace llarp
       {
         if (rc.IsObsoleteBootstrap())
         {
-          LogWarn("ignoring obsolete boostrap RC: ", RouterID(rc.pubkey));
+          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID(rc.pubkey));
           continue;
         }
         if (not rc.Verify(Now()))
@@ -722,29 +715,29 @@ namespace llarp
 
     verifyRCs();
 
-#ifdef BOOTSTRAP_FALLBACK
-    constexpr std::string_view bootstrap_fallback = BOOTSTRAP_FALLBACK;
-#else
-    constexpr std::string_view bootstrap_fallback{};
-#endif  // BOOTSTRAP_FALLBACK
-
     if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
     {
-      if (not bootstrap_fallback.empty())
+      auto fallbacks = llarp::load_bootstrap_fallbacks();
+      if (auto itr = fallbacks.find(_rc.netID.ToString()); itr != fallbacks.end())
       {
-        b_list.clear();
-        b_list.AddFromFile(bootstrap_fallback);
+        b_list = itr->second;
 
         verifyRCs();
       }
-      if (bootstrapRCList.empty())  // empty after trying fallback, if set
-        throw std::runtime_error{"we have no bootstrap nodes"};
+      if (bootstrapRCList.empty()
+          and not conf.bootstrap.seednode)  // empty after trying fallback, if set
+      {
+        log::error(
+            logcat,
+            "No bootstrap routers were loaded.  The default bootstrap file {} does not exist, and "
+            "loading fallback bootstrap RCs failed.",
+            defaultBootstrapFile);
+        throw std::runtime_error("No bootstrap nodes available.");
+      }
     }
 
     if (conf.bootstrap.seednode)
-    {
       LogInfo("we are a seed node");
-    }
     else
       LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 

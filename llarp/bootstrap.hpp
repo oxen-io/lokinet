@@ -2,6 +2,7 @@
 
 #include "router_contact.hpp"
 #include <set>
+#include <unordered_map>
 #include "llarp/util/fs.hpp"
 
 namespace llarp
@@ -20,4 +21,8 @@ namespace llarp
     void
     Clear();
   };
+
+  std::unordered_map<std::string, BootstrapList>
+  load_bootstrap_fallbacks();
+
 }  // namespace llarp
