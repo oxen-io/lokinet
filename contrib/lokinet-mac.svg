@@ -33,7 +33,7 @@
 
     We can then copy that at 90, 180, 270 degree rotations to complete the logo.
     -->
-  <g transform="rotate(45) scale(104) translate(-2.5, -2.5)">
+  <g transform="rotate(45) scale(85) translate(-2.5, -2.5)">
     <polygon points="0,0 2,0 2,1 1,1 1,2 0,2"/>
     <rect x="1" y="2" width="1" height="1"/>
   </g>
