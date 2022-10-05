@@ -1,21 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 1024 1024" style="enable-background:new 0 0 1024 1024;" xml:space="preserve">
+<!-- our size/viewbox is positioned such that 0,0 is the center of the image (to simplify scaling and rotation). -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="-512px" y="-512px"
+	 viewBox="-512 -512 1024 1024" style="enable-background:new -512 -512 1024 1024;" xml:space="preserve">
 <style type="text/css">
 	.st0{fill:#FFFFFF;}
 </style>
-<g>
-	<path class="st0" d="M897.5,1024H126.5C56.6,1024,0,967.4,0,897.5V126.5C0,56.6,56.6,0,126.5,0h771.1C967.4,0,1024,56.6,1024,126.5
-		v771.1C1024,967.4,967.4,1024,897.5,1024z"/>
+
+<!--
+    Draw the background shape in a 2x2 box (from -1 to 1 in each dimension), then scale it up
+    (but not all the way to 512, because we want some padding around the outside.
+-->
+<g transform="scale(415)">
+    <path class="st0" d="
+        M 0.5 1
+        H -0.5
+        C -0.81,1 -1,0.81 -1,0.5
+        V -0.5
+        C -1,-0.81 -0.81,-1 -0.5,-1
+        H 0.5
+        C 0.81,-1 1,-0.81 1,-0.5
+        V 0.5
+        C 1,0.81 0.81,1 0.5,1
+        z
+        "/>
 </g>
-<g>
-	<polygon points="585.2,658.9 512,732.1 438.8,658.9 365.1,732.1 512,879 658.9,732.1 	"/>
-	<polygon points="658.9,585.2 732.1,512 658.9,438.8 732.1,365.1 879,512 732.1,658.9 	"/>
-	<polygon points="365.1,438.8 291.9,512 365.1,585.2 291.9,658.9 145,512 291.9,365.1 	"/>
-	<polygon points="438.8,365.1 512,291.9 585.2,365.1 658.9,291.9 512,145 365.1,291.9 	"/>
-	<rect x="533.4" y="533.3" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -242.3375 585.3179)" width="103.9" height="103.9"/>
-	<rect x="386.7" y="386.9" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -181.837 438.6521)" width="103.9" height="103.9"/>
-	<rect x="533.2" y="386.7" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -138.7545 542.2352)" width="103.9" height="103.9"/>
-	<rect x="386.9" y="533.5" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -285.4199 481.7348)" width="103.9" height="103.9"/>
+
+<g id="shape0">
+  <!--
+    Start with a simple 3x2 shape, where each unit we draw corresponds to 1 block edge length in the
+    final diagram, and shift it so that 2.5x2.5 becomes the new origin (around which we will rotate).
+    Then we rotate and scale it to the desired size.
+
+    We can then copy that at 90, 180, 270 degree rotations to complete the logo.
+    -->
+  <g transform="rotate(45) scale(85) translate(-2.5, -2.5)">
+    <polygon points="0,0 2,0 2,1 1,1 1,2 0,2"/>
+    <rect x="1" y="2" width="1" height="1"/>
+  </g>
 </g>
+
+<use xlink:href="#shape0" transform="rotate(90)"/>
+<use xlink:href="#shape0" transform="rotate(180)"/>
+<use xlink:href="#shape0" transform="rotate(270)"/>
 </svg>
