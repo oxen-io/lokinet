@@ -10,7 +10,7 @@
 #include <llarp/net/ip.hpp>
 #include <llarp/router_contact.hpp>
 #include <stdexcept>
-#include <llarp/util/fs.hpp>
+#include <llarp/util/file.hpp>
 #include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
@@ -19,7 +19,6 @@
 #include <llarp/service/name.hpp>
 
 #include <cstdlib>
-#include <fstream>
 #include <ios>
 #include <iostream>
 
@@ -1434,18 +1433,19 @@ namespace llarp
   bool
   Config::Load(std::optional<fs::path> fname, bool isRelay)
   {
-    std::vector<char> ini{};
+    std::string ini;
     if (fname)
     {
-      if (not fs::exists(*fname))
+      try
+      {
+        ini = util::slurp_file(*fname);
+      }
+      catch (const std::exception&)
+      {
         return false;
-      fs::ifstream inf{*fname, std::ios::in | std::ios::binary};
-      auto sz = inf.seekg(0, std::ios::end).tellg();
-      inf.seekg(0, std::ios::beg);
-      ini.resize(sz);
-      inf.read(ini.data(), ini.size());
+      }
     }
-    return LoadConfigData(std::string_view{ini.data(), ini.size()}, fname, isRelay);
+    return LoadConfigData(ini, fname, isRelay);
   }
 
   bool
@@ -1521,12 +1521,15 @@ namespace llarp
       confStr = config.generateBaseClientConfig();
 
     // open a filestream
-    auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
-    if (not stream or not stream->is_open())
-      throw std::runtime_error{fmt::format("Failed to open file {} for writing", confFile)};
-
-    *stream << confStr;
-    stream->flush();
+    try
+    {
+      util::dump_file(confFile, confStr);
+    }
+    catch (const std::exception& e)
+    {
+      throw std::runtime_error{
+          fmt::format("Failed to write config data to {}: {}", confFile, e.what())};
+    }
 
     llarp::LogInfo("Generated new config ", confFile);
   }

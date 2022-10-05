@@ -11,11 +11,12 @@
 
 #include <oxenc/bt_serialize.h>
 
-#include <fstream>
-#include "util/fs.hpp"
+#include "util/file.hpp"
 
 namespace llarp
 {
+  static auto logcat = log::Cat("RC");
+
   NetID&
   NetID::DefaultValue()
   {
@@ -290,13 +291,13 @@ namespace llarp
       }
       else
       {
-        llarp::LogWarn("Received RouterContact with unkown version (", outer_version, ")");
+        log::warning(logcat, "Received RouterContact with unkown version ({})", outer_version);
         return false;
       }
     }
     catch (const std::exception& e)
     {
-      llarp::LogDebug("RouterContact::BDecode failed, reason: ", e.what());
+      log::debug(logcat, "RouterContact::BDecode failed: {}", e.what());
     }
 
     return false;
@@ -316,14 +317,14 @@ namespace llarp
 
     if (not btlist.is_finished())
     {
-      llarp::LogDebug("RouterContact serialized list too long for specified version.");
+      log::debug(logcat, "RouterContact serialized list too long for specified version.");
       return false;
     }
 
     llarp_buffer_t sigbuf(signature_string.data(), signature_string.size());
     if (not signature.FromBytestring(&sigbuf))
     {
-      llarp::LogDebug("RouterContact serialized signature had invalid length.");
+      log::debug(logcat, "RouterContact serialized signature had invalid length.");
       return false;
     }
 
@@ -477,8 +478,8 @@ namespace llarp
   {
     if (netID != NetID::DefaultValue())
     {
-      llarp::LogError(
-          "netid mismatch: '", netID, "' (theirs) != '", NetID::DefaultValue(), "' (ours)");
+      log::error(
+          logcat, "netid mismatch: '{}' (theirs) != '{}' (ours)", netID, NetID::DefaultValue());
       return false;
     }
 
@@ -491,13 +492,13 @@ namespace llarp
     {
       if (net->IsBogon(a.ip) && BlockBogons)
       {
-        llarp::LogError("invalid address info: ", a);
+        log::error(logcat, "invalid address info: {}", a);
         return false;
       }
     }
     if (!VerifySignature())
     {
-      llarp::LogError("invalid signature: ", *this);
+      log::error(logcat, "invalid signature: {}", *this);
       return false;
     }
     return true;
@@ -515,7 +516,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       if (!copy.BEncode(&buf))
       {
-        llarp::LogError("bencode failed");
+        log::error(logcat, "bencode failed");
         return false;
       }
       buf.sz = buf.cur - buf.base;
@@ -541,18 +542,15 @@ namespace llarp
     {
       return false;
     }
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
-    auto f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-    if (!f)
+    try
     {
+      util::dump_file(fname, tmp.data(), buf.cur - buf.base);
+    }
+    catch (const std::exception& e)
+    {
+      log::error(logcat, "Failed to write RC to {}: {}", fname, e.what());
       return false;
     }
-    if (!f->is_open())
-    {
-      return false;
-    }
-    f->write((char*)buf.base, buf.sz);
     return true;
   }
 
@@ -561,21 +559,15 @@ namespace llarp
   {
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
-    std::ifstream f;
-    f.open(fname.string(), std::ios::binary);
-    if (!f.is_open())
+    try
     {
-      llarp::LogError("Failed to open ", fname);
+      util::slurp_file(fname, tmp.data(), tmp.size());
+    }
+    catch (const std::exception& e)
+    {
+      log::error(logcat, "Failed to read RC from {}: {}", fname, e.what());
       return false;
     }
-    f.seekg(0, std::ios::end);
-    auto l = f.tellg();
-    if (l > static_cast<std::streamoff>(sizeof tmp))
-    {
-      return false;
-    }
-    f.seekg(0, std::ios::beg);
-    f.read((char*)tmp.data(), l);
     return BDecode(&buf);
   }
 

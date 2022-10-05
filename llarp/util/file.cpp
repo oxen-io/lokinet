@@ -1,0 +1,119 @@
+#include "file.hpp"
+#include <fstream>
+#include <ios>
+#include <stdexcept>
+
+#include <llarp/util/logging.hpp>
+#include <llarp/util/formattable.hpp>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <system_error>
+
+#ifdef WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+namespace llarp::util
+{
+  static std::pair<fs::ifstream, std::streampos>
+  slurp_file_open(const fs::path& filename)
+  {
+    std::pair<fs::ifstream, std::streampos> f;
+    auto& [in, size] = f;
+    in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    in.open(filename, std::ios::binary | std::ios::in);
+    in.seekg(0, std::ios::end);
+    size = in.tellg();
+    in.seekg(0, std::ios::beg);
+    return f;
+  }
+
+  std::string
+  slurp_file(const fs::path& filename)
+  {
+    std::string contents;
+    auto [in, size] = slurp_file_open(filename);
+    contents.resize(size);
+    in.read(contents.data(), size);
+    return contents;
+  }
+
+  size_t
+  slurp_file(const fs::path& filename, char* buffer, size_t buffer_size)
+  {
+    auto [in, size] = slurp_file_open(filename);
+    if (static_cast<size_t>(size) > buffer_size)
+      throw std::length_error{"file is too large for buffer"};
+    in.read(buffer, size);
+    return size;
+  }
+
+  void
+  dump_file(const fs::path& filename, std::string_view contents)
+  {
+    fs::ofstream out;
+    out.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    out.open(filename, std::ios::binary | std::ios::out | std::ios::trunc);
+    out.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+  }
+
+  static std::error_code
+  errno_error()
+  {
+    int e = errno;
+    errno = 0;
+    return std::make_error_code(static_cast<std::errc>(e));
+  }
+
+  error_code_t
+  EnsurePrivateFile(fs::path pathname)
+  {
+    errno = 0;
+    error_code_t ec = errno_error();
+    const auto str = pathname.string();
+    if (fs::exists(pathname, ec))  // file exists
+    {
+      auto st = fs::status(pathname);
+      auto perms = st.permissions();
+      if ((perms & fs::perms::others_exec) != fs::perms::none)
+        perms = perms ^ fs::perms::others_exec;
+      if ((perms & fs::perms::others_write) != fs::perms::none)
+        perms = perms ^ fs::perms::others_write;
+      if ((perms & fs::perms::others_write) != fs::perms::none)
+        perms = perms ^ fs::perms::others_write;
+      if ((perms & fs::perms::group_read) != fs::perms::none)
+        perms = perms ^ fs::perms::group_read;
+      if ((perms & fs::perms::others_read) != fs::perms::none)
+        perms = perms ^ fs::perms::others_read;
+      if ((perms & fs::perms::owner_exec) != fs::perms::none)
+        perms = perms ^ fs::perms::owner_exec;
+
+      fs::permissions(pathname, perms, ec);
+      if (ec)
+        llarp::LogError("failed to set permissions on ", pathname);
+    }
+    else  // file is not there
+    {
+      errno = 0;
+      int fd = ::open(str.c_str(), O_RDWR | O_CREAT, 0600);
+      ec = errno_error();
+      if (fd != -1)
+      {
+        ::close(fd);
+      }
+    }
+
+#ifndef WIN32
+    if (ec)
+      llarp::LogError("failed to ensure ", str, ", ", ec.message());
+    return ec;
+#else
+    return {};
+#endif
+  }
+
+}  // namespace llarp::util
