@@ -260,6 +260,12 @@ namespace llarp
       return FromBytestring(&strbuf);
     }
 
+    std::string_view
+    ToView() const
+    {
+      return {reinterpret_cast<const char*>(data()), sz};
+    }
+
     std::string
     ToHex() const
     {

@@ -1,53 +1,51 @@
 #include "profiling.hpp"
+#include <oxenc/bt_producer.h>
+#include <oxenc/bt_serialize.h>
 
-#include <fstream>
-#include "util/fs.hpp"
+#include "util/file.hpp"
+#include "util/logging.hpp"
+
+using oxenc::bt_dict_consumer;
+using oxenc::bt_dict_producer;
 
 namespace llarp
 {
-  bool
-  RouterProfile::BEncode(llarp_buffer_t* buf) const
+  static auto logcat = log::Cat("profiling");
+
+  RouterProfile::RouterProfile(bt_dict_consumer dict)
   {
-    if (!bencode_start_dict(buf))
-      return false;
-
-    if (!BEncodeWriteDictInt("g", connectGoodCount, buf))
-      return false;
-    if (!BEncodeWriteDictInt("p", pathSuccessCount, buf))
-      return false;
-    if (!BEncodeWriteDictInt("q", pathTimeoutCount, buf))
-      return false;
-    if (!BEncodeWriteDictInt("s", pathFailCount, buf))
-      return false;
-    if (!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
-      return false;
-    if (!BEncodeWriteDictInt("u", lastUpdated.count(), buf))
-      return false;
-    if (!BEncodeWriteDictInt("v", version, buf))
-      return false;
-
-    return bencode_end(buf);
+    BDecode(std::move(dict));
   }
 
-  bool
-  RouterProfile::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  void
+  RouterProfile::BEncode(bt_dict_producer& dict) const
   {
-    bool read = false;
-    if (!BEncodeMaybeReadDictInt("g", connectGoodCount, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("t", connectTimeoutCount, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("u", lastUpdated, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("s", pathFailCount, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("q", pathTimeoutCount, read, k, buf))
-      return false;
-    return read;
+    dict.append("g", connectGoodCount);
+    dict.append("p", pathSuccessCount);
+    dict.append("q", pathTimeoutCount);
+    dict.append("s", pathFailCount);
+    dict.append("t", connectTimeoutCount);
+    dict.append("u", lastUpdated.count());
+    dict.append("v", version);
+  }
+
+  void
+  RouterProfile::BDecode(bt_dict_consumer dict)
+  {
+    if (dict.skip_until("g"))
+      connectGoodCount = dict.consume_integer<uint64_t>();
+    if (dict.skip_until("p"))
+      pathSuccessCount = dict.consume_integer<uint64_t>();
+    if (dict.skip_until("q"))
+      pathTimeoutCount = dict.consume_integer<uint64_t>();
+    if (dict.skip_until("s"))
+      pathFailCount = dict.consume_integer<uint64_t>();
+    if (dict.skip_until("t"))
+      connectTimeoutCount = dict.consume_integer<uint64_t>();
+    if (dict.skip_until("u"))
+      lastUpdated = llarp_time_t{dict.consume_integer<uint64_t>()};
+    if (dict.skip_until("v"))
+      version = dict.consume_integer<uint64_t>();
   }
 
   void
@@ -156,23 +154,26 @@ namespace llarp
   Profiling::Tick()
   {
     util::Lock lock(m_ProfilesMutex);
-    std::for_each(m_Profiles.begin(), m_Profiles.end(), [](auto& item) { item.second.Tick(); });
+    for (auto& [rid, profile] : m_Profiles)
+      profile.Tick();
   }
 
   void
   Profiling::MarkConnectTimeout(const RouterID& r)
   {
     util::Lock lock{m_ProfilesMutex};
-    m_Profiles[r].connectTimeoutCount += 1;
-    m_Profiles[r].lastUpdated = llarp::time_now_ms();
+    auto& profile = m_Profiles[r];
+    profile.connectTimeoutCount += 1;
+    profile.lastUpdated = llarp::time_now_ms();
   }
 
   void
   Profiling::MarkConnectSuccess(const RouterID& r)
   {
     util::Lock lock{m_ProfilesMutex};
-    m_Profiles[r].connectGoodCount += 1;
-    m_Profiles[r].lastUpdated = llarp::time_now_ms();
+    auto& profile = m_Profiles[r];
+    profile.connectGoodCount += 1;
+    profile.lastUpdated = llarp::time_now_ms();
   }
 
   void
@@ -186,24 +187,27 @@ namespace llarp
   Profiling::MarkHopFail(const RouterID& r)
   {
     util::Lock lock{m_ProfilesMutex};
-    m_Profiles[r].pathFailCount += 1;
-    m_Profiles[r].lastUpdated = llarp::time_now_ms();
+    auto& profile = m_Profiles[r];
+    profile.pathFailCount += 1;
+    profile.lastUpdated = llarp::time_now_ms();
   }
 
   void
   Profiling::MarkPathFail(path::Path* p)
   {
     util::Lock lock{m_ProfilesMutex};
-    size_t idx = 0;
+    bool first = true;
     for (const auto& hop : p->hops)
     {
       // don't mark first hop as failure because we are connected to it directly
-      if (idx)
+      if (first)
+        first = false;
+      else
       {
-        m_Profiles[hop.rc.pubkey].pathFailCount += 1;
-        m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+        auto& profile = m_Profiles[hop.rc.pubkey];
+        profile.pathFailCount += 1;
+        profile.lastUpdated = llarp::time_now_ms();
       }
-      ++idx;
     }
   }
 
@@ -213,8 +217,9 @@ namespace llarp
     util::Lock lock{m_ProfilesMutex};
     for (const auto& hop : p->hops)
     {
-      m_Profiles[hop.rc.pubkey].pathTimeoutCount += 1;
-      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      auto& profile = m_Profiles[hop.rc.pubkey];
+      profile.pathTimeoutCount += 1;
+      profile.lastUpdated = llarp::time_now_ms();
     }
   }
 
@@ -225,88 +230,82 @@ namespace llarp
     const auto sz = p->hops.size();
     for (const auto& hop : p->hops)
     {
+      auto& profile = m_Profiles[hop.rc.pubkey];
       // redeem previous fails by halfing the fail count and setting timeout to zero
-      m_Profiles[hop.rc.pubkey].pathFailCount /= 2;
-      m_Profiles[hop.rc.pubkey].pathTimeoutCount = 0;
+      profile.pathFailCount /= 2;
+      profile.pathTimeoutCount = 0;
       // mark success at hop
-      m_Profiles[hop.rc.pubkey].pathSuccessCount += sz;
-      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      profile.pathSuccessCount += sz;
+      profile.lastUpdated = llarp::time_now_ms();
     }
   }
 
   bool
   Profiling::Save(const fs::path fpath)
   {
-    const size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
-
-    std::vector<byte_t> tmp(sz, 0);
-    llarp_buffer_t buf(tmp);
-
+    std::string buf;
     {
       util::Lock lock{m_ProfilesMutex};
-      if (not BEncode(&buf))
+      buf.resize((m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8);
+      bt_dict_producer d{buf.data(), buf.size()};
+      try
+      {
+        BEncode(d);
+      }
+      catch (const std::exception& e)
+      {
+        log::warning(logcat, "Failed to encode profiling data: {}", e.what());
         return false;
+      }
+      buf.resize(d.end() - buf.data());
     }
 
-    buf.sz = buf.cur - buf.base;
-    auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
-    if (!optional_f)
+    try
+    {
+      util::dump_file(fpath, buf);
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(logcat, "Failed to save profiling data to {}: {}", fpath, e.what());
       return false;
-    auto& f = *optional_f;
-    if (not f.is_open())
-      return false;
+    }
 
-    f.write(reinterpret_cast<const char*>(buf.base), buf.sz);
-    if (not f.good())
-      return false;
     m_LastSave = llarp::time_now_ms();
     return true;
   }
 
-  bool
-  Profiling::BEncode(llarp_buffer_t* buf) const
+  void
+  Profiling::BEncode(bt_dict_producer& dict) const
   {
-    if (!bencode_start_dict(buf))
-      return false;
+    for (const auto& [r_id, profile] : m_Profiles)
+      profile.BEncode(dict.append_dict(r_id.ToView()));
+  }
 
-    auto itr = m_Profiles.begin();
-    while (itr != m_Profiles.end())
+  void
+  Profiling::BDecode(bt_dict_consumer dict)
+  {
+    m_Profiles.clear();
+    while (dict)
     {
-      if (!itr->first.BEncode(buf))
-        return false;
-      if (!itr->second.BEncode(buf))
-        return false;
-      ++itr;
+      auto [rid, subdict] = dict.next_dict_consumer();
+      if (rid.size() != RouterID::SIZE)
+        throw std::invalid_argument{"invalid RouterID"};
+      m_Profiles.emplace(reinterpret_cast<const byte_t*>(rid.data()), subdict);
     }
-    return bencode_end(buf);
-  }
-
-  bool
-  Profiling::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-  {
-    if (k.sz != 32)
-      return false;
-    RouterProfile profile;
-    if (!bencode_decode_dict(profile, buf))
-      return false;
-    RouterID pk = k.base;
-    return m_Profiles.emplace(pk, profile).second;
-  }
-
-  bool
-  Profiling::BDecode(llarp_buffer_t* buf)
-  {
-    return bencode_decode_dict(*this, buf);
   }
 
   bool
   Profiling::Load(const fs::path fname)
   {
-    util::Lock lock{m_ProfilesMutex};
-    m_Profiles.clear();
-    if (!BDecodeReadFile(fname, *this))
+    try
     {
-      llarp::LogWarn("failed to load router profiles from ", fname);
+      std::string data = util::slurp_file(fname);
+      util::Lock lock{m_ProfilesMutex};
+      BDecode(bt_dict_consumer{data});
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(logcat, "failed to load router profiles from {}: {}", fname, e.what());
       return false;
     }
     m_LastSave = llarp::time_now_ms();
