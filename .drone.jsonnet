@@ -27,7 +27,7 @@ local submodules = {
 };
 
 // cmake options for static deps mirror
-local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps ';
+local ci_dep_mirror(want_mirror) = (if want_mirror then ' -DLOCAL_MIRROR=https://oxen.rocks/deps ' else '');
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
@@ -40,6 +40,7 @@ local debian_pipeline(name,
                       lto=false,
                       werror=true,
                       cmake_extra='',
+                      local_mirror=true,
                       extra_cmds=[],
                       jobs=6,
                       tests=true,
@@ -80,7 +81,8 @@ local debian_pipeline(name,
                   (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                   '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                   '-DWITH_TESTS=' + (if tests then 'ON ' else 'OFF ') +
-                  cmake_extra,
+                  cmake_extra +
+                  ci_dep_mirror(local_mirror),
                   'VERBOSE=1 make -j' + jobs,
                 ]
                 + (if tests then ['../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes'] else [])
@@ -122,6 +124,7 @@ local windows_cross_pipeline(name,
                              lto=false,
                              werror=false,
                              cmake_extra='',
+                             local_mirror=true,
                              gui_zip_url='',
                              extra_cmds=[],
                              jobs=6,
@@ -147,7 +150,9 @@ local windows_cross_pipeline(name,
         'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y p7zip-full build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh ' + (if std.length(gui_zip_url) > 0 then '-DBUILD_GUI=OFF -DGUI_ZIP_URL=' + gui_zip_url else '') + ' -DSTRIP_SYMBOLS=ON ' + ci_mirror_opts,
+        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh -DSTRIP_SYMBOLS=ON ' +
+        (if std.length(gui_zip_url) > 0 then '-DBUILD_GUI=OFF -DGUI_ZIP_URL=' + gui_zip_url else '') +
+        ci_dep_mirror(local_mirror),
       ] + extra_cmds,
     },
   ],
@@ -159,6 +164,7 @@ local linux_cross_pipeline(name,
                            arch='amd64',
                            build_type='Release',
                            cmake_extra='',
+                           local_mirror=true,
                            extra_cmds=[],
                            jobs=6,
                            allow_fail=false) = {
@@ -177,7 +183,8 @@ local linux_cross_pipeline(name,
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) +
+        ' -- ' + cmake_extra + ci_dep_mirror(local_mirror),
       ],
     },
   ],
@@ -259,6 +266,7 @@ local mac_builder(name,
                   build_type='Release',
                   werror=true,
                   cmake_extra='',
+                  local_mirror=true,
                   extra_cmds=[],
                   jobs=6,
                   codesign='-DCODESIGN=OFF',
@@ -278,7 +286,10 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac-configure.sh ' + ci_mirror_opts + (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') + codesign,
+        './contrib/mac-configure.sh ' +
+        ci_dep_mirror(local_mirror) +
+        (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') +
+        codesign,
         'cd build-mac',
         // We can't use the 'package' target here because making a .dmg requires an active logged in
         // macos gui to invoke Finder to invoke the partitioning tool to create a partitioned (!)
@@ -378,7 +389,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   lto=true,
                   tests=false,
                   oxen_repo=true,
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' + ci_mirror_opts +
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                               '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
@@ -392,7 +403,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   docker_base + 'debian-buster/arm32v7',
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' + ci_mirror_opts +
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
                   extra_cmds=[
