@@ -20,6 +20,8 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
+  static auto logcat = log::Cat("nodedb");
+
   NodeDB::Entry::Entry(RouterContact value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
   {}
 
@@ -159,7 +161,7 @@ namespace llarp
 
     if (not purge.empty())
     {
-      LogWarn("removing {} invalid RC from disk", purge.size());
+      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
 
       for (const auto& fpath : purge)
         fs::remove(fpath);

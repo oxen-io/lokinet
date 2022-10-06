@@ -477,7 +477,7 @@ namespace llarp::rpc
                   map = false;
                 }
                 const auto range_itr = obj.find("range");
-                if (range_itr == obj.end())
+                if (range_itr == obj.end() or range_itr->is_null())
                 {
                   // platforms without ipv6 support will shit themselves
                   // here if we give them an exit mapping that is ipv6
@@ -500,9 +500,9 @@ namespace llarp::rpc
                   reply(CreateJSONError("ipv6 ranges not supported on this platform"));
                   return;
                 }
-                std::optional<std::string> token;
+                std::string token;
                 const auto token_itr = obj.find("token");
-                if (token_itr != obj.end())
+                if (token_itr != obj.end() and not token_itr->is_null())
                 {
                   token = token_itr->get<std::string>();
                 }
@@ -526,10 +526,10 @@ namespace llarp::rpc
                       ep->MapExitRange(range, addr);
 
                       bool shouldSendAuth = false;
-                      if (token.has_value())
+                      if (not token.empty())
                       {
                         shouldSendAuth = true;
-                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
+                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{token});
                       }
                       auto onGoodResult = [r, reply](std::string reason) {
                         if (r->HasClientExit())
