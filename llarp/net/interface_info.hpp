@@ -1,7 +1,9 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
+#include <llarp/util/formattable.hpp>
 #include "ip_range.hpp"
 
 namespace llarp::net
@@ -17,5 +19,11 @@ namespace llarp::net
     std::vector<IPRange> addrs;
     /// a gateway we can use if it exists
     std::optional<ipaddr_t> gateway;
+
+    std::string
+    ToString() const;
   };
 }  // namespace llarp::net
+
+template <>
+inline constexpr bool llarp::IsToStringFormattable<llarp::net::InterfaceInfo> = true;
