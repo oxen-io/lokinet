@@ -464,6 +464,25 @@ namespace llarp
     return m_isServiceNode;
   }
 
+  bool
+  Router::TooFewPeers() const
+  {
+    constexpr int KnownPeerWarningThreshold = 5;
+    return nodedb()->NumLoaded() < KnownPeerWarningThreshold;
+  }
+
+  bool
+  Router::IsActiveServiceNode() const
+  {
+    return IsServiceNode() and not(LooksDeregistered() or LooksDecommissioned());
+  }
+
+  bool
+  Router::ShouldPingOxen() const
+  {
+    return IsActiveServiceNode() and not TooFewPeers();
+  }
+
   void
   Router::Close()
   {
@@ -646,52 +665,20 @@ namespace llarp
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
+    // TODO: use constant
+    fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
     if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
-      // TODO: use constant
-      fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
       if (fs::exists(defaultBootstrapFile))
       {
         configRouters.push_back(defaultBootstrapFile);
-      }
-      else if (not conf.bootstrap.seednode)
-      {
-        LogError("No bootstrap files specified in config file, and the default");
-        LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
-        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap)'");
-        throw std::runtime_error("No bootstrap files available.");
       }
     }
 
     BootstrapList b_list;
     for (const auto& router : configRouters)
     {
-      bool isListFile = false;
-      {
-        std::ifstream inf(router.c_str(), std::ios::binary);
-        if (inf.is_open())
-        {
-          const char ch = inf.get();
-          isListFile = ch == 'l';
-        }
-      }
-      if (isListFile)
-      {
-        if (not BDecodeReadFile(router, b_list))
-        {
-          throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", router)};
-        }
-      }
-      else
-      {
-        RouterContact rc;
-        if (not rc.Read(router))
-        {
-          throw std::runtime_error{
-              fmt::format("failed to decode bootstrap RC, file='{}', rc={}", router, rc)};
-        }
-        b_list.insert(rc);
-      }
+      b_list.AddFromFile(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
@@ -699,25 +686,58 @@ namespace llarp
       b_list.emplace(rc);
     }
 
-    for (auto& rc : b_list)
+    // in case someone has an old bootstrap file and is trying to use a bootstrap
+    // that no longer exists
+    for (auto rc_itr = b_list.begin(); rc_itr != b_list.end();)
     {
-      if (not rc.Verify(Now()))
-      {
-        LogWarn("ignoring invalid RC: ", RouterID(rc.pubkey));
-        continue;
-      }
-      bootstrapRCList.emplace(std::move(rc));
+      if (rc_itr->IsObsoleteBootstrap())
+        b_list.erase(rc_itr);
+      else
+        rc_itr++;
     }
+
+    auto verifyRCs = [&]() {
+      for (auto& rc : b_list)
+      {
+        if (rc.IsObsoleteBootstrap())
+        {
+          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID(rc.pubkey));
+          continue;
+        }
+        if (not rc.Verify(Now()))
+        {
+          log::warning(logcat, "ignoring invalid RC: {}", RouterID(rc.pubkey));
+          continue;
+        }
+        bootstrapRCList.emplace(std::move(rc));
+      }
+    };
+
+    verifyRCs();
 
     if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
     {
-      throw std::runtime_error{"we have no bootstrap nodes"};
+      auto fallbacks = llarp::load_bootstrap_fallbacks();
+      if (auto itr = fallbacks.find(_rc.netID.ToString()); itr != fallbacks.end())
+      {
+        b_list = itr->second;
+
+        verifyRCs();
+      }
+      if (bootstrapRCList.empty()
+          and not conf.bootstrap.seednode)  // empty after trying fallback, if set
+      {
+        log::error(
+            logcat,
+            "No bootstrap routers were loaded.  The default bootstrap file {} does not exist, and "
+            "loading fallback bootstrap RCs failed.",
+            defaultBootstrapFile);
+        throw std::runtime_error("No bootstrap nodes available.");
+      }
     }
 
     if (conf.bootstrap.seednode)
-    {
       LogInfo("we are a seed node");
-    }
     else
       LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
@@ -1038,14 +1058,25 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (auto dereg = LooksDeregistered(); (dereg or decom) and now >= m_NextDecommissionWarn)
+    if (now >= m_NextDecommissionWarn)
     {
-      // complain about being deregistered
-      constexpr auto DecommissionWarnInterval = 30s;
-      LogError(
-          "We are running as a service node but we seem to be ",
-          dereg ? "deregistered" : "decommissioned");
-      m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      constexpr auto DecommissionWarnInterval = 5min;
+      if (auto dereg = LooksDeregistered(); dereg or decom)
+      {
+        // complain about being deregistered
+        LogError(
+            "We are running as a service node but we seem to be ",
+            dereg ? "deregistered" : "decommissioned");
+        m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      }
+      else if (isSvcNode and TooFewPeers())
+      {
+        log::error(
+            logcat,
+            "We appear to be an active service node, but have only {} known peers.",
+            nodedb()->NumLoaded());
+        m_NextDecommissionWarn = now + DecommissionWarnInterval;
+      }
     }
 
     // if we need more sessions to routers and we are not a service node kicked from the network

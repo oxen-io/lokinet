@@ -205,6 +205,9 @@ namespace llarp
     bool
     FromOurNetwork() const;
 
+    bool
+    IsObsoleteBootstrap() const;
+
    private:
     bool
     DecodeVersion_0(llarp_buffer_t* buf);

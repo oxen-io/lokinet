@@ -2,7 +2,7 @@
 #include <net/ip.hpp>
 #include <net/ip_range.hpp>
 #include <net/net.hpp>
-#include <oxenmq/hex.h>
+#include <oxenc/hex.h>
 
 #include <catch2/catch.hpp>
 
@@ -125,7 +125,7 @@ TEST_CASE("uint128_t")
     SECTION("layout")
     {
         llarp::uint128_t i{0x0011223f44556677ULL, 0x8899aabbc3ddeeffULL};
-        REQUIRE(oxenmq::to_hex(std::string_view{reinterpret_cast<const char*>(&i), sizeof(i)}) ==
+        REQUIRE(oxenc::to_hex(std::string_view{reinterpret_cast<const char*>(&i), sizeof(i)}) ==
 #ifdef __BIG_ENDIAN__
                 "0011223f445566778899aabbc3ddeeff"
 #else

@@ -378,6 +378,13 @@ namespace llarp
     bool
     IsServiceNode() const override;
 
+    /// return true if service node *and* not deregistered or decommissioned
+    bool
+    IsActiveServiceNode() const override;
+
+    bool
+    ShouldPingOxen() const override;
+
     void
     Close();
 
@@ -572,6 +579,9 @@ namespace llarp
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
+
+    bool
+    TooFewPeers() const;
 
    protected:
     virtual void

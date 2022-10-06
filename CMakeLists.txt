@@ -63,6 +63,8 @@ option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
 option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
 option(STRIP_SYMBOLS "strip off all debug symbols into an external archive for all executables built" OFF)
 
+set(BOOTSTRAP_FALLBACK_MAINNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed" CACHE PATH "Fallback bootstrap path (mainnet)")
+set(BOOTSTRAP_FALLBACK_TESTNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/testnet.signed" CACHE PATH "Fallback bootstrap path (testnet)")
 
 include(cmake/enable_lto.cmake)
 
