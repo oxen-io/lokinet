@@ -62,7 +62,8 @@ macro(system_or_submodule BIGNAME smallname pkgconf subdir)
 endmacro()
 
 system_or_submodule(OXENC oxenc liboxenc>=1.0.4 oxen-encoding)
-system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.12 oxen-mq)
+system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.14 oxen-mq)
+
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)

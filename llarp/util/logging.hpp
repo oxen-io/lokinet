@@ -7,6 +7,7 @@
 #include <array>
 
 #include <oxen/log.hpp>
+#include <oxen/log/ring_buffer_sink.hpp>
 #include "oxen/log/internal.hpp"
 
 namespace llarp
@@ -25,6 +26,8 @@ namespace llarp
 // Deprecated loggers (in the top-level llarp namespace):
 namespace llarp
 {
+  inline std::shared_ptr<log::RingBufferSink> logRingBuffer = nullptr;
+
   namespace log_detail
   {
     inline log::CategoryLogger legacy_logger = log::Cat("");

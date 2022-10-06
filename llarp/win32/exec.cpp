@@ -31,7 +31,7 @@ namespace llarp::win32
   }
 
   OneShotExec::OneShotExec(std::string cmd, std::chrono::milliseconds timeout)
-      : _si{}, _pi{}, _timeout{timeout.count()}
+      : _si{}, _pi{}, _timeout{static_cast<DWORD>(timeout.count())}
   {
     log::info(logcat, "exec: {}", cmd);
     if (not CreateProcessA(
