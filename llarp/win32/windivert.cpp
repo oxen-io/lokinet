@@ -102,7 +102,7 @@ namespace llarp::win32
             SetLastError(0);
           return std::nullopt;
         }
-        L::info(cat, "got packet of size {}B", sz);
+        L::trace(cat, "got packet of size {}B", sz);
         pkt.resize(sz);
         return Packet{std::move(pkt), std::move(addr)};
       }
@@ -112,7 +112,7 @@ namespace llarp::win32
       {
         const auto& pkt = w_pkt.pkt;
         const auto* addr = &w_pkt.addr;
-        L::info(cat, "send dns packet of size {}B", pkt.size());
+        L::trace(cat, "send dns packet of size {}B", pkt.size());
         UINT sz{};
         if (wd::send(m_Handle, pkt.data(), pkt.size(), &sz, addr))
           return;
@@ -151,7 +151,7 @@ namespace llarp::win32
           throw std::runtime_error{"windivert thread is already running"};
 
         auto read_loop = [this]() {
-          log::info(cat, "windivert read loop start");
+          log::debug(cat, "windivert read loop start");
           while (true)
           {
             // in the read loop, read packets until they stop coming in
@@ -165,7 +165,7 @@ namespace llarp::win32
             else  // leave loop on read fail
               break;
           }
-          log::info(cat, "windivert read loop end");
+          log::debug(cat, "windivert read loop end");
         };
 
         m_Runner = std::thread{std::move(read_loop)};
