@@ -171,23 +171,27 @@ namespace llarp::net
     AllNetworkInterfaces() const override
     {
       std::vector<InterfaceInfo> all;
-      iter_adapters([&all](auto* a) {
-        auto& cur = all.emplace_back();
-        cur.index = a->IfIndex;
-        cur.name = a->AdapterName;
-        for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
-        {
-          SockAddr saddr{*addr->Address.lpSockaddr};
-          cur.addrs.emplace_back(
-              saddr.asIPv6(),
-              ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
-        }
-        if (auto* addr = a->FirstGatewayAddress)
-        {
-          SockAddr gw{*addr->Address.lpSockaddr};
-          cur.gateway = gw.getIP();
-        }
-      });
+      for (int af : {AF_INET, AF_INET6})
+        iter_adapters(
+            [&all](auto* a) {
+              auto& cur = all.emplace_back();
+              cur.index = a->IfIndex;
+              cur.name = a->AdapterName;
+              for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
+              {
+                SockAddr saddr{*addr->Address.lpSockaddr};
+                cur.addrs.emplace_back(
+                    saddr.asIPv6(),
+                    ipaddr_netmask_bits(
+                        addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
+              }
+              if (auto* addr = a->FirstGatewayAddress)
+              {
+                SockAddr gw{*addr->Address.lpSockaddr};
+                cur.gateway = gw.getIP();
+              }
+            },
+            af);
       return all;
     }
   };
