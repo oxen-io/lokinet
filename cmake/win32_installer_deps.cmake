@@ -32,8 +32,14 @@ endif()
 set(BOOTSTRAP_FILE "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed")
 install(FILES ${BOOTSTRAP_FILE} DESTINATION share COMPONENT lokinet RENAME bootstrap.signed)
 
+set(win_ico "${PROJECT_BINARY_DIR}/lokinet.ico")
+add_custom_command(OUTPUT "${win_ico}"
+  COMMAND ${PROJECT_SOURCE_DIR}/contrib/make-ico.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg "${win_ico}"
+  DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/make-ico.sh)
+add_custom_target(icon ALL DEPENDS "${win_ico}")
+
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
-set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
+set(CPACK_NSIS_MUI_ICON "${PROJECT_BINARY_DIR}/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 

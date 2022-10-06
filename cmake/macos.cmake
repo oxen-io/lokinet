@@ -127,7 +127,7 @@ endif()
 set(mac_icon "${PROJECT_BINARY_DIR}/lokinet.icns")
 add_custom_command(OUTPUT "${mac_icon}"
   COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet-mac.svg "${mac_icon}"
-  DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
+  DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet-mac.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
 add_custom_target(icon DEPENDS "${mac_icon}")
 
 if(BUILD_PACKAGE)

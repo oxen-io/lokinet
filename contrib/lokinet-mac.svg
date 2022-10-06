@@ -3,7 +3,7 @@
 <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="-512px" y="-512px"
 	 viewBox="-512 -512 1024 1024" style="enable-background:new -512 -512 1024 1024;" xml:space="preserve">
 <style type="text/css">
-	.st0{fill:#FFFFFF;}
+	.bg{fill:#FFFFFF;}
 </style>
 
 <!--
@@ -11,7 +11,7 @@
     (but not all the way to 512, because we want some padding around the outside.
 -->
 <g transform="scale(415)">
-    <path class="st0" d="
+    <path class="bg" d="
         M 0.5 1
         H -0.5
         C -0.81,1 -1,0.81 -1,0.5
