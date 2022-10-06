@@ -98,17 +98,16 @@ namespace llarp
         RegenerateKeys();
         if (!BEncode(&buf))
           throw std::length_error("failed to encode new identity");
-        // rewind
-        buf.sz = buf.cur - buf.base;
-        buf.cur = buf.base;
+        const auto sz = buf.cur - buf.base;
         // write
-        auto optional_f = util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-        if (!optional_f)
-          throw std::runtime_error{fmt::format("can not open {}", fname)};
-        auto& f = *optional_f;
-        if (!f.is_open())
-          throw std::runtime_error{fmt::format("did not open {}", fname)};
-        f.write((char*)buf.cur, buf.sz);
+        try
+        {
+          util::dump_file(fname, tmp.data(), sz);
+        }
+        catch (const std::exception& e)
+        {
+          throw std::runtime_error{fmt::format("failed to write {}: {}", fname, e.what())};
+        }
       }
 
       if (not fs::is_regular_file(fname))
@@ -117,17 +116,18 @@ namespace llarp
       }
 
       // read file
-      std::ifstream inf(fname, std::ios::binary);
-      inf.seekg(0, std::ios::end);
-      size_t sz = inf.tellg();
-      inf.seekg(0, std::ios::beg);
+      try
+      {
+        util::slurp_file(fname, tmp.data(), tmp.size());
+      }
+      catch (const std::length_error&)
+      {
+        throw std::length_error{"service identity too big"};
+      }
+      // (don't catch io error exceptions)
 
-      if (sz > sizeof(tmp))
-        throw std::length_error("service identity too big");
-      // decode
-      inf.read((char*)buf.base, sz);
       if (!bencode_decode_dict(*this, &buf))
-        throw std::length_error("could not decode service identity");
+        throw std::length_error{"could not decode service identity"};
 
       auto crypto = CryptoManager::instance();
 

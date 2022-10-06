@@ -13,19 +13,19 @@
 namespace llarp
 {
   bool
-  ConfigParser::LoadFile(const fs::path fname)
+  ConfigParser::LoadFile(const fs::path& fname)
   {
+    try
     {
-      std::ifstream f(fname, std::ios::in | std::ios::binary);
-      if (not f.is_open())
-        return false;
-      f.seekg(0, std::ios::end);
-      m_Data.resize(f.tellg());
-      f.seekg(0, std::ios::beg);
-      if (m_Data.size() == 0)
-        return false;
-      f.read(m_Data.data(), m_Data.size());
+      m_Data = util::slurp_file(fname);
     }
+    catch (const std::exception& e)
+    {
+      return false;
+    }
+    if (m_Data.empty())
+      return false;
+
     m_FileName = fname;
     return Parse();
   }
