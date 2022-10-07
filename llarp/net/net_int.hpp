@@ -230,6 +230,9 @@ namespace llarp
     using ipv6addr_t = n_uint128_t;
     using ipaddr_t = std::variant<ipv4addr_t, ipv6addr_t>;
 
+    std::string
+    ToString(const ipaddr_t& ip);
+
     huint16_t ToHost(port_t);
     huint32_t ToHost(ipv4addr_t);
     huint128_t ToHost(ipv6addr_t);

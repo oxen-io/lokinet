@@ -10,6 +10,6 @@ namespace llarp::net
         name,
         index,
         fmt::join(addrs, ","),
-        gateway ? fmt::format("{}", *gateway) : "none");
+        gateway ? net::ToString(*gateway) : "none");
   }
 }  // namespace llarp::net
