@@ -151,35 +151,7 @@ namespace llarp::net
         }
       });
 
-      auto ownsRange = [&currentRanges](const IPRange& range) -> bool {
-        for (const auto& ownRange : currentRanges)
-        {
-          if (ownRange * range)
-            return true;
-        }
-        return false;
-      };
-      // generate possible ranges to in order of attempts
-      std::list<IPRange> possibleRanges;
-      for (byte_t oct = 16; oct < 32; ++oct)
-      {
-        possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
-      }
-      for (byte_t oct = 0; oct < 255; ++oct)
-      {
-        possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
-      }
-      for (byte_t oct = 0; oct < 255; ++oct)
-      {
-        possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
-      }
-      // for each possible range pick the first one we don't own
-      for (const auto& range : possibleRanges)
-      {
-        if (not ownsRange(range))
-          return range;
-      }
-      return std::nullopt;
+      return IPRange::FindPrivateRange(currentRanges);
     }
 
     std::string
@@ -199,23 +171,27 @@ namespace llarp::net
     AllNetworkInterfaces() const override
     {
       std::vector<InterfaceInfo> all;
-      iter_adapters([&all](auto* a) {
-        auto& cur = all.emplace_back();
-        cur.index = a->IfIndex;
-        cur.name = a->AdapterName;
-        for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
-        {
-          SockAddr saddr{*addr->Address.lpSockaddr};
-          cur.addrs.emplace_back(
-              saddr.asIPv6(),
-              ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
-        }
-        if (auto* addr = a->FirstGatewayAddress)
-        {
-          SockAddr gw{*addr->Address.lpSockaddr};
-          cur.gateway = gw.getIP();
-        }
-      });
+      for (int af : {AF_INET, AF_INET6})
+        iter_adapters(
+            [&all](auto* a) {
+              auto& cur = all.emplace_back();
+              cur.index = a->IfIndex;
+              cur.name = a->AdapterName;
+              for (auto* addr = a->FirstUnicastAddress; addr; addr = addr->Next)
+              {
+                SockAddr saddr{*addr->Address.lpSockaddr};
+                cur.addrs.emplace_back(
+                    saddr.asIPv6(),
+                    ipaddr_netmask_bits(
+                        addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
+              }
+              if (auto* addr = a->FirstGatewayAddress)
+              {
+                SockAddr gw{*addr->Address.lpSockaddr};
+                cur.gateway = gw.getIP();
+              }
+            },
+            af);
       return all;
     }
   };

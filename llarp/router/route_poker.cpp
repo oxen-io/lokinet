@@ -156,7 +156,7 @@ namespace llarp
         next_gw = *gw_ptr;
     }
 
-    // update current gateway and apply state chnages as needed
+    // update current gateway and apply state changes as needed
     if (m_CurrentGateway != next_gw)
     {
       if (next_gw and m_CurrentGateway)
@@ -172,7 +172,7 @@ namespace llarp
         m_CurrentGateway = next_gw;
         m_Router->Freeze();
       }
-      else if (next_gw)
+      else  // next_gw and not m_CurrentGateway
       {
         log::info(logcat, "default gateway found at {}", *next_gw);
         m_CurrentGateway = next_gw;
@@ -197,24 +197,36 @@ namespace llarp
   {
     bool was_up = m_up;
     m_up = true;
-    if (IsEnabled() and m_CurrentGateway and not was_up)
+    if (not was_up)
     {
-      log::info(logcat, "RoutePoker coming up; poking routes");
+      if (not IsEnabled())
+      {
+        log::warning(logcat, "RoutePoker coming up, but route poking is disabled by config");
+      }
+      else if (not m_CurrentGateway)
+      {
+        log::warning(logcat, "RokerPoker came up, but we don't know of a gateway!");
+      }
+      else
+      {
+        log::info(logcat, "RoutePoker coming up; poking routes");
 
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+        vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
 
-      // black hole all routes if enabled
-      if (m_Router->GetConfig()->network.m_BlackholeRoutes)
-        route.AddBlackhole();
+        // black hole all routes if enabled
+        if (m_Router->GetConfig()->network.m_BlackholeRoutes)
+          route.AddBlackhole();
 
-      // explicit route pokes for first hops
-      m_Router->ForEachPeer(
-          [this](auto session, auto) { AddRoute(session->GetRemoteEndpoint().getIPv4()); }, false);
-      // add default route
-      const auto ep = m_Router->hiddenServiceContext().GetDefault();
-      if (auto* vpn = ep->GetVPNInterface())
-        route.AddDefaultRouteViaInterface(*vpn);
-      log::info(logcat, "route poker up");
+        // explicit route pokes for first hops
+        m_Router->ForEachPeer(
+            [this](auto session, auto) { AddRoute(session->GetRemoteEndpoint().getIPv4()); },
+            false);
+        // add default route
+        const auto ep = m_Router->hiddenServiceContext().GetDefault();
+        if (auto* vpn = ep->GetVPNInterface())
+          route.AddDefaultRouteViaInterface(*vpn);
+        log::info(logcat, "route poker up");
+      }
     }
     if (not was_up)
       SetDNSMode(true);

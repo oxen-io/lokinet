@@ -1,10 +1,13 @@
 #pragma once
-#include <ostream>
+
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include <llarp/util/bits.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/types.hpp>
+
+#include <list>
+#include <optional>
 #include <string>
 
 namespace llarp
@@ -144,6 +147,10 @@ namespace llarp
 
     bool
     BDecode(llarp_buffer_t* buf);
+
+    /// Finds a free private use range not overlapping the given ranges.
+    static std::optional<IPRange>
+    FindPrivateRange(const std::list<IPRange>& excluding);
   };
 
   template <>

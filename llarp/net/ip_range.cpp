@@ -101,4 +101,25 @@ namespace llarp
     return netmask_bits.ToString();
   }
 
+  std::optional<IPRange>
+  IPRange::FindPrivateRange(const std::list<IPRange>& excluding)
+  {
+    auto good = [&excluding](const IPRange& range) -> bool {
+      for (const auto& ex : excluding)
+        if (ex * range)
+          return false;
+      return true;
+    };
+    for (int oct = 16; oct <= 31; ++oct)
+      if (auto range = IPRange::FromIPv4(172, oct, 0, 1, 16); good(range))
+        return range;
+    for (int oct = 0; oct <= 255; ++oct)
+      if (auto range = IPRange::FromIPv4(10, oct, 0, 1, 16); good(range))
+        return range;
+    for (int oct = 0; oct <= 255; ++oct)
+      if (auto range = IPRange::FromIPv4(192, 168, oct, 1, 24); good(range))
+        return range;
+    return std::nullopt;
+  }
+
 }  // namespace llarp

@@ -33,6 +33,7 @@ add_library(lokinet-platform
   # for networking
   ev/ev.cpp
   ev/libuv.cpp
+  net/interface_info.cpp
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
