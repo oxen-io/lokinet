@@ -27,7 +27,6 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
-#include <llarp/hook/shell.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/tunnel.hpp>
@@ -38,7 +37,6 @@
 
 #include <llarp/quic/server.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/ev/ev_libuv.hpp>
 #include <uvw.hpp>
 #include <variant>
 
@@ -125,8 +123,7 @@ namespace llarp
       // add supported ethertypes
       if (HasIfAddr())
       {
-        const auto ourIP = net::HUIntToIn6(GetIfAddr());
-        if (ipv6_is_mapped_ipv4(ourIP))
+        if (IPRange::V4MappedRange().Contains(GetIfAddr()))
         {
           introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
         }
@@ -223,39 +220,81 @@ namespace llarp
         std::string service,
         std::function<void(std::vector<dns::SRVData>)> resultHandler)
     {
-      auto fail = [resultHandler]() { resultHandler({}); };
+      // handles when we aligned to a loki address
+      auto handleGotPathToService = [resultHandler, service, this](auto addr) {
+        // we can probably get this info before we have a path to them but we do this after we
+        // have a path so when we send the response back they can send shit to them immediately
+        const auto& container = m_state->m_RemoteSessions;
+        if (auto itr = container.find(addr); itr != container.end())
+        {
+          // parse the stuff we need from this guy
+          resultHandler(itr->second->GetCurrentIntroSet().GetMatchingSRVRecords(service));
+          return;
+        }
+        resultHandler({});
+      };
 
-      auto lookupByAddress = [service, fail, resultHandler](auto address) {
-        // TODO: remove me after implementing the rest
-        fail();
-        if (auto* ptr = std::get_if<RouterID>(&address))
-        {}
-        else if (auto* ptr = std::get_if<Address>(&address))
-        {}
+      // handles when we resolved a .snode
+      auto handleResolvedSNodeName = [resultHandler, nodedb = Router()->nodedb()](auto router_id) {
+        std::vector<dns::SRVData> result{};
+        if (auto maybe_rc = nodedb->Get(router_id))
+        {
+          result = maybe_rc->srvRecords;
+        }
+        resultHandler(std::move(result));
+      };
+
+      // handles when we got a path to a remote thing
+      auto handleGotPathTo = [handleGotPathToService, handleResolvedSNodeName, resultHandler](
+                                 auto maybe_tag, auto address) {
+        if (not maybe_tag)
+        {
+          resultHandler({});
+          return;
+        }
+
+        if (auto* addr = std::get_if<Address>(&address))
+        {
+          // .loki case
+          handleGotPathToService(*addr);
+        }
+        else if (auto* router_id = std::get_if<RouterID>(&address))
+        {
+          // .snode case
+          handleResolvedSNodeName(*router_id);
+        }
         else
         {
-          fail();
+          // fallback case
+          // XXX: never should happen but we'll handle it anyways
+          resultHandler({});
         }
       };
-      if (auto maybe = ParseAddress(name))
-      {
-        lookupByAddress(*maybe);
-      }
-      else if (NameIsValid(name))
-      {
-        LookupNameAsync(name, [lookupByAddress, fail](auto maybe) {
-          if (maybe)
-          {
-            lookupByAddress(*maybe);
-          }
-          else
-          {
-            fail();
-          }
-        });
-      }
-      else
-        fail();
+
+      // handles when we know a long address of a remote resource
+      auto handleGotAddress = [resultHandler, handleGotPathTo, this](auto address) {
+        // we will attempt a build to whatever we looked up
+        const auto result = EnsurePathTo(
+            address,
+            [address, handleGotPathTo](auto maybe_tag) { handleGotPathTo(maybe_tag, address); },
+            PathAlignmentTimeout());
+
+        // on path build start fail short circuit
+        if (not result)
+          resultHandler({});
+      };
+
+      // look up this name async and start the entire chain of events
+      LookupNameAsync(name, [handleGotAddress, resultHandler](auto maybe_addr) {
+        if (maybe_addr)
+        {
+          handleGotAddress(*maybe_addr);
+        }
+        else
+        {
+          resultHandler({});
+        }
+      });
     }
 
     bool
@@ -341,8 +380,6 @@ namespace llarp
       EndpointUtil::StopRemoteSessions(m_state->m_RemoteSessions);
       // stop snode sessions
       EndpointUtil::StopSnodeSessions(m_state->m_SNodeSessions);
-      if (m_OnDown)
-        m_OnDown->NotifyAsync(NotifyParams());
       return path::Builder::Stop();
     }
 
@@ -590,15 +627,9 @@ namespace llarp
       return true;
     }
 
-    Endpoint::~Endpoint()
-    {
-      if (m_OnUp)
-        m_OnUp->Stop();
-      if (m_OnDown)
-        m_OnDown->Stop();
-      if (m_OnReady)
-        m_OnReady->Stop();
-    }
+    // Keep this here (rather than the header) so that we don't need to include endpoint_state.hpp
+    // in endpoint.hpp for the unique_ptr member destructor.
+    Endpoint::~Endpoint() = default;
 
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
@@ -762,9 +793,6 @@ namespace llarp
         LogDebug(Name(), " Additional IntroSet publish confirmed");
 
       m_state->m_LastPublish = now;
-      if (m_OnReady)
-        m_OnReady->NotifyAsync(NotifyParams());
-      m_OnReady = nullptr;
     }
 
     std::optional<std::vector<RouterContact>>
@@ -924,7 +952,7 @@ namespace llarp
     {
       if (not NameIsValid(name))
       {
-        handler(std::nullopt);
+        handler(ParseAddress(name));
         return;
       }
       auto& cache = m_state->nameCache;
@@ -2043,6 +2071,11 @@ namespace llarp
       if (not exit.IsZero())
         LogInfo(Name(), " map ", range, " to exit at ", exit);
       m_ExitMap.Insert(range, exit);
+    }
+    bool
+    Endpoint::HasFlowToService(Address addr) const
+    {
+      return HasOutboundConvo(addr) or HasInboundConvo(addr);
     }
 
     void

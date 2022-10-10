@@ -22,7 +22,7 @@ namespace llarp
       ResourceRecord(const ResourceRecord& other);
       ResourceRecord(ResourceRecord&& other);
 
-      explicit ResourceRecord(Name_t name, RRType_t type, RR_RData_t rdata);
+      explicit ResourceRecord(std::string name, RRType_t type, RR_RData_t rdata);
 
       bool
       Encode(llarp_buffer_t* buf) const override;
@@ -33,23 +33,20 @@ namespace llarp
       util::StatusObject
       ToJSON() const override;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       bool
       HasCNameForTLD(const std::string& tld) const;
 
-      Name_t rr_name;
+      std::string rr_name;
       RRType_t rr_type;
       RRClass_t rr_class;
       RR_TTL_t ttl;
       RR_RData_t rData;
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const ResourceRecord& rr)
-    {
-      return rr.print(out, -1, -1);
-    }
   }  // namespace dns
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::dns::ResourceRecord> = true;

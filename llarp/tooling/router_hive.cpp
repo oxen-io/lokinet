@@ -26,7 +26,7 @@ namespace tooling
 
     auto routerId = llarp::RouterID(context->router->pubkey());
     container[routerId] = context;
-    std::cout << "Generated router with ID " << routerId << std::endl;
+    fmt::print("Generated router with ID {}\n", routerId);
   }
 
   void
@@ -46,9 +46,9 @@ namespace tooling
   {
     auto& container = (isRelay ? relays : clients);
 
-    for (auto [routerId, ctx] : container)
+    for (const auto& [routerId, ctx] : container)
     {
-      routerMainThreads.emplace_back([=]() {
+      routerMainThreads.emplace_back([ctx = ctx, isRelay = isRelay]() {
         ctx->Run(llarp::RuntimeOptions{false, false, isRelay});
       });
       std::this_thread::sleep_for(2ms);

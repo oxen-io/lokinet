@@ -1,6 +1,8 @@
 #include "unbound_resolver.hpp"
 
 #include "server.hpp"
+#include <llarp/constants/apple.hpp>
+#include <llarp/constants/platform.hpp>
 #include <llarp/util/buffer.hpp>
 #include <sstream>
 #include <llarp/util/str.hpp>
@@ -9,6 +11,8 @@
 
 namespace llarp::dns
 {
+  static auto logcat = log::Cat("dns");
+
   struct PendingUnboundLookup
   {
     std::weak_ptr<UnboundResolver> resolver;
@@ -144,37 +148,51 @@ namespace llarp::dns
   bool
   UnboundResolver::AddUpstreamResolver(const SockAddr& upstreamResolver)
   {
-    std::stringstream ss;
-    auto hoststr = upstreamResolver.hostString();
-    ss << hoststr;
+    const auto hoststr = upstreamResolver.hostString();
+    std::string upstream = hoststr;
 
-    if (const auto port = upstreamResolver.getPort(); port != 53)
-      ss << "@" << port;
+    const auto port = upstreamResolver.getPort();
+    if (port != 53)
+    {
+      upstream += '@';
+      upstream += std::to_string(port);
+    }
 
-    const auto str = ss.str();
-    if (ub_ctx_set_fwd(unboundContext, str.c_str()) != 0)
+    log::info("Adding upstream resolver ", upstream);
+    if (ub_ctx_set_fwd(unboundContext, upstream.c_str()) != 0)
     {
       Reset();
       return false;
     }
 
-#ifdef __APPLE__
-    // On Apple, we configure a localhost resolver to trampoline requests through the tunnel to the
-    // actual upstream (because the network extension itself cannot route through the tunnel using
-    // normal sockets but instead we "get" to use Apple's interfaces, hurray).
-    if (hoststr == "127.0.0.1")
+    if constexpr (platform::is_apple)
     {
-      // Not at all clear why this is needed but without it we get "send failed: Can't assign
-      // requested address" when unbound tries to connect to the localhost address using a source
-      // address of 0.0.0.0.  Yay apple.
-      ub_ctx_set_option(unboundContext, "outgoing-interface:", hoststr.c_str());
+      // On Apple, when we turn on exit mode, we can't directly connect to upstream from here
+      // because, from within the network extension, macOS ignores setting the tunnel as the default
+      // route and would leak all DNS; instead we have to bounce things through the objective C
+      // trampoline code so that it can call into Apple's special snowflake API to set up a socket
+      // that has the magic Apple snowflake sauce added on top so that it actually routes through
+      // the tunnel instead of around it.
+      //
+      // This behaviour is all carefully and explicitly documented by Apple with plenty of examples
+      // and other exposition, of course, just like all of their wonderful new APIs to reinvent
+      // standard unix interfaces.
+      if (hoststr == "127.0.0.1" && port == apple::dns_trampoline_port)
+      {
+        // Not at all clear why this is needed but without it we get "send failed: Can't assign
+        // requested address" when unbound tries to connect to the localhost address using a source
+        // address of 0.0.0.0.  Yay apple.
+        ub_ctx_set_option(unboundContext, "outgoing-interface:", "127.0.0.1");
 
-      // The trampoline expects just a single source port (and sends everything back to it)
-      ub_ctx_set_option(unboundContext, "outgoing-range:", "1");
-      ub_ctx_set_option(unboundContext, "outgoing-port-avoid:", "0-65535");
-      ub_ctx_set_option(unboundContext, "outgoing-port-permit:", "1253");
+        // The trampoline expects just a single source port (and sends everything back to it)
+        ub_ctx_set_option(unboundContext, "outgoing-range:", "1");
+        ub_ctx_set_option(unboundContext, "outgoing-port-avoid:", "0-65535");
+        ub_ctx_set_option(
+            unboundContext,
+            "outgoing-port-permit:",
+            std::to_string(apple::dns_trampoline_source_port).c_str());
+      }
     }
-#endif
 
     return true;
   }
@@ -182,16 +200,12 @@ namespace llarp::dns
   void
   UnboundResolver::AddHostsFile(const fs::path& file)
   {
-    LogDebug("adding hosts file ", file);
+    log::debug(logcat, "adding hosts file {}", file);
     const auto str = file.u8string();
     if (auto ret = ub_ctx_hosts(unboundContext, str.c_str()))
-    {
-      throw std::runtime_error{stringify("Failed to add host file ", file, ": ", ub_strerror(ret))};
-    }
-    else
-    {
-      LogInfo("added hosts file ", file);
-    }
+      throw std::runtime_error{
+          fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
+    log::info(logcat, "added hosts file {}", file);
   }
 
   void

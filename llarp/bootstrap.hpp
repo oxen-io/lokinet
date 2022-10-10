@@ -2,6 +2,8 @@
 
 #include "router_contact.hpp"
 #include <set>
+#include <unordered_map>
+#include "llarp/util/fs.hpp"
 
 namespace llarp
 {
@@ -14,6 +16,13 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const;
 
     void
+    AddFromFile(fs::path fpath);
+
+    void
     Clear();
   };
+
+  std::unordered_map<std::string, BootstrapList>
+  load_bootstrap_fallbacks();
+
 }  // namespace llarp
