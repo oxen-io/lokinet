@@ -4,26 +4,25 @@
 #include <llarp/util/buffer.hpp>
 
 #include <string>
+#include <optional>
 
 namespace llarp
 {
   namespace dns
   {
-    using Name_t = std::string;
-
-    /// decode name from buffer
-    bool
-    DecodeName(llarp_buffer_t* buf, Name_t& name, bool trimTrailingDot = false);
+    /// decode name from buffer; return nullopt on failure
+    std::optional<std::string>
+    DecodeName(llarp_buffer_t* buf, bool trimTrailingDot = false);
 
     /// encode name to buffer
     bool
-    EncodeName(llarp_buffer_t* buf, Name_t name);
+    EncodeNameTo(llarp_buffer_t* buf, std::string_view name);
+
+    std::optional<huint128_t>
+    DecodePTR(std::string_view name);
 
     bool
-    DecodePTR(Name_t name, huint128_t& ip);
-
-    bool
-    NameIsReserved(Name_t name);
+    NameIsReserved(std::string_view name);
 
   }  // namespace dns
 }  // namespace llarp

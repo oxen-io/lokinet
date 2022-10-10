@@ -2,7 +2,7 @@
 #include "client.hpp"
 #include "server.hpp"
 #include <limits>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
 #include <cassert>
@@ -32,10 +32,10 @@ namespace llarp::quic
     std::memmove(data, cid, datalen);
   }
 
-  std::ostream&
-  operator<<(std::ostream& o, const ConnectionID& c)
+  std::string
+  ConnectionID::ToString() const
   {
-    return o << oxenc::to_hex(c.data, c.data + c.datalen);
+    return oxenc::to_hex(data, data + datalen);
   }
 
   ConnectionID
@@ -333,13 +333,11 @@ namespace llarp::quic
   extern "C" inline void
   ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
   {
+    std::array<char, 2048> buf{};
     va_list ap;
     va_start(ap, fmt);
-    if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
-    {
-      LogTrace{msg};
-      std::free(msg);
-    }
+    if (vsnprintf(buf.data(), buf.size(), fmt, ap) >= 0)
+      LogTrace(fmt::format("{}", buf.data()));
     va_end(ap);
   }
 #endif

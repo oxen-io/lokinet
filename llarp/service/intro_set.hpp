@@ -57,8 +57,8 @@ namespace llarp
         return timestampSignedAt < other.timestampSignedAt;
       }
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       llarp_time_t
       GetNewestIntroExpiration() const;
@@ -131,12 +131,6 @@ namespace llarp
       return !(lhs == rhs);
     }
 
-    inline std::ostream&
-    operator<<(std::ostream& out, const IntroSet& i)
-    {
-      return i.print(out, -1, -1);
-    }
-
     /// public version of the introset that is encrypted
     struct EncryptedIntroSet
     {
@@ -174,8 +168,8 @@ namespace llarp
       bool
       Verify(llarp_time_t now) const;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       util::StatusObject
       ExtractStatus() const;
@@ -183,12 +177,6 @@ namespace llarp
       std::optional<IntroSet>
       MaybeDecrypt(const PubKey& rootKey) const;
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const EncryptedIntroSet& i)
-    {
-      return i.print(out, -1, -1);
-    }
 
     inline bool
     operator<(const EncryptedIntroSet& lhs, const EncryptedIntroSet& rhs)
@@ -215,3 +203,8 @@ namespace llarp
 
   }  // namespace service
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::IntroSet> = true;
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::EncryptedIntroSet> = true;

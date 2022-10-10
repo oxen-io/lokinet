@@ -1,14 +1,18 @@
+set(exetargets lokinet)
 
-add_executable(lokinet-vpn lokinet-vpn.cpp)
 if(APPLE)
   add_executable(lokinet lokinet.swift)
-  enable_lto(lokinet)
+  target_compile_options(lokinet BEFORE PRIVATE -target x86_64-apple-macos${CMAKE_OSX_DEPLOYMENT_TARGET})
 else()
   add_executable(lokinet lokinet.cpp)
-  enable_lto(lokinet lokinet-vpn)
 endif()
+add_executable(lokinet-vpn lokinet-vpn.cpp)
+enable_lto(lokinet lokinet-vpn)
+list(APPEND exetargets lokinet-vpn)
+
 if(WITH_BOOTSTRAP)
   add_executable(lokinet-bootstrap lokinet-bootstrap.cpp)
+  list(APPEND exetargets lokinet-bootstrap)
   enable_lto(lokinet-bootstrap)
 endif()
 
@@ -42,86 +46,45 @@ if(WITH_BOOTSTRAP)
   endif()
 endif()
 
-set(exetargets lokinet lokinet-vpn)
-if(WITH_BOOTSTRAP)
-  list(APPEND exetargets lokinet-bootstrap)
+# cmake interface library for bunch of cmake hacks to fix final link order
+add_library(hax_and_shims_for_cmake INTERFACE)
+if(WIN32)
+  target_link_libraries(hax_and_shims_for_cmake INTERFACE uvw oxenmq::oxenmq -lws2_32 -lshlwapi -ldbghelp -luser32 -liphlpapi -lpsapi -luserenv)
 endif()
 
 foreach(exe ${exetargets})
-  if(WIN32 AND NOT MSVC_VERSION)
+  if(WIN32)
     target_sources(${exe} PRIVATE ${CMAKE_BINARY_DIR}/${exe}.rc)
     target_link_libraries(${exe} PRIVATE -static-libstdc++ -static-libgcc --static -Wl,--pic-executable,-e,mainCRTStartup,--subsystem,console:5.00)
-    target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
   elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
     target_link_directories(${exe} PRIVATE /usr/local/lib)
   endif()
-  target_link_libraries(${exe} PUBLIC liblokinet)
+  target_link_libraries(${exe} PUBLIC lokinet-amalgum hax_and_shims_for_cmake)
+  if(STRIP_SYMBOLS)
+    add_custom_command(TARGET ${exe}
+      POST_BUILD
+      COMMAND ${CMAKE_OBJCOPY} ARGS --only-keep-debug $<TARGET_FILE:${exe}> $<TARGET_FILE:${exe}>.debug
+      COMMAND ${CMAKE_STRIP} ARGS --strip-all $<TARGET_FILE:${exe}>)
+  endif()
   target_include_directories(${exe} PUBLIC "${PROJECT_SOURCE_DIR}")
-  target_compile_definitions(${exe} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
-  add_log_tag(${exe})
   if(should_install)
     if(APPLE)
-      install(TARGETS ${exe} BUNDLE DESTINATION "${PROJECT_BINARY_DIR}" COMPONENT lokinet)
+      install(TARGETS ${exe}
+        BUNDLE DESTINATION "${PROJECT_BINARY_DIR}"
+        RUNTIME DESTINATION "."
+        COMPONENT lokinet)
     else()
       install(TARGETS ${exe} RUNTIME DESTINATION bin COMPONENT lokinet)
     endif()
   endif()
 endforeach()
 
-if(APPLE)
-
-  set(CODESIGN_APP "" CACHE STRING "codesign the macos app using this key identity")
-  set(CODESIGN_APPEX "${CODESIGN_APP}" CACHE STRING "codesign the internal extension using this key identity; defaults to CODESIGN_APP if empty")
-
-  set(mac_icon ${CMAKE_CURRENT_BINARY_DIR}/lokinet.icns)
-  add_custom_command(OUTPUT ${mac_icon}
-    COMMAND ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${mac_icon}
-    DEPENDS ${PROJECT_SOURCE_DIR}/contrib/lokinet.svg ${PROJECT_SOURCE_DIR}/contrib/macos/mk-icns.sh)
-  add_custom_target(icons DEPENDS ${mac_icon})
-  add_dependencies(lokinet icons lokinet-extension)
-  add_custom_command(TARGET lokinet
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed
-        $<TARGET_BUNDLE_DIR:lokinet-extension>/Contents/Resources/bootstrap.signed
-    COMMAND mkdir -p $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns
-    COMMAND cp -a $<TARGET_BUNDLE_DIR:lokinet-extension> $<TARGET_BUNDLE_DIR:lokinet>/Contents/PlugIns/
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/contrib/macos/lokinet.provisionprofile
-        $<TARGET_BUNDLE_DIR:lokinet>/Contents/embedded.provisionprofile
-    )
-
-  set_target_properties(lokinet
-    PROPERTIES
-    MACOSX_BUNDLE TRUE
-    MACOSX_BUNDLE_INFO_STRING "Lokinet IP Packet Onion Router"
-    MACOSX_BUNDLE_BUNDLE_NAME "Lokinet"
-    MACOSX_BUNDLE_BUNDLE_VERSION "${lokinet_VERSION}"
-    MACOSX_BUNDLE_LONG_VERSION_STRING "${lokinet_VERSION}"
-    MACOSX_BUNDLE_SHORT_VERSION_STRING "${lokinet_VERSION_MAJOR}.${lokinet_VERSION_MINOR}"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "com.loki-project.lokinet"
-    MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/contrib/macos/Info.plist.in"
-    MACOSX_BUNDLE_ICON_FILE "${mac_icon}"
-    MACOSX_BUNDLE_COPYRIGHT "© 2021, The Oxen Project")
-  if (CODESIGN_APP AND CODESIGN_APPEX)
-    message(STATUS "codesigning with ${CODESIGN_APP} (app) ${CODESIGN_APPEX} (appex)")
-    set(SIGN_TARGET "${CMAKE_CURRENT_BINARY_DIR}/lokinet.app")
-    configure_file(
-      "${PROJECT_SOURCE_DIR}/contrib/macos/sign.sh.in"
-      "${PROJECT_BINARY_DIR}/sign.sh"
-      @ONLY)
-    add_custom_target(
-      sign
-      DEPENDS "${PROJECT_BINARY_DIR}/sign.sh" lokinet lokinet-extension
-      COMMAND "${PROJECT_BINARY_DIR}/sign.sh"
-      )
-  else()
-    message(WARNING "Not codesigning: CODESIGN_APP (=${CODESIGN_APP}) and/or CODESIGN_APPEX (=${CODESIGN_APPEX}) are not set")
-    add_custom_target(
-      sign
-      DEPENDS lokinet lokinet-extension
-      COMMAND "true")
-  endif()
-endif()
-
 if(SETCAP)
   install(CODE "execute_process(COMMAND ${SETCAP} cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+endif()
+
+if(STRIP_SYMBOLS)
+  add_custom_target(symbols ALL
+    COMMAND ${CMAKE_COMMAND} -E tar cJf ${CMAKE_CURRENT_BINARY_DIR}/debug-symbols.tar.xz $<TARGET_FILE:lokinet>.debug
+    DEPENDS lokinet)
 endif()

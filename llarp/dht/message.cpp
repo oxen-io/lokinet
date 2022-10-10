@@ -35,7 +35,7 @@ namespace llarp
         // first key
         if (firstKey)
         {
-          if (!(*key == "A"))
+          if (!(key->startswith("A")))
             return false;
           if (!bencode_read_string(buffer, &strbuf))
             return false;

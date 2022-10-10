@@ -1,7 +1,7 @@
 #include "stream.hpp"
 #include "connection.hpp"
 #include "endpoint.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <cassert>
 #include <iostream>
@@ -43,10 +43,10 @@
 
 namespace llarp::quic
 {
-  std::ostream&
-  operator<<(std::ostream& o, const StreamID& s)
+  std::string
+  StreamID::ToString() const
   {
-    return o << u8"Str❰" << s.id << u8"❱";
+    return fmt::format(u8"Str❰{}❱", id);
   }
 
   Stream::Stream(

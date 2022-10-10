@@ -17,10 +17,10 @@ namespace llarp
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
     SockAddr exitaddr = ipAddress.createSockAddr();
-    const sockaddr_in6* exitaddr6 = exitaddr;
+    const auto* exitaddr6 = static_cast<const sockaddr_in6*>(exitaddr);
 
     SockAddr netmaskaddr = netmask.createSockAddr();
-    const sockaddr_in6* netmaskaddr6 = netmaskaddr;
+    const auto* netmaskaddr6 = static_cast<const sockaddr_in6*>(netmaskaddr);
 
     char tmp[128] = {0};
     if (!bencode_start_dict(buf))
@@ -69,7 +69,7 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if (k == "a")
+    if (k.startswith("a"))
     {
       in6_addr tmp;
       if (not bdecode_ip_string(buf, tmp))
@@ -79,7 +79,7 @@ namespace llarp
       ipAddress = IpAddress(addr);
       return true;
     }
-    if (k == "b")
+    if (k.startswith("b"))
     {
       in6_addr tmp;
       if (not bdecode_ip_string(buf, tmp))
@@ -91,9 +91,8 @@ namespace llarp
     return read;
   }
 
-  std::ostream&
-  ExitInfo::print(
-      std::ostream& stream, [[maybe_unused]] int level, [[maybe_unused]] int spaces) const
+  std::string
+  ExitInfo::ToString() const
   {
     /*
     // TODO: derive these from ipAdress
@@ -119,8 +118,7 @@ namespace llarp
 #endif
     printer.printValue(ss.str());
     */
-    stream << ipAddress.toString();
-    return stream;
+    return fmt::format("[Exit {}]", ipAddress.ToString());
   }
 
 }  // namespace llarp

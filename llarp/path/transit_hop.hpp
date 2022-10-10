@@ -28,8 +28,8 @@ namespace llarp
       RouterID upstream;
       RouterID downstream;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
     };
 
     inline bool
@@ -50,12 +50,6 @@ namespace llarp
     {
       return std::tie(lhs.txID, lhs.rxID, lhs.upstream, lhs.downstream)
           < std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
-    }
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const TransitHopInfo& info)
-    {
-      return info.print(out, -1, -1);
     }
 
     struct TransitHop : public IHopHandler,
@@ -109,8 +103,8 @@ namespace llarp
       HandleLRSM(
           uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       bool
       Expired(llarp_time_t now) const override;
@@ -211,13 +205,13 @@ namespace llarp
       std::atomic<uint32_t> m_UpstreamWorkCounter;
       std::atomic<uint32_t> m_DownstreamWorkCounter;
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const TransitHop& h)
-    {
-      return h.print(out, -1, -1);
-    }
   }  // namespace path
+
+  template <>
+  constexpr inline bool IsToStringFormattable<path::TransitHop> = true;
+  template <>
+  constexpr inline bool IsToStringFormattable<path::TransitHopInfo> = true;
+
 }  // namespace llarp
 
 namespace std

@@ -135,10 +135,15 @@ namespace llarp
     std::string
     Path::HopsString() const
     {
-      std::stringstream ss;
+      std::string hops_str;
+      hops_str.reserve(hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
       for (const auto& hop : hops)
-        ss << RouterID(hop.rc.pubkey) << " -> ";
-      return ss.str();
+      {
+        if (!hops.empty())
+          hops_str += " -> ";
+        hops_str += RouterID(hop.rc.pubkey).ToString();
+      }
+      return hops_str;
     }
 
     bool
@@ -568,9 +573,7 @@ namespace llarp
     std::string
     Path::Name() const
     {
-      std::stringstream ss;
-      ss << "TX=" << TXID() << " RX=" << RXID();
-      return ss.str();
+      return fmt::format("TX={} RX={}", TXID(), RXID());
     }
 
     void
@@ -874,7 +877,7 @@ namespace llarp
       auto self = shared_from_this();
       bool result = true;
       for (const auto& hook : m_ObtainedExitHooks)
-        result &= hook(self, B);
+        result = hook(self, B) and result;
       m_ObtainedExitHooks.clear();
       return result;
     }
@@ -894,7 +897,7 @@ namespace llarp
       for (const auto& pkt : msg.X)
       {
         if (pkt.size() <= 8)
-          return false;
+          continue;
         auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
         if (m_ExitTrafficHandler(
                 self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))

@@ -1,12 +1,12 @@
 #include <common.hpp>
 #include <memory>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp
 {
   struct PyLogger
   {
-    std::unique_ptr<LogSilencer> shutup;
+    std::optional<llarp::log::Level> silenced;
   };
 
   void
@@ -16,15 +16,14 @@ namespace llarp
         .def(py::init<>())
         .def_property(
             "shutup",
-            [](PyLogger& self) { return self.shutup != nullptr; },
+            [](PyLogger& self) { return self.silenced.has_value(); },
             [](PyLogger& self, bool shutup) {
-              if (self.shutup == nullptr && shutup)
+              if (shutup and not self.silenced)
+                self.silenced = llarp::log::get_level_default();
+              else if (not shutup and self.silenced)
               {
-                self.shutup = std::make_unique<LogSilencer>();
-              }
-              else if (self.shutup != nullptr && shutup == false)
-              {
-                self.shutup.reset();
+                llarp::log::reset_level(*self.silenced);
+                self.silenced.reset();
               }
             });
   }

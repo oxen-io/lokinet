@@ -4,43 +4,42 @@
 
 namespace llarp
 {
-  std::ostream&
-  operator<<(std::ostream& o, const buffer_printer& bp)
+  std::string
+  buffer_printer::ToString() const
   {
-    auto& b = bp.buf;
-    auto oldfill = o.fill();
-    o.fill('0');
-    o << "Buffer[" << b.size() << "/0x" << std::hex << b.size() << " bytes]:";
+    auto& b = buf;
+    std::string out;
+    auto ins = std::back_inserter(out);
+    fmt::format_to(ins, "Buffer[{}/{:#x} bytes]:", b.size(), b.size());
+
     for (size_t i = 0; i < b.size(); i += 32)
     {
-      o << "\n" << std::setw(4) << i << " ";
+      fmt::format_to(ins, "\n{:04x} ", i);
 
       size_t stop = std::min(b.size(), i + 32);
       for (size_t j = 0; j < 32; j++)
       {
         auto k = i + j;
         if (j % 4 == 0)
-          o << ' ';
+          out.push_back(' ');
         if (k >= stop)
-          o << "  ";
+          out.append("  ");
         else
-          o << std::setw(2) << std::to_integer<uint_fast16_t>(b[k]);
+          fmt::format_to(ins, "{:02x}", std::to_integer<uint_fast16_t>(b[k]));
       }
-      o << u8"  ┃";
+      out.append(u8"  ┃");
       for (size_t j = i; j < stop; j++)
       {
         auto c = std::to_integer<char>(b[j]);
         if (c == 0x00)
-          o << u8"∅";
+          out.append(u8"∅");
         else if (c < 0x20 || c > 0x7e)
-          o << u8"·";
+          out.append(u8"·");
         else
-          o << c;
+          out.push_back(c);
       }
-      o << u8"┃";
+      out.append(u8"┃");
     }
-    o << std::dec;
-    o.fill(oldfill);
-    return o;
+    return out;
   }
 }  // namespace llarp

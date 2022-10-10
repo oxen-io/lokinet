@@ -9,7 +9,7 @@
 #include "relay.hpp"
 #include <llarp/router_contact.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <memory>
 
@@ -45,7 +45,7 @@ namespace llarp
       if (!key)
         return false;
       // we are expecting the first key to be 'a'
-      if (!(*key == "a"))
+      if (!key->startswith("a"))
       {
         llarp::LogWarn("message has no message type");
         return false;
