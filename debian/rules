@@ -36,7 +36,7 @@ endif
 
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release \
-		-DGIT_VERSION="deb$(DEB_VERSION)" \
+		-DVERSIONTAG="deb$(DEB_VERSION)" \
 		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 \
 		-DWITH_TESTS=OFF -DBUILD_SHARED_LIBS=OFF \
