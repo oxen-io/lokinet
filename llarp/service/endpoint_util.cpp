@@ -3,7 +3,7 @@
 #include <llarp/exit/session.hpp>
 #include "outbound_context.hpp"
 #include "lookup.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp
 {

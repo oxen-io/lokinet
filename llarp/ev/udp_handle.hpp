@@ -33,6 +33,10 @@ namespace llarp
       return std::nullopt;
     }
 
+    /// returns the local address we are bound on
+    virtual std::optional<SockAddr>
+    LocalAddr() const = 0;
+
     // Base class destructor
     virtual ~UDPHandle() = default;
 

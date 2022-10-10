@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <functional>
 
-#include "../util/meta/traits.hpp"
-
 #include <oxenc/endian.h>
 
 namespace llarp

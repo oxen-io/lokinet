@@ -1,14 +1,14 @@
 #include <util/mem.hpp>
 #include <net/sock_addr.hpp>
 #include <net/net_if.hpp>
-#include <util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <catch2/catch.hpp>
 
 TEST_CASE("SockAddr from IPv4", "[SockAddr]")
 {
   llarp::SockAddr addr(1, 2, 3, 4);
-  CHECK(addr.toString() == "1.2.3.4:0");
+  CHECK(addr.ToString() == "1.2.3.4:0");
 }
 
 TEST_CASE("SockAddr test port", "[SockAddr]")
@@ -22,16 +22,16 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
 {
   llarp::SockAddr addr;
   CHECK_NOTHROW(addr.fromString("1.2.3.4"));
-  CHECK(addr.toString() == "1.2.3.4:0");
+  CHECK(addr.ToString() == "1.2.3.4:0");
 
-  CHECK(llarp::SockAddr("1.3.5.7").toString() == "1.3.5.7:0");
+  CHECK(llarp::SockAddr("1.3.5.7").ToString() == "1.3.5.7:0");
 
-  CHECK(llarp::SockAddr("0.0.0.0").toString() == "0.0.0.0:0");
-  CHECK(llarp::SockAddr("0.0.0.0:0").toString() == "0.0.0.0:0");
-  CHECK(llarp::SockAddr("255.255.255.255").toString() == "255.255.255.255:0");
-  CHECK(llarp::SockAddr("255.255.255.255:255").toString() == "255.255.255.255:255");
-  CHECK(llarp::SockAddr("255.255.255.255:65535").toString() == "255.255.255.255:65535");
-  CHECK(llarp::SockAddr("5.6.7.8", llarp::huint16_t{5678}).toString() == "5.6.7.8:5678");
+  CHECK(llarp::SockAddr("0.0.0.0").ToString() == "0.0.0.0:0");
+  CHECK(llarp::SockAddr("0.0.0.0:0").ToString() == "0.0.0.0:0");
+  CHECK(llarp::SockAddr("255.255.255.255").ToString() == "255.255.255.255:0");
+  CHECK(llarp::SockAddr("255.255.255.255:255").ToString() == "255.255.255.255:255");
+  CHECK(llarp::SockAddr("255.255.255.255:65535").ToString() == "255.255.255.255:65535");
+  CHECK(llarp::SockAddr("5.6.7.8", llarp::huint16_t{5678}).ToString() == "5.6.7.8:5678");
 
   CHECK_THROWS_WITH(llarp::SockAddr("abcd"), "abcd is not a valid IPv4 address");
 
@@ -79,7 +79,7 @@ TEST_CASE("SockAddr from sockaddr_in", "[SockAddr]")
 
   llarp::SockAddr addr(sin4);
 
-  CHECK(addr.toString() == "127.0.0.1:1234");
+  CHECK(addr.ToString() == "127.0.0.1:1234");
 }
 
 TEST_CASE("SockAddr from sockaddr_in6", "[SockAddr]")
@@ -93,5 +93,5 @@ TEST_CASE("SockAddr from sockaddr_in6", "[SockAddr]")
 
   llarp::SockAddr addr(sin6);
 
-  CHECK(addr.toString() == "127.0.0.1:53");
+  CHECK(addr.ToString() == "127.0.0.1:53");
 }

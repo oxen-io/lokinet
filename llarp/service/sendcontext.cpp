@@ -5,6 +5,7 @@
 #include "endpoint.hpp"
 #include <utility>
 #include <unordered_set>
+#include <llarp/crypto/crypto.hpp>
 
 namespace llarp
 {

@@ -15,7 +15,6 @@
 #include "service/protocol_type.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
-#include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <optional>
 #include <unordered_map>
@@ -27,6 +26,7 @@
 #include "auth.hpp"
 
 #include <llarp/vpn/egres_packet_router.hpp>
+#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -173,6 +173,12 @@ namespace llarp
       {
         return nullptr;
       };
+
+      virtual vpn::NetworkInterface*
+      GetVPNInterface()
+      {
+        return nullptr;
+      }
 
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
@@ -355,6 +361,9 @@ namespace llarp
       bool
       HasPathToSNode(const RouterID remote) const;
 
+      bool
+      HasFlowToService(const Address remote) const;
+
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;
 
@@ -516,9 +525,6 @@ namespace llarp
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
       net::IPRangeMap<service::Address> m_ExitMap;
-      hooks::Backend_ptr m_OnUp;
-      hooks::Backend_ptr m_OnDown;
-      hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;

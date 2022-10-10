@@ -28,26 +28,22 @@ namespace llarp
       QueueFull
     };
 
-    inline std::ostream&
-    operator<<(std::ostream& os, QueueReturn val)
+    constexpr std::string_view
+    ToString(QueueReturn val)
     {
+      using namespace std::literals;
       switch (val)
       {
         case QueueReturn::Success:
-          os << "Success";
-          break;
+          return "Success"sv;
         case QueueReturn::QueueDisabled:
-          os << "QueueDisabled";
-          break;
+          return "QueueDisabled"sv;
         case QueueReturn::QueueEmpty:
-          os << "QueueEmpty";
-          break;
+          return "QueueEmpty"sv;
         case QueueReturn::QueueFull:
-          os << "QueueFull";
-          break;
+          return "QueueFull"sv;
       }
-
-      return os;
+      return "(queue-return-unknown)"sv;
     }
 
     class QueueManager

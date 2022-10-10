@@ -4,14 +4,15 @@
 #include <functional>
 #include <unordered_map>
 
-#include <sqlite_orm/sqlite_orm.h>
-
 #include <llarp/util/fs.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/status.hpp>
 #include "types.hpp"
+#ifdef LOKINET_PEERSTATS_BACKEND
 #include "orm.hpp"
+#endif
 
 namespace llarp
 {
@@ -126,6 +127,7 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const;
 
+#ifdef LOKINET_PEERSTATS_BACKEND
    private:
     std::unordered_map<RouterID, PeerStats> m_peerStats;
     mutable std::mutex m_statsLock;
@@ -133,6 +135,7 @@ namespace llarp
     std::unique_ptr<PeerDbStorage> m_storage;
 
     std::atomic<llarp_time_t> m_lastFlush;
+#endif
   };
 
 }  // namespace llarp

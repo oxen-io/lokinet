@@ -1,0 +1,14 @@
+diff --git a/tests/testutil.hpp b/tests/testutil.hpp
+index c6f5e4de78..09b9fa77e5 100644
+--- a/tests/testutil.hpp
++++ b/tests/testutil.hpp
+@@ -41,6 +41,9 @@
+ //  For AF_INET and IPPROTO_TCP
+ #if defined _WIN32
+ #include "../src/windows.hpp"
++#if defined(__MINGW32__)
++#include <unistd.h>
++#endif
+ #else
+ #include <arpa/inet.h>
+ #include <unistd.h>

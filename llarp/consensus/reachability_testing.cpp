@@ -2,7 +2,7 @@
 #include "reachability_testing.hpp"
 #include <chrono>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/crypto/crypto.hpp>
 
 using std::chrono::steady_clock;

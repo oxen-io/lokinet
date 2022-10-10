@@ -25,7 +25,7 @@ namespace llarp::quic
   }
 
   std::string
-  Address::to_string() const
+  Address::ToString() const
   {
     if (a.addrlen != sizeof(sockaddr_in6))
       return "(unknown-addr)";
@@ -39,15 +39,10 @@ namespace llarp::quic
     return result;
   }
 
-  std::ostream&
-  operator<<(std::ostream& o, const Address& a)
+  std::string
+  Path::ToString() const
   {
-    return o << a.to_string();
-  }
-  std::ostream&
-  operator<<(std::ostream& o, const Path& p)
-  {
-    return o << p.local << "<-" << p.remote;
+    return local.ToString() + "<-" + remote.ToString();
   }
 
 }  // namespace llarp::quic
