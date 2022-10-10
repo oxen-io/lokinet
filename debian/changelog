@@ -1,3 +1,299 @@
+lokinet (0.9.10~rc1-1~deb12) bookworm; urgency=medium
+
+  [ Jeff ]
+  * add additional fallback case
+
+  [ Jason Rhinelander ]
+  * Clean up system-or-submodule handling
+
+  [ Pebu ]
+  * Update error message
+
+  [ majestrate ]
+  * add french readme
+  * link to french readme
+
+  [ Jason Rhinelander ]
+  * Add -DLOKINET_VERSIONTAG to override version tag
+  * Show router pubkey at startup
+  * Don't build empty cpp files
+  * Remove dead code: netns, shell hooks
+  * Cmake cleanup: remove unneeded =1 from definitions
+  * Remove shadow testing framework
+  * Move destructor back to .cpp file
+
+  [ Jeff ]
+  * simple keygen script
+
+  [ Jason Rhinelander ]
+  * Add missing header
+  * Replace logging with oxen-logger
+  * Make test code work with new logging
+  * Avoid ctor inheritance to make diagnostics better
+  * Remote util::Printer and related cruft
+  * Use more fmt
+  * Add missing header to fix libc++ build
+  * gcc 8/9 fix
+
+  [ Jeff ]
+  * fix win32 and android builds
+
+  [ Jason Rhinelander ]
+  * Update oxen-logging for macos compilation
+  * oxen-logging update to handle level/type parsing exceptions
+  * hive fmt/spdlog updates
+
+  [ Jeff ]
+  * * add mockable network functions * add unit tests with ability to pretend to be different network setups
+  * clean up build helper scripts:
+  * use info as default log level on clients as most users have continously been confused by lack of log output with warn level as default, which i predicted would happen
+  * actually use correct variable in iteration
+
+  [ Jason Rhinelander ]
+  * DNS message parsing fixes and cleanup
+
+  [ Jeff ]
+  * reword message
+  * this code needs to detect the first non-existing interface by name, not the first existing one. this remidies this. sorry testnet for breaking you
+
+  [ Jason Rhinelander ]
+  * Fix log level being forced to warning
+  * Fix [bind]inbound IP-omitted handling
+  * Reorganize [bind] comments
+  * Remove the initial sink before reconfiguring logging
+  * Make outbound wildcard default to inbound IP
+
+  [ Jeff ]
+  * add directory specific readmes
+  * re enable rc expiration
+  * kill log statements
+
+  [ Jason Rhinelander ]
+  * Fix comment
+  * Add debug logging for RC removal
+
+  [ Jeff ]
+  * remove invalid entries on loading nodedb
+  * macos ci fixes
+  * fix up sid ci pipeline
+  * make unit tests happy
+  * do not clear out entries that are valid from nodedb when we are a service node. this logic was inverted.
+  * add lokinet.swift cli args
+
+  [ Jason Rhinelander ]
+  * Require explicit disabling of codesigning
+  * Change permissions for system extension
+  * Make sure BUILD_SHARED_LIBS is a cache variable
+  * Fix `platform::is_apple` value
+
+  [ Jeff ]
+  * on apple write packets back to interface when it is for us because that does not have a route spec for the interace ip on loopback as apple finds having sensible defaults bothersome internally
+
+  [ Jason Rhinelander ]
+  * macOS system extension support
+  * Handle Apple's trash servers when polling for notarization
+
+  [ jeff ]
+  * maker packet tunnel provider compile
+  * build gui and assemble app bundles into one singular app bundle
+
+  [ Jason Rhinelander ]
+  * Update mingw zmq patch
+  * Remove disabled submodule check
+
+  [ jeff ]
+  * Build apple/macos GUI from lokinet project
+
+  [ Jason Rhinelander ]
+  * contrib/windows.sh: do a release build by default
+  * Stub out the peer stats sqlite_orm code
+  * Working signed macOS GUI build
+  * Don't use sign target for contrib/mac.sh
+
+  [ Jeff ]
+  * move all code directory readmes into docs/project-structure.md
+  * add initial high level usage docs
+  * wire up new docs pages
+
+  [ majestrate ]
+  * add more info
+
+  [ jeff ]
+  * set up links to new docs pages
+
+  [ Jeff ]
+  * bump version to 0.9.10
+  * fix up log statements
+
+  [ Jason Rhinelander ]
+  * Update gui submodule to dev branch
+  * Remove obsolete mac packaging cruft
+  * Fix mac.sh defaults to make a signed, notarized build
+  * Build an installer dmg
+  * Lower minimum version for swift binary
+  * Fix codesigning: reenable extension provisioning profile
+  * dmg: version, and set icon
+  * Apple icon bullshit
+  * Remove unused parameter names
+  * Set up sign target dependencies always; mark unsigned package
+  * Drone macos fixes
+  * Don't build peerstats tests when peer stats disabled
+  * Don't look for sqlite when not building peerstats
+
+  [ Jeff Becker ]
+  * restructure readme and docs
+  * zero copy compare
+
+  [ Jeff ]
+  * refactor dns subsystem
+  * wire up dns srv records
+  * restucture dbus parts
+  * remove compat wrapper
+  * unbreak android config loading
+  * tweaks for wine and yarn for gui
+  * changeset for windows port
+
+  [ Jeff Becker ]
+  * disable lokinet-bootstrap on windows builds
+  * revise ./contrib/format.sh
+
+  [ Jason Rhinelander ]
+  * Make windows-configure.sh runnable without root/build
+  * C-cast to work around gross enum==int assumption in windows API
+
+  [ Jeff Becker ]
+  * fix up CI
+  * unit tests
+
+  [ Jason Rhinelander ]
+  * Apply some lipstick to llarp_buffer_t
+  * Fix read problem in linux
+  * llarp_buffer_t: rename badly named operator==
+  * Fix buffer_printer overflow
+
+  [ Jeff Becker ]
+  * small optimizations and fixes
+
+  [ Jason Rhinelander ]
+  * DNS: default to 127.3.2.1 & high port on Linux
+  * Bump cmake min to 3.13 and adopt policies up to 3.24
+  * Avoid strict aliasing warning on function pointers
+  * Simplify/fix ip_header layout
+  * Slightly DRY thread-setting code, fix warning
+  * Fail if wintun can't retrieve its version
+
+  [ Jeff Becker ]
+  * promote log statement
+
+  [ Jason Rhinelander ]
+  * Simplify dll loading via static function pointers
+  * bind/close to find free UDP port
+  * llarp/dns logging refactor
+  * format
+  * Fix sockaddr_len initial value
+  * Fixed crash in DNS resolving
+  * fix speeling
+  * Fix backwards from/to in PacketSource_Wrapper
+  * De-inline vpn/win32.hpp
+  * Upgrade unbound to latest stable
+  * Disable upstream TCP DNS
+  * Restore Apple hax
+  * Log upstream DNS servers when setting it up
+  * Windows DNS fixes
+  * cleanups/simplifications
+
+  [ Jeff Becker ]
+  * fix up win32 route poker a bit
+  * limit route poker
+  * idempotent dns
+
+  [ Jason Rhinelander ]
+  * Fix crash on shutdown
+  * Simplifications
+  * Don't do route poking when disabled
+  * Linux route poker fixes
+  * Add missing != operator to nuint_t
+  * Refactor/fix GetAdaptersAddresses
+  * Fix linked list iteration for windows ip/gateways
+
+  [ Jeff Becker ]
+  * make unit tests pass
+
+  [ Jason Rhinelander ]
+  * OpenSSL 1.1.1 -> 3.0.5
+  * Set various -W flags on apple
+  * macos compilation fixes
+
+  [ Jeff Becker ]
+  * remove hunk of win32 specific code, it is dead in this codepath
+
+  [ Jason Rhinelander ]
+  * Fix macos
+  * Apple DNS configuration fix: don't obliterate trampoline
+  * Apple DNS fix WIP
+
+  [ Jeff Becker ]
+  * rewire up dns reconfiguration for macos
+  * override method
+
+  [ Jason Rhinelander ]
+  * Fix apple dns, part 817
+  * ReconfigureDNS fixes, fixes macos exit mode
+  * Format fixes & fix warning in format script
+  * compiler warnings cmake 3.13 compatibility fix
+  * openssl 3 build fixes
+  * Windows compilation fix
+  * macos CI fixes
+  * Android build fixes for openssl 3.0.5
+  * Disable installer path modification
+  * Add oxen build mirror to linux static builds
+  * Disable mips cross compile build on ci
+  * RPC: Relax token/range argument handling
+  * Rename LMQ -> OMQ
+  * lokinet-vpn: misc cleanups
+  * Fix log warning
+  * Rewrite and tweak the macos icon
+  * Scale down the inner part of the logo a bit
+  * Add binary file slurp/dump utility functions
+  * llarp/profiling: refactor to use oxenc producer/consumer
+  * Bump required oxenc version
+  * Try to appease android's crappy toolchain
+  * Add local mirror to most jobs; build script cleanups
+
+  [ Thomas Winget ]
+  * omq rpc log subscription
+
+  [ Jason Rhinelander ]
+  * Add ring buffer sink to macos build
+  * Apple: fix build failure when file already exists
+  * macos: Fix hanging --start when Lokinet already running
+  * Lower log level for renewals to debug
+  * fix macos assemble_gui dependency
+  * Bump lokinet-gui to latest
+  * Significantly decrease decomm warning frequency
+  * Clean up/simplify SN list handling
+
+  [ Thomas Winget ]
+  * Fallback bootstrap router build parameter
+  * don't ping core if active with too few peers
+
+  [ Jason Rhinelander ]
+  * bake in bootstrap fallbacks at build time
+  * oxen-mq update to tagged stable release
+  * Fix obsolete oxenmq/hex.h usage
+  * Add InterfaceInfo formatter
+  * Add more logging around route poking conditions
+  * DRY private range selection; add missing ranges
+  * Fix interface enumeration on posix
+  * Windows fix: iterate over IPv4/IPv6 interfaces separately
+  * De-prioritize some windivert logging
+  * Remake non-mac icon; regenerate during build for windows
+  * Add a net::ToString() to help stringify ipaddr_t
+  * Rediff patches
+  * Switch to using VERSIONTAG cmake var
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 10 Oct 2022 19:28:41 -0300
+
 lokinet (0.9.9-2~deb12) bookworm; urgency=medium
 
   * add additional fallback case
