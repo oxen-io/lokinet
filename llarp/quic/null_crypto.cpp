@@ -1,5 +1,5 @@
 #include "null_crypto.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <limits>
 

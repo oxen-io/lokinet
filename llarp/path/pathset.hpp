@@ -71,12 +71,6 @@ namespace llarp
 
       std::string
       ToString() const;
-
-      friend std::ostream&
-      operator<<(std::ostream& o, const BuildStats& st)
-      {
-        return o << st.ToString();
-      }
     };
 
     /// the role of this path can fulfill
@@ -326,4 +320,8 @@ namespace llarp
     };
 
   }  // namespace path
+
+  template <>
+  constexpr inline bool IsToStringFormattable<path::BuildStats> = true;
+
 }  // namespace llarp

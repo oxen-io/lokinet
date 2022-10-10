@@ -1,5 +1,6 @@
 #include <oxenmq/oxenmq.h>
 #include <nlohmann/json.hpp>
+#include <fmt/core.h>
 #include <cxxopts.hpp>
 #include <future>
 #include <vector>
@@ -16,11 +17,11 @@
 #include <sys/wait.h>
 #endif
 
-/// do a oxenmq request on an lmq instance blocking style
+/// do a oxenmq request on an omq instance blocking style
 /// returns a json object parsed from the result
 std::optional<nlohmann::json>
-LMQ_Request(
-    oxenmq::OxenMQ& lmq,
+OMQ_Request(
+    oxenmq::OxenMQ& omq,
     const oxenmq::ConnectionID& id,
     std::string_view method,
     std::optional<nlohmann::json> args = std::nullopt)
@@ -37,11 +38,11 @@ LMQ_Request(
   };
   if (args.has_value())
   {
-    lmq.request(id, method, handleRequest, args->dump());
+    omq.request(id, method, handleRequest, args->dump());
   }
   else
   {
-    lmq.request(id, method, handleRequest);
+    omq.request(id, method, handleRequest);
   }
   auto ftr = result_promise.get_future();
   const auto str = ftr.get();
@@ -49,6 +50,50 @@ LMQ_Request(
     return nlohmann::json::parse(*str);
   return std::nullopt;
 }
+
+namespace
+{
+  template <typename T>
+  constexpr bool is_optional = false;
+  template <typename T>
+  constexpr bool is_optional<std::optional<T>> = true;
+
+  // Extracts a value from a cxxopts result and assigns it into `value` if present.  The value can
+  // either be a plain value or a std::optional.  If not present, `value` is not touched.
+  template <typename T>
+  void
+  extract_option(const cxxopts::ParseResult& r, const std::string& name, T& value)
+  {
+    if (r.count(name))
+    {
+      if constexpr (is_optional<T>)
+        value = r[name].as<typename T::value_type>();
+      else
+        value = r[name].as<T>();
+    }
+  }
+
+  // Takes a code, prints a message, and returns the code.  Intended use is:
+  //     return exit_error(1, "blah: {}", 42);
+  // from within main().
+  template <typename... T>
+  [[nodiscard]] int
+  exit_error(int code, const std::string& format, T&&... args)
+  {
+    fmt::print(format, std::forward<T>(args)...);
+    fmt::print("\n");
+    return code;
+  }
+
+  // Same as above, but with code omitted (uses exit code 1)
+  template <typename... T>
+  [[nodiscard]] int
+  exit_error(const std::string& format, T&&... args)
+  {
+    return exit_error(1, format, std::forward<T>(args)...);
+  }
+
+}  // namespace
 
 int
 main(int argc, char* argv[])
@@ -74,8 +119,8 @@ main(int argc, char* argv[])
   oxenmq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
   std::string endpoint = "default";
-  std::optional<std::string> token;
-  std::string range = "::/0";
+  std::string token;
+  std::optional<std::string> range;
   oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
@@ -95,69 +140,48 @@ main(int argc, char* argv[])
     {
       logLevel = oxenmq::LogLevel::debug;
     }
-    if (result.count("rpc") > 0)
-    {
-      rpcURL = oxenmq::address(result["rpc"].as<std::string>());
-    }
-    if (result.count("exit") > 0)
-    {
-      exitAddress = result["exit"].as<std::string>();
-    }
     goUp = result.count("up") > 0;
     goDown = result.count("down") > 0;
     printStatus = result.count("status") > 0;
     killDaemon = result.count("kill") > 0;
 
-    if (result.count("endpoint") > 0)
-    {
-      endpoint = result["endpoint"].as<std::string>();
-    }
-    if (result.count("token") > 0)
-    {
-      token = result["token"].as<std::string>();
-    }
-    if (result.count("auth") > 0)
-    {
-      token = result["auth"].as<std::string>();
-    }
-    if (result.count("range") > 0)
-    {
-      range = result["range"].as<std::string>();
-    }
+    extract_option(result, "rpc", rpcURL);
+    extract_option(result, "exit", exitAddress);
+    extract_option(result, "endpoint", endpoint);
+    extract_option(result, "token", token);
+    extract_option(result, "auth", token);
+    extract_option(result, "range", range);
   }
   catch (const cxxopts::option_not_exists_exception& ex)
   {
-    std::cerr << ex.what();
-    std::cout << opts.help() << std::endl;
-    return 1;
+    return exit_error(2, "{}\n{}", ex.what(), opts.help());
   }
   catch (std::exception& ex)
   {
-    std::cout << ex.what() << std::endl;
-    return 1;
-  }
-  if ((not goUp) and (not goDown) and (not printStatus) and (not killDaemon))
-  {
-    std::cout << opts.help() << std::endl;
-    return 1;
-  }
-  if (goUp and exitAddress.empty())
-  {
-    std::cout << "no exit address provided" << std::endl;
-    return 1;
+    return exit_error(2, "{}", ex.what());
   }
 
-  oxenmq::OxenMQ lmq{
+  int num_commands = goUp + goDown + printStatus + killDaemon;
+
+  if (num_commands == 0)
+    return exit_error(3, "One of --up/--down/--status/--kill must be specified");
+  if (num_commands != 1)
+    return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
+
+  if (goUp and exitAddress.empty())
+    return exit_error("no exit address provided");
+
+  oxenmq::OxenMQ omq{
       [](oxenmq::LogLevel lvl, const char* file, int line, std::string msg) {
         std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
       },
       logLevel};
 
-  lmq.start();
+  omq.start();
 
   std::promise<bool> connectPromise;
 
-  const auto connID = lmq.connect_remote(
+  const auto connID = omq.connect_remote(
       rpcURL,
       [&connectPromise](auto) { connectPromise.set_value(true); },
       [&connectPromise](auto, std::string_view msg) {
@@ -173,23 +197,16 @@ main(int argc, char* argv[])
 
   if (killDaemon)
   {
-    const auto maybe = LMQ_Request(lmq, connID, "llarp.halt");
-    if (not maybe.has_value())
-    {
-      std::cout << "call to llarp.admin.die failed" << std::endl;
-      return 1;
-    }
+    if (not OMQ_Request(omq, connID, "llarp.halt"))
+      return exit_error("call to llarp.halt failed");
     return 0;
   }
 
   if (printStatus)
   {
-    const auto maybe_status = LMQ_Request(lmq, connID, "llarp.status");
-    if (not maybe_status.has_value())
-    {
-      std::cout << "call to llarp.status failed" << std::endl;
-      return 1;
-    }
+    const auto maybe_status = OMQ_Request(omq, connID, "llarp.status");
+    if (not maybe_status)
+      return exit_error("call to llarp.status failed");
 
     try
     {
@@ -209,43 +226,33 @@ main(int argc, char* argv[])
     }
     catch (std::exception& ex)
     {
-      std::cout << "failed to parse result: " << ex.what() << std::endl;
-      return 1;
+      return exit_error("failed to parse result: {}", ex.what());
     }
     return 0;
   }
   if (goUp)
   {
-    std::optional<nlohmann::json> maybe_result;
-    if (token.has_value())
-    {
-      maybe_result = LMQ_Request(
-          lmq,
-          connID,
-          "llarp.exit",
-          nlohmann::json{{"exit", exitAddress}, {"range", range}, {"token", *token}});
-    }
-    else
-    {
-      maybe_result = LMQ_Request(
-          lmq, connID, "llarp.exit", nlohmann::json{{"exit", exitAddress}, {"range", range}});
-    }
+    nlohmann::json opts{{"exit", exitAddress}, {"token", token}};
+    if (range)
+      opts["range"] = *range;
 
-    if (not maybe_result.has_value())
-    {
-      std::cout << "could not add exit" << std::endl;
-      return 1;
-    }
+    auto maybe_result = OMQ_Request(omq, connID, "llarp.exit", std::move(opts));
 
-    if (maybe_result->contains("error") and maybe_result->at("error").is_string())
+    if (not maybe_result)
+      return exit_error("could not add exit");
+
+    if (auto err_it = maybe_result->find("error"); err_it != maybe_result->end())
     {
-      std::cout << maybe_result->at("error").get<std::string>() << std::endl;
-      return 1;
+      return exit_error("{}", err_it->get<std::string_view>());
     }
   }
   if (goDown)
   {
-    LMQ_Request(lmq, connID, "llarp.exit", nlohmann::json{{"range", range}, {"unmap", true}});
+    nlohmann::json opts{{"unmap", true}};
+    if (range)
+      opts["range"] = *range;
+    if (not OMQ_Request(omq, connID, "llarp.exit", std::move(opts)))
+      return exit_error("failed to unmap exit");
   }
 
   return 0;

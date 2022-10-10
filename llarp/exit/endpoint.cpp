@@ -110,7 +110,7 @@ namespace llarp
 
     bool
     Endpoint::QueueOutboundTraffic(
-        PathID_t path, ManagedBuffer buf, uint64_t counter, service::ProtocolType t)
+        PathID_t path, std::vector<byte_t> buf, uint64_t counter, service::ProtocolType t)
     {
       const service::ConvoTag tag{path.as_array()};
       if (t == service::ProtocolType::QUIC)
@@ -118,18 +118,19 @@ namespace llarp
         auto quic = m_Parent->GetQUICTunnel();
         if (not quic)
           return false;
-        quic->receive_packet(tag, buf.underlying);
+        m_TxRate += buf.size();
+        quic->receive_packet(tag, std::move(buf));
         m_LastActive = m_Parent->Now();
-        m_TxRate += buf.underlying.sz;
         return true;
       }
       // queue overflow
       if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
 
-      llarp::net::IPPacket pkt;
-      if (!pkt.Load(buf.underlying))
+      llarp::net::IPPacket pkt{std::move(buf)};
+      if (pkt.empty())
         return false;
+
       if (pkt.IsV6() && m_Parent->SupportsV6())
       {
         huint128_t dst;
@@ -152,24 +153,19 @@ namespace llarp
       {
         return false;
       }
-      m_UpstreamQueue.emplace(pkt, counter);
-      m_TxRate += buf.underlying.sz;
+      m_TxRate += pkt.size();
+      m_UpstreamQueue.emplace(std::move(pkt), counter);
       m_LastActive = m_Parent->Now();
       return true;
     }
 
     bool
-    Endpoint::QueueInboundTraffic(ManagedBuffer buf, service::ProtocolType type)
+    Endpoint::QueueInboundTraffic(std::vector<byte_t> buf, service::ProtocolType type)
     {
-      llarp::net::IPPacket pkt{};
-      if (type == service::ProtocolType::QUIC)
+      if (type != service::ProtocolType::QUIC)
       {
-        pkt.sz = std::min(buf.underlying.sz, sizeof(pkt.buf));
-        std::copy_n(buf.underlying.base, pkt.sz, pkt.buf);
-      }
-      else
-      {
-        if (!pkt.Load(buf.underlying))
+        llarp::net::IPPacket pkt{std::move(buf)};
+        if (pkt.empty())
           return false;
 
         huint128_t src;
@@ -181,11 +177,11 @@ namespace llarp
           pkt.UpdateIPv6Address(src, m_IP);
         else
           pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
-      }
-      const auto _pktbuf = pkt.ConstBuffer();
-      auto& pktbuf = _pktbuf.underlying;
 
-      const uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
+        buf = pkt.steal();
+      }
+
+      const uint8_t queue_idx = buf.size() / llarp::routing::ExitPadSize;
       if (m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
       auto& queue = m_DownstreamQueues.at(queue_idx);
@@ -193,17 +189,17 @@ namespace llarp
       {
         queue.emplace_back();
         queue.back().protocol = type;
-        return queue.back().PutBuffer(pktbuf, m_Counter++);
+        return queue.back().PutBuffer(std::move(buf), m_Counter++);
       }
       auto& msg = queue.back();
-      if (msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
+      if (msg.Size() + buf.size() > llarp::routing::ExitPadSize)
       {
         queue.emplace_back();
         queue.back().protocol = type;
-        return queue.back().PutBuffer(pktbuf, m_Counter++);
+        return queue.back().PutBuffer(std::move(buf), m_Counter++);
       }
       msg.protocol = type;
-      return msg.PutBuffer(pktbuf, m_Counter++);
+      return msg.PutBuffer(std::move(buf), m_Counter++);
     }
 
     bool
@@ -212,7 +208,8 @@ namespace llarp
       // flush upstream queue
       while (m_UpstreamQueue.size())
       {
-        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt);
+        m_Parent->QueueOutboundTraffic(
+            const_cast<net::IPPacket&>(m_UpstreamQueue.top().pkt).steal());
         m_UpstreamQueue.pop();
       }
       // flush downstream queue

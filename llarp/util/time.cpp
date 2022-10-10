@@ -49,40 +49,4 @@ namespace llarp
   {
     return ToMS(t);
   }
-
-  std::ostream&
-  operator<<(std::ostream& out, const Duration_t& t)
-  {
-    std::chrono::milliseconds amount{ToMS(t)};
-    auto h = std::chrono::duration_cast<std::chrono::hours>(amount);
-    amount -= h;
-    auto m = std::chrono::duration_cast<std::chrono::minutes>(amount);
-    amount -= m;
-    auto s = std::chrono::duration_cast<std::chrono::seconds>(amount);
-    amount -= s;
-    auto ms = amount;
-    auto old_fill = out.fill('0');
-    if (h > 0h)
-    {
-      out << h.count() << 'h';
-      out.width(2);  // 0-fill minutes if we have hours
-    }
-    if (h > 0h || m > 0min)
-    {
-      out << m.count() << 'm';
-      out.width(2);  // 0-fill seconds if we have minutes
-    }
-    out << s.count() << '.';
-    out.width(3);
-    out << ms.count();
-    out.fill(old_fill);
-    return out << "s";
-  }
-
-  std::ostream&
-  operator<<(std::ostream& out, const TimePoint_t& tp)
-  {
-    auto t = TimePoint_t::clock::to_time_t(tp);
-    return out << std::put_time(std::localtime(&t), "%c %Z");
-  }
 }  // namespace llarp

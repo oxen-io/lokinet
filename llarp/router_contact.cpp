@@ -5,18 +5,18 @@
 #include "net/net.hpp"
 #include "util/bencode.hpp"
 #include "util/buffer.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 #include "util/mem.hpp"
-#include "util/printer.hpp"
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
 
-#include <fstream>
-#include "util/fs.hpp"
+#include "util/file.hpp"
 
 namespace llarp
 {
+  static auto logcat = log::Cat("RC");
+
   NetID&
   NetID::DefaultValue()
   {
@@ -26,17 +26,23 @@ namespace llarp
 
   bool RouterContact::BlockBogons = true;
 
-#ifdef TESTNET
-  // 1 minute for testnet
-  llarp_time_t RouterContact::Lifetime = 1min;
-#else
-  /// 1 day for real network
-  llarp_time_t RouterContact::Lifetime = 24h;
-#endif
+  /// 1 day rc lifespan
+  constexpr auto rc_lifetime = 24h;
   /// an RC inserted long enough ago (4 hrs) is considered stale and is removed
-  llarp_time_t RouterContact::StaleInsertionAge = 4h;
+  constexpr auto rc_stale_age = 4h;
+  /// window of time in which a router wil try to update their RC before it is marked stale
+  constexpr auto rc_update_window = 5min;
   /// update RCs shortly before they are about to expire
-  llarp_time_t RouterContact::UpdateInterval = RouterContact::StaleInsertionAge - 5min;
+  constexpr auto rc_update_interval = rc_stale_age - rc_update_window;
+
+  llarp_time_t RouterContact::Lifetime = rc_lifetime;
+  llarp_time_t RouterContact::StaleInsertionAge = rc_stale_age;
+  llarp_time_t RouterContact::UpdateInterval = rc_update_interval;
+
+  /// how many rc lifetime intervals should we wait until purging an rc
+  constexpr auto expiration_lifetime_generations = 10;
+  /// the max age of an rc before we want to expire it
+  constexpr auto rc_expire_age = rc_lifetime * expiration_lifetime_generations;
 
   NetID::NetID(const byte_t* val)
   {
@@ -56,8 +62,7 @@ namespace llarp
   std::string
   NetID::ToString() const
   {
-    auto term = std::find(begin(), end(), '\0');
-    return std::string(begin(), term);
+    return {begin(), std::find(begin(), end(), '\0')};
   }
 
   bool
@@ -105,19 +110,23 @@ namespace llarp
     return false;
   }
 
-  std::ostream&
-  RouterContact::ToTXTRecord(std::ostream& out) const
+  std::string
+  RouterContact::ToTXTRecord() const
   {
+    std::string result;
+    auto out = std::back_inserter(result);
     for (const auto& addr : addrs)
-    {
-      out << "ai_addr=" << addr.toIpAddress() << "; ";
-      out << "ai_pk=" << addr.pubkey.ToHex() << "; ";
-    }
-    out << "updated=" << last_updated.count() << "; ";
-    out << "onion_pk=" << enckey.ToHex() << "; ";
+      out = fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
+    out = fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
     if (routerVersion.has_value())
-      out << "router_version=" << routerVersion->ToString() << "; ";
-    return out;
+      out = fmt::format_to(out, "router_version={}; ", *routerVersion);
+    return result;
+  }
+
+  bool
+  RouterContact::FromOurNetwork() const
+  {
+    return netID == NetID::DefaultValue();
   }
 
   bool
@@ -282,13 +291,13 @@ namespace llarp
       }
       else
       {
-        llarp::LogWarn("Received RouterContact with unkown version (", outer_version, ")");
+        log::warning(logcat, "Received RouterContact with unkown version ({})", outer_version);
         return false;
       }
     }
     catch (const std::exception& e)
     {
-      llarp::LogDebug("RouterContact::BDecode failed, reason: ", e.what());
+      log::debug(logcat, "RouterContact::BDecode failed: {}", e.what());
     }
 
     return false;
@@ -308,14 +317,14 @@ namespace llarp
 
     if (not btlist.is_finished())
     {
-      llarp::LogDebug("RouterContact serialized list too long for specified version.");
+      log::debug(logcat, "RouterContact serialized list too long for specified version.");
       return false;
     }
 
     llarp_buffer_t sigbuf(signature_string.data(), signature_string.size());
     if (not signature.FromBytestring(&sigbuf))
     {
-      llarp::LogDebug("RouterContact serialized signature had invalid length.");
+      log::debug(logcat, "RouterContact serialized signature had invalid length.");
       return false;
     }
 
@@ -336,7 +345,7 @@ namespace llarp
     if (!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
 
-    if (key == "r")
+    if (key.startswith("r"))
     {
       RouterVersion r;
       if (not r.BDecode(buf))
@@ -345,7 +354,7 @@ namespace llarp
       return true;
     }
 
-    if (key == "n")
+    if (key.startswith("n"))
     {
       llarp_buffer_t strbuf;
       if (!bencode_read_string(buf, &strbuf))
@@ -373,7 +382,7 @@ namespace llarp
     if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
-    if (key == "x" and serializeExit)
+    if (key.startswith("x") and serializeExit)
     {
       return bencode_discard(buf);
     }
@@ -409,9 +418,7 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    (void)now;
-    return false;
-    // return Age(now) >= Lifetime;
+    return Age(now) >= rc_expire_age;
   }
 
   llarp_time_t
@@ -471,30 +478,27 @@ namespace llarp
   {
     if (netID != NetID::DefaultValue())
     {
-      llarp::LogError(
-          "netid mismatch: '", netID, "' (theirs) != '", NetID::DefaultValue(), "' (ours)");
+      log::error(
+          logcat, "netid mismatch: '{}' (theirs) != '{}' (ours)", netID, NetID::DefaultValue());
       return false;
     }
-    if (IsExpired(now))
-    {
-      if (!allowExpired)
-      {
-        llarp::LogError("RC is expired");
-        return false;
-      }
-      llarp::LogWarn("RC is expired");
-    }
+
+    if (IsExpired(now) and not allowExpired)
+      return false;
+
+    // TODO: make net* overridable
+    const auto* net = net::Platform::Default_ptr();
     for (const auto& a : addrs)
     {
-      if (IsBogon(a.ip) && BlockBogons)
+      if (net->IsBogon(a.ip) && BlockBogons)
       {
-        llarp::LogError("invalid address info: ", a);
+        log::error(logcat, "invalid address info: {}", a);
         return false;
       }
     }
     if (!VerifySignature())
     {
-      llarp::LogError("invalid signature: ", *this);
+      log::error(logcat, "invalid signature: {}", *this);
       return false;
     }
     return true;
@@ -512,7 +516,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       if (!copy.BEncode(&buf))
       {
-        llarp::LogError("bencode failed");
+        log::error(logcat, "bencode failed");
         return false;
       }
       buf.sz = buf.cur - buf.base;
@@ -529,6 +533,20 @@ namespace llarp
     return false;
   }
 
+  static constexpr std::array obsolete_bootstraps = {
+      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv};
+
+  bool
+  RouterContact::IsObsoleteBootstrap() const
+  {
+    for (const auto& k : obsolete_bootstraps)
+    {
+      if (pubkey.ToHex() == k)
+        return true;
+    }
+    return false;
+  }
+
   bool
   RouterContact::Write(const fs::path& fname) const
   {
@@ -538,18 +556,15 @@ namespace llarp
     {
       return false;
     }
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
-    auto f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-    if (!f)
+    try
     {
+      util::dump_file(fname, tmp.data(), buf.cur - buf.base);
+    }
+    catch (const std::exception& e)
+    {
+      log::error(logcat, "Failed to write RC to {}: {}", fname, e.what());
       return false;
     }
-    if (!f->is_open())
-    {
-      return false;
-    }
-    f->write((char*)buf.base, buf.sz);
     return true;
   }
 
@@ -558,37 +573,30 @@ namespace llarp
   {
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
-    std::ifstream f;
-    f.open(fname.string(), std::ios::binary);
-    if (!f.is_open())
+    try
     {
-      llarp::LogError("Failed to open ", fname);
+      util::slurp_file(fname, tmp.data(), tmp.size());
+    }
+    catch (const std::exception& e)
+    {
+      log::error(logcat, "Failed to read RC from {}: {}", fname, e.what());
       return false;
     }
-    f.seekg(0, std::ios::end);
-    auto l = f.tellg();
-    if (l > static_cast<std::streamoff>(sizeof tmp))
-    {
-      return false;
-    }
-    f.seekg(0, std::ios::beg);
-    f.read((char*)tmp.data(), l);
     return BDecode(&buf);
   }
 
-  std::ostream&
-  RouterContact::print(std::ostream& stream, int level, int spaces) const
+  std::string
+  RouterContact::ToString() const
   {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("k", pubkey);
-    printer.printAttribute("updated", last_updated.count());
-    printer.printAttribute("netid", netID);
-    printer.printAttribute("v", version);
-    printer.printAttribute("ai", addrs);
-    printer.printAttribute("e", enckey);
-    printer.printAttribute("z", signature);
-
-    return stream;
+    return fmt::format(
+        "[RC k={} updated={} netid={} v={} ai={{{}}} e={} z={}]",
+        pubkey,
+        last_updated.count(),
+        netID,
+        version,
+        fmt::format("{}", fmt::join(addrs, ",")),
+        enckey,
+        signature);
   }
 
 }  // namespace llarp

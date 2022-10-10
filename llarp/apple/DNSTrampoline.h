@@ -5,18 +5,19 @@
 extern NSString* error_domain;
 
 /**
- * "Trampoline" class that listens for UDP DNS packets on port 1053 coming from lokinet's embedded
- * libunbound (when exit mode is enabled), wraps them via NetworkExtension's crappy UDP API, then
- * sends responses back to libunbound to be parsed/etc.  This class knows nothing about DNS, it is
- * basically just a UDP packet forwarder.
+ * "Trampoline" class that listens for UDP DNS packets when we have exit mode enabled.  These arrive
+ * on localhost:1053 coming from lokinet's embedded libunbound (when exit mode is enabled), wraps
+ * them via NetworkExtension's crappy UDP API, then sends responses back to libunbound to be
+ * parsed/etc.  This class knows nothing about DNS, it is basically just a UDP packet forwarder, but
+ * using Apple magic reinvented wheel wrappers that are oh so wonderful like everything Apple.
  *
  * So for a lokinet configuration of "upstream=1.1.1.1", when exit mode is OFF:
- * - DNS requests go to TUNNELIP:53, get sent to libunbound, which forwards them (directly) to the
- *   upstream DNS server(s).
+ * - DNS requests go unbound either to 127.0.0.1:53 directly (system extension) or bounced through
+ *   TUNNELIP:53 (app extension), which forwards them (directly) to the upstream DNS server(s).
  * With exit mode ON:
- * - DNS requests go to TUNNELIP:53, get send to libunbound, which forwards them to 127.0.0.1:1053,
- *   which encapsulates them in Apple's god awful crap, then (on a response) sends them back to
- *   libunbound.
+ * - DNS requests go to unbound, as above, and unbound forwards them to 127.0.0.1:1053, which
+ *   encapsulates them in Apple's god awful crap, then (on a response) sends them back to
+ *   libunbound to be delivered back to the requestor.
  * (This assumes a non-lokinet DNS; .loki and .snode get handled before either of these).
  */
 @interface LLARPDNSTrampoline : NSObject
@@ -40,6 +41,7 @@ extern NSString* error_domain;
   uv_async_t write_trigger;
 }
 - (void)startWithUpstreamDns:(NWUDPSession*)dns
+                    listenIp:(NSString*)listenIp
                   listenPort:(uint16_t)listenPort
                       uvLoop:(uv_loop_t*)loop
            completionHandler:(void (^)(NSError* error))completionHandler;

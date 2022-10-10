@@ -82,6 +82,12 @@ extern "C"
     char upstream_dns[INET_ADDRSTRLEN];
     uint16_t upstream_dns_port;
 
+#ifdef MACOS_SYSTEM_EXTENSION
+    /// DNS bind IP; llarp_apple_init writes the lokinet config value here so that we know (in Apple
+    /// API code) what to set DNS to when lokinet gets turned on.  Null terminated.
+    char dns_bind_ip[INET_ADDRSTRLEN];
+#endif
+
     /// \defgroup callbacks Callbacks
     /// Callbacks we invoke for various operations that require glue into the Apple network
     /// extension APIs.  All of these except for ns_logger are passed the pointer provided to
@@ -135,12 +141,23 @@ extern "C"
   uv_loop_t*
   llarp_apple_get_uv_loop(void* lokinet);
 
-  /// Called to deliver an incoming packet from the apple layer into lokinet; returns 0 on success,
-  /// -1 if the packet could not be parsed, -2 if there is no current active VPNInterface associated
-  /// with the lokinet (which generally means llarp_apple_start wasn't called or failed, or lokinet
-  /// is in the process of shutting down).
+  /// Struct of packet data; a C array of tests gets passed to llarp_apple_incoming
+  typedef struct llarp_incoming_packet
+  {
+    const void* bytes;
+    size_t size;
+  } llarp_incoming_packet;
+
+  /// Called to deliver one or more incoming packets from the apple layer into lokinet.  Takes a C
+  /// array of `llarp_incoming_packets` with pointers/sizes set to the individual new packets that
+  /// have arrived.
+  ///
+  /// Returns the number of valid packets on success (which can be less than the number of provided
+  /// packets, if some failed to parse), or -1 if there is no current active VPNInterface associated
+  /// with the lokinet instance (which generally means llarp_apple_start wasn't called or failed, or
+  /// lokinet is in the process of shutting down).
   int
-  llarp_apple_incoming(void* lokinet, const void* bytes, size_t size);
+  llarp_apple_incoming(void* lokinet, const llarp_incoming_packet* packets, size_t size);
 
   /// Stops a lokinet instance created with `llarp_apple_initialize`.  This waits for lokinet to
   /// shut down and rejoins the thread.  After this call the given pointer is no longer valid.

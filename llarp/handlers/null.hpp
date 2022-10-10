@@ -17,7 +17,7 @@ namespace llarp::handlers
         , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
           var::visit(
               [&pkt](auto&& from) {
-                LogError("unhandled traffic from: ", from, " of ", pkt.sz, " bytes");
+                LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes");
               },
               from);
         }}}

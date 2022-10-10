@@ -1,5 +1,5 @@
 #include "common.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 PYBIND11_MODULE(pyllarp, m)
 {
@@ -20,6 +20,6 @@ PYBIND11_MODULE(pyllarp, m)
   llarp::path::PathHopConfig_Init(m);
   llarp::handlers::PyHandler_Init(m);
   llarp::service::Address_Init(m);
-  m.def("EnableDebug", []() { llarp::SetLogLevel(llarp::eLogDebug); });
+  m.def("EnableDebug", []() { llarp::log::reset_level(llarp::log::Level::debug); });
   llarp::Logger_Init(m);
 }

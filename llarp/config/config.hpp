@@ -6,6 +6,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/util/logging.hpp>
 #include "ini.hpp"
 #include "definition.hpp"
 #include <llarp/constants/files.hpp>
@@ -38,8 +39,18 @@ namespace llarp
   /// parameters that need to be passed around.
   struct ConfigGenParameters
   {
+    ConfigGenParameters() = default;
+    virtual ~ConfigGenParameters() = default;
+
+    ConfigGenParameters(const ConfigGenParameters&) = delete;
+    ConfigGenParameters(ConfigGenParameters&&) = delete;
+
     bool isRelay = false;
     fs::path defaultDataDir;
+
+    /// get network platform (virtual for unit test mocks)
+    virtual const llarp::net::Platform*
+    Net_ptr() const = 0;
   };
 
   struct RouterConfig
@@ -54,9 +65,6 @@ namespace llarp
 
     bool m_blockBogons = false;
 
-    std::optional<nuint32_t> m_PublicIP;
-    nuint16_t m_PublicPort;
-
     int m_workerThreads = -1;
     int m_numNetThreads = -1;
 
@@ -68,6 +76,10 @@ namespace llarp
     std::string m_transportKeyFile;
 
     bool m_isRelay = false;
+    /// deprecated
+    std::optional<net::ipaddr_t> PublicIP;
+    /// deprecated
+    std::optional<net::port_t> PublicPort;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -143,9 +155,13 @@ namespace llarp
 
   struct DnsConfig
   {
-    SockAddr m_bind;
+    bool m_raw_dns;
+    std::vector<SockAddr> m_bind;
     std::vector<SockAddr> m_upstreamDNS;
     std::vector<fs::path> m_hostfiles;
+    std::optional<SockAddr> m_QueryBind;
+
+    std::unordered_multimap<std::string, std::string> m_ExtraOpts;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -153,19 +169,10 @@ namespace llarp
 
   struct LinksConfig
   {
-    struct LinkInfo
-    {
-      std::string m_interface;
-      int addressFamily = -1;
-      uint16_t port = -1;
-    };
-    /// Create a LinkInfo from the given string.
-    /// @throws if str does not represent a LinkInfo.
-    LinkInfo
-    LinkInfoFromINIValues(std::string_view name, std::string_view value);
-
-    LinkInfo m_OutboundLink;
-    std::vector<LinkInfo> m_InboundLinks;
+    std::optional<net::ipaddr_t> PublicAddress;
+    std::optional<net::port_t> PublicPort;
+    std::vector<SockAddr> OutboundLinks;
+    std::vector<SockAddr> InboundListenAddrs;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -209,8 +216,8 @@ namespace llarp
 
   struct LoggingConfig
   {
-    LogType m_logType = LogType::Unknown;
-    LogLevel m_logLevel = eLogNone;
+    log::Type m_logType = log::Type::Print;
+    log::Level m_logLevel = log::Level::off;
     std::string m_logFile;
 
     void
@@ -219,9 +226,13 @@ namespace llarp
 
   struct Config
   {
-    explicit Config(fs::path datadir);
+    explicit Config(std::optional<fs::path> datadir = std::nullopt);
 
-    ~Config() = default;
+    virtual ~Config() = default;
+
+    /// create generation params (virtual for unit test mock)
+    virtual std::unique_ptr<ConfigGenParameters>
+    MakeGenParams() const;
 
     RouterConfig router;
     NetworkConfig network;
@@ -248,6 +259,10 @@ namespace llarp
     // Load a config from the given file if the config file is not provided LoadDefault is called
     bool
     Load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+
+    // Load a config from a string of ini, same effects as Config::Load
+    bool
+    LoadString(std::string_view ini, bool isRelay = false);
 
     std::string
     generateBaseClientConfig();
@@ -283,8 +298,12 @@ namespace llarp
     bool
     LoadDefault(bool isRelay);
 
+    bool
+    LoadConfigData(
+        std::string_view ini, std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+
     void
-    LoadOverrides();
+    LoadOverrides(ConfigDefinition& conf) const;
 
     std::vector<std::array<std::string, 3>> m_Additional;
     ConfigParser m_Parser;
