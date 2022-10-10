@@ -3,6 +3,8 @@
 #include "types.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <fmt/format.h>
+#include <fmt/chrono.h>
 
 using namespace std::chrono_literals;
 
@@ -20,42 +22,72 @@ namespace llarp
   uint64_t
   ToMS(Duration_t duration);
 
-  std::ostream&
-  operator<<(std::ostream& out, const Duration_t& t);
-
   nlohmann::json
   to_json(const Duration_t& t);
-
-  std::ostream&
-  operator<<(std::ostream& out, const TimePoint_t& t);
 
   template <typename Time_Duration>
   struct time_delta
   {
     const TimePoint_t at;
+  };
+}  // namespace llarp
 
-    std::ostream&
-    operator()(std::ostream& out) const
+namespace fmt
+{
+  template <typename Time_Duration>
+  struct formatter<llarp::time_delta<Time_Duration>> : formatter<std::string>
+  {
+    template <typename FormatContext>
+    auto
+    format(const llarp::time_delta<Time_Duration>& td, FormatContext& ctx)
     {
-      const auto dlt = std::chrono::duration_cast<Time_Duration>(TimePoint_t::clock::now() - at);
+      const auto dlt =
+          std::chrono::duration_cast<llarp::Duration_t>(llarp::TimePoint_t::clock::now() - td.at);
+      using Parent = formatter<std::string>;
       if (dlt > 0s)
-        return out << std::chrono::duration_cast<Duration_t>(dlt) << " ago ";
-      else if (dlt < 0s)
-        return out << "in " << std::chrono::duration_cast<Duration_t>(-dlt);
-      else
-        return out << "now";
+        return Parent::format(fmt::format("{} ago", dlt), ctx);
+      if (dlt < 0s)
+        return Parent::format(fmt::format("in {}", -dlt), ctx);
+      return Parent::format("now", ctx);
     }
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const time_delta<std::chrono::seconds>& td)
+  template <>
+  struct formatter<llarp::Duration_t> : formatter<std::string>
   {
-    return td(out);
-  }
+    template <typename FormatContext>
+    auto
+    format(llarp::Duration_t elapsed, FormatContext& ctx)
+    {
+      bool neg = elapsed < 0s;
+      if (neg)
+        elapsed = -elapsed;
+      const auto hours = std::chrono::duration_cast<std::chrono::hours>(elapsed).count();
+      const auto mins = (std::chrono::duration_cast<std::chrono::minutes>(elapsed) % 1h).count();
+      const auto secs = (std::chrono::duration_cast<std::chrono::seconds>(elapsed) % 1min).count();
+      const auto ms = (std::chrono::duration_cast<std::chrono::milliseconds>(elapsed) % 1s).count();
+      return formatter<std::string>::format(
+          fmt::format(
+              elapsed >= 1h         ? "{0}{1:d}h{2:02d}m{3:02d}.{4:03d}s"
+                  : elapsed >= 1min ? "{0}{2:d}m{3:02d}.{4:03d}s"
+                                    : "{0}{3:d}.{4:03d}s",
+              neg ? "-" : "",
+              hours,
+              mins,
+              secs,
+              ms),
+          ctx);
+    }
+  };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const time_delta<std::chrono::milliseconds>& td)
+  template <>
+  struct formatter<llarp::TimePoint_t> : formatter<std::string>
   {
-    return td(out);
-  }
-}  // namespace llarp
+    template <typename FormatContext>
+    auto
+    format(const llarp::TimePoint_t& tp, FormatContext& ctx)
+    {
+      return formatter<std::string>::format(fmt::format("{:%c %Z}", tp), ctx);
+    }
+  };
+}  // namespace fmt

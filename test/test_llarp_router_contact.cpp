@@ -4,6 +4,7 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <router_contact.hpp>
 #include <net/net_int.hpp>
+#include <llarp/util/time.hpp>
 
 namespace
 {

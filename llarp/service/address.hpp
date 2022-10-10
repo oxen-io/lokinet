@@ -61,12 +61,6 @@ namespace llarp
         return as_array() < other.as_array();
       }
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const Address& self)
-      {
-        return out << self.ToString();
-      }
-
       bool
       operator==(const Address& other) const
       {
@@ -96,6 +90,9 @@ namespace llarp
     ParseAddress(std::string_view lokinet_addr);
 
   }  // namespace service
+
+  template <>
+  constexpr inline bool IsToStringFormattable<service::Address> = true;
 }  // namespace llarp
 
 namespace std

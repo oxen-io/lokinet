@@ -1,18 +1,17 @@
 #pragma once
-#include <ostream>
+
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include <llarp/util/bits.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/types.hpp>
+
+#include <list>
+#include <optional>
 #include <string>
 
 namespace llarp
 {
-  /// forward declare
-  bool
-  IsBogon(huint128_t ip);
-
   struct IPRange
   {
     using Addr_t = huint128_t;
@@ -26,38 +25,38 @@ namespace llarp
     {}
 
     static constexpr IPRange
+    V4MappedRange()
+    {
+      return IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
+    }
+
+    static constexpr IPRange
     FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
     {
       return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
+    }
+
+    static inline IPRange
+    FromIPv4(net::ipv4addr_t addr, net::ipv4addr_t netmask)
+    {
+      return IPRange{
+          net::ExpandV4(ToHost(addr)), netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
     }
 
     /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
     constexpr bool
     IsV4() const
     {
-      constexpr auto ipv4_map = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
-      return ipv4_map.Contains(addr);
+      return V4MappedRange().Contains(addr);
     }
 
-    /// return true if we intersect with a bogon range
-    bool
-    BogonRange() const
+    /// get address family
+    constexpr int
+    Family() const
     {
-      // special case for 0.0.0.0/0
-      if (IsV4() and netmask_bits == netmask_ipv6_bits(96))
-        return false;
-      // special case for ::/0
-      if (netmask_bits == huint128_t{0})
-        return false;
-      return IsBogon(addr) or IsBogon(HighestAddr());
-    }
-
-    /// return true if we intersect with a bogon range *and* we contain the given address
-    template <typename Addr>
-    bool
-    BogonContains(Addr&& addr) const
-    {
-      return BogonRange() and Contains(std::forward<Addr>(addr));
+      if (IsV4())
+        return AF_INET;
+      return AF_INET6;
     }
 
     /// return the number of bits set in the hostmask
@@ -101,10 +100,10 @@ namespace llarp
       return Contains(net::ExpandV4(ip));
     }
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const IPRange& a)
+    inline bool
+    Contains(const net::ipaddr_t& ip) const
     {
-      return out << a.ToString();
+      return var::visit([this](auto&& ip) { return Contains(ToHost(ip)); }, ip);
     }
 
     /// get the highest address on this range
@@ -137,6 +136,9 @@ namespace llarp
     std::string
     BaseAddressString() const;
 
+    std::string
+    NetmaskString() const;
+
     bool
     FromString(std::string str);
 
@@ -145,7 +147,14 @@ namespace llarp
 
     bool
     BDecode(llarp_buffer_t* buf);
+
+    /// Finds a free private use range not overlapping the given ranges.
+    static std::optional<IPRange>
+    FindPrivateRange(const std::list<IPRange>& excluding);
   };
+
+  template <>
+  constexpr inline bool IsToStringFormattable<IPRange> = true;
 
 }  // namespace llarp
 

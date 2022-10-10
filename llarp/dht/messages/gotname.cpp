@@ -27,7 +27,7 @@ namespace llarp::dht
   bool
   GotNameMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
-    if (key == "D")
+    if (key.startswith("D"))
     {
       llarp_buffer_t str{};
       if (not bencode_read_string(val, &str))
@@ -38,11 +38,11 @@ namespace llarp::dht
       std::copy_n(str.cur, str.sz, result.ciphertext.data());
       return true;
     }
-    if (key == "N")
+    if (key.startswith("N"))
     {
       return result.nonce.BDecode(val);
     }
-    if (key == "T")
+    if (key.startswith("T"))
     {
       return bencode_read_integer(val, &TxID);
     }

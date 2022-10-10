@@ -10,7 +10,7 @@
 #include "nodedb.hpp"
 #include "router/router.hpp"
 #include "service/context.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
 
 #include <cxxopts.hpp>
 #include <csignal>
@@ -61,8 +61,9 @@ namespace llarp
     if (not config)
       throw std::runtime_error("Cannot call Setup() on context without a Config");
 
-    llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
-    llarp::LogInfo("starting up");
+    if (opts.showBanner)
+      llarp::LogInfo(fmt::format("{} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
+
     if (!loop)
     {
       auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
@@ -104,7 +105,7 @@ namespace llarp
   }
 
   int
-  Context::Run(const RuntimeOptions& opts)
+  Context::Run(const RuntimeOptions&)
   {
     if (router == nullptr)
     {
@@ -113,11 +114,8 @@ namespace llarp
       return 1;
     }
 
-    if (!opts.background)
-    {
-      if (!router->Run())
-        return 2;
-    }
+    if (not router->Run())
+      return 2;
 
     // run net io thread
     llarp::LogInfo("running mainloop");
@@ -210,13 +208,5 @@ namespace llarp
     llarp::LogDebug("free loop");
     loop.reset();
   }
-
-#if defined(ANDROID)
-  int
-  Context::GetUDPSocket()
-  {
-    return router->GetOutboundUDPSocket();
-  }
-#endif
 
 }  // namespace llarp

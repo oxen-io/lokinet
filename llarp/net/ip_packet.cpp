@@ -1,6 +1,6 @@
 #include "ip_packet.hpp"
 #include "ip.hpp"
-
+#include <llarp/constants/net.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
@@ -16,22 +16,6 @@
 namespace llarp::net
 {
   constexpr uint32_t ipv6_flowlabel_mask = 0b0000'0000'0000'1111'1111'1111'1111'1111;
-
-  template <bool little>
-  struct ipv6_header_preamble
-  {
-    unsigned char pad_small : 4;
-    unsigned char version : 4;
-    uint8_t pad[3];
-  };
-
-  template <>
-  struct ipv6_header_preamble<false>
-  {
-    unsigned char version : 4;
-    unsigned char pad_small : 4;
-    uint8_t pad[3];
-  };
 
   /// get 20 bit truncated flow label in network order
   llarp::nuint32_t
@@ -75,7 +59,6 @@ namespace llarp::net
     }
     throw std::invalid_argument{"no such ip protocol: '" + data + "'"};
   }
-
   inline static uint32_t*
   in6_uint32_ptr(in6_addr& addr)
   {
@@ -106,30 +89,55 @@ namespace llarp::net
     return ExpandV4(dstv4());
   }
 
-  bool
-  IPPacket::Load(const llarp_buffer_t& pkt)
+  IPPacket::IPPacket(byte_view_t view)
   {
-    if (pkt.sz > sizeof(buf) or pkt.sz == 0)
-      return false;
-    sz = pkt.sz;
-    std::copy_n(pkt.base, sz, buf);
-    return true;
+    if (view.size() < MinSize)
+    {
+      _buf.resize(0);
+      return;
+    }
+    _buf.resize(view.size());
+    std::copy_n(view.data(), size(), data());
   }
 
-  ManagedBuffer
-  IPPacket::ConstBuffer() const
+  IPPacket::IPPacket(size_t sz)
   {
-    const byte_t* ptr = buf;
-    llarp_buffer_t b(ptr, sz);
-    return ManagedBuffer(b);
+    if (sz and sz < MinSize)
+      throw std::invalid_argument{"buffer size is too small to hold an ip packet"};
+    _buf.resize(sz);
   }
 
-  ManagedBuffer
-  IPPacket::Buffer()
+  SockAddr
+  IPPacket::src() const
   {
-    byte_t* ptr = buf;
-    llarp_buffer_t b(ptr, sz);
-    return ManagedBuffer(b);
+    const auto port = SrcPort().value_or(net::port_t{});
+
+    if (IsV4())
+      return SockAddr{ToNet(srcv4()), port};
+    else
+      return SockAddr{ToNet(srcv6()), port};
+  }
+
+  SockAddr
+  IPPacket::dst() const
+  {
+    auto port = *DstPort();
+    if (IsV4())
+      return SockAddr{ToNet(dstv4()), port};
+    else
+      return SockAddr{ToNet(dstv6()), port};
+  }
+
+  IPPacket::IPPacket(std::vector<byte_t>&& stolen) : _buf{stolen}
+  {
+    if (size() < MinSize)
+      _buf.resize(0);
+  }
+
+  byte_view_t
+  IPPacket::view() const
+  {
+    return byte_view_t{data(), size()};
   }
 
   std::optional<nuint16_t>
@@ -139,7 +147,7 @@ namespace llarp::net
     {
       case IPProtocol::TCP:
       case IPProtocol::UDP:
-        return nuint16_t{*reinterpret_cast<const uint16_t*>(buf + (Header()->ihl * 4) + 2)};
+        return nuint16_t{*reinterpret_cast<const uint16_t*>(data() + (Header()->ihl * 4) + 2)};
       default:
         return std::nullopt;
     }
@@ -148,11 +156,12 @@ namespace llarp::net
   std::optional<nuint16_t>
   IPPacket::SrcPort() const
   {
-    switch (IPProtocol{Header()->protocol})
+    IPProtocol proto{Header()->protocol};
+    switch (proto)
     {
       case IPProtocol::TCP:
       case IPProtocol::UDP:
-        return nuint16_t{*reinterpret_cast<const uint16_t*>(buf + (Header()->ihl * 4))};
+        return nuint16_t{*reinterpret_cast<const uint16_t*>(data() + (Header()->ihl * 4))};
       default:
         return std::nullopt;
     }
@@ -397,7 +406,8 @@ namespace llarp::net
 
     auto oSrcIP = nuint32_t{hdr->saddr};
     auto oDstIP = nuint32_t{hdr->daddr};
-
+    auto* buf = data();
+    auto sz = size();
     // L4 checksum
     auto ihs = size_t(hdr->ihl * 4);
     if (ihs <= sz)
@@ -435,7 +445,7 @@ namespace llarp::net
   IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel)
   {
     const size_t ihs = 4 + 4 + 16 + 16;
-
+    const auto sz = size();
     // XXX should've been checked at upper level?
     if (sz <= ihs)
       return;
@@ -459,11 +469,11 @@ namespace llarp::net
     const uint32_t* nDstIP = in6_uint32_ptr(hdr->dstaddr);
 
     // TODO IPv6 header options
-    auto pld = buf + ihs;
+    auto* pld = data() + ihs;
     auto psz = sz - ihs;
 
     size_t fragoff = 0;
-    auto nextproto = hdr->proto;
+    auto nextproto = hdr->protocol;
     for (;;)
     {
       switch (nextproto)
@@ -554,31 +564,27 @@ namespace llarp::net
     if (IsV4())
     {
       constexpr auto icmp_Header_size = 8;
-      constexpr auto ip_Header_size = 20;
-      net::IPPacket pkt{};
-      auto* pkt_Header = pkt.Header();
+      auto ip_Header_size = Header()->ihl * 4;
+      auto pkt_size = (icmp_Header_size + ip_Header_size) * 2;
+      net::IPPacket pkt{static_cast<size_t>(pkt_size)};
 
+      auto* pkt_Header = pkt.Header();
       pkt_Header->version = 4;
       pkt_Header->ihl = 0x05;
       pkt_Header->tos = 0;
       pkt_Header->check = 0;
-      pkt_Header->tot_len = ntohs(icmp_Header_size + ip_Header_size);
+      pkt_Header->tot_len = ntohs(pkt_size);
       pkt_Header->saddr = Header()->daddr;
       pkt_Header->daddr = Header()->saddr;
       pkt_Header->protocol = 1;  // ICMP
-      pkt_Header->ttl = 1;
+      pkt_Header->ttl = Header()->ttl;
       pkt_Header->frag_off = htons(0b0100000000000000);
-      // size pf ip header
-      const size_t l3_HeaderSize = Header()->ihl * 4;
-      // size of l4 packet to reflect back
-      const size_t l4_PacketSize = 8;
-      pkt_Header->tot_len += ntohs(l4_PacketSize + l3_HeaderSize);
 
       uint16_t* checksum;
-      uint8_t* itr = pkt.buf + (pkt_Header->ihl * 4);
+      uint8_t* itr = pkt.data() + ip_Header_size;
       uint8_t* icmp_begin = itr;  // type 'destination unreachable'
       *itr++ = 3;
-      // code	'Destination host unknown error'
+      // code 'Destination host unknown error'
       *itr++ = 7;
       // checksum + unused
       oxenc::write_host_as_big<uint32_t>(0, itr);
@@ -588,14 +594,13 @@ namespace llarp::net
       oxenc::write_host_as_big<uint16_t>(1500, itr);
       itr += 2;
       // copy ip header and first 8 bytes of datagram for icmp rject
-      std::copy_n(buf, l4_PacketSize + l3_HeaderSize, itr);
-      itr += l4_PacketSize + l3_HeaderSize;
+      std::copy_n(data(), ip_Header_size + icmp_Header_size, itr);
+      itr += ip_Header_size + icmp_Header_size;
       // calculate checksum of ip header
-      pkt_Header->check = ipchksum(pkt.buf, pkt_Header->ihl * 4);
+      pkt_Header->check = ipchksum(pkt.data(), ip_Header_size);
       const auto icmp_size = std::distance(icmp_begin, itr);
       // calculate icmp checksum
       *checksum = ipchksum(icmp_begin, icmp_size);
-      pkt.sz = ntohs(pkt_Header->tot_len);
       return pkt;
     }
     return std::nullopt;
@@ -614,56 +619,85 @@ namespace llarp::net
       return std::nullopt;
 
     // check for invalid size
-    if (sz < (hdr->ihl * 4) + l4_HeaderSize)
+    if (size() < (hdr->ihl * 4) + l4_HeaderSize)
       return std::nullopt;
 
-    const uint8_t* ptr = buf + ((hdr->ihl * 4) + l4_HeaderSize);
-    return std::make_pair(reinterpret_cast<const char*>(ptr), std::distance(ptr, buf + sz));
+    const uint8_t* ptr = data() + ((hdr->ihl * 4) + l4_HeaderSize);
+    return std::make_pair(reinterpret_cast<const char*>(ptr), std::distance(ptr, data() + size()));
   }
 
-  IPPacket
-  IPPacket::UDP(
-      nuint32_t srcaddr,
-      nuint16_t srcport,
-      nuint32_t dstaddr,
-      nuint16_t dstport,
-      const llarp_buffer_t& buf)
+  namespace
   {
-    net::IPPacket pkt;
-
-    if (buf.sz + 28 > sizeof(pkt.buf))
+    IPPacket
+    make_ip4_udp(
+        net::ipv4addr_t srcaddr,
+        net::port_t srcport,
+        net::ipv4addr_t dstaddr,
+        net::port_t dstport,
+        std::vector<byte_t> udp_data)
     {
-      pkt.sz = 0;
+      constexpr auto pkt_overhead = constants::udp_header_bytes + constants::ip_header_min_bytes;
+      net::IPPacket pkt{udp_data.size() + pkt_overhead};
+
+      auto* hdr = pkt.Header();
+      pkt.data()[1] = 0;
+      hdr->version = 4;
+      hdr->ihl = 5;
+      hdr->tot_len = htons(pkt_overhead + udp_data.size());
+      hdr->protocol = 0x11;  // udp
+      hdr->ttl = 64;
+      hdr->frag_off = htons(0b0100000000000000);
+
+      hdr->saddr = srcaddr.n;
+      hdr->daddr = dstaddr.n;
+
+      // make udp packet
+      uint8_t* ptr = pkt.data() + constants::ip_header_min_bytes;
+      std::memcpy(ptr, &srcport.n, 2);
+      ptr += 2;
+      std::memcpy(ptr, &dstport.n, 2);
+      ptr += 2;
+      oxenc::write_host_as_big(
+          static_cast<uint16_t>(udp_data.size() + constants::udp_header_bytes), ptr);
+      ptr += 2;
+      oxenc::write_host_as_big(uint16_t{0}, ptr);  // checksum
+      ptr += 2;
+      std::copy_n(udp_data.data(), udp_data.size(), ptr);
+
+      hdr->check = 0;
+      hdr->check = net::ipchksum(pkt.data(), 20);
       return pkt;
     }
-    auto* hdr = pkt.Header();
-    pkt.buf[1] = 0;
-    hdr->version = 4;
-    hdr->ihl = 5;
-    hdr->tot_len = htons(buf.sz + 28);
-    hdr->protocol = 0x11;  // udp
-    hdr->ttl = 64;
-    hdr->frag_off = htons(0b0100000000000000);
-
-    hdr->saddr = srcaddr.n;
-    hdr->daddr = dstaddr.n;
-
-    // make udp packet
-    uint8_t* ptr = pkt.buf + 20;
-    std::memcpy(ptr, &srcport.n, 2);
-    ptr += 2;
-    std::memcpy(ptr, &dstport.n, 2);
-    ptr += 2;
-    oxenc::write_host_as_big(static_cast<uint16_t>(buf.sz + 8), ptr);
-    ptr += 2;
-    oxenc::write_host_as_big(uint16_t{0}, ptr);  // checksum
-    ptr += 2;
-    std::copy_n(buf.base, buf.sz, ptr);
-
-    hdr->check = 0;
-    hdr->check = net::ipchksum(pkt.buf, 20);
-    pkt.sz = 28 + buf.sz;
-    return pkt;
+  }  // namespace
+  IPPacket
+  IPPacket::make_udp(
+      net::ipaddr_t srcaddr,
+      net::port_t srcport,
+      net::ipaddr_t dstaddr,
+      net::port_t dstport,
+      std::vector<byte_t> udp_data)
+  {
+    auto getfam = [](auto&& v) {
+      if (std::holds_alternative<net::ipv4addr_t>(v))
+        return AF_INET;
+      else if (std::holds_alternative<net::ipv6addr_t>(v))
+        return AF_INET6;
+      else
+        return AF_UNSPEC;
+    };
+    auto fam = getfam(srcaddr);
+    if (fam != getfam(dstaddr))
+      return net::IPPacket{size_t{}};
+    if (fam == AF_INET)
+    {
+      return make_ip4_udp(
+          *std::get_if<net::ipv4addr_t>(&srcaddr),
+          srcport,
+          *std::get_if<net::ipv4addr_t>(&dstaddr),
+          dstport,
+          std::move(udp_data));
+    }
+    // TODO: ipv6
+    return net::IPPacket{size_t{}};
   }
-
 }  // namespace llarp::net

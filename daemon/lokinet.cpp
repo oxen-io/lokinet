@@ -2,9 +2,8 @@
 #include <llarp/constants/version.hpp>
 #include <llarp.hpp>
 #include <llarp/util/lokinet_init.h>
+#include <llarp/util/exceptions.hpp>
 #include <llarp/util/fs.hpp>
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/logging/ostream_logger.hpp>
 #include <llarp/util/str.hpp>
 
 #ifdef _WIN32
@@ -102,7 +101,7 @@ install_win32_daemon()
   // Create the service
   schService = CreateService(
       schSCManager,               // SCM database
-      "lokinet",                  // name of service
+      strdup("lokinet"),          // name of service
       "Lokinet for Windows",      // service name to display
       SERVICE_ALL_ACCESS,         // desired access
       SERVICE_WIN32_OWN_PROCESS,  // service type
@@ -135,10 +134,10 @@ insert_description()
   SC_HANDLE schSCManager;
   SC_HANDLE schService;
   SERVICE_DESCRIPTION sd;
-  LPTSTR szDesc =
+  LPTSTR szDesc = strdup(
       "LokiNET is a free, open source, private, "
       "decentralized, \"market based sybil resistant\" "
-      "and IP based onion routing network";
+      "and IP based onion routing network");
   // Get a handle to the SCM database.
   schSCManager = OpenSCManager(
       NULL,                    // local computer
@@ -229,7 +228,7 @@ uninstall_win32_daemon()
 static void
 run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
 {
-  llarp::LogTrace("start of run_main_context()");
+  llarp::LogInfo(fmt::format("starting up {} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
   try
   {
     std::shared_ptr<llarp::Config> conf;
@@ -263,14 +262,18 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     {
       ctx->Setup(opts);
     }
-    catch (std::exception& ex)
+    catch (llarp::util::bind_socket_error& ex)
     {
-      llarp::LogError(
-          "failed to set up lokinet: ", ex.what(), ", is lokinet already running? 🤔");
+      llarp::LogError(fmt::format("{}, is lokinet already running? 🤔", ex.what()));
       exit_code.set_value(1);
       return;
     }
-
+    catch (std::exception& ex)
+    {
+      llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
+      exit_code.set_value(1);
+      return;
+    }
     llarp::util::SetThreadName("llarp-mainloop");
 
     auto result = ctx->Run(opts);
@@ -308,7 +311,6 @@ TellWindowsServiceStopped()
     else
       llarp::LogError("SetServiceStatus failed with an unknown error.");
   }
-  llarp::LogContext::Instance().ImmediateFlush();
 }
 
 class WindowsServiceStopped
@@ -327,8 +329,9 @@ class WindowsServiceStopped
 LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
-  const DWORD flags = MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
-      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo;
+  const auto flags = (MINIDUMP_TYPE)(
+      MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
+      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
   std::stringstream ss;
   ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
@@ -365,7 +368,7 @@ main(int argc, char* argv[])
   return lokinet_main(argc, argv);
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {
-      {"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
+      {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
     start_as_daemon = true;
@@ -379,12 +382,19 @@ main(int argc, char* argv[])
 int
 lokinet_main(int argc, char* argv[])
 {
-  auto result = Lokinet_INIT();
-  if (result)
-  {
+  if (auto result = Lokinet_INIT())
     return result;
-  }
+
+  // Set up a default, stderr logging for very early logging; we'll replace this later once we read
+  // the desired log info from config.
+  llarp::log::add_sink(llarp::log::Type::Print, "stderr");
+  llarp::log::reset_level(llarp::log::Level::info);
+
+  llarp::logRingBuffer = std::make_shared<llarp::log::RingBufferSink>(100);
+  llarp::log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
+
   llarp::RuntimeOptions opts;
+  opts.showBanner = false;
 
 #ifdef _WIN32
   WindowsServiceStopped stopped_raii;
@@ -410,7 +420,6 @@ lokinet_main(int argc, char* argv[])
       ("g,generate", "generate default configuration and exit", cxxopts::value<bool>())
       ("r,router", "run in routing mode instead of client only mode", cxxopts::value<bool>())
       ("f,force", "force writing config even if it already exists", cxxopts::value<bool>())
-      ("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
       ("config", "path to lokinet.ini configuration file", cxxopts::value<std::string>())
       ;
   // clang-format on
@@ -424,18 +433,11 @@ lokinet_main(int argc, char* argv[])
   {
     auto result = options.parse(argc, argv);
 
-    if (!result["colour"].as<bool>())
-    {
-      llarp::LogContext::Instance().logStream =
-          std::make_unique<llarp::OStreamLogStream>(false, std::cerr);
-    }
-
     if (result.count("help"))
     {
       std::cout << options.help() << std::endl;
       return 0;
     }
-
     if (result.count("version"))
     {
       std::cout << llarp::VERSION_FULL << std::endl;
@@ -554,6 +556,7 @@ lokinet_main(int argc, char* argv[])
     // do periodic non lokinet related tasks here
     if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
+      auto deadlock_cat = llarp::log::Cat("deadlock");
       for (const auto& wtf :
            {"you have been visited by the mascott of the deadlocked router.",
             "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
@@ -575,8 +578,8 @@ lokinet_main(int argc, char* argv[])
             "file a bug report now or be cursed with this "
             "annoying image in your syslog for all time."})
       {
-        llarp::LogError{wtf};
-        llarp::LogContext::Instance().ImmediateFlush();
+        llarp::log::critical(deadlock_cat, wtf);
+        llarp::log::flush();
       }
 #ifdef _WIN32
       TellWindowsServiceStopped();
@@ -604,7 +607,7 @@ lokinet_main(int argc, char* argv[])
     code = 2;
   }
 
-  llarp::LogContext::Instance().ImmediateFlush();
+  llarp::log::flush();
   if (ctx)
   {
     ctx.reset();
@@ -681,7 +684,7 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
   // SCM clobbers startup args, regenerate them here
   argc = 2;
-  argv[1] = "c:/programdata/lokinet/lokinet.ini";
+  argv[1] = strdup("c:\\programdata\\lokinet\\lokinet.ini");
   argv[2] = nullptr;
   lokinet_main(argc, argv);
 }

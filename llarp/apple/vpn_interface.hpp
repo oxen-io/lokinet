@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp.hpp>
-#include <llarp/ev/vpn.hpp>
+#include <llarp/vpn/platform.hpp>
 #include <llarp/util/thread/queue.hpp>
 #include <memory>
 
@@ -28,9 +28,6 @@ namespace llarp::apple
 
     int
     PollFD() const override;
-
-    std::string
-    IfName() const override;
 
     net::IPPacket
     ReadNextPacket() override;
