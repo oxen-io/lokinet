@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include <llarp/ev/vpn.hpp>
+#include "platform.hpp"
 #include "common.hpp"
 #include <llarp.hpp>
 
@@ -12,10 +12,9 @@ namespace llarp::vpn
   class AndroidInterface : public NetworkInterface
   {
     const int m_fd;
-    const InterfaceInfo m_Info;  // likely 100% ignored on android, at least for now
 
    public:
-    AndroidInterface(InterfaceInfo info, int fd) : m_fd(fd), m_Info(info)
+    AndroidInterface(InterfaceInfo info, int fd) : NetworkInterface{std::move(info)}, m_fd{fd}
     {
       if (m_fd == -1)
         throw std::runtime_error(
@@ -37,38 +36,34 @@ namespace llarp::vpn
     net::IPPacket
     ReadNextPacket() override
     {
-      net::IPPacket pkt{};
-      const auto sz = read(m_fd, pkt.buf, sizeof(pkt.buf));
-      if (sz >= 0)
-        pkt.sz = std::min(sz, ssize_t{sizeof(pkt.buf)});
-      return pkt;
+      std::vector<byte_t> pkt;
+      pkt.reserve(net::IPPacket::MaxSize);
+      const auto n = read(m_fd, pkt.data(), pkt.capacity());
+      pkt.resize(std::min(std::max(ssize_t{}, n), static_cast<ssize_t>(pkt.capacity())));
+      return net::IPPacket{std::move(pkt)};
     }
 
     bool
     WritePacket(net::IPPacket pkt) override
     {
-      const auto sz = write(m_fd, pkt.buf, pkt.sz);
+      const auto sz = write(m_fd, pkt.data(), pkt.size());
       if (sz <= 0)
         return false;
-      return sz == static_cast<ssize_t>(pkt.sz);
-    }
-
-    std::string
-    IfName() const override
-    {
-      return m_Info.ifname;
+      return sz == static_cast<ssize_t>(pkt.size());
     }
   };
 
   class AndroidRouteManager : public IRouteManager
   {
-    void AddRoute(IPVariant_t, IPVariant_t) override{};
+    void AddRoute(net::ipaddr_t, net::ipaddr_t) override{};
 
-    void DelRoute(IPVariant_t, IPVariant_t) override{};
+    void DelRoute(net::ipaddr_t, net::ipaddr_t) override{};
 
-    void AddDefaultRouteViaInterface(std::string) override{};
+    void
+    AddDefaultRouteViaInterface(NetworkInterface&) override{};
 
-    void DelDefaultRouteViaInterface(std::string) override{};
+    void
+    DelDefaultRouteViaInterface(NetworkInterface&) override{};
 
     void
     AddRouteViaInterface(NetworkInterface&, IPRange) override{};
@@ -76,9 +71,10 @@ namespace llarp::vpn
     void
     DelRouteViaInterface(NetworkInterface&, IPRange) override{};
 
-    std::vector<IPVariant_t> GetGatewaysNotOnInterface(std::string) override
+    std::vector<net::ipaddr_t>
+    GetGatewaysNotOnInterface(NetworkInterface&) override
     {
-      return std::vector<IPVariant_t>{};
+      return std::vector<net::ipaddr_t>{};
     };
   };
 
@@ -88,7 +84,7 @@ namespace llarp::vpn
     AndroidRouteManager _routeManager{};
 
    public:
-    AndroidPlatform(llarp::Context* ctx) : fd(ctx->androidFD)
+    AndroidPlatform(llarp::Context* ctx) : fd{ctx->androidFD}
     {}
 
     std::shared_ptr<NetworkInterface>

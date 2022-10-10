@@ -17,11 +17,7 @@ namespace llarp
         .def("ToPublic", &SecretKey::toPublic);
     py::class_<Signature>(mod, "Signature")
         .def(py::init<>())
-        .def("__repr__", [](const Signature sig) -> std::string {
-          std::stringstream ss;
-          ss << sig;
-          return ss.str();
-        });
+        .def("__repr__", [](const Signature& sig) { return sig.ToHex(); });
   }
 
 }  // namespace llarp

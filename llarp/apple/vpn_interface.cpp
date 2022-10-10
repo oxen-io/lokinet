@@ -10,7 +10,8 @@ namespace llarp::apple
       packet_write_callback packet_writer,
       on_readable_callback on_readable,
       AbstractRouter* router)
-      : m_PacketWriter{std::move(packet_writer)}
+      : vpn::NetworkInterface{{}}
+      , m_PacketWriter{std::move(packet_writer)}
       , m_OnReadable{std::move(on_readable)}
       , _router{router}
   {
@@ -39,12 +40,6 @@ namespace llarp::apple
     return -1;
   }
 
-  std::string
-  VPNInterface::IfName() const
-  {
-    return "";
-  }
-
   net::IPPacket
   VPNInterface::ReadNextPacket()
   {
@@ -58,7 +53,7 @@ namespace llarp::apple
   VPNInterface::WritePacket(net::IPPacket pkt)
   {
     int af_family = pkt.IsV6() ? AF_INET6 : AF_INET;
-    return m_PacketWriter(af_family, pkt.buf, pkt.sz);
+    return m_PacketWriter(af_family, pkt.data(), pkt.size());
   }
 
 }  // namespace llarp::apple

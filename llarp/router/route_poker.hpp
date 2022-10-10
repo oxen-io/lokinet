@@ -5,37 +5,23 @@
 #include <memory>
 #include <optional>
 #include <llarp/net/net_int.hpp>
-#include "systemd_resolved.hpp"
 
 namespace llarp
 {
   struct AbstractRouter;
 
-  struct RoutePoker
+  struct RoutePoker : public std::enable_shared_from_this<RoutePoker>
   {
     void
-    AddRoute(huint32_t ip);
+    AddRoute(net::ipv4addr_t ip);
 
     void
-    DelRoute(huint32_t ip);
+    DelRoute(net::ipv4addr_t ip);
 
     void
-    Init(AbstractRouter* router, bool enable = false);
+    Start(AbstractRouter* router);
 
     ~RoutePoker();
-
-    void
-    Update();
-
-    // sets stored routes and causes AddRoute to actually
-    // set routes rather than just storing them
-    void
-    Enable();
-
-    // unsets stored routes, and causes AddRoute to simply
-    // remember the desired routes rather than setting them.
-    void
-    Disable();
 
     /// explicitly put routes up
     void
@@ -45,7 +31,18 @@ namespace llarp
     void
     Down();
 
+    /// set dns resolver
+    /// pass in if we are using exit node mode right now  as a bool
+    void
+    SetDNSMode(bool using_exit_mode) const;
+
    private:
+    void
+    Update();
+
+    bool
+    IsEnabled() const;
+
     void
     DeleteAllRoutes();
 
@@ -53,25 +50,19 @@ namespace llarp
     DisableAllRoutes();
 
     void
-    EnableAllRoutes();
+    RefreshAllRoutes();
 
     void
-    EnableRoute(huint32_t ip, huint32_t gateway);
+    EnableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway);
 
     void
-    DisableRoute(huint32_t ip, huint32_t gateway);
+    DisableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway);
 
-    std::optional<huint32_t>
-    GetDefaultGateway() const;
+    std::unordered_map<net::ipv4addr_t, net::ipv4addr_t> m_PokedRoutes;
 
-    std::unordered_map<huint32_t, huint32_t> m_PokedRoutes;
-    huint32_t m_CurrentGateway;
-
-    bool m_Enabled = false;
-    bool m_Enabling = false;
+    std::optional<net::ipv4addr_t> m_CurrentGateway;
 
     AbstractRouter* m_Router = nullptr;
-
-    bool m_HasNetwork = true;
+    bool m_up{false};
   };
 }  // namespace llarp

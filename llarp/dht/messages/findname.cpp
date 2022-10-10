@@ -26,11 +26,11 @@ namespace llarp::dht
   bool
   FindNameMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
-    if (key == "H")
+    if (key.startswith("H"))
     {
       return NameHash.BDecode(val);
     }
-    if (key == "T")
+    if (key.startswith("T"))
     {
       return bencode_read_integer(val, &TxID);
     }

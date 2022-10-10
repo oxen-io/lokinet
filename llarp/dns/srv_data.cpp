@@ -1,6 +1,6 @@
 #include "srv_data.hpp"
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <limits>
 
@@ -10,6 +10,8 @@
 
 namespace llarp::dns
 {
+  static auto logcat = log::Cat("dns");
+
   bool
   SRVData::IsValid() const
   {
@@ -22,7 +24,7 @@ namespace llarp::dns
     // check target size is not absurd
     if (target.size() > TARGET_MAX_SIZE)
     {
-      LogWarn("SRVData target larger than max size (", TARGET_MAX_SIZE, ")");
+      log::warning(logcat, "SRVData target larger than max size ({})", TARGET_MAX_SIZE);
       return false;
     }
 
@@ -41,7 +43,7 @@ namespace llarp::dns
     }
 
     // if we're here, target is invalid
-    LogWarn("SRVData invalid");
+    log::warning(logcat, "SRVData invalid");
     return false;
   }
 
@@ -64,14 +66,14 @@ namespace llarp::dns
   bool
   SRVData::fromString(std::string_view srvString)
   {
-    LogDebug("SRVData::fromString(\"", srvString, "\")");
+    log::debug(logcat, "SRVData::fromString(\"{}\")", srvString);
 
     // split on spaces, discard trailing empty strings
     auto splits = split(srvString, " ", false);
 
     if (splits.size() != 5 && splits.size() != 4)
     {
-      LogWarn("SRV record should have either 4 or 5 space-separated parts");
+      log::warning(logcat, "SRV record should have either 4 or 5 space-separated parts");
       return false;
     }
 
@@ -79,19 +81,19 @@ namespace llarp::dns
 
     if (not parse_int(splits[1], priority))
     {
-      LogWarn("SRV record failed to parse \"", splits[1], "\" as uint16_t (priority)");
+      log::warning(logcat, "SRV record failed to parse \"{}\" as uint16_t (priority)", splits[1]);
       return false;
     }
 
     if (not parse_int(splits[2], weight))
     {
-      LogWarn("SRV record failed to parse \"", splits[2], "\" as uint16_t (weight)");
+      log::warning(logcat, "SRV record failed to parse \"{}\" as uint16_t (weight)", splits[2]);
       return false;
     }
 
     if (not parse_int(splits[3], port))
     {
-      LogWarn("SRV record failed to parse \"", splits[3], "\" as uint16_t (port)");
+      log::warning(logcat, "SRV record failed to parse \"{}\" as uint16_t (port)", splits[3]);
       return false;
     }
 

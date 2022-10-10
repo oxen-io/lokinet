@@ -1,13 +1,15 @@
 #include "rr.hpp"
 #include "dns.hpp"
+#include "util/formattable.hpp"
 #include <llarp/util/mem.hpp>
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/printer.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp
 {
   namespace dns
   {
+    static auto logcat = log::Cat("dns");
+
     ResourceRecord::ResourceRecord(const ResourceRecord& other)
         : rr_name(other.rr_name)
         , rr_type(other.rr_type)
@@ -24,7 +26,7 @@ namespace llarp
         , rData(std::move(other.rData))
     {}
 
-    ResourceRecord::ResourceRecord(Name_t name, RRType_t type, RR_RData_t data)
+    ResourceRecord::ResourceRecord(std::string name, RRType_t type, RR_RData_t data)
         : rr_name{std::move(name)}
         , rr_type{type}
         , rr_class{qClassIN}
@@ -35,7 +37,7 @@ namespace llarp
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const
     {
-      if (not EncodeName(buf, rr_name))
+      if (not EncodeNameTo(buf, rr_name))
         return false;
       if (!buf->put_uint16(rr_type))
       {
@@ -64,22 +66,22 @@ namespace llarp
         return false;
       if (!buf->read_uint16(rr_type))
       {
-        llarp::LogDebug("failed to decode rr type");
+        log::debug(logcat, "failed to decode rr type");
         return false;
       }
       if (!buf->read_uint16(rr_class))
       {
-        llarp::LogDebug("failed to decode rr class");
+        log::debug(logcat, "failed to decode rr class");
         return false;
       }
       if (!buf->read_uint32(ttl))
       {
-        llarp::LogDebug("failed to decode ttl");
+        log::debug(logcat, "failed to decode ttl");
         return false;
       }
       if (!DecodeRData(buf, rData))
       {
-        llarp::LogDebug("failed to decode rr rdata ", *this);
+        log::debug(logcat, "failed to decode rr rdata {}", *this);
         return false;
       }
       return true;
@@ -96,17 +98,16 @@ namespace llarp
           {"rdata", std::string{reinterpret_cast<const char*>(rData.data()), rData.size()}}};
     }
 
-    std::ostream&
-    ResourceRecord::print(std::ostream& stream, int level, int spaces) const
+    std::string
+    ResourceRecord::ToString() const
     {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("name", rr_name);
-      printer.printAttribute("type", rr_type);
-      printer.printAttribute("class", rr_class);
-      printer.printAttribute("ttl", ttl);
-      printer.printAttribute("rdata", rData.size());
-
-      return stream;
+      return fmt::format(
+          "[RR name={} type={} class={} ttl={} rdata-size={}]",
+          rr_name,
+          rr_type,
+          rr_class,
+          ttl,
+          rData.size());
     }
 
     bool
@@ -114,12 +115,10 @@ namespace llarp
     {
       if (rr_type != qTypeCNAME)
         return false;
-      Name_t name;
       llarp_buffer_t buf(rData);
-      if (not DecodeName(&buf, name))
-        return false;
-      return name.find(tld) != std::string::npos
-          && name.rfind(tld) == (name.size() - tld.size()) - 1;
+      if (auto name = DecodeName(&buf))
+        return name->rfind(tld) == name->size() - tld.size() - 1;
+      return false;
     }
 
   }  // namespace dns

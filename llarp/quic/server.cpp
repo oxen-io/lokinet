@@ -1,6 +1,6 @@
 #include "server.hpp"
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
 
 #include <oxenc/variant.h>
 #include <uvw/loop.h>
@@ -55,7 +55,6 @@ namespace llarp::quic
       {
         auto connptr = std::make_shared<Connection>(*this, it->first, hd, p.path);
         it->second = connptr;
-        LogDebug("Created local Connection ", it->first, " for incoming connection");
         return connptr;
       }
     }

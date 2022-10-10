@@ -1,6 +1,6 @@
+ExecWait 'taskkill /f /t /im lokinet-gui.exe'
+
 IfFileExists $INSTDIR\bin\lokinet.exe 0 +3
 ExecWait 'net stop lokinet'
 ExecWait '$INSTDIR\bin\lokinet.exe --remove'
 
-IfFileExists $INSTDIR\share\gui\lokinet.exe 0 +2
-ExecWait 'taskkill /f /t /im lokinet-gui.exe'

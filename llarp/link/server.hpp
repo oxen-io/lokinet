@@ -107,8 +107,8 @@ namespace llarp
     void
     SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
-    virtual bool
-    Configure(AbstractRouter* loop, std::string ifname, int af, uint16_t port);
+    void
+    Bind(AbstractRouter* router, SockAddr addr);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
@@ -231,6 +231,13 @@ namespace llarp
     Router() const
     {
       return m_Router;
+    }
+
+    /// Get the local sock addr we are bound on
+    const SockAddr&
+    LocalSocketAddr() const
+    {
+      return m_ourAddr;
     }
 
    private:
