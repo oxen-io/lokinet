@@ -4,18 +4,6 @@
 #include <cstdarg>
 #include <cstdio>
 
-size_t
-llarp_buffer_t::size_left() const
-{
-  size_t diff = cur - base;
-  if (diff > sz)
-  {
-    return 0;
-  }
-
-  return sz - diff;
-}
-
 bool
 llarp_buffer_t::writef(const char* fmt, ...)
 {
@@ -123,26 +111,22 @@ llarp_buffer_t::copy() const
   std::vector<byte_t> copy;
   copy.resize(sz);
   std::copy_n(base, sz, copy.data());
-  return copy;
-}
 
-bool
-operator==(const llarp_buffer_t& buff, const char* c_str)
-{
-  const auto* str = reinterpret_cast<const byte_t*>(c_str);
-  ManagedBuffer copy{buff};
-  while (*str && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
-  {
-    if (*copy.underlying.cur != *str)
-      return false;
-    copy.underlying.cur++;
-    str++;
-  }
-  return *str == 0;
+  return copy;
 }
 
 namespace llarp
 {
+  std::vector<byte_t>
+  OwnedBuffer::copy() const
+  {
+    std::vector<byte_t> ret;
+    ret.resize(sz);
+    const auto* ptr = buf.get();
+    std::copy(ptr, ptr + sz, ret.data());
+    return ret;
+  }
+
   OwnedBuffer
   OwnedBuffer::copy_from(const llarp_buffer_t& b)
   {

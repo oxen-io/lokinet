@@ -53,22 +53,22 @@ namespace llarp
     bool
     GotRouterMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      if (key == "K")
+      if (key.startswith("K"))
       {
         if (closerTarget)  // duplicate key?
           return false;
         closerTarget = std::make_unique<dht::Key_t>();
         return closerTarget->BDecode(val);
       }
-      if (key == "N")
+      if (key.startswith("N"))
       {
         return BEncodeReadList(nearKeys, val);
       }
-      if (key == "R")
+      if (key.startswith("R"))
       {
         return BEncodeReadList(foundRCs, val);
       }
-      if (key == "T")
+      if (key.startswith("T"))
       {
         return bencode_read_integer(val, &txid);
       }

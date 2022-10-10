@@ -111,14 +111,14 @@ namespace llarp
         const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
       if (m_Exits.find(name) != m_Exits.end())
-        throw std::invalid_argument(stringify("An exit with name ", name, " already exists"));
+        throw std::invalid_argument{fmt::format("An exit with name {} already exists", name)};
 
       auto endpoint = std::make_unique<handlers::ExitEndpoint>(name, m_Router);
       endpoint->Configure(networkConfig, dnsConfig);
 
       // add endpoint
       if (!endpoint->Start())
-        throw std::runtime_error(stringify("Failed to start endpoint ", name));
+        throw std::runtime_error{fmt::format("Failed to start endpoint {}", name)};
 
       m_Exits.emplace(name, std::move(endpoint));
     }

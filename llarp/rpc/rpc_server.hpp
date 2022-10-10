@@ -3,6 +3,7 @@
 #include <string_view>
 #include <oxenmq/oxenmq.h>
 #include <oxenmq/address.h>
+#include <oxen/log/omq_logger.hpp>
 
 namespace llarp
 {
@@ -21,7 +22,12 @@ namespace llarp::rpc
     AsyncServeRPC(oxenmq::address addr);
 
    private:
+    void
+    HandleLogsSubRequest(oxenmq::Message& m);
+
     LMQ_ptr m_LMQ;
     AbstractRouter* const m_Router;
+
+    oxen::log::PubsubLogger log_subs;
   };
 }  // namespace llarp::rpc

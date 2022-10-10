@@ -1,7 +1,6 @@
 #include "endpoint_state.hpp"
 
 #include <llarp/exit/session.hpp>
-#include <llarp/hook/shell.hpp>
 #include "endpoint.hpp"
 #include "outbound_context.hpp"
 #include <llarp/util/str.hpp>
@@ -23,33 +22,6 @@ namespace llarp
         m_IntroSet.SRVs.push_back(record.toTuple());
       }
 
-      // TODO:
-      /*
-      if (k == "on-up")
-      {
-        m_OnUp = hooks::ExecShellBackend(v);
-        if (m_OnUp)
-          LogInfo(name, " added on up script: ", v);
-        else
-          LogError(name, " failed to add on up script");
-      }
-      if (k == "on-down")
-      {
-        m_OnDown = hooks::ExecShellBackend(v);
-        if (m_OnDown)
-          LogInfo(name, " added on down script: ", v);
-        else
-          LogError(name, " failed to add on down script");
-      }
-      if (k == "on-ready")
-      {
-        m_OnReady = hooks::ExecShellBackend(v);
-        if (m_OnReady)
-          LogInfo(name, " added on ready script: ", v);
-        else
-          LogError(name, " failed to add on ready script");
-      }
-      */
       return true;
     }
 

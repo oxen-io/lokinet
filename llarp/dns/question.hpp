@@ -25,8 +25,8 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       bool
       operator==(const Question& other) const
@@ -34,7 +34,7 @@ namespace llarp
         return qname == other.qname && qtype == other.qtype && qclass == other.qclass;
       }
 
-      Name_t qname;
+      std::string qname;
       QType_t qtype;
       QClass_t qclass;
 
@@ -65,12 +65,8 @@ namespace llarp
       util::StatusObject
       ToJSON() const override;
     };
-
-    inline std::ostream&
-    operator<<(std::ostream& out, const Question& q)
-    {
-      q.print(out, -1, -1);
-      return out;
-    }
   }  // namespace dns
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::dns::Question> = true;

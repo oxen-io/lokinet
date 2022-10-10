@@ -105,7 +105,7 @@ namespace llarp
     {
       llarp_buffer_t strbuf;
 
-      if (key == "E")
+      if (key.startswith("E"))
       {
         uint64_t result;
         if (!bencode_read_integer(val, &result))
@@ -115,7 +115,7 @@ namespace llarp
         return true;
       }
 
-      if (key == "I")
+      if (key.startswith("I"))
       {
         uint64_t result;
         if (!bencode_read_integer(val, &result))
@@ -124,7 +124,7 @@ namespace llarp
         iterative = result != 0;
         return true;
       }
-      if (key == "K")
+      if (key.startswith("K"))
       {
         if (!bencode_read_string(val, &strbuf))
           return false;
@@ -134,11 +134,11 @@ namespace llarp
         std::copy(strbuf.base, strbuf.base + targetKey.SIZE, targetKey.begin());
         return true;
       }
-      if (key == "T")
+      if (key.startswith("T"))
       {
         return bencode_read_integer(val, &txid);
       }
-      if (key == "V")
+      if (key.startswith("V"))
       {
         return bencode_read_integer(val, &version);
       }

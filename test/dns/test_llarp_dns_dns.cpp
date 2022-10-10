@@ -90,11 +90,19 @@ TEST_CASE("Test Get Subdomains" , "[dns]")
 
 TEST_CASE("Test PTR records", "[dns]")
 {
-  llarp::huint128_t ip = {0};
   llarp::huint128_t expected =
       llarp::net::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
-  CHECK(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
-  CHECK(ip == expected);
+  auto ip = llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.");
+  CHECK(ip);
+  CHECK(*ip == expected);
+
+  expected.h.upper = 0x0123456789abcdefUL;
+  expected.h.lower = 0xeeee888812341234UL;
+  ip = llarp::dns::DecodePTR("4.3.2.1.4.3.2.1.8.8.8.8.e.e.e.e.f.e.d.c.b.a.9.8.7.6.5.4.3.2.1.0.ip6.arpa.");
+  CHECK(ip);
+  CHECK(oxenc::to_hex(std::string_view{reinterpret_cast<char*>(&expected.h), 16}) ==
+          oxenc::to_hex(std::string_view{reinterpret_cast<char*>(&ip->h), 16}));
+  CHECK(*ip == expected);
 }
 
 TEST_CASE("Test Serialize Header", "[dns]")
@@ -123,13 +131,12 @@ TEST_CASE("Test Serialize Header", "[dns]")
 
 TEST_CASE("Test Serialize Name" , "[dns]")
 {
-  const llarp::dns::Name_t name     = "whatever.tld";
-  const llarp::dns::Name_t expected = "whatever.tld.";
-  llarp::dns::Name_t other;
+  const std::string name     = "whatever.tld";
+  const std::string expected = "whatever.tld.";
   std::array<byte_t, 1500> data{};
   llarp_buffer_t buf(data);
   
-  CHECK(llarp::dns::EncodeName(&buf, name));
+  CHECK(llarp::dns::EncodeNameTo(&buf, name));
 
   buf.cur = buf.base;
   
@@ -147,8 +154,9 @@ TEST_CASE("Test Serialize Name" , "[dns]")
   CHECK(buf.base[11] == 'l');
   CHECK(buf.base[12] == 'd');
   CHECK(buf.base[13] == 0);
-  CHECK(llarp::dns::DecodeName(&buf, other));
-  CHECK(expected == other);
+  auto other = llarp::dns::DecodeName(&buf);
+  CHECK(other);
+  CHECK(expected == *other);
 }
 
 TEST_CASE("Test serialize question", "[dns]")
@@ -190,4 +198,21 @@ TEST_CASE("Test Encode/Decode RData" , "[dns]")
   
   CHECK(llarp::dns::DecodeRData(&buf, other_rdata));
   CHECK(rdata == other_rdata);
+}
+
+TEST_CASE("Test reserved names", "[dns]")
+{
+    using namespace llarp::dns;
+    CHECK(NameIsReserved("loki.loki"));
+    CHECK(NameIsReserved("loki.loki."));
+    CHECK(NameIsReserved("snode.loki"));
+    CHECK(NameIsReserved("snode.loki."));
+    CHECK(NameIsReserved("foo.loki.loki"));
+    CHECK(NameIsReserved("foo.loki.loki."));
+    CHECK(NameIsReserved("bar.snode.loki"));
+    CHECK(NameIsReserved("bar.snode.loki."));
+    CHECK_FALSE(NameIsReserved("barsnode.loki."));
+    CHECK_FALSE(NameIsReserved("barsnode.loki"));
+    CHECK_FALSE(NameIsReserved("alltheloki.loki"));
+    CHECK_FALSE(NameIsReserved("alltheloki.loki."));
 }

@@ -84,6 +84,9 @@ namespace llarp
       return m_PathBuildLimiter;
     }
 
+    const llarp::net::Platform&
+    Net() const override;
+
     const LMQ_ptr&
     lmq() const override
     {
@@ -227,7 +230,6 @@ namespace llarp
     bool
     Sign(Signature& sig, const llarp_buffer_t& buf) const override;
 
-    uint16_t m_OutboundPort = 0;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
     llarp_time_t rcRegenInterval = 1h;
@@ -272,27 +274,13 @@ namespace llarp
     /// bootstrap RCs
     BootstrapList bootstrapRCList;
 
-    bool
-    ExitEnabled() const
-    {
-      return false;  // FIXME - have to fix the FIXME because FIXME
-      throw std::runtime_error("FIXME: this needs to be derived from config");
-      /*
-      // TODO: use equal_range ?
-      auto itr = netConfig.find("exit");
-      if (itr == netConfig.end())
-        return false;
-      return IsTrueValue(itr->second.c_str());
-      */
-    }
-
-    RoutePoker&
-    routePoker() override
+    const std::shared_ptr<RoutePoker>&
+    routePoker() const override
     {
       return m_RoutePoker;
     }
 
-    RoutePoker m_RoutePoker;
+    std::shared_ptr<RoutePoker> m_RoutePoker;
 
     void
     TriggerPump() override;
@@ -353,6 +341,12 @@ namespace llarp
       return m_peerDb;
     }
 
+    inline int
+    OutboundUDPSocket() const override
+    {
+      return m_OutboundUDPSocket;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
@@ -363,7 +357,10 @@ namespace llarp
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
 
-    bool
+    void
+    InitInboundLinks();
+
+    void
     InitOutboundLinks();
 
     bool
@@ -381,6 +378,13 @@ namespace llarp
     bool
     IsServiceNode() const override;
 
+    /// return true if service node *and* not deregistered or decommissioned
+    bool
+    IsActiveServiceNode() const override;
+
+    bool
+    ShouldPingOxen() const override;
+
     void
     Close();
 
@@ -389,6 +393,9 @@ namespace llarp
 
     bool
     StartRpcServer() override;
+
+    void
+    Freeze() override;
 
     void
     Thaw() override;
@@ -541,15 +548,7 @@ namespace llarp
       return m_Config;
     }
 
-#if defined(ANDROID)
     int m_OutboundUDPSocket = -1;
-
-    int
-    GetOutboundUDPSocket() const override
-    {
-      return m_OutboundUDPSocket;
-    }
-#endif
 
    private:
     std::atomic<bool> _stopping;
@@ -580,6 +579,9 @@ namespace llarp
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
+
+    bool
+    TooFewPeers() const;
 
    protected:
     virtual void

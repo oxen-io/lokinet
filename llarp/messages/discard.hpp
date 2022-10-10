@@ -39,7 +39,7 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override
     {
-      if (key == "a")
+      if (key.startswith("a"))
       {
         llarp_buffer_t strbuf;
         if (!bencode_read_string(buf, &strbuf))

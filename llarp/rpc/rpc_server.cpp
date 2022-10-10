@@ -12,10 +12,17 @@
 #include <llarp/service/name.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/dns/dns.hpp>
+#include <oxenmq/fmt.h>
+
+namespace
+{
+  static auto logcat = llarp::log::Cat("lokinet.rpc");
+}  // namespace
 
 namespace llarp::rpc
 {
-  RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r) : m_LMQ(std::move(lmq)), m_Router(r)
+  RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r)
+      : m_LMQ{std::move(lmq)}, m_Router{r}, log_subs{*m_LMQ, llarp::logRingBuffer}
   {}
 
   /// maybe parse json from message paramter at index
@@ -52,6 +59,44 @@ namespace llarp::rpc
     };
     return obj.dump();
   }
+
+  /// fake packet source that serializes repsonses back into dns
+
+  class DummyPacketSource : public dns::PacketSource_Base
+  {
+    std::function<void(std::optional<dns::Message>)> func;
+
+   public:
+    SockAddr dumb;
+
+    template <typename Callable>
+    DummyPacketSource(Callable&& f) : func{std::forward<Callable>(f)}
+    {}
+
+    bool
+    WouldLoop(const SockAddr&, const SockAddr&) const override
+    {
+      return false;
+    };
+
+    /// send packet with src and dst address containing buf on this packet source
+    void
+    SendTo(const SockAddr&, const SockAddr&, OwnedBuffer buf) const override
+    {
+      func(dns::MaybeParseDNSMessage(buf));
+    }
+
+    /// stop reading packets and end operation
+    void
+    Stop() override{};
+
+    /// returns the sockaddr we are bound on if applicable
+    std::optional<SockAddr>
+    BoundOn() const override
+    {
+      return std::nullopt;
+    }
+  };
 
   /// a function that replies to an rpc request
   using ReplyFunction_t = std::function<void(std::string)>;
@@ -100,6 +145,7 @@ namespace llarp::rpc
   {
     m_LMQ->listen_plain(url.zmq_address());
     m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
+        .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); })
         .add_command(
             "halt",
             [&](oxenmq::Message& msg) {
@@ -203,7 +249,7 @@ namespace llarp::rpc
                     auto [addr, id] = quic->open(
                         remoteHost, port, [](auto&&) {}, laddr);
                     util::StatusObject status;
-                    status["addr"] = addr.toString();
+                    status["addr"] = addr.ToString();
                     status["id"] = id;
                     reply(CreateJSONResponse(status));
                   }
@@ -431,7 +477,7 @@ namespace llarp::rpc
                   map = false;
                 }
                 const auto range_itr = obj.find("range");
-                if (range_itr == obj.end())
+                if (range_itr == obj.end() or range_itr->is_null())
                 {
                   // platforms without ipv6 support will shit themselves
                   // here if we give them an exit mapping that is ipv6
@@ -454,9 +500,9 @@ namespace llarp::rpc
                   reply(CreateJSONError("ipv6 ranges not supported on this platform"));
                   return;
                 }
-                std::optional<std::string> token;
+                std::string token;
                 const auto token_itr = obj.find("token");
-                if (token_itr != obj.end())
+                if (token_itr != obj.end() and not token_itr->is_null())
                 {
                   token = token_itr->get<std::string>();
                 }
@@ -478,13 +524,12 @@ namespace llarp::rpc
                   {
                     auto mapExit = [=](service::Address addr) mutable {
                       ep->MapExitRange(range, addr);
-                      r->routePoker().Enable();
-                      r->routePoker().Up();
+
                       bool shouldSendAuth = false;
-                      if (token.has_value())
+                      if (not token.empty())
                       {
                         shouldSendAuth = true;
-                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
+                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{token});
                       }
                       auto onGoodResult = [r, reply](std::string reason) {
                         if (r->HasClientExit())
@@ -493,7 +538,7 @@ namespace llarp::rpc
                           reply(CreateJSONError("we dont have an exit?"));
                       };
                       auto onBadResult = [r, reply, ep, range](std::string reason) {
-                        r->routePoker().Down();
+                        r->routePoker()->Down();
                         ep->UnmapExitRange(range);
                         reply(CreateJSONError(reason));
                       };
@@ -576,7 +621,7 @@ namespace llarp::rpc
                   }
                   else if (not map)
                   {
-                    r->routePoker().Down();
+                    r->routePoker()->Down();
                     ep->UnmapExitRange(range);
                     reply(CreateJSONResponse("OK"));
                   }
@@ -606,19 +651,23 @@ namespace llarp::rpc
 
                 dns::Message msg{dns::Question{qname, qtype}};
 
-                if (auto ep_ptr = (GetEndpointByName(r, endpoint)))
+                if (auto ep_ptr = GetEndpointByName(r, endpoint))
                 {
-                  if (auto ep = reinterpret_cast<dns::IQueryHandler*>(ep_ptr.get()))
+                  if (auto dns = ep_ptr->DNS())
                   {
-                    if (ep->ShouldHookDNSMessage(msg))
+                    auto src = std::make_shared<DummyPacketSource>([reply](auto result) {
+                      if (result)
+                        reply(CreateJSONResponse(result->ToJSON()));
+                      else
+                        reply(CreateJSONError("no response from dns"));
+                    });
+                    if (not dns->MaybeHandlePacket(src, src->dumb, src->dumb, msg.ToBuffer()))
                     {
-                      ep->HandleHookedDNSMessage(std::move(msg), [reply](dns::Message msg) {
-                        reply(CreateJSONResponse(msg.ToJSON()));
-                      });
-                      return;
+                      reply(CreateJSONError("dns query not accepted by endpoint"));
                     }
                   }
-                  reply(CreateJSONError("dns query not accepted by endpoint"));
+                  else
+                    reply(CreateJSONError("endpoint does not have dns"));
                   return;
                 }
                 reply(CreateJSONError("no such endpoint for dns query"));
@@ -632,7 +681,7 @@ namespace llarp::rpc
               {
                 if (not itr->is_object())
                 {
-                  reply(CreateJSONError(stringify("override is not an object")));
+                  reply(CreateJSONError("override is not an object"));
                   return;
                 }
                 for (const auto& [section, value] : itr->items())
@@ -640,15 +689,15 @@ namespace llarp::rpc
                   if (not value.is_object())
                   {
                     reply(CreateJSONError(
-                        stringify("failed to set [", section, "] section is not an object")));
+                        fmt::format("failed to set [{}]: section is not an object", section)));
                     return;
                   }
                   for (const auto& [key, value] : value.items())
                   {
                     if (not value.is_string())
                     {
-                      reply(CreateJSONError(stringify(
-                          "failed to set [", section, "]:", key, " value is not a string")));
+                      reply(CreateJSONError(fmt::format(
+                          "failed to set [{}]:{}: value is not a string", section, key)));
                       return;
                     }
                     r->GetConfig()->Override(section, key, value.get<std::string>());
@@ -667,4 +716,39 @@ namespace llarp::rpc
           });
         });
   }
+
+  void
+  RpcServer::HandleLogsSubRequest(oxenmq::Message& m)
+  {
+    if (m.data.size() != 1)
+    {
+      m.send_reply("Invalid subscription request: no log receipt endpoint given");
+      return;
+    }
+
+    auto endpoint = std::string{m.data[0]};
+
+    if (endpoint == "unsubscribe")
+    {
+      log::info(logcat, "New logs unsubscribe request from conn {}@{}", m.conn, m.remote);
+      log_subs.unsubscribe(m.conn);
+      m.send_reply("OK");
+      return;
+    }
+
+    auto is_new = log_subs.subscribe(m.conn, endpoint);
+
+    if (is_new)
+    {
+      log::info(logcat, "New logs subscription request from conn {}@{}", m.conn, m.remote);
+      m.send_reply("OK");
+      log_subs.send_all(m.conn, endpoint);
+    }
+    else
+    {
+      log::debug(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn, m.remote);
+      m.send_reply("ALREADY");
+    }
+  }
+
 }  // namespace llarp::rpc
