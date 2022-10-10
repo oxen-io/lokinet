@@ -1,7 +1,7 @@
 #include "lokid_rpc_client.hpp"
 
 #include <stdexcept>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <llarp/router/abstractrouter.hpp>
 
@@ -14,20 +14,23 @@ namespace llarp
 {
   namespace rpc
   {
-    static oxenmq::LogLevel
-    toLokiMQLogLevel(llarp::LogLevel level)
+    static constexpr oxenmq::LogLevel
+    toLokiMQLogLevel(log::Level level)
     {
       switch (level)
       {
-        case eLogError:
+        case log::Level::critical:
+          return oxenmq::LogLevel::fatal;
+        case log::Level::err:
           return oxenmq::LogLevel::error;
-        case eLogWarn:
+        case log::Level::warn:
           return oxenmq::LogLevel::warn;
-        case eLogInfo:
+        case log::Level::info:
           return oxenmq::LogLevel::info;
-        case eLogDebug:
+        case log::Level::debug:
           return oxenmq::LogLevel::debug;
-        case eLogNone:
+        case log::Level::trace:
+        case log::Level::off:
         default:
           return oxenmq::LogLevel::trace;
       }
@@ -58,7 +61,7 @@ namespace llarp
         {
           throw std::runtime_error("we cannot talk to lokid while not a service node");
         }
-        LogInfo("connecting to lokid via LMQ at ", url);
+        LogInfo("connecting to lokid via LMQ at ", url.full_address());
         m_Connection = m_lokiMQ->connect_remote(
             url,
             [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
@@ -149,18 +152,25 @@ namespace llarp
       auto makePingRequest = [self = shared_from_this()]() {
         // send a ping
         PubKey pk{};
+        bool should_ping = false;
         if (auto r = self->m_Router.lock())
+        {
           pk = r->pubkey();
-        nlohmann::json payload = {
-            {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
-            {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
-        self->Request(
-            "admin.lokinet_ping",
-            [](bool success, std::vector<std::string> data) {
-              (void)data;
-              LogDebug("Received response for ping. Successful: ", success);
-            },
-            payload.dump());
+          should_ping = r->ShouldPingOxen();
+        }
+        if (should_ping)
+        {
+          nlohmann::json payload = {
+              {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
+              {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+          self->Request(
+              "admin.lokinet_ping",
+              [](bool success, std::vector<std::string> data) {
+                (void)data;
+                LogDebug("Received response for ping. Successful: ", success);
+              },
+              payload.dump());
+        }
         // subscribe to block updates
         self->Request("sub.block", [](bool success, std::vector<std::string> data) {
           if (data.empty() or not success)
@@ -180,54 +190,41 @@ namespace llarp
     LokidRpcClient::HandleGotServiceNodeList(std::string data)
     {
       auto j = nlohmann::json::parse(std::move(data));
+      if (const auto itr = j.find("unchanged"); itr != j.end() and itr->get<bool>())
       {
-        const auto itr = j.find("unchanged");
-        if (itr != j.end())
-        {
-          if (itr->get<bool>())
-          {
-            LogDebug("service node list unchanged");
-            return;
-          }
-        }
+        LogDebug("service node list unchanged");
+        return;
       }
       std::unordered_map<RouterID, PubKey> keymap;
       std::vector<RouterID> activeNodeList, nonActiveNodeList;
+      if (const auto itr = j.find("service_node_states"); itr != j.end() and itr->is_array())
       {
-        const auto itr = j.find("service_node_states");
-        if (itr != j.end() and itr->is_array())
+        for (auto& snode : *itr)
         {
-          for (auto j_itr = itr->begin(); j_itr != itr->end(); j_itr++)
-          {
-            const auto ed_itr = j_itr->find("pubkey_ed25519");
-            if (ed_itr == j_itr->end() or not ed_itr->is_string())
-              continue;
-            const auto svc_itr = j_itr->find("service_node_pubkey");
-            if (svc_itr == j_itr->end() or not svc_itr->is_string())
-              continue;
-            const auto funded_itr = j_itr->find("funded");
-            if (funded_itr == j_itr->end() or not funded_itr->is_boolean())
-              continue;
-            const auto active_itr = j_itr->find("active");
-            if (active_itr == j_itr->end() or not active_itr->is_boolean())
-              continue;
-            const bool active = active_itr->get<bool>();
-            const bool funded = funded_itr->get<bool>();
+          // Skip unstaked snodes:
+          if (const auto funded_itr = snode.find("funded"); funded_itr == snode.end()
+              or not funded_itr->is_boolean() or not funded_itr->get<bool>())
+            continue;
 
-            if (not funded)
-              continue;
+          const auto ed_itr = snode.find("pubkey_ed25519");
+          if (ed_itr == snode.end() or not ed_itr->is_string())
+            continue;
+          const auto svc_itr = snode.find("service_node_pubkey");
+          if (svc_itr == snode.end() or not svc_itr->is_string())
+            continue;
+          const auto active_itr = snode.find("active");
+          if (active_itr == snode.end() or not active_itr->is_boolean())
+            continue;
+          const bool active = active_itr->get<bool>();
 
-            RouterID rid;
-            PubKey pk;
-            if (rid.FromHex(ed_itr->get<std::string>()) and pk.FromHex(svc_itr->get<std::string>()))
-            {
-              keymap[rid] = pk;
-              if (active)
-                activeNodeList.emplace_back(std::move(rid));
-              else
-                nonActiveNodeList.emplace_back(std::move(rid));
-            }
-          }
+          RouterID rid;
+          PubKey pk;
+          if (not rid.FromHex(ed_itr->get<std::string_view>())
+              or not pk.FromHex(svc_itr->get<std::string_view>()))
+            continue;
+
+          keymap[rid] = pk;
+          (active ? activeNodeList : nonActiveNodeList).push_back(std::move(rid));
         }
       }
 
@@ -344,8 +341,8 @@ namespace llarp
                 const auto nonce = oxenc::from_hex(j["nonce"].get<std::string>());
                 if (nonce.size() != result.nonce.size())
                 {
-                  throw std::invalid_argument(stringify(
-                      "nonce size mismatch: ", nonce.size(), " != ", result.nonce.size()));
+                  throw std::invalid_argument{fmt::format(
+                      "nonce size mismatch: {} != {}", nonce.size(), result.nonce.size())};
                 }
 
                 std::copy_n(nonce.data(), nonce.size(), result.nonce.data());

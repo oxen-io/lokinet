@@ -1,7 +1,0 @@
-function(add_log_tag target)
-  get_target_property(TARGET_SRCS ${target} SOURCES)
-  foreach(F ${TARGET_SRCS})
-    get_filename_component(fpath "${F}" ABSOLUTE)
-    set_property(SOURCE ${F} APPEND PROPERTY COMPILE_DEFINITIONS SOURCE_ROOT=\"${PROJECT_SOURCE_DIR}\")
-  endforeach()
-endfunction()

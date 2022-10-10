@@ -10,17 +10,17 @@ namespace llarp
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      if (key == "M")
+      if (key.startswith("M"))
       {
         llarp::dht::Key_t fromKey;
         fromKey.Zero();
         return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
       }
-      if (key == "S")
+      if (key.startswith("S"))
       {
         return bencode_read_integer(val, &S);
       }
-      if (key == "V")
+      if (key.startswith("V"))
       {
         return bencode_read_integer(val, &V);
       }

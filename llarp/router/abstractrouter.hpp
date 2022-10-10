@@ -45,6 +45,16 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace dns
+  {
+    class I_SystemSettings;
+  }
+
+  namespace net
+  {
+    class Platform;
+  }
+
   namespace exit
   {
     struct Context;
@@ -92,6 +102,9 @@ namespace llarp
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+
+    virtual const net::Platform&
+    Net() const = 0;
 
     virtual const LMQ_ptr&
     lmq() const = 0;
@@ -168,8 +181,8 @@ namespace llarp
     virtual ILinkManager&
     linkManager() = 0;
 
-    virtual RoutePoker&
-    routePoker() = 0;
+    virtual const std::shared_ptr<RoutePoker>&
+    routePoker() const = 0;
 
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
@@ -187,6 +200,15 @@ namespace llarp
     IsServiceNode() const = 0;
 
     virtual bool
+    IsActiveServiceNode() const = 0;
+
+    /// If we are running as a service node and appear active, i.e. registered and not
+    /// decommissioned, we should *not* ping core if we know of too few peers, to indicate to core
+    /// we are not in a good state.
+    virtual bool
+    ShouldPingOxen() const = 0;
+
+    virtual bool
     StartRpcServer() = 0;
 
     virtual bool
@@ -201,6 +223,10 @@ namespace llarp
     /// stop running the router logic gracefully
     virtual void
     Stop() = 0;
+
+    /// indicate we are about to sleep for a while
+    virtual void
+    Freeze() = 0;
 
     /// thaw from long sleep or network changed event
     virtual void
@@ -346,10 +372,11 @@ namespace llarp
       HandleRouterEvent(std::move(event));
     }
 
-#if defined(ANDROID)
     virtual int
-    GetOutboundUDPSocket() const = 0;
-#endif
+    OutboundUDPSocket() const
+    {
+      return -1;
+    }
 
    protected:
     /// Virtual function to handle RouterEvent. HiveRouter overrides this in

@@ -19,7 +19,7 @@ namespace llarp::apple
     }
 
     std::shared_ptr<llarp::handlers::TunEndpoint> tun;
-    router->hiddenServiceContext().ForEachService([&tun](const auto& name, const auto ep) {
+    router->hiddenServiceContext().ForEachService([&tun](const auto& /*name*/, const auto ep) {
       tun = std::dynamic_pointer_cast<llarp::handlers::TunEndpoint>(ep);
       return !tun;
     });
@@ -31,21 +31,23 @@ namespace llarp::apple
     }
 
     if (enable)
-      saved_upstream_dns =
-          tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, huint16_t{dns_trampoline_port}}});
+      tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, {dns_trampoline_port}}});
     else
-      tun->ReconfigureDNS(std::move(saved_upstream_dns));
+      tun->ReconfigureDNS(router->GetConfig()->dns.m_upstreamDNS);
+
     trampoline_active = enable;
   }
 
-  void RouteManager::AddDefaultRouteViaInterface(std::string)
+  void
+  RouteManager::AddDefaultRouteViaInterface(vpn::NetworkInterface&)
   {
     check_trampoline(true);
     if (callback_context and route_callbacks.add_default_route)
       route_callbacks.add_default_route(callback_context);
   }
 
-  void RouteManager::DelDefaultRouteViaInterface(std::string)
+  void
+  RouteManager::DelDefaultRouteViaInterface(vpn::NetworkInterface&)
   {
     check_trampoline(false);
     if (callback_context and route_callbacks.del_default_route)

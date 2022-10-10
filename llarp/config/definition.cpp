@@ -1,8 +1,7 @@
 #include "definition.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <iterator>
-#include <sstream>
 #include <stdexcept>
 #include <cassert>
 
@@ -17,7 +16,7 @@ namespace llarp
     else if (input == "true" || input == "on" || input == "1" || input == "yes")
       return true;
     else
-      throw std::invalid_argument(stringify(input, " is not a valid bool"));
+      throw std::invalid_argument{fmt::format("{} is not a valid bool", input)};
   }
 
   ConfigDefinition&
@@ -53,8 +52,8 @@ namespace llarp
 
     auto [it, added] = m_definitions[section].try_emplace(std::string{def->name}, std::move(def));
     if (!added)
-      throw std::invalid_argument(
-          stringify("definition for [", def->section, "]:", def->name, " already exists"));
+      throw std::invalid_argument{
+          fmt::format("definition for [{}]:{} already exists", def->section, def->name)};
 
     m_definitionOrdering[section].push_back(it->first);
 
@@ -79,34 +78,28 @@ namespace llarp
     {
       // fallback to undeclared handler if available
       if (not haveUndeclaredHandler)
-        throw std::invalid_argument(stringify("unrecognized section [", section, "]"));
-      else
-      {
-        auto& handler = undItr->second;
-        handler(section, name, value);
-        return *this;
-      }
+        throw std::invalid_argument{fmt::format("unrecognized section [{}]", section)};
+      auto& handler = undItr->second;
+      handler(section, name, value);
+      return *this;
     }
 
     // section was valid, get definition by name
     // fall back to undeclared handler if needed
     auto& sectionDefinitions = secItr->second;
     auto defItr = sectionDefinitions.find(std::string(name));
-    if (defItr == sectionDefinitions.end())
+    if (defItr != sectionDefinitions.end())
     {
-      if (not haveUndeclaredHandler)
-        throw std::invalid_argument(stringify("unrecognized option [", section, "]:", name));
-      else
-      {
-        auto& handler = undItr->second;
-        handler(section, name, value);
-        return *this;
-      }
+      OptionDefinition_ptr& definition = defItr->second;
+      definition->parseValue(std::string(value));
+      return *this;
     }
 
-    OptionDefinition_ptr& definition = defItr->second;
-    definition->parseValue(std::string(value));
+    if (not haveUndeclaredHandler)
+      throw std::invalid_argument{fmt::format("unrecognized option [{}]: {}", section, name)};
 
+    auto& handler = undItr->second;
+    handler(section, name, value);
     return *this;
   }
 
@@ -115,7 +108,7 @@ namespace llarp
   {
     auto itr = m_undeclaredHandlers.find(section);
     if (itr != m_undeclaredHandlers.end())
-      throw std::logic_error(stringify("section ", section, " already has a handler"));
+      throw std::logic_error{fmt::format("section {} already has a handler", section)};
 
     m_undeclaredHandlers[section] = std::move(handler);
   }
@@ -135,8 +128,8 @@ namespace llarp
       visitDefinitions(section, [&](const std::string&, const OptionDefinition_ptr& def) {
         if (def->required and def->getNumberFound() < 1)
         {
-          throw std::invalid_argument(
-              stringify("[", section, "]:", def->name, " is required but missing"));
+          throw std::invalid_argument{
+              fmt::format("[{}]:{} is required but missing", section, def->name)};
         }
 
         // should be handled earlier in OptionDefinition::parseValue()
@@ -148,9 +141,9 @@ namespace llarp
   void
   ConfigDefinition::acceptAllOptions()
   {
-    visitSections([&](const std::string& section, const DefinitionMap&) {
+    visitSections([this](const std::string& section, const DefinitionMap&) {
       visitDefinitions(
-          section, [&](const std::string&, const OptionDefinition_ptr& def) { def->tryAccept(); });
+          section, [](const std::string&, const OptionDefinition_ptr& def) { def->tryAccept(); });
     });
   }
 
@@ -182,12 +175,14 @@ namespace llarp
   std::string
   ConfigDefinition::generateINIConfig(bool useValues)
   {
-    std::ostringstream oss;
+    std::string ini;
+    auto ini_append = std::back_inserter(ini);
 
     int sectionsVisited = 0;
 
     visitSections([&](const std::string& section, const DefinitionMap&) {
-      std::ostringstream sect_out;
+      std::string sect_str;
+      auto sect_append = std::back_inserter(sect_str);
 
       visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
         bool has_comment = false;
@@ -196,44 +191,43 @@ namespace llarp
         //       (i.e. those handled by UndeclaredValueHandler's)
         for (const std::string& comment : m_definitionComments[section][name])
         {
-          sect_out << "\n# " << comment;
+          fmt::format_to(sect_append, "\n# {}", comment);
           has_comment = true;
         }
 
         if (useValues and def->getNumberFound() > 0)
         {
-          sect_out << "\n" << name << "=" << def->valueAsString(false) << "\n";
+          for (const auto& val : def->valuesAsString())
+            fmt::format_to(sect_append, "\n{}={}\n", name, val);
         }
         else if (not(def->hidden and not has_comment))
         {
-          sect_out << "\n";
-          if (not def->required)
-            sect_out << "#";
-          sect_out << name << "=" << def->defaultValueAsString() << "\n";
+          for (const auto& val : def->defaultValuesAsString())
+            fmt::format_to(sect_append, "\n{}{}={}\n", def->required ? "" : "#", name, val);
         }
       });
 
-      auto sect_str = sect_out.str();
       if (sect_str.empty())
         return;  // Skip sections with no options
 
       if (sectionsVisited > 0)
-        oss << "\n\n";
+        ini += "\n\n";
 
-      oss << "[" << section << "]\n";
+      fmt::format_to(ini_append, "[{}]\n", section);
 
       // TODO: this will create empty objects as a side effect of map's operator[]
       // TODO: this also won't handle sections which have no definition
       for (const std::string& comment : m_sectionComments[section])
       {
-        oss << "# " << comment << "\n";
+        fmt::format_to(ini_append, "# {}\n", comment);
       }
-      oss << "\n" << sect_str;
+      ini += "\n";
+      ini += sect_str;
 
       sectionsVisited++;
     });
 
-    return oss.str();
+    return ini;
   }
 
   const OptionDefinition_ptr&
@@ -241,12 +235,13 @@ namespace llarp
   {
     const auto sectionItr = m_definitions.find(std::string(section));
     if (sectionItr == m_definitions.end())
-      throw std::invalid_argument(stringify("No config section [", section, "]"));
+      throw std::invalid_argument{fmt::format("No config section [{}]", section)};
 
     auto& sectionDefinitions = sectionItr->second;
     const auto definitionItr = sectionDefinitions.find(std::string(name));
     if (definitionItr == sectionDefinitions.end())
-      throw std::invalid_argument(stringify("No config item ", name, " within section ", section));
+      throw std::invalid_argument{
+          fmt::format("No config item {} within section {}", name, section)};
 
     return definitionItr->second;
   }

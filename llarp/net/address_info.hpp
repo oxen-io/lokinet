@@ -50,27 +50,34 @@ namespace llarp
     fromSockAddr(const SockAddr& address);
 
     /// get this as an explicit v4 or explicit v6
-    std::variant<nuint32_t, nuint128_t>
+    net::ipaddr_t
     IP() const;
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
+    /// get this as an v4 or throw if it is not one
+    inline net::ipv4addr_t
+    IPv4() const
+    {
+      auto ip = IP();
+      if (auto* ptr = std::get_if<net::ipv4addr_t>(&ip))
+        return *ptr;
+      throw std::runtime_error{"no ipv4 address found in address info"};
+    }
+
+    std::string
+    ToString() const;
   };
 
   void
   to_json(nlohmann::json& j, const AddressInfo& a);
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const AddressInfo& a)
-  {
-    return a.print(out, -1, -1);
-  }
 
   bool
   operator==(const AddressInfo& lhs, const AddressInfo& rhs);
 
   bool
   operator<(const AddressInfo& lhs, const AddressInfo& rhs);
+
+  template <>
+  constexpr inline bool IsToStringFormattable<AddressInfo> = true;
 
 }  // namespace llarp
 

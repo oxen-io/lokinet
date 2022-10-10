@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-#include <util/logging/logger.hpp>
+#include <util/logging.hpp>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -23,7 +23,7 @@ startWinsock()
 int
 main(int argc, char* argv[])
 {
-  llarp::LogSilencer shutup{};
+  llarp::log::reset_level(llarp::log::Level::off);
 
 #ifdef _WIN32
   if (startWinsock())

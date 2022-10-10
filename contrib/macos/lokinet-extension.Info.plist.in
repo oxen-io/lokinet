@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>en</string>
+
+		<key>CFBundleDisplayName</key>
+		<string>Lokinet Network Extension</string>
+
+		<key>CFBundleExecutable</key>
+		<string>org.lokinet.network-extension</string>
+
+		<key>CFBundleIdentifier</key>
+		<string>org.lokinet.network-extension</string>
+
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+
+		<key>CFBundlePackageType</key>
+		<string>SYSX</string>
+		
+		<key>CFBundleName</key>
+		<string>org.lokinet.network-extension</string>
+
+		<key>CFBundleVersion</key>
+		<string>@lokinet_VERSION@.@LOKINET_APPLE_BUILD@</string>
+
+		<key>CFBundleShortVersionString</key>
+		<string>@lokinet_VERSION@</string>
+
+		<key>CFBundleSupportedPlatforms</key>
+		<array>
+			<string>MacOSX</string>
+		</array>
+
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+
+		<key>LSMinimumSystemVersion</key>
+		<string>10.15</string>
+
+        <key>NSHumanReadableCopyright</key>
+        <string>Copyright © 2022 The Oxen Project, licensed under GPLv3-or-later</string>
+
+		<key>NSSystemExtensionUsageDescription</key>
+		<string>Provides Lokinet Network connectivity.</string>
+
+		<key>NetworkExtension</key>
+		<dict>
+			<key>NEMachServiceName</key>
+			<string>SUQ8J2PCT7.org.lokinet.network-extension</string>
+
+			<key>NEProviderClasses</key>
+			<dict>
+				<key>com.apple.networkextension.packet-tunnel</key>
+				<string>LLARPPacketTunnel</string>
+
+				<key>com.apple.networkextension.dns-proxy</key>
+				<string>LLARPDNSProxy</string>
+			</dict>
+		</dict>
+	</dict>
+</plist>

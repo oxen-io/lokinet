@@ -1,5 +1,4 @@
 #include "bencode.hpp"
-#include <llarp/util/logging/logger.hpp>
 #include <cstdlib>
 #include <cinttypes>
 #include <cstdio>

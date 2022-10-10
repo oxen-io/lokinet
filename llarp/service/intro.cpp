@@ -1,4 +1,5 @@
 #include "intro.hpp"
+#include "util/time.hpp"
 
 namespace llarp
 {
@@ -64,18 +65,17 @@ namespace llarp
       expiresAt = 0s;
     }
 
-    std::ostream&
-    Introduction::print(std::ostream& stream, int level, int spaces) const
+    std::string
+    Introduction::ToString() const
     {
-      const RouterID r{router};
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("k", r.ToString());
-      printer.printAttribute("l", latency.count());
-      printer.printAttribute("p", pathID);
-      printer.printAttribute("v", version);
-      printer.printAttribute("x", expiresAt.count());
-
-      return stream;
+      return fmt::format(
+          "[Intro k={} l={} p={} v={} x={}]",
+          RouterID{router},
+          latency.count(),
+          pathID,
+          version,
+          expiresAt.count());
     }
+
   }  // namespace service
 }  // namespace llarp

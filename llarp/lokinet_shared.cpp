@@ -8,13 +8,16 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/nodedb.hpp>
 
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/logging/callback_sink.hpp>
 
 #include <oxenc/base32z.h>
 
 #include <mutex>
 #include <memory>
 #include <chrono>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define EHOSTDOWN ENETDOWN
@@ -22,34 +25,6 @@
 
 namespace
 {
-  struct Logger : public llarp::ILogStream
-  {
-    lokinet_logger_func func;
-    void* user;
-
-    explicit Logger(lokinet_logger_func _func, void* _user) : func{_func}, user{_user}
-    {}
-
-    void
-    PreLog(std::stringstream&, llarp::LogLevel, std::string_view, int, const std::string&)
-        const override
-    {}
-
-    void
-    Print(llarp::LogLevel, std::string_view, const std::string& msg) override
-    {
-      func(msg.c_str(), user);
-    }
-
-    void
-    PostLog(std::stringstream&) const override{};
-
-    void
-    ImmediateFlush() override{};
-
-    void Tick(llarp_time_t) override{};
-  };
-
   struct Context : public llarp::Context
   {
     using llarp::Context::Context;
@@ -132,7 +107,7 @@ namespace
         , m_Recv{recv}
         , m_Timeout{timeout}
         , m_User{user}
-        , m_Endpoint{ep}
+        , m_Endpoint{std::move(ep)}
     {}
 
     void
@@ -222,16 +197,12 @@ struct lokinet_context
 {
   std::mutex m_access;
 
-  std::shared_ptr<llarp::Context> impl;
-  std::shared_ptr<llarp::Config> config;
+  std::shared_ptr<llarp::Context> impl = std::make_shared<Context>();
+  std::shared_ptr<llarp::Config> config = llarp::Config::EmbeddedConfig();
 
   std::unique_ptr<std::thread> runner;
 
-  int _socket_id;
-
-  lokinet_context()
-      : impl{std::make_shared<Context>()}, config{llarp::Config::EmbeddedConfig()}, _socket_id{0}
-  {}
+  int _socket_id = 0;
 
   ~lokinet_context()
   {
@@ -257,7 +228,7 @@ struct lokinet_context
   [[nodiscard]] std::optional<int>
   make_udp_handler(
       const std::shared_ptr<llarp::service::Endpoint>& ep,
-      llarp::huint16_t exposePort,
+      llarp::net::port_t exposePort,
       lokinet_udp_flow_filter filter,
       lokinet_udp_flow_recv_func recv,
       lokinet_udp_flow_timeout_func timeout,
@@ -274,16 +245,16 @@ struct lokinet_context
         }
       });
     }
-
+    std::weak_ptr<llarp::service::Endpoint> weak{ep};
     auto udp = std::make_shared<UDPHandler>(
-        next_socket_id(), llarp::ToNet(exposePort), filter, recv, timeout, user, std::weak_ptr{ep});
+        next_socket_id(), exposePort, filter, recv, timeout, user, weak);
     auto id = udp->m_SocketID;
     std::promise<bool> result;
 
     impl->router->loop()->call([ep, &result, udp, exposePort]() {
       if (auto pkt = ep->EgresPacketRouter())
       {
-        pkt->AddUDPHandler(exposePort, [udp](auto from, auto pkt) {
+        pkt->AddUDPHandler(llarp::net::ToHost(exposePort), [udp](auto from, auto pkt) {
           udp->HandlePacketFrom(std::move(from), std::move(pkt));
         });
         result.set_value(true);
@@ -390,8 +361,7 @@ namespace
     {
       return {host, serv->s_port};
     }
-    else
-      return {host, std::stoi(portStr)};
+    return {host, std::stoi(portStr)};
   }
 
   int
@@ -457,8 +427,8 @@ struct lokinet_srv_lookup_private
   void
   IterateAll(std::function<void(lokinet_srv_record*)> visit)
   {
-    for (size_t idx = 0; idx < results.size(); ++idx)
-      visit(&results[idx]);
+    for (auto& result : results)
+      visit(&result);
     // null terminator
     visit(nullptr);
   }
@@ -479,13 +449,21 @@ extern "C"
     return strdup(netid.c_str());
   }
 
+  static auto last_log_set = llarp::log::Level::info;
+
   int EXPORT
   lokinet_log_level(const char* level)
   {
-    if (auto maybe = llarp::LogLevelFromString(level))
+    try
     {
-      llarp::SetLogLevel(*maybe);
+      auto new_level = llarp::log::level_from_string(level);
+      llarp::log::reset_level(new_level);
+      last_log_set = new_level;
       return 0;
+    }
+    catch (std::invalid_argument& e)
+    {
+      llarp::LogError(e.what());
     }
     return -1;
   }
@@ -561,7 +539,7 @@ extern "C"
       return -1;
     auto lock = ctx->acquire();
     ctx->config->router.m_netId = lokinet_get_netid();
-    ctx->config->logging.m_logLevel = llarp::GetLogLevel();
+    ctx->config->logging.m_logLevel = last_log_set;
     ctx->runner = std::make_unique<std::thread>([ctx]() {
       llarp::util::SetThreadName("llarp-mainloop");
       ctx->impl->Configure(ctx->config);
@@ -719,7 +697,7 @@ extern "C"
         {
           auto [addr, id] = quic->open(
               remotehost, remoteport, [](auto) {}, localAddr);
-          auto [host, port] = split_host_port(addr.toString());
+          auto [host, port] = split_host_port(addr.ToString());
           ctx->outbound_stream(id);
           stream_okay(result, host, port, id);
         }
@@ -826,17 +804,13 @@ extern "C"
     if (not oxenc::is_hex(hexview))
       return nullptr;
 
-    const size_t byte_len = hexview.size() / 2;
-    const size_t b32z_len = (byte_len * 8 + 4) / 5;  // = ⌈N×8÷5⌉ because 5 bits per 32z char
+    const size_t b32z_len = oxenc::to_base32z_size(oxenc::from_hex_size(hexview.size()));
     auto buf = std::make_unique<char[]>(b32z_len + 1);
-    char* end = buf.get() + b32z_len;
-    *end = 0;  // null terminate
-    // Write the bytes into the *end* of the buffer so that when we rewrite the final b32z chars
-    // into the buffer we won't overwrite any byte values until after we've consumed them.
-    char* bytepos = end - byte_len;
-    oxenc::from_hex(hexview.begin(), hexview.end(), bytepos);
-    // In-place conversion into the buffer
-    oxenc::to_base32z(bytepos, end, buf.get());
+    buf[b32z_len] = '\0';  // null terminate
+
+    oxenc::hex_decoder decode{hexview.begin(), hexview.end()};
+    oxenc::base32z_encoder encode{decode, decode.end()};
+    std::copy(encode, encode.end(), buf.get());
     return buf.release();  // leak the buffer to the caller
   }
 
@@ -929,8 +903,8 @@ extern "C"
     auto lock = ctx->acquire();
     if (auto ep = ctx->endpoint())
     {
-      if (auto maybe =
-              ctx->make_udp_handler(ep, llarp::huint16_t{exposedPort}, filter, recv, timeout, user))
+      if (auto maybe = ctx->make_udp_handler(
+              ep, llarp::net::port_t::from_host(exposedPort), filter, recv, timeout, user))
       {
         result->socket_id = *maybe;
         return 0;
@@ -960,7 +934,7 @@ extern "C"
       return EINVAL;
     std::shared_ptr<llarp::EndpointBase> ep;
     llarp::nuint16_t srcport{0};
-    llarp::nuint16_t dstport{llarp::ToNet(llarp::huint16_t{remote->remote_port})};
+    auto dstport = llarp::net::port_t::from_host(remote->remote_port);
     {
       auto lock = ctx->acquire();
       if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
@@ -980,7 +954,7 @@ extern "C"
           dstport,
           llarp_buffer_t{reinterpret_cast<const uint8_t*>(ptr), len});
 
-      if (pkt.sz == 0)
+      if (pkt.empty())
         return EINVAL;
       std::promise<int> ret;
       ctx->impl->router->loop()->call([addr = *maybe, pkt = std::move(pkt), ep, &ret]() {
@@ -1060,8 +1034,7 @@ extern "C"
             itr->second->AddFlow(*maybe, *remote, flow_data, flow_timeoutseconds);
             return 0;
           }
-          else
-            return EADDRINUSE;
+          return EADDRINUSE;
         }
       }
       else
@@ -1071,8 +1044,15 @@ extern "C"
   }
 
   void EXPORT
+  lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* user)
+  {
+    llarp::log::clear_sinks();
+    llarp::log::add_sink(std::make_shared<llarp::logging::CallbackSink_mt>(func, sync, user));
+  }
+
+  void EXPORT
   lokinet_set_logger(lokinet_logger_func func, void* user)
   {
-    llarp::LogContext::Instance().logStream.reset(new Logger{func, user});
+    lokinet_set_syncing_logger(func, nullptr, user);
   }
 }

@@ -1,7 +1,6 @@
 #include "question.hpp"
 
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/printer.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 #include "dns.hpp"
 
@@ -9,6 +8,8 @@ namespace llarp
 {
   namespace dns
   {
+    static auto logcat = log::Cat("dns");
+
     Question::Question(Question&& other)
         : qname(std::move(other.qname))
         , qtype(std::move(other.qtype))
@@ -28,7 +29,7 @@ namespace llarp
     bool
     Question::Encode(llarp_buffer_t* buf) const
     {
-      if (!EncodeName(buf, qname))
+      if (!EncodeNameTo(buf, qname))
         return false;
       if (!buf->put_uint16(qtype))
         return false;
@@ -38,19 +39,21 @@ namespace llarp
     bool
     Question::Decode(llarp_buffer_t* buf)
     {
-      if (!DecodeName(buf, qname))
+      if (auto name = DecodeName(buf))
+        qname = *std::move(name);
+      else
       {
-        llarp::LogError("failed to decode name");
+        log::error(logcat, "failed to decode name");
         return false;
       }
       if (!buf->read_uint16(qtype))
       {
-        llarp::LogError("failed to decode type");
+        log::error(logcat, "failed to decode type");
         return false;
       }
       if (!buf->read_uint16(qclass))
       {
-        llarp::LogError("failed to decode class");
+        log::error(logcat, "failed to decode class");
         return false;
       }
       return true;
@@ -117,15 +120,10 @@ namespace llarp
           && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
     }
 
-    std::ostream&
-    Question::print(std::ostream& stream, int level, int spaces) const
+    std::string
+    Question::ToString() const
     {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("qname", qname);
-      printer.printAttributeAsHex("qtype", qtype);
-      printer.printAttributeAsHex("qclass", qclass);
-
-      return stream;
+      return fmt::format("[DNSQuestion qname={} qtype={:x} qclass={:x}]", qname, qtype, qclass);
     }
   }  // namespace dns
 }  // namespace llarp
