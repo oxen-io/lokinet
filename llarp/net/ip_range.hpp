@@ -117,8 +117,8 @@ namespace llarp
     bool
     operator<(const IPRange& other) const
     {
-      return (this->addr & this->netmask_bits) < (other.addr & other.netmask_bits)
-          || this->netmask_bits < other.netmask_bits;
+      auto maskedA = addr & netmask_bits, maskedB = other.addr & other.netmask_bits;
+      return std::tie(maskedA, netmask_bits) < std::tie(maskedB, other.netmask_bits);
     }
 
     bool
