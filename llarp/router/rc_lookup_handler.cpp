@@ -32,26 +32,28 @@ namespace llarp
     whitelistRouters.erase(router);
   }
 
+  static void
+  loadColourList(std::unordered_set<RouterID>& beigelist, const std::vector<RouterID>& new_beige)
+  {
+    beigelist.clear();
+    beigelist.insert(new_beige.begin(), new_beige.end());
+  }
+
   void
   RCLookupHandler::SetRouterWhitelist(
-      const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist)
+      const std::vector<RouterID>& whitelist,
+      const std::vector<RouterID>& greylist,
+      const std::vector<RouterID>& greenlist)
   {
     if (whitelist.empty())
       return;
     util::Lock l(_mutex);
 
-    whitelistRouters.clear();
-    greylistRouters.clear();
-    for (auto& router : whitelist)
-    {
-      whitelistRouters.emplace(router);
-    }
-    for (auto& router : greylist)
-    {
-      greylistRouters.emplace(router);
-    }
+    loadColourList(whitelistRouters, whitelist);
+    loadColourList(greylistRouters, greylist);
+    loadColourList(greenlistRouters, greenlist);
 
-    LogInfo("lokinet service node list now has ", whitelistRouters.size(), " routers");
+    LogInfo("lokinet service node list now has ", whitelistRouters.size(), " active routers");
   }
 
   bool
@@ -138,6 +140,20 @@ namespace llarp
     util::Lock lock{_mutex};
 
     return greylistRouters.count(remote);
+  }
+
+  bool
+  RCLookupHandler::IsGreenlisted(const RouterID& remote) const
+  {
+    util::Lock lock{_mutex};
+    return greenlistRouters.count(remote);
+  }
+
+  bool
+  RCLookupHandler::IsRegistered(const RouterID& remote) const
+  {
+    util::Lock lock{_mutex};
+    return whitelistRouters.count(remote) || greylistRouters.count(remote) || greenlistRouters.count(remote);
   }
 
   bool

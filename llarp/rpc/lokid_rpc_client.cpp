@@ -174,25 +174,27 @@ namespace llarp
       auto makePingRequest = [self = shared_from_this()]() {
         // send a ping
         PubKey pk{};
-        bool should_ping = false;
-        if (auto r = self->m_Router.lock())
-        {
-          pk = r->pubkey();
-          should_ping = r->ShouldPingOxen();
-        }
-        if (should_ping)
-        {
-          nlohmann::json payload = {
-              {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
-              {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
-          self->Request(
-              "admin.lokinet_ping",
-              [](bool success, std::vector<std::string> data) {
-                (void)data;
-                LogDebug("Received response for ping. Successful: ", success);
-              },
-              payload.dump());
-        }
+        auto r = self->m_Router.lock();
+        if (not r)
+          return;  // router has gone away, maybe shutting down?
+
+        pk = r->pubkey();
+
+        nlohmann::json payload = {
+            {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
+            {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+
+        if (auto err = r->OxendErrorState())
+          payload["error"] = *err;
+
+        self->Request(
+            "admin.lokinet_ping",
+            [](bool success, std::vector<std::string> data) {
+              (void)data;
+              LogDebug("Received response for ping. Successful: ", success);
+            },
+            payload.dump());
+
         // subscribe to block updates
         self->Request("sub.block", [](bool success, std::vector<std::string> data) {
           if (data.empty() or not success)
@@ -216,18 +218,13 @@ namespace llarp
     LokidRpcClient::HandleNewServiceNodeList(const nlohmann::json& j)
     {
       std::unordered_map<RouterID, PubKey> keymap;
-      std::vector<RouterID> activeNodeList, nonActiveNodeList;
+      std::vector<RouterID> activeNodeList, decommNodeList, unfundedNodeList;
       if (not j.is_array())
         throw std::runtime_error{
             "Invalid service node list: expected array of service node states"};
 
       for (auto& snode : j)
       {
-        // Skip unstaked snodes:
-        if (const auto funded_itr = snode.find("funded"); funded_itr == snode.end()
-            or not funded_itr->is_boolean() or not funded_itr->get<bool>())
-          continue;
-
         const auto ed_itr = snode.find("pubkey_ed25519");
         if (ed_itr == snode.end() or not ed_itr->is_string())
           continue;
@@ -238,6 +235,10 @@ namespace llarp
         if (active_itr == snode.end() or not active_itr->is_boolean())
           continue;
         const bool active = active_itr->get<bool>();
+        const auto funded_itr = snode.find("funded");
+        if (funded_itr == snode.end() or not funded_itr->is_boolean())
+          continue;
+        const bool funded = funded_itr->get<bool>();
 
         RouterID rid;
         PubKey pk;
@@ -246,7 +247,10 @@ namespace llarp
           continue;
 
         keymap[rid] = pk;
-        (active ? activeNodeList : nonActiveNodeList).push_back(std::move(rid));
+        (active       ? activeNodeList
+             : funded ? decommNodeList
+                      : unfundedNodeList)
+            .push_back(std::move(rid));
       }
 
       if (activeNodeList.empty())
@@ -254,17 +258,19 @@ namespace llarp
         LogWarn("got empty service node list, ignoring.");
         return;
       }
+
       // inform router about the new list
       if (auto router = m_Router.lock())
       {
         auto& loop = router->loop();
         loop->call([this,
                     active = std::move(activeNodeList),
-                    inactive = std::move(nonActiveNodeList),
+                    decomm = std::move(decommNodeList),
+                    unfunded = std::move(unfundedNodeList),
                     keymap = std::move(keymap),
                     router = std::move(router)]() mutable {
           m_KeyMap = std::move(keymap);
-          router->SetRouterWhitelist(active, inactive);
+          router->SetRouterWhitelist(active, decomm, unfunded);
         });
       }
       else
