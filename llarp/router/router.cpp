@@ -973,7 +973,7 @@ namespace llarp
       // don't purge bootstrap nodes from nodedb
       if (IsBootstrapNode(rc.pubkey))
       {
-        log::debug(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
+        log::trace(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
         return false;
       }
       // if for some reason we stored an RC that isn't a valid router
