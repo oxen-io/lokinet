@@ -33,11 +33,7 @@ namespace llarp::net
     bool
     operator<(const ProtocolInfo& other) const
     {
-      if (port and other.port)
-      {
-        return protocol < other.protocol or *port < *other.port;
-      }
-      return protocol < other.protocol;
+      return std::tie(protocol, port) < std::tie(other.protocol, other.port);
     }
 
     ProtocolInfo() = default;
