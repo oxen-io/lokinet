@@ -153,7 +153,8 @@ namespace llarp
   RCLookupHandler::IsRegistered(const RouterID& remote) const
   {
     util::Lock lock{_mutex};
-    return whitelistRouters.count(remote) || greylistRouters.count(remote) || greenlistRouters.count(remote);
+    return whitelistRouters.count(remote) || greylistRouters.count(remote)
+        || greenlistRouters.count(remote);
   }
 
   bool
