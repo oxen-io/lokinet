@@ -471,16 +471,14 @@ namespace llarp
     return nodedb()->NumLoaded() < KnownPeerWarningThreshold;
   }
 
-  bool
-  Router::IsActiveServiceNode() const
+  std::optional<std::string>
+  Router::OxendErrorState() const
   {
-    return IsServiceNode() and not(LooksDeregistered() or LooksDecommissioned());
-  }
-
-  bool
-  Router::ShouldPingOxen() const
-  {
-    return IsActiveServiceNode() and not TooFewPeers();
+    // If we're in the white or gray list then we *should* be establishing connections to other
+    // routers, so if we have almost no peers then something is almost certainly wrong.
+    if (LooksFunded() and TooFewPeers())
+      return "too few peer connections; lokinet is not adequately connected to the network";
+    return std::nullopt;
   }
 
   void
@@ -508,10 +506,17 @@ namespace llarp
   }
 
   bool
-  Router::LooksDeregistered() const
+  Router::LooksFunded() const
   {
     return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
-        and not _rcLookupHandler.SessionIsAllowed(pubkey());
+        and _rcLookupHandler.SessionIsAllowed(pubkey());
+  }
+
+  bool
+  Router::LooksRegistered() const
+  {
+    return IsServiceNode() and whitelistRouters and _rcLookupHandler.HaveReceivedWhitelist()
+        and _rcLookupHandler.IsRegistered(pubkey());
   }
 
   bool
@@ -973,7 +978,7 @@ namespace llarp
       // don't purge bootstrap nodes from nodedb
       if (IsBootstrapNode(rc.pubkey))
       {
-        log::debug(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
+        log::trace(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
         return false;
       }
       // if for some reason we stored an RC that isn't a valid router
@@ -1061,12 +1066,16 @@ namespace llarp
     if (now >= m_NextDecommissionWarn)
     {
       constexpr auto DecommissionWarnInterval = 5min;
-      if (auto dereg = LooksDeregistered(); dereg or decom)
+      if (auto registered = LooksRegistered(), funded = LooksFunded();
+          not(registered and funded and not decom))
       {
-        // complain about being deregistered
-        LogError(
-            "We are running as a service node but we seem to be ",
-            dereg ? "deregistered" : "decommissioned");
+        // complain about being deregistered/decommed/unfunded
+        log::error(
+            logcat,
+            "We are running as a service node but we seem to be {}",
+            not registered ? "deregistered"
+                : decom    ? "decommissioned"
+                           : "not fully staked");
         m_NextDecommissionWarn = now + DecommissionWarnInterval;
       }
       else if (isSvcNode and TooFewPeers())
@@ -1081,7 +1090,7 @@ namespace llarp
 
     // if we need more sessions to routers and we are not a service node kicked from the network
     // we shall connect out to others
-    if (connected < connectToNum and not LooksDeregistered())
+    if (connected < connectToNum and LooksFunded())
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
@@ -1233,9 +1242,11 @@ namespace llarp
 
   void
   Router::SetRouterWhitelist(
-      const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist)
+      const std::vector<RouterID>& whitelist,
+      const std::vector<RouterID>& greylist,
+      const std::vector<RouterID>& unfundedlist)
   {
-    _rcLookupHandler.SetRouterWhitelist(whitelist, greylist);
+    _rcLookupHandler.SetRouterWhitelist(whitelist, greylist, unfundedlist);
   }
 
   bool
