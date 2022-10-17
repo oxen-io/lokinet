@@ -129,7 +129,6 @@ namespace llarp::dns
       std::optional<SockAddr> m_LocalAddr;
       std::set<int> m_Pending;
 
-
       struct ub_result_deleter
       {
         void
@@ -170,8 +169,8 @@ namespace llarp::dns
         buf.cur = buf.base;
         hdr.Encode(&buf);
         // remove pending query
-        if(auto ptr = query->parent.lock())
-          ptr->call([id=query->id, ptr]() { ptr->m_Pending.erase(id); });
+        if (auto ptr = query->parent.lock())
+          ptr->call([id = query->id, ptr]() { ptr->m_Pending.erase(id); });
         // send reply
         query->SendReply(std::move(pkt));
       }
@@ -415,7 +414,7 @@ namespace llarp::dns
           // cancel pending queries
           // make copy as ub_cancel modifies m_Pending
           const auto pending = m_Pending;
-          for(auto id : pending)
+          for (auto id : pending)
             ::ub_cancel(m_ctx, id);
           m_Pending.clear();
 
@@ -490,7 +489,7 @@ namespace llarp::dns
             return true;
           }
         }
-        if(not m_ctx)
+        if (not m_ctx)
         {
           // we are down
           tmp->Cancel();
