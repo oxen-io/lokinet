@@ -1063,7 +1063,7 @@ namespace llarp
       connectToNum = strictConnect;
     }
 
-    if (now >= m_NextDecommissionWarn)
+    if (isSvcNode and now >= m_NextDecommissionWarn)
     {
       constexpr auto DecommissionWarnInterval = 5min;
       if (auto registered = LooksRegistered(), funded = LooksFunded();
@@ -1078,7 +1078,7 @@ namespace llarp
                            : "not fully staked");
         m_NextDecommissionWarn = now + DecommissionWarnInterval;
       }
-      else if (isSvcNode and TooFewPeers())
+      else if (TooFewPeers())
       {
         log::error(
             logcat,
@@ -1088,9 +1088,9 @@ namespace llarp
       }
     }
 
-    // if we need more sessions to routers and we are not a service node kicked from the network
+    // if we need more sessions to routers and we are not a service node kicked from the network or we are a client
     // we shall connect out to others
-    if (connected < connectToNum and LooksFunded())
+    if (connected < connectToNum and (LooksFunded() or not isSvcNode))
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
