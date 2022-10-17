@@ -490,6 +490,12 @@ namespace llarp::dns
             return true;
           }
         }
+        if(not m_ctx)
+        {
+          // we are down
+          tmp->Cancel();
+          return true;
+        }
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx,
