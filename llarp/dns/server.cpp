@@ -89,7 +89,6 @@ namespace llarp::dns
 
     class Query : public QueryJob_Base
     {
-      std::weak_ptr<Resolver> parent;
       std::shared_ptr<PacketSource_Base> src;
       SockAddr resolverAddr;
       SockAddr askerAddr;
@@ -102,11 +101,13 @@ namespace llarp::dns
           SockAddr toaddr,
           SockAddr fromaddr)
           : QueryJob_Base{std::move(query)}
-          , parent{parent_}
           , src{std::move(pktsrc)}
           , resolverAddr{std::move(toaddr)}
           , askerAddr{std::move(fromaddr)}
+          , parent{parent_}
       {}
+      std::weak_ptr<Resolver> parent;
+      int id{};
 
       virtual void
       SendReply(llarp::OwnedBuffer replyBuf) const override;
@@ -126,6 +127,8 @@ namespace llarp::dns
 #endif
 
       std::optional<SockAddr> m_LocalAddr;
+      std::set<int> m_Pending;
+
 
       struct ub_result_deleter
       {
@@ -166,7 +169,9 @@ namespace llarp::dns
         hdr.id = query->Underlying().hdr_id;
         buf.cur = buf.base;
         hdr.Encode(&buf);
-
+        // remove pending query
+        if(auto ptr = query->parent.lock())
+          ptr->call([id=query->id, ptr]() { ptr->m_Pending.erase(id); });
         // send reply
         query->SendReply(std::move(pkt));
       }
@@ -407,6 +412,13 @@ namespace llarp::dns
 #endif
         if (m_ctx)
         {
+          // cancel pending queries
+          // make copy as ub_cancel modifies m_Pending
+          const auto pending = m_Pending;
+          for(auto id : pending)
+            ::ub_cancel(m_ctx, id);
+          m_Pending.clear();
+
           ::ub_ctx_delete(m_ctx);
           m_ctx = nullptr;
         }
@@ -486,7 +498,7 @@ namespace llarp::dns
                 q.qclass,
                 tmp.get(),
                 &Resolver::Callback,
-                nullptr))
+                &tmp->id))
         {
           log::warning(
               logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
@@ -494,6 +506,7 @@ namespace llarp::dns
         }
         else
         {
+          m_Pending.insert(tmp->id);
           // Leak the bare pointer we gave to unbound; we'll recapture it in Callback
           (void)tmp.release();
         }
