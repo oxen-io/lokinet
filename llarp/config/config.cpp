@@ -459,9 +459,8 @@ namespace llarp
         "owned-range",
         MultiValue,
         Comment{
-            "When in exit mode announce we allow a private range in our introset"
-            "exmaple:",
-            "owned-range=10.0.0.0/24",
+            "When in exit mode announce we allow a private range in our introset.  For example:",
+            "    owned-range=10.0.0.0/24",
         },
         [this](std::string arg) {
           IPRange range;
@@ -475,12 +474,17 @@ namespace llarp
         "traffic-whitelist",
         MultiValue,
         Comment{
-            "List of ip traffic whitelist, anything not specified will be dropped by us."
-            "examples:",
-            "tcp for all tcp traffic regardless of port",
-            "0x69 for all packets using ip protocol 0x69"
-            "udp/53 for udp port 53",
-            "tcp/smtp for smtp port",
+            "Adds an IP traffic type whitelist; can be specified multiple times.  If any are",
+            "specified then only matched traffic will be allowed and all other traffic will be",
+            "dropped.  Examples:",
+            "    traffic-whitelist=tcp",
+            "would allow all TCP/IP packets (regardless of port);",
+            "    traffic-whitelist=0x69",
+            "would allow IP traffic with IP protocol 0x69;",
+            "    traffic-whitelist=udp/53",
+            "would allow UDP port 53; and",
+            "    traffic-whitelist=tcp/smtp",
+            "would allow TCP traffic on the standard smtp port (21).",
         },
         [this](std::string arg) {
           if (not m_TrafficPolicy)
@@ -497,9 +501,12 @@ namespace llarp
         MultiValue,
         Comment{
             "Specify a `.loki` address and an optional ip range to use as an exit broker.",
-            "Example:",
-            "exit-node=whatever.loki # maps all exit traffic to whatever.loki",
-            "exit-node=stuff.loki:100.0.0.0/24 # maps 100.0.0.0/24 to stuff.loki",
+            "Examples:",
+            "    exit-node=whatever.loki",
+            "would map all exit traffic through whatever.loki; and",
+            "    exit-node=stuff.loki:100.0.0.0/24",
+            "would map the IP range 100.0.0.0/24 through stuff.loki.",
+            "This option can be specified multiple times (to map different IP ranges).",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -580,10 +587,10 @@ namespace llarp
         Default{true},
         Comment{
             "Enable / disable automatic route configuration.",
-            "When this is enabled and an exit is used Lokinet will automatically configure "
-            "operating system routes to route traffic through the exit node.",
-            "This is enabled by default, but can be disabled to perform advanced exit routing "
-            "configuration manually."},
+            "When this is enabled and an exit is used Lokinet will automatically configure the",
+            "operating system routes to route public internet traffic through the exit node.",
+            "This is enabled by default, but can be disabled if advanced/manual exit routing",
+            "configuration is desired."},
         AssignmentAcceptor(m_EnableRoutePoker));
 
     conf.defineOption<bool>(
@@ -593,8 +600,8 @@ namespace llarp
         Default{true},
         Comment{
             "Enable / disable route configuration blackholes.",
-            "When enabled lokinet will drop ip4 and ip6 not included in exit config.",
-            "Enabled by default."},
+            "When enabled lokinet will drop IPv4 and IPv6 traffic (when in exit mode) that is not",
+            "handled in the exit configuration.  Enabled by default."},
         AssignmentAcceptor(m_BlackholeRoutes));
 
     conf.defineOption<std::string>(
@@ -602,7 +609,7 @@ namespace llarp
         "ifname",
         Comment{
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
-            "lokinetN, starting at 0 (e.g. lokinet0, lokinet1, ...).",
+            "matching 'lokinetN', starting at N=0 (e.g. lokinet0, lokinet1, ...).",
         },
         AssignmentAcceptor(m_ifname));
 
@@ -626,10 +633,10 @@ namespace llarp
         "ip6-range",
         ClientOnly,
         Comment{
-            "For all ipv6 exit traffic you will use this as the base address bitwised or'd with "
+            "For all IPv6 exit traffic you will use this as the base address bitwised or'd with ",
             "the v4 address in use.",
             "To disable ipv6 set this to an empty value.",
-            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
+            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to ",
             "de-anonymization as lokinet will no longer carry your ipv6 traffic.",
         },
         IP6RangeDefault,
@@ -720,9 +727,13 @@ namespace llarp
         ClientOnly,
         MultiValue,
         Comment{
-            "Specify SRV Records for services hosted on the SNApp",
-            "for more info see https://docs.loki.network/Lokinet/Guides/HostingSNApps/",
-            "srv=_service._protocol priority weight port target.loki",
+            "Specify SRV Records for services hosted on the SNApp for protocols that use SRV",
+            "records for service discovery. Each line specifies a single SRV record as:",
+            "    srv=_service._protocol priority weight port target.loki",
+            "and can be specified multiple times as needed.",
+            "For more info see",
+            "https://docs.oxen.io/products-built-on-oxen/lokinet/snapps/hosting-snapps",
+            "and general description of DNS SRV record configuration.",
         },
         [this](std::string arg) {
           llarp::dns::SRVData newSRV;
@@ -737,8 +748,8 @@ namespace llarp
         "path-alignment-timeout",
         ClientOnly,
         Comment{
-            "time in seconds how long to wait for a path to align to pivot routers",
-            "if not provided a sensible default will be used",
+            "How long to wait (in seconds) for a path to align to a pivot router when establishing",
+            "a path through the network to a remote .loki address.",
         },
         [this](int val) {
           if (val <= 0)
@@ -753,9 +764,10 @@ namespace llarp
         ClientOnly,
         Default{fs::path{params.defaultDataDir / "addrmap.dat"}},
         Comment{
-            "persist mapped ephemeral addresses to a file",
-            "on restart the mappings will be loaded so that ip addresses will not be mapped to a "
-            "different address",
+            "If given this specifies a file in which to record mapped local tunnel addresses so",
+            "the same local address will be used for the same lokinet address on reboot.  If this",
+            "is not specified then the local IP of remote lokinet targets will not persist across",
+            "restarts of lokinet.",
         },
         [this](fs::path arg) {
           if (arg.empty())
@@ -879,7 +891,7 @@ namespace llarp
             "on systems which use resolveconf)",
         });
 
-    // forwad the rest to libunbound
+    // forward the rest to libunbound
     conf.addUndeclaredHandler("dns", [this](auto, std::string_view key, std::string_view val) {
       m_ExtraOpts.emplace(key, val);
     });
@@ -1150,7 +1162,7 @@ namespace llarp
         RelayOnly,
         Default{true},
         Comment{
-            "Whether or not we should talk to lokid. Must be enabled for staked routers.",
+            "Whether or not we should talk to oxend. Must be enabled for staked routers.",
         },
         AssignmentAcceptor(whitelistRouters));
 
@@ -1159,8 +1171,8 @@ namespace llarp
         return;
       throw std::invalid_argument(
           "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc config "
-          "option instead with lokid's lmq-local-control address -- typically a value such as "
-          "rpc=ipc:///var/lib/loki/lokid.sock or rpc=ipc:///home/snode/.loki/lokid.sock");
+          "option instead with oxend's lmq-local-control address -- typically a value such as "
+          "rpc=ipc:///var/lib/oxen/oxend.sock or rpc=ipc:///home/snode/.oxen/oxend.sock");
     });
 
     conf.defineOption<std::string>(
@@ -1168,12 +1180,12 @@ namespace llarp
         "rpc",
         RelayOnly,
         Comment{
-            "lokimq control address for for communicating with lokid. Depends on lokid's",
+            "oxenmq control address for for communicating with oxend. Depends on oxend's",
             "lmq-local-control configuration option. By default this value should be",
-            "ipc://LOKID-DATA-DIRECTORY/lokid.sock, such as:",
-            "    rpc=ipc:///var/lib/loki/lokid.sock",
-            "    rpc=ipc:///home/USER/.loki/lokid.sock",
-            "but can use (non-default) TCP if lokid is configured that way:",
+            "ipc://OXEND-DATA-DIRECTORY/oxend.sock, such as:",
+            "    rpc=ipc:///var/lib/oxen/oxend.sock",
+            "    rpc=ipc:///home/USER/.oxen/oxend.sock",
+            "but can use (non-default) TCP if oxend is configured that way:",
             "    rpc=tcp://127.0.0.1:5678",
         },
         [this](std::string arg) { lokidRPCAddr = oxenmq::address(arg); });
@@ -1202,7 +1214,7 @@ namespace llarp
         "add-node",
         MultiValue,
         Comment{
-            "Specify a bootstrap file containing a signed RouterContact of a service node",
+            "Specify a bootstrap file containing a list of signed RouterContacts of service nodes",
             "which can act as a bootstrap. Can be specified multiple times.",
         },
         [this](std::string arg) {
@@ -1292,9 +1304,9 @@ namespace llarp
           m_UniqueHopsNetmaskSize = arg;
         },
         Comment{
-            "Netmask for router path selection; each router must be from a distinct IP subnet "
+            "Netmask for router path selection; each router must be from a distinct IPv4 subnet",
             "of the given size.",
-            "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
+            "E.g. 16 ensures that all routers are using IPs from distinct /16 IP ranges."});
 
 #ifdef WITH_GEOIP
     conf.defineOption<std::string>(
@@ -1306,9 +1318,11 @@ namespace llarp
           m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
         },
         Comment{
-            "exclude a country given its 2 letter country code from being used in path builds",
-            "e.g. exclude-country=DE",
-            "can be listed multiple times to exclude multiple countries"});
+            "Exclude a country given its 2 letter country code from being used in path builds.",
+            "For example:",
+            "    exclude-country=DE",
+            "would avoid building paths through routers with IPs in Germany.",
+            "This option can be specified multiple times to exclude multiple countries"});
 #endif
   }
 
@@ -1616,11 +1630,11 @@ namespace llarp
     initializeConfig(def, *params);
     generateCommonConfigComments(def);
 
-    // lokid
+    // oxend
     def.addSectionComments(
         "lokid",
         {
-            "Settings for communicating with lokid",
+            "Settings for communicating with oxend",
         });
 
     return def.generateINIConfig(true);
