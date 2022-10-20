@@ -336,7 +336,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-11 jsonnet',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-14 jsonnet',
         './contrib/ci/drone-format-verify.sh',
       ],
     }],

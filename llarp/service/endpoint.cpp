@@ -320,7 +320,8 @@ namespace llarp
       return m_state->ExtractStatus(obj);
     }
 
-    void Endpoint::Tick(llarp_time_t)
+    void
+    Endpoint::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
       path::Builder::Tick(now);
@@ -1165,7 +1166,8 @@ namespace llarp
       return m_Identity.pub.Addr();
     }
 
-    std::optional<EndpointBase::SendStat> Endpoint::GetStatFor(AddressVariant_t) const
+    std::optional<EndpointBase::SendStat>
+    Endpoint::GetStatFor(AddressVariant_t) const
     {
       // TODO: implement me
       return std::nullopt;
