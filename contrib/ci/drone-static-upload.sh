@@ -19,9 +19,15 @@ set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
 chmod 600 ssh_key
 
-os="${UPLOAD_OS:-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH}"
-if [ -n "$WINDOWS_BUILD_NAME" ]; then
-    os="windows-$WINDOWS_BUILD_NAME"
+os="$UPLOAD_OS"
+if [ -z "$os" ]; then
+    if [ "$DRONE_STAGE_OS" == "darwin" ]; then
+        os="macos-$DRONE_STAGE_ARCH"
+    elif [ -n "$WINDOWS_BUILD_NAME" ]; then
+        os="windows-$WINDOWS_BUILD_NAME"
+    else
+        os="$DRONE_STAGE_OS-$DRONE_STAGE_ARCH"
+    fi
 fi
 
 if [ -n "$DRONE_TAG" ]; then
