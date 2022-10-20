@@ -10,7 +10,9 @@ namespace llarp
   struct AbstractRouter;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::Resolver_Base, public EndpointBase
+    struct ExitEndpoint : public dns::Resolver_Base,
+                          public EndpointBase,
+                          public std::enable_shared_from_this<ExitEndpoint>
     {
       int
       Rank() const override

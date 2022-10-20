@@ -480,8 +480,8 @@ namespace llarp
 #ifndef _WIN32
         m_Resolver = std::make_shared<dns::Server>(
             m_Router->loop(), m_DNSConf, if_nametoindex(m_ifname.c_str()));
+        m_Resolver->AddResolver(weak_from_this());
         m_Resolver->Start();
-
 #endif
       }
       return true;
