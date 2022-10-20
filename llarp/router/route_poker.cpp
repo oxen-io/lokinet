@@ -147,13 +147,16 @@ namespace llarp
 
     auto& route = platform->RouteManager();
 
-    // find current gateways
+    // get current gateways, assume sorted by lowest metric first
     auto gateways = route.GetGatewaysNotOnInterface(*vpn);
     std::optional<net::ipv4addr_t> next_gw;
     for (auto& gateway : gateways)
     {
       if (auto* gw_ptr = std::get_if<net::ipv4addr_t>(&gateway))
+      {
         next_gw = *gw_ptr;
+        break;
+      }
     }
 
     // update current gateway and apply state changes as needed
