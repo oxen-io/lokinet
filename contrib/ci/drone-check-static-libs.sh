@@ -8,7 +8,7 @@ set -o errexit
 bad=
 if [ "$DRONE_STAGE_OS" == "darwin" ]; then
     if otool -L llarp/apple/org.lokinet.network-extension.systemextension/Contents/MacOS/org.lokinet.network-extension | \
-        grep -Ev '^llarp/apple:|^\t(/usr/lib/lib(System\.|c\+\+|objc)|/System/Library/Frameworks/(CoreFoundation|NetworkExtension|Foundation|Network)\.framework'; then
+        grep -Ev '^llarp/apple:|^\t(/usr/lib/lib(System\.|c\+\+|objc))|/System/Library/Frameworks/(CoreFoundation|NetworkExtension|Foundation|Network)\.framework'; then
         bad=1
     fi
 elif [ "$DRONE_STAGE_OS" == "linux" ]; then
