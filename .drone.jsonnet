@@ -83,8 +83,9 @@ local debian_pipeline(name,
                   cmake_extra +
                   ci_dep_mirror(local_mirror),
                   'VERBOSE=1 make -j' + jobs,
+                  'cd ..',
                 ]
-                + (if tests then ['../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes'] else [])
+                + (if tests then ['./contrib/ci/drone-gdb.sh ./build/test/testAll --use-colour yes'] else [])
                 + extra_cmds,
     },
   ],
@@ -295,6 +296,7 @@ local mac_builder(name,
         // disk image.  Most likely the GUI is required because if you lose sight of how pretty the
         // surface of macOS is you might see how ugly the insides are.
         'ninja -j' + jobs + ' assemble_gui',
+        'cd ..',
       ] + extra_cmds,
     },
   ],
@@ -394,8 +396,8 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
                   extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    '../contrib/ci/drone-static-upload.sh',
+                    './contrib/ci/drone-check-static-libs.sh',
+                    './contrib/ci/drone-static-upload.sh',
                   ]),
   // Static armhf build (gets uploaded)
   debian_pipeline('Static (buster armhf)',
@@ -406,8 +408,8 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
                   extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
+                    './contrib/ci/drone-check-static-libs.sh',
+                    'UPLOAD_OS=linux-armhf ./contrib/ci/drone-static-upload.sh',
                   ],
                   jobs=4),
 
@@ -425,8 +427,8 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
 
   // Macos builds:
   mac_builder('macOS (Release)', extra_cmds=[
-    '../contrib/ci/drone-check-static-libs.sh',
-    '../contrib/ci/drone-static-upload.sh',
+    './contrib/ci/drone-check-static-libs.sh',
+    './contrib/ci/drone-static-upload.sh',
   ]),
   mac_builder('macOS (Debug)', build_type='Debug'),
 ]
