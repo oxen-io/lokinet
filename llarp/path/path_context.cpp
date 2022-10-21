@@ -412,7 +412,8 @@ namespace llarp
       return nullptr;
     }
 
-    void PathContext::RemovePathSet(PathSet_ptr)
+    void
+    PathContext::RemovePathSet(PathSet_ptr)
     {}
   }  // namespace path
 }  // namespace llarp
