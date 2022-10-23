@@ -1,7 +1,7 @@
 # Maintainer: jason <jason@oxen.io>
 pkgname=lokinet
-pkgver=0.9.9
-pkgrel=2
+pkgver=0.9.10
+pkgrel=1
 pkgdesc="Anonymous, decentralized and IP based overlay network for the internet."
 arch=('x86_64' 'aarch64')
 url="https://lokinet.org"
