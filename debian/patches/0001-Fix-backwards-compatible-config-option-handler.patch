@@ -1,0 +1,23 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 25 Oct 2022 18:06:25 -0300
+Subject: Fix backwards compatible config option handler
+
+Without this, old config (with now-irrelevant settings) won't work in
+newer lokinet, making lokinet fatal error on startup if one of the
+no-longer-used options is still present.
+---
+ llarp/config/config.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/llarp/config/config.cpp b/llarp/config/config.cpp
+index d0f9f56..87e9db7 100644
+--- a/llarp/config/config.cpp
++++ b/llarp/config/config.cpp
+@@ -1399,6 +1399,7 @@ namespace llarp
+     params->isRelay = isRelay;
+     params->defaultDataDir = m_DataDir;
+     ConfigDefinition conf{isRelay};
++    addBackwardsCompatibleConfigOptions(conf);
+     initializeConfig(conf, *params);
+ 
+     for (const auto& item : m_Additional)
