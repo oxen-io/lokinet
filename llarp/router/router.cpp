@@ -679,12 +679,6 @@ namespace llarp
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
-    // Lokid Config
-    whitelistRouters = conf.lokid.whitelistRouters;
-    lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
-
-    m_isServiceNode = conf.router.m_isRelay;
-
     auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys (
