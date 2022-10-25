@@ -32,3 +32,13 @@ if [ "$1" = configure ]; then
 fi
 
 #DEBHELPER#
+
+# Also restart the lokinet-routers.target (from oxen-multi-sn) on upgrade if it is active
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -n "$2" ] && [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        if systemctl --quiet is-active lokinet-routers.target; then
+            deb-systemd-invoke restart lokinet-routers.target >/dev/null || true
+        fi
+    fi
+fi
