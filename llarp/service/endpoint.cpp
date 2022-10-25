@@ -40,6 +40,11 @@
 #include <uvw.hpp>
 #include <variant>
 
+namespace
+{
+  constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
+}  // namespace
+
 namespace llarp
 {
   namespace service
@@ -309,6 +314,7 @@ namespace llarp
       auto obj = path::Builder::ExtractStatus();
       obj["exitMap"] = m_ExitMap.ExtractStatus();
       obj["identity"] = m_Identity.pub.Addr().ToString();
+      obj["networkReady"] = ReadyToDoLookup();
 
       util::StatusObject authCodes;
       for (const auto& [service, info] : m_RemoteAuthInfos)
@@ -946,6 +952,22 @@ namespace llarp
       return not m_ExitMap.Empty();
     }
 
+    bool
+    Endpoint::ReadyToDoLookup(std::optional<uint64_t> numPaths) const
+    {
+      if (not numPaths)
+      {
+        path::Path::UniqueEndpointSet_t paths;
+        ForEachPath([&paths](auto path) {
+          if (path and path->IsReady())
+            paths.insert(path);
+        });
+        numPaths = paths.size();
+      }
+
+      return numPaths >= MIN_ENDPOINTS_FOR_LNS_LOOKUP;
+    }
+
     void
     Endpoint::LookupNameAsync(
         std::string name,
@@ -965,23 +987,20 @@ namespace llarp
       }
       LogInfo(Name(), " looking up LNS name: ", name);
       path::Path::UniqueEndpointSet_t paths;
-      ForEachPath([&](auto path) {
+      ForEachPath([&paths](auto path) {
         if (path and path->IsReady())
           paths.insert(path);
       });
 
-      constexpr size_t min_unique_lns_endpoints = 2;
-      constexpr size_t max_unique_lns_endpoints = 7;
-
       // not enough paths
-      if (paths.size() < min_unique_lns_endpoints)
+      if (not ReadyToDoLookup(paths.size()))
       {
         LogWarn(
             Name(),
             " not enough paths for lns lookup, have ",
             paths.size(),
             " need ",
-            min_unique_lns_endpoints);
+            MIN_ENDPOINTS_FOR_LNS_LOOKUP);
         handler(std::nullopt);
         return;
       }
@@ -1006,11 +1025,12 @@ namespace llarp
         handler(result);
       };
 
+      constexpr size_t max_lns_lookup_endpoints = 7;
       // pick up to max_unique_lns_endpoints random paths to do lookups from
       std::vector<path::Path_ptr> chosenpaths;
       chosenpaths.insert(chosenpaths.begin(), paths.begin(), paths.end());
       std::shuffle(chosenpaths.begin(), chosenpaths.end(), CSRNG{});
-      chosenpaths.resize(std::min(paths.size(), max_unique_lns_endpoints));
+      chosenpaths.resize(std::min(paths.size(), max_lns_lookup_endpoints));
 
       auto resultHandler =
           m_state->lnsTracker.MakeResultHandler(name, chosenpaths.size(), maybeInvalidateCache);
