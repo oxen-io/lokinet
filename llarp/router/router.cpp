@@ -395,6 +395,31 @@ namespace llarp
   {
     m_Config = std::move(c);
     auto& conf = *m_Config;
+
+    // Do logging config as early as possible to get the configured log level applied
+
+    // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
+    auto log_type = conf.logging.m_logType;
+    if (log_type == log::Type::File
+        && (conf.logging.m_logFile == "stdout" || conf.logging.m_logFile == "-"
+            || conf.logging.m_logFile.empty()))
+      log_type = log::Type::Print;
+
+    if (log::get_level_default() != log::Level::off)
+      log::reset_level(conf.logging.m_logLevel);
+    log::clear_sinks();
+    log::add_sink(log_type, conf.logging.m_logFile);
+
+    enableRPCServer = conf.api.m_enableRPCServer;
+
+    // re-add rpc log sink if rpc enabled, else free it
+    if (enableRPCServer and llarp::logRingBuffer)
+      log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
+    else
+      llarp::logRingBuffer = nullptr;
+
+    log::debug(logcat, "Configuring router");
+
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
     {
@@ -402,33 +427,39 @@ namespace llarp
       m_lokidRpcClient = std::make_shared<rpc::LokidRpcClient>(m_lmq, weak_from_this());
     }
 
-    enableRPCServer = conf.api.m_enableRPCServer;
     if (enableRPCServer)
       rpcBindAddr = oxenmq::address(conf.api.m_rpcBindAddr);
 
+    log::debug(logcat, "Starting RPC server");
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
     if (conf.router.m_workerThreads > 0)
       m_lmq->set_general_threads(conf.router.m_workerThreads);
 
+    log::debug(logcat, "Starting OMQ server");
     m_lmq->start();
 
     _nodedb = std::move(nodedb);
 
     m_isServiceNode = conf.router.m_isRelay;
+    log::debug(
+        logcat, m_isServiceNode ? "Running as a relay (service node)" : "Running as a client");
 
     if (whitelistRouters)
     {
       m_lokidRpcClient->ConnectAsync(lokidRPCAddr);
     }
 
-    // fetch keys
+    log::debug(logcat, "Initializing key manager");
     if (not m_keyManager->initialize(conf, true, isSNode))
       throw std::runtime_error("KeyManager failed to initialize");
+
+    log::debug(logcat, "Initializing from configuration");
     if (!FromConfig(conf))
       throw std::runtime_error("FromConfig() failed");
 
+    log::debug(logcat, "Initializing identity");
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
     return true;
@@ -601,6 +632,7 @@ namespace llarp
   Router::FromConfig(const Config& conf)
   {
     // Set netid before anything else
+    log::debug(logcat, "Network ID set to {}", conf.router.m_netId);
     if (!conf.router.m_netId.empty() && strcmp(conf.router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
       const auto& netid = conf.router.m_netId;
@@ -640,7 +672,10 @@ namespace llarp
         _ourAddress->setPort(*maybe_port);
       else
         throw std::runtime_error{"public ip provided without public port"};
+      log::debug(logcat, "Using {} for our public address", *_ourAddress);
     }
+    else
+      log::debug(logcat, "No explicit public address given; will auto-detect during link setup");
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
@@ -663,6 +698,7 @@ namespace llarp
         throw std::runtime_error(
             "Must specify more than one strict-connect router if using strict-connect");
       strictConnectPubkeys.insert(val.begin(), val.end());
+      log::debug(logcat, "{} strict-connect routers configured", val.size());
     }
 
     std::vector<fs::path> configRouters = conf.connect.routers;
@@ -802,26 +838,6 @@ namespace llarp
     {
       hiddenServiceContext().AddEndpoint(conf);
     }
-
-    // Logging config
-
-    // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
-    auto log_type = conf.logging.m_logType;
-    if (log_type == log::Type::File
-        && (conf.logging.m_logFile == "stdout" || conf.logging.m_logFile == "-"
-            || conf.logging.m_logFile.empty()))
-      log_type = log::Type::Print;
-
-    if (log::get_level_default() != log::Level::off)
-      log::reset_level(conf.logging.m_logLevel);
-    log::clear_sinks();
-    log::add_sink(log_type, conf.logging.m_logFile);
-
-    // re-add rpc log sink if rpc enabled, else free it
-    if (enableRPCServer and llarp::logRingBuffer)
-      log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
-    else
-      llarp::logRingBuffer = nullptr;
 
     return true;
   }
