@@ -1,3 +1,10 @@
+lokinet (0.9.10~rc1-2) bookworm; urgency=medium
+
+  * Restart multi-sn lokinet-routers.target on upgrade
+  * Add patch to fix backwards compatible config option handler
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 25 Oct 2022 18:15:37 -0300
+
 lokinet (0.9.10~rc1-1~deb12) bookworm; urgency=medium
 
   [ Jeff ]
