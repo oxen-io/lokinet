@@ -12,7 +12,7 @@ Vcs-Browser: https://github.com/oxen-io/loki-network
 
 Package: lokinet-bin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, curl
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base
 Description: Lokinet anonymous, decentralized overlay network -- binaries
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
  for the internet.
