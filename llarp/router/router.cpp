@@ -653,14 +653,15 @@ namespace llarp
     auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys (
-    /// TODO: make this consistent with config -- do we support multiple strict connections
-    //        or not?
     std::unordered_set<RouterID> strictConnectPubkeys;
     if (not networkConfig.m_strictConnect.empty())
     {
       const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
         throw std::runtime_error("cannot use strict-connect option as service node");
+      if (val.size() < 2)
+        throw std::runtime_error(
+            "Must specify more than one strict-connect router if using strict-connect");
       strictConnectPubkeys.insert(val.begin(), val.end());
     }
 
