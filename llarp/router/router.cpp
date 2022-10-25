@@ -711,58 +711,51 @@ namespace llarp
       }
     }
 
-    BootstrapList b_list;
+    bootstrapRCList.clear();
     for (const auto& router : configRouters)
     {
-      b_list.AddFromFile(router);
+      log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
+      bootstrapRCList.AddFromFile(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
     {
-      b_list.emplace(rc);
+      bootstrapRCList.emplace(rc);
     }
 
     // in case someone has an old bootstrap file and is trying to use a bootstrap
     // that no longer exists
-    for (auto rc_itr = b_list.begin(); rc_itr != b_list.end();)
-    {
-      if (rc_itr->IsObsoleteBootstrap())
-        b_list.erase(rc_itr);
-      else
-        rc_itr++;
-    }
-
-    auto verifyRCs = [&]() {
-      for (auto& rc : b_list)
+    auto clearBadRCs = [this]() {
+      for (auto it = bootstrapRCList.begin(); it != bootstrapRCList.end();)
       {
-        if (rc.IsObsoleteBootstrap())
+        if (it->IsObsoleteBootstrap())
+          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID{it->pubkey});
+        else if (not it->Verify(Now()))
+          log::warning(logcat, "ignoring invalid bootstrap RC: {}", RouterID{it->pubkey});
+        else
         {
-          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID(rc.pubkey));
+          ++it;
           continue;
         }
-        if (not rc.Verify(Now()))
-        {
-          log::warning(logcat, "ignoring invalid RC: {}", RouterID(rc.pubkey));
-          continue;
-        }
-        bootstrapRCList.emplace(std::move(rc));
+        // we are in one of the above error cases that we warned about:
+        it = bootstrapRCList.erase(it);
       }
     };
 
-    verifyRCs();
+    clearBadRCs();
 
     if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
     {
       auto fallbacks = llarp::load_bootstrap_fallbacks();
       if (auto itr = fallbacks.find(_rc.netID.ToString()); itr != fallbacks.end())
       {
-        b_list = itr->second;
-
-        verifyRCs();
+        bootstrapRCList = itr->second;
+        log::debug(logcat, "loaded {} default fallback bootstrap routers", bootstrapRCList.size());
+        clearBadRCs();
       }
-      if (bootstrapRCList.empty()
-          and not conf.bootstrap.seednode)  // empty after trying fallback, if set
+      if (bootstrapRCList.empty() and not conf.bootstrap.seednode)
       {
+        // empty after trying fallback, if set
         log::error(
             logcat,
             "No bootstrap routers were loaded.  The default bootstrap file {} does not exist, and "
