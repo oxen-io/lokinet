@@ -143,7 +143,9 @@ namespace llarp
 
     void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override;
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& unfunded) override;
 
     std::unordered_set<RouterID>
     GetRouterWhitelist() const override
@@ -203,9 +205,16 @@ namespace llarp
     bool
     LooksDecommissioned() const;
 
-    /// return true if we look like we are a deregistered service node
+    /// return true if we look like we are a registered, fully-staked service node (either active or
+    /// decommissioned).  This condition determines when we are allowed to (and attempt to) connect
+    /// to other peers when running as a service node.
     bool
-    LooksDeregistered() const;
+    LooksFunded() const;
+
+    /// return true if we a registered service node; not that this only requires a partial stake,
+    /// and does not imply that this service node is *active* or fully funded.
+    bool
+    LooksRegistered() const;
 
     /// return true if we look like we are allowed and able to test other routers
     bool
@@ -378,12 +387,8 @@ namespace llarp
     bool
     IsServiceNode() const override;
 
-    /// return true if service node *and* not deregistered or decommissioned
-    bool
-    IsActiveServiceNode() const override;
-
-    bool
-    ShouldPingOxen() const override;
+    std::optional<std::string>
+    OxendErrorState() const override;
 
     void
     Close();
@@ -556,8 +561,11 @@ namespace llarp
 
     bool m_isServiceNode = false;
 
+    // Delay warning about being decommed/dereged until we've had enough time to sync up with oxend
+    static constexpr auto DECOMM_WARNING_STARTUP_DELAY = 15s;
+
     llarp_time_t m_LastStatsReport = 0s;
-    llarp_time_t m_NextDecommissionWarn = 0s;
+    llarp_time_t m_NextDecommissionWarn = time_now_ms() + DECOMM_WARNING_STARTUP_DELAY;
     std::shared_ptr<llarp::KeyManager> m_keyManager;
     std::shared_ptr<PeerDb> m_peerDb;
 

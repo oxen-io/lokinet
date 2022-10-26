@@ -34,7 +34,9 @@ namespace llarp
 
     virtual void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& greenlist) = 0;
 
     virtual void
     GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) = 0;
@@ -47,6 +49,12 @@ namespace llarp
 
     virtual bool
     IsGreylisted(const RouterID& remote) const = 0;
+
+    virtual bool
+    IsGreenlisted(const RouterID& remote) const = 0;
+
+    virtual bool
+    IsRegistered(const RouterID& remote) const = 0;
 
     virtual bool
     CheckRC(const RouterContact& rc) const = 0;
