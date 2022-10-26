@@ -1,0 +1,90 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Wed, 26 Oct 2022 17:10:54 -0300
+Subject: Remove useless iterator assignments
+
+A back_inserter doesn't change when you insert onto it.
+---
+ llarp/router/router.cpp  | 18 +++++++++---------
+ llarp/router_contact.cpp |  6 +++---
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/llarp/router/router.cpp b/llarp/router/router.cpp
+index f11a57b..24ad452 100644
+--- a/llarp/router/router.cpp
++++ b/llarp/router/router.cpp
+@@ -888,32 +888,32 @@ namespace llarp
+     {
+       std::string status;
+       auto out = std::back_inserter(status);
+-      out = fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
++      fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
+       if (IsServiceNode())
+       {
+-        out = fmt::format_to(
++        fmt::format_to(
+             out,
+             " snode | known/svc/clients: {}/{}/{}",
+             nodedb()->NumLoaded(),
+             NumberOfConnectedRouters(),
+             NumberOfConnectedClients());
+-        out = fmt::format_to(
++        fmt::format_to(
+             out,
+             " | {} active paths | block {} ",
+             pathContext().CurrentTransitPaths(),
+             (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
+-        out = fmt::format_to(
++        fmt::format_to(
+             out,
+             " | gossip: (next/last) {} / ",
+             time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()});
+         if (auto maybe = _rcGossiper.LastGossipAt())
+-          out = fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
++          fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
+         else
+-          out = fmt::format_to(out, "never");
++          fmt::format_to(out, "never");
+       }
+       else
+       {
+-        out = fmt::format_to(
++        fmt::format_to(
+             out,
+             " client | known/connected: {}/{}",
+             nodedb()->NumLoaded(),
+@@ -921,7 +921,7 @@ namespace llarp
+ 
+         if (auto ep = hiddenServiceContext().GetDefault())
+         {
+-          out = fmt::format_to(
++          fmt::format_to(
+               out,
+               " | paths/endpoints {}/{}",
+               pathContext().CurrentOwnedPaths(),
+@@ -929,7 +929,7 @@ namespace llarp
+ 
+           if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
+           {
+-            out = fmt::format_to(
++            fmt::format_to(
+                 out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
+           }
+         };
+diff --git a/llarp/router_contact.cpp b/llarp/router_contact.cpp
+index 9004c1c..a0655f1 100644
+--- a/llarp/router_contact.cpp
++++ b/llarp/router_contact.cpp
+@@ -116,10 +116,10 @@ namespace llarp
+     std::string result;
+     auto out = std::back_inserter(result);
+     for (const auto& addr : addrs)
+-      out = fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
+-    out = fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
++      fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
++    fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
+     if (routerVersion.has_value())
+-      out = fmt::format_to(out, "router_version={}; ", *routerVersion);
++      fmt::format_to(out, "router_version={}; ", *routerVersion);
+     return result;
+   }
+ 
