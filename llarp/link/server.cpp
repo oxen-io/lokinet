@@ -249,7 +249,7 @@ namespace llarp
   bool
   ILinkLayer::PickAddress(const RouterContact& rc, llarp::AddressInfo& picked) const
   {
-    std::string OurDialect = Name();
+    auto OurDialect = Name();
     for (const auto& addr : rc.addrs)
     {
       if (addr.dialect == OurDialect)
