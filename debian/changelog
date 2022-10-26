@@ -1,3 +1,9 @@
+lokinet (0.9.10~rc2-2~ubuntu2004) focal; urgency=medium
+
+  * proper handling of public ips
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 26 Oct 2022 16:20:23 -0300
+
 lokinet (0.9.10~rc2-1~ubuntu2004) focal; urgency=medium
 
   [ Jason Rhinelander ]
