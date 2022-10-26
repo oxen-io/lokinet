@@ -53,11 +53,12 @@ namespace llarp
       uint16_t m_ResendPriority;
 
       bool
-      operator<(const OutboundMessage& msg) const
+      operator<(const OutboundMessage& other) const
       {
         // yes, the first order is reversed as higher means more important
         // second part is for queue order
-        return msg.m_ResendPriority < m_ResendPriority or m_MsgID < msg.m_MsgID;
+        int prioA = -m_ResendPriority, prioB = -other.m_ResendPriority;
+        return std::tie(prioA, m_MsgID) < std::tie(prioB, other.m_MsgID);
       }
 
       ILinkSession::Packet_t

@@ -924,13 +924,15 @@ namespace llarp
       }
     }
 
-    void Session::HandleCLOS(Packet_t)
+    void
+    Session::HandleCLOS(Packet_t)
     {
       LogInfo("remote closed by ", m_RemoteAddr);
       Close();
     }
 
-    void Session::HandlePING(Packet_t)
+    void
+    Session::HandlePING(Packet_t)
     {
       m_LastRX = m_Parent->Now();
     }
