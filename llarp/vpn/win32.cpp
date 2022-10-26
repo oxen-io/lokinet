@@ -95,8 +95,9 @@ namespace llarp::win32
     llarp::win32::Exec(
         "WindowsPowerShell\\v1.0\\powershell.exe",
         "-Command (Disable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
-
     DefaultRouteViaInterface(vpn, "ADD");
+    // reset ipv4 state using bs windows magic
+    llarp::win32::Exec("netsh.exe", "int ipv4 reset");
   }
 
   void
@@ -106,8 +107,9 @@ namespace llarp::win32
     llarp::win32::Exec(
         "WindowsPowerShell\\v1.0\\powershell.exe",
         "-Command (Enable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
-
     DefaultRouteViaInterface(vpn, "DELETE");
+    // reset ipv4 state using bs windows magic (again, because just in case)
+    llarp::win32::Exec("netsh.exe", "int ipv4 reset");
   }
 
   std::shared_ptr<NetworkInterface>
