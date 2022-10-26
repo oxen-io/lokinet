@@ -119,13 +119,13 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
 // windows cross compile on debian
 local windows_cross_pipeline(name,
                              image,
+                             gui_image=docker_base + 'nodejs-lts',
                              arch='amd64',
                              build_type='Release',
                              lto=false,
                              werror=false,
                              cmake_extra='',
                              local_mirror=true,
-                             gui_zip_url='',
                              extra_cmds=[],
                              jobs=6,
                              allow_fail=false) = {
@@ -137,6 +137,22 @@ local windows_cross_pipeline(name,
   steps: [
     submodules,
     {
+      name: 'GUI',
+      image: gui_image,
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
+        apt_get_quiet + ' update',
+        apt_get_quiet + ' install -y eatmydata',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y p7zip-full wine',
+        'cd gui',
+        'yarn install --frozen-lockfile',
+        'USE_SYSTEM_7ZA=true DISPLAY= WINEDEBUG=-all yarn win32',
+      ],
+    },
+    {
       name: 'build',
       image: image,
       pull: 'always',
@@ -147,11 +163,10 @@ local windows_cross_pipeline(name,
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y p7zip-full build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip icoutils automake libtool librsvg2-bin',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip icoutils automake libtool librsvg2-bin',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh -DSTRIP_SYMBOLS=ON ' +
-        (if std.length(gui_zip_url) > 0 then '-DBUILD_GUI=OFF -DGUI_ZIP_URL=' + gui_zip_url else '') +
+        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh -DSTRIP_SYMBOLS=ON -DGUI_EXE=$${DRONE_WORKSPACE}/gui/release/Lokinet-GUI_portable.exe' +
         ci_dep_mirror(local_mirror),
       ] + extra_cmds,
     },
@@ -378,7 +393,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
 
   // Windows builds (x64)
   windows_cross_pipeline('Windows (amd64)',
-                         docker_base + 'nodejs-lts',
+                         docker_base + 'debian-bookworm',
                          extra_cmds=[
                            './contrib/ci/drone-static-upload.sh',
                          ]),
