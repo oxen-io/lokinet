@@ -141,7 +141,7 @@ local windows_cross_pipeline(name,
       image: image,
       pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
-      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: '64bit' },
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: 'x64' },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
