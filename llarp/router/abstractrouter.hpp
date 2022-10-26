@@ -199,14 +199,12 @@ namespace llarp
     virtual bool
     IsServiceNode() const = 0;
 
-    virtual bool
-    IsActiveServiceNode() const = 0;
-
-    /// If we are running as a service node and appear active, i.e. registered and not
-    /// decommissioned, we should *not* ping core if we know of too few peers, to indicate to core
-    /// we are not in a good state.
-    virtual bool
-    ShouldPingOxen() const = 0;
+    /// Called to determine if we're in a bad state (which gets reported to our oxend) that should
+    /// prevent uptime proofs from going out to the network (so that the error state gets noticed).
+    /// Currently this means we require a decent number of peers whenever we are fully staked
+    /// (active or decommed).
+    virtual std::optional<std::string>
+    OxendErrorState() const = 0;
 
     virtual bool
     StartRpcServer() = 0;
@@ -315,7 +313,9 @@ namespace llarp
     /// set router's service node whitelist
     virtual void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& unfundedlist) = 0;
 
     virtual std::unordered_set<RouterID>
     GetRouterWhitelist() const = 0;

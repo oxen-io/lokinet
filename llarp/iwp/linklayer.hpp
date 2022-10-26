@@ -35,7 +35,7 @@ namespace llarp::iwp
     std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) override;
 
-    const char*
+    std::string_view
     Name() const override;
 
     uint16_t
