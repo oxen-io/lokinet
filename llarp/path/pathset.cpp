@@ -73,7 +73,8 @@ namespace llarp
       }
     }
 
-    void PathSet::Tick(llarp_time_t)
+    void
+    PathSet::Tick(llarp_time_t)
     {
       std::unordered_set<RouterID> endpoints;
       for (auto& item : m_Paths)

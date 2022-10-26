@@ -80,7 +80,6 @@ namespace llarp
       Clear();
 
       std::array<byte_t, 4096> tmp;
-      llarp_buffer_t buf(tmp);
 
       // this can throw
       bool exists = fs::exists(fname);
@@ -94,6 +93,7 @@ namespace llarp
       // check for file
       if (!exists)
       {
+        llarp_buffer_t buf{tmp};
         // regen and encode
         RegenerateKeys();
         if (!BEncode(&buf))
@@ -108,6 +108,7 @@ namespace llarp
         {
           throw std::runtime_error{fmt::format("failed to write {}: {}", fname, e.what())};
         }
+        return;
       }
 
       if (not fs::is_regular_file(fname))
@@ -125,10 +126,11 @@ namespace llarp
         throw std::length_error{"service identity too big"};
       }
       // (don't catch io error exceptions)
-
-      if (!bencode_decode_dict(*this, &buf))
-        throw std::length_error{"could not decode service identity"};
-
+      {
+        llarp_buffer_t buf{tmp};
+        if (!bencode_decode_dict(*this, &buf))
+          throw std::length_error{"could not decode service identity"};
+      }
       auto crypto = CryptoManager::instance();
 
       // ensure that the encryption key is set

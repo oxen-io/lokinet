@@ -68,7 +68,8 @@ namespace llarp
 
     /// recv packet on low layer
     /// not used by utp
-    virtual bool Recv_LL(Packet_t)
+    virtual bool
+    Recv_LL(Packet_t)
     {
       return true;
     }

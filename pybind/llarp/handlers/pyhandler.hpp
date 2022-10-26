@@ -66,13 +66,14 @@ namespace llarp
         return false;
       }
 
-      llarp::huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
+      llarp::huint128_t
+      ObtainIPForAddr(std::variant<service::Address, RouterID>) override
       {
         return {0};
       }
 
-      std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-          huint128_t) const override
+      std::optional<std::variant<service::Address, RouterID>>
+      ObtainAddrForIP(huint128_t) const override
       {
         return std::nullopt;
       }
