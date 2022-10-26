@@ -1413,6 +1413,7 @@ namespace llarp
     params->isRelay = isRelay;
     params->defaultDataDir = m_DataDir;
     ConfigDefinition conf{isRelay};
+    addBackwardsCompatibleConfigOptions(conf);
     initializeConfig(conf, *params);
 
     for (const auto& item : m_Additional)
