@@ -42,7 +42,7 @@ namespace fmt
     format(const llarp::time_delta<Time_Duration>& td, FormatContext& ctx)
     {
       const auto dlt =
-          std::chrono::duration_cast<llarp::Duration_t>(llarp::TimePoint_t::clock::now() - td.at);
+          std::chrono::duration_cast<Time_Duration>(llarp::TimePoint_t::clock::now() - td.at);
       using Parent = formatter<std::string>;
       if (dlt > 0s)
         return Parent::format(fmt::format("{} ago", dlt), ctx);
