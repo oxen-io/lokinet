@@ -127,6 +127,7 @@ additional build requirements:
 
 * nsis
 * cpack
+* rsvg-convert (`librsvg2-bin` package on Debian/Ubuntu)
 
 setup:
 
