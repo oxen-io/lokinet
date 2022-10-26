@@ -13,9 +13,6 @@ option(WITH_WINDOWS_32 "build 32 bit windows" OFF)
 # GNU ld sees fit to merge *all* the .ident sections in object files
 # to .r[o]data section one after the other!
 add_compile_options(-fno-ident -Wa,-mbig-obj)
-# the minimum windows version, set to 6 rn because supporting older windows is hell
-set(_winver 0x0600)
-add_definitions(-D_WIN32_WINNT=${_winver})
 
 if(EMBEDDED_CFG)
   link_libatomic()

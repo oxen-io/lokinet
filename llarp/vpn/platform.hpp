@@ -25,7 +25,7 @@ namespace llarp::vpn
     bool
     operator<(const InterfaceAddress& other) const
     {
-      return range < other.range or fam < other.fam;
+      return std::tie(range, fam) < std::tie(other.range, other.fam);
     }
   };
 

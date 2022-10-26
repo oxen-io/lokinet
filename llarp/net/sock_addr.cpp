@@ -206,15 +206,13 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return (m_addr.sin6_addr < other.m_addr.sin6_addr)
-        or (m_addr.sin6_port < other.m_addr.sin6_port);
+    return m_addr < other.m_addr;
   }
 
   bool
   SockAddr::operator==(const SockAddr& other) const
   {
-    return m_addr.sin6_addr == other.m_addr.sin6_addr
-        and m_addr.sin6_port == other.m_addr.sin6_port;
+    return m_addr == other.m_addr;
   }
 
   huint128_t
