@@ -23,7 +23,7 @@ namespace llarp
   bool
   operator<(const AddressInfo& lhs, const AddressInfo& rhs)
   {
-    return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
+    return std::tie(lhs.rank, lhs.ip, lhs.port) < std::tie(rhs.rank, rhs.ip, rhs.port);
   }
 
   std::variant<nuint32_t, nuint128_t>

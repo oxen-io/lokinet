@@ -160,7 +160,8 @@ namespace llarp
       return OwnedBuffer::copy_used(buf);
     }
 
-    void Message::AddServFail(RR_TTL_t)
+    void
+    Message::AddServFail(RR_TTL_t)
     {
       if (questions.size())
       {
@@ -386,7 +387,8 @@ namespace llarp
       std::copy_n(buf.base, buf.sz, rec.rData.data());
     }
 
-    void Message::AddNXReply(RR_TTL_t)
+    void
+    Message::AddNXReply(RR_TTL_t)
     {
       if (questions.size())
       {

@@ -26,7 +26,7 @@ namespace llarp::iwp
       , m_Inbound{allowInbound}
   {}
 
-  const char*
+  std::string_view
   LinkLayer::Name() const
   {
     return "iwp";
