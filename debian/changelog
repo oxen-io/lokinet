@@ -1,3 +1,9 @@
+lokinet (0.9.10~rc2-2~ubuntu1804) bionic; urgency=medium
+
+  * proper handling of public ips
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 26 Oct 2022 16:20:21 -0300
+
 lokinet (0.9.10~rc2-1~ubuntu1804) bionic; urgency=medium
 
   [ Jason Rhinelander ]
