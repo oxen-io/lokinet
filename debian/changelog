@@ -1,3 +1,9 @@
+lokinet (0.9.10~rc2-2.1~deb12) bookworm; urgency=medium
+
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 26 Oct 2022 19:04:19 -0300
+
 lokinet (0.9.10~rc2-2~deb12) bookworm; urgency=medium
 
   * proper handling of public ips
