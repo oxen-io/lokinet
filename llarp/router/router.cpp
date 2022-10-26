@@ -888,32 +888,32 @@ namespace llarp
     {
       std::string status;
       auto out = std::back_inserter(status);
-      out = fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
+      fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
       if (IsServiceNode())
       {
-        out = fmt::format_to(
+        fmt::format_to(
             out,
             " snode | known/svc/clients: {}/{}/{}",
             nodedb()->NumLoaded(),
             NumberOfConnectedRouters(),
             NumberOfConnectedClients());
-        out = fmt::format_to(
+        fmt::format_to(
             out,
             " | {} active paths | block {} ",
             pathContext().CurrentTransitPaths(),
             (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
-        out = fmt::format_to(
+        fmt::format_to(
             out,
             " | gossip: (next/last) {} / ",
             time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()});
         if (auto maybe = _rcGossiper.LastGossipAt())
-          out = fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
+          fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
         else
-          out = fmt::format_to(out, "never");
+          fmt::format_to(out, "never");
       }
       else
       {
-        out = fmt::format_to(
+        fmt::format_to(
             out,
             " client | known/connected: {}/{}",
             nodedb()->NumLoaded(),
@@ -921,7 +921,7 @@ namespace llarp
 
         if (auto ep = hiddenServiceContext().GetDefault())
         {
-          out = fmt::format_to(
+          fmt::format_to(
               out,
               " | paths/endpoints {}/{}",
               pathContext().CurrentOwnedPaths(),
@@ -929,7 +929,7 @@ namespace llarp
 
           if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
           {
-            out = fmt::format_to(
+            fmt::format_to(
                 out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
           }
         };
