@@ -1287,8 +1287,18 @@ namespace llarp
         // override ip and port as needed
         if (_ourAddress)
         {
-          if (not Net().IsBogon(ai.ip))
-            throw std::runtime_error{"cannot override public ip, it is already set"};
+          const auto ai_ip = ai.IP();
+          const auto override_ip = _ourAddress->getIP();
+
+          auto ai_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, ai_ip);
+          auto override_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, override_ip);
+
+          if ((not Net().IsBogonIP(ai_ip)) and (not Net().IsBogonIP(override_ip))
+              and ai_ip != override_ip)
+            throw std::runtime_error{
+                "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
+                "[router]:public-ip setting or set a bind address in the [bind] section of the "
+                "config."_format(ai_ip_str, override_ip_str)};
           ai.fromSockAddr(*_ourAddress);
         }
         if (RouterContact::BlockBogons && Net().IsBogon(ai.ip))
