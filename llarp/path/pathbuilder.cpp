@@ -335,7 +335,8 @@ namespace llarp
         Build(*maybe, roles);
     }
 
-    bool Builder::UrgentBuild(llarp_time_t) const
+    bool
+    Builder::UrgentBuild(llarp_time_t) const
     {
       return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
     }

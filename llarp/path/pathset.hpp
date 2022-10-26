@@ -210,19 +210,22 @@ namespace llarp
       BlacklistSNode(const RouterID) = 0;
 
       /// override me in subtype
-      virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
+      virtual bool
+      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
+      virtual bool
+      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
+      virtual bool
+      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
       {
         return false;
       }

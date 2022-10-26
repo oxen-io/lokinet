@@ -55,8 +55,8 @@ namespace llarp
       bool
       operator<(const Introduction& other) const
       {
-        return expiresAt < other.expiresAt || pathID < other.pathID || router < other.router
-            || version < other.version || latency < other.latency;
+        return std::tie(expiresAt, pathID, router, version, latency)
+            < std::tie(other.expiresAt, other.pathID, other.router, other.version, other.latency);
       }
 
       bool

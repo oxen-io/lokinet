@@ -521,6 +521,9 @@ namespace llarp
         return false;
       }
 
+      bool
+      ReadyToDoLookup(std::optional<uint64_t> numPaths = std::nullopt) const;
+
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;

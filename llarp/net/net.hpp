@@ -34,62 +34,16 @@
 
 namespace llarp
 {
-  inline bool
-  operator==(const in_addr& a, const in_addr& b)
+  inline int
+  cmp(const in_addr& a, const in_addr& b)
   {
-    return memcmp(&a, &b, sizeof(in_addr)) == 0;
+    return memcmp(&a, &b, sizeof(in_addr));
   }
 
-  inline bool
-  operator==(const in6_addr& a, const in6_addr& b)
+  inline int
+  cmp(const in6_addr& a, const in6_addr& b)
   {
-    return memcmp(&a, &b, sizeof(in6_addr)) == 0;
-  }
-
-  inline bool
-  operator==(const sockaddr_in& a, const sockaddr_in& b)
-  {
-    return a.sin_port == b.sin_port and a.sin_addr.s_addr == b.sin_addr.s_addr;
-  }
-
-  inline bool
-  operator==(const sockaddr_in6& a, const sockaddr_in6& b)
-  {
-    return a.sin6_port == b.sin6_port and a.sin6_addr == b.sin6_addr;
-  }
-
-  inline bool
-  operator==(const sockaddr& a, const sockaddr& b)
-  {
-    if (a.sa_family != b.sa_family)
-      return false;
-    switch (a.sa_family)
-    {
-      case AF_INET:
-        return reinterpret_cast<const sockaddr_in&>(a) == reinterpret_cast<const sockaddr_in&>(b);
-      case AF_INET6:
-        return reinterpret_cast<const sockaddr_in6&>(a) == reinterpret_cast<const sockaddr_in6&>(b);
-      default:
-        return false;
-    }
-  }
-
-  inline bool
-  operator<(const in_addr& a, const in_addr& b)
-  {
-    return memcmp(&a, &b, sizeof(in_addr)) < 0;
-  }
-
-  inline bool
-  operator<(const in6_addr& a, const in6_addr& b)
-  {
-    return memcmp(&a, &b, sizeof(in6_addr)) < 0;
-  }
-
-  inline bool
-  operator<(const sockaddr_in6& a, const sockaddr_in6& b)
-  {
-    return a.sin6_addr < b.sin6_addr or a.sin6_port < b.sin6_port;
+    return memcmp(&a, &b, sizeof(in6_addr));
   }
 
   namespace net
@@ -261,3 +215,61 @@ namespace llarp
   }  // namespace net
 
 }  // namespace llarp
+
+inline bool
+operator==(const in_addr& a, const in_addr& b)
+{
+  return llarp::cmp(a, b) == 0;
+}
+
+inline bool
+operator==(const in6_addr& a, const in6_addr& b)
+{
+  return llarp::cmp(a, b) == 0;
+}
+
+inline bool
+operator==(const sockaddr_in& a, const sockaddr_in& b)
+{
+  return a.sin_port == b.sin_port and a.sin_addr.s_addr == b.sin_addr.s_addr;
+}
+
+inline bool
+operator==(const sockaddr_in6& a, const sockaddr_in6& b)
+{
+  return a.sin6_port == b.sin6_port and a.sin6_addr == b.sin6_addr;
+}
+
+inline bool
+operator==(const sockaddr& a, const sockaddr& b)
+{
+  if (a.sa_family != b.sa_family)
+    return false;
+  switch (a.sa_family)
+  {
+    case AF_INET:
+      return reinterpret_cast<const sockaddr_in&>(a) == reinterpret_cast<const sockaddr_in&>(b);
+    case AF_INET6:
+      return reinterpret_cast<const sockaddr_in6&>(a) == reinterpret_cast<const sockaddr_in6&>(b);
+    default:
+      return false;
+  }
+}
+
+inline bool
+operator<(const in_addr& a, const in_addr& b)
+{
+  return llarp::cmp(a, b) < 0;
+}
+
+inline bool
+operator<(const in6_addr& a, const in6_addr& b)
+{
+  return llarp::cmp(a, b) < 0;
+}
+
+inline bool
+operator<(const sockaddr_in6& a, const sockaddr_in6& b)
+{
+  return std::tie(a.sin6_addr, a.sin6_port) < std::tie(b.sin6_addr, b.sin6_port);
+}

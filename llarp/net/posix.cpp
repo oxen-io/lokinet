@@ -93,7 +93,8 @@ namespace llarp::net
       return IPRange::FindPrivateRange(currentRanges);
     }
 
-    std::optional<int> GetInterfaceIndex(ipaddr_t) const override
+    std::optional<int>
+    GetInterfaceIndex(ipaddr_t) const override
     {
       // todo: implement me
       return std::nullopt;

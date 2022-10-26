@@ -135,7 +135,7 @@ namespace llarp
     virtual void
     Stop();
 
-    virtual const char*
+    virtual std::string_view
     Name() const = 0;
 
     util::StatusObject
@@ -179,7 +179,7 @@ namespace llarp
     bool
     IsCompatable(const llarp::RouterContact& other) const
     {
-      const std::string us = Name();
+      const auto us = Name();
       for (const auto& ai : other.addrs)
         if (ai.dialect == us)
           return true;
@@ -207,7 +207,9 @@ namespace llarp
     bool
     operator<(const ILinkLayer& other) const
     {
-      return Rank() < other.Rank() || Name() < other.Name() || m_ourAddr < other.m_ourAddr;
+      auto rankA = Rank(), rankB = other.Rank();
+      auto nameA = Name(), nameB = other.Name();
+      return std::tie(rankA, nameA, m_ourAddr) < std::tie(rankB, nameB, other.m_ourAddr);
     }
 
     /// called by link session to remove a pending session who is timed out
