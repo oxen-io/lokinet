@@ -1,3 +1,53 @@
+lokinet (0.9.10~rc2-1~ubuntu2004) focal; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix multi-field < ordering
+  * Clean up oxend service node list handling
+  * Log demotion
+  * Oxend error ping + unfunded tracking
+  * zlib version bump
+
+  [ jeff ]
+  * lint
+
+  [ Jeff Becker ]
+  * when running as a client squelch warnings about snode status and make sure we connect out
+  * cancel pending queries on down.
+  * dont do queries while down
+
+  [ jeff ]
+  * format
+
+  [ Jason Rhinelander ]
+  * Config setting documentation edits
+
+  [ Thomas Winget ]
+  * use first gateway, not last...
+
+  [ Jason Rhinelander ]
+  * Update static deps to latest stable versions
+  * Update submodules to latest version:
+  * CI fixes
+  * Set _WIN32_WINNT in static deps
+  * Rename darwin -> macos in uploaded build file
+  * Bump clang-format to 14
+
+  [ Jeff Becker ]
+  * fixes issue #2029
+
+  [ Thomas Winget ]
+  * add 'networkReady' to endpoint status
+  * clarify strict-connect usage and enforce minimum of 2 nodes
+
+  [ Jason Rhinelander ]
+  * Restart multi-sn lokinet-routers.target on upgrade
+  * Fix backwards compatible config option handler
+  * Debug Router::Configure; initialize logging earlier
+  * Remove obsolete junk
+  * Fix bootstrap list bad bootstrap skipping
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 26 Oct 2022 10:48:52 -0300
+
 lokinet (0.9.10~rc1-1~ubuntu2004) focal; urgency=medium
 
   [ Jeff ]
