@@ -25,69 +25,25 @@ namespace llarp
   nlohmann::json
   to_json(const Duration_t& t);
 
-  template <typename Time_Duration>
-  struct time_delta
-  {
-    const TimePoint_t at;
-  };
+  // Returns a string such as "27m13s ago" or "in 1h12m" or "now".  You get precision of minutes
+  // (for >=1h), seconds (>=10s), or milliseconds.  The `now_threshold` argument controls how close
+  // to current time (default 1s) the time has to be to get the "now" argument.
+  std::string
+  short_time_from_now(const TimePoint_t& t, const Duration_t& now_threshold = 1s);
+
+  // Makes a duration human readable.  This always has full millisecond precision, but formats up to
+  // hours. E.g. "-4h04m12.123s" or "1234h00m09.876s.
+  std::string
+  ToString(Duration_t t);
+
 }  // namespace llarp
 
-namespace fmt
-{
-  template <typename Time_Duration>
-  struct formatter<llarp::time_delta<Time_Duration>> : formatter<std::string>
-  {
-    template <typename FormatContext>
-    auto
-    format(const llarp::time_delta<Time_Duration>& td, FormatContext& ctx)
-    {
-      const auto dlt =
-          std::chrono::duration_cast<Time_Duration>(llarp::TimePoint_t::clock::now() - td.at);
-      using Parent = formatter<std::string>;
-      if (dlt > 0s)
-        return Parent::format(fmt::format("{} ago", dlt), ctx);
-      if (dlt < 0s)
-        return Parent::format(fmt::format("in {}", -dlt), ctx);
-      return Parent::format("now", ctx);
-    }
-  };
-
-  template <>
-  struct formatter<llarp::Duration_t> : formatter<std::string>
-  {
-    template <typename FormatContext>
-    auto
-    format(llarp::Duration_t elapsed, FormatContext& ctx)
-    {
-      bool neg = elapsed < 0s;
-      if (neg)
-        elapsed = -elapsed;
-      const auto hours = std::chrono::duration_cast<std::chrono::hours>(elapsed).count();
-      const auto mins = (std::chrono::duration_cast<std::chrono::minutes>(elapsed) % 1h).count();
-      const auto secs = (std::chrono::duration_cast<std::chrono::seconds>(elapsed) % 1min).count();
-      const auto ms = (std::chrono::duration_cast<std::chrono::milliseconds>(elapsed) % 1s).count();
-      return formatter<std::string>::format(
-          fmt::format(
-              elapsed >= 1h         ? "{0}{1:d}h{2:02d}m{3:02d}.{4:03d}s"
-                  : elapsed >= 1min ? "{0}{2:d}m{3:02d}.{4:03d}s"
-                                    : "{0}{3:d}.{4:03d}s",
-              neg ? "-" : "",
-              hours,
-              mins,
-              secs,
-              ms),
-          ctx);
-    }
-  };
-
-  template <>
-  struct formatter<llarp::TimePoint_t> : formatter<std::string>
-  {
-    template <typename FormatContext>
-    auto
-    format(const llarp::TimePoint_t& tp, FormatContext& ctx)
-    {
-      return formatter<std::string>::format(fmt::format("{:%c %Z}", tp), ctx);
-    }
-  };
-}  // namespace fmt
+// Duration_t is currently just a typedef to std::chrono::milliseconds, and specializing
+// that seems wrong; leaving this here to remind us not to add it back in again.
+// namespace fmt
+//{
+//  template <>
+//  struct formatter<llarp::Duration_t>
+//  {
+//  };
+//}  // namespace fmt

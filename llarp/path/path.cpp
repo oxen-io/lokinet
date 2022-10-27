@@ -308,7 +308,7 @@ namespace llarp
       }
       else if (st == ePathEstablished && _status == ePathBuilding)
       {
-        LogInfo("path ", Name(), " is built, took ", now - buildStarted);
+        LogInfo("path ", Name(), " is built, took ", ToString(now - buildStarted));
       }
       else if (st == ePathTimeout && _status == ePathEstablished)
       {
@@ -449,7 +449,7 @@ namespace llarp
           const auto dlt = now - buildStarted;
           if (dlt >= path::build_timeout)
           {
-            LogWarn(Name(), " waited for ", dlt, " and no path was built");
+            LogWarn(Name(), " waited for ", ToString(dlt), " and no path was built");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathExpired, now);
             return;
@@ -473,7 +473,7 @@ namespace llarp
         dlt = now - m_LastRecvMessage;
         if (dlt >= path::alive_timeout)
         {
-          LogWarn(Name(), " waited for ", dlt, " and path looks dead");
+          LogWarn(Name(), " waited for ", ToString(dlt), " and path looks dead");
           r->routerProfiling().MarkPathFail(this);
           EnterState(ePathTimeout, now);
         }
