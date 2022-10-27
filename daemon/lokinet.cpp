@@ -647,13 +647,16 @@ SvcCtrlHandler(DWORD dwCtrl)
   switch (dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
+      // tell servicve we are stopping
       ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
-      // Signal the service to stop.
+      // do the actual tear down
       handle_signal(SIGINT);
       return;
 
     case SERVICE_CONTROL_INTERROGATE:
-      break;
+      // report status
+      SetServiceStatus(SvcStatusHandle, &SvcStatus);
+      return;
 
     default:
       break;
