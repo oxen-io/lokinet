@@ -11,14 +11,11 @@ extern "C"
 {
 #include <windivert.h>
 }
-namespace L = llarp::log;
 
 namespace llarp::win32
 {
-  namespace
-  {
-    auto cat = L::Cat("windivert");
-  }
+  static auto logcat = log::Cat("windivert");
+
   namespace wd
   {
     namespace
@@ -73,7 +70,7 @@ namespace llarp::win32
           : m_Wake{wake}, m_RecvQueue{recv_queue_size}
       {
         wd::Initialize();
-        L::info(cat, "load windivert with filterspec: '{}'", filter_spec);
+        log::info(logcat, "load windivert with filterspec: '{}'", filter_spec);
 
         m_Handle = wd::open(filter_spec.c_str(), WINDIVERT_LAYER_NETWORK, 0, 0);
         if (auto err = GetLastError())
@@ -95,14 +92,19 @@ namespace llarp::win32
         if (not wd::recv(m_Handle, pkt.data(), pkt.size(), &sz, &addr))
         {
           auto err = GetLastError();
-          if (err and err != ERROR_BROKEN_PIPE)
-            throw win32::error{
-                err, fmt::format("failed to receive packet from windivert (code={})", err)};
-          else if (err)
+          if (err == ERROR_NO_DATA)
+            return std::nullopt;
+          if (err == ERROR_BROKEN_PIPE)
+          {
             SetLastError(0);
-          return std::nullopt;
+            return std::nullopt;
+          }
+
+          log::critical(logcat, "error receiving packet: {}", err);
+          throw win32::error{
+              err, fmt::format("failed to receive packet from windivert (code={})", err)};
         }
-        L::trace(cat, "got packet of size {}B", sz);
+        log::trace(logcat, "got packet of size {}B", sz);
         pkt.resize(sz);
         return Packet{std::move(pkt), std::move(addr)};
       }
@@ -112,7 +114,7 @@ namespace llarp::win32
       {
         const auto& pkt = w_pkt.pkt;
         const auto* addr = &w_pkt.addr;
-        L::trace(cat, "send dns packet of size {}B", pkt.size());
+        log::trace(logcat, "send dns packet of size {}B", pkt.size());
         UINT sz{};
         if (wd::send(m_Handle, pkt.data(), pkt.size(), &sz, addr))
           return;
@@ -147,12 +149,12 @@ namespace llarp::win32
       void
       Start() override
       {
-        L::info(cat, "starting windivert");
+        log::info(logcat, "starting windivert");
         if (m_Runner.joinable())
           throw std::runtime_error{"windivert thread is already running"};
 
         auto read_loop = [this]() {
-          log::debug(cat, "windivert read loop start");
+          log::debug(logcat, "windivert read loop start");
           while (true)
           {
             // in the read loop, read packets until they stop coming in
@@ -166,7 +168,7 @@ namespace llarp::win32
             else  // leave loop on read fail
               break;
           }
-          log::debug(cat, "windivert read loop end");
+          log::debug(logcat, "windivert read loop end");
         };
 
         m_Runner = std::thread{std::move(read_loop)};
@@ -175,7 +177,7 @@ namespace llarp::win32
       void
       Stop() override
       {
-        L::info(cat, "stopping windivert");
+        log::info(logcat, "stopping windivert");
         wd::shutdown(m_Handle, WINDIVERT_SHUTDOWN_BOTH);
         m_Runner.join();
       }

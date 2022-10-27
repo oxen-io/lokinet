@@ -592,16 +592,18 @@ SvcCtrlHandler(DWORD dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
       // tell service we are stopping
-      llarp::log::info(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
+      llarp::log::debug(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
       llarp::sys::service_manager->system_changed_our_state(llarp::sys::ServiceState::Stopping);
       return;
 
     case SERVICE_CONTROL_INTERROGATE:
+      llarp::log::debug(logcat, "Got win32 service interrogate signal");
       // report status
       llarp::sys::service_manager->report_our_state();
       return;
 
     default:
+      llarp::log::debug(logcat, "Got win32 unhandled signal {}", dwCtrl);
       break;
   }
 }

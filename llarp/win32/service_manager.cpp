@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <llarp.hpp>
+#include <llarp/util/logging.hpp>
 #include "service_manager.hpp"
 #include <dbghelp.h>
 #include <cassert>
@@ -8,6 +9,8 @@
 
 namespace llarp::sys
 {
+
+  static auto logcat = log::Cat("svc");
 
   namespace
   {
@@ -53,6 +56,21 @@ namespace llarp::sys
   {
     if (m_disable)
       return;
+
+    log::debug(
+        logcat,
+        "Reporting Windows service status '{}', exit code {}, wait hint {}, dwCP {}, dwCA {}",
+        _status.dwCurrentState == SERVICE_START_PENDING ? "start pending"
+            : _status.dwCurrentState == SERVICE_RUNNING ? "running"
+            : _status.dwCurrentState == SERVICE_STOPPED ? "stopped"
+            : _status.dwCurrentState == SERVICE_STOP_PENDING
+            ? "stop pending"
+            : fmt::format("unknown: {}", _status.dwCurrentState),
+        _status.dwWin32ExitCode,
+        _status.dwWaitHint,
+        _status.dwCheckPoint,
+        _status.dwControlsAccepted);
+
     SetServiceStatus(handle, &_status);
   }
 
@@ -61,19 +79,28 @@ namespace llarp::sys
   {
     if (st == ServiceState::Failed)
     {
-      _status.dwWin32ExitCode = 2;  // TODO: propagate more info ?
+      _status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
+      _status.dwServiceSpecificExitCode = 2;  // TODO: propagate more info ?
       report_our_state();
     }
     else if (auto maybe_state = to_win32_state(st))
     {
       auto new_state = *maybe_state;
       assert(_status.dwCurrentState != new_state);
+      _status.dwWin32ExitCode = NO_ERROR;
       _status.dwCurrentState = new_state;
+      _status.dwControlsAccepted = st == ServiceState::Running ? SERVICE_ACCEPT_STOP : 0;
       // tell windows it takes 5s at most to start or stop
       if (st == ServiceState::Starting or st == ServiceState::Stopping)
+      {
         _status.dwWaitHint = 5000;
-      else  // other state changes are a half second
-        _status.dwWaitHint = 500;
+        _status.dwCheckPoint++;
+      }
+      else
+      {
+        _status.dwWaitHint = 0;
+        _status.dwCheckPoint = 0;
+      }
       report_our_state();
     }
   }

@@ -11,6 +11,7 @@ namespace llarp
 {
   namespace service
   {
+    static auto logcat = log::Cat("service");
     namespace
     {
       using EndpointConstructor =

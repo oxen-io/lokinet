@@ -49,6 +49,9 @@ namespace llarp
 {
   namespace service
   {
+
+    static auto logcat = log::Cat("endpoint");
+
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder{r, 3, path::default_len}
         , context{parent}
