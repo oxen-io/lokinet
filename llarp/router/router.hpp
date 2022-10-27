@@ -35,6 +35,7 @@
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/service_manager.hpp>
 
 #include <functional>
 #include <list>

@@ -7,7 +7,10 @@
 #include <llarp/util/str.hpp>
 
 #ifdef _WIN32
+#include <llarp/win32/service_manager.hpp>
 #include <dbghelp.h>
+#else
+#include <llarp/util/service_manager.hpp>
 #endif
 
 #include <csignal>
@@ -21,18 +24,17 @@ int
 lokinet_main(int, char**);
 
 #ifdef _WIN32
-#include <strsafe.h>
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
-BOOL ReportSvcStatus(DWORD, DWORD, DWORD);
+
 VOID
 insert_description();
-SERVICE_STATUS SvcStatus;
-SERVICE_STATUS_HANDLE SvcStatusHandle;
-bool start_as_daemon = false;
+
 #endif
+
+bool run_as_daemon{false};
 
 static auto logcat = llarp::log::Cat("main");
 std::shared_ptr<llarp::Context> ctx;
@@ -84,9 +86,6 @@ install_win32_daemon()
     llarp::LogError("Cannot install service ", GetLastError());
     return;
   }
-  // just put the flag here. we eat it later on and specify the
-  // config path in the daemon entry point
-  StringCchCat(szPath.data(), 1024, " --win32-daemon");
 
   // Get a handle to the SCM database.
   schSCManager = OpenSCManager(
@@ -294,37 +293,6 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
 }
 
 #ifdef _WIN32
-void
-TellWindowsServiceStopped()
-{
-  ::WSACleanup();
-  if (not start_as_daemon)
-    return;
-
-  llarp::LogInfo("Telling Windows the service has stopped.");
-  if (not ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0))
-  {
-    auto error_code = GetLastError();
-    if (error_code == ERROR_INVALID_DATA)
-      llarp::LogError(
-          "SetServiceStatus failed: \"The specified service status structure is invalid.\"");
-    else if (error_code == ERROR_INVALID_HANDLE)
-      llarp::LogError("SetServiceStatus failed: \"The specified handle is invalid.\"");
-    else
-      llarp::LogError("SetServiceStatus failed with an unknown error.");
-  }
-}
-
-class WindowsServiceStopped
-{
- public:
-  WindowsServiceStopped() = default;
-
-  ~WindowsServiceStopped()
-  {
-    TellWindowsServiceStopped();
-  }
-};
 
 /// minidump generation for windows jizz
 /// will make a coredump when there is an unhandled exception
@@ -370,9 +338,9 @@ main(int argc, char* argv[])
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {
       {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
-  if (lstrcmpi(argv[1], "--win32-daemon") == 0)
+  if (std::string{argv[1]} == "--win32-daemon")
   {
-    start_as_daemon = true;
+    run_as_daemon = true;
     StartServiceCtrlDispatcher(DispatchTable);
   }
   else
@@ -383,6 +351,10 @@ main(int argc, char* argv[])
 int
 lokinet_main(int argc, char** argv)
 {
+  // if we are not running as a service disable reporting
+  if (llarp::platform::is_windows and not run_as_daemon)
+    llarp::sys::service_manager->disable();
+
   if (auto result = Lokinet_INIT())
     return result;
 
@@ -398,7 +370,6 @@ lokinet_main(int argc, char** argv)
   opts.showBanner = false;
 
 #ifdef _WIN32
-  WindowsServiceStopped stopped_raii;
   if (startWinsock())
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
@@ -545,12 +516,8 @@ lokinet_main(int argc, char** argv)
   SetUnhandledExceptionFilter(&GenerateDump);
 #endif
 
-  std::thread main_thread{[&] { run_main_context(configFile, opts); }};
+  std::thread main_thread{[configFile, opts] { run_main_context(configFile, opts); }};
   auto ftr = exit_code.get_future();
-
-#ifdef _WIN32
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-#endif
 
   do
   {
@@ -582,9 +549,7 @@ lokinet_main(int argc, char** argv)
         llarp::log::critical(deadlock_cat, wtf);
         llarp::log::flush();
       }
-#ifdef _WIN32
-      TellWindowsServiceStopped();
-#endif
+      llarp::sys::service_manager->failed();
       std::abort();
     }
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
@@ -609,6 +574,7 @@ lokinet_main(int argc, char** argv)
   }
 
   llarp::log::flush();
+  llarp::sys::service_manager->stopped();
   if (ctx)
   {
     ctx.reset();
@@ -617,29 +583,6 @@ lokinet_main(int argc, char** argv)
 }
 
 #ifdef _WIN32
-BOOL
-ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
-{
-  static DWORD dwCheckPoint = 1;
-
-  // Fill in the SERVICE_STATUS structure.
-  SvcStatus.dwCurrentState = dwCurrentState;
-  SvcStatus.dwWin32ExitCode = dwWin32ExitCode;
-  SvcStatus.dwWaitHint = dwWaitHint;
-
-  if (dwCurrentState == SERVICE_START_PENDING)
-    SvcStatus.dwControlsAccepted = 0;
-  else
-    SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-
-  if ((dwCurrentState == SERVICE_RUNNING) || (dwCurrentState == SERVICE_STOPPED))
-    SvcStatus.dwCheckPoint = 0;
-  else
-    SvcStatus.dwCheckPoint = dwCheckPoint++;
-
-  // Report the status of the service to the SCM.
-  return SetServiceStatus(SvcStatusHandle, &SvcStatus);
-}
 
 VOID FAR PASCAL
 SvcCtrlHandler(DWORD dwCtrl)
@@ -651,14 +594,12 @@ SvcCtrlHandler(DWORD dwCtrl)
     case SERVICE_CONTROL_STOP:
       // tell service we are stopping
       llarp::log::info(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
-      ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
-      // do the actual tear down
-      handle_signal(SIGINT);
+      llarp::sys::service_manager->system_changed_our_state(llarp::sys::ServiceState::Stopping);
       return;
 
     case SERVICE_CONTROL_INTERROGATE:
       // report status
-      SetServiceStatus(SvcStatusHandle, &SvcStatus);
+      llarp::sys::service_manager->report_our_state();
       return;
 
     default:
@@ -673,20 +614,14 @@ VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR* argv)
 {
   // Register the handler function for the service
-  SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
+  auto* svc = dynamic_cast<llarp::sys::SVC_Manager*>(llarp::sys::service_manager);
+  svc->handle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
 
-  if (!SvcStatusHandle)
+  if (svc->handle == nullptr)
   {
     llarp::LogError("failed to register daemon control handler");
     return;
   }
-
-  // These SERVICE_STATUS members remain as set here
-  SvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-  SvcStatus.dwServiceSpecificExitCode = 0;
-
-  // Report initial status to the SCM
-  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
 
   // we hard code the args to lokinet_main.
   // we yoink argv[0] (lokinet.exe path) and pass in the new args.

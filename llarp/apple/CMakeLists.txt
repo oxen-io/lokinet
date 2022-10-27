@@ -13,7 +13,7 @@ find_library(COREFOUNDATION CoreFoundation REQUIRED)
 
 target_link_libraries(lokinet-util PUBLIC ${FOUNDATION})
 
-target_sources(lokinet-platform PRIVATE vpn_platform.cpp vpn_interface.cpp route_manager.cpp context_wrapper.cpp)
+target_sources(lokinet-platform PRIVATE vpn_platform.cpp vpn_interface.cpp route_manager.cpp context_wrapper.cpp service_manager.cpp)
 
 add_executable(lokinet-extension MACOSX_BUNDLE
   PacketTunnelProvider.m

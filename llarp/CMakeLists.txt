@@ -49,17 +49,18 @@ target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util 
 target_link_libraries(lokinet-platform PRIVATE oxenmq::oxenmq)
 
 if (ANDROID)
-  target_sources(lokinet-platform PRIVATE android/ifaddrs.c)
+  target_sources(lokinet-platform PRIVATE android/ifaddrs.c android/service_manager.cpp)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  target_sources(lokinet-platform PRIVATE linux/dbus.cpp)
+  target_sources(lokinet-platform PRIVATE linux/dbus.cpp linux/service_manager.cpp)
 endif()
 
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
     net/win32.cpp
     vpn/win32.cpp
+    win32/service_manager.cpp
     win32/exec.cpp)
   add_library(lokinet-win32 STATIC
     win32/dll.cpp

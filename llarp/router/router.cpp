@@ -393,6 +393,8 @@ namespace llarp
   bool
   Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
+    llarp::sys::service_manager->starting();
+
     m_Config = std::move(c);
     auto& conf = *m_Config;
 
@@ -1399,9 +1401,6 @@ namespace llarp
     m_RoutePoker->Start(this);
     _running.store(true);
     _startedAt = Now();
-#if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "READY=1");
-#endif
     if (whitelistRouters)
     {
       // do service node testing if we are in service node whitelist mode
@@ -1474,6 +1473,7 @@ namespace llarp
         }
       });
     }
+    llarp::sys::service_manager->ready();
     return _running;
   }
 
@@ -1525,9 +1525,7 @@ namespace llarp
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
     LogWarn("stopping router hard");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
-#endif
+    llarp::sys::service_manager->stopping();
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     StopLinks();
@@ -1546,9 +1544,7 @@ namespace llarp
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
     LogInfo("stopping router");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
-#endif
+    llarp::sys::service_manager->stopping();
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     paths.PumpUpstream();
