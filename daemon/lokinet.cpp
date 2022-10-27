@@ -687,10 +687,9 @@ win32_daemon_entry(DWORD, LPTSTR* argv)
 
   // Report initial status to the SCM
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
-  // SCM calls this function with different args than a normal "main" expects,
-  // but lokinet_main expects normal args, so set them here instead.  At the
-  // moment we are not passing any args to lokinet_main this way anyway though.
 
+  // we hard code the args to lokinet_main.
+  // we yoink argv[0] (lokinet.exe path) and pass in the new args.
   std::array args = {
       reinterpret_cast<char*>(argv[0]),
       reinterpret_cast<char*>(strdup("c:\\programdata\\lokinet\\lokinet.ini")),
