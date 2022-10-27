@@ -379,7 +379,7 @@ main(int argc, char* argv[])
 }
 
 int
-lokinet_main(int argc, char* argv[])
+lokinet_main(int argc, char** argv)
 {
   if (auto result = Lokinet_INIT())
     return result;
@@ -647,7 +647,7 @@ SvcCtrlHandler(DWORD dwCtrl)
   switch (dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
-      ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+      ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
       // Signal the service to stop.
       handle_signal(SIGINT);
       return;
@@ -664,7 +664,7 @@ SvcCtrlHandler(DWORD dwCtrl)
 // to the original lokinet entry
 // and only gets called if we get --win32-daemon in the command line
 VOID FAR PASCAL
-win32_daemon_entry(DWORD argc, LPTSTR* argv)
+win32_daemon_entry(DWORD, LPTSTR* argv)
 {
   // Register the handler function for the service
   SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
@@ -681,10 +681,14 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
 
   // Report initial status to the SCM
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
-  // SCM clobbers startup args, regenerate them here
-  argc = 2;
-  argv[1] = strdup("c:\\programdata\\lokinet\\lokinet.ini");
-  argv[2] = nullptr;
-  lokinet_main(argc, argv);
+  // SCM calls this function with different args than a normal "main" expects,
+  // but lokinet_main expects normal args, so set them here instead.  At the
+  // moment we are not passing any args to lokinet_main this way anyway though.
+
+  std::array args = {
+      reinterpret_cast<char*>(argv[0]),
+      reinterpret_cast<char*>(strdup("c:\\programdata\\lokinet\\lokinet.ini")),
+      reinterpret_cast<char*>(0)};
+  lokinet_main(args.size() - 1, args.data());
 }
 #endif
