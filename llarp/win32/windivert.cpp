@@ -125,13 +125,13 @@ namespace llarp::win32
         return -1;
       }
 
-      virtual bool
+      bool
       WritePacket(net::IPPacket) override
       {
         return false;
       }
 
-      virtual net::IPPacket
+      net::IPPacket
       ReadNextPacket() override
       {
         auto w_pkt = m_RecvQueue.tryPopFront();
@@ -144,7 +144,7 @@ namespace llarp::win32
         return pkt;
       }
 
-      virtual void
+      void
       Start() override
       {
         L::info(cat, "starting windivert");
@@ -172,7 +172,7 @@ namespace llarp::win32
         m_Runner = std::thread{std::move(read_loop)};
       }
 
-      virtual void
+      void
       Stop() override
       {
         L::info(cat, "stopping windivert");

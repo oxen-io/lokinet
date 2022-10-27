@@ -373,9 +373,8 @@ lokinet_main(int argc, char** argv)
   if (startWinsock())
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
-
-  // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
+
   cxxopts::Options options(
       "lokinet",
       "LokiNET is a free, open source, private, "

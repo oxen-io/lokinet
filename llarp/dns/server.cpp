@@ -16,7 +16,6 @@
 #include "oxen/log.hpp"
 #include "sd_platform.hpp"
 #include "nm_platform.hpp"
-#include "win32_platform.hpp"
 
 namespace llarp::dns
 {
@@ -569,10 +568,6 @@ namespace llarp::dns
     {
       plat->add_impl(std::make_unique<SD_Platform_t>());
       plat->add_impl(std::make_unique<NM_Platform_t>());
-    }
-    if constexpr (llarp::platform::is_windows)
-    {
-      plat->add_impl(std::make_unique<Win32_Platform_t>());
     }
     return plat;
   }
