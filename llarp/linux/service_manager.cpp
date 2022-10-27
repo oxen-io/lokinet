@@ -3,9 +3,11 @@
 #if defined(WITH_SYSTEMD)
 #include <systemd/sd-daemon.h>
 #include <cassert>
+#endif
 
 namespace llarp::sys
 {
+#if defined(WITH_SYSTEMD)
   class SD_Manager : public I_SystemLayerManager
   {
     llarp::sys::ServiceState m_State{ServiceState::Initial};
@@ -51,7 +53,7 @@ namespace llarp::sys
 
   SD_Manager _manager{};
 #else
-NOP_SystemLayerHandler _manager{};
+  NOP_SystemLayerHandler _manager{};
 #endif
 
   I_SystemLayerManager* const service_manager = &_manager;
