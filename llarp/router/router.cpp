@@ -393,6 +393,8 @@ namespace llarp
   bool
   Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
+    llarp::sys::service_manager->starting();
+
     m_Config = std::move(c);
     auto& conf = *m_Config;
 
@@ -870,6 +872,58 @@ namespace llarp
     m_LastStatsReport = now;
   }
 
+  std::string
+  Router::status_line()
+  {
+    std::string status;
+    auto out = std::back_inserter(status);
+    fmt::format_to(out, "v{}", llarp::VERSION_STR);
+    if (IsServiceNode())
+    {
+      fmt::format_to(
+          out,
+          " snode | known/svc/clients: {}/{}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters(),
+          NumberOfConnectedClients());
+      fmt::format_to(
+          out,
+          " | {} active paths | block {} ",
+          pathContext().CurrentTransitPaths(),
+          (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
+      auto maybe_last = _rcGossiper.LastGossipAt();
+      fmt::format_to(
+          out,
+          " | gossip: (next/last) {} / {}",
+          short_time_from_now(_rcGossiper.NextGossipAt()),
+          maybe_last ? short_time_from_now(*maybe_last) : "never");
+    }
+    else
+    {
+      fmt::format_to(
+          out,
+          " client | known/connected: {}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters());
+
+      if (auto ep = hiddenServiceContext().GetDefault())
+      {
+        fmt::format_to(
+            out,
+            " | paths/endpoints {}/{}",
+            pathContext().CurrentOwnedPaths(),
+            ep->UniqueEndpoints());
+
+        if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
+        {
+          fmt::format_to(
+              out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
+        }
+      };
+    }
+    return status;
+  }
+
   void
   Router::Tick()
   {
@@ -884,57 +938,7 @@ namespace llarp
       Thaw();
     }
 
-#if defined(WITH_SYSTEMD)
-    {
-      std::string status;
-      auto out = std::back_inserter(status);
-      fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
-      if (IsServiceNode())
-      {
-        fmt::format_to(
-            out,
-            " snode | known/svc/clients: {}/{}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters(),
-            NumberOfConnectedClients());
-        fmt::format_to(
-            out,
-            " | {} active paths | block {} ",
-            pathContext().CurrentTransitPaths(),
-            (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
-        auto maybe_last = _rcGossiper.LastGossipAt();
-        fmt::format_to(
-            out,
-            " | gossip: (next/last) {} / {}",
-            short_time_from_now(_rcGossiper.NextGossipAt()),
-            maybe_last ? short_time_from_now(*maybe_last) : "never");
-      }
-      else
-      {
-        fmt::format_to(
-            out,
-            " client | known/connected: {}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters());
-
-        if (auto ep = hiddenServiceContext().GetDefault())
-        {
-          fmt::format_to(
-              out,
-              " | paths/endpoints {}/{}",
-              pathContext().CurrentOwnedPaths(),
-              ep->UniqueEndpoints());
-
-          if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
-          {
-            fmt::format_to(
-                out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
-          }
-        };
-      }
-      ::sd_notify(0, status.c_str());
-    }
-#endif
+    llarp::sys::service_manager->report_periodic_stats();
 
     m_PathBuildLimiter.Decay(now);
 
@@ -1399,9 +1403,6 @@ namespace llarp
     m_RoutePoker->Start(this);
     _running.store(true);
     _startedAt = Now();
-#if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "READY=1");
-#endif
     if (whitelistRouters)
     {
       // do service node testing if we are in service node whitelist mode
@@ -1474,6 +1475,7 @@ namespace llarp
         }
       });
     }
+    llarp::sys::service_manager->ready();
     return _running;
   }
 
@@ -1525,9 +1527,7 @@ namespace llarp
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
     LogWarn("stopping router hard");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
-#endif
+    llarp::sys::service_manager->stopping();
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     StopLinks();
@@ -1546,9 +1546,7 @@ namespace llarp
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
     LogInfo("stopping router");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
-#endif
+    llarp::sys::service_manager->stopping();
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     paths.PumpUpstream();

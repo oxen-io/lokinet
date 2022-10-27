@@ -12,6 +12,8 @@
 #include "service/context.hpp"
 #include "util/logging.hpp"
 
+#include <llarp/util/service_manager.hpp>
+
 #include <cxxopts.hpp>
 #include <csignal>
 #include <stdexcept>
@@ -211,6 +213,12 @@ namespace llarp
 
     llarp::LogDebug("free loop");
     loop.reset();
+  }
+
+  Context::Context()
+  {
+    // service_manager is a global and context isnt
+    llarp::sys::service_manager->give_context(this);
   }
 
 }  // namespace llarp
