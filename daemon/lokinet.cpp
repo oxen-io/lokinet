@@ -34,12 +34,14 @@ SERVICE_STATUS_HANDLE SvcStatusHandle;
 bool start_as_daemon = false;
 #endif
 
+static auto logcat = llarp::log::Cat("main");
 std::shared_ptr<llarp::Context> ctx;
 std::promise<int> exit_code;
 
 void
 handle_signal(int sig)
 {
+  llarp::log::info(logcat, "Handling signal {}", sig);
   if (ctx)
     ctx->loop->call([sig] { ctx->HandleSignal(sig); });
   else
@@ -647,7 +649,8 @@ SvcCtrlHandler(DWORD dwCtrl)
   switch (dwCtrl)
   {
     case SERVICE_CONTROL_STOP:
-      // tell servicve we are stopping
+      // tell service we are stopping
+      llarp::log::info(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
       ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
       // do the actual tear down
       handle_signal(SIGINT);

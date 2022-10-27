@@ -20,6 +20,8 @@
 #include <pthread_np.h>
 #endif
 
+static auto logcat = llarp::log::Cat("llarp-context");
+
 namespace llarp
 {
   bool
@@ -159,6 +161,7 @@ namespace llarp
   void
   Context::HandleSignal(int sig)
   {
+    llarp::log::debug(logcat, "Handling signal {}", sig);
     if (sig == SIGINT || sig == SIGTERM)
     {
       SigINT();
@@ -188,6 +191,7 @@ namespace llarp
   {
     if (router)
     {
+      llarp::log::debug(logcat, "Handling SIGINT");
       /// async stop router on sigint
       router->Stop();
     }
