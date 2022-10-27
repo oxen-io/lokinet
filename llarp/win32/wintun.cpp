@@ -233,11 +233,9 @@ namespace llarp::win32
       [[nodiscard]] std::pair<std::unique_ptr<PacketWrapper>, bool>
       ReadPacket() const
       {
-        // typedef so the return statement fits on 1 line :^D
-        using Pkt_ptr = std::unique_ptr<PacketWrapper>;
         DWORD sz;
         if (auto* ptr = read_packet(_impl, &sz))
-          return {Pkt_ptr{new PacketWrapper{ptr, sz, _impl}}, false};
+          return {std::unique_ptr<PacketWrapper>{new PacketWrapper{ptr, sz, _impl}}, false};
         const auto err = GetLastError();
         if (err == ERROR_NO_MORE_ITEMS or err == ERROR_HANDLE_EOF)
         {
