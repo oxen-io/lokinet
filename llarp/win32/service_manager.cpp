@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <chrono>
 #include <llarp.hpp>
 #include <llarp/util/logging.hpp>
 #include "service_manager.hpp"
@@ -90,7 +91,15 @@ namespace llarp::sys
       _status.dwWin32ExitCode = NO_ERROR;
       _status.dwCurrentState = new_state;
       _status.dwControlsAccepted = st == ServiceState::Running ? SERVICE_ACCEPT_STOP : 0;
-      // tell windows it takes 5s at most to start or stop
+      _status.dwWaitHint =
+          std::chrono::milliseconds{
+              st == ServiceState::Starting       ? StartupTimeout
+                  : st == ServiceState::Stopping ? StopTimeout
+                                                 : 0s}
+              .count();
+      // dwCheckPoint gets incremented during a start/stop to tell windows "we're still
+      // starting/stopping" and to reset its must-be-hung timer.  We increment it here so that this
+      // can be called multiple times to tells Windows something is happening.
       if (st == ServiceState::Starting or st == ServiceState::Stopping)
         _status.dwCheckPoint++;
       else
