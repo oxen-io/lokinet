@@ -42,7 +42,7 @@ namespace llarp::sys
     {
       if (m_Context and m_Context->router and not m_disable)
       {
-        auto status = m_Context->router->status_line();
+        auto status = fmt::format("WATCHDOG=1\nSTATUS={}", m_Context->router->status_line());
         ::sd_notify(0, status.c_str());
       }
     }

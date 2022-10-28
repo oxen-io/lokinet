@@ -878,9 +878,8 @@ namespace llarp
   Router::status_line()
   {
     std::string status;
-#if defined(WITH_SYSTEMD)
     auto out = std::back_inserter(status);
-    fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
+    fmt::format_to(out, "v{}", llarp::VERSION_STR);
     if (IsServiceNode())
     {
       fmt::format_to(
@@ -924,7 +923,6 @@ namespace llarp
         }
       };
     }
-#endif
     return status;
   }
 
