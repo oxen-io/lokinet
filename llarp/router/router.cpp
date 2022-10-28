@@ -517,9 +517,10 @@ namespace llarp
   void
   Router::Close()
   {
+    log::info(logcat, "closing");
     if (_onDown)
       _onDown();
-    LogInfo("closing router");
+    log::debug(logcat, "stopping mainloop");
     _loop->stop();
     _running.store(false);
   }
@@ -1498,13 +1499,16 @@ namespace llarp
   Router::AfterStopLinks()
   {
     Close();
+    log::debug(logcat, "stopping oxenmq");
     m_lmq.reset();
   }
 
   void
   Router::AfterStopIssued()
   {
+    log::debug(logcat, "stopping links");
     StopLinks();
+    log::debug(logcat, "saving nodedb to disk");
     nodedb()->SaveToDisk();
     _loop->call_later(200ms, [this] { AfterStopLinks(); });
   }
@@ -1538,18 +1542,28 @@ namespace llarp
   Router::Stop()
   {
     if (!_running)
+    {
+      log::debug(logcat, "Stop called, but not running");
       return;
+    }
     if (_stopping)
+    {
+      log::debug(logcat, "Stop called, but already stopping");
       return;
+    }
 
     _stopping.store(true);
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
-    LogInfo("stopping router");
+    log::info(logcat, "stopping");
     llarp::sys::service_manager->stopping();
+    log::debug(logcat, "stopping hidden service context");
     hiddenServiceContext().StopAll();
+    log::debug(logcat, "stopping exit context");
     _exitContext.Stop();
+    log::debug(logcat, "final upstream pump");
     paths.PumpUpstream();
+    log::debug(logcat, "final links pump");
     _linkManager.PumpLinks();
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
