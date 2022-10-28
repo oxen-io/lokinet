@@ -27,7 +27,7 @@ namespace llarp::sys
     system_changed_our_state(ServiceState st) override;
 
     void
-    report_our_state() override;
+    report_changed_state() override;
 
     void
     we_changed_our_state(ServiceState st) override;

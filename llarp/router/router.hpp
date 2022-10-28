@@ -316,6 +316,9 @@ namespace llarp
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 
+    std::string
+    status_line() override;
+
     using Clock_t = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;
 

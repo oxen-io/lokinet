@@ -2,6 +2,9 @@
 
 #include <systemd/sd-daemon.h>
 #include <cassert>
+#include <llarp.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp::sys
 {
@@ -16,12 +19,11 @@ namespace llarp::sys
     {
       assert(m_State != st);
       m_State = st;
-      report_our_state();
+      report_changed_state();
     }
 
-    /// report our current state to the system layer
     void
-    report_our_state() override
+    report_changed_state() override
     {
       if (m_State == ServiceState::Running)
       {
@@ -36,16 +38,23 @@ namespace llarp::sys
     }
 
     void
+    report_periodic_stats() override
+    {
+      if (m_Context and m_Context->router and not m_disable)
+      {
+        auto status = m_Context->router->status_line();
+        ::sd_notify(0, status.c_str());
+      }
+    }
+
+    void
     system_changed_our_state(ServiceState) override
     {
       // not applicable on systemd
     }
   };
 
-  SD_Manager _manager
-  {
-    ;
-  }
+  SD_Manager _manager{};
   I_SystemLayerManager* const service_manager = &_manager;
 
 }  // namespace llarp::sys

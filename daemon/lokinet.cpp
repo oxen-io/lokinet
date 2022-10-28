@@ -598,8 +598,7 @@ SvcCtrlHandler(DWORD dwCtrl)
 
     case SERVICE_CONTROL_INTERROGATE:
       llarp::log::debug(logcat, "Got win32 service interrogate signal");
-      // report status
-      llarp::sys::service_manager->report_our_state();
+      llarp::sys::service_manager->report_changed_state();
       return;
 
     default:

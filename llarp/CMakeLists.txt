@@ -49,11 +49,16 @@ target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util 
 target_link_libraries(lokinet-platform PRIVATE oxenmq::oxenmq)
 
 if (ANDROID)
-  target_sources(lokinet-platform PRIVATE android/ifaddrs.c android/service_manager.cpp)
+  target_sources(lokinet-platform PRIVATE android/ifaddrs.c util/nop_service_manager.cpp)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  target_sources(lokinet-platform PRIVATE linux/dbus.cpp linux/service_manager.cpp)
+  target_sources(lokinet-platform PRIVATE linux/dbus.cpp)
+  if(WITH_SYSTEMD)
+    target_sources(lokinet-platform PRIVATE linux/sd_service_manager.cpp)
+  else()
+    target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
+  endif()
 endif()
 
 if (WIN32)
@@ -313,6 +318,7 @@ endif()
 
 if(APPLE)
   add_subdirectory(apple)
+  target_sources(lokinet-platform PRIVATE util/nop_system_manager.cpp)
 endif()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)

@@ -53,7 +53,7 @@ namespace llarp::sys
   }
 
   void
-  SVC_Manager::report_our_state()
+  SVC_Manager::report_changed_state()
   {
     if (m_disable)
       return;
@@ -82,7 +82,7 @@ namespace llarp::sys
     {
       _status.dwWin32ExitCode = ERROR_SERVICE_SPECIFIC_ERROR;
       _status.dwServiceSpecificExitCode = 2;  // TODO: propagate more info ?
-      report_our_state();
+      report_changed_state();
     }
     else if (auto maybe_state = to_win32_state(st))
     {
@@ -104,9 +104,10 @@ namespace llarp::sys
         _status.dwCheckPoint++;
       else
         _status.dwCheckPoint = 0;
-
-      report_our_state();
+      
+      report_changed_state();
     }
+    
   }
 
   SVC_Manager _manager{};

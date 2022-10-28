@@ -874,6 +874,60 @@ namespace llarp
     m_LastStatsReport = now;
   }
 
+  std::string
+  Router::status_line()
+  {
+    std::string status;
+#if defined(WITH_SYSTEMD)
+    auto out = std::back_inserter(status);
+    fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
+    if (IsServiceNode())
+    {
+      fmt::format_to(
+          out,
+          " snode | known/svc/clients: {}/{}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters(),
+          NumberOfConnectedClients());
+      fmt::format_to(
+          out,
+          " | {} active paths | block {} ",
+          pathContext().CurrentTransitPaths(),
+          (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
+      auto maybe_last = _rcGossiper.LastGossipAt();
+      fmt::format_to(
+          out,
+          " | gossip: (next/last) {} / {}",
+          short_time_from_now(_rcGossiper.NextGossipAt()),
+          maybe_last ? short_time_from_now(*maybe_last) : "never");
+    }
+    else
+    {
+      fmt::format_to(
+          out,
+          " client | known/connected: {}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters());
+
+      if (auto ep = hiddenServiceContext().GetDefault())
+      {
+        fmt::format_to(
+            out,
+            " | paths/endpoints {}/{}",
+            pathContext().CurrentOwnedPaths(),
+            ep->UniqueEndpoints());
+
+        if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
+        {
+          fmt::format_to(
+              out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
+        }
+      };
+    }
+#endif
+    return status;
+  }
+
   void
   Router::Tick()
   {
@@ -888,57 +942,7 @@ namespace llarp
       Thaw();
     }
 
-#if defined(WITH_SYSTEMD)
-    {
-      std::string status;
-      auto out = std::back_inserter(status);
-      fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
-      if (IsServiceNode())
-      {
-        fmt::format_to(
-            out,
-            " snode | known/svc/clients: {}/{}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters(),
-            NumberOfConnectedClients());
-        fmt::format_to(
-            out,
-            " | {} active paths | block {} ",
-            pathContext().CurrentTransitPaths(),
-            (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
-        auto maybe_last = _rcGossiper.LastGossipAt();
-        fmt::format_to(
-            out,
-            " | gossip: (next/last) {} / {}",
-            short_time_from_now(_rcGossiper.NextGossipAt()),
-            maybe_last ? short_time_from_now(*maybe_last) : "never");
-      }
-      else
-      {
-        fmt::format_to(
-            out,
-            " client | known/connected: {}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters());
-
-        if (auto ep = hiddenServiceContext().GetDefault())
-        {
-          fmt::format_to(
-              out,
-              " | paths/endpoints {}/{}",
-              pathContext().CurrentOwnedPaths(),
-              ep->UniqueEndpoints());
-
-          if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
-          {
-            fmt::format_to(
-                out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
-          }
-        };
-      }
-      ::sd_notify(0, status.c_str());
-    }
-#endif
+    llarp::sys::service_manager->report_periodic_stats();
 
     m_PathBuildLimiter.Decay(now);
 
