@@ -200,6 +200,7 @@ namespace llarp
     {
       stats["authCodes"] = services["default"]["authCodes"];
       stats["exitMap"] = services["default"]["exitMap"];
+      stats["networkReady"] = services["default"]["networkReady"];
       stats["lokiAddress"] = services["default"]["identity"];
     }
     return stats;
