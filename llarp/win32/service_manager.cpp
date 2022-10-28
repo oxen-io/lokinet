@@ -104,10 +104,9 @@ namespace llarp::sys
         _status.dwCheckPoint++;
       else
         _status.dwCheckPoint = 0;
-      
+
       report_changed_state();
     }
-    
   }
 
   SVC_Manager _manager{};
