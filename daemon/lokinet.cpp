@@ -34,8 +34,6 @@ insert_description();
 
 #endif
 
-bool run_as_daemon{false};
-
 static auto logcat = llarp::log::Cat("main");
 std::shared_ptr<llarp::Context> ctx;
 std::promise<int> exit_code;
@@ -340,21 +338,19 @@ main(int argc, char* argv[])
       {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
   if (std::string{argv[1]} == "--win32-daemon")
   {
-    run_as_daemon = true;
-    StartServiceCtrlDispatcher(DispatchTable);
+    return StartServiceCtrlDispatcher(DispatchTable);
   }
   else
+  {
+    llarp::sys::service_manager->disable();
     return lokinet_main(argc, argv);
+  }
 #endif
 }
 
 int
 lokinet_main(int argc, char** argv)
 {
-  // if we are not running as a service disable reporting
-  if (llarp::platform::is_windows and not run_as_daemon)
-    llarp::sys::service_manager->disable();
-
   if (auto result = Lokinet_INIT())
     return result;
 
