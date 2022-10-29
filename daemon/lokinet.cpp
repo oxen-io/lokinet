@@ -344,14 +344,25 @@ main(int argc, char* argv[])
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {
       {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
-  if (std::string{argv[1]} == "--win32-daemon")
-  {
-    return StartServiceCtrlDispatcher(DispatchTable);
-  }
-  else
+
+  // Try first to run as a service; if this works it fires off to win32_daemon_entry and doesn't
+  // return until the service enters STOPPED state.
+  if (StartServiceCtrlDispatcher(DispatchTable))
+    return 0;
+
+  auto error = GetLastError();
+
+  // We'll get this error if not invoked as a service, which is fine: we can just run directly
+  if (error == ERROR_FAILED_SERVICE_CONTROLLER_CONNECT)
   {
     llarp::sys::service_manager->disable();
     return lokinet_main(argc, argv);
+  }
+  else
+  {
+    llarp::log::critical(
+        logcat, "Error launching service: {}", std::system_category().message(error));
+    return 1;
   }
 #endif
 }
@@ -605,9 +616,8 @@ SvcCtrlHandler(DWORD dwCtrl)
   }
 }
 
-// The win32 daemon entry point is just a trampoline that returns control
-// to the original lokinet entry
-// and only gets called if we get --win32-daemon in the command line
+// The win32 daemon entry point is where we go when invoked as a windows service; we do the required
+// service dance and then pretend we were invoked via main().
 VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR* argv)
 {
