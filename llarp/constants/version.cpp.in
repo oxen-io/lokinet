@@ -6,7 +6,6 @@ namespace llarp
   // clang-format off
   const std::array<uint16_t, 3> VERSION{{@lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
   const std::array<uint64_t, 4> ROUTER_VERSION{{llarp::constants::proto_version, @lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
-  const char* const VERSION_STR = "@lokinet_VERSION_MAJOR@.@lokinet_VERSION_MINOR@.@lokinet_VERSION_PATCH@";
   const char* const VERSION_TAG   = "@VERSIONTAG@";
   const char* const VERSION_FULL  = "lokinet-@lokinet_VERSION_MAJOR@.@lokinet_VERSION_MINOR@.@lokinet_VERSION_PATCH@-@VERSIONTAG@";
 
