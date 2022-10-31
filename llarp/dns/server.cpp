@@ -417,8 +417,6 @@ namespace llarp::dns
           for (const auto& [id, query] : m_Pending)
             query->Cancel();
 
-          m_Pending.clear();
-
           if (auto err = ::ub_wait(m_ctx))
             log::warning(logcat, "issue tearing down unbound: {}", ub_strerror(err));
 
@@ -499,6 +497,15 @@ namespace llarp::dns
           tmp->Cancel();
           return true;
         }
+
+#ifdef _WIN32
+        if (not running)
+        {
+          // we are stopping the win32 thread
+          tmp->Cancel();
+          return true;
+        }
+#endif
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx,
