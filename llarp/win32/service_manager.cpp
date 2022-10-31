@@ -86,7 +86,6 @@ namespace llarp::sys
     else if (auto maybe_state = to_win32_state(st))
     {
       auto new_state = *maybe_state;
-      assert(_status.dwCurrentState != new_state);
       _status.dwWin32ExitCode = NO_ERROR;
       _status.dwCurrentState = new_state;
       _status.dwControlsAccepted = st == ServiceState::Running ? SERVICE_ACCEPT_STOP : 0;
