@@ -473,7 +473,7 @@ namespace llarp::dns
       {
         if (WouldLoop(to, from))
           return false;
-        // we use this unique ptr to clean up on fail
+  
         auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
         // no questions, send fail
         if (query.questions.empty())
@@ -533,7 +533,7 @@ namespace llarp::dns
       auto parent_ptr = parent.lock();
       if (parent_ptr)
       {
-        parent_ptr->call([src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
+        parent_ptr->call([src=src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
           src->SendTo(to, from, OwnedBuffer::copy_from(buf));
         });
       }
