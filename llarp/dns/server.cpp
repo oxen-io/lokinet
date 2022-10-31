@@ -151,8 +151,8 @@ namespace llarp::dns
         // borrow query
         auto weak_query = static_cast<Query*>(data)->weak_from_this();
         auto query = weak_query.lock();
-        if(not query)
-            return;
+        if (not query)
+          return;
         if (err)
         {
           // some kind of error from upstream
