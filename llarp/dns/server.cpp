@@ -86,9 +86,9 @@ namespace llarp::dns
   {
     class Resolver;
 
-    class Query : public QueryJob_Base
+    class Query : public QueryJob_Base, public std::enable_shared_from_this<Query>
     {
-      std::shared_ptr<PacketSource_Base> src;
+      std::weak_ptr<PacketSource_Base> src;
       SockAddr resolverAddr;
       SockAddr askerAddr;
 
@@ -100,7 +100,7 @@ namespace llarp::dns
           SockAddr toaddr,
           SockAddr fromaddr)
           : QueryJob_Base{std::move(query)}
-          , src{std::move(pktsrc)}
+          , src{pktsrc}
           , resolverAddr{std::move(toaddr)}
           , askerAddr{std::move(fromaddr)}
           , parent{parent_}
@@ -126,7 +126,7 @@ namespace llarp::dns
 #endif
 
       std::optional<SockAddr> m_LocalAddr;
-      std::set<int> m_Pending;
+      std::unordered_map<int, std::shared_ptr<Query>> m_Pending;
 
       struct ub_result_deleter
       {
@@ -148,9 +148,8 @@ namespace llarp::dns
       {
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
-        // take ownership of our query
-        std::unique_ptr<Query> query{static_cast<Query*>(data)};
-
+        // borrow query
+        auto query = reinterpret_cast<Query*>(data)->shared_from_this();
         if (err)
         {
           // some kind of error from upstream
@@ -370,14 +369,8 @@ namespace llarp::dns
 
         ConfigureUpstream(conf);
 
-#ifdef _WIN32
-        // threaded async currently crashes on ub_ctx_delete so use process async mode instead on
-        // Windows:
-        ub_ctx_async(m_ctx, 0);
-#else
         // set up threaded async mode:
         ub_ctx_async(m_ctx, 1);
-#endif
 
         // setup mainloop
 #ifdef _WIN32
@@ -385,10 +378,14 @@ namespace llarp::dns
         runner = std::thread{[this]() {
           while (running)
           {
-            ub_wait(m_ctx);
-            std::this_thread::sleep_for(10ms);
+            // poll and process callbacks it this thread
+            if (ub_poll(m_ctx))
+            {
+              ub_process(m_ctx);
+            }
+            else  // nothing to do, sleep.
+              std::this_thread::sleep_for(10ms);
           }
-          ub_process(m_ctx);
         }};
 #else
         if (auto loop = m_Loop.lock())
@@ -418,11 +415,13 @@ namespace llarp::dns
         if (m_ctx)
         {
           // cancel pending queries
-          // make copy as ub_cancel modifies m_Pending
-          const auto pending = m_Pending;
-          for (auto id : pending)
-            ::ub_cancel(m_ctx, id);
+          for (const auto& [id, query] : m_Pending)
+            query->Cancel();
+
           m_Pending.clear();
+
+          if (auto err = ::ub_wait(m_ctx))
+            log::warning(logcat, "issue tearing down unbound: {}", ub_strerror(err));
 
           ::ub_ctx_delete(m_ctx);
           m_ctx = nullptr;
@@ -478,7 +477,7 @@ namespace llarp::dns
         if (WouldLoop(to, from))
           return false;
         // we use this unique ptr to clean up on fail
-        auto tmp = std::make_unique<Query>(weak_from_this(), query, source, to, from);
+        auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
         // no questions, send fail
         if (query.questions.empty())
         {
@@ -516,11 +515,8 @@ namespace llarp::dns
           tmp->Cancel();
         }
         else
-        {
-          m_Pending.insert(tmp->id);
-          // Leak the bare pointer we gave to unbound; we'll recapture it in Callback
-          (void)tmp.release();
-        }
+          m_Pending.emplace(tmp->id, tmp);
+
         return true;
       }
     };
@@ -528,10 +524,12 @@ namespace llarp::dns
     void
     Query::SendReply(llarp::OwnedBuffer replyBuf) const
     {
-      if (auto ptr = parent.lock())
+      auto parent_ptr = parent.lock();
+      auto src_ptr = src.lock();
+      if (parent_ptr and src_ptr)
       {
-        ptr->call([src = src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
-          src->SendTo(to, from, OwnedBuffer::copy_from(buf));
+        parent_ptr->call([src_ptr, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
+          src_ptr->SendTo(to, from, OwnedBuffer::copy_from(buf));
         });
       }
       else
