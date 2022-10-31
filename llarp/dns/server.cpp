@@ -369,9 +369,9 @@ namespace llarp::dns
 
         ConfigureUpstream(conf);
 
-        // set up threaded async mode:
-        ub_ctx_async(m_ctx, 1);
 
+        // set async
+        ub_ctx_async(m_ctx, 1);
         // setup mainloop
 #ifdef _WIN32
         running = true;
