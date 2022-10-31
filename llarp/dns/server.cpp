@@ -22,7 +22,7 @@ namespace llarp::dns
   static auto logcat = log::Cat("dns");
 
   void
-  QueryJob_Base::Cancel() const
+  QueryJob_Base::Cancel()
   {
     Message reply{m_Query};
     reply.AddServFail();
@@ -108,8 +108,8 @@ namespace llarp::dns
       std::weak_ptr<Resolver> parent;
       int id{};
 
-      virtual void
-      SendReply(llarp::OwnedBuffer replyBuf) const override;
+      void
+      SendReply(llarp::OwnedBuffer replyBuf) override;
     };
 
     /// Resolver_Base that uses libunbound
@@ -126,7 +126,7 @@ namespace llarp::dns
 #endif
 
       std::optional<SockAddr> m_LocalAddr;
-      std::unordered_map<int, std::shared_ptr<Query>> m_Pending;
+      std::unordered_set<std::shared_ptr<Query>> m_Pending;
 
       struct ub_result_deleter
       {
@@ -149,10 +149,7 @@ namespace llarp::dns
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
         // borrow query
-        auto weak_query = static_cast<Query*>(data)->weak_from_this();
-        auto query = weak_query.lock();
-        if (not query)
-          return;
+        auto* query = static_cast<Query*>(data);
         if (err)
         {
           // some kind of error from upstream
@@ -344,9 +341,9 @@ namespace llarp::dns
       }
 
       void
-      RemovePending(int id)
+      RemovePending(const std::shared_ptr<Query>& query)
       {
-        m_Pending.erase(id);
+        m_Pending.erase(query);
       }
 
       void
@@ -423,16 +420,17 @@ namespace llarp::dns
 #endif
         if (m_ctx)
         {
-          log::debug(logcat, "cancelling {} pending queries", m_Pending.size());
-          // cancel pending queries
-          for (const auto& [id, query] : m_Pending)
-            query->Cancel();
-
-          if (auto err = ::ub_wait(m_ctx))
-            log::warning(logcat, "issue tearing down unbound: {}", ub_strerror(err));
-
           ::ub_ctx_delete(m_ctx);
           m_ctx = nullptr;
+
+          // destroy any outstanding queries that unbound hasn't fired yet
+          if (not m_Pending.empty())
+          {
+            log::debug(logcat, "cancelling {} pending queries", m_Pending.size());
+            for (const auto& query : m_Pending)
+              query->Cancel();
+            m_Pending.clear();
+          }
         }
       }
 
@@ -525,35 +523,33 @@ namespace llarp::dns
                 q.qclass,
                 tmp.get(),
                 &Resolver::Callback,
-                &tmp->id))
+                nullptr))
         {
           log::warning(
               logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
           tmp->Cancel();
         }
         else
-          m_Pending.emplace(tmp->id, tmp);
+          m_Pending.insert(std::move(tmp));
 
         return true;
       }
     };
 
     void
-    Query::SendReply(llarp::OwnedBuffer replyBuf) const
+    Query::SendReply(llarp::OwnedBuffer replyBuf)
     {
+      if (m_Done.test_and_set())
+        return;
       auto parent_ptr = parent.lock();
       if (parent_ptr)
       {
-        parent_ptr->call([parent_ptr,
-                          id = id,
-                          src = src,
-                          from = resolverAddr,
-                          to = askerAddr,
-                          buf = replyBuf.copy()] {
-          src->SendTo(to, from, OwnedBuffer::copy_from(buf));
-          // remove query
-          parent_ptr->RemovePending(id);
-        });
+        parent_ptr->call(
+            [self = shared_from_this(), parent_ptr = std::move(parent_ptr), buf = replyBuf.copy()] {
+              self->src->SendTo(self->askerAddr, self->resolverAddr, OwnedBuffer::copy_from(buf));
+              // remove query
+              parent_ptr->RemovePending(self);
+            });
       }
       else
         log::error(logcat, "no parent");
