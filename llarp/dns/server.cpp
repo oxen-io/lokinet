@@ -531,15 +531,14 @@ namespace llarp::dns
     Query::SendReply(llarp::OwnedBuffer replyBuf) const
     {
       auto parent_ptr = parent.lock();
-      auto src_ptr = src.lock();
-      if (parent_ptr and src_ptr)
+      if (parent_ptr)
       {
-        parent_ptr->call([src_ptr, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
-          src_ptr->SendTo(to, from, OwnedBuffer::copy_from(buf));
+        parent_ptr->call([src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
+          src->SendTo(to, from, OwnedBuffer::copy_from(buf));
         });
       }
       else
-        log::error(logcat, "no source or parent");
+        log::error(logcat, "no parent");
     }
   }  // namespace libunbound
 
