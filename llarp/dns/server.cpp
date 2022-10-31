@@ -369,7 +369,6 @@ namespace llarp::dns
 
         ConfigureUpstream(conf);
 
-
         // set async
         ub_ctx_async(m_ctx, 1);
         // setup mainloop
