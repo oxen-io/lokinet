@@ -149,7 +149,10 @@ namespace llarp::dns
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
         // borrow query
-        auto query = static_cast<Query*>(data)->shared_from_this();
+        auto weak_query = static_cast<Query*>(data)->weak_from_this();
+        auto query = weak_query.lock();
+        if(not query)
+            return;
         if (err)
         {
           // some kind of error from upstream
