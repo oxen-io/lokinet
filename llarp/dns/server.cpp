@@ -370,15 +370,8 @@ namespace llarp::dns
 
         ConfigureUpstream(conf);
 
-#ifdef _WIN32
-        // threaded async currently crashes on ub_ctx_delete so use process async mode instead on
-        // Windows:
-        ub_ctx_async(m_ctx, 0);
-#else
-        // set up threaded async mode:
+        // set async
         ub_ctx_async(m_ctx, 1);
-#endif
-
         // setup mainloop
 #ifdef _WIN32
         running = true;
