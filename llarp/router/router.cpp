@@ -1499,6 +1499,7 @@ namespace llarp
   void
   Router::AfterStopLinks()
   {
+    llarp::sys::service_manager->stopping();
     Close();
     log::debug(logcat, "stopping oxenmq");
     m_lmq.reset();
@@ -1507,6 +1508,7 @@ namespace llarp
   void
   Router::AfterStopIssued()
   {
+    llarp::sys::service_manager->stopping();
     log::debug(logcat, "stopping links");
     StopLinks();
     log::debug(logcat, "saving nodedb to disk");
@@ -1561,10 +1563,13 @@ namespace llarp
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "stopping hidden service context");
     hiddenServiceContext().StopAll();
+    llarp::sys::service_manager->stopping();
     log::debug(logcat, "stopping exit context");
     _exitContext.Stop();
+    llarp::sys::service_manager->stopping();
     log::debug(logcat, "final upstream pump");
     paths.PumpUpstream();
+    llarp::sys::service_manager->stopping();
     log::debug(logcat, "final links pump");
     _linkManager.PumpLinks();
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
