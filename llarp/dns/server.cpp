@@ -410,13 +410,17 @@ namespace llarp::dns
       {
 #ifdef _WIN32
         if (running.exchange(false))
+        {
+          log::debug(logcat, "shutting down win32 dns thread");
           runner.join();
+        }
 #else
         if (m_Poller)
           m_Poller->close();
 #endif
         if (m_ctx)
         {
+          log::debug(logcat, "cancelling {} pending queries", m_Pending.size());
           // cancel pending queries
           for (const auto& [id, query] : m_Pending)
             query->Cancel();
