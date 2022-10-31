@@ -61,6 +61,7 @@ namespace llarp::win32
 
       HANDLE m_Handle;
       std::thread m_Runner;
+      std::atomic<bool> m_Shutdown{false};
       thread::Queue<Packet> m_RecvQueue;
       // dns packet queue size
       static constexpr size_t recv_queue_size = 64;
@@ -93,6 +94,7 @@ namespace llarp::win32
         {
           auto err = GetLastError();
           if (err == ERROR_NO_DATA)
+            // The handle is shut down and the packet queue is empty
             return std::nullopt;
           if (err == ERROR_BROKEN_PIPE)
           {
@@ -116,9 +118,8 @@ namespace llarp::win32
         const auto* addr = &w_pkt.addr;
         log::trace(logcat, "send dns packet of size {}B", pkt.size());
         UINT sz{};
-        if (wd::send(m_Handle, pkt.data(), pkt.size(), &sz, addr))
-          return;
-        throw win32::error{"windivert send failed"};
+        if (!wd::send(m_Handle, pkt.data(), pkt.size(), &sz, addr))
+          throw win32::error{"windivert send failed"};
       }
 
       virtual int
@@ -141,7 +142,8 @@ namespace llarp::win32
           return net::IPPacket{};
         net::IPPacket pkt{std::move(w_pkt->pkt)};
         pkt.reply = [this, addr = std::move(w_pkt->addr)](auto pkt) {
-          send_packet(Packet{pkt.steal(), addr});
+          if (!m_Shutdown)
+            send_packet(Packet{pkt.steal(), addr});
         };
         return pkt;
       }
@@ -178,6 +180,7 @@ namespace llarp::win32
       Stop() override
       {
         log::info(logcat, "stopping windivert");
+        m_Shutdown = true;
         wd::shutdown(m_Handle, WINDIVERT_SHUTDOWN_BOTH);
         m_Runner.join();
       }
