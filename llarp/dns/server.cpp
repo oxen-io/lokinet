@@ -149,7 +149,7 @@ namespace llarp::dns
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
         // borrow query
-        auto query = reinterpret_cast<Query*>(data)->shared_from_this();
+        auto query = static_cast<Query*>(data)->shared_from_this();
         if (err)
         {
           // some kind of error from upstream
@@ -166,9 +166,7 @@ namespace llarp::dns
         hdr.id = query->Underlying().hdr_id;
         buf.cur = buf.base;
         hdr.Encode(&buf);
-        // remove pending query
-        if (auto ptr = query->parent.lock())
-          ptr->call([id = query->id, ptr]() { ptr->m_Pending.erase(id); });
+
         // send reply
         query->SendReply(std::move(pkt));
       }
@@ -343,6 +341,12 @@ namespace llarp::dns
       }
 
       void
+      RemovePending(int id)
+      {
+        m_Pending.erase(id);
+      }
+
+      void
       Up(const llarp::DnsConfig& conf)
       {
         if (m_ctx)
@@ -473,7 +477,7 @@ namespace llarp::dns
       {
         if (WouldLoop(to, from))
           return false;
-  
+
         auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
         // no questions, send fail
         if (query.questions.empty())
@@ -533,8 +537,15 @@ namespace llarp::dns
       auto parent_ptr = parent.lock();
       if (parent_ptr)
       {
-        parent_ptr->call([src=src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
+        parent_ptr->call([parent_ptr,
+                          id = id,
+                          src = src,
+                          from = resolverAddr,
+                          to = askerAddr,
+                          buf = replyBuf.copy()] {
           src->SendTo(to, from, OwnedBuffer::copy_from(buf));
+          // remove query
+          parent_ptr->RemovePending(id);
         });
       }
       else
