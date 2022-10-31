@@ -48,7 +48,6 @@ namespace llarp::sys
     if (st == ServiceState::Stopping)
     {
       we_changed_our_state(st);
-      m_Context->HandleSignal(SIGINT);
     }
   }
 

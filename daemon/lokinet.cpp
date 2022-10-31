@@ -601,6 +601,7 @@ SvcCtrlHandler(DWORD dwCtrl)
       // tell service we are stopping
       llarp::log::debug(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
       llarp::sys::service_manager->system_changed_our_state(llarp::sys::ServiceState::Stopping);
+      handle_signal(SIGINT);
       return;
 
     case SERVICE_CONTROL_INTERROGATE:
