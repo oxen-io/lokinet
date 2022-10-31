@@ -88,7 +88,7 @@ namespace llarp::dns
 
     class Query : public QueryJob_Base, public std::enable_shared_from_this<Query>
     {
-      std::weak_ptr<PacketSource_Base> src;
+      std::shared_ptr<PacketSource_Base> src;
       SockAddr resolverAddr;
       SockAddr askerAddr;
 
@@ -100,7 +100,7 @@ namespace llarp::dns
           SockAddr toaddr,
           SockAddr fromaddr)
           : QueryJob_Base{std::move(query)}
-          , src{pktsrc}
+          , src{std::move(pktsrc)}
           , resolverAddr{std::move(toaddr)}
           , askerAddr{std::move(fromaddr)}
           , parent{parent_}
