@@ -427,9 +427,12 @@ namespace llarp::dns
           if (not m_Pending.empty())
           {
             log::debug(logcat, "cancelling {} pending queries", m_Pending.size());
-            for (const auto& query : m_Pending)
+            // We must copy because Cancel does a loop call to remove itself, but since we are
+            // already in the main loop it happens immediately, which would invalidate our iterator
+            // if we were looping through m_Pending at the time.
+            auto copy = m_Pending;
+            for (const auto& query : copy)
               query->Cancel();
-            m_Pending.clear();
           }
         }
       }
