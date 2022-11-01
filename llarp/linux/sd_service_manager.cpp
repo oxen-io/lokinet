@@ -17,7 +17,6 @@ namespace llarp::sys
     void
     we_changed_our_state(ServiceState st) override
     {
-      assert(m_State != st);
       m_State = st;
       report_changed_state();
     }
