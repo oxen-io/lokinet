@@ -241,9 +241,10 @@ main(int argc, char* argv[])
     if (not maybe_result)
       return exit_error("could not add exit");
 
-    if (auto err_it = maybe_result->find("error"); err_it != maybe_result->end())
+    if (auto err_it = maybe_result->find("error");
+        err_it != maybe_result->end() and not err_it.value().is_null())
     {
-      return exit_error("{}", err_it->get<std::string_view>());
+      return exit_error("{}", err_it.value());
     }
   }
   if (goDown)
