@@ -45,6 +45,7 @@ namespace llarp
     std::shared_ptr<NodeDB> nodedb = nullptr;
     std::string nodedb_dir;
 
+    Context();
     virtual ~Context() = default;
 
     void

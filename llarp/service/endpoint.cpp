@@ -49,6 +49,9 @@ namespace llarp
 {
   namespace service
   {
+
+    static auto logcat = log::Cat("endpoint");
+
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder{r, 3, path::default_len}
         , context{parent}
@@ -384,9 +387,12 @@ namespace llarp
     Endpoint::Stop()
     {
       // stop remote sessions
+      log::debug(logcat, "Endpoint stopping remote sessions.");
       EndpointUtil::StopRemoteSessions(m_state->m_RemoteSessions);
       // stop snode sessions
+      log::debug(logcat, "Endpoint stopping snode sessions.");
       EndpointUtil::StopSnodeSessions(m_state->m_SNodeSessions);
+      log::debug(logcat, "Endpoint stopping its path builder.");
       return path::Builder::Stop();
     }
 

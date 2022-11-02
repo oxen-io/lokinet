@@ -35,6 +35,7 @@
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/service_manager.hpp>
 
 #include <functional>
 #include <list>
@@ -314,6 +315,9 @@ namespace llarp
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
+
+    std::string
+    status_line() override;
 
     using Clock_t = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;

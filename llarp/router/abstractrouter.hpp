@@ -361,6 +361,9 @@ namespace llarp
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
+    virtual std::string
+    status_line() = 0;
+
     /// Templated convenience function to generate a RouterHive event and
     /// delegate to non-templated (and overridable) function for handling.
     template <class EventType, class... Params>

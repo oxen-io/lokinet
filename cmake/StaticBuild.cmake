@@ -306,8 +306,15 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
+
+if(WIN32)
+  set(unbound_patch
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+        ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-delete-crash-fix.patch)
+endif()
 build_external(unbound
   DEPENDS openssl_external expat_external
+  ${unbound_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
