@@ -5,7 +5,6 @@ If you are simply looking to install Lokinet and don't want to compile it yourse
 Tier 1:
 
 * [Linux](#linux-install)
-* [Android](#apk-install)
 * [Windows](#windows-install)
 * [MacOS](#macos-install)
 
@@ -15,6 +14,7 @@ Tier 2:
 
 Currently Unsupported Platforms: (maintainers welcome)
 
+* [Android](#apk-install)
 * Apple iPhone 
 * Homebrew
 * \[Insert Flavor of the Month windows package manager here\]
