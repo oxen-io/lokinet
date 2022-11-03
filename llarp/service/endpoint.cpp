@@ -148,7 +148,10 @@ namespace llarp
       if (auto* quic = GetQUICTunnel())
       {
         if (quic->hasListeners())
+        {
+          log::debug(logcat, "IntroSet setting QUIC as available protocol.");
           introSet().supportedProtocols.push_back(ProtocolType::QUIC);
+        }
       }
 
       introSet().intros.clear();

@@ -483,6 +483,8 @@ extern "C"
   int EXPORT
   lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
   {
+    // FIXME: bootstrap loading was rewritten but this code needs updated to do
+    //        it how Router does now.
     if (data == nullptr or datalen == 0)
       return -3;
     llarp_buffer_t buf{data, datalen};

@@ -18,6 +18,8 @@
 
 namespace llarp
 {
+  static auto logcat = log::Cat("rc-lookup");
+
   void
   RCLookupHandler::AddValidRouter(const RouterID& router)
   {
@@ -91,6 +93,11 @@ namespace llarp
       {
         itr_pair.first->second.push_back(callback);
       }
+      log::trace(
+          logcat,
+          "RC Lookup for {} has {} pending callbacks.",
+          router,
+          itr_pair.first->second.size());
       shouldDoLookup = itr_pair.second;
     }
 
