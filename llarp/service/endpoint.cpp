@@ -972,7 +972,7 @@ namespace llarp
     bool
     Endpoint::ReadyToDoLookup(size_t num_paths) const
     {
-      // Currently just checks the number of paths, but could do more checks in the future. (jason)
+      // Currently just checks the number of paths, but could do more checks in the future.
       return num_paths >= MIN_ENDPOINTS_FOR_LNS_LOOKUP;
     }
 
