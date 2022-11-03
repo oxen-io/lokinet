@@ -1,6 +1,6 @@
 #pragma once
 
-#include <llarp/ev/vpn.hpp>
+#include "platform.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -21,6 +21,9 @@
 
 #include <oxenc/endian.h>
 
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp.hpp>
+
 namespace llarp::vpn
 {
   struct in6_ifreq
@@ -33,11 +36,10 @@ namespace llarp::vpn
   class LinuxInterface : public NetworkInterface
   {
     const int m_fd;
-    const InterfaceInfo m_Info;
 
    public:
     LinuxInterface(InterfaceInfo info)
-        : NetworkInterface{}, m_fd{::open("/dev/net/tun", O_RDWR)}, m_Info{std::move(info)}
+        : NetworkInterface{std::move(info)}, m_fd{::open("/dev/net/tun", O_RDWR)}
 
     {
       if (m_fd == -1)
@@ -57,7 +59,7 @@ namespace llarp::vpn
       control.ioctl(SIOCGIFFLAGS, &ifr);
       const int flags = ifr.ifr_flags;
       control.ioctl(SIOCGIFINDEX, &ifr);
-      const int ifindex = ifr.ifr_ifindex;
+      m_Info.index = ifr.ifr_ifindex;
 
       for (const auto& ifaddr : m_Info.addrs)
       {
@@ -76,7 +78,7 @@ namespace llarp::vpn
         {
           ifr6.addr = net::HUIntToIn6(ifaddr.range.addr);
           ifr6.prefixlen = llarp::bits::count_bits(ifaddr.range.netmask_bits);
-          ifr6.ifindex = ifindex;
+          ifr6.ifindex = m_Info.index;
           try
           {
             IOCTL{AF_INET6}.ioctl(SIOCSIFADDR, &ifr6);
@@ -105,30 +107,29 @@ namespace llarp::vpn
     net::IPPacket
     ReadNextPacket() override
     {
-      net::IPPacket pkt;
-      const auto sz = read(m_fd, pkt.buf, sizeof(pkt.buf));
-      if (sz >= 0)
-        pkt.sz = std::min(sz, ssize_t{sizeof(pkt.buf)});
-      else if (errno == EAGAIN || errno == EWOULDBLOCK)
-        pkt.sz = 0;
-      else
+      std::vector<byte_t> pkt;
+      pkt.resize(net::IPPacket::MaxSize);
+      const auto sz = read(m_fd, pkt.data(), pkt.capacity());
+      if (sz < 0)
+      {
+        if (errno == EAGAIN or errno == EWOULDBLOCK)
+        {
+          errno = 0;
+          return net::IPPacket{};
+        }
         throw std::error_code{errno, std::system_category()};
+      }
+      pkt.resize(sz);
       return pkt;
     }
 
     bool
     WritePacket(net::IPPacket pkt) override
     {
-      const auto sz = write(m_fd, pkt.buf, pkt.sz);
+      const auto sz = write(m_fd, pkt.data(), pkt.size());
       if (sz <= 0)
         return false;
-      return sz == static_cast<ssize_t>(pkt.sz);
-    }
-
-    std::string
-    IfName() const override
-    {
-      return m_Info.ifname;
+      return sz == static_cast<ssize_t>(pkt.size());
     }
   };
 
@@ -179,19 +180,18 @@ namespace llarp::vpn
       unsigned char bitlen;
       unsigned char data[sizeof(struct in6_addr)];
 
-      _inet_addr(huint32_t addr, size_t bits = 32)
+      _inet_addr(net::ipv4addr_t addr, size_t bits = 32)
       {
         family = AF_INET;
         bitlen = bits;
-        oxenc::write_host_as_big(addr.h, data);
+        std::memcpy(data, &addr.n, 4);
       }
 
-      _inet_addr(huint128_t addr, size_t bits = 128)
+      _inet_addr(net::ipv6addr_t addr, size_t bits = 128)
       {
         family = AF_INET6;
         bitlen = bits;
-        const nuint128_t net = ToNet(addr);
-        std::memcpy(data, &net, 16);
+        std::memcpy(data, &addr.n, 16);
       }
     };
 
@@ -287,76 +287,68 @@ namespace llarp::vpn
     }
 
     void
-    DefaultRouteViaInterface(std::string ifname, int cmd, int flags)
+    DefaultRouteViaInterface(NetworkInterface& vpn, int cmd, int flags)
     {
-      int if_idx = if_nametoindex(ifname.c_str());
-      const auto maybe = GetInterfaceAddr(ifname);
+      const auto& info = vpn.Info();
+
+      const auto maybe = Net().GetInterfaceAddr(info.ifname);
       if (not maybe)
         throw std::runtime_error{"we dont have our own network interface?"};
 
-      const _inet_addr gateway{maybe->asIPv4()};
-      const _inet_addr lower{ipaddr_ipv4_bits(0, 0, 0, 0), 1};
-      const _inet_addr upper{ipaddr_ipv4_bits(128, 0, 0, 0), 1};
+      const _inet_addr gateway{maybe->getIPv4()};
+      const _inet_addr lower{ToNet(ipaddr_ipv4_bits(0, 0, 0, 0)), 1};
+      const _inet_addr upper{ToNet(ipaddr_ipv4_bits(128, 0, 0, 0)), 1};
 
-      Route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, if_idx);
-      Route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, if_idx);
+      Route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, info.index);
+      Route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, info.index);
 
-      if (const auto maybe6 = GetInterfaceIPv6Address(ifname))
+      if (const auto maybe6 = Net().GetInterfaceIPv6Address(info.ifname))
       {
-        const _inet_addr gateway6{*maybe6, 128};
+        const _inet_addr gateway6{ToNet(*maybe6), 128};
         for (const std::string str : {"::", "4000::", "8000::", "c000::"})
         {
-          huint128_t _hole{};
-          _hole.FromString(str);
-          const _inet_addr hole6{_hole, 2};
-          Route(cmd, flags, hole6, gateway6, GatewayMode::eUpperDefault, if_idx);
+          const _inet_addr hole6{net::ipv6addr_t::from_string(str), 2};
+          Route(cmd, flags, hole6, gateway6, GatewayMode::eUpperDefault, info.index);
         }
       }
     }
 
     void
-    RouteViaInterface(int cmd, int flags, std::string ifname, IPRange range)
+    RouteViaInterface(int cmd, int flags, NetworkInterface& vpn, IPRange range)
     {
-      int if_idx = if_nametoindex(ifname.c_str());
+      const auto& info = vpn.Info();
       if (range.IsV4())
       {
-        const auto maybe = GetInterfaceAddr(ifname);
+        const auto maybe = Net().GetInterfaceAddr(info.ifname);
         if (not maybe)
           throw std::runtime_error{"we dont have our own network interface?"};
 
-        const _inet_addr gateway{maybe->asIPv4()};
+        const auto gateway = var::visit([](auto&& ip) { return _inet_addr{ip}; }, maybe->getIP());
 
         const _inet_addr addr{
-            net::TruncateV6(range.addr), bits::count_bits(net::TruncateV6(range.netmask_bits))};
+            ToNet(net::TruncateV6(range.addr)),
+            bits::count_bits(net::TruncateV6(range.netmask_bits))};
 
-        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, if_idx);
+        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
       }
       else
       {
-        const auto maybe = GetInterfaceIPv6Address(ifname);
+        const auto maybe = Net().GetInterfaceIPv6Address(info.ifname);
         if (not maybe)
           throw std::runtime_error{"we dont have our own network interface?"};
-        const _inet_addr gateway{*maybe, 128};
-        const _inet_addr addr{range.addr, bits::count_bits(range.netmask_bits)};
-        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, if_idx);
+        const _inet_addr gateway{ToNet(*maybe), 128};
+        const _inet_addr addr{ToNet(range.addr), bits::count_bits(range.netmask_bits)};
+        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
       }
     }
 
     void
-    Route(int cmd, int flags, IPVariant_t ip, IPVariant_t gateway)
+    Route(int cmd, int flags, net::ipaddr_t ip, net::ipaddr_t gateway)
     {
-      // do bullshit double std::visit because lol variants
-      std::visit(
-          [gateway, cmd, flags, this](auto&& ip) {
-            const _inet_addr toAddr{ip};
-            std::visit(
-                [toAddr, cmd, flags, this](auto&& gateway) {
-                  const _inet_addr gwAddr{gateway};
-                  Route(cmd, flags, toAddr, gwAddr, GatewayMode::eFirstHop, 0);
-                },
-                gateway);
-          },
-          ip);
+      auto _ip = var::visit([](auto&& i) { return _inet_addr{i}; }, ip);
+      auto _gw = var::visit([](auto&& i) { return _inet_addr{i}; }, gateway);
+
+      Route(cmd, flags, _ip, _gw, GatewayMode::eFirstHop, 0);
     }
 
    public:
@@ -372,45 +364,46 @@ namespace llarp::vpn
     }
 
     void
-    AddRoute(IPVariant_t ip, IPVariant_t gateway) override
+    AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override
     {
       Route(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ip, gateway);
     }
 
     void
-    DelRoute(IPVariant_t ip, IPVariant_t gateway) override
+    DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override
     {
       Route(RTM_DELROUTE, 0, ip, gateway);
     }
 
     void
-    AddDefaultRouteViaInterface(std::string ifname) override
+    AddDefaultRouteViaInterface(NetworkInterface& vpn) override
     {
-      DefaultRouteViaInterface(ifname, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL);
+      DefaultRouteViaInterface(vpn, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL);
     }
 
     void
-    DelDefaultRouteViaInterface(std::string ifname) override
+    DelDefaultRouteViaInterface(NetworkInterface& vpn) override
     {
-      DefaultRouteViaInterface(ifname, RTM_DELROUTE, 0);
+      DefaultRouteViaInterface(vpn, RTM_DELROUTE, 0);
     }
 
     void
     AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn.IfName(), range);
+      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn, range);
     }
 
     void
     DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_DELROUTE, 0, vpn.IfName(), range);
+      RouteViaInterface(RTM_DELROUTE, 0, vpn, range);
     }
 
-    std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string ifname) override
+    std::vector<net::ipaddr_t>
+    GetGatewaysNotOnInterface(NetworkInterface& vpn) override
     {
-      std::vector<IPVariant_t> gateways{};
+      const auto& ifname = vpn.Info().ifname;
+      std::vector<net::ipaddr_t> gateways{};
       std::ifstream inf{"/proc/net/route"};
       for (std::string line; std::getline(inf, line);)
       {
@@ -422,7 +415,7 @@ namespace llarp::vpn
           {
             huint32_t x{};
             oxenc::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
-            gateways.emplace_back(x);
+            gateways.emplace_back(net::ipv4addr_t::from_host(x.h));
           }
         }
       }

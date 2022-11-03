@@ -1,22 +1,20 @@
-#define __USE_MINGW_ANSI_STDIO 1
 #include "name.hpp"
 #include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/util/str.hpp>
-
-#include <algorithm>
-#include <sstream>
+#include <oxenc/hex.h>
 
 namespace llarp
 {
   namespace dns
   {
-    bool
-    DecodeName(llarp_buffer_t* buf, Name_t& name, bool trimTrailingDot)
+    std::optional<std::string>
+    DecodeName(llarp_buffer_t* buf, bool trimTrailingDot)
     {
       if (buf->size_left() < 1)
-        return false;
-      std::stringstream ss;
+        return std::nullopt;
+      auto result = std::make_optional<std::string>();
+      auto& name = *result;
       size_t l;
       do
       {
@@ -25,31 +23,26 @@ namespace llarp
         if (l)
         {
           if (buf->size_left() < l)
-            return false;
+            return std::nullopt;
 
-          ss << Name_t((const char*)buf->cur, l);
-          ss << ".";
+          name.append((const char*)buf->cur, l);
+          name += '.';
         }
         buf->cur = buf->cur + l;
       } while (l);
-      name = ss.str();
       /// trim off last dot
       if (trimTrailingDot)
-        name = name.substr(0, name.find_last_of('.'));
-      return true;
+        name.pop_back();
+      return result;
     }
 
     bool
-    EncodeName(llarp_buffer_t* buf, Name_t name)
+    EncodeNameTo(llarp_buffer_t* buf, std::string_view name)
     {
-      std::stringstream ss;
-      if (name.size() && name[name.size() - 1] == '.')
-        ss << name.substr(0, name.size() - 1);
-      else
-        ss << name;
+      if (name.size() && name.back() == '.')
+        name.remove_suffix(1);
 
-      std::string part;
-      while (std::getline(ss, part, '.'))
+      for (auto part : llarp::split(name, "."))
       {
         size_t l = part.length();
         if (l > 63)
@@ -60,7 +53,7 @@ namespace llarp
           return false;
         if (l)
         {
-          memcpy(buf->cur, part.data(), l);
+          std::memcpy(buf->cur, part.data(), l);
           buf->cur += l;
         }
         else
@@ -71,8 +64,8 @@ namespace llarp
       return true;
     }
 
-    bool
-    DecodePTR(Name_t name, huint128_t& ip)
+    std::optional<huint128_t>
+    DecodePTR(std::string_view name)
     {
       bool isV6 = false;
       auto pos = name.find(".in-addr.arpa");
@@ -82,56 +75,62 @@ namespace llarp
         isV6 = true;
       }
       if (pos == std::string::npos)
-        return false;
-      std::string sub = name.substr(0, pos + 1);
-      const auto numdots = std::count(sub.begin(), sub.end(), '.');
+        return std::nullopt;
+      name = name.substr(0, pos + 1);
+      const auto numdots = std::count(name.begin(), name.end(), '.');
       if (numdots == 4 && !isV6)
       {
-        uint8_t a, b, c, d;
-        pos = sub.find('.');
-        d = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos + 1);
-        pos = sub.find('.');
-        c = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos + 1);
-        pos = sub.find('.');
-        b = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos + 1);
-        pos = sub.find('.');
-        a = atoi(sub.substr(0, pos).c_str());
-        ip = net::ExpandV4(llarp::ipaddr_ipv4_bits(a, b, c, d));
-        return true;
-      }
-      if (numdots == 32 && isV6)
-      {
-        size_t idx = 0;
-        uint8_t lo, hi;
-        auto* ptr = (uint8_t*)&ip.h;
-        while (idx < 16)
+        std::array<uint8_t, 4> q;
+        for (int i = 3; i >= 0; i--)
         {
-          pos = sub.find('.');
-          lo = (*sub.substr(0, pos).c_str()) - 'a';
-          sub = sub.substr(pos + 1);
-          pos = sub.find('.');
-          hi = (*sub.substr(0, pos).c_str()) - 'a';
-          sub = sub.substr(pos + 1);
-          ptr[idx] = lo | (hi << 4);
-          ++idx;
+          pos = name.find('.');
+          if (!llarp::parse_int(name.substr(0, pos), q[i]))
+            return std::nullopt;
+          name.remove_prefix(pos + 1);
         }
-        return true;
+        return net::ExpandV4(llarp::ipaddr_ipv4_bits(q[0], q[1], q[2], q[3]));
       }
+      if (numdots == 32 && name.size() == 64 && isV6)
+      {
+        // We're going to convert from nybbles a.b.c.d.e.f.0.1.2.3.[...] into hex string
+        // "badcfe1032...", then decode the hex string to bytes.
+        std::array<char, 32> in;
+        auto in_pos = in.data();
+        for (size_t i = 0; i < 64; i += 4)
+        {
+          if (not(oxenc::is_hex_digit(name[i]) and name[i + 1] == '.'
+                  and oxenc::is_hex_digit(name[i + 2]) and name[i + 3] == '.'))
+            return std::nullopt;
 
-      return false;
+          // Flip the nybbles because the smallest one is first
+          *in_pos++ = name[i + 2];
+          *in_pos++ = name[i];
+        }
+        assert(in_pos == in.data() + in.size());
+        huint128_t ip;
+        static_assert(in.size() == 2 * sizeof(ip.h));
+        // our string right now is the little endian representation, so load it as such on little
+        // endian, or in reverse on big endian.
+        if constexpr (oxenc::little_endian)
+          oxenc::from_hex(in.begin(), in.end(), reinterpret_cast<uint8_t*>(&ip.h));
+        else
+          oxenc::from_hex(in.rbegin(), in.rend(), reinterpret_cast<uint8_t*>(&ip.h));
+
+        return ip;
+      }
+      return std::nullopt;
     }
 
     bool
-    NameIsReserved(Name_t name)
+    NameIsReserved(std::string_view name)
     {
       const std::vector<std::string_view> reserved_names = {
-          "snode.loki"sv, "loki.loki"sv, "snode.loki."sv, "loki.loki."sv};
+          ".snode.loki"sv, ".loki.loki"sv, ".snode.loki."sv, ".loki.loki."sv};
       for (const auto& reserved : reserved_names)
       {
-        if (ends_with(name, reserved))
+        if (ends_with(name, reserved))  // subdomain foo.loki.loki
+          return true;
+        if (name == reserved.substr(1))  // loki.loki itself
           return true;
       }
       return false;

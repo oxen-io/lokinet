@@ -71,12 +71,6 @@ namespace llarp
 
       std::string
       ToString() const;
-
-      friend std::ostream&
-      operator<<(std::ostream& o, const BuildStats& st)
-      {
-        return o << st.ToString();
-      }
     };
 
     /// the role of this path can fulfill
@@ -216,19 +210,22 @@ namespace llarp
       BlacklistSNode(const RouterID) = 0;
 
       /// override me in subtype
-      virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
+      virtual bool
+      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
+      virtual bool
+      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
+      virtual bool
+      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
       {
         return false;
       }
@@ -326,4 +323,8 @@ namespace llarp
     };
 
   }  // namespace path
+
+  template <>
+  constexpr inline bool IsToStringFormattable<path::BuildStats> = true;
+
 }  // namespace llarp

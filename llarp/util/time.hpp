@@ -3,6 +3,8 @@
 #include "types.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <fmt/format.h>
+#include <fmt/chrono.h>
 
 using namespace std::chrono_literals;
 
@@ -20,42 +22,28 @@ namespace llarp
   uint64_t
   ToMS(Duration_t duration);
 
-  std::ostream&
-  operator<<(std::ostream& out, const Duration_t& t);
-
   nlohmann::json
   to_json(const Duration_t& t);
 
-  std::ostream&
-  operator<<(std::ostream& out, const TimePoint_t& t);
+  // Returns a string such as "27m13s ago" or "in 1h12m" or "now".  You get precision of minutes
+  // (for >=1h), seconds (>=10s), or milliseconds.  The `now_threshold` argument controls how close
+  // to current time (default 1s) the time has to be to get the "now" argument.
+  std::string
+  short_time_from_now(const TimePoint_t& t, const Duration_t& now_threshold = 1s);
 
-  template <typename Time_Duration>
-  struct time_delta
-  {
-    const TimePoint_t at;
+  // Makes a duration human readable.  This always has full millisecond precision, but formats up to
+  // hours. E.g. "-4h04m12.123s" or "1234h00m09.876s.
+  std::string
+  ToString(Duration_t t);
 
-    std::ostream&
-    operator()(std::ostream& out) const
-    {
-      const auto dlt = std::chrono::duration_cast<Time_Duration>(TimePoint_t::clock::now() - at);
-      if (dlt > 0s)
-        return out << std::chrono::duration_cast<Duration_t>(dlt) << " ago ";
-      else if (dlt < 0s)
-        return out << "in " << std::chrono::duration_cast<Duration_t>(-dlt);
-      else
-        return out << "now";
-    }
-  };
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const time_delta<std::chrono::seconds>& td)
-  {
-    return td(out);
-  }
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const time_delta<std::chrono::milliseconds>& td)
-  {
-    return td(out);
-  }
 }  // namespace llarp
+
+// Duration_t is currently just a typedef to std::chrono::milliseconds, and specializing
+// that seems wrong; leaving this here to remind us not to add it back in again.
+// namespace fmt
+//{
+//  template <>
+//  struct formatter<llarp::Duration_t>
+//  {
+//  };
+//}  // namespace fmt

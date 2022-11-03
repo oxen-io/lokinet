@@ -55,6 +55,8 @@ namespace llarp
       void
       Command(std::string_view cmd);
 
+      /// triggers a service node list refresh from oxend; thread-safe and will do nothing if an
+      /// update is already in progress.
       void
       UpdateServiceNodeList();
 
@@ -72,8 +74,10 @@ namespace llarp
         m_lokiMQ->request(*m_Connection, std::move(cmd), std::move(func));
       }
 
+      // Handles a service node list update; takes the "service_node_states" object of an oxend
+      // "get_service_nodes" rpc request.
       void
-      HandleGotServiceNodeList(std::string json);
+      HandleNewServiceNodeList(const nlohmann::json& json);
 
       // Handles request from lokid for peer stats on a specific peer
       void
@@ -88,6 +92,7 @@ namespace llarp
 
       std::weak_ptr<AbstractRouter> m_Router;
       std::atomic<bool> m_UpdatingList;
+      std::string m_LastUpdateHash;
 
       std::unordered_map<RouterID, PubKey> m_KeyMap;
 

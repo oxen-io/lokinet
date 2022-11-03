@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <functional>
 
-#include "../util/meta/traits.hpp"
-
 #include <oxenc/endian.h>
 
 namespace llarp
@@ -143,25 +141,25 @@ namespace llarp
     constexpr bool
     operator<(const uint128_t& b) const
     {
-      return upper < b.upper || (upper == b.upper && lower < b.lower);
+      return std::tie(upper, lower) < std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator<=(const uint128_t& b) const
     {
-      return upper < b.upper || (upper == b.upper && lower <= b.lower);
+      return std::tie(upper, lower) <= std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator>(const uint128_t& b) const
     {
-      return upper > b.upper || (upper == b.upper && lower > b.lower);
+      return std::tie(upper, lower) > std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator>=(const uint128_t& b) const
     {
-      return upper > b.upper || (upper == b.upper && lower >= b.lower);
+      return std::tie(upper, lower) >= std::tie(b.upper, b.lower);
     }
 
     constexpr uint128_t&

@@ -441,7 +441,7 @@ namespace llarp
     Context::CleanupTX()
     {
       auto now = Now();
-      llarp::LogDebug("DHT tick");
+      llarp::LogTrace("DHT tick");
 
       pendingRouterLookups().Expire(now);
       _pendingIntrosetLookups.Expire(now);

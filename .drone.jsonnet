@@ -13,10 +13,12 @@ local default_deps_base = [
 ];
 local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
 local default_deps = ['g++'] + default_deps_nocxx;
-local default_windows_deps = ['mingw-w64', 'zip', 'nsis'];
 local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
-local submodule_commands = ['git fetch --tags', 'git submodule update --init --recursive --depth=1 --jobs=4'];
+local submodule_commands = [
+  'git fetch --tags',
+  'git submodule update --init --recursive --depth=1 --jobs=4',
+];
 local submodules = {
   name: 'submodules',
   image: 'drone/git',
@@ -24,7 +26,7 @@ local submodules = {
 };
 
 // cmake options for static deps mirror
-local ci_mirror_opts = '-DLOCAL_MIRROR=https://oxen.rocks/deps ';
+local ci_dep_mirror(want_mirror) = (if want_mirror then ' -DLOCAL_MIRROR=https://oxen.rocks/deps ' else '');
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
@@ -37,6 +39,7 @@ local debian_pipeline(name,
                       lto=false,
                       werror=true,
                       cmake_extra='',
+                      local_mirror=true,
                       extra_cmds=[],
                       jobs=6,
                       tests=true,
@@ -73,13 +76,16 @@ local debian_pipeline(name,
                   'mkdir build',
                   'cd build',
                   'cmake .. -DWITH_SETCAP=OFF -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE=' + build_type + ' ' +
+                  (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') +
                   (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                   '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                   '-DWITH_TESTS=' + (if tests then 'ON ' else 'OFF ') +
-                  cmake_extra,
+                  cmake_extra +
+                  ci_dep_mirror(local_mirror),
                   'VERBOSE=1 make -j' + jobs,
+                  'cd ..',
                 ]
-                + (if tests then ['../contrib/ci/drone-gdb.sh ./test/testAll --use-colour yes'] else [])
+                + (if tests then ['./contrib/ci/drone-gdb.sh ./build/test/testAll --use-colour yes'] else [])
                 + extra_cmds,
     },
   ],
@@ -113,12 +119,13 @@ local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
 // windows cross compile on debian
 local windows_cross_pipeline(name,
                              image,
+                             gui_image=docker_base + 'nodejs-lts',
                              arch='amd64',
                              build_type='Release',
                              lto=false,
                              werror=false,
                              cmake_extra='',
-                             toolchain='32',
+                             local_mirror=true,
                              extra_cmds=[],
                              jobs=6,
                              allow_fail=false) = {
@@ -130,20 +137,37 @@ local windows_cross_pipeline(name,
   steps: [
     submodules,
     {
-      name: 'build',
-      image: image,
+      name: 'GUI',
+      image: gui_image,
       pull: 'always',
       [if allow_fail then 'failure']: 'ignore',
-      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: toolchain + 'bit' },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y p7zip-full wine',
+        'cd gui',
+        'yarn install --frozen-lockfile',
+        'USE_SYSTEM_7ZA=true DISPLAY= WINEDEBUG=-all yarn win32',
+      ],
+    },
+    {
+      name: 'build',
+      image: image,
+      pull: 'always',
+      [if allow_fail then 'failure']: 'ignore',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, WINDOWS_BUILD_NAME: 'x64' },
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
+        apt_get_quiet + ' update',
+        apt_get_quiet + ' install -y eatmydata',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip icoutils automake libtool librsvg2-bin bison',
         'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
         'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/windows.sh ' + ci_mirror_opts,
+        'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh -DSTRIP_SYMBOLS=ON -DGUI_EXE=$${DRONE_WORKSPACE}/gui/release/Lokinet-GUI_portable.exe' +
+        ci_dep_mirror(local_mirror),
       ] + extra_cmds,
     },
   ],
@@ -155,6 +179,7 @@ local linux_cross_pipeline(name,
                            arch='amd64',
                            build_type='Release',
                            cmake_extra='',
+                           local_mirror=true,
                            extra_cmds=[],
                            jobs=6,
                            allow_fail=false) = {
@@ -173,7 +198,8 @@ local linux_cross_pipeline(name,
       environment: { SSH_KEY: { from_secret: 'SSH_KEY' }, CROSS_TARGETS: std.join(':', cross_targets) },
       commands: [
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
-        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) + (if std.length(cmake_extra) > 0 then ' -- ' + cmake_extra else ''),
+        'VERBOSE=1 JOBS=' + jobs + ' ./contrib/cross.sh ' + std.join(' ', cross_targets) +
+        ' -- ' + cmake_extra + ci_dep_mirror(local_mirror),
       ],
     },
   ],
@@ -255,8 +281,10 @@ local mac_builder(name,
                   build_type='Release',
                   werror=true,
                   cmake_extra='',
+                  local_mirror=true,
                   extra_cmds=[],
                   jobs=6,
+                  codesign='-DCODESIGN=OFF',
                   allow_fail=false) = {
   kind: 'pipeline',
   type: 'exec',
@@ -273,7 +301,17 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac.sh ' + ci_mirror_opts,
+        './contrib/mac-configure.sh ' +
+        ci_dep_mirror(local_mirror) +
+        (if build_type == 'Debug' then ' -DWARN_DEPRECATED=OFF ' else '') +
+        codesign,
+        'cd build-mac',
+        // We can't use the 'package' target here because making a .dmg requires an active logged in
+        // macos gui to invoke Finder to invoke the partitioning tool to create a partitioned (!)
+        // disk image.  Most likely the GUI is required because if you lose sight of how pretty the
+        // surface of macOS is you might see how ugly the insides are.
+        'ninja -j' + jobs + ' assemble_gui',
+        'cd ..',
       ] + extra_cmds,
     },
   ],
@@ -315,7 +353,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-11 jsonnet',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-14 jsonnet',
         './contrib/ci/drone-format-verify.sh',
       ],
     }],
@@ -345,17 +383,17 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
 
   // cross compile targets
-  linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
   linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
   linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
+  // Not currently building successfully:
+  //linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
 
   // android apk builder
   apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
 
   // Windows builds (x64)
   windows_cross_pipeline('Windows (amd64)',
-                         docker_base + 'debian-win32-cross',
-                         toolchain='64',
+                         docker_base + 'debian-bookworm',
                          extra_cmds=[
                            './contrib/ci/drone-static-upload.sh',
                          ]),
@@ -373,8 +411,8 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                               '-DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF -DBUILD_LIBLOKINET=OFF',
                   extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    '../contrib/ci/drone-static-upload.sh',
+                    './contrib/ci/drone-check-static-libs.sh',
+                    './contrib/ci/drone-static-upload.sh',
                   ]),
   // Static armhf build (gets uploaded)
   debian_pipeline('Static (buster armhf)',
@@ -385,8 +423,8 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
                   extra_cmds=[
-                    '../contrib/ci/drone-check-static-libs.sh',
-                    'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh',
+                    './contrib/ci/drone-check-static-libs.sh',
+                    'UPLOAD_OS=linux-armhf ./contrib/ci/drone-static-upload.sh',
                   ],
                   jobs=4),
 
@@ -403,6 +441,9 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
 
   // Macos builds:
-  mac_builder('macOS (Release)'),
+  mac_builder('macOS (Release)', extra_cmds=[
+    './contrib/ci/drone-check-static-libs.sh',
+    './contrib/ci/drone-static-upload.sh',
+  ]),
   mac_builder('macOS (Debug)', build_type='Debug'),
 ]

@@ -5,31 +5,31 @@
 
 set(LOCAL_MIRROR "" CACHE STRING "local mirror path/URL for lib downloads")
 
-set(OPENSSL_VERSION 1.1.1o CACHE STRING "openssl version")
+set(OPENSSL_VERSION 3.0.5 CACHE STRING "openssl version")
 set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://www.openssl.org/source CACHE STRING "openssl download mirror(s)")
 set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
-set(OPENSSL_HASH SHA256=9384a2b0570dd80358841464677115df785edb941c71211f75076d72fe6b438f
+set(OPENSSL_HASH SHA256=aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a
     CACHE STRING "openssl source hash")
 
-set(EXPAT_VERSION 2.4.8 CACHE STRING "expat version")
+set(EXPAT_VERSION 2.4.9 CACHE STRING "expat version")
 string(REPLACE "." "_" EXPAT_TAG "R_${EXPAT_VERSION}")
 set(EXPAT_MIRROR ${LOCAL_MIRROR} https://github.com/libexpat/libexpat/releases/download/${EXPAT_TAG}
     CACHE STRING "expat download mirror(s)")
 set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
-set(EXPAT_HASH SHA256=f79b8f904b749e3e0d20afeadecf8249c55b2e32d4ebb089ae378df479dcaf25
+set(EXPAT_HASH SHA512=8508379b4915d84d50f3638678a90792179c98247d1cb5e6e6387d117af4dc148ac7031c1debea8b96e7b710ef436cf0dd5da91f3d22b8186a00cfafe1201169
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.15.0 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.17.0 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=a480dc6c8937447b98d161fe911ffc76cfaffa2da18788781314e81339f1126f
+set(UNBOUND_HASH SHA512=f6b9f279330fb19b5feca09524959940aad8c4e064528aa82b369c726d77e9e8e5ca23f366f6e9edcf2c061b96f482ed7a2c26ac70fc15ae5762b3d7e36a5284
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3380500 CACHE STRING "sqlite3 version")
+set(SQLITE3_VERSION 3390400 CACHE STRING "sqlite3 version")
 set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA3_256=ab649fea76f49a6ec7f907f001d87b8bd76dec0679c783e3992284c5a882a98c
+set(SQLITE3_HASH SHA3_256=431328e30d12c551da9ba7ef2122b269076058512014afa799caaf62ca567090
   CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
@@ -48,25 +48,25 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
     CACHE STRING "libzmq source hash")
 
-set(LIBUV_VERSION 1.44.1 CACHE STRING "libuv version")
+set(LIBUV_VERSION 1.44.2 CACHE STRING "libuv version")
 set(LIBUV_MIRROR ${LOCAL_MIRROR} https://dist.libuv.org/dist/v${LIBUV_VERSION}
     CACHE STRING "libuv mirror(s)")
 set(LIBUV_SOURCE libuv-v${LIBUV_VERSION}.tar.gz)
-set(LIBUV_HASH SHA512=b4f8944e2c79e3a6a31ded6cccbe4c0eeada50db6bc8a448d7015642795012a4b80ffeef7ca455bb093c59a8950d0e1430566c3c2fa87b73f82699098162d834
+set(LIBUV_HASH SHA512=91197ff9303112567bbb915bbb88058050e2ad1c048815a3b57c054635d5dc7df458b956089d785475290132236cb0edcfae830f5d749de29a9a3213eeaf0b20
     CACHE STRING "libuv source hash")
 
-set(ZLIB_VERSION 1.2.12 CACHE STRING "zlib version")
+set(ZLIB_VERSION 1.2.13 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
-set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.gz)
-set(ZLIB_HASH SHA256=91844808532e5ce316b3c010929493c0244f3d37593afd6de04f71821d5136d9
+set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.xz)
+set(ZLIB_HASH SHA256=d14c38e313afc35a9a8760dadf26042f51ea0f5d154b0630a31da0540107fb98
   CACHE STRING "zlib source hash")
-  
-set(CURL_VERSION 7.83.1 CACHE STRING "curl version")
+
+set(CURL_VERSION 7.85.0 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
 set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
-set(CURL_HASH SHA256=2cb9c2356e7263a1272fd1435ef7cdebf2cd21400ec287b068396deb705c22c4
+set(CURL_HASH SHA512=b57cc31649a4f47cc4b482f56a85c86c8e8aaeaf01bc1b51b065fdb9145a9092bc52535e52a85a66432eb163605b2edbf5bc5c33ea6e40e50f26a69ad1365cbd
   CACHE STRING "curl source hash")
 
 include(ExternalProject)
@@ -125,21 +125,21 @@ if(ANDROID)
     set(android_toolchain_prefix x86_64)
     set(android_toolchain_suffix linux-android)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES x86)
-    set(android_machine i686)
+    set(android_machine x86)
     set(cross_host "--host=i686-linux-android")
     set(android_compiler_prefix i686)
     set(android_compiler_suffix linux-android23)
     set(android_toolchain_prefix i686)
     set(android_toolchain_suffix linux-android)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES armeabi-v7a)
-    set(android_machine armv7)
+    set(android_machine arm)
     set(cross_host "--host=armv7a-linux-androideabi")
     set(android_compiler_prefix armv7a)
     set(android_compiler_suffix linux-androideabi23)
     set(android_toolchain_prefix arm)
     set(android_toolchain_suffix linux-androideabi)
   elseif(CMAKE_ANDROID_ARCH_ABI MATCHES arm64-v8a)
-    set(android_machine aarch64)
+    set(android_machine arm64)
     set(cross_host "--host=aarch64-linux-android")
     set(android_compiler_prefix aarch64)
     set(android_compiler_suffix linux-android23)
@@ -165,6 +165,11 @@ endif()
 if(APPLE)
   set(deps_CFLAGS "${deps_CFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
   set(deps_CXXFLAGS "${deps_CXXFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+endif()
+
+if(_winver)
+  set(deps_CFLAGS "${deps_CFLAGS} -D_WIN32_WINNT=${_winver}")
+  set(deps_CXXFLAGS "${deps_CXXFLAGS} -D_WIN32_WINNT=${_winver}")
 endif()
 
 
@@ -223,7 +228,7 @@ build_external(libuv
 add_static_target(libuv libuv_external libuv.a)
 target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
 
-  
+
 build_external(zlib
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS} -fPIC" ${cross_extra} ./configure --prefix=${DEPS_DESTDIR} --static
   BUILD_BYPRODUCTS
@@ -234,43 +239,51 @@ add_static_target(zlib zlib_external libz.a)
 
 
 set(openssl_system_env "")
+set(openssl_arch "")
 set(openssl_configure_command ./config)
+set(openssl_flags "CFLAGS=${deps_CFLAGS}")
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+    set(openssl_arch mingw64)
+    set(openssl_system_env RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
-    set(openssl_system_env SYSTEM=MINGW32 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+    set(openssl_arch mingw)
+    set(openssl_system_env RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ANDROID)
-    set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
+    set(openssl_arch android-${android_machine})
+    set(openssl_system_env LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar} ANDROID_NDK_ROOT=${CMAKE_ANDROID_NDK} "PATH=${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}")
+    list(APPEND openssl_flags "CPPFLAGS=-D__ANDROID_API__=${ANDROID_API}")
     set(openssl_extra_opts no-asm)
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mips64)
-    set(openssl_configure_command ./Configure linux64-mips64)
+    set(openssl_arch linux-mips64)
   elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mips)
+    set(openssl_arch linux-mips32)
   elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
-    set(openssl_system_env SYSTEM=Linux MACHINE=mipsel)
+    set(openssl_arch linux-mips)
   elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
     # cross compile arm64
-    set(openssl_system_env SYSTEM=Linux MACHINE=aarch64)
+    set(openssl_arch linux-aarch64)
   elseif(ARCH_TRIPLET MATCHES arm-linux)
     # cross compile armhf
-    set(openssl_system_env SYSTEM=Linux MACHINE=armv4)
+    set(openssl_arch linux-armv4)
   elseif(ARCH_TRIPLET MATCHES powerpc64le)
     # cross compile ppc64le
-    set(openssl_system_env SYSTEM=Linux MACHINE=ppc64le)
+    set(openssl_arch linux-ppc64le)
   endif()
 elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
   # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
-  set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
+  set(openssl_arch linux-armv4)
 endif()
 
 
 build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
-    --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
-    no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
-    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
+    --prefix=${DEPS_DESTDIR} --libdir=lib ${openssl_extra_opts}
+    no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
+    no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl3
+    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic ${openssl_flags}
+    ${openssl_arch}
+  BUILD_COMMAND ${CMAKE_COMMAND} -E env ${openssl_system_env} ${_make}
   INSTALL_COMMAND ${_make} install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
@@ -284,7 +297,6 @@ endif()
 
 set(OPENSSL_INCLUDE_DIR ${DEPS_DESTDIR}/include)
 set(OPENSSL_CRYPTO_LIBRARY ${DEPS_DESTDIR}/lib/libcrypto.a ${DEPS_DESTDIR}/lib/libssl.a)
-set(OPENSSL_VERSION 1.1.1)
 set(OPENSSL_ROOT_DIR ${DEPS_DESTDIR})
 
 build_external(expat
@@ -294,8 +306,15 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
+
+if(WIN32)
+  set(unbound_patch
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+        ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-delete-crash-fix.patch)
+endif()
 build_external(unbound
   DEPENDS openssl_external expat_external
+  ${unbound_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
@@ -315,8 +334,11 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
           --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
 add_static_target(sodium sodium_external libsodium.a)
 
-build_external(sqlite3)
-add_static_target(sqlite3 sqlite3_external libsqlite3.a)
+
+if(WITH_PEERSTATS_BACKEND)
+  build_external(sqlite3)
+  add_static_target(sqlite3 sqlite3_external libsqlite3.a)
+endif()
 
 
 if(ARCH_TRIPLET MATCHES mingw)
@@ -328,7 +350,9 @@ endif()
 
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch
+        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-unistd.patch)
 endif()
 
 build_external(zmq
@@ -351,6 +375,15 @@ set_target_properties(libzmq PROPERTIES
   INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
   INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
 
+
+#
+#
+#
+# Everything that follows is *only* for lokinet-bootstrap (i.e. if adding new deps put them *above*
+# this).
+#
+#
+#
 if(NOT WITH_BOOTSTRAP)
   return()
 endif()
@@ -420,7 +453,7 @@ foreach(curl_arch ${curl_arches})
   list(APPEND curl_lib_outputs ${curl_prefix}/lib/libcurl.a)
 endforeach()
 
-message(STATUS "TARGETS: ${curl_lib_targets}")
+
 
 if(IOS AND num_arches GREATER 1)
   # We are building multiple architectures for different iOS devices, so we need to glue the

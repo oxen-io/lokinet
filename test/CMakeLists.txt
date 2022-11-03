@@ -1,5 +1,5 @@
 if (WITH_HIVE)
-  add_custom_target(hive_build DEPENDS liblokinet pyllarp)
+  add_custom_target(hive_build DEPENDS lokinet-amalgum pyllarp)
   add_custom_target(hive ${CMAKE_COMMAND} -E
       env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pybind"
       ${PYTHON_EXECUTABLE} -m pytest
@@ -9,7 +9,6 @@ if (WITH_HIVE)
 endif()
 
 add_subdirectory(Catch2)
-
 add_executable(testAll
   # helpers
   check_main.cpp
@@ -18,6 +17,7 @@ add_executable(testAll
   config/test_llarp_config_definition.cpp
   config/test_llarp_config_ini.cpp
   config/test_llarp_config_output.cpp
+  config/test_llarp_config_values.cpp
   crypto/test_llarp_crypto_types.cpp
   crypto/test_llarp_crypto.cpp
   crypto/test_llarp_key_manager.cpp
@@ -27,9 +27,6 @@ add_executable(testAll
   net/test_sock_addr.cpp
   nodedb/test_nodedb.cpp
   path/test_path.cpp
-  peerstats/test_peer_db.cpp
-  peerstats/test_peer_types.cpp
-  regress/2020-06-08-key-backup-bug.cpp
   router/test_llarp_router_version.cpp
   routing/test_llarp_routing_transfer_traffic.cpp
   routing/test_llarp_routing_obtainexitmessage.cpp
@@ -37,7 +34,6 @@ add_executable(testAll
   service/test_llarp_service_identity.cpp
   service/test_llarp_service_name.cpp
   util/meta/test_llarp_util_memfn.cpp
-  util/meta/test_llarp_util_traits.cpp
   util/thread/test_llarp_util_queue_manager.cpp
   util/thread/test_llarp_util_queue.cpp
   util/test_llarp_util_aligned.cpp
@@ -45,14 +41,20 @@ add_executable(testAll
   util/test_llarp_util_bits.cpp
   util/test_llarp_util_decaying_hashset.cpp
   util/test_llarp_util_log_level.cpp
-  util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   test_llarp_encrypted_frame.cpp
   test_llarp_router_contact.cpp)
 
-target_link_libraries(testAll PUBLIC liblokinet Catch2::Catch2)
+
+if(WITH_PEERSTATS_BACKEND)
+  target_sources(testAll PRIVATE
+    peerstats/test_peer_db.cpp
+    peerstats/test_peer_types.cpp)
+endif()
+
+target_link_libraries(testAll PUBLIC lokinet-amalgum Catch2::Catch2)
 target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-add_log_tag(testAll)
+
 if(WIN32)
     target_sources(testAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)

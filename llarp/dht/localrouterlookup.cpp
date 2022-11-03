@@ -6,7 +6,7 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/routing/dht_message.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 
 namespace llarp
 {
