@@ -1,3 +1,108 @@
+lokinet (0.9.10-1) unstable; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Use Windows-y 'x64' instead of '64bit' in static upload
+  * Use rsvg instead of imagemagick to make windows .ico
+  * Add rsvg-convert dep to windows readme
+  * Split windows into gui/main builds, main now builds on bookworm
+  * Windows prebuilt gui fixes
+
+  [ Jeff Becker ]
+  * proper handling of public ips
+
+  [ Jason Rhinelander ]
+  * Remove useless iterator assignments
+  * Fix time_delta<seconds> formatting in milliseconds
+  * Replace duration/timestamp formats with functions
+
+  [ Thomas Winget ]
+  * wait until actually stopped to tell windows we are
+  * debian missing yacc apparently all of a sudden
+
+  [ Jeff Becker ]
+  * correct windows service manager behavior.
+
+  [ Thomas Winget ]
+  * some useful log statements
+
+  [ Jeff Becker ]
+  * fix comment to reflect reality
+  * system layer manager (llarp::sys::service_manager)
+
+  [ Jason Rhinelander ]
+  * Remove dead/redundant code
+  * Fix crashes in wintun and windivert stopping
+  * Add some more debugging
+  * Update gui to latest
+  * Add networkReady to stats result
+  * Extend windows startup timeout
+
+  [ majestrate ]
+  * Update llarp/router/router.cpp
+
+  [ Jeff Becker ]
+  * simplify logic for disabling service manager on windows
+  * fix typo in filename
+
+  [ Jason Rhinelander ]
+  * Move log init even earlier
+  * Remove unused VERSION_STR constant
+  * Improve windows running-as-a-service detection works
+
+  [ Thomas Winget ]
+  * remove dead dns resolver code
+
+  [ Jeff Becker ]
+  * fix crash on shutdown
+
+  [ Thomas Winget ]
+  * stop-time debug statements
+
+  [ Jason Rhinelander ]
+  * Don't raise log level on shutdown
+  * Remove bad assert
+  * Add more stopping signals
+  * windivert: avoid trying to send during shutdown
+
+  [ Jeff Becker ]
+  * use std::shared_ptr for pending queries
+
+  [ Jason Rhinelander ]
+  * Fix crashy race condition in shutdown
+  * Fix crash on unbound cleanup
+  * patch unbound to fix windows shutdown crash
+  * RPC: fix "halt" command
+
+  [ Jeff Becker ]
+  * remove assert()
+  * remove duplicate log statement
+
+  [ majestrate ]
+  * update note about platform support
+  * point to explicit link
+  * correct documentation
+
+  [ Jeff Becker ]
+  * remove dead file
+  * explicitly select signing key used in source tarball signing script
+  * dont hardcode keyid
+  * prevent throwing on no error in lokinet-vpn
+
+  [ Jason Rhinelander ]
+  * Update gui subproject
+
+  [ Jeff Becker ]
+  * llarp::service::Endpoint::ReadyToDoLookup()
+
+  [ majestrate ]
+  * Update llarp/service/endpoint.cpp
+
+  [ Jason Rhinelander ]
+  * Bump openssl static build version
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 04 Nov 2022 11:38:03 -0300
+
 lokinet (0.9.10~rc2-2) unstable; urgency=medium
 
   * proper handling of public ips
