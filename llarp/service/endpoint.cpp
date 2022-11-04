@@ -40,15 +40,12 @@
 #include <uvw.hpp>
 #include <variant>
 
-namespace
-{
-  constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
-}  // namespace
-
 namespace llarp
 {
   namespace service
   {
+    static auto logcat = log::Cat("endpoint");
+
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder{r, 3, path::default_len}
         , context{parent}
@@ -314,7 +311,7 @@ namespace llarp
       auto obj = path::Builder::ExtractStatus();
       obj["exitMap"] = m_ExitMap.ExtractStatus();
       obj["identity"] = m_Identity.pub.Addr().ToString();
-      obj["networkReady"] = ReadyToDoLookup();
+      obj["networkReady"] = ReadyForNetwork();
 
       util::StatusObject authCodes;
       for (const auto& [service, info] : m_RemoteAuthInfos)
@@ -384,9 +381,12 @@ namespace llarp
     Endpoint::Stop()
     {
       // stop remote sessions
+      log::debug(logcat, "Endpoint stopping remote sessions.");
       EndpointUtil::StopRemoteSessions(m_state->m_RemoteSessions);
       // stop snode sessions
+      log::debug(logcat, "Endpoint stopping snode sessions.");
       EndpointUtil::StopSnodeSessions(m_state->m_SNodeSessions);
+      log::debug(logcat, "Endpoint stopping its path builder.");
       return path::Builder::Stop();
     }
 
@@ -952,20 +952,28 @@ namespace llarp
       return not m_ExitMap.Empty();
     }
 
-    bool
-    Endpoint::ReadyToDoLookup(std::optional<uint64_t> numPaths) const
+    path::Path::UniqueEndpointSet_t
+    Endpoint::GetUniqueEndpointsForLookup() const
     {
-      if (not numPaths)
-      {
-        path::Path::UniqueEndpointSet_t paths;
-        ForEachPath([&paths](auto path) {
-          if (path and path->IsReady())
-            paths.insert(path);
-        });
-        numPaths = paths.size();
-      }
+      path::Path::UniqueEndpointSet_t paths;
+      ForEachPath([&paths](auto path) {
+        if (path and path->IsReady())
+          paths.insert(path);
+      });
+      return paths;
+    }
 
-      return numPaths >= MIN_ENDPOINTS_FOR_LNS_LOOKUP;
+    bool
+    Endpoint::ReadyForNetwork() const
+    {
+      return IsReady() and ReadyToDoLookup(GetUniqueEndpointsForLookup().size());
+    }
+
+    bool
+    Endpoint::ReadyToDoLookup(size_t num_paths) const
+    {
+      // Currently just checks the number of paths, but could do more checks in the future.
+      return num_paths >= MIN_ENDPOINTS_FOR_LNS_LOOKUP;
     }
 
     void
@@ -986,12 +994,7 @@ namespace llarp
         return;
       }
       LogInfo(Name(), " looking up LNS name: ", name);
-      path::Path::UniqueEndpointSet_t paths;
-      ForEachPath([&paths](auto path) {
-        if (path and path->IsReady())
-          paths.insert(path);
-      });
-
+      auto paths = GetUniqueEndpointsForLookup();
       // not enough paths
       if (not ReadyToDoLookup(paths.size()))
       {

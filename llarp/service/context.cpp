@@ -11,6 +11,7 @@ namespace llarp
 {
   namespace service
   {
+    static auto logcat = log::Cat("service");
     namespace
     {
       using EndpointConstructor =
@@ -46,7 +47,9 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while (itr != m_Endpoints.end())
       {
+        log::debug(logcat, "Stopping endpoint {}.", itr->first);
         itr->second->Stop();
+        log::debug(logcat, "Endpoint {} stopped.", itr->first);
         m_Stopped.emplace_back(std::move(itr->second));
         itr = m_Endpoints.erase(itr);
       }

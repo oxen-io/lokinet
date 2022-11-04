@@ -14,13 +14,16 @@ mkdir -p "${outdir}"
 for size in "${sizes[@]}"; do
     outf="${outdir}/${size}x${size}.png"
     if [ $size -lt 32 ]; then
-        # For 16x16 and 24x24 we crop the image to 3/4 of its regular size before resizing and make
-        # it all white (instead of transparent) which effectively zooms in on it a bit because if we
-        # resize the full icon it ends up a fuzzy mess, while the crop and resize lets us retain
-        # some detail of the logo.
-        convert -background white -resize 512x512 "$svg" -gravity Center -extent 320x320 -resize ${size}x${size} -strip "png32:$outf"
+        # For 16x16 and 24x24 we crop the image to 2/3 of its regular size make it all white
+        # (instead of transparent) to zoom in on it a bit because if we resize the full icon to the
+        # target size it ends up a fuzzy mess, while the crop and resize lets us retain some detail
+        # of the logo.
+        rsvg-convert -b white \
+            --page-height $size --page-width $size \
+            -w $(($size*3/2)) -h $(($size*3/2)) --left " -$(($size/4))" --top " -$(($size/4))" \
+            "$svg" >"$outf"
     else
-        convert -background transparent -resize ${size}x${size} "$svg" -strip "png32:$outf"
+        rsvg-convert -b transparent -w $size -h $size "$svg" >"$outf"
     fi
     outs="-r $outf $outs"
 done
