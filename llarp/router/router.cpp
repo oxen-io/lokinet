@@ -200,6 +200,7 @@ namespace llarp
     {
       stats["authCodes"] = services["default"]["authCodes"];
       stats["exitMap"] = services["default"]["exitMap"];
+      stats["networkReady"] = services["default"]["networkReady"];
       stats["lokiAddress"] = services["default"]["identity"];
     }
     return stats;
@@ -393,6 +394,8 @@ namespace llarp
   bool
   Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
+    llarp::sys::service_manager->starting();
+
     m_Config = std::move(c);
     auto& conf = *m_Config;
 
@@ -515,9 +518,10 @@ namespace llarp
   void
   Router::Close()
   {
+    log::info(logcat, "closing");
     if (_onDown)
       _onDown();
-    LogInfo("closing router");
+    log::debug(logcat, "stopping mainloop");
     _loop->stop();
     _running.store(false);
   }
@@ -862,12 +866,64 @@ namespace llarp
     if (IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(_rc.Age(now), " since we last updated our RC");
-      LogInfo(_rc.TimeUntilExpires(now), " until our RC expires");
+      LogInfo(ToString(_rc.Age(now)), " since we last updated our RC");
+      LogInfo(ToString(_rc.TimeUntilExpires(now)), " until our RC expires");
     }
     if (m_LastStatsReport > 0s)
-      LogInfo(now - m_LastStatsReport, " last reported stats");
+      LogInfo(ToString(now - m_LastStatsReport), " last reported stats");
     m_LastStatsReport = now;
+  }
+
+  std::string
+  Router::status_line()
+  {
+    std::string status;
+    auto out = std::back_inserter(status);
+    fmt::format_to(out, "v{}", fmt::join(llarp::VERSION, "."));
+    if (IsServiceNode())
+    {
+      fmt::format_to(
+          out,
+          " snode | known/svc/clients: {}/{}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters(),
+          NumberOfConnectedClients());
+      fmt::format_to(
+          out,
+          " | {} active paths | block {} ",
+          pathContext().CurrentTransitPaths(),
+          (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
+      auto maybe_last = _rcGossiper.LastGossipAt();
+      fmt::format_to(
+          out,
+          " | gossip: (next/last) {} / {}",
+          short_time_from_now(_rcGossiper.NextGossipAt()),
+          maybe_last ? short_time_from_now(*maybe_last) : "never");
+    }
+    else
+    {
+      fmt::format_to(
+          out,
+          " client | known/connected: {}/{}",
+          nodedb()->NumLoaded(),
+          NumberOfConnectedRouters());
+
+      if (auto ep = hiddenServiceContext().GetDefault())
+      {
+        fmt::format_to(
+            out,
+            " | paths/endpoints {}/{}",
+            pathContext().CurrentOwnedPaths(),
+            ep->UniqueEndpoints());
+
+        if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
+        {
+          fmt::format_to(
+              out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
+        }
+      };
+    }
+    return status;
   }
 
   void
@@ -880,63 +936,11 @@ namespace llarp
     if (const auto delta = now - _lastTick; _lastTick != 0s and delta > TimeskipDetectedDuration)
     {
       // we detected a time skip into the futre, thaw the network
-      LogWarn("Timeskip of ", delta, " detected. Resetting network state");
+      LogWarn("Timeskip of ", ToString(delta), " detected. Resetting network state");
       Thaw();
     }
 
-#if defined(WITH_SYSTEMD)
-    {
-      std::string status;
-      auto out = std::back_inserter(status);
-      out = fmt::format_to(out, "WATCHDOG=1\nSTATUS=v{}", llarp::VERSION_STR);
-      if (IsServiceNode())
-      {
-        out = fmt::format_to(
-            out,
-            " snode | known/svc/clients: {}/{}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters(),
-            NumberOfConnectedClients());
-        out = fmt::format_to(
-            out,
-            " | {} active paths | block {} ",
-            pathContext().CurrentTransitPaths(),
-            (m_lokidRpcClient ? m_lokidRpcClient->BlockHeight() : 0));
-        out = fmt::format_to(
-            out,
-            " | gossip: (next/last) {} / ",
-            time_delta<std::chrono::seconds>{_rcGossiper.NextGossipAt()});
-        if (auto maybe = _rcGossiper.LastGossipAt())
-          out = fmt::format_to(out, "{}", time_delta<std::chrono::seconds>{*maybe});
-        else
-          out = fmt::format_to(out, "never");
-      }
-      else
-      {
-        out = fmt::format_to(
-            out,
-            " client | known/connected: {}/{}",
-            nodedb()->NumLoaded(),
-            NumberOfConnectedRouters());
-
-        if (auto ep = hiddenServiceContext().GetDefault())
-        {
-          out = fmt::format_to(
-              out,
-              " | paths/endpoints {}/{}",
-              pathContext().CurrentOwnedPaths(),
-              ep->UniqueEndpoints());
-
-          if (auto success_rate = ep->CurrentBuildStats().SuccessRatio(); success_rate < 0.5)
-          {
-            out = fmt::format_to(
-                out, " [ !!! Low Build Success Rate ({:.1f}%) !!! ]", (100.0 * success_rate));
-          }
-        };
-      }
-      ::sd_notify(0, status.c_str());
-    }
-#endif
+    llarp::sys::service_manager->report_periodic_stats();
 
     m_PathBuildLimiter.Decay(now);
 
@@ -1287,8 +1291,18 @@ namespace llarp
         // override ip and port as needed
         if (_ourAddress)
         {
-          if (not Net().IsBogon(ai.ip))
-            throw std::runtime_error{"cannot override public ip, it is already set"};
+          const auto ai_ip = ai.IP();
+          const auto override_ip = _ourAddress->getIP();
+
+          auto ai_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, ai_ip);
+          auto override_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, override_ip);
+
+          if ((not Net().IsBogonIP(ai_ip)) and (not Net().IsBogonIP(override_ip))
+              and ai_ip != override_ip)
+            throw std::runtime_error{
+                "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
+                "[router]:public-ip setting or set a bind address in the [bind] section of the "
+                "config."_format(ai_ip_str, override_ip_str)};
           ai.fromSockAddr(*_ourAddress);
         }
         if (RouterContact::BlockBogons && Net().IsBogon(ai.ip))
@@ -1391,9 +1405,6 @@ namespace llarp
     m_RoutePoker->Start(this);
     _running.store(true);
     _startedAt = Now();
-#if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "READY=1");
-#endif
     if (whitelistRouters)
     {
       // do service node testing if we are in service node whitelist mode
@@ -1466,6 +1477,7 @@ namespace llarp
         }
       });
     }
+    llarp::sys::service_manager->ready();
     return _running;
   }
 
@@ -1487,14 +1499,19 @@ namespace llarp
   void
   Router::AfterStopLinks()
   {
+    llarp::sys::service_manager->stopping();
     Close();
+    log::debug(logcat, "stopping oxenmq");
     m_lmq.reset();
   }
 
   void
   Router::AfterStopIssued()
   {
+    llarp::sys::service_manager->stopping();
+    log::debug(logcat, "stopping links");
     StopLinks();
+    log::debug(logcat, "saving nodedb to disk");
     nodedb()->SaveToDisk();
     _loop->call_later(200ms, [this] { AfterStopLinks(); });
   }
@@ -1517,9 +1534,7 @@ namespace llarp
     if (log::get_level_default() != log::Level::off)
       log::reset_level(log::Level::info);
     LogWarn("stopping router hard");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
-#endif
+    llarp::sys::service_manager->stopping();
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     StopLinks();
@@ -1530,20 +1545,32 @@ namespace llarp
   Router::Stop()
   {
     if (!_running)
+    {
+      log::debug(logcat, "Stop called, but not running");
       return;
+    }
     if (_stopping)
+    {
+      log::debug(logcat, "Stop called, but already stopping");
       return;
+    }
 
     _stopping.store(true);
-    if (log::get_level_default() != log::Level::off)
+    if (auto level = log::get_level_default();
+        level > log::Level::info and level != log::Level::off)
       log::reset_level(log::Level::info);
-    LogInfo("stopping router");
-#if defined(WITH_SYSTEMD)
-    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
-#endif
+    log::info(logcat, "stopping");
+    llarp::sys::service_manager->stopping();
+    log::debug(logcat, "stopping hidden service context");
     hiddenServiceContext().StopAll();
+    llarp::sys::service_manager->stopping();
+    log::debug(logcat, "stopping exit context");
     _exitContext.Stop();
+    llarp::sys::service_manager->stopping();
+    log::debug(logcat, "final upstream pump");
     paths.PumpUpstream();
+    llarp::sys::service_manager->stopping();
+    log::debug(logcat, "final links pump");
     _linkManager.PumpLinks();
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }

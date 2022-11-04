@@ -1,0 +1,33 @@
+commit 56d816014d5e8a7eb055169c7e13a303dad5e50f
+Author: Jason Rhinelander <jason@imaginary.ca>
+Date:   Mon Oct 31 22:07:03 2022 -0300
+
+    Set tube->ev_listen to NULL to prevent double unregister
+    
+    On windows when using threaded mode (i.e. `ub_ctx_async(ctx, 1)`)
+    tube_remove_bg_listen gets called twice: once when the thread does its
+    own cleanup, then again in `tube_delete()`.  Because `ev_listen` doesn't
+    get cleared, however, we end we calling ub_winsock_unregister_wsaevent
+    with a freed pointer.
+    
+    This doesn't always manifest because, apparently, for various compilers
+    and settings that memory *might* be overwritten in which case the
+    additional check for ev->magic will prevent anything actually happening,
+    but in my case under mingw32 that doesn't happen and we end up
+    eventually crashing.
+    
+    This fixes the crash by properly NULLing the pointer so that the second
+    ub_winsock_unregister_wsaevent(...) becomes a no-op.
+
+diff --git a/util/tube.c b/util/tube.c
+index 43455fee..a92dfa77 100644
+--- a/util/tube.c
++++ b/util/tube.c
+@@ -570,6 +570,7 @@ void tube_remove_bg_listen(struct tube* tube)
+ {
+ 	verbose(VERB_ALGO, "tube remove_bg_listen");
+ 	ub_winsock_unregister_wsaevent(tube->ev_listen);
++	tube->ev_listen = NULL;
+ }
+ 
+ void tube_remove_bg_write(struct tube* tube)
