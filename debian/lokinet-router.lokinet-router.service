@@ -1,6 +1,5 @@
 [Unit]
 Description=LokiNET: Anonymous Network layer thingydoo, router
-AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 Wants=network-online.target
 After=network-online.target
 
