@@ -12,6 +12,8 @@
 #include "service/context.hpp"
 #include "util/logging.hpp"
 
+#include <llarp/util/service_manager.hpp>
+
 #include <cxxopts.hpp>
 #include <csignal>
 #include <stdexcept>
@@ -19,6 +21,8 @@
 #if (__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
+
+static auto logcat = llarp::log::Cat("llarp-context");
 
 namespace llarp
 {
@@ -159,6 +163,7 @@ namespace llarp
   void
   Context::HandleSignal(int sig)
   {
+    llarp::log::debug(logcat, "Handling signal {}", sig);
     if (sig == SIGINT || sig == SIGTERM)
     {
       SigINT();
@@ -188,6 +193,7 @@ namespace llarp
   {
     if (router)
     {
+      llarp::log::debug(logcat, "Handling SIGINT");
       /// async stop router on sigint
       router->Stop();
     }
@@ -207,6 +213,12 @@ namespace llarp
 
     llarp::LogDebug("free loop");
     loop.reset();
+  }
+
+  Context::Context()
+  {
+    // service_manager is a global and context isnt
+    llarp::sys::service_manager->give_context(this);
   }
 
 }  // namespace llarp

@@ -3,7 +3,7 @@
 
 * Act like a responsible adult.
 
-* RUN `make format` BEFORE COMMITING ALWAYS.
+* RUN `./contrib/format.sh` BEFORE COMMITING ALWAYS.
 
 # Do NOT
 
