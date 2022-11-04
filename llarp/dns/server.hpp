@@ -17,6 +17,9 @@ namespace llarp::dns
     /// the original dns query
     Message m_Query;
 
+    /// True if we've sent a reply (including via a call to cancel)
+    std::atomic_flag m_Done = ATOMIC_FLAG_INIT;
+
    public:
     explicit QueryJob_Base(Message query) : m_Query{std::move(query)}
     {}
@@ -37,11 +40,11 @@ namespace llarp::dns
 
     /// cancel this operation and inform anyone who cares
     void
-    Cancel() const;
+    Cancel();
 
     /// send a raw buffer back to the querier
     virtual void
-    SendReply(llarp::OwnedBuffer replyBuf) const = 0;
+    SendReply(llarp::OwnedBuffer replyBuf) = 0;
   };
 
   class PacketSource_Base
@@ -130,7 +133,7 @@ namespace llarp::dns
     {}
 
     void
-    SendReply(llarp::OwnedBuffer replyBuf) const override
+    SendReply(llarp::OwnedBuffer replyBuf) override
     {
       src->SendTo(asker, resolver, std::move(replyBuf));
     }

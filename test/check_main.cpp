@@ -2,6 +2,7 @@
 #include <catch2/catch.hpp>
 
 #include <util/logging.hpp>
+#include <util/service_manager.hpp>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -23,6 +24,7 @@ startWinsock()
 int
 main(int argc, char* argv[])
 {
+  llarp::sys::service_manager->disable();
   llarp::log::reset_level(llarp::log::Level::off);
 
 #ifdef _WIN32
