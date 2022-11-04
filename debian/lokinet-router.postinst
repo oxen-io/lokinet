@@ -17,9 +17,6 @@ if [ "$1" = configure ]; then
     /usr/bin/lokinet -r -g $tmpdir/lokinet.ini
     perl -pi -e "
         s#$tmpdir#$datadir#;
-        if (/^\[bootstrap/ ... /^\[/) {
-            s{^#?add-node=.*}{add-node=/var/lib/lokinet/bootstrap.signed};
-        }
         if (/^\[lokid/ ... /^\[/) {
             s{^#?enabled=.*}{enabled=1};
             s{^#?rpc=.*}{rpc=ipc:///var/lib/loki/lokid.sock};
@@ -33,9 +30,6 @@ if [ "$1" = configure ]; then
     /usr/bin/lokinet -r -g $tmpdir/lokinet.ini
     perl -pi -e "
         s#$tmpdir#$tn_datadir#;
-        if (/^\[bootstrap/ ... /^\[/) {
-            s{^#?add-node=.*}{add-node=/var/lib/lokinet/testnet/bootstrap.signed};
-        }
         if (/^\[router/ ... /^\[/) {
             s{^#?netid=.*}{netid=gamma};
         }
