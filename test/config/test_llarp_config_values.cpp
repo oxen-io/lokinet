@@ -160,6 +160,26 @@ inbound=127.0.0.1:443
 )";
     REQUIRE_THROWS(make_config(env, ini_str));
   }
+  SECTION("public ip provided but no bind section")
+  {
+    std::string_view ini_str = R"(
+[router]
+public-ip=1.1.1.1
+public-port=443
+)";
+    REQUIRE_NOTHROW(run_config_test(env, ini_str));
+  }
+  SECTION("public ip provided with ip in bind section")
+  {
+    std::string_view ini_str = R"(
+[router]
+public-ip=1.1.1.1
+public-port=443
+[bind]
+1.1.1.1=443
+)";
+    REQUIRE_NOTHROW(run_config_test(env, ini_str));
+  }
 }
 
 TEST_CASE("service node bind section on nat network", "[config]")
@@ -212,6 +232,7 @@ inbound=0.0.0.0:443
 )";
     REQUIRE_THROWS(run_config_test(env, ini_str));
   }
+
 }
 
 TEST_CASE("service node bind section with multiple public ip", "[config]")
@@ -226,7 +247,7 @@ TEST_CASE("service node bind section with multiple public ip", "[config]")
     std::string_view ini_str = "";
     REQUIRE_NOTHROW(run_config_test(env, ini_str));
   }
-  SECTION("with old style wildcard for inbound and no public ip")
+  SECTION("with old style wildcard for inbound and no public ip, fails")
   {
     std::string_view ini_str = R"(
 [bind]
@@ -261,7 +282,7 @@ public-port=443
 inbound=0.0.0.0:443
 )";
 
-    REQUIRE_THROWS(run_config_test(env, ini_str));
+    REQUIRE_NOTHROW(run_config_test(env, ini_str));
   }
   SECTION("with wildcard via inbound directive secondary public ip given")
   {
@@ -273,7 +294,7 @@ public-port=443
 inbound=0.0.0.0:443
 )";
 
-    REQUIRE_THROWS(run_config_test(env, ini_str));
+    REQUIRE_NOTHROW(run_config_test(env, ini_str));
   }
   SECTION("with bind via interface name")
   {
