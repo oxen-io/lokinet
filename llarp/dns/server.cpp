@@ -16,14 +16,13 @@
 #include "oxen/log.hpp"
 #include "sd_platform.hpp"
 #include "nm_platform.hpp"
-#include "win32_platform.hpp"
 
 namespace llarp::dns
 {
   static auto logcat = log::Cat("dns");
 
   void
-  QueryJob_Base::Cancel() const
+  QueryJob_Base::Cancel()
   {
     Message reply{m_Query};
     reply.AddServFail();
@@ -87,7 +86,7 @@ namespace llarp::dns
   {
     class Resolver;
 
-    class Query : public QueryJob_Base
+    class Query : public QueryJob_Base, public std::enable_shared_from_this<Query>
     {
       std::shared_ptr<PacketSource_Base> src;
       SockAddr resolverAddr;
@@ -109,8 +108,8 @@ namespace llarp::dns
       std::weak_ptr<Resolver> parent;
       int id{};
 
-      virtual void
-      SendReply(llarp::OwnedBuffer replyBuf) const override;
+      void
+      SendReply(llarp::OwnedBuffer replyBuf) override;
     };
 
     /// Resolver_Base that uses libunbound
@@ -127,7 +126,7 @@ namespace llarp::dns
 #endif
 
       std::optional<SockAddr> m_LocalAddr;
-      std::set<int> m_Pending;
+      std::unordered_set<std::shared_ptr<Query>> m_Pending;
 
       struct ub_result_deleter
       {
@@ -149,9 +148,8 @@ namespace llarp::dns
       {
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
-        // take ownership of our query
-        std::unique_ptr<Query> query{static_cast<Query*>(data)};
-
+        // borrow query
+        auto* query = static_cast<Query*>(data);
         if (err)
         {
           // some kind of error from upstream
@@ -168,9 +166,7 @@ namespace llarp::dns
         hdr.id = query->Underlying().hdr_id;
         buf.cur = buf.base;
         hdr.Encode(&buf);
-        // remove pending query
-        if (auto ptr = query->parent.lock())
-          ptr->call([id = query->id, ptr]() { ptr->m_Pending.erase(id); });
+
         // send reply
         query->SendReply(std::move(pkt));
       }
@@ -345,6 +341,12 @@ namespace llarp::dns
       }
 
       void
+      RemovePending(const std::shared_ptr<Query>& query)
+      {
+        m_Pending.erase(query);
+      }
+
+      void
       Up(const llarp::DnsConfig& conf)
       {
         if (m_ctx)
@@ -379,10 +381,14 @@ namespace llarp::dns
         runner = std::thread{[this]() {
           while (running)
           {
-            ub_wait(m_ctx);
-            std::this_thread::sleep_for(10ms);
+            // poll and process callbacks it this thread
+            if (ub_poll(m_ctx))
+            {
+              ub_process(m_ctx);
+            }
+            else  // nothing to do, sleep.
+              std::this_thread::sleep_for(10ms);
           }
-          ub_process(m_ctx);
         }};
 #else
         if (auto loop = m_Loop.lock())
@@ -404,22 +410,30 @@ namespace llarp::dns
       {
 #ifdef _WIN32
         if (running.exchange(false))
+        {
+          log::debug(logcat, "shutting down win32 dns thread");
           runner.join();
+        }
 #else
         if (m_Poller)
           m_Poller->close();
 #endif
         if (m_ctx)
         {
-          // cancel pending queries
-          // make copy as ub_cancel modifies m_Pending
-          const auto pending = m_Pending;
-          for (auto id : pending)
-            ::ub_cancel(m_ctx, id);
-          m_Pending.clear();
-
           ::ub_ctx_delete(m_ctx);
           m_ctx = nullptr;
+
+          // destroy any outstanding queries that unbound hasn't fired yet
+          if (not m_Pending.empty())
+          {
+            log::debug(logcat, "cancelling {} pending queries", m_Pending.size());
+            // We must copy because Cancel does a loop call to remove itself, but since we are
+            // already in the main loop it happens immediately, which would invalidate our iterator
+            // if we were looping through m_Pending at the time.
+            auto copy = m_Pending;
+            for (const auto& query : copy)
+              query->Cancel();
+          }
         }
       }
 
@@ -471,8 +485,8 @@ namespace llarp::dns
       {
         if (WouldLoop(to, from))
           return false;
-        // we use this unique ptr to clean up on fail
-        auto tmp = std::make_unique<Query>(weak_from_this(), query, source, to, from);
+
+        auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
         // no questions, send fail
         if (query.questions.empty())
         {
@@ -495,6 +509,15 @@ namespace llarp::dns
           tmp->Cancel();
           return true;
         }
+
+#ifdef _WIN32
+        if (not running)
+        {
+          // we are stopping the win32 thread
+          tmp->Cancel();
+          return true;
+        }
+#endif
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx,
@@ -503,33 +526,36 @@ namespace llarp::dns
                 q.qclass,
                 tmp.get(),
                 &Resolver::Callback,
-                &tmp->id))
+                nullptr))
         {
           log::warning(
               logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
           tmp->Cancel();
         }
         else
-        {
-          m_Pending.insert(tmp->id);
-          // Leak the bare pointer we gave to unbound; we'll recapture it in Callback
-          (void)tmp.release();
-        }
+          m_Pending.insert(std::move(tmp));
+
         return true;
       }
     };
 
     void
-    Query::SendReply(llarp::OwnedBuffer replyBuf) const
+    Query::SendReply(llarp::OwnedBuffer replyBuf)
     {
-      if (auto ptr = parent.lock())
+      if (m_Done.test_and_set())
+        return;
+      auto parent_ptr = parent.lock();
+      if (parent_ptr)
       {
-        ptr->call([src = src, from = resolverAddr, to = askerAddr, buf = replyBuf.copy()] {
-          src->SendTo(to, from, OwnedBuffer::copy_from(buf));
-        });
+        parent_ptr->call(
+            [self = shared_from_this(), parent_ptr = std::move(parent_ptr), buf = replyBuf.copy()] {
+              self->src->SendTo(self->askerAddr, self->resolverAddr, OwnedBuffer::copy_from(buf));
+              // remove query
+              parent_ptr->RemovePending(self);
+            });
       }
       else
-        log::error(logcat, "no source or parent");
+        log::error(logcat, "no parent");
     }
   }  // namespace libunbound
 
@@ -569,10 +595,6 @@ namespace llarp::dns
     {
       plat->add_impl(std::make_unique<SD_Platform_t>());
       plat->add_impl(std::make_unique<NM_Platform_t>());
-    }
-    if constexpr (llarp::platform::is_windows)
-    {
-      plat->add_impl(std::make_unique<Win32_Platform_t>());
     }
     return plat;
   }

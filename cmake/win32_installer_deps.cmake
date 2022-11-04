@@ -1,22 +1,3 @@
-if(NOT BUILD_GUI)
-  if(NOT GUI_ZIP_URL)
-    set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/lokinet-gui/dev/lokinet-windows-x64-20220331T180338Z-569f90ad8.zip")
-    set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=316f10489f5907bfa9c74b21f8ef2fdd7b7c7e6a0f5bcedaed2ee5f4004eab52)
-  endif()
-
-  file(DOWNLOAD
-    ${GUI_ZIP_URL}
-    ${CMAKE_BINARY_DIR}/lokinet-gui.zip
-    ${GUI_ZIP_HASH_OPTS})
-
-  # We expect the produced .zip file above to extract to ./gui/lokinet-gui.exe
-  execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-gui.zip
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-  if(NOT EXISTS ${CMAKE_BINARY_DIR}/gui/lokinet-gui.exe)
-    message(FATAL_ERROR "Downloaded gui archive from ${GUI_ZIP_URL} does not contain gui/lokinet-gui.exe!")
-  endif()
-endif()
 install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
 
 if(WITH_WINDOWS_32)

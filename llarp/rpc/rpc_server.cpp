@@ -146,7 +146,7 @@ namespace llarp::rpc
     m_LMQ->listen_plain(url.zmq_address());
     m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
         .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); })
-        .add_command(
+        .add_request_command(
             "halt",
             [&](oxenmq::Message& msg) {
               if (not m_Router->IsRunning())

@@ -5,10 +5,10 @@
 
 set(LOCAL_MIRROR "" CACHE STRING "local mirror path/URL for lib downloads")
 
-set(OPENSSL_VERSION 3.0.5 CACHE STRING "openssl version")
+set(OPENSSL_VERSION 3.0.7 CACHE STRING "openssl version")
 set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://www.openssl.org/source CACHE STRING "openssl download mirror(s)")
 set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
-set(OPENSSL_HASH SHA256=aa7d8d9bef71ad6525c55ba11e5f4397889ce49c2c9349dcea6d3e4f0b024a7a
+set(OPENSSL_HASH SHA256=83049d042a260e696f62406ac5c08bf706fd84383f945cf21bd61e9ed95c396e
     CACHE STRING "openssl source hash")
 
 set(EXPAT_VERSION 2.4.9 CACHE STRING "expat version")
@@ -306,8 +306,15 @@ build_external(expat
 )
 add_static_target(expat expat_external libexpat.a)
 
+
+if(WIN32)
+  set(unbound_patch
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
+        ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-delete-crash-fix.patch)
+endif()
 build_external(unbound
   DEPENDS openssl_external expat_external
+  ${unbound_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}

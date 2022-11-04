@@ -1,6 +1,7 @@
 #include "time.hpp"
 #include <chrono>
 #include <iomanip>
+#include "types.hpp"
 
 namespace llarp
 {
@@ -48,5 +49,60 @@ namespace llarp
   to_json(const Duration_t& t)
   {
     return ToMS(t);
+  }
+
+  static auto
+  extract_h_m_s_ms(const Duration_t& dur)
+  {
+    return std::make_tuple(
+        std::chrono::duration_cast<std::chrono::hours>(dur).count(),
+        (std::chrono::duration_cast<std::chrono::minutes>(dur) % 1h).count(),
+        (std::chrono::duration_cast<std::chrono::seconds>(dur) % 1min).count(),
+        (std::chrono::duration_cast<std::chrono::milliseconds>(dur) % 1s).count());
+  }
+
+  std::string
+  short_time_from_now(const TimePoint_t& t, const Duration_t& now_threshold)
+  {
+    auto delta = std::chrono::duration_cast<Duration_t>(llarp::TimePoint_t::clock::now() - t);
+    bool future = delta < 0s;
+    if (future)
+      delta = -delta;
+
+    auto [hours, mins, secs, ms] = extract_h_m_s_ms(delta);
+
+    using namespace fmt::literals;
+    return fmt::format(
+        delta < now_threshold ? "now"
+            : delta < 10s     ? "{in}{secs:d}.{ms:03d}s{ago}"
+            : delta < 1h      ? "{in}{mins:d}m{secs:02d}s{ago}"
+                              : "{in}{hours:d}h{mins:02d}m{ago}",
+        "in"_a = future ? "in " : "",
+        "ago"_a = future ? "" : " ago",
+        "hours"_a = hours,
+        "mins"_a = mins,
+        "secs"_a = secs,
+        "ms"_a = ms);
+  }
+
+  std::string
+  ToString(Duration_t delta)
+  {
+    bool neg = delta < 0s;
+    if (neg)
+      delta = -delta;
+
+    auto [hours, mins, secs, ms] = extract_h_m_s_ms(delta);
+
+    using namespace fmt::literals;
+    return fmt::format(
+        delta < 1min     ? "{neg}{secs:d}.{ms:03d}s"
+            : delta < 1h ? "{neg}{mins:d}m{secs:02d}.{ms:03d}s"
+                         : "{neg}{hours:d}h{mins:02d}m{secs:02d}.{ms:03d}s",
+        "neg"_a = neg ? "-" : "",
+        "hours"_a = hours,
+        "mins"_a = mins,
+        "secs"_a = secs,
+        "ms"_a = ms);
   }
 }  // namespace llarp
