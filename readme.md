@@ -6,7 +6,7 @@ Lokinet is the reference implementation of LLARP (low latency anonymous routing 
 
 ### Installation instructions can be found [here](docs/install.md).
 
-#### You can learn more about the high level, how to use it and the internals of the protocol [here](docs/)
+#### You can learn more about the high level, how to use it and the internals of the protocol [here](docs/readme.md)
 
 [![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/lokinet/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/lokinet)
 

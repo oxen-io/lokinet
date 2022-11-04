@@ -116,10 +116,10 @@ namespace llarp
     std::string result;
     auto out = std::back_inserter(result);
     for (const auto& addr : addrs)
-      out = fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
-    out = fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
+      fmt::format_to(out, "ai_addr={}; ai_pk={}; ", addr.toIpAddress(), addr.pubkey);
+    fmt::format_to(out, "updated={}; onion_pk={}; ", last_updated.count(), enckey.ToHex());
     if (routerVersion.has_value())
-      out = fmt::format_to(out, "router_version={}; ", *routerVersion);
+      fmt::format_to(out, "router_version={}; ", *routerVersion);
     return result;
   }
 
