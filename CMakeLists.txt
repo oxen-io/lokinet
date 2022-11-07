@@ -32,7 +32,7 @@ project(lokinet
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 5)
+    set(LOKINET_APPLE_BUILD 6)
 endif()
 
 set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
