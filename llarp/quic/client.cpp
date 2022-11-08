@@ -12,6 +12,8 @@
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   Client::Client(EndpointBase& ep, const SockAddr& remote, uint16_t pseudo_port) : Endpoint{ep}
   {
     default_stream_buffer_size =
@@ -35,7 +37,7 @@ namespace llarp::quic
     // - key_update_timer
 
     Path path{local_addr, remote};
-    llarp::LogDebug("Connecting to ", remote);
+    log::debug(logcat, "Connecting to {}", remote);
 
     auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
     conn->io_ready();

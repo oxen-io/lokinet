@@ -5,6 +5,8 @@
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   // Cranks a value to "11", i.e. set it to its maximum
   template <typename T>
   void
@@ -41,7 +43,7 @@ namespace llarp::quic
   void
   NullCrypto::server_initial(Connection& conn)
   {
-    LogDebug("Server initial null crypto setup");
+    log::debug(logcat, "Server initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
     ngtcp2_conn_install_initial_key(
         conn,
