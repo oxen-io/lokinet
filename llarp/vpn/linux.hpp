@@ -24,6 +24,8 @@
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp.hpp>
 
+#include <llarp/util/fs.hpp>
+
 namespace llarp::vpn
 {
   struct in6_ifreq
