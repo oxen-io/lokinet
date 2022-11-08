@@ -22,6 +22,8 @@ extern "C"
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   Endpoint::Endpoint(EndpointBase& ep) : service_endpoint{ep}
   {
     randombytes_buf(static_secret.data(), static_secret.size());
@@ -31,7 +33,7 @@ namespace llarp::quic
     expiry_timer->on<uvw::TimerEvent>([this](const auto&, auto&) { check_timeouts(); });
     expiry_timer->start(250ms, 250ms);
 
-    LogDebug("Created QUIC endpoint");
+    log::debug(logcat, "Created QUIC endpoint");
   }
 
   Endpoint::~Endpoint()
@@ -57,30 +59,30 @@ namespace llarp::quic
 
     Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
 
-    LogTrace("[", pkt.path, ",ecn=", pkt.info.ecn, "]: received ", data.size(), " bytes");
+    log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
 
     handle_packet(pkt);
 
-    LogTrace("Done handling packet");
+    log::trace(logcat, "Done handling packet");
   }
 
   void
   Endpoint::handle_packet(const Packet& p)
   {
-    LogTrace("Handling incoming quic packet: ", buffer_printer{p.data});
+    log::trace(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
       return;
     auto& dcid = *maybe_dcid;
 
     // See if we have an existing connection already established for it
-    LogTrace("Incoming connection id ", dcid);
+    log::trace(logcat, "Incoming connection id {}", dcid);
     auto [connptr, alias] = get_conn(dcid);
     if (!connptr)
     {
       if (alias)
       {
-        LogDebug("Incoming packet QUIC CID is an expired alias; dropping");
+        log::debug(logcat, "Incoming packet QUIC CID is an expired alias; dropping");
         return;
       }
       connptr = accept_initial_connection(p);
@@ -88,9 +90,9 @@ namespace llarp::quic
         return;
     }
     if (alias)
-      LogTrace("CID is alias for primary CID ", connptr->base_cid);
+      log::trace(logcat, "CID is alias for primary CID {}", connptr->base_cid);
     else
-      LogTrace("CID is primary CID");
+      log::trace(logcat, "CID is primary CID");
 
     handle_conn_packet(*connptr, p);
   }
@@ -115,13 +117,13 @@ namespace llarp::quic
     }
     if (rv != 0)
     {
-      LogWarn("QUIC packet header decode failed: ", ngtcp2_strerror(rv));
+      log::warning(logcat, "QUIC packet header decode failed: {}", ngtcp2_strerror(rv));
       return std::nullopt;
     }
 
     if (vi.dcid_len > ConnectionID::max_size())
     {
-      LogWarn("Internal error: destination ID is longer than should be allowed");
+      log::warning(logcat, "Internal error: destination ID is longer than should be allowed");
       return std::nullopt;
     }
 
@@ -132,13 +134,13 @@ namespace llarp::quic
   {
     if (ngtcp2_conn_is_in_closing_period(conn))
     {
-      LogDebug("Connection is in closing period, dropping");
+      log::debug(logcat, "Connection is in closing period, dropping");
       close_connection(conn);
       return;
     }
     if (conn.draining)
     {
-      LogDebug("Connection is draining, dropping");
+      log::debug(logcat, "Connection is draining, dropping");
       // "draining" state means we received a connection close and we're keeping the
       // connection alive just to catch (and discard) straggling packets that arrive
       // out of order w.r.t to connection close.
@@ -147,24 +149,25 @@ namespace llarp::quic
 
     if (auto result = read_packet(p, conn); !result)
     {
-      LogWarn("Read packet failed! ", ngtcp2_strerror(result.error_code));
+      log::warning(logcat, "Read packet failed! {}", ngtcp2_strerror(result.error_code));
+      log::debug(logcat, "Packet: {}", buffer_printer{p.data});
     }
 
     // FIXME - reset idle timer?
-    LogTrace("Done with incoming packet");
+    log::trace(logcat, "Done with incoming packet");
   }
 
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    LogTrace("Reading packet from ", p.path);
+    log::trace(logcat, "Reading packet from {}", p.path);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
     if (rv == 0)
       conn.io_ready();
     else
-      LogWarn("read pkt error: ", ngtcp2_strerror(rv));
+      log::warning(logcat, "read pkt error: {}", ngtcp2_strerror(rv));
 
     if (rv == NGTCP2_ERR_DRAINING)
       start_draining(conn);
@@ -188,11 +191,12 @@ namespace llarp::quic
     if (service_endpoint.SendToOrQueue(
             to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
-      LogTrace("[", to, "]: sent ", buffer_printer{outgoing});
+      log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
     }
     else
     {
-      LogDebug("Failed to send to quic endpoint ", to, "; was sending ", outgoing.size(), "B");
+      log::debug(
+          logcat, "Failed to send to quic endpoint {}; was sending {}B", to, outgoing.size());
     }
     return {};
   }
@@ -218,7 +222,8 @@ namespace llarp::quic
         versions.data(),
         versions.size());
     if (nwrote < 0)
-      LogWarn("Failed to construct version negotiation packet: ", ngtcp2_strerror(nwrote));
+      log::warning(
+          logcat, "Failed to construct version negotiation packet: {}", ngtcp2_strerror(nwrote));
     if (nwrote <= 0)
       return;
 
@@ -229,7 +234,7 @@ namespace llarp::quic
   Endpoint::close_connection(
       Connection& conn, uint64_t code, bool application, std::string_view close_reason)
   {
-    LogDebug("Closing connection ", conn.base_cid);
+    log::debug(logcat, "Closing connection {}", conn.base_cid);
     if (!conn.closing)
     {
       conn.conn_buffer.resize(max_pkt_size_v4);
@@ -252,8 +257,9 @@ namespace llarp::quic
           get_timestamp());
       if (written <= 0)
       {
-        LogWarn(
-            "Failed to write connection close packet: ",
+        log::warning(
+            logcat,
+            "Failed to write connection close packet: {}",
             written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
         return;
       }
@@ -267,10 +273,10 @@ namespace llarp::quic
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
     {
-      LogWarn(
-          "Failed to send packet: ",
+      log::warning(
+          logcat,
+          "Failed to send packet: {}; removing connection {}",
           strerror(sent.error_code),
-          "; removing connection ",
           conn.base_cid);
       delete_conn(conn.base_cid);
       return;
@@ -285,7 +291,7 @@ namespace llarp::quic
   {
     if (conn.draining)
       return;
-    LogDebug("Putting ", conn.base_cid, " into draining mode");
+    log::debug(logcat, "Putting {} into draining mode", conn.base_cid);
     conn.draining = true;
     // Recommended draining time is 3*Probe Timeout
     draining.emplace(conn.base_cid, get_time() + ngtcp2_conn_get_pto(conn) * 3 * 1ns);
@@ -305,7 +311,7 @@ namespace llarp::quic
       {
         if (std::holds_alternative<primary_conn_ptr>(it->second))
           cleanup = true;
-        LogDebug("Deleting connection ", it->first);
+        log::debug(logcat, "Deleting connection {}", it->first);
         conns.erase(it);
       }
       draining.pop();
@@ -344,12 +350,12 @@ namespace llarp::quic
     auto it = conns.find(cid);
     if (it == conns.end())
     {
-      LogDebug("Cannot delete connection ", cid, ": cid not found");
+      log::debug(logcat, "Cannot delete connection {}: cid not found", cid);
       return false;
     }
 
     bool primary = std::holds_alternative<primary_conn_ptr>(it->second);
-    LogDebug("Deleting ", primary ? "primary" : "alias", " connection ", cid);
+    log::debug(logcat, "Deleting {} connection {}", primary ? "primary" : "alias", cid);
     conns.erase(it);
     if (primary)
       clean_alias_conns();
@@ -378,7 +384,7 @@ namespace llarp::quic
       cid = ConnectionID::random(cid_length);
       inserted = conns.emplace(cid, conn.weak_from_this()).second;
     }
-    LogDebug("Created cid ", cid, " alias for ", conn.base_cid);
+    log::debug(logcat, "Created cid {} alias for {}", cid, conn.base_cid);
     return cid;
   }
 

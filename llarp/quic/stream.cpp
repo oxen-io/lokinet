@@ -43,6 +43,8 @@
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   std::string
   StreamID::ToString() const
   {
@@ -71,7 +73,7 @@ namespace llarp::quic
 
   Stream::~Stream()
   {
-    LogTrace("Destroying stream ", stream_id);
+    log::trace(logcat, "Destroying stream {}", stream_id);
     if (avail_trigger)
     {
       avail_trigger->close();
@@ -124,26 +126,24 @@ namespace llarp::quic
       auto data_split = data.begin() + (buffer.size() - wpos);
       std::copy(data.begin(), data_split, buffer.begin() + wpos);
       std::copy(data_split, data.end(), buffer.begin());
-      LogTrace(
-          "Wrote ",
+      log::trace(
+          logcat,
+          "Wrote {} bytes to buffer ranges [{},)+[0,{})",
           data.size(),
-          " bytes to buffer ranges [",
           wpos,
-          ",",
           buffer.size(),
-          ")+[0,",
-          data.end() - data_split,
-          ")");
+          data.end() - data_split);
     }
     else
     {
       // No wrap needs, it fits before the end:
       std::copy(data.begin(), data.end(), buffer.begin() + wpos);
-      LogTrace(
-          "Wrote ", data.size(), " bytes to buffer range [", wpos, ",", wpos + data.size(), ")");
+      log::trace(
+          logcat, "Wrote {} bytes to buffer range [{},{})", data.size(), wpos, wpos + data.size());
     }
     size += data.size();
-    LogTrace("New stream buffer: ", size, "/", buffer.size(), " bytes beginning at ", start);
+    log::trace(
+        logcat, "New stream buffer: {}/{} bytes beginning at {}", size, buffer.size(), start);
     conn.io_ready();
     return true;
   }
@@ -177,7 +177,7 @@ namespace llarp::quic
     //
     assert(bytes <= unacked_size && unacked_size <= size);
 
-    LogTrace("Acked ", bytes, " bytes of ", unacked_size, "/", size, " unacked/total");
+    log::trace(logcat, "Acked {} bytes of {}/{} unacked/total", bytes, unacked_size, size);
 
     unacked_size -= bytes;
     size -= bytes;
@@ -308,7 +308,7 @@ namespace llarp::quic
     //     [  áaarrrrrr  ]  or  [rr     áaar]
     // to:
     //     [  áaaaaarrr  ]  or  [aa     áaaa]
-    LogTrace("wrote ", bytes, ", unsent=", unsent());
+    log::trace(logcat, "wrote {}, unsent={}", bytes, unsent());
     assert(bytes <= unsent());
     unacked_size += bytes;
   }
@@ -316,20 +316,21 @@ namespace llarp::quic
   void
   Stream::close(std::optional<uint64_t> error_code)
   {
-    LogDebug(
-        "Closing ",
+    log::debug(
+        logcat,
+        "Closing {} {}",
         stream_id,
         error_code ? " immediately with code " + std::to_string(*error_code) : " gracefully");
 
     if (is_shutdown)
-      LogDebug("Stream is already shutting down");
+      log::debug(logcat, "Stream is already shutting down");
     else if (error_code)
     {
       is_closing = is_shutdown = true;
       ngtcp2_conn_shutdown_stream(conn, stream_id.id, *error_code);
     }
     else if (is_closing)
-      LogDebug("Stream is already closing");
+      log::debug(logcat, "Stream is already closing");
     else
       is_closing = true;
 

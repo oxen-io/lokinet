@@ -1327,7 +1327,7 @@ namespace llarp
           LogWarn("invalid incoming quic packet, dropping");
           return false;
         }
-        LogInfo("tag active T=", tag);
+        log::trace(logcat, "tag active T={}", tag);
         quic->receive_packet(tag, buf);
         return true;
       }

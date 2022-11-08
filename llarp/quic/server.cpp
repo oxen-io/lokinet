@@ -11,10 +11,12 @@
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   std::shared_ptr<Connection>
   Server::accept_initial_connection(const Packet& p)
   {
-    LogDebug("Accepting new connection");
+    log::debug(logcat, "Accepting new connection");
 
     // This is a new incoming connection
     ngtcp2_pkt_hd hd;
@@ -22,14 +24,14 @@ namespace llarp::quic
 
     if (rv == -1)
     {  // Invalid packet
-      LogWarn("Invalid packet received, length=", p.data.size());
-      LogTrace("packet body: ", buffer_printer{p.data});
+      log::warning(logcat, "Invalid packet received, length={}", p.data.size());
+      log::trace(logcat, "packet body: {}", buffer_printer{p.data});
       return nullptr;
     }
 
     if (rv == 1)
     {  // Invalid/unexpected version, send a version negotiation
-      LogDebug("Invalid/unsupported version; sending version negotiation");
+      log::debug(logcat, "Invalid/unsupported version; sending version negotiation");
       send_version_negotiation(
           version_info{hd.version, hd.dcid.data, hd.dcid.datalen, hd.scid.data, hd.scid.datalen},
           p.path.remote);
@@ -38,14 +40,15 @@ namespace llarp::quic
 
     if (hd.type == NGTCP2_PKT_0RTT)
     {
-      LogWarn("Received 0-RTT packet, which shouldn't happen in our implementation; dropping");
+      log::warning(
+          logcat, "Received 0-RTT packet, which shouldn't happen in our implementation; dropping");
       return nullptr;
     }
 
     if (hd.type == NGTCP2_PKT_INITIAL && hd.token.len)
     {
       // This is a normal QUIC thing, but we don't do it:
-      LogWarn("Unexpected token in initial packet");
+      log::warning(logcat, "Unexpected token in initial packet");
     }
 
     // create and store Connection
