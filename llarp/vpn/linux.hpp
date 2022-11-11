@@ -10,10 +10,7 @@
 #include <linux/if_tun.h>
 
 #include <cstring>
-#include <sys/types.h>
-#include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <linux/rtnetlink.h>
 #include <llarp/net/net.hpp>
 #include <llarp/util/str.hpp>
@@ -23,6 +20,8 @@
 
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp.hpp>
+
+#include <llarp/util/fs.hpp>
 
 namespace llarp::vpn
 {
