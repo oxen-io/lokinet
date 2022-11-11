@@ -1,5 +1,5 @@
 #pragma once
-
+#include <fstream>
 #ifdef USE_GHC_FILESYSTEM
 #include <ghc/filesystem.hpp>
 namespace fs = ghc::filesystem;
