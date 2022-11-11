@@ -137,10 +137,10 @@ if(BUILD_PACKAGE)
     COMMAND create-dmg
       --volname "Lokinet ${PROJECT_VERSION}"
       --volicon lokinet.icns
-      --background "${PROJECT_SOURCE_DIR}/contrib/macos/installer.png"
+      --background "${PROJECT_SOURCE_DIR}/contrib/macos/installer.tiff"
       --text-size 16
       --icon-size 128
-      --window-size 555 400
+      --window-size 555 440
       --icon Lokinet.app 151 196
       --hide-extension Lokinet.app
       --app-drop-link 403 196
