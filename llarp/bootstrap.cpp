@@ -2,6 +2,7 @@
 #include "util/bencode.hpp"
 #include "util/logging.hpp"
 #include "util/logging/buffer.hpp"
+#include "util/fs.hpp"
 
 namespace llarp
 {
