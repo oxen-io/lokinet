@@ -1,3 +1,21 @@
+lokinet (0.9.10-2~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove bootstrap.signed from generated default configs
+  * Bump apple network extension sub-version
+
+  [ Jeff Becker ]
+  * add omitted header
+
+  [ Thomas Winget ]
+  * when in rome, remove duplicate includes
+
+  [ Jason Rhinelander ]
+  * Add mac .dmg background
+  * Make dmg background retina capable
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 10 Nov 2022 22:37:30 -0400
+
 lokinet (0.9.10-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
