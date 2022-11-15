@@ -1,0 +1,266 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 15 Nov 2022 13:15:54 -0400
+Subject: Make Default&Required or Required&Hidden compilation failures
+
+Default & Required makes no sense: if we have a default it makes no
+sense to make it required.  The previous behaviour when this was
+specified was to force an (uncommented) value in the config with the
+value, but this was only used in the test suite.
+
+Required & Hidden makes no sense either: if it's required to be
+specified we definitely don't want to hide it from the generated config
+file.
+
+These are now compile-time failures.
+---
+ llarp/config/definition.hpp                  | 10 ++++
+ test/config/test_llarp_config_definition.cpp | 11 ++---
+ test/config/test_llarp_config_output.cpp     | 68 ++++++++++++++++------------
+ 3 files changed, 53 insertions(+), 36 deletions(-)
+
+diff --git a/llarp/config/definition.hpp b/llarp/config/definition.hpp
+index 8f9225c..6cacd31 100644
+--- a/llarp/config/definition.hpp
++++ b/llarp/config/definition.hpp
+@@ -202,6 +202,16 @@ namespace llarp
+     OptionDefinition(std::string section_, std::string name_, Options&&... opts)
+         : OptionDefinitionBase(section_, name_, opts...)
+     {
++      constexpr bool has_default =
++          ((config::is_default_array<Options> || config::is_default<Options>) || ...);
++      constexpr bool has_required =
++          (std::is_same_v<config::remove_cvref_t<Options>, config::Required_t> || ...);
++      constexpr bool has_hidden =
++          (std::is_same_v<config::remove_cvref_t<Options>, config::Hidden_t> || ...);
++      static_assert(
++          not(has_default and has_required), "Default{...} and Required are mutually exclusive");
++      static_assert(not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
++
+       (extractDefault(std::forward<Options>(opts)), ...);
+       (extractAcceptor(std::forward<Options>(opts)), ...);
+       (extractComments(std::forward<Options>(opts)), ...);
+diff --git a/test/config/test_llarp_config_definition.cpp b/test/config/test_llarp_config_definition.cpp
+index e3edec2..80005d5 100644
+--- a/test/config/test_llarp_config_definition.cpp
++++ b/test/config/test_llarp_config_definition.cpp
+@@ -104,7 +104,7 @@ TEST_CASE("OptionDefinition acceptor throws test", "[config]")
+ TEST_CASE("OptionDefinition tryAccept missing option test", "[config]")
+ {
+   int unset = -1;
+-  llarp::OptionDefinition<int> def("foo", "bar", Required, Default{1}, [&](int arg) {
++  llarp::OptionDefinition<int> def("foo", "bar", Required, [&](int arg) {
+     (void)arg;
+     unset = 0; // should never be called
+   });
+@@ -170,7 +170,6 @@ TEST_CASE("ConfigDefinition required test", "[config]")
+   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
+             "router",
+             "threads",
+-            Default{1},
+             Required));
+ 
+   CHECK_THROWS(config.validateRequiredFields());
+@@ -186,13 +185,13 @@ TEST_CASE("ConfigDefinition section test", "[config]")
+   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
+             "foo",
+             "bar",
+-            Required,
+-            Default{1}));
++            Required
++            ));
+   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
+             "goo",
+             "bar",
+-            Required,
+-            Default{1}));
++            Required
++            ));
+ 
+   CHECK_THROWS(config.validateRequiredFields());
+ 
+diff --git a/test/config/test_llarp_config_output.cpp b/test/config/test_llarp_config_output.cpp
+index 13eb64c..5ba47bf 100644
+--- a/test/config/test_llarp_config_output.cpp
++++ b/test/config/test_llarp_config_output.cpp
+@@ -8,37 +8,37 @@ TEST_CASE("ConfigDefinition simple generate test", "[config]")
+ {
+   llarp::ConfigDefinition config{true};
+ 
+-  config.defineOption<int>("foo", "bar", Required, Default{1});
++  config.defineOption<int>("foo", "bar", Required);
+   config.defineOption<int>("foo", "baz", Default{2});
+-  config.defineOption(std::make_unique<llarp::OptionDefinition<std::string>>(
+-            "foo", "quux", Required, Default{"hello"}));
++  config.defineOption(
++      std::make_unique<llarp::OptionDefinition<std::string>>("foo", "quux", Default{"hello"}));
+ 
+-  config.defineOption<int>("argle", "bar", RelayOnly, Required, Default{3});
++  config.defineOption<int>("argle", "bar", RelayOnly, Required);
+   config.defineOption<int>("argle", "baz", Default{4});
+-  config.defineOption<std::string>("argle", "quux", Required, Default{"the quick brown fox"});
++  config.defineOption<std::string>("argle", "quux", Default{"the quick brown fox"});
+ 
+-  config.defineOption<int>("not", "for-routers", ClientOnly, Required, Default{1});
++  config.defineOption<int>("not", "for-routers", ClientOnly, Default{1});
+ 
+   std::string output = config.generateINIConfig();
+ 
+   CHECK(output == R"raw([foo]
+ 
+ 
+-bar=1
++#bar=
+ 
+ #baz=2
+ 
+-quux=hello
++#quux=hello
+ 
+ 
+ [argle]
+ 
+ 
+-bar=3
++#bar=
+ 
+ #baz=4
+ 
+-quux=the quick brown fox
++#quux=the quick brown fox
+ )raw");
+ }
+ 
+@@ -46,16 +46,24 @@ TEST_CASE("ConfigDefinition useValue test", "[config]")
+ {
+   llarp::ConfigDefinition config{true};
+ 
+-  config.defineOption<int>("foo", "bar", Required, Default{1});
++  config.defineOption<int>("foo", "bar", Default{1});
+ 
+-  constexpr auto expected = "[foo]\n\n\nbar=1\n";
++  constexpr auto expected = R"raw([foo]
++
++
++#bar=1
++)raw";
+ 
+   CHECK(config.generateINIConfig(false) == expected);
+   CHECK(config.generateINIConfig(true) == expected);
+ 
+   config.addConfigValue("foo", "bar", "2");
+ 
+-  constexpr auto expectedWhenValueProvided = "[foo]\n\n\nbar=2\n";
++  constexpr auto expectedWhenValueProvided = R"raw([foo]
++
++
++bar=2
++)raw";
+ 
+   CHECK(config.generateINIConfig(false) == expected);
+   CHECK(config.generateINIConfig(true) == expectedWhenValueProvided);
+@@ -67,8 +75,7 @@ TEST_CASE("ConfigDefinition section comments test")
+ 
+   config.addSectionComments("foo", {"test comment"});
+   config.addSectionComments("foo", {"test comment 2"});
+-  config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
+-            "foo", "bar", Required, Default{1}));
++  config.defineOption(std::make_unique<llarp::OptionDefinition<int>>("foo", "bar", Default{1}));
+ 
+   std::string output = config.generateINIConfig();
+ 
+@@ -77,7 +84,7 @@ TEST_CASE("ConfigDefinition section comments test")
+ # test comment 2
+ 
+ 
+-bar=1
++#bar=1
+ )raw");
+ }
+ 
+@@ -87,18 +94,21 @@ TEST_CASE("ConfigDefinition option comments test")
+ 
+   config.addOptionComments("foo", "bar", {"test comment 1"});
+   config.addOptionComments("foo", "bar", {"test comment 2"});
+-  config.defineOption<int>("foo", "bar", Required, Default{1});
++  config.defineOption<int>("foo", "bar", Default{1});
+ 
+-  config.defineOption<std::string>("foo", "far", Default{"abc"},
++  config.defineOption<std::string>(
++      "foo",
++      "far",
++      Default{"abc"},
+       Comment{
+-        "Fill in the missing values:",
+-        "___defg",
++          "Fill in the missing values:",
++          "___defg",
+       });
+ 
+   config.defineOption<int>("client", "omg", ClientOnly, Default{1}, Comment{"hi"});
+   config.defineOption<int>("relay", "ftw", RelayOnly, Default{1}, Comment{"bye"});
+ 
+-  // has comment, so still gets shown.
++  // has comment, but is hidden: we show only the comment but not the value/default.
+   config.defineOption<int>("foo", "old-bar", Hidden, Default{456});
+   config.addOptionComments("foo", "old-bar", {"old bar option"});
+ 
+@@ -112,14 +122,13 @@ TEST_CASE("ConfigDefinition option comments test")
+ 
+ # test comment 1
+ # test comment 2
+-bar=1
++#bar=1
+ 
+ # Fill in the missing values:
+ # ___defg
+ #far=abc
+ 
+ # old bar option
+-#old-bar=456
+ 
+ 
+ [relay]
+@@ -139,7 +148,7 @@ TEST_CASE("ConfigDefinition empty comments test")
+ 
+   config.addOptionComments("foo", "bar", {"option comment"});
+   config.addOptionComments("foo", "bar", {""});
+-  config.defineOption<int>("foo", "bar", Required, Default{1});
++  config.defineOption<int>("foo", "bar", Default{1});
+ 
+   std::string output = config.generateINIConfig();
+ 
+@@ -150,7 +159,7 @@ TEST_CASE("ConfigDefinition empty comments test")
+ 
+ # option comment
+ # 
+-bar=1
++#bar=1
+ )raw");
+ }
+ 
+@@ -161,10 +170,10 @@ TEST_CASE("ConfigDefinition multi option comments")
+   config.addSectionComments("foo", {"foo section comment"});
+ 
+   config.addOptionComments("foo", "bar", {"foo bar option comment"});
+-  config.defineOption<int>("foo", "bar", Required, Default{1});
++  config.defineOption<int>("foo", "bar", Default{1});
+ 
+   config.addOptionComments("foo", "baz", {"foo baz option comment"});
+-  config.defineOption<int>("foo", "baz", Required, Default{1});
++  config.defineOption<int>("foo", "baz", Default{1});
+ 
+   std::string output = config.generateINIConfig();
+ 
+@@ -173,10 +182,9 @@ TEST_CASE("ConfigDefinition multi option comments")
+ 
+ 
+ # foo bar option comment
+-bar=1
++#bar=1
+ 
+ # foo baz option comment
+-baz=1
++#baz=1
+ )raw");
+ }
+-
