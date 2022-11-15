@@ -1,3 +1,21 @@
+lokinet (0.9.10-3) unstable; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Bump apple network extension sub-version
+
+  [ Jeff Becker ]
+  * add omitted header
+
+  [ Thomas Winget ]
+  * when in rome, remove duplicate includes
+
+  [ Jason Rhinelander ]
+  * Add mac .dmg background
+  * Make dmg background retina capable
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 15 Nov 2022 13:48:01 -0400
+
 lokinet (0.9.10-2) unstable; urgency=medium
 
   [ Jason Rhinelander ]
