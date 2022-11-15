@@ -1,3 +1,9 @@
+lokinet (0.9.10-3~deb10) buster; urgency=medium
+
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 15 Nov 2022 13:48:26 -0400
+
 lokinet (0.9.10-2~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
