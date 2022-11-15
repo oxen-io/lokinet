@@ -19,7 +19,7 @@ if [ "$1" = configure ]; then
         s#$tmpdir#$datadir#;
         if (/^\[lokid/ ... /^\[/) {
             s{^#?enabled=.*}{enabled=1};
-            s{^#?rpc=.*}{rpc=ipc:///var/lib/loki/lokid.sock};
+            s{^#?rpc=.*}{rpc=ipc:///var/lib/oxen/oxend.sock};
         }" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
@@ -35,7 +35,7 @@ if [ "$1" = configure ]; then
         }
         if (/^\[lokid/ ... /^\[/) {
             s{^#?enabled=.*}{enabled=1};
-            s{^#?rpc=.*}{rpc=ipc:///var/lib/loki/testnet/lokid.sock};
+            s{^#?rpc=.*}{rpc=ipc:///var/lib/oxen/testnet/oxend.sock};
         }" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
