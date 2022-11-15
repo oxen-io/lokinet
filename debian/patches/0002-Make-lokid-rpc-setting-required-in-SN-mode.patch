@@ -1,0 +1,226 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 15 Nov 2022 13:14:15 -0400
+Subject: Make [lokid]:rpc setting required in SN mode
+
+When running as a service node we can't do anything without a lokid rpc
+URL, and we don't necessarily have a good default for it.
+
+This makes it required so that we fail with an appropriate error message
+(rather than connect timeouts) if it is not specified.
+---
+ llarp/config/config.cpp                  |  1 +
+ test/config/test_llarp_config_values.cpp | 49 ++++++++++++++------------------
+ 2 files changed, 23 insertions(+), 27 deletions(-)
+
+diff --git a/llarp/config/config.cpp b/llarp/config/config.cpp
+index aa02da5..67d92fa 100644
+--- a/llarp/config/config.cpp
++++ b/llarp/config/config.cpp
+@@ -1179,6 +1179,7 @@ namespace llarp
+         "lokid",
+         "rpc",
+         RelayOnly,
++        Required,
+         Comment{
+             "oxenmq control address for for communicating with oxend. Depends on oxend's",
+             "lmq-local-control configuration option. By default this value should be",
+diff --git a/test/config/test_llarp_config_values.cpp b/test/config/test_llarp_config_values.cpp
+index 8276cc5..f0e9ebe 100644
+--- a/test/config/test_llarp_config_values.cpp
++++ b/test/config/test_llarp_config_values.cpp
+@@ -75,6 +75,8 @@ run_config_test(mocks::Network env, std::string_view ini_str)
+     throw std::runtime_error{"non zero return"};
+ }
+ 
++const std::string ini_minimal = "[lokid]\nrpc=ipc://dummy\n";
++
+ TEST_CASE("service node bind section on valid network", "[config]")
+ {
+   std::unordered_multimap<std::string, llarp::IPRange> env{
+@@ -92,15 +94,14 @@ TEST_CASE("service node bind section on valid network", "[config]")
+     REQUIRE(not mock_net.IsBogon(*maybe_addr));
+   }
+ 
+-  SECTION("empty config")
++  SECTION("minimal config")
+   {
+-    std::string_view ini_str = "";
+-    REQUIRE_NOTHROW(run_config_test(env, ini_str));
++    REQUIRE_NOTHROW(run_config_test(env, ini_minimal));
+   }
+ 
+   SECTION("explicit bind via ifname")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ mock0=443
+ )";
+@@ -108,7 +109,7 @@ mock0=443
+   }
+   SECTION("explicit bind via ip address")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ inbound=1.1.1.1:443
+ )";
+@@ -116,7 +117,7 @@ inbound=1.1.1.1:443
+   }
+   SECTION("explicit bind via ip address with old syntax")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ 1.1.1.1=443
+ )";
+@@ -125,7 +126,7 @@ inbound=1.1.1.1:443
+   }
+   SECTION("ip spoof fails")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=8.8.8.8
+ public-port=443
+@@ -136,7 +137,7 @@ inbound=1.1.1.1:443
+   }
+   SECTION("explicit bind via ifname but fails from non existing ifname")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ ligma0=443
+ )";
+@@ -145,7 +146,7 @@ ligma0=443
+ 
+   SECTION("explicit bind via ifname but fails from using loopback")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ lo=443
+ )";
+@@ -154,7 +155,7 @@ lo=443
+ 
+   SECTION("explicit bind via explicit loopback")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ inbound=127.0.0.1:443
+ )";
+@@ -162,7 +163,7 @@ inbound=127.0.0.1:443
+   }
+   SECTION("public ip provided but no bind section")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -171,7 +172,7 @@ public-port=443
+   }
+   SECTION("public ip provided with ip in bind section")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -196,7 +197,7 @@ TEST_CASE("service node bind section on nat network", "[config]")
+ 
+   SECTION("public ip provided via inbound directive")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -209,7 +210,7 @@ inbound=10.1.1.1:443
+ 
+   SECTION("public ip provided with bind via ifname")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -222,7 +223,7 @@ mock0=443
+ 
+   SECTION("public ip provided bind via wildcard ip")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -232,7 +233,6 @@ inbound=0.0.0.0:443
+ )";
+     REQUIRE_THROWS(run_config_test(env, ini_str));
+   }
+-
+ }
+ 
+ TEST_CASE("service node bind section with multiple public ip", "[config]")
+@@ -242,14 +242,9 @@ TEST_CASE("service node bind section with multiple public ip", "[config]")
+       {"mock0", llarp::IPRange::FromIPv4(2, 1, 1, 1, 32)},
+       {"lo", llarp::IPRange::FromIPv4(127, 0, 0, 1, 8)},
+   };
+-  SECTION("empty config")
+-  {
+-    std::string_view ini_str = "";
+-    REQUIRE_NOTHROW(run_config_test(env, ini_str));
+-  }
+   SECTION("with old style wildcard for inbound and no public ip, fails")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ 0.0.0.0=443
+ )";
+@@ -257,7 +252,7 @@ TEST_CASE("service node bind section with multiple public ip", "[config]")
+   }
+   SECTION("with old style wildcard for outbound")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ *=1443
+ )";
+@@ -265,7 +260,7 @@ TEST_CASE("service node bind section with multiple public ip", "[config]")
+   }
+   SECTION("with wildcard via inbound directive no public ip given, fails")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ inbound=0.0.0.0:443
+ )";
+@@ -274,7 +269,7 @@ inbound=0.0.0.0:443
+   }
+   SECTION("with wildcard via inbound directive primary public ip given")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=1.1.1.1
+ public-port=443
+@@ -286,7 +281,7 @@ inbound=0.0.0.0:443
+   }
+   SECTION("with wildcard via inbound directive secondary public ip given")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [router]
+ public-ip=2.1.1.1
+ public-port=443
+@@ -298,7 +293,7 @@ inbound=0.0.0.0:443
+   }
+   SECTION("with bind via interface name")
+   {
+-    std::string_view ini_str = R"(
++    auto ini_str = ini_minimal + R"(
+ [bind]
+ mock0=443
+ )";
