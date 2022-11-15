@@ -1,3 +1,9 @@
+lokinet (0.9.10-3~ubuntu2204) jammy; urgency=medium
+
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 15 Nov 2022 13:48:37 -0400
+
 lokinet (0.9.10-2~ubuntu2204) jammy; urgency=medium
 
   [ Jason Rhinelander ]
