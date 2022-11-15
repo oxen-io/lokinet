@@ -1,3 +1,9 @@
+lokinet (0.9.10-3~deb12) bookworm; urgency=medium
+
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 15 Nov 2022 13:48:17 -0400
+
 lokinet (0.9.10-2~deb12) bookworm; urgency=medium
 
   [ Jason Rhinelander ]
