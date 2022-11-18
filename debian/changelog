@@ -1,3 +1,10 @@
+lokinet (0.9.10-4~deb10) buster; urgency=medium
+
+  * Switch to non-deprecated oxend path
+  * Remove another obsolete bootstrap
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 18 Nov 2022 16:03:22 -0400
+
 lokinet (0.9.10-3~deb10) buster; urgency=medium
 
   * Rediff patches
