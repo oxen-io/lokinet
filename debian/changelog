@@ -1,3 +1,10 @@
+lokinet (0.9.10-4~ubuntu1804) bionic; urgency=medium
+
+  * Switch to non-deprecated oxend path
+  * Remove another obsolete bootstrap
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 18 Nov 2022 16:03:26 -0400
+
 lokinet (0.9.10-3~ubuntu1804) bionic; urgency=medium
 
   * Rediff patches
