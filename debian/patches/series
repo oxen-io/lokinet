@@ -1,3 +1,4 @@
 0001-Fix-missing-option-names.patch
 0002-Make-lokid-rpc-setting-required-in-SN-mode.patch
 0003-Make-Default-Required-or-Required-Hidden-compilation.patch
+0004-Remove-another-obsolete-bootstrap.patch

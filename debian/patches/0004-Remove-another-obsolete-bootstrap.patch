@@ -1,0 +1,25 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Fri, 18 Nov 2022 16:00:12 -0400
+Subject: Remove another obsolete bootstrap
+
+I found another defunct obsolete boostrap file on a few foundation
+service nodes; this adds it to the list.
+---
+ llarp/router_contact.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/llarp/router_contact.cpp b/llarp/router_contact.cpp
+index a0655f1..194a59b 100644
+--- a/llarp/router_contact.cpp
++++ b/llarp/router_contact.cpp
+@@ -534,7 +534,9 @@ namespace llarp
+   }
+ 
+   static constexpr std::array obsolete_bootstraps = {
+-      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv};
++      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
++      "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
++  };
+ 
+   bool
+   RouterContact::IsObsoleteBootstrap() const
