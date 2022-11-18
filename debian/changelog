@@ -1,3 +1,10 @@
+lokinet (0.9.10-4) unstable; urgency=medium
+
+  * Switch to non-deprecated oxend path
+  * Remove another obsolete bootstrap
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 18 Nov 2022 16:03:06 -0400
+
 lokinet (0.9.10-3) unstable; urgency=medium
 
   [ Jason Rhinelander ]
