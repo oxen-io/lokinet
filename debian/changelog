@@ -1,3 +1,10 @@
+lokinet (0.9.10-4~ubuntu2004) focal; urgency=medium
+
+  * Switch to non-deprecated oxend path
+  * Remove another obsolete bootstrap
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 18 Nov 2022 16:03:30 -0400
+
 lokinet (0.9.10-3~ubuntu2004) focal; urgency=medium
 
   * Rediff patches
