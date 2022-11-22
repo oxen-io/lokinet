@@ -23,8 +23,8 @@ namespace
     {
       case WINDIVERT_LAYER_NETWORK:
         layer_str = "WINDIVERT_LAYER_NETWORK";
-        ifidx_str = "Network: [IfIdx: {}, SubIfIdx: {}]"_format(
-            addr.Network.IfIdx, addr.Network.SubIfIdx);
+        ifidx_str =
+            "Network: [IfIdx: {}, SubIfIdx: {}]"_format(addr.Network.IfIdx, addr.Network.SubIfIdx);
         break;
       case WINDIVERT_LAYER_NETWORK_FORWARD:
         layer_str = "WINDIVERT_LAYER_NETWORK_FORWARD";
@@ -96,7 +96,7 @@ namespace
         addr.UDPChecksum ? "true" : "false",
         ifidx_str);
   }
-}
+}  // namespace
 
 namespace llarp::win32
 {
