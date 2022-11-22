@@ -201,7 +201,7 @@ namespace llarp::win32
       }
 
       void
-      send_packet(Packet&& w_pkt) const
+      send_packet(Packet w_pkt) const
       {
         auto& pkt = w_pkt.pkt;
         auto* addr = &w_pkt.addr;
