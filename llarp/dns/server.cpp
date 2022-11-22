@@ -455,20 +455,6 @@ namespace llarp::dns
         Up(m_conf);
       }
 
-      bool
-      WouldLoop(const SockAddr& to, const SockAddr& from) const override
-      {
-#if defined(ANDROID)
-        (void)to;
-        (void)from;
-        return false;
-#else
-        const auto& vec = m_conf.m_upstreamDNS;
-        return std::find(vec.begin(), vec.end(), to) != std::end(vec)
-            or std::find(vec.begin(), vec.end(), from) != std::end(vec);
-#endif
-      }
-
       template <typename Callable>
       void
       call(Callable&& f)
@@ -486,9 +472,6 @@ namespace llarp::dns
           const SockAddr& to,
           const SockAddr& from) override
       {
-        if (WouldLoop(to, from))
-          return false;
-
         auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
         // no questions, send fail
         if (query.questions.empty())
