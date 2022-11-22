@@ -146,6 +146,7 @@ namespace llarp::dns
       static void
       Callback(void* data, int err, ub_result* _result)
       {
+        log::debug(logcat, "got dns response from libunbound");
         // take ownership of ub_result
         std::unique_ptr<ub_result, ub_result_deleter> result{_result};
         // borrow query
@@ -157,6 +158,8 @@ namespace llarp::dns
           query->Cancel();
           return;
         }
+
+        log::trace(logcat, "queueing dns response from libunbound to userland");
 
         // rewrite response
         OwnedBuffer pkt{(const byte_t*)result->answer_packet, (size_t)result->answer_len};
@@ -490,6 +493,11 @@ namespace llarp::dns
         // no questions, send fail
         if (query.questions.empty())
         {
+          log::info(
+              logcat,
+              "dns from {} to {} has empty query questions, sending failure reply",
+              from,
+              to);
           tmp->Cancel();
           return true;
         }
@@ -499,6 +507,12 @@ namespace llarp::dns
           // dont process .loki or .snode
           if (q.HasTLD(".loki") or q.HasTLD(".snode"))
           {
+            log::warning(
+                logcat,
+                "dns from {} to {} is for .loki or .snode but got to the unbound resolver, sending "
+                "failure reply",
+                from,
+                to);
             tmp->Cancel();
             return true;
           }
@@ -506,6 +520,12 @@ namespace llarp::dns
         if (not m_ctx)
         {
           // we are down
+          log::debug(
+              logcat,
+              "dns from {} to {} got to the unbound resolver, but the resolver isn't set up, "
+              "sending failure reply",
+              from,
+              to);
           tmp->Cancel();
           return true;
         }
@@ -514,6 +534,12 @@ namespace llarp::dns
         if (not running)
         {
           // we are stopping the win32 thread
+          log::debug(
+              logcat,
+              "dns from {} to {} got to the unbound resolver, but the resolver isn't running, "
+              "sending failure reply",
+              from,
+              to);
           tmp->Cancel();
           return true;
         }
@@ -533,7 +559,10 @@ namespace llarp::dns
           tmp->Cancel();
         }
         else
+        {
+          log::trace(logcat, "dns from {} to {} processing via libunbound", from, to);
           m_Pending.insert(std::move(tmp));
+        }
 
         return true;
       }
@@ -549,6 +578,12 @@ namespace llarp::dns
       {
         parent_ptr->call(
             [self = shared_from_this(), parent_ptr = std::move(parent_ptr), buf = replyBuf.copy()] {
+              log::trace(
+                  logcat,
+                  "forwarding dns response from libunbound to userland (resolverAddr: {}, "
+                  "askerAddr: {})",
+                  self->resolverAddr,
+                  self->askerAddr);
               self->src->SendTo(self->askerAddr, self->resolverAddr, OwnedBuffer::copy_from(buf));
               // remove query
               parent_ptr->RemovePending(self);
@@ -742,10 +777,14 @@ namespace llarp::dns
     {
       if (auto res_ptr = resolver.lock())
       {
-        log::debug(
+        log::trace(
             logcat, "check resolver {} for dns from {} to {}", res_ptr->ResolverName(), from, to);
         if (res_ptr->MaybeHookDNS(ptr, msg, to, from))
+        {
+          log::trace(
+              logcat, "resolver {} handling dns from {} to {}", res_ptr->ResolverName(), from, to);
           return true;
+        }
       }
     }
     return false;
