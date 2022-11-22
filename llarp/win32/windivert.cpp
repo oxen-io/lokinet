@@ -12,6 +12,92 @@ extern "C"
 #include <windivert.h>
 }
 
+namespace
+{
+  std::string
+  windivert_addr_to_string(const WINDIVERT_ADDRESS& addr)
+  {
+    std::string layer_str{};
+    std::string ifidx_str{};
+    switch (addr.Layer)
+    {
+      case WINDIVERT_LAYER_NETWORK:
+        layer_str = "WINDIVERT_LAYER_NETWORK";
+        ifidx_str = "Network: [IfIdx: {}, SubIfIdx: {}]"_format(
+            addr.Network.IfIdx, addr.Network.SubIfIdx);
+        break;
+      case WINDIVERT_LAYER_NETWORK_FORWARD:
+        layer_str = "WINDIVERT_LAYER_NETWORK_FORWARD";
+        break;
+      case WINDIVERT_LAYER_FLOW:
+        layer_str = "WINDIVERT_LAYER_FLOW";
+        break;
+      case WINDIVERT_LAYER_SOCKET:
+        layer_str = "WINDIVERT_LAYER_SOCKET";
+        break;
+      case WINDIVERT_LAYER_REFLECT:
+        layer_str = "WINDIVERT_LAYER_REFLECT";
+        break;
+      default:
+        layer_str = "unknown";
+    }
+
+    std::string event_str{};
+    switch (addr.Event)
+    {
+      case WINDIVERT_EVENT_NETWORK_PACKET:
+        event_str = "WINDIVERT_EVENT_NETWORK_PACKET";
+        break;
+      case WINDIVERT_EVENT_FLOW_ESTABLISHED:
+        event_str = "WINDIVERT_EVENT_FLOW_ESTABLISHED";
+        break;
+      case WINDIVERT_EVENT_FLOW_DELETED:
+        event_str = "WINDIVERT_EVENT_FLOW_DELETED";
+        break;
+      case WINDIVERT_EVENT_SOCKET_BIND:
+        event_str = "WINDIVERT_EVENT_SOCKET_BIND";
+        break;
+      case WINDIVERT_EVENT_SOCKET_CONNECT:
+        event_str = "WINDIVERT_EVENT_SOCKET_CONNECT";
+        break;
+      case WINDIVERT_EVENT_SOCKET_LISTEN:
+        event_str = "WINDIVERT_EVENT_SOCKET_LISTEN";
+        break;
+      case WINDIVERT_EVENT_SOCKET_ACCEPT:
+        event_str = "WINDIVERT_EVENT_SOCKET_ACCEPT";
+        break;
+      case WINDIVERT_EVENT_SOCKET_CLOSE:
+        event_str = "WINDIVERT_EVENT_SOCKET_CLOSE";
+        break;
+      case WINDIVERT_EVENT_REFLECT_OPEN:
+        event_str = "WINDIVERT_EVENT_REFLECT_OPEN";
+        break;
+      case WINDIVERT_EVENT_REFLECT_CLOSE:
+        event_str = "WINDIVERT_EVENT_REFLECT_CLOSE";
+        break;
+      default:
+        event_str = "unknown";
+    }
+
+    return fmt::format(
+        "Windivert WINDIVERT_ADDRESS -- Timestamp: {}, Layer: {}, Event: {}, Sniffed: {}, "
+        "Outbound: {}, Loopback: {}, Imposter: {}, IPv6: {}, IPChecksum: {}, TCPChecksum: {}, "
+        "UDPChecksum: {}, {}",
+        addr.Timestamp,
+        layer_str,
+        event_str,
+        addr.Sniffed ? "true" : "false",
+        addr.Outbound ? "true" : "false",
+        addr.Loopback ? "true" : "false",
+        addr.Impostor ? "true" : "false",
+        addr.IPv6 ? "true" : "false",
+        addr.IPChecksum ? "true" : "false",
+        addr.TCPChecksum ? "true" : "false",
+        addr.UDPChecksum ? "true" : "false",
+        ifidx_str);
+  }
+}
+
 namespace llarp::win32
 {
   static auto logcat = log::Cat("windivert");
@@ -56,90 +142,6 @@ namespace llarp::win32
       std::vector<byte_t> pkt;
       WINDIVERT_ADDRESS addr;
     };
-
-    void
-    log_windivert_addr(const WINDIVERT_ADDRESS& addr)
-    {
-      std::string layer_str{};
-      std::string ifidx_str{};
-      switch (addr.Layer)
-      {
-        case WINDIVERT_LAYER_NETWORK:
-          layer_str = "WINDIVERT_LAYER_NETWORK";
-          ifidx_str = "Network: [IfIdx: {}, SubIfIdx: {}]"_format(
-              addr.Network.IfIdx, addr.Network.SubIfIdx);
-          break;
-        case WINDIVERT_LAYER_NETWORK_FORWARD:
-          layer_str = "WINDIVERT_LAYER_NETWORK_FORWARD";
-          break;
-        case WINDIVERT_LAYER_FLOW:
-          layer_str = "WINDIVERT_LAYER_FLOW";
-          break;
-        case WINDIVERT_LAYER_SOCKET:
-          layer_str = "WINDIVERT_LAYER_SOCKET";
-          break;
-        case WINDIVERT_LAYER_REFLECT:
-          layer_str = "WINDIVERT_LAYER_REFLECT";
-          break;
-        default:
-          layer_str = "unknown";
-      }
-
-      std::string event_str{};
-      switch (addr.Event)
-      {
-        case WINDIVERT_EVENT_NETWORK_PACKET:
-          event_str = "WINDIVERT_EVENT_NETWORK_PACKET";
-          break;
-        case WINDIVERT_EVENT_FLOW_ESTABLISHED:
-          event_str = "WINDIVERT_EVENT_FLOW_ESTABLISHED";
-          break;
-        case WINDIVERT_EVENT_FLOW_DELETED:
-          event_str = "WINDIVERT_EVENT_FLOW_DELETED";
-          break;
-        case WINDIVERT_EVENT_SOCKET_BIND:
-          event_str = "WINDIVERT_EVENT_SOCKET_BIND";
-          break;
-        case WINDIVERT_EVENT_SOCKET_CONNECT:
-          event_str = "WINDIVERT_EVENT_SOCKET_CONNECT";
-          break;
-        case WINDIVERT_EVENT_SOCKET_LISTEN:
-          event_str = "WINDIVERT_EVENT_SOCKET_LISTEN";
-          break;
-        case WINDIVERT_EVENT_SOCKET_ACCEPT:
-          event_str = "WINDIVERT_EVENT_SOCKET_ACCEPT";
-          break;
-        case WINDIVERT_EVENT_SOCKET_CLOSE:
-          event_str = "WINDIVERT_EVENT_SOCKET_CLOSE";
-          break;
-        case WINDIVERT_EVENT_REFLECT_OPEN:
-          event_str = "WINDIVERT_EVENT_REFLECT_OPEN";
-          break;
-        case WINDIVERT_EVENT_REFLECT_CLOSE:
-          event_str = "WINDIVERT_EVENT_REFLECT_CLOSE";
-          break;
-        default:
-          event_str = "unknown";
-      }
-
-      log::trace(
-          logcat,
-          "Windivert WINDIVERT_ADDRESS -- Timestamp: {}, Layer: {}, Event: {}, Sniffed: {}, "
-          "Outbound: {}, Loopback: {}, Imposter: {}, IPv6: {}, IPChecksum: {}, TCPChecksum: {}, "
-          "UDPChecksum: {}, {}",
-          addr.Timestamp,
-          layer_str,
-          event_str,
-          addr.Sniffed ? "true" : "false",
-          addr.Outbound ? "true" : "false",
-          addr.Loopback ? "true" : "false",
-          addr.Impostor ? "true" : "false",
-          addr.IPv6 ? "true" : "false",
-          addr.IPChecksum ? "true" : "false",
-          addr.TCPChecksum ? "true" : "false",
-          addr.UDPChecksum ? "true" : "false",
-          ifidx_str);
-    }
 
     class IO : public llarp::vpn::I_Packet_IO
     {
@@ -195,8 +197,7 @@ namespace llarp::win32
         pkt.resize(sz);
 
         log::trace(logcat, "got packet of size {}B", sz);
-        log_windivert_addr(addr);
-
+        log::trace(logcat, "{}", windivert_addr_to_string(addr));
         return Packet{std::move(pkt), std::move(addr)};
       }
 
@@ -209,7 +210,7 @@ namespace llarp::win32
         addr->Outbound = !addr->Outbound;  // re-used from recv, so invert direction
 
         log::trace(logcat, "send dns packet of size {}B", pkt.size());
-        log_windivert_addr(w_pkt.addr);
+        log::trace(logcat, "{}", windivert_addr_to_string(w_pkt.addr));
 
         UINT sz{};
         // recalc IP packet checksum in case it needs it
