@@ -23,6 +23,7 @@ namespace llarp::win32
       decltype(::WinDivertOpen)* open = nullptr;
       decltype(::WinDivertClose)* close = nullptr;
       decltype(::WinDivertShutdown)* shutdown = nullptr;
+      decltype(::WinDivertHelperCalcChecksums)* calc_checksum = nullptr;
       decltype(::WinDivertSend)* send = nullptr;
       decltype(::WinDivertRecv)* recv = nullptr;
       decltype(::WinDivertHelperFormatIPv4Address)* format_ip4 = nullptr;
@@ -41,6 +42,7 @@ namespace llarp::win32
           "WinDivertOpen",                    open,
           "WinDivertClose",                   close,
           "WinDivertShutdown",                shutdown,
+          "WinDivertHelperCalcChecksums",     calc_checksum,
           "WinDivertSend",                    send,
           "WinDivertRecv",                    recv,
           "WinDivertHelperFormatIPv4Address", format_ip4,
@@ -199,14 +201,18 @@ namespace llarp::win32
       }
 
       void
-      send_packet(const Packet& w_pkt) const
+      send_packet(Packet&& w_pkt) const
       {
-        const auto& pkt = w_pkt.pkt;
-        const auto* addr = &w_pkt.addr;
+        auto& pkt = w_pkt.pkt;
+        auto* addr = &w_pkt.addr;
+
         log::trace(logcat, "send dns packet of size {}B", pkt.size());
         log_windivert_addr(w_pkt.addr);
 
         UINT sz{};
+        // recalc IP packet checksum in case it needs it
+        wd::calc_checksum(pkt.data(), pkt.size(), addr, 0);
+
         if (!wd::send(m_Handle, pkt.data(), pkt.size(), &sz, addr))
           throw win32::error{"windivert send failed"};
       }
