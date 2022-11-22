@@ -206,6 +206,8 @@ namespace llarp::win32
         auto& pkt = w_pkt.pkt;
         auto* addr = &w_pkt.addr;
 
+        addr->Outbound = !addr->Outbound;  // re-used from recv, so invert direction
+
         log::trace(logcat, "send dns packet of size {}B", pkt.size());
         log_windivert_addr(w_pkt.addr);
 
