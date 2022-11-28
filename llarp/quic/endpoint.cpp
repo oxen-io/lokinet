@@ -150,6 +150,7 @@ namespace llarp::quic
     if (auto result = read_packet(p, conn); !result)
     {
       log::warning(logcat, "Read packet failed! {}", ngtcp2_strerror(result.error_code));
+      log::debug(logcat, "Packet: {}", buffer_printer{p.data});
     }
 
     // FIXME - reset idle timer?

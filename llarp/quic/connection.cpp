@@ -708,7 +708,7 @@ namespace llarp::quic
             log::debug(logcat, "cannot add to stream {} right now: stream is blocked", stream.id());
             break;
           case NGTCP2_ERR_STREAM_SHUT_WR:
-            log::debug(logcat, "cannot write to {}: stream is shut down", stream.id());
+            log::trace(logcat, "cannot write to {}: stream is shut down", stream.id());
             break;
           default:
             assert(consumed <= 0);
@@ -771,7 +771,7 @@ namespace llarp::quic
         0ms,
         std::chrono::duration_cast<std::chrono::milliseconds>(
             expiry - get_time().time_since_epoch()));
-    log::debug(logcat, "Next retransmit in {}ms", expires_in.count());
+    log::trace(logcat, "Next retransmit in {}ms", expires_in.count());
     retransmit_timer->stop();
     retransmit_timer->start(expires_in, 0ms);
   }
