@@ -32,6 +32,10 @@ namespace
     std::shared_ptr<llarp::NodeDB>
     makeNodeDB() override
     {
+      if (not nodedb_dir.empty())
+      {
+        return llarp::Context::makeNodeDB();
+      }
       return std::make_shared<llarp::NodeDB>();
     }
   };
@@ -620,6 +624,19 @@ extern "C"
       ctx->runner->join();
 
     ctx->runner.reset();
+  }
+
+  void EXPORT
+  lokinet_set_data_dir(const char* path, struct lokinet_context* ctx)
+  {
+    if (not ctx)
+      return;
+    auto lock = ctx->acquire();
+
+    if (ctx->impl->IsUp() or ctx->impl->IsStopping())
+      return;
+
+    ctx->config->router.m_dataDir = fs::path{path};
   }
 
   void EXPORT

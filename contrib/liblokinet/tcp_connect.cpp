@@ -43,13 +43,11 @@ main(int argc, char* argv[])
   else
     lokinet_log_level("info");
 
-  // log level debug for quic
-  llarp::log::set_level("quic", llarp::log::Level::debug);
-
   std::cout << "starting up\n";
 
   auto shared_ctx = std::shared_ptr<lokinet_context>(lokinet_context_new(), lokinet_context_free);
   auto* ctx = shared_ctx.get();
+  lokinet_set_data_dir("./tcp_connect_data_dir", ctx);
   if (lokinet_context_start(ctx))
     throw std::runtime_error{"could not start context"};
 
@@ -69,6 +67,9 @@ main(int argc, char* argv[])
     std::cout << "lokinet_status = " << status << " after waiting for ready.\n";
     return 0;
   }
+
+  // log level debug for quic
+  llarp::log::set_level("quic", llarp::log::Level::debug);
 
   auto addr_c = lokinet_address(ctx);
   std::string addr{addr_c};
