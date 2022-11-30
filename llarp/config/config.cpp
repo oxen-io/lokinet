@@ -1179,6 +1179,7 @@ namespace llarp
         "lokid",
         "rpc",
         RelayOnly,
+        Required,
         Comment{
             "oxenmq control address for for communicating with oxend. Depends on oxend's",
             "lmq-local-control configuration option. By default this value should be",
