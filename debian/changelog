@@ -1,3 +1,33 @@
+lokinet (0.9.11-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix missing option names
+  * Make [lokid]:rpc setting required in SN mode
+  * Make Default&Required or Required&Hidden compilation failures
+
+  [ Audric Ackermann ]
+  * fix: allow GUI window height as low as 600 for small screens
+
+  [ Jason Rhinelander ]
+  * Remove another obsolete bootstrap
+
+  [ Thomas Winget ]
+  * add much logging around dns and windivert
+  * Remove obsolete/extraneous WouldLoop function
+  * force windivert to recalc IP checksum
+  * invert packet direction on WINDIVERT_ADDRESS
+  * rvalue ref -> value
+  * log func should return a string instead
+  * I hate clang-format sometimes
+  * fix missing namespace
+
+  [ Jason Rhinelander ]
+  * Update deps to latest versions
+  * Bump version for fix release
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Nov 2022 20:29:05 -0400
+
 lokinet (0.9.10-4~deb10) buster; urgency=medium
 
   * Switch to non-deprecated oxend path
