@@ -197,16 +197,6 @@ namespace llarp::dns
         const Message& query,
         const SockAddr& to,
         const SockAddr& from) = 0;
-
-    /// Returns true if a packet with to and from addresses is something that would cause a
-    /// resolution loop and thus should not be used on this resolver
-    virtual bool
-    WouldLoop(const SockAddr& to, const SockAddr& from) const
-    {
-      (void)to;
-      (void)from;
-      return false;
-    }
   };
 
   // Base class for DNS proxy
