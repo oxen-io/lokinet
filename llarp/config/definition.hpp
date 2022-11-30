@@ -202,6 +202,16 @@ namespace llarp
     OptionDefinition(std::string section_, std::string name_, Options&&... opts)
         : OptionDefinitionBase(section_, name_, opts...)
     {
+      constexpr bool has_default =
+          ((config::is_default_array<Options> || config::is_default<Options>) || ...);
+      constexpr bool has_required =
+          (std::is_same_v<config::remove_cvref_t<Options>, config::Required_t> || ...);
+      constexpr bool has_hidden =
+          (std::is_same_v<config::remove_cvref_t<Options>, config::Hidden_t> || ...);
+      static_assert(
+          not(has_default and has_required), "Default{...} and Required are mutually exclusive");
+      static_assert(not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
+
       (extractDefault(std::forward<Options>(opts)), ...);
       (extractAcceptor(std::forward<Options>(opts)), ...);
       (extractComments(std::forward<Options>(opts)), ...);
