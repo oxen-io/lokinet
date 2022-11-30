@@ -104,7 +104,7 @@ TEST_CASE("OptionDefinition acceptor throws test", "[config]")
 TEST_CASE("OptionDefinition tryAccept missing option test", "[config]")
 {
   int unset = -1;
-  llarp::OptionDefinition<int> def("foo", "bar", Required, Default{1}, [&](int arg) {
+  llarp::OptionDefinition<int> def("foo", "bar", Required, [&](int arg) {
     (void)arg;
     unset = 0; // should never be called
   });
@@ -170,7 +170,6 @@ TEST_CASE("ConfigDefinition required test", "[config]")
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "router",
             "threads",
-            Default{1},
             Required));
 
   CHECK_THROWS(config.validateRequiredFields());
@@ -186,13 +185,13 @@ TEST_CASE("ConfigDefinition section test", "[config]")
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo",
             "bar",
-            Required,
-            Default{1}));
+            Required
+            ));
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "goo",
             "bar",
-            Required,
-            Default{1}));
+            Required
+            ));
 
   CHECK_THROWS(config.validateRequiredFields());
 

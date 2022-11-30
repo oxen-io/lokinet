@@ -534,7 +534,9 @@ namespace llarp
   }
 
   static constexpr std::array obsolete_bootstraps = {
-      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv};
+      "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
+      "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
+  };
 
   bool
   RouterContact::IsObsoleteBootstrap() const
