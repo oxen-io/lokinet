@@ -11,12 +11,12 @@ set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
 set(OPENSSL_HASH SHA256=83049d042a260e696f62406ac5c08bf706fd84383f945cf21bd61e9ed95c396e
     CACHE STRING "openssl source hash")
 
-set(EXPAT_VERSION 2.4.9 CACHE STRING "expat version")
+set(EXPAT_VERSION 2.5.0 CACHE STRING "expat version")
 string(REPLACE "." "_" EXPAT_TAG "R_${EXPAT_VERSION}")
 set(EXPAT_MIRROR ${LOCAL_MIRROR} https://github.com/libexpat/libexpat/releases/download/${EXPAT_TAG}
     CACHE STRING "expat download mirror(s)")
 set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
-set(EXPAT_HASH SHA512=8508379b4915d84d50f3638678a90792179c98247d1cb5e6e6387d117af4dc148ac7031c1debea8b96e7b710ef436cf0dd5da91f3d22b8186a00cfafe1201169
+set(EXPAT_HASH SHA512=2da73b991b7c0c54440485c787e5edeb3567230204e31b3cac1c3a6713ec6f9f1554d3afffc0f8336168dfd5df02db4a69bcf21b4d959723d14162d13ab87516
     CACHE STRING "expat source hash")
 
 set(UNBOUND_VERSION 1.17.0 CACHE STRING "unbound version")
@@ -25,11 +25,11 @@ set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
 set(UNBOUND_HASH SHA512=f6b9f279330fb19b5feca09524959940aad8c4e064528aa82b369c726d77e9e8e5ca23f366f6e9edcf2c061b96f482ed7a2c26ac70fc15ae5762b3d7e36a5284
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3390400 CACHE STRING "sqlite3 version")
+set(SQLITE3_VERSION 3400000 CACHE STRING "sqlite3 version")
 set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA3_256=431328e30d12c551da9ba7ef2122b269076058512014afa799caaf62ca567090
+set(SQLITE3_HASH SHA3_256=7ee8f02b21edb4489df5082b5cf5b7ef47bcebcdb0e209bf14240db69633c878
   CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
@@ -62,11 +62,11 @@ set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.xz)
 set(ZLIB_HASH SHA256=d14c38e313afc35a9a8760dadf26042f51ea0f5d154b0630a31da0540107fb98
   CACHE STRING "zlib source hash")
 
-set(CURL_VERSION 7.85.0 CACHE STRING "curl version")
+set(CURL_VERSION 7.86.0 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.haxx.se/download https://curl.askapache.com
   CACHE STRING "curl mirror(s)")
 set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
-set(CURL_HASH SHA512=b57cc31649a4f47cc4b482f56a85c86c8e8aaeaf01bc1b51b065fdb9145a9092bc52535e52a85a66432eb163605b2edbf5bc5c33ea6e40e50f26a69ad1365cbd
+set(CURL_HASH SHA512=18e03a3c00f22125e07bddb18becbf5acdca22baeb7b29f45ef189a5c56f95b2d51247813f7a9a90f04eb051739e9aa7d3a1c5be397bae75d763a2b918d1b656
   CACHE STRING "curl source hash")
 
 include(ExternalProject)

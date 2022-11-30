@@ -152,10 +152,8 @@ namespace llarp
       const std::string& section, std::vector<std::string> comments)
   {
     auto& sectionComments = m_sectionComments[section];
-    for (size_t i = 0; i < comments.size(); ++i)
-    {
-      sectionComments.emplace_back(std::move(comments[i]));
-    }
+    for (auto& c : comments)
+      sectionComments.emplace_back(std::move(c));
   }
 
   void
@@ -198,13 +196,22 @@ namespace llarp
         if (useValues and def->getNumberFound() > 0)
         {
           for (const auto& val : def->valuesAsString())
-            fmt::format_to(sect_append, "\n{}={}\n", name, val);
+            fmt::format_to(sect_append, "\n{}={}", name, val);
+          *sect_append = '\n';
         }
-        else if (not(def->hidden and not has_comment))
+        else if (not def->hidden)
         {
-          for (const auto& val : def->defaultValuesAsString())
-            fmt::format_to(sect_append, "\n{}{}={}\n", def->required ? "" : "#", name, val);
+          if (auto defaults = def->defaultValuesAsString(); not defaults.empty())
+            for (const auto& val : defaults)
+              fmt::format_to(sect_append, "\n{}{}={}", def->required ? "" : "#", name, val);
+          else
+            // We have no defaults so we append it as "#opt-name=" so that we show the option name,
+            // and make it simple to uncomment and edit to the desired value.
+            fmt::format_to(sect_append, "\n#{}=", name);
+          *sect_append = '\n';
         }
+        else if (has_comment)
+          *sect_append = '\n';
       });
 
       if (sect_str.empty())
