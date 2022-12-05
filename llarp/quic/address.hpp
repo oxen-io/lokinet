@@ -60,7 +60,7 @@ namespace llarp::quic
       return a;
     }
 
-    size_t
+    ngtcp2_socklen
     sockaddr_size() const
     {
       return sizeof(sockaddr_in6);

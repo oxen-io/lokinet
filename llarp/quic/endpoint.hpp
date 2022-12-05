@@ -109,16 +109,6 @@ namespace llarp::quic
 
     virtual ~Endpoint();
 
-    // Version & connection id info that we can potentially extract when decoding a packet
-    struct version_info
-    {
-      uint32_t version;
-      const uint8_t* dcid;
-      size_t dcid_len;
-      const uint8_t* scid;
-      size_t scid_len;
-    };
-
     // Called to handle an incoming packet
     void
     handle_packet(const Packet& p);
@@ -185,7 +175,7 @@ namespace llarp::quic
     }
 
     void
-    send_version_negotiation(const version_info& vi, const Address& source);
+    send_version_negotiation(const ngtcp2_version_cid& vi, const Address& source);
 
     // Looks up a connection. Returns a shared_ptr (either copied for a primary connection, or
     // locked from an alias's weak pointer) if the connection was found or nullptr if not; and a
@@ -206,10 +196,7 @@ namespace llarp::quic
     // values.
     void
     close_connection(
-        Connection& conn,
-        uint64_t code = NGTCP2_NO_ERROR,
-        bool application = false,
-        std::string_view close_reason = ""sv);
+        Connection& conn, uint64_t code = NGTCP2_NO_ERROR, std::string_view close_reason = ""sv);
 
     /// Puts a connection into draining mode (i.e. after getting a connection close).  This will
     /// keep the connection registered for the recommended 3*Probe Timeout, during which we drop
