@@ -375,7 +375,7 @@ namespace llarp::quic
       {
         log::warning(
             logcat, "expiry handler invocation returned an error: {}", ngtcp2_strerror(rv));
-        endpoint.close_connection(*this, ngtcp2_err_infer_quic_transport_error_code(rv), false);
+        endpoint.close_connection(*this, ngtcp2_err_infer_quic_transport_error_code(rv));
       }
       else
       {
@@ -407,7 +407,7 @@ namespace llarp::quic
 
     settings.initial_ts = get_timestamp();
     // FIXME: IPv6
-    settings.max_udp_payload_size = Endpoint::max_pkt_size_v4;
+    settings.max_tx_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
     // settings.initial_rtt = ???; # NGTCP2's default is 333ms
 
@@ -1150,31 +1150,27 @@ namespace llarp::quic
       }
     }
 
-    ngtcp2_transport_params params;
-
-    auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO
-                             : NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS;
-
-    auto rv = ngtcp2_decode_transport_params(&params, exttype, data.data(), data.size());
+    auto rv = ngtcp2_conn_decode_remote_transport_params(*this, data.data(), data.size());
     log::debug(
         logcat,
         "Decode transport params {}",
         rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
-    log::trace(logcat, "params orig dcid = {}", ConnectionID(params.original_dcid));
-    log::trace(logcat, "params init scid = {}", ConnectionID(params.initial_scid));
-    if (rv == 0)
-    {
-      rv = ngtcp2_conn_set_remote_transport_params(*this, &params);
-      log::debug(
-          logcat,
-          "Set remote transport params {}",
-          rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
-    }
 
     if (rv != 0)
     {
       ngtcp2_conn_set_tls_error(*this, rv);
       return rv;
+    }
+
+    const auto* params = ngtcp2_conn_get_remote_transport_params(*this);
+    if (params == nullptr)
+      log::error(
+          logcat,
+          "conn_get_remote_transport_params returned NULL after decode_remote_transport_params");
+    else
+    {
+      log::trace(logcat, "params orig dcid = {}", ConnectionID(params->original_dcid));
+      log::trace(logcat, "params init scid = {}", ConnectionID(params->initial_scid));
     }
 
     return 0;
@@ -1203,8 +1199,11 @@ namespace llarp::quic
   int
   Connection::send_transport_params(ngtcp2_crypto_level level)
   {
-    ngtcp2_transport_params tparams;
-    ngtcp2_conn_get_local_transport_params(*this, &tparams);
+    const auto* tparams = ngtcp2_conn_get_local_transport_params(*this);
+
+    if (tparams == nullptr)
+      throw std::runtime_error{
+          "conn_get_local_transport_params returned NULL, local params not set?"};
 
     assert(conn_buffer.empty());
     conn_buffer.resize(Endpoint::max_pkt_size_v4);
@@ -1230,7 +1229,7 @@ namespace llarp::quic
     auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
                              : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
 
-    if (ngtcp2_ssize nwrite = ngtcp2_encode_transport_params(buf, bufend - buf, exttype, &tparams);
+    if (ngtcp2_ssize nwrite = ngtcp2_encode_transport_params(buf, bufend - buf, exttype, tparams);
         nwrite >= 0)
     {
       assert(nwrite > 0);
