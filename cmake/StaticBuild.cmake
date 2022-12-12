@@ -109,9 +109,18 @@ endfunction()
 set(cross_host "")
 set(cross_rc "")
 if(CMAKE_CROSSCOMPILING)
-  set(cross_host "--host=${ARCH_TRIPLET}")
-  if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
-    set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
+  if(APPLE_TARGET_TRIPLE)
+    if(PLATFORM MATCHES "OS64" OR PLATFORM MATCHES "SIMULATORARM64")
+      set(APPLE_TARGET_TRIPLE aarch64-apple-ios)
+    elseif(PLATFORM MATCHES "SIMULATOR64")
+      set(APPLE_TARGET_TRIPLE x86_64-apple-ios)
+    endif()
+    set(cross_host "--host=${APPLE_TARGET_TRIPLE}")
+  else()
+    set(cross_host "--host=${ARCH_TRIPLET}")
+    if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
+      set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
+    endif()
   endif()
 endif()
 if(ANDROID)
@@ -162,11 +171,6 @@ if(WITH_LTO)
   set(deps_CFLAGS "${deps_CFLAGS} -flto")
 endif()
 
-if(APPLE)
-  set(deps_CFLAGS "${deps_CFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-  set(deps_CXXFLAGS "${deps_CXXFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-endif()
-
 if(_winver)
   set(deps_CFLAGS "${deps_CFLAGS} -D_WIN32_WINNT=${_winver}")
   set(deps_CXXFLAGS "${deps_CXXFLAGS} -D_WIN32_WINNT=${_winver}")
@@ -179,6 +183,15 @@ else()
   set(_make make)
 endif()
 
+if(APPLE)
+  foreach(lang C CXX)
+    string(APPEND deps_${lang}FLAGS " ${CMAKE_${lang}_SYSROOT_FLAG} ${CMAKE_OSX_SYSROOT} ${CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG}${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    set(deps_noarch_${lang}FLAGS "${deps_${lang}FLAGS}")
+    foreach(arch ${CMAKE_OSX_ARCHITECTURES})
+      string(APPEND deps_${lang}FLAGS " -arch ${arch}")
+    endforeach()
+  endforeach()
+endif()
 
 # Builds a target; takes the target name (e.g. "readline") and builds it in an external project with
 # target name suffixed with `_external`.  Its upper-case value is used to get the download details
@@ -254,6 +267,16 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar} ANDROID_NDK_ROOT=${CMAKE_ANDROID_NDK} "PATH=${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}")
     list(APPEND openssl_flags "CPPFLAGS=-D__ANDROID_API__=${ANDROID_API}")
     set(openssl_extra_opts no-asm)
+  elseif(IOS)
+    get_filename_component(apple_toolchain "${CMAKE_C_COMPILER}" DIRECTORY)
+    get_filename_component(apple_sdk "${CMAKE_OSX_SYSROOT}" NAME)
+    if(NOT ${apple_toolchain} MATCHES Xcode OR NOT ${apple_sdk} MATCHES "iPhone(OS|Simulator)")
+      message(FATAL_ERROR "didn't find your toolchain and sdk correctly from ${CMAKE_C_COMPILER}/${CMAKE_OSX_SYSROOT}: found toolchain=${apple_toolchain}, sdk=${apple_sdk}")
+    endif()
+    set(openssl_system_env CROSS_COMPILE=${apple_toolchain}/ CROSS_TOP=${CMAKE_DEVELOPER_ROOT}/ CROSS_SDK=${apple_sdk}/)
+    set(openssl_configure_command ./Configure iphoneos-cross)
+# FIXME: is this needed?
+#set(openssl_cc "clang")
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_arch linux-mips64)
   elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
@@ -307,6 +330,12 @@ build_external(expat
 add_static_target(expat expat_external libexpat.a)
 
 
+set(unbound_extra)
+if(APPLE AND IOS)
+  set(unbound_extra CPP=cpp)
+endif()
+
+
 if(WIN32)
   set(unbound_patch
     PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
@@ -316,10 +345,10 @@ build_external(unbound
   DEPENDS openssl_external expat_external
   ${unbound_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
-  --enable-static --with-libunbound-only --with-pic
+  --enable-static --with-libunbound-only --with-pic --disable-gost
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
-  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" ${unbound_extra}
 )
 add_static_target(libunbound unbound_external libunbound.a)
 if(NOT WIN32)
@@ -336,7 +365,9 @@ add_static_target(sodium sodium_external libsodium.a)
 
 
 if(WITH_PEERSTATS_BACKEND)
-  build_external(sqlite3)
+  build_external(sqlite3 CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared --disable-readline --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+    BUILD_COMMAND true
+    INSTALL_COMMAND make install-includeHEADERS install-libLTLIBRARIES)
   add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 endif()
 
@@ -355,10 +386,16 @@ if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
         ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-unistd.patch)
 endif()
 
+set(zmq_cross_host "${cross_host}")
+if(IOS AND cross_host MATCHES "-ios$")
+  # zmq doesn't like "-ios" for the host, so replace it with -darwin
+  string(REGEX REPLACE "-ios$" "-darwin" zmq_cross_host ${cross_host})
+endif()
+
 build_external(zmq
   DEPENDS sodium_external
   ${zmq_patch}
-  CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
+  CONFIGURE_COMMAND ./configure ${zmq_cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
     --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"

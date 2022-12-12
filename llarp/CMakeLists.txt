@@ -534,5 +534,36 @@ if(WITH_EMBEDDED_LOKINET)
   endif()
 endif()
 
+if(WITH_EMBEDDED_LOKINET)
+  add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
+  target_link_libraries(lokinet-embedded-api PUBLIC liblokinet)
+  add_log_tag(lokinet-embedded-api)
+  combine_archives(lokinet-embedded
+    lokinet-embedded-api
+    lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
+    liblokinet
+    libuv
+    sodium
+    zlib
+    OpenSSL::SSL OpenSSL::Crypto
+    expat
+    libunbound
+    libzmq
+    oxenmq)
+  if(IOS)
+    set(lib_folder lib-${ARCH})
+  else()
+    set(lib_folder lib)
+  endif()
+  install(TARGETS lokinet-embedded
+    ARCHIVE DESTINATION ${lib_folder}
+    EXCLUDE_FROM_ALL)
+endif()
+
+if(APPLE)
+  add_subdirectory(apple)
+  target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
+endif()
+
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)

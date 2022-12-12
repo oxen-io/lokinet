@@ -39,3 +39,6 @@
 [submodule "external/CLI11"]
 	path = external/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
+[submodule "external/ios-cmake"]
+	path = external/ios-cmake
+	url = https://github.com/leetal/ios-cmake.git
