@@ -102,8 +102,8 @@ namespace llarp::quic
   {
     ngtcp2_version_cid vi;
     auto rv = ngtcp2_pkt_decode_version_cid(&vi, u8data(p.data), p.data.size(), NGTCP2_MAX_CIDLEN);
-    if (rv == 1)
-    {  // 1 means Version Negotiation should be sent and otherwise the packet should be ignored
+    if (rv == NGTCP2_ERR_VERSION_NEGOTIATION)
+    {  // Version Negotiation should be sent and otherwise the packet should be ignored
       send_version_negotiation(vi, p.path.remote);
       return std::nullopt;
     }
@@ -121,6 +121,7 @@ namespace llarp::quic
 
     return std::make_optional<ConnectionID>(vi.dcid, vi.dcidlen);
   }
+
   void
   Endpoint::handle_conn_packet(Connection& conn, const Packet& p)
   {
@@ -162,9 +163,25 @@ namespace llarp::quic
       log::warning(logcat, "read pkt error: {}", ngtcp2_strerror(rv));
 
     if (rv == NGTCP2_ERR_DRAINING)
+    {
+      log::debug(logcat, "Draining connection {}", conn.base_cid);
       start_draining(conn);
+    }
+    else if (rv == NGTCP2_ERR_PROTO)
+    {
+      log::warning(
+          logcat,
+          "Immediate Close-ing connection {} due to error {}",
+          conn.base_cid,
+          ngtcp2_strerror(rv));
+      close_connection(conn, rv, "ERR_PROTO"sv);
+    }
     else if (rv == NGTCP2_ERR_DROP_CONN)
+    {
+      log::warning(
+          logcat, "Deleting connection {} due to error {}", conn.base_cid, ngtcp2_strerror(rv));
       delete_conn(conn.base_cid);
+    }
 
     return {rv};
   }
@@ -227,13 +244,12 @@ namespace llarp::quic
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
-    const ngtcp2_connection_close_error err{
-        // FIXME: propagate which type this should be to here; defaulting
-        NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
+    ngtcp2_connection_close_error err;
+    ngtcp2_connection_close_error_set_transport_error(
+        &err,
         code,
-        0,  // 0 == unknown
         reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
-        close_reason.size()};
+        close_reason.size());
     if (!conn.closing)
     {
       conn.conn_buffer.resize(max_pkt_size_v4);
@@ -285,6 +301,12 @@ namespace llarp::quic
   {
     if (conn.draining)
       return;
+    if (conn.on_closing)
+    {
+      log::trace(logcat, "Calling Connection.on_closing for connection {}", conn.base_cid);
+      conn.on_closing(conn);  // only call once
+      conn.on_closing = nullptr;
+    }
     log::debug(logcat, "Putting {} into draining mode", conn.base_cid);
     conn.draining = true;
     // Recommended draining time is 3*Probe Timeout
@@ -319,8 +341,13 @@ namespace llarp::quic
       {
         Connection& conn = **conn_ptr;
         auto exp = ngtcp2_conn_get_expiry(conn);
-        if (exp >= now_ts || conn.draining)
+
+        // a bit of buffer on the expiration time in case the last call to
+        // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
+        // hasn't had time to handle it yet.  5ms should do.
+        if (exp >= (now_ts - 5'000'000) || conn.draining)
           continue;
+        log::debug(logcat, "Draining connection {}", it->first);
         start_draining(conn);
       }
     }
@@ -349,6 +376,17 @@ namespace llarp::quic
     }
 
     bool primary = std::holds_alternative<primary_conn_ptr>(it->second);
+    if (primary)
+    {
+      auto ptr = var::get<primary_conn_ptr>(it->second);
+      if (ptr->on_closing)
+      {
+        log::trace(logcat, "Calling Connection.on_closing for connection {}", cid);
+        ptr->on_closing(*ptr);  // only call once
+        ptr->on_closing = nullptr;
+      }
+    }
+
     log::debug(logcat, "Deleting {} connection {}", primary ? "primary" : "alias", cid);
     conns.erase(it);
     if (primary)

@@ -4,7 +4,7 @@
 
 #include <llarp/util/logging.hpp>
 
-#include <signal.h>
+#include <csignal>
 
 #include <memory>
 #include <stdexcept>
@@ -18,21 +18,30 @@
 #include <chrono>
 #include <thread>
 
-bool _run{true};
+bool run{true};
 
 void
 signal_handler(int)
 {
-  _run = false;
+  run = false;
 }
 
 int
 main(int argc, char* argv[])
 {
-  if (argc != 2)
+  if (argc < 3 || argc > 4)
   {
-    std::cout << "Usage: " << argv[0] << " something.loki\n";
+    std::cerr << "Usage: " << argv[0] << " something.{loki,snode} port [testnet]\n";
     return 0;
+  }
+
+  std::string netid = "lokinet";
+  std::string data_dir = "./tcp_connect_data_dir";
+
+  if (argc == 4) // if testnet
+  {
+    netid = "gamma"; // testnet netid
+    data_dir += "/testnet";
   }
 
   signal(SIGINT, signal_handler);
@@ -43,65 +52,65 @@ main(int argc, char* argv[])
   else
     lokinet_log_level("info");
 
-  std::cout << "starting up\n";
+  std::cerr << "starting up\n";
 
+  lokinet_set_netid(netid.c_str());
   auto shared_ctx = std::shared_ptr<lokinet_context>(lokinet_context_new(), lokinet_context_free);
   auto* ctx = shared_ctx.get();
-  lokinet_set_data_dir("./tcp_connect_data_dir", ctx);
+  lokinet_set_data_dir(data_dir.c_str(), ctx);
   if (lokinet_context_start(ctx))
     throw std::runtime_error{"could not start context"};
 
   int status;
-  for (status = lokinet_status(ctx); _run and status == -1; status = lokinet_status(ctx))
+  for (status = lokinet_status(ctx); run and status == -1; status = lokinet_status(ctx))
   {
-    std::cout << "waiting for lokinet to be ready..." << std::endl;
+    std::cerr << "waiting for lokinet to be ready..." << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds{500});
   }
-  if (not _run)
+  if (not run)
   {
-    std::cout << "exit requested before context was ready.\n";
+    std::cerr << "exit requested before context was ready.\n";
     return 0;
   }
   if (status != 0)
   {
-    std::cout << "lokinet_status = " << status << " after waiting for ready.\n";
+    std::cerr << "lokinet_status = " << status << " after waiting for ready.\n";
     return 0;
   }
 
-  // log level debug for quic
-  llarp::log::set_level("quic", llarp::log::Level::debug);
+  if (auto* loglevel = getenv("QUIC_LOG"))
+    llarp::log::set_level("quic", llarp::log::level_from_string(loglevel));
+  else
+    llarp::log::set_level("quic", llarp::log::Level::trace);
+
+  std::cerr << "\n\nquic log level: " << llarp::log::to_string(llarp::log::get_level("quic")) << "\n\n";
 
   auto addr_c = lokinet_address(ctx);
   std::string addr{addr_c};
   free(addr_c);
-  std::cout << "lokinet address: " << addr << "\n";
-
-  // wait a bit just so log output calms down so we can see stuff
-  // printed from here
-  std::this_thread::sleep_for(std::chrono::milliseconds{3000});
+  std::cerr << "lokinet address: " << addr << "\n";
 
   lokinet_stream_result stream_res;
 
   std::string target{argv[1]};
-  target += ":12345";
-  lokinet_outbound_stream(&stream_res, target.c_str(), nullptr, ctx);
+  target = target + ":" + argv[2];
+
+  // hard-coded IP:port for liblokinet to bind to
+  //  connect via tcp will stream traffic to whatever
+  lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx);
 
   if (stream_res.error)
   {
-    std::cout << "failed to prepare outbound tcp: " << strerror(stream_res.error) << "\n";
+    std::cerr << "failed to prepare outbound tcp: " << strerror(stream_res.error) << "\n";
     return 0;
   }
 
-
-  size_t counter = 0;
   do
   {
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
-    if (counter++ % 30 == 0)
-      std::cout << "outbound tcp ready on " << stream_res.local_address << ":" << stream_res.local_port << "\n";
-  } while (_run);
+  } while (run);
 
-  std::cout << "tcp_connect shutting down...\n";
+  std::cerr << "tcp_connect shutting down...\n";
 
   lokinet_close_stream(stream_res.stream_id, ctx);
   return 0;

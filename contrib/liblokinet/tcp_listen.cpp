@@ -2,7 +2,7 @@
 
 #include <lokinet.h>
 
-#include <signal.h>
+#include <csignal>
 
 #include <memory>
 #include <stdexcept>
@@ -16,12 +16,12 @@
 #include <chrono>
 #include <thread>
 
-bool _run{true};
+bool run{true};
 
 void
 signal_handler(int)
 {
-  _run = false;
+  run = false;
 }
 
 int
@@ -43,12 +43,12 @@ main(int argc, char* argv[])
     throw std::runtime_error{"could not start context"};
 
   int status;
-  for (status = lokinet_status(ctx); _run and status == -1; status = lokinet_status(ctx))
+  for (status = lokinet_status(ctx); run and status == -1; status = lokinet_status(ctx))
   {
     std::cout << "waiting for lokinet to be ready..." << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds{500});
   }
-  if (not _run)
+  if (not run)
   {
     std::cout << "exit requested before context was ready.\n";
     return 0;
@@ -86,7 +86,7 @@ main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
     if (++counter % 30 == 0)
       std::cout << "lokinet address: " << addr << "\n";
-  } while (_run);
+  } while (run);
 
   std::cout << "tcp_listen shutting down...\n";
 

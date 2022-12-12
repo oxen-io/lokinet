@@ -315,6 +315,34 @@ local mac_builder(name,
   ],
 };
 
+// iphone builder
+local iphone_builder(name,
+                     build_type='Release',
+                     werror=true,
+                     cmake_extra='',
+                     local_mirror=true,
+                     extra_cmds=[],
+                     jobs=6,
+                     allow_fail=false) = {
+  kind: 'pipeline',
+  type: 'exec',
+  name: name,
+  platform: { os: 'darwin', arch: 'amd64' },
+  steps: [
+    { name: 'submodules', commands: submodule_commands },
+    {
+      name: 'build',
+      environment: { SSH_KEY: { from_secret: 'SSH_KEY' } },
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        'export CMAKE_BUILD_PARALLEL_LEVEL=6',
+        'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
+        './contrib/ios.sh ' + ci_dep_mirror(local_mirror),
+      ] + extra_cmds,
+    },
+  ],
+};
+
 local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
@@ -437,6 +465,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
   deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
+
+  // iphone builds:
+  iphone_builder('iOS (embedded lokinet)', build_type='Debug', extra_cmds=[
+    'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh',
+  ]),
 
   // Macos builds:
   mac_builder('macOS (Release)', extra_cmds=[

@@ -440,7 +440,7 @@ function(link_lokinet_layers)
     lokinet_link_lib(${ARGV1} ${lib})
     list(REMOVE_AT ARGV 1)
     target_link_libraries(${lib} PRIVATE ${ARGV1})
-    # recursion :D 
+    # recursion :D
     link_lokinet_layers(${ARGV})
   else()
     lokinet_link_lib(${lib})
@@ -520,18 +520,20 @@ target_link_libraries(lokinet-plainquic PUBLIC
 
 if(WITH_EMBEDDED_LOKINET)
   include(GNUInstallDirs)
-  add_library(lokinet-shared SHARED lokinet_shared.cpp)
-  target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
+  add_library(lokinet-embedded-api lokinet_shared.cpp)
+  target_link_libraries(lokinet-embedded-api PUBLIC lokinet-amalgum)
+
+  if(BUILD_STATIC_DEPS)
+    get_target_property(embedded-libs lokinet-amalgum INTERFACE_LINK_LIBRARIES)
+    combine_archives(lokinet-embedded ${embedded-libs})
+  endif()
+
   if(WIN32)
     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
+    target_link_libraries(lokinet-embedded-api PUBLIC ws2_32 iphlpapi -fstack-protector)
   endif()
-  set_target_properties(lokinet-shared PROPERTIES OUTPUT_NAME lokinet)
-  if(WIN32)
-    target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
-    install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
-  elseif(NOT APPLE)
-    install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
-  endif()
+
+  install(TARGETS lokinet-embedded-api DESTINATION bin COMPONENT liblokinet)
 endif()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)

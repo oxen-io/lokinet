@@ -25,6 +25,8 @@
 
 namespace
 {
+  static auto logcat = llarp::log::Cat("liblokinet");
+
   struct Context : public llarp::Context
   {
     using llarp::Context::Context;
@@ -32,11 +34,7 @@ namespace
     std::shared_ptr<llarp::NodeDB>
     makeNodeDB() override
     {
-      if (not nodedb_dir.empty())
-      {
-        return llarp::Context::makeNodeDB();
-      }
-      return std::make_shared<llarp::NodeDB>();
+      return llarp::Context::makeNodeDB();
     }
   };
 
@@ -675,6 +673,7 @@ extern "C"
         return;
       }
       // TODO: make configurable (?)
+      // FIXME: appears unused?
       std::string endpoint{"default"};
 
       llarp::SockAddr localAddr;
@@ -690,13 +689,14 @@ extern "C"
         stream_error(result, EINVAL);
         return;
       }
+
       auto call = [&promise,
                    ctx,
                    result,
                    router = ctx->impl->router,
                    remotehost,
                    remoteport,
-                   endpoint,
+                   endpoint,  // FIXME: appears unused?
                    localAddr]() {
         auto ep = ctx->endpoint();
         if (ep == nullptr)
@@ -714,8 +714,22 @@ extern "C"
         }
         try
         {
+          auto on_open = [localAddr, remotehost, remoteport](bool success) {
+            llarp::log::info(
+                logcat,
+                "Quic tunnel {}<->{}:{} {}.",
+                localAddr,
+                remotehost,
+                remoteport,
+                success ? "opened successfully" : "failed");
+          };
+          auto on_close = [localAddr, remotehost, remoteport]() {
+            llarp::log::info(
+                logcat, "Quic tunnel {}<->{}:{} closed.", localAddr, remotehost, remoteport);
+          };
+
           auto [addr, id] = quic->open(
-              remotehost, remoteport, [](auto) {}, localAddr);
+              remotehost, remoteport, std::move(on_open), std::move(on_close), localAddr);
           auto [host, port] = split_host_port(addr.ToString());
           ctx->outbound_stream(id);
           stream_okay(result, host, port, id);

@@ -1,6 +1,7 @@
 #include "stream.hpp"
 #include "connection.hpp"
 #include "endpoint.hpp"
+#include "llarp/util/logging/buffer.hpp"
 #include <llarp/util/logging.hpp>
 
 #include <cassert>
@@ -161,6 +162,7 @@ namespace llarp::quic
   Stream::append_buffer(const std::byte* buffer, size_t length)
   {
     assert(this->buffer.empty());
+    log::debug(logcat, "buffer: {}", buffer_printer{buffer, length});
     user_buffers.emplace_back(buffer, length);
     size += length;
     conn.io_ready();
