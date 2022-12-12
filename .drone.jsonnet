@@ -366,6 +366,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
 
 
 [
+/*
   {
     name: 'lint check',
     kind: 'pipeline',
@@ -464,16 +465,19 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
   deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
+*/
 
   // iphone builds:
   iphone_builder('iOS (embedded lokinet)', build_type='Debug', extra_cmds=[
     'UPLOAD_OS=iphone ./contrib/ci/drone-static-upload.sh',
   ]),
 
+/*
   // Macos builds:
   mac_builder('macOS (Release)', extra_cmds=[
     './contrib/ci/drone-check-static-libs.sh',
     './contrib/ci/drone-static-upload.sh',
   ]),
   mac_builder('macOS (Debug)', build_type='Debug'),
+*/
 ]
