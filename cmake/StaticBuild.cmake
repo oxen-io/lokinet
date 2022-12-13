@@ -255,6 +255,7 @@ set(openssl_system_env "")
 set(openssl_arch "")
 set(openssl_configure_command ./config)
 set(openssl_flags "CFLAGS=${deps_CFLAGS}")
+set(openssl_cc "${deps_cc}")
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
     set(openssl_arch mingw64)
@@ -275,8 +276,7 @@ if(CMAKE_CROSSCOMPILING)
     endif()
     set(openssl_system_env CROSS_COMPILE=${apple_toolchain}/ CROSS_TOP=${CMAKE_DEVELOPER_ROOT}/ CROSS_SDK=${apple_sdk}/)
     set(openssl_configure_command ./Configure iphoneos-cross)
-# FIXME: is this needed?
-#set(openssl_cc "clang")
+    set(openssl_cc "clang")
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_arch linux-mips64)
   elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
@@ -300,7 +300,7 @@ endif()
 
 
 build_external(openssl
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ${openssl_configure_command}
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${openssl_cc} ${openssl_system_env} ${openssl_configure_command}
     --prefix=${DEPS_DESTDIR} --libdir=lib ${openssl_extra_opts}
     no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl3
