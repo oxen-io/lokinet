@@ -541,7 +541,7 @@ if(WITH_EMBEDDED_LOKINET)
     lokinet-embedded-api
     lokinet-platform lokinet-util lokinet-cryptography ngtcp2_static
     lokinet-amalgum
-    libuv
+    uv_a::uv_a
     sodium
     zlib
     OpenSSL::SSL OpenSSL::Crypto
