@@ -336,7 +336,7 @@ add_subdirectory(docs)
 
 include(cmake/gui.cmake)
 
-if(APPLE)
+if(APPLE AND (NOT APPLE_IOS))
   macos_target_setup()
 endif()
 
