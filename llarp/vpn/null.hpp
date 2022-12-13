@@ -1,5 +1,5 @@
 #pragma once
-#include <llarp/ev/vpn.hpp>
+#include "platform.hpp"
 #include <unistd.h>
 
 namespace llarp::vpn
