@@ -536,11 +536,11 @@ endif()
 
 if(WITH_EMBEDDED_LOKINET)
   add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
-  target_link_libraries(lokinet-embedded-api PUBLIC liblokinet)
+  target_link_libraries(lokinet-embedded-api PUBLIC lokinet-amalgum)
   combine_archives(lokinet-embedded
     lokinet-embedded-api
-    lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
-    liblokinet
+    lokinet-platform lokinet-util lokinet-cryptography ngtcp2_static
+    lokinet-amalgum
     libuv
     sodium
     zlib
