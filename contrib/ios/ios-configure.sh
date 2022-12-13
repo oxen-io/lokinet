@@ -19,6 +19,7 @@ mkdir -p $targ
 cmake \
     -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$root/external/ios-cmake/ios.toolchain.cmake" -DPLATFORM=$plat -DDEPLOYMENT_TARGET=13 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF \
+    -DAPPLE_IOS=ON \
     -DBUILD_STATIC_DEPS=ON \
     -DBUILD_PACKAGE=OFF \
     -DBUILD_SHARED_LIBS=OFF \

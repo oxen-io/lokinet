@@ -122,7 +122,11 @@ include(cmake/gui-option.cmake)
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
-include(cmake/macos.cmake)
+
+option(APPLE_IOS "Set if building for iOS" OFF)
+if (APPLE AND (NOT APPLE_IOS))
+  include(cmake/macos.cmake)
+endif()
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
