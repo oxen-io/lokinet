@@ -10,7 +10,7 @@ namespace llarp::vpn
     int m_pipe[2];
 
    public:
-    NullInterface()
+    NullInterface(InterfaceInfo info) : NetworkInterface{std::move(info)}
     {
       ::pipe(m_pipe);
     }
@@ -25,13 +25,6 @@ namespace llarp::vpn
     PollFD() const override
     {
       return m_pipe[0];
-    }
-
-    /// the interface's name
-    std::string
-    IfName() const override
-    {
-      return "";
     }
 
     net::IPPacket
@@ -52,13 +45,15 @@ namespace llarp::vpn
   class NopRouteManager : public IRouteManager
   {
    public:
-    void AddRoute(IPVariant_t, IPVariant_t) override{};
+    void AddRoute(net::ipaddr_t, net::ipaddr_t) override{};
 
-    void DelRoute(IPVariant_t, IPVariant_t) override{};
+    void DelRoute(net::ipaddr_t, net::ipaddr_t) override{};
 
-    void AddDefaultRouteViaInterface(std::string) override{};
+    void
+    AddDefaultRouteViaInterface(NetworkInterface&) override{};
 
-    void DelDefaultRouteViaInterface(std::string) override{};
+    void
+    DelDefaultRouteViaInterface(NetworkInterface&) override{};
 
     void
     AddRouteViaInterface(NetworkInterface&, IPRange) override{};
@@ -66,11 +61,11 @@ namespace llarp::vpn
     void
     DelRouteViaInterface(NetworkInterface&, IPRange) override{};
 
-    std::vector<IPVariant_t>
-    GetGatewaysNotOnInterface(std::string) override
+    std::vector<net::ipaddr_t>
+    GetGatewaysNotOnInterface(NetworkInterface&) override
     {
-      return {};
-    }
+      return std::vector<net::ipaddr_t>{};
+    };
   };
 
   class NullPlatform : public Platform
@@ -84,9 +79,9 @@ namespace llarp::vpn
     virtual ~NullPlatform() = default;
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo, AbstractRouter*)
+    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
     {
-      return std::static_pointer_cast<NetworkInterface>(std::make_shared<NullInterface>());
+      return std::make_shared<NullInterface>(std::move(info));
     }
 
     IRouteManager&
