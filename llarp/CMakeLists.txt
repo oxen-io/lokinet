@@ -537,7 +537,6 @@ endif()
 if(WITH_EMBEDDED_LOKINET)
   add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
   target_link_libraries(lokinet-embedded-api PUBLIC liblokinet)
-  add_log_tag(lokinet-embedded-api)
   combine_archives(lokinet-embedded
     lokinet-embedded-api
     lokinet-platform lokinet-util lokinet-cryptography sqlite3 ngtcp2_static
