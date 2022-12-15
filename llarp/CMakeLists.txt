@@ -539,16 +539,25 @@ if(WITH_EMBEDDED_LOKINET)
   target_link_libraries(lokinet-embedded-api PUBLIC lokinet-amalgum)
   combine_archives(lokinet-embedded
     lokinet-embedded-api
-    lokinet-platform lokinet-util lokinet-cryptography ngtcp2_static
+    lokinet-platform
+    lokinet-util
+    lokinet-cryptography
     lokinet-amalgum
+    lokinet-config
+    lokinet-dns
+    ngtcp2_static
     uv_a::uv_a
     sodium
     zlib
-    OpenSSL::SSL OpenSSL::Crypto
+    OpenSSL::SSL
+    OpenSSL::Crypto
     expat
     libunbound
     libzmq
-    oxenmq)
+    fmt::fmt
+    spdlog::spdlog
+    oxen::logging
+    oxenmq::oxenmq)
   if(IOS)
     set(lib_folder lib-${ARCH})
   else()
