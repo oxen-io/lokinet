@@ -153,11 +153,12 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
-* Thurs Dec 15 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.11-1
+* Thu Dec 15 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.11-1
 - bump version
 - remove dns Patch1
 - remove external/date submodule
 - external/oxen-logging & gui submodule added during merge
+
 * Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
 - bump version
 - cmake flags for no system library search
