@@ -11,6 +11,7 @@ namespace llarp
 {
   namespace service
   {
+    static auto logcat = log::Cat("service");
     namespace
     {
       using EndpointConstructor =
@@ -46,7 +47,9 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while (itr != m_Endpoints.end())
       {
+        log::debug(logcat, "Stopping endpoint {}.", itr->first);
         itr->second->Stop();
+        log::debug(logcat, "Endpoint {} stopped.", itr->first);
         m_Stopped.emplace_back(std::move(itr->second));
         itr = m_Endpoints.erase(itr);
       }
@@ -190,11 +193,12 @@ namespace llarp
       // use factory to create endpoint
       const auto itr = endpointConstructors.find(endpointType);
       if (itr == endpointConstructors.end())
-        throw std::invalid_argument(stringify("Endpoint type ", endpointType, " does not exist"));
+        throw std::invalid_argument{fmt::format("Endpoint type {} does not exist", endpointType)};
 
       auto service = itr->second(m_Router, this);
       if (not service)
-        throw std::runtime_error(stringify("Failed to construct endpoint of type ", endpointType));
+        throw std::runtime_error{
+            fmt::format("Failed to construct endpoint of type {}", endpointType)};
 
       // pass conf to service
       service->Configure(conf.network, conf.dns);

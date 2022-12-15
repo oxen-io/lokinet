@@ -31,7 +31,7 @@ namespace llarp
 
   struct RuntimeOptions
   {
-    bool background = false;
+    bool showBanner = true;
     bool debug = false;
     bool isSNode = false;
   };
@@ -45,6 +45,7 @@ namespace llarp
     std::shared_ptr<NodeDB> nodedb = nullptr;
     std::string nodedb_dir;
 
+    Context();
     virtual ~Context() = default;
 
     void
@@ -100,13 +101,7 @@ namespace llarp
     virtual std::shared_ptr<llarp::vpn::Platform>
     makeVPNPlatform();
 
-#ifdef ANDROID
-
     int androidFD = -1;
-
-    int
-    GetUDPSocket();
-#endif
 
    protected:
     std::shared_ptr<Config> config = nullptr;

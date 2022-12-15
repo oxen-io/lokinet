@@ -10,7 +10,7 @@
 
 namespace llarp::dns
 {
-  typedef std::tuple<std::string, uint16_t, uint16_t, uint16_t, std::string> SRVTuple;
+  using SRVTuple = std::tuple<std::string, uint16_t, uint16_t, uint16_t, std::string>;
 
   struct SRVData
   {
@@ -38,19 +38,23 @@ namespace llarp::dns
     SRVTuple
     toTuple() const;
 
+    auto
+    toTupleRef() const
+    {
+      return std::tie(service_proto, priority, weight, port, target);
+    }
+
     /// so we can put SRVData in a std::set
     bool
     operator<(const SRVData& other) const
     {
-      return service_proto < other.service_proto or priority < other.priority
-          or weight < other.weight or port < other.port or target < other.target;
+      return toTupleRef() < other.toTupleRef();
     }
 
     bool
     operator==(const SRVData& other) const
     {
-      return service_proto == other.service_proto and priority == other.priority
-          and weight == other.weight and port == other.port and target == other.target;
+      return toTupleRef() == other.toTupleRef();
     }
 
     bool

@@ -4,6 +4,7 @@
 #include "util/bencode.hpp"
 #include "constants/version.hpp"
 #include "constants/proto.hpp"
+#include "util/formattable.hpp"
 
 namespace llarp
 {
@@ -40,7 +41,7 @@ namespace llarp
     bool
     operator<(const RouterVersion& other) const
     {
-      return m_ProtoVersion < other.m_ProtoVersion || m_Version < other.m_Version;
+      return std::tie(m_ProtoVersion, m_Version) < std::tie(other.m_ProtoVersion, other.m_Version);
     }
 
     bool
@@ -60,11 +61,8 @@ namespace llarp
     int64_t m_ProtoVersion = llarp::constants::proto_version;
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const RouterVersion& rv)
-  {
-    return out << rv.ToString();
-  }
+  template <>
+  constexpr inline bool IsToStringFormattable<RouterVersion> = true;
 
   static constexpr int64_t INVALID_VERSION = -1;
   static const RouterVersion emptyRouterVersion({0, 0, 0}, INVALID_VERSION);

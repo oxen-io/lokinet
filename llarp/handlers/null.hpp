@@ -17,7 +17,7 @@ namespace llarp::handlers
         , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
           var::visit(
               [&pkt](auto&& from) {
-                LogError("unhandled traffic from: ", from, " of ", pkt.sz, " bytes");
+                LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes");
               },
               from);
         }}}
@@ -101,13 +101,14 @@ namespace llarp::handlers
     void
     SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
-    huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
+    huint128_t
+    ObtainIPForAddr(std::variant<service::Address, RouterID>) override
     {
       return {0};
     }
 
-    std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-        huint128_t) const override
+    std::optional<std::variant<service::Address, RouterID>>
+    ObtainAddrForIP(huint128_t) const override
     {
       return std::nullopt;
     }

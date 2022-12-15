@@ -19,9 +19,15 @@ set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
 chmod 600 ssh_key
 
-os="${UPLOAD_OS:-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH}"
-if [ -n "$WINDOWS_BUILD_NAME" ]; then
-    os="windows-$WINDOWS_BUILD_NAME"
+os="$UPLOAD_OS"
+if [ -z "$os" ]; then
+    if [ "$DRONE_STAGE_OS" == "darwin" ]; then
+        os="macos-$DRONE_STAGE_ARCH"
+    elif [ -n "$WINDOWS_BUILD_NAME" ]; then
+        os="windows-$WINDOWS_BUILD_NAME"
+    else
+        os="$DRONE_STAGE_OS-$DRONE_STAGE_ARCH"
+    fi
 fi
 
 if [ -n "$DRONE_TAG" ]; then
@@ -34,8 +40,11 @@ else
 fi
 
 mkdir -v "$base"
-if [ -e build-windows ]; then
-    cp -av build-windows/lokinet-*.exe "$base"
+if [ -e build/win32 ]; then
+    # save debug symbols
+    cp -av build/win32/daemon/debug-symbols.tar.xz "$base-debug-symbols.tar.xz"
+    # save installer
+    cp -av build/win32/*.exe "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"
@@ -47,9 +56,13 @@ elif [ -e build-docs ]; then
     archive="$base.tar.xz"
     cp -av build-docs/docs/mkdocs.yml build-docs/docs/markdown "$base"
     tar cJvf "$archive" "$base"
+elif [ -e build-mac ]; then
+    archive="$base.tar.xz"
+    mv build-mac/Lokinet*/ "$base"
+    tar cJvf "$archive" "$base"
 else
-    cp -av daemon/lokinet daemon/lokinet-vpn "$base"
-    cp -av ../contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"
+    cp -av build/daemon/lokinet{,-vpn} "$base"
+    cp -av contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"
     # tar dat shiz up yo
     archive="$base.tar.xz"
     tar cJvf "$archive" "$base"
@@ -61,6 +74,7 @@ upload_to="oxen.rocks/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
 # -mkdir a/, -mkdir a/b/, -mkdir a/b/c/, ... commands.  The leading `-` allows the command to fail
 # without error.
 upload_dirs=(${upload_to//\// })
+put_debug=
 mkdirs=
 dir_tmp=""
 for p in "${upload_dirs[@]}"; do
@@ -68,10 +82,13 @@ for p in "${upload_dirs[@]}"; do
     mkdirs="$mkdirs
 -mkdir $dir_tmp"
 done
-
+if [ -e "$base-debug-symbols.tar.xz" ] ; then
+    put_debug="put $base-debug-symbols.tar.xz $upload_to"
+fi
 sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@oxen.rocks <<SFTP
 $mkdirs
 put $archive $upload_to
+$put_debug
 SFTP
 
 set +o xtrace

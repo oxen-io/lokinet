@@ -129,9 +129,12 @@ namespace llarp
       visit(s.get());
   }
 
-  bool
-  ILinkLayer::Configure(AbstractRouter* router, std::string ifname, int af, uint16_t port)
+  void
+  ILinkLayer::Bind(AbstractRouter* router, SockAddr bind_addr)
   {
+    if (router->Net().IsLoopbackAddress(bind_addr.getIP()))
+      throw std::runtime_error{"cannot udp bind socket on loopback"};
+    m_ourAddr = bind_addr;
     m_Router = router;
     m_udp = m_Router->loop()->make_udp(
         [this]([[maybe_unused]] UDPHandle& udp, const SockAddr& from, llarp_buffer_t buf) {
@@ -141,67 +144,11 @@ namespace llarp
           RecvFrom(from, std::move(pkt));
         });
 
-    if (ifname == "*")
-    {
-      if (router->IsServiceNode())
-      {
-        if (auto maybe = router->OurPublicIP())
-        {
-          auto addr = var::visit([](auto&& addr) { return SockAddr{addr}; }, *maybe);
-          // service node outbound link
-          if (HasInterfaceAddress(addr.getIP()))
-          {
-            // we have our ip claimed on a local net interface
-            m_ourAddr = addr;
-          }
-          else if (auto maybe = net::AllInterfaces(addr))
-          {
-            // we do not have our claimed ip, nat or something?
-            m_ourAddr = *maybe;
-          }
-          else
-            return false;  // the ultimate failure case
-        }
-        else
-          return false;
-      }
-      else if (auto maybe = net::AllInterfaces(SockAddr{"0.0.0.0"}))
-      {
-        // client outbound link
-        m_ourAddr = *maybe;
-      }
-      else
-        return false;
-    }
-    else
-    {
-      if (ifname == "0.0.0.0" and not GetBestNetIF(ifname))
-        throw std::invalid_argument{
-            "0.0.0.0 provided and we cannot find a valid ip to use, please set one "
-            "explicitly instead in the bind section instead of 0.0.0.0"};
-      if (const auto maybe = GetInterfaceAddr(ifname, af))
-      {
-        m_ourAddr = *maybe;
-      }
-      else
-      {
-        try
-        {
-          m_ourAddr = SockAddr{ifname + ":0"};
-        }
-        catch (const std::exception& ex)
-        {
-          LogError(
-              stringify("Could not use ifname ", ifname, " to configure ILinkLayer: ", ex.what()));
-          throw ex;
-        }
-      }
-    }
-    m_ourAddr.setPort(port);
-    if (not m_udp->listen(m_ourAddr))
-      return false;
+    if (m_udp->listen(m_ourAddr))
+      return;
 
-    return true;
+    throw std::runtime_error{
+        fmt::format("failed to listen {} udp socket on {}", Name(), m_ourAddr)};
   }
 
   void
@@ -302,7 +249,7 @@ namespace llarp
   bool
   ILinkLayer::PickAddress(const RouterContact& rc, llarp::AddressInfo& picked) const
   {
-    std::string OurDialect = Name();
+    auto OurDialect = Name();
     for (const auto& addr : rc.addrs)
     {
       if (addr.dialect == OurDialect)
@@ -339,7 +286,7 @@ namespace llarp
     return {
         {"name", Name()},
         {"rank", uint64_t(Rank())},
-        {"addr", m_ourAddr.toString()},
+        {"addr", m_ourAddr.ToString()},
         {"sessions", util::StatusObject{{"pending", pending}, {"established", established}}}};
   }
 

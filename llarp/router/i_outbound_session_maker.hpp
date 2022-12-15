@@ -2,6 +2,9 @@
 
 #include <llarp/util/status.hpp>
 #include <llarp/util/types.hpp>
+#include <llarp/util/formattable.hpp>
+
+#include <fmt/format.h>
 
 #include <functional>
 
@@ -21,26 +24,19 @@ namespace llarp
     EstablishFail
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const SessionResult& st)
+  constexpr std::string_view
+  ToString(SessionResult sr)
   {
-    switch (st)
-    {
-      case SessionResult::Establish:
-        return out << "success";
-      case SessionResult::Timeout:
-        return out << "timeout";
-      case SessionResult::NoLink:
-        return out << "no link";
-      case SessionResult::InvalidRouter:
-        return out << "invalid router";
-      case SessionResult::RouterNotFound:
-        return out << "not found";
-      case SessionResult::EstablishFail:
-        return out << "establish failed";
-    }
-    return out << "???";
+    return sr == llarp::SessionResult::Establish     ? "success"sv
+        : sr == llarp::SessionResult::Timeout        ? "timeout"sv
+        : sr == llarp::SessionResult::NoLink         ? "no link"sv
+        : sr == llarp::SessionResult::InvalidRouter  ? "invalid router"sv
+        : sr == llarp::SessionResult::RouterNotFound ? "not found"sv
+        : sr == llarp::SessionResult::EstablishFail  ? "establish failed"sv
+                                                     : "???"sv;
   }
+  template <>
+  constexpr inline bool IsToStringFormattable<SessionResult> = true;
 
   using RouterCallback = std::function<void(const RouterID&, const SessionResult)>;
 

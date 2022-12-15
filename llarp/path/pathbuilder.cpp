@@ -4,6 +4,7 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/nodedb.hpp>
 #include "path_context.hpp"
+#include "util/logging.hpp"
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/router/i_rc_lookup_handler.hpp>
@@ -15,6 +16,11 @@
 
 namespace llarp
 {
+  namespace
+  {
+    auto log_path = log::Cat("path");
+  }
+
   struct AsyncPathKeyExchangeContext : std::enable_shared_from_this<AsyncPathKeyExchangeContext>
   {
     using WorkFunc_t = std::function<void(void)>;
@@ -329,7 +335,8 @@ namespace llarp
         Build(*maybe, roles);
     }
 
-    bool Builder::UrgentBuild(llarp_time_t) const
+    bool
+    Builder::UrgentBuild(llarp_time_t) const
     {
       return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
     }
@@ -344,7 +351,7 @@ namespace llarp
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
         {
-          LogWarn(Name(), " has no first hop candidate");
+          log::warning(log_path, "{} has no first hop candidate", Name());
           return std::nullopt;
         }
         hops.emplace_back(*maybe);
@@ -454,7 +461,7 @@ namespace llarp
       buildIntervalLimit = PATH_BUILD_RATE;
       m_router->routerProfiling().MarkPathSuccess(p.get());
 
-      LogInfo(p->Name(), " built latency=", p->intro.latency);
+      LogInfo(p->Name(), " built latency=", ToString(p->intro.latency));
       m_BuildStats.success++;
     }
 
@@ -471,7 +478,7 @@ namespace llarp
       static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
       // linear backoff
       buildIntervalLimit = std::min(PATH_BUILD_RATE + buildIntervalLimit, MaxBuildInterval);
-      LogWarn(Name(), " build interval is now ", buildIntervalLimit);
+      LogWarn(Name(), " build interval is now ", ToString(buildIntervalLimit));
     }
 
     void

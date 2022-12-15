@@ -6,8 +6,8 @@
 #include <cstring>
 #include <string_view>
 
-// We libuv now
-#include "ev_libuv.hpp"
+#include "libuv.hpp"
+#include <llarp/net/net.hpp>
 
 namespace llarp
 {
@@ -16,4 +16,11 @@ namespace llarp
   {
     return std::make_shared<llarp::uv::Loop>(queueLength);
   }
+
+  const net::Platform*
+  EventLoop::Net_ptr() const
+  {
+    return net::Platform::Default_ptr();
+  }
+
 }  // namespace llarp

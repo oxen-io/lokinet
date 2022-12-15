@@ -45,6 +45,16 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace dns
+  {
+    class I_SystemSettings;
+  }
+
+  namespace net
+  {
+    class Platform;
+  }
+
   namespace exit
   {
     struct Context;
@@ -92,6 +102,9 @@ namespace llarp
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+
+    virtual const net::Platform&
+    Net() const = 0;
 
     virtual const LMQ_ptr&
     lmq() const = 0;
@@ -168,8 +181,8 @@ namespace llarp
     virtual ILinkManager&
     linkManager() = 0;
 
-    virtual RoutePoker&
-    routePoker() = 0;
+    virtual const std::shared_ptr<RoutePoker>&
+    routePoker() const = 0;
 
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
@@ -186,6 +199,13 @@ namespace llarp
     virtual bool
     IsServiceNode() const = 0;
 
+    /// Called to determine if we're in a bad state (which gets reported to our oxend) that should
+    /// prevent uptime proofs from going out to the network (so that the error state gets noticed).
+    /// Currently this means we require a decent number of peers whenever we are fully staked
+    /// (active or decommed).
+    virtual std::optional<std::string>
+    OxendErrorState() const = 0;
+
     virtual bool
     StartRpcServer() = 0;
 
@@ -201,6 +221,10 @@ namespace llarp
     /// stop running the router logic gracefully
     virtual void
     Stop() = 0;
+
+    /// indicate we are about to sleep for a while
+    virtual void
+    Freeze() = 0;
 
     /// thaw from long sleep or network changed event
     virtual void
@@ -289,7 +313,9 @@ namespace llarp
     /// set router's service node whitelist
     virtual void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) = 0;
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& unfundedlist) = 0;
 
     virtual std::unordered_set<RouterID>
     GetRouterWhitelist() const = 0;
@@ -335,6 +361,9 @@ namespace llarp
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
+    virtual std::string
+    status_line() = 0;
+
     /// Templated convenience function to generate a RouterHive event and
     /// delegate to non-templated (and overridable) function for handling.
     template <class EventType, class... Params>
@@ -346,10 +375,11 @@ namespace llarp
       HandleRouterEvent(std::move(event));
     }
 
-#if defined(ANDROID)
     virtual int
-    GetOutboundUDPSocket() const = 0;
-#endif
+    OutboundUDPSocket() const
+    {
+      return -1;
+    }
 
    protected:
     /// Virtual function to handle RouterEvent. HiveRouter overrides this in

@@ -1,4 +1,8 @@
-set(CMAKE_SYSTEM_VERSION 5.0)
+set(CMAKE_SYSTEM_VERSION 6.0)
+
+# the minimum windows version, set to 6 rn because supporting older windows is hell
+set(_winver 0x0600)
+add_definitions(-D_WIN32_WINNT=${_winver})
 
 # target environment on the build host system
 # second one is for non-root installs

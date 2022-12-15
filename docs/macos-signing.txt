@@ -1,73 +1,123 @@
-Codesigning and notarization on macOS
+If you are reading this to try to build Lokinet for yourself for an Apple operating system and
+simultaneously care about open source, privacy, or freedom then you, my friend, are a walking
+contradiction: you are trying to get Lokinet to work on a platform that actively despises open
+source, privacy, and freedom.  Even Windows is a better choice in all of these categories than
+Apple.
 
-This is painful.  Thankfully most of the pain is now in CMake and a python script.
+This directory contains the magical incantations and random voodoo symbols needed to coax an Apple
+build.  There's no reason builds have to be this stupid, except that Apple wants to funnel everyone
+into the no-CI, no-help, undocumented, non-toy-apps-need-not-apply modern Apple culture.
 
-To build, codesign, and notarized and installer package, CMake needs to be invoked with:
+This is disgusting.
 
-    cd build
-    rm -rf *  # optional but recommended
-    cmake .. -DBUILD_PACKAGE=ON -DDOWNLOAD_SODIUM=ON -DMACOS_SIGN_APP=ABC123... -DMACOS_SIGN_PKG=DEF456...
+But it gets worse.
 
-where the ABC123... key is a "Developer ID Installer" key and PKG key is a "Developer ID
-Application" key.  You have to go through a bunch of pain, pay Apple money, and then read a bunch of
-poorly written documentation that doesn't help very much to create these and get them working.  But once you have them
-set up in Keychain, you should be able to list your keys with:
+The following two files, in particular, are the very worst manifestations of this already toxic
+Apple cancer: they are required for proper permissions to run on macOS, are undocumented, and can
+only be regenerated through the entirely closed source Apple Developer backend, for which you have
+to pay money first to get a team account (a personal account will not work), and they lock the
+resulting binaries to only run on individually selected Apple computers selected at the time the
+profile is provisioned (with no ability to allow it to run anywhere).
 
-    security find-identity -v
+    lokinet.dev.provisionprofile
+    lokinet-extension.dev.provisionprofile
 
-and you should see (at least) one "Developer ID Installer: ..." and one "Developer ID Application:
-...".  You need both for reasons that only Apple knows.  The former is used to sign the installer
-.pkg, and the latter is used to sign everything *inside* the .pkg, and you can't use the same key
-for both because Apple designed code signing by marketing committee rather than ask any actual
-competent software developers how code signing should work.
+This is actively hostile to open source development, but that is nothing new for Apple.
 
-Either way, these two values can be specified either by hex value or description string that
-`security find-identity -v` spits out.
+There are also release provisioning profiles
 
-You also need to set up the notarization parameters; these can either be specified directly on the
-cmake command line by adding:
+    lokinet.release.provisionprofile
+    lokinet-extension.release.provisionprofile
 
-  -DMACOS_NOTARIZE_ASC=XYZ123 -DMACOS_NOTARIZE_USER=me@example.com -DMACOS_NOTARIZE_PASS=@keychain:codesigning-password
+These ones allow distribution of the app, but only if notarized, and again require notarization plus
+signing by a (paid) Apple developer account.
 
-or, more simply, by putting them inside a `~/.notarization.cmake` file that will be included if it
-exists (and the MACOS_SIGN_* variables are set) -- see below.
+In order to make things work, you'll have to replace these provisioning profiles with your own
+(after paying Apple for the privilege of developing on their platform, of course) and change all the
+team/application/bundle IDs to reference your own team, matching the provisioning profiles.  The dev
+provisioning profiles must be a "macOS Development" provisioning profile, and must include the
+signing keys and the authorized devices on which you want to run it.  (The profiles bundled in this
+repository contains the lokinet team's "Apple Development" keys associated with the Oxen project,
+and mac dev boxes.  This is *useless* for anyone else).
 
-These three values here are:
+For release builds, you still need a provisioning profile, but it must be a "Distribution: Developer
+ID" provisioning profile, and are tied to a (paid) Developer ID.  The ones in the repository are
+attached to the Oxen Project Developer ID and are useless to anyone else.
 
-MACOS_NOTARIZE_ASC: 
+Once you have that in place, you need to build and sign the package using a certificate matching
+your provisioning profile before your Apple system will allow it to run.  (That's right, your $2000
+box won't let you run programs you build from source on it unless you also subscribe to a $100/year
+Apple developer account).
 
-Organization-specific unique value; this is printed inside (brackets) when you run: `security
-find-identity -v`:
+Okay, so now that you have paid Apple more money for the privilege of using your own computer,
+here's how you make a signed lokinet app:
 
-    1) 1C75DDBF884DEF3D5927C3F29BB7FC5ADAE2E1B3 "Apple Development: me@example.com (ABC123XYZ9)"
+1) Decide which type of build you are doing: a lokinet system extension, or an app extension.  The
+   former must be signed and notarized and will only work when placed in the /Applications folder,
+   but will not work as a dev build and cannot be distributed outside the Mac App Store.  The latter
+   is usable as a dev build, but still requires a signature and Apple-provided provisioningprofile
+   listing the limited number of devices on which it is allowed to run.
 
-MACOS_NOTARIZE_USER:
+   For system extension builds you want to add the -DMACOS_SYSTEM_EXTENSION=ON flag to cmake.
 
-Your Apple Developer login.
+2) Figure out the certificate to use for signing and make sure you have it installed.  For a
+   distributable system extension build you need a "Developer ID Application" key and certificate,
+   issued by your paid developer.apple.com account.  For dev builds you need a "Apple Development"
+   certificate.
 
-MACOS_NOTARIZE_PASS:
+   In most cases you don't need to specify these; the default cmake script will figure them out.
+   (If it can't, e.g. because you have multiple of the right type installed, it will error with the
+   keys it found).
 
-This should be an app-specific password created for signing on the Apple Developer website.  You
-*can* specify it directly, but it is much better to use the magic `@keychain:blah` value, where
-'blah' is a password name recorded in Keychain.  To get that in place you run:
+   To be explicit, use `security find-identity -v` to list your keys, then list the key identity
+   with -DCODESIGN_ID=.....
 
-    export HISTFILE=''  # for bash: you don't want to store this in your history
-    xcrun altool --store-password-in-keychain-item "NOTARIZE_PASSWORD" -u "user" -p "password"
+3) If you are doing a system extension build you will need to provide notarization login information by adding:
 
-where NOTARIZE_PASSWORD is just some name for the password (I called it 'blah' or
-'codesigning-password' above), and the "user" and "password" are replaced with your actual Apple
-Developer account device-specific login credentials.
+   -DMACOS_NOTARIZE_ASC=XYZ123 -DMACOS_NOTARIZE_USER=me@example.com -DMACOS_NOTARIZE_PASS=@keychain:codesigning-password
 
-Optionally, put these last three inside a `~/.notarization.cmake` file:
+   a) The first value (XYZ123) needs to be the organization-specific unique value, and is printed in
+      brackets in the certificate description.  For example:
 
-    set(MACOS_NOTARIZE_USER "jagerman@jagerman.com")
-    set(MACOS_NOTARIZE_PASS "@keychain:codesigning-password")
-    set(MACOS_NOTARIZE_ASC "SUQ8J2PCT7")
+          15095CD1E6AF441ABC69BDC52EE186A18200A49F "Developer ID Application: Some Developer (ABC123XYZ9)"
 
-Then, finally, you can build the package from the build directory with:
+      would require ABC123XYZ9 for this field.
 
-    make package -j4  # or whatever -j makes you happy
-    make notarize
+   b) The USER field is your Apple Developer login e-mail address.
 
-The former builds and signs the package, the latter submits it for notarization.  This can take a
-few minutes; the script polls Apple's server until it is finished passing or failing notarization.
+   c) The PASS field is a keychain reference holding your "Application-Specific Password".  To set
+      up such a password for your account, consult Apple documentation.  Once you have it, load it
+      into your keychain via:
+
+          export HISTFILE=''  # Don't want to store this in the shell history
+          xcrun altool --store-password-in-keychain-item "codesigning-password" -u "user" -p "password"
+
+      You can change "codesigning-password" to whatever you want (just make sure it agrees with the
+      -DMACOS_NOTARIZE_PASS option you build with).  "user" and "password" should be your developer
+      account device-specific login credentials provided by Apple.
+
+   To make your life easier, stash these settings into a `~/.notarization.cmake` file inside your
+   home directory; if you have not specified them in the build, and this file exists, lokinet's
+   cmake will load it:
+
+          set(MACOS_NOTARIZE_USER "me@example.com")
+          set(MACOS_NOTARIZE_PASS "@keychain:codesigning-password")
+          set(MACOS_NOTARIZE_ASC "ABC123XYZ9")
+
+4) Build and sign the package; there is a script `contrib/mac.sh` that can help (extra cmake options
+   you need can be appended to the end), or you can build yourself in a build directory.  See the
+   script for the other cmake options that are typically needed.  Note that `-G Ninja` (as well as a
+   working ninja builder) are required.
+
+   If you get an error `errSecInternalComponent` this is Apple's highly descriptive way of telling
+   you that you need to unlock your keychain, which you can do by running `security unlock`.
+
+   If doing it yourself, `ninja sign` will build and then sign the app.
+
+   If you need to also notarize (e.g. for a system extension build) run `./notarize.py` from the
+   build directory (or alternatively `ninja notarize`, but the former gives you status output while
+   it runs).
+
+5) Packaging the app: you want to use `-DBUILD_PACKAGE=ON` when configuring with cmake and then,
+   once all signing and notarization is complete, run `cpack` which will give you a .dmg and a .zip
+   containing the release.

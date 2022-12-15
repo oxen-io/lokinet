@@ -14,9 +14,9 @@ namespace llarp
   bool
   DHTImmediateMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == "m")
+    if (key.startswith("m"))
       return llarp::dht::DecodeMesssageList(dht::Key_t(session->GetPubKey()), buf, msgs);
-    if (key == "v")
+    if (key.startswith("v"))
     {
       if (!bencode_read_integer(buf, &version))
         return false;

@@ -73,7 +73,8 @@ namespace llarp
       }
     }
 
-    void PathSet::Tick(llarp_time_t)
+    void
+    PathSet::Tick(llarp_time_t)
     {
       std::unordered_set<RouterID> endpoints;
       for (auto& item : m_Paths)
@@ -365,13 +366,13 @@ namespace llarp
     std::string
     BuildStats::ToString() const
     {
-      std::stringstream ss;
-      ss << (SuccessRatio() * 100.0) << " percent success ";
-      ss << "(success=" << success << " ";
-      ss << "attempts=" << attempts << " ";
-      ss << "timeouts=" << timeouts << " ";
-      ss << "fails=" << fails << ")";
-      return ss.str();
+      return fmt::format(
+          "{:.2f} percent success (success={} attempts={} timeouts={} fails={})",
+          SuccessRatio() * 100.0,
+          success,
+          attempts,
+          timeouts,
+          fails);
     }
 
     double

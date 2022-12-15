@@ -2,12 +2,11 @@
 
 #include "buffer.hpp"
 #include "bencode.h"
-#include "fs.hpp"
-#include <llarp/util/logging/logger.hpp>
+#include "file.hpp"
+#include <llarp/util/logging.hpp>
 #include "mem.hpp"
 
 #include <type_traits>
-#include <fstream>
 #include <set>
 #include <vector>
 
@@ -55,7 +54,7 @@ namespace llarp
   BEncodeMaybeReadDictList(
       const char* k, List_t& item, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!BEncodeReadList(item, buf))
       {
@@ -71,7 +70,7 @@ namespace llarp
   BEncodeMaybeReadDictEntry(
       const char* k, Item_t& item, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!item.BDecode(buf))
       {
@@ -89,7 +88,7 @@ namespace llarp
   BEncodeMaybeReadDictInt(
       const char* k, Int_t& i, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       uint64_t read_i;
       if (!bencode_read_integer(buf, &read_i))
@@ -116,7 +115,7 @@ namespace llarp
       const llarp_buffer_t& key,
       llarp_buffer_t* buf)
   {
-    if (key == k)
+    if (key.startswith(k))
     {
       if (!bencode_read_integer(buf, &item))
         return false;
@@ -338,21 +337,16 @@ namespace llarp
   bool
   BDecodeReadFile(const fs::path fpath, T& t)
   {
-    std::vector<byte_t> ptr;
+    std::string content;
+    try
     {
-      std::ifstream f;
-      f.open(fpath.string());
-      if (!f.is_open())
-      {
-        return false;
-      }
-      f.seekg(0, std::ios::end);
-      const std::streampos sz = f.tellg();
-      f.seekg(0, std::ios::beg);
-      ptr.resize(sz);
-      f.read((char*)ptr.data(), sz);
+      content = util::slurp_file(fpath);
     }
-    llarp_buffer_t buf(ptr);
+    catch (const std::exception&)
+    {
+      return false;
+    }
+    llarp_buffer_t buf(content);
     return t.BDecode(&buf);
   }
 
@@ -361,16 +355,18 @@ namespace llarp
   bool
   BEncodeWriteFile(const fs::path fpath, const T& t)
   {
-    std::array<byte_t, bufsz> tmp;
+    std::string tmp(bufsz, 0);
     llarp_buffer_t buf(tmp);
     if (!t.BEncode(&buf))
       return false;
-    buf.sz = buf.cur - buf.base;
+    tmp.resize(buf.cur - buf.base);
+    try
     {
-      auto f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
-      if (not f or not f->is_open())
-        return false;
-      f->write((char*)buf.base, buf.sz);
+      util::dump_file(fpath, tmp);
+    }
+    catch (const std::exception& e)
+    {
+      return false;
     }
     return true;
   }
