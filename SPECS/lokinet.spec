@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.9
+Version:        0.9.11
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -23,7 +23,7 @@ BuildRequires:  libsqlite3x-devel
 
 # Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
 # talking to 127.3.2.1:53 for unknown reasons.
-Patch1: default-dns.patch
+# Patch1: default-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -153,6 +153,11 @@ fi
 %systemd_postun lokinet.service
 
 %changelog
+* Thurs Dec 15 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.11-1
+- bump version
+- remove dns Patch1
+- remove external/date submodule
+- external/oxen-logging & gui submodule added during merge
 * Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
 - bump version
 - cmake flags for no system library search
