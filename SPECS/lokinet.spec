@@ -1,6 +1,6 @@
 Name:           lokinet
 Version:        0.9.11
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
 License:        GPLv3+
