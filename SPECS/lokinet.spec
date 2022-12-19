@@ -117,7 +117,7 @@ if ! getent group _loki >/dev/null; then
     groupadd --system _loki
 fi
 if ! getent passwd _lokinet >/dev/null; then
-    useradd --badnames --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
+    useradd --badname --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
 fi
 
 # Make sure the _lokinet user is part of the _loki group (in case it already existed)
