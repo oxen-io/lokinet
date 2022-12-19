@@ -19,11 +19,6 @@ BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
 BuildRequires:  libcurl-devel
 BuildRequires:  jemalloc-devel
-BuildRequires:  libsqlite3x-devel
-
-# Changes the default dns listener to 127.0.0.1:953 because Fedora's systemd-resolved doesn't like
-# talking to 127.3.2.1:53 for unknown reasons.
-# Patch1: default-dns.patch
 
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
@@ -92,7 +87,7 @@ install -m755 contrib/py/admin/lokinetmon $RPM_BUILD_ROOT/%{_bindir}/
 install -Dm644 SOURCES/lokinet.service $RPM_BUILD_ROOT/%{_unitdir}/lokinet.service
 install -Dm644 contrib/systemd-resolved/lokinet.rules $RPM_BUILD_ROOT/%{_datadir}/polkit-1/rules.d/50-lokinet.rules
 install -Dm644 SOURCES/dnssec-lokinet.negative $RPM_BUILD_ROOT%{_exec_prefix}/lib/dnssec-trust-anchors.d/lokinet.negative
-install -Dm644 SOURCES/bootstrap.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokinet/bootstrap.signed
+install -Dm644 contrib/bootstrap/mainnet.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokinet/bootstrap.signed
 
 
 %files
@@ -158,6 +153,8 @@ fi
 - remove dns Patch1
 - remove external/date submodule
 - external/oxen-logging & gui submodule added during merge
+- [jason@oxen.io] remove no-longer-rerequired sqlite dependency
+- [jason@oxen.io] remove no-longer-wanted assertion from service file
 
 * Wed Jun 29 2022 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.9-1
 - bump version
