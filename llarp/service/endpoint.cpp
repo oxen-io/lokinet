@@ -27,7 +27,6 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
-#include <llarp/hook/shell.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/tunnel.hpp>
@@ -38,7 +37,6 @@
 
 #include <llarp/quic/server.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/ev/ev_libuv.hpp>
 #include <uvw.hpp>
 #include <variant>
 
@@ -46,6 +44,8 @@ namespace llarp
 {
   namespace service
   {
+    static auto logcat = log::Cat("endpoint");
+
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder{r, 3, path::default_len}
         , context{parent}
@@ -125,8 +125,7 @@ namespace llarp
       // add supported ethertypes
       if (HasIfAddr())
       {
-        const auto ourIP = net::HUIntToIn6(GetIfAddr());
-        if (ipv6_is_mapped_ipv4(ourIP))
+        if (IPRange::V4MappedRange().Contains(GetIfAddr()))
         {
           introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
         }
@@ -223,39 +222,81 @@ namespace llarp
         std::string service,
         std::function<void(std::vector<dns::SRVData>)> resultHandler)
     {
-      auto fail = [resultHandler]() { resultHandler({}); };
+      // handles when we aligned to a loki address
+      auto handleGotPathToService = [resultHandler, service, this](auto addr) {
+        // we can probably get this info before we have a path to them but we do this after we
+        // have a path so when we send the response back they can send shit to them immediately
+        const auto& container = m_state->m_RemoteSessions;
+        if (auto itr = container.find(addr); itr != container.end())
+        {
+          // parse the stuff we need from this guy
+          resultHandler(itr->second->GetCurrentIntroSet().GetMatchingSRVRecords(service));
+          return;
+        }
+        resultHandler({});
+      };
 
-      auto lookupByAddress = [service, fail, resultHandler](auto address) {
-        // TODO: remove me after implementing the rest
-        fail();
-        if (auto* ptr = std::get_if<RouterID>(&address))
-        {}
-        else if (auto* ptr = std::get_if<Address>(&address))
-        {}
+      // handles when we resolved a .snode
+      auto handleResolvedSNodeName = [resultHandler, nodedb = Router()->nodedb()](auto router_id) {
+        std::vector<dns::SRVData> result{};
+        if (auto maybe_rc = nodedb->Get(router_id))
+        {
+          result = maybe_rc->srvRecords;
+        }
+        resultHandler(std::move(result));
+      };
+
+      // handles when we got a path to a remote thing
+      auto handleGotPathTo = [handleGotPathToService, handleResolvedSNodeName, resultHandler](
+                                 auto maybe_tag, auto address) {
+        if (not maybe_tag)
+        {
+          resultHandler({});
+          return;
+        }
+
+        if (auto* addr = std::get_if<Address>(&address))
+        {
+          // .loki case
+          handleGotPathToService(*addr);
+        }
+        else if (auto* router_id = std::get_if<RouterID>(&address))
+        {
+          // .snode case
+          handleResolvedSNodeName(*router_id);
+        }
         else
         {
-          fail();
+          // fallback case
+          // XXX: never should happen but we'll handle it anyways
+          resultHandler({});
         }
       };
-      if (auto maybe = ParseAddress(name))
-      {
-        lookupByAddress(*maybe);
-      }
-      else if (NameIsValid(name))
-      {
-        LookupNameAsync(name, [lookupByAddress, fail](auto maybe) {
-          if (maybe)
-          {
-            lookupByAddress(*maybe);
-          }
-          else
-          {
-            fail();
-          }
-        });
-      }
-      else
-        fail();
+
+      // handles when we know a long address of a remote resource
+      auto handleGotAddress = [resultHandler, handleGotPathTo, this](auto address) {
+        // we will attempt a build to whatever we looked up
+        const auto result = EnsurePathTo(
+            address,
+            [address, handleGotPathTo](auto maybe_tag) { handleGotPathTo(maybe_tag, address); },
+            PathAlignmentTimeout());
+
+        // on path build start fail short circuit
+        if (not result)
+          resultHandler({});
+      };
+
+      // look up this name async and start the entire chain of events
+      LookupNameAsync(name, [handleGotAddress, resultHandler](auto maybe_addr) {
+        if (maybe_addr)
+        {
+          handleGotAddress(*maybe_addr);
+        }
+        else
+        {
+          resultHandler({});
+        }
+      });
     }
 
     bool
@@ -270,6 +311,7 @@ namespace llarp
       auto obj = path::Builder::ExtractStatus();
       obj["exitMap"] = m_ExitMap.ExtractStatus();
       obj["identity"] = m_Identity.pub.Addr().ToString();
+      obj["networkReady"] = ReadyForNetwork();
 
       util::StatusObject authCodes;
       for (const auto& [service, info] : m_RemoteAuthInfos)
@@ -281,7 +323,8 @@ namespace llarp
       return m_state->ExtractStatus(obj);
     }
 
-    void Endpoint::Tick(llarp_time_t)
+    void
+    Endpoint::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
       path::Builder::Tick(now);
@@ -338,11 +381,12 @@ namespace llarp
     Endpoint::Stop()
     {
       // stop remote sessions
+      log::debug(logcat, "Endpoint stopping remote sessions.");
       EndpointUtil::StopRemoteSessions(m_state->m_RemoteSessions);
       // stop snode sessions
+      log::debug(logcat, "Endpoint stopping snode sessions.");
       EndpointUtil::StopSnodeSessions(m_state->m_SNodeSessions);
-      if (m_OnDown)
-        m_OnDown->NotifyAsync(NotifyParams());
+      log::debug(logcat, "Endpoint stopping its path builder.");
       return path::Builder::Stop();
     }
 
@@ -590,15 +634,9 @@ namespace llarp
       return true;
     }
 
-    Endpoint::~Endpoint()
-    {
-      if (m_OnUp)
-        m_OnUp->Stop();
-      if (m_OnDown)
-        m_OnDown->Stop();
-      if (m_OnReady)
-        m_OnReady->Stop();
-    }
+    // Keep this here (rather than the header) so that we don't need to include endpoint_state.hpp
+    // in endpoint.hpp for the unique_ptr member destructor.
+    Endpoint::~Endpoint() = default;
 
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
@@ -762,9 +800,6 @@ namespace llarp
         LogDebug(Name(), " Additional IntroSet publish confirmed");
 
       m_state->m_LastPublish = now;
-      if (m_OnReady)
-        m_OnReady->NotifyAsync(NotifyParams());
-      m_OnReady = nullptr;
     }
 
     std::optional<std::vector<RouterContact>>
@@ -917,6 +952,30 @@ namespace llarp
       return not m_ExitMap.Empty();
     }
 
+    path::Path::UniqueEndpointSet_t
+    Endpoint::GetUniqueEndpointsForLookup() const
+    {
+      path::Path::UniqueEndpointSet_t paths;
+      ForEachPath([&paths](auto path) {
+        if (path and path->IsReady())
+          paths.insert(path);
+      });
+      return paths;
+    }
+
+    bool
+    Endpoint::ReadyForNetwork() const
+    {
+      return IsReady() and ReadyToDoLookup(GetUniqueEndpointsForLookup().size());
+    }
+
+    bool
+    Endpoint::ReadyToDoLookup(size_t num_paths) const
+    {
+      // Currently just checks the number of paths, but could do more checks in the future.
+      return num_paths >= MIN_ENDPOINTS_FOR_LNS_LOOKUP;
+    }
+
     void
     Endpoint::LookupNameAsync(
         std::string name,
@@ -924,7 +983,7 @@ namespace llarp
     {
       if (not NameIsValid(name))
       {
-        handler(std::nullopt);
+        handler(ParseAddress(name));
         return;
       }
       auto& cache = m_state->nameCache;
@@ -935,24 +994,16 @@ namespace llarp
         return;
       }
       LogInfo(Name(), " looking up LNS name: ", name);
-      path::Path::UniqueEndpointSet_t paths;
-      ForEachPath([&](auto path) {
-        if (path and path->IsReady())
-          paths.insert(path);
-      });
-
-      constexpr size_t min_unique_lns_endpoints = 2;
-      constexpr size_t max_unique_lns_endpoints = 7;
-
+      auto paths = GetUniqueEndpointsForLookup();
       // not enough paths
-      if (paths.size() < min_unique_lns_endpoints)
+      if (not ReadyToDoLookup(paths.size()))
       {
         LogWarn(
             Name(),
             " not enough paths for lns lookup, have ",
             paths.size(),
             " need ",
-            min_unique_lns_endpoints);
+            MIN_ENDPOINTS_FOR_LNS_LOOKUP);
         handler(std::nullopt);
         return;
       }
@@ -977,11 +1028,12 @@ namespace llarp
         handler(result);
       };
 
+      constexpr size_t max_lns_lookup_endpoints = 7;
       // pick up to max_unique_lns_endpoints random paths to do lookups from
       std::vector<path::Path_ptr> chosenpaths;
       chosenpaths.insert(chosenpaths.begin(), paths.begin(), paths.end());
       std::shuffle(chosenpaths.begin(), chosenpaths.end(), CSRNG{});
-      chosenpaths.resize(std::min(paths.size(), max_unique_lns_endpoints));
+      chosenpaths.resize(std::min(paths.size(), max_lns_lookup_endpoints));
 
       auto resultHandler =
           m_state->lnsTracker.MakeResultHandler(name, chosenpaths.size(), maybeInvalidateCache);
@@ -1137,7 +1189,8 @@ namespace llarp
       return m_Identity.pub.Addr();
     }
 
-    std::optional<EndpointBase::SendStat> Endpoint::GetStatFor(AddressVariant_t) const
+    std::optional<EndpointBase::SendStat>
+    Endpoint::GetStatFor(AddressVariant_t) const
     {
       // TODO: implement me
       return std::nullopt;
@@ -2043,6 +2096,11 @@ namespace llarp
       if (not exit.IsZero())
         LogInfo(Name(), " map ", range, " to exit at ", exit);
       m_ExitMap.Insert(range, exit);
+    }
+    bool
+    Endpoint::HasFlowToService(Address addr) const
+    {
+      return HasOutboundConvo(addr) or HasInboundConvo(addr);
     }
 
     void

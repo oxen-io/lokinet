@@ -42,8 +42,11 @@ namespace llarp
 
     void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override
-        EXCLUDES(_mutex);
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& greenlist
+
+        ) override EXCLUDES(_mutex);
 
     bool
     HaveReceivedWhitelist() const override;
@@ -60,6 +63,16 @@ namespace llarp
 
     bool
     IsGreylisted(const RouterID& remote) const override EXCLUDES(_mutex);
+
+    // "greenlist" = new routers (i.e. "green") that aren't fully funded yet
+    bool
+    IsGreenlisted(const RouterID& remote) const override EXCLUDES(_mutex);
+
+    // registered just means that there is at least an operator stake, but doesn't require the node
+    // be fully funded, active, or not decommed.  (In other words: it is any of the white, grey, or
+    // green list).
+    bool
+    IsRegistered(const RouterID& remote) const override EXCLUDES(_mutex);
 
     bool
     CheckRC(const RouterContact& rc) const override;
@@ -134,8 +147,12 @@ namespace llarp
     bool useWhitelist = false;
     bool isServiceNode = false;
 
+    // whitelist = active routers
     std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
+    // greylist = fully funded, but decommissioned routers
     std::unordered_set<RouterID> greylistRouters GUARDED_BY(_mutex);
+    // greenlist = registered but not fully-staked routers
+    std::unordered_set<RouterID> greenlistRouters GUARDED_BY(_mutex);
 
     using TimePoint = std::chrono::steady_clock::time_point;
     std::unordered_map<RouterID, TimePoint> _routerLookupTimes;

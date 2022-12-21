@@ -1,9 +1,11 @@
 #include "sock_addr.hpp"
+#include "ip_range.hpp"
 #include "address_info.hpp"
 #include "ip.hpp"
 #include "net_bits.hpp"
+#include "net.hpp"
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
 
 #include <charconv>
@@ -11,11 +13,6 @@
 
 namespace llarp
 {
-  bool
-  operator==(const in6_addr& lh, const in6_addr& rh)
-  {
-    return memcmp(&lh, &rh, sizeof(in6_addr)) == 0;
-  }
   /// shared utility functions
   ///
 
@@ -112,7 +109,8 @@ namespace llarp
     else if (other.sa_family == AF_INET)
       *this = reinterpret_cast<const sockaddr_in&>(other);
     else
-      throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
+      throw std::invalid_argument{
+          fmt::format("Invalid sockaddr (not AF_INET or AF_INET6) was {}", other.sa_family)};
 
     return *this;
   }
@@ -149,7 +147,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
-    if (ipv6_is_mapped_ipv4(other.sin6_addr))
+    if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(
           other.sin6_addr.s6_addr[12],
@@ -172,9 +170,8 @@ namespace llarp
   SockAddr::operator=(const in6_addr& other)
   {
     init();
-
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
-    if (ipv6_is_mapped_ipv4(other))
+    if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
       m_addr4.sin_port = m_addr.sin6_port;
@@ -209,14 +206,13 @@ namespace llarp
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr);
+    return m_addr < other.m_addr;
   }
 
   bool
   SockAddr::operator==(const SockAddr& other) const
   {
-    return m_addr.sin6_addr == other.m_addr.sin6_addr
-        and m_addr.sin6_port == other.m_addr.sin6_port;
+    return m_addr == other.m_addr;
   }
 
   huint128_t
@@ -262,21 +258,22 @@ namespace llarp
     // splits[0] should be dot-separated IPv4
     auto ipSplits = split(splits[0], ".");
     if (ipSplits.size() != 4)
-      throw std::invalid_argument(stringify(str, " is not a valid IPv4 address"));
+      throw std::invalid_argument(fmt::format("{} is not a valid IPv4 address", str));
 
     std::array<uint8_t, 4> ipBytes;
     for (int i = 0; i < 4; ++i)
       if (not parse_int(ipSplits[i], ipBytes[i]))
-        throw std::runtime_error(stringify(str, " contains invalid numeric value"));
+        throw std::runtime_error(fmt::format("{} contains invalid numeric value", str));
 
     // attempt port before setting IPv4 bytes
     if (splits.size() == 2)
     {
       if (not allow_port)
-        throw std::runtime_error{stringify("invalid ip address (port not allowed here): ", str)};
+        throw std::runtime_error{
+            fmt::format("invalid ip address (port not allowed here): {}", str)};
       uint16_t port;
       if (not parse_int(splits[1], port))
-        throw std::runtime_error{stringify(splits[1], " is not a valid port")};
+        throw std::runtime_error{fmt::format("{} is not a valid port", splits[1])};
       setPort(port);
     }
 
@@ -284,15 +281,12 @@ namespace llarp
   }
 
   std::string
-  SockAddr::toString() const
+  SockAddr::ToString() const
   {
     // TODO: review
     if (isEmpty())
       return "";
-    std::string str = hostString();
-    str.append(1, ':');
-    str.append(std::to_string(getPort()));
-    return str;
+    return fmt::format("{}:{}", hostString(), port());
   }
 
   std::string
@@ -326,7 +320,7 @@ namespace llarp
   bool
   SockAddr::isIPv4() const
   {
-    return ipv6_is_mapped_ipv4(m_addr.sin6_addr);
+    return IPRange::V4MappedRange().Contains(asIPv6());
   }
   bool
   SockAddr::isIPv6() const
@@ -429,17 +423,10 @@ namespace llarp
     setPort(ToNet(port));
   }
 
-  uint16_t
-  SockAddr::getPort() const
+  net::port_t
+  SockAddr::port() const
   {
-    return ntohs(m_addr.sin6_port);
-  }
-
-  std::ostream&
-  operator<<(std::ostream& out, const SockAddr& address)
-  {
-    out << address.toString();
-    return out;
+    return net::port_t{m_addr.sin6_port};
   }
 
 }  // namespace llarp

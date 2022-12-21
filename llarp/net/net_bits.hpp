@@ -40,12 +40,14 @@ namespace llarp
   // IPv4 mapped address live at ::ffff:0:0/96
   constexpr std::array<uint8_t, 12> ipv4_map_prefix{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
 
-  constexpr bool
-  ipv6_is_mapped_ipv4(const in6_addr& addr)
+  namespace net
   {
-    for (size_t i = 0; i < ipv4_map_prefix.size(); i++)
-      if (addr.s6_addr[i] != ipv4_map_prefix[i])
-        return false;
-    return true;
-  }
+    inline auto
+    ipaddr_netmask_bits(uint32_t bits, int af)
+    {
+      if (af == AF_INET6)
+        return netmask_ipv6_bits(bits);
+      return ExpandV4(netmask_ipv4_bits(bits));
+    };
+  }  // namespace net
 }  // namespace llarp

@@ -13,6 +13,7 @@
 #include <string>
 #include "net_int.hpp"
 #include <oxenc/variant.h>
+#include <llarp/util/formattable.hpp>
 
 namespace llarp
 {
@@ -60,9 +61,9 @@ namespace llarp
     SockAddr&
     operator=(const in6_addr& addr);
 
-    operator const sockaddr*() const;
-    operator const sockaddr_in*() const;
-    operator const sockaddr_in6*() const;
+    explicit operator const sockaddr*() const;
+    explicit operator const sockaddr_in*() const;
+    explicit operator const sockaddr_in6*() const;
 
     size_t
     sockaddr_len() const;
@@ -73,11 +74,17 @@ namespace llarp
     bool
     operator==(const SockAddr& other) const;
 
+    bool
+    operator!=(const SockAddr& other) const
+    {
+      return not(*this == other);
+    };
+
     void
     fromString(std::string_view str, bool allow_port = true);
 
     std::string
-    toString() const;
+    ToString() const;
 
     std::string
     hostString() const;
@@ -99,6 +106,15 @@ namespace llarp
 
     void
     setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+
+    inline void
+    setIP(std::variant<nuint32_t, nuint128_t> ip)
+    {
+      if (auto* v4 = std::get_if<nuint32_t>(&ip))
+        setIPv4(*v4);
+      if (auto* v6 = std::get_if<nuint128_t>(&ip))
+        setIPv6(*v6);
+    }
 
     void
     setIPv4(nuint32_t ip);
@@ -125,9 +141,16 @@ namespace llarp
       setPort(huint16_t{port});
     }
 
-    /// port is always returned in native (host) order
-    uint16_t
-    getPort() const;
+    /// get the port of this sockaddr in network order
+    net::port_t
+    port() const;
+
+    /// port is always returned in host order
+    inline uint16_t
+    getPort() const
+    {
+      return ToHost(port()).h;
+    }
 
     /// True if this stores an IPv6 address, false if IPv4.
     bool
@@ -142,6 +165,7 @@ namespace llarp
     getIPv6() const;
     nuint32_t
     getIPv4() const;
+
     std::variant<nuint32_t, nuint128_t>
     getIP() const;
 
@@ -163,8 +187,8 @@ namespace llarp
     applyIPv4MapBytes();
   };
 
-  std::ostream&
-  operator<<(std::ostream& out, const SockAddr& address);
+  template <>
+  inline constexpr bool IsToStringFormattable<SockAddr> = true;
 
 }  // namespace llarp
 

@@ -5,20 +5,11 @@ add_library(lokinet-util
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
-  util/fs.cpp
+  util/file.cpp
   util/json.cpp
-  util/logging/android_logger.cpp
   util/logging/buffer.cpp
-  util/logging/file_logger.cpp
-  util/logging/logger.cpp
-  util/logging/logger_internal.cpp
-  util/logging/loglevel.cpp
-  util/logging/ostream_logger.cpp
-  util/logging/syslog_logger.cpp
-  util/logging/win32_logger.cpp
-  util/lokinet_init.c
+  util/easter_eggs.cpp
   util/mem.cpp
-  util/printer.cpp
   util/str.cpp
   util/thread/queue_manager.cpp
   util/thread/threading.cpp
@@ -33,24 +24,20 @@ target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
   filesystem
-  date::date
   oxenc::oxenc
+  oxen::logging
 )
-
-if(ANDROID)
-  target_link_libraries(lokinet-util PUBLIC log)
-endif()
 
 add_library(lokinet-platform
   STATIC
   # for networking
   ev/ev.cpp
-  ev/ev_libuv.cpp
+  ev/libuv.cpp
+  net/interface_info.cpp
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
   net/ip_range.cpp
-  net/net.cpp
   net/net_int.cpp
   net/sock_addr.cpp
   vpn/packet_router.cpp
@@ -62,47 +49,82 @@ target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util 
 target_link_libraries(lokinet-platform PRIVATE oxenmq::oxenmq)
 
 if (ANDROID)
-  target_sources(lokinet-platform PRIVATE android/ifaddrs.c)
+  target_sources(lokinet-platform PRIVATE android/ifaddrs.c util/nop_service_manager.cpp)
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  target_sources(lokinet-platform PRIVATE linux/netns.cpp)
-
-  if(NON_PC_TARGET)
-    add_import_library(rt)
-    target_link_libraries(lokinet-platform PUBLIC rt)
+  target_sources(lokinet-platform PRIVATE linux/dbus.cpp)
+  if(WITH_SYSTEMD)
+    target_sources(lokinet-platform PRIVATE linux/sd_service_manager.cpp)
+  else()
+    target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
   endif()
 endif()
 
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
-    win32/win32_inet.c
-    win32/win32_intrnl.c)
-
-  target_link_libraries(lokinet-platform PUBLIC iphlpapi)
+    net/win32.cpp
+    vpn/win32.cpp
+    win32/service_manager.cpp
+    win32/exec.cpp)
+  add_library(lokinet-win32 STATIC
+    win32/dll.cpp
+    win32/exception.cpp)
+  add_library(lokinet-wintun STATIC
+    win32/wintun.cpp)
+  add_library(lokinet-windivert STATIC
+    win32/windivert.cpp)
+    
+  # wintun and windivert are privated linked by lokinet-platform
+  # this is so their details do not leak out to deps of lokinet-platform
+  # wintun and windivert still need things from lokinet-platform
+  target_compile_options(lokinet-wintun PUBLIC -I${CMAKE_BINARY_DIR}/wintun/include/)
+  target_compile_options(lokinet-windivert PUBLIC -I${CMAKE_BINARY_DIR}/WinDivert-${WINDIVERT_VERSION}/include/)
+  target_include_directories(lokinet-windivert PUBLIC ${PROJECT_SOURCE_DIR})
+  target_link_libraries(lokinet-wintun PUBLIC lokinet-platform lokinet-util lokinet-config)
+  target_link_libraries(lokinet-win32 PUBLIC lokinet-util)
+  target_link_libraries(lokinet-windivert PUBLIC oxen-logging)
+  target_link_libraries(lokinet-windivert PRIVATE lokinet-win32)
+  target_link_libraries(lokinet-platform PRIVATE lokinet-win32 lokinet-wintun lokinet-windivert)
+else()
+  target_sources(lokinet-platform PRIVATE
+    net/posix.cpp)
 endif()
+
 
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
   target_include_directories(lokinet-platform SYSTEM PUBLIC /usr/local/include)
 endif()
 
-add_library(liblokinet
+add_library(lokinet-dns
   STATIC
-  config/config.cpp
-  config/definition.cpp
-  config/ini.cpp
-  config/key_manager.cpp
-
   dns/message.cpp
   dns/name.cpp
+  dns/platform.cpp
   dns/question.cpp
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
-  dns/srv_data.cpp
-  dns/unbound_resolver.cpp
+  dns/srv_data.cpp)
 
-  consensus/table.cpp
+if(WITH_SYSTEMD)
+  target_sources(lokinet-dns PRIVATE dns/nm_platform.cpp dns/sd_platform.cpp)
+endif()
+
+target_link_libraries(lokinet-dns PUBLIC lokinet-platform uvw)
+target_link_libraries(lokinet-dns PRIVATE libunbound lokinet-config)
+
+add_library(lokinet-config
+  STATIC
+  config/config.cpp
+  config/definition.cpp
+  config/ini.cpp
+  config/key_manager.cpp)
+
+target_link_libraries(lokinet-config PUBLIC lokinet-dns lokinet-platform oxenmq::oxenmq)
+
+add_library(lokinet-amalgum
+  STATIC
   consensus/reachability_testing.cpp
 
   bootstrap.cpp
@@ -131,7 +153,7 @@ add_library(liblokinet
   dht/taglookup.cpp
 
   endpoint_base.cpp
-  
+
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
@@ -139,7 +161,6 @@ add_library(liblokinet
   exit/session.cpp
   handlers/exit.cpp
   handlers/tun.cpp
-  hook/shell.cpp
   iwp/iwp.cpp
   iwp/linklayer.cpp
   iwp/message_buffer.cpp
@@ -167,7 +188,7 @@ add_library(liblokinet
   peerstats/types.cpp
   pow.cpp
   profiling.cpp
-
+  
   quic/address.cpp
   quic/client.cpp
   quic/connection.cpp
@@ -187,7 +208,7 @@ add_library(liblokinet
   router/rc_gossiper.cpp
   router/router.cpp
   router/route_poker.cpp
-  router/systemd_resolved.cpp
+
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
@@ -215,41 +236,66 @@ add_library(liblokinet
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
-  service/protocol_type.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
   service/tag.cpp
 )
 
-set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
+set(BOOTSTRAP_FALLBACKS)
+foreach(bs IN ITEMS MAINNET TESTNET)
+  if(BOOTSTRAP_FALLBACK_${bs})
+    message(STATUS "Building with ${bs} fallback boostrap path \"${BOOTSTRAP_FALLBACK_${bs}}\"")
+    file(READ "${BOOTSTRAP_FALLBACK_${bs}}" bs_data HEX)
+    if(bs STREQUAL TESTNET)
+      set(network "gamma")
+    elseif(bs STREQUAL MAINNET)
+      set(network "lokinet")
+    else()
+      string(TOLOWER "${bs}" network)
+    endif()
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "\\\\x\\1" bs_data "${bs_data}")
+    set(BOOTSTRAP_FALLBACKS "${BOOTSTRAP_FALLBACKS}{\"${network}\"s, \"${bs_data}\"sv},\n")
+  endif()
+endforeach()
+configure_file("bootstrap-fallbacks.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp" @ONLY)
+target_sources(lokinet-amalgum PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp")
 
-enable_lto(lokinet-util lokinet-platform liblokinet)
-  
-if(TRACY_ROOT)
-  target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
-endif()
-
-if(TESTNET)
-  target_sources(liblokinet PRIVATE testnet.c)
+if(WITH_PEERSTATS_BACKEND)
+  target_compile_definitions(lokinet-amalgum PRIVATE -DLOKINET_PEERSTATS_BACKEND)
+  target_link_libraries(lokinet-amalgum PUBLIC sqlite_orm)
 endif()
 
 if(WITH_HIVE)
-  target_sources(liblokinet PRIVATE
+  target_sources(lokinet-amalgum PRIVATE
     tooling/router_hive.cpp
     tooling/hive_router.cpp
     tooling/hive_context.cpp
   )
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts oxenc::oxenc lokinet-platform lokinet-util lokinet-cryptography sqlite_orm ngtcp2_static oxenmq::oxenmq)
-target_link_libraries(liblokinet PRIVATE libunbound)
+# TODO: make libunbound hidden behind a feature flag like sqlite for embedded lokinet
+target_link_libraries(lokinet-amalgum PRIVATE libunbound)
+
+target_link_libraries(lokinet-amalgum PUBLIC
+    cxxopts
+    oxenc::oxenc
+    lokinet-platform
+    lokinet-config
+    lokinet-dns
+    lokinet-util
+    lokinet-cryptography
+    ngtcp2_static
+    oxenmq::oxenmq)
+
+enable_lto(lokinet-util lokinet-platform lokinet-dns lokinet-config lokinet-amalgum)
+
 pkg_check_modules(CRYPT libcrypt IMPORTED_TARGET)
 if(CRYPT_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_definitions(-DHAVE_CRYPT)
   add_library(libcrypt INTERFACE)
   target_link_libraries(libcrypt INTERFACE PkgConfig::CRYPT)
-  target_link_libraries(liblokinet PRIVATE libcrypt)
+  target_link_libraries(lokinet-amalgum PRIVATE libcrypt)
   message(STATUS "using libcrypt ${CRYPT_VERSION}")
 endif()
 
@@ -257,7 +303,7 @@ endif()
 if(BUILD_LIBLOKINET)
   include(GNUInstallDirs)
   add_library(lokinet-shared SHARED lokinet_shared.cpp)
-  target_link_libraries(lokinet-shared PUBLIC liblokinet)
+  target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
   if(WIN32)
     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
   endif()
@@ -265,19 +311,15 @@ if(BUILD_LIBLOKINET)
   if(WIN32)
     target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
     install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
-  else()
+  elseif(NOT APPLE)
     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
-  add_log_tag(lokinet-shared)
 endif()
 
 if(APPLE)
   add_subdirectory(apple)
+  target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
 endif()
-
-foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
-  add_log_tag(${lokinet_lib})
-endforeach()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
 

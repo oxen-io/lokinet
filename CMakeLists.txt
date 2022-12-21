@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
+cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Has to be set before `project()`, and ignored on non-macos:
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
 
@@ -25,17 +25,17 @@ endif()
 
 
 project(lokinet
-    VERSION 0.9.9
+    VERSION 0.9.11
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES ${LANGS})
 
 if(APPLE)
     # Apple build number: must be incremented to submit a new build for the same lokinet version,
     # should be reset to 0 when the lokinet version increments.
-    set(LOKINET_APPLE_BUILD 0)
+    set(LOKINET_APPLE_BUILD 6)
 endif()
 
-set(RELEASE_MOTTO "Gluten Free Edition" CACHE STRING "Release motto")
+set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -51,18 +51,20 @@ option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
 option(BUILD_LIBLOKINET "build liblokinet.so" ON)
-option(SHADOW "use shadow testing framework. linux only" OFF)
 option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
 option(USE_JEMALLOC "Link to jemalloc for memory allocations, if found" ON)
 option(TESTNET "testnet build" OFF)
 option(WITH_COVERAGE "generate coverage data" OFF)
-option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
-option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" OFF)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 option(WITH_BOOTSTRAP "build lokinet-bootstrap tool" ${DEFAULT_WITH_BOOTSTRAP})
+option(WITH_PEERSTATS "build with experimental peerstats db support" OFF)
+option(STRIP_SYMBOLS "strip off all debug symbols into an external archive for all executables built" OFF)
+
+set(BOOTSTRAP_FALLBACK_MAINNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/mainnet.signed" CACHE PATH "Fallback bootstrap path (mainnet)")
+set(BOOTSTRAP_FALLBACK_TESTNET "${PROJECT_SOURCE_DIR}/contrib/bootstrap/testnet.signed" CACHE PATH "Fallback bootstrap path (testnet)")
 
 include(cmake/enable_lto.cmake)
 
@@ -83,9 +85,17 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+set(debug OFF)
+if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(debug ON)
+  add_definitions(-DLOKINET_DEBUG)
+endif()
+
+option(WARN_DEPRECATED "show deprecation warnings" ${debug})
+
 if(BUILD_STATIC_DEPS AND STATIC_LINK)
   message(STATUS "we are building static deps so we won't build shared libs")
-  set(BUILD_SHARED_LIBS OFF)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 endif()
 
 include(CheckCXXSourceCompiles)
@@ -99,7 +109,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
-include(cmake/add_log_tag.cmake)
 include(cmake/libatomic.cmake)
 
 if (STATIC_LINK)
@@ -107,10 +116,11 @@ if (STATIC_LINK)
   message(STATUS "setting static library suffix search")
 endif()
 
-add_definitions(-D${CMAKE_SYSTEM_NAME})
+include(cmake/gui-option.cmake)
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
+include(cmake/macos.cmake)
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
@@ -175,49 +185,19 @@ if(NOT TARGET sodium)
   export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
 endif()
 
-option(FORCE_OXENC_SUBMODULE "force using oxen-encoding submodule" OFF)
-if(NOT FORCE_OXENC_SUBMODULE)
-  pkg_check_modules(OXENC liboxenc>=1.0.3 IMPORTED_TARGET)
+set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werror=vla)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  list(APPEND warning_flags -Wno-unknown-warning-option)
 endif()
-
-if(OXENC_FOUND)
-  if(NOT TARGET PkgConfig::OXENC AND CMAKE_VERSION VERSION_LESS "3.21")
-    # Work around cmake bug 22180 (PkgConfig::OXENC not set if no flags needed):
-    add_library(_empty_oxenc INTERFACE)
-    add_library(oxenc::oxenc ALIAS _empty_oxenc)
-  else()
-    add_library(oxenc::oxenc ALIAS PkgConfig::OXENC)
-  endif()
-  message(STATUS "Found system liboxenc ${OXENC_VERSION}")
+if(WARN_DEPRECATED)
+  list(APPEND warning_flags -Wdeprecated-declarations)
 else()
-  message(STATUS "using oxen-encoding submodule")
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/oxen-encoding)
-  add_library(oxenc::oxenc ALIAS oxenc)
+  list(APPEND warning_flags -Wno-deprecated-declarations)
 endif()
 
-option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
-if(NOT FORCE_OXENMQ_SUBMODULE)
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.12 IMPORTED_TARGET)
-endif()
-if(OXENMQ_FOUND)
-  add_library(oxenmq::oxenmq ALIAS PkgConfig::OXENMQ)
-  message(STATUS "Found system liboxenmq ${OXENMQ_VERSION}")
-else()
-  message(STATUS "using oxenmq submodule")
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/oxen-mq)
-endif()
-
-
-if(NOT APPLE)
-  add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Wno-deprecated-declarations -Werror=vla)
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Wno-unknown-warning-option)
-  endif()
-endif()
-
-if (NOT CMAKE_SYSTEM_NAME MATCHES "Linux" AND SHADOW)
-  message( FATAL_ERROR "shadow-framework is Linux only" )
-endif()
+# If we blindly add these directly as compile_options then they get passed to swiftc on Apple and
+# break, so we use a generate expression to set them only for C++/C/ObjC
+add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:OBJC>>:${warning_flags}>")
 
 if(XSAN)
   string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=${XSAN} -fno-omit-frame-pointer -fno-sanitize-recover")
@@ -226,20 +206,6 @@ if(XSAN)
   endforeach()
   message(STATUS "Doing a ${XSAN} sanitizer build")
 endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  add_definitions(-DLOKINET_DEBUG=1)
-endif()
-
-if(WITH_SHELLHOOKS)
-  add_definitions(-DENABLE_SHELLHOOKS)
-endif()
-
-if(TRACY_ROOT)
-  include_directories(${TRACY_ROOT})
-  add_definitions(-DTRACY_ENABLE)
-endif()
-
 
 include(cmake/coverage.cmake)
 
@@ -269,20 +235,10 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-if(USE_NETNS)
-  add_definitions(-DNETNS=1)
-else()
-  add_definitions(-DNETNS=0)
-endif()
-
 if(TESTNET)
-  add_definitions(-DTESTNET=1)
+  add_definitions(-DTESTNET)
   # 5 times slower than realtime
   # add_definitions(-DTESTNET_SPEED=5)
-endif()
-
-if(SHADOW)
-  include(cmake/shadow.cmake)
 endif()
 
 unset(GIT_VERSION)
@@ -319,7 +275,6 @@ if(WITH_SYSTEMD AND (NOT ANDROID))
 endif()
 
 add_subdirectory(external)
-include_directories(SYSTEM external/sqlite_orm/include)
 
 if(USE_JEMALLOC AND NOT STATIC_LINK)
   pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
@@ -339,12 +294,8 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif()
 
-if(TRACY_ROOT)
-  target_link_libraries(base_libs INTERFACE dl)
-endif()
-
 if(WITH_HIVE)
-  add_definitions(-DLOKINET_HIVE=1)
+  add_definitions(-DLOKINET_HIVE)
 endif()
 
 add_subdirectory(crypto)
@@ -356,16 +307,20 @@ endif()
 if(WITH_HIVE)
   add_subdirectory(pybind)
 endif()
-if (NOT SHADOW)
-  if(WITH_TESTS OR WITH_HIVE)
-    add_subdirectory(test)
-  endif()
-  if(ANDROID)
-    add_subdirectory(jni)
-  endif()
+if(WITH_TESTS OR WITH_HIVE)
+  add_subdirectory(test)
+endif()
+if(ANDROID)
+  add_subdirectory(jni)
 endif()
 
 add_subdirectory(docs)
+
+include(cmake/gui.cmake)
+
+if(APPLE)
+  macos_target_setup()
+endif()
 
 # uninstall target
 if(NOT TARGET uninstall)
@@ -378,7 +333,10 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-
 if(BUILD_PACKAGE AND NOT APPLE)
-    include(cmake/installer.cmake)
+  include(cmake/installer.cmake)
+endif()
+
+if(TARGET package)
+  add_dependencies(package assemble_gui)
 endif()

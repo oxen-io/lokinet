@@ -62,9 +62,7 @@ namespace sqlite_orm
     std::string
     operator()(const llarp_time_t& value) const
     {
-      std::stringstream stream;
-      stream << value.count();
-      return stream.str();
+      return fmt::format("{}", value.count());
     }
   };
 

@@ -1,11 +1,13 @@
 #include "peer_db.hpp"
 
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 
 namespace llarp
 {
+#ifdef LOKINET_PEERSTATS_BACKEND
+
   PeerDb::PeerDb()
   {
     m_lastFlush.store({});
@@ -105,8 +107,8 @@ namespace llarp
   PeerDb::accumulatePeerStats(const RouterID& routerId, const PeerStats& delta)
   {
     if (routerId != delta.routerId)
-      throw std::invalid_argument(
-          stringify("routerId ", routerId, " doesn't match ", delta.routerId));
+      throw std::invalid_argument{
+          fmt::format("routerId {} doesn't match {}", routerId, delta.routerId)};
 
     std::lock_guard guard(m_statsLock);
     auto itr = m_peerStats.find(routerId);
@@ -296,5 +298,70 @@ namespace llarp
     };
     return obj;
   }
+
+#else  // !LOKINET_PEERSTATS
+
+  // Empty stubs
+
+  PeerDb::PeerDb()
+  {
+    throw std::logic_error{"Peer stats backend not enabled!"};
+  }
+
+  void
+  PeerDb::loadDatabase(std::optional<fs::path>)
+  {}
+
+  void
+  PeerDb::flushDatabase()
+  {}
+
+  void
+  PeerDb::accumulatePeerStats(const RouterID&, const PeerStats&)
+  {}
+
+  void
+  PeerDb::modifyPeerStats(const RouterID&, std::function<void(PeerStats&)>)
+  {}
+
+  std::optional<PeerStats>
+  PeerDb::getCurrentPeerStats(const RouterID&) const
+  {
+    return std::nullopt;
+  }
+
+  std::vector<PeerStats>
+  PeerDb::listAllPeerStats() const
+  {
+    return {};
+  }
+
+  std::vector<PeerStats>
+  PeerDb::listPeerStats(const std::vector<RouterID>&) const
+  {
+    return {};
+  }
+
+  void
+  PeerDb::handleGossipedRC(const RouterContact&, llarp_time_t)
+  {}
+
+  void
+  PeerDb::configure(const RouterConfig&)
+  {}
+
+  bool
+  PeerDb::shouldFlush(llarp_time_t)
+  {
+    return false;
+  }
+
+  util::StatusObject
+  PeerDb::ExtractStatus() const
+  {
+    return {};
+  }
+
+#endif
 
 };  // namespace llarp

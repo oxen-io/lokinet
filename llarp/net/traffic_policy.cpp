@@ -167,11 +167,11 @@ namespace llarp::net
         [&](llarp_buffer_t* buffer, llarp_buffer_t* key) -> bool {
           if (key == nullptr)
             return true;
-          if (*key == "p")
+          if (key->startswith("p"))
           {
             return BEncodeReadSet(protocols, buffer);
           }
-          if (*key == "r")
+          if (key->startswith("r"))
           {
             return BEncodeReadSet(ranges, buffer);
           }

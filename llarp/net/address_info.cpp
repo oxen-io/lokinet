@@ -7,7 +7,6 @@
 #include "net.hpp"
 #include <llarp/util/bencode.h>
 #include <llarp/util/mem.h>
-#include <llarp/util/printer.hpp>
 
 #include <cstring>
 
@@ -24,7 +23,7 @@ namespace llarp
   bool
   operator<(const AddressInfo& lhs, const AddressInfo& rhs)
   {
-    return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
+    return std::tie(lhs.rank, lhs.ip, lhs.port) < std::tie(rhs.rank, rhs.ip, rhs.port);
   }
 
   std::variant<nuint32_t, nuint128_t>
@@ -42,7 +41,7 @@ namespace llarp
     llarp_buffer_t strbuf;
 
     // rank
-    if (key == "c")
+    if (key.startswith("c"))
     {
       if (!bencode_read_integer(buf, &i))
         return false;
@@ -55,7 +54,7 @@ namespace llarp
     }
 
     // dialect
-    if (key == "d")
+    if (key.startswith("d"))
     {
       if (!bencode_read_string(buf, &strbuf))
         return false;
@@ -68,13 +67,13 @@ namespace llarp
     }
 
     // encryption public key
-    if (key == "e")
+    if (key.startswith("e"))
     {
       return pubkey.BDecode(buf);
     }
 
     // ip address
-    if (key == "i")
+    if (key.startswith("i"))
     {
       if (!bencode_read_string(buf, &strbuf))
         return false;
@@ -88,7 +87,7 @@ namespace llarp
     }
 
     // port
-    if (key == "p")
+    if (key.startswith("p"))
     {
       if (!bencode_read_integer(buf, &i))
         return false;
@@ -101,7 +100,7 @@ namespace llarp
     }
 
     // version
-    if (key == "v")
+    if (key.startswith("v"))
     {
       if (!bencode_read_integer(buf, &i))
         return false;
@@ -166,22 +165,17 @@ namespace llarp
   void
   AddressInfo::fromSockAddr(const SockAddr& addr)
   {
-    const sockaddr_in6* addr6 = addr;
+    const auto* addr6 = static_cast<const sockaddr_in6*>(addr);
     memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
     port = addr.getPort();
   }
 
-  std::ostream&
-  AddressInfo::print(std::ostream& stream, int level, int spaces) const
+  std::string
+  AddressInfo::ToString() const
   {
-    char tmp[128] = {0};
+    char tmp[INET6_ADDRSTRLEN] = {0};
     inet_ntop(AF_INET6, (void*)&ip, tmp, sizeof(tmp));
-
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("ip", tmp);
-    printer.printAttribute("port", port);
-
-    return stream;
+    return fmt::format("[{}]:{}", tmp, port);
   }
 
   void

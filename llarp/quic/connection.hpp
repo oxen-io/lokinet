@@ -72,11 +72,16 @@ namespace llarp::quic
 
     static ConnectionID
     random(size_t size = ConnectionID::max_size());
+
+    std::string
+    ToString() const;
   };
-  std::ostream&
-  operator<<(std::ostream& o, const ConnectionID& c);
 
 }  // namespace llarp::quic
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::quic::ConnectionID> = true;
+
 namespace std
 {
   template <>

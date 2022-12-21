@@ -343,7 +343,7 @@ namespace llarp
           {"replayFilter", m_ReplayFilter.size()},
           {"txMsgQueueSize", m_TXMsgs.size()},
           {"rxMsgQueueSize", m_RXMsgs.size()},
-          {"remoteAddr", m_RemoteAddr.toString()},
+          {"remoteAddr", m_RemoteAddr.ToString()},
           {"remoteRC", m_RemoteRC.ExtractStatus()},
           {"created", to_json(m_CreatedAt)},
           {"uptime", to_json(now - m_CreatedAt)}};
@@ -924,13 +924,15 @@ namespace llarp
       }
     }
 
-    void Session::HandleCLOS(Packet_t)
+    void
+    Session::HandleCLOS(Packet_t)
     {
       LogInfo("remote closed by ", m_RemoteAddr);
       Close();
     }
 
-    void Session::HandlePING(Packet_t)
+    void
+    Session::HandlePING(Packet_t)
     {
       m_LastRX = m_Parent->Now();
     }

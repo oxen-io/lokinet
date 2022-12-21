@@ -79,11 +79,11 @@ namespace llarp
     bool
     GotIntroMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
-      if (key == "I")
+      if (key.startswith("I"))
       {
         return BEncodeReadList(found, buf);
       }
-      if (key == "K")
+      if (key.startswith("K"))
       {
         if (closer)  // duplicate key?
           return false;

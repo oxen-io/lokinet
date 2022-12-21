@@ -10,7 +10,7 @@
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/tooling/path_event.hpp>
 
@@ -22,7 +22,7 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == "c")
+    if (key.startswith("c"))
     {
       /// so we dont put it into the shitty queue
       pathid.Fill('c');
@@ -131,7 +131,7 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictEntry("t", txid, read, *key, buffer))
       return false;
-    if (*key == "u")
+    if (key->startswith("u"))
     {
       nextRC = std::make_unique<RouterContact>();
       return nextRC->BDecode(buffer);
@@ -139,7 +139,7 @@ namespace llarp
     if (!BEncodeMaybeVerifyVersion(
             "v", version, llarp::constants::proto_version, read, *key, buffer))
       return false;
-    if (*key == "w")
+    if (key->startswith("w"))
     {
       // check for duplicate
       if (work)
@@ -411,13 +411,17 @@ namespace llarp
       if (self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug(
-            "LRCM extended lifetime by ", self->record.work->extendedLifetime, " for ", info);
+            "LRCM extended lifetime by ",
+            ToString(self->record.work->extendedLifetime),
+            " for ",
+            info);
         self->hop->lifetime += self->record.work->extendedLifetime;
       }
       else if (self->record.lifetime < path::default_lifetime && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime, " for ", info);
+        llarp::LogDebug(
+            "LRCM short lifespan set to ", ToString(self->hop->lifetime), " for ", info);
       }
 
       // TODO: check if we really want to accept it
