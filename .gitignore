@@ -67,3 +67,4 @@ regdbhelper.dll
 # xcode
 xcuserdata/
 
+*.html
