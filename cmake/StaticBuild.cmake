@@ -260,7 +260,7 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_arch linux-mips32)
   elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
     set(openssl_arch linux-mips)
-  elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu)
+  elseif(ARCH_TRIPLET STREQUAL aarch64-linux-gnu OR ARCH_TRIPLET STREQUAL aarch64-openwrt-linux-musl)
     # cross compile arm64
     set(openssl_arch linux-aarch64)
   elseif(ARCH_TRIPLET MATCHES arm-linux)
