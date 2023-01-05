@@ -609,7 +609,7 @@ namespace llarp
         "ifname",
         Comment{
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
-            "matching 'lokinetN', starting at N=0 (e.g. lokinet0, lokinet1, ...).",
+            "matching 'lokitunN', starting at N=0 (e.g. lokitun0, lokitun1, ...).",
         },
         AssignmentAcceptor(m_ifname));
 
