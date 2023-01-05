@@ -164,8 +164,6 @@ local windows_cross_pipeline(name,
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
         'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake git pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip icoutils automake libtool librsvg2-bin bison',
-        'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
-        'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
         'JOBS=' + jobs + ' VERBOSE=1 ./contrib/windows.sh -DSTRIP_SYMBOLS=ON -DGUI_EXE=$${DRONE_WORKSPACE}/gui/release/Lokinet-GUI_portable.exe' +
         ci_dep_mirror(local_mirror),
       ] + extra_cmds,
