@@ -1,11 +1,14 @@
 #include <oxenmq/oxenmq.h>
 #include <nlohmann/json.hpp>
 #include <fmt/core.h>
-#include <cxxopts.hpp>
 #include <future>
 #include <vector>
 #include <array>
 #include <llarp/net/net.hpp>
+
+#include <CLI/App.hpp>
+#include <CLI/Formatter.hpp>
+#include <CLI/Config.hpp>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
@@ -53,25 +56,28 @@ OMQ_Request(
 
 namespace
 {
-  template <typename T>
-  constexpr bool is_optional = false;
-  template <typename T>
-  constexpr bool is_optional<std::optional<T>> = true;
 
-  // Extracts a value from a cxxopts result and assigns it into `value` if present.  The value can
-  // either be a plain value or a std::optional.  If not present, `value` is not touched.
-  template <typename T>
-  void
-  extract_option(const cxxopts::ParseResult& r, const std::string& name, T& value)
+  struct command_line_options
   {
-    if (r.count(name))
-    {
-      if constexpr (is_optional<T>)
-        value = r[name].as<typename T::value_type>();
-      else
-        value = r[name].as<T>();
-    }
-  }
+    // bool options
+    bool verbose = false;
+    bool help = false;
+    bool vpnUp = false;
+    bool vpnDown = false;
+    bool printStatus = false;
+    bool killDaemon = false;
+
+    // string options
+    std::string exitAddress;
+    std::string rpc;
+    std::string endpoint = "default";
+    std::string token;
+    std::optional<std::string> range;
+
+    // oxenmq
+    oxenmq::address rpcURL{"tcp://127.0.0.1:1190"};
+    oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
+  };
 
   // Takes a code, prints a message, and returns the code.  Intended use is:
   //     return exit_error(1, "blah: {}", 42);
@@ -98,119 +104,104 @@ namespace
 int
 main(int argc, char* argv[])
 {
-  cxxopts::Options opts("lokinet-vpn", "LokiNET vpn control utility");
+  CLI::App cli{"lokiNET vpn control utility", "lokinet-vpn"};
+  command_line_options options{};
 
-  // clang-format off
-  opts.add_options()
-    ("v,verbose", "Verbose", cxxopts::value<bool>())
-    ("h,help", "help", cxxopts::value<bool>())
-    ("kill", "kill the daemon", cxxopts::value<bool>())
-    ("up", "put vpn up", cxxopts::value<bool>())
-    ("down", "put vpn down", cxxopts::value<bool>())
-    ("exit", "specify exit node address", cxxopts::value<std::string>())
-    ("rpc", "rpc url for lokinet", cxxopts::value<std::string>())
-    ("endpoint", "endpoint to use", cxxopts::value<std::string>())
-    ("token", "exit auth token to use", cxxopts::value<std::string>())
-    ("auth", "exit auth token to use", cxxopts::value<std::string>())
-    ("status", "print status and exit", cxxopts::value<bool>())
-    ("range", "ip range to map", cxxopts::value<std::string>())
-    ;
-  // clang-format on
-  oxenmq::address rpcURL("tcp://127.0.0.1:1190");
-  std::string exitAddress;
-  std::string endpoint = "default";
-  std::string token;
-  std::optional<std::string> range;
-  oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
-  bool goUp = false;
-  bool goDown = false;
-  bool printStatus = false;
-  bool killDaemon = false;
+  // flags: boolean values in command_line_options struct
+  cli.add_flag("v,--verbose", options.verbose, "Verbose");
+  cli.add_flag("--up", options.vpnUp, "Put VPN up");
+  cli.add_flag("--down", options.vpnDown, "Put VPN down");
+  cli.add_flag("--status", options.printStatus, "Print VPN status and exit");
+  cli.add_flag("k,--kill", options.killDaemon, "Kill lokinet daemon");
+
+  // options: string values in command_line_options struct
+  cli.add_option("--exit", options.exitAddress, "Specify exit node address")->capture_default_str();
+  cli.add_option("--endpoint", options.endpoint, "Endpoint to use")->capture_default_str();
+  cli.add_option("--token", options.token, "Exit auth token to use")->capture_default_str();
+
+  // options: oxenmq values in command_line_options struct
+  cli.add_option("--rpc", options.rpc, "Specify RPC URL for lokinet")->capture_default_str();
+  cli.add_option(
+         "--log-level", options.logLevel, "Log verbosity level, see log levels for accepted values")
+      ->type_name("LEVEL")
+      ->capture_default_str();
+
   try
   {
-    const auto result = opts.parse(argc, argv);
-
-    if (result.count("help") > 0)
-    {
-      std::cout << opts.help() << std::endl;
-      return 0;
-    }
-
-    if (result.count("verbose") > 0)
-    {
-      logLevel = oxenmq::LogLevel::debug;
-    }
-    goUp = result.count("up") > 0;
-    goDown = result.count("down") > 0;
-    printStatus = result.count("status") > 0;
-    killDaemon = result.count("kill") > 0;
-
-    extract_option(result, "rpc", rpcURL);
-    extract_option(result, "exit", exitAddress);
-    extract_option(result, "endpoint", endpoint);
-    extract_option(result, "token", token);
-    extract_option(result, "auth", token);
-    extract_option(result, "range", range);
+    cli.parse(argc, argv);
   }
-  catch (const cxxopts::option_not_exists_exception& ex)
+  catch (const CLI::ParseError& e)
   {
-    return exit_error(2, "{}\n{}", ex.what(), opts.help());
+    return cli.exit(e);
   }
-  catch (std::exception& ex)
+
+  try
   {
-    return exit_error(2, "{}", ex.what());
+    if (options.verbose)
+      options.logLevel = oxenmq::LogLevel::debug;
+  }
+  catch (const CLI::OptionNotFound& e)
+  {
+    cli.exit(e);
+  }
+  catch (const CLI::Error& e)
+  {
+    cli.exit(e);
+  };
+
+  int numCommands = options.vpnUp + options.vpnDown + options.printStatus + options.killDaemon;
+
+  switch (numCommands)
+  {
+    case 0:
+      return exit_error(3, "One of --up/--down/--status/--kill must be specified");
+    case 1:
+      return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
+    default:
+      break;
   }
 
-  int num_commands = goUp + goDown + printStatus + killDaemon;
-
-  if (num_commands == 0)
-    return exit_error(3, "One of --up/--down/--status/--kill must be specified");
-  if (num_commands != 1)
-    return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
-
-  if (goUp and exitAddress.empty())
-    return exit_error("no exit address provided");
+  if (options.vpnUp and options.exitAddress.empty())
+    return exit_error("No exit address provided, must specify --exit <address>");
 
   oxenmq::OxenMQ omq{
       [](oxenmq::LogLevel lvl, const char* file, int line, std::string msg) {
         std::cout << lvl << " [" << file << ":" << line << "] " << msg << std::endl;
       },
-      logLevel};
+      options.logLevel};
 
   omq.start();
 
   std::promise<bool> connectPromise;
 
-  const auto connID = omq.connect_remote(
-      rpcURL,
+  const auto connectionID = omq.connect_remote(
+      options.rpc,
       [&connectPromise](auto) { connectPromise.set_value(true); },
       [&connectPromise](auto, std::string_view msg) {
-        std::cout << "failed to connect to lokinet RPC: " << msg << std::endl;
+        std::cout << "Failed to connect to lokinet RPC: " << msg << std::endl;
         connectPromise.set_value(false);
       });
 
   auto ftr = connectPromise.get_future();
   if (not ftr.get())
-  {
     return 1;
-  }
 
-  if (killDaemon)
+  if (options.killDaemon)
   {
-    if (not OMQ_Request(omq, connID, "llarp.halt"))
-      return exit_error("call to llarp.halt failed");
+    if (not OMQ_Request(omq, connectionID, "llarp.halt"))
+      return exit_error("Call to llarp.halt failed");
     return 0;
   }
 
-  if (printStatus)
+  if (options.printStatus)
   {
-    const auto maybe_status = OMQ_Request(omq, connID, "llarp.status");
+    const auto maybe_status = OMQ_Request(omq, connectionID, "llarp.status");
     if (not maybe_status)
       return exit_error("call to llarp.status failed");
 
     try
     {
-      const auto& ep = maybe_status->at("result").at("services").at(endpoint);
+      const auto& ep = maybe_status->at("result").at("services").at(options.endpoint);
       const auto exitMap = ep.at("exitMap");
       if (exitMap.empty())
       {
@@ -230,13 +221,13 @@ main(int argc, char* argv[])
     }
     return 0;
   }
-  if (goUp)
+  if (options.vpnUp)
   {
-    nlohmann::json opts{{"exit", exitAddress}, {"token", token}};
-    if (range)
-      opts["range"] = *range;
+    nlohmann::json opts{{"exit", options.exitAddress}, {"token", options.token}};
+    if (options.range)
+      opts["range"] = *options.range;
 
-    auto maybe_result = OMQ_Request(omq, connID, "llarp.exit", std::move(opts));
+    auto maybe_result = OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts));
 
     if (not maybe_result)
       return exit_error("could not add exit");
@@ -247,12 +238,12 @@ main(int argc, char* argv[])
       return exit_error("{}", err_it.value());
     }
   }
-  if (goDown)
+  if (options.vpnDown)
   {
     nlohmann::json opts{{"unmap", true}};
-    if (range)
-      opts["range"] = *range;
-    if (not OMQ_Request(omq, connID, "llarp.exit", std::move(opts)))
+    if (options.range)
+      opts["range"] = *options.range;
+    if (not OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts)))
       return exit_error("failed to unmap exit");
   }
 
