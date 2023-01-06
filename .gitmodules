@@ -1,9 +1,6 @@
 [submodule "external/nlohmann"]
 	path = external/nlohmann
 	url = https://github.com/nlohmann/json.git
-[submodule "external/cxxopts"]
-	path = external/cxxopts
-	url = https://github.com/jarro2783/cxxopts.git
 [submodule "external/ghc-filesystem"]
 	path = external/ghc-filesystem
 	url = https://github.com/gulrak/filesystem.git
@@ -39,3 +36,6 @@
 [submodule "gui"]
 	path = gui
 	url = https://github.com/oxen-io/lokinet-gui.git
+[submodule "external/CLI11"]
+	path = external/CLI11
+	url = https://github.com/CLIUtils/CLI11.git

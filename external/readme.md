@@ -1,7 +1,7 @@
 directory for git submodules
 
+* CLI11: cli argument parser
 * cpr: curl for people, used by lokinet-bootstrap toolchain (to be removed)
-* cxxopts: cli argument parser (to be removed)
 * ghc-filesystem: `std::filesystem` shim lib for older platforms (like macos)
 * ngtcp2: quic implementation
 * nlohmann: json parser

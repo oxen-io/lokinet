@@ -14,7 +14,10 @@
 
 #include <llarp/util/service_manager.hpp>
 
-#include <cxxopts.hpp>
+#include <CLI/App.hpp>
+#include <CLI/Formatter.hpp>
+#include <CLI/Config.hpp>
+
 #include <csignal>
 #include <stdexcept>
 

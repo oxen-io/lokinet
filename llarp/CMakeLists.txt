@@ -278,7 +278,7 @@ endif()
 target_link_libraries(lokinet-amalgum PRIVATE libunbound)
 
 target_link_libraries(lokinet-amalgum PUBLIC
-    cxxopts
+    CLI11
     oxenc::oxenc
     lokinet-platform
     lokinet-config
