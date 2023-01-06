@@ -150,7 +150,7 @@ if(BUILD_PACKAGE)
       "${lokinet_installer}"
       COMMAND ./seticon lokinet.icns "${lokinet_installer}.dmg"
   )
-  add_custom_target(package DEPENDS "${lokinet_installer}.dmg")
+  add_custom_target(dmg DEPENDS "${lokinet_installer}.dmg")
 endif()
 
 

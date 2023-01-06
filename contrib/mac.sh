@@ -19,7 +19,7 @@ fi
 
 cd build-mac
 rm -rf Lokinet\ *
-ninja -j${JOBS:-1} package
+ninja -j${JOBS:-1} dmg
 cd ..
 
 echo -e "Build complete, your app is here:\n"
