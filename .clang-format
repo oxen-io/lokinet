@@ -54,3 +54,8 @@ PointerAlignment: Left
 # when wrapping function calls/declarations, force each parameter to have its own line
 BinPackParameters: 'false'
 BinPackArguments: 'false'
+
+# TODO: uncomment me when we are reading to rearrange the header includes
+# IncludeBlocks: Regroup
+# IncludeCategories: 'llarp/'
+
