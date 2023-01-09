@@ -1,9 +1,9 @@
-#include <crypto/types.hpp>
+#include <llarp/crypto/types.hpp>
 
 #include <fstream>
 #include <string>
 
-#include <test_util.hpp>
+#include "test_util.hpp"
 #include <catch2/catch.hpp>
 
 extern "C" {

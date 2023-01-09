@@ -1,4 +1,4 @@
-#include <net/ip_address.hpp>
+#include <llarp/net/ip_address.hpp>
 
 #include <catch2/catch.hpp>
 

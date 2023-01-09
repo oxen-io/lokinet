@@ -1,12 +1,9 @@
-#include <crypto/encrypted_frame.hpp>
-
-#include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <llarp_test.hpp>
-#include <messages/relay_commit.hpp>
-
-#include <test_util.hpp>
-
+#include "llarp_test.hpp"
+#include "test_util.hpp"
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/messages/relay_commit.hpp>
 #include <catch2/catch.hpp>
 
 using namespace ::llarp;

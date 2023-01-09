@@ -60,8 +60,4 @@ if(WIN32)
     target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)
 endif()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_link_directories(testAll PRIVATE /usr/local/lib)
-endif()
-
 add_custom_target(check COMMAND testAll)

@@ -1,14 +1,15 @@
-#include <config/key_manager.hpp>
+#include "llarp_test.hpp"
+#include "test_util.hpp"
 
-#include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <llarp_test.hpp>
+#include <llarp/config/key_manager.hpp>
+
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 
 #include <functional>
 #include <random>
 
 #include <string>
-#include <test_util.hpp>
 #include <catch2/catch.hpp>
 
 using namespace ::llarp;

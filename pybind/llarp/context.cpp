@@ -3,7 +3,8 @@
 #include <llarp/tooling/hive_context.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/handlers/pyhandler.hpp>
-#include "service/protocol_type.hpp"
+#include <llarp/service/protocol_type.hpp>
+
 namespace llarp
 {
   void

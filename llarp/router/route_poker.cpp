@@ -1,6 +1,6 @@
 #include "route_poker.hpp"
-#include "abstractrouter.hpp"
-#include "net/sock_addr.hpp"
+#include <llarp/router/abstractrouter.hpp>
+#include <llarp/net/sock_addr.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/dns/platform.hpp>
 #include <unordered_set>

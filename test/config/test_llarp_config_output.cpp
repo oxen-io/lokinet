@@ -1,4 +1,4 @@
-#include <config/definition.hpp>
+#include <llarp/config/definition.hpp>
 
 #include <catch2/catch.hpp>
 

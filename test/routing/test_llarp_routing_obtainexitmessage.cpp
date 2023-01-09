@@ -1,8 +1,7 @@
-#include <exit/exit_messages.hpp>
-
-#include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <llarp_test.hpp>
+#include "llarp_test.hpp"
+#include <llarp/exit/exit_messages.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 
 #include <catch2/catch.hpp>
 

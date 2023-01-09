@@ -1,13 +1,13 @@
-#include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 #include <sodium/crypto_scalarmult_ed25519.h>
-#include <path/path.hpp>
-#include <service/address.hpp>
-#include <service/identity.hpp>
-#include <service/intro_set.hpp>
-#include <util/time.hpp>
+#include <llarp/path/path.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/identity.hpp>
+#include <llarp/service/intro_set.hpp>
+#include <llarp/util/time.hpp>
 
-#include <test_util.hpp>
+#include "test_util.hpp"
 #include <catch2/catch.hpp>
 
 using namespace llarp;

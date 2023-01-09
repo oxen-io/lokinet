@@ -1,6 +1,6 @@
-#include <util/mem.hpp>
-#include <net/sock_addr.hpp>
-#include <net/net_if.hpp>
+#include <llarp/util/mem.hpp>
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/net/net_if.hpp>
 #include <llarp/util/logging.hpp>
 
 #include <catch2/catch.hpp>

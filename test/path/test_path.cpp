@@ -1,4 +1,4 @@
-#include <path/path.hpp>
+#include <llarp/path/path.hpp>
 #include <catch2/catch.hpp>
 
 using Path_t   = llarp::path::Path;
