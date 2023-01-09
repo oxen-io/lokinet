@@ -157,12 +157,8 @@ main(int argc, char* argv[])
       return exit_error(3, "One of --up/--down/--status/--kill must be specified");
     case 1:
       break;
-    case 2:
-    case 3:
-    case 4:
-      return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
     default:
-      break;
+      return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
   }
 
   if (options.vpnUp and options.exitAddress.empty())
