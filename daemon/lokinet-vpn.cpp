@@ -108,11 +108,11 @@ main(int argc, char* argv[])
   command_line_options options{};
 
   // flags: boolean values in command_line_options struct
-  cli.add_flag("v,--verbose", options.verbose, "Verbose");
+  cli.add_flag("-v,--verbose", options.verbose, "Verbose");
   cli.add_flag("--up", options.vpnUp, "Put VPN up");
   cli.add_flag("--down", options.vpnDown, "Put VPN down");
   cli.add_flag("--status", options.printStatus, "Print VPN status and exit");
-  cli.add_flag("k,--kill", options.killDaemon, "Kill lokinet daemon");
+  cli.add_flag("-k,--kill", options.killDaemon, "Kill lokinet daemon");
 
   // options: string values in command_line_options struct
   cli.add_option("--exit", options.exitAddress, "Specify exit node address")->capture_default_str();
@@ -156,6 +156,10 @@ main(int argc, char* argv[])
     case 0:
       return exit_error(3, "One of --up/--down/--status/--kill must be specified");
     case 1:
+      break;
+    case 2:
+    case 3:
+    case 4:
       return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
     default:
       break;
