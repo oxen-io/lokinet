@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include <llarp/crypto/ntru/ntru.h>
+#include <libntrup/ntru.h>
 
 static constexpr uint32_t PUBKEYSIZE = 32;
 static constexpr uint32_t SECKEYSIZE = 64;
