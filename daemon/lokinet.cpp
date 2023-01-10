@@ -33,11 +33,13 @@ namespace
     bool version = false;
     bool generate = false;
     bool router = false;
-    bool force = false;
+    bool config = false;
     bool configOnly = false;
     bool overwrite = false;
 
     // string options
+    // TODO: change this to use a std::filesystem::path once we stop using ghc::filesystem on some
+    // platforms
     std::string configPath;
 
     // windows options
@@ -369,10 +371,10 @@ namespace
 
     // flags: boolean values in command_line_options struct
     cli.add_flag("--version", options.version, "Lokinet version");
-    cli.add_flag("g,--generate", options.generate, "Generate default configuration and exit");
+    cli.add_flag("-g,--generate", options.generate, "Generate default configuration and exit");
     cli.add_flag(
-        "r,--router", options.router, "Run lokinet in routing mode instead of client-only mode");
-    cli.add_flag("f,--force", options.force, "Force writing config even if file exists");
+        "-r,--router", options.router, "Run lokinet in routing mode instead of client-only mode");
+    cli.add_flag("-f,--force", options.overwrite, "Force writing config even if file exists");
 
     // options: string
     cli.add_option("--config", options.configPath, "Path to lokinet.ini configuration file")
@@ -417,7 +419,12 @@ namespace
         }
       }
 
-      if (options.configOnly)
+      if (options.generate)
+      {
+        options.configOnly = true;
+      }
+
+      if (not options.configPath.empty())
       {
         configFile = options.configPath;
       }
