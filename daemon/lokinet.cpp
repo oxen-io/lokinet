@@ -377,7 +377,7 @@ namespace
     cli.add_flag("-f,--force", options.overwrite, "Force writing config even if file exists");
 
     // options: string
-    cli.add_option("--config", options.configPath, "Path to lokinet.ini configuration file")
+    cli.add_option("config,--config", options.configPath, "Path to lokinet.ini configuration file")
         ->capture_default_str();
 
     if constexpr (llarp::platform::is_windows)
@@ -418,6 +418,8 @@ namespace
           return 0;
         }
       }
+
+      opts.isSNode = options.router;
 
       if (options.generate)
       {
