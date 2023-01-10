@@ -1,5 +1,5 @@
-#include <constants/version.hpp>
-#include <constants/proto.hpp>
+#include <llarp/constants/version.hpp>
+#include <llarp/constants/proto.hpp>
 
 namespace llarp
 {

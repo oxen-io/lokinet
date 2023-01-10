@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-#include <util/logging.hpp>
-#include <util/service_manager.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/service_manager.hpp>
 
 #ifdef _WIN32
 #include <winsock2.h>

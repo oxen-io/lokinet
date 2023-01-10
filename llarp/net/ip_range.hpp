@@ -24,6 +24,14 @@ namespace llarp
         : addr{std::move(address)}, netmask_bits{std::move(netmask)}
     {}
 
+    static IPRange
+    StringInit(std::string _range)
+    {
+      IPRange range{};
+      range.FromString(_range);
+      return range;      
+    }
+
     static constexpr IPRange
     V4MappedRange()
     {

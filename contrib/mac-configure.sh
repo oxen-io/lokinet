@@ -13,7 +13,6 @@ cd build-mac
 cmake \
       -G Ninja \
       -DBUILD_STATIC_DEPS=ON \
-      -DBUILD_LIBLOKINET=OFF \
       -DWITH_TESTS=OFF \
       -DWITH_BOOTSTRAP=OFF \
       -DNATIVE_BUILD=OFF \

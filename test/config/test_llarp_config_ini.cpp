@@ -1,4 +1,4 @@
-#include <config/ini.hpp>
+#include <llarp/config/ini.hpp>
 
 #include <catch2/catch.hpp>
 
@@ -42,12 +42,12 @@ TEST_CASE("ConfigParser", "[config]")
 
   SECTION("No key")
   {
-    REQUIRE_FALSE(parser.LoadFromStr("[test]\n=1090\n"));
+    REQUIRE_THROWS(parser.LoadFromStr("[test]\n=1090\n"));
   }
 
   SECTION("Parse invalid")
   {
-    REQUIRE_FALSE(
+    REQUIRE_THROWS(
         parser.LoadFromStr("srged5ghe5\nf34wtge5\nw34tgfs4ygsd5yg=4;\n#"
                            "g4syhgd5\n"));
   }

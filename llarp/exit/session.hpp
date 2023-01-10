@@ -1,7 +1,7 @@
 #pragma once
 
 #include "exit_messages.hpp"
-#include "service/protocol_type.hpp"
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>

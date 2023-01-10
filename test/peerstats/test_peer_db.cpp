@@ -1,12 +1,12 @@
-#include <peerstats/peer_db.hpp>
+#include <llarp/peerstats/peer_db.hpp>
 #include <test_util.hpp>
 
 #include <numeric>
 #include <catch2/catch.hpp>
-#include "peerstats/types.hpp"
-#include "router_contact.hpp"
-#include "util/logging.hpp"
-#include "util/time.hpp"
+#include <llarp/peerstats/types.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/time.hpp>
 
 TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
 {

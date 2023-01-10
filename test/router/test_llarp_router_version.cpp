@@ -1,5 +1,5 @@
-#include <router_version.hpp>
-#include "router/router.hpp"
+#include <llarp/router_version.hpp>
+#include <llarp/router/router.hpp>
 
 #include <catch2/catch.hpp>
 

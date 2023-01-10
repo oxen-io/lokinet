@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
-#include <crypto/crypto_libsodium.hpp>
-#include <service/name.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/service/name.hpp>
 #include <oxenc/hex.h>
 
 using namespace std::literals;

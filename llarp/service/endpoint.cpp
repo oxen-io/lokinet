@@ -1,7 +1,15 @@
 #include <chrono>
 #include <memory>
 #include "endpoint.hpp"
+#include "endpoint_state.hpp"
+#include "endpoint_util.hpp"
+#include "hidden_service_address_lookup.hpp"
+#include "outbound_context.hpp"
+#include "protocol.hpp"
+#include "info.hpp"
+#include "protocol_type.hpp"
 
+#include <llarp/net/ip.hpp>
 #include <llarp/dht/context.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/dht/messages/findintro.hpp>
@@ -16,27 +24,18 @@
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/routing/dht_message.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
-#include "endpoint_state.hpp"
-#include "endpoint_util.hpp"
-#include "hidden_service_address_lookup.hpp"
-#include "net/ip.hpp"
-#include "outbound_context.hpp"
-#include "protocol.hpp"
-#include "service/info.hpp"
-#include "service/protocol_type.hpp"
+
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/tooling/dht_event.hpp>
+#include <llarp/quic/server.hpp>
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/util/priority_queue.hpp>
 
 #include <optional>
 #include <utility>
-
-#include <llarp/quic/server.hpp>
-#include <llarp/quic/tunnel.hpp>
 #include <uvw.hpp>
 #include <variant>
 

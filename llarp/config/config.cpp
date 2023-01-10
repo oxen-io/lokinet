@@ -1,8 +1,7 @@
-#include <chrono>
 #include "config.hpp"
-
-#include "config/definition.hpp"
+#include "definition.hpp"
 #include "ini.hpp"
+
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
@@ -18,6 +17,7 @@
 
 #include <llarp/service/name.hpp>
 
+#include <chrono>
 #include <cstdlib>
 #include <ios>
 #include <iostream>

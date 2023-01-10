@@ -1,4 +1,4 @@
-#include <crypto/crypto_libsodium.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 
 #include <iostream>
 

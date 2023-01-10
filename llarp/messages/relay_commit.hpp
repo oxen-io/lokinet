@@ -2,7 +2,7 @@
 
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
-#include "link_message.hpp"
+#include <llarp/messages/link_message.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/pow.hpp>
 

@@ -11,7 +11,7 @@
 #include <llarp/router/i_rc_lookup_handler.hpp>
 
 #include <cassert>
-#include "service/protocol_type.hpp"
+#include <llarp/service/protocol_type.hpp>
 
 namespace llarp
 {

@@ -9,6 +9,7 @@
 #include <list>
 #include <iostream>
 #include <cassert>
+#include <stdexcept>
 
 namespace llarp
 {
@@ -31,6 +32,14 @@ namespace llarp
   }
 
   bool
+  ConfigParser::LoadNewFromStr(std::string_view str)
+  {
+    m_Data.resize(str.size());
+    std::copy(str.begin(), str.end(), m_Data.begin());
+    return ParseAll();
+  }
+
+  bool
   ConfigParser::LoadFromStr(std::string_view str)
   {
     m_Data.resize(str.size());
@@ -50,6 +59,78 @@ namespace llarp
   whitespace(char ch)
   {
     return std::isspace(static_cast<unsigned char>(ch)) != 0;
+  }
+
+  /// Differs from Parse() as ParseAll() does NOT skip comments
+  /// ParseAll() is only used by RPC endpoint 'config' for
+  /// reading new .ini files from string and writing them
+  bool
+  ConfigParser::ParseAll()
+  {
+    std::list<std::string_view> lines;
+    {
+      auto itr = m_Data.begin();
+      // split into lines
+      while (itr != m_Data.end())
+      {
+        auto beg = itr;
+        while (itr != m_Data.end() && *itr != '\n' && *itr != '\r')
+          ++itr;
+        lines.emplace_back(std::addressof(*beg), std::distance(beg, itr));
+        if (itr == m_Data.end())
+          break;
+        ++itr;
+      }
+    }
+
+    std::string_view sectName;
+    size_t lineno = 0;
+    for (auto line : lines)
+    {
+      lineno++;
+      // Trim whitespace
+      while (!line.empty() && whitespace(line.front()))
+        line.remove_prefix(1);
+      while (!line.empty() && whitespace(line.back()))
+        line.remove_suffix(1);
+
+      // Skip blank lines but NOT comments
+      if (line.empty())
+        continue;
+
+      if (line.front() == '[' && line.back() == ']')
+      {
+        // section header
+        line.remove_prefix(1);
+        line.remove_suffix(1);
+        sectName = line;
+      }
+      else if (auto kvDelim = line.find('='); kvDelim != std::string_view::npos)
+      {
+        // key value pair
+        std::string_view k = line.substr(0, kvDelim);
+        std::string_view v = line.substr(kvDelim + 1);
+        // Trim inner whitespace
+        while (!k.empty() && whitespace(k.back()))
+          k.remove_suffix(1);
+        while (!v.empty() && whitespace(v.front()))
+          v.remove_prefix(1);
+
+        if (k.empty())
+        {
+          throw std::runtime_error(
+              fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+        }
+        LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
+        m_Config[std::string{sectName}].emplace(k, v);
+      }
+      else  // malformed?
+      {
+        throw std::runtime_error(
+            fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+      }
+    }
+    return true;
   }
 
   bool
@@ -82,7 +163,7 @@ namespace llarp
       while (!line.empty() && whitespace(line.back()))
         line.remove_suffix(1);
 
-      // Skip blank lines and comments
+      // Skip blank lines
       if (line.empty() or line.front() == ';' or line.front() == '#')
         continue;
 
@@ -106,16 +187,16 @@ namespace llarp
 
         if (k.empty())
         {
-          LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
-          return false;
+          throw std::runtime_error(
+              fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
         }
         LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
         m_Config[std::string{sectName}].emplace(k, v);
       }
       else  // malformed?
       {
-        LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
-        return false;
+        throw std::runtime_error(
+            fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
       }
     }
     return true;
@@ -166,6 +247,33 @@ namespace llarp
       }
     }
     m_Overrides.clear();
+  }
+
+  void
+  ConfigParser::SaveNew() const
+  {
+    if (not m_Overrides.empty())
+    {
+      throw std::invalid_argument("Override specified when attempting new .ini save");
+    }
+    if (m_Config.empty())
+    {
+      throw std::invalid_argument("New config not loaded when attempting new .ini save");
+    }
+    if (m_FileName.empty())
+    {
+      throw std::invalid_argument("New config cannot be saved with filepath specified");
+    }
+
+    std::ofstream ofs(m_FileName);
+    for (const auto& [section, values] : m_Config)
+    {
+      ofs << std::endl << "[" << section << "]" << std::endl;
+      for (const auto& [key, value] : values)
+      {
+        ofs << key << "=" << value << std::endl;
+      }
+    }
   }
 
 }  // namespace llarp

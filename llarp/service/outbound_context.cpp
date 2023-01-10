@@ -1,15 +1,14 @@
 #include "outbound_context.hpp"
-
-#include <llarp/router/abstractrouter.hpp>
 #include "async_key_exchange.hpp"
 #include "hidden_service_address_lookup.hpp"
 #include "endpoint.hpp"
+#include "endpoint_util.hpp"
+#include "protocol_type.hpp"
+
+#include <llarp/router/abstractrouter.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/util/meta/memfn.hpp>
-
-#include "endpoint_util.hpp"
-#include "service/protocol_type.hpp"
 
 #include <random>
 #include <algorithm>

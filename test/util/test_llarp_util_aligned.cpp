@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 
-#include <util/aligned.hpp>
+#include <llarp/util/aligned.hpp>
 
 #include <iostream>
 #include <sstream>

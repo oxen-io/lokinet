@@ -298,7 +298,7 @@ namespace llarp
     void
     PumpLL();
 
-    std::unique_ptr<rpc::RpcServer> m_RPCServer;
+    std::unique_ptr<rpc::RPCServer> m_RPCServer;
 
     const llarp_time_t _randomStartDelay;
 

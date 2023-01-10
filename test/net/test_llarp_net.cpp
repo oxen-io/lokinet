@@ -1,7 +1,7 @@
-#include <net/net_int.hpp>
-#include <net/ip.hpp>
-#include <net/ip_range.hpp>
-#include <net/net.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/net/ip_range.hpp>
+#include <llarp/net/net.hpp>
 #include <oxenc/hex.h>
 
 #include <catch2/catch.hpp>
