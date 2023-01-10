@@ -189,7 +189,7 @@ namespace llarp
   struct ApiConfig
   {
     bool m_enableRPCServer = false;
-    std::string m_rpcBindAddr;
+    std::vector<oxenmq::address> m_rpcBindAddresses;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

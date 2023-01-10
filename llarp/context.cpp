@@ -45,8 +45,6 @@ namespace llarp
       throw std::runtime_error("Config already exists");
 
     config = std::move(conf);
-
-    nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname}.string();
   }
 
   bool
@@ -92,7 +90,7 @@ namespace llarp
   Context::makeNodeDB()
   {
     return std::make_shared<NodeDB>(
-        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+        nodedb_dirname, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
   }
 
   std::shared_ptr<AbstractRouter>

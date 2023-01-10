@@ -1114,7 +1114,12 @@ namespace llarp
   void
   ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    constexpr Default DefaultRPCBindAddr{"tcp://127.0.0.1:1190"};
+    constexpr std::array DefaultRPCBind{
+        Default{"tcp://127.0.0.1:1190"},
+#ifndef _WIN32
+        Default{"ipc://rpc.sock"},
+#endif
+    };
 
     conf.defineOption<bool>(
         "api",
@@ -1128,20 +1133,22 @@ namespace llarp
     conf.defineOption<std::string>(
         "api",
         "bind",
-        DefaultRPCBindAddr,
-        [this](std::string arg) {
-          if (arg.empty())
+        DefaultRPCBind,
+        MultiValue,
+        [=, first = true](std::string arg) mutable {
+          if (first)
           {
-            arg = DefaultRPCBindAddr.val;
+            m_rpcBindAddresses.clear();
+            first = false;
           }
           if (arg.find("://") == std::string::npos)
           {
             arg = "tcp://" + arg;
           }
-          m_rpcBindAddr = std::move(arg);
+          m_rpcBindAddresses.emplace_back(arg);
         },
         Comment{
-            "IP address and port to bind to.",
+            "IP addresses and ports to bind to.",
             "Recommend localhost-only for security purposes.",
         });
 

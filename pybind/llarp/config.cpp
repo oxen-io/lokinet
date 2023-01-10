@@ -80,7 +80,7 @@ namespace llarp
     py::class_<ApiConfig>(mod, "ApiConfig")
         .def(py::init<>())
         .def_readwrite("enableRPCServer", &ApiConfig::m_enableRPCServer)
-        .def_readwrite("rpcBindAddr", &ApiConfig::m_rpcBindAddr);
+        .def_readwrite("rpcBindAddresses", &ApiConfig::m_rpcBindAddresses);
 
     py::class_<LokidConfig>(mod, "LokidConfig")
         .def(py::init<>())

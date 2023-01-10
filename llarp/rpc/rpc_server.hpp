@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <llarp/config/config.hpp>
 #include <oxenmq/oxenmq.h>
 #include <oxenmq/address.h>
 #include <oxen/log/omq_logger.hpp>
@@ -18,8 +19,9 @@ namespace llarp::rpc
   {
     explicit RpcServer(LMQ_ptr, AbstractRouter*);
     ~RpcServer() = default;
+
     void
-    AsyncServeRPC(oxenmq::address addr);
+    AddRPCCats();
 
    private:
     void
