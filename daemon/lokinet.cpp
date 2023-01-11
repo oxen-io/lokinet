@@ -419,6 +419,8 @@ namespace
         }
       }
 
+      opts.isSNode = options.router;
+
       if (options.generate)
       {
         options.configOnly = true;
