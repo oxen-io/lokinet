@@ -21,7 +21,7 @@ namespace llarp::rpc
     ~RpcServer() = default;
 
     void
-    AddRPCCats();
+    AddRPCCategories();
 
    private:
     void

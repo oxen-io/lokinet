@@ -25,13 +25,13 @@ namespace llarp::rpc
   RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r)
       : m_LMQ{std::move(lmq)}, m_Router{r}, log_subs{*m_LMQ, llarp::logRingBuffer}
   {
-    for (auto addr : r->GetConfig()->api.m_rpcBindAddresses)
+    for (const auto& addr : r->GetConfig()->api.m_rpcBindAddresses)
     {
       m_LMQ->listen_plain(addr.zmq_address());
       LogInfo("Bound RPC server to ", addr.full_address());
     }
 
-    this->AddRPCCats();
+    this->AddRPCCategories();
   }
 
   /// maybe parse json from message paramter at index
@@ -150,7 +150,7 @@ namespace llarp::rpc
   }
 
   void
-  RpcServer::AddRPCCats()
+  RpcServer::AddRPCCategories()
   {
     m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
         .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); })

@@ -1135,7 +1135,7 @@ namespace llarp
         "bind",
         DefaultRPCBind,
         MultiValue,
-        [=, first = true](std::string arg) mutable {
+        [this, first = true](std::string arg) mutable {
           if (first)
           {
             m_rpcBindAddresses.clear();
