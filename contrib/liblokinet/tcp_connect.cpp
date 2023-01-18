@@ -69,7 +69,8 @@ main(int argc, char* argv[])
   }
 
   // log level debug for quic
-  llarp::log::set_level("quic", llarp::log::Level::debug);
+  llarp::log::set_level("quic", llarp::log::Level::trace);
+  std::cout << "\n\nquic log level: " << llarp::log::to_string(llarp::log::get_level("quic")) << "\n\n";
 
   auto addr_c = lokinet_address(ctx);
   std::string addr{addr_c};
@@ -84,7 +85,7 @@ main(int argc, char* argv[])
 
   std::string target{argv[1]};
   target += ":12345";
-  lokinet_outbound_stream(&stream_res, target.c_str(), nullptr, ctx);
+  lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx);
 
   if (stream_res.error)
   {

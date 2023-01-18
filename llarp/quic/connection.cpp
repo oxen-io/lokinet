@@ -245,11 +245,25 @@ namespace llarp::quic
       log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
       return static_cast<Connection*>(user_data)->stream_opened({stream_id});
     }
+
     int
     stream_close_cb(
         ngtcp2_conn* conn,
         uint32_t flags,
         int64_t stream_id,
+        uint64_t app_error_code,
+        void* user_data,
+        void* stream_user_data)
+    {
+      log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+      static_cast<Connection*>(user_data)->stream_closed({stream_id}, app_error_code);
+      return 0;
+    }
+    int
+    stream_reset_cb(
+        ngtcp2_conn* conn,
+        int64_t stream_id,
+        uint64_t final_size,
         uint64_t app_error_code,
         void* user_data,
         void* stream_user_data)
@@ -394,6 +408,7 @@ namespace llarp::quic
     cb.acked_stream_data_offset = acked_stream_data_offset;
     cb.stream_open = stream_open;
     cb.stream_close = stream_close_cb;
+    cb.stream_reset = stream_reset_cb;
     cb.extend_max_local_streams_bidi = extend_max_local_streams_bidi;
     cb.rand = rand;
     cb.get_new_connection_id = get_new_connection_id;
@@ -419,7 +434,7 @@ namespace llarp::quic
     // streams they initiate to us):
     tparams.initial_max_stream_data_bidi_local = STREAM_BUFFER;
     tparams.initial_max_stream_data_bidi_remote = STREAM_BUFFER;
-    // Max *cumulative* streams we support on a connection:
+    // Max *concurrent* streams we support on a connection:
     tparams.initial_max_streams_bidi = STREAM_LIMIT;
     tparams.initial_max_streams_uni = 0;
     tparams.max_idle_timeout = std::chrono::nanoseconds(IDLE_TIMEOUT).count();
@@ -759,6 +774,12 @@ namespace llarp::quic
   Connection::schedule_retransmit()
   {
     auto exp = ngtcp2_conn_get_expiry(*this);
+    auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
+    auto ngtcp2_expiry_delta = std::chrono::duration_cast<std::chrono::milliseconds>(
+        expiry - get_time().time_since_epoch());
+
+    log::trace(logcat, "ngtcp2_conn_get_expiry: {}ms from now", ngtcp2_expiry_delta);
+
     if (exp == std::numeric_limits<decltype(exp)>::max())
     {
       log::trace(logcat, "no retransmit currently needed");
@@ -766,11 +787,7 @@ namespace llarp::quic
       return;
     }
 
-    auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
-    auto expires_in = std::max(
-        0ms,
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            expiry - get_time().time_since_epoch()));
+    auto expires_in = std::max(0ms, ngtcp2_expiry_delta);
     log::trace(logcat, "Next retransmit in {}ms", expires_in.count());
     retransmit_timer->stop();
     retransmit_timer->start(expires_in, 0ms);

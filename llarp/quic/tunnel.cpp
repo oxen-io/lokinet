@@ -601,7 +601,11 @@ namespace llarp::quic
     conn->on_stream_available = [this, id = row.first](Connection&) {
       log::debug(logcat, "QUIC connection :{} established; streams now available", id);
       if (auto it = client_tunnels_.find(id); it != client_tunnels_.end())
+      {
         flush_pending_incoming(it->second);
+        if (it->second.open_cb)
+          it->second.open_cb(true);
+      }
     };
   }
 

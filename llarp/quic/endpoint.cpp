@@ -162,7 +162,10 @@ namespace llarp::quic
       log::warning(logcat, "read pkt error: {}", ngtcp2_strerror(rv));
 
     if (rv == NGTCP2_ERR_DRAINING)
+    {
+      log::debug(logcat, "Draining connection {}", conn.base_cid);
       start_draining(conn);
+    }
     else if (rv == NGTCP2_ERR_DROP_CONN)
       delete_conn(conn.base_cid);
 
@@ -319,8 +322,13 @@ namespace llarp::quic
       {
         Connection& conn = **conn_ptr;
         auto exp = ngtcp2_conn_get_expiry(conn);
-        if (exp >= now_ts || conn.draining)
+
+        // a bit of buffer on the expiration time in case the last call to
+        // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
+        // hasn't had time to handle it yet.  2ms should do.
+        if (exp >= (now_ts - 2'000'000) || conn.draining)
           continue;
+        log::debug(logcat, "Draining connection {}", it->first);
         start_draining(conn);
       }
     }
