@@ -207,7 +207,7 @@ namespace llarp::quic
     void
     check_timeouts();
 
-    /// Deletes a connection from `conns`; if the connecion is a primary connection shared pointer
+    /// Deletes a connection from `conns`; if the connection is a primary connection shared pointer
     /// then it is removed and clean_alias_conns() is immediately called to remove any aliases to
     /// the connection.  If the given connection is an alias connection then it is removed but no
     /// cleanup is performed.  Returns true if something was removed, false if the connection was

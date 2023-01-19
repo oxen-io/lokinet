@@ -80,6 +80,9 @@ namespace llarp::quic
     /// Called when open succeeds or times out.
     using OpenCallback = std::function<void(bool success)>;
 
+    /// Called when the tunnel is closed for any reason
+    using CloseCallback = std::function<void(void)>;
+
     /// Opens a quic tunnel to some remote lokinet address.  (Should only be called from the event
     /// loop thread.)
     ///
@@ -115,6 +118,7 @@ namespace llarp::quic
         std::string_view remote_addr,
         uint16_t port,
         OpenCallback on_open = {},
+        CloseCallback on_close = {},
         SockAddr bind_addr = {127, 0, 0, 1});
 
     /// Start closing an outgoing tunnel; takes the ID returned by `open()`.  Note that an existing
@@ -147,6 +151,8 @@ namespace llarp::quic
       std::unique_ptr<Client> client;
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
+      // Callback to invoke when the tunnel is closed, if it was successfully opened
+      CloseCallback close_cb;
       // TCP listening socket
       std::shared_ptr<uvw::TCPHandle> tcp;
       // Accepted TCP connections

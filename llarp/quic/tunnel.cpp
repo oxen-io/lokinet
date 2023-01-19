@@ -100,10 +100,11 @@ namespace llarp::quic
     {
       tcp.data(stream.shared_from_this());
       stream.weak_data(tcp.weak_from_this());
+      auto weak_conn = stream.get_connection().weak_from_this();
 
       tcp.clear();  // Clear any existing initial event handlers
 
-      tcp.on<uvw::CloseEvent>([](auto&, uvw::TCPHandle& c) {
+      tcp.on<uvw::CloseEvent>([weak_conn=std::move(weak_conn)](auto&, uvw::TCPHandle& c) {
         // This fires sometime after we call `close()` to signal that the close is done.
         if (auto stream = c.data<Stream>())
         {
@@ -111,7 +112,12 @@ namespace llarp::quic
               logcat,
               "Local TCP connection closed, closing associated quic stream {}",
               stream->id());
-          stream->close();
+
+          // There is an awkwardness with Stream ownership, so make sure the Connection
+          // which it holds a reference to still exists, as stream->close will segfault
+          // otherwise
+          if (auto  locked_conn = weak_conn.lock())
+            stream->close();
           stream->data(nullptr);
         }
         c.data(nullptr);
@@ -237,6 +243,8 @@ namespace llarp::quic
         if (ct.conns.empty() and (not ct.tcp or not ct.tcp->active()))
         {
           log::debug(logcat, "All sockets closed on quic:{}, destroying tunnel data", port);
+          if (ct.close_cb)
+            ct.close_cb();
           ctit = client_tunnels_.erase(ctit);
         }
         else
@@ -249,8 +257,6 @@ namespace llarp::quic
   void
   TunnelManager::make_server()
   {
-    // auto loop = get_loop();
-
     server_ = std::make_unique<Server>(service_endpoint_);
     server_->stream_open_callback = [this](Stream& stream, uint16_t port) -> bool {
       stream.close_callback = close_tcp_pair;
@@ -437,7 +443,7 @@ namespace llarp::quic
 
   std::pair<SockAddr, uint16_t>
   TunnelManager::open(
-      std::string_view remote_address, uint16_t port, OpenCallback on_open, SockAddr bind_addr)
+      std::string_view remote_address, uint16_t port, OpenCallback on_open, CloseCallback on_close, SockAddr bind_addr)
   {
     std::string remote_addr = lowercase_ascii_string(std::string{remote_address});
 
@@ -509,6 +515,7 @@ namespace llarp::quic
     assert(client_tunnels_.count(pport) == 0);
     auto& ct = client_tunnels_[pport];
     ct.open_cb = std::move(on_open);
+    ct.close_cb = std::move(on_close);
     ct.tcp = std::move(tcp_tunnel);
     // We use this pport shared_ptr value on the listening tcp socket both to hand to pport into the
     // accept handler, and to let the accept handler know that `this` is still safe to use.
@@ -604,8 +611,29 @@ namespace llarp::quic
       {
         flush_pending_incoming(it->second);
         if (it->second.open_cb)
+        {
+          log::trace(logcat, "Calling ClientTunnel.open_cb()");
           it->second.open_cb(true);
+          it->second.open_cb = nullptr; // only call once
+        }
       }
+      else
+        log::warning(logcat, "Connection.on_stream_available fired but we have no associated ClientTunnel!");
+    };
+    conn->on_closing = [this, id = row.first](Connection&) {
+      log::debug(logcat, "QUIC connection :{} closing, closing tunnel", id);
+      if (auto it = client_tunnels_.find(id); it != client_tunnels_.end())
+      {
+        if (it->second.close_cb)
+        {
+          log::trace(logcat, "Calling ClientTunnel.close_cb()");
+          it->second.close_cb();
+        }
+      }
+      else
+        log::debug(logcat, "Connection.on_closing fired but no associated ClientTunnel found.");
+
+      this->close(id);
     };
   }
 

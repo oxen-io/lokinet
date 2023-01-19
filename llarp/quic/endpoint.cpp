@@ -102,8 +102,8 @@ namespace llarp::quic
   {
     ngtcp2_version_cid vi;
     auto rv = ngtcp2_pkt_decode_version_cid(&vi, u8data(p.data), p.data.size(), NGTCP2_MAX_CIDLEN);
-    if (rv == 1)
-    {  // 1 means Version Negotiation should be sent and otherwise the packet should be ignored
+    if (rv == NGTCP2_ERR_VERSION_NEGOTIATION)
+    {  // Version Negotiation should be sent and otherwise the packet should be ignored
       send_version_negotiation(vi, p.path.remote);
       return std::nullopt;
     }
@@ -166,8 +166,16 @@ namespace llarp::quic
       log::debug(logcat, "Draining connection {}", conn.base_cid);
       start_draining(conn);
     }
+    else if (rv == NGTCP2_ERR_PROTO)
+    {
+      log::warning(logcat, "Immediate Close-ing connection {} due to error {}", conn.base_cid, ngtcp2_strerror(rv));
+      close_connection(conn, rv, "ERR_PROTO"sv);
+    }
     else if (rv == NGTCP2_ERR_DROP_CONN)
+    {
+      log::warning(logcat, "Deleting connection {} due to error {}", conn.base_cid, ngtcp2_strerror(rv));
       delete_conn(conn.base_cid);
+    }
 
     return {rv};
   }
@@ -288,6 +296,12 @@ namespace llarp::quic
   {
     if (conn.draining)
       return;
+    if (conn.on_closing)
+    {
+      log::trace(logcat, "Calling Connection.on_closing for connection {}", conn.base_cid);
+      conn.on_closing(conn); // only call once
+      conn.on_closing = nullptr;
+    }
     log::debug(logcat, "Putting {} into draining mode", conn.base_cid);
     conn.draining = true;
     // Recommended draining time is 3*Probe Timeout
@@ -357,6 +371,17 @@ namespace llarp::quic
     }
 
     bool primary = std::holds_alternative<primary_conn_ptr>(it->second);
+    if (primary)
+    {
+      auto ptr = var::get<primary_conn_ptr>(it->second);
+      if (ptr->on_closing)
+      {
+        log::trace(logcat, "Calling Connection.on_closing for connection {}", cid);
+        ptr->on_closing(*ptr); // only call once
+        ptr->on_closing = nullptr;
+      }
+    }
+
     log::debug(logcat, "Deleting {} connection {}", primary ? "primary" : "alias", cid);
     conns.erase(it);
     if (primary)

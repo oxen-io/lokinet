@@ -287,6 +287,11 @@ namespace llarp::quic
     // least 1 when this callback is invoked).
     std::function<void(Connection&)> on_stream_available;
 
+    // Callback that is invoked by the Connection's owning Endpoint whenever the Connection
+    // is put into a "closing" state (draining, closing, immediate dismissal, etc.)  After
+    // calling this once, the Endpoint clears it.
+    std::function<void(Connection&)> on_closing;
+
     // Returns the number of available streams that can currently be opened on the connection
     int
     get_streams_available();

@@ -25,6 +25,8 @@
 
 namespace
 {
+  static auto logcat = llarp::log::Cat("liblokinet");
+
   struct Context : public llarp::Context
   {
     using llarp::Context::Context;
@@ -690,6 +692,7 @@ extern "C"
         stream_error(result, EINVAL);
         return;
       }
+
       auto call = [&promise,
                    ctx,
                    result,
@@ -714,9 +717,18 @@ extern "C"
         }
         try
         {
-          // FIXME: callback for client-land?
+          auto on_open = [localAddr,remotehost,remoteport](bool success) {
+            llarp::log::info(logcat, "Quic tunnel {}<->{}:{} {}.",
+                localAddr, remotehost, remoteport,
+                success ? "opened successfully" : "failed");
+          };
+          auto on_close = [localAddr,remotehost,remoteport]() {
+            llarp::log::info(logcat, "Quic tunnel {}<->{}:{} closed.",
+                localAddr, remotehost, remoteport);
+          };
+
           auto [addr, id] = quic->open(
-              remotehost, remoteport, [](bool success) {}, localAddr);
+              remotehost, remoteport, std::move(on_open), std::move(on_close), localAddr);
           auto [host, port] = split_host_port(addr.ToString());
           ctx->outbound_stream(id);
           stream_okay(result, host, port, id);
