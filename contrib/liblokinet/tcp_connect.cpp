@@ -29,10 +29,19 @@ signal_handler(int)
 int
 main(int argc, char* argv[])
 {
-  if (argc != 2)
+  if (argc < 3 || argc > 4)
   {
-    std::cout << "Usage: " << argv[0] << " something.loki\n";
+    std::cout << "Usage: " << argv[0] << " something.{loki,snode} port [testnet]\n";
     return 0;
+  }
+
+  std::string netid = "lokinet";
+  std::string data_dir = "./tcp_connect_data_dir";
+
+  if (argc == 4) // if testnet
+  {
+    netid = "gamma"; // testnet netid
+    data_dir += "/testnet";
   }
 
   signal(SIGINT, signal_handler);
@@ -45,9 +54,10 @@ main(int argc, char* argv[])
 
   std::cout << "starting up\n";
 
+  lokinet_set_netid(netid.c_str());
   auto shared_ctx = std::shared_ptr<lokinet_context>(lokinet_context_new(), lokinet_context_free);
   auto* ctx = shared_ctx.get();
-  lokinet_set_data_dir("./tcp_connect_data_dir", ctx);
+  lokinet_set_data_dir(data_dir.c_str(), ctx);
   if (lokinet_context_start(ctx))
     throw std::runtime_error{"could not start context"};
 
@@ -70,6 +80,7 @@ main(int argc, char* argv[])
 
   // log level debug for quic
   llarp::log::set_level("quic", llarp::log::Level::trace);
+  //llarp::log::set_level("quic", llarp::log::Level::debug);
   std::cout << "\n\nquic log level: " << llarp::log::to_string(llarp::log::get_level("quic")) << "\n\n";
 
   auto addr_c = lokinet_address(ctx);
@@ -84,7 +95,8 @@ main(int argc, char* argv[])
   lokinet_stream_result stream_res;
 
   std::string target{argv[1]};
-  target += ":12345";
+  target = target + ":" + argv[2];
+
   lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx);
 
   if (stream_res.error)

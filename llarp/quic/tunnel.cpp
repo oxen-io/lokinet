@@ -538,7 +538,7 @@ namespace llarp::quic
           [this,
            after_path = std::move(after_path),
            pport = pport,
-           remote_addr = std::move(remote_addr)](auto maybe_remote) {
+           remote_addr = remote_addr](auto maybe_remote) {
             if (not continue_connecting(
                     pport, (bool)maybe_remote, "endpoint ONS lookup", remote_addr))
               return;

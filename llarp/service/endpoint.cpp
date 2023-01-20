@@ -1057,26 +1057,27 @@ namespace llarp
     {
       if (not NameIsValid(name))
       {
-        handler(ParseAddress(name));
+        log::warning(logcat, "\"{}\" is not a valid ONS name", name);
+        handler(std::nullopt);
         return;
       }
       auto& cache = m_state->nameCache;
       const auto maybe = cache.Get(name);
       if (maybe.has_value())
       {
+        log::debug(logcat, "Returning cached result for ONS name \"{}\"", name);
         handler(maybe);
         return;
       }
-      LogInfo(Name(), " looking up LNS name: ", name);
+      log::info(logcat, "{} looking up ONS name \"{}\"", Name(), name);
       auto paths = GetUniqueEndpointsForLookup();
       // not enough paths
       if (not ReadyToDoLookup(paths.size()))
       {
-        LogWarn(
+        log::warning(logcat,
+            "{} not enough paths for ONS lookup, have {} need {}",
             Name(),
-            " not enough paths for lns lookup, have ",
             paths.size(),
-            " need ",
             MIN_ENDPOINTS_FOR_LNS_LOOKUP);
         handler(std::nullopt);
         return;
@@ -1114,7 +1115,7 @@ namespace llarp
 
       for (const auto& path : chosenpaths)
       {
-        LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
+        log::info(logcat, "{} lookup \"{}\" via {}", Name(), name, path->Endpoint());
         auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
         job->SendRequestViaPath(path, m_router);
       }
