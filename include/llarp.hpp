@@ -43,7 +43,6 @@ namespace llarp
     std::shared_ptr<AbstractRouter> router = nullptr;
     std::shared_ptr<EventLoop> loop = nullptr;
     std::shared_ptr<NodeDB> nodedb = nullptr;
-    std::string nodedb_dir;
 
     Context();
     virtual ~Context() = default;

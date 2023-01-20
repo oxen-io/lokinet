@@ -1,5 +1,6 @@
 #include "rpc_server.hpp"
 #include <llarp/router/route_poker.hpp>
+#include <llarp/config/config.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
@@ -23,7 +24,15 @@ namespace llarp::rpc
 {
   RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r)
       : m_LMQ{std::move(lmq)}, m_Router{r}, log_subs{*m_LMQ, llarp::logRingBuffer}
-  {}
+  {
+    for (const auto& addr : r->GetConfig()->api.m_rpcBindAddresses)
+    {
+      m_LMQ->listen_plain(addr.zmq_address());
+      LogInfo("Bound RPC server to ", addr.full_address());
+    }
+
+    this->AddRPCCategories();
+  }
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>
@@ -141,9 +150,8 @@ namespace llarp::rpc
   }
 
   void
-  RpcServer::AsyncServeRPC(oxenmq::address url)
+  RpcServer::AddRPCCategories()
   {
-    m_LMQ->listen_plain(url.zmq_address());
     m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
         .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); })
         .add_request_command(

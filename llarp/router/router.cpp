@@ -413,10 +413,8 @@ namespace llarp
     log::clear_sinks();
     log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.m_logFile);
 
-    enableRPCServer = conf.api.m_enableRPCServer;
-
     // re-add rpc log sink if rpc enabled, else free it
-    if (enableRPCServer and llarp::logRingBuffer)
+    if (m_Config->api.m_enableRPCServer and llarp::logRingBuffer)
       log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
     else
       llarp::logRingBuffer = nullptr;
@@ -429,9 +427,6 @@ namespace llarp
       lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
       m_lokidRpcClient = std::make_shared<rpc::LokidRpcClient>(m_lmq, weak_from_this());
     }
-
-    if (enableRPCServer)
-      rpcBindAddr = oxenmq::address(conf.api.m_rpcBindAddr);
 
     log::debug(logcat, "Starting RPC server");
     if (not StartRpcServer())
@@ -1260,12 +1255,8 @@ namespace llarp
   bool
   Router::StartRpcServer()
   {
-    if (enableRPCServer)
-    {
-      m_RPCServer.reset(new rpc::RpcServer{m_lmq, this});
-      m_RPCServer->AsyncServeRPC(rpcBindAddr);
-      LogInfo("Bound RPC server to ", rpcBindAddr.full_address());
-    }
+    if (m_Config->api.m_enableRPCServer)
+      m_RPCServer = std::make_unique<rpc::RpcServer>(m_lmq, this);
 
     return true;
   }
