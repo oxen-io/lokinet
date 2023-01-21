@@ -1,5 +1,5 @@
-#include <util/bencode.h>
-#include <util/bencode.hpp>
+#include <llarp/util/bencode.h>
+#include <llarp/util/bencode.hpp>
 
 #include <iostream>
 #include <string>

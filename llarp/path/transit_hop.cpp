@@ -33,7 +33,9 @@ namespace llarp
     }
 
     TransitHop::TransitHop()
-        : m_UpstreamGather(transit_hop_queue_size), m_DownstreamGather(transit_hop_queue_size)
+        : IHopHandler{}
+        , m_UpstreamGather{transit_hop_queue_size}
+        , m_DownstreamGather{transit_hop_queue_size}
     {
       m_UpstreamGather.enable();
       m_DownstreamGather.enable();

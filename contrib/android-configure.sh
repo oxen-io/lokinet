@@ -33,7 +33,6 @@ for abi in $build_abis; do
         -DBUILD_PACKAGE=ON \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTING=OFF \
-        -DBUILD_LIBLOKINET=OFF \
         -DWITH_TESTS=OFF \
         -DWITH_BOOTSTRAP=OFF \
         -DNATIVE_BUILD=OFF \

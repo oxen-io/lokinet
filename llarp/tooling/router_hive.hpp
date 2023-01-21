@@ -3,8 +3,8 @@
 #include "router_event.hpp"
 
 #include <llarp.hpp>
-#include <config/config.hpp>
-#include <tooling/hive_context.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/tooling/hive_context.hpp>
 
 #include <vector>
 #include <deque>

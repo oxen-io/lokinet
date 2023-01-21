@@ -1,4 +1,4 @@
-#include <util/str.hpp>
+#include <llarp/util/str.hpp>
 #include <catch2/catch.hpp>
 
 #include <vector>

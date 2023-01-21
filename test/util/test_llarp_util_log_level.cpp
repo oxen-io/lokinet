@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
-#include <util/logging.hpp>
-#include <config/config.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/config/config.hpp>
 #include <oxen/log/level.hpp>
 
 using TestString = std::string;

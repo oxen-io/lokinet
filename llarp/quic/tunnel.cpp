@@ -1,7 +1,7 @@
 #include "tunnel.hpp"
-#include "service/convotag.hpp"
-#include "service/endpoint.hpp"
-#include "service/name.hpp"
+#include <llarp/service/convotag.hpp>
+#include <llarp/service/endpoint.hpp>
+#include <llarp/service/name.hpp>
 #include "stream.hpp"
 #include <limits>
 #include <llarp/util/logging.hpp>

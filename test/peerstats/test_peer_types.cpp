@@ -1,5 +1,5 @@
 #include <numeric>
-#include <peerstats/types.hpp>
+#include <llarp/peerstats/types.hpp>
 #include <test_util.hpp>
 
 #include <catch2/catch.hpp>

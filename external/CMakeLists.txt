@@ -1,4 +1,3 @@
-
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
 if(SUBMODULE_CHECK)
   find_package(Git)
@@ -139,4 +138,28 @@ if(WITH_BOOTSTRAP)
     message(FATAL_ERROR "Could not identify cpr submodule version!")
   endif()
 
+endif()
+
+
+# libcrypt defaults, only on with macos and non static linux
+set(default_libcrypt OFF)
+
+if(LINUX AND NOT STATIC_LINK)
+  set(default_libcrypt ON)
+endif()
+if(MACOS)
+  set(default_libcrypt ON)
+endif()
+
+option(WITH_LIBCRYPT "enable fast password hash with libcrypt" ${default_libcrypt})
+
+add_library(lokinet-libcrypt INTERFACE)
+if(WITH_LIBCRYPT)
+  pkg_check_modules(LIBCRYPT libcrypt IMPORTED_TARGET REQUIRED)
+  add_definitions(-DHAVE_CRYPT)
+  target_link_libraries(lokinet-libcrypt INTERFACE PkgConfig::LIBCRYPT)
+  message(STATUS "using libcrypt ${LIBCRYPT_VERSION}")
+else()
+  # TODO static build lib crypt?
+  message(STATUS "not building with libcrypt")
 endif()

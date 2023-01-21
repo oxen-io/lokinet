@@ -1,6 +1,6 @@
 #pragma once
 
-#include <crypto/crypto_libsodium.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
 #include <catch2/catch.hpp>
 
 namespace llarp::test

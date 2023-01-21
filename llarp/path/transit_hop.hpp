@@ -1,8 +1,8 @@
 #pragma once
 
 #include <llarp/constants/path.hpp>
-#include "ihophandler.hpp"
-#include "path_types.hpp"
+#include <llarp/path/ihophandler.hpp>
+#include <llarp/path/path_types.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>

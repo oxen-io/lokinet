@@ -1,5 +1,5 @@
-#include <util/decaying_hashset.hpp>
-#include <router_id.hpp>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/router_id.hpp>
 #include <catch2/catch.hpp>
 
 TEST_CASE("DecayingHashSet test decay static time", "[decaying-hashset]")

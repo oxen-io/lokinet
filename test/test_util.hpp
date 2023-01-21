@@ -1,9 +1,8 @@
 #ifndef TEST_UTIL_HPP
 #define TEST_UTIL_HPP
 
-#include <util/fs.hpp>
-#include <util/types.hpp>
-
+#include <llarp/util/fs.hpp>
+#include <llarp/util/types.hpp>
 #include <bitset>
 #include <vector>
 

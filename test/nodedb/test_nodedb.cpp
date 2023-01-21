@@ -1,8 +1,8 @@
 #include <catch2/catch.hpp>
-#include "config/config.hpp"
 
-#include <router_contact.hpp>
-#include <nodedb.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/nodedb.hpp>
 
 using llarp_nodedb = llarp::NodeDB;
 

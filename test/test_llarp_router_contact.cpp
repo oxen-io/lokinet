@@ -1,9 +1,9 @@
 #include <catch2/catch.hpp>
 
-#include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <router_contact.hpp>
-#include <net/net_int.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/net/net_int.hpp>
 #include <llarp/util/time.hpp>
 
 namespace

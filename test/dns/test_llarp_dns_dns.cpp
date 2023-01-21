@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
-#include <dns/dns.hpp>
-#include <dns/message.hpp>
-#include <dns/name.hpp>
-#include <dns/rr.hpp>
-#include <net/net.hpp>
-#include <net/ip.hpp>
-#include <util/buffer.hpp>
+#include <llarp/dns/dns.hpp>
+#include <llarp/dns/message.hpp>
+#include <llarp/dns/name.hpp>
+#include <llarp/dns/rr.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/net/ip.hpp>
+#include <llarp/util/buffer.hpp>
 
 #include <algorithm>
 

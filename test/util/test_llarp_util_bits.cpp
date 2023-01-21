@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include <util/bits.hpp>
+#include <llarp/util/bits.hpp>
 
 using namespace llarp::bits;
 

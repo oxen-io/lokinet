@@ -1,6 +1,6 @@
-#include <util/thread/queue.hpp>
-#include <util/thread/threading.hpp>
-#include <util/thread/barrier.hpp>
+#include <llarp/util/thread/queue.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/thread/barrier.hpp>
 
 #include <array>
 #include <condition_variable>

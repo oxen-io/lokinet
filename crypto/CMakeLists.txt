@@ -20,7 +20,7 @@ add_library(lokinet-cryptography
   libntrup/src/ref/rq.c
 )
 
-target_include_directories(lokinet-cryptography PUBLIC libntrup/include)
+target_include_directories(lokinet-cryptography PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libntrup/include)
 
 # The avx implementation uses runtime CPU feature detection to enable itself, so we *always* want to
 # compile it with avx2/fma support when supported by the compiler even if we aren't compiling with

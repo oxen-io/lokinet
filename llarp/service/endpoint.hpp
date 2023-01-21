@@ -6,24 +6,27 @@
 #include <llarp/net/net.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include "address.hpp"
-#include "handler.hpp"
-#include "identity.hpp"
-#include "pendingbuffer.hpp"
-#include "protocol.hpp"
-#include "sendcontext.hpp"
-#include "service/protocol_type.hpp"
-#include "session.hpp"
-#include "lookup.hpp"
 #include <llarp/util/compare_ptr.hpp>
+
+// --- begin kitchen sink headers ----
+#include <llarp/service/address.hpp>
+#include <llarp/service/handler.hpp>
+#include <llarp/service/identity.hpp>
+#include <llarp/service/pendingbuffer.hpp>
+#include <llarp/service/protocol.hpp>
+#include <llarp/service/sendcontext.hpp>
+#include <llarp/service/protocol_type.hpp>
+#include <llarp/service/session.hpp>
+#include <llarp/service/lookup.hpp>
+#include <llarp/service/endpoint_types.hpp>
+#include <llarp/endpoint_base.hpp>
+#include <llarp/service/auth.hpp>
+// ----- end kitchen sink headers -----
+
 #include <optional>
 #include <unordered_map>
 #include <variant>
 #include <oxenc/variant.h>
-#include "endpoint_types.hpp"
-#include "llarp/endpoint_base.hpp"
-
-#include "auth.hpp"
 
 #include <llarp/vpn/egres_packet_router.hpp>
 #include <llarp/dns/server.hpp>
