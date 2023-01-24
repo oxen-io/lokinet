@@ -1,6 +1,6 @@
 #include "rpc_server.hpp"
 #include "rpc_request.hpp"
-#include "service/address.hpp"
+#include "llarp/service/address.hpp"
 #include <llarp/router/route_poker.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/ini.hpp>
@@ -85,7 +85,7 @@ namespace llarp::rpc
 
   template <typename RPC>
   void
-  register_rpc_command(std::unordered_map<std::string, std::shared_ptr<const rpc_callback>>& regs)
+  register_rpc_command(std::unordered_map<std::string, rpc_callback>& regs)
   {
     static_assert(std::is_base_of_v<RPCRequest, RPC>);
     auto cback = std::make_shared<rpc_callback>();
@@ -109,17 +109,17 @@ namespace llarp::rpc
   }
 
   template <typename... RPC>
-  std::unordered_map<std::string, std::shared_ptr<const rpc_callback>>
+  std::unordered_map<std::string, rpc_callback>
   register_rpc_requests(tools::type_list<RPC...>)
   {
-    std::unordered_map<std::string, std::shared_ptr<const rpc_callback>> regs;
+    std::unordered_map<std::string, rpc_callback> regs;
 
     (register_rpc_command<RPC>(regs), ...);
 
     return regs;
   }
 
-  const std::unordered_map<std::string, std::shared_ptr<const rpc_callback>> rpc_request_map =
+  const std::unordered_map<std::string, rpc_callback> rpc_request_map =
       register_rpc_requests(rpc::rpc_request_types{});
 
   void
@@ -133,7 +133,7 @@ namespace llarp::rpc
       m_LMQ->add_request_command(
           "llarp",
           req.first,
-          [name = std::string_view{req.first}, &call = *req.second, this](oxenmq::Message& m) {
+          [name = std::string_view{req.first}, &call = req.second, this](oxenmq::Message& m) {
             call.invoke(m, *this);
           });
     }
@@ -352,7 +352,7 @@ namespace llarp::rpc
   //    plus callback to report when this happens
   //      callback is called much later (1-2s) when exit node flow is secured
   //  exit is now ready to use
-  //  
+  //
   void
   RPCServer::invoke(Exit& exit)
   {
@@ -362,9 +362,6 @@ namespace llarp::rpc
 
     IPRange range = IPRange::StringInit(exit.request.ip_range);
     service::Address exitAddr{exit.request.address};
-
-    m_Router.hiddenServiceContext().GetDefault()->MapExitRange(range, exitAddr);
-
   }
 
   void

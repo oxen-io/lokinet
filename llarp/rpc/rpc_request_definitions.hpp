@@ -1,12 +1,12 @@
 #pragma once
 
 #include "rpc_request_decorators.hpp"
-#include "net/ip_range.hpp"
-#include "router/abstractrouter.hpp"
-#include "router/route_poker.hpp"
-#include "service/address.hpp"
-#include "service/endpoint.hpp"
-#include "service/outbound_context.hpp"
+#include "llarp/net/ip_range.hpp"
+#include "llarp/router/abstractrouter.hpp"
+#include "llarp/router/route_poker.hpp"
+#include "llarp/service/address.hpp"
+#include "llarp/service/endpoint.hpp"
+#include "llarp/service/outbound_context.hpp"
 #include <string_view>
 #include <llarp/config/config.hpp>
 #include <oxenmq/oxenmq.h>
@@ -164,10 +164,10 @@ namespace llarp::rpc
   //  Note: ask Jason about the internals of this
   //
   //  Inputs:
-  //    "endpoint" : 
+  //    "endpoint" :
   //    "unmap" : if true, unmaps connection to exit node (bool)
   //    "range" : IP range to map to exit node
-  //    "token" : 
+  //    "token" :
   //
   //  Returns:
   //
@@ -186,21 +186,26 @@ namespace llarp::rpc
     void
     onGoodResult(std::string reason, bool hasClient)
     {
-      response = (hasClient) ? 
-        nlohmann::json{{"result", reason}}.dump() : 
-        nlohmann::json{{"error", "We don't have an exit?"}}.dump();
+      response = (hasClient) ? nlohmann::json{{"result", reason}}.dump()
+                             : nlohmann::json{{"error", "We don't have an exit?"}}.dump();
     }
 
     void
-    onBadResult(std::string reason, AbstractRouter& abs, llarp::service::Endpoint_ptr eptr, IPRange range)
+    onBadResult(
+        std::string reason, AbstractRouter& abs, llarp::service::Endpoint_ptr eptr, IPRange range)
     {
       abs.routePoker()->Down();
       eptr->UnmapExitRange(range);
       response = nlohmann::json{{"result", reason}}.dump();
     }
 
-    void 
-    mapExit(service::Address addr, AbstractRouter& router, llarp::service::Endpoint_ptr eptr, IPRange range, service::Address exitAddr) 
+    void
+    mapExit(
+        service::Address addr,
+        AbstractRouter& router,
+        llarp::service::Endpoint_ptr eptr,
+        IPRange range,
+        service::Address exitAddr)
     {
       eptr->MapExitRange(range, addr);
 

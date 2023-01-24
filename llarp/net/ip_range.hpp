@@ -29,7 +29,7 @@ namespace llarp
     {
       IPRange range{};
       range.FromString(_range);
-      return range;      
+      return range;
     }
 
     static constexpr IPRange

@@ -38,7 +38,7 @@ namespace llarp::rpc
   //    Stores references to RPC requests in a unordered map for ease of reference
   //    when adding to server. To add endpoints, define in rpc_request_definitions.hpp
   //    and register in rpc_server.cpp
-  extern const std::unordered_map<std::string, std::shared_ptr<const rpc_callback>> rpc_request_map;
+  extern const std::unordered_map<std::string, rpc_callback> rpc_request_map;
 
   //  Exception used to signal various types of errors with a request back to the caller.  This
   //  exception indicates that the caller did something wrong: bad data, invalid value, etc., but
@@ -121,8 +121,7 @@ namespace llarp::rpc
     RPCServer& server;
     RPC rpc{};
 
-    EndpointHandler(RPCServer& _server, DeferredSend _replier)
-        : server{_server}
+    EndpointHandler(RPCServer& _server, DeferredSend _replier) : server{_server}
     {
       rpc.replier.emplace(std::move(_replier));
     }
@@ -145,7 +144,7 @@ namespace llarp::rpc
         log::info(logcat, "RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what());
         rpc.response = CreateJSONError(
             fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()));
-      };
+      }
 
       // check if std::optional in rpc is present
       //    then rpc.send_response

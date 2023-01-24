@@ -43,15 +43,15 @@ namespace llarp::rpc
       response_hex.format = llarp::rpc::json_binary_proxy::fmt::bt;
     }
 
-    //  Invoked if this.replier is still present. If it is "stolen" by endpoint (moved from 
+    //  Invoked if this.replier is still present. If it is "stolen" by endpoint (moved from
     //  RPC struct), then endpoint handles sending reply
     void
     send_response()
     {
-      replier->reply(is_bt() ? oxenc::bt_serialize(json_to_bt(std::move(response)))
-                      : response.dump());
+      replier->reply(
+          is_bt() ? oxenc::bt_serialize(json_to_bt(std::move(response))) : response.dump());
     }
-    
+
     void
     send_response(nlohmann::json _response)
     {
@@ -97,9 +97,9 @@ namespace llarp::rpc
 
     //  The oxenmq deferred send object into which the response will be set.  If this optional is
     //  still set when the `invoke` call returns then the response is sent at that point; if it has
-    //  been moved out (i.e. either just this instance or the whole request struct is stolen/moved by
-    //  the invoke function) then it is the invoke function's job to send a reply.  Typically this is
-    //  done when a response cannot be sent immediately
+    //  been moved out (i.e. either just this instance or the whole request struct is stolen/moved
+    //  by the invoke function) then it is the invoke function's job to send a reply.  Typically
+    //  this is done when a response cannot be sent immediately
     std::optional<oxenmq::Message::DeferredSend> replier;
   };
 
