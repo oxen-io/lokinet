@@ -13,6 +13,7 @@
 #include <oxenmq/address.h>
 #include <oxen/log/omq_logger.hpp>
 #include <unordered_map>
+#include <vector>
 
 namespace llarp::rpc
 {
@@ -158,29 +159,25 @@ namespace llarp::rpc
     } request;
   };
 
-  //  RPC: exit
-  //    Seems like this adds an exit node?
-  //
-  //  Note: ask Jason about the internals of this
+  //  RPC: map_exit
+  //    Map a new connection to an exit node
   //
   //  Inputs:
-  //    "endpoint" :
-  //    "unmap" : if true, unmaps connection to exit node (bool)
+  //    "address" : ID of endpoint to map
   //    "range" : IP range to map to exit node
-  //    "token" :
+  //    "token" : auth token
   //
   //  Returns:
   //
-  struct Exit : RPCRequest
+  struct MapExit : RPCRequest
   {
-    static constexpr auto name = "exit"sv;
+    static constexpr auto name = "map_exit"sv;
 
     struct request_parameters
     {
       std::string address;
-      std::string ip_range;
+      std::vector<std::string> ip_range;
       std::string token;
-      bool unmap;
     } request;
 
     void
@@ -246,6 +243,38 @@ namespace llarp::rpc
     }
   };
 
+  //  RPC: list_exits
+  //    List all currently mapped exit node connections
+  //
+  //  Inputs: none
+  //    
+  //  Returns:
+  //
+  struct ListExits : NoArgs
+  {
+    static constexpr auto name = "list_exits"sv;
+  };
+
+  //  RPC: unmap_exit
+  //    Unmap a connection to an exit node
+  //
+  //  Inputs:
+  //    "endpoint" : ID of endpoint to map
+  //    "range" : IP range to map to exit node
+  //    "token" : auth token
+  //
+  //  Returns:
+  //
+  struct UnmapExit : RPCRequest
+  {
+    static constexpr auto name = "unmap_exit"sv;
+
+    struct request_parameters
+    {
+      std::vector<std::string> ip_range;
+    } request;
+  };
+
   //  RPC: dns_query
   //    Attempts to query endpoint by domain name
   //
@@ -301,7 +330,9 @@ namespace llarp::rpc
       QuicConnect,
       QuicListener,
       LookupSnode,
-      Exit,
+      MapExit,
+      ListExits,
+      UnmapExit,
       DNSQuery,
       Config>;
 

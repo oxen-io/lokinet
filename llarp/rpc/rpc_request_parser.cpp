@@ -1,4 +1,5 @@
 #include "rpc_request_parser.hpp"
+#include "llarp/rpc/rpc_request_definitions.hpp"
 #include "param_parser.hpp"
 #include <string_view>
 #include <llarp/config/config.hpp>
@@ -51,18 +52,25 @@ namespace llarp::rpc
   }
 
   void
-  parse_request(Exit& exit, rpc_input input)
+  parse_request(MapExit& mapexit, rpc_input input)
   {
     get_values(
         input,
         "address",
-        exit.request.address,
+        mapexit.request.address,
         "IP_range",
-        exit.request.ip_range,
+        mapexit.request.ip_range,
         "token",
-        exit.request.token,
-        "unmap",
-        exit.request.unmap);
+        mapexit.request.token);
+  }
+
+  void
+  parse_request(UnmapExit& unmapexit, rpc_input input)
+  {
+    get_values(
+        input,
+        "IP_range",
+        unmapexit.request.ip_range);
   }
 
   void

@@ -1,6 +1,8 @@
 #include "rpc_server.hpp"
+#include "llarp/rpc/rpc_request_definitions.hpp"
 #include "rpc_request.hpp"
 #include "llarp/service/address.hpp"
+#include <exception>
 #include <llarp/router/route_poker.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/ini.hpp>
@@ -16,6 +18,7 @@
 #include <llarp/service/name.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/dns/dns.hpp>
+#include <vector>
 #include <oxenmq/fmt.h>
 
 namespace llarp::rpc
@@ -346,22 +349,59 @@ namespace llarp::rpc
     });
   }
 
-  //  get a ptr/ref to something in the lokinet service endpoint
-  //  call some fxn like "obtain_exit_to" and pass exit info
-  //    plus optional additional info on how to map
-  //    plus callback to report when this happens
-  //      callback is called much later (1-2s) when exit node flow is secured
-  //  exit is now ready to use
-  //
   void
-  RPCServer::invoke(Exit& exit)
+  RPCServer::invoke(MapExit& mapexit)
   {
-    Exit exit_request;
+    MapExit exit_request;
     //  steal replier from exit RPC endpoint
-    exit_request.replier.emplace(std::move(*exit.replier));
+    exit_request.replier.emplace(std::move(*mapexit.replier));
+    
+    //
+    //
+    //
+    //
+    //
+  }
 
-    IPRange range = IPRange::StringInit(exit.request.ip_range);
-    service::Address exitAddr{exit.request.address};
+  void
+  RPCServer::invoke(ListExits& listexits)
+  {
+    if (not m_Router.hiddenServiceContext().hasEndpoints())
+      listexits.response = CreateJSONError("No mapped endpoints found");
+    else
+      listexits.response = CreateJSONResponse(
+          m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["m_ExitMap"]);
+  }
+
+  void
+  RPCServer::invoke(UnmapExit& unmapexit)
+  {
+    if (unmapexit.request.ip_range.empty())
+    {
+      unmapexit.response = CreateJSONError("No IP range provided");
+      return;
+    }
+
+    std::vector<IPRange> range{};
+
+    for (auto& ip : unmapexit.request.ip_range)
+    {
+      try {
+        range.push_back(IPRange::StringInit(ip));
+      } catch (std::exception& e) {
+        unmapexit.response = CreateJSONError(e.what());
+      }
+    }
+
+    try {
+      m_Router.routePoker()->Down();
+      for (auto& ip : range)
+        m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
+    } catch (std::exception& e) {
+      unmapexit.response = CreateJSONError("Unable to unmap to given range");
+    }
+
+    unmapexit.response = CreateJSONResponse("OK");
   }
 
   void

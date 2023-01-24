@@ -103,7 +103,11 @@ namespace llarp::rpc
     void
     invoke(LookupSnode& lookupsnode);
     void
-    invoke(Exit& exit);
+    invoke(MapExit& mapexit);
+    void
+    invoke(ListExits& listexits);
+    void
+    invoke(UnmapExit& unmapexit);
     void
     invoke(DNSQuery& dnsquery);
     void

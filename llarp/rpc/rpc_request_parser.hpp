@@ -22,7 +22,9 @@ namespace llarp::rpc
   void
   parse_request(LookupSnode& lookupsnode, rpc_input input);
   void
-  parse_request(Exit& exit, rpc_input input);
+  parse_request(MapExit& mapexit, rpc_input input);
+  void
+  parse_request(UnmapExit& unmapexit, rpc_input input);
   void
   parse_request(DNSQuery& dnsquery, rpc_input input);
   void

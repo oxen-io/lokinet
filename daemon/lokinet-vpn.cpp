@@ -223,11 +223,11 @@ main(int argc, char* argv[])
   }
   if (options.vpnUp)
   {
-    nlohmann::json opts{{"exit", options.exitAddress}, {"token", options.token}};
+    nlohmann::json opts{{"address", options.exitAddress}, {"token", options.token}};
     if (options.range)
-      opts["range"] = *options.range;
+      opts["IP_range"] = *options.range;
 
-    auto maybe_result = OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts));
+    auto maybe_result = OMQ_Request(omq, connectionID, "llarp.map_exit", std::move(opts));
 
     if (not maybe_result)
       return exit_error("could not add exit");
