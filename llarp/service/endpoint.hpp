@@ -285,6 +285,13 @@ namespace llarp
       UnmapExitRange(IPRange range);
 
       void
+      map_exit(
+          std::string name,
+          std::string token,
+          std::vector<IPRange> ranges,
+          std::function<void(bool, std::string)> result);
+
+      void
       PutLookup(IServiceLookup* lookup, uint64_t txid) override;
 
       void
