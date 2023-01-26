@@ -247,6 +247,7 @@ add_library(lokinet-context
 add_library(lokinet-rpc
   STATIC
   rpc/json_binary_proxy.cpp
+  rpc/json_conversions.cpp
   rpc/lokid_rpc_client.cpp
   rpc/rpc_request_parser.cpp
   rpc/rpc_server.cpp

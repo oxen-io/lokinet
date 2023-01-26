@@ -8,6 +8,7 @@
 
 #include <list>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace llarp
@@ -24,12 +25,25 @@ namespace llarp
         : addr{std::move(address)}, netmask_bits{std::move(netmask)}
     {}
 
+    explicit IPRange(std::string _range)
+    {
+      if (not FromString(_range))
+        throw std::invalid_argument{"IP string '{}' cannot be parsed as IP range"_format(_range)};
+    }
+
     static IPRange
     StringInit(std::string _range)
     {
       IPRange range{};
       range.FromString(_range);
       return range;
+    }
+
+    static bool
+    IsValidString(std::string _range)
+    {
+      IPRange range;
+      return (range.FromString(_range));
     }
 
     static constexpr IPRange

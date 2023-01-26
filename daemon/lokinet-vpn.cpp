@@ -225,7 +225,7 @@ main(int argc, char* argv[])
   {
     nlohmann::json opts{{"address", options.exitAddress}, {"token", options.token}};
     if (options.range)
-      opts["IP_range"] = *options.range;
+      opts["ip_range"] = *options.range;
 
     auto maybe_result = OMQ_Request(omq, connectionID, "llarp.map_exit", std::move(opts));
 
@@ -240,10 +240,10 @@ main(int argc, char* argv[])
   }
   if (options.vpnDown)
   {
-    nlohmann::json opts{{"unmap", true}};
+    nlohmann::json opts{{"unmap_exit", true}};
     if (options.range)
-      opts["range"] = *options.range;
-    if (not OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts)))
+      opts["ip_range"] = *options.range;
+    if (not OMQ_Request(omq, connectionID, "llarp.unmap_exit", std::move(opts)))
       return exit_error("failed to unmap exit");
   }
 

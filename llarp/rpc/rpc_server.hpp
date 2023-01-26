@@ -150,10 +150,6 @@ namespace llarp::rpc
             fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()));
       }
 
-      // check if std::optional in rpc is present
-      //    then rpc.send_response
-      // else
-      //    do nothing because invoke stole RPC
       if (rpc.replier.has_value())
         rpc.send_response();
     }

@@ -176,78 +176,16 @@ namespace llarp::rpc
     struct request_parameters
     {
       std::string address;
-      std::vector<std::string> ip_range;
+      std::vector<IPRange> ip_range;
       std::string token;
     } request;
-
-    void
-    onGoodResult(std::string reason, bool hasClient)
-    {
-      response = (hasClient) ? nlohmann::json{{"result", reason}}.dump()
-                             : nlohmann::json{{"error", "We don't have an exit?"}}.dump();
-    }
-
-    void
-    onBadResult(
-        std::string reason, AbstractRouter& abs, llarp::service::Endpoint_ptr eptr, IPRange range)
-    {
-      abs.routePoker()->Down();
-      eptr->UnmapExitRange(range);
-      response = nlohmann::json{{"result", reason}}.dump();
-    }
-
-    void
-    mapExit(
-        service::Address addr,
-        AbstractRouter& router,
-        llarp::service::Endpoint_ptr eptr,
-        IPRange range,
-        service::Address exitAddr)
-    {
-      eptr->MapExitRange(range, addr);
-
-      bool sendAuth = (request.token.empty()) ? false : true;
-      if (sendAuth)
-        eptr->SetAuthInfoForEndpoint(exitAddr, service::AuthInfo{request.token});
-
-      if (addr.IsZero())
-      {
-        onGoodResult("Null exit added", router.HasClientExit());
-        return;
-      }
-
-      eptr->MarkAddressOutbound(addr);
-
-      eptr->EnsurePathToService(addr, [&](auto, service::OutboundContext* ctx) {
-        if (ctx == nullptr)
-        {
-          onBadResult("Could not find exit", router, eptr, range);
-          return;
-        }
-        if (not sendAuth)
-        {
-          onGoodResult("OK: connected to " + addr.ToString(), router.HasClientExit());
-          return;
-        }
-        //  only lambda that we will keep
-        ctx->AsyncSendAuth([&](service::AuthResult result) {
-          if (result.code != service::AuthResultCode::eAuthAccepted)
-          {
-            onBadResult(result.reason, router, eptr, range);
-            return;
-          }
-          onGoodResult(result.reason, router.HasClientExit());
-          return;
-        });
-      });
-    }
   };
 
   //  RPC: list_exits
   //    List all currently mapped exit node connections
   //
   //  Inputs: none
-  //    
+  //
   //  Returns:
   //
   struct ListExits : NoArgs
@@ -271,14 +209,12 @@ namespace llarp::rpc
 
     struct request_parameters
     {
-      std::vector<std::string> ip_range;
+      std::vector<IPRange> ip_range;
     } request;
   };
 
   //  RPC: dns_query
   //    Attempts to query endpoint by domain name
-  //
-  //  Note: ask Jason about the internals of this
   //
   //  Inputs:
   //    "endpoint" : endpoint ID to query (string)

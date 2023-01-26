@@ -1,14 +1,17 @@
 #pragma once
 
 #include "json_binary_proxy.hpp"
+#include "json_bt.hpp"
+#include "json_conversions.hpp"
 #include <oxenc/bt_serialize.h>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <optional>
 
 namespace llarp::rpc
 {
-
   using json_range = std::pair<nlohmann::json::const_iterator, nlohmann::json::const_iterator>;
   using rpc_input = std::variant<std::monostate, nlohmann::json, oxenc::bt_dict_consumer>;
 
@@ -116,6 +119,12 @@ namespace llarp::rpc
   template <typename T>
   constexpr bool is_expandable_list<std::vector<T>> = true;
 
+  // Types that are constructible from string
+  template <typename T>
+  constexpr bool is_string_constructible = false;
+  template <>
+  inline constexpr bool is_string_constructible<IPRange> = true;
+
   // Fixed size elements: tuples, pairs, and std::array's; we accept list input as long as the
   // list length matches exactly.
   template <typename T>
@@ -147,32 +156,34 @@ namespace llarp::rpc
               oxenc::bt_dict_consumer> || std::is_same_v<BTConsumer, oxenc::bt_list_consumer>,
           int> = 0>
   void
-  load_value(BTConsumer& c, T& val)
+  load_value(BTConsumer& c, T& target)
   {
     if constexpr (std::is_integral_v<T>)
-      val = c.template consume_integer<T>();
+      target = c.template consume_integer<T>();
     else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
-      val = c.consume_string_view();
+      target = c.consume_string_view();
+    else if constexpr (is_string_constructible<T>)
+      target = T{c.consume_string()};
     else if constexpr (llarp::rpc::json_is_binary<T>)
-      llarp::rpc::load_binary_parameter(c.consume_string_view(), true /*allow raw*/, val);
+      llarp::rpc::load_binary_parameter(c.consume_string_view(), true /*allow raw*/, target);
     else if constexpr (is_expandable_list<T>)
     {
       auto lc = c.consume_list_consumer();
-      val.clear();
+      target.clear();
       while (!lc.is_finished())
-        load_value(lc, val.emplace_back());
+        load_value(lc, target.emplace_back());
     }
     else if constexpr (is_tuple_like<T>)
     {
       auto lc = c.consume_list_consumer();
-      load_tuple_values(lc, val, std::make_index_sequence<std::tuple_size_v<T>>{});
+      load_tuple_values(lc, target, std::make_index_sequence<std::tuple_size_v<T>>{});
     }
     else if constexpr (is_unordered_string_map<T>)
     {
       auto dc = c.consume_dict_consumer();
-      val.clear();
+      target.clear();
       while (!dc.is_finished())
-        load_value(dc, val[std::string{dc.key()}]);
+        load_value(dc, target[std::string{dc.key()}]);
     }
     else
       static_assert(std::is_same_v<T, void>, "Unsupported load_value type");
@@ -182,21 +193,21 @@ namespace llarp::rpc
   // on unconvertible values.
   template <typename T>
   void
-  load_value(json_range& r, T& val)
+  load_value(json_range& range_itr, T& target)
   {
-    auto& key = r.first.key();
-    auto& e = *r.first;
+    auto& key = range_itr.first.key();
+    auto& current = *range_itr.first;  // value currently pointed to by range_itr.first
     if constexpr (std::is_same_v<T, bool>)
     {
-      if (e.is_boolean())
-        val = e.get<bool>();
-      else if (e.is_number_unsigned())
+      if (current.is_boolean())
+        target = current.get<bool>();
+      else if (current.is_number_unsigned())
       {
         // Also accept 0 or 1 for bools (mainly to be compatible with bt-encoding which doesn't
         // have a distinct bool type).
-        auto b = e.get<uint64_t>();
+        auto b = current.get<uint64_t>();
         if (b <= 1)
-          val = b;
+          target = b;
         else
           throw std::domain_error{"Invalid value for '" + key + "': expected boolean"};
       }
@@ -207,18 +218,18 @@ namespace llarp::rpc
     }
     else if constexpr (std::is_unsigned_v<T>)
     {
-      if (!e.is_number_unsigned())
+      if (!current.is_number_unsigned())
         throw std::domain_error{"Invalid value for '" + key + "': non-negative value required"};
-      auto i = e.get<uint64_t>();
+      auto i = current.get<uint64_t>();
       if (sizeof(T) < sizeof(uint64_t) && i > std::numeric_limits<T>::max())
         throw std::domain_error{"Invalid value for '" + key + "': value too large"};
-      val = i;
+      target = i;
     }
     else if constexpr (std::is_integral_v<T>)
     {
-      if (!e.is_number_integer())
+      if (!current.is_number_integer())
         throw std::domain_error{"Invalid value for '" + key + "': value is not an integer"};
-      auto i = e.get<int64_t>();
+      auto i = current.get<int64_t>();
       if (sizeof(T) < sizeof(int64_t))
       {
         if (i < std::numeric_limits<T>::lowest())
@@ -227,11 +238,11 @@ namespace llarp::rpc
         if (i > std::numeric_limits<T>::max())
           throw std::domain_error{"Invalid value for '" + key + "': value is too large"};
       }
-      val = i;
+      target = i;
     }
     else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
     {
-      val = e.get<std::string_view>();
+      target = current.get<std::string_view>();
     }
     else if constexpr (
         llarp::rpc::json_is_binary<
@@ -239,7 +250,7 @@ namespace llarp::rpc
     {
       try
       {
-        e.get_to(val);
+        current.get_to(target);
       }
       catch (const std::exception& e)
       {
@@ -250,7 +261,7 @@ namespace llarp::rpc
     {
       static_assert(std::is_same_v<T, void>, "Unsupported load type");
     }
-    ++r.first;
+    ++range_itr.first;
   }
 
   template <typename TupleLike, size_t... Is>
@@ -355,5 +366,4 @@ namespace llarp::rpc
       }
     }
   }
-
 }  // namespace llarp::rpc

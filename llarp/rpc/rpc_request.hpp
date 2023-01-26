@@ -14,7 +14,6 @@
 
 namespace llarp::rpc
 {
-
   using nlohmann::json;
 
   template <typename RPC>

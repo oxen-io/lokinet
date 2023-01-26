@@ -91,11 +91,11 @@ namespace llarp::rpc
   register_rpc_command(std::unordered_map<std::string, rpc_callback>& regs)
   {
     static_assert(std::is_base_of_v<RPCRequest, RPC>);
-    auto cback = std::make_shared<rpc_callback>();
+    rpc_callback cback{};
 
-    cback->invoke = make_invoke<RPC>();
+    cback.invoke = make_invoke<RPC>();
 
-    regs.emplace(RPC::name, cback);
+    regs.emplace(RPC::name, std::move(cback));
   }
 
   RPCServer::RPCServer(LMQ_ptr lmq, AbstractRouter& r)
@@ -355,12 +355,17 @@ namespace llarp::rpc
     MapExit exit_request;
     //  steal replier from exit RPC endpoint
     exit_request.replier.emplace(std::move(*mapexit.replier));
-    
-    //
-    //
-    //
-    //
-    //
+
+    m_Router.hiddenServiceContext().GetDefault()->map_exit(
+        mapexit.request.address,
+        mapexit.request.token,
+        mapexit.request.ip_range,
+        [exit = std::move(exit_request)](bool success, std::string result) mutable {
+          if (success)
+            exit.send_response({{"result"}, std::move(result)});
+          else
+            exit.send_response({{"error"}, std::move(result)});
+        });
   }
 
   void
@@ -369,8 +374,10 @@ namespace llarp::rpc
     if (not m_Router.hiddenServiceContext().hasEndpoints())
       listexits.response = CreateJSONError("No mapped endpoints found");
     else
-      listexits.response = CreateJSONResponse(
-          m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["m_ExitMap"]);
+      listexits.response =
+          CreateJSONResponse(m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["m_"
+                                                                                           "ExitMa"
+                                                                                           "p"]);
   }
 
   void
@@ -382,22 +389,14 @@ namespace llarp::rpc
       return;
     }
 
-    std::vector<IPRange> range{};
-
-    for (auto& ip : unmapexit.request.ip_range)
+    try
     {
-      try {
-        range.push_back(IPRange::StringInit(ip));
-      } catch (std::exception& e) {
-        unmapexit.response = CreateJSONError(e.what());
-      }
-    }
-
-    try {
       m_Router.routePoker()->Down();
-      for (auto& ip : range)
+      for (auto& ip : unmapexit.request.ip_range)
         m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
-    } catch (std::exception& e) {
+    }
+    catch (std::exception& e)
+    {
       unmapexit.response = CreateJSONError("Unable to unmap to given range");
     }
 
@@ -438,16 +437,6 @@ namespace llarp::rpc
       dnsquery.response = CreateJSONError("Endpoint does not have dns");
     return;
   }
-
-  /*
-      only have simple filename ex: "persist_key.ini"
-      create .ini files inside conf.d
-
-      add delete functionality
-        delete parameter (bool)
-        use same filename parameter
-
-  */
 
   void
   RPCServer::invoke(Config& config)
