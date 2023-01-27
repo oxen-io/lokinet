@@ -95,5 +95,5 @@ else:
     socket.close(linger=0)
     sys.exit(1)
 
-
-# ./lmq-rpc.py ipc://$HOME/.oxen/testnet/oxend.sock 'llarp.get_service_nodes' | jq
+# sample usage:
+# ./omq-rpc.py ipc://$HOME/.oxen/testnet/oxend.sock 'llarp.get_service_nodes' | jq

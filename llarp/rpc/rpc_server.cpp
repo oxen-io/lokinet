@@ -2,6 +2,7 @@
 #include "llarp/rpc/rpc_request_definitions.hpp"
 #include "rpc_request.hpp"
 #include "llarp/service/address.hpp"
+#include <cmath>
 #include <exception>
 #include <llarp/router/route_poker.hpp>
 #include <llarp/config/config.hpp>
@@ -147,10 +148,10 @@ namespace llarp::rpc
   {
     if (not m_Router.IsRunning())
     {
-      halt.response = CreateJSONError("Router is not running");
+      SetJSONError("Router is not running", halt.response);
       return;
     }
-    halt.response = CreateJSONResponse("OK");
+    SetJSONResponse("OK", halt.response);
     m_Router.Stop();
   }
 
@@ -160,20 +161,20 @@ namespace llarp::rpc
     util::StatusObject result{
         {"version", llarp::VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
 
-    version.response = CreateJSONResponse(result);
+    SetJSONResponse(result, version.response);
   }
 
   void
   RPCServer::invoke(Status& status)
   {
-    status.response = (m_Router.IsRunning()) ? CreateJSONResponse(m_Router.ExtractStatus())
-                                             : CreateJSONError("Router is not yet ready");
+    (m_Router.IsRunning()) ? SetJSONResponse(m_Router.ExtractStatus(), status.response)
+                           : SetJSONError("Router is not yet ready", status.response);
   }
 
   void
   RPCServer::invoke(GetStatus& getstatus)
   {
-    getstatus.response = CreateJSONResponse(m_Router.ExtractSummaryStatus());
+    SetJSONResponse(m_Router.ExtractSummaryStatus(), getstatus.response);
   }
 
   void
@@ -181,13 +182,13 @@ namespace llarp::rpc
   {
     if (quicconnect.request.port == 0 and quicconnect.request.closeID == 0)
     {
-      quicconnect.response = CreateJSONError("Port not provided");
+      SetJSONError("Port not provided", quicconnect.response);
       return;
     }
 
     if (quicconnect.request.remoteHost.empty() and quicconnect.request.closeID == 0)
     {
-      quicconnect.response = CreateJSONError("Host not provided");
+      SetJSONError("Host not provided", quicconnect.response);
       return;
     }
 
@@ -197,7 +198,7 @@ namespace llarp::rpc
 
     if (not endpoint)
     {
-      quicconnect.response = CreateJSONError("No such local endpoint found.");
+      SetJSONError("No such local endpoint found.", quicconnect.response);
       return;
     }
 
@@ -205,15 +206,16 @@ namespace llarp::rpc
 
     if (not quic)
     {
-      quicconnect.response = CreateJSONError(
-          "No quic interface available on endpoint " + quicconnect.request.endpoint);
+      SetJSONError(
+          "No quic interface available on endpoint " + quicconnect.request.endpoint,
+          quicconnect.response);
       return;
     }
 
     if (quicconnect.request.closeID)
     {
       quic->forget(quicconnect.request.closeID);
-      quicconnect.response = CreateJSONResponse("OK");
+      SetJSONResponse("OK", quicconnect.response);
       return;
     }
 
@@ -228,11 +230,11 @@ namespace llarp::rpc
       status["addr"] = addr.ToString();
       status["id"] = id;
 
-      quicconnect.response = CreateJSONResponse(status);
+      SetJSONResponse(status, quicconnect.response);
     }
     catch (std::exception& e)
     {
-      quicconnect.response = CreateJSONError(e.what());
+      SetJSONError(e.what(), quicconnect.response);
     }
   }
 
@@ -241,7 +243,7 @@ namespace llarp::rpc
   {
     if (quiclistener.request.port == 0 and quiclistener.request.closeID == 0)
     {
-      quiclistener.response = CreateJSONError("Invalid arguments");
+      SetJSONError("Invalid arguments", quiclistener.response);
       return;
     }
 
@@ -251,7 +253,7 @@ namespace llarp::rpc
 
     if (not endpoint)
     {
-      quiclistener.response = CreateJSONError("No such local endpoint found");
+      SetJSONError("No such local endpoint found", quiclistener.response);
       return;
     }
 
@@ -259,15 +261,16 @@ namespace llarp::rpc
 
     if (not quic)
     {
-      quiclistener.response = CreateJSONError(
-          "No quic interface available on endpoint " + quiclistener.request.endpoint);
+      SetJSONError(
+          "No quic interface available on endpoint " + quiclistener.request.endpoint,
+          quiclistener.response);
       return;
     }
 
     if (quiclistener.request.closeID)
     {
       quic->forget(quiclistener.request.closeID);
-      quiclistener.response = CreateJSONResponse("OK");
+      SetJSONResponse("OK", quiclistener.response);
       return;
     }
 
@@ -281,7 +284,7 @@ namespace llarp::rpc
       }
       catch (std::exception& e)
       {
-        quiclistener.response = CreateJSONError(e.what());
+        SetJSONError(e.what(), quiclistener.response);
         return;
       }
 
@@ -298,30 +301,31 @@ namespace llarp::rpc
         endpoint->PutSRVRecord(std::move(srvData));
       }
 
-      quiclistener.response = CreateJSONResponse(result);
+      SetJSONResponse(result, quiclistener.response);
       return;
     }
   }
 
+  // TODO: fix this because it's bad
   void
   RPCServer::invoke(LookupSnode& lookupsnode)
   {
     if (not m_Router.IsServiceNode())
     {
-      lookupsnode.response = CreateJSONError("Not supported");
+      SetJSONError("Not supported", lookupsnode.response);
       return;
     }
 
     RouterID routerID;
     if (lookupsnode.request.routerID.empty())
     {
-      lookupsnode.response = CreateJSONError("No remote ID provided");
+      SetJSONError("No remote ID provided", lookupsnode.response);
       return;
     }
 
     if (not routerID.FromString(lookupsnode.request.routerID))
     {
-      lookupsnode.response = CreateJSONError("Invalid remote: " + lookupsnode.request.routerID);
+      SetJSONError("Invalid remote: " + lookupsnode.request.routerID, lookupsnode.response);
       return;
     }
 
@@ -330,7 +334,7 @@ namespace llarp::rpc
 
       if (endpoint == nullptr)
       {
-        lookupsnode.response = CreateJSONError("Cannot find local endpoint: default");
+        SetJSONError("Cannot find local endpoint: default", lookupsnode.response);
         return;
       }
 
@@ -339,11 +343,11 @@ namespace llarp::rpc
         {
           const auto ip = net::TruncateV6(endpoint->GetIPForIdent(PubKey{routerID}));
           util::StatusObject status{{"ip", ip.ToString()}};
-          lookupsnode.response = CreateJSONResponse(status);
+          SetJSONResponse(status, lookupsnode.response);
           return;
         }
 
-        lookupsnode.response = CreateJSONError("Failed to obtain snode session");
+        SetJSONError("Failed to obtain snode session", lookupsnode.response);
         return;
       });
     });
@@ -353,8 +357,8 @@ namespace llarp::rpc
   RPCServer::invoke(MapExit& mapexit)
   {
     MapExit exit_request;
-    //  steal replier from exit RPC endpoint
-    exit_request.replier.emplace(std::move(*mapexit.replier));
+    // steal replier from exit RPC endpoint
+    exit_request.replier.emplace(mapexit.move());
 
     m_Router.hiddenServiceContext().GetDefault()->map_exit(
         mapexit.request.address,
@@ -372,35 +376,104 @@ namespace llarp::rpc
   RPCServer::invoke(ListExits& listexits)
   {
     if (not m_Router.hiddenServiceContext().hasEndpoints())
-      listexits.response = CreateJSONError("No mapped endpoints found");
-    else
-      listexits.response =
-          CreateJSONResponse(m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["m_"
-                                                                                           "ExitMa"
-                                                                                           "p"]);
+    {
+      SetJSONError("No mapped endpoints found", listexits.response);
+      return;
+    }
+
+    auto status = m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["exitMap"];
+
+    SetJSONResponse((status.empty()) ? "No exits" : status, listexits.response);
   }
 
   void
   RPCServer::invoke(UnmapExit& unmapexit)
   {
-    if (unmapexit.request.ip_range.empty())
-    {
-      unmapexit.response = CreateJSONError("No IP range provided");
-      return;
-    }
-
     try
     {
-      m_Router.routePoker()->Down();
       for (auto& ip : unmapexit.request.ip_range)
         m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
     }
     catch (std::exception& e)
     {
-      unmapexit.response = CreateJSONError("Unable to unmap to given range");
+      SetJSONError("Unable to unmap to given range", unmapexit.response);
+      return;
     }
 
-    unmapexit.response = CreateJSONResponse("OK");
+    SetJSONResponse("OK", unmapexit.response);
+  }
+
+  //  Sequentially calls map_exit and unmap_exit to hotswap mapped connection from old exit
+  //  to new exit. Similar to how map_exit steals the oxenmq deferredsend object, swapexit
+  //  moves the replier object to the unmap_exit struct, as that is called second. Rather than
+  //  the nested lambda within map_exit making the reply call, it instead calls the unmap_exit logic
+  //  and leaves the message handling to the unmap_exit struct
+  void
+  RPCServer::invoke(SwapExits& swapexits)
+  {
+    MapExit map_request;
+    UnmapExit unmap_request;
+    auto endpoint = m_Router.hiddenServiceContext().GetDefault();
+    auto current_exits = endpoint->ExtractStatus()["exitMap"];
+
+    if (current_exits.empty())
+    {
+      SetJSONError("Cannot swap to new exit: no exits currently mapped", swapexits.response);
+      return;
+    }
+
+    // steal replier from swapexit RPC endpoint
+    unmap_request.replier.emplace(swapexits.move());
+
+    // set map_exit request to new address
+    map_request.request.address = swapexits.request.exit_addresses[1];
+
+    // set token for new exit node mapping
+    if (not swapexits.request.token.empty())
+      map_request.request.token = swapexits.request.token;
+
+    // populate map_exit request with old IP ranges
+    for (auto& [range, exit] : current_exits.items())
+    {
+      if (exit.get<std::string>() == swapexits.request.exit_addresses[0])
+      {
+        map_request.request.ip_range.emplace_back(range);
+        unmap_request.request.ip_range.emplace_back(range);
+      }
+    }
+
+    if (map_request.request.ip_range.empty() or unmap_request.request.ip_range.empty())
+    {
+      SetJSONError("No mapped ranges found matching requested swap", swapexits.response);
+      return;
+    }
+
+    endpoint->map_exit(
+        map_request.request.address,
+        map_request.request.token,
+        map_request.request.ip_range,
+        [unmap = std::move(unmap_request),
+         ep = endpoint,
+         old_exit = swapexits.request.exit_addresses[0]](bool success, std::string result) mutable {
+          if (not success)
+            unmap.send_response({{"error"}, std::move(result)});
+          else
+          {
+            try
+            {
+              for (auto& ip : unmap.request.ip_range)
+                ep->UnmapRangeByExit(ip, old_exit);
+            }
+            catch (std::exception& e)
+            {
+              SetJSONError("Unable to unmap to given range", unmap.response);
+              return;
+            }
+
+            SetJSONResponse("OK", unmap.response);
+            unmap.send_response();
+          }
+        });
   }
 
   void
@@ -417,7 +490,7 @@ namespace llarp::rpc
 
     if (endpoint == nullptr)
     {
-      dnsquery.response = CreateJSONError("No such endpoint found for dns query");
+      SetJSONError("No such endpoint found for dns query", dnsquery.response);
       return;
     }
 
@@ -425,16 +498,16 @@ namespace llarp::rpc
     {
       auto packet_src = std::make_shared<DummyPacketSource>([&](auto result) {
         if (result)
-          dnsquery.response = CreateJSONResponse(result->ToJSON());
+          SetJSONResponse(result->ToJSON(), dnsquery.response);
         else
-          dnsquery.response = CreateJSONError("No response from DNS");
+          SetJSONError("No response from DNS", dnsquery.response);
       });
       if (not dns->MaybeHandlePacket(
               packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
-        dnsquery.response = CreateJSONError("DNS query not accepted by endpoint");
+        SetJSONError("DNS query not accepted by endpoint", dnsquery.response);
     }
     else
-      dnsquery.response = CreateJSONError("Endpoint does not have dns");
+      SetJSONError("Endpoint does not have dns", dnsquery.response);
     return;
   }
 
@@ -443,24 +516,24 @@ namespace llarp::rpc
   {
     if (config.request.filename.empty() and not config.request.ini.empty())
     {
-      config.response = CreateJSONError("No filename specified for .ini file");
+      SetJSONError("No filename specified for .ini file", config.response);
       return;
     }
     if (config.request.ini.empty() and not config.request.filename.empty())
     {
-      config.response = CreateJSONError("No .ini chunk provided");
+      SetJSONError("No .ini chunk provided", config.response);
       return;
     }
 
     if (not ends_with(config.request.filename, ".ini"))
     {
-      config.response = CreateJSONError("Must append '.ini' to filename");
+      SetJSONError("Must append '.ini' to filename", config.response);
       return;
     }
 
     if (not check_path(config.request.filename))
     {
-      config.response = CreateJSONError("Bad filename passed");
+      SetJSONError("Bad filename passed", config.response);
       return;
     }
 
@@ -475,7 +548,7 @@ namespace llarp::rpc
       }
       catch (std::exception& e)
       {
-        config.response = CreateJSONError(e.what());
+        SetJSONError(e.what(), config.response);
         return;
       }
     }
@@ -496,12 +569,12 @@ namespace llarp::rpc
       }
       catch (std::exception& e)
       {
-        config.response = CreateJSONError(e.what());
+        SetJSONError(e.what(), config.response);
         return;
       }
     }
 
-    config.response = CreateJSONResponse("OK");
+    SetJSONResponse("OK", config.response);
   }
 
   void

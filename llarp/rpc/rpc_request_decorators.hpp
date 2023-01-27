@@ -95,12 +95,23 @@ namespace llarp::rpc
     llarp::rpc::json_binary_proxy response_b64{
         response, llarp::rpc::json_binary_proxy::fmt::base64};
 
-    //  The oxenmq deferred send object into which the response will be set.  If this optional is
-    //  still set when the `invoke` call returns then the response is sent at that point; if it has
-    //  been moved out (i.e. either just this instance or the whole request struct is stolen/moved
-    //  by the invoke function) then it is the invoke function's job to send a reply.  Typically
-    //  this is done when a response cannot be sent immediately
+    //  The oxenmq deferred send object into which the response will be sent when the `invoke`
+    //  method returns.  If the response needs to happen later (i.e. not immediately after `invoke`
+    //  returns) then you should call `defer()` to extract and clear this and then send the response
+    //  via the returned DeferredSend object yourself.
     std::optional<oxenmq::Message::DeferredSend> replier;
+
+    // Called to clear the current replier and return it.  After this call the automatic reply will
+    // not be generated; the caller is responsible for calling `->reply` on the returned optional
+    // itself.  This is typically used where a call has to be deferred, for example because it
+    // depends on some network response to build the reply.
+    oxenmq::Message::DeferredSend
+    move()
+    {
+      auto r{std::move(*replier)};
+      replier.reset();
+      return r;
+    }
   };
 
   //  Tag types that are inherited to set RPC endpoint properties

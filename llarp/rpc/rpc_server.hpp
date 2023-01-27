@@ -2,6 +2,8 @@
 
 #include "rpc_request_definitions.hpp"
 #include "json_bt.hpp"
+#include <nlohmann/json_fwd.hpp>
+#include <stdexcept>
 #include <string_view>
 #include <llarp/config/config.hpp>
 #include <oxenmq/oxenmq.h>
@@ -64,16 +66,16 @@ namespace llarp::rpc
   };
 
   template <typename Result_t>
-  std::string
-  CreateJSONResponse(Result_t result)
+  void
+  SetJSONResponse(Result_t result, json& j)
   {
-    return nlohmann::json{{"result", result}}.dump();
+    j["result"] = result;
   }
 
-  inline std::string
-  CreateJSONError(std::string_view msg)
+  inline void
+  SetJSONError(std::string_view msg, json& j)
   {
-    return nlohmann::json{{"error", msg}}.dump();
+    j["error"] = msg;
   }
 
   class RPCServer
@@ -109,6 +111,8 @@ namespace llarp::rpc
     void
     invoke(UnmapExit& unmapexit);
     void
+    invoke(SwapExits& swapexits);
+    void
     invoke(DNSQuery& dnsquery);
     void
     invoke(Config& config);
@@ -140,18 +144,21 @@ namespace llarp::rpc
       catch (const rpc_error& e)
       {
         log::info(logcat, "RPC request 'rpc.{}' failed with: {}", rpc.name, e.what());
-        rpc.response = CreateJSONError(
-            fmt::format("RPC request 'rpc.{}' failed with: {}", rpc.name, e.what()));
+        SetJSONError(
+            fmt::format("RPC request 'rpc.{}' failed with: {}", rpc.name, e.what()), rpc.response);
       }
       catch (const std::exception& e)
       {
         log::info(logcat, "RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what());
-        rpc.response = CreateJSONError(
-            fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()));
+        SetJSONError(
+            fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()),
+            rpc.response);
       }
 
       if (rpc.replier.has_value())
+      {
         rpc.send_response();
+      }
     }
   };
 

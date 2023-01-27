@@ -25,10 +25,14 @@ namespace llarp::rpc
       auto& rpc = handler.rpc;
 
       if (m.data.size() > 1)
-        m.send_reply(CreateJSONError(
-            "Bad Request: RPC requests must have at most one data part (received {})"_format(
-                m.data.size())));
-
+      {
+        m.send_reply(nlohmann::json{
+            {"error",
+             "Bad Request: RPC requests must have at most one data part (received {})"_format(
+                 m.data.size())}}
+                         .dump());
+        return;
+      }
       // parsing input as bt or json
       //    hand off to parse_request (overloaded versions)
       try
@@ -49,7 +53,7 @@ namespace llarp::rpc
       }
       catch (const std::exception& e)
       {
-        m.send_reply(CreateJSONError("Failed to parse request parameters: "s + e.what()));
+        m.send_reply(nlohmann::json{{"Failed to parse request parameters: "s + e.what()}}.dump());
         return;
       }
 

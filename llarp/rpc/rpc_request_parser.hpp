@@ -26,6 +26,8 @@ namespace llarp::rpc
   void
   parse_request(UnmapExit& unmapexit, rpc_input input);
   void
+  parse_request(SwapExits& swapexits, rpc_input input);
+  void
   parse_request(DNSQuery& dnsquery, rpc_input input);
   void
   parse_request(Config& config, rpc_input input);

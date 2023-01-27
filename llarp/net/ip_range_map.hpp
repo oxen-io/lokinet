@@ -2,6 +2,7 @@
 
 #include "ip_range.hpp"
 #include <llarp/util/status.hpp>
+#include <set>
 #include <vector>
 
 namespace llarp

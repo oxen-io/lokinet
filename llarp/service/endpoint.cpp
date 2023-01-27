@@ -3,6 +3,7 @@
 #include "endpoint_util.hpp"
 #include "hidden_service_address_lookup.hpp"
 #include "auth.hpp"
+#include "llarp/util/logging.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
@@ -2188,6 +2189,26 @@ namespace llarp
         LogInfo(Name(), " unmap ", item.first, " exit range mapping");
         return true;
       });
+
+      if (m_ExitMap.Empty())
+        m_router->routePoker()->Down();
+    }
+
+    void
+    Endpoint::UnmapRangeByExit(IPRange range, std::string exit)
+    {
+      // unmap all ranges that match the given exit when hot swapping
+      m_ExitMap.RemoveIf([&](const auto& item) -> bool {
+        if ((range.Contains(item.first)) and (item.second.ToString() == exit))
+        {
+          log::info(logcat, "{} unmap {} range mapping to exit node {}", Name(), item.first, exit);
+          return true;
+        }
+        return false;
+      });
+
+      if (m_ExitMap.Empty())
+        m_router->routePoker()->Down();
     }
 
     std::optional<AuthInfo>

@@ -110,7 +110,7 @@ namespace llarp::rpc
     } request;
   };
 
-  //  RPC: quick_listener
+  //  RPC: quic_listener
   //    Connects to QUIC interface on local endpoint
   //    Passes request parameters in nlohmann::json format
   //
@@ -171,6 +171,14 @@ namespace llarp::rpc
   //
   struct MapExit : RPCRequest
   {
+    MapExit()
+    {
+      if constexpr (platform::supports_ipv6)
+        request.ip_range.emplace_back("::/0");
+      else
+        request.ip_range.emplace_back("0.0.0.0/0");
+    }
+
     static constexpr auto name = "map_exit"sv;
 
     struct request_parameters
@@ -205,11 +213,38 @@ namespace llarp::rpc
   //
   struct UnmapExit : RPCRequest
   {
+    UnmapExit()
+    {
+      if constexpr (platform::supports_ipv6)
+        request.ip_range.emplace_back("::/0");
+      else
+        request.ip_range.emplace_back("0.0.0.0/0");
+    }
+
     static constexpr auto name = "unmap_exit"sv;
 
     struct request_parameters
     {
       std::vector<IPRange> ip_range;
+    } request;
+  };
+
+  //  RPC: swap_exit
+  //    Swap a connection from one exit to another
+  //
+  //  Inputs:
+  //    "exits" : exit nodes to swap mappings from (index 0 = old exit, index 1 = new exit)
+  //
+  //  Returns:
+  //
+  struct SwapExits : RPCRequest
+  {
+    static constexpr auto name = "swap_exits"sv;
+
+    struct request_parameters
+    {
+      std::vector<std::string> exit_addresses;
+      std::string token;
     } request;
   };
 
@@ -268,6 +303,7 @@ namespace llarp::rpc
       LookupSnode,
       MapExit,
       ListExits,
+      SwapExits,
       UnmapExit,
       DNSQuery,
       Config>;

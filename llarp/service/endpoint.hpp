@@ -285,6 +285,9 @@ namespace llarp
       UnmapExitRange(IPRange range);
 
       void
+      UnmapRangeByExit(IPRange range, std::string exit);
+
+      void
       map_exit(
           std::string name,
           std::string token,

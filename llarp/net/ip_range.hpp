@@ -31,21 +31,6 @@ namespace llarp
         throw std::invalid_argument{"IP string '{}' cannot be parsed as IP range"_format(_range)};
     }
 
-    static IPRange
-    StringInit(std::string _range)
-    {
-      IPRange range{};
-      range.FromString(_range);
-      return range;
-    }
-
-    static bool
-    IsValidString(std::string _range)
-    {
-      IPRange range;
-      return (range.FromString(_range));
-    }
-
     static constexpr IPRange
     V4MappedRange()
     {
@@ -62,7 +47,8 @@ namespace llarp
     FromIPv4(net::ipv4addr_t addr, net::ipv4addr_t netmask)
     {
       return IPRange{
-          net::ExpandV4(ToHost(addr)), netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
+          net::ExpandV4(llarp::net::ToHost(addr)),
+          netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
     }
 
     /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
@@ -125,7 +111,7 @@ namespace llarp
     inline bool
     Contains(const net::ipaddr_t& ip) const
     {
-      return var::visit([this](auto&& ip) { return Contains(ToHost(ip)); }, ip);
+      return var::visit([this](auto&& ip) { return Contains(llarp::net::ToHost(ip)); }, ip);
     }
 
     /// get the highest address on this range
