@@ -64,7 +64,7 @@ namespace llarp
         LogInfo("connecting to lokid via LMQ at ", url.full_address());
         m_Connection = m_lokiMQ->connect_remote(
             url,
-            [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
+            [](oxenmq::ConnectionID) {},
             [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
               llarp::LogWarn("Failed to connect to lokid: ", f);
               if (auto router = self->m_Router.lock())
@@ -168,7 +168,7 @@ namespace llarp
     }
 
     void
-    LokidRpcClient::Connected()
+    LokidRpcClient::StartPings()
     {
       constexpr auto PingInterval = 30s;
       auto makePingRequest = [self = shared_from_this()]() {
