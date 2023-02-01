@@ -623,8 +623,7 @@ namespace llarp
     }
     if (IsServiceNode())
       return SaveRC();
-    else
-      return true;
+    return true;
   }
 
   bool
@@ -1256,7 +1255,7 @@ namespace llarp
   Router::StartRpcServer()
   {
     if (m_Config->api.m_enableRPCServer)
-      m_RPCServer = std::make_unique<rpc::RpcServer>(m_lmq, this);
+      m_RPCServer = std::make_unique<rpc::RPCServer>(m_lmq, *this);
 
     return true;
   }

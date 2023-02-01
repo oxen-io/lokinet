@@ -5,10 +5,12 @@
 #include <vector>
 #include <array>
 #include <llarp/net/net.hpp>
+#include <string_view>
 
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
+#include "oxenmq/address.h"
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
@@ -56,7 +58,6 @@ OMQ_Request(
 
 namespace
 {
-
   struct command_line_options
   {
     // bool options
@@ -64,6 +65,7 @@ namespace
     bool help = false;
     bool vpnUp = false;
     bool vpnDown = false;
+    bool swap = false;
     bool printStatus = false;
     bool killDaemon = false;
 
@@ -73,9 +75,10 @@ namespace
     std::string endpoint = "default";
     std::string token;
     std::optional<std::string> range;
+    std::vector<std::string> swapExits;
 
     // oxenmq
-    oxenmq::address rpcURL{"tcp://127.0.0.1:1190"};
+    oxenmq::address rpcURL{};
     oxenmq::LogLevel logLevel = oxenmq::LogLevel::warn;
   };
 
@@ -109,15 +112,23 @@ main(int argc, char* argv[])
 
   // flags: boolean values in command_line_options struct
   cli.add_flag("-v,--verbose", options.verbose, "Verbose");
-  cli.add_flag("--up", options.vpnUp, "Put VPN up");
-  cli.add_flag("--down", options.vpnDown, "Put VPN down");
+  cli.add_flag("--add,--up", options.vpnUp, "Map VPN connection to exit node [--up is deprecated]");
+  cli.add_flag(
+      "--remove,--down",
+      options.vpnDown,
+      "Unmap VPN connection to exit node [--down is deprecated]");
   cli.add_flag("--status", options.printStatus, "Print VPN status and exit");
   cli.add_flag("-k,--kill", options.killDaemon, "Kill lokinet daemon");
 
   // options: string values in command_line_options struct
   cli.add_option("--exit", options.exitAddress, "Specify exit node address")->capture_default_str();
   cli.add_option("--endpoint", options.endpoint, "Endpoint to use")->capture_default_str();
-  cli.add_option("--token", options.token, "Exit auth token to use")->capture_default_str();
+  cli.add_option("--token,--auth", options.token, "Exit auth token to use")->capture_default_str();
+  cli.add_option("--range", options.range, "IP range to map exit to")->capture_default_str();
+  cli.add_option(
+         "--swap", options.swapExits, "Exit addresses to swap mapped connection to [old] [new]")
+      ->expected(2)
+      ->capture_default_str();
 
   // options: oxenmq values in command_line_options struct
   cli.add_option("--rpc", options.rpc, "Specify RPC URL for lokinet")->capture_default_str();
@@ -149,16 +160,17 @@ main(int argc, char* argv[])
     cli.exit(e);
   };
 
-  int numCommands = options.vpnUp + options.vpnDown + options.printStatus + options.killDaemon;
+  int numCommands = options.vpnUp + options.vpnDown + options.printStatus + options.killDaemon
+      + (not options.swapExits.empty());
 
   switch (numCommands)
   {
     case 0:
-      return exit_error(3, "One of --up/--down/--status/--kill must be specified");
+      return exit_error(3, "One of --add/--remove/--swap/--status/--kill must be specified");
     case 1:
       break;
     default:
-      return exit_error(3, "Only one of --up/--down/--status/--kill may be specified");
+      return exit_error(3, "Only one of --add/--remove/--swap/--status/--kill may be specified");
   }
 
   if (options.vpnUp and options.exitAddress.empty())
@@ -170,12 +182,14 @@ main(int argc, char* argv[])
       },
       options.logLevel};
 
+  options.rpcURL = oxenmq::address{(options.rpc.empty()) ? "tcp://127.0.0.1:1190" : options.rpc};
+
   omq.start();
 
   std::promise<bool> connectPromise;
 
   const auto connectionID = omq.connect_remote(
-      options.rpc,
+      options.rpcURL,
       [&connectPromise](auto) { connectPromise.set_value(true); },
       [&connectPromise](auto, std::string_view msg) {
         std::cout << "Failed to connect to lokinet RPC: " << msg << std::endl;
@@ -188,28 +202,36 @@ main(int argc, char* argv[])
 
   if (options.killDaemon)
   {
-    if (not OMQ_Request(omq, connectionID, "llarp.halt"))
+    auto maybe_halt = OMQ_Request(omq, connectionID, "llarp.halt");
+
+    if (not maybe_halt)
       return exit_error("Call to llarp.halt failed");
-    return 0;
+
+    if (auto err_it = maybe_halt->find("error");
+        err_it != maybe_halt->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
   }
 
   if (options.printStatus)
   {
     const auto maybe_status = OMQ_Request(omq, connectionID, "llarp.status");
+
     if (not maybe_status)
-      return exit_error("call to llarp.status failed");
+      return exit_error("Call to llarp.status failed");
 
     try
     {
-      const auto& ep = maybe_status->at("result").at("services").at(options.endpoint);
-      const auto exitMap = ep.at("exitMap");
-      if (exitMap.empty())
+      const auto& ep = maybe_status->at("result").at("services").at(options.endpoint).at("exitMap");
+
+      if (ep.empty())
       {
-        std::cout << "no exits" << std::endl;
+        std::cout << "No exits found" << std::endl;
       }
       else
       {
-        for (const auto& [range, exit] : exitMap.items())
+        for (const auto& [range, exit] : ep.items())
         {
           std::cout << range << " via " << exit.get<std::string>() << std::endl;
         }
@@ -217,20 +239,37 @@ main(int argc, char* argv[])
     }
     catch (std::exception& ex)
     {
-      return exit_error("failed to parse result: {}", ex.what());
+      return exit_error("Failed to parse result: {}", ex.what());
     }
     return 0;
   }
+
+  if (not options.swapExits.empty())
+  {
+    nlohmann::json opts{{"exit_addresses", std::move(options.swapExits)}};
+
+    auto maybe_swap = OMQ_Request(omq, connectionID, "llarp.swap_exits", std::move(opts));
+
+    if (not maybe_swap)
+      return exit_error("Failed to swap exit node connections");
+
+    if (auto err_it = maybe_swap->find("error");
+        err_it != maybe_swap->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
+  }
+
   if (options.vpnUp)
   {
-    nlohmann::json opts{{"exit", options.exitAddress}, {"token", options.token}};
+    nlohmann::json opts{{"address", options.exitAddress}, {"token", options.token}};
     if (options.range)
-      opts["range"] = *options.range;
+      opts["ip_range"] = *options.range;
 
-    auto maybe_result = OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts));
+    auto maybe_result = OMQ_Request(omq, connectionID, "llarp.map_exit", std::move(opts));
 
     if (not maybe_result)
-      return exit_error("could not add exit");
+      return exit_error("Could not add exit");
 
     if (auto err_it = maybe_result->find("error");
         err_it != maybe_result->end() and not err_it.value().is_null())
@@ -240,11 +279,20 @@ main(int argc, char* argv[])
   }
   if (options.vpnDown)
   {
-    nlohmann::json opts{{"unmap", true}};
+    nlohmann::json opts{{"unmap_exit", true}};
     if (options.range)
-      opts["range"] = *options.range;
-    if (not OMQ_Request(omq, connectionID, "llarp.exit", std::move(opts)))
-      return exit_error("failed to unmap exit");
+      opts["ip_range"] = *options.range;
+
+    auto maybe_down = OMQ_Request(omq, connectionID, "llarp.unmap_exit", std::move(opts));
+
+    if (not maybe_down)
+      return exit_error("Failed to unmap exit node connection");
+
+    if (auto err_it = maybe_down->find("error");
+        err_it != maybe_down->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
   }
 
   return 0;

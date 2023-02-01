@@ -1,15 +1,16 @@
-#include <chrono>
-#include <memory>
 #include "endpoint.hpp"
 #include "endpoint_state.hpp"
 #include "endpoint_util.hpp"
 #include "hidden_service_address_lookup.hpp"
+#include "auth.hpp"
+#include "llarp/util/logging.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
 #include "protocol_type.hpp"
 
 #include <llarp/net/ip.hpp>
+#include <llarp/net/ip_range.hpp>
 #include <llarp/dht/context.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/dht/messages/findintro.hpp>
@@ -22,6 +23,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/route_poker.hpp>
 #include <llarp/routing/dht_message.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
 
@@ -35,6 +37,7 @@
 #include <llarp/util/priority_queue.hpp>
 
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <uvw.hpp>
 #include <variant>
@@ -213,6 +216,75 @@ namespace llarp
         }
       }
       return std::nullopt;
+    }
+
+    void
+    Endpoint::map_exit(
+        std::string name,
+        std::string token,
+        std::vector<IPRange> ranges,
+        std::function<void(bool, std::string)> result_handler)
+    {
+      if (ranges.empty())
+      {
+        result_handler(false, "no ranges provided");
+        return;
+      }
+
+      LookupNameAsync(
+          name,
+          [ptr = std::static_pointer_cast<Endpoint>(GetSelf()),
+           name,
+           auth = AuthInfo{token},
+           ranges,
+           result_handler,
+           poker = m_router->routePoker()](auto maybe_addr) {
+            if (not maybe_addr)
+            {
+              result_handler(false, "exit not found: {}"_format(name));
+              return;
+            }
+            if (auto* addr_ptr = std::get_if<Address>(&*maybe_addr))
+            {
+              Address addr{*addr_ptr};
+
+              ptr->SetAuthInfoForEndpoint(addr, auth);
+              ptr->MarkAddressOutbound(addr);
+              auto result = ptr->EnsurePathToService(
+                  addr,
+                  [ptr, name, ranges, result_handler, poker](auto addr, auto* ctx) {
+                    if (ctx == nullptr)
+                    {
+                      result_handler(false, "could not establish flow to {}"_format(name));
+                      return;
+                    }
+
+                    // make a lambda that sends the reply after doing auth
+                    auto apply_result =
+                        [ptr, poker, addr, result_handler, ranges](AuthResult result) {
+                          if (result.code != AuthResultCode::eAuthAccepted)
+                          {
+                            result_handler(false, result.reason);
+                            return;
+                          }
+                          for (const auto& range : ranges)
+                            ptr->MapExitRange(range, addr);
+
+                          if (poker)
+                            poker->Up();
+                          result_handler(true, result.reason);
+                        };
+
+                    ctx->AsyncSendAuth(apply_result);
+                  },
+                  ptr->PathAlignmentTimeout());
+
+              if (not result)
+                result_handler(false, "did not build path to {}"_format(name));
+            }
+            else
+              result_handler(false, "exit via snode not supported");
+          });
     }
 
     void
@@ -2086,6 +2158,11 @@ namespace llarp
     void
     Endpoint::SetAuthInfoForEndpoint(Address addr, AuthInfo info)
     {
+      if (info.token.empty())
+      {
+        m_RemoteAuthInfos.erase(addr);
+        return;
+      }
       m_RemoteAuthInfos[addr] = std::move(info);
     }
 
@@ -2112,6 +2189,26 @@ namespace llarp
         LogInfo(Name(), " unmap ", item.first, " exit range mapping");
         return true;
       });
+
+      if (m_ExitMap.Empty())
+        m_router->routePoker()->Down();
+    }
+
+    void
+    Endpoint::UnmapRangeByExit(IPRange range, std::string exit)
+    {
+      // unmap all ranges that match the given exit when hot swapping
+      m_ExitMap.RemoveIf([&](const auto& item) -> bool {
+        if ((range.Contains(item.first)) and (item.second.ToString() == exit))
+        {
+          log::info(logcat, "{} unmap {} range mapping to exit node {}", Name(), item.first, exit);
+          return true;
+        }
+        return false;
+      });
+
+      if (m_ExitMap.Empty())
+        m_router->routePoker()->Down();
     }
 
     std::optional<AuthInfo>

@@ -25,10 +25,10 @@
 #include <pthread_np.h>
 #endif
 
-static auto logcat = llarp::log::Cat("llarp-context");
-
 namespace llarp
 {
+  static auto logcat = llarp::log::Cat("llarp-context");
+
   bool
   Context::CallSafe(std::function<void(void)> f)
   {

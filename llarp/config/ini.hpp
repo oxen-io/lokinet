@@ -24,6 +24,12 @@ namespace llarp
     bool
     LoadFile(const fs::path& fname);
 
+    /// load new .ini file from string (calls ParseAll() rather than Parse())
+    /// return true on success
+    /// return false on error
+    bool
+    LoadNewFromStr(std::string_view str);
+
     /// load from string
     /// return true on success
     /// return false on error
@@ -47,6 +53,10 @@ namespace llarp
     void
     Save();
 
+    /// save new .ini config file to path
+    void
+    SaveNew() const;
+
     inline void
     Filename(fs::path f)
     {
@@ -54,6 +64,9 @@ namespace llarp
     };
 
    private:
+    bool
+    ParseAll();
+
     bool
     Parse();
 

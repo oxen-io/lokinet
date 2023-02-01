@@ -1,6 +1,12 @@
 #include "rpc_server.hpp"
+#include "llarp/rpc/rpc_request_definitions.hpp"
+#include "rpc_request.hpp"
+#include "llarp/service/address.hpp"
+#include <cmath>
+#include <exception>
 #include <llarp/router/route_poker.hpp>
 #include <llarp/config/config.hpp>
+#include <llarp/config/ini.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
@@ -13,64 +19,12 @@
 #include <llarp/service/name.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/dns/dns.hpp>
+#include <vector>
 #include <oxenmq/fmt.h>
-
-namespace
-{
-  static auto logcat = llarp::log::Cat("lokinet.rpc");
-}  // namespace
 
 namespace llarp::rpc
 {
-  RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r)
-      : m_LMQ{std::move(lmq)}, m_Router{r}, log_subs{*m_LMQ, llarp::logRingBuffer}
-  {
-    for (const auto& addr : r->GetConfig()->api.m_rpcBindAddresses)
-    {
-      m_LMQ->listen_plain(addr.zmq_address());
-      LogInfo("Bound RPC server to ", addr.full_address());
-    }
-
-    this->AddRPCCategories();
-  }
-
-  /// maybe parse json from message paramter at index
-  std::optional<nlohmann::json>
-  MaybeParseJSON(const oxenmq::Message& msg, size_t index = 0)
-  {
-    try
-    {
-      const auto& str = msg.data.at(index);
-      return nlohmann::json::parse(str);
-    }
-    catch (std::exception&)
-    {
-      return std::nullopt;
-    }
-  }
-
-  template <typename Result_t>
-  std::string
-  CreateJSONResponse(Result_t result)
-  {
-    const auto obj = nlohmann::json{
-        {"error", nullptr},
-        {"result", result},
-    };
-    return obj.dump();
-  }
-
-  std::string
-  CreateJSONError(std::string_view msg)
-  {
-    const auto obj = nlohmann::json{
-        {"error", msg},
-    };
-    return obj.dump();
-  }
-
-  /// fake packet source that serializes repsonses back into dns
-
+  // Fake packet source that serializes repsonses back into dns
   class DummyPacketSource : public dns::PacketSource_Base
   {
     std::function<void(std::optional<dns::Message>)> func;
@@ -107,626 +61,530 @@ namespace llarp::rpc
     }
   };
 
-  /// a function that replies to an rpc request
-  using ReplyFunction_t = std::function<void(std::string)>;
+  bool
+  check_path(std::string path)
+  {
+    for (auto c : path)
+    {
+      if (not((c >= '0' and c <= '9') or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z')
+              or (c == '_') or (c == '-')))
+      {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   std::shared_ptr<EndpointBase>
-  GetEndpointByName(AbstractRouter* r, std::string name)
+  GetEndpointByName(AbstractRouter& r, std::string name)
   {
-    if (r->IsServiceNode())
+    if (r.IsServiceNode())
     {
-      return r->exitContext().GetExitEndpoint(name);
+      return r.exitContext().GetExitEndpoint(name);
     }
-    else
-    {
-      return r->hiddenServiceContext().GetEndpointByName(name);
-    }
+
+    return r.hiddenServiceContext().GetEndpointByName(name);
   }
 
+  template <typename RPC>
   void
-  HandleJSONRequest(
-      oxenmq::Message& msg, std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
+  register_rpc_command(std::unordered_map<std::string, rpc_callback>& regs)
   {
-    const auto maybe = MaybeParseJSON(msg);
-    if (not maybe.has_value())
-    {
-      msg.send_reply(CreateJSONError("failed to parse json"));
-      return;
-    }
-    if (not maybe->is_object())
-    {
-      msg.send_reply(CreateJSONError("request data not a json object"));
-      return;
-    }
-    try
-    {
-      handleRequest(
-          *maybe, [defer = msg.send_later()](std::string result) { defer.reply(result); });
-    }
-    catch (std::exception& ex)
-    {
-      msg.send_reply(CreateJSONError(ex.what()));
-    }
+    static_assert(std::is_base_of_v<RPCRequest, RPC>);
+    rpc_callback cback{};
+
+    cback.invoke = make_invoke<RPC>();
+
+    regs.emplace(RPC::name, std::move(cback));
   }
 
+  RPCServer::RPCServer(LMQ_ptr lmq, AbstractRouter& r)
+      : m_LMQ{std::move(lmq)}, m_Router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
+  {
+    // copied logic loop as placeholder
+    for (const auto& addr : r.GetConfig()->api.m_rpcBindAddresses)
+    {
+      m_LMQ->listen_plain(addr.zmq_address());
+      LogInfo("Bound RPC server to ", addr.full_address());
+    }
+
+    AddCategories();
+  }
+
+  template <typename... RPC>
+  std::unordered_map<std::string, rpc_callback>
+  register_rpc_requests(tools::type_list<RPC...>)
+  {
+    std::unordered_map<std::string, rpc_callback> regs;
+
+    (register_rpc_command<RPC>(regs), ...);
+
+    return regs;
+  }
+
+  const std::unordered_map<std::string, rpc_callback> rpc_request_map =
+      register_rpc_requests(rpc::rpc_request_types{});
+
   void
-  RpcServer::AddRPCCategories()
+  RPCServer::AddCategories()
   {
     m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
-        .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); })
-        .add_request_command(
-            "halt",
-            [&](oxenmq::Message& msg) {
-              if (not m_Router->IsRunning())
-              {
-                msg.send_reply(CreateJSONError("router is not running"));
-                return;
-              }
-              msg.send_reply(CreateJSONResponse("OK"));
-              m_Router->Stop();
-            })
-        .add_request_command(
-            "version",
-            [r = m_Router](oxenmq::Message& msg) {
-              util::StatusObject result{
-                  {"version", llarp::VERSION_FULL}, {"uptime", to_json(r->Uptime())}};
-              msg.send_reply(CreateJSONResponse(result));
-            })
-        .add_request_command(
-            "status",
-            [&](oxenmq::Message& msg) {
-              m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
-                std::string data;
-                if (r->IsRunning())
-                {
-                  data = CreateJSONResponse(r->ExtractStatus());
-                }
-                else
-                {
-                  data = CreateJSONError("router not yet ready");
-                }
-                defer.reply(data);
-              });
-            })
-        .add_request_command(
-            "get_status",
-            [&](oxenmq::Message& msg) {
-              m_Router->loop()->call([defer = msg.send_later(), r = m_Router]() {
-                defer.reply(CreateJSONResponse(r->ExtractSummaryStatus()));
-              });
-            })
-        .add_request_command(
-            "quic_connect",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                std::string endpoint = "default";
-                if (auto itr = obj.find("endpoint"); itr != obj.end())
-                  endpoint = itr->get<std::string>();
+        .add_request_command("logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); });
 
-                std::string bindAddr = "127.0.0.1:0";
-                if (auto itr = obj.find("bind"); itr != obj.end())
-                  bindAddr = itr->get<std::string>();
-
-                std::string remoteHost;
-                if (auto itr = obj.find("host"); itr != obj.end())
-                  remoteHost = itr->get<std::string>();
-
-                uint16_t port = 0;
-                if (auto itr = obj.find("port"); itr != obj.end())
-                  port = itr->get<uint16_t>();
-
-                int closeID = 0;
-                if (auto itr = obj.find("close"); itr != obj.end())
-                  closeID = itr->get<int>();
-
-                if (port == 0 and closeID == 0)
-                {
-                  reply(CreateJSONError("port not provided"));
-                  return;
-                }
-                if (remoteHost.empty() and closeID == 0)
-                {
-                  reply(CreateJSONError("host not provided"));
-                  return;
-                }
-                SockAddr laddr{};
-                laddr.fromString(bindAddr);
-
-                r->loop()->call([reply, endpoint, r, remoteHost, port, closeID, laddr]() {
-                  auto ep = GetEndpointByName(r, endpoint);
-                  if (not ep)
-                  {
-                    reply(CreateJSONError("no such local endpoint"));
-                    return;
-                  }
-                  auto quic = ep->GetQUICTunnel();
-                  if (not quic)
-                  {
-                    reply(CreateJSONError("local endpoint has no quic tunnel"));
-                    return;
-                  }
-                  if (closeID)
-                  {
-                    quic->close(closeID);
-                    reply(CreateJSONResponse("OK"));
-                    return;
-                  }
-
-                  try
-                  {
-                    auto [addr, id] = quic->open(
-                        remoteHost, port, [](auto&&) {}, laddr);
-                    util::StatusObject status;
-                    status["addr"] = addr.ToString();
-                    status["id"] = id;
-                    reply(CreateJSONResponse(status));
-                  }
-                  catch (std::exception& ex)
-                  {
-                    reply(CreateJSONError(ex.what()));
-                  }
-                });
-              });
-            })
-        .add_request_command(
-            "quic_listener",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                std::string endpoint = "default";
-                if (auto itr = obj.find("endpoint"); itr != obj.end())
-                  endpoint = itr->get<std::string>();
-
-                std::string remote = "127.0.0.1";
-                if (auto itr = obj.find("host"); itr != obj.end())
-                  remote = itr->get<std::string>();
-
-                uint16_t port = 0;
-                if (auto itr = obj.find("port"); itr != obj.end())
-                  port = itr->get<uint16_t>();
-
-                int closeID = 0;
-                if (auto itr = obj.find("close"); itr != obj.end())
-                  closeID = itr->get<int>();
-
-                std::string srvProto;
-                if (auto itr = obj.find("srv-proto"); itr != obj.end())
-                  srvProto = itr->get<std::string>();
-
-                if (port == 0 and closeID == 0)
-                {
-                  reply(CreateJSONError("invalid arguments"));
-                  return;
-                }
-                r->loop()->call([reply, endpoint, remote, port, r, closeID, srvProto]() {
-                  auto ep = GetEndpointByName(r, endpoint);
-                  if (not ep)
-                  {
-                    reply(CreateJSONError("no such local endpoint"));
-                    return;
-                  }
-                  auto quic = ep->GetQUICTunnel();
-                  if (not quic)
-                  {
-                    reply(CreateJSONError("no quic interface available on endpoint " + endpoint));
-                    return;
-                  }
-                  if (port)
-                  {
-                    int id = 0;
-                    try
-                    {
-                      SockAddr addr{remote + ":" + std::to_string(port)};
-                      id = quic->listen(addr);
-                    }
-                    catch (std::exception& ex)
-                    {
-                      reply(CreateJSONError(ex.what()));
-                      return;
-                    }
-                    util::StatusObject result;
-                    result["id"] = id;
-                    std::string localAddress;
-                    var::visit(
-                        [&](auto&& addr) { localAddress = addr.ToString(); }, ep->LocalAddress());
-                    result["addr"] = localAddress + ":" + std::to_string(port);
-                    if (not srvProto.empty())
-                    {
-                      auto srvData =
-                          dns::SRVData::fromTuple(std::make_tuple(srvProto, 1, 1, port, ""));
-                      ep->PutSRVRecord(std::move(srvData));
-                    }
-                    reply(CreateJSONResponse(result));
-                  }
-                  else if (closeID)
-                  {
-                    quic->forget(closeID);
-                    reply(CreateJSONResponse("OK"));
-                  }
-                });
-              });
-            })
-        .add_request_command(
-            "lookup_snode",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                if (not r->IsServiceNode())
-                {
-                  reply(CreateJSONError("not supported"));
-                  return;
-                }
-                RouterID routerID;
-                if (auto itr = obj.find("snode"); itr != obj.end())
-                {
-                  std::string remote = itr->get<std::string>();
-                  if (not routerID.FromString(remote))
-                  {
-                    reply(CreateJSONError("invalid remote: " + remote));
-                    return;
-                  }
-                }
-                else
-                {
-                  reply(CreateJSONError("no remote provided"));
-                  return;
-                }
-                std::string endpoint = "default";
-                r->loop()->call([r, endpoint, routerID, reply]() {
-                  auto ep = r->exitContext().GetExitEndpoint(endpoint);
-                  if (ep == nullptr)
-                  {
-                    reply(CreateJSONError("cannot find local endpoint: " + endpoint));
-                    return;
-                  }
-                  ep->ObtainSNodeSession(routerID, [routerID, ep, reply](auto session) {
-                    if (session and session->IsReady())
-                    {
-                      const auto ip = net::TruncateV6(ep->GetIPForIdent(PubKey{routerID}));
-                      util::StatusObject status{{"ip", ip.ToString()}};
-                      reply(CreateJSONResponse(status));
-                    }
-                    else
-                      reply(CreateJSONError("failed to obtain snode session"));
-                  });
-                });
-              });
-            })
-        .add_request_command(
-            "endpoint",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                if (r->IsServiceNode())
-                {
-                  reply(CreateJSONError("not supported"));
-                  return;
-                }
-                std::string endpoint = "default";
-                std::unordered_set<service::Address> kills;
-                {
-                  const auto itr = obj.find("endpoint");
-                  if (itr != obj.end())
-                    endpoint = itr->get<std::string>();
-                }
-                {
-                  const auto itr = obj.find("kill");
-                  if (itr != obj.end())
-                  {
-                    if (itr->is_array())
-                    {
-                      for (auto kill_itr = itr->begin(); kill_itr != itr->end(); ++kill_itr)
-                      {
-                        if (kill_itr->is_string())
-                          kills.emplace(kill_itr->get<std::string>());
-                      }
-                    }
-                    else if (itr->is_string())
-                    {
-                      kills.emplace(itr->get<std::string>());
-                    }
-                  }
-                }
-                if (kills.empty())
-                {
-                  reply(CreateJSONError("no action taken"));
-                  return;
-                }
-                r->loop()->call([r, endpoint, kills, reply]() {
-                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                  if (ep == nullptr)
-                  {
-                    reply(CreateJSONError("no endpoint with name " + endpoint));
-                    return;
-                  }
-                  std::size_t removed = 0;
-                  for (auto kill : kills)
-                  {
-                    removed += ep->RemoveAllConvoTagsFor(std::move(kill));
-                  }
-                  reply(CreateJSONResponse(
-                      "removed " + std::to_string(removed) + " flow" + (removed == 1 ? "" : "s")));
-                });
-              });
-            })
-        .add_request_command(
-            "exit",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                if (r->IsServiceNode())
-                {
-                  reply(CreateJSONError("not supported"));
-                  return;
-                }
-                std::optional<service::Address> exit;
-                std::optional<std::string> lnsExit;
-                IPRange range;
-                bool map = true;
-                const auto exit_itr = obj.find("exit");
-                if (exit_itr != obj.end())
-                {
-                  service::Address addr;
-                  const auto exit_str = exit_itr->get<std::string>();
-                  if (service::NameIsValid(exit_str) or exit_str == "null")
-                  {
-                    lnsExit = exit_str;
-                  }
-                  else if (not addr.FromString(exit_str))
-                  {
-                    reply(CreateJSONError("invalid exit address"));
-                    return;
-                  }
-                  else
-                  {
-                    exit = addr;
-                  }
-                }
-
-                const auto unmap_itr = obj.find("unmap");
-                if (unmap_itr != obj.end() and unmap_itr->get<bool>())
-                {
-                  map = false;
-                }
-                const auto range_itr = obj.find("range");
-                if (range_itr == obj.end() or range_itr->is_null())
-                {
-                  // platforms without ipv6 support will shit themselves
-                  // here if we give them an exit mapping that is ipv6
-                  if constexpr (platform::supports_ipv6)
-                  {
-                    range.FromString("::/0");
-                  }
-                  else
-                  {
-                    range.FromString("0.0.0.0/0");
-                  }
-                }
-                else if (not range.FromString(range_itr->get<std::string>()))
-                {
-                  reply(CreateJSONError("invalid ip range"));
-                  return;
-                }
-                if (not platform::supports_ipv6 and not range.IsV4())
-                {
-                  reply(CreateJSONError("ipv6 ranges not supported on this platform"));
-                  return;
-                }
-                std::string token;
-                const auto token_itr = obj.find("token");
-                if (token_itr != obj.end() and not token_itr->is_null())
-                {
-                  token = token_itr->get<std::string>();
-                }
-
-                std::string endpoint = "default";
-                const auto endpoint_itr = obj.find("endpoint");
-                if (endpoint_itr != obj.end())
-                {
-                  endpoint = endpoint_itr->get<std::string>();
-                }
-                r->loop()->call([map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
-                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                  if (ep == nullptr)
-                  {
-                    reply(CreateJSONError("no endpoint with name " + endpoint));
-                    return;
-                  }
-                  if (map and (exit.has_value() or lnsExit.has_value()))
-                  {
-                    auto mapExit = [=](service::Address addr) mutable {
-                      ep->MapExitRange(range, addr);
-
-                      bool shouldSendAuth = false;
-                      if (not token.empty())
-                      {
-                        shouldSendAuth = true;
-                        ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{token});
-                      }
-                      auto onGoodResult = [r, reply](std::string reason) {
-                        if (r->HasClientExit())
-                          reply(CreateJSONResponse(reason));
-                        else
-                          reply(CreateJSONError("we dont have an exit?"));
-                      };
-                      auto onBadResult = [r, reply, ep, range](std::string reason) {
-                        r->routePoker()->Down();
-                        ep->UnmapExitRange(range);
-                        reply(CreateJSONError(reason));
-                      };
-                      if (addr.IsZero())
-                      {
-                        onGoodResult("added null exit");
-                        return;
-                      }
-                      ep->MarkAddressOutbound(addr);
-                      ep->EnsurePathToService(
-                          addr,
-                          [onBadResult, onGoodResult, shouldSendAuth, addrStr = addr.ToString()](
-                              auto, service::OutboundContext* ctx) {
-                            if (ctx == nullptr)
-                            {
-                              onBadResult("could not find exit");
-                              return;
-                            }
-                            if (not shouldSendAuth)
-                            {
-                              onGoodResult("OK: connected to " + addrStr);
-                              return;
-                            }
-                            ctx->AsyncSendAuth(
-                                [onGoodResult, onBadResult](service::AuthResult result) {
-                                  // TODO: refactor this code.  We are 5 lambdas deep here!
-                                  if (result.code != service::AuthResultCode::eAuthAccepted)
-                                  {
-                                    onBadResult(result.reason);
-                                    return;
-                                  }
-                                  onGoodResult(result.reason);
-                                });
-                          });
-                    };
-                    if (exit.has_value())
-                    {
-                      mapExit(*exit);
-                    }
-                    else if (lnsExit.has_value())
-                    {
-                      const std::string name = *lnsExit;
-                      if (name == "null")
-                      {
-                        service::Address nullAddr{};
-                        mapExit(nullAddr);
-                        return;
-                      }
-                      ep->LookupNameAsync(name, [reply, mapExit](auto maybe) mutable {
-                        if (not maybe.has_value())
-                        {
-                          reply(CreateJSONError("we could not find an exit with that name"));
-                          return;
-                        }
-                        if (auto ptr = std::get_if<service::Address>(&*maybe))
-                        {
-                          if (ptr->IsZero())
-                            reply(CreateJSONError("name does not exist"));
-                          else
-                            mapExit(*ptr);
-                        }
-                        else
-                        {
-                          reply(CreateJSONError("lns name resolved to a snode"));
-                        }
-                      });
-                    }
-                    else
-                    {
-                      reply(
-                          CreateJSONError("WTF inconsistent request, no exit address or lns "
-                                          "name provided?"));
-                    }
-                    return;
-                  }
-                  else if (map and not exit.has_value())
-                  {
-                    reply(CreateJSONError("no exit address provided"));
-                    return;
-                  }
-                  else if (not map)
-                  {
-                    r->routePoker()->Down();
-                    ep->UnmapExitRange(range);
-                    reply(CreateJSONResponse("OK"));
-                  }
-                });
-              });
-            })
-        .add_request_command(
-            "dns_query",
-            [&](oxenmq::Message& msg) {
-              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-                std::string endpoint{"default"};
-                if (const auto itr = obj.find("endpoint"); itr != obj.end())
-                {
-                  endpoint = itr->get<std::string>();
-                }
-                std::string qname{};
-                dns::QType_t qtype = dns::qTypeA;
-                if (const auto itr = obj.find("qname"); itr != obj.end())
-                {
-                  qname = itr->get<std::string>();
-                }
-
-                if (const auto itr = obj.find("qtype"); itr != obj.end())
-                {
-                  qtype = itr->get<dns::QType_t>();
-                }
-
-                dns::Message msg{dns::Question{qname, qtype}};
-
-                if (auto ep_ptr = GetEndpointByName(r, endpoint))
-                {
-                  if (auto dns = ep_ptr->DNS())
-                  {
-                    auto src = std::make_shared<DummyPacketSource>([reply](auto result) {
-                      if (result)
-                        reply(CreateJSONResponse(result->ToJSON()));
-                      else
-                        reply(CreateJSONError("no response from dns"));
-                    });
-                    if (not dns->MaybeHandlePacket(src, src->dumb, src->dumb, msg.ToBuffer()))
-                    {
-                      reply(CreateJSONError("dns query not accepted by endpoint"));
-                    }
-                  }
-                  else
-                    reply(CreateJSONError("endpoint does not have dns"));
-                  return;
-                }
-                reply(CreateJSONError("no such endpoint for dns query"));
-              });
-            })
-        .add_request_command("config", [&](oxenmq::Message& msg) {
-          HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
-            {
-              const auto itr = obj.find("override");
-              if (itr != obj.end())
-              {
-                if (not itr->is_object())
-                {
-                  reply(CreateJSONError("override is not an object"));
-                  return;
-                }
-                for (const auto& [section, value] : itr->items())
-                {
-                  if (not value.is_object())
-                  {
-                    reply(CreateJSONError(
-                        fmt::format("failed to set [{}]: section is not an object", section)));
-                    return;
-                  }
-                  for (const auto& [key, value] : value.items())
-                  {
-                    if (not value.is_string())
-                    {
-                      reply(CreateJSONError(fmt::format(
-                          "failed to set [{}]:{}: value is not a string", section, key)));
-                      return;
-                    }
-                    r->GetConfig()->Override(section, key, value.get<std::string>());
-                  }
-                }
-              }
-            }
-            {
-              const auto itr = obj.find("reload");
-              if (itr != obj.end() and itr->get<bool>())
-              {
-                r->QueueDiskIO([conf = r->GetConfig()]() { conf->Save(); });
-              }
-            }
-            reply(CreateJSONResponse("OK"));
+    for (auto& req : rpc_request_map)
+    {
+      m_LMQ->add_request_command(
+          "llarp",
+          req.first,
+          [name = std::string_view{req.first}, &call = req.second, this](oxenmq::Message& m) {
+            call.invoke(m, *this);
           });
+    }
+  }
+
+  void
+  RPCServer::invoke(Halt& halt)
+  {
+    if (not m_Router.IsRunning())
+    {
+      SetJSONError("Router is not running", halt.response);
+      return;
+    }
+    SetJSONResponse("OK", halt.response);
+    m_Router.Stop();
+  }
+
+  void
+  RPCServer::invoke(Version& version)
+  {
+    util::StatusObject result{
+        {"version", llarp::VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
+
+    SetJSONResponse(result, version.response);
+  }
+
+  void
+  RPCServer::invoke(Status& status)
+  {
+    (m_Router.IsRunning()) ? SetJSONResponse(m_Router.ExtractStatus(), status.response)
+                           : SetJSONError("Router is not yet ready", status.response);
+  }
+
+  void
+  RPCServer::invoke(GetStatus& getstatus)
+  {
+    SetJSONResponse(m_Router.ExtractSummaryStatus(), getstatus.response);
+  }
+
+  void
+  RPCServer::invoke(QuicConnect& quicconnect)
+  {
+    if (quicconnect.request.port == 0 and quicconnect.request.closeID == 0)
+    {
+      SetJSONError("Port not provided", quicconnect.response);
+      return;
+    }
+
+    if (quicconnect.request.remoteHost.empty() and quicconnect.request.closeID == 0)
+    {
+      SetJSONError("Host not provided", quicconnect.response);
+      return;
+    }
+
+    auto endpoint = (quicconnect.request.endpoint.empty())
+        ? GetEndpointByName(m_Router, "default")
+        : GetEndpointByName(m_Router, quicconnect.request.endpoint);
+
+    if (not endpoint)
+    {
+      SetJSONError("No such local endpoint found.", quicconnect.response);
+      return;
+    }
+
+    auto quic = endpoint->GetQUICTunnel();
+
+    if (not quic)
+    {
+      SetJSONError(
+          "No quic interface available on endpoint " + quicconnect.request.endpoint,
+          quicconnect.response);
+      return;
+    }
+
+    if (quicconnect.request.closeID)
+    {
+      quic->forget(quicconnect.request.closeID);
+      SetJSONResponse("OK", quicconnect.response);
+      return;
+    }
+
+    SockAddr laddr{quicconnect.request.bindAddr};
+
+    try
+    {
+      auto [addr, id] = quic->open(
+          quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
+
+      util::StatusObject status;
+      status["addr"] = addr.ToString();
+      status["id"] = id;
+
+      SetJSONResponse(status, quicconnect.response);
+    }
+    catch (std::exception& e)
+    {
+      SetJSONError(e.what(), quicconnect.response);
+    }
+  }
+
+  void
+  RPCServer::invoke(QuicListener& quiclistener)
+  {
+    if (quiclistener.request.port == 0 and quiclistener.request.closeID == 0)
+    {
+      SetJSONError("Invalid arguments", quiclistener.response);
+      return;
+    }
+
+    auto endpoint = (quiclistener.request.endpoint.empty())
+        ? GetEndpointByName(m_Router, "default")
+        : GetEndpointByName(m_Router, quiclistener.request.endpoint);
+
+    if (not endpoint)
+    {
+      SetJSONError("No such local endpoint found", quiclistener.response);
+      return;
+    }
+
+    auto quic = endpoint->GetQUICTunnel();
+
+    if (not quic)
+    {
+      SetJSONError(
+          "No quic interface available on endpoint " + quiclistener.request.endpoint,
+          quiclistener.response);
+      return;
+    }
+
+    if (quiclistener.request.closeID)
+    {
+      quic->forget(quiclistener.request.closeID);
+      SetJSONResponse("OK", quiclistener.response);
+      return;
+    }
+
+    if (quiclistener.request.port)
+    {
+      auto id = 0;
+      try
+      {
+        SockAddr addr{quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
+        id = quic->listen(addr);
+      }
+      catch (std::exception& e)
+      {
+        SetJSONError(e.what(), quiclistener.response);
+        return;
+      }
+
+      util::StatusObject result;
+      result["id"] = id;
+      std::string localAddress;
+      var::visit([&](auto&& addr) { localAddress = addr.ToString(); }, endpoint->LocalAddress());
+      result["addr"] = localAddress + ":" + std::to_string(quiclistener.request.port);
+
+      if (not quiclistener.request.srvProto.empty())
+      {
+        auto srvData = dns::SRVData::fromTuple(
+            std::make_tuple(quiclistener.request.srvProto, 1, 1, quiclistener.request.port, ""));
+        endpoint->PutSRVRecord(std::move(srvData));
+      }
+
+      SetJSONResponse(result, quiclistener.response);
+      return;
+    }
+  }
+
+  // TODO: fix this because it's bad
+  void
+  RPCServer::invoke(LookupSnode& lookupsnode)
+  {
+    if (not m_Router.IsServiceNode())
+    {
+      SetJSONError("Not supported", lookupsnode.response);
+      return;
+    }
+
+    RouterID routerID;
+    if (lookupsnode.request.routerID.empty())
+    {
+      SetJSONError("No remote ID provided", lookupsnode.response);
+      return;
+    }
+
+    if (not routerID.FromString(lookupsnode.request.routerID))
+    {
+      SetJSONError("Invalid remote: " + lookupsnode.request.routerID, lookupsnode.response);
+      return;
+    }
+
+    m_Router.loop()->call([&]() {
+      auto endpoint = m_Router.exitContext().GetExitEndpoint("default");
+
+      if (endpoint == nullptr)
+      {
+        SetJSONError("Cannot find local endpoint: default", lookupsnode.response);
+        return;
+      }
+
+      endpoint->ObtainSNodeSession(routerID, [&](auto session) {
+        if (session and session->IsReady())
+        {
+          const auto ip = net::TruncateV6(endpoint->GetIPForIdent(PubKey{routerID}));
+          util::StatusObject status{{"ip", ip.ToString()}};
+          SetJSONResponse(status, lookupsnode.response);
+          return;
+        }
+
+        SetJSONError("Failed to obtain snode session", lookupsnode.response);
+        return;
+      });
+    });
+  }
+
+  void
+  RPCServer::invoke(MapExit& mapexit)
+  {
+    MapExit exit_request;
+    // steal replier from exit RPC endpoint
+    exit_request.replier.emplace(mapexit.move());
+
+    m_Router.hiddenServiceContext().GetDefault()->map_exit(
+        mapexit.request.address,
+        mapexit.request.token,
+        mapexit.request.ip_range,
+        [exit = std::move(exit_request)](bool success, std::string result) mutable {
+          if (success)
+            exit.send_response({{"result"}, std::move(result)});
+          else
+            exit.send_response({{"error"}, std::move(result)});
         });
   }
 
   void
-  RpcServer::HandleLogsSubRequest(oxenmq::Message& m)
+  RPCServer::invoke(ListExits& listexits)
+  {
+    if (not m_Router.hiddenServiceContext().hasEndpoints())
+    {
+      SetJSONError("No mapped endpoints found", listexits.response);
+      return;
+    }
+
+    auto status = m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["exitMap"];
+
+    SetJSONResponse((status.empty()) ? "No exits" : status, listexits.response);
+  }
+
+  void
+  RPCServer::invoke(UnmapExit& unmapexit)
+  {
+    try
+    {
+      for (auto& ip : unmapexit.request.ip_range)
+        m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
+    }
+    catch (std::exception& e)
+    {
+      SetJSONError("Unable to unmap to given range", unmapexit.response);
+      return;
+    }
+
+    SetJSONResponse("OK", unmapexit.response);
+  }
+
+  //  Sequentially calls map_exit and unmap_exit to hotswap mapped connection from old exit
+  //  to new exit. Similar to how map_exit steals the oxenmq deferredsend object, swapexit
+  //  moves the replier object to the unmap_exit struct, as that is called second. Rather than
+  //  the nested lambda within map_exit making the reply call, it instead calls the unmap_exit logic
+  //  and leaves the message handling to the unmap_exit struct
+  void
+  RPCServer::invoke(SwapExits& swapexits)
+  {
+    MapExit map_request;
+    UnmapExit unmap_request;
+    auto endpoint = m_Router.hiddenServiceContext().GetDefault();
+    auto current_exits = endpoint->ExtractStatus()["exitMap"];
+
+    if (current_exits.empty())
+    {
+      SetJSONError("Cannot swap to new exit: no exits currently mapped", swapexits.response);
+      return;
+    }
+
+    if (swapexits.request.exit_addresses.size() < 2)
+    {
+      SetJSONError("Exit addresses not passed", swapexits.response);
+      return;
+    }
+
+    // steal replier from swapexit RPC endpoint
+    unmap_request.replier.emplace(swapexits.move());
+
+    // set map_exit request to new address
+    map_request.request.address = swapexits.request.exit_addresses[1];
+
+    // set token for new exit node mapping
+    if (not swapexits.request.token.empty())
+      map_request.request.token = swapexits.request.token;
+
+    // populate map_exit request with old IP ranges
+    for (auto& [range, exit] : current_exits.items())
+    {
+      if (exit.get<std::string>() == swapexits.request.exit_addresses[0])
+      {
+        map_request.request.ip_range.emplace_back(range);
+        unmap_request.request.ip_range.emplace_back(range);
+      }
+    }
+
+    if (map_request.request.ip_range.empty() or unmap_request.request.ip_range.empty())
+    {
+      SetJSONError("No mapped ranges found matching requested swap", swapexits.response);
+      return;
+    }
+
+    endpoint->map_exit(
+        map_request.request.address,
+        map_request.request.token,
+        map_request.request.ip_range,
+        [unmap = std::move(unmap_request),
+         ep = endpoint,
+         old_exit = swapexits.request.exit_addresses[0]](bool success, std::string result) mutable {
+          if (not success)
+            unmap.send_response({{"error"}, std::move(result)});
+          else
+          {
+            try
+            {
+              for (auto& ip : unmap.request.ip_range)
+                ep->UnmapRangeByExit(ip, old_exit);
+            }
+            catch (std::exception& e)
+            {
+              SetJSONError("Unable to unmap to given range", unmap.response);
+              return;
+            }
+
+            SetJSONResponse("OK", unmap.response);
+            unmap.send_response();
+          }
+        });
+  }
+
+  void
+  RPCServer::invoke(DNSQuery& dnsquery)
+  {
+    std::string qname = (dnsquery.request.qname.empty()) ? "" : dnsquery.request.qname;
+    dns::QType_t qtype = (dnsquery.request.qtype) ? dnsquery.request.qtype : dns::qTypeA;
+
+    dns::Message msg{dns::Question{qname, qtype}};
+
+    auto endpoint = (dnsquery.request.endpoint.empty())
+        ? GetEndpointByName(m_Router, "default")
+        : GetEndpointByName(m_Router, dnsquery.request.endpoint);
+
+    if (endpoint == nullptr)
+    {
+      SetJSONError("No such endpoint found for dns query", dnsquery.response);
+      return;
+    }
+
+    if (auto dns = endpoint->DNS())
+    {
+      auto packet_src = std::make_shared<DummyPacketSource>([&](auto result) {
+        if (result)
+          SetJSONResponse(result->ToJSON(), dnsquery.response);
+        else
+          SetJSONError("No response from DNS", dnsquery.response);
+      });
+      if (not dns->MaybeHandlePacket(
+              packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
+        SetJSONError("DNS query not accepted by endpoint", dnsquery.response);
+    }
+    else
+      SetJSONError("Endpoint does not have dns", dnsquery.response);
+    return;
+  }
+
+  void
+  RPCServer::invoke(Config& config)
+  {
+    if (config.request.filename.empty() and not config.request.ini.empty())
+    {
+      SetJSONError("No filename specified for .ini file", config.response);
+      return;
+    }
+    if (config.request.ini.empty() and not config.request.filename.empty())
+    {
+      SetJSONError("No .ini chunk provided", config.response);
+      return;
+    }
+
+    if (not ends_with(config.request.filename, ".ini"))
+    {
+      SetJSONError("Must append '.ini' to filename", config.response);
+      return;
+    }
+
+    if (not check_path(config.request.filename))
+    {
+      SetJSONError("Bad filename passed", config.response);
+      return;
+    }
+
+    fs::path conf_d{"conf.d"};
+
+    if (config.request.del and not config.request.filename.empty())
+    {
+      try
+      {
+        if (fs::exists(conf_d / (config.request.filename)))
+          fs::remove(conf_d / (config.request.filename));
+      }
+      catch (std::exception& e)
+      {
+        SetJSONError(e.what(), config.response);
+        return;
+      }
+    }
+    else
+    {
+      try
+      {
+        if (not fs::exists(conf_d))
+          fs::create_directory(conf_d);
+
+        auto parser = ConfigParser();
+
+        if (parser.LoadNewFromStr(config.request.ini))
+        {
+          parser.Filename(conf_d / (config.request.filename));
+          parser.SaveNew();
+        }
+      }
+      catch (std::exception& e)
+      {
+        SetJSONError(e.what(), config.response);
+        return;
+      }
+    }
+
+    SetJSONResponse("OK", config.response);
+  }
+
+  void
+  RPCServer::HandleLogsSubRequest(oxenmq::Message& m)
   {
     if (m.data.size() != 1)
     {
