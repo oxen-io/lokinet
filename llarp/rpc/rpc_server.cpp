@@ -422,6 +422,12 @@ namespace llarp::rpc
       return;
     }
 
+    if (swapexits.request.exit_addresses.size() < 2)
+    {
+      SetJSONError("Exit addresses not passed", swapexits.response);
+      return;
+    }
+
     // steal replier from swapexit RPC endpoint
     unmap_request.replier.emplace(swapexits.move());
 

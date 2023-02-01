@@ -202,16 +202,24 @@ main(int argc, char* argv[])
 
   if (options.killDaemon)
   {
-    if (not OMQ_Request(omq, connectionID, "llarp.halt"))
+    auto maybe_halt = OMQ_Request(omq, connectionID, "llarp.halt");
+
+    if (not maybe_halt)
       return exit_error("Call to llarp.halt failed");
-    return 0;
+
+    if (auto err_it = maybe_halt->find("error");
+        err_it != maybe_halt->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
   }
 
   if (options.printStatus)
   {
     const auto maybe_status = OMQ_Request(omq, connectionID, "llarp.status");
+
     if (not maybe_status)
-      return exit_error("call to llarp.status failed");
+      return exit_error("Call to llarp.status failed");
 
     try
     {
@@ -219,7 +227,7 @@ main(int argc, char* argv[])
 
       if (ep.empty())
       {
-        std::cout << "no exits" << std::endl;
+        std::cout << "No exits found" << std::endl;
       }
       else
       {
@@ -231,7 +239,7 @@ main(int argc, char* argv[])
     }
     catch (std::exception& ex)
     {
-      return exit_error("failed to parse result: {}", ex.what());
+      return exit_error("Failed to parse result: {}", ex.what());
     }
     return 0;
   }
@@ -240,8 +248,16 @@ main(int argc, char* argv[])
   {
     nlohmann::json opts{{"exit_addresses", std::move(options.swapExits)}};
 
-    if (not OMQ_Request(omq, connectionID, "llarp.swap_exits", std::move(opts)))
+    auto maybe_swap = OMQ_Request(omq, connectionID, "llarp.swap_exits", std::move(opts));
+
+    if (not maybe_swap)
       return exit_error("Failed to swap exit node connections");
+
+    if (auto err_it = maybe_swap->find("error");
+        err_it != maybe_swap->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
   }
 
   if (options.vpnUp)
@@ -253,7 +269,7 @@ main(int argc, char* argv[])
     auto maybe_result = OMQ_Request(omq, connectionID, "llarp.map_exit", std::move(opts));
 
     if (not maybe_result)
-      return exit_error("could not add exit");
+      return exit_error("Could not add exit");
 
     if (auto err_it = maybe_result->find("error");
         err_it != maybe_result->end() and not err_it.value().is_null())
@@ -266,8 +282,17 @@ main(int argc, char* argv[])
     nlohmann::json opts{{"unmap_exit", true}};
     if (options.range)
       opts["ip_range"] = *options.range;
-    if (not OMQ_Request(omq, connectionID, "llarp.unmap_exit", std::move(opts)))
+
+    auto maybe_down = OMQ_Request(omq, connectionID, "llarp.unmap_exit", std::move(opts));
+
+    if (not maybe_down)
       return exit_error("Failed to unmap exit node connection");
+
+    if (auto err_it = maybe_down->find("error");
+        err_it != maybe_down->end() and not err_it.value().is_null())
+    {
+      return exit_error("{}", err_it.value());
+    }
   }
 
   return 0;
