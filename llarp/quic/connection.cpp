@@ -54,7 +54,7 @@ namespace llarp::quic
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-    constexpr int FAIL = NGTCP2_ERR_CALLBACK_FAILURE;
+    constexpr int CALLBACK_FAIL = NGTCP2_ERR_CALLBACK_FAILURE;
 
     int
     client_initial(ngtcp2_conn* conn_, void* user_data)
@@ -78,7 +78,7 @@ namespace llarp::quic
       assert(conn_ == conn.conn.get());
 
       if (0 != conn.setup_server_crypto_initial())
-        return FAIL;
+        return CALLBACK_FAIL;
 
       return 0;
     }
@@ -100,7 +100,7 @@ namespace llarp::quic
         case NGTCP2_CRYPTO_LEVEL_EARLY:
           // We don't currently use or support 0rtt
           log::warning(logcat, "Invalid EARLY crypto level");
-          return FAIL;
+          return CALLBACK_FAIL;
 
         case NGTCP2_CRYPTO_LEVEL_INITIAL:
           // "Initial" level means we are still handshaking; if we are server then we receive
@@ -109,14 +109,23 @@ namespace llarp::quic
           // server, which is that returned server transport params.
 
           if (auto rv = conn.recv_initial_crypto(data); rv != 0)
+          {
+            log::debug(logcat, "conn.recv_initial_crypto() returned error: {}", ngtcp2_strerror(rv));
             return rv;
+          }
 
           if (ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
+            {
+              log::debug(logcat, "conn.send_magic() returned error: {}", ngtcp2_strerror(rv));
               return rv;
+            }
             if (auto rv = conn.send_transport_params(NGTCP2_CRYPTO_LEVEL_HANDSHAKE); rv != 0)
+            {
+              log::debug(logcat, "conn.send_transport_params() returned error: {}", ngtcp2_strerror(rv));
               return rv;
+            }
           }
 
           break;
@@ -125,20 +134,26 @@ namespace llarp::quic
           if (!ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.recv_transport_params(data); rv != 0)
+            {
+              log::debug(logcat, "conn.recv_transport_params() returned error: {}", ngtcp2_strerror(rv));
               return rv;
+            }
             // At this stage of the protocol with TLS the client sends back TLS info so that
             // the server can install our rx key; we have to send *something* back to invoke
             // the server's HANDSHAKE callback (so that it knows handshake is complete) so
             // send the magic again.
             if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_HANDSHAKE); rv != 0)
+            {
+              log::debug(logcat, "conn.send_magic() returned error: {}", ngtcp2_strerror(rv));
               return rv;
+            }
           }
           else
           {
             // Check that we received the above as expected
             if (data != handshake_magic)
             {
-              log::warning(
+              log::info(
                   logcat,
                   "Invalid handshake crypto frame from client: did not find expected magic");
               return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -150,12 +165,12 @@ namespace llarp::quic
 
         case NGTCP2_CRYPTO_LEVEL_APPLICATION:
           // if (!conn.init_tx_key())
-          //    return FAIL;
+          //    return CALLBACK_FAIL;
           break;
 
         default:
           log::warning(logcat, "Unhandled crypto_level {}", crypto_level);
-          return FAIL;
+          return CALLBACK_FAIL;
       }
       conn.io_ready();
       return 0;
@@ -424,7 +439,7 @@ namespace llarp::quic
     // FIXME: IPv6
     settings.max_tx_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
-    // settings.initial_rtt = ???; # NGTCP2's default is 333ms
+    // settings.initial_rtt = std::chrono::nanoseconds(333ms).count(); // NGTCP2's default is 333ms
 
     ngtcp2_transport_params_default(&tparams);
 
@@ -570,6 +585,7 @@ namespace llarp::quic
   void
   Connection::flush_streams()
   {
+    log::trace(logcat, "Connection::flush_streams()");
     // conn, path, pi, dest, destlen, and ts
     std::optional<uint64_t> ts;
 
@@ -625,7 +641,7 @@ namespace llarp::quic
 
     std::list<Stream*> strs;
     for (auto& [stream_id, stream_ptr] : streams)
-      if (stream_ptr)
+      if (stream_ptr and not stream_ptr->sent_fin)
         strs.push_back(stream_ptr.get());
 
     // Maximum number of stream data packets to send out at once; if we reach this then we'll
@@ -1035,6 +1051,7 @@ namespace llarp::quic
   void
   Connection::complete_handshake()
   {
+    log::trace(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
     endpoint.null_crypto.install_rx_key(*this);
     if (!ngtcp2_conn_is_server(*this))
       endpoint.null_crypto.install_tx_key(*this);

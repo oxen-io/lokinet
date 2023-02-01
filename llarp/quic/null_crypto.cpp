@@ -26,6 +26,7 @@ namespace llarp::quic
   void
   NullCrypto::client_initial(Connection& conn)
   {
+    log::debug(logcat, "Client initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
     ngtcp2_conn_install_initial_key(
         conn,

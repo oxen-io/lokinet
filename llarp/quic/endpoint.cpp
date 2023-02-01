@@ -238,13 +238,11 @@ namespace llarp::quic
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
-    const ngtcp2_connection_close_error err{
-        // FIXME: propagate which type this should be to here; defaulting
-        NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT,
+    ngtcp2_connection_close_error err;
+    ngtcp2_connection_close_error_set_transport_error(&err,
         code,
-        0,  // 0 == unknown
         reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
-        close_reason.size()};
+        close_reason.size());
     if (!conn.closing)
     {
       conn.conn_buffer.resize(max_pkt_size_v4);
@@ -339,8 +337,8 @@ namespace llarp::quic
 
         // a bit of buffer on the expiration time in case the last call to
         // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
-        // hasn't had time to handle it yet.  2ms should do.
-        if (exp >= (now_ts - 2'000'000) || conn.draining)
+        // hasn't had time to handle it yet.  5ms should do.
+        if (exp >= (now_ts - 5'000'000) || conn.draining)
           continue;
         log::debug(logcat, "Draining connection {}", it->first);
         start_draining(conn);
