@@ -530,7 +530,21 @@ if(WITH_EMBEDDED_LOKINET)
     install(TARGETS lokinet-embedded-api DESTINATION bin COMPONENT liblokinet)
   else()
     get_target_property(embedded-libs lokinet-amalgum INTERFACE_LINK_LIBRARIES)
-    combine_archives(lokinet-embedded ${embedded-libs})
+    combine_archives(lokinet-embedded
+      ${embedded-libs}
+      ngtcp2_static
+      uv_a::uv_a
+      sodium
+      zlib
+      OpenSSL::SSL
+      OpenSSL::Crypto
+      expat
+      libunbound
+      libzmq
+      fmt::fmt
+      spdlog::spdlog
+      oxen::logging
+      oxenmq::oxenmq)
     install(TARGETS lokinet-embedded LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
 endif()
