@@ -520,57 +520,19 @@ target_link_libraries(lokinet-plainquic PUBLIC
 
 if(WITH_EMBEDDED_LOKINET)
   include(GNUInstallDirs)
-  add_library(lokinet-shared SHARED lokinet_shared.cpp)
-  target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
+  add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
+  lokinet_link_lib(lokinet-embedded-api)
   if(WIN32)
     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
   endif()
-  set_target_properties(lokinet-shared PROPERTIES OUTPUT_NAME lokinet)
   if(WIN32)
-    target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
-    install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
-  elseif(NOT APPLE)
-    install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
-  endif()
-endif()
-
-if(WITH_EMBEDDED_LOKINET)
-  add_library(lokinet-embedded-api STATIC lokinet_shared.cpp)
-  target_link_libraries(lokinet-embedded-api PUBLIC lokinet-amalgum)
-  combine_archives(lokinet-embedded
-    lokinet-embedded-api
-    lokinet-platform
-    lokinet-util
-    lokinet-cryptography
-    lokinet-amalgum
-    lokinet-config
-    lokinet-dns
-    ngtcp2_static
-    uv_a::uv_a
-    sodium
-    zlib
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    expat
-    libunbound
-    libzmq
-    fmt::fmt
-    spdlog::spdlog
-    oxen::logging
-    oxenmq::oxenmq)
-  if(IOS)
-    set(lib_folder lib-${ARCH})
+    target_link_libraries(lokinet-embedded-api PUBLIC ws2_32 iphlpapi -fstack-protector)
+    install(TARGETS lokinet-embedded-api DESTINATION bin COMPONENT liblokinet)
   else()
-    set(lib_folder lib)
+    get_target_property(embedded-libs lokinet-amalgum INTERFACE_LINK_LIBRARIES)
+    combine_archives(lokinet-embedded ${embedded-libs})
+    install(TARGETS lokinet-embedded LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
   endif()
-  install(TARGETS lokinet-embedded
-    ARCHIVE DESTINATION ${lib_folder}
-    EXCLUDE_FROM_ALL)
-endif()
-
-if(APPLE)
-  add_subdirectory(apple)
-  target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
 endif()
 
 file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
