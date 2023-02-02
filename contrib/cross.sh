@@ -45,7 +45,7 @@ for arch in $archs ; do
         -DSTATIC_LINK=ON \
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTING=OFF \
-        -DBUILD_LIBLOKINET=OFF \
+        -DWITH_EMBEDDED_LOKINET=OFF \
         -DWITH_TESTS=OFF \
         -DNATIVE_BUILD=OFF \
         -DSTATIC_LINK=ON \
