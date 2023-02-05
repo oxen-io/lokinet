@@ -242,6 +242,7 @@ set(openssl_system_env "")
 set(openssl_arch "")
 set(openssl_configure_command ./config)
 set(openssl_flags "CFLAGS=${deps_CFLAGS}")
+set(unbound_ldflags "")
 if(CMAKE_CROSSCOMPILING)
   if(ARCH_TRIPLET STREQUAL x86_64-w64-mingw32)
     set(openssl_arch mingw64)
@@ -257,6 +258,9 @@ if(CMAKE_CROSSCOMPILING)
   elseif(ARCH_TRIPLET STREQUAL mips64-linux-gnuabi64)
     set(openssl_arch linux-mips64)
   elseif(ARCH_TRIPLET STREQUAL mips-linux-gnu)
+    set(openssl_arch linux-mips32)
+  elseif(ARCH_TRIPLET STREQUAL mips-openwrt-linux)
+    set(unbound_ldflags "-latomic")
     set(openssl_arch linux-mips32)
   elseif(ARCH_TRIPLET STREQUAL mipsel-linux-gnu)
     set(openssl_arch linux-mips)
@@ -319,7 +323,7 @@ build_external(unbound
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
-  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
+  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}" "LDFLAGS=${unbound_ldflags}"
 )
 add_static_target(libunbound unbound_external libunbound.a)
 if(NOT WIN32)
