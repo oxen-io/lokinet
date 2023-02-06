@@ -1,3 +1,9 @@
+lokinet (0.9.11-2~deb10) buster; urgency=medium
+
+  * ping oxend after getting identity keys
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 06 Feb 2023 12:47:27 -0400
+
 lokinet (0.9.11-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
