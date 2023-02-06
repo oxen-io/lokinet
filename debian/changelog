@@ -1,3 +1,9 @@
+lokinet (0.9.11-2~deb12) bookworm; urgency=medium
+
+  * ping oxend after getting identity keys
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 06 Feb 2023 12:47:21 -0400
+
 lokinet (0.9.11-1~deb12) bookworm; urgency=medium
 
   [ Jason Rhinelander ]
