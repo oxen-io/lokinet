@@ -46,11 +46,10 @@ namespace llarp
       void
       InformConnection(RouterID router, bool success);
 
-     private:
-      /// called when we have connected to lokid via lokimq
       void
-      Connected();
+      StartPings();
 
+     private:
       /// do a lmq command on the current connection
       void
       Command(std::string_view cmd);
