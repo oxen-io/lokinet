@@ -1,0 +1,63 @@
+From: Jeff Becker <jeff@lokinet.io>
+Date: Sun, 29 Jan 2023 18:24:49 -0500
+Subject: ping oxend after getting identity keys
+
+fixes #2125
+---
+ llarp/router/router.cpp        | 1 +
+ llarp/rpc/lokid_rpc_client.cpp | 4 ++--
+ llarp/rpc/lokid_rpc_client.hpp | 5 ++---
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/llarp/router/router.cpp b/llarp/router/router.cpp
+index f3a807e..0e7c277 100644
+--- a/llarp/router/router.cpp
++++ b/llarp/router/router.cpp
+@@ -361,6 +361,7 @@ namespace llarp
+           _identity = RpcClient()->ObtainIdentityKey();
+           const RouterID pk{pubkey()};
+           LogWarn("Obtained lokid identity key: ", pk);
++          RpcClient()->StartPings();
+           break;
+         }
+         catch (const std::exception& e)
+diff --git a/llarp/rpc/lokid_rpc_client.cpp b/llarp/rpc/lokid_rpc_client.cpp
+index a40c333..4161033 100644
+--- a/llarp/rpc/lokid_rpc_client.cpp
++++ b/llarp/rpc/lokid_rpc_client.cpp
+@@ -64,7 +64,7 @@ namespace llarp
+         LogInfo("connecting to lokid via LMQ at ", url.full_address());
+         m_Connection = m_lokiMQ->connect_remote(
+             url,
+-            [self = shared_from_this()](oxenmq::ConnectionID) { self->Connected(); },
++            [](oxenmq::ConnectionID) {},
+             [self = shared_from_this(), url](oxenmq::ConnectionID, std::string_view f) {
+               llarp::LogWarn("Failed to connect to lokid: ", f);
+               if (auto router = self->m_Router.lock())
+@@ -168,7 +168,7 @@ namespace llarp
+     }
+ 
+     void
+-    LokidRpcClient::Connected()
++    LokidRpcClient::StartPings()
+     {
+       constexpr auto PingInterval = 30s;
+       auto makePingRequest = [self = shared_from_this()]() {
+diff --git a/llarp/rpc/lokid_rpc_client.hpp b/llarp/rpc/lokid_rpc_client.hpp
+index bfc2674..cbd9b45 100644
+--- a/llarp/rpc/lokid_rpc_client.hpp
++++ b/llarp/rpc/lokid_rpc_client.hpp
+@@ -46,11 +46,10 @@ namespace llarp
+       void
+       InformConnection(RouterID router, bool success);
+ 
+-     private:
+-      /// called when we have connected to lokid via lokimq
+       void
+-      Connected();
++      StartPings();
+ 
++     private:
+       /// do a lmq command on the current connection
+       void
+       Command(std::string_view cmd);
