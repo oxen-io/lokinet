@@ -34,11 +34,7 @@ namespace
     std::shared_ptr<llarp::NodeDB>
     makeNodeDB() override
     {
-      if (not nodedb_dir.empty())
-      {
-        return llarp::Context::makeNodeDB();
-      }
-      return std::make_shared<llarp::NodeDB>();
+      return llarp::Context::makeNodeDB();
     }
   };
 
@@ -677,6 +673,7 @@ extern "C"
         return;
       }
       // TODO: make configurable (?)
+      // FIXME: appears unused?
       std::string endpoint{"default"};
 
       llarp::SockAddr localAddr;
@@ -699,7 +696,7 @@ extern "C"
                    router = ctx->impl->router,
                    remotehost,
                    remoteport,
-                   endpoint,
+                   endpoint, // FIXME: appears unused?
                    localAddr]() {
         auto ep = ctx->endpoint();
         if (ep == nullptr)
