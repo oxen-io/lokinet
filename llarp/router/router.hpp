@@ -78,6 +78,12 @@ namespace llarp
     path::BuildLimiter m_PathBuildLimiter;
 
     std::shared_ptr<EventLoopWakeup> m_Pump;
+    std::shared_ptr<EventLoopWakeup> m_Work;
+    std::vector<std::function<void()>> m_WorkJobs;
+
+    /// submits cpu heavy work from last event loop tick cycle to worker threads.
+    void
+    submit_work();
 
     path::BuildLimiter&
     pathBuildLimiter() override
@@ -196,9 +202,11 @@ namespace llarp
       return _vpnPlatform.get();
     }
 
+    /// queue functionally pure cpu heavy work to be done in another thread.
     void
     QueueWork(std::function<void(void)> func) override;
 
+    /// queue disk io bound work to be done in the disk io thread.
     void
     QueueDiskIO(std::function<void(void)> func) override;
 
