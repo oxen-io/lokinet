@@ -3,6 +3,7 @@
 #include "ini.hpp"
 
 #include <oxenmq/address.h>
+#include <oxenmq/oxenmq.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
@@ -1174,9 +1175,10 @@ namespace llarp
             key = "tcp://" + key;
 
           auto pubkeys = split(values, ",", true);
+          oxenmq::address key_addr{key};
 
           for (auto& pk : pubkeys)
-            m_rpcEncryptedAddresses[oxenmq::address{key}].emplace(pk);
+            m_rpcEncryptedAddresses[key_addr].emplace(pk);
         },
         Comment{
             "Specify encrypted listener addresses and comma-delimited public keys to be accepted ",
