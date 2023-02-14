@@ -109,6 +109,17 @@ namespace llarp::rpc
       LogInfo("Bound RPC server to ", addr.full_address());
     }
 
+    for (const auto& [address, allowed_keys] : r->GetConfig()->api.m_rpcEncryptedAddresses)
+    {
+      m_LMQ->listen_curve(address.zmq_address(), [allowed_keys = allowed_keys](auto pk, ...) {
+        if (std::find(allowed_keys.begin(), allowed_keys.end(), pk) != allowed_keys.end())
+          return oxenmq::AuthLevel::admin;
+
+        LogInfo("Curve pubkey not found in whitelist");
+        return oxenmq::AuthLevel::denied;
+      });
+    }
+
     AddCategories();
   }
 
