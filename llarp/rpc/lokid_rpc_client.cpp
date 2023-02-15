@@ -171,7 +171,12 @@ namespace llarp
     LokidRpcClient::StartPings()
     {
       constexpr auto PingInterval = 30s;
-      auto makePingRequest = [self = shared_from_this()]() {
+
+      auto router = m_Router.lock();
+      if (not router)
+        return;
+
+      auto makePingRequest = router->loop()->make_caller([self = shared_from_this()]() {
         // send a ping
         PubKey pk{};
         auto r = self->m_Router.lock();
@@ -208,10 +213,11 @@ namespace llarp
         // reason (e.g. oxend restarts and loses the subscription); we poll using the last known
         // hash so that the poll is very cheap (basically empty) if the block hasn't advanced.
         self->UpdateServiceNodeList();
-      };
+      });
+
       // Fire one ping off right away to get things going.
       makePingRequest();
-      m_lokiMQ->add_timer(makePingRequest, PingInterval);
+      m_lokiMQ->add_timer(std::move(makePingRequest), PingInterval);
     }
 
     void
