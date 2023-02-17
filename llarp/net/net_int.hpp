@@ -274,7 +274,7 @@ namespace llarp
     return llarp::net::ToHost(x);
   }
 
-  [[deprecated("use llarp::net::ToHost instead")]] inline net::ipv4addr_t
+  [[deprecated("use llarp::net::ToNet instead")]] inline net::ipv4addr_t
   xhtonl(huint32_t x)
   {
     return ToNet(x);

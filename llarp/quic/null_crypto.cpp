@@ -7,7 +7,9 @@ namespace llarp::quic
 {
   static auto logcat = log::Cat("quic");
 
-  // Cranks a value to "11", i.e. set it to its maximum
+  // "It's one louder, init?"
+  // "Why not make '10' higher?"
+  // "...These go to 11"
   template <typename T>
   void
   crank_to_eleven(T& val)
@@ -28,7 +30,7 @@ namespace llarp::quic
   {
     log::debug(logcat, "Client initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
-    ngtcp2_conn_install_initial_key(
+    int rv = ngtcp2_conn_install_initial_key(
         conn,
         &null_aead_ctx,
         null_iv.data(),
@@ -37,6 +39,10 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
+    
+    if (rv != 0)
+      log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
+
     ngtcp2_conn_set_retry_aead(conn, &null_aead, &null_aead_ctx);
     ngtcp2_conn_set_crypto_ctx(conn, &null_ctx);
   }
@@ -46,7 +52,7 @@ namespace llarp::quic
   {
     log::debug(logcat, "Server initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
-    ngtcp2_conn_install_initial_key(
+    int rv = ngtcp2_conn_install_initial_key(
         conn,
         &null_aead_ctx,
         null_iv.data(),
@@ -55,6 +61,10 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
+    
+    if (rv != 0)
+      log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
+
     ngtcp2_conn_set_crypto_ctx(conn, &null_ctx);
   }
 

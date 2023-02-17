@@ -24,6 +24,7 @@ void
 signal_handler(int)
 {
   run = false;
+  int a;
 }
 
 int

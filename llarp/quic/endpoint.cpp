@@ -60,6 +60,8 @@ namespace llarp::quic
     Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
 
     log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
+    // debug
+    log::debug(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
 
     handle_packet(pkt);
 
@@ -70,6 +72,8 @@ namespace llarp::quic
   Endpoint::handle_packet(const Packet& p)
   {
     log::trace(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
+    // debug
+    log::debug(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
       return;
@@ -154,6 +158,8 @@ namespace llarp::quic
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
     log::trace(logcat, "Reading packet from {}", p.path);
+    // debug
+    log::debug(logcat, "Reading packet from {}", p.path);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
@@ -201,6 +207,8 @@ namespace llarp::quic
             to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
       log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
+      // debug
+      log::debug(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
     }
     else
     {

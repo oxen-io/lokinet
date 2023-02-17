@@ -1,9 +1,13 @@
 #include "connection.hpp"
 #include "client.hpp"
+#include "external/ngtcp2/lib/ngtcp2_conn.h"
 #include "llarp/crypto/crypto.hpp"
 #include "llarp/quic/stream.hpp"
 #include "server.hpp"
+#include <ngtcp2/ngtcp2.h>
+#include <external/ngtcp2/crypto/includes/ngtcp2/ngtcp2_crypto.h>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <limits>
 #include <llarp/util/logging.hpp>
@@ -182,6 +186,29 @@ namespace llarp::quic
       conn.io_ready();
       return 0;
     }
+
+    int version_negotiation(
+      ngtcp2_conn *conn, 
+      uint32_t version,
+      const ngtcp2_cid *client_dcid,
+      void *user_data)
+    {
+      log::info(logcat, "{} called", __PRETTY_FUNCTION__);
+      return 0;
+    }
+
+    int 
+    handshake_completed(
+        ngtcp2_conn* _conn, 
+        void* user_data)
+    {
+      log::info(logcat, "{} called", __PRETTY_FUNCTION__);
+
+      auto& conn = *static_cast<Connection*>(user_data);
+
+      return (conn.get_handshake_completed()) ? 0 : CALLBACK_FAIL;
+    }
+
     int
     encrypt(
         uint8_t* dest,
@@ -423,6 +450,7 @@ namespace llarp::quic
     auto result = std::tuple<ngtcp2_settings, ngtcp2_transport_params, ngtcp2_callbacks>{};
     auto& [settings, tparams, cb] = result;
     cb.recv_crypto_data = recv_crypto_data;
+    cb.handshake_completed = handshake_completed;
     cb.encrypt = encrypt;
     cb.decrypt = decrypt;
     cb.hp_mask = hp_mask;
@@ -437,6 +465,7 @@ namespace llarp::quic
       llarp::CryptoManager::instance()->randbytes(data, NGTCP2_PATH_CHALLENGE_DATALEN);
       return 0;
     };
+    cb.version_negotiation = version_negotiation;
     cb.extend_max_local_streams_bidi = extend_max_local_streams_bidi;
     cb.rand = rand;
     cb.get_new_connection_id = get_new_connection_id;
@@ -530,7 +559,7 @@ namespace llarp::quic
       throw std::runtime_error{"Failed to initialize server connection: "s + ngtcp2_strerror(rv)};
     conn.reset(connptr);
 
-    log::debug(logcat, "Created new server conn {}", base_cid);
+    log::debug(logcat, "Created new server Connection object {}", base_cid);
   }
 
   Connection::Connection(
@@ -567,7 +596,7 @@ namespace llarp::quic
       throw std::runtime_error{"Failed to initialize client connection: "s + ngtcp2_strerror(rv)};
     conn.reset(connptr);
 
-    log::debug(logcat, "Created new client conn {}", scid);
+    log::debug(logcat, "Created new client Connection object {}", scid);
   }
 
   Connection::~Connection()
@@ -654,6 +683,7 @@ namespace llarp::quic
       auto sent = send();
       if (sent.blocked())
       {
+        log::info(logcat, "Packet send blocked, scheduling retransmit");
         schedule_retransmit();
         return false;
       }
@@ -733,12 +763,9 @@ namespace llarp::quic
         }
         //  TODO: how can we be in this position and call this fxn with invalid
         //  or stale ptrs
-        //
+
         // debug
-        log::info(
-            logcat,
-            "Calling add_stream_data for vector<ngtcpt_vec> of size {}\n",
-            vecs.size());
+        fprintf(stderr, "Calling add_stream_data for vector<ngtcp2_vec> of size %zu\n", vecs.size());
 
         auto [nwrite, consumed] =
             add_stream_data(stream.id(), vecs.data(), vecs.size(), extra_flags);
@@ -749,9 +776,9 @@ namespace llarp::quic
             nwrite,
             consumed);
         // debug
-        log::info(
-            logcat,
-            "add_stream_data for stream {} returned [{},{}]",
+        fprintf(
+            stderr,
+            "add_stream_data for stream %d returned [%ld,%ld]",
             stream.id(),
             nwrite,
             consumed);
@@ -760,6 +787,8 @@ namespace llarp::quic
         {
           if (consumed >= 0)
           {
+            //debug
+            fprintf(stderr, "Consumed %ld bytes from stream %d", consumed, stream.id());
             log::trace(logcat, "consumed {} bytes from stream {}", consumed, stream.id());
             stream.wrote(consumed);
           }
@@ -818,17 +847,18 @@ namespace llarp::quic
     {
       // debug
       log::info(logcat, "Calling add_stream_data for empty stream");
+      fprintf(stderr, "Calling add_stream_data for empty stream");
 
       auto [nwrite, consumed] = add_stream_data(StreamID{}, nullptr, 0);
       log::trace(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, consumed);
       // debug
-      log::info(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, consumed);
+      fprintf(stderr, "add_stream_data for non-stream returned [%ld,%ld]", nwrite, consumed);
       assert(consumed <= 0);
       if (nwrite == NGTCP2_ERR_WRITE_MORE)
       {
         log::trace(logcat, "Writing non-stream data frames, and have space left");
         // debug
-        log::info(logcat, "Writing non-stream data frames, and have space left");
+        fprintf(stderr, "Writing non-stream data frames, and have space left");
         continue;
       }
       if (nwrite < 0)
@@ -841,8 +871,8 @@ namespace llarp::quic
         log::trace(
             logcat, "Nothing else to write for non-stream data for now (or we are congested)");
         // debug
-        log::info(
-            logcat, "Nothing else to write for non-stream data for now (or we are congested)");
+        fprintf(
+            stderr, "Nothing else to write for non-stream data for now (or we are congested)");
         ngtcp2_conn_stat cstat;
         ngtcp2_conn_get_conn_stat(*this, &cstat);
         log::trace(logcat, "Current unacked bytes in flight: {}", cstat.bytes_in_flight);
@@ -851,7 +881,7 @@ namespace llarp::quic
 
       log::trace(logcat, "Sending data packet with non-stream data frames");
       // debug
-      log::info(logcat, "Sending data packet with non-stream data frames");
+      fprintf(stderr, "Sending data packet with non-stream data frames");
       if (!send_packet(nwrite))
         return;
     }
@@ -1113,11 +1143,15 @@ namespace llarp::quic
       }
     }
 
-    endpoint.null_crypto.install_rx_handshake_key(*this);
-    endpoint.null_crypto.install_tx_handshake_key(*this);
+    if (not endpoint.null_crypto.install_rx_handshake_key(*this))
+      log::debug(logcat, "Call to install_rx_handshake_key unsuccessful at {}", __LINE__);
+    if (not endpoint.null_crypto.install_tx_handshake_key(*this))
+      log::debug(logcat, "Call to install_tx_handshake_key unsuccessful at {}", __LINE__);
     if (is_server)
-      endpoint.null_crypto.install_tx_key(*this);
-
+    {
+      if (not endpoint.null_crypto.install_tx_key(*this))
+        log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
+    }
     return 0;
   }
 
@@ -1125,9 +1159,14 @@ namespace llarp::quic
   Connection::complete_handshake()
   {
     log::trace(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
+    // debug
+    log::debug(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
     endpoint.null_crypto.install_rx_key(*this);
-    if (!ngtcp2_conn_is_server(*this))
-      endpoint.null_crypto.install_tx_key(*this);
+    if (not ngtcp2_conn_is_server(*this))
+    {
+      if (not endpoint.null_crypto.install_tx_key(*this))
+        log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
+    }
     ngtcp2_conn_handshake_completed(*this);
 
     if (on_handshake_complete)

@@ -1,4 +1,5 @@
 #include <lokinet.h>
+#include <filesystem>
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/crypto/crypto_libsodium.hpp>
@@ -627,6 +628,9 @@ extern "C"
   void EXPORT
   lokinet_set_data_dir(const char* path, struct lokinet_context* ctx)
   {
+    fs::path dir{path};
+    fs::current_path(dir);
+
     if (not ctx)
       return;
     auto lock = ctx->acquire();
@@ -634,7 +638,7 @@ extern "C"
     if (ctx->impl->IsUp() or ctx->impl->IsStopping())
       return;
 
-    ctx->config->router.m_dataDir = fs::path{path};
+    ctx->config->router.m_dataDir = dir;
   }
 
   void EXPORT
