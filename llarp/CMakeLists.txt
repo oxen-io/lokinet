@@ -525,7 +525,22 @@ if(WITH_EMBEDDED_LOKINET)
 
   if(BUILD_STATIC_DEPS)
     get_target_property(embedded-libs lokinet-amalgum INTERFACE_LINK_LIBRARIES)
-    combine_archives(lokinet-embedded ${embedded-libs})
+    combine_archives(lokinet-embedded 
+      ${embedded-libs} 
+      lokinet-embedded-api
+      ngtcp2_static
+      uv_a::uv_a
+      sodium
+      zlib
+      OpenSSL::SSL
+      OpenSSL::Crypto
+      expat
+      libunbound
+      libzmq
+      fmt::fmt
+      spdlog::spdlog
+      oxen::logging
+      oxenmq::oxenmq)
   endif()
 
   if(WIN32)

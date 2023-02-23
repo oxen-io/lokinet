@@ -629,6 +629,7 @@ extern "C"
   lokinet_set_data_dir(const char* path, struct lokinet_context* ctx)
   {
     fs::path dir{path};
+    dir = fs::canonical(dir);
     fs::current_path(dir);
 
     if (not ctx)

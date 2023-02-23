@@ -180,7 +180,8 @@ namespace llarp::quic
           "Immediate Close-ing connection {} due to error {}",
           conn.base_cid,
           ngtcp2_strerror(rv));
-      close_connection(conn, rv, "ERR_PROTO"sv);
+      //close_connection(conn, rv, "ERR_PROTO"sv);
+      close_connection(conn, ngtcp2_err_infer_quic_transport_error_code(rv), "ERR_PROTO"sv);
     }
     else if (rv == NGTCP2_ERR_DROP_CONN)
     {

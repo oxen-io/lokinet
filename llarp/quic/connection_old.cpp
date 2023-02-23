@@ -279,8 +279,8 @@ namespace llarp::quic
         void* user_data,
         void* stream_user_data)
     {
-      log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
-      log::debug(logcat, "Ack [{},{})", offset, offset + datalen);
+      log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+      log::trace(logcat, "Ack [{},{})", offset, offset + datalen);
       return static_cast<Connection*>(user_data)->stream_ack({stream_id}, datalen);
     }
 
@@ -430,7 +430,7 @@ namespace llarp::quic
     retransmit_timer = loop->resource<uvw::TimerHandle>();
     retransmit_timer->on<uvw::TimerEvent>([this](auto&, auto&) {
       log::debug(logcat, "Retransmit timer fired!");
-      if (auto rv = ngtcp2_conn_handle_expiry(conn.get(), get_timestamp()); rv != 0)
+      if (auto rv = ngtcp2_conn_handle_expiry(*this, get_timestamp()); rv != 0)
       {
         log::warning(
             logcat, "expiry handler invocation returned an error: {}", ngtcp2_strerror(rv));
@@ -623,26 +623,66 @@ namespace llarp::quic
   void
   Connection::flush_streams()
   {
-    log::debug(logcat, "Connection::flush_streams()");
+    log::trace(logcat, "Connection::flush_streams()");
+    // debug
+    log::info(logcat, "Connection::flush_streams()");
     // Maximum number of stream data packets to send out at once; if we reach this then we'll
     // schedule another event loop call of ourselves (so that we don't starve the loop).
-    auto max_udp_payload_size = ngtcp2_conn_get_max_tx_udp_payload_size(conn.get());
-    auto max_stream_packets = ngtcp2_conn_get_send_quantum(conn.get()) / max_udp_payload_size;
-    ngtcp2_ssize ndatalen;
+    auto max_udp_payload_size = ngtcp2_conn_get_max_tx_udp_payload_size(*this);
+    auto max_stream_packets = ngtcp2_conn_get_send_quantum(*this) / max_udp_payload_size;
     uint16_t stream_packets = 0;
-    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
+    // conn, path, pi, dest, destlen, and ts
     std::optional<uint64_t> ts;
     send_pkt_info = {};
+
+    auto add_stream_data = [&](StreamID stream_id,
+                               const ngtcp2_vec* datav,
+                               size_t datalen,
+                               uint32_t flags = 0) {
+      std::array<ngtcp2_ssize, 2> result;
+      auto& [nwrite, consumed] = result;
+
+      for (size_t i = 0; i < datalen; i++)
+      {
+        if (datav[i].base)
+        {
+          log::debug(logcat, "bunch of crap: {}", buffer_printer{datav[i].base, datav[i].len});
+          // debug
+          log::info(logcat, "bunch of crap: {}", buffer_printer{datav[i].base, datav[i].len});
+        }
+      }
+
+      log::trace(
+          logcat, "send_buffer size={}, datalen={}, flags={}", send_buffer.size(), datalen, flags);
+      // debug
+      log::info(
+          logcat, "send_buffer size={}, datalen={}, flags={}", send_buffer.size(), datalen, flags);
+      nwrite = ngtcp2_conn_writev_stream(
+          conn.get(),
+          &path.path,
+          &send_pkt_info,
+          u8data(send_buffer),
+          send_buffer.size(),
+          &consumed,
+          NGTCP2_WRITE_STREAM_FLAG_MORE | flags,
+          stream_id.id,
+          datav,
+          datalen,
+          (!ts) ? get_timestamp() : *ts);
+      return result;
+    };
 
     auto send_packet = [&](auto nwrite) -> bool {
       send_buffer_size = nwrite;
       log::trace(logcat, "Sending {}B packet", send_buffer_size);
+      // debug
+      fprintf(stderr, "Sending %ldB packet\n", send_buffer_size);
 
       auto sent = send();
       if (sent.blocked())
       {
         log::info(logcat, "Packet send blocked, scheduling retransmit");
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+        fprintf(stderr, "Packet send blocked, scheduling retransmit\n");
         schedule_retransmit();
         return false;
       }
@@ -651,11 +691,14 @@ namespace llarp::quic
       if (!sent)
       {
         log::warning(logcat, "I/O error while trying to send packet: {}", sent.str());
+        // debug
+        fprintf(stderr, "I/O error while trying to send packet: %s", sent.str().data());
         // FIXME: disconnect?
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
         return false;
       }
       log::trace(logcat, "packet away!");
+      // debug
+      fprintf(stderr, "packet away!\n");
       return true;
     };
 
@@ -674,7 +717,7 @@ namespace llarp::quic
         }
         catch (std::exception& e)
         {
-          log::warning(logcat, "Exception caught: {}", e.what());
+          log::info(logcat, "Exception caught: {}", e.what());
           fprintf(stderr, "Exception caught: %s\n", e.what());
         }
       }
@@ -682,15 +725,15 @@ namespace llarp::quic
     
     while (!strs.empty() && stream_packets < max_stream_packets)
     {
-      log::debug(logcat, "Max stream packets: {}\nCurrent stream packets: {}", max_stream_packets, stream_packets);
-
       for (auto it = strs.begin(); it != strs.end();)
       {
         auto& stream = **it;
         auto bufs = stream.pending();
 
         if (bufs.empty()) {
-          log::debug(logcat, "Stream buffer empty, have you considered moving on");
+          log::debug(logcat, "Stream empty, moving on");
+          //it = strs.erase(it);
+          //continue;
         }
 
         std::vector<ngtcp2_vec> vecs;
@@ -716,14 +759,11 @@ namespace llarp::quic
         }
 #endif
 
-        // debug
-        fprintf(
-            stderr, "Calling add_stream_data for vector<ngtcp2_vec> of size %zu\n", vecs.size());
-
+        uint32_t extra_flags = 0;
         if (stream.is_closing && !stream.sent_fin)
         {
           log::debug(logcat, "Sending FIN");
-          flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
+          extra_flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
           stream.sent_fin = true;
         }
         else if (stream.is_new)
@@ -731,102 +771,112 @@ namespace llarp::quic
           stream.is_new = false;
         }
 
-        auto nwrite = ngtcp2_conn_writev_stream(
-            conn.get(), 
-            &path.path, 
-            &send_pkt_info, 
-            u8data(send_buffer), 
-            send_buffer.size(), 
-            &ndatalen, 
-            flags, 
-            stream.id().id, 
-            reinterpret_cast<const ngtcp2_vec*>(vecs.data()), 
-            vecs.size(), 
-            (!ts) ? get_timestamp() : *ts);
-        
-        log::debug(logcat,
+        // debug
+        fprintf(
+            stderr, "Calling add_stream_data for vector<ngtcp2_vec> of size %zu\n", vecs.size());
+
+        auto [nwrite, consumed] =
+            add_stream_data(stream.id(), vecs.data(), vecs.size(), extra_flags);
+        log::trace(
+            logcat,
             "add_stream_data for stream {} returned [{},{}]",
             stream.id(),
             nwrite,
-            ndatalen);
-
-        if (nwrite == 0)  // we are congestion limited
-        {
-          log::debug(logcat,
-              "Done stream writing to {} (either stream is congested or we have nothing else to "
-              "send right now)",
-              stream.id());
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-          it = strs.erase(it);
-          continue;
-        }
+            consumed);
+        // debug
+        fprintf(
+            stderr,
+            "add_stream_data for stream %lld returned [%ld,%ld]\n",
+            stream.stream_id.id,
+            nwrite,
+            consumed);
 
         if (nwrite > 0)
         {
-          if (ndatalen >= 0)
+          if (consumed >= 0)
           {
-            log::debug(logcat, "consumed {} bytes from stream {}", ndatalen, stream.id());
-            stream.wrote(ndatalen);
+            // debug
+            fprintf(stderr, "Consumed %ld bytes from stream %lld\n", consumed, stream.stream_id.id);
+            log::trace(logcat, "consumed {} bytes from stream {}", consumed, stream.id());
+            stream.wrote(consumed);
           }
 
-          log::debug(logcat, "Sending stream data packet");
+          log::trace(logcat, "Sending stream data packet");
+          fprintf(stderr, "Sending stream data packet\n");
           if (!send_packet(nwrite))
+          {
+            ngtcp2_conn_update_pkt_tx_time(*this, *ts);
             return;
+          }
 
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-          ++stream_packets;
-          it = strs.erase(it);
+          if (++stream_packets == max_stream_packets)
+          {
+            ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+            return;
+          }
+
+          ++it;
           continue;
         }
-        
-        if (nwrite < 0)
+
+        switch (nwrite)
         {
-          if (nwrite == -240)  // NGTCP2_ERR_WRITE_MORE
-          {
-            log::debug(logcat,
-                "Consumed {} bytes from stream {} and have space left",
-                ndatalen,
+          case 0:
+            log::trace(
+                logcat,
+                "Done stream writing to {} (either stream is congested or we have nothing else to "
+                "send right now)",
                 stream.id());
-            stream.wrote(ndatalen);
-            assert(ndatalen >= 0);
+            fprintf(
+                stderr,
+                "Done stream writing to %lld (either stream is congested or we have nothing else "
+                "to "
+                "send right now)\n",
+                stream.stream_id.id);
+            assert(consumed <= 0);
+            ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+            break;
+          case -240:  // NGTCP2_ERR_WRITE_MORE
+            log::trace(
+                logcat,
+                "consumed {} bytes from stream {} and have space left",
+                consumed,
+                stream.id());
+            fprintf(
+                stderr,
+                "consumed %ld bytes from stream %lld and have space left\n",
+                consumed,
+                stream.stream_id.id);
+            stream.wrote(consumed);
             if (stream.unsent() > 0)
             {
-              log::debug(logcat, "We have more to write on stream {}, proceeding", stream.id());
-              std::advance(it, 1);
+              // We have more to send on this stream, so keep us in the queue
+              ++it;
               continue;
             }
+            return;
+          case -210:  // NGTCP2_ERR_STREAM_DATA_BLOCKED
+            log::debug(logcat, "cannot add to stream {} right now: stream is blocked", stream.id());
+            fprintf(
+                stderr,
+                "cannot add to stream %lld right now: stream is blocked\n",
+                stream.stream_id.id);
+            ngtcp2_conn_update_pkt_tx_time(*this, *ts);
             break;
-          }
-          if (nwrite == -230)  // NGTCP2_ERR_CLOSING
-          {
-            log::debug(logcat, "Cannot write to {}: stream is closing", stream.id());
-            continue;
-          }
-          if (nwrite == -221)  // NGTCP2_ERR_STREAM_SHUT_WR
-          {
-            log::debug(logcat, "Cannot add to stream {}: stream is shut, proceeding", stream.id());
-            assert(ndatalen == -1);
-            it = strs.erase(it);
-            continue;
-          }
-          if (nwrite == -210)  // NGTCP2_ERR_STREAM_DATA_BLOCKED
-          {
-            log::debug(logcat, "Cannot add to stream {}: stream is blocked", stream.id());
+          case -230:  // NGTCP2_ERR_CLOSING
+            log::trace(logcat, "cannot write to {}: stream is closing", stream.id());
             break;
-          }
-
-          log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
-          break;
+          default:
+            assert(consumed <= 0);
+            log::warning(
+                logcat, "Error writing to stream {}: {}", stream.id(), ngtcp2_strerror(nwrite));
+            fprintf(
+                stderr,
+                "Error writing to stream %lld: %s\n",
+                stream.stream_id.id,
+                ngtcp2_strerror(nwrite));
+            break;
         }
-        
-        if (++stream_packets == max_stream_packets)
-        {
-          log::debug(logcat, "Max stream packets ({}) reached", max_stream_packets);
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-          return;
-        }
-        
-        log::debug(logcat, "Ding");
         it = strs.erase(it);
       }
     }
@@ -835,77 +885,71 @@ namespace llarp::quic
     // packets, and also finishes off any partially-filled packet from above.
     for (;;)
     {
+      // debug
       log::info(logcat, "Calling add_stream_data for empty stream");
       fprintf(stderr, "Calling add_stream_data for empty stream\n");
 
-      auto nwrite = ngtcp2_conn_writev_stream(
-            conn.get(), 
-            &path.path, 
-            &send_pkt_info, 
-            u8data(send_buffer), 
-            send_buffer.size(), 
-            &ndatalen, 
-            flags, 
-            -1, 
-            nullptr, 
-            0, 
-            (!ts) ? get_timestamp() : *ts);
-
-      log::debug(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, ndatalen);
+      auto [nwrite, consumed] = add_stream_data(StreamID{}, nullptr, 0);
+      log::trace(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, consumed);
       // debug
-      fprintf(stderr, "add_stream_data for non-stream returned [%ld,%ld]\n", nwrite, ndatalen);
-      assert(ndatalen <= 0);
+      fprintf(stderr, "add_stream_data for non-stream returned [%ld,%ld]\n", nwrite, consumed);
+      assert(consumed <= 0);
 
+      if (nwrite == -240) // NGTCP2_ERR_WRITE_MORE
+      {
+        log::trace(logcat, "Writing non-stream data frames, and have space left");
+        // debug
+        fprintf(stderr, "Writing non-stream data frames, and have space left\n");
+        ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+        continue;
+      }
+      if (nwrite == -210) // NGTCP2_ERR_STREAM_DATA_BLOCKED
+      {
+        log::debug(logcat, "cannot add to empty stream right now: stream is blocked");
+        fprintf(
+            stderr,
+            "cannot add to empty stream right now: stream is blocked\n");
+        ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+        break;
+      }
+      if (nwrite == -230) // NGTCP2_ERR_CLOSING
+      {
+        log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
+        fprintf(stderr, "Error writing non-stream data: %s\n", ngtcp2_strerror(nwrite));
+        ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+        break;
+      }
       if (nwrite == 0)
       {
-        log::debug(
+        log::trace(
           logcat, "Nothing else to write for non-stream data for now (or we are congested)");
-
+        // debug
+        fprintf(
+            stderr, "Nothing else to write for non-stream data for now (or we are congested)\n");
         ngtcp2_conn_stat cstat;
-        ngtcp2_conn_get_conn_stat(conn.get(), &cstat);
-        log::debug(logcat, "Current unacked bytes in flight: {}, Congestion window: {}", 
-          cstat.bytes_in_flight, cstat.cwnd);
-
+        ngtcp2_conn_get_conn_stat(*this, &cstat);
+        ngtcp2_conn_update_pkt_tx_time(*this, *ts);
+        log::trace(logcat, "Current unacked bytes in flight: {}", cstat.bytes_in_flight);
         break;
       }
 
-      if (nwrite < 0)
+      log::trace(logcat, "Sending data packet with non-stream data frames");
+      // debug
+      fprintf(stderr, "Sending data packet with non-stream data frames\n");
+      if (!send_packet(nwrite))
       {
-        if (nwrite == -240) // NGTCP2_ERR_WRITE_MORE
-        {
-          log::debug(logcat, "Writing non-stream data frames, and have space left");
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-          continue;
-        }
-        if (nwrite == -230) // NGTCP2_ERR_CLOSING
-        {
-          log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
-          break;
-        }
-        if (nwrite == -210) // NGTCP2_ERR_STREAM_DATA_BLOCKED
-        {
-          log::debug(logcat, "cannot add to empty stream right now: stream is blocked");
-          break;
-        }
-
-        log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
-        break;
-      }
-
-      log::debug(logcat, "Sending data packet with non-stream data frames");
-      if (auto rv = send_packet(nwrite); rv != 0)
+        ngtcp2_conn_update_pkt_tx_time(*this, *ts);
         return;
-      ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+      }
     }
 
-    ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
     schedule_retransmit();
   }
 
   void
   Connection::schedule_retransmit()
   {
-    auto exp = ngtcp2_conn_get_expiry(conn.get());
+    auto exp = ngtcp2_conn_get_expiry(*this);
     auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
     auto ngtcp2_expiry_delta = std::chrono::duration_cast<std::chrono::milliseconds>(
         expiry - get_time().time_since_epoch());
@@ -946,7 +990,7 @@ namespace llarp::quic
     if (!good)
     {
       log::debug(logcat, "stream_open_callback returned failure, dropping stream {}", id);
-      ngtcp2_conn_shutdown_stream(conn.get(), id.id, 1);
+      ngtcp2_conn_shutdown_stream(*this, id.id, 1);
       io_ready();
       return NGTCP2_ERR_CALLBACK_FAILURE;
     }
@@ -1004,8 +1048,8 @@ namespace llarp::quic
     }
     else
     {
-      ngtcp2_conn_extend_max_stream_offset(conn.get(), id.id, data.size());
-      ngtcp2_conn_extend_max_offset(conn.get(), data.size());
+      ngtcp2_conn_extend_max_stream_offset(*this, id.id, data.size());
+      ngtcp2_conn_extend_max_offset(*this, data.size());
     }
     return 0;
   }
@@ -1033,8 +1077,8 @@ namespace llarp::quic
     log::debug(logcat, "Erasing stream {} from {}", id, (void*)it->second.get());
     streams.erase(it);
 
-    if (!ngtcp2_conn_is_local_stream(conn.get(), id.id))
-      ngtcp2_conn_extend_max_streams_bidi(conn.get(), 1);
+    if (!ngtcp2_conn_is_local_stream(*this, id.id))
+      ngtcp2_conn_extend_max_streams_bidi(*this, 1);
 
     io_ready();  // Probably superfluous but sometimes we might need to send a FIN or something.
   }
@@ -1067,7 +1111,7 @@ namespace llarp::quic
   {
     auto* s = server();
     assert(s);
-    s->null_crypto.server_initial(conn.get());
+    s->null_crypto.server_initial(*this);
     io_ready();
     return 0;
   }
@@ -1081,13 +1125,13 @@ namespace llarp::quic
   bool
   Connection::get_handshake_completed()
   {
-    return ngtcp2_conn_get_handshake_completed(conn.get()) != 0;
+    return ngtcp2_conn_get_handshake_completed(*this) != 0;
   }
 
   int
   Connection::get_streams_available()
   {
-    uint64_t left = ngtcp2_conn_get_streams_bidi_left(conn.get());
+    uint64_t left = ngtcp2_conn_get_streams_bidi_left(*this);
     constexpr int max_int = std::numeric_limits<int>::max();
     if (left > static_cast<uint64_t>(max_int))
       return max_int;
@@ -1099,7 +1143,7 @@ namespace llarp::quic
   {
     std::shared_ptr<Stream> stream{new Stream{
         *this, std::move(data_cb), std::move(close_cb), endpoint.default_stream_buffer_size}};
-    if (int rv = ngtcp2_conn_open_bidi_stream(conn.get(), &stream->stream_id.id, stream.get()); rv != 0)
+    if (int rv = ngtcp2_conn_open_bidi_stream(*this, &stream->stream_id.id, stream.get()); rv != 0)
       throw std::runtime_error{"Stream creation failed: "s + ngtcp2_strerror(rv)};
 
     auto& str = streams[stream->stream_id];
@@ -1117,7 +1161,7 @@ namespace llarp::quic
   int
   Connection::init_client()
   {
-    endpoint.null_crypto.client_initial(conn.get());
+    endpoint.null_crypto.client_initial(*this);
 
     if (int rv = send_magic(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
       return rv;
@@ -1138,7 +1182,7 @@ namespace llarp::quic
     }
     data.remove_prefix(handshake_magic.size());
 
-    const bool is_server = ngtcp2_conn_is_server(conn.get());
+    const bool is_server = ngtcp2_conn_is_server(*this);
     if (is_server)
     {
       // For a server, we receive the transport parameters in the initial packet (prepended by the
@@ -1158,13 +1202,13 @@ namespace llarp::quic
       }
     }
 
-    if (not endpoint.null_crypto.install_rx_handshake_key(conn.get()))
+    if (not endpoint.null_crypto.install_rx_handshake_key(*this))
       log::debug(logcat, "Call to install_rx_handshake_key unsuccessful at {}", __LINE__);
-    if (not endpoint.null_crypto.install_tx_handshake_key(conn.get()))
+    if (not endpoint.null_crypto.install_tx_handshake_key(*this))
       log::debug(logcat, "Call to install_tx_handshake_key unsuccessful at {}", __LINE__);
     if (is_server)
     {
-      if (not endpoint.null_crypto.install_tx_key(conn.get()))
+      if (not endpoint.null_crypto.install_tx_key(*this))
         log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
     }
     return 0;
@@ -1176,13 +1220,13 @@ namespace llarp::quic
     log::trace(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
     // debug
     log::debug(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
-    endpoint.null_crypto.install_rx_key(conn.get());
-    if (not ngtcp2_conn_is_server(conn.get()))
+    endpoint.null_crypto.install_rx_key(*this);
+    if (not ngtcp2_conn_is_server(*this))
     {
-      if (not endpoint.null_crypto.install_tx_key(conn.get()))
+      if (not endpoint.null_crypto.install_tx_key(*this))
         log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
     }
-    ngtcp2_conn_handshake_completed(conn.get());
+    ngtcp2_conn_handshake_completed(*this);
 
     if (on_handshake_complete)
     {
@@ -1294,7 +1338,7 @@ namespace llarp::quic
       return NGTCP2_ERR_TRANSPORT_PARAM;
     }
 
-    const bool is_server = ngtcp2_conn_is_server(conn.get());
+    const bool is_server = ngtcp2_conn_is_server(*this);
 
     if (is_server)
     {
@@ -1311,7 +1355,7 @@ namespace llarp::quic
       }
     }
 
-    auto rv = ngtcp2_conn_decode_remote_transport_params(conn.get(), data.data(), data.size());
+    auto rv = ngtcp2_conn_decode_remote_transport_params(*this, data.data(), data.size());
     log::debug(
         logcat,
         "Decode transport params {}",
@@ -1319,11 +1363,11 @@ namespace llarp::quic
 
     if (rv != 0)
     {
-      ngtcp2_conn_set_tls_error(conn.get(), rv);
+      ngtcp2_conn_set_tls_error(*this, rv);
       return rv;
     }
 
-    const auto* params = ngtcp2_conn_get_remote_transport_params(conn.get());
+    const auto* params = ngtcp2_conn_get_remote_transport_params(*this);
     if (params == nullptr)
       log::error(
           logcat,
@@ -1343,7 +1387,7 @@ namespace llarp::quic
   Connection::send_magic(ngtcp2_crypto_level level)
   {
     return ngtcp2_conn_submit_crypto_data(
-        conn.get(), level, handshake_magic.data(), handshake_magic.size());
+        *this, level, handshake_magic.data(), handshake_magic.size());
   }
 
   template <typename String>
@@ -1360,7 +1404,7 @@ namespace llarp::quic
   int
   Connection::send_transport_params(ngtcp2_crypto_level level)
   {
-    const auto* tparams = ngtcp2_conn_get_local_transport_params(conn.get());
+    const auto* tparams = ngtcp2_conn_get_local_transport_params(*this);
 
     if (tparams == nullptr)
       throw std::runtime_error{
@@ -1386,7 +1430,7 @@ namespace llarp::quic
       assert(buf < bufend);
     }
 
-    const bool is_server = ngtcp2_conn_is_server(conn.get());
+    const bool is_server = ngtcp2_conn_is_server(*this);
     auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
                              : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
 
@@ -1402,7 +1446,7 @@ namespace llarp::quic
       return nwrite;
     }
     log::debug(logcat, "encoded transport params: {}", buffer_printer{conn_buffer});
-    return ngtcp2_conn_submit_crypto_data(conn.get(), level, u8data(conn_buffer), conn_buffer.size());
+    return ngtcp2_conn_submit_crypto_data(*this, level, u8data(conn_buffer), conn_buffer.size());
   }
 
 }  // namespace llarp::quic
