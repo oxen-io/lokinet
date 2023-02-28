@@ -11,6 +11,13 @@ elif len(sys.argv) != 2 or sys.argv[1].startswith('-'):
 else:
     f = open(sys.argv[1], 'rb')
 
+
+initial = f.peek(2)
+is_hex = False
+if initial.startswith(b'64') or initial.startswith(b'6c'):
+    print("Input looks like hex bencoded data; parsing as hex input", file=sys.stderr)
+    is_hex = True
+
 class HexPrinter():
     def __init__(self, data):
         self.data = data
@@ -20,7 +27,12 @@ class HexPrinter():
 
 
 def next_byte():
-    b = f.read(1)
+    if is_hex:
+        pair = f.read(2)
+        assert pair is not None and len(pair) == 2
+        b = int(pair, 16).to_bytes()
+    else:
+        b = f.read(1)
     assert b is not None and len(b) == 1
     return b
 
@@ -42,7 +54,10 @@ def parse_string(s):
         x = next_byte()
     assert x == b':', "Invalid string encoding"
     s = int(s)
-    data = f.read(s)
+    if is_hex:
+        data = bytes.fromhex(f.read(2*s).decode('ascii'))
+    else:
+        data = f.read(s)
     assert len(data) == s, "Truncated string data"
     # If the string is ascii then convert to string:
     if all(0x20 <= b <= 0x7e for b in data):
