@@ -354,8 +354,9 @@ namespace llarp::quic
         // a bit of buffer on the expiration time in case the last call to
         // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
         // hasn't had time to handle it yet.  5ms should do.
-        if (exp >= (now_ts - 5'000'000) || conn.draining)
+        if (exp >= (now_ts - 500'000'000) || conn.draining)
           continue;
+        log::debug(logcat, "ngtcp2_conn_get_expiry returned {} with now_ts {}", exp, now_ts);
         log::debug(logcat, "Draining connection {}", it->first);
         start_draining(conn);
       }

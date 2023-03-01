@@ -164,14 +164,16 @@ namespace llarp::quic
             // Check that we received the above as expected
             if (data != handshake_magic)
             {
-              log::info(
+              log::debug(
                   logcat,
                   "Invalid handshake crypto frame from client: did not find expected magic");
               return NGTCP2_ERR_CALLBACK_FAILURE;
             }
           }
 
-          conn.complete_handshake();
+          if (auto rv = conn.complete_handshake(); rv != 0)
+            return rv;
+          
           break;
 
         case NGTCP2_CRYPTO_LEVEL_APPLICATION:
@@ -202,7 +204,10 @@ namespace llarp::quic
 
       auto& conn = *static_cast<Connection*>(user_data);
 
-      return (conn.get_handshake_completed()) ? 0 : CALLBACK_FAIL;
+      if (auto rv = conn.complete_handshake(); rv != 0)
+        return CALLBACK_FAIL;
+
+      return 0;
     }
 
     int
@@ -315,6 +320,20 @@ namespace llarp::quic
     {
       log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
       static_cast<Connection*>(user_data)->stream_closed({stream_id}, app_error_code);
+      return 0;
+    }
+
+    // (client only)
+    int
+    handshake_confirmed(ngtcp2_conn* conn, void* user_data)
+    {
+      log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+      auto& client = *static_cast<Connection*>(user_data);
+
+      if (auto rv = client.get_handshake_confirmed(); rv != 0)
+        return rv;
+
       return 0;
     }
 
@@ -446,7 +465,7 @@ namespace llarp::quic
     auto result = std::tuple<ngtcp2_settings, ngtcp2_transport_params, ngtcp2_callbacks>{};
     auto& [settings, tparams, cb] = result;
     cb.recv_crypto_data = recv_crypto_data;
-    cb.handshake_completed = handshake_completed;
+    //cb.handshake_completed = handshake_completed;
     cb.encrypt = encrypt;
     cb.decrypt = decrypt;
     cb.hp_mask = hp_mask;
@@ -572,6 +591,7 @@ namespace llarp::quic
 
     cb.client_initial = client_initial;
     cb.recv_retry = recv_retry;
+    //cb.handshake_confirmed = handshake_confirmed;
     // cb.extend_max_local_streams_bidi = extend_max_local_streams_bidi;
     // cb.recv_new_token = recv_new_token;
 
@@ -631,7 +651,7 @@ namespace llarp::quic
     ngtcp2_ssize ndatalen;
     uint16_t stream_packets = 0;
     uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
-    std::optional<uint64_t> ts;
+    std::optional<uint64_t> ts = get_timestamp();
     send_pkt_info = {};
 
     auto send_packet = [&](auto nwrite) -> bool {
@@ -641,7 +661,7 @@ namespace llarp::quic
       auto sent = send();
       if (sent.blocked())
       {
-        log::info(logcat, "Packet send blocked, scheduling retransmit");
+        log::debug(logcat, "Packet send blocked, scheduling retransmit");
         ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
         schedule_retransmit();
         return false;
@@ -655,7 +675,7 @@ namespace llarp::quic
         ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
         return false;
       }
-      log::trace(logcat, "packet away!");
+      log::debug(logcat, "packet away!");
       return true;
     };
 
@@ -664,12 +684,10 @@ namespace llarp::quic
     {
       if (stream_ptr and not stream_ptr->sent_fin)
       {
-        // debug
-        fprintf(stderr, "A: Appending streamID %lld to stream list\n", stream_id.id);
         try
         {
           // debug
-          fprintf(stderr, "B: Appending streamID %lld to stream list\n", stream_id.id);
+          fprintf(stderr, "Appending streamID %lld to stream list\n", stream_id.id);
           strs.push_back(stream_ptr.get());
         }
         catch (std::exception& e)
@@ -709,9 +727,6 @@ namespace llarp::quic
             buf_sizes += std::to_string(b.size());
           }
           log::debug(
-              logcat, "Sending {} data for {}", buf_sizes.empty() ? "no" : buf_sizes, stream.id());
-          // debug
-          log::info(
               logcat, "Sending {} data for {}", buf_sizes.empty() ? "no" : buf_sizes, stream.id());
         }
 #endif
@@ -756,6 +771,11 @@ namespace llarp::quic
               "Done stream writing to {} (either stream is congested or we have nothing else to "
               "send right now)",
               stream.id());
+
+          ngtcp2_conn_stat cstat;
+          ngtcp2_conn_get_conn_stat(conn.get(), &cstat);
+          log::debug(logcat, "Current unacked bytes in flight: {}, Congestion window: {}", 
+            cstat.bytes_in_flight, cstat.cwnd);
           ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
           it = strs.erase(it);
           continue;
@@ -775,7 +795,7 @@ namespace llarp::quic
 
           ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
           ++stream_packets;
-          it = strs.erase(it);
+          std::advance(it, 1);
           continue;
         }
         
@@ -800,6 +820,7 @@ namespace llarp::quic
           if (nwrite == -230)  // NGTCP2_ERR_CLOSING
           {
             log::debug(logcat, "Cannot write to {}: stream is closing", stream.id());
+            it = strs.erase(it);
             continue;
           }
           if (nwrite == -221)  // NGTCP2_ERR_STREAM_SHUT_WR
@@ -812,7 +833,8 @@ namespace llarp::quic
           if (nwrite == -210)  // NGTCP2_ERR_STREAM_DATA_BLOCKED
           {
             log::debug(logcat, "Cannot add to stream {}: stream is blocked", stream.id());
-            break;
+            it = strs.erase(it);
+            continue;
           }
 
           log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
@@ -826,7 +848,7 @@ namespace llarp::quic
           return;
         }
         
-        log::debug(logcat, "Ding");
+        log::debug(logcat, "Ding!");
         it = strs.erase(it);
       }
     }
@@ -835,7 +857,7 @@ namespace llarp::quic
     // packets, and also finishes off any partially-filled packet from above.
     for (;;)
     {
-      log::info(logcat, "Calling add_stream_data for empty stream");
+      log::debug(logcat, "Calling add_stream_data for empty stream");
       fprintf(stderr, "Calling add_stream_data for empty stream\n");
 
       auto nwrite = ngtcp2_conn_writev_stream(
@@ -895,7 +917,7 @@ namespace llarp::quic
       log::debug(logcat, "Sending data packet with non-stream data frames");
       if (auto rv = send_packet(nwrite); rv != 0)
         return;
-      ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+      //ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
     }
 
     ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
@@ -1078,10 +1100,35 @@ namespace llarp::quic
     return endpoint.add_connection_id(*this, cidlen);
   }
 
-  bool
-  Connection::get_handshake_completed()
+  int
+  Connection::get_handshake_confirmed()
   {
-    return ngtcp2_conn_get_handshake_completed(conn.get()) != 0;
+    if (conn->flags & NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED)
+      return 0;
+
+    return CALLBACK_FAIL;
+  }
+
+  int
+  Connection::complete_handshake()
+  {
+    if (conn->flags & NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED)
+      return 0;
+
+    endpoint.null_crypto.install_rx_key(conn.get());
+
+    if (not ngtcp2_conn_is_server(conn.get()))
+    {
+      if (not endpoint.null_crypto.install_tx_key(conn.get()))
+      {
+        log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
+        return CALLBACK_FAIL;
+      }
+    }
+
+    ngtcp2_conn_handshake_completed(conn.get());
+
+    return 0;
   }
 
   int
@@ -1170,11 +1217,10 @@ namespace llarp::quic
     return 0;
   }
 
+  /*
   void
   Connection::complete_handshake()
   {
-    log::trace(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
-    // debug
     log::debug(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
     endpoint.null_crypto.install_rx_key(conn.get());
     if (not ngtcp2_conn_is_server(conn.get()))
@@ -1190,6 +1236,7 @@ namespace llarp::quic
       on_handshake_complete = nullptr;
     }
   }
+  */
 
   // ngtcp2 doesn't expose the varint encoding, but it's fairly simple:
   // 0bXXyyyyyy -- XX indicates the encoded size (00=1, 01=2, 10=4, 11=8) and the rest of the bits
