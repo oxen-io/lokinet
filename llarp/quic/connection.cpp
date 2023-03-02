@@ -835,9 +835,9 @@ namespace llarp::quic
 
         log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
         ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);            // so far always useful
-        ++stream_packets;
+        //++stream_packets;
         //std::advance(it, 1);
-        //it = strs.erase(it);
+        it = strs.erase(it);
 
         if (++stream_packets == max_stream_packets)
         {
