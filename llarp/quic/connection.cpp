@@ -778,15 +778,8 @@ namespace llarp::quic
                 stream.id());
             stream.wrote(ndatalen);
             assert(ndatalen >= 0);
-            if (stream.unsent() > 0)
-            {
-              log::debug(logcat, "We have more to write on stream {}, proceeding", stream.id());
-              ++stream_packets;
-              ++it;
-              continue;
-            }
             it = strs.erase(it);
-            break;
+            continue;
           }
           if (nwrite == -230)  // NGTCP2_ERR_CLOSING
           {
