@@ -350,13 +350,19 @@ namespace llarp::quic
       {
         Connection& conn = **conn_ptr;
         auto exp = ngtcp2_conn_get_expiry(conn);
+        auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
+        auto ngtcp2_expiry_delta = std::chrono::duration_cast<std::chrono::milliseconds>(
+            expiry - get_time().time_since_epoch());
+
+        log::debug(logcat, "ngtcp2_conn_get_expiry returned {} with now_ts {} and expiry_delta {}", 
+            exp, now_ts, ngtcp2_expiry_delta.count());
 
         // a bit of buffer on the expiration time in case the last call to
         // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
         // hasn't had time to handle it yet.  5ms should do.
-        if (exp >= (now_ts - 500'000'000) || conn.draining)
+        if (ngtcp2_expiry_delta.count() > -500)
           continue;
-        log::debug(logcat, "ngtcp2_conn_get_expiry returned {} with now_ts {}", exp, now_ts);
+        
         log::debug(logcat, "Draining connection {}", it->first);
         start_draining(conn);
       }
