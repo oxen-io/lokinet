@@ -465,7 +465,7 @@ namespace llarp::quic
     auto result = std::tuple<ngtcp2_settings, ngtcp2_transport_params, ngtcp2_callbacks>{};
     auto& [settings, tparams, cb] = result;
     cb.recv_crypto_data = recv_crypto_data;
-    //cb.handshake_completed = handshake_completed;
+    cb.handshake_completed = handshake_completed;
     cb.encrypt = encrypt;
     cb.decrypt = decrypt;
     cb.hp_mask = hp_mask;

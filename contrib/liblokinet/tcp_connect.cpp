@@ -114,6 +114,7 @@ main(int argc, char* argv[])
   std::cerr << "tcp_connect shutting down...\n";
 
   lokinet_close_stream(stream_res.stream_id, ctx);
+  std::this_thread::sleep_for(std::chrono::milliseconds{1000});
   return 0;
 }
 
