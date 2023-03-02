@@ -1,5 +1,6 @@
 #include "endpoint.hpp"
 #include "client.hpp"
+#include "ngtcp2/ngtcp2.h"
 #include "server.hpp"
 #include "uvw/async.h"
 #include <llarp/crypto/crypto.hpp>
@@ -254,7 +255,7 @@ namespace llarp::quic
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
     ngtcp2_connection_close_error err;
-    ngtcp2_connection_close_error_set_transport_error(
+    ngtcp2_connection_close_error_set_transport_error_liberr(
         &err,
         code,
         reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
@@ -265,10 +266,9 @@ namespace llarp::quic
       Path path;
       ngtcp2_pkt_info pi;
 
-      auto written = ngtcp2_conn_write_connection_close_versioned(
+      auto written = ngtcp2_conn_write_connection_close(
           conn,
           path,
-          NGTCP2_PKT_INFO_VERSION,
           &pi,
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),
@@ -344,27 +344,17 @@ namespace llarp::quic
     if (cleanup)
       clean_alias_conns();
 
-    for (auto it = conns.begin(); it != conns.end(); ++it)
+    for (auto & it : conns)
     {
-      if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it->second))
+      if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it.second))
       {
         Connection& conn = **conn_ptr;
-        auto exp = ngtcp2_conn_get_expiry(conn);
-        auto expiry = std::chrono::nanoseconds{static_cast<std::chrono::nanoseconds::rep>(exp)};
-        auto ngtcp2_expiry_delta = std::chrono::duration_cast<std::chrono::milliseconds>(
-            expiry - get_time().time_since_epoch());
 
-        log::debug(logcat, "ngtcp2_conn_get_expiry returned {} with now_ts {} and expiry_delta {}", 
-            exp, now_ts, ngtcp2_expiry_delta.count());
-
-        // a bit of buffer on the expiration time in case the last call to
-        // ngtcp2_conn_get_expiry() returned ~0ms from now and the connection
-        // hasn't had time to handle it yet.  5ms should do.
-        if (ngtcp2_expiry_delta.count() > -500)
-          continue;
-        
-        log::debug(logcat, "Draining connection {}", it->first);
-        start_draining(conn);
+        if (auto rv = ngtcp2_conn_handle_expiry(conn, now_ts); rv != 0)
+        {
+          log::warning(logcat, "ngtcp2_conn_handle_expiry returned code {} at {}", rv, __LINE__);
+          close_connection(conn, ngtcp2_err_infer_quic_transport_error_code(rv));
+        }
       }
     }
   }

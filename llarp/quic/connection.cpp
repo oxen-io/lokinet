@@ -637,6 +637,7 @@ namespace llarp::quic
   {
     log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
     flush_streams();
+    schedule_retransmit();
     log::debug(logcat, "{} finished", __PRETTY_FUNCTION__);
   }
 
@@ -766,42 +767,6 @@ namespace llarp::quic
             stream.id(),
             nwrite,
             ndatalen);
-
-        if (nwrite == 0)  // we are probably done, but maybe congested
-        {
-          log::debug(logcat,
-              "Done stream writing to {} (either stream is congested or we have nothing else to "
-              "send right now)",
-              stream.id());
-
-          ngtcp2_conn_stat cstat;
-          ngtcp2_conn_get_conn_stat(conn.get(), &cstat);
-          log::debug(logcat, "Current unacked bytes in flight: {}, Congestion window: {}", 
-            cstat.bytes_in_flight, cstat.cwnd);
-          //log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-          //ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-          it = strs.erase(it);
-          continue;
-        }
-
-        if (nwrite > 0)
-        {
-          if (ndatalen >= 0)
-          {
-            log::debug(logcat, "consumed {} bytes from stream {}", ndatalen, stream.id());
-            stream.wrote(ndatalen);
-          }
-
-          log::debug(logcat, "Sending stream data packet");
-          if (!send_packet(nwrite))
-            return;
-
-          log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);            // so far always useful
-          ++stream_packets;
-          std::advance(it, 1);
-          continue;
-        }
         
         if (nwrite < 0)
         {
@@ -844,7 +809,39 @@ namespace llarp::quic
           log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
           break;
         }
-        
+        if (ndatalen >= 0)
+        {
+          log::debug(logcat, "consumed {} bytes from stream {}", ndatalen, stream.id());
+          stream.wrote(ndatalen);
+        }
+
+        if (nwrite == 0)  // we are probably done, but maybe congested
+        {
+          log::debug(logcat,
+              "Done stream writing to {} (either stream is congested or we have nothing else to "
+              "send right now)",
+              stream.id());
+
+          ngtcp2_conn_stat cstat;
+          ngtcp2_conn_get_conn_stat(conn.get(), &cstat);
+          log::debug(logcat, "Current unacked bytes in flight: {}, Congestion window: {}", 
+            cstat.bytes_in_flight, cstat.cwnd);
+          //log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
+          //ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+          it = strs.erase(it);
+          continue;
+        }
+
+        log::debug(logcat, "Sending stream data packet");
+        if (!send_packet(nwrite))
+          return;
+
+        log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
+        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);            // so far always useful
+        ++stream_packets;
+        std::advance(it, 1);
+        //it = strs.erase(it);
+
         if (++stream_packets == max_stream_packets)
         {
           log::debug(logcat, "Max stream packets ({}) reached", max_stream_packets);
@@ -852,9 +849,6 @@ namespace llarp::quic
           ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
           return;
         }
-        
-        log::debug(logcat, "Ding!");
-        it = strs.erase(it);
       }
     }
 
@@ -927,9 +921,9 @@ namespace llarp::quic
       ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
     }
 
-    log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-    ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
-    schedule_retransmit();
+    log::debug(logcat, "Exiting flush_streams()");
+    //ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+    //schedule_retransmit();
   }
 
   void
@@ -1162,6 +1156,25 @@ namespace llarp::quic
 
     return str;
   }
+
+  /*
+  const std::shared_ptr<Stream>&
+  Connection::open_stream(Stream::data_callback_t data_cb, Stream::close_callback_t close_cb)
+  {
+    std::shared_ptr<Stream> stream{new Stream{
+        *this, std::move(data_cb), std::move(close_cb), endpoint.default_stream_buffer_size}};
+    if (int rv = ngtcp2_conn_open_bidi_stream(conn.get(), 
+            &stream->stream_id.id, 
+            std::get<0>(stream->user_data).get()); 
+            rv != 0)
+      throw std::runtime_error{"Stream creation failed: "s + ngtcp2_strerror(rv)};
+
+    auto& str = streams[stream->stream_id];
+    str = std::move(stream);
+
+    return str;
+  }
+  */
 
   const std::shared_ptr<Stream>&
   Connection::get_stream(StreamID s) const
