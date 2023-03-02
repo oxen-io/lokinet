@@ -254,40 +254,42 @@ namespace llarp::quic
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
+    if (!conn || conn.closing || conn.draining) 
+        return;
+
     ngtcp2_connection_close_error err;
     ngtcp2_connection_close_error_set_transport_error_liberr(
         &err,
         code,
         reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
         close_reason.size());
-    if (!conn.closing)
+
+    conn.conn_buffer.resize(max_pkt_size_v4);
+    Path path;
+    ngtcp2_pkt_info pi;
+
+    auto written = ngtcp2_conn_write_connection_close(
+        conn,
+        path,
+        &pi,
+        u8data(conn.conn_buffer),
+        conn.conn_buffer.size(),
+        &err,
+        get_timestamp());
+    if (written <= 0)
     {
-      conn.conn_buffer.resize(max_pkt_size_v4);
-      Path path;
-      ngtcp2_pkt_info pi;
-
-      auto written = ngtcp2_conn_write_connection_close(
-          conn,
-          path,
-          &pi,
-          u8data(conn.conn_buffer),
-          conn.conn_buffer.size(),
-          &err,
-          get_timestamp());
-      if (written <= 0)
-      {
-        log::warning(
-            logcat,
-            "Failed to write connection close packet: {}",
-            written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
-        return;
-      }
-      assert(written <= (long)conn.conn_buffer.size());
-      conn.conn_buffer.resize(written);
-      conn.closing = true;
-
-      conn.path = path;
+      log::warning(
+          logcat,
+          "Failed to write connection close packet: {}",
+          written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
+      return;
     }
+    assert(written <= (long)conn.conn_buffer.size());
+    conn.conn_buffer.resize(written);
+    conn.closing = true;
+
+    conn.path = path;
+    
     assert(conn.closing && !conn.conn_buffer.empty());
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
