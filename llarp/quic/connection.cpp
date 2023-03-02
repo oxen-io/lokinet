@@ -457,7 +457,7 @@ namespace llarp::quic
       }
       else
       {
-        flush_streams();
+        on_io_ready();
       }
     });
     retransmit_timer->start(0ms, 0ms);
@@ -652,7 +652,7 @@ namespace llarp::quic
     ngtcp2_ssize ndatalen;
     uint16_t stream_packets = 0;
     uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
-    std::optional<uint64_t> ts = get_timestamp();
+    uint64_t ts = get_timestamp();
     send_pkt_info = {};
 
     auto send_packet = [&](auto nwrite) -> int {
@@ -664,7 +664,7 @@ namespace llarp::quic
       {
         log::debug(logcat, "Packet send blocked, scheduling retransmit");
         log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+        ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
         schedule_retransmit();
         return 0;
       }
@@ -675,7 +675,7 @@ namespace llarp::quic
         log::warning(logcat, "I/O error while trying to send packet: {}", sent.str());
         // FIXME: disconnect?
         log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+        ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
         return 0;
       }
       log::debug(logcat, "packet away!");
@@ -760,7 +760,7 @@ namespace llarp::quic
             stream.id().id, 
             reinterpret_cast<const ngtcp2_vec*>(vecs.data()), 
             vecs.size(), 
-            (!ts) ? get_timestamp() : *ts);
+            (!ts) ? get_timestamp() : ts);
         
         log::debug(logcat,
             "add_stream_data for stream {} returned [{},{}]",
@@ -837,7 +837,7 @@ namespace llarp::quic
           return;
 
         log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);            // so far always useful
+        ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);            // so far always useful
         ++stream_packets;
         std::advance(it, 1);
         //it = strs.erase(it);
@@ -846,7 +846,7 @@ namespace llarp::quic
         {
           log::debug(logcat, "Max stream packets ({}) reached", max_stream_packets);
           log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+          ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           return;
         }
       }
@@ -870,7 +870,7 @@ namespace llarp::quic
             -1, 
             nullptr, 
             0, 
-            (!ts) ? get_timestamp() : *ts);
+            (!ts) ? get_timestamp() : ts);
 
       log::debug(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, ndatalen);
       // debug
@@ -896,7 +896,7 @@ namespace llarp::quic
         {
           log::debug(logcat, "Writing non-stream data frames, and have space left");
           log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-          ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+          ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           continue;
         }
         if (nwrite == -230) // NGTCP2_ERR_CLOSING
@@ -918,11 +918,11 @@ namespace llarp::quic
       if (auto rv = send_packet(nwrite); rv != 0)
         return;
       log::debug(logcat, "Updating pkt tx time at {}" ,__LINE__);
-      ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+      ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
     }
 
     log::debug(logcat, "Exiting flush_streams()");
-    //ngtcp2_conn_update_pkt_tx_time(conn.get(), *ts);
+    //ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
     //schedule_retransmit();
   }
 
