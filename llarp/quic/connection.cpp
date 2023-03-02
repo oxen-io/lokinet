@@ -453,7 +453,7 @@ namespace llarp::quic
       {
         log::warning(
             logcat, "expiry handler invocation returned an error: {}", ngtcp2_strerror(rv));
-        endpoint.close_connection(*this, ngtcp2_err_infer_quic_transport_error_code(rv));
+        endpoint.close_connection(*this, rv);
       }
       else
       {
