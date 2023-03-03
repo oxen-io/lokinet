@@ -101,6 +101,7 @@ namespace llarp::quic
   bool
   NullCrypto::install_rx_key(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_rx_key(
                conn, 
                nullptr, 

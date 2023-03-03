@@ -111,6 +111,7 @@ namespace llarp::quic
           return CALLBACK_FAIL;
 
         case NGTCP2_CRYPTO_LEVEL_INITIAL:
+          log::debug(logcat, "Entering case NGTCP2_CRYPTO_LEVEL_INITIAL");
           // "Initial" level means we are still handshaking; if we are server then we receive
           // the client's transport params (sent in client_initial, above) and blast ours
           // back.  If we are a client then getting here means we received a response from the
@@ -141,6 +142,7 @@ namespace llarp::quic
           break;
 
         case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
+          log::debug(logcat, "Entering case NGTCP2_CRYPTO_LEVEL_HANDSHAKE");
           if (!ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.recv_transport_params(data); rv != 0)
@@ -177,6 +179,7 @@ namespace llarp::quic
           break;
 
         case NGTCP2_CRYPTO_LEVEL_APPLICATION:
+          log::debug(logcat, "Entering case NGTCP2_CRYPTO_LEVEL_APPLICATION");
           // if (!conn.init_tx_key())
           //    return CALLBACK_FAIL;
           break;
