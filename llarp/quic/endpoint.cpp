@@ -282,6 +282,11 @@ namespace llarp::quic
           logcat,
           "Failed to write connection close packet: {}",
           written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
+      log::warning(
+          logcat,
+          "Failed to write packet, removing connection {}",
+          conn.base_cid);
+      delete_conn(conn.base_cid);
       return;
     }
     assert(written <= (long)conn.conn_buffer.size());
