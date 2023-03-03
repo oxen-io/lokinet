@@ -1127,6 +1127,12 @@ namespace llarp::quic
 
     ngtcp2_conn_handshake_completed(conn.get());
 
+    if (on_handshake_complete)
+    {
+      on_handshake_complete(*this);
+      on_handshake_complete = nullptr;
+    }
+
     return 0;
   }
 
@@ -1235,26 +1241,6 @@ namespace llarp::quic
     return 0;
   }
 
-  /*
-  void
-  Connection::complete_handshake()
-  {
-    log::debug(logcat, "QUIC connection call ngtcp2_conn_handshake_completed");
-    endpoint.null_crypto.install_rx_key(conn.get());
-    if (not ngtcp2_conn_is_server(conn.get()))
-    {
-      if (not endpoint.null_crypto.install_tx_key(conn.get()))
-        log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
-    }
-    ngtcp2_conn_handshake_completed(conn.get());
-
-    if (on_handshake_complete)
-    {
-      on_handshake_complete(*this);
-      on_handshake_complete = nullptr;
-    }
-  }
-  */
 
   // ngtcp2 doesn't expose the varint encoding, but it's fairly simple:
   // 0bXXyyyyyy -- XX indicates the encoded size (00=1, 01=2, 10=4, 11=8) and the rest of the bits
