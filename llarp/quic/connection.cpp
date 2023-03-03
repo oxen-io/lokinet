@@ -1114,6 +1114,7 @@ namespace llarp::quic
   int
   Connection::complete_handshake()
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     if (conn->flags & NGTCP2_CONN_FLAG_HANDSHAKE_COMPLETED)
       return 0;
 
