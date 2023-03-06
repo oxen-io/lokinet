@@ -722,7 +722,7 @@ namespace llarp::quic
         }
       }
     }
-
+    
     while (!strs.empty() && stream_packets < max_stream_packets)
     {
       for (auto it = strs.begin(); it != strs.end();)
@@ -730,11 +730,10 @@ namespace llarp::quic
         auto& stream = **it;
         auto bufs = stream.pending();
 
-        if (bufs.empty())
-        {
+        if (bufs.empty()) {
           log::debug(logcat, "Stream empty, moving on");
-          // it = strs.erase(it);
-          // continue;
+          //it = strs.erase(it);
+          //continue;
         }
 
         std::vector<ngtcp2_vec> vecs;
@@ -896,7 +895,7 @@ namespace llarp::quic
       fprintf(stderr, "add_stream_data for non-stream returned [%ld,%ld]\n", nwrite, consumed);
       assert(consumed <= 0);
 
-      if (nwrite == -240)  // NGTCP2_ERR_WRITE_MORE
+      if (nwrite == -240) // NGTCP2_ERR_WRITE_MORE
       {
         log::trace(logcat, "Writing non-stream data frames, and have space left");
         // debug
@@ -904,14 +903,16 @@ namespace llarp::quic
         ngtcp2_conn_update_pkt_tx_time(*this, *ts);
         continue;
       }
-      if (nwrite == -210)  // NGTCP2_ERR_STREAM_DATA_BLOCKED
+      if (nwrite == -210) // NGTCP2_ERR_STREAM_DATA_BLOCKED
       {
         log::debug(logcat, "cannot add to empty stream right now: stream is blocked");
-        fprintf(stderr, "cannot add to empty stream right now: stream is blocked\n");
+        fprintf(
+            stderr,
+            "cannot add to empty stream right now: stream is blocked\n");
         ngtcp2_conn_update_pkt_tx_time(*this, *ts);
         break;
       }
-      if (nwrite == -230)  // NGTCP2_ERR_CLOSING
+      if (nwrite == -230) // NGTCP2_ERR_CLOSING
       {
         log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
         fprintf(stderr, "Error writing non-stream data: %s\n", ngtcp2_strerror(nwrite));
@@ -921,7 +922,7 @@ namespace llarp::quic
       if (nwrite == 0)
       {
         log::trace(
-            logcat, "Nothing else to write for non-stream data for now (or we are congested)");
+          logcat, "Nothing else to write for non-stream data for now (or we are congested)");
         // debug
         fprintf(
             stderr, "Nothing else to write for non-stream data for now (or we are congested)\n");

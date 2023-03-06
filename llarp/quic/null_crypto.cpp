@@ -39,7 +39,7 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
-
+    
     if (rv != 0)
       log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
 
@@ -61,7 +61,7 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
-
+    
     if (rv != 0)
       log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
 
@@ -103,7 +103,13 @@ namespace llarp::quic
   {
     log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_rx_key(
-               conn, nullptr, 0, &null_aead_ctx, null_iv.data(), null_iv.size(), &null_cipher_ctx)
+               conn, 
+               nullptr, 
+               0, 
+               &null_aead_ctx, 
+               null_iv.data(), 
+               null_iv.size(), 
+               &null_cipher_ctx)
         == 0;
   }
 
