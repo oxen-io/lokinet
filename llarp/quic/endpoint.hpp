@@ -111,7 +111,7 @@ namespace llarp::quic
 
     // Called to handle an incoming packet
     void
-    handle_packet(Packet p);
+    handle_packet(const Packet& p);
 
     // Internal method: handles initial common packet decoding, returns the connection ID or nullopt
     // if decoding failed.

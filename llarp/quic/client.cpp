@@ -37,7 +37,6 @@ namespace llarp::quic
     // - key_update_timer
 
     Path path{local_addr, remote};
-    path.remote;
     log::debug(logcat, "Connecting to {}", remote);
 
     auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);

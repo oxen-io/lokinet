@@ -64,13 +64,13 @@ namespace llarp::quic
     // debug
     log::debug(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
 
-    handle_packet(std::move(pkt));
+    handle_packet(pkt);
 
     log::trace(logcat, "Done handling packet");
   }
 
   void
-  Endpoint::handle_packet(Packet p)
+  Endpoint::handle_packet(const Packet& p)
   {
     log::trace(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     // debug
@@ -98,10 +98,6 @@ namespace llarp::quic
       log::trace(logcat, "CID is alias for primary CID {}", connptr->base_cid);
     else
       log::trace(logcat, "CID is primary CID");
-
-    log::debug(logcat, "TESTING: LETS SEE IF THIS WORKS");
-
-    p.path = Path{p.path.local, connptr->path.remote};
 
     handle_conn_packet(*connptr, p);
   }

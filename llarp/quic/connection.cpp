@@ -100,7 +100,7 @@ namespace llarp::quic
         void* user_data)
     {
       std::basic_string_view data{rawdata, rawdatalen};
-      log::debug(logcat, "Receiving crypto data @ level {} {}", crypto_level, buffer_printer{data});
+      log::trace(logcat, "Receiving crypto data @ level {} {}", crypto_level, buffer_printer{data});
 
       auto& conn = *static_cast<Connection*>(user_data);
       switch (crypto_level)
@@ -124,7 +124,6 @@ namespace llarp::quic
             return rv;
           }
 
-          // if i am the server
           if (ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
@@ -144,7 +143,6 @@ namespace llarp::quic
 
         case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
           log::debug(logcat, "Entering case NGTCP2_CRYPTO_LEVEL_HANDSHAKE");
-          // if i am the client
           if (!ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.recv_transport_params(data); rv != 0)
