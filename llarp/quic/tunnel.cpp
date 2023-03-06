@@ -272,6 +272,7 @@ namespace llarp::quic
       }
 
       auto lokinet_addr = var::visit([](auto&& remote) { return remote.ToString(); }, *remote);
+
       auto tunnel_to = allow_connection(lokinet_addr, port);
       if (not tunnel_to)
         return false;
@@ -694,8 +695,20 @@ namespace llarp::quic
     auto ecn = static_cast<uint8_t>(buf.base[3]);
     bstring_view data{reinterpret_cast<const std::byte*>(&buf.base[4]), buf.sz - 4};
 
-    SockAddr remote{tag.ToV6()};
+    auto maybe_addr = service_endpoint_.GetEndpointWithConvoTag(tag);
+    if (not maybe_addr)
+    {
+      log::error(logcat, "No remote endpoint found for packet addressing");
+      return;
+    }
+
+    auto addr_data = var::visit([](auto&& addr) { return addr.as_array(); }, *maybe_addr);
+    huint128_t ip{};
+    std::copy_n(addr_data.begin(), sizeof(ip.h), &ip.h);
+    SockAddr remote{ip};
+
     quic::Endpoint* ep = nullptr;
+
     if (type == CLIENT_TO_SERVER)
     {
       log::trace(logcat, "packet is client-to-server from client pport {}", pseudo_port);

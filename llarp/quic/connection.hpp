@@ -245,7 +245,7 @@ namespace llarp::quic
     int
     setup_server_crypto_initial();
 
-    int 
+    int
     get_handshake_confirmed();
 
     // Flush any streams with pending data. Note that, depending on available ngtcp2 state, we may
@@ -330,8 +330,8 @@ namespace llarp::quic
     send_magic(ngtcp2_crypto_level level);
     int
     send_transport_params(ngtcp2_crypto_level level);
-    //void
-    //complete_handshake();
+    // void
+    // complete_handshake();
   };
 
 }  // namespace llarp::quic

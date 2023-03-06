@@ -185,7 +185,7 @@ namespace llarp::quic
           "Immediate Close-ing connection {} due to error {}",
           conn.base_cid,
           ngtcp2_strerror(rv));
-      //close_connection(conn, rv, "ERR_PROTO"sv);
+      // close_connection(conn, rv, "ERR_PROTO"sv);
       close_connection(conn, ngtcp2_err_infer_quic_transport_error_code(rv), "ERR_PROTO"sv);
     }
     else if (rv == NGTCP2_ERR_DROP_CONN)
@@ -258,8 +258,8 @@ namespace llarp::quic
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
-    if (!conn || conn.closing || conn.draining) 
-        return;
+    if (!conn || conn.closing || conn.draining)
+      return;
 
     ngtcp2_connection_close_error err;
     ngtcp2_connection_close_error_set_transport_error_liberr(
@@ -273,23 +273,14 @@ namespace llarp::quic
     ngtcp2_pkt_info pi;
 
     auto written = ngtcp2_conn_write_connection_close(
-        conn,
-        path,
-        &pi,
-        u8data(conn.conn_buffer),
-        conn.conn_buffer.size(),
-        &err,
-        get_timestamp());
+        conn, path, &pi, u8data(conn.conn_buffer), conn.conn_buffer.size(), &err, get_timestamp());
     if (written <= 0)
     {
       log::warning(
           logcat,
           "Failed to write connection close packet: {}",
           written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
-      log::warning(
-          logcat,
-          "Failed to write packet: removing connection {}",
-          conn.base_cid);
+      log::warning(logcat, "Failed to write packet: removing connection {}", conn.base_cid);
       delete_conn(conn.base_cid);
       return;
     }
@@ -298,7 +289,7 @@ namespace llarp::quic
     conn.closing = true;
 
     conn.path = path;
-    
+
     assert(conn.closing && !conn.conn_buffer.empty());
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
@@ -355,7 +346,7 @@ namespace llarp::quic
     if (cleanup)
       clean_alias_conns();
 
-    for (auto & it : conns)
+    for (auto& it : conns)
     {
       if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it.second))
       {

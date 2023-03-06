@@ -36,8 +36,11 @@ namespace llarp::quic
     //
     // - key_update_timer
 
-    Path path{local_addr, remote};
-    path.remote;
+    auto data = var::visit([](auto&& addr) { return addr.as_array(); }, ep.LocalAddress());
+    huint128_t ip{};
+    std::copy_n(data.begin(), sizeof(ip.h), &ip.h);
+    Path path{SockAddr{ip, huint16_t{pseudo_port}}, remote};
+
     log::debug(logcat, "Connecting to {}", remote);
 
     auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
