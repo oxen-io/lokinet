@@ -62,7 +62,6 @@ namespace llarp
 
       void MarkAddressOutbound(AddressVariant_t) override{};
 
-      // FIXME
       bool
       SendToOrQueue(
           std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, service::ProtocolType t) override;

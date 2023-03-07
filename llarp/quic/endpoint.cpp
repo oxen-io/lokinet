@@ -211,6 +211,8 @@ namespace llarp::quic
     std::memcpy(&buf_[header_size], data.data(), data.size());
     bstring_view outgoing{buf_.data(), outgoing_len};
 
+    log::debug(logcat, "to.port: {}, to.remote: {}", to.port(), *to.endpoint);
+
     if (service_endpoint.SendToOrQueue(
             *to.endpoint, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
