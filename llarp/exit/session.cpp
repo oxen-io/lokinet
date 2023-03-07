@@ -207,7 +207,15 @@ namespace llarp
         auto quic = m_Parent->GetQUICTunnel();
         if (not quic)
           return false;
-        quic->receive_packet(tag, buf);
+
+        std::variant<service::Address, RouterID> addr;
+        
+        if (auto maybe = m_Parent->GetEndpointWithConvoTag(tag))
+          addr = *maybe;
+        else
+          return false;
+
+        quic->receive_packet(std::move(addr), buf);
         return true;
       }
 

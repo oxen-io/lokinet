@@ -1,12 +1,14 @@
 #include "address.hpp"
 #include <cstring>
 #include <iostream>
+#include <optional>
 
 namespace llarp::quic
 {
   using namespace std::literals;
 
-  Address::Address(const SockAddr& addr) : saddr{*addr.operator const sockaddr_in6*()}
+  Address::Address(const SockAddr& addr, std::optional<std::variant<service::Address, RouterID>> ep)
+      : saddr{*addr.operator const sockaddr_in6*()}, endpoint{ep}
   {}
 
   Address&
@@ -14,6 +16,7 @@ namespace llarp::quic
   {
     std::memmove(&saddr, &other.saddr, sizeof(saddr));
     a.addrlen = other.a.addrlen;
+    endpoint = other.endpoint;
     return *this;
   }
 
@@ -39,6 +42,7 @@ namespace llarp::quic
     return result;
   }
 
+  // FIXME: remote now has std::variant
   std::string
   Path::ToString() const
   {

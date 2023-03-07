@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <iosfwd>
 
@@ -13,6 +14,7 @@
 
 #include <llarp/net/sock_addr.hpp>
 #include <llarp/service/convotag.hpp>
+#include "llarp/service/address.hpp"
 
 namespace llarp::quic
 {
@@ -25,12 +27,14 @@ namespace llarp::quic
 
    public:
     Address() = default;
-    Address(const SockAddr& addr);
+    Address(const SockAddr& addr, std::optional<std::variant<service::Address, RouterID>> ep = std::nullopt);
 
     Address(const Address& other)
     {
       *this = other;
     }
+    
+    std::optional<std::variant<service::Address, RouterID>> endpoint{};
 
     Address&
     operator=(const Address&);
@@ -89,7 +93,7 @@ namespace llarp::quic
     // ConvoTag operator
     operator SockAddr() const
     {
-      return SockAddr(saddr);
+      return SockAddr{saddr};
     }
 
     std::string

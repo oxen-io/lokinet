@@ -72,6 +72,7 @@ namespace llarp
     init();
     fromString(addr);
   }
+  
   SockAddr::SockAddr(std::string_view addr, huint16_t port)
   {
     init();

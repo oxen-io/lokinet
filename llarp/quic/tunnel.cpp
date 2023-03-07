@@ -2,6 +2,7 @@
 #include <llarp/service/convotag.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/name.hpp>
+#include "llarp/net/net_int.hpp"
 #include "stream.hpp"
 #include <limits>
 #include <llarp/util/logging.hpp>
@@ -526,12 +527,13 @@ namespace llarp::quic
     // accept handler, and to let the accept handler know that `this` is still safe to use.
     ct.tcp->data(std::make_shared<uint16_t>(pport));
 
-    auto after_path = [this, port, pport = pport, remote_addr](auto maybe_convo) {
-      if (not continue_connecting(pport, (bool)maybe_convo, "path build", remote_addr))
+    auto after_path = [this, port, pport = pport, remote_addr](auto maybe_addr) {
+      if (maybe_addr)
+      {
+        make_client(port, *maybe_addr, *client_tunnels_.find(pport));
         return;
-      SockAddr dest{maybe_convo->ToV6()};
-      dest.setPort(port);
-      make_client(dest, *client_tunnels_.find(pport));
+      }
+      continue_connecting(pport, false, "path build", remote_addr);
     };
 
     if (!maybe_remote)
@@ -554,8 +556,9 @@ namespace llarp::quic
     auto& remote = *maybe_remote;
 
     // See if we have an existing convo tag we can use to start things immediately
-    if (auto maybe_convo = service_endpoint_.GetBestConvoTagFor(remote))
-      after_path(maybe_convo);
+    if (auto maybe_convo = service_endpoint_.GetBestConvoTagFor(remote); 
+        auto maybe_addr = service_endpoint_.GetEndpointWithConvoTag(*maybe_convo))
+      after_path(maybe_addr);
     else
     {
       service_endpoint_.MarkAddressOutbound(remote);
@@ -600,12 +603,15 @@ namespace llarp::quic
   }
 
   void
-  TunnelManager::make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row)
+  TunnelManager::make_client(
+        const uint16_t port, 
+        std::variant<service::Address, RouterID> remote, 
+        std::pair<const uint16_t, ClientTunnel>& row)
   {
-    assert(remote.getPort() > 0);
+    assert(port > 0);
     auto& [pport, tunnel] = row;
     assert(not tunnel.client);
-    tunnel.client = std::make_unique<Client>(service_endpoint_, remote, pport);
+    tunnel.client = std::make_unique<Client>(service_endpoint_, port, std::move(remote), pport);
     auto conn = tunnel.client->get_connection();
 
     conn->on_stream_available = [this, id = row.first](Connection&) {
@@ -680,7 +686,7 @@ namespace llarp::quic
   }
 
   void
-  TunnelManager::receive_packet(const service::ConvoTag& tag, const llarp_buffer_t& buf)
+  TunnelManager::receive_packet(std::variant<service::Address, RouterID> remote, const llarp_buffer_t& buf)
   {
     if (buf.sz <= 4)
     {
@@ -694,13 +700,17 @@ namespace llarp::quic
     auto ecn = static_cast<uint8_t>(buf.base[3]);
     bstring_view data{reinterpret_cast<const std::byte*>(&buf.base[4]), buf.sz - 4};
 
-    SockAddr remote{tag.ToV6()};
+    //auto addr_data = var::visit([](auto& addr) { return addr.as_array(); }, remote);
+    //huint128_t ip{};
+    //std::copy_n(addr_data.begin(), sizeof(ip.h), &ip.h);
+    huint16_t remote_port{pseudo_port};
+
     quic::Endpoint* ep = nullptr;
+
     if (type == CLIENT_TO_SERVER)
     {
-      log::trace(logcat, "packet is client-to-server from client pport {}", pseudo_port);
-      // Client-to-server: the header port is the return port
-      remote.setPort(pseudo_port);
+      log::debug(logcat, "packet is client-to-server from client pport {}", pseudo_port);
+
       if (!server_)
       {
         log::warning(logcat, "Dropping incoming quic packet to server: no listeners");
@@ -710,7 +720,7 @@ namespace llarp::quic
     }
     else if (type == SERVER_TO_CLIENT)
     {
-      log::trace(logcat, "packet is server-to-client to client pport {}", pseudo_port);
+      log::debug(logcat, "packet is server-to-client to client pport {}", pseudo_port);
       // Server-to-client: the header port tells us which client tunnel this is going to
       if (auto it = client_tunnels_.find(pseudo_port); it != client_tunnels_.end())
         ep = it->second.client.get();
@@ -722,11 +732,11 @@ namespace llarp::quic
       }
 
       // The server doesn't send back the port because we already know it 1-to-1 from our outgoing
-      // connection.
+      // connection
       if (auto conn = static_cast<quic::Client&>(*ep).get_connection())
       {
-        remote.setPort(conn->path.remote.port());
-        log::trace(logcat, "remote port is {}", remote.getPort());
+        remote_port = huint16_t{conn->path.remote.port().n};
+        log::debug(logcat, "remote port is {}", remote_port);
       }
       else
       {
@@ -740,6 +750,8 @@ namespace llarp::quic
       log::warning(logcat, "Invalid incoming quic packet type {}; dropping packet", type);
       return;
     }
-    ep->receive_packet(remote, ecn, data);
+
+    auto remote_addr = Address{SockAddr{"::1"sv, huint16_t{remote_port}}, std::move(remote)};
+    ep->receive_packet(std::move(remote_addr), ecn, data, pseudo_port);
   }
 }  // namespace llarp::quic

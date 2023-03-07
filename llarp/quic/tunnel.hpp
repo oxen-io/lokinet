@@ -133,7 +133,7 @@ namespace llarp::quic
     /// \param buf - the raw arriving packet
     ///
     void
-    receive_packet(const service::ConvoTag& tag, const llarp_buffer_t& buf);
+    receive_packet(std::variant<service::Address, RouterID> remote, const llarp_buffer_t& buf);
 
     /// return true if we have any listeners added
     inline bool
@@ -176,7 +176,10 @@ namespace llarp::quic
         uint16_t pseudo_port, bool step_success, std::string_view step_name, std::string_view addr);
 
     void
-    make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row);
+    make_client(
+        const uint16_t port, 
+        std::variant<service::Address, RouterID> ep, 
+        std::pair<const uint16_t, ClientTunnel>& row);
 
     void
     flush_pending_incoming(ClientTunnel& ct);

@@ -1703,37 +1703,7 @@ namespace llarp
       return true;
     }
 
-    bool
-    Endpoint::SendToOrQueue(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
-    {
-      if (tag.IsZero())
-      {
-        LogWarn("SendToOrQueue failed: convo tag is zero");
-        return false;
-      }
-      LogDebug(Name(), " send ", pkt.sz, " bytes on T=", tag);
-      if (auto maybe = GetEndpointWithConvoTag(tag))
-      {
-        if (auto* ptr = std::get_if<Address>(&*maybe))
-        {
-          if (*ptr == m_Identity.pub.Addr())
-          {
-            ConvoTagTX(tag);
-            m_state->m_Router->TriggerPump();
-            if (not HandleInboundPacket(tag, pkt, t, 0))
-              return false;
-            ConvoTagRX(tag);
-            return true;
-          }
-        }
-        if (not SendToOrQueue(*maybe, pkt, t))
-          return false;
-        return true;
-      }
-      LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
-      return false;
-    }
-
+    
     bool
     Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
@@ -1751,6 +1721,7 @@ namespace llarp
           });
       return true;
     }
+
 
     void
     Endpoint::Pump(llarp_time_t now)
@@ -1886,7 +1857,7 @@ namespace llarp
     bool
     Endpoint::EnsurePathTo(
         std::variant<Address, RouterID> addr,
-        std::function<void(std::optional<ConvoTag>)> hook,
+        std::function<void(std::optional<std::variant<Address, RouterID>>)> hook,
         llarp_time_t timeout)
     {
       if (auto ptr = std::get_if<Address>(&addr))
@@ -1895,14 +1866,15 @@ namespace llarp
         {
           ConvoTag tag{};
 
-          if (auto maybe = GetBestConvoTagFor(*ptr))
-            tag = *maybe;
+          if (auto maybe_tag = GetBestConvoTagFor(*ptr))
+            tag = *maybe_tag;
           else
             tag.Randomize();
           PutSenderFor(tag, m_Identity.pub, true);
           ConvoTagTX(tag);
           Sessions()[tag].forever = true;
-          Loop()->call_soon([tag, hook]() { hook(tag); });
+          auto maybe_addr = GetEndpointWithConvoTag(tag);
+          Loop()->call_soon([maybe_addr, hook]() { hook(maybe_addr); });
           return true;
         }
         if (not WantsOutboundSession(*ptr))
@@ -1914,10 +1886,11 @@ namespace llarp
 
         return EnsurePathToService(
             *ptr,
-            [hook](auto, auto* ctx) {
+            [hook, this](auto, auto* ctx) {
               if (ctx)
               {
-                hook(ctx->currentConvoTag);
+                if (auto maybe_addr = GetEndpointWithConvoTag(ctx->currentConvoTag))
+                  hook(maybe_addr);
               }
               else
               {
@@ -1928,10 +1901,11 @@ namespace llarp
       }
       if (auto ptr = std::get_if<RouterID>(&addr))
       {
-        return EnsurePathToSNode(*ptr, [hook](auto, auto session, auto tag) {
+        return EnsurePathToSNode(*ptr, [hook, this](auto, auto session, auto tag) {
           if (session)
           {
-            hook(tag);
+            if (auto maybe_addr = GetEndpointWithConvoTag(tag))
+              hook(maybe_addr);
           }
           else
           {
@@ -2082,7 +2056,7 @@ namespace llarp
 
     bool
     Endpoint::SendToOrQueue(
-        const std::variant<Address, RouterID>& addr, const llarp_buffer_t& data, ProtocolType t)
+        std::variant<Address, RouterID> addr, const llarp_buffer_t& data, ProtocolType t)
     {
       return var::visit([&](auto& addr) { return SendToOrQueue(addr, data, t); }, addr);
     }

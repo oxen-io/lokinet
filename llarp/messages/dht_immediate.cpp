@@ -77,6 +77,6 @@ namespace llarp
         result = router->SendToOrQueue(session->GetPubKey(), reply);
       }
     }
-    return true;
+    return result;
   }
 }  // namespace llarp

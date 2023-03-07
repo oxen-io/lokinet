@@ -70,7 +70,14 @@ namespace llarp::handlers
         LogWarn("invalid incoming quic packet, dropping");
         return false;
       }
-      quic->receive_packet(tag, buf);
+
+      std::variant<service::Address, RouterID> addr;
+      if (auto maybe = GetEndpointWithConvoTag(tag))
+        addr = *maybe;
+      else
+        return false;
+
+      quic->receive_packet(std::move(addr), buf);
       return true;
     }
 

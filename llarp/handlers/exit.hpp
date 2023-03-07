@@ -43,7 +43,7 @@ namespace llarp
       bool
       EnsurePathTo(
           AddressVariant_t addr,
-          std::function<void(std::optional<service::ConvoTag>)> hook,
+          std::function<void(std::optional<std::variant<service::Address, RouterID>>)> hook,
           llarp_time_t timeout) override;
 
       void
@@ -62,9 +62,10 @@ namespace llarp
 
       void MarkAddressOutbound(AddressVariant_t) override{};
 
+      // FIXME
       bool
       SendToOrQueue(
-          service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
+          std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, service::ProtocolType t) override;
 
       void
       Tick(llarp_time_t now);

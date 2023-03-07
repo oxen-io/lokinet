@@ -51,14 +51,20 @@ namespace llarp::quic
     return loop;
   }
 
+  // TODO: does the lookup need to be done every single packet?
+  //    revisit this during libQUICinet
+  //Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
   void
-  Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
+  Endpoint::receive_packet(Address remote, uint8_t ecn, bstring_view data, uint16_t remote_port)
   {
     // ngtcp2 wants a local address but we don't necessarily have something so just set it to
     // IPv4 or IPv6 "unspecified" address (0.0.0.0 or ::)
-    SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
+    //SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
 
-    Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
+    Packet pkt{
+        Path{Address{SockAddr{"::1"sv, huint16_t{remote_port}}, std::nullopt}, remote}, 
+        data, 
+        ngtcp2_pkt_info{.ecn = ecn}};
 
     log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
     // debug
@@ -206,7 +212,7 @@ namespace llarp::quic
     bstring_view outgoing{buf_.data(), outgoing_len};
 
     if (service_endpoint.SendToOrQueue(
-            to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
+            *to.endpoint, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
       log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
       // debug
