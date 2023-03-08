@@ -76,18 +76,20 @@ namespace llarp::quic
 
     handle_packet(pkt);
 
-    log::trace(logcat, "Done handling packet");
+    log::debug(logcat, "Done handling packet");
   }
 
   void
   Endpoint::handle_packet(const Packet& p)
   {
-    log::trace(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     // debug
     log::debug(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
+    {
+      log::debug(logcat, "Handle packet init failed");
       return;
+    }
     auto& dcid = *maybe_dcid;
 
     // See if we have an existing connection already established for it
@@ -102,12 +104,15 @@ namespace llarp::quic
       }
       connptr = accept_initial_connection(p);
       if (!connptr)
+      {
+        log::warning(logcat, "Connection could not be created");
         return;
+      }
     }
     if (alias)
-      log::trace(logcat, "CID is alias for primary CID {}", connptr->base_cid);
+      log::debug(logcat, "CID is alias for primary CID {}", connptr->base_cid);
     else
-      log::trace(logcat, "CID is primary CID");
+      log::debug(logcat, "CID is primary CID");
 
     handle_conn_packet(*connptr, p);
   }
