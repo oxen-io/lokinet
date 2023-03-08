@@ -44,10 +44,10 @@ namespace llarp::quic
     // to try: set ports to 0
     Path path{
         Address{SockAddr{"::1"sv, huint16_t{0}}, std::nullopt},
-        Address{SockAddr{"::1"sv, huint16_t{0}}, std::move(remote)}};
+        Address{SockAddr{"::1"sv, huint16_t{port}}, std::move(remote)}};
 
     log::debug(logcat, "Connecting to {} with addr_variant {}", path.remote, *path.remote.endpoint);
-    log::debug(logcat, "psuedo_port = {}, port = {} at {}", pseudo_port, port, __LINE__);
+    log::debug(logcat, "pseudo_port = {}, port = {} at {}", pseudo_port, port, __LINE__);
 
     auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), std::move(path), port);
 
