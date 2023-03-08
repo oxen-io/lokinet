@@ -47,7 +47,7 @@ namespace llarp::quic
         Address{SockAddr{"::1"sv, huint16_t{0}}, std::move(remote)}};
 
     log::debug(logcat, "Connecting to {} with addr_variant {}", path.remote, *path.remote.endpoint);
-    log::debug(logcat, "psuedo_port = {}, port = {} at {}", port, __LINE__);
+    log::debug(logcat, "psuedo_port = {}, port = {} at {}", pseudo_port, port, __LINE__);
 
     auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), std::move(path), port);
 
