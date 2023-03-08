@@ -308,13 +308,6 @@ namespace llarp::quic
 
     assert(conn.closing && !conn.conn_buffer.empty());
 
-    log::debug(
-        logcat,
-        "Sending packet to {} at port {} on {}",
-        *conn.path.remote.endpoint,
-        conn.path.remote.port(),
-        __LINE__);
-
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
     {
       log::warning(
