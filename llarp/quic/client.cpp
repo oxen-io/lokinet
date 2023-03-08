@@ -16,10 +16,11 @@ namespace llarp::quic
   static auto logcat = log::Cat("quic");
 
   Client::Client(
-        EndpointBase& ep, 
-        const uint16_t port, 
-        std::variant<service::Address, RouterID>&& remote, 
-        uint16_t pseudo_port) : Endpoint{ep}
+      EndpointBase& ep,
+      const uint16_t port,
+      std::variant<service::Address, RouterID>&& remote,
+      uint16_t pseudo_port)
+      : Endpoint{ep}
   {
     default_stream_buffer_size =
         0;  // We steal uvw's provided buffers so don't need an outgoing data buffer
@@ -40,14 +41,22 @@ namespace llarp::quic
     //
     // - key_update_timer
 
+    // to try: set ports to 0
     Path path{
-        Address{SockAddr{"::1"sv, huint16_t{pseudo_port}}, std::nullopt},
-        Address{SockAddr{"::1"sv, huint16_t{port}}, std::move(remote)}
-    };
+        Address{SockAddr{"::1"sv, huint16_t{0}}, std::nullopt},
+        Address{SockAddr{"::1"sv, huint16_t{0}}, std::move(remote)}};
 
     log::debug(logcat, "Connecting to {} with addr_variant {}", path.remote, *path.remote.endpoint);
+    log::debug(logcat, "psuedo_port = {}, port = {} at {}", port, __LINE__);
 
-    auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, port);
+    auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), std::move(path), port);
+
+    log::debug(
+        logcat,
+        "Made connection object with path.remote = {} and addr_variant {} ",
+        conn->path.remote,
+        *conn->path.remote.endpoint);
+
     conn->io_ready();
     conns.emplace(conn->base_cid, std::move(conn));
   }

@@ -134,7 +134,9 @@ namespace llarp
 
     virtual bool
     SendToOrQueue(
-        std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+        std::variant<service::Address, RouterID> addr,
+        const llarp_buffer_t& payload,
+        service::ProtocolType t) = 0;
 
     /// lookup srv records async
     virtual void

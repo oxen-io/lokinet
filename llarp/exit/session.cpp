@@ -209,7 +209,7 @@ namespace llarp
           return false;
 
         std::variant<service::Address, RouterID> addr;
-        
+
         if (auto maybe = m_Parent->GetEndpointWithConvoTag(tag))
           addr = *maybe;
         else

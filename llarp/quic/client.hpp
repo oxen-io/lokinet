@@ -15,9 +15,9 @@ namespace llarp::quic
     // identifier which we include in outgoing packets (so that the remote server knows where to
     // send the back to *this* client).
     Client(
-        EndpointBase& ep, 
-        const uint16_t port, 
-        std::variant<service::Address, RouterID>&& remote, 
+        EndpointBase& ep,
+        const uint16_t port,
+        std::variant<service::Address, RouterID>&& remote,
         uint16_t pseudo_port);
 
     // Returns a reference to the client's connection to the server. Returns a nullptr if there is

@@ -177,8 +177,8 @@ namespace llarp::quic
 
     void
     make_client(
-        const uint16_t port, 
-        std::variant<service::Address, RouterID> ep, 
+        const uint16_t port,
+        std::variant<service::Address, RouterID> ep,
         std::pair<const uint16_t, ClientTunnel>& row);
 
     void

@@ -1,5 +1,6 @@
 #include "endpoint.hpp"
 #include "client.hpp"
+#include "llarp/net/net_int.hpp"
 #include "ngtcp2/ngtcp2.h"
 #include "server.hpp"
 #include "uvw/async.h"
@@ -53,17 +54,20 @@ namespace llarp::quic
 
   // TODO: does the lookup need to be done every single packet?
   //    revisit this during libQUICinet
-  //Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
+  // Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
   void
   Endpoint::receive_packet(Address remote, uint8_t ecn, bstring_view data, uint16_t remote_port)
   {
     // ngtcp2 wants a local address but we don't necessarily have something so just set it to
     // IPv4 or IPv6 "unspecified" address (0.0.0.0 or ::)
-    //SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
+    // SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
+
+    // to try: set remote port to 0
+    remote_port = 0;
 
     Packet pkt{
-        Path{Address{SockAddr{"::1"sv, huint16_t{remote_port}}, std::nullopt}, remote}, 
-        data, 
+        Path{Address{SockAddr{"::1"sv, huint16_t{remote_port}}, std::nullopt}, remote},
+        data,
         ngtcp2_pkt_info{.ecn = ecn}};
 
     log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
@@ -164,9 +168,13 @@ namespace llarp::quic
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    log::trace(logcat, "Reading packet from {}", p.path);
     // debug
-    log::debug(logcat, "Reading packet from {}", p.path);
+    log::debug(
+        logcat,
+        "Reading packet from {} with path.remote = {}, path.remote.endpoint = {}",
+        p.path,
+        p.path.remote,
+        *p.path.remote.endpoint);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
@@ -187,7 +195,7 @@ namespace llarp::quic
           "Immediate Close-ing connection {} due to error {}",
           conn.base_cid,
           ngtcp2_strerror(rv));
-      //close_connection(conn, rv, "ERR_PROTO"sv);
+      // close_connection(conn, rv, "ERR_PROTO"sv);
       close_connection(conn, ngtcp2_err_infer_quic_transport_error_code(rv), "ERR_PROTO"sv);
     }
     else if (rv == NGTCP2_ERR_DROP_CONN)
@@ -214,9 +222,10 @@ namespace llarp::quic
     log::debug(logcat, "to.port: {}, to.remote: {}", to.port(), *to.endpoint);
 
     if (service_endpoint.SendToOrQueue(
-            *to.endpoint, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
+            *to.endpoint,
+            llarp_buffer_t{outgoing.data(), outgoing.size()},
+            service::ProtocolType::QUIC))
     {
-      log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
       // debug
       log::debug(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
     }
@@ -254,6 +263,9 @@ namespace llarp::quic
     if (nwrote <= 0)
       return;
 
+    log::debug(
+        logcat, "Sending packet to {} at port {} on {}", *source.endpoint, source.port(), __LINE__);
+
     send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
   }
 
@@ -262,8 +274,8 @@ namespace llarp::quic
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 
-    if (!conn || conn.closing || conn.draining) 
-        return;
+    if (!conn || conn.closing || conn.draining)
+      return;
 
     ngtcp2_connection_close_error err;
     ngtcp2_connection_close_error_set_transport_error_liberr(
@@ -277,23 +289,14 @@ namespace llarp::quic
     ngtcp2_pkt_info pi;
 
     auto written = ngtcp2_conn_write_connection_close(
-        conn,
-        path,
-        &pi,
-        u8data(conn.conn_buffer),
-        conn.conn_buffer.size(),
-        &err,
-        get_timestamp());
+        conn, path, &pi, u8data(conn.conn_buffer), conn.conn_buffer.size(), &err, get_timestamp());
     if (written <= 0)
     {
       log::warning(
           logcat,
           "Failed to write connection close packet: {}",
           written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
-      log::warning(
-          logcat,
-          "Failed to write packet: removing connection {}",
-          conn.base_cid);
+      log::warning(logcat, "Failed to write packet: removing connection {}", conn.base_cid);
       delete_conn(conn.base_cid);
       return;
     }
@@ -302,8 +305,15 @@ namespace llarp::quic
     conn.closing = true;
 
     conn.path = path;
-    
+
     assert(conn.closing && !conn.conn_buffer.empty());
+
+    log::debug(
+        logcat,
+        "Sending packet to {} at port {} on {}",
+        *conn.path.remote.endpoint,
+        conn.path.remote.port(),
+        __LINE__);
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
     {
@@ -359,7 +369,7 @@ namespace llarp::quic
     if (cleanup)
       clean_alias_conns();
 
-    for (auto & it : conns)
+    for (auto& it : conns)
     {
       if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it.second))
       {

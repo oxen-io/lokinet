@@ -120,7 +120,6 @@ namespace llarp
           return false;
         m_TxRate += buf.size();
 
-
         std::variant<service::Address, RouterID> addr;
 
         if (auto maybe = m_Parent->GetEndpointWithConvoTag(tag))

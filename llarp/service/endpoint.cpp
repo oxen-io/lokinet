@@ -1703,7 +1703,6 @@ namespace llarp
       return true;
     }
 
-    
     bool
     Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
     {
@@ -1721,7 +1720,6 @@ namespace llarp
           });
       return true;
     }
-
 
     void
     Endpoint::Pump(llarp_time_t now)

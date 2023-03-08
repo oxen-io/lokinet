@@ -468,8 +468,9 @@ namespace llarp
 
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
-      //bool
-      //SendToOrQueue(std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, ProtocolType t) override;
+      // bool
+      // SendToOrQueue(std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload,
+      // ProtocolType t) override;
 
       // Send a to (or queues for sending) to either an address or router id
       bool

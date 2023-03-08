@@ -97,7 +97,9 @@ namespace llarp
 
     bool
     ExitEndpoint::SendToOrQueue(
-        std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, service::ProtocolType type)
+        std::variant<service::Address, RouterID> addr,
+        const llarp_buffer_t& payload,
+        service::ProtocolType type)
     {
       if (std::holds_alternative<service::Address>(addr))
         return false;
@@ -151,7 +153,7 @@ namespace llarp
         else
         {
           // probably a client
-          if (auto maybe_tag = GetBestConvoTagFor(addr); 
+          if (auto maybe_tag = GetBestConvoTagFor(addr);
               auto maybe_addr = GetEndpointWithConvoTag(*maybe_tag))
           {
             hook(maybe_addr);

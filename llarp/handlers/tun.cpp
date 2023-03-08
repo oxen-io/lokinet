@@ -1255,7 +1255,8 @@ namespace llarp
       }
       // try sending it on an existing convotag
       // this succeds for inbound convos, probably.
-      if (auto maybe_tag = GetBestConvoTagFor(to); auto maybe_addr = GetEndpointWithConvoTag(*maybe_tag))
+      if (auto maybe_tag = GetBestConvoTagFor(to);
+          auto maybe_addr = GetEndpointWithConvoTag(*maybe_tag))
       {
         if (SendToOrQueue(*maybe_addr, pkt.ConstBuffer(), type))
         {
@@ -1321,7 +1322,7 @@ namespace llarp
       }
       else
         return false;
-      
+
       if (t == service::ProtocolType::QUIC)
       {
         auto* quic = GetQUICTunnel();
@@ -1336,7 +1337,7 @@ namespace llarp
           return false;
         }
         log::trace(logcat, "tag active T={}", tag);
-        
+
         quic->receive_packet(std::move(addr), buf);
         return true;
       }

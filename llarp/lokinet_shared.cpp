@@ -998,7 +998,8 @@ extern "C"
       ctx->impl->router->loop()->call([addr = *maybe, pkt = std::move(pkt), ep, &ret]() {
         if (auto tag = ep->GetBestConvoTagFor(addr); auto addr = ep->GetEndpointWithConvoTag(*tag))
         {
-          if (ep->SendToOrQueue(std::move(*addr), pkt.ConstBuffer(), llarp::service::ProtocolType::TrafficV4))
+          if (ep->SendToOrQueue(
+                  std::move(*addr), pkt.ConstBuffer(), llarp::service::ProtocolType::TrafficV4))
           {
             ret.set_value(0);
             return;

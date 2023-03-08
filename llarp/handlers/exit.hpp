@@ -64,7 +64,9 @@ namespace llarp
 
       bool
       SendToOrQueue(
-          std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload, service::ProtocolType t) override;
+          std::variant<service::Address, RouterID> addr,
+          const llarp_buffer_t& payload,
+          service::ProtocolType t) override;
 
       void
       Tick(llarp_time_t now);

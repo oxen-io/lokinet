@@ -27,13 +27,15 @@ namespace llarp::quic
 
    public:
     Address() = default;
-    Address(const SockAddr& addr, std::optional<std::variant<service::Address, RouterID>> ep = std::nullopt);
+    Address(
+        const SockAddr& addr,
+        std::optional<std::variant<service::Address, RouterID>> ep = std::nullopt);
 
     Address(const Address& other)
     {
       *this = other;
     }
-    
+
     std::optional<std::variant<service::Address, RouterID>> endpoint{};
 
     Address&
