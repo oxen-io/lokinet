@@ -370,7 +370,7 @@ namespace llarp::quic
       {
         Connection& conn = **conn_ptr;
 
-        if (auto rv = ngtcp2_conn_handle_expiry(conn, now_ts); rv != -246)
+        if (auto rv = ngtcp2_conn_handle_expiry(conn, now_ts); rv != 0)
         {
           log::warning(logcat, "ngtcp2_conn_handle_expiry returned code {} at {}", rv, __LINE__);
           close_connection(conn, rv);
