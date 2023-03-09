@@ -170,13 +170,6 @@ namespace llarp::quic
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    // debug
-    log::debug(
-        logcat,
-        "Reading packet from {} with path.remote = {}, path.remote.endpoint = {}",
-        p.path,
-        p.path.remote,
-        *p.path.remote.endpoint);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
@@ -220,8 +213,6 @@ namespace llarp::quic
     assert(outgoing_len <= buf_.size());
     std::memcpy(&buf_[header_size], data.data(), data.size());
     bstring_view outgoing{buf_.data(), outgoing_len};
-
-    log::debug(logcat, "to.port: {}, to.remote: {}", to.port(), *to.endpoint);
 
     if (service_endpoint.SendToOrQueue(
             *to.endpoint,
@@ -278,6 +269,13 @@ namespace llarp::quic
 
     if (!conn || conn.closing || conn.draining)
       return;
+
+    if (code == NGTCP2_ERR_IDLE_CLOSE)
+    {
+      log::warning(logcat, "Connection {} passed idle expiry timer, closing now", conn.base_cid);
+      delete_conn(conn.base_cid);
+      return;
+    }
 
     ngtcp2_connection_close_error err;
     ngtcp2_connection_close_error_set_transport_error_liberr(
@@ -361,22 +359,9 @@ namespace llarp::quic
       }
       draining.pop();
     }
+
     if (cleanup)
       clean_alias_conns();
-
-    for (auto& it : conns)
-    {
-      if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it.second))
-      {
-        Connection& conn = **conn_ptr;
-
-        if (auto rv = ngtcp2_conn_handle_expiry(conn, now_ts); rv != 0)
-        {
-          log::warning(logcat, "ngtcp2_conn_handle_expiry returned code {} at {}", rv, __LINE__);
-          close_connection(conn, rv);
-        }
-      }
-    }
   }
 
   std::pair<std::shared_ptr<Connection>, bool>
