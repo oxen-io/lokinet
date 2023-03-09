@@ -191,7 +191,7 @@ namespace llarp::quic
           conn.base_cid,
           ngtcp2_strerror(rv));
       // close_connection(conn, rv, "ERR_PROTO"sv);
-      close_connection(conn, ngtcp2_err_infer_quic_transport_error_code(rv), "ERR_PROTO"sv);
+      close_connection(conn, rv, "ERR_PROTO"sv);
     }
     else if (rv == NGTCP2_ERR_DROP_CONN)
     {
@@ -263,7 +263,7 @@ namespace llarp::quic
   }
 
   void
-  Endpoint::close_connection(Connection& conn, uint64_t code, std::string_view close_reason)
+  Endpoint::close_connection(Connection& conn, int code, std::string_view close_reason)
   {
     log::debug(logcat, "Closing connection {}", conn.base_cid);
 

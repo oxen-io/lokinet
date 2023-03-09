@@ -196,7 +196,7 @@ namespace llarp::quic
     // values.
     void
     close_connection(
-        Connection& conn, uint64_t code = NGTCP2_NO_ERROR, std::string_view close_reason = ""sv);
+        Connection& conn, int code = NGTCP2_NO_ERROR, std::string_view close_reason = ""sv);
 
     /// Puts a connection into draining mode (i.e. after getting a connection close).  This will
     /// keep the connection registered for the recommended 3*Probe Timeout, during which we drop
