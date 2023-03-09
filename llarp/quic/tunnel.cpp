@@ -757,7 +757,7 @@ namespace llarp::quic
 
     // to try: set port to 0
     //remote_port = huint16_t{0};
-    pseudo_port = 0;
+    //pseudo_port = 0;
 
     auto remote_addr = Address{SockAddr{"::1"sv, remote_port}, std::move(remote)};
     log::debug(
@@ -767,6 +767,6 @@ namespace llarp::quic
         remote_addr.port(),
         *remote_addr.endpoint,
         __LINE__);
-    ep->receive_packet(std::move(remote_addr), ecn, data, pseudo_port);
+    ep->receive_packet(std::move(remote_addr), ecn, data);
   }
 }  // namespace llarp::quic

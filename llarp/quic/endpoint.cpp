@@ -56,17 +56,14 @@ namespace llarp::quic
   //    revisit this during libQUICinet
   // Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
   void
-  Endpoint::receive_packet(Address remote, uint8_t ecn, bstring_view data, uint16_t remote_port)
+  Endpoint::receive_packet(Address remote, uint8_t ecn, bstring_view data)
   {
     // ngtcp2 wants a local address but we don't necessarily have something so just set it to
     // IPv4 or IPv6 "unspecified" address (0.0.0.0 or ::)
     // SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
 
-    // to try: set remote port to 0
-    remote_port = 0;
-
     Packet pkt{
-        Path{Address{SockAddr{"::1"sv, huint16_t{remote_port}}, std::nullopt}, remote},
+        Path{Address{SockAddr{"::1"sv, huint16_t{0}}, std::nullopt}, remote},
         data,
         ngtcp2_pkt_info{.ecn = ecn}};
 

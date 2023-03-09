@@ -43,7 +43,7 @@ namespace llarp::quic
     /// address based on the convo tag.  The port is not used.
     /// \param ecn - the packet ecn parameter
     void
-    receive_packet(Address addr, uint8_t ecn, bstring_view data, uint16_t remote_port);
+    receive_packet(Address addr, uint8_t ecn, bstring_view data);
 
     /// Returns a shared pointer to the uvw loop.
     std::shared_ptr<uvw::Loop>
