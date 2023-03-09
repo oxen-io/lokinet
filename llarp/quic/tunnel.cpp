@@ -732,7 +732,7 @@ namespace llarp::quic
       // connection
       if (auto conn = static_cast<quic::Client&>(*ep).get_connection())
       {
-        remote_port = huint16_t{conn->path.remote.port().n};
+        remote_port = llarp::net::ToHost(conn->path.remote.port());
         log::debug(logcat, "remote port is {}", remote_port);
       }
       else
