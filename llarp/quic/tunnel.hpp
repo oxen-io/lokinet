@@ -78,10 +78,10 @@ namespace llarp::quic
     forget(int id);
 
     /// Called when open succeeds or times out.
-    using OpenCallback = std::function<void(bool success)>;
+    using OpenCallback = std::function<void(bool success, void* user_data)>;
 
     /// Called when the tunnel is closed for any reason
-    using CloseCallback = std::function<void(void)>;
+    using CloseCallback = std::function<void(int rv, void* user_data)>;
 
     /// Opens a quic tunnel to some remote lokinet address.  (Should only be called from the event
     /// loop thread.)

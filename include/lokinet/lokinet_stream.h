@@ -31,7 +31,10 @@ extern "C"
       struct lokinet_stream_result* result,
       const char* remoteAddr,
       const char* localAddr,
-      struct lokinet_context* context);
+      struct lokinet_context* context,
+      void (*open_cb)(bool success, void* user_data),
+      void (*close_cb)(int rv, void* user_data),
+      void* user_data);
 
   /// stream accept filter determines if we should accept a stream or not
   /// return 0 to accept

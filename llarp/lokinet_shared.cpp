@@ -647,7 +647,10 @@ extern "C"
       struct lokinet_stream_result* result,
       const char* remote,
       const char* local,
-      struct lokinet_context* ctx)
+      struct lokinet_context* ctx,
+      void (*open_cb)(bool success, void* user_data),
+      void (*close_cb)(int rv, void* user_data),
+      void* user_data)
   {
     if (ctx == nullptr)
     {
@@ -695,6 +698,27 @@ extern "C"
         return;
       }
 
+      auto on_open = [localAddr, remotehost, remoteport, open_cb](bool success, void* user_data) {
+        llarp::log::info(
+            logcat,
+            "Quic tunnel {}<->{}:{} {}.",
+            localAddr,
+            remotehost,
+            remoteport,
+            success ? "opened successfully" : "failed");
+
+        if (open_cb)
+          open_cb(success, user_data);
+      };
+
+      auto on_close = [localAddr, remotehost, remoteport, close_cb](int rv, void* user_data) {
+        llarp::log::info(
+            logcat, "Quic tunnel {}<->{}:{} closed.", localAddr, remotehost, remoteport);
+
+        if (close_cb)
+          close_cb(rv, user_data);
+      };
+
       auto call = [&promise,
                    ctx,
                    result,
@@ -702,6 +726,8 @@ extern "C"
                    remotehost,
                    remoteport,
                    endpoint,  // FIXME: appears unused?
+                   on_open,
+                   on_close,
                    localAddr]() {
         auto ep = ctx->endpoint();
         if (ep == nullptr)
@@ -719,20 +745,6 @@ extern "C"
         }
         try
         {
-          auto on_open = [localAddr, remotehost, remoteport](bool success) {
-            llarp::log::info(
-                logcat,
-                "Quic tunnel {}<->{}:{} {}.",
-                localAddr,
-                remotehost,
-                remoteport,
-                success ? "opened successfully" : "failed");
-          };
-          auto on_close = [localAddr, remotehost, remoteport]() {
-            llarp::log::info(
-                logcat, "Quic tunnel {}<->{}:{} closed.", localAddr, remotehost, remoteport);
-          };
-
           auto [addr, id] = quic->open(
               remotehost, remoteport, std::move(on_open), std::move(on_close), localAddr);
           auto [host, port] = split_host_port(addr.ToString());

@@ -98,7 +98,7 @@ main(int argc, char* argv[])
 
   // hard-coded IP:port for liblokinet to bind to
   //  connect via tcp will stream traffic to whatever
-  lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx);
+  lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx, nullptr, nullptr, nullptr);
 
   if (stream_res.error)
   {

@@ -246,7 +246,7 @@ namespace llarp::quic
         {
           log::debug(logcat, "All sockets closed on quic:{}, destroying tunnel data", port);
           if (ct.close_cb)
-            ct.close_cb();
+            ct.close_cb(0, nullptr);
           ctit = client_tunnels_.erase(ctit);
         }
         else
@@ -432,7 +432,7 @@ namespace llarp::quic
       log::warning(logcat, "QUIC tunnel to {} failed during {}; aborting tunnel", addr, step_name);
       it->second.tcp->close();
       if (it->second.open_cb)
-        it->second.open_cb(false);
+        it->second.open_cb(false, nullptr);
       client_tunnels_.erase(it);
     }
     return step_success;
@@ -618,7 +618,7 @@ namespace llarp::quic
         if (it->second.open_cb)
         {
           log::trace(logcat, "Calling ClientTunnel.open_cb()");
-          it->second.open_cb(true);
+          it->second.open_cb(true, nullptr);
           it->second.open_cb = nullptr;  // only call once
         }
       }
@@ -633,7 +633,7 @@ namespace llarp::quic
         if (it->second.close_cb)
         {
           log::trace(logcat, "Calling ClientTunnel.close_cb()");
-          it->second.close_cb();
+          it->second.close_cb(0, nullptr);
         }
       }
       else
