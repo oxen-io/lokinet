@@ -413,7 +413,7 @@ if(NOT WITH_BOOTSTRAP)
 endif()
 
 set(curl_extra)
-if(WIN32)
+if(WIN32)li
   set(curl_ssl_opts --without-ssl --with-schannel)
 elseif(APPLE)
   set(curl_ssl_opts --without-ssl --with-secure-transport)

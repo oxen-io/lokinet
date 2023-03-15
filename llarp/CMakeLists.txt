@@ -535,7 +535,6 @@ if(WITH_EMBEDDED_LOKINET)
       OpenSSL::SSL
       OpenSSL::Crypto
       expat
-      libunbound
       libzmq
       fmt::fmt
       spdlog::spdlog
