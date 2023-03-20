@@ -438,12 +438,6 @@ namespace llarp::quic
 
     if (!send_data.empty())
     {
-      log::debug(
-          logcat,
-          "Sending packet to {} at port {} on {}",
-          *path.remote.endpoint,
-          path.remote.port(),
-          __LINE__);
       rv = endpoint.send_packet(path.remote, send_data, send_pkt_info.ecn);
     }
     return rv;
@@ -673,7 +667,6 @@ namespace llarp::quic
       if (sent.blocked())
       {
         log::debug(logcat, "Packet send blocked, scheduling retransmit");
-        log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
         ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
         schedule_retransmit();
         return 0;
@@ -684,7 +677,6 @@ namespace llarp::quic
       {
         log::warning(logcat, "I/O error while trying to send packet: {}", sent.str());
         // FIXME: disconnect?
-        log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
         ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
         return 0;
       }
@@ -699,14 +691,11 @@ namespace llarp::quic
       {
         try
         {
-          // debug
-          fprintf(stderr, "Appending streamID %lld to stream list\n", stream_id.id);
           strs.push_back(stream_ptr.get());
         }
         catch (std::exception& e)
         {
           log::warning(logcat, "Exception caught: {}", e.what());
-          fprintf(stderr, "Exception caught: %s\n", e.what());
         }
       }
     }
@@ -748,10 +737,6 @@ namespace llarp::quic
               logcat, "Sending {} data for {}", buf_sizes.empty() ? "no" : buf_sizes, stream.id());
         }
 #endif
-
-        // debug
-        fprintf(
-            stderr, "Calling add_stream_data for vector<ngtcp2_vec> of size %zu\n", vecs.size());
 
         if (stream.is_closing && !stream.sent_fin)
         {
@@ -844,7 +829,6 @@ namespace llarp::quic
               "Current unacked bytes in flight: {}, Congestion window: {}",
               cstat.bytes_in_flight,
               cstat.cwnd);
-          log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
           ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           it = strs.erase(it);
           continue;
@@ -854,8 +838,7 @@ namespace llarp::quic
         if (!send_packet(nwrite))
           return;
 
-        log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
-        ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);  // so far always useful
+        ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
         //++stream_packets;
         // std::advance(it, 1);
         it = strs.erase(it);
@@ -863,7 +846,6 @@ namespace llarp::quic
         if (++stream_packets == max_stream_packets)
         {
           log::debug(logcat, "Max stream packets ({}) reached", max_stream_packets);
-          log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
           ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           return;
         }
@@ -875,7 +857,6 @@ namespace llarp::quic
     for (;;)
     {
       log::debug(logcat, "Calling add_stream_data for empty stream");
-      fprintf(stderr, "Calling add_stream_data for empty stream\n");
 
       auto nwrite = ngtcp2_conn_writev_stream(
           conn.get(),
@@ -891,8 +872,6 @@ namespace llarp::quic
           (!ts) ? get_timestamp() : ts);
 
       log::debug(logcat, "add_stream_data for non-stream returned [{},{}]", nwrite, ndatalen);
-      // debug
-      fprintf(stderr, "add_stream_data for non-stream returned [%ld,%ld]\n", nwrite, ndatalen);
       assert(ndatalen <= 0);
 
       if (nwrite == 0)
@@ -916,7 +895,6 @@ namespace llarp::quic
         if (nwrite == -240)  // NGTCP2_ERR_WRITE_MORE
         {
           log::debug(logcat, "Writing non-stream data frames, and have space left");
-          log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
           ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           continue;
         }
@@ -938,7 +916,6 @@ namespace llarp::quic
       log::debug(logcat, "Sending data packet with non-stream data frames");
       if (auto rv = send_packet(nwrite); rv != 0)
         return;
-      log::debug(logcat, "Updating pkt tx time at {}", __LINE__);
       ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
     }
 
@@ -956,7 +933,6 @@ namespace llarp::quic
         expiry - get_time().time_since_epoch());
 
     log::debug(logcat, "ngtcp2_conn_get_expiry: {} from now", ngtcp2_expiry_delta);
-    fprintf(stderr, "ngtcp2_conn_get_expiry: %ld from now\n", ngtcp2_expiry_delta.count());
 
     if (exp == std::numeric_limits<decltype(exp)>::max())
     {
@@ -967,7 +943,6 @@ namespace llarp::quic
 
     auto expires_in = std::max(0ms, ngtcp2_expiry_delta);
     log::debug(logcat, "Next retransmit in {}ms", expires_in.count());
-    fprintf(stderr, "Next retransmit in %ldms\n", expires_in.count());
     retransmit_timer->stop();
     retransmit_timer->start(expires_in, 0ms);
   }
@@ -1145,7 +1120,6 @@ namespace llarp::quic
     {
       if (not endpoint.null_crypto.install_tx_key(conn.get()))
       {
-        log::debug(logcat, "Call to install_tx_key unsuccessful at {}", __LINE__);
         return CALLBACK_FAIL;
       }
     }
@@ -1372,14 +1346,9 @@ namespace llarp::quic
 
     const bool is_server = ngtcp2_conn_is_server(conn.get());
 
-    // debug
-    log::debug(logcat, "Transport param port = {} at line {}", tunnel_port, __LINE__);
-
     if (is_server)
     {
       tunnel_port = port;
-      // debug
-      log::debug(logcat, "Transport param tunnel_port = {} at line {}", tunnel_port, __LINE__);
     }
     else
     {

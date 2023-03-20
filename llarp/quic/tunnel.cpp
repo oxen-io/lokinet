@@ -509,8 +509,7 @@ namespace llarp::quic
           "Unable to open an outgoing quic connection: too many existing connections"};
     (next_pseudo_port_ = pport)++;
 
-    // debug
-    log::debug(logcat, "Bound TCP tunnel {} for quic client :{}", saddr, pport);
+    log::trace(logcat, "Bound TCP tunnel {} for quic client :{}", saddr, pport);
 
     // We are emplacing into client_tunnels_ here: beyond this point we must not throw until we
     // return (or if we do, make sure we remove this row from client_tunnels_ first).
@@ -697,9 +696,6 @@ namespace llarp::quic
     auto ecn = static_cast<uint8_t>(buf.base[3]);
     bstring_view data{reinterpret_cast<const std::byte*>(&buf.base[4]), buf.sz - 4};
 
-    // auto addr_data = var::visit([](auto& addr) { return addr.as_array(); }, remote);
-    // huint128_t ip{};
-    // std::copy_n(addr_data.begin(), sizeof(ip.h), &ip.h);
     huint16_t remote_port{pseudo_port};
 
     quic::Endpoint* ep = nullptr;
@@ -755,18 +751,7 @@ namespace llarp::quic
         pseudo_port,
         __LINE__);
 
-    // to try: set port to 0
-    // remote_port = huint16_t{0};
-    // pseudo_port = 0;
-
     auto remote_addr = Address{SockAddr{"::1"sv, remote_port}, std::move(remote)};
-    log::debug(
-        logcat,
-        "Receiving packet from {} with port = {}, remote = {} at line {}",
-        remote_addr,
-        remote_addr.port(),
-        *remote_addr.endpoint,
-        __LINE__);
     ep->receive_packet(std::move(remote_addr), ecn, data);
   }
 }  // namespace llarp::quic

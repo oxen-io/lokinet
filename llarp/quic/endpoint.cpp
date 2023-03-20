@@ -68,8 +68,6 @@ namespace llarp::quic
         ngtcp2_pkt_info{.ecn = ecn}};
 
     log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
-    // debug
-    log::debug(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
 
     handle_packet(pkt);
 
@@ -79,8 +77,6 @@ namespace llarp::quic
   void
   Endpoint::handle_packet(const Packet& p)
   {
-    // debug
-    log::debug(logcat, "Handling incoming quic packet: {}", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
     {
@@ -219,12 +215,11 @@ namespace llarp::quic
             llarp_buffer_t{outgoing.data(), outgoing.size()},
             service::ProtocolType::QUIC))
     {
-      // debug
-      log::debug(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
+      log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
     }
     else
     {
-      log::debug(
+      log::trace(
           logcat, "Failed to send to quic endpoint {}; was sending {}B", to, outgoing.size());
     }
     return {};
@@ -255,9 +250,6 @@ namespace llarp::quic
           logcat, "Failed to construct version negotiation packet: {}", ngtcp2_strerror(nwrote));
     if (nwrote <= 0)
       return;
-
-    log::debug(
-        logcat, "Sending packet to {} at port {} on {}", *source.endpoint, source.port(), __LINE__);
 
     send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
   }
@@ -351,7 +343,6 @@ namespace llarp::quic
   Endpoint::check_timeouts()
   {
     auto now = get_time();
-    uint64_t now_ts = get_timestamp(now);
 
     // Destroy any connections that are finished draining
     bool cleanup = false;
