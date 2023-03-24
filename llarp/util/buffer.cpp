@@ -3,6 +3,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include "llarp/util/str.hpp"
 
 bool
 llarp_buffer_t::writef(const char* fmt, ...)
@@ -142,6 +143,12 @@ namespace llarp
     auto buf = std::make_unique<byte_t[]>(sz);
     std::copy(b.base, b.cur, buf.get());
     return {std::move(buf), sz};
+  }
+
+  byte_view_t
+  OwnedBuffer::view() const
+  {
+    return {buf.get(), sz};
   }
 
 }  // namespace llarp

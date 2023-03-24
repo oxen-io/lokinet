@@ -114,7 +114,7 @@ namespace llarp
       bool
       IsReady() const;
 
-      const llarp::RouterID
+      llarp::RouterID
       Endpoint() const
       {
         return m_ExitRouter;
@@ -218,8 +218,7 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 1;
+        msg.wants_exit = 1;
       }
     };
 
@@ -247,8 +246,7 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 0;
+        msg.wants_exit = 0;
       }
     };
 

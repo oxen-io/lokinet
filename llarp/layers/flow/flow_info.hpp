@@ -15,13 +15,6 @@ namespace llarp::layers::flow
     /// source and destination addresses we associate with this flow.
     FlowAddr src, dst;
 
-    /// flow address of the pivot we use to get from src to dst.
-    /// for .loki traffic this is a .snode address, which we aligh our paths to.
-    /// for .snode traffic this is a .snode address, which we align our paths to.
-    /// for .exit traffic this is a .loki address, which we will fetch the exit descriptor it is
-    /// associated with.
-    FlowAddr pivot;
-
     /// cleartext identifier used on outer framing of the traffic. lets us tell what is from who.
     FlowTag tag;
 

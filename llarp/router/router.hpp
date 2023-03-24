@@ -1,6 +1,11 @@
 #pragma once
 
 #include "abstractrouter.hpp"
+#include "outbound_message_handler.hpp"
+#include "outbound_session_maker.hpp"
+#include "rc_gossiper.hpp"
+#include "rc_lookup_handler.hpp"
+#include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
 #include <llarp/config/config.hpp>
@@ -8,8 +13,6 @@
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/ev/ev.hpp>
-#include <llarp/exit/context.hpp>
-#include <llarp/handlers/tun.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/link/server.hpp>
 #include <llarp/messages/link_message_parser.hpp>
@@ -17,18 +20,12 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 #include <llarp/profiling.hpp>
+#include <llarp/quic/tunnel.hpp>
 #include <llarp/router_contact.hpp>
-#include "outbound_message_handler.hpp"
-#include "outbound_session_maker.hpp"
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
-#include "route_poker.hpp"
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message_parser.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/rpc/rpc_server.hpp>
-#include <llarp/service/context.hpp>
-#include <stdexcept>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/mem.hpp>
@@ -44,6 +41,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <stdexcept>
 
 #include <oxenmq/address.h>
 
@@ -51,6 +49,9 @@ namespace llarp
 {
   struct Router : public AbstractRouter
   {
+    /// bail if we hang for this amount of time.
+    static constexpr auto router_alive_timeout = 1s;
+
     llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key
@@ -79,6 +80,15 @@ namespace llarp
 
     std::shared_ptr<EventLoopWakeup> m_Pump;
 
+    /// wake this up when we get a link layer message recieved.
+    /// it will keep things pumping.
+    std::shared_ptr<EventLoopWakeup> _inbound_link_layer_wakeup;
+
+    std::shared_ptr<dns::Server> m_DNS;
+
+    std::unique_ptr<const layers::Layers> m_Layers;
+    std::shared_ptr<quic::TunnelManager> m_QUIC;
+
     path::BuildLimiter&
     pathBuildLimiter() override
     {
@@ -104,6 +114,23 @@ namespace llarp
     dht() const override
     {
       return _dht;
+    }
+
+    const std::unique_ptr<const layers::Layers>&
+    get_layers() const override
+    {
+      return m_Layers;
+    }
+
+    const std::shared_ptr<dns::Server>&
+    get_dns() const override
+    {
+      return m_DNS;
+    }
+    const std::shared_ptr<quic::TunnelManager>&
+    quic_tunnel() const override
+    {
+      return m_QUIC;
     }
 
     std::optional<std::variant<nuint32_t, nuint128_t>>
@@ -152,12 +179,6 @@ namespace llarp
     GetRouterWhitelist() const override
     {
       return _rcLookupHandler.Whitelist();
-    }
-
-    exit::Context&
-    exitContext() override
-    {
-      return _exitContext;
     }
 
     const std::shared_ptr<KeyManager>&
@@ -226,7 +247,6 @@ namespace llarp
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
-    exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
     llarp_dht_context* _dht = nullptr;
@@ -250,20 +270,6 @@ namespace llarp
     LinkMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
 
-    service::Context _hiddenServiceContext;
-
-    service::Context&
-    hiddenServiceContext() override
-    {
-      return _hiddenServiceContext;
-    }
-
-    const service::Context&
-    hiddenServiceContext() const override
-    {
-      return _hiddenServiceContext;
-    }
-
     llarp_time_t _lastTick = 0s;
 
     std::function<void(void)> _onDown;
@@ -278,7 +284,7 @@ namespace llarp
     LooksAlive() const override
     {
       const llarp_time_t now = Now();
-      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+      return now <= _lastTick || (now - _lastTick) <= router_alive_timeout;
     }
 
     /// bootstrap RCs
@@ -312,6 +318,10 @@ namespace llarp
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
+
+    /// held when we are calling PumpLL()
+    /// TriggerPump() is nop when this mutex is locked.
+    std::mutex _pump_mtx;
 
     std::string
     status_line() override;
@@ -362,7 +372,10 @@ namespace llarp
 
     explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
-    ~Router() override;
+    virtual ~Router() override;
+
+    virtual std::unique_ptr<const layers::Layers>
+    create_layers() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
@@ -554,13 +567,13 @@ namespace llarp
       return m_Config;
     }
 
-    int m_OutboundUDPSocket = -1;
+    int m_OutboundUDPSocket{-1};
 
    private:
-    std::atomic<bool> _stopping;
-    std::atomic<bool> _running;
+    bool _stopping{false};
+    bool _running{false};
 
-    bool m_isServiceNode = false;
+    bool m_isServiceNode{false};
 
     // Delay warning about being decommed/dereged until we've had enough time to sync up with oxend
     static constexpr auto DECOMM_WARNING_STARTUP_DELAY = 15s;

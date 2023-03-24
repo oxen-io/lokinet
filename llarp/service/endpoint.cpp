@@ -2,12 +2,14 @@
 #include "endpoint_state.hpp"
 #include "endpoint_util.hpp"
 #include "hidden_service_address_lookup.hpp"
-#include "auth.hpp"
-#include "llarp/util/logging.hpp"
+
+#include "convotag.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
 #include "protocol_type.hpp"
+
+#include <llarp/constants/platform.hpp>
 
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
@@ -21,6 +23,7 @@
 #include <llarp/dht/messages/gotrouter.hpp>
 #include <llarp/dht/messages/pubintro.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/router/route_poker.hpp>
@@ -36,11 +39,18 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/util/priority_queue.hpp>
 
+#include <llarp/layers/flow/flow_traffic.hpp>
+#include <llarp/layers/flow/flow_layer.hpp>
+#include <llarp/layers/layers.hpp>
+
+#include <memory>
 #include <optional>
 #include <type_traits>
+#include <random>
 #include <utility>
 #include <uvw.hpp>
 #include <variant>
+#include <vector>
 
 namespace llarp
 {
@@ -48,16 +58,15 @@ namespace llarp
   {
     static auto logcat = log::Cat("endpoint");
 
-    Endpoint::Endpoint(AbstractRouter* r, Context* parent)
-        : path::Builder{r, 3, path::default_len}
-        , context{parent}
+    Endpoint::Endpoint(AbstractRouter& r)
+        : path::Builder{&r, 3, path::default_len}
         , m_InboundTrafficQueue{512}
         , m_SendQueue{512}
         , m_RecvQueue{512}
         , m_IntrosetLookupFilter{5s}
     {
       m_state = std::make_unique<EndpointState>();
-      m_state->m_Router = r;
+      m_state->m_Router = &r;
       m_state->m_Name = "endpoint";
       m_RecvQueue.enable();
 
@@ -65,24 +74,40 @@ namespace llarp
         m_quic = std::make_unique<quic::TunnelManager>(*this);
     }
 
-    bool
-    Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
+    path::PathSet_ptr
+    Endpoint::GetSelf()
     {
-      if (conf.m_Paths.has_value())
-        numDesiredPaths = *conf.m_Paths;
+      return std::static_pointer_cast<path::PathSet>(shared_from_this());
+    }
 
-      if (conf.m_Hops.has_value())
-        numHops = *conf.m_Hops;
+    std::weak_ptr<path::PathSet>
+    Endpoint::GetWeak()
+    {
+      return std::weak_ptr<path::PathSet>{weak_from_this()};
+    }
 
-      conf.m_ExitMap.ForEachEntry(
-          [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
+    std::string_view
+    Endpoint::endpoint_name() const
+    {
+      return "default";
+    }
 
-      for (auto [exit, auth] : conf.m_ExitAuths)
+    bool
+    Endpoint::Configure(const NetworkConfig& conf, const DnsConfig&)
+    {
+      numDesiredPaths = conf.m_Paths.value_or(numDesiredPaths);
+      numHops = conf.m_Hops.value_or(numHops);
+
+      conf.m_ExitMap.ForEachEntry([this, conf](const IPRange& range, const service::Address& addr) {
+        MapExitRange(range, addr);
+      });
+
+      for (const auto& [exit, auth] : conf.m_ExitAuths)
       {
         SetAuthInfoForEndpoint(exit, auth);
       }
 
-      conf.m_LNSExitMap.ForEachEntry([&](const IPRange& range, const std::string& name) {
+      conf.m_LNSExitMap.ForEachEntry([this, conf](const IPRange& range, const std::string& name) {
         std::optional<AuthInfo> auth;
         const auto itr = conf.m_LNSExitAuths.find(name);
         if (itr != conf.m_LNSExitAuths.end())
@@ -408,7 +433,7 @@ namespace llarp
       m_IntrosetLookupFilter.Decay(now);
       // expire name cache
       m_state->nameCache.Decay(now);
-      // expire snode sessions
+      // expire snode sessions and tick alive ones.
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
       EndpointUtil::ExpirePendingTx(now, m_state->m_PendingLookups);
@@ -824,6 +849,7 @@ namespace llarp
           new PublishIntroSetJob(this, GenTXID(), introset, relayOrder, PublishIntrosetTimeout);
       if (job->SendRequestViaPath(path, r))
       {
+        r->TriggerPump();
         m_state->m_LastPublishAttempt = Now();
         return true;
       }
@@ -1114,6 +1140,7 @@ namespace llarp
         LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
         auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
         job->SendRequestViaPath(path, m_router);
+        m_router->TriggerPump();
       }
     }
 
@@ -1138,14 +1165,12 @@ namespace llarp
     {
       if (router.IsZero())
         return;
-      if (!Router()->nodedb()->Has(router))
-      {
-        LookupRouterAnon(router, nullptr);
-      }
+      if (not Router()->nodedb()->Has(router))
+        LookupRC(router, nullptr);
     }
 
     bool
-    Endpoint::LookupRouterAnon(RouterID router, RouterLookupHandler handler)
+    Endpoint::LookupRC(RouterID router, RouterLookupHandler handler)
     {
       using llarp::dht::FindRouterMessage;
 
@@ -1177,6 +1202,7 @@ namespace llarp
           m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), *dhtMsg);
 
           routers.emplace(router, std::move(job));
+          m_router->TriggerPump();
           return true;
         }
       }
@@ -1616,6 +1642,7 @@ namespace llarp
           if (job->SendRequestViaPath(path, Router()))
           {
             hookAdded = true;
+            m_router->TriggerPump();
           }
           else
             LogError(Name(), " send via path failed for lookup");
@@ -1630,7 +1657,7 @@ namespace llarp
       auto& introset = introSet();
       introset.SRVs.clear();
       for (const auto& srv : SRVRecords())
-        introset.SRVs.emplace_back(srv.toTuple());
+        introset.SRVs.emplace_back(srv.tuple);
 
       RegenAndPublishIntroSet();
     }
@@ -1643,23 +1670,26 @@ namespace llarp
       using namespace std::placeholders;
       if (nodeSessions.count(snode) == 0)
       {
-        const auto src = xhtonl(net::TruncateV6(GetIfAddr()));
-        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode)));
-
         auto session = std::make_shared<exit::SNodeSession>(
             snode,
             [=](const llarp_buffer_t& buf) -> bool {
               net::IPPacket pkt;
               if (not pkt.Load(buf))
                 return false;
-              pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
               auto itr = m_state->m_SNodeSessions.find(snode);
               if (itr == m_state->m_SNodeSessions.end())
                 return false;
               if (const auto maybe = itr->second->CurrentPath())
-                return HandleInboundPacket(
-                    ConvoTag{maybe->as_array()}, pkt.ConstBuffer(), ProtocolType::TrafficV4, 0);
+              {
+                layers::flow::FlowTraffic traff;
+                traff.kind = layers::flow::FlowDataKind::direct_ip_unicast;
+                traff.flow_info.src = layers::flow::FlowAddr{snode.ToString()};
+                traff.flow_info.dst = layers::flow::FlowAddr{m_Identity.pub.Addr().ToString()};
+                traff.flow_info.tag = layers::flow::FlowTag{maybe->as_array()};
+                traff.datum = pkt.steal();
+                m_router->get_layers()->flow->offer_flow_traffic(std::move(traff));
+              }
               return false;
             },
             Router(),
@@ -1697,42 +1727,59 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
+    Endpoint::SendToOrQueue(ConvoTag tag, std::vector<byte_t> pkt, ProtocolType t)
     {
       if (tag.IsZero())
       {
         LogWarn("SendToOrQueue failed: convo tag is zero");
         return false;
       }
-      LogDebug(Name(), " send ", pkt.sz, " bytes on T=", tag);
+      log::trace(logcat, "{} send {} bytes on T={}"_format(Name(), pkt.size(), tag));
       if (auto maybe = GetEndpointWithConvoTag(tag))
       {
         if (auto* ptr = std::get_if<Address>(&*maybe))
         {
+          // traffic sent to ourself?
           if (*ptr == m_Identity.pub.Addr())
           {
             ConvoTagTX(tag);
-            m_state->m_Router->TriggerPump();
-            if (not HandleInboundPacket(tag, pkt, t, 0))
-              return false;
+            const layers::flow::FlowAddr me{ptr->ToString()};
+            layers::flow::FlowTraffic traff;
+            switch (t)
+            {
+              case ProtocolType::Auth:
+                traff.kind = layers::flow::FlowDataKind::auth;
+                break;
+              case ProtocolType::TrafficV4:
+              case ProtocolType::TrafficV6:
+                traff.kind = layers::flow::FlowDataKind::direct_ip_unicast;
+                break;
+              case ProtocolType::QUIC:
+                traff.kind = layers::flow::FlowDataKind::stream_unicast;
+                break;
+              default:
+                return true;  // we dont care about this traffic, but it's not a fail
+            }
+            traff.flow_info.src = me;
+            traff.flow_info.dst = me;
+            traff.datum = std::move(pkt);
+            m_router->get_layers()->flow->offer_flow_traffic(std::move(traff));
             ConvoTagRX(tag);
             return true;
           }
         }
-        if (not SendToOrQueue(*maybe, pkt, t))
-          return false;
-        return true;
+        return send_to_or_queue(*maybe, std::move(pkt), t);
       }
       LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
       return false;
     }
 
     bool
-    Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
+    Endpoint::send_to_snode(const RouterID& addr, std::vector<byte_t>&& buf, ProtocolType t)
     {
       LogTrace("SendToOrQueue: sending to snode ", addr);
-      auto pkt = std::make_shared<net::IPPacket>();
-      if (!pkt->Load(buf))
+      auto pkt = std::make_shared<net::IPPacket>(std::move(buf));
+      if (pkt->empty())
         return false;
       EnsurePathToSNode(
           addr, [this, t, pkt = std::move(pkt)](RouterID, exit::BaseSession_ptr s, ConvoTag) {
@@ -1771,14 +1818,10 @@ namespace llarp
             msg.payload.size(),
             " bytes seqno=",
             msg.seqno);
-        if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
-        {
-          ConvoTagRX(msg.tag);
-        }
-        else
-        {
-          LogWarn("Failed to handle inbound message");
-        }
+
+        m_router->get_layers()->flow->offer_flow_traffic(msg.to_flow_traffic());
+        ConvoTagRX(msg.tag);
+
         queue.pop();
       }
 
@@ -1936,10 +1979,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(const Address& remote, const llarp_buffer_t& data, ProtocolType t)
+    Endpoint::send_to_loki(const Address& remote, std::vector<byte_t>&& data, ProtocolType t)
     {
       LogTrace("SendToOrQueue: sending to address ", remote);
-      if (data.sz == 0)
+      if (data.empty())
       {
         LogTrace("SendToOrQueue: dropping because data.sz == 0");
         return false;
@@ -1969,8 +2012,8 @@ namespace llarp
             LogError(Name(), "no reply intro for inbound session from ", remote, " T=", tag);
             return false;
           }
-          // get path for intro
-          auto p = GetPathByRouter(replyIntro.router);
+          // get path for return trip
+          auto p = GetNewestPathByRouter(replyIntro.router);
 
           if (not p)
           {
@@ -1984,7 +2027,7 @@ namespace llarp
           }
 
           f.T = tag;
-          // TODO: check expiration of our end
+
           auto m = std::make_shared<ProtocolMessage>(f.T);
           m->PutBuffer(data);
           f.N.Randomize();
@@ -2074,10 +2117,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(
-        const std::variant<Address, RouterID>& addr, const llarp_buffer_t& data, ProtocolType t)
+    Endpoint::send_to_or_queue(
+        const std::variant<Address, RouterID>& addr, std::vector<byte_t>&& data, ProtocolType t)
     {
-      return var::visit([&](auto& addr) { return SendToOrQueue(addr, data, t); }, addr);
+      if (auto* a = std::get_if<Address>(&addr))
+        return send_to_loki(*a, std::move(data), t);
+      if (auto* a = std::get_if<RouterID>(&addr))
+        return send_to_snode(*a, std::move(data), t);
+      return false;
     }
 
     bool

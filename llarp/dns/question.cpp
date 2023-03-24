@@ -1,129 +1,159 @@
 #include "question.hpp"
+#include "bits.hpp"
+#include "llarp/dns/name.hpp"
+#include <llarp/util/underlying.hpp>
 
+#include <oxenc/endian.h>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
-#include "dns.hpp"
+#include <stdexcept>
+#include <string_view>
 
-namespace llarp
+#include <oxen/log/format.hpp>
+#include <type_traits>
+#include <vector>
+
+namespace llarp::dns
 {
-  namespace dns
+
+  static auto logcat = log::Cat("dns");
+
+  Question::Question(std::vector<std::string_view> labels, RRType type)
+      : qtype{to_underlying(type)}, qclass{bits::qclass_in}
   {
-    static auto logcat = log::Cat("dns");
-
-    Question::Question(Question&& other)
-        : qname(std::move(other.qname))
-        , qtype(std::move(other.qtype))
-        , qclass(std::move(other.qclass))
-    {}
-    Question::Question(const Question& other)
-        : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
-    {}
-
-    Question::Question(std::string name, QType_t type)
-        : qname{std::move(name)}, qtype{type}, qclass{qClassIN}
+    if (labels.empty())
+      throw std::invalid_argument{"dns labels are empty"};
+    bool prev_was_empty{labels.front().empty()};
+    for (const auto& label : labels)
     {
-      if (qname.empty())
-        throw std::invalid_argument{"qname cannot be empty"};
+      bool _empty = label.empty();
+
+      if (_empty and prev_was_empty)
+        throw std::invalid_argument{"more than one empty label given in a row"};
+
+      prev_was_empty = _empty;
+
+      if (label.size() > max_dns_label_size)
+        throw std::invalid_argument{
+            fmt::format("dns label too big: {} > {}", label.size(), max_dns_label_size)};
+      _qname_labels.emplace_back(label);
+    }
+    if (_qname_labels.back().empty())
+      _qname_labels.pop_back();
+  }
+
+  bstring_t
+  Question::encode_dns() const
+  {
+    bstring_t ret(size_t{4}, uint8_t{});
+    oxenc::write_host_as_big<uint16_t>(qtype, &ret[0]);
+    oxenc::write_host_as_big<uint16_t>(bits::qclass_in, &ret[2]);
+    return encode_dns_labels(_qname_labels) + ret;
+  }
+
+  Question::Question(byte_view_t& str)
+  {
+    _qname_labels = decode_dns_labels(str);
+
+    if (str.size() < 4)
+      throw std::invalid_argument{"data too small"};
+
+    qtype = oxenc::load_big_to_host<uint16_t>(&str[0]);
+    qclass = oxenc::load_big_to_host<uint16_t>(&str[2]);
+
+    str = str.substr(4);
+  }
+
+  bool
+  Question::valid() const
+  {
+    return qclass == bits::qclass_in;
+  }
+
+  util::StatusObject
+  Question::to_json() const
+  {
+    return util::StatusObject{{"qname", qname()}, {"qtype", qtype}, {"qclass", qclass}};
+  }
+
+  bool
+  Question::IsName(const std::string& other) const
+  {
+    auto name = qname();
+    return other == name or (other + ".") == name;
+  }
+
+  bool
+  Question::IsLocalhost() const
+  {
+    auto sz = _qname_labels.size();
+
+    return sz >= 2 and is_lokinet_tld(_qname_labels.back())
+        and _qname_labels[sz - 2] == "localhost";
+  }
+
+  bool
+  Question::HasSubdomains() const
+  {
+    return _qname_labels.size() > 2;
+  }
+
+  std::string
+  Question::Subdomains() const
+  {
+    if (not HasSubdomains())
+      return "";
+
+    auto it = _qname_labels.rbegin();
+    ++it;
+    ++it;
+
+    std::string ret{*it};
+    ++it;
+
+    for (auto itr = it; itr != _qname_labels.rend(); ++itr)
+    {
+      ret = fmt::format("{}.{}", *itr, ret);
     }
 
-    bool
-    Question::Encode(llarp_buffer_t* buf) const
-    {
-      if (!EncodeNameTo(buf, qname))
-        return false;
-      if (!buf->put_uint16(qtype))
-        return false;
-      return buf->put_uint16(qclass);
-    }
+    return ret;
+  }
 
-    bool
-    Question::Decode(llarp_buffer_t* buf)
-    {
-      if (auto name = DecodeName(buf))
-        qname = *std::move(name);
-      else
-      {
-        log::error(logcat, "failed to decode name");
-        return false;
-      }
-      if (!buf->read_uint16(qtype))
-      {
-        log::error(logcat, "failed to decode type");
-        return false;
-      }
-      if (!buf->read_uint16(qclass))
-      {
-        log::error(logcat, "failed to decode class");
-        return false;
-      }
-      return true;
-    }
+  std::string
+  Question::qname() const
+  {
+    return fmt::format("{}", fmt::join(_qname_labels, "."));
+  }
 
-    util::StatusObject
-    Question::ToJSON() const
-    {
-      return util::StatusObject{{"qname", qname}, {"qtype", qtype}, {"qclass", qclass}};
-    }
+  std::string_view
+  Question::tld() const
+  {
+    if (_qname_labels.size() < 2)
+      return "";
+    return _qname_labels[_qname_labels.size() - 1];
+  }
 
-    bool
-    Question::IsName(const std::string& other) const
-    {
-      // does other have a . at the end?
-      if (other.find_last_of('.') == (other.size() - 1))
-        return other == qname;
-      // no, add it and retry
-      return IsName(other + ".");
-    }
+  std::string
+  Question::Domain() const
+  {
+    auto itr = _qname_labels.rbegin();
+    if (_qname_labels.size() > 1)
+      ++itr;
+    return *itr;
+  }
 
-    bool
-    Question::IsLocalhost() const
-    {
-      return (qname == "localhost.loki." or llarp::ends_with(qname, ".localhost.loki."));
-    }
+  std::string
+  Question::ToString() const
+  {
+    return fmt::format("[DNSQuestion qname={} qtype={:x} qclass={:x}]", qname(), qtype, qclass);
+  }
 
-    bool
-    Question::HasSubdomains() const
-    {
-      const auto parts = split(qname, ".", true);
-      return parts.size() >= 3;
-    }
-
-    std::string
-    Question::Subdomains() const
-    {
-      if (qname.size() < 2)
-        return "";
-
-      size_t pos;
-
-      pos = qname.rfind('.', qname.size() - 2);
-      if (pos == std::string::npos or pos == 0)
-        return "";
-
-      pos = qname.rfind('.', pos - 1);
-      if (pos == std::string::npos or pos == 0)
-        return "";
-
-      return qname.substr(0, pos);
-    }
-
-    std::string
-    Question::Name() const
-    {
-      return qname.substr(0, qname.find_last_of('.'));
-    }
-
-    bool
-    Question::HasTLD(const std::string& tld) const
-    {
-      return qname.find(tld) != std::string::npos
-          && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
-    }
-
-    std::string
-    Question::ToString() const
-    {
-      return fmt::format("[DNSQuestion qname={} qtype={:x} qclass={:x}]", qname, qtype, qclass);
-    }
-  }  // namespace dns
-}  // namespace llarp
+  std::vector<std::string_view>
+  Question::view_dns_labels() const
+  {
+    std::vector<std::string_view> view;
+    for (const auto& label : _qname_labels)
+      view.emplace_back(label);
+    return view;
+  }
+}  // namespace llarp::dns

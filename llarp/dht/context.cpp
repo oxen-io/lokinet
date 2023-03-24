@@ -326,6 +326,7 @@ namespace llarp
       const RouterID K(askpeer.as_array());
       pendingExploreLookups().NewTX(
           peer, whoasked, K, new ExploreNetworkJob(askpeer.as_array(), this));
+      router->TriggerPump();
     }
 
     void
@@ -497,7 +498,12 @@ namespace llarp
       if (not reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
-        return path && path->SendRoutingMessage(reply, router);
+        if (not path)
+          return false;
+        if (not path->SendRoutingMessage(reply, router))
+          return false;
+        router->pathContext().PumpUpstream();
+        return true;
       }
       return true;
     }
@@ -517,6 +523,7 @@ namespace llarp
           asker,
           asker,
           new LocalServiceAddressLookup(path, txid, relayOrder, addr, this, askpeer));
+      router->TriggerPump();
     }
 
     void
@@ -531,6 +538,7 @@ namespace llarp
       const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, asker, new PublishServiceJob(asker, introset, this, relayOrder));
+      router->TriggerPump();
     }
 
     void
@@ -548,6 +556,7 @@ namespace llarp
           asker,
           peer,
           new LocalPublishServiceJob(peer, from, txid, introset, this, relayOrder));
+      router->TriggerPump();
     }
 
     void
@@ -563,6 +572,7 @@ namespace llarp
       const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, asker, new ServiceAddressLookup(asker, addr, this, relayOrder, handler));
+      router->TriggerPump();
     }
 
     void
@@ -577,6 +587,7 @@ namespace llarp
       const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, asker, new ServiceAddressLookup(asker, addr, this, 0, handler), 1s);
+      router->TriggerPump();
     }
 
     bool
@@ -634,6 +645,7 @@ namespace llarp
       const TXOwner whoasked(OurKey(), txid);
       _pendingRouterLookups.NewTX(
           peer, whoasked, target, new LocalRouterLookup(path, txid, target, this));
+      router->TriggerPump();
     }
 
     void
@@ -648,6 +660,7 @@ namespace llarp
       const TXOwner peer(askpeer, ++ids);
       _pendingRouterLookups.NewTX(
           peer, asker, target, new RecursiveRouterLookup(asker, target, this, handler));
+      router->TriggerPump();
     }
 
     llarp_time_t

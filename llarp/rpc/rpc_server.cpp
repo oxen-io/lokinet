@@ -1,7 +1,5 @@
 #include "rpc_server.hpp"
-#include "llarp/rpc/rpc_request_definitions.hpp"
 #include "rpc_request.hpp"
-#include "llarp/service/address.hpp"
 #include <cmath>
 #include <exception>
 #include <llarp/router/route_poker.hpp>
@@ -10,15 +8,17 @@
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
 #include <nlohmann/json.hpp>
-#include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/auth.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/dns/dns.hpp>
+#include <llarp/layers/layers.hpp>
+#include <llarp/layers/platform/dns_bridge.hpp>
+#include <llarp/dns/server.hpp>
+#include <nlohmann/json_fwd.hpp>
+#include <optional>
 #include <vector>
 #include <oxenmq/fmt.h>
 
@@ -27,7 +27,7 @@ namespace llarp::rpc
   // Fake packet source that serializes repsonses back into dns
   class DummyPacketSource : public dns::PacketSource_Base
   {
-    std::function<void(std::optional<dns::Message>)> func;
+    std::function<void(dns::Message)> func;
 
    public:
     SockAddr dumb;
@@ -46,7 +46,8 @@ namespace llarp::rpc
     void
     SendTo(const SockAddr&, const SockAddr&, OwnedBuffer buf) const override
     {
-      func(dns::MaybeParseDNSMessage(buf));
+      auto view = buf.view();
+      func(dns::Message{view});
     }
 
     /// stop reading packets and end operation
@@ -74,17 +75,6 @@ namespace llarp::rpc
     }
 
     return true;
-  }
-
-  std::shared_ptr<EndpointBase>
-  GetEndpointByName(AbstractRouter& r, std::string name)
-  {
-    if (r.IsServiceNode())
-    {
-      return r.exitContext().GetExitEndpoint(name);
-    }
-
-    return r.hiddenServiceContext().GetEndpointByName(name);
   }
 
   template <typename RPC>
@@ -143,6 +133,22 @@ namespace llarp::rpc
     }
   }
 
+  namespace
+  {
+    /// make sure we have 'endpoint' set right
+    template <typename RPC_t>
+    [[nodiscard]] bool
+    check_endpoint_param(RPC_t& rpc)
+    {
+      const auto& name = rpc.request.endpoint;
+      // only allow endpoint named 'default' or empty string.
+      bool ok = name.empty() or name == "default";
+      if (not ok)
+        SetJSONError("No such local endpoint found.", rpc.response);
+      return ok;
+    }
+  }  // namespace
+
   void
   RPCServer::invoke(Halt& halt)
   {
@@ -192,17 +198,10 @@ namespace llarp::rpc
       return;
     }
 
-    auto endpoint = (quicconnect.request.endpoint.empty())
-        ? GetEndpointByName(m_Router, "default")
-        : GetEndpointByName(m_Router, quicconnect.request.endpoint);
-
-    if (not endpoint)
-    {
-      SetJSONError("No such local endpoint found.", quicconnect.response);
+    if (not check_endpoint_param(quicconnect))
       return;
-    }
 
-    auto quic = endpoint->GetQUICTunnel();
+    auto quic = m_Router.quic_tunnel();
 
     if (not quic)
     {
@@ -247,17 +246,10 @@ namespace llarp::rpc
       return;
     }
 
-    auto endpoint = (quiclistener.request.endpoint.empty())
-        ? GetEndpointByName(m_Router, "default")
-        : GetEndpointByName(m_Router, quiclistener.request.endpoint);
-
-    if (not endpoint)
-    {
-      SetJSONError("No such local endpoint found", quiclistener.response);
+    if (not check_endpoint_param(quiclistener))
       return;
-    }
 
-    auto quic = endpoint->GetQUICTunnel();
+    const auto& quic = m_Router.quic_tunnel();
 
     if (not quic)
     {
@@ -290,15 +282,13 @@ namespace llarp::rpc
 
       util::StatusObject result;
       result["id"] = id;
-      std::string localAddress;
-      var::visit([&](auto&& addr) { localAddress = addr.ToString(); }, endpoint->LocalAddress());
-      result["addr"] = localAddress + ":" + std::to_string(quiclistener.request.port);
+      result["addr"] = fmt::format(
+          "{}:{}"_format(m_Router.get_layers()->flow->local_addr(), quiclistener.request.port));
 
       if (not quiclistener.request.srvProto.empty())
       {
-        auto srvData = dns::SRVData::fromTuple(
+        m_Router.get_layers()->platform->local_dns_zone().add_srv_record(
             std::make_tuple(quiclistener.request.srvProto, 1, 1, quiclistener.request.port, ""));
-        endpoint->PutSRVRecord(std::move(srvData));
       }
 
       SetJSONResponse(result, quiclistener.response);
@@ -306,61 +296,14 @@ namespace llarp::rpc
     }
   }
 
-  // TODO: fix this because it's bad
-  void
-  RPCServer::invoke(LookupSnode& lookupsnode)
-  {
-    if (not m_Router.IsServiceNode())
-    {
-      SetJSONError("Not supported", lookupsnode.response);
-      return;
-    }
-
-    RouterID routerID;
-    if (lookupsnode.request.routerID.empty())
-    {
-      SetJSONError("No remote ID provided", lookupsnode.response);
-      return;
-    }
-
-    if (not routerID.FromString(lookupsnode.request.routerID))
-    {
-      SetJSONError("Invalid remote: " + lookupsnode.request.routerID, lookupsnode.response);
-      return;
-    }
-
-    m_Router.loop()->call([&]() {
-      auto endpoint = m_Router.exitContext().GetExitEndpoint("default");
-
-      if (endpoint == nullptr)
-      {
-        SetJSONError("Cannot find local endpoint: default", lookupsnode.response);
-        return;
-      }
-
-      endpoint->ObtainSNodeSession(routerID, [&](auto session) {
-        if (session and session->IsReady())
-        {
-          const auto ip = net::TruncateV6(endpoint->GetIPForIdent(PubKey{routerID}));
-          util::StatusObject status{{"ip", ip.ToString()}};
-          SetJSONResponse(status, lookupsnode.response);
-          return;
-        }
-
-        SetJSONError("Failed to obtain snode session", lookupsnode.response);
-        return;
-      });
-    });
-  }
-
   void
   RPCServer::invoke(MapExit& mapexit)
   {
     MapExit exit_request;
-    // steal replier from exit RPC endpoint
+    // steal replier from exit RPC endpoint.
     exit_request.replier.emplace(mapexit.move());
-
-    m_Router.hiddenServiceContext().GetDefault()->map_exit(
+    // then do the actual call.
+    m_Router.get_layers()->platform->map_exit(
         mapexit.request.address,
         mapexit.request.token,
         mapexit.request.ip_range,
@@ -375,15 +318,11 @@ namespace llarp::rpc
   void
   RPCServer::invoke(ListExits& listexits)
   {
-    if (not m_Router.hiddenServiceContext().hasEndpoints())
-    {
-      SetJSONError("No mapped endpoints found", listexits.response);
-      return;
-    }
+    auto exit_list = json::array();
+    for (const auto& exit : m_Router.get_layers()->platform->addr_mapper.all_exits())
+      exit_list.emplace_back(to_json(exit));
 
-    auto status = m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["exitMap"];
-
-    SetJSONResponse((status.empty()) ? "No exits" : status, listexits.response);
+    SetJSONResponse(exit_list.empty() ? "No exits" : exit_list, listexits.response);
   }
 
   void
@@ -391,8 +330,8 @@ namespace llarp::rpc
   {
     try
     {
-      for (auto& ip : unmapexit.request.ip_range)
-        m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
+      for (const auto& range : unmapexit.request.ip_range)
+        m_Router.get_layers()->platform->unmap_all_exits_on_range(range);
     }
     catch (std::exception& e)
     {
@@ -413,8 +352,8 @@ namespace llarp::rpc
   {
     MapExit map_request;
     UnmapExit unmap_request;
-    auto endpoint = m_Router.hiddenServiceContext().GetDefault();
-    auto current_exits = endpoint->ExtractStatus()["exitMap"];
+    const auto& endpoint = m_Router.get_layers()->platform;
+    auto current_exits = endpoint->addr_mapper.all_exits();
 
     if (current_exits.empty())
     {
@@ -438,13 +377,17 @@ namespace llarp::rpc
     if (not swapexits.request.token.empty())
       map_request.request.token = swapexits.request.token;
 
+    layers::flow::FlowAddr old_exit{swapexits.request.exit_addresses[0]};
     // populate map_exit request with old IP ranges
-    for (auto& [range, exit] : current_exits.items())
+    for (const auto& mapping : current_exits)
     {
-      if (exit.get<std::string>() == swapexits.request.exit_addresses[0])
+      if (not mapping.flow_info)
+        continue;
+
+      if (mapping.flow_info->dst == old_exit)
       {
-        map_request.request.ip_range.emplace_back(range);
-        unmap_request.request.ip_range.emplace_back(range);
+        map_request.request.ip_range = mapping.owned_ranges;
+        unmap_request.request.ip_range = mapping.owned_ranges;
       }
     }
 
@@ -458,17 +401,16 @@ namespace llarp::rpc
         map_request.request.address,
         map_request.request.token,
         map_request.request.ip_range,
-        [unmap = std::move(unmap_request),
-         ep = endpoint,
-         old_exit = swapexits.request.exit_addresses[0]](bool success, std::string result) mutable {
+        [this, unmap = std::move(unmap_request), old_exit = std::move(old_exit)](
+            bool success, std::string result) mutable {
           if (not success)
             unmap.send_response({{"error"}, std::move(result)});
           else
           {
             try
             {
-              for (auto& ip : unmap.request.ip_range)
-                ep->UnmapRangeByExit(ip, old_exit);
+              for (const auto& range : unmap.request.ip_range)
+                m_Router.get_layers()->platform->unmap_exit(old_exit, range);
             }
             catch (std::exception& e)
             {
@@ -486,31 +428,28 @@ namespace llarp::rpc
   RPCServer::invoke(DNSQuery& dnsquery)
   {
     std::string qname = (dnsquery.request.qname.empty()) ? "" : dnsquery.request.qname;
-    dns::QType_t qtype = (dnsquery.request.qtype) ? dnsquery.request.qtype : dns::qTypeA;
+    dns::RRType qtype = dns::get_rr_type(dnsquery.request.qtype).value_or(dns::RRType::A);
 
-    dns::Message msg{dns::Question{qname, qtype}};
+    dns::Message msg{};
+    msg.questions.emplace_back(split(qname, "."), qtype);
 
-    auto endpoint = (dnsquery.request.endpoint.empty())
-        ? GetEndpointByName(m_Router, "default")
-        : GetEndpointByName(m_Router, dnsquery.request.endpoint);
-
-    if (endpoint == nullptr)
-    {
-      SetJSONError("No such endpoint found for dns query", dnsquery.response);
+    if (not check_endpoint_param(dnsquery))
       return;
-    }
 
-    if (auto dns = endpoint->DNS())
+    if (const auto& dns = m_Router.get_dns())
     {
-      auto packet_src = std::make_shared<DummyPacketSource>([&](auto result) {
-        if (result)
-          SetJSONResponse(result->ToJSON(), dnsquery.response);
-        else
-          SetJSONError("No response from DNS", dnsquery.response);
-      });
-      if (not dns->MaybeHandlePacket(
-              packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
-        SetJSONError("DNS query not accepted by endpoint", dnsquery.response);
+      auto packet_src = std::make_shared<DummyPacketSource>(
+          [&](auto result) { SetJSONResponse(result.to_json(), dnsquery.response); });
+      try
+      {
+        if (not dns->MaybeHandlePacket(
+                packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
+          SetJSONError("DNS query not accepted by endpoint", dnsquery.response);
+      }
+      catch (std::exception& ex)
+      {
+        SetJSONError("Failed to handle dns packet: {}"_format(ex.what()), dnsquery.response);
+      }
     }
     else
       SetJSONError("Endpoint does not have dns", dnsquery.response);

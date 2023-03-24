@@ -353,8 +353,11 @@ namespace llarp
       RouterID
       Endpoint() const;
 
-      PubKey
+      const PubKey&
       EndpointPubKey() const;
+
+      const PathHopConfig&
+      EndpointHop() const;
 
       bool
       IsEndpoint(const RouterID& router, const PathID_t& path) const;

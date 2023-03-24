@@ -142,13 +142,8 @@ namespace llarp
           pkt.resize(buf.sz);
           std::copy_n(buf.base, buf.sz, pkt.data());
           RecvFrom(from, std::move(pkt));
-        });
-
-    if (m_udp->listen(m_ourAddr))
-      return;
-
-    throw std::runtime_error{
-        fmt::format("failed to listen {} udp socket on {}", Name(), m_ourAddr)};
+        },
+        m_ourAddr);
   }
 
   void

@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "definition.hpp"
 #include "ini.hpp"
+#include "llarp/net/ip_range.hpp"
 
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
@@ -611,7 +612,7 @@ namespace llarp
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
             "matching 'lokinetN', starting at N=0 (e.g. lokinet0, lokinet1, ...).",
         },
-        AssignmentAcceptor(m_ifname));
+        AssignmentAcceptor(_ifname));
 
     conf.defineOption<std::string>(
         "network",
@@ -622,10 +623,12 @@ namespace llarp
             "lokinet will attempt to find an unused private range.",
         },
         [this](std::string arg) {
-          if (not m_ifaddr.FromString(arg))
+          IPRange range;
+          if (not range.FromString(arg))
           {
             throw std::invalid_argument{fmt::format("[network]:ifaddr invalid value: '{}'", arg)};
           }
+          _ifaddr = range;
         });
 
     conf.defineOption<std::string>(
@@ -735,13 +738,7 @@ namespace llarp
             "https://docs.oxen.io/products-built-on-oxen/lokinet/snapps/hosting-snapps",
             "and general description of DNS SRV record configuration.",
         },
-        [this](std::string arg) {
-          llarp::dns::SRVData newSRV;
-          if (not newSRV.fromString(arg))
-            throw std::invalid_argument{fmt::format("Invalid SRV Record string: {}", arg)};
-
-          m_SRVRecords.push_back(std::move(newSRV));
-        });
+        [this](std::string_view arg) { m_SRVRecords.emplace_back(arg); });
 
     conf.defineOption<int>(
         "network",
@@ -777,6 +774,26 @@ namespace llarp
 
     // Deprecated options:
     conf.defineOption<std::string>("network", "enabled", Deprecated);
+  }
+
+  IPRange
+  NetworkConfig::ifaddr(const net::Platform& net_plat) const
+  {
+    if (_ifaddr)
+      return *_ifaddr;
+    if (auto maybe_range = net_plat.FindFreeRange())
+      return *maybe_range;
+    throw std::runtime_error{"cannot infer sensible address for local lokinet ip range"};
+  }
+
+  std::string
+  NetworkConfig::ifname(const net::Platform& net_plat) const
+  {
+    if (_ifname)
+      return *_ifname;
+    if (auto maybe_ifname = net_plat.FindFreeTun())
+      return *maybe_ifname;
+    throw std::runtime_error{"cannot infer sensible interface name for lokinet"};
   }
 
   void

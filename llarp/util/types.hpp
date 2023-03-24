@@ -3,7 +3,8 @@
 #include <string>
 #include <chrono>
 
-#include "oxen/log/format.hpp"
+#include <oxen/log/format.hpp>
+#include <type_traits>
 
 using byte_t = uint8_t;
 using llarp_proto_version_t = std::uint8_t;

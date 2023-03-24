@@ -45,14 +45,9 @@ make_config_for_test(const mocks::Network* env, std::string_view ini_str = "")
 }
 
 std::shared_ptr<UnitTestConfig>
-make_config(mocks::Network env, std::string_view ini_str = "")
+make_config(const mocks::Network & env, std::string_view ini_str = "")
 {
-  auto conf = std::make_shared<UnitTestConfig>(&env);
-  conf->LoadString(ini_str, true);
-  conf->lokid.whitelistRouters = false;
-  conf->bootstrap.seednode = true;
-  conf->bootstrap.files.clear();
-  return conf;
+    return make_config_for_test(&env, ini_str);
 }
 
 void
@@ -96,7 +91,7 @@ TEST_CASE("service node bind section on valid network", "[config]")
 
   SECTION("minimal config")
   {
-    REQUIRE_NOTHROW(run_config_test(env, ini_minimal));
+      REQUIRE_NOTHROW(run_config_test(mocks::Network{env}, ini_minimal));
   }
 
   SECTION("explicit bind via ifname")

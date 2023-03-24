@@ -1,7 +1,12 @@
 #include "transfer_traffic_message.hpp"
 
 #include "handler.hpp"
+#include "llarp/layers/flow/flow_data_kind.hpp"
+#include "llarp/layers/flow/flow_traffic.hpp"
+#include "llarp/service/protocol_type.hpp"
+#include <cstdint>
 #include <llarp/util/bencode.hpp>
+#include <vector>
 
 #include <oxenc/endian.h>
 
@@ -9,6 +14,27 @@ namespace llarp
 {
   namespace routing
   {
+
+    std::vector<layers::flow::FlowTraffic>
+    TransferTrafficMessage::to_flow_traffic() const
+    {
+      std::vector<layers::flow::FlowTraffic> trafs;
+      for (const auto& pkt : pkts)
+      {
+        if (auto sz = pkt.size(); sz >= 8)
+        {
+          sz -= 8;
+          auto& traf = trafs.emplace_back();
+          traf.datum.resize(sz);
+          std::copy_n(pkt.data() + 8, sz, traf.datum.begin());
+          traf.kind = protocol == service::ProtocolType::QUIC
+              ? layers::flow::FlowDataKind::stream_unicast
+              : layers::flow::FlowDataKind::direct_ip_unicast;
+        }
+      }
+      return trafs;
+    }
+
     bool
     TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf, uint64_t counter)
     {

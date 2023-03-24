@@ -22,9 +22,9 @@ namespace llarp
   {
     struct TunEndpoint : public service::Endpoint,
                          public dns::Resolver_Base,
-                         public std::enable_shared_from_this<TunEndpoint>
+                         private std::enable_shared_from_this<TunEndpoint>
     {
-      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent);
+      explicit TunEndpoint(AbstractRouter& r);
       ~TunEndpoint() override;
 
       vpn::NetworkInterface*
@@ -52,18 +52,6 @@ namespace llarp
           const SockAddr& to,
           const SockAddr& from) override;
 
-      path::PathSet_ptr
-      GetSelf() override
-      {
-        return shared_from_this();
-      }
-
-      std::weak_ptr<path::PathSet>
-      GetWeak() override
-      {
-        return weak_from_this();
-      }
-
       void
       Thaw() override;
 
@@ -72,13 +60,13 @@ namespace llarp
       ReconfigureDNS(std::vector<SockAddr> servers);
 
       bool
-      Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
+      Configure(const NetworkConfig& conf, const DnsConfig& dnsConf);
 
       void
       SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
       std::string
-      GetIfName() const override;
+      GetIfName() const;
 
       void
       Tick(llarp_time_t now) override;
@@ -90,7 +78,7 @@ namespace llarp
       NotifyParams() const override;
 
       bool
-      SupportsV6() const override;
+      SupportsV6() const;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const;
@@ -131,13 +119,12 @@ namespace llarp
       bool
       SetupNetworking() override;
 
-      /// overrides Endpoint
       bool
       HandleInboundPacket(
           const service::ConvoTag tag,
           const llarp_buffer_t& pkt,
           service::ProtocolType t,
-          uint64_t seqno) override;
+          uint64_t seqno);
 
       /// handle inbound traffic
       bool
@@ -188,7 +175,7 @@ namespace llarp
 
       /// get a key for ip address
       std::optional<std::variant<service::Address, RouterID>>
-      ObtainAddrForIP(huint128_t ip) const override;
+      ObtainAddrForIP(huint128_t ip) const;
 
       bool
       HasAddress(const AlignedBuffer<32>& addr) const
@@ -198,7 +185,7 @@ namespace llarp
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(std::variant<service::Address, RouterID> addr) override;
+      ObtainIPForAddr(std::variant<service::Address, RouterID> addr);
 
       void
       ResetInternalState() override;
@@ -272,12 +259,11 @@ namespace llarp
       {
         if (ctx)
         {
-          huint128_t ip = ObtainIPForAddr(addr);
-          query->answers.clear();
-          query->AddINReply(ip, sendIPv6);
+          huint128_t host_ip = ObtainIPForAddr(addr);
+          query->rr_add_ipaddr(net::maybe_truncate_ip(ToNet(host_ip)), 1);
         }
         else
-          query->AddNXReply();
+          query->nx();
         reply(*query);
       }
 

@@ -33,6 +33,7 @@ namespace llarp
     // handles messages on the routing level
     struct IMessageHandler
     {
+      /// handle obtain exit message, which allocates a client to snode or snode to snode
       virtual bool
       HandleObtainExitMessage(const ObtainExitMessage& msg, AbstractRouter* r) = 0;
 

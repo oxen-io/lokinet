@@ -1,3 +1,4 @@
+#include <chrono>
 #include <llarp/config/config.hpp>  // for ensure_config
 #include <llarp/constants/version.hpp>
 #include <llarp.hpp>
@@ -74,7 +75,7 @@ namespace
   {
     llarp::log::info(logcat, "Handling signal {}", sig);
     if (ctx)
-      ctx->loop->call([sig] { ctx->HandleSignal(sig); });
+      ctx->HandleSignal(sig);
     else
       std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
   }
@@ -504,7 +505,7 @@ namespace
     do
     {
       // do periodic non lokinet related tasks here
-      if (ctx and ctx->IsUp() and not ctx->LooksAlive())
+      if (ctx and (ctx->IsUp() or ctx->IsStopping()) and not ctx->LooksAlive())
       {
         auto deadlock_cat = llarp::log::Cat("deadlock");
         for (const auto& wtf :
@@ -534,7 +535,7 @@ namespace
         llarp::sys::service_manager->failed();
         std::abort();
       }
-    } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
+    } while (ftr.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready);
 
     main_thread.join();
 

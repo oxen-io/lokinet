@@ -18,23 +18,22 @@ namespace llarp::apple
       return;
     }
 
-    std::shared_ptr<llarp::handlers::TunEndpoint> tun;
-    router->hiddenServiceContext().ForEachService([&tun](const auto& /*name*/, const auto ep) {
-      tun = std::dynamic_pointer_cast<llarp::handlers::TunEndpoint>(ep);
-      return !tun;
-    });
-
-    if (!tun)
+    auto dns = router->get_dns();
+    if (not dns)
     {
-      LogError("Cannot reconfigure to use DNS trampoline: no tun endpoint found (!?)");
+      LogError("Cannot reconfigure to use DNS trampoline: no dns on router");
       return;
     }
 
-    if (enable)
-      tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, {dns_trampoline_port}}});
-    else
-      tun->ReconfigureDNS(router->GetConfig()->dns.m_upstreamDNS);
+    const std::vector<SockAddr> upstream_addrs{
+        enable ? std::vector<SockAddr>{SockAddr{127, 0, 0, 1, {dns_trampoline_port}}}
+               : router->GetConfig()->dns.m_upstreamDNS};
 
+    for (auto weak : dns->GetAllResolvers())
+    {
+      if (auto ptr = weak.lock())
+        ptr->ResetResolver(upstream_addrs);
+    }
     trampoline_active = enable;
   }
 

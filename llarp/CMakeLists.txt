@@ -13,7 +13,6 @@ add_library(lokinet-util
   util/bencode.cpp
   util/buffer.cpp
   util/file.cpp
-  util/json.cpp
   util/logging/buffer.cpp
   util/easter_eggs.cpp
   util/mem.cpp
@@ -76,6 +75,14 @@ if(APPLE)
   target_sources(lokinet-platform PRIVATE util/nop_service_manager.cpp)
 endif()
 
+# set to ON when we want to flip over to the new platform and flow layer.
+set(use_new_platform_layer OFF)
+# set to ON when we want to flip over to the refactor routing layer (called the route layer).
+set(use_new_route_layer OFF)
+
+set(use_new_onion_layer OFF)
+
+
 # lokinet-dns is the dns parsing and hooking library that we use to
 # parse modify and reconstitute dns wire proto, dns queries and RR
 # should have no concept of dns caching, this is left as an implementation
@@ -87,7 +94,6 @@ add_library(lokinet-dns
   dns/platform.cpp
   dns/question.cpp
   dns/rr.cpp
-  dns/serialize.cpp
   dns/server.cpp
   dns/srv_data.cpp)
 
@@ -175,7 +181,18 @@ add_library(lokinet-dht
 # flows between lokinet snapp endpoints be they .loki or .snode
 add_library(lokinet-layer-flow
   STATIC
-  layers/flow/stub.cpp # todo: remove me
+  layers/flow/flow_addr.cpp
+  layers/flow/flow_auth.cpp
+  layers/flow/flow_data_kind.cpp
+  layers/flow/flow_establish.cpp
+  layers/flow/flow_identity.cpp
+  layers/flow/flow_info.cpp
+  layers/flow/flow_layer.cpp
+  layers/flow/flow_state.cpp
+  layers/flow/flow_stats.cpp
+  layers/flow/flow_tag.cpp
+  layers/flow/name_cache.cpp
+  layers/flow/name_resolver.cpp
 )
 
 
@@ -183,6 +200,13 @@ add_library(lokinet-layer-flow
 # with onion paths. onion paths anonymize routing layer pdu.
 add_library(lokinet-layer-onion
   STATIC
+  layers/onion/onion_layer.cpp
+  layers/onion/onion_stats.cpp
+)
+
+add_library(lokinet-deprecated-layer-onion
+  STATIC
+  # old compilation units for onion layer
   path/ihophandler.cpp
   path/path_context.cpp
   path/path.cpp
@@ -193,6 +217,7 @@ add_library(lokinet-layer-onion
   messages/relay_commit.cpp
   messages/relay_status.cpp
 )
+
 
 # lokinet-layer-wire is a layer 1 analog which splits up
 # layer 2 frames into layer 1 symbols which in the case of iwp are encrypted udp/ip packets
@@ -234,6 +259,7 @@ add_library(lokinet-plainquic
 add_library(lokinet-context
   STATIC
   context.cpp
+  layers/layers.cpp
   link/link_manager.cpp
   router/outbound_message_handler.cpp
   router/outbound_session_maker.cpp
@@ -263,8 +289,14 @@ add_library(lokinet-peerstats
 
 # lokinet-layer-routing holds logic related to the routing layer
 # routing layer is anonymized over the onion layer
-add_library(lokinet-layer-routing
+add_library(lokinet-layer-route
   STATIC
+  layers/route/route_layer.cpp
+)
+
+add_library(lokinet-deprecated-layer-route
+  STATIC
+  # old compilation units for route layer
   routing/dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
@@ -274,22 +306,22 @@ add_library(lokinet-layer-routing
 )
 
 # kitchen sink to be removed after refactor
-add_library(lokinet-service-deprecated-kitchensink
+add_library(lokinet-deprecated-layer-kitchensink
   STATIC
   endpoint_base.cpp
+  handlers/exit.cpp
+  handlers/tun.cpp
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
   exit/policy.cpp
   exit/session.cpp
-  handlers/exit.cpp
-  handlers/tun.cpp
+  service/context.cpp
   service/name.cpp
   service/address.cpp
   service/async_key_exchange.cpp
   service/auth.cpp
   service/convotag.cpp
-  service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
   service/endpoint.cpp
@@ -311,7 +343,13 @@ add_library(lokinet-service-deprecated-kitchensink
 
 add_library(lokinet-layer-platform
   STATIC
-  layers/platform/stub.cpp # todo: remove me
+  layers/platform/addr_mapper.cpp
+  layers/platform/dns_bridge.cpp
+  layers/platform/ethertype.cpp
+  layers/platform/os_traffic.cpp
+  layers/platform/platform_addr.cpp
+  layers/platform/platform_layer.cpp
+  layers/platform/platform_stats.cpp
 )
 
 
@@ -371,7 +409,7 @@ if(TARGET lokinet-dns-systemd)
   )
 endif()
 
-lokinet_link_lib(lokinet-platform lokinet-util)
+lokinet_link_lib(lokinet-platform lokinet-util lokinet-config)
 
 lokinet_link_lib(lokinet-config
   lokinet-util
@@ -447,42 +485,54 @@ function(link_lokinet_layers)
   endif()
 endfunction()
 
-link_lokinet_layers(
-  lokinet-layer-platform
-  lokinet-layer-flow
-  lokinet-layer-routing
-  lokinet-layer-onion
-  lokinet-layer-link
-  lokinet-layer-wire
-)
 
-# set me to OFF to disable old codepath
-set(use_old_impl ON)
-if(use_old_impl)
-  # flow layer deprecated-kitchensink (remove me after refactor)
-  lokinet_link_lib(lokinet-service-deprecated-kitchensink
-    lokinet-dns
-    lokinet-nodedb
-    lokinet-context
-    lokinet-plainquic
-    lokinet-layer-routing
-    lokinet-layer-onion
-    lokinet-dht
-    lokinet-platform
-    lokinet-rpc
-  )
-  target_link_libraries(lokinet-layers INTERFACE lokinet-service-deprecated-kitchensink)
-endif()
-
+add_library(lokinet-deprecated INTERFACE)
+# todo: add branching case for only new platform layer
 target_link_libraries(lokinet-layers INTERFACE
   lokinet-layer-platform
   lokinet-layer-flow
-  lokinet-layer-routing
+  lokinet-layer-route
+  lokinet-layer-onion
+  lokinet-layer-link
+  lokinet-layer-wire)
+
+
+
+lokinet_link_lib(lokinet-deprecated-layer-route
+  lokinet-nodedb
+  lokinet-context
+  lokinet-platform)
+
+lokinet_link_lib(lokinet-deprecated-layer-onion
+  lokinet-deprecated-layer-route
+  lokinet-nodedb
+  lokinet-context
+  lokinet-platform)
+
+lokinet_link_lib(lokinet-deprecated-layer-kitchensink
+  lokinet-deprecated-layer-route
+  lokinet-deprecated-layer-onion
+  lokinet-dns
+  lokinet-nodedb
+  lokinet-context
+  lokinet-plainquic
+  lokinet-dht
+  lokinet-platform
+  lokinet-rpc)
+
+target_link_libraries(lokinet-deprecated INTERFACE lokinet-deprecated-layer-onion lokinet-deprecated-layer-route lokinet-deprecated-layer-kitchensink)
+target_compile_definitions(lokinet-base INTERFACE -DUSE_DEPRECATED_LAYERS)
+
+
+link_lokinet_layers(
+  lokinet-layer-platform
+  lokinet-layer-flow
+  lokinet-layer-route
   lokinet-layer-onion
   lokinet-layer-link
   lokinet-layer-wire
 )
-
+target_link_libraries(lokinet-layers INTERFACE lokinet-deprecated)
 
 # per component external deps
 
@@ -521,6 +571,7 @@ target_link_libraries(lokinet-plainquic PUBLIC
 if(WITH_EMBEDDED_LOKINET)
   include(GNUInstallDirs)
   add_library(lokinet-shared SHARED lokinet_shared.cpp)
+  target_include_directories(lokinet-shared PRIVATE ${PROJECT_SOURCE_DIR}/include)
   target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
   if(WIN32)
     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")

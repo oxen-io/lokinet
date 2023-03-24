@@ -1,5 +1,6 @@
 #pragma once
 #include "ev.hpp"
+#include "llarp/net/sock_addr.hpp"
 #include "udp_handle.hpp"
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/meta/memfn.hpp>
@@ -11,6 +12,8 @@
 
 #include <functional>
 #include <map>
+#include <memory>
+#include <optional>
 #include <vector>
 
 namespace llarp::uv
@@ -64,7 +67,7 @@ namespace llarp::uv
     make_repeater() override;
 
     virtual std::shared_ptr<llarp::UDPHandle>
-    make_udp(UDPReceiveFunc on_recv) override;
+    make_udp(UDPReceiveFunc on_recv, const std::optional<SockAddr>& laddr = std::nullopt) override;
 
     void
     FlushLogic();

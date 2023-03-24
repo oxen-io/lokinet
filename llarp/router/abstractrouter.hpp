@@ -1,20 +1,23 @@
 #pragma once
 
+#include <optional>
+#include <vector>
+#include <functional>
+#include <memory>
+
+#include "i_outbound_message_handler.hpp"
+
+#include <llarp/layers/layers.hpp>
+
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
-#include <memory>
 #include <llarp/util/types.hpp>
 #include <llarp/util/status.hpp>
-#include "i_outbound_message_handler.hpp"
-#include <vector>
 #include <llarp/ev/ev.hpp>
-#include <functional>
 #include <llarp/router_contact.hpp>
 #include <llarp/tooling/router_event.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
-
-#include <optional>
 
 #ifdef LOKINET_HIVE
 #include <llarp/tooling/router_event.hpp>
@@ -45,19 +48,27 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  class EndpointBase;
+
   namespace dns
   {
     class I_SystemSettings;
-  }
+    class Server;
+  }  // namespace dns
 
   namespace net
   {
     class Platform;
   }
 
-  namespace exit
+  namespace layers
   {
-    struct Context;
+    struct Layers;
+  }
+
+  namespace layers::platform
+  {
+    class PlatformDriver;
   }
 
   namespace rpc
@@ -70,14 +81,14 @@ namespace llarp
     struct PathContext;
   }
 
+  namespace quic
+  {
+    class TunnelManager;
+  }
+
   namespace routing
   {
     struct IMessageHandler;
-  }
-
-  namespace service
-  {
-    struct Context;
   }
 
   namespace thread
@@ -99,6 +110,19 @@ namespace llarp
 #endif
 
     virtual ~AbstractRouter() = default;
+
+    /// overrideable creation of protocol layers
+    virtual std::unique_ptr<const layers::Layers>
+    create_layers() = 0;
+
+    virtual const std::unique_ptr<const layers::Layers>&
+    get_layers() const = 0;
+
+    virtual const std::shared_ptr<dns::Server>&
+    get_dns() const = 0;
+
+    virtual const std::shared_ptr<quic::TunnelManager>&
+    quic_tunnel() const = 0;
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
@@ -136,9 +160,6 @@ namespace llarp
     virtual void
     ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) = 0;
 
-    virtual exit::Context&
-    exitContext() = 0;
-
     virtual const std::shared_ptr<KeyManager>&
     keyManager() const = 0;
 
@@ -161,16 +182,7 @@ namespace llarp
     virtual void QueueDiskIO(std::function<void(void)>) = 0;
 
     virtual std::shared_ptr<Config>
-    GetConfig() const
-    {
-      return nullptr;
-    }
-
-    virtual service::Context&
-    hiddenServiceContext() = 0;
-
-    virtual const service::Context&
-    hiddenServiceContext() const = 0;
+    GetConfig() const = 0;
 
     virtual IOutboundMessageHandler&
     outboundMessageHandler() = 0;

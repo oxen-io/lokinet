@@ -8,7 +8,8 @@
 #include <netdb.h>
 #endif
 
-#include <llarp/dns/dns.hpp>
+#include <llarp/dns/server.hpp>
+#include <llarp/dns/bits.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/router/abstractrouter.hpp>
@@ -25,6 +26,7 @@
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/underlying.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/constants/net.hpp>
 #include <llarp/constants/platform.hpp>
@@ -117,17 +119,17 @@ namespace llarp
     {
       std::optional<SockAddr> m_QueryBind;
       net::ipaddr_t m_OurIP;
-      TunEndpoint* const m_Endpoint;
+      TunEndpoint& m_Endpoint;
 
      public:
       std::shared_ptr<dns::PacketSource_Base> PacketSource;
 
       virtual ~TunDNS() = default;
 
-      explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
-          : dns::Server{ep->Router()->loop(), conf, 0}
+      TunDNS(TunEndpoint& ep, const llarp::DnsConfig& conf)
+          : dns::Server{ep.Router()->loop(), conf}
           , m_QueryBind{conf.m_QueryBind}
-          , m_OurIP{ToNet(ep->GetIfAddr())}
+          , m_OurIP{ToNet(ep.GetIfAddr())}
           , m_Endpoint{ep}
       {}
 
@@ -135,8 +137,8 @@ namespace llarp
       MakePacketSourceOn(const SockAddr&, const llarp::DnsConfig& conf) override
       {
         auto ptr = std::make_shared<DnsInterceptor>(
-            [ep = m_Endpoint](auto pkt) {
-              ep->HandleWriteIPPacket(pkt.ConstBuffer(), pkt.srcv6(), pkt.dstv6(), 0);
+            [this](auto pkt) {
+              m_Endpoint.HandleWriteIPPacket(pkt.ConstBuffer(), pkt.srcv6(), pkt.dstv6(), 0);
             },
             m_OurIP,
             conf);
@@ -145,8 +147,7 @@ namespace llarp
       }
     };
 
-    TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
-        : service::Endpoint{r, parent}
+    TunEndpoint::TunEndpoint(AbstractRouter& r) : service::Endpoint{r}
     {
       m_PacketRouter = std::make_shared<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
@@ -158,7 +159,7 @@ namespace llarp
       const auto& info = GetVPNInterface()->Info();
       if (m_DnsConfig.m_raw_dns)
       {
-        auto dns = std::make_shared<TunDNS>(this, m_DnsConfig);
+        auto dns = std::make_shared<TunDNS>(*this, m_DnsConfig);
         m_DNS = dns;
 
         m_PacketRouter->AddUDPHandler(huint16_t{53}, [this, dns](net::IPPacket pkt) {
@@ -173,10 +174,10 @@ namespace llarp
         });
       }
       else
-        m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig, info.index);
+        m_DNS = std::make_shared<dns::Server>(Loop(), m_DnsConfig);
 
-      m_DNS->AddResolver(weak_from_this());
-      m_DNS->Start();
+      m_DNS->AddResolver(std::enable_shared_from_this<TunEndpoint>::weak_from_this());
+      m_DNS->Start(info.index);
 
       if (m_DnsConfig.m_raw_dns)
       {
@@ -307,7 +308,7 @@ namespace llarp
             conf.m_AuthWhitelist,
             conf.m_AuthStaticTokens,
             Router()->lmq(),
-            shared_from_this());
+            std::enable_shared_from_this<TunEndpoint>::shared_from_this());
         auth->Start();
         m_AuthPolicy = std::move(auth);
       }
@@ -331,25 +332,8 @@ namespace llarp
           return false;
       }
 
-      m_IfName = conf.m_ifname;
-      if (m_IfName.empty())
-      {
-        const auto maybe = m_router->Net().FindFreeTun();
-        if (not maybe.has_value())
-          throw std::runtime_error("cannot find free interface name");
-        m_IfName = *maybe;
-      }
-
-      m_OurRange = conf.m_ifaddr;
-      if (!m_OurRange.addr.h)
-      {
-        const auto maybe = m_router->Net().FindFreeRange();
-        if (not maybe.has_value())
-        {
-          throw std::runtime_error("cannot find free address range");
-        }
-        m_OurRange = *maybe;
-      }
+      m_IfName = conf.ifname(m_router->Net());
+      m_OurRange = conf.ifaddr(m_router->Net());
 
       m_OurIP = m_OurRange.addr;
       m_UseV6 = false;
@@ -504,7 +488,7 @@ namespace llarp
       msg.authorities.resize(0);
       msg.additional.resize(0);
       msg.answers.resize(0);
-      msg.hdr_fields &= ~dns::flags_RCODENameError;
+      msg.hdr.rcode(~(dns::bits::rcode_name_error | dns::bits::rcode_servfail));
       return msg;
     }
 
@@ -590,25 +574,19 @@ namespace llarp
         const auto& answer = msg.answers[0];
         if (answer.HasCNameForTLD(".snode"))
         {
-          llarp_buffer_t buf(answer.rData);
-          auto qname = dns::DecodeName(&buf, true);
-          if (not qname)
-            return false;
+          auto name = answer.rr_data.as_dns_name();
           RouterID addr;
-          if (not addr.FromString(*qname))
+          if (not addr.FromString(name))
             return false;
           auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
           return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
         }
         else if (answer.HasCNameForTLD(".loki"))
         {
-          llarp_buffer_t buf(answer.rData);
-          auto qname = dns::DecodeName(&buf, true);
-          if (not qname)
-            return false;
+          auto name = answer.rr_data.as_dns_name();
 
           service::Address addr;
-          if (not addr.FromString(*qname))
+          if (not addr.FromString(name))
             return false;
 
           auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
@@ -620,30 +598,28 @@ namespace llarp
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      std::string qname = msg.questions[0].Name();
-      const auto nameparts = split(qname, ".");
-      std::string lnsName;
-      if (nameparts.size() >= 2 and ends_with(qname, ".loki"))
-      {
-        lnsName = nameparts[nameparts.size() - 2];
-        lnsName += ".loki"sv;
-      }
-      if (msg.questions[0].qtype == dns::qTypeTXT)
+
+      auto qname = msg.questions[0].qname();
+      qname = qname.substr(0, qname.size() - 2);
+      std::string lnsName = qname;
+      if (msg.questions[0].qtype == to_underlying(dns::RRType::TXT))
       {
         RouterID snode;
         if (snode.FromString(qname))
         {
-          m_router->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
+          m_router->LookupRouter(snode, [reply, _msg = std::move(msg), qname](const auto& found) {
+            dns::Message msg{_msg};
             if (found.empty())
             {
-              msg.AddNXReply();
+              msg.nx();
             }
             else
             {
               std::string recs;
               for (const auto& rc : found)
                 recs += rc.ToTXTRecord();
-              msg.AddTXTReply(std::move(recs));
+
+              msg.AddTXTReply(std::string_view{recs}, 1);
             }
             reply(msg);
           });
@@ -660,30 +636,32 @@ namespace llarp
               m_ExitMap.ForEachEntry([&s](const auto& range, const auto& exit) {
                 fmt::format_to(std::back_inserter(s), "{}={}; ", range, exit);
               });
-              msg.AddTXTReply(std::move(s));
+
+              msg.AddTXTReply(std::string_view{s}, 1);
             }
             else
             {
-              msg.AddNXReply();
+              msg.nx();
             }
           }
           else if (subdomain == "netid")
           {
-            msg.AddTXTReply(fmt::format("netid={};", m_router->rc().netID));
+            std::string s = fmt::format("netid={};", m_router->rc().netID);
+            msg.AddTXTReply(std::string_view{s}, 1);
           }
           else
           {
-            msg.AddNXReply();
+            msg.nx();
           }
         }
         else
         {
-          msg.AddNXReply();
+          msg.nx();
         }
 
         reply(msg);
       }
-      else if (msg.questions[0].qtype == dns::qTypeMX)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::MX))
       {
         // mx record
         service::Address addr;
@@ -695,23 +673,23 @@ namespace llarp
         else if (service::NameIsValid(lnsName))
         {
           LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
-            if (maybe.has_value())
+            if (maybe)
             {
-              var::visit([&](auto&& value) { msg.AddMXReply(value.ToString(), 1); }, *maybe);
+              var::visit([&msg](auto&& value) { msg.AddMXReply(value.ToString(), 1); }, *maybe);
             }
             else
             {
-              msg.AddNXReply();
+              msg.nx();
             }
             reply(msg);
           });
           return true;
         }
         else
-          msg.AddNXReply();
+          msg.nx();
         reply(msg);
       }
-      else if (msg.questions[0].qtype == dns::qTypeCNAME)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::CNAME))
       {
         if (is_random_snode(msg))
         {
@@ -721,7 +699,7 @@ namespace llarp
             msg.AddCNAMEReply(random.ToString(), 1);
           }
           else
-            msg.AddNXReply();
+            msg.nx();
         }
         else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
         {
@@ -733,34 +711,28 @@ namespace llarp
           }
           else
           {
-            msg.AddNXReply();
+            msg.nx();
           }
         }
         else if (is_localhost_loki(msg))
         {
-          size_t counter = 0;
-          context->ForEachService(
-              [&](const std::string&, const std::shared_ptr<service::Endpoint>& service) -> bool {
-                const service::Address addr = service->GetIdentity().pub.Addr();
-                msg.AddCNAMEReply(addr.ToString(), 1);
-                ++counter;
-                return true;
-              });
-          if (counter == 0)
-            msg.AddNXReply();
+          const service::Address addr = GetIdentity().pub.Addr();
+          msg.AddCNAMEReply(addr.ToString(), 1);
         }
         else
-          msg.AddNXReply();
+          msg.nx();
         reply(msg);
       }
-      else if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype == dns::qTypeAAAA)
+      else if (
+          msg.questions[0].qtype == to_underlying(dns::RRType::A)
+          or msg.questions[0].qtype == to_underlying(dns::RRType::AAAA))
       {
-        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
-        const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
+        const bool isV6 = msg.questions[0].qtype == to_underlying(dns::RRType::AAAA);
+        const bool isV4 = msg.questions[0].qtype == to_underlying(dns::RRType::A);
         llarp::service::Address addr;
         if (isV6 && !SupportsV6())
         {  // empty reply but not a NXDOMAIN so that client can retry IPv4
-          msg.AddNSReply("localhost.loki.");
+          msg.AddNSReply("localhost.loki.", 1);
         }
         // on MacOS this is a typeA query
         else if (is_random_snode(msg))
@@ -772,7 +744,7 @@ namespace llarp
             return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
           }
           else
-            msg.AddNXReply();
+            msg.nx();
         }
         else if (is_localhost_loki(msg))
         {
@@ -784,48 +756,35 @@ namespace llarp
             {
               if (HasExit())
               {
-                m_ExitMap.ForEachEntry(
-                    [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
-                msg.AddINReply(ip, isV6);
+                m_ExitMap.ForEachEntry([&msg](const auto&, const auto& exit) {
+                  msg.AddCNAMEReply(exit.ToString(), 1);
+                });
+                msg.rr_add_ipaddr(net::maybe_truncate_ip(ToNet(ip)));
               }
               else
               {
-                msg.AddNXReply();
+                msg.nx();
               }
             }
             else
             {
               msg.AddCNAMEReply(m_Identity.pub.Name(), 1);
-              msg.AddINReply(ip, isV6);
+              msg.rr_add_ipaddr(net::maybe_truncate_ip(ToNet(ip)));
             }
           }
           else
           {
-            msg.AddNXReply();
+            msg.nx();
           }
         }
         else if (addr.FromString(qname, ".loki"))
         {
-          if (isV4 && SupportsV6())
-          {
-            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
-          }
-          else
-          {
-            return ReplyToLokiDNSWhenReady(addr, std::make_shared<dns::Message>(msg), isV6);
-          }
+          return ReplyToLokiDNSWhenReady(addr, std::make_shared<dns::Message>(msg), isV6);
         }
         else if (addr.FromString(qname, ".snode"))
         {
-          if (isV4 && SupportsV6())
-          {
-            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
-          }
-          else
-          {
-            return ReplyToSNodeDNSWhenReady(
-                addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
-          }
+          return ReplyToSNodeDNSWhenReady(
+              addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
         }
         else if (service::NameIsValid(lnsName))
         {
@@ -837,11 +796,10 @@ namespace llarp
                isV6,
                reply,
                ReplyToDNSWhenReady](auto maybe) {
-                if (not maybe.has_value())
+                if (not maybe)
                 {
                   LogWarn(name, " lns name ", lnsName, " not resolved");
-                  msg->AddNXReply();
-                  reply(*msg);
+                  reply(msg->nx());
                   return;
                 }
                 ReplyToDNSWhenReady(*maybe, msg, isV6);
@@ -849,31 +807,30 @@ namespace llarp
           return true;
         }
         else
-          msg.AddNXReply();
+          msg.nx();
 
         reply(msg);
       }
-      else if (msg.questions[0].qtype == dns::qTypePTR)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::PTR))
       {
         // reverse dns
-        if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+        if (auto ip = dns::DecodePTR(msg.questions[0].qname()))
         {
           if (auto maybe = ObtainAddrForIP(*ip))
           {
-            var::visit([&msg](auto&& result) { msg.AddAReply(result.ToString()); }, *maybe);
+            msg.AddINReply(var::visit([](auto&& addr) { return addr.ToString(); }, *maybe));
             reply(msg);
             return true;
           }
         }
 
-        msg.AddNXReply();
-        reply(msg);
+        reply(msg.nx());
         return true;
       }
-      else if (msg.questions[0].qtype == dns::qTypeSRV)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::SRV))
       {
         auto srv_for = msg.questions[0].Subdomains();
-        auto name = msg.questions[0].qname;
+        auto name = msg.questions[0].qname();
         if (is_localhost_loki(msg))
         {
           msg.AddSRVReply(introSet().GetMatchingSRVRecords(srv_for));
@@ -886,20 +843,19 @@ namespace llarp
             [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
               if (records.empty())
               {
-                msg->AddNXReply();
+                reply(msg->nx());
               }
               else
               {
-                msg->AddSRVReply(records);
+                msg->AddSRVReply(records, 1);
+                reply(*msg);
               }
-              reply(*msg);
             });
         return true;
       }
       else
       {
-        msg.AddNXReply();
-        reply(msg);
+        reply(msg.nx());
       }
       return true;
     }
@@ -932,7 +888,7 @@ namespace llarp
         // hook any ranges we own
         if (msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
-          if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+          if (auto ip = dns::DecodePTR(msg.questions[0].qname()))
             return m_OurRange.Contains(*ip);
           return false;
         }
@@ -1257,7 +1213,7 @@ namespace llarp
       // this succeds for inbound convos, probably.
       if (auto maybe = GetBestConvoTagFor(to))
       {
-        if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+        if (SendToOrQueue(*maybe, pkt.copy(), type))
         {
           MarkIPActive(dst);
           Router()->TriggerPump();
@@ -1277,7 +1233,7 @@ namespace llarp
                   },
                   to);
             }
-            if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+            if (SendToOrQueue(*maybe, pkt.copy(), type))
             {
               MarkIPActive(dst);
               Router()->TriggerPump();

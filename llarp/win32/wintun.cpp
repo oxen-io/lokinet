@@ -373,12 +373,6 @@ namespace llarp::win32
       {
         return -1;
       }
-
-      void
-      MaybeWakeUpperLayers() const override
-      {
-        _router->TriggerPump();
-      }
     };
   }  // namespace
 

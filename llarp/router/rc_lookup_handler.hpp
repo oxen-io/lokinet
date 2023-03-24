@@ -17,12 +17,7 @@ namespace llarp
   class NodeDB;
   class EventLoop;
 
-  namespace service
-  {
-    struct Context;
-
-  }  // namespace service
-
+  struct AbstractRouter;
   struct ILinkManager;
 
   struct RCLookupHandler final : public I_RCLookupHandler
@@ -31,6 +26,8 @@ namespace llarp
     using Work_t = std::function<void(void)>;
     using WorkerFunc_t = std::function<void(Work_t)>;
     using CallbacksQueue = std::list<RCRequestCallback>;
+
+    RCLookupHandler(AbstractRouter&);
 
     ~RCLookupHandler() override = default;
 
@@ -94,12 +91,6 @@ namespace llarp
 
     void
     Init(
-        llarp_dht_context* dht,
-        std::shared_ptr<NodeDB> nodedb,
-        std::shared_ptr<EventLoop> loop,
-        WorkerFunc_t dowork,
-        ILinkManager* linkManager,
-        service::Context* hiddenServiceContext,
         const std::unordered_set<RouterID>& strictConnectPubkeys,
         const std::set<RouterContact>& bootstrapRCList,
         bool useWhitelist_arg,
@@ -128,12 +119,7 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 
-    llarp_dht_context* _dht = nullptr;
-    std::shared_ptr<NodeDB> _nodedb;
-    std::shared_ptr<EventLoop> _loop;
-    WorkerFunc_t _work = nullptr;
-    service::Context* _hiddenServiceContext = nullptr;
-    ILinkManager* _linkManager = nullptr;
+    AbstractRouter& _router;
 
     /// explicit whitelist of routers we will connect to directly (not for
     /// service nodes)

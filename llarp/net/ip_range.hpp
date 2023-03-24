@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ip.hpp"
+#include "llarp/net/net_int.hpp"
 #include "net_bits.hpp"
 #include <llarp/util/bits.hpp>
 #include <llarp/util/buffer.hpp>
@@ -10,6 +11,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <variant>
 
 namespace llarp
 {
@@ -44,11 +46,9 @@ namespace llarp
     }
 
     static inline IPRange
-    FromIPv4(net::ipv4addr_t addr, net::ipv4addr_t netmask)
+    FromIPv4(net::ipv4addr_t addr, byte_t mask)
     {
-      return IPRange{
-          net::ExpandV4(llarp::net::ToHost(addr)),
-          netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
+      return IPRange{net::ExpandV4(llarp::net::ToHost(addr)), netmask_ipv6_bits(96 + mask)};
     }
 
     /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
@@ -80,12 +80,19 @@ namespace llarp
 
     /// return true if our range and other intersect
     constexpr bool
-    operator*(const IPRange& other) const
+    intersects_with(const IPRange& other) const
     {
       return Contains(other) or other.Contains(*this);
     }
 
-    /// return true if the other range is inside our range
+    /// calls intersects_with()
+    constexpr bool
+    operator*(const IPRange& other) const
+    {
+      return intersects_with(other);
+    }
+
+    /// return true if the other range is inside ( subset of ) our range
     constexpr bool
     Contains(const IPRange& other) const
     {
@@ -111,7 +118,18 @@ namespace llarp
     inline bool
     Contains(const net::ipaddr_t& ip) const
     {
-      return var::visit([this](auto&& ip) { return Contains(llarp::net::ToHost(ip)); }, ip);
+      Addr_t _ip{};
+      if (auto* ptr = std::get_if<net::ipv4addr_t>(&ip))
+      {
+        if (not IsV4())
+          return false;
+        _ip = net::ExpandV4(ToHost(*ptr));
+      }
+      if (auto* ptr = std::get_if<net::ipv6addr_t>(&ip))
+      {
+        _ip = ToHost(*ptr);
+      }
+      return (addr & netmask_bits) == (_ip & netmask_bits);
     }
 
     /// get the highest address on this range

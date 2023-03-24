@@ -36,6 +36,20 @@ namespace llarp
   std::string
   ToString(Duration_t t);
 
+  namespace test
+  {
+    /// unit test RAII helper type to control the passing of time
+    ///
+    class TimeDilation
+    {
+     public:
+      TimeDilation();
+      ~TimeDilation();
+
+      TimeDilation&
+      operator+=(std::chrono::milliseconds amount);
+    };
+  }  // namespace test
 }  // namespace llarp
 
 // Duration_t is currently just a typedef to std::chrono::milliseconds, and specializing

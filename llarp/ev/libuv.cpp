@@ -1,4 +1,5 @@
 #include "libuv.hpp"
+#include <cstdint>
 #include <memory>
 #include <thread>
 #include <type_traits>
@@ -9,6 +10,13 @@
 #include <llarp/vpn/platform.hpp>
 
 #include <uvw.hpp>
+#include <llarp/constants/platform.hpp>
+#include "llarp/ev/ev.hpp"
+#include "llarp/net/net_int.hpp"
+#include "llarp/net/sock_addr.hpp"
+#include "llarp/util/buffer.hpp"
+#include "uvw/udp.h"
+#include "uvw/util.h"
 
 namespace llarp::uv
 {
@@ -21,18 +29,24 @@ namespace llarp::uv
   class UVWakeup final : public EventLoopWakeup
   {
     std::shared_ptr<uvw::AsyncHandle> async;
+    std::atomic_flag _triggered = ATOMIC_FLAG_INIT;
 
    public:
     UVWakeup(uvw::Loop& loop, std::function<void()> callback)
         : async{loop.resource<uvw::AsyncHandle>()}
     {
-      async->on<uvw::AsyncEvent>([f = std::move(callback)](auto&, auto&) { f(); });
+      async->on<uvw::AsyncEvent>([this, f = std::move(callback)](auto&, auto&) {
+        _triggered.clear();
+        f();
+      });
     }
 
-    void
+    bool
     Trigger() override
     {
+      bool ret = _triggered.test_and_set();
       async->send();
+      return ret;
     }
 
     ~UVWakeup() override
@@ -64,19 +78,23 @@ namespace llarp::uv
 
   struct UDPHandle final : llarp::UDPHandle
   {
-    UDPHandle(uvw::Loop& loop, ReceiveFunc rf);
-
-    bool
-    listen(const SockAddr& addr) override;
+    UDPHandle(uvw::Loop& loop, ReceiveFunc rf, std::optional<SockAddr> laddr);
 
     bool
     send(const SockAddr& dest, const llarp_buffer_t& buf) override;
 
-    std::optional<SockAddr>
+    SockAddr
     LocalAddr() const override
     {
-      auto addr = handle->sock<uvw::IPv4>();
-      return SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+      if (not maybe_laddr)
+      {
+        auto addr = handle->sock<uvw::IPv4>();
+        if (addr.ip.empty())
+          addr = handle->sock<uvw::IPv6>();
+
+        maybe_laddr = SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+      }
+      return *maybe_laddr;
     }
 
     std::optional<int>
@@ -96,9 +114,7 @@ namespace llarp::uv
 
    private:
     std::shared_ptr<uvw::UDPHandle> handle;
-
-    void
-    reset_handle(uvw::Loop& loop);
+    mutable std::optional<SockAddr> maybe_laddr;
   };
 
   void
@@ -138,6 +154,7 @@ namespace llarp::uv
     m_nextID.store(0);
     if (!(m_WakeUp = m_Impl->resource<uvw::AsyncHandle>()))
       throw std::runtime_error{"Failed to create libuv async"};
+
     m_WakeUp->on<uvw::AsyncEvent>([this](const auto&, auto&) { tick_event_loop(); });
   }
 
@@ -165,10 +182,10 @@ namespace llarp::uv
   }
 
   std::shared_ptr<llarp::UDPHandle>
-  Loop::make_udp(UDPReceiveFunc on_recv)
+  Loop::make_udp(UDPReceiveFunc on_recv, const std::optional<SockAddr>& laddr)
   {
     return std::static_pointer_cast<llarp::UDPHandle>(
-        std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv)));
+        std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv), laddr));
   }
 
   static void
@@ -241,41 +258,36 @@ namespace llarp::uv
       std::shared_ptr<llarp::vpn::NetworkInterface> netif,
       std::function<void(llarp::net::IPPacket)> handler)
   {
-#ifdef __linux__
-    using event_t = uvw::PollEvent;
-    auto handle = m_Impl->resource<uvw::PollHandle>(netif->PollFD());
-#else
-    // we use a uv_prepare_t because it fires before blocking for new io events unconditionally
-    // we want to match what linux does, using a uv_check_t does not suffice as the order of
-    // operations is not what we need.
-    using event_t = uvw::PrepareEvent;
-    auto handle = m_Impl->resource<uvw::PrepareHandle>();
-#endif
-
-    if (!handle)
-      return false;
-
-    handle->on<event_t>([netif = std::move(netif), handler = std::move(handler)](
-                            const event_t&, [[maybe_unused]] auto& handle) {
+    auto reader = [netif, handler = std::move(handler), this](const auto&, auto&) {
       for (auto pkt = netif->ReadNextPacket(); true; pkt = netif->ReadNextPacket())
       {
         if (pkt.empty())
           return;
         if (handler)
           handler(std::move(pkt));
-        // on windows/apple, vpn packet io does not happen as an io action that wakes up the event
-        // loop thus, we must manually wake up the event loop when we get a packet on our interface.
-        // on linux/android this is a nop
-        netif->MaybeWakeUpperLayers();
+        // on protactor style platforms we want to emulate the reactor style pattern so we wakeup
+        // the event loop when we get packets.
+        if constexpr (platform::has_proactor_io)
+          wakeup();
       }
-    });
+    };
 
-#ifdef __linux__
-    handle->start(uvw::PollHandle::Event::READABLE);
-#else
-    handle->start();
-#endif
-
+    if constexpr (llarp::platform::has_reactor_io)
+    {
+      auto handle = m_Impl->resource<uvw::PollHandle>(netif->PollFD());
+      if (not handle)
+        return false;
+      handle->on<uvw::PollEvent>(std::move(reader));
+      handle->start(uvw::PollHandle::Event::READABLE);
+    }
+    else
+    {
+      auto handle = m_Impl->resource<uvw::PrepareHandle>();
+      if (not handle)
+        return false;
+      handle->on<uvw::PrepareEvent>(std::move(reader));
+      handle->start();
+    }
     return true;
   }
 
@@ -294,44 +306,30 @@ namespace llarp::uv
       FlushLogic();
     }
     m_LogicCalls.pushBack(f);
-    m_WakeUp->send();
   }
 
-  // Sets `handle` to a new uvw UDP handle, first initiating a close and then disowning the handle
-  // if already set, allocating the resource, and setting the receive event on it.
-  void
-  UDPHandle::reset_handle(uvw::Loop& loop)
+  llarp::uv::UDPHandle::UDPHandle(uvw::Loop& loop, ReceiveFunc rf, std::optional<SockAddr> laddr)
+      : llarp::UDPHandle{std::move(rf)}, handle{loop.resource<uvw::UDPHandle>()}
   {
-    if (handle)
-      handle->close();
-    handle = loop.resource<uvw::UDPHandle>();
-    handle->on<uvw::UDPDataEvent>([this](auto& event, auto& /*handle*/) {
+    std::optional<std::string> maybe_addr_str;
+    if (laddr)
+      maybe_addr_str = laddr->ToString();
+
+    auto err = handle->on<uvw::ErrorEvent>(
+        [addr_str = maybe_addr_str.value_or("all interfaces")](auto& event, auto&) {
+          throw llarp::util::bind_socket_error{
+              fmt::format("failed to bind udp socket on {}: {}", addr_str, event.what())};
+        });
+    if (laddr)
+      handle->bind(*static_cast<const sockaddr*>(*laddr));
+    handle->on<uvw::UDPDataEvent>([this](auto& ev, auto&) {
       on_recv(
           *this,
-          SockAddr{event.sender.ip, huint16_t{static_cast<uint16_t>(event.sender.port)}},
-          OwnedBuffer{std::move(event.data), event.length});
+          SockAddr{ev.sender.ip, huint16_t{static_cast<uint16_t>(ev.sender.port)}},
+          OwnedBuffer{std::move(ev.data), ev.length});
     });
-  }
-
-  llarp::uv::UDPHandle::UDPHandle(uvw::Loop& loop, ReceiveFunc rf) : llarp::UDPHandle{std::move(rf)}
-  {
-    reset_handle(loop);
-  }
-
-  bool
-  UDPHandle::listen(const SockAddr& addr)
-  {
-    if (handle->active())
-      reset_handle(handle->loop());
-
-    auto err = handle->on<uvw::ErrorEvent>([addr](auto& event, auto&) {
-      throw llarp::util::bind_socket_error{
-          fmt::format("failed to bind udp socket on {}: {}", addr, event.what())};
-    });
-    handle->bind(*static_cast<const sockaddr*>(addr));
     handle->recv();
     handle->erase(err);
-    return true;
   }
 
   bool

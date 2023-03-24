@@ -4,7 +4,6 @@
 #include <llarp/link/i_link_manager.hpp>
 #include <llarp/link/server.hpp>
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/service/context.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/util/types.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -39,6 +38,9 @@ namespace llarp
     beigelist.insert(new_beige.begin(), new_beige.end());
   }
 
+  RCLookupHandler::RCLookupHandler(AbstractRouter& router) : _router{router}
+  {}
+
   void
   RCLookupHandler::SetRouterWhitelist(
       const std::vector<RouterID>& whitelist,
@@ -69,9 +71,9 @@ namespace llarp
     RouterContact remoteRC;
     if (not forceLookup)
     {
-      if (const auto maybe = _nodedb->Get(router); maybe.has_value())
+      if (auto maybe = _router.nodedb()->Get(router))
       {
-        remoteRC = *maybe;
+        remoteRC = std::move(*maybe);
         if (callback)
         {
           callback(router, &remoteRC, RCRequestResult::Success);
@@ -97,24 +99,14 @@ namespace llarp
     if (shouldDoLookup)
     {
       auto fn = [this, router](const auto& res) { HandleDHTLookupResult(router, res); };
+      auto lookup = [this](RouterID target, RouterLookupHandler handler) -> bool {
+        if (_router.IsServiceNode())
+          return _router.dht()->impl->LookupRouter(target, std::move(handler));
+        // todo: client lookup via path.
+        return false;
+      };
 
-      // if we are a client try using the hidden service endpoints
-      if (!isServiceNode)
-      {
-        bool sent = false;
-        LogInfo("Lookup ", router, " anonymously");
-        _hiddenServiceContext->ForEachService(
-            [&](const std::string&, const std::shared_ptr<service::Endpoint>& ep) -> bool {
-              const bool success = ep->LookupRouterAnon(router, fn);
-              sent = sent || success;
-              return !success;
-            });
-        if (sent)
-          return;
-        LogWarn("cannot lookup ", router, " anonymously");
-      }
-
-      if (!_dht->impl->LookupRouter(router, fn))
+      if (not lookup(router, std::move(fn)))
       {
         FinalizeRequest(router, nullptr, RCRequestResult::RouterNotFound);
       }
@@ -160,11 +152,11 @@ namespace llarp
   bool
   RCLookupHandler::PathIsAllowed(const RouterID& remote) const
   {
-    if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
-        && !RemoteInBootstrap(remote))
-    {
+    if (_strictConnectPubkeys.count(remote) == 1 and not isServiceNode)
+      return true;
+    // clients shall not build paths over bootstrap node.
+    if (RemoteInBootstrap(remote) and not isServiceNode)
       return false;
-    }
 
     if (not useWhitelist)
       return true;
@@ -177,11 +169,10 @@ namespace llarp
   bool
   RCLookupHandler::SessionIsAllowed(const RouterID& remote) const
   {
-    if (_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
-        && !RemoteInBootstrap(remote))
-    {
-      return false;
-    }
+    if (_strictConnectPubkeys.count(remote) == 1 and not isServiceNode)
+      return true;
+    if (RemoteInBootstrap(remote))
+      return true;
 
     if (not useWhitelist)
       return true;
@@ -196,11 +187,11 @@ namespace llarp
   {
     if (not SessionIsAllowed(rc.pubkey))
     {
-      _dht->impl->DelRCNodeAsync(dht::Key_t{rc.pubkey});
+      _router.dht()->impl->DelRCNodeAsync(dht::Key_t{rc.pubkey});
       return false;
     }
 
-    if (not rc.Verify(_dht->impl->Now()))
+    if (not rc.Verify(_router.dht()->impl->Now()))
     {
       LogWarn("RC for ", RouterID(rc.pubkey), " is invalid");
       return false;
@@ -210,8 +201,8 @@ namespace llarp
     if (rc.IsPublicRouter())
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
-      _loop->call([rc, n = _nodedb] { n->PutIfNewer(rc); });
-      _dht->impl->PutRCNodeAsync(rc);
+      _router.loop()->call([rc, n = _router.nodedb()] { n->PutIfNewer(rc); });
+      _router.dht()->impl->PutRCNodeAsync(rc);
     }
 
     return true;
@@ -248,13 +239,12 @@ namespace llarp
     if (!SessionIsAllowed(newrc.pubkey))
       return false;
 
-    auto func = [this, newrc] { CheckRC(newrc); };
-    _work(func);
+    _router.QueueWork([this, newrc] { CheckRC(newrc); });
 
     // update dht if required
-    if (_dht->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
+    if (_router.dht()->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      _dht->impl->Nodes()->PutNode(newrc);
+      _router.dht()->impl->Nodes()->PutNode(newrc);
     }
 
     // TODO: check for other places that need updating the RC
@@ -267,8 +257,8 @@ namespace llarp
     // try looking up stale routers
     std::unordered_set<RouterID> routersToLookUp;
 
-    _nodedb->VisitInsertedBefore(
-        [&](const RouterContact& rc) {
+    _router.nodedb()->VisitInsertedBefore(
+        [this, &routersToLookUp](const RouterContact& rc) {
           if (HavePendingLookup(rc.pubkey))
             return;
           routersToLookUp.insert(rc.pubkey);
@@ -280,13 +270,14 @@ namespace llarp
       GetRC(router, nullptr, true);
     }
 
-    _nodedb->RemoveStaleRCs(_bootstrapRouterIDList, now - RouterContact::StaleInsertionAge);
+    _router.nodedb()->RemoveStaleRCs(
+        _bootstrapRouterIDList, now - RouterContact::StaleInsertionAge);
   }
 
   void
   RCLookupHandler::ExploreNetwork()
   {
-    const size_t known = _nodedb->NumLoaded();
+    const size_t known = _router.nodedb()->NumLoaded();
     if (_bootstrapRCList.empty() && known == 0)
     {
       LogError("we have no bootstrap nodes specified");
@@ -296,7 +287,7 @@ namespace llarp
       for (const auto& rc : _bootstrapRCList)
       {
         LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
-        _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+        _router.dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     }
 
@@ -315,7 +306,7 @@ namespace llarp
         util::Lock l(_mutex);
         for (const auto& r : whitelistRouters)
         {
-          if (now > _routerLookupTimes[r] + RerequestInterval and not _nodedb->Has(r))
+          if (now > _routerLookupTimes[r] + RerequestInterval and not _router.nodedb()->Has(r))
           {
             lookupRouters.emplace_back(r);
           }
@@ -333,43 +324,32 @@ namespace llarp
       return;
     }
     // service nodes gossip, not explore
-    if (_dht->impl->GetRouter()->IsServiceNode())
+    if (_router.dht()->impl->GetRouter()->IsServiceNode())
       return;
 
     // explore via every connected peer
-    _linkManager->ForEachPeer([&](ILinkSession* s) {
+    _router.linkManager().ForEachPeer([this](ILinkSession* s) {
       if (!s->IsEstablished())
         return;
       const RouterContact rc = s->GetRemoteRC();
       if (rc.IsPublicRouter() && (_bootstrapRCList.find(rc) == _bootstrapRCList.end()))
       {
         LogDebug("Doing explore via public node: ", RouterID(rc.pubkey));
-        _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+        _router.dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     });
   }
 
   void
   RCLookupHandler::Init(
-      llarp_dht_context* dht,
-      std::shared_ptr<NodeDB> nodedb,
-      EventLoop_ptr loop,
-      WorkerFunc_t dowork,
-      ILinkManager* linkManager,
-      service::Context* hiddenServiceContext,
       const std::unordered_set<RouterID>& strictConnectPubkeys,
       const std::set<RouterContact>& bootstrapRCList,
       bool useWhitelist_arg,
       bool isServiceNode_arg)
   {
-    _dht = dht;
-    _nodedb = std::move(nodedb);
-    _loop = std::move(loop);
-    _work = std::move(dowork);
-    _hiddenServiceContext = hiddenServiceContext;
     _strictConnectPubkeys = strictConnectPubkeys;
     _bootstrapRCList = bootstrapRCList;
-    _linkManager = linkManager;
+
     useWhitelist = useWhitelist_arg;
     isServiceNode = isServiceNode_arg;
 

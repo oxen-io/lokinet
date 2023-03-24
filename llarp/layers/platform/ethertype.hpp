@@ -1,6 +1,7 @@
 #pragma once
 
-#include "llarp/util/formattable.hpp"
+#include <llarp/util/formattable.hpp>
+
 namespace llarp::layers::platform
 {
   /// the kind of traffic we are tunneling

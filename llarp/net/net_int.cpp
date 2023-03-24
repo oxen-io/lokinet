@@ -1,14 +1,21 @@
 #include "net_int.hpp"
 #include "ip.hpp"
+#include "llarp/net/ip_range.hpp"
+#include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <variant>
 
 #include <oxenc/endian.h>
+#include <oxen/log/format.hpp>
+
+using namespace oxen::log::literals;
 
 namespace llarp
 {
   namespace net
   {
+
     huint16_t
     ToHost(port_t x)
     {
@@ -43,6 +50,34 @@ namespace llarp
     ToNet(huint128_t x)
     {
       return ipv6addr_t{hton128(x.h)};
+    }
+
+    ipv6addr_t
+    maybe_expand_ip(ipaddr_t ip)
+    {
+      if (auto* ptr = std::get_if<ipv6addr_t>(&ip))
+        return *ptr;
+      return ToNet(ExpandV4(ToHost(std::get<ipv4addr_t>(ip))));
+    }
+
+    ipaddr_t
+    maybe_truncate_ip(ipv6addr_t ip)
+    {
+      if (IPRange::V4MappedRange().Contains(ip))
+        return ToNet(TruncateV6(ToHost(ip)));
+      return ip;
+    }
+
+    ipaddr_t
+    ipaddr_from_string(const std::string& str)
+    {
+      ipv6addr_t v6{};
+      if (v6.FromString(str))
+        return v6;
+      ipv4addr_t v4{};
+      if (v4.FromString(str))
+        return v4;
+      throw std::invalid_argument{"'{}' is not an valid ip address"_format(str)};
     }
   }  // namespace net
 

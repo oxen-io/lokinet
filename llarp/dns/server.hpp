@@ -1,5 +1,6 @@
 #pragma once
 
+#include "llarp/net/sock_addr.hpp"
 #include "message.hpp"
 #include "platform.hpp"
 #include <llarp/config/config.hpp>
@@ -124,19 +125,11 @@ namespace llarp::dns
     const SockAddr asker;
 
    public:
-    explicit QueryJob(
-        std::shared_ptr<PacketSource_Base> source,
-        const Message& query,
-        const SockAddr& to_,
-        const SockAddr& from_)
-        : QueryJob_Base{query}, src{source}, resolver{to_}, asker{from_}
-    {}
+    QueryJob(
+        std::shared_ptr<PacketSource_Base> source, Message query, SockAddr to_, SockAddr from_);
 
     void
-    SendReply(llarp::OwnedBuffer replyBuf) override
-    {
-      src->SendTo(asker, resolver, std::move(replyBuf));
-    }
+    SendReply(llarp::OwnedBuffer replyBuf) override;
   };
 
   /// handler of dns query hooking
@@ -214,10 +207,12 @@ namespace llarp::dns
     virtual std::shared_ptr<I_Platform>
     CreatePlatform() const;
 
+    unsigned int m_netif_index;
+
    public:
     virtual ~Server() = default;
 
-    explicit Server(EventLoop_ptr loop, llarp::DnsConfig conf, unsigned int netif_index);
+    Server(EventLoop_ptr loop, llarp::DnsConfig conf);
 
     /// returns all sockaddr we have from all of our PacketSources
     std::vector<SockAddr>
@@ -239,9 +234,10 @@ namespace llarp::dns
     virtual std::shared_ptr<PacketSource_Base>
     MakePacketSourceOn(const SockAddr& bindaddr, const llarp::DnsConfig& conf);
 
-    /// sets up all internal binds and such and begins operation
+    /// sets up all internal binds and such and begins operation.
+    /// we pass in the network interface index of the tun interface we are associated with here.
     virtual void
-    Start();
+    Start(unsigned int index);
 
     /// stops all operation
     virtual void
@@ -278,7 +274,6 @@ namespace llarp::dns
     std::shared_ptr<I_Platform> m_Platform;
 
    private:
-    const unsigned int m_NetIfIndex;
     std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>>
         m_OwnedResolvers;
     std::set<std::weak_ptr<Resolver_Base>, CompareWeakPtr<Resolver_Base>> m_Resolvers;

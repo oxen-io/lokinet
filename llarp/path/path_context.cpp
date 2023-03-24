@@ -1,14 +1,23 @@
 #include "path_context.hpp"
 
+#include <functional>
 #include <llarp/messages/relay_commit.hpp>
+#include "llarp/path/pathset.hpp"
+#include "llarp/util/compare_ptr.hpp"
+#include "llarp/util/thread/annotations.hpp"
+#include "oxen/log.hpp"
 #include "path.hpp"
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/router/i_outbound_message_handler.hpp>
+#include <type_traits>
+#include <unordered_set>
 
 namespace llarp
 {
   namespace path
   {
+    static auto logcat = log::Cat("path-context");
+
     static constexpr auto DefaultPathBuildLimit = 500ms;
 
     PathContext::PathContext(AbstractRouter* router)
@@ -415,5 +424,12 @@ namespace llarp
     void
     PathContext::RemovePathSet(PathSet_ptr)
     {}
+
+    void
+    PathContext::periodic_tick()
+    {
+      const auto now = m_Router->Now();
+      ExpirePaths(now);
+    }
   }  // namespace path
 }  // namespace llarp

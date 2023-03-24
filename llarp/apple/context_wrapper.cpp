@@ -21,8 +21,8 @@ namespace
     std::thread runner;
     packet_writer_callback packet_writer;
     start_reading_callback start_reading;
-
-    std::weak_ptr<llarp::apple::VPNInterface> iface;
+    llarp::apple::on_readable_callback on_readable;
+    std::weak_ptr<llarp::apple::AppleVPNInterface> iface;
   };
 
 }  // namespace
@@ -103,10 +103,8 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto inst = std::make_unique<instance_data>();
     inst->context.Configure(std::move(config));
     inst->context.route_callbacks = appleconf->route_callbacks;
-
     inst->packet_writer = appleconf->packet_writer;
     inst->start_reading = appleconf->start_reading;
-
     return inst.release();
   }
   catch (const std::exception& e)
@@ -123,12 +121,12 @@ llarp_apple_start(void* lokinet, void* callback_context)
 
   inst->context.callback_context = callback_context;
 
-  inst->context.m_PacketWriter = [inst, callback_context](int af_family, void* data, size_t size) {
+  inst->context.write_packet = [inst, callback_context](int af_family, void* data, size_t size) {
     inst->packet_writer(af_family, data, size, callback_context);
     return true;
   };
 
-  inst->context.m_OnReadable = [inst, callback_context](llarp::apple::VPNInterface& iface) {
+  inst->context.on_readable = [inst, callback_context](llarp::apple::AppleVPNInterface& iface) {
     inst->iface = iface.weak_from_this();
     inst->start_reading(callback_context);
   };
@@ -158,7 +156,6 @@ llarp_apple_start(void* lokinet, void* callback_context)
     llarp::LogError("Failed to initialize lokinet: ", e.what());
     return -1;
   }
-
   return 0;
 }
 
@@ -177,20 +174,22 @@ llarp_apple_incoming(void* lokinet, const llarp_incoming_packet* packets, size_t
   auto& inst = *static_cast<instance_data*>(lokinet);
 
   auto iface = inst.iface.lock();
-  if (!iface)
+  if (not iface)
     return -1;
 
   int count = 0;
   for (size_t i = 0; i < size; i++)
   {
-    llarp_buffer_t buf{static_cast<const uint8_t*>(packets[i].bytes), packets[i].size};
-    if (iface->OfferReadPacket(buf))
-      count++;
-    else
-      llarp::LogError("invalid IP packet: ", llarp::buffer_printer(buf));
-  }
+    llarp::net::IPPacket pkt{
+        llarp::byte_view_t{reinterpret_cast<const byte_t*>(packets[i].bytes), packets[i].size}};
 
-  iface->MaybeWakeUpperLayers();
+    if (pkt.empty())
+      continue;
+    iface->offer_read(std::move(pkt));
+    count++;
+  }
+  // idempotently wake up the part of lokinet that cares.
+  inst.context.router->get_layers()->platform->wakeup->Trigger();
   return count;
 }
 

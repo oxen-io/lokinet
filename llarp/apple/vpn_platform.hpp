@@ -1,6 +1,5 @@
 #pragma once
 
-#include <llarp/vpn/platform.hpp>
 #include "vpn_interface.hpp"
 #include "route_manager.hpp"
 
@@ -11,8 +10,7 @@ namespace llarp::apple
    public:
     explicit VPNPlatform(
         Context& ctx,
-        VPNInterface::packet_write_callback packet_writer,
-        VPNInterface::on_readable_callback on_readable,
+        packet_write_callback packet_writer,
         llarp_route_callbacks route_callbacks,
         void* callback_context);
 
@@ -28,8 +26,7 @@ namespace llarp::apple
    private:
     Context& m_Context;
     apple::RouteManager m_RouteManager;
-    VPNInterface::packet_write_callback m_PacketWriter;
-    VPNInterface::on_readable_callback m_OnReadable;
+    packet_write_callback m_PacketWriter;
   };
 
 }  // namespace llarp::apple

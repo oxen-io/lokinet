@@ -1,7 +1,8 @@
 #pragma once
+#include "message.hpp"
 
 #include <llarp/crypto/encrypted.hpp>
-#include "message.hpp"
+#include <llarp/layers/flow/flow_traffic.hpp>
 #include <llarp/service/protocol_type.hpp>
 
 #include <vector>
@@ -15,14 +16,16 @@ namespace llarp
     constexpr size_t ExitOverhead = sizeof(uint64_t);
     struct TransferTrafficMessage final : public IMessage
     {
-      std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> X;
+      std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> pkts;
       service::ProtocolType protocol;
       size_t _size = 0;
+      decltype(pkts)& X{pkts};
 
       void
       Clear() override
       {
-        X.clear();
+        IMessage::Clear();
+        pkts.clear();
         _size = 0;
         version = 0;
         protocol = service::ProtocolType::TrafficV4;
@@ -33,6 +36,9 @@ namespace llarp
       {
         return _size;
       }
+
+      std::vector<layers::flow::FlowTraffic>
+      to_flow_traffic() const;
 
       /// append buffer to X
       bool

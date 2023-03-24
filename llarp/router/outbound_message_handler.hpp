@@ -10,6 +10,7 @@
 #include <llarp/router_id.hpp>
 
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <utility>
 
@@ -57,9 +58,15 @@ namespace llarp
      *
      * Sends all routing messages that have been queued, indicated by pathid 0 when queued.
      * Sends messages from path queues until all are empty or a set cap has been reached.
+     *
+     * if also_pump_router is true, this call will call Router::TriggerPump() if we queued things.
      */
     void
-    Pump() override;
+    Pump(bool also_pump_router = true);
+
+    /// idempotently call Pump()
+    void
+    IdempotentPump() override;
 
     /* Called from outside this class to inform it that a path has died / expired
      * and its queue should be discarded.
@@ -202,6 +209,8 @@ namespace llarp
     static const PathID_t zeroID;
 
     MessageQueueStats m_queueStats;
+
+    std::shared_ptr<EventLoopWakeup> _wakeup;
   };
 
 }  // namespace llarp

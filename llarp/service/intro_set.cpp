@@ -371,7 +371,7 @@ namespace llarp::service
     {
       if (std::get<0>(tuple) == service_proto)
       {
-        records.push_back(llarp::dns::SRVData::fromTuple(tuple));
+        records.emplace_back(tuple);
       }
     }
 

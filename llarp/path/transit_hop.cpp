@@ -1,18 +1,19 @@
-#include "path.hpp"
+
+#include "transit_hop.hpp"
+#include "path_context.hpp"
 
 #include <llarp/dht/context.hpp>
-#include <llarp/exit/context.hpp>
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/i_link_manager.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/messages/relay_status.hpp>
-#include "path_context.hpp"
-#include "transit_hop.hpp"
+#include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/routing/path_latency_message.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
 #include <llarp/routing/handler.hpp>
+
 #include <llarp/util/buffer.hpp>
 
 #include <oxenc/endian.h>
@@ -21,6 +22,9 @@ namespace llarp
 {
   namespace path
   {
+
+    static auto logcat = log::Cat("transit-hop");
+
     std::string
     TransitHopInfo::ToString() const
     {
@@ -284,52 +288,65 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage& msg, AbstractRouter* r)
     {
-      if (msg.Verify() && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
+      if (not msg.Verify())
       {
-        llarp::routing::GrantExitMessage grant;
-        grant.S = NextSeqNo();
-        grant.T = msg.T;
-        if (!grant.Sign(r->identity()))
+        // invalid sig, tell them their request was discarded.
+        return SendRoutingMessage(routing::DataDiscardMessage{info.rxID, msg.S}, r);
+      }
+      // this message is always asking for our local snode.
+      // future protocol versions are expected to permit non local routing destinations.
+      RouterID to{r->pubkey()};
+      auto destination = r->get_layers()->route->create_destination(info, msg.source_identity, to);
+      if (not destination)
+      {
+        // we did not give the requester an allocation.
+        // send them a reject.
+        llarp::routing::RejectExitMessage reject;
+        reject.S = NextSeqNo();
+        reject.txid = msg.txid;
+        // todo: exponential backoff
+        reject.backoff = 2000;
+        if (not reject.Sign(r->identity()))
         {
-          llarp::LogError("Failed to sign grant exit message");
+          log::info(
+              logcat,
+              "snode destionation for {} to {} was rejected by us"_format(msg.source_identity, to));
           return false;
         }
-        return SendRoutingMessage(grant, r);
       }
-      // TODO: exponential backoff
-      // TODO: rejected policies
-      llarp::routing::RejectExitMessage reject;
-      reject.S = NextSeqNo();
-      reject.T = msg.T;
-      if (!reject.Sign(r->identity()))
+      llarp::routing::GrantExitMessage grant;
+      grant.S = NextSeqNo();
+      grant.txid = msg.txid;
+      if (not grant.Sign(r->identity()))
       {
-        llarp::LogError("Failed to sign reject exit message");
-        return false;
+        // failed to sign, tell them it was discarded after removing routing destination.
+        r->get_layers()->route->remove_destination_on(info);
+        return SendRoutingMessage(routing::DataDiscardMessage{info.rxID, msg.S}, r);
       }
-      return SendRoutingMessage(reject, r);
+      return SendRoutingMessage(grant, r);
     }
 
     bool
     TransitHop::HandleCloseExitMessage(
         const llarp::routing::CloseExitMessage& msg, AbstractRouter* r)
     {
-      const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
-      auto ep = r->exitContext().FindEndpointForPath(info.rxID);
-      if (ep && msg.Verify(ep->PubKey()))
-      {
-        llarp::routing::CloseExitMessage reply;
-        reply.Y = msg.Y;
-        reply.S = NextSeqNo();
-        if (reply.Sign(r->identity()))
-        {
-          if (SendRoutingMessage(reply, r))
-          {
-            ep->Close();
-            return true;
-          }
-        }
-      }
-      return SendRoutingMessage(discard, r);
+      const llarp::routing::DataDiscardMessage discard{info.rxID, msg.S};
+
+      auto maybe_dest = r->get_layers()->route->destination_on(info);
+      if (not maybe_dest)
+        return SendRoutingMessage(discard, r);
+
+      if (not msg.Verify(maybe_dest->src))
+        return SendRoutingMessage(discard, r);
+
+      llarp::routing::CloseExitMessage reply;
+      reply.Y = msg.Y;
+      reply.S = NextSeqNo();
+
+      r->get_layers()->route->remove_destination_on(info);
+
+      reply.Sign(r->identity());
+      return SendRoutingMessage(reply, r);
     }
 
     bool
@@ -346,23 +363,26 @@ namespace llarp
     TransitHop::HandleUpdateExitMessage(
         const llarp::routing::UpdateExitMessage& msg, AbstractRouter* r)
     {
-      auto ep = r->exitContext().FindEndpointForPath(msg.P);
-      if (ep)
-      {
-        if (!msg.Verify(ep->PubKey()))
-          return false;
+      auto maybe_previous_dest = r->get_layers()->route->destination_from(msg.path_id);
+      // make sure we have the last destination.
+      if (not maybe_previous_dest)
+        return SendRoutingMessage(routing::DataDiscardMessage{info.rxID, msg.S}, r);
+      // verify that the update message was signed by the previous mapping's identity.
+      if (not msg.Verify(maybe_previous_dest->src))
+        return SendRoutingMessage(routing::DataDiscardMessage{info.rxID, msg.S}, r);
 
-        if (ep->UpdateLocalPath(info.rxID))
-        {
-          llarp::routing::UpdateExitVerifyMessage reply;
-          reply.T = msg.T;
-          reply.S = NextSeqNo();
-          return SendRoutingMessage(reply, r);
-        }
-      }
-      // on fail tell message was discarded
-      llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
-      return SendRoutingMessage(discard, r);
+      auto next_dest = r->get_layers()->route->create_destination(
+          info, maybe_previous_dest->src, maybe_previous_dest->dst);
+      // allocate new routing destination.
+      if (not next_dest)
+        return SendRoutingMessage(routing::DataDiscardMessage{info.rxID, msg.S}, r);
+
+      // remove old routing destination.
+      // r->get_layers()->route->remove_destination_on(maybe_previous_dest->onion_info);
+      llarp::routing::UpdateExitVerifyMessage reply;
+      reply.T = msg.T;
+      reply.S = NextSeqNo();
+      return SendRoutingMessage(reply, r);
     }
 
     bool
@@ -389,27 +409,23 @@ namespace llarp
     TransitHop::HandleTransferTrafficMessage(
         const llarp::routing::TransferTrafficMessage& msg, AbstractRouter* r)
     {
-      auto endpoint = r->exitContext().FindEndpointForPath(info.rxID);
-      if (endpoint)
-      {
-        bool sent = true;
-        for (const auto& pkt : msg.X)
-        {
-          // check short packet buffer
-          if (pkt.size() <= 8)
-            continue;
-          auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
-          llarp_buffer_t buf{pkt.data() + 8, pkt.size() - 8};
-          sent =
-              endpoint->QueueOutboundTraffic(info.rxID, buf.copy(), counter, msg.protocol) and sent;
-        }
-        return sent;
-      }
+      auto maybe_dest = r->get_layers()->route->destination_on(info);
+      // no destination on this path.
+      if (not maybe_dest)
+        return SendRoutingMessage(llarp::routing::DataDiscardMessage{info.rxID, msg.S}, r);
+      // destination not applicable for this use case.
+      if (not maybe_dest->flow_info)
+        return SendRoutingMessage(llarp::routing::DataDiscardMessage{info.rxID, msg.S}, r);
 
-      llarp::LogError("No exit endpoint on ", info);
-      // discarded
-      llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
-      return SendRoutingMessage(discard, r);
+      const auto& flow_info = *maybe_dest->flow_info;
+
+      // propagate all traffic up to flow layer.
+      for (auto& traffic : msg.to_flow_traffic())
+      {
+        traffic.flow_info = flow_info;
+        r->get_layers()->flow->offer_flow_traffic(std::move(traffic));
+      }
+      return true;
     }
 
     bool

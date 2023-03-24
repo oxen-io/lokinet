@@ -1,44 +1,37 @@
 #include "serialize.hpp"
+#include <oxenc/endian.h>
+#include <cstdint>
 #include <llarp/net/net_int.hpp>
+#include <optional>
+#include <stdexcept>
+#include <vector>
+#include "llarp/dns/rr.hpp"
+#include "llarp/util/str.hpp"
 
 namespace llarp
 {
-  namespace dns
+
+  dns::RR_RData_t
+  encode_rdata(bstring_view rdata)
   {
-    Serialize::~Serialize() = default;
+    if (rdata.size() > 65536)
+      throw std::invalid_argument{"rdata too big: {} > {}"_format(rdata.size(), 65536)};
+    uint16_t len{static_cast<uint16_t>(rdata.size())};
+    dns::RR_RData_t vec(rdata.size() + 2);
+    oxenc::write_host_as_big(len, vec.data());
+    std::copy_n(rdata.data(), rdata.size(), vec.data() + 2);
+    return vec;
+  }
 
-    bool
-    EncodeRData(llarp_buffer_t* buf, const std::vector<byte_t>& v)
-    {
-      if (v.size() > 65536)
-        return false;
-      uint16_t len = v.size();
-      if (!buf->put_uint16(len))
-        return false;
-      if (buf->size_left() < len)
-        return false;
-      memcpy(buf->cur, v.data(), len);
-      buf->cur += len;
-      return true;
-    }
-
-    bool
-    DecodeRData(llarp_buffer_t* buf, std::vector<byte_t>& v)
-    {
-      uint16_t len;
-      if (!buf->read_uint16(len))
-        return false;
-      size_t left = buf->size_left();
-      if (left < len)
-        return false;
-      v.resize(size_t(len));
-      if (len)
-      {
-        memcpy(v.data(), buf->cur, len);
-        buf->cur += len;
-      }
-      return true;
-    }
-
-  }  // namespace dns
+  std::optional<bstring_view>
+  maybe_decode_rdata(const RR_RData_t& vec)
+  {
+    if (vec.size() < 2)
+      return std::nullopt;
+    auto len = oxenc::load_big_to_host<uint16_t>(vec.data());
+    if (vec.size() - 2 < len)
+      return std::nullopt;
+    return bstring_view{vec.data() + 2, size_t{len}};
+  }
+}  // namespace dns
 }  // namespace llarp

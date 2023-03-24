@@ -1,5 +1,7 @@
 
 #include "platform.hpp"
+#include "llarp/config/config.hpp"
+#include "llarp/net/net.hpp"
 
 #ifdef _WIN32
 #include "win32.hpp"
@@ -20,6 +22,12 @@ namespace llarp::vpn
   IRouteManager::Net_ptr() const
   {
     return llarp::net::Platform::Default_ptr();
+  }
+
+  InterfaceInfo::InterfaceInfo(const NetworkConfig& net_conf, const net::Platform& net_plat)
+      : ifname{net_conf.ifname(net_plat)}, index{}, dnsaddr{}, addrs{}
+  {
+    addrs.emplace_back(net_conf.ifaddr(net_plat));
   }
 
   std::shared_ptr<Platform>

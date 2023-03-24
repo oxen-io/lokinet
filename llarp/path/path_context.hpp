@@ -33,8 +33,7 @@ namespace llarp
     struct PathContext
     {
       explicit PathContext(AbstractRouter* router);
-
-      /// called from router tick function
+      /// apply path expiration.
       void
       ExpirePaths(llarp_time_t now);
 
@@ -176,6 +175,10 @@ namespace llarp
       /// current number of paths we created in status
       uint64_t
       CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
+
+      /// handle a periodic tick on all pathsets.
+      void
+      periodic_tick();
 
      private:
       AbstractRouter* m_Router;

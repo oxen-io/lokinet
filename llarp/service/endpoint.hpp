@@ -23,14 +23,15 @@
 #include <llarp/service/auth.hpp>
 // ----- end kitchen sink headers -----
 
+#include <memory>
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
 #include <variant>
 #include <oxenc/variant.h>
 
 #include <llarp/vpn/egres_packet_router.hpp>
 #include <llarp/dns/server.hpp>
-
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -65,9 +66,10 @@ namespace llarp
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler,
-                      public EndpointBase
+                      public EndpointBase,
+                      private std::enable_shared_from_this<Endpoint>
     {
-      Endpoint(AbstractRouter* r, Context* parent);
+      explicit Endpoint(AbstractRouter& r);
       ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void.
@@ -93,8 +95,11 @@ namespace llarp
       void
       SetHandler(IDataHandler* h);
 
-      virtual bool
-      Configure(const NetworkConfig& conf, const DnsConfig& dnsConf);
+      bool
+      Configure(const NetworkConfig& conf, const DnsConfig&) override;
+
+      std::string_view
+      endpoint_name() const override;
 
       void
       Tick(llarp_time_t now) override;
@@ -105,9 +110,6 @@ namespace llarp
       {
         return false;
       }
-
-      virtual std::string
-      GetIfName() const = 0;
 
       std::optional<ConvoTag>
       GetBestConvoTagFor(std::variant<Address, RouterID> addr) const override;
@@ -188,6 +190,9 @@ namespace llarp
         return nullptr;
       }
 
+      void
+      SendPacketToRemote(const llarp_buffer_t&, ProtocolType) override{};
+
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
 
@@ -214,12 +219,6 @@ namespace llarp
       void
       SetAuthInfoForEndpoint(Address remote, AuthInfo info);
 
-      virtual huint128_t ObtainIPForAddr(std::variant<Address, RouterID>) = 0;
-
-      /// get a key for ip address
-      virtual std::optional<std::variant<service::Address, RouterID>>
-      ObtainAddrForIP(huint128_t ip) const = 0;
-
       // virtual bool
       // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;
 
@@ -231,11 +230,6 @@ namespace llarp
       bool
       HandleDataMessage(
           path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) override;
-
-      /// handle packet io from service node or hidden service to frontend
-      virtual bool
-      HandleInboundPacket(
-          const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t, uint64_t seqno) = 0;
 
       // virtual bool
       // HandleWriteIPPacket(const llarp_buffer_t& pkt,
@@ -250,7 +244,7 @@ namespace llarp
 
       /// lookup a router via closest path
       bool
-      LookupRouterAnon(RouterID router, RouterLookupHandler handler);
+      LookupRC(RouterID router, RouterLookupHandler handler) override;
 
       void
       LookupNameAsync(
@@ -339,7 +333,7 @@ namespace llarp
       virtual llarp_time_t
       PathAlignmentTimeout() const
       {
-        constexpr auto DefaultPathAlignmentTimeout = 30s;
+        constexpr auto DefaultPathAlignmentTimeout = 10s;
         return DefaultPathAlignmentTimeout;
       }
 
@@ -450,6 +444,12 @@ namespace llarp
       virtual void
       IntroSetPublished();
 
+      path::PathSet_ptr
+      GetSelf() override;
+
+      std::weak_ptr<path::PathSet>
+      GetWeak() override;
+
       void
       AsyncProcessAuthMessage(
           std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
@@ -469,22 +469,20 @@ namespace llarp
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
       bool
-      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
+      SendToOrQueue(ConvoTag tag, std::vector<byte_t> data, ProtocolType t) override;
 
       // Send a to (or queues for sending) to either an address or router id
       bool
-      SendToOrQueue(
-          const std::variant<Address, RouterID>& addr,
-          const llarp_buffer_t& payload,
-          ProtocolType t);
+      send_to_or_queue(
+          const std::variant<Address, RouterID>& addr, std::vector<byte_t>&& data, ProtocolType t);
 
       // Sends to (or queues for sending) to a remote client
       bool
-      SendToOrQueue(const Address& addr, const llarp_buffer_t& payload, ProtocolType t);
+      send_to_loki(const Address& addr, std::vector<byte_t>&& payload, ProtocolType t);
 
       // Sends to (or queues for sending) to a router
       bool
-      SendToOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
+      send_to_snode(const RouterID& addr, std::vector<byte_t>&& payload, ProtocolType t);
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);
@@ -495,12 +493,6 @@ namespace llarp
       GetQUICTunnel() override;
 
      protected:
-      /// parent context that owns this endpoint
-      Context* const context;
-
-      virtual bool
-      SupportsV6() const = 0;
-
       void
       RegenAndPublishIntroSet();
 

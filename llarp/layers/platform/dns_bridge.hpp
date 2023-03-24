@@ -8,11 +8,8 @@
 #include <unordered_map>
 #include <vector>
 #include <llarp/layers/flow/flow_addr.hpp>
-#include "llarp/dns/question.hpp"
-#include "llarp/dns/rr.hpp"
-#include "llarp/layers/flow/flow_layer.hpp"
-#include "llarp/util/decaying_hashtable.hpp"
-#include "llarp/util/str.hpp"
+#include <llarp/dns/question.hpp>
+#include <llarp/dns/rr.hpp>
 
 namespace llarp::layers::flow
 {
@@ -34,7 +31,7 @@ namespace llarp::layers::platform
     /// any known cached ons names for this zone.
     std::vector<std::string> _ons_names;
     std::vector<dns::SRVData> _srv;
-    AddrMapper& _addr_mapper;
+    AddrMapper* const _addr_mapper;
 
     /// synth srv records rdata.
     std::vector<dns::RData>
@@ -51,8 +48,15 @@ namespace llarp::layers::platform
     std::string
     zone_name() const;
 
+    constexpr AddrMapper&
+    addr_mapper() const
+    {
+      return *_addr_mapper;
+    }
+
    public:
-    DNSZone(AddrMapper&, flow::FlowAddr addr);
+    DNSZone();
+    DNSZone(AddrMapper& mapper, flow::FlowAddr addr);
 
     /// add a new srv recrod to this dns zone.
     void
@@ -68,7 +72,8 @@ namespace llarp::layers::platform
   {
     PlatformLayer& _plat;
 
-    std::unordered_map<flow::FlowAddr, std::unique_ptr<DNSZone>> _zones;
+    /// all remote zones.
+    std::unordered_map<flow::FlowAddr, DNSZone> _zones;
 
     /// async resolve dns zone given a dns question.
     void

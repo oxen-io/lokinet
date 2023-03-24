@@ -14,26 +14,12 @@ namespace llarp
     static auto logcat = log::Cat("service");
     namespace
     {
-      using EndpointConstructor =
-          std::function<service::Endpoint_ptr(AbstractRouter*, service::Context*)>;
+      using EndpointConstructor = std::function<service::Endpoint_ptr(AbstractRouter&)>;
       using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
       static EndpointConstructors endpointConstructors = {
-          {"tun",
-           [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c);
-           }},
-          {"android",
-           [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c);
-           }},
-          {"ios",
-           [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::TunEndpoint>(r, c);
-           }},
-          {"null", [](AbstractRouter* r, service::Context* c) {
-             return std::make_shared<handlers::NullEndpoint>(r, c);
-           }}};
+          {"tun", [](AbstractRouter& r) { return std::make_shared<handlers::TunEndpoint>(r); }},
+          {"null", [](AbstractRouter& r) { return std::make_shared<handlers::NullEndpoint>(r); }}};
 
     }  // namespace
     Context::Context(AbstractRouter* r) : m_Router(r)
@@ -195,7 +181,7 @@ namespace llarp
       if (itr == endpointConstructors.end())
         throw std::invalid_argument{fmt::format("Endpoint type {} does not exist", endpointType)};
 
-      auto service = itr->second(m_Router, this);
+      auto service = itr->second(*m_Router);
       if (not service)
         throw std::runtime_error{
             fmt::format("Failed to construct endpoint of type {}", endpointType)};

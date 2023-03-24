@@ -105,6 +105,12 @@ namespace llarp
       return h == x.h;
     }
 
+    constexpr bool
+    operator<=(huint_t x) const
+    {
+      return h <= x.h;
+    }
+
     using V6Container = std::vector<uint8_t>;
     [[deprecated]] void
     ToV6(V6Container& c);
@@ -240,6 +246,18 @@ namespace llarp
     port_t ToNet(huint16_t);
     ipv4addr_t ToNet(huint32_t);
     ipv6addr_t ToNet(huint128_t);
+
+    /// construct an ip variant from a string.
+    ipaddr_t
+    ipaddr_from_string(const std::string& str);
+
+    /// takes in an ipaddr_t and if it's a ipv4 address it converts it to a mapped ipv6 address.
+    ipv6addr_t
+    maybe_expand_ip(ipaddr_t ip);
+
+    /// takes in an ipv6 address and truncates it to v4 if it is in the ipv4 mapped range.
+    ipaddr_t
+    maybe_truncate_ip(ipv6addr_t ip);
 
   }  // namespace net
 

@@ -1,4 +1,5 @@
 #include "pathbuilder.hpp"
+#include "oxen/log.hpp"
 #include "path_context.hpp"
 
 #include <llarp/crypto/crypto.hpp>
@@ -239,13 +240,13 @@ namespace llarp
       std::optional<RouterContact> found = std::nullopt;
       m_router->ForEachPeer(
           [&](const ILinkSession* s, bool isOutbound) {
-            if (s && s->IsEstablished() && isOutbound && not found.has_value())
+            if (s && s->IsEstablished() && isOutbound && not found)
             {
               const RouterContact rc = s->GetRemoteRC();
-#ifndef TESTNET
-              if (m_router->IsBootstrapNode(rc.pubkey))
+
+              if (not m_router->rcLookupHandler().PathIsAllowed(rc.pubkey))
                 return;
-#endif
+
               if (exclude.count(rc.pubkey))
                 return;
 
@@ -349,9 +350,19 @@ namespace llarp
       std::vector<RouterContact> hops;
       {
         const auto maybe = SelectFirstHop(exclude);
-        if (not maybe.has_value())
+        if (not maybe)
         {
-          log::warning(log_path, "{} has no first hop candidate", Name());
+          if (m_router->NumberOfConnectedRouters())
+            log::warning(
+                log_path,
+                "cannot build path for '{}' becuase we do not have enough edge connections to the "
+                "network.",
+                Name());
+          else
+            log::warning(
+                log_path,
+                "cannot build path for '{}' because we are not collected to the network",
+                Name());
           return std::nullopt;
         }
         hops.emplace_back(*maybe);

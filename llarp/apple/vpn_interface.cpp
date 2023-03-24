@@ -1,59 +1,33 @@
 
 #include "vpn_interface.hpp"
 #include "context.hpp"
+#include "llarp/net/ip_packet.hpp"
+#include "llarp/vpn/platform.hpp"
+#include <cstddef>
 #include <llarp/router/abstractrouter.hpp>
 
 namespace llarp::apple
 {
-  VPNInterface::VPNInterface(
-      Context& ctx,
-      packet_write_callback packet_writer,
-      on_readable_callback on_readable,
-      AbstractRouter* router)
-      : vpn::NetworkInterface{{}}
-      , m_PacketWriter{std::move(packet_writer)}
-      , m_OnReadable{std::move(on_readable)}
-      , _router{router}
+  AppleVPNInterface::AppleVPNInterface(
+      Context& ctx, layers::platform::PlatformLayer& plat, packet_write_callback packet_writer)
+      : vpn::QueuedNetworkInterface{vpn::InterfaceInfo{}, plat.wakeup_send, plat.wakeup_recv}
+      , _apple_ctx{ctx}
+      , _write_packet{std::move(packet_writer)}
   {
-    ctx.loop->call_soon([this] { m_OnReadable(*this); });
-  }
-
-  bool
-  VPNInterface::OfferReadPacket(const llarp_buffer_t& buf)
-  {
-    llarp::net::IPPacket pkt;
-    if (!pkt.Load(buf))
-      return false;
-    m_ReadQueue.tryPushBack(std::move(pkt));
-    return true;
+    // make the reads happen.
+    ctx.loop->call_soon([this]() { on_readable(); });
   }
 
   void
-  VPNInterface::MaybeWakeUpperLayers() const
+  AppleVPNInterface::on_readable()
   {
-    _router->TriggerPump();
-  }
-
-  int
-  VPNInterface::PollFD() const
-  {
-    return -1;
-  }
-
-  net::IPPacket
-  VPNInterface::ReadNextPacket()
-  {
-    net::IPPacket pkt{};
-    if (not m_ReadQueue.empty())
-      pkt = m_ReadQueue.popFront();
-    return pkt;
+    _apple_ctx.on_readable(*this);
   }
 
   bool
-  VPNInterface::WritePacket(net::IPPacket pkt)
+  AppleVPNInterface::WritePacket(net::IPPacket pkt)
   {
-    int af_family = pkt.IsV6() ? AF_INET6 : AF_INET;
-    return m_PacketWriter(af_family, pkt.data(), pkt.size());
+    return _write_packet(pkt.family(), pkt.data(), pkt.size());
   }
 
 }  // namespace llarp::apple

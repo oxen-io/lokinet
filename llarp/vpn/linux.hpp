@@ -32,6 +32,8 @@ namespace llarp::vpn
     unsigned int ifindex;
   };
 
+  static auto logcat = log::Cat("linux-vpn");
+
   class LinuxInterface : public NetworkInterface
   {
     const int m_fd;
@@ -62,6 +64,7 @@ namespace llarp::vpn
 
       for (const auto& ifaddr : m_Info.addrs)
       {
+        log::info(logcat, "set address of {}: {}", info.ifname, ifaddr.range);
         if (ifaddr.fam == AF_INET)
         {
           ifr.ifr_addr.sa_family = AF_INET;

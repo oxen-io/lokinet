@@ -19,7 +19,7 @@ namespace llarp
 
       for (const auto& record : conf.m_SRVRecords)
       {
-        m_IntroSet.SRVs.push_back(record.toTuple());
+        m_IntroSet.SRVs.push_back(record.tuple);
       }
 
       return true;

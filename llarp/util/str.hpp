@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.hpp"
+
 #include <string_view>
 #include <vector>
 #include <chrono>
@@ -143,5 +145,10 @@ namespace llarp
   /// convert a "normal" string into a wide string
   std::wstring
   to_wide(std::string data);
+
+  /// binary string view
+  using byte_view_t = std::basic_string_view<byte_t>;
+  /// nonprintable string
+  using bstring_t = std::basic_string<byte_t>;
 
 }  // namespace llarp

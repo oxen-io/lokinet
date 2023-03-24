@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
@@ -185,6 +186,7 @@ if(NOT TARGET sodium)
 endif()
 
 set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werror=vla)
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   list(APPEND warning_flags -Wno-unknown-warning-option)
 endif()

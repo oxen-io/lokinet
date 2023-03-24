@@ -9,11 +9,14 @@ if (WITH_HIVE)
 endif()
 
 add_subdirectory(Catch2)
+
 add_executable(testAll
   # helpers
   check_main.cpp
   test_util.cpp
-  # actual test cases
+  # platform layer test cases
+  layers/test_platform_layer.cpp
+  # remaining test cases
   config/test_llarp_config_definition.cpp
   config/test_llarp_config_ini.cpp
   config/test_llarp_config_output.cpp
@@ -29,7 +32,6 @@ add_executable(testAll
   path/test_path.cpp
   router/test_llarp_router_version.cpp
   routing/test_llarp_routing_transfer_traffic.cpp
-  routing/test_llarp_routing_obtainexitmessage.cpp
   service/test_llarp_service_address.cpp
   service/test_llarp_service_identity.cpp
   service/test_llarp_service_name.cpp

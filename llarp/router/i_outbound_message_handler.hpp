@@ -35,7 +35,7 @@ namespace llarp
     QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback) = 0;
 
     virtual void
-    Pump() = 0;
+    IdempotentPump() = 0;
 
     virtual void
     RemovePath(const PathID_t& pathid) = 0;

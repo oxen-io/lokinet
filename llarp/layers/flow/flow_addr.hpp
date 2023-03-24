@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/core.h>
 #include <llarp/util/aligned.hpp>
 #include <string>
 #include <string_view>

@@ -3,54 +3,38 @@
 #include <llarp.hpp>
 #include <llarp/vpn/platform.hpp>
 #include <llarp/util/thread/queue.hpp>
-#include <memory>
+#include <llarp/layers/platform/platform_layer.hpp>
 
 namespace llarp::apple
 {
   struct Context;
 
-  class VPNInterface final : public vpn::NetworkInterface,
-                             public std::enable_shared_from_this<VPNInterface>
+  using packet_write_callback = std::function<bool(int af_family, void* data, int size)>;
+
+  class AppleVPNInterface final : public vpn::QueuedNetworkInterface,
+                                  public std::enable_shared_from_this<AppleVPNInterface>
   {
    public:
-    using packet_write_callback = std::function<bool(int af_family, void* data, int size)>;
-    using on_readable_callback = std::function<void(VPNInterface&)>;
+    using on_readable_callback = std::function<void(AppleVPNInterface&)>;
 
-    explicit VPNInterface(
+    explicit AppleVPNInterface(
         Context& ctx,
+        layers::platform::PlatformLayer& plat,
         packet_write_callback packet_writer,
-        on_readable_callback on_readable,
-        AbstractRouter* router);
-
-    // Method to call when a packet has arrived to deliver the packet to lokinet
-    bool
-    OfferReadPacket(const llarp_buffer_t& buf);
-
-    int
-    PollFD() const override;
-
-    net::IPPacket
-    ReadNextPacket() override;
+        on_readable_callback on_readable);
 
     bool
     WritePacket(net::IPPacket pkt) override;
 
+    /// continue reading packets.
     void
-    MaybeWakeUpperLayers() const override;
+    on_readable();
 
    private:
+    Context& _apple_ctx;
     // Function for us to call when we have a packet to emit.  Should return true if the packet was
     // handed off to the OS successfully.
-    packet_write_callback m_PacketWriter;
-
-    // Called when we are ready to start reading packets
-    on_readable_callback m_OnReadable;
-
-    static inline constexpr auto PacketQueueSize = 1024;
-
-    thread::Queue<net::IPPacket> m_ReadQueue{PacketQueueSize};
-
-    AbstractRouter* const _router;
+    packet_write_callback _write_packet;
   };
-
+  using on_readable_callback = AppleVPNInterface::on_readable_callback;
 }  // namespace llarp::apple

@@ -8,6 +8,7 @@
 #include <memory>
 #include <llarp/service/protocol_type.hpp>
 #include <utility>
+#include <vector>
 
 namespace llarp::net
 {
@@ -187,6 +188,24 @@ namespace llarp::net
       buf.resize(0);
       std::swap(_buf, buf);
       return buf;
+    }
+
+    /// make a copy of the underlying vector
+    inline std::vector<byte_t>
+    copy() const
+    {
+      return _buf;
+    }
+
+    /// return address family this ip packet belongs to.
+    inline auto
+    family() const
+    {
+      if (IsV4())
+        return AF_INET;
+      if (IsV6())
+        return AF_INET6;
+      return AF_UNSPEC;
     }
 
     inline byte_t*
@@ -372,6 +391,14 @@ namespace llarp::net
     MakeICMPUnreachable() const;
 
     std::function<void(net::IPPacket)> reply;
+
+    /// recompute all ip packet checksums so that they match match the data.
+    void
+    recompute_checksums();
+
+    /// make an icmp packet from an existing ip packet, replacing the source address with our ip.
+    static std::vector<byte_t>
+    make_icmp(std::vector<byte_t>&& pkt, net::ipaddr_t our_ip, int type, int code);
   };
 
   /// generate ip checksum

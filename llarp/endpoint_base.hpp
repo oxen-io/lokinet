@@ -1,20 +1,24 @@
 #pragma once
 
-#include "llarp/service/address.hpp"
-#include "llarp/service/convotag.hpp"
-#include "llarp/service/protocol_type.hpp"
-#include "router_id.hpp"
-#include "llarp/ev/ev.hpp"
-#include "llarp/dns/srv_data.hpp"
+#include "router_contact.hpp"
 
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <optional>
+#include <type_traits>
 #include <unordered_set>
 #include <set>
-#include "oxenc/variant.h"
+
+#include <oxenc/variant.h>
+#include <llarp/config/config.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/convotag.hpp>
+#include <llarp/service/protocol_type.hpp>
+#include <llarp/ev/ev.hpp>
+#include <vector>
 
 namespace llarp
 {
@@ -28,7 +32,7 @@ namespace llarp
     class Server;
   }
 
-  class EndpointBase
+  class [[deprecated]] EndpointBase
   {
     std::unordered_set<dns::SRVData> m_SRVRecords;
 
@@ -119,6 +123,8 @@ namespace llarp
     virtual std::optional<service::ConvoTag>
     GetBestConvoTagFor(AddressVariant_t addr) const = 0;
 
+    /// MUST call MarkAddressOutbound first if we are initiating the flow to the remote.
+    // TODO: this requirement is stupid.
     virtual bool
     EnsurePathTo(
         AddressVariant_t addr,
@@ -129,12 +135,20 @@ namespace llarp
     LookupNameAsync(
         std::string name, std::function<void(std::optional<AddressVariant_t>)> resultHandler) = 0;
 
+    virtual bool
+    LookupRC(RouterID rid, RouterLookupHandler handler) = 0;
+
     virtual const EventLoop_ptr&
     Loop() = 0;
 
     virtual bool
-    SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+    SendToOrQueue(service::ConvoTag tag, std::vector<byte_t> data, service::ProtocolType t) = 0;
+
+    bool
+    SendToOrQueue(service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t)
+    {
+      return SendToOrQueue(std::move(tag), payload.copy(), t);
+    }
 
     /// lookup srv records async
     virtual void
@@ -143,8 +157,32 @@ namespace llarp
         std::string service,
         std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
 
+    /// will mark a remote as something we want to initiate a flow to.
+    /// making this explicit prevents us from doing weird things when we are the recipient.
     virtual void
     MarkAddressOutbound(AddressVariant_t remote) = 0;
+
+    virtual bool
+    Configure(const NetworkConfig&, const DnsConfig&) = 0;
+
+    virtual std::string_view
+    endpoint_name() const = 0;
+
+    /// called to do any deferred startup items after configure.
+    virtual void
+    start_endpoint(){};
+
+    /// initiate shutdown of all periodic operations.
+    virtual void
+    stop_endpoint(){};
+
+    /// called in a periodic event loop timer.
+    virtual void
+    periodic_tick(){};
+
+    /// called in an idempotent event loop handler after reading io each tick.
+    virtual void
+    event_loop_pump(){};
   };
 
 }  // namespace llarp

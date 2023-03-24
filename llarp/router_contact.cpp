@@ -10,6 +10,9 @@
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
+#include <exception>
+#include <stdexcept>
+#include <type_traits>
 
 #include "util/file.hpp"
 
@@ -450,7 +453,7 @@ namespace llarp
   bool
   RouterContact::Sign(const SecretKey& secretkey)
   {
-    pubkey = llarp::seckey_topublic(secretkey);
+    pubkey = secretkey.toPublic();
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
     signature.Zero();
@@ -552,22 +555,35 @@ namespace llarp
   bool
   RouterContact::Write(const fs::path& fname) const
   {
-    std::array<byte_t, MAX_RC_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
-    if (!BEncode(&buf))
-    {
-      return false;
-    }
     try
     {
-      util::dump_file(fname, tmp.data(), buf.cur - buf.base);
+      write_to_disk(fname);
     }
-    catch (const std::exception& e)
+    catch (std::exception& ex)
     {
-      log::error(logcat, "Failed to write RC to {}: {}", fname, e.what());
+      log::error(logcat, "failed to write RC to '{}' : {}"_format(fname, ex.what()));
       return false;
     }
     return true;
+  }
+
+  void
+  RouterContact::write_to_disk(const fs::path& fname) const
+  {
+    std::array<byte_t, MAX_RC_SIZE> tmp;
+    llarp_buffer_t buf{tmp};
+    if (not BEncode(&buf))
+    {
+      if (buf.size_left())
+        throw std::runtime_error{"did not bencode for some reason: {} bytes written"_format(
+            buf.view_all().size() - buf.size_left())};
+      else
+        throw std::overflow_error{
+            "could not encode into buffer of size {} bytes"_format(tmp.size())};
+    }
+    auto all = buf.view_all();
+    auto written = all.size() - buf.size_left();
+    util::dump_file(fname, all.data(), written);
   }
 
   bool

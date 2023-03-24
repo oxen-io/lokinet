@@ -300,7 +300,6 @@ namespace llarp::rpc
       GetStatus,
       QuicConnect,
       QuicListener,
-      LookupSnode,
       MapExit,
       ListExits,
       SwapExits,

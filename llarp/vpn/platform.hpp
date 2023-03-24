@@ -12,6 +12,13 @@ namespace llarp
 {
   struct Context;
   struct AbstractRouter;
+  struct NetworkConfig;
+
+  namespace net
+  {
+    class Platform;
+  }
+
 }  // namespace llarp
 
 namespace llarp::vpn
@@ -45,6 +52,8 @@ namespace llarp::vpn
         return ToNet(net::TruncateV6(range.addr));
       return ToNet(range.addr);
     }
+    InterfaceInfo() = default;
+    InterfaceInfo(const NetworkConfig& conf, const net::Platform&);
   };
 
   /// a vpn network interface

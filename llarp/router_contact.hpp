@@ -81,6 +81,7 @@ namespace llarp
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
+
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee
@@ -197,6 +198,9 @@ namespace llarp
 
     bool
     Write(const fs::path& fname) const;
+
+    void
+    write_to_disk(const fs::path& fname) const;
 
     bool
     VerifySignature() const;

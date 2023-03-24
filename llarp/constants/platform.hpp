@@ -97,4 +97,12 @@ namespace llarp::platform
   /// does this platform support native ipv6 ?
   // TODO: make windows support ipv6
   inline constexpr bool supports_ipv6 = not is_windows;
+
+  /// this platform uses reactor style io.
+  /// see https://wikipedia.org/wiki/Reactor_pattern?lang=en
+  inline constexpr bool has_reactor_io = is_linux and not is_android;
+
+  /// this platform users proactor style io.
+  /// see  https://wikipedia.org/wiki/Proactor_pattern?lang=en
+  inline constexpr bool has_proactor_io = not has_reactor_io;
 }  // namespace llarp::platform

@@ -9,11 +9,11 @@
 
 namespace llarp::handlers
 {
-  struct NullEndpoint final : public llarp::service::Endpoint,
-                              public std::enable_shared_from_this<NullEndpoint>
+  struct NullEndpoint final : public llarp::service::Endpoint
+
   {
-    NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
-        : llarp::service::Endpoint{r, parent}
+    NullEndpoint(AbstractRouter& r)
+        : llarp::service::Endpoint{r}
         , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
           var::visit(
               [&pkt](auto&& from) {
@@ -22,17 +22,14 @@ namespace llarp::handlers
               from);
         }}}
     {
-      r->loop()->add_ticker([this] { Pump(Now()); });
+      r.loop()->add_ticker([this] { Pump(Now()); });
     }
 
-    virtual bool
+    bool
     HandleInboundPacket(
-        const service::ConvoTag tag,
-        const llarp_buffer_t& buf,
-        service::ProtocolType t,
-        uint64_t) override
+        const service::ConvoTag tag, std::vector<byte_t> buf, service::ProtocolType t, uint64_t)
     {
-      LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
+      LogTrace("Inbound ", t, " packet (", buf.size(), "B) on convo ", tag);
       if (t == service::ProtocolType::Control)
       {
         return true;
@@ -41,8 +38,8 @@ namespace llarp::handlers
       {
         if (auto from = GetEndpointWithConvoTag(tag))
         {
-          net::IPPacket pkt{};
-          if (not pkt.Load(buf))
+          net::IPPacket pkt{std::move(buf)};
+          if (pkt.empty())
           {
             LogWarn("invalid ip packet from remote T=", tag);
             return false;
@@ -65,53 +62,29 @@ namespace llarp::handlers
         LogWarn("incoming quic packet but this endpoint is not quic capable; dropping");
         return false;
       }
-      if (buf.sz < 4)
+      if (buf.size() < 4)
       {
         LogWarn("invalid incoming quic packet, dropping");
         return false;
       }
-      quic->receive_packet(tag, buf);
+      quic->receive_packet(tag, std::move(buf));
       return true;
     }
 
     std::string
-    GetIfName() const override
+    GetIfName() const
     {
       return "";
     }
 
-    path::PathSet_ptr
-    GetSelf() override
-    {
-      return shared_from_this();
-    }
-
-    std::weak_ptr<path::PathSet>
-    GetWeak() override
-    {
-      return weak_from_this();
-    }
-
     bool
-    SupportsV6() const override
+    SupportsV6() const
     {
       return false;
     }
 
     void
     SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
-
-    huint128_t
-    ObtainIPForAddr(std::variant<service::Address, RouterID>) override
-    {
-      return {0};
-    }
-
-    std::optional<std::variant<service::Address, RouterID>>
-    ObtainAddrForIP(huint128_t) const override
-    {
-      return std::nullopt;
-    }
 
     vpn::EgresPacketRouter*
     EgresPacketRouter() override

@@ -1,6 +1,7 @@
 #include "time.hpp"
 #include <chrono>
 #include <iomanip>
+#include <memory>
 #include "types.hpp"
 
 namespace llarp
@@ -27,13 +28,40 @@ namespace llarp
     return ms.count();
   }
 
+  /// time point for "now" when using time dilation.
+  std::unique_ptr<std::chrono::steady_clock::time_point> alternative_steady_now;
+
   /// get our uptime in ms
   Duration_t
   uptime()
   {
+    if (alternative_steady_now)
+      return std::chrono::duration_cast<Duration_t>(*alternative_steady_now - started_at_steady);
+
     return std::chrono::duration_cast<Duration_t>(
         std::chrono::steady_clock::now() - started_at_steady);
   }
+
+  namespace test
+  {
+    TimeDilation::TimeDilation()
+    {
+      alternative_steady_now =
+          std::make_unique<std::chrono::steady_clock::time_point>(std::chrono::steady_clock::now());
+    }
+
+    TimeDilation::~TimeDilation()
+    {
+      alternative_steady_now.reset();
+    }
+
+    TimeDilation&
+    TimeDilation::operator+=(std::chrono::milliseconds n)
+    {
+      *alternative_steady_now += n;
+      return *this;
+    }
+  }  // namespace test
 
   Duration_t
   time_now_ms()

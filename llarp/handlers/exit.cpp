@@ -1,17 +1,18 @@
 #include "exit.hpp"
 
-#include <llarp/dns/dns.hpp>
+#include <llarp/dns/server.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/bits.hpp>
+#include <llarp/util/underlying.hpp>
 
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/router/i_rc_lookup_handler.hpp>
 
-#include <cassert>
 #include <llarp/service/protocol_type.hpp>
+#include <llarp/vpn/platform.hpp>
 
 namespace llarp
 {
@@ -97,7 +98,7 @@ namespace llarp
 
     bool
     ExitEndpoint::SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType type)
+        service::ConvoTag tag, std::vector<byte_t> payload, service::ProtocolType type)
     {
       if (auto maybeAddr = GetEndpointWithConvoTag(tag))
       {
@@ -109,7 +110,7 @@ namespace llarp
           {
             if (not itr->second->LooksDead(Now()))
             {
-              if (itr->second->QueueInboundTraffic(payload.copy(), type))
+              if (itr->second->QueueInboundTraffic(std::move(payload), type))
                 return true;
             }
           }
@@ -117,10 +118,10 @@ namespace llarp
           if (not m_Router->PathToRouterAllowed(*rid))
             return false;
 
-          ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
+          ObtainSNodeSession(*rid, [payload, type](auto session) mutable {
             if (session and session->IsReady())
             {
-              session->SendPacketToRemote(std::move(pkt), type);
+              session->SendPacketToRemote(std::move(payload), type);
             }
           });
         }
@@ -189,19 +190,25 @@ namespace llarp
     {
       if (msg.questions.size() == 0)
         return false;
+      const auto& question = msg.questions[0];
+
+      if (not(question.tld() == "snode" or question.tld() == "loki"))
+        return false;
+
+      const auto& qtype = question.qtype;
       // always hook ptr for ranges we own
-      if (msg.questions[0].qtype == dns::qTypePTR)
+      if (qtype == to_underlying(dns::RRType::PTR))
       {
-        if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+        if (auto ip = dns::DecodePTR(msg.questions[0].qname()))
           return m_OurRange.Contains(*ip);
         return false;
       }
-      if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype == dns::qTypeCNAME
-          || msg.questions[0].qtype == dns::qTypeAAAA)
+      if (qtype == to_underlying(dns::RRType::A) or qtype == to_underlying(dns::RRType::AAAA)
+          or qtype == to_underlying(dns::RRType::CNAME))
       {
-        if (msg.questions[0].IsName("localhost.loki"))
+        if (question.tld() == "snode")
           return true;
-        if (msg.questions[0].HasTLD(".snode"))
+        if (question.tld() == "loki")
           return true;
       }
       return false;
@@ -226,94 +233,109 @@ namespace llarp
     bool
     ExitEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
-      if (msg.questions[0].qtype == dns::qTypePTR)
+      auto name = msg.questions[0].qname();
+      if (msg.questions[0].qtype == to_underlying(dns::RRType::PTR))
       {
-        auto ip = dns::DecodePTR(msg.questions[0].qname);
+        auto ip = dns::DecodePTR(name);
         if (not ip)
           return false;
         if (ip == m_IfAddr)
         {
           RouterID us = GetRouter()->pubkey();
-          msg.AddAReply(us.ToString(), 300);
+          msg.answers.emplace_back(
+              name, dns::RRType::PTR, dns::RData{dns::split_dns_name(us.ToString())}, 300);
         }
         else
         {
           auto itr = m_IPToKey.find(*ip);
           if (itr != m_IPToKey.end() && m_SNodeKeys.find(itr->second) != m_SNodeKeys.end())
           {
-            RouterID them = itr->second;
-            msg.AddAReply(them.ToString());
+            msg.answers.emplace_back(
+                name,
+                dns::RRType::PTR,
+                dns::RData{dns::split_dns_name(itr->second.ToString())},
+                300);
           }
           else
-            msg.AddNXReply();
+            msg.nx();
         }
       }
-      else if (msg.questions[0].qtype == dns::qTypeCNAME)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::CNAME))
       {
         if (msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if (GetRouter()->GetRandomGoodRouter(random))
-            msg.AddCNAMEReply(random.ToString(), 1);
+            msg.answers.emplace_back(
+                name, dns::RRType::CNAME, dns::RData{dns::split_dns_name(random.ToString())}, 1);
           else
-            msg.AddNXReply();
+            msg.nx();
         }
         else if (msg.questions[0].IsName("localhost.loki"))
         {
           RouterID us = m_Router->pubkey();
-          msg.AddAReply(us.ToString(), 1);
+          msg.answers.emplace_back(
+              name, dns::RRType::PTR, dns::RData{dns::split_dns_name(us.ToString())}, 1);
         }
         else
-          msg.AddNXReply();
+          msg.nx();
       }
-      else if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype == dns::qTypeAAAA)
+      else if (msg.questions[0].qtype == to_underlying(dns::RRType::A))
       {
-        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
-        const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         if (msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if (GetRouter()->GetRandomGoodRouter(random))
           {
-            msg.AddCNAMEReply(random.ToString(), 1);
-            auto ip = ObtainServiceNodeIP(random);
-            msg.AddINReply(ip, false);
+            msg.answers.emplace_back(
+                name, dns::RRType::CNAME, dns::RData{dns::split_dns_name(random.ToString())}, 1);
+            auto rdata = var::visit(
+                [](auto&& ip) { return dns::RData{ip}; },
+                net::maybe_truncate_ip(ToNet(ObtainServiceNodeIP(random))));
+            msg.answers.emplace_back(name, dns::RRType::A, std::move(rdata), 1);
           }
           else
-            msg.AddNXReply();
+            msg.nx();
           reply(msg);
           return true;
         }
         if (msg.questions[0].IsName("localhost.loki"))
         {
-          msg.AddINReply(GetIfAddr(), isV6);
+          auto rdata = var::visit(
+              [](auto&& ip) { return dns::RData{ip}; }, net::maybe_truncate_ip(ToNet(GetIfAddr())));
+          msg.answers.emplace_back(name, dns::RRType::A, std::move(rdata), 1);
+
           reply(msg);
           return true;
         }
         // forward dns for snode
         RouterID r;
-        if (r.FromString(msg.questions[0].Name()))
+        auto name = msg.questions[0].qname();
+        if (ends_with(name, "."))
+          name = name.substr(0, name.size() - 2);
+
+        if (r.FromString(name))
         {
           huint128_t ip;
           PubKey pubKey(r);
-          if (isV4 && SupportsV6())
-          {
-            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
-          }
-          else if (m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
+          if (m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped, async obtain it
             ObtainSNodeSession(
                 r,
-                [&, msg = std::make_shared<dns::Message>(msg), reply](
+                [this, pubKey, msg = std::make_shared<dns::Message>(msg), reply](
                     std::shared_ptr<exit::BaseSession> session) {
+                  auto name = msg->questions[0].qname();
                   if (session && session->IsReady())
                   {
-                    msg->AddINReply(m_KeyToIP[pubKey], isV6);
+                    auto rdata = var::visit(
+                        [](auto&& ip) { return dns::RData{ip}; },
+                        net::maybe_truncate_ip(ToNet(m_KeyToIP[pubKey])));
+                    msg->answers.emplace_back(name, dns::RRType::A, std::move(rdata), 1);
                   }
                   else
                   {
-                    msg->AddNXReply();
+                    msg->nx();
                   }
                   reply(*msg);
                 });
@@ -325,15 +347,17 @@ namespace llarp
             auto itr = m_KeyToIP.find(pubKey);
             if (itr != m_KeyToIP.end())
             {
-              ip = itr->second;
-              msg.AddINReply(ip, isV6);
+              auto rdata = var::visit(
+                  [](auto&& ip) { return dns::RData{ip}; },
+                  net::maybe_truncate_ip(ToNet(itr->second)));
+              msg.answers.emplace_back(name, dns::RRType::A, std::move(rdata), 1);
             }
             else  // fallback case that should never happen (probably)
-              msg.AddNXReply();
+              msg.nx();
           }
         }
         else
-          msg.AddNXReply();
+          msg.nx();
       }
       reply(msg);
       return true;
@@ -478,9 +502,8 @@ namespace llarp
 
         GetRouter()->loop()->add_ticker([this] { Flush(); });
 #ifndef _WIN32
-        m_Resolver = std::make_shared<dns::Server>(
-            m_Router->loop(), m_DNSConf, if_nametoindex(m_ifname.c_str()));
-        m_Resolver->Start();
+        m_Resolver = std::make_shared<dns::Server>(m_Router->loop(), m_DNSConf);
+        m_Resolver->Start(if_nametoindex(m_ifname.c_str()));
 
 #endif
       }
@@ -701,7 +724,7 @@ namespace llarp
       return true;
     }
 
-    void
+    bool
     ExitEndpoint::Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
       /*
@@ -728,14 +751,7 @@ namespace llarp
         m_ShouldInitTun = false;
       }
 
-      m_OurRange = networkConfig.m_ifaddr;
-      if (!m_OurRange.addr.h)
-      {
-        const auto maybe = m_Router->Net().FindFreeRange();
-        if (not maybe.has_value())
-          throw std::runtime_error("cannot find free interface range");
-        m_OurRange = *maybe;
-      }
+      m_OurRange = networkConfig.ifaddr(m_Router->Net());
       const auto host_str = m_OurRange.BaseAddressString();
       // string, or just a plain char array?
       m_IfAddr = m_OurRange.addr;
@@ -743,14 +759,8 @@ namespace llarp
       m_HigestAddr = m_OurRange.HighestAddr();
       m_UseV6 = not m_OurRange.IsV4();
 
-      m_ifname = networkConfig.m_ifname;
-      if (m_ifname.empty())
-      {
-        const auto maybe = m_Router->Net().FindFreeTun();
-        if (not maybe.has_value())
-          throw std::runtime_error("cannot find free interface name");
-        m_ifname = *maybe;
-      }
+      m_ifname = networkConfig.ifname(m_Router->Net());
+
       LogInfo(Name(), " set ifname to ", m_ifname);
       if (auto* quic = GetQUICTunnel())
       {
@@ -758,6 +768,7 @@ namespace llarp
           return llarp::SockAddr{ifaddr, huint16_t{port}};
         });
       }
+      return true;
     }
 
     huint128_t
@@ -809,7 +820,7 @@ namespace llarp
         m_SNodeKeys.emplace(pk.as_array());
       }
       m_ActiveExits.emplace(
-          pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
+          pk, std::make_unique<exit::Endpoint>(*m_Router, pk, handler, !wantInternet, ip));
 
       m_Paths[path] = pk;
 

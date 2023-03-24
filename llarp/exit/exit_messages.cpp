@@ -27,8 +27,7 @@ namespace llarp
     {
       std::array<byte_t, 1024> tmp;
       llarp_buffer_t buf(tmp);
-      ObtainExitMessage copy;
-      copy = *this;
+      ObtainExitMessage copy{*this};
       copy.Z.Zero();
       if (!copy.BEncode(&buf))
       {
@@ -140,8 +139,7 @@ namespace llarp
     {
       std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
-      GrantExitMessage copy;
-      copy = *this;
+      GrantExitMessage copy{*this};
       copy.Z.Zero();
       if (!copy.BEncode(&buf))
         return false;
@@ -231,8 +229,8 @@ namespace llarp
     {
       std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
-      RejectExitMessage copy;
-      copy = *this;
+      RejectExitMessage copy{*this};
+
       copy.Z.Zero();
       if (!copy.BEncode(&buf))
         return false;
@@ -289,8 +287,8 @@ namespace llarp
     {
       std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
-      UpdateExitMessage copy;
-      copy = *this;
+      UpdateExitMessage copy{*this};
+
       copy.Z.Zero();
       if (!copy.BEncode(&buf))
         return false;
@@ -389,8 +387,8 @@ namespace llarp
     {
       std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
-      CloseExitMessage copy;
-      copy = *this;
+      CloseExitMessage copy{*this};
+
       copy.Z.Zero();
       if (!copy.BEncode(&buf))
         return false;

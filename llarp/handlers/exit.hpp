@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp/exit/endpoint.hpp>
-#include "tun.hpp"
+#include <llarp/exit/session.hpp>
 #include <llarp/dns/server.hpp>
 #include <unordered_map>
 
@@ -64,13 +64,22 @@ namespace llarp
 
       bool
       SendToOrQueue(
-          service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
+          service::ConvoTag tag, std::vector<byte_t> payload, service::ProtocolType t) override;
+
+      std::string_view
+      endpoint_name() const override
+      {
+        return Name();
+      }
 
       void
       Tick(llarp_time_t now);
 
-      void
-      Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
+      bool
+      Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig) override;
+
+      bool
+      LookupRC(RouterID remote, RouterLookupHandler handler) override;
 
       std::string
       Name() const;

@@ -103,8 +103,6 @@ namespace llarp::rpc
     void
     invoke(QuicListener& quiclistener);
     void
-    invoke(LookupSnode& lookupsnode);
-    void
     invoke(MapExit& mapexit);
     void
     invoke(ListExits& listexits);

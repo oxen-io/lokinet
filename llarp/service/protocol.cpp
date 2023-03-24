@@ -1,10 +1,11 @@
 #include "protocol.hpp"
+#include "endpoint.hpp"
 #include <llarp/path/path.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/meta/memfn.hpp>
-#include "endpoint.hpp"
+#include <llarp/layers/flow/flow_traffic.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <utility>
 
@@ -526,6 +527,40 @@ namespace llarp
     ProtocolFrame::HandleMessage(routing::IMessageHandler* h, AbstractRouter* /*r*/) const
     {
       return h->HandleHiddenServiceFrame(*this);
+    }
+
+    layers::flow::FlowTraffic
+    ProtocolMessage::to_flow_traffic() const
+    {
+      layers::flow::FlowTraffic traff;
+      traff.flow_info.dst =
+          layers::flow::FlowAddr{fmt::format("{}", handler->GetIdentity().pub.Addr())};
+      traff.flow_info.src = layers::flow::FlowAddr{fmt::format("{}", sender.Addr())};
+      traff.flow_info.tag = layers::flow::FlowTag{tag.as_array()};
+      switch (proto)
+      {
+        case ProtocolType::Auth:
+          traff.kind = layers::flow::FlowDataKind::auth;
+          break;
+
+        case ProtocolType::TrafficV4:
+        case ProtocolType::TrafficV6:
+          traff.kind = layers::flow::FlowDataKind::direct_ip_unicast;
+          break;
+
+        case ProtocolType::Exit:
+          traff.kind = layers::flow::FlowDataKind::exit_ip_unicast;
+          break;
+
+        case ProtocolType::QUIC:
+          traff.kind = layers::flow::FlowDataKind::stream_unicast;
+          break;
+        default:
+          traff.kind = layers::flow::FlowDataKind::unknown;
+          break;
+      }
+      traff.datum = payload;
+      return traff;
     }
 
   }  // namespace service

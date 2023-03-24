@@ -1,18 +1,28 @@
 #include "server.hpp"
+
+#include <algorithm>
+#include <exception>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/apple.hpp>
-#include "dns.hpp"
 #include <iterator>
 #include <llarp/crypto/crypto.hpp>
 #include <array>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <llarp/ev/udp_handle.hpp>
 #include <optional>
 #include <memory>
 #include <unbound.h>
 #include <uvw.hpp>
+#include <vector>
 
+#include "llarp/dns/bits.hpp"
+#include "llarp/dns/message.hpp"
+#include "llarp/dns/name.hpp"
+#include "llarp/net/sock_addr.hpp"
+#include "llarp/util/buffer.hpp"
+#include "llarp/util/str.hpp"
 #include "oxen/log.hpp"
 #include "sd_platform.hpp"
 #include "nm_platform.hpp"
@@ -25,8 +35,23 @@ namespace llarp::dns
   QueryJob_Base::Cancel()
   {
     Message reply{m_Query};
-    reply.AddServFail();
+    reply.hdr.rcode(bits::rcode_servfail);
     SendReply(reply.ToBuffer());
+  }
+
+  QueryJob::QueryJob(
+      std::shared_ptr<PacketSource_Base> source, Message query, SockAddr to_, SockAddr from_)
+      : QueryJob_Base{query}
+      , src{std::move(source)}
+      , resolver{std::move(to_)}
+      , asker{std::move(from_)}
+
+  {}
+
+  void
+  QueryJob::SendReply(OwnedBuffer buf)
+  {
+    src->SendTo(asker, resolver, std::move(buf));
   }
 
   /// sucks up udp packets from a bound socket and feeds it to a server
@@ -34,27 +59,23 @@ namespace llarp::dns
   {
     Server& m_DNS;
     std::shared_ptr<llarp::UDPHandle> m_udp;
-    SockAddr m_LocalAddr;
 
    public:
     explicit UDPReader(Server& dns, const EventLoop_ptr& loop, llarp::SockAddr bindaddr)
         : m_DNS{dns}
     {
-      m_udp = loop->make_udp([&](auto&, SockAddr src, llarp::OwnedBuffer buf) {
-        if (src == m_LocalAddr)
-          return;
-        if (not m_DNS.MaybeHandlePacket(shared_from_this(), m_LocalAddr, src, std::move(buf)))
-        {
-          log::warning(logcat, "did not handle dns packet from {} to {}", src, m_LocalAddr);
-        }
-      });
-      m_udp->listen(bindaddr);
-      if (auto maybe_addr = BoundOn())
-      {
-        m_LocalAddr = *maybe_addr;
-      }
-      else
-        throw std::runtime_error{"cannot find which address our dns socket is bound on"};
+      m_udp = loop->make_udp(
+          [&](auto&, SockAddr src, llarp::OwnedBuffer buf) {
+            auto laddr = m_udp->LocalAddr();
+
+            if (src == laddr)
+              return;
+            if (not m_DNS.MaybeHandlePacket(shared_from_this(), laddr, src, std::move(buf)))
+            {
+              log::warning(logcat, "did not handle dns packet from {} to {}", src, laddr);
+            }
+          },
+          bindaddr);
     }
 
     std::optional<SockAddr>
@@ -66,7 +87,7 @@ namespace llarp::dns
     bool
     WouldLoop(const SockAddr& to, const SockAddr&) const override
     {
-      return to != m_LocalAddr;
+      return to != m_udp->LocalAddr();
     }
 
     void
@@ -153,8 +174,9 @@ namespace llarp::dns
         auto* query = static_cast<Query*>(data);
         if (err)
         {
-          // some kind of error from upstream
+          // we cant do anything about this kind of failure so cancel query.
           log::warning(logcat, "Upstream DNS failure: {}", ub_strerror(err));
+          // todo: handle exceptions.
           query->Cancel();
           return;
         }
@@ -162,16 +184,20 @@ namespace llarp::dns
         log::trace(logcat, "queueing dns response from libunbound to userland");
 
         // rewrite response
-        OwnedBuffer pkt{(const byte_t*)result->answer_packet, (size_t)result->answer_len};
-        llarp_buffer_t buf{pkt};
-        MessageHeader hdr;
-        hdr.Decode(&buf);
-        hdr.id = query->Underlying().hdr_id;
-        buf.cur = buf.base;
-        hdr.Encode(&buf);
-
-        // send reply
-        query->SendReply(std::move(pkt));
+        try
+        {
+          OwnedBuffer pkt{(const byte_t*)result->answer_packet, (size_t)result->answer_len};
+          auto view = pkt.view();
+          MessageHeader hdr{view};
+          hdr.id = query->Underlying().hdr.id;
+          auto hdr_buff = hdr.encode_dns();
+          std::copy_n(hdr_buff.data(), hdr_buff.size(), pkt.buf.get());
+          query->SendReply(std::move(pkt));
+        }
+        catch (std::exception& ex)
+        {
+          log::error(logcat, "failed to rewrite response: {}", ex.what());
+        }
       }
 
       void
@@ -488,7 +514,7 @@ namespace llarp::dns
         for (const auto& q : query.questions)
         {
           // dont process .loki or .snode
-          if (q.HasTLD(".loki") or q.HasTLD(".snode"))
+          if (is_lokinet_tld(q.tld()))
           {
             log::warning(
                 logcat,
@@ -530,7 +556,7 @@ namespace llarp::dns
         const auto& q = query.questions[0];
         if (auto err = ub_resolve_async(
                 m_ctx,
-                q.Name().c_str(),
+                q.qname().c_str(),
                 q.qtype,
                 q.qclass,
                 tmp.get(),
@@ -577,11 +603,11 @@ namespace llarp::dns
     }
   }  // namespace libunbound
 
-  Server::Server(EventLoop_ptr loop, llarp::DnsConfig conf, unsigned int netif)
-      : m_Loop{std::move(loop)}
+  Server::Server(EventLoop_ptr loop, llarp::DnsConfig conf)
+      : m_netif_index{}
+      , m_Loop{std::move(loop)}
       , m_Config{std::move(conf)}
       , m_Platform{CreatePlatform()}
-      , m_NetIfIndex{std::move(netif)}
   {}
 
   std::vector<std::weak_ptr<Resolver_Base>>
@@ -591,8 +617,10 @@ namespace llarp::dns
   }
 
   void
-  Server::Start()
+  Server::Start(unsigned int index)
   {
+    m_netif_index = index;
+    log::debug(logcat, "starting dns server for if_index={}", m_netif_index);
     // set up udp sockets
     for (const auto& addr : m_Config.m_bind)
     {
@@ -602,7 +630,12 @@ namespace llarp::dns
 
     // add default resolver as needed
     if (auto ptr = MakeDefaultResolver())
+    {
+      log::debug(logcat, "adding default resolver: '{}'", ptr->ResolverName());
       AddResolver(ptr);
+    }
+    else
+      log::debug(logcat, "no default resolver made");
   }
 
   std::shared_ptr<I_Platform>
@@ -620,6 +653,7 @@ namespace llarp::dns
   std::shared_ptr<PacketSource_Base>
   Server::MakePacketSourceOn(const llarp::SockAddr& addr, const llarp::DnsConfig&)
   {
+    log::debug(logcat, "make udp dns socket on {}", addr);
     return std::make_shared<UDPReader>(*this, m_Loop, addr);
   }
 
@@ -685,6 +719,12 @@ namespace llarp::dns
   void
   Server::AddPacketSource(std::shared_ptr<PacketSource_Base> pkt)
   {
+    std::optional<std::string> maybe_addr;
+    if (auto maybe_sockaddr = pkt->BoundOn())
+      maybe_addr = fmt::format("bound to {}", maybe_sockaddr->ToString());
+
+    log::debug(logcat, "adding owned packet source {}", maybe_addr.value_or("not bound to socket"));
+
     AddPacketSource(std::weak_ptr<PacketSource_Base>{pkt});
     m_OwnedPacketSources.push_back(std::move(pkt));
   }
@@ -713,7 +753,7 @@ namespace llarp::dns
   Server::SetDNSMode(bool all_queries)
   {
     if (auto maybe_addr = FirstBoundPacketSourceAddr())
-      m_Platform->set_resolver(m_NetIfIndex, *maybe_addr, all_queries);
+      m_Platform->set_resolver(m_netif_index, *maybe_addr, all_queries);
   }
 
   bool
@@ -730,45 +770,50 @@ namespace llarp::dns
       return false;
     }
 
-    auto maybe = MaybeParseDNSMessage(buf);
-    if (not maybe)
+    try
     {
-      log::warning(logcat, "invalid dns message format from {} to dns listener on {}", from, to);
-      return false;
-    }
+      auto view = buf.view();
+      Message msg{view};
 
-    auto& msg = *maybe;
-    // we don't provide a DoH resolver because it requires verified TLS
-    // TLS needs X509/ASN.1-DER and opting into the Root CA Cabal
-    // thankfully mozilla added a backdoor that allows ISPs to turn it off
-    // so we disable DoH for firefox using mozilla's ISP backdoor
-    // see: https://github.com/oxen-io/lokinet/issues/832
-    for (const auto& q : msg.questions)
-    {
-      // is this firefox looking for their backdoor record?
-      if (q.IsName("use-application-dns.net"))
+      // we don't provide a DoH resolver because it requires verified TLS
+      // TLS needs X509/ASN.1-DER and opting into the Root CA Cabal
+      // thankfully mozilla added a backdoor that allows ISPs to turn it off
+      // so we disable DoH for firefox using mozilla's ISP backdoor
+      // see: https://github.com/oxen-io/lokinet/issues/832
+      for (const auto& q : msg.questions)
       {
-        // yea it is, let's turn off DoH because god is dead.
-        msg.AddNXReply();
-        // press F to pay respects and send it back where it came from
-        ptr->SendTo(from, to, msg.ToBuffer());
-        return true;
-      }
-    }
-
-    for (const auto& resolver : m_Resolvers)
-    {
-      if (auto res_ptr = resolver.lock())
-      {
-        log::trace(
-            logcat, "check resolver {} for dns from {} to {}", res_ptr->ResolverName(), from, to);
-        if (res_ptr->MaybeHookDNS(ptr, msg, to, from))
+        // is this firefox looking for their backdoor record?
+        if (q.IsName("use-application-dns.net"))
         {
-          log::trace(
-              logcat, "resolver {} handling dns from {} to {}", res_ptr->ResolverName(), from, to);
+          // yea it is, let's turn off DoH because god is dead.
+          // press F to pay respects and send it back where it came from
+          ptr->SendTo(from, to, msg.nx().ToBuffer());
           return true;
         }
       }
+
+      for (const auto& resolver : m_Resolvers)
+      {
+        if (auto res_ptr = resolver.lock())
+        {
+          log::trace(
+              logcat, "check resolver {} for dns from {} to {}", res_ptr->ResolverName(), from, to);
+          if (res_ptr->MaybeHookDNS(ptr, msg, to, from))
+          {
+            log::trace(
+                logcat,
+                "resolver {} handling dns from {} to {}",
+                res_ptr->ResolverName(),
+                from,
+                to);
+            return true;
+          }
+        }
+      }
+    }
+    catch (std::exception& ex)
+    {
+      log::error(logcat, "failed to handle dns packet: {}", ex.what());
     }
     return false;
   }

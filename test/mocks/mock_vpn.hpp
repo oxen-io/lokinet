@@ -46,7 +46,9 @@ namespace mocks
     MockVPN(const Network& net) : llarp::vpn::Platform{}, llarp::vpn::IRouteManager{}, _net{net}
     {}
 
-    virtual std::shared_ptr<llarp::vpn::NetworkInterface>
+      virtual ~MockVPN() = default;
+
+    std::shared_ptr<llarp::vpn::NetworkInterface>
     ObtainInterface(llarp::vpn::InterfaceInfo info, llarp::AbstractRouter*) override
     {
       return std::make_shared<MockInterface>(info);

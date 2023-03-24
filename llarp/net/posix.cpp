@@ -1,3 +1,4 @@
+#include "llarp/util/bits.hpp"
 #include "net.hpp"
 #include "net_if.hpp"
 #include <stdexcept>
@@ -86,7 +87,7 @@ namespace llarp::net
         {
           ipv4addr_t addr{reinterpret_cast<sockaddr_in*>(i->ifa_addr)->sin_addr.s_addr};
           ipv4addr_t mask{reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr};
-          currentRanges.emplace_back(IPRange::FromIPv4(addr, mask));
+          currentRanges.emplace_back(IPRange::FromIPv4(addr, bits::count_bits(mask)));
         }
       });
 

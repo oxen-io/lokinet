@@ -4,6 +4,9 @@
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
+#include <optional>
+#include <stdexcept>
+#include <vector>
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
@@ -561,6 +564,9 @@ namespace llarp::net
   std::optional<IPPacket>
   IPPacket::MakeICMPUnreachable() const
   {
+    if (empty())
+      return std::nullopt;
+
     if (IsV4())
     {
       constexpr auto icmp_Header_size = 8;
@@ -603,7 +609,7 @@ namespace llarp::net
       *checksum = ipchksum(icmp_begin, icmp_size);
       return pkt;
     }
-    return std::nullopt;
+    return IPPacket{};
   }
 
   std::optional<std::pair<const char*, size_t>>
@@ -699,5 +705,15 @@ namespace llarp::net
     }
     // TODO: ipv6
     return net::IPPacket{size_t{}};
+  }
+
+  std::vector<byte_t>
+  IPPacket::make_icmp(std::vector<byte_t>&& data, net::ipaddr_t our_ip, int type, int code)
+  {
+    (void)our_ip, (void)type, (void)code;
+    IPPacket pkt{std::vector<byte_t>{data}};
+    if (auto maybe = pkt.MakeICMPUnreachable())
+      return maybe->steal();
+    return std::vector<byte_t>{};
   }
 }  // namespace llarp::net

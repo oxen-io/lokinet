@@ -1,9 +1,5 @@
 #pragma once
-
-#include <type_traits>
-#include "common.hpp"
-#include "mem.h"
-#include "types.hpp"
+#include <llarp/util/str.hpp>
 
 #include <cassert>
 #include <iterator>
@@ -16,11 +12,6 @@
 #include <memory>
 #include <vector>
 #include <string_view>
-
-namespace llarp
-{
-  using byte_view_t = std::basic_string_view<byte_t>;
-}
 
 struct ManagedBuffer;
 
@@ -284,6 +275,10 @@ namespace llarp
     /// copy everything in this owned buffer into a vector
     std::vector<byte_t>
     copy() const;
+
+    /// make a binary string view over the contents.
+    byte_view_t
+    view() const;
   };
 
 }  // namespace llarp

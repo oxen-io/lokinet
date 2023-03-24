@@ -85,13 +85,19 @@ namespace llarp
     RouterID
     Path::Endpoint() const
     {
-      return hops[hops.size() - 1].rc.pubkey;
+      return EndpointHop().rc.pubkey;
     }
 
-    PubKey
+    const PubKey&
     Path::EndpointPubKey() const
     {
-      return hops[hops.size() - 1].rc.pubkey;
+      return EndpointHop().rc.pubkey;
+    }
+
+    const PathHopConfig&
+    Path::EndpointHop() const
+    {
+      return hops[hops.size() - 1];
     }
 
     PathID_t

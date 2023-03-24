@@ -32,7 +32,12 @@ namespace llarp
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const = 0;
 
       virtual void
-      Clear() = 0;
+      Clear()
+      {
+        from.Zero();
+        S = 0;
+        version = llarp::constants::proto_version;
+      }
 
       bool
       operator<(const IMessage& other) const

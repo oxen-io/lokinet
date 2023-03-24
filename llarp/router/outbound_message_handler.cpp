@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <type_traits>
 
 namespace llarp
 {
@@ -79,17 +80,23 @@ namespace llarp
   }
 
   void
-  OutboundMessageHandler::Pump()
+  OutboundMessageHandler::Pump(bool also_pump_router)
   {
-    m_Killer.TryAccess([this]() {
+    m_Killer.TryAccess([this, also_pump_router]() {
       recentlyRemovedPaths.Decay();
       ProcessOutboundQueue();
       // TODO: this probably shouldn't be pumping, as it defeats the purpose
       // of having a limit on sends per tick, but chaning it is potentially bad
       // and requires testing so it should be changed later.
-      if (/*bool more = */ SendRoundRobin())
+      if (bool more = SendRoundRobin(); more and also_pump_router)
         _router->TriggerPump();
     });
+  }
+
+  void
+  OutboundMessageHandler::IdempotentPump()
+  {
+    _wakeup->Trigger();
   }
 
   void
@@ -131,6 +138,7 @@ namespace llarp
   OutboundMessageHandler::Init(AbstractRouter* router)
   {
     _router = router;
+    _wakeup = router->loop()->make_waker([this]() { Pump(false); });
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
 

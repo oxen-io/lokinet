@@ -1,6 +1,8 @@
 #pragma once
 #include "ini.hpp"
 #include "definition.hpp"
+#include "llarp/net/ip_range.hpp"
+#include "llarp/net/net.hpp"
 
 #include <chrono>
 
@@ -109,8 +111,8 @@ namespace llarp
     std::optional<bool> m_enableProfiling;
     bool m_saveProfiles;
     std::set<RouterID> m_strictConnect;
-    std::string m_ifname;
-    IPRange m_ifaddr;
+    std::optional<std::string> _ifname;
+    std::optional<IPRange> _ifaddr;
 
     std::optional<fs::path> m_keyfile;
     std::string m_endpointType;
@@ -151,6 +153,16 @@ namespace llarp
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+
+    /// obtain interface name. uses configured value or runtime inferred sensible default if one is
+    /// not provided by config. default is inferred with net_plat.
+    std::string
+    ifname(const net::Platform& net_plat) const;
+
+    /// obtain ip range for network interface. uses configured value or runtime inferred sensible
+    /// default if one is one not provided by config. default is inferred with net_plat.
+    IPRange
+    ifaddr(const net::Platform& net_plat) const;
   };
 
   struct DnsConfig

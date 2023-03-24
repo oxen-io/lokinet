@@ -4,6 +4,7 @@
 #include <llarp/crypto/types.hpp>
 #include <llarp/dht/message.hpp>
 #include <llarp/routing/message.hpp>
+#include <llarp/layers/flow/flow_traffic.hpp>
 #include "protocol_type.hpp"
 #include "identity.hpp"
 #include "info.hpp"
@@ -68,6 +69,9 @@ namespace llarp
       {
         return seqno > other.seqno;
       }
+
+      layers::flow::FlowTraffic
+      to_flow_traffic() const;
     };
 
     /// outer message

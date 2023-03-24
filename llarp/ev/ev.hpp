@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llarp/net/sock_addr.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -9,6 +10,7 @@
 #include <deque>
 #include <list>
 #include <future>
+#include <optional>
 #include <utility>
 
 namespace uvw
@@ -18,7 +20,6 @@ namespace uvw
 
 namespace llarp
 {
-  struct SockAddr;
   struct UDPHandle;
 
   namespace vpn
@@ -44,9 +45,9 @@ namespace llarp
     /// callback to fire again if already triggered depending on the underlying implementation).
     virtual ~EventLoopWakeup() = default;
 
-    /// trigger this task to run on the next event loop iteration; does nothing if already
-    /// triggered.
-    virtual void
+    /// trigger this task to run on the next event loop iteration idempotently.
+    /// returns true if we already triggered it before on this event loop cycle.
+    virtual bool
     Trigger() = 0;
   };
 
@@ -193,7 +194,7 @@ namespace llarp
 
     // Constructs a UDP socket that can be used for sending and/or receiving
     virtual std::shared_ptr<UDPHandle>
-    make_udp(UDPReceiveFunc on_recv) = 0;
+    make_udp(UDPReceiveFunc on_recv, const std::optional<SockAddr>& laddr = std::nullopt) = 0;
 
     /// Make a thread-safe event loop waker (an "async" in libuv terminology) on this event loop;
     /// you can call `->Trigger()` on the returned shared pointer to fire the callback at the next

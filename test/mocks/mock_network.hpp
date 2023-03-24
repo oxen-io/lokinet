@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <llarp/net/net.hpp>
 #include <llarp/ev/libuv.hpp>
+#include "llarp/net/sock_addr.hpp"
 #include <oxenc/variant.h>
 
 namespace mocks
@@ -12,22 +13,20 @@ namespace mocks
   class MockUDPHandle : public llarp::UDPHandle
   {
     Network* const _net;
-    std::optional<llarp::SockAddr> _addr;
+      llarp::SockAddr _addr;
 
    public:
-      MockUDPHandle(Network* net, llarp::UDPHandle::ReceiveFunc recv)
-        : llarp::UDPHandle{recv}, _net{net}
+      MockUDPHandle(Network* net, llarp::UDPHandle::ReceiveFunc recv, llarp::SockAddr addr)
+          : llarp::UDPHandle{recv}, _net{net}, _addr{addr}
     {}
+      
 
-    std::optional<llarp::SockAddr>
+    llarp::SockAddr
     LocalAddr() const override
     {
       return _addr;
     }
-
-    bool
-    listen(const llarp::SockAddr& addr) override;
-
+      
     bool
     send(const llarp::SockAddr&, const llarp_buffer_t&) override
     {
@@ -77,7 +76,7 @@ namespace mocks
     }
 
     std::shared_ptr<llarp::UDPHandle>
-    make_udp(UDPReceiveFunc recv) override
+    make_udp(UDPReceiveFunc recv, llarp::SockAddr & addr) override
     {
       return std::make_shared<MockUDPHandle>(this, recv);
     }

@@ -12,6 +12,10 @@
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/callback_sink.hpp>
 
+#include <llarp/vpn/platform.hpp>
+
+#include <llarp/net/net_int.hpp>
+
 #include <oxenc/base32z.h>
 
 #include <mutex>
@@ -80,9 +84,9 @@ namespace
 
   struct UDPHandler
   {
-    using AddressVariant_t = llarp::vpn::AddressVariant_t;
+    using AddressVariant_t = llarp::EndpointBase::AddressVariant_t;
     int m_SocketID;
-    llarp::nuint16_t m_LocalPort;
+    llarp::net::port_t m_LocalPort;
     lokinet_udp_flow_filter m_Filter;
     lokinet_udp_flow_recv_func m_Recv;
     lokinet_udp_flow_timeout_func m_Timeout;
@@ -303,11 +307,12 @@ struct lokinet_context
   }
 
   [[nodiscard]] auto
-  endpoint(std::string name = "default") const
+  endpoint() const
   {
-    return impl->router->hiddenServiceContext().GetEndpointByName(name);
+    return impl->router->get_layers()->flow->local_deprecated_loki_endpoint();
   }
 
+  /// maps socket id to a bool which says if it is for a socket where we are the recipiant or not.
   std::unordered_map<int, bool> streams;
   std::unordered_map<int, std::shared_ptr<UDPHandler>> udp_sockets;
 

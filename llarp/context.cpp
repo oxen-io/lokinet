@@ -127,22 +127,17 @@ namespace llarp
 
     loop->run();
     if (closeWaiter)
-    {
       closeWaiter->set_value();
-    }
-    Close();
+
     return 0;
   }
 
   void
   Context::CloseAsync()
   {
-    /// already closing
-    if (IsStopping())
-      return;
-
-    loop->call([this]() { HandleSignal(SIGTERM); });
-    closeWaiter = std::make_unique<std::promise<void>>();
+    if (not closeWaiter)
+      closeWaiter = std::make_unique<std::promise<void>>();
+    HandleSignal(SIGTERM);
   }
 
   bool
@@ -155,10 +150,8 @@ namespace llarp
   Context::Wait()
   {
     if (closeWaiter)
-    {
       closeWaiter->get_future().wait();
-      closeWaiter.reset();
-    }
+    closeWaiter.reset();
   }
 
   void
@@ -175,7 +168,7 @@ namespace llarp
       if (router and not router->IsServiceNode())
       {
         LogInfo("SIGUSR1: resetting network state");
-        router->Thaw();
+        CallSafe([r = router]() { r->Thaw(); });
       }
     }
     if (sig == SIGHUP)
@@ -196,24 +189,8 @@ namespace llarp
     {
       llarp::log::debug(logcat, "Handling SIGINT");
       /// async stop router on sigint
-      router->Stop();
+      CallSafe([r = router]() { r->Stop(); });
     }
-  }
-
-  void
-  Context::Close()
-  {
-    llarp::LogDebug("free config");
-    config.reset();
-
-    llarp::LogDebug("free nodedb");
-    nodedb.reset();
-
-    llarp::LogDebug("free router");
-    router.reset();
-
-    llarp::LogDebug("free loop");
-    loop.reset();
   }
 
   Context::Context()
