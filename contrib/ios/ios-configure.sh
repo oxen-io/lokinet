@@ -30,7 +30,7 @@ cmake \
     -DNATIVE_BUILD=OFF \
     -DSTATIC_LINK=ON \
     -DWITH_SYSTEMD=OFF \
-    -DWITH_BOOTSTRAP=OFF \
+    -DWITH_BOOTSTRAP=ON \
     -DBUILD_DAEMON=OFF \
     -DFORCE_OXENMQ_SUBMODULE=ON \
     -DFORCE_OXENC_SUBMODULE=ON \
@@ -39,6 +39,6 @@ cmake \
     -DSUBMODULE_CHECK=ON \
     -DWITH_LTO=OFF \
     -DCMAKE_CXX_FLAGS='-Oz' -DCMAKE_C_FLAGS='-Oz' \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=Debug \
     -S "$root" -B $targ \
     $@

@@ -128,7 +128,7 @@ namespace llarp
           ".snode.loki"sv, ".loki.loki"sv, ".snode.loki."sv, ".loki.loki."sv};
       for (const auto& reserved : reserved_names)
       {
-        if (ends_with(name, reserved))  // subdomain foo.loki.loki
+        if (ends_with(name, reserved))   // subdomain foo.loki.loki
           return true;
         if (name == reserved.substr(1))  // loki.loki itself
           return true;

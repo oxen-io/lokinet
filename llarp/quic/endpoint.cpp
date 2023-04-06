@@ -171,10 +171,7 @@ namespace llarp::quic
 
     if (rv == 0)
       conn.io_ready();
-    else
-      log::warning(logcat, "read pkt error: {}", ngtcp2_strerror(rv));
-
-    if (rv == NGTCP2_ERR_DRAINING)
+    else if (rv == NGTCP2_ERR_DRAINING)
     {
       log::debug(logcat, "Draining connection {}", conn.base_cid);
       start_draining(conn);
@@ -183,17 +180,26 @@ namespace llarp::quic
     {
       log::warning(
           logcat,
-          "Immediate Close-ing connection {} due to error {}",
+          "Immediately closing connection {} due to error {}",
           conn.base_cid,
           ngtcp2_strerror(rv));
-      // close_connection(conn, rv, "ERR_PROTO"sv);
       close_connection(conn, rv, "ERR_PROTO"sv);
     }
-    else if (rv == NGTCP2_ERR_DROP_CONN)
+    else if (rv == NGTCP2_ERR_DROP_CONN)  // drop connection w/o calling
+                                          // ngtcp2_conn_write_connection_close()
     {
       log::warning(
           logcat, "Deleting connection {} due to error {}", conn.base_cid, ngtcp2_strerror(rv));
       delete_conn(conn.base_cid);
+    }
+    else
+    {
+      log::warning(
+          logcat,
+          "Immediately closing connection {} due to error {}",
+          conn.base_cid,
+          ngtcp2_strerror(rv));
+      close_connection(conn, rv, ngtcp2_strerror(rv));
     }
 
     return {rv};
@@ -219,10 +225,12 @@ namespace llarp::quic
     }
     else
     {
-      log::trace(
+      log::warning(
           logcat, "Failed to send to quic endpoint {}; was sending {}B", to, outgoing.size());
+      return io_result{-1};
     }
-    return {};
+
+    return io_result{0};
   }
 
   void
@@ -251,7 +259,9 @@ namespace llarp::quic
     if (nwrote <= 0)
       return;
 
-    send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
+    if (auto rv = send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
+        not rv)
+      log::warning(logcat, "Failed to send version negotiation packet");
   }
 
   void
@@ -269,11 +279,12 @@ namespace llarp::quic
       return;
     }
 
+    //  "The error not specifically mentioned, including NGTCP2_ERR_HANDSHAKE_TIMEOUT,
+    //  should be dealt with by calling ngtcp2_conn_write_connection_close."
+    //  https://github.com/ngtcp2/ngtcp2/issues/670#issuecomment-1417300346
     if (code == NGTCP2_ERR_HANDSHAKE_TIMEOUT)
     {
       log::warning(logcat, "Connection {} handshake timed out, closing now", conn.base_cid);
-      delete_conn(conn.base_cid);
-      return;
     }
 
     ngtcp2_connection_close_error err;

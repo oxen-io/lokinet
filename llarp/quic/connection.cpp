@@ -738,7 +738,7 @@ namespace llarp::quic
         }
 #endif
 
-        if (stream.is_closing && !stream.sent_fin)
+        if (stream.is_closing && !stream.sent_fin && stream.unsent() == 0)
         {
           log::debug(logcat, "Sending FIN");
           flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
@@ -778,25 +778,25 @@ namespace llarp::quic
                 "Consumed {} bytes from stream {} and have space left",
                 ndatalen,
                 stream.id());
-            stream.wrote(ndatalen);
             assert(ndatalen >= 0);
+            stream.wrote(ndatalen);
             it = strs.erase(it);
             continue;
           }
-          if (nwrite == -230)  // NGTCP2_ERR_CLOSING
+          if (nwrite == NGTCP2_ERR_CLOSING)  // -230
           {
             log::debug(logcat, "Cannot write to {}: stream is closing", stream.id());
             it = strs.erase(it);
             continue;
           }
-          if (nwrite == -221)  // NGTCP2_ERR_STREAM_SHUT_WR
+          if (nwrite == NGTCP2_ERR_STREAM_SHUT_WR)  // -230
           {
             log::debug(logcat, "Cannot add to stream {}: stream is shut, proceeding", stream.id());
             assert(ndatalen == -1);
             it = strs.erase(it);
             continue;
           }
-          if (nwrite == -210)  // NGTCP2_ERR_STREAM_DATA_BLOCKED
+          if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED)  // -210
           {
             log::debug(logcat, "Cannot add to stream {}: stream is blocked", stream.id());
             it = strs.erase(it);
@@ -806,21 +806,16 @@ namespace llarp::quic
           log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
           break;
         }
+
         if (ndatalen >= 0)
         {
           log::debug(logcat, "consumed {} bytes from stream {}", ndatalen, stream.id());
           stream.wrote(ndatalen);
-          ++stream_packets;
-          continue;
         }
 
-        if (nwrite == 0)  // we are probably done, but maybe congested
+        if (nwrite == 0)  //  we are congested
         {
-          log::debug(
-              logcat,
-              "Done stream writing to {} (either stream is congested or we have nothing else to "
-              "send right now)",
-              stream.id());
+          log::debug(logcat, "Done stream writing to {} (stream is congested)", stream.id());
 
           ngtcp2_conn_stat cstat;
           ngtcp2_conn_get_conn_stat(conn.get(), &cstat);
@@ -830,8 +825,10 @@ namespace llarp::quic
               cstat.bytes_in_flight,
               cstat.cwnd);
           ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
-          it = strs.erase(it);
-          continue;
+          //  we are congested, so clear pending streams to exit outer loop
+          //  and enter next loop to flush unsent stuff
+          strs.clear();
+          break;
         }
 
         log::debug(logcat, "Sending stream data packet");
@@ -839,9 +836,10 @@ namespace llarp::quic
           return;
 
         ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
-        //++stream_packets;
-        // std::advance(it, 1);
-        it = strs.erase(it);
+        if (stream.unsent() == 0)
+          it = strs.erase(it);
+        else
+          ++it;
 
         if (++stream_packets == max_stream_packets)
         {
@@ -892,18 +890,18 @@ namespace llarp::quic
 
       if (nwrite < 0)
       {
-        if (nwrite == -240)  // NGTCP2_ERR_WRITE_MORE
+        if (nwrite == NGTCP2_ERR_WRITE_MORE)  // -240
         {
           log::debug(logcat, "Writing non-stream data frames, and have space left");
           ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
           continue;
         }
-        if (nwrite == -230)  // NGTCP2_ERR_CLOSING
+        if (nwrite == NGTCP2_ERR_CLOSING)  // -230
         {
           log::warning(logcat, "Error writing non-stream data: {}", ngtcp2_strerror(nwrite));
           break;
         }
-        if (nwrite == -210)  // NGTCP2_ERR_STREAM_DATA_BLOCKED
+        if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED)  // -210
         {
           log::debug(logcat, "cannot add to empty stream right now: stream is blocked");
           break;
@@ -1159,25 +1157,6 @@ namespace llarp::quic
 
     return str;
   }
-
-  /*
-  const std::shared_ptr<Stream>&
-  Connection::open_stream(Stream::data_callback_t data_cb, Stream::close_callback_t close_cb)
-  {
-    std::shared_ptr<Stream> stream{new Stream{
-        *this, std::move(data_cb), std::move(close_cb), endpoint.default_stream_buffer_size}};
-    if (int rv = ngtcp2_conn_open_bidi_stream(conn.get(),
-            &stream->stream_id.id,
-            std::get<0>(stream->user_data).get());
-            rv != 0)
-      throw std::runtime_error{"Stream creation failed: "s + ngtcp2_strerror(rv)};
-
-    auto& str = streams[stream->stream_id];
-    str = std::move(stream);
-
-    return str;
-  }
-  */
 
   const std::shared_ptr<Stream>&
   Connection::get_stream(StreamID s) const

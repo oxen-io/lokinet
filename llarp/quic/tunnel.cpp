@@ -407,7 +407,7 @@ namespace llarp::quic
     for (; it != map.end(); ++it, ++start)
       if (it->first != start)
         return start;
-    if (start != 0)  // `start` didn't wrap which means we found an empty slot
+    if (start != 0)      // `start` didn't wrap which means we found an empty slot
       return start;
     assert(!from_zero);  // There *must* be a free slot somewhere in [0, max] (otherwise the map
                          // would be completely full and we'd have returned nullopt).

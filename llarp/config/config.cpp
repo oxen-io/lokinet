@@ -1655,6 +1655,7 @@ namespace llarp
     auto config = std::make_shared<Config>();
     config->Load();
     config->logging.m_logLevel = log::Level::debug;
+    config->logging.m_logFile = "stderr";
     config->api.m_enableRPCServer = false;
     config->network.m_endpointType = "null";
     config->network.m_saveProfiles = false;
