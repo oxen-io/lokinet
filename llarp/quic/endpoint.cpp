@@ -295,11 +295,10 @@ namespace llarp::quic
         close_reason.size());
 
     conn.conn_buffer.resize(max_pkt_size_v4);
-    Path path;
     ngtcp2_pkt_info pi;
 
     auto written = ngtcp2_conn_write_connection_close(
-        conn, path, &pi, u8data(conn.conn_buffer), conn.conn_buffer.size(), &err, get_timestamp());
+        conn, &conn.path.path, &pi, u8data(conn.conn_buffer), conn.conn_buffer.size(), &err, get_timestamp());
     if (written <= 0)
     {
       log::warning(
@@ -313,8 +312,6 @@ namespace llarp::quic
     assert(written <= (long)conn.conn_buffer.size());
     conn.conn_buffer.resize(written);
     conn.closing = true;
-
-    conn.path = path;
 
     assert(conn.closing && !conn.conn_buffer.empty());
 
@@ -411,6 +408,7 @@ namespace llarp::quic
     conns.erase(it);
     if (primary)
       clean_alias_conns();
+
     return true;
   }
 
