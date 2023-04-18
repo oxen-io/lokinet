@@ -185,7 +185,7 @@ namespace llarp
   void
   Context::SigINT()
   {
-    if (router)
+    if (router and router->IsRunning())
     {
       llarp::log::debug(logcat, "Handling SIGINT");
       /// async stop router on sigint

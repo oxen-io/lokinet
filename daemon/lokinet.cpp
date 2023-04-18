@@ -1,4 +1,5 @@
 #include <chrono>
+#include <exception>
 #include <llarp/config/config.hpp>  // for ensure_config
 #include <llarp/constants/version.hpp>
 #include <llarp.hpp>
@@ -6,6 +7,9 @@
 #include <llarp/util/exceptions.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/str.hpp>
+
+#include <llarp/router/abstractrouter.hpp>
+#include <memory>
 
 #ifdef _WIN32
 #include <llarp/win32/service_manager.hpp>
@@ -62,7 +66,10 @@ namespace
   void
   handle_signal(int sig);
   static void
-  run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts);
+  run_main_context(
+      std::optional<fs::path> confFile,
+      const llarp::RuntimeOptions opts,
+      std::promise<std::shared_ptr<llarp::Context>>& startup);
 
   // variable declarations
   static auto logcat = llarp::log::Cat("main");
@@ -499,7 +506,20 @@ namespace
     SetUnhandledExceptionFilter(&GenerateDump);
 #endif
 
-    std::thread main_thread{[configFile, opts] { run_main_context(configFile, opts); }};
+    std::promise<std::shared_ptr<llarp::Context>> startup;
+
+    std::thread main_thread{
+        [configFile, opts, &startup] { run_main_context(configFile, opts, startup); }};
+    try
+    {
+      auto ftr = startup.get_future();
+      ctx = ftr.get();
+    }
+    catch (std::exception& ex)
+    {
+      oxen::log::error(logcat, "startup fail: {}", ex.what());
+      return 1;
+    }
     auto ftr = exit_code.get_future();
 
     do
@@ -567,7 +587,10 @@ namespace
 
   // this sets up, configures and runs the main context
   static void
-  run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
+  run_main_context(
+      std::optional<fs::path> confFile,
+      const llarp::RuntimeOptions opts,
+      std::promise<std::shared_ptr<llarp::Context>>& startup)
   {
     llarp::LogInfo(fmt::format("starting up {} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
     try
@@ -586,14 +609,15 @@ namespace
       {
         llarp::LogError("failed to parse configuration");
         exit_code.set_value(1);
+        startup.set_value(nullptr);
         return;
       }
 
       // change cwd to dataDir to support relative paths in config
       fs::current_path(conf->router.m_dataDir);
 
-      ctx = std::make_shared<llarp::Context>();
-      ctx->Configure(std::move(conf));
+      auto _ctx = std::make_shared<llarp::Context>();
+      _ctx->Configure(std::move(conf));
 
       signal(SIGINT, handle_signal);
       signal(SIGTERM, handle_signal);
@@ -605,23 +629,23 @@ namespace
 
       try
       {
-        ctx->Setup(opts);
+        _ctx->Setup(opts);
       }
       catch (llarp::util::bind_socket_error& ex)
       {
         llarp::LogError(fmt::format("{}, is lokinet already running? 🤔", ex.what()));
-        exit_code.set_value(1);
+        startup.set_exception(std::current_exception());
         return;
       }
       catch (std::exception& ex)
       {
         llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
-        exit_code.set_value(1);
+        startup.set_exception(std::current_exception());
         return;
       }
       llarp::util::SetThreadName("llarp-mainloop");
-
-      auto result = ctx->Run(opts);
+      startup.set_value(_ctx);
+      auto result = _ctx->Run(opts);
       exit_code.set_value(result);
     }
     catch (std::exception& e)
