@@ -111,12 +111,14 @@ namespace llarp::layers::platform
   };
 
   struct platform_io_wakeup_handler;
+  struct map_initial_exits;
 
   /// responsible for bridging the os and the flow layer.
   class PlatformLayer
   {
    protected:
     friend struct platform_io_wakeup_handler;
+    friend struct map_initial_exits;
 
     AbstractRouter& _router;
     flow::FlowLayer& _flow_layer;

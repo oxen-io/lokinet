@@ -43,4 +43,23 @@ namespace llarp::layers
     flow->stop();
     onion->stop();
   }
+
+  Layers::~Layers()
+  {
+    if (platform)
+      platform->stop();
+    if (flow)
+      flow->stop();
+    if (onion)
+      onion->stop();
+  }
+
+  util::StatusObject
+  Layers::deprecated_status() const
+  {
+    util::StatusObject obj{};
+    obj["exitMap"] = platform->addr_mapper.exit_map().ExtractStatus();
+
+    return obj;
+  }
 }  // namespace llarp::layers

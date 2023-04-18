@@ -17,6 +17,7 @@ namespace llarp::service
     Exit = 3UL,
     Auth = 4UL,
     QUIC = 5UL,
+    DirectTraffic = 6UL,
 
   };
 
@@ -24,13 +25,14 @@ namespace llarp::service
   ToString(ProtocolType t)
   {
     using namespace std::literals;
-    return t == ProtocolType::Control  ? "Control"sv
-        : t == ProtocolType::TrafficV4 ? "TrafficV4"sv
-        : t == ProtocolType::TrafficV6 ? "TrafficV6"sv
-        : t == ProtocolType::Exit      ? "Exit"sv
-        : t == ProtocolType::Auth      ? "Auth"sv
-        : t == ProtocolType::QUIC      ? "QUIC"sv
-                                       : "(unknown-protocol-type)"sv;
+    return t == ProtocolType::Control      ? "Control"sv
+        : t == ProtocolType::DirectTraffic ? "Traffic"sv
+        : t == ProtocolType::TrafficV4     ? "TrafficV4"sv
+        : t == ProtocolType::TrafficV6     ? "TrafficV6"sv
+        : t == ProtocolType::Exit          ? "Exit"sv
+        : t == ProtocolType::Auth          ? "Auth"sv
+        : t == ProtocolType::QUIC          ? "QUIC"sv
+                                           : "(unknown-protocol-type)"sv;
   }
 
 }  // namespace llarp::service

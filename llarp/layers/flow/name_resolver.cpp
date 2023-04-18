@@ -9,6 +9,8 @@
 namespace llarp::layers::flow
 {
 
+  static auto logcat = log::Cat("flow-layer");
+
   NameResolver::NameResolver(NameCache& name_cache, FlowLayer& parent)
       : _name_cache{name_cache}, _parent{parent}
   {}
@@ -18,7 +20,7 @@ namespace llarp::layers::flow
       std::string name, std::function<void(std::optional<FlowAddr>)> result_handler)
   {
     _parent.local_deprecated_loki_endpoint()->LookupNameAsync(
-        name, [result_handler = std::move(result_handler)](auto maybe_addr) {
+        name, [result_handler = std::move(result_handler), name](auto maybe_addr) {
           if (not maybe_addr)
           {
             result_handler(std::nullopt);

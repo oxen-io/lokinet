@@ -1,11 +1,7 @@
 #include "platform_layer.hpp"
 #include "dns_bridge.hpp"
-#include "llarp/layers/flow/flow_addr.hpp"
 #include "llarp/layers/platform/addr_mapper.hpp"
-#include "llarp/layers/platform/platform_addr.hpp"
-#include "llarp/net/ip_packet.hpp"
 #include "llarp/net/ip_range.hpp"
-#include "oxen/log.hpp"
 
 #include <llarp/config/config.hpp>
 #include <llarp/ev/ev.hpp>
@@ -22,6 +18,8 @@
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace llarp::layers::platform
@@ -83,8 +81,9 @@ namespace llarp::layers::platform
   OSTraffic_IO_Base::attach(
       std::shared_ptr<vpn::NetworkInterface> netif, std::shared_ptr<EventLoopWakeup> wakeup_recv)
   {
-    log::debug(logcat, "attach OSTraffic_IO_Base to {}", netif->Info().ifname);
     _netif = std::move(netif);
+
+    log::debug(logcat, "attach OSTraffic_IO_Base to {}", _netif->Info().ifname);
     _our_addr = PlatformAddr{_netif->Info().addrs[0].range.addr};
 
     // set up event loop reader.
@@ -278,6 +277,82 @@ namespace llarp::layers::platform
       , addr_mapper{_netconf.ifaddr(router.Net())}
   {}
 
+  /// a functor that will try to map exits that are not currently mapped.
+  struct map_initial_exits : std::enable_shared_from_this<map_initial_exits>
+  {
+    PlatformLayer& plat;
+
+    net::IPRangeMap<std::string> exits;
+    std::unordered_map<std::string, service::AuthInfo> auths;
+
+    std::unordered_set<std::string> pending;
+
+    explicit map_initial_exits(PlatformLayer& _plat)
+        : plat{_plat}, exits{_plat._netconf.m_LNSExitMap}, auths{_plat._netconf.m_LNSExitAuths}
+
+    {
+      const auto& netconf = _plat._netconf;
+
+      for (const auto& [addr, auth] : netconf.m_ExitAuths)
+        auths[fmt::format("{}", addr)] = auth;
+
+      netconf.m_ExitMap.ForEachEntry([this](const auto& range, const auto& addr) {
+        exits.Insert(range, fmt::format("{}", addr));
+      });
+    }
+
+    void
+    operator()()
+    {
+      if (exits.Empty() and pending.empty())
+      {
+        // die if we have nothing left to do.
+        _self.reset();
+        return;
+      }
+
+      exits.ForEachEntry([this](const auto& range, const auto& exit) {
+        const auto& auth = auths[exit];
+        auto [itr, inserted] = pending.emplace(exit);
+        if (inserted)
+        {
+          log::info(logcat, "map {} via {}", range, exit);
+          plat.map_exit(
+              exit,
+              auth.token,
+              std::vector{range},
+              [this, exit = exit, range = range](bool ok, auto msg) {
+                on_result(ok, msg, exit, range);
+              });
+        }
+      });
+    }
+
+    void
+    keep_alive()
+    {
+      _self = shared_from_this();
+    }
+
+   private:
+    void
+    on_result(bool ok, std::string msg, std::string exit, IPRange range)
+    {
+      pending.erase(exit);
+      if (ok)
+      {
+        log::info(logcat, "got exit from {}: {}", exit, msg);
+
+        exits.RemoveIf([entry = std::make_pair(range, exit)](auto itr) { return itr == entry; });
+      }
+      else
+        log::info(logcat, "failed to map exit {}: {}", exit, msg);
+    }
+
+    /// a copy of itself, cleared to destroy itself.
+    std::shared_ptr<map_initial_exits> _self;
+  };
+
   void
   PlatformLayer::start()
   {
@@ -303,6 +378,10 @@ namespace llarp::layers::platform
     // attach vpn interface to dns and start it.
     if (const auto& dns = _router.get_dns())
       dns->Start(netif->Info().index);
+
+    auto mapper = std::make_shared<map_initial_exits>(*this);
+    _router.loop()->call_every(500ms, mapper, *mapper);
+    mapper->keep_alive();
   }
 
   void
@@ -310,7 +389,8 @@ namespace llarp::layers::platform
   {
     log::info(logcat, "stop");
     // stop all io operations on our end and detach from event loop.
-    _io->detach();
+    if (_io)
+      _io->detach();
   }
 
   /// handles when we have established a flow with a remote.
@@ -323,7 +403,11 @@ namespace llarp::layers::platform
     void
     fail(std::string error_reason) const
     {
-      result_handler(std::nullopt, "could not obtain flow to '{}': {}"_format(name, error_reason));
+      std::string msg{"could not obtain flow to '{}': {}"_format(name, error_reason)};
+      log::info(logcat, msg);
+      mapper.remove_if_mapping(
+          [this](const auto& other) { return entry.src == other.src and entry.dst == other.dst; });
+      result_handler(std::nullopt, msg);
     }
 
     void
@@ -331,7 +415,7 @@ namespace llarp::layers::platform
     {
       entry.flow_info = flow_info;
       mapper.put(std::move(entry));
-
+      log::info(logcat, "flow established on: {}", flow_info);
       result_handler(flow_info, "");
     }
 
@@ -358,9 +442,12 @@ namespace llarp::layers::platform
     {
       if (not maybe_addr)
       {
-        flow_establisher.fail("failed to resolve name");
+        std::string msg{"failed to resolve name '{}'"_format(name)};
+        log::info(logcat, msg);
+        flow_establisher.fail(msg);
         return;
       }
+      log::info(logcat, "resolved {} to {}", name, *maybe_addr);
       // get a flow tag for this remote.
       flow_layer.flow_to(*maybe_addr)->async_ensure_flow(std::move(flow_establisher));
     }
@@ -379,13 +466,12 @@ namespace llarp::layers::platform
       result_handler(std::nullopt, "address map full");
       return;
     }
-    // reserve a mapping.
-    AddressMapping mapping = addr_mapper.allocate_mapping(src.value_or(_io->our_platform_addr()));
+    // reserve a mapping. dst is set even if it is an exit.
+    auto& mapping = addr_mapper.allocate_mapping(src);
     mapping.owned_ranges = std::move(dst_ranges);
 
-    // call this when we got a flow to the guy
-    // it will wire up the mapping.
-    got_flow_handler got_flow{addr_mapper, std::move(mapping), name, std::move(result_handler)};
+    // call this when we got a flow to the remote.
+    got_flow_handler got_flow{addr_mapper, mapping, name, std::move(result_handler)};
 
     // do any extra handshaking with a flow handshaker, then call the got flow handler
     // todo: this really belongs in flow layer.
@@ -422,19 +508,21 @@ namespace llarp::layers::platform
   struct map_exit_handler
   {
     AbstractRouter& router;
+
     std::function<void(bool, std::string)> result_handler;
     void
     operator()(std::optional<flow::FlowInfo> found, std::string msg) const
     {
       if (found)
       {
-        // found the result, put firewall up.
+        log::info(logcat, "got exit {}: '{}'", found->dst, msg);
+        // found the result, put firewallup.
         if (const auto& poker = router.routePoker())
           poker->Up();
         result_handler(true, std::move(msg));
         return;
       }
-
+      log::info(logcat, "exit not made: {}", msg);
       result_handler(false, std::move(msg));
     }
   };
@@ -446,6 +534,8 @@ namespace llarp::layers::platform
       std::vector<IPRange> ranges,
       std::function<void(bool, std::string)> result_handler)
   {
+    log::info(logcat, "map exit {}", name);
+
     map_remote(
         std::move(name),
         std::move(auth),
@@ -457,6 +547,7 @@ namespace llarp::layers::platform
   void
   PlatformLayer::unmap_all_exits_on_range(IPRange range)
   {
+    log::info(logcat, "unmap all on {}", range);
     addr_mapper.remove_if_mapping(
         [range](const auto& mapping) -> bool { return mapping.owns_range(range); });
   }
@@ -464,6 +555,12 @@ namespace llarp::layers::platform
   void
   PlatformLayer::unmap_exit(flow::FlowAddr addr, std::optional<IPRange> range)
   {
+    std::optional<std::string> range_str;
+    if (range)
+      range_str = range->ToString();
+
+    log::info(logcat, "unmap {} via {}", addr, range_str.value_or("all"));
+
     addr_mapper.remove_if_mapping([addr, range](const auto& mapping) -> bool {
       return mapping.flow_info and mapping.flow_info->dst == addr
           and (range ? mapping.owns_range(*range) : true);
@@ -473,7 +570,13 @@ namespace llarp::layers::platform
   PlatformStats
   PlatformLayer::current_stats() const
   {
-    return PlatformStats{};
+    PlatformStats st{};
+    addr_mapper.view_all_entries([&](const auto& ent) {
+      st.addrs.emplace_back(ent, _flow_layer);
+      return true;
+    });
+
+    return st;
   }
 
   DNSZone&

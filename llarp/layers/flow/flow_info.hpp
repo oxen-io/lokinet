@@ -4,6 +4,8 @@
 #include "flow_tag.hpp"
 #include "flow_constants.hpp"
 
+#include <llarp/service/convotag.hpp>
+
 namespace llarp::layers::flow
 {
 
@@ -23,6 +25,9 @@ namespace llarp::layers::flow
 
     std::string
     ToString() const;
+
+    service::ConvoTag
+    convo_tag() const;
 
     bool
     operator==(const FlowInfo& other) const;

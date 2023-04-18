@@ -47,6 +47,8 @@ namespace llarp::layers::flow
     mutable dht::Key_t _derived_pubkey;
   };
 
+  struct deprecated_path_ensure_handler;
+
   /// the local end of a one to one flow to a remote given a flow isolation metric (flow_tag)
   /// flows do not change their source/destination address or their flow tag/convo tag.
   /// note: historically path handovers were allowed, but going forward this is discontinued.
@@ -54,23 +56,23 @@ namespace llarp::layers::flow
   {
     FlowLayer& _parent;
     const FlowIdentityPrivateKeys& _local_privkeys;
-
     /// internal state holder.
     /// effectively a pimpl to abstract away .loki vs .snode codepaths.
     std::unique_ptr<FlowState_Base> _state;
 
+   protected:
+    friend struct deprecated_path_ensure_handler;
+    FlowInfo _flow_info;
+
    public:
     /// holds the local/remote flow layer address and any flow isolation metric
-    const FlowInfo flow_info;
+    const FlowInfo& flow_info{_flow_info};
 
     FlowIdentity(const FlowIdentity&) = delete;
     FlowIdentity(FlowIdentity&&) = delete;
 
     FlowIdentity(
-        FlowLayer& parent,
-        FlowAddr remote_addr,
-        FlowTag flow_tag,
-        const FlowIdentityPrivateKeys& local_keys);
+        FlowLayer& parent, FlowAddr remote_addr, const FlowIdentityPrivateKeys& local_keys);
 
     /// ensure we have a flow to the remote endpoint.
     /// pass in a handshaker to do any additional steps after establishment.

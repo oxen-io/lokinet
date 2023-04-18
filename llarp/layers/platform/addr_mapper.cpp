@@ -7,15 +7,11 @@
 #include <stdexcept>
 #include <vector>
 #include <llarp/layers/flow/flow_layer.hpp>
-#include "llarp/layers/flow/flow_addr.hpp"
-#include "llarp/layers/flow/flow_info.hpp"
-#include "llarp/layers/platform/platform_addr.hpp"
-#include "llarp/layers/platform/platform_layer.hpp"
-#include "llarp/net/ip_range.hpp"
-#include "llarp/net/net_int.hpp"
 
 namespace llarp::layers::platform
 {
+
+  static auto logcat = log::Cat("platform-layer");
 
   AddressMapping&
   AddressMappingEntry::access()
@@ -50,6 +46,18 @@ namespace llarp::layers::platform
   AddressMapping::owns_range(const IPRange& range) const
   {
     return std::find(owned_ranges.begin(), owned_ranges.end(), range) != std::end(owned_ranges);
+  }
+
+  bool
+  AddressMappingEntry::routes_addr(const PlatformAddr& dst) const
+  {
+    for (const auto& range : _entry.owned_ranges)
+    {
+      log::trace(logcat, "check range {} owns {}", range, dst);
+      if (range.Contains(dst.ip))
+        return true;
+    }
+    return false;
   }
 
   std::string
@@ -129,7 +137,8 @@ namespace llarp::layers::platform
   {
     for (auto& ent : _addrs)
     {
-      if (ent.has_addr(src, dst))
+      log::trace(logcat, "check {}", ent.view());
+      if (ent.has_addr(src, dst) or ent.routes_addr(dst))
         return ent.access();
     }
     return std::nullopt;
@@ -140,7 +149,7 @@ namespace llarp::layers::platform
   {
     std::vector<AddressMapping> exits;
     view_all_entries([&exits](const auto& ent) {
-      if (not ent.owned_ranges.empty())
+      if (ent.is_exit())
         exits.emplace_back(ent);
       return true;
     });
@@ -231,6 +240,12 @@ namespace llarp::layers::platform
       return true;
     });
     return mappings;
+  }
+
+  bool
+  AddressMapping::is_exit() const
+  {
+    return not owned_ranges.empty();
   }
 
 }  // namespace llarp::layers::platform

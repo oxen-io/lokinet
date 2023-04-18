@@ -21,8 +21,8 @@ namespace llarp::layers::flow
     decode_addr(std::string_view str)
     {
       llarp::AlignedBuffer<32>::Data data{};
-      if (auto sz = oxenc::to_base32z_size(str.size()); sz != data.size())
-        throw std::invalid_argument{"data decode size {} != {}"_format(sz, data.size())};
+      if (auto sz = oxenc::to_base32z_size(data.size()); sz != str.size())
+        throw std::invalid_argument{"data decode size {} != {}"_format(sz, str.size())};
       oxenc::from_base32z(str.begin(), str.end(), data.begin());
       return data;
     }
@@ -33,7 +33,7 @@ namespace llarp::layers::flow
   {}
 
   FlowAddr::FlowAddr(EndpointBase::AddressVariant_t addr)
-      : FlowAddr{var::visit([](auto&& a) { return a.ToString(); }, addr)}
+      : FlowAddr{var::visit([](auto&& a) -> std::string { return a.ToString(); }, addr)}
   {}
 
   std::string

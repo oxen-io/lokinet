@@ -1,15 +1,21 @@
 #include "flow_identity.hpp"
 
 #include <oxenc/bt_serialize.h>
-#include <chrono>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/service/endpoint.hpp>
+#include <llarp/util/logging.hpp>
+
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <variant>
 
 namespace llarp::layers::flow
 {
+
+  static auto logcat = log::Cat("flow-layer");
+
   FlowIdentityPrivateKeys
   FlowIdentityPrivateKeys::keygen()
   {
@@ -41,14 +47,11 @@ namespace llarp::layers::flow
   }
 
   FlowIdentity::FlowIdentity(
-      FlowLayer& parent,
-      FlowAddr remote_addr,
-      FlowTag flow_tag_,
-      const FlowIdentityPrivateKeys& privkeys)
+      FlowLayer& parent, FlowAddr remote_addr, const FlowIdentityPrivateKeys& privkeys)
       : _parent{parent}
       , _local_privkeys{privkeys}
-      , _state{}
-      , flow_info{privkeys.public_addr(), std::move(remote_addr), std::move(flow_tag_)}
+      , _state{nullptr}
+      , _flow_info{privkeys.public_addr(), std::move(remote_addr), FlowTag{}}
   {}
 
   bool
@@ -74,33 +77,88 @@ namespace llarp::layers::flow
       }
     }
 
-    struct deprecated_path_ensure_handler
+    service::ProtocolType
+    to_proto_type(const FlowDataKind& kind)
     {
-      FlowEstablish handshaker;
-      FlowInfo flow_info;
-
-      void
-      operator()(std::optional<service::ConvoTag> maybe_tag)
+      switch (kind)
       {
-        if (not maybe_tag)
-        {
-          handshaker.fail("cannot establish flow");
-          return;
-        }
-
-        handshaker.ready(flow_info);
+        case FlowDataKind::exit_ip_unicast:
+          return service::ProtocolType::Exit;
+        case FlowDataKind::direct_ip_unicast:
+          // todo: change to direct after we swap to new
+          // route layer.
+          return service::ProtocolType::TrafficV4;
+        case FlowDataKind::stream_unicast:
+          return service::ProtocolType::QUIC;
+        case FlowDataKind::auth:
+          return service::ProtocolType::Auth;
+        default:
+          return service::ProtocolType::Control;
       }
-    };
+    }
   }  // namespace
+
+  struct deprecated_path_ensure_handler
+  {
+    FlowIdentity& flow;
+    FlowEstablish handshaker;
+
+    void
+    operator()(std::optional<service::ConvoTag> maybe_tag)
+    {
+      if (not maybe_tag)
+      {
+        log::warning(logcat, "flow establish to {} failed", flow.flow_info.dst);
+        handshaker.fail("cannot establish flow");
+        return;
+      }
+
+      flow._flow_info.tag = FlowTag{maybe_tag->as_array()};
+      log::debug(logcat, "flow established: {}", flow.flow_info);
+      handshaker.ready(flow.flow_info);
+    }
+  };
 
   void
   FlowIdentity::async_ensure_flow(FlowEstablish handshaker)
   {
-    handshaker.fail("not wired up");
+    const auto& ep = _parent.local_deprecated_loki_endpoint();
+    if (not ep)
+    {
+      log::error(logcat, "no deprecated endpoint");
+      handshaker.fail("no deprecated endpoint");
+      return;
+    }
+
+    _parent.wakeup_send->Trigger();
+    auto timeout = ep->PathAlignmentTimeout();
+
+    log::info(logcat, "ensure flow to {}", flow_info.dst);
+
+    ep->MarkAddressOutbound(to_addr_variant(flow_info.dst));
+
+    auto ok = ep->EnsurePathTo(
+        to_addr_variant(flow_info.dst), deprecated_path_ensure_handler{*this, handshaker}, timeout);
+    if (ok)
+      return;
+
+    log::info(
+        logcat,
+        "failed to establish flow to {}: llarp::service::EnsurePathTo() failed",
+        flow_info.dst);
+    handshaker.fail("service::EnsurePathTo() failed");
   }
 
   void
-  FlowIdentity::send_to_remote(std::vector<byte_t>, FlowDataKind)
-  {}
+  FlowIdentity::send_to_remote(std::vector<byte_t> data, FlowDataKind kind)
+  {
+    _parent.wakeup_send->Trigger();
+    auto sz = data.size();
+    log::trace(logcat, "send {} bytes of {} on {}", sz, kind, flow_info);
+    auto ok = _parent.local_deprecated_loki_endpoint()->send_to_or_queue(
+        to_addr_variant(flow_info.dst), std::move(data), to_proto_type(kind));
+    if (not ok)
+      log::warning(logcat, "failed to send {} bytes of {} on {}", sz, kind, flow_info);
+  }
 
 }  // namespace llarp::layers::flow

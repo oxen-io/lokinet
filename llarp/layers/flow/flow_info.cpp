@@ -13,4 +13,10 @@ namespace llarp::layers::flow
   {
     return fmt::format("[flow src={} dst={} tag={} mtu={}]", src, dst, tag, int{mtu});
   }
+
+  service::ConvoTag
+  FlowInfo::convo_tag() const
+  {
+    return service::ConvoTag{tag.as_array()};
+  }
 }  // namespace llarp::layers::flow

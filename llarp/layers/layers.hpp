@@ -4,7 +4,10 @@
 #include <llarp/layers/flow/flow_layer.hpp>
 #include <llarp/layers/route/route_layer.hpp>
 #include <llarp/layers/onion/onion_layer.hpp>
+#include <llarp/util/status.hpp>
+
 #include <memory>
+
 namespace llarp
 {
   // forward declare
@@ -34,6 +37,12 @@ namespace llarp::layers
 
     void
     stop_all() const;
+
+    ~Layers();
+
+    /// dump debug status.
+    util::StatusObject
+    deprecated_status() const;
   };
 
   /// this lets us hide which implementation we are using durring the refactor

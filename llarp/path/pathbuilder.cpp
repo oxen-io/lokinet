@@ -327,6 +327,8 @@ namespace llarp
         return false;
       if (BuildCooldownHit(now))
         return false;
+      if (m_router->NumberOfConnectedRouters() == 0)
+        return false;
       return PathSet::ShouldBuildMore(now);
     }
 

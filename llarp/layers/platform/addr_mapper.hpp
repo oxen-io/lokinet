@@ -33,6 +33,9 @@ namespace llarp::layers::platform
 
     std::string
     ToString() const;
+
+    bool
+    is_exit() const;
   };
 
   /// container that holds an addressmapping and extra metadata we need in the addrmapper.
@@ -47,6 +50,10 @@ namespace llarp::layers::platform
     /// return true if we match this src and dst address.
     bool
     has_addr(const PlatformAddr& src, const PlatformAddr& dst) const;
+
+    /// return true if we can route to this destination address.
+    bool
+    routes_addr(const PlatformAddr& dst) const;
 
     /// return true if this entry is for this flow info.
     bool

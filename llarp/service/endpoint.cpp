@@ -100,10 +100,13 @@ namespace llarp
         const auto itr = conf.m_LNSExitAuths.find(name);
         if (itr != conf.m_LNSExitAuths.end())
           auth = itr->second;
+        LogInfo("map ", range, " to ", name);
         m_StartupLNSMappings[name] = std::make_pair(range, auth);
       });
 
-      return m_state->Configure(conf);
+      if (not m_state->Configure(conf))
+        return false;
+      return LoadKeyFile();
     }
 
     bool
@@ -440,21 +443,22 @@ namespace llarp
       {
         for (const auto& item : m_StartupLNSMappings)
         {
+          LogInfo("look up ", item.first, " as exit");
           LookupNameAsync(
               item.first, [name = item.first, info = item.second, this](auto maybe_addr) {
-                if (maybe_addr.has_value())
-                {
-                  const auto maybe_range = info.first;
-                  const auto maybe_auth = info.second;
+                if (not maybe_addr)
+                  return;
+                const auto maybe_range = info.first;
+                const auto maybe_auth = info.second;
 
-                  m_StartupLNSMappings.erase(name);
-                  if (auto* addr = std::get_if<service::Address>(&*maybe_addr))
-                  {
-                    if (maybe_range.has_value())
-                      m_ExitMap.Insert(*maybe_range, *addr);
-                    if (maybe_auth.has_value())
-                      SetAuthInfoForEndpoint(*addr, *maybe_auth);
-                  }
+                m_StartupLNSMappings.erase(name);
+                if (auto* addr = std::get_if<service::Address>(&*maybe_addr))
+                {
+                  LogInfo(name, " resolved to ", addr->ToString());
+                  if (maybe_range)
+                    m_ExitMap.Insert(*maybe_range, *addr);
+                  if (maybe_auth)
+                    SetAuthInfoForEndpoint(*addr, *maybe_auth);
                 }
               });
         }
@@ -1030,7 +1034,7 @@ namespace llarp
     {
       for (const auto& [name, info] : m_StartupLNSMappings)
       {
-        if (info.first.has_value())
+        if (info.first)
           return true;
       }
 

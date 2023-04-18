@@ -66,12 +66,13 @@ namespace llarp::layers::flow
   /// cycle.
   struct flow_layer_waker
   {
-    path::PathContext& paths;
+    FlowLayer& flow_layer;
     void
     operator()()
     {
+      flow_layer.local_deprecated_loki_endpoint()->Pump(time_now_ms());
       // take the things we need to send out on paths and send them out.
-      paths.PumpUpstream();
+      flow_layer.router.pathContext().PumpUpstream();
     }
   };
 
@@ -80,7 +81,7 @@ namespace llarp::layers::flow
       , _privkeys{FlowIdentityPrivateKeys::keygen()}
       , _name_cache{}
       , _deprecated_endpoint{std::make_shared<service::Endpoint>(r)}
-      , _wakeup_send{r.loop()->make_waker(flow_layer_waker{r.pathContext()})}
+      , _wakeup_send{r.loop()->make_waker(flow_layer_waker{*this})}
       , _wakeup_recv{r.loop()->make_waker(platform_layer_waker{*this})}
       , name_resolver{_name_cache, *this}
       , router{r}
@@ -119,11 +120,25 @@ namespace llarp::layers::flow
   }
 
   void
+  FlowLayer::tick()
+  {
+    if (_deprecated_endpoint)
+    {
+      log::trace(logcat, "tick");
+      _deprecated_endpoint->Tick(router.Now());
+    }
+    log::trace(logcat, "ticked");
+  }
+
+  void
   FlowLayer::stop()
   {
     log::info(logcat, "flow layer stopping");
-    if (not _deprecated_endpoint->Stop())
-      throw std::runtime_error{"deprecated endpoint did not stop"};
+    if (_deprecated_endpoint)
+    {
+      if (not _deprecated_endpoint->Stop())
+        throw std::runtime_error{"deprecated endpoint did not stop"};
+    }
   }
 
   void
@@ -202,12 +217,11 @@ namespace llarp::layers::flow
   std::shared_ptr<FlowIdentity>
   FlowLayer::flow_to(const FlowAddr& addr)
   {
-    for (auto& local_flow : _local_flows)
+    for (const auto& local_flow : _local_flows)
     {
       if (local_flow->flow_info.dst == addr)
         return local_flow;
     }
-    return _local_flows.emplace_back(
-        std::make_shared<FlowIdentity>(*this, addr, unique_flow_tag(), _privkeys));
+    return _local_flows.emplace_back(std::make_shared<FlowIdentity>(*this, addr, _privkeys));
   }
 }  // namespace llarp::layers::flow

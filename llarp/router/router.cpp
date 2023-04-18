@@ -107,11 +107,15 @@ namespace llarp
     if (not _running)
       util::StatusObject{{"running", false}};
 
+    auto services = json::object();
+
+    services["default"] = get_layers()->deprecated_status();
+
     return util::StatusObject{
         {"running", true},
         {"numNodesKnown", _nodedb->NumLoaded()},
         {"dht", _dht->impl->ExtractStatus()},
-        {"services", json::object()},
+        {"services", std::move(services)},
         {"exit", json::object()},
         {"links", _linkManager.ExtractStatus()},
         {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};

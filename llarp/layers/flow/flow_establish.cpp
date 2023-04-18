@@ -3,6 +3,7 @@
 #include <optional>
 namespace llarp::layers::flow
 {
+  static auto logcat = log::Cat("flow-layer");
 
   FlowEstablish::FlowEstablish(
       std::function<void(std::optional<FlowInfo>, std::string)> completiton_handler,
@@ -12,10 +13,10 @@ namespace llarp::layers::flow
   {}
 
   void
-  FlowEstablish::fail(std::string name)
+  FlowEstablish::fail(std::string info)
   {
     _result = std::nullopt;
-    enter_phase(FlowAuthPhase::auth_nack, std::move(name));
+    enter_phase(FlowAuthPhase::auth_nack, std::move(info));
   }
 
   void

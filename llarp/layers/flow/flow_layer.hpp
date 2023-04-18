@@ -104,6 +104,9 @@ namespace llarp::layers::flow
     void
     stop();
 
+    void
+    tick();
+
     NameResolver name_resolver;
 
     AbstractRouter& router;
