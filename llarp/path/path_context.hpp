@@ -111,9 +111,6 @@ namespace llarp
       void
       AddOwnPath(PathSet_ptr set, Path_ptr p);
 
-      void
-      RemovePathSet(PathSet_ptr set);
-
       using TransitHopsMap_t = std::unordered_multimap<PathID_t, TransitHop_ptr>;
 
       struct SyncTransitMap_t

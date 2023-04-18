@@ -30,8 +30,7 @@ namespace llarp
     static constexpr auto LifeSpan = path::default_lifetime;
 
     /// a persisting exit session with an exit router
-    struct BaseSession : public llarp::path::Builder,
-                         public std::enable_shared_from_this<BaseSession>
+    struct BaseSession : public llarp::path::Builder
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
 
@@ -44,18 +43,6 @@ namespace llarp
           EndpointBase* parent);
 
       ~BaseSession() override;
-
-      std::shared_ptr<path::PathSet>
-      GetSelf() override
-      {
-        return shared_from_this();
-      }
-
-      std::weak_ptr<path::PathSet>
-      GetWeak() override
-      {
-        return weak_from_this();
-      }
 
       void
       BlacklistSNode(const RouterID snode) override;

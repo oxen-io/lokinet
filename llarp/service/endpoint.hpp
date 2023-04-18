@@ -66,8 +66,7 @@ namespace llarp
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler,
-                      public EndpointBase,
-                      private std::enable_shared_from_this<Endpoint>
+                      public EndpointBase
     {
       explicit Endpoint(AbstractRouter& r);
       ~Endpoint() override;
@@ -330,7 +329,7 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
-      virtual llarp_time_t
+      constexpr llarp_time_t
       PathAlignmentTimeout() const
       {
         constexpr auto DefaultPathAlignmentTimeout = 10s;
@@ -443,12 +442,6 @@ namespace llarp
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
-
-      path::PathSet_ptr
-      GetSelf() override;
-
-      std::weak_ptr<path::PathSet>
-      GetWeak() override;
 
       void
       AsyncProcessAuthMessage(

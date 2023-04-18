@@ -10,6 +10,7 @@
 #include <llarp/profiling.hpp>
 #include <llarp/util/meta/memfn.hpp>
 
+#include <memory>
 #include <random>
 #include <algorithm>
 
@@ -200,12 +201,13 @@ namespace llarp
       path::Builder::HandlePathBuilt(p);
       p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
         if (auto ptr = self.lock())
-          return ptr->HandleHiddenServiceFrame(path, frame);
+          return std::static_pointer_cast<OutboundContext>(ptr)->HandleHiddenServiceFrame(
+              path, frame);
         return false;
       });
       p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
         if (auto ptr = self.lock())
-          return ptr->HandleDataDrop(path, id, seqno);
+          return std::static_pointer_cast<OutboundContext>(ptr)->HandleDataDrop(path, id, seqno);
         return false;
       });
       if (markedBad)
@@ -253,7 +255,8 @@ namespace llarp
           currentConvoTag,
           t);
 
-      ex->hook = [self = shared_from_this(), path](auto frame) {
+      ex->hook = [self = std::static_pointer_cast<OutboundContext>(shared_from_this()),
+                  path](auto frame) {
         if (not self->Send(std::move(frame), path))
           return;
         self->m_Endpoint->Loop()->call_later(
@@ -296,7 +299,9 @@ namespace llarp
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
-            util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
+            util::memFn(
+                &OutboundContext::OnIntroSetUpdate,
+                std::static_pointer_cast<OutboundContext>(shared_from_this())),
             location,
             PubKey{addr.as_array()},
             path->Endpoint(),

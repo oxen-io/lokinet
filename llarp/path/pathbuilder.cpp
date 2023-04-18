@@ -14,6 +14,7 @@
 #include <llarp/link/link_manager.hpp>
 
 #include <functional>
+#include <memory>
 
 namespace llarp
 {
@@ -448,14 +449,17 @@ namespace llarp
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
       }
+      LogTrace("build one aligning to ", RouterID{hops.back().pubkey});
       // async generate keys
       auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
       ctx->router = m_router;
-      auto self = GetSelf();
+      auto self = shared_from_this();
+
       ctx->pathset = self;
       std::string path_shortName = "[path " + m_router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(m_router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
+      LogTrace("make ", path_shortName);
+      auto path = std::make_shared<path::Path>(hops, self, roles, std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });

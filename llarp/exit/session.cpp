@@ -7,6 +7,7 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/util/meta/memfn.hpp>
+#include <memory>
 #include <utility>
 
 namespace llarp
@@ -142,7 +143,8 @@ namespace llarp
 
       if (success)
       {
-        auto self = shared_from_this();
+        auto self = std::static_pointer_cast<BaseSession>(shared_from_this());
+
         for (auto& f : m_PendingCallbacks)
           f(self);
       }
@@ -189,7 +191,6 @@ namespace llarp
         }
       };
       ForEachPath(sendExitClose);
-      m_router->pathContext().RemovePathSet(shared_from_this());
       return path::Builder::Stop();
     }
 

@@ -15,9 +15,7 @@ namespace llarp
     struct Endpoint;
 
     /// context needed to initiate an outbound hidden service session
-    struct OutboundContext : public path::Builder,
-                             public SendContext,
-                             public std::enable_shared_from_this<OutboundContext>
+    struct OutboundContext : public path::Builder, public SendContext
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
 
@@ -34,18 +32,6 @@ namespace llarp
 
       bool
       ShouldBundleRC() const override;
-
-      path::PathSet_ptr
-      GetSelf() override
-      {
-        return shared_from_this();
-      }
-
-      std::weak_ptr<path::PathSet>
-      GetWeak() override
-      {
-        return weak_from_this();
-      }
 
       Address
       Addr() const;

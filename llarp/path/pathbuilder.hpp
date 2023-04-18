@@ -5,6 +5,7 @@
 #include <llarp/util/decaying_hashset.hpp>
 
 #include <atomic>
+#include <memory>
 #include <set>
 
 namespace llarp

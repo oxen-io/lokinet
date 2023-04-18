@@ -422,10 +422,6 @@ namespace llarp
     }
 
     void
-    PathContext::RemovePathSet(PathSet_ptr)
-    {}
-
-    void
     PathContext::periodic_tick()
     {
       const auto now = m_Router->Now();

@@ -12,6 +12,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <tuple>
 #include <unordered_set>
 
@@ -99,21 +100,13 @@ namespace llarp
     using PathSet_ptr = std::shared_ptr<PathSet>;
 
     /// a set of paths owned by an entity
-    struct PathSet
+    struct PathSet : std::enable_shared_from_this<PathSet>
     {
       /// maximum number of paths a path set can maintain
       static constexpr size_t max_paths = 32;
       /// construct
       /// @params numDesiredPaths the number of paths to maintain
       PathSet(size_t numDesiredPaths);
-
-      /// get a shared_ptr of ourself
-      virtual PathSet_ptr
-      GetSelf() = 0;
-
-      /// get a weak_ptr of ourself
-      virtual std::weak_ptr<PathSet>
-      GetWeak() = 0;
 
       virtual void
       BuildOne(PathRole roles = ePathRoleAny) = 0;
@@ -319,7 +312,7 @@ namespace llarp
       PathMap_t m_Paths;
 
      private:
-      std::unordered_map<RouterID, std::weak_ptr<path::Path>> m_PathCache;
+      mutable std::unordered_map<RouterID, std::weak_ptr<path::Path>> m_PathCache;
     };
 
   }  // namespace path

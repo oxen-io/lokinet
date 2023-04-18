@@ -95,7 +95,7 @@ namespace llarp
 
       Path(
           const std::vector<RouterContact>& routers,
-          std::weak_ptr<PathSet> parent,
+          const std::shared_ptr<PathSet>& parent,
           PathRole startingRoles,
           std::string shortName);
 

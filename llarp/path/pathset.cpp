@@ -5,6 +5,7 @@
 #include <llarp/routing/dht_message.hpp>
 #include <llarp/router/abstractrouter.hpp>
 
+#include <memory>
 #include <random>
 
 namespace llarp
@@ -67,7 +68,7 @@ namespace llarp
     {
       const auto now = llarp::time_now_ms();
       Lock_t l{m_PathsMutex};
-      for (auto& item : m_Paths)
+      for (const auto& item : m_Paths)
       {
         item.second->Tick(now, r);
       }
@@ -77,17 +78,20 @@ namespace llarp
     PathSet::Tick(llarp_time_t)
     {
       std::unordered_set<RouterID> endpoints;
-      for (auto& item : m_Paths)
+      for (const auto& item : m_Paths)
       {
         endpoints.emplace(item.second->Endpoint());
       }
+
+      if (endpoints.empty())
+        return;
 
       m_PathCache.clear();
       for (const auto& ep : endpoints)
       {
         if (auto path = GetPathByRouter(ep))
         {
-          m_PathCache[ep] = path->weak_from_this();
+          m_PathCache.try_emplace(ep, std::weak_ptr{path});
         }
       }
     }
@@ -112,6 +116,7 @@ namespace llarp
         else
           ++itr;
       }
+      m_PathCache.clear();
     }
 
     Path_ptr
@@ -173,7 +178,8 @@ namespace llarp
       {
         if (auto itr = m_PathCache.find(id); itr != m_PathCache.end())
         {
-          return itr->second.lock();
+          if (auto ptr = itr->second.lock())
+            chosen = ptr;
         }
       }
       auto itr = m_Paths.begin();
@@ -192,6 +198,7 @@ namespace llarp
         }
         ++itr;
       }
+      m_PathCache[id] = chosen;
       return chosen;
     }
 

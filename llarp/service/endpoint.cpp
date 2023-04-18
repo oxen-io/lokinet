@@ -74,18 +74,6 @@ namespace llarp
         m_quic = std::make_unique<quic::TunnelManager>(*this);
     }
 
-    path::PathSet_ptr
-    Endpoint::GetSelf()
-    {
-      return std::static_pointer_cast<path::PathSet>(shared_from_this());
-    }
-
-    std::weak_ptr<path::PathSet>
-    Endpoint::GetWeak()
-    {
-      return std::weak_ptr<path::PathSet>{weak_from_this()};
-    }
-
     std::string_view
     Endpoint::endpoint_name() const
     {
@@ -258,7 +246,7 @@ namespace llarp
 
       LookupNameAsync(
           name,
-          [ptr = std::static_pointer_cast<Endpoint>(GetSelf()),
+          [ptr = std::static_pointer_cast<Endpoint>(shared_from_this()),
            name,
            auth = AuthInfo{token},
            ranges,

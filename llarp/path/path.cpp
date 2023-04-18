@@ -27,7 +27,7 @@ namespace llarp
   {
     Path::Path(
         const std::vector<RouterContact>& h,
-        std::weak_ptr<PathSet> pathset,
+        const std::shared_ptr<PathSet>& pathset,
         PathRole startingRoles,
         std::string shortName)
         : m_PathSet{std::move(pathset)}, _role{startingRoles}, m_shortName{std::move(shortName)}
@@ -56,8 +56,8 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      if (auto parent = m_PathSet.lock())
-        EnterState(ePathBuilding, parent->Now());
+
+      EnterState(ePathBuilding, pathset->Now());
     }
 
     void
