@@ -365,7 +365,7 @@ namespace llarp
   Router::Configure(std::shared_ptr<Config> c, bool isSNode, std::shared_ptr<NodeDB> nodedb)
   {
     llarp::sys::service_manager->starting();
-
+    _nodedb = std::move(nodedb);
     m_Config = std::move(c);
     auto& conf = *m_Config;
 
@@ -420,8 +420,6 @@ namespace llarp
 
     log::debug(logcat, "Starting OMQ server");
     m_lmq->start();
-
-    _nodedb = std::move(nodedb);
 
     if (whitelistRouters)
     {
@@ -910,6 +908,7 @@ namespace llarp
     {
       ReportStats();
     }
+    _dht->impl->Tick();
 
     _rcGossiper.Decay(now);
 

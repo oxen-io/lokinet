@@ -30,14 +30,18 @@ namespace llarp
       llarp::LogDebug("got ", valuesFound.size(), " routers from exploration");
 
       auto router = parent->GetRouter();
+      if (not router)
+        return;
       for (const auto& pk : valuesFound)
       {
         // lookup router
-        if (router and router->nodedb()->Has(pk))
+        if (router->nodedb()->Has(pk))
           continue;
+
         parent->LookupRouter(
             pk, [router, pk](const auto& res) { router->HandleDHTLookupForExplore(pk, res); });
       }
     }
+
   }  // namespace dht
 }  // namespace llarp

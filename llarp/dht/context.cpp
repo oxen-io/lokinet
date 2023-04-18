@@ -285,6 +285,12 @@ namespace llarp
       void
       ExploreNetworkVia(const Key_t& peer) override;
 
+      void
+      Tick() override
+      {
+        handle_cleaner_timer();
+      }
+
      private:
       std::shared_ptr<int> _timer_keepalive;
 
@@ -442,11 +448,12 @@ namespace llarp
     Context::CleanupTX()
     {
       auto now = Now();
-      llarp::LogTrace("DHT tick");
-
-      pendingRouterLookups().Expire(now);
+      LogTrace("dht pending routers");
+      _pendingRouterLookups.Expire(now);
+      LogTrace("dht pending introsets");
       _pendingIntrosetLookups.Expire(now);
-      pendingExploreLookups().Expire(now);
+      LogTrace("dht pending explores");
+      _pendingExploreLookups.Expire(now);
     }
 
     util::StatusObject
@@ -470,9 +477,6 @@ namespace llarp
       _nodes = std::make_unique<Bucket<RCNode>>(ourKey, llarp::randint);
       _services = std::make_unique<Bucket<ISNode>>(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
-      // start cleanup timer
-      _timer_keepalive = std::make_shared<int>(0);
-      router->loop()->call_every(1s, _timer_keepalive, [this] { handle_cleaner_timer(); });
     }
 
     void
@@ -480,9 +484,10 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, m);
-      auto now = Now();
-      router->PersistSessionUntil(peer, now + 1min);
+      router->SendToOrQueue(peer, m, [now = Now(), router = router, peer = peer](auto status) {
+        if (status == SendStatus::Success)
+          router->PersistSessionUntil(peer, now + 1min);
+      });
     }
 
     // this function handles incoming DHT messages sent down a path by a client
@@ -599,38 +604,34 @@ namespace llarp
     {
       std::vector<RouterID> closer;
       const Key_t t(target.as_array());
-      std::set<Key_t> foundRouters;
       if (!_nodes)
         return false;
 
-      const size_t nodeCount = _nodes->size();
+      const size_t nodeCount = router->nodedb()->NumLoaded();
       if (nodeCount == 0)
       {
         llarp::LogError("cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      llarp::LogDebug("We have ", _nodes->size(), " connected nodes into the DHT");
-      // ourKey should never be in the connected list
-      // requester is likely in the connected list
-      // 4 or connection nodes (minus a potential requestor), whatever is less
-      if (!_nodes->GetManyNearExcluding(
-              t, foundRouters, std::min(nodeCount, size_t{4}), std::set<Key_t>{ourKey, requester}))
+      auto found = router->nodedb()->FindManyClosestTo(
+          t, std::min(size_t{64}, std::max(nodeCount, size_t{4})));
+
+      for (const auto& rc : found)
       {
-        llarp::LogError(
-            "not enough dht nodes to handle exploritory router lookup, "
-            "have ",
-            nodeCount,
-            " dht peers");
+        Key_t key{rc.pubkey};
+        if (key == requester)
+          continue;
+        if (not router->rcLookupHandler().SessionIsAllowed(rc.pubkey))
+          continue;
+        closer.emplace_back(key.as_array());
+      }
+
+      if (closer.empty())
+      {
+        llarp::LogError("not enough dht nodes to handle exploritory router lookup");
         return false;
       }
-      for (const auto& f : foundRouters)
-      {
-        const RouterID id = f.as_array();
-        // discard shit routers
-        if (router->routerProfiling().IsBadForConnect(id))
-          continue;
-        closer.emplace_back(id);
-      }
+
       llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;

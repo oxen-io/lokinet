@@ -190,6 +190,9 @@ namespace llarp
 
       virtual void
       StoreRC(const RouterContact rc) const = 0;
+
+      virtual void
+      Tick(){};
     };
 
     std::unique_ptr<AbstractContext>
