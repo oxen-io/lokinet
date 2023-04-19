@@ -119,7 +119,9 @@ namespace llarp::quic
           // which it holds a reference to still exists, as stream->close will segfault
           // otherwise
           if (auto locked_conn = weak_conn.lock())
-            stream->close();
+          {
+            stream->close(-1);
+          }
           stream->data(nullptr);
         }
         c.data(nullptr);
