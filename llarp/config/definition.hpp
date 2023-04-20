@@ -105,9 +105,11 @@ namespace llarp
     constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
 
     template <typename T, typename Option>
-    constexpr bool is_option = std::is_base_of_v<option_flag, remove_cvref_t<Option>>
-        or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option>
-        or std::is_invocable_v<remove_cvref_t<Option>, T>;
+    constexpr bool is_option =
+        std::is_base_of_v<
+            option_flag,
+            remove_cvref_t<
+                Option>> or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
   }  // namespace config
 
   /// A base class for specifying config options and their constraints. The basic to/from string

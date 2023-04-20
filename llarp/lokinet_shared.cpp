@@ -335,7 +335,6 @@ struct lokinet_context
     tcp_conns[res.tcp_id] = false;
     active_conns[remote_addr] = lokinet_tcp_result{res};
   }
-
 };
 
 namespace
@@ -715,7 +714,8 @@ extern "C"
       return;
     }
 
-    auto on_open = [result, localAddr, remotehost, remoteport, open_cb](bool success, void* user_data) {
+    auto on_open = [result, localAddr, remotehost, remoteport, open_cb](
+                       bool success, void* user_data) {
       llarp::log::info(
           logcat,
           "Quic tunnel {}<->{}:{} {}.",
@@ -731,8 +731,7 @@ extern "C"
     };
 
     auto on_close = [&ctx, localAddr, remote, close_cb](int rv, void* user_data) {
-      llarp::log::info(
-          logcat, "Quic tunnel {}<->{} closed.", localAddr, remote);
+      llarp::log::info(logcat, "Quic tunnel {}<->{} closed.", localAddr, remote);
 
       ctx->active_conns.erase(remote);
 
@@ -744,14 +743,14 @@ extern "C"
     std::future<void> future = promise.get_future();
 
     ctx->impl->CallSafe([&promise,
-          ctx,
-          result,
-          router = ctx->impl->router,
-          remotehost,
-          remoteport,
-          on_open = std::move(on_open),
-          on_close = std::move(on_close),
-          localAddr]() mutable {
+                         ctx,
+                         result,
+                         router = ctx->impl->router,
+                         remotehost,
+                         remoteport,
+                         on_open = std::move(on_open),
+                         on_close = std::move(on_close),
+                         localAddr]() mutable {
       try
       {
         auto ep = ctx->endpoint();
@@ -761,8 +760,8 @@ extern "C"
         if (not quic)
           throw std::runtime_error{"lokinet_context endpoint has no quic tunnel manager."};
 
-        auto [addr, id] = quic->open(
-            remotehost, remoteport, std::move(on_open), std::move(on_close), localAddr);
+        auto [addr, id] =
+            quic->open(remotehost, remoteport, std::move(on_open), std::move(on_close), localAddr);
         auto [host, port] = split_host_port(addr.ToString());
         result->tcp_id = id;
         tcp_okay(result, host, port, id);

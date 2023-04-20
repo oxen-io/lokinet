@@ -78,12 +78,12 @@ namespace llarp
 
       char m_popPadding[Alignment - sizeof(AtomicIndex)];
 
-      const size_t m_capacity;               // max size of the manager.
+      const size_t m_capacity;  // max size of the manager.
 
-      const uint32_t m_maxGeneration;        // Maximum generation for this object.
+      const uint32_t m_maxGeneration;  // Maximum generation for this object.
 
-      const uint32_t m_maxCombinedIndex;     // Maximum combined value of index and
-                                             // generation for this object.
+      const uint32_t m_maxCombinedIndex;  // Maximum combined value of index and
+                                          // generation for this object.
 
       std::atomic<std::uint32_t>* m_states;  // Array of index states.
 

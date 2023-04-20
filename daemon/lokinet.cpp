@@ -267,8 +267,7 @@ namespace
   GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
   {
     const auto flags =
-        (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
-                        | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
+        (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
     std::stringstream ss;
     ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";

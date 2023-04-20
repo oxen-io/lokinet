@@ -174,7 +174,7 @@ namespace llarp
   {
     if (buffer->size_left() < 2)  // minimum case is 'de'
       return false;
-    if (*buffer->cur != 'd')      // ensure is a dictionary
+    if (*buffer->cur != 'd')  // ensure is a dictionary
       return false;
     buffer->cur++;
     while (buffer->size_left() && *buffer->cur != 'e')
@@ -222,7 +222,7 @@ namespace llarp
   {
     if (buffer->size_left() < 2)  // minimum case is 'le'
       return false;
-    if (*buffer->cur != 'l')      // ensure is a list
+    if (*buffer->cur != 'l')  // ensure is a list
     {
       llarp::LogWarn("bencode::bencode_read_list - expecting list got ", *buffer->cur);
       return false;
