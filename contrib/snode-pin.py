@@ -32,10 +32,10 @@ for snode in resp.json().get("result").get("service_node_states", []):
         snodes[addr].add(snode.get("pubkey_ed25519"))
 
 # print the config snippet to stdout
-for oper in snodes:
+for oper, addrs in snodes:
     print(f"# pin edges to use oper {oper}")
     print("[network]")
-    for addr in snodes.get(oper):
+    for addr in addrs:
         # convert base16 (hex) to zbase32 and add .snode suffix
         print(
             "strict-connect={}.snode".format(
