@@ -65,7 +65,7 @@ main(int argc, char* argv[])
 
   const auto port = 10000;
 
-  auto id = lokinet_inbound_stream(port, ctx);
+  auto id = lokinet_inbound_tcp(port, ctx);
   if (id < 0)
   {
     std::cout << "failed to bind tcp socket\n";
@@ -90,7 +90,7 @@ main(int argc, char* argv[])
 
   std::cout << "tcp_listen shutting down...\n";
 
-  lokinet_close_stream(id, ctx);
+  lokinet_close_tcp(id, ctx);
   return 0;
 }
 

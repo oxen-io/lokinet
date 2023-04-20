@@ -343,7 +343,7 @@ namespace
   void
   tcp_error(lokinet_tcp_result* result, int err)
   {
-    std::memset(result, 0, sizeof(lokinet_tcp_result));
+    *result = lokinet_tcp_result{};
     result->error = err;
   }
 
@@ -676,9 +676,6 @@ extern "C"
       return;
     }
 
-    std::promise<void> promise;
-    std::future<void> future = promise.get_future();
-
     auto lock = ctx->acquire();
 
     if (not ctx->impl->IsUp())
@@ -743,15 +740,18 @@ extern "C"
         close_cb(rv, user_data);
     };
 
-    ctx->impl->CallSafe([promise = std::move(promise),
-                ctx,
-                result,
-                router = ctx->impl->router,
-                remotehost,
-                remoteport,
-                on_open = std::move(on_open),
-                on_close = std::move(on_close),
-                localAddr]() mutable {
+    std::promise<void> promise;
+    std::future<void> future = promise.get_future();
+
+    ctx->impl->CallSafe([&promise,
+          ctx,
+          result,
+          router = ctx->impl->router,
+          remotehost,
+          remoteport,
+          on_open = std::move(on_open),
+          on_close = std::move(on_close),
+          localAddr]() mutable {
       try
       {
         auto ep = ctx->endpoint();
@@ -798,7 +798,7 @@ extern "C"
     }
     catch (...)
     {
-      llarp::log::error(logcat, "Unknown exception caught.", );
+      llarp::log::error(logcat, "Unknown exception caught.");
       tcp_error(result, EBADF);
       return;
     }

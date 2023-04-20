@@ -91,14 +91,14 @@ main(int argc, char* argv[])
   free(addr_c);
   std::cerr << "lokinet address: " << addr << "\n";
 
-  lokinet_stream_result stream_res;
+  lokinet_tcp_result stream_res;
 
   std::string target{argv[1]};
   target = target + ":" + argv[2];
 
   // hard-coded IP:port for liblokinet to bind to
   //  connect via tcp will stream traffic to whatever
-  lokinet_outbound_stream(&stream_res, target.c_str(), "127.0.0.1:54321", ctx, nullptr, nullptr, nullptr);
+  lokinet_outbound_tcp(&stream_res, target.c_str(), "127.0.0.1:54321", ctx, nullptr, nullptr, nullptr);
 
   if (stream_res.error)
   {
@@ -113,7 +113,7 @@ main(int argc, char* argv[])
 
   std::cerr << "tcp_connect shutting down...\n";
 
-  lokinet_close_stream(stream_res.stream_id, ctx);
+  lokinet_close_tcp(stream_res.tcp_id, ctx);
   std::this_thread::sleep_for(std::chrono::milliseconds{1000});
   return 0;
 }
