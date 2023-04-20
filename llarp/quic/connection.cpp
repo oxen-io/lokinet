@@ -918,8 +918,6 @@ namespace llarp::quic
     }
 
     log::debug(logcat, "Exiting flush_streams()");
-    // ngtcp2_conn_update_pkt_tx_time(conn.get(), ts);
-    // schedule_retransmit();
   }
 
   void
@@ -930,7 +928,7 @@ namespace llarp::quic
     auto ngtcp2_expiry_delta = std::chrono::duration_cast<std::chrono::milliseconds>(
         expiry - get_time().time_since_epoch());
 
-    log::debug(logcat, "ngtcp2_conn_get_expiry: {} from now", ngtcp2_expiry_delta);
+    log::debug(logcat, "ngtcp2_conn_get_expiry: {} from now", ngtcp2_expiry_delta.count());
 
     if (exp == std::numeric_limits<decltype(exp)>::max())
     {
