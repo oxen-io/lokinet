@@ -7,6 +7,7 @@
 #include <llarp/messages/relay_status.hpp>
 #include "pathbuilder.hpp"
 #include "transit_hop.hpp"
+#include "path_context.hpp"
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
@@ -100,18 +101,6 @@ namespace llarp
       return hops[hops.size() - 1];
     }
 
-    PathID_t
-    Path::TXID() const
-    {
-      return hops[0].txID;
-    }
-
-    PathID_t
-    Path::RXID() const
-    {
-      return hops[0].rxID;
-    }
-
     bool
     Path::IsReady() const
     {
@@ -124,12 +113,6 @@ namespace llarp
     Path::IsEndpoint(const RouterID& r, const PathID_t& id) const
     {
       return hops[hops.size() - 1].rc.pubkey == r && hops[hops.size() - 1].txID == id;
-    }
-
-    RouterID
-    Path::Upstream() const
-    {
-      return hops[0].rc.pubkey;
     }
 
     const std::string&
@@ -211,7 +194,8 @@ namespace llarp
       {
         if (failedAt)
         {
-          r->NotifyRouterEvent<tooling::PathBuildRejectedEvent>(Endpoint(), RXID(), *failedAt);
+          r->NotifyRouterEvent<tooling::PathBuildRejectedEvent>(
+              Endpoint(), hops[0].rxID, *failedAt);
           LogWarn(
               Name(),
               " build failed at ",
@@ -347,6 +331,18 @@ namespace llarp
           {"txid", txID.ToHex()},
           {"rxid", rxID.ToHex()}};
       return obj;
+    }
+
+    TransitHopInfo
+    PathHopConfig::to_transit_hop_info() const
+    {
+      TransitHopInfo info{};
+      info.txID = txID;
+      info.rxID = rxID;
+      info.upstream = upstream;
+      // we dont know our downstream here as it's us.
+      // it is filled in later.
+      return info;
     }
 
     util::StatusObject
@@ -496,16 +492,16 @@ namespace llarp
     {
       for (const auto& msg : msgs)
       {
-        if (r->SendToOrQueue(Upstream(), msg))
+        const auto& upstream = hops[0].upstream;
+        if (r->SendToOrQueue(upstream, msg))
         {
           m_TXRate += msg.X.size();
         }
         else
         {
-          LogDebug("failed to send upstream to ", Upstream());
+          LogDebug("failed to send upstream to ", upstream);
         }
       }
-      r->TriggerPump();
     }
 
     void
@@ -525,7 +521,7 @@ namespace llarp
         auto& msg = sendmsgs[idx];
         msg.X = buf;
         msg.Y = ev.second;
-        msg.pathid = TXID();
+        msg.pathid = hops[0].txID;
         ++idx;
       }
       r->loop()->call([self = shared_from_this(), data = std::move(sendmsgs), r]() mutable {
@@ -579,7 +575,7 @@ namespace llarp
     std::string
     Path::Name() const
     {
-      return fmt::format("TX={} RX={}", TXID(), RXID());
+      return fmt::format("TX={} RX={}", hops[0].txID, hops[0].rxID);
     }
 
     void
@@ -612,17 +608,14 @@ namespace llarp
         const llarp_buffer_t buf{msg.X};
         m_RXRate += buf.sz;
         if (HandleRoutingMessage(buf, r))
-        {
-          r->TriggerPump();
           m_LastRecvMessage = r->Now();
-        }
       }
     }
 
     bool
     Path::HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r)
     {
-      if (!r->ParseRoutingMessageBuffer(buf, this, RXID()))
+      if (!r->ParseRoutingMessageBuffer(buf, this, hops[0].rxID))
       {
         LogWarn("Failed to parse inbound routing message");
         return false;
@@ -676,14 +669,18 @@ namespace llarp
       }
       buf.cur = buf.base;
       LogDebug("send routing message ", msg.S, " with ", buf.sz, " bytes to endpoint ", Endpoint());
-      return HandleUpstream(buf, N, r);
+      if (not HandleUpstream(buf, N, r))
+        return false;
+
+      r->pathContext().trigger_upstream_flush();
+      return true;
     }
 
     bool
     Path::HandlePathTransferMessage(
         const routing::PathTransferMessage& /*msg*/, AbstractRouter* /*r*/)
     {
-      LogWarn("unwarranted path transfer message on tx=", TXID(), " rx=", RXID());
+      LogWarn("unwarranted path transfer message on tx=", txID(), " rx=", rxID());
       return false;
     }
 
@@ -709,11 +706,11 @@ namespace llarp
         r->routerProfiling().MarkPathSuccess(this);
 
         // persist session with upstream router until the path is done
-        r->PersistSessionUntil(Upstream(), intro.expiresAt);
+        r->PersistSessionUntil(upstream(), intro.expiresAt);
         MarkActive(now);
         return SendLatencyMessage(r);
       }
-      LogWarn("got unwarranted path confirm message on tx=", RXID(), " rx=", RXID());
+      LogWarn("got unwarranted path confirm message on tx=", txID(), " rx=", rxID());
       return false;
     }
 

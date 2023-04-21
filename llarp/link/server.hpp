@@ -120,6 +120,11 @@ namespace llarp
     virtual void
     Pump();
 
+    /// idempotent pump.
+    /// returns true if we already queued a pump.
+    bool
+    IdempotentPump();
+
     virtual void
     RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) = 0;
 
@@ -129,7 +134,7 @@ namespace llarp
     bool
     TryEstablishTo(RouterContact rc);
 
-    bool
+    virtual bool
     Start();
 
     virtual void
@@ -260,6 +265,8 @@ namespace llarp
     SockAddr m_ourAddr;
     std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
+
+    std::shared_ptr<EventLoopWakeup> _pump;
 
     using AuthedLinks = std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>>;
     using Pending = std::unordered_map<SockAddr, std::shared_ptr<ILinkSession>>;

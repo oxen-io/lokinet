@@ -1,6 +1,7 @@
 #pragma once
 
 #include "exit_messages.hpp"
+#include "llarp/router_id.hpp"
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>

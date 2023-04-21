@@ -5,18 +5,18 @@ namespace llarp::layers::flow
   bool
   FlowInfo::operator==(const FlowInfo& other) const
   {
-    return src == other.src and dst == other.dst and tag == other.tag;
+    return src == other.src and dst == other.dst;
   }
 
   std::string
   FlowInfo::ToString() const
   {
-    return fmt::format("[flow src={} dst={} tag={} mtu={}]", src, dst, tag, int{mtu});
+    return fmt::format(
+        "[flow src={} dst={} tags=({}) mtu={}]",
+        src,
+        dst,
+        fmt::join(flow_tags.begin(), flow_tags.end(), ","),
+        int{mtu});
   }
 
-  service::ConvoTag
-  FlowInfo::convo_tag() const
-  {
-    return service::ConvoTag{tag.as_array()};
-  }
 }  // namespace llarp::layers::flow

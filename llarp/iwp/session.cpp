@@ -6,6 +6,7 @@
 #include <llarp/router/abstractrouter.hpp>
 
 #include <queue>
+#include "llarp/crypto/types.hpp"
 
 namespace llarp
 {
@@ -85,6 +86,7 @@ namespace llarp
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
       m_RemoteRC = msg->rc;
       m_Parent->MapAddr(m_RemoteRC.pubkey, this);
+      TriggerPump();
       return m_Parent->SessionEstablished(this, true);
     }
 
@@ -143,7 +145,7 @@ namespace llarp
     {
       m_EncryptNext.emplace_back(std::move(data));
       TriggerPump();
-      if (!IsEstablished())
+      if (not IsEstablished())
       {
         EncryptWorker(std::move(m_EncryptNext));
         m_EncryptNext = CryptoQueue_t{};
@@ -236,18 +238,19 @@ namespace llarp
       }
     }
 
-    void
+    bool
     Session::TriggerPump()
     {
-      m_Parent->Router()->TriggerPump();
+      _pumped = m_Parent->IdempotentPump();
+      return _pumped;
     }
 
     void
     Session::Pump()
     {
-      const auto now = m_Parent->Now();
-      if (m_State == State::Ready || m_State == State::LinkIntro)
+      if ((m_State == State::Ready or m_State == State::LinkIntro) and not _pumped)
       {
+        const auto now = m_Parent->Now();
         if (ShouldPing())
           SendKeepAlive();
         for (auto& [id, msg] : m_RXMsgs)
@@ -269,10 +272,18 @@ namespace llarp
         }
         if (not to_resend.empty())
         {
-          for (auto& msg = to_resend.top(); not to_resend.empty(); to_resend.pop())
+          for (auto* msg = to_resend.top(); not to_resend.empty(); to_resend.pop())
             msg->FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
         }
+        SendMACK();
       }
+
+      if (m_EncryptNext.empty() and m_DecryptNext.empty() and _pumped)
+      {
+        // we pumped our parent and we already flushed everything we needed to.
+        _pumped = false;
+      }
+
       if (not m_EncryptNext.empty())
       {
         m_Parent->QueueWork(
@@ -664,52 +675,47 @@ namespace llarp
           continue;
         }
         ++itr;
+        m_PlaintextRecv.tryPushBack(std::move(pkt));
       }
-      m_PlaintextRecv.tryPushBack(std::move(msgs));
-      m_PlaintextEmpty.clear();
       m_Parent->WakeupPlaintext();
     }
 
     void
     Session::HandlePlaintext()
     {
-      if (m_PlaintextEmpty.test_and_set())
-        return;
-      while (auto maybe_queue = m_PlaintextRecv.tryPopFront())
+      while (auto maybe_pkt = m_PlaintextRecv.tryPopFront())
       {
-        for (auto& result : *maybe_queue)
+        auto& pkt = *maybe_pkt;
         {
-          LogTrace("Command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
-          switch (result[PacketOverhead + 1])
+          LogTrace("Command ", int(pkt[PacketOverhead + 1]), " from ", m_RemoteAddr);
+          switch (pkt[PacketOverhead + 1])
           {
             case Command::eXMIT:
-              HandleXMIT(std::move(result));
+              HandleXMIT(std::move(pkt));
               break;
             case Command::eDATA:
-              HandleDATA(std::move(result));
+              HandleDATA(std::move(pkt));
               break;
             case Command::eACKS:
-              HandleACKS(std::move(result));
+              HandleACKS(std::move(pkt));
               break;
             case Command::ePING:
-              HandlePING(std::move(result));
+              HandlePING(std::move(pkt));
               break;
             case Command::eNACK:
-              HandleNACK(std::move(result));
+              HandleNACK(std::move(pkt));
               break;
             case Command::eCLOS:
-              HandleCLOS(std::move(result));
+              HandleCLOS(std::move(pkt));
               break;
             case Command::eMACK:
-              HandleMACK(std::move(result));
+              HandleMACK(std::move(pkt));
               break;
             default:
-              LogError("invalid command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
+              LogError("invalid command ", int(pkt[PacketOverhead + 1]), " from ", m_RemoteAddr);
           }
         }
       }
-      SendMACK();
-      m_Parent->WakeupPlaintext();
     }
 
     void
@@ -746,6 +752,7 @@ namespace llarp
         }
         ptr += sizeof(uint64_t);
         numAcks--;
+        TriggerPump();
       }
     }
 
@@ -794,6 +801,7 @@ namespace llarp
         {
           m_SendMACKs.emplace(rxid);
           LogTrace("duplicate rxid=", rxid, " from ", m_RemoteAddr);
+          TriggerPump();
           return;
         }
       }
@@ -804,7 +812,6 @@ namespace llarp
         {
           itr = m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, ShortHash{pos}, m_Parent->Now()})
                     .first;
-          TriggerPump();
 
           sz = std::min(sz, uint16_t{FragmentSize});
           if ((data.size() - XMITOverhead) == sz)
@@ -827,7 +834,10 @@ namespace llarp
           }
         }
         else
+        {
           LogTrace("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
+          TriggerPump();
+        }
       }
     }
 
@@ -857,6 +867,7 @@ namespace llarp
         {
           LogTrace("replay hit for rxid=", rxid, " for ", m_RemoteAddr);
           m_SendMACKs.emplace(rxid);
+          TriggerPump();
         }
         return;
       }
@@ -876,6 +887,8 @@ namespace llarp
         else
         {
           LogError("hash mismatch for message ", itr->first);
+          itr->second.m_Acks.reset();
+          EncryptAndSend(itr->second.ACKS());
         }
       }
     }
@@ -887,9 +900,9 @@ namespace llarp
       if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
       {
         m_Parent->HandleMessage(this, msg.m_Data);
-        EncryptAndSend(msg.ACKS());
         LogDebug("recv'd message ", rxid, " from ", m_RemoteAddr);
       }
+      EncryptAndSend(msg.ACKS());
       m_RXMsgs.erase(rxid);
     }
 

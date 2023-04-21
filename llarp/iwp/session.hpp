@@ -48,11 +48,11 @@ namespace llarp
       /// inbound session
       Session(LinkLayer* parent, const SockAddr& from);
 
-      // Signal the event loop that a pump is needed (idempotent)
-      void
+      // trigger pump of parent.
+      bool
       TriggerPump();
 
-      // Does the actual pump
+      // Does the actual pump on this session.
       void
       Pump() override;
 
@@ -205,8 +205,10 @@ namespace llarp
       CryptoQueue_t m_DecryptNext;
 
       std::atomic_flag m_PlaintextEmpty;
-      llarp::thread::Queue<CryptoQueue_t> m_PlaintextRecv;
+      llarp::thread::Queue<Packet_t> m_PlaintextRecv;
       std::atomic_flag m_SentClosed;
+      // set to true when we issued a pump to our parent.
+      bool _pumped{false};
 
       void
       EncryptWorker(CryptoQueue_t msgs);

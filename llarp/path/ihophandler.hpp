@@ -8,6 +8,8 @@
 #include <vector>
 
 #include <memory>
+#include "llarp/path/path_types.hpp"
+#include "llarp/router_id.hpp"
 
 struct llarp_buffer_t;
 
@@ -22,6 +24,9 @@ namespace llarp
 
   namespace path
   {
+
+    struct TransitHopInfo;
+
     struct IHopHandler
     {
       using TrafficEvent_t = std::pair<std::vector<byte_t>, TunnelNonce>;
@@ -29,8 +34,20 @@ namespace llarp
 
       virtual ~IHopHandler() = default;
 
-      virtual PathID_t
-      RXID() const = 0;
+      virtual TransitHopInfo
+      hop_info() const = 0;
+
+      PathID_t
+      txID() const;
+
+      PathID_t
+      rxID() const;
+
+      RouterID
+      upstream() const;
+
+      RouterID
+      downstream() const;
 
       void
       DecayFilters(llarp_time_t now);

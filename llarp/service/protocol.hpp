@@ -70,6 +70,11 @@ namespace llarp
         return seqno > other.seqno;
       }
 
+      /// takes ownership of the underlying data payload and return it wrapped as a flowtraffc.
+      layers::flow::FlowTraffic
+      steal_flow_traffic();
+
+      /// copy based version of steal_flow_traffic()
       layers::flow::FlowTraffic
       to_flow_traffic() const;
     };

@@ -107,10 +107,10 @@ namespace llarp
       {
         if (itr->second->Expired(now))
         {
-          PathID_t txid = itr->second->TXID();
-          router->outboundMessageHandler().RemovePath(std::move(txid));
-          PathID_t rxid = itr->second->RXID();
-          router->outboundMessageHandler().RemovePath(std::move(rxid));
+          auto info = itr->second->hop_info();
+          router->outboundMessageHandler().RemovePath(std::move(info.rxID));
+
+          router->outboundMessageHandler().RemovePath(std::move(info.txID));
           itr = m_Paths.erase(itr);
         }
         else
@@ -252,7 +252,7 @@ namespace llarp
       auto itr = m_Paths.begin();
       while (itr != m_Paths.end())
       {
-        if (itr->second->RXID() == id)
+        if (itr->second->rxID() == id)
           return itr->second;
         ++itr;
       }
@@ -293,16 +293,11 @@ namespace llarp
     PathSet::AddPath(Path_ptr path)
     {
       Lock_t l(m_PathsMutex);
-      const auto upstream = path->Upstream();  // RouterID
-      const auto RXID = path->RXID();          // PathID
-      if (not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
+      const auto info = path->hop_info();
+
+      if (not m_Paths.emplace(std::make_pair(info.upstream, info.rxID), path).second)
       {
-        LogError(
-            Name(),
-            " failed to add own path, duplicate info wtf? upstream=",
-            upstream,
-            " rxid=",
-            RXID);
+        LogError(Name(), " failed to add own path, duplicate info wtf? hop=", info);
       }
     }
 

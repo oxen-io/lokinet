@@ -53,6 +53,9 @@ namespace llarp
       bool
       BuildCooldownHit(RouterID edge) const;
 
+      RouterID
+      our_router_id() const final;
+
      private:
       void
       DoPathBuildBackoff();

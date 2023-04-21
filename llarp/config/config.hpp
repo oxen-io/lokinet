@@ -1,8 +1,6 @@
 #pragma once
 #include "ini.hpp"
 #include "definition.hpp"
-#include "llarp/net/ip_range.hpp"
-#include "llarp/net/net.hpp"
 
 #include <chrono>
 
@@ -16,15 +14,18 @@
 #include <llarp/net/ip_address.hpp>
 #include <llarp/net/net_int.hpp>
 #include <llarp/net/ip_range_map.hpp>
-#include <llarp/service/address.hpp>
 #include <llarp/service/auth.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/router_contact.hpp>
+
+#include <llarp/layers/platform/addr_mapper.hpp>
+#include <llarp/layers/flow/flow_addr.hpp>
 
 #include <cstdlib>
 #include <functional>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <unordered_set>
@@ -106,6 +107,13 @@ namespace llarp
     Acceptable(const std::set<RouterContact>& hops) const;
   };
 
+  /// tells us how to map different addresses on start up.
+  struct AddressMapConfig
+  {
+    std::unordered_map<std::string, std::tuple<layers::platform::AddressMapping, service::AuthInfo>>
+        mappings;
+  };
+
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
@@ -121,13 +129,8 @@ namespace llarp
     std::optional<int> m_Paths;
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
-    net::IPRangeMap<service::Address> m_ExitMap;
-    net::IPRangeMap<std::string> m_LNSExitMap;
 
-    std::unordered_map<service::Address, service::AuthInfo> m_ExitAuths;
-    std::unordered_map<std::string, service::AuthInfo> m_LNSExitAuths;
-
-    std::unordered_map<huint128_t, service::Address> m_mapAddrs;
+    AddressMapConfig addr_map;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
     service::AuthFileType m_AuthFileType = service::AuthFileType::eAuthFileHashes;

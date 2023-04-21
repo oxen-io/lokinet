@@ -309,14 +309,10 @@ add_library(lokinet-deprecated-layer-route
 add_library(lokinet-deprecated-layer-kitchensink
   STATIC
   endpoint_base.cpp
-  handlers/exit.cpp
-  handlers/tun.cpp
-  exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
   exit/policy.cpp
   exit/session.cpp
-  service/context.cpp
   service/name.cpp
   service/address.cpp
   service/async_key_exchange.cpp

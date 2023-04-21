@@ -299,6 +299,9 @@ namespace llarp
 
       size_t numDesiredPaths;
 
+      virtual RouterID
+      our_router_id() const = 0;
+
      protected:
       BuildStats m_BuildStats;
 

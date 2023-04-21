@@ -67,7 +67,7 @@ namespace llarp::uv
     make_repeater() override;
 
     virtual std::shared_ptr<llarp::UDPHandle>
-    make_udp(UDPReceiveFunc on_recv, const std::optional<SockAddr>& laddr = std::nullopt) override;
+    make_udp(UDPReceiveFunc on_recv) override;
 
     void
     FlushLogic();

@@ -11,6 +11,7 @@
 
 #include <llarp/config/config.hpp>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace llarp
@@ -97,6 +98,10 @@ namespace llarp::layers::flow
     /// synthetically inject flow layer traffic into the flow layer
     void
     offer_flow_traffic(FlowTraffic&& traff);
+
+    /// get the best flow tag used by a flow info given the current measured state.
+    std::optional<FlowTag>
+    best_flow_tag(const flow::FlowInfo& flow_info) const;
 
     void
     start();

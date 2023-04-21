@@ -194,7 +194,7 @@ namespace llarp
 
     // Constructs a UDP socket that can be used for sending and/or receiving
     virtual std::shared_ptr<UDPHandle>
-    make_udp(UDPReceiveFunc on_recv, const std::optional<SockAddr>& laddr = std::nullopt) = 0;
+    make_udp(UDPReceiveFunc on_recv) = 0;
 
     /// Make a thread-safe event loop waker (an "async" in libuv terminology) on this event loop;
     /// you can call `->Trigger()` on the returned shared pointer to fire the callback at the next

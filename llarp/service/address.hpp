@@ -16,7 +16,8 @@ namespace llarp
   namespace service
   {
     /// Snapp Address
-    struct Address : public AlignedBuffer<32>
+    struct [[deprecated("replaced by llarp::layers::flow::FlowAddr")]] Address
+        : public AlignedBuffer<32>
     {
       /// if parsed using FromString this contains the subdomain
       /// this member is not used when comparing it's extra data for dns
@@ -27,17 +28,13 @@ namespace llarp
 
       /// return true if we permit using this tld
       /// otherwise return false
-      static bool
-      PermitTLD(const char* tld);
+      static bool PermitTLD(const char* tld);
 
-      std::string
-      ToString(const char* tld = ".loki") const;
+      std::string ToString(const char* tld = ".loki") const;
 
-      bool
-      FromString(std::string_view str, const char* tld = ".loki");
+      bool FromString(std::string_view str, const char* tld = ".loki");
 
-      Address() : AlignedBuffer<32>()
-      {}
+      Address() = default;
 
       explicit Address(const std::string& str) : AlignedBuffer<32>()
       {
@@ -55,39 +52,30 @@ namespace llarp
       explicit Address(const AlignedBuffer<32>& other) : AlignedBuffer<32>(other)
       {}
 
-      bool
-      operator<(const Address& other) const
+      bool operator<(const Address& other) const
       {
         return as_array() < other.as_array();
       }
 
-      bool
-      operator==(const Address& other) const
+      bool operator==(const Address& other) const
       {
         return as_array() == other.as_array();
       }
 
-      bool
-      operator!=(const Address& other) const
+      bool operator!=(const Address& other) const
       {
         return as_array() != other.as_array();
       }
 
-      Address&
-      operator=(const Address& other) = default;
+      Address& operator=(const Address& other) = default;
+      Address& operator=(Address& other) = default;
 
-      dht::Key_t
-      ToKey() const;
-
-      RouterID
-      ToRouter() const
-      {
-        return RouterID(as_array());
-      }
+      dht::Key_t ToKey() const;
     };
 
     std::optional<std::variant<Address, RouterID>>
-    ParseAddress(std::string_view lokinet_addr);
+    ParseAddress(std::string_view lokinet_addr)
+        [[deprecated("replaced by llarp::layers::flow::FlowAddr")]];
 
   }  // namespace service
 

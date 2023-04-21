@@ -12,7 +12,7 @@
 
 namespace llarp
 {
-  const PathID_t OutboundMessageHandler::zeroID;
+  const PathID_t OutboundMessageHandler::zeroID{};
 
   using namespace std::chrono_literals;
 
@@ -80,16 +80,11 @@ namespace llarp
   }
 
   void
-  OutboundMessageHandler::Pump(bool also_pump_router)
+  OutboundMessageHandler::Pump()
   {
-    m_Killer.TryAccess([this, also_pump_router]() {
+    m_Killer.TryAccess([this]() {
       recentlyRemovedPaths.Decay();
       ProcessOutboundQueue();
-      // TODO: this probably shouldn't be pumping, as it defeats the purpose
-      // of having a limit on sends per tick, but chaning it is potentially bad
-      // and requires testing so it should be changed later.
-      if (bool more = SendRoundRobin(); more and also_pump_router)
-        _router->TriggerPump();
     });
   }
 
@@ -138,7 +133,7 @@ namespace llarp
   OutboundMessageHandler::Init(AbstractRouter* router)
   {
     _router = router;
-    _wakeup = router->loop()->make_waker([this]() { Pump(false); });
+    _wakeup = router->loop()->make_waker([this]() { Pump(); });
     outboundMessageQueues.emplace(zeroID, MessageQueue());
   }
 
@@ -203,8 +198,10 @@ namespace llarp
   {
     const llarp_buffer_t buf{ent.message};
     m_queueStats.sent++;
+    auto& link = _router->linkManager();
     SendStatusHandler callback = ent.inform;
-    return _router->linkManager().SendTo(
+
+    auto ok = link.SendTo(
         ent.router,
         buf,
         [this, callback](ILinkSession::DeliveryStatus status) {
@@ -216,6 +213,10 @@ namespace llarp
           }
         },
         ent.priority);
+
+    if (ok)
+      link.PumpLinks();
+    return ok;
   }
 
   bool

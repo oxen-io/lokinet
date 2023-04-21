@@ -5,6 +5,7 @@
 #include <llarp/dns/server.hpp>
 #include <llarp/vpn/platform.hpp>
 #include <unordered_set>
+#include "oxen/log.hpp"
 
 namespace llarp
 {
@@ -138,6 +139,7 @@ namespace llarp
     auto vpn = m_Router->get_layers()->platform->vpn_interface();
     if (not(vpn and route_man))
     {
+      log::trace(logcat, "no vpn interface and route manager");
       // no vpn interface with route manager so we cannot poke routes yet.
       return;
     }
@@ -225,6 +227,8 @@ namespace llarp
         }
         log::info(logcat, "route poker up");
       }
+      else
+        log::trace(logcat, "up did not set up firewall, no vpn interface");
     }
     if (not was_up)
       SetDNSMode(true);

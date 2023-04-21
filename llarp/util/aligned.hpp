@@ -46,20 +46,18 @@ namespace llarp
 
     virtual ~AlignedBuffer() = default;
 
-    AlignedBuffer()
-    {
-      Zero();
-    }
+    AlignedBuffer() = default;
 
     explicit AlignedBuffer(const byte_t* data)
     {
       *this = data;
     }
 
-    explicit AlignedBuffer(const Data& buf)
-    {
-      m_data = buf;
-    }
+    constexpr explicit AlignedBuffer(const Data& buf) : m_data{buf}
+    {}
+
+    constexpr explicit AlignedBuffer(Data&& buf) : m_data{buf}
+    {}
 
     AlignedBuffer&
     operator=(const byte_t* data)

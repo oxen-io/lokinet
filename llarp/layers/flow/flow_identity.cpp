@@ -10,6 +10,8 @@
 #include <memory>
 #include <stdexcept>
 #include <variant>
+#include "llarp/layers/flow/flow_tag.hpp"
+#include "llarp/service/convotag.hpp"
 
 namespace llarp::layers::flow
 {
@@ -51,7 +53,7 @@ namespace llarp::layers::flow
       : _parent{parent}
       , _local_privkeys{privkeys}
       , _state{nullptr}
-      , _flow_info{privkeys.public_addr(), std::move(remote_addr), FlowTag{}}
+      , _flow_info{privkeys.public_addr(), std::move(remote_addr), {}}
   {}
 
   bool
@@ -98,6 +100,7 @@ namespace llarp::layers::flow
     }
   }  // namespace
 
+  /// wrapper type around deprecated logic.
   struct deprecated_path_ensure_handler
   {
     FlowIdentity& flow;
@@ -112,10 +115,10 @@ namespace llarp::layers::flow
         handshaker.fail("cannot establish flow");
         return;
       }
-
-      flow._flow_info.tag = FlowTag{maybe_tag->as_array()};
-      log::debug(logcat, "flow established: {}", flow.flow_info);
-      handshaker.ready(flow.flow_info);
+      auto& flow_info = flow._flow_info;
+      flow_info.flow_tags.emplace(maybe_tag->as_array());
+      log::debug(logcat, "flow established: {}", flow_info);
+      handshaker.ready(flow_info);
     }
   };
 
@@ -159,6 +162,30 @@ namespace llarp::layers::flow
         to_addr_variant(flow_info.dst), std::move(data), to_proto_type(kind));
     if (not ok)
       log::warning(logcat, "failed to send {} bytes of {} on {}", sz, kind, flow_info);
+  }
+
+  void
+  FlowIdentity::update_flow_tags(const std::set<FlowTag>& tags)
+  {
+    if (_flow_info.flow_tags != tags)
+      _flow_info.flow_tags = tags;
+  }
+
+  void
+  FlowIdentity::prune_flow_tags()
+  {
+    auto ep = _parent.local_deprecated_loki_endpoint();
+    auto& tags = _flow_info.flow_tags;
+    auto itr = tags.begin();
+
+    while (itr != tags.end())
+    {
+      const service::ConvoTag tag{itr->as_array()};
+      if (ep->HasConvoTag(tag))
+        ++itr;
+      else
+        itr = tags.erase(itr);
+    }
   }
 
 }  // namespace llarp::layers::flow

@@ -1,6 +1,5 @@
 #include "ev.hpp"
 #include "../util/buffer.hpp"
-#include "llarp/net/sock_addr.hpp"
 
 namespace llarp
 {
@@ -8,6 +7,12 @@ namespace llarp
   struct UDPHandle
   {
     using ReceiveFunc = EventLoop::UDPReceiveFunc;
+
+    // Starts listening for incoming UDP packets on the given address. Returns true on success,
+    // false if the address could not be bound. If you send without calling this first then the
+    // socket will bind to a random high port on 0.0.0.0 (the "all addresses" address).
+    virtual bool
+    listen(const SockAddr& addr) = 0;
 
     // Sends a packet to the given recipient, immediately.  Returns true if the send succeeded,
     // false it could not be performed (either because of error, or because it would have blocked).
@@ -29,14 +34,14 @@ namespace llarp
     }
 
     /// returns the local address we are bound on
-    virtual SockAddr
+    virtual std::optional<SockAddr>
     LocalAddr() const = 0;
 
     // Base class destructor
     virtual ~UDPHandle() = default;
 
    protected:
-    UDPHandle(ReceiveFunc on_recv) : on_recv{std::move(on_recv)}
+    explicit UDPHandle(ReceiveFunc on_recv) : on_recv{std::move(on_recv)}
     {
       // It makes no sense at all to use this with a null receive function:
       assert(this->on_recv);

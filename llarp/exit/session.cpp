@@ -9,6 +9,7 @@
 #include <llarp/util/meta/memfn.hpp>
 #include <memory>
 #include <utility>
+#include "llarp/router_id.hpp"
 
 namespace llarp
 {
@@ -128,8 +129,9 @@ namespace llarp
     {
       if (b == 0s)
       {
+        const auto info = p->hop_info();
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
-        m_CurrentPath = p->RXID();
+        m_CurrentPath = info.rxID;
         CallPendingCallbacks(true);
       }
       return true;
@@ -201,7 +203,8 @@ namespace llarp
         uint64_t counter,
         service::ProtocolType t)
     {
-      const service::ConvoTag tag{path->RXID().as_array()};
+      const auto info = path->hop_info();
+      const service::ConvoTag tag{info.rxID.as_array()};
 
       if (t == service::ProtocolType::QUIC)
       {

@@ -48,6 +48,7 @@ namespace llarp
     virtual std::optional<bool>
     SessionIsClient(RouterID remote) const = 0;
 
+    /// idempotently pump internal queues.
     virtual void
     PumpLinks() = 0;
 

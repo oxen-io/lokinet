@@ -48,7 +48,7 @@ namespace llarp
     QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
-    /* Called when pumping output queues, typically scheduled via a call to Router::TriggerPump().
+    /* Called when pumping output queues.
      *
      * Processes messages on the shared message queue into their paths' respective
      * individual queues.
@@ -59,10 +59,9 @@ namespace llarp
      * Sends all routing messages that have been queued, indicated by pathid 0 when queued.
      * Sends messages from path queues until all are empty or a set cap has been reached.
      *
-     * if also_pump_router is true, this call will call Router::TriggerPump() if we queued things.
      */
     void
-    Pump(bool also_pump_router = true);
+    Pump();
 
     /// idempotently call Pump()
     void

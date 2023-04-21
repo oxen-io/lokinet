@@ -67,10 +67,10 @@ namespace llarp
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
 
-      PathID_t
-      RXID() const override
+      TransitHopInfo
+      hop_info() const override
       {
-        return info.rxID;
+        return info;
       }
 
       void

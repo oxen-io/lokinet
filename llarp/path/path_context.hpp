@@ -3,6 +3,7 @@
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/net/ip_address.hpp>
 #include "ihophandler.hpp"
+#include "llarp/ev/ev.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
 #include "transit_hop.hpp"
@@ -13,6 +14,7 @@
 #include <llarp/util/types.hpp>
 
 #include <memory>
+#include <shared_mutex>
 #include <unordered_map>
 
 namespace llarp
@@ -36,12 +38,6 @@ namespace llarp
       /// apply path expiration.
       void
       ExpirePaths(llarp_time_t now);
-
-      void
-      PumpUpstream();
-
-      void
-      PumpDownstream();
 
       void
       AllowTransit();
@@ -131,6 +127,12 @@ namespace llarp
           for (const auto& item : second)
             visit(item.second);
         }
+
+        Lock_t
+        acquire()
+        {
+          return Lock_t{first};
+        }
       };
 
       // maps path id -> pathset owner of path
@@ -138,7 +140,9 @@ namespace llarp
 
       struct SyncOwnedPathsMap_t
       {
-        util::Mutex first;  // protects second
+        using Mutex_t = std::mutex;
+        using Lock_t = std::lock_guard<Mutex_t>;
+        Mutex_t first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 
         /// Invokes a callback for each owned path; visit must be invokable with a `const Path_ptr&`
@@ -147,9 +151,15 @@ namespace llarp
         void
         ForEach(OwnedHopVisitor&& visit)
         {
-          util::Lock lock(first);
+          Lock_t _lock{first};
           for (const auto& item : second)
             visit(item.second);
+        }
+
+        Lock_t
+        acquire()
+        {
+          return Lock_t{first};
         }
       };
 
@@ -177,12 +187,36 @@ namespace llarp
       void
       periodic_tick();
 
+      /// flush all paths in upstream direction idempotently
+      void
+      trigger_upstream_flush();
+
+      /// flush all paths in downstream direction idempotently
+      void
+      trigger_downstream_flush();
+
+      /// pump both directions immediately
+      inline void
+      Pump()
+      {
+        PumpUpstream();
+        PumpDownstream();
+      }
+
      private:
+      void
+      PumpUpstream();
+
+      void
+      PumpDownstream();
+
       AbstractRouter* m_Router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
       util::DecayingHashSet<IpAddress> m_PathLimits;
+      std::shared_ptr<EventLoopWakeup> m_upstream_flush;
+      std::shared_ptr<EventLoopWakeup> m_downstream_flush;
     };
   }  // namespace path
 }  // namespace llarp

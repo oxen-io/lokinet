@@ -14,6 +14,8 @@ static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
+  static auto logcat = log::Cat("link-layer");
+
   ILinkLayer::ILinkLayer(
       std::shared_ptr<KeyManager> keyManager,
       GetRCFunc getrc,
@@ -141,9 +143,11 @@ namespace llarp
           ILinkSession::Packet_t pkt;
           pkt.resize(buf.sz);
           std::copy_n(buf.base, buf.sz, pkt.data());
+          log::trace(logcat, "got {} bytes from {}", buf.sz, from);
           RecvFrom(from, std::move(pkt));
-        },
-        m_ourAddr);
+          IdempotentPump();
+        });
+    m_udp->listen(m_ourAddr);
   }
 
   void
@@ -322,11 +326,18 @@ namespace llarp
       BeforeConnect(std::move(rc));
     }
     if (not PutSession(s))
-    {
       return false;
-    }
+
     s->Start();
+    IdempotentPump();
     return true;
+  }
+
+  bool
+  ILinkLayer::IdempotentPump()
+
+  {
+    return _pump->Trigger();
   }
 
   bool
@@ -336,6 +347,8 @@ namespace llarp
     m_repeater_keepalive = std::make_shared<int>(0);
     m_Router->loop()->call_every(
         LINK_LAYER_TICK_INTERVAL, m_repeater_keepalive, [this] { Tick(Now()); });
+
+    _pump = m_Router->loop()->make_waker([this]() { Pump(); });
     return true;
   }
 
@@ -365,6 +378,7 @@ namespace llarp
           ++itr;
       }
     }
+    Pump();
   }
 
   void
@@ -381,6 +395,7 @@ namespace llarp
       for (const auto& [addr, link] : m_Pending)
         link->Close();
     }
+    IdempotentPump();
   }
 
   void
@@ -395,6 +410,7 @@ namespace llarp
       for (auto [itr, end] = m_AuthedLinks.equal_range(r); itr != end;)
       {
         itr->second->Close();
+        IdempotentPump();
         m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
         itr = m_AuthedLinks.erase(itr);
       }
@@ -412,6 +428,7 @@ namespace llarp
       {
         LogDebug("keepalive to ", remote);
         itr->second->SendKeepAlive();
+        IdempotentPump();
       }
     }
   }
@@ -445,9 +462,11 @@ namespace llarp
         }
       }
     }
+    if (not s)
+      return false;
     ILinkSession::Message_t pkt(buf.sz);
     std::copy_n(buf.base, buf.sz, pkt.begin());
-    return s && s->SendMessageBuffer(std::move(pkt), completed, priority);
+    return s->SendMessageBuffer(std::move(pkt), completed, priority);
   }
 
   bool
@@ -477,10 +496,8 @@ namespace llarp
   {
     Lock_t lock(m_PendingMutex);
     const auto address = s->GetRemoteEndpoint();
-    if (m_Pending.count(address))
-      return false;
-    m_Pending.emplace(address, s);
-    return true;
+    auto [itr, inserted] = m_Pending.try_emplace(address, s);
+    return inserted;
   }
 
   std::optional<int>

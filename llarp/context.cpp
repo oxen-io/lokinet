@@ -9,8 +9,8 @@
 #include <memory>
 #include "nodedb.hpp"
 #include "router/router.hpp"
-#include "service/context.hpp"
 #include "util/logging.hpp"
+#include "vpn/platform.hpp"
 
 #include <llarp/util/service_manager.hpp>
 

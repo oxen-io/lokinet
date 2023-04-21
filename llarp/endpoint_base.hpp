@@ -32,14 +32,15 @@ namespace llarp
     class Server;
   }
 
-  class [[deprecated]] EndpointBase
+  class [[deprecated("replaced by llarp::layers::flow::FlowIdentity")]] EndpointBase
   {
     std::unordered_set<dns::SRVData> m_SRVRecords;
 
    public:
     virtual ~EndpointBase() = default;
 
-    using AddressVariant_t = std::variant<service::Address, RouterID>;
+    using AddressVariant_t [[deprecated("replaced by llarp::layers::flow::FlowAddr")]] =
+        std::variant<service::Address, RouterID>;
 
     struct SendStat
     {
@@ -74,115 +75,92 @@ namespace llarp
 
     /// maybe get quic mapping info given its stream id
     /// returns std::nullopt if we have no stream given that id
-    std::optional<QUICMappingInfo>
-    GetQUICMappingInfoByID(int stream_id) const;
+    std::optional<QUICMappingInfo> GetQUICMappingInfoByID(int stream_id) const;
 
     /// add an srv record to this endpoint's descriptor
-    void
-    PutSRVRecord(dns::SRVData srv);
+    void PutSRVRecord(dns::SRVData srv);
 
     /// get dns serverr if we have on on this endpoint
-    virtual std::shared_ptr<dns::Server>
-    DNS() const
+    virtual std::shared_ptr<dns::Server> DNS() const
     {
       return nullptr;
     };
 
     /// called when srv data changes in some way
-    virtual void
-    SRVRecordsChanged() = 0;
+    virtual void SRVRecordsChanged() = 0;
 
     /// remove srv records from this endpoint that match a filter
     /// for each srv record call it with filter, remove if filter returns true
     /// return if we removed any srv records
-    bool
-    DelSRVRecordIf(std::function<bool(const dns::SRVData&)> filter);
+    bool DelSRVRecordIf(std::function<bool(const dns::SRVData&)> filter);
 
     /// get copy of all srv records
-    std::set<dns::SRVData>
-    SRVRecords() const;
+    std::set<dns::SRVData> SRVRecords() const;
 
     /// get statistics about how much traffic we sent and recv'd to a remote endpoint
-    virtual std::optional<SendStat>
-    GetStatFor(AddressVariant_t remote) const = 0;
+    virtual std::optional<SendStat> GetStatFor(AddressVariant_t remote) const = 0;
 
     /// list all remote endpoint addresses we have that are mapped
-    virtual std::unordered_set<AddressVariant_t>
-    AllRemoteEndpoints() const = 0;
+    virtual std::unordered_set<AddressVariant_t> AllRemoteEndpoints() const = 0;
 
     /// get our local address
-    virtual AddressVariant_t
-    LocalAddress() const = 0;
+    virtual AddressVariant_t LocalAddress() const = 0;
 
-    virtual quic::TunnelManager*
-    GetQUICTunnel() = 0;
+    virtual quic::TunnelManager* GetQUICTunnel() = 0;
 
-    virtual std::optional<AddressVariant_t>
-    GetEndpointWithConvoTag(service::ConvoTag tag) const = 0;
+    virtual std::optional<AddressVariant_t> GetEndpointWithConvoTag(service::ConvoTag tag)
+        const = 0;
 
-    virtual std::optional<service::ConvoTag>
-    GetBestConvoTagFor(AddressVariant_t addr) const = 0;
+    virtual std::optional<service::ConvoTag> GetBestConvoTagFor(AddressVariant_t addr) const = 0;
 
     /// MUST call MarkAddressOutbound first if we are initiating the flow to the remote.
     // TODO: this requirement is stupid.
-    virtual bool
-    EnsurePathTo(
+    virtual bool EnsurePathTo(
         AddressVariant_t addr,
         std::function<void(std::optional<service::ConvoTag>)> hook,
         llarp_time_t timeout) = 0;
 
-    virtual void
-    LookupNameAsync(
+    virtual void LookupNameAsync(
         std::string name, std::function<void(std::optional<AddressVariant_t>)> resultHandler) = 0;
 
-    virtual bool
-    LookupRC(RouterID rid, RouterLookupHandler handler) = 0;
+    virtual bool LookupRC(RouterID rid, RouterLookupHandler handler) = 0;
 
-    virtual const EventLoop_ptr&
-    Loop() = 0;
+    virtual const EventLoop_ptr& Loop() = 0;
 
-    virtual bool
-    SendToOrQueue(service::ConvoTag tag, std::vector<byte_t> data, service::ProtocolType t) = 0;
+    virtual bool SendToOrQueue(
+        service::ConvoTag tag, std::vector<byte_t> data, service::ProtocolType t) = 0;
 
-    bool
-    SendToOrQueue(service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t)
+    bool SendToOrQueue(
+        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t)
     {
       return SendToOrQueue(std::move(tag), payload.copy(), t);
     }
 
     /// lookup srv records async
-    virtual void
-    LookupServiceAsync(
+    virtual void LookupServiceAsync(
         std::string name,
         std::string service,
         std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
 
     /// will mark a remote as something we want to initiate a flow to.
     /// making this explicit prevents us from doing weird things when we are the recipient.
-    virtual void
-    MarkAddressOutbound(AddressVariant_t remote) = 0;
+    virtual void MarkAddressOutbound(AddressVariant_t remote) = 0;
 
-    virtual bool
-    Configure(const NetworkConfig&, const DnsConfig&) = 0;
+    virtual bool Configure(const NetworkConfig&, const DnsConfig&) = 0;
 
-    virtual std::string_view
-    endpoint_name() const = 0;
+    virtual std::string_view endpoint_name() const = 0;
 
     /// called to do any deferred startup items after configure.
-    virtual void
-    start_endpoint(){};
+    virtual void start_endpoint(){};
 
     /// initiate shutdown of all periodic operations.
-    virtual void
-    stop_endpoint(){};
+    virtual void stop_endpoint(){};
 
     /// called in a periodic event loop timer.
-    virtual void
-    periodic_tick(){};
+    virtual void periodic_tick(){};
 
     /// called in an idempotent event loop handler after reading io each tick.
-    virtual void
-    event_loop_pump(){};
+    virtual void event_loop_pump(){};
   };
 
 }  // namespace llarp

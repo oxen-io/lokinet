@@ -8,6 +8,7 @@
 #include "path_types.hpp"
 #include "pathbuilder.hpp"
 #include "pathset.hpp"
+#include "transit_hop.hpp"
 #include <llarp/router_id.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
@@ -32,8 +33,6 @@ namespace llarp
 
   namespace path
   {
-    struct TransitHop;
-    struct TransitHopInfo;
 
     using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
@@ -52,6 +51,7 @@ namespace llarp
       ShortHash nonceXOR;
       /// next hop's router id
       RouterID upstream;
+
       /// nonce for key exchange
       TunnelNonce nonce;
       // lifetime
@@ -59,6 +59,9 @@ namespace llarp
 
       util::StatusObject
       ExtractStatus() const;
+
+      TransitHopInfo
+      to_transit_hop_info() const;
     };
 
     inline bool
@@ -101,6 +104,15 @@ namespace llarp
 
       util::StatusObject
       ExtractStatus() const;
+
+      TransitHopInfo
+      hop_info() const override
+      {
+        auto info = hops[0].to_transit_hop_info();
+        if (auto ptr = m_PathSet.lock())
+          info.downstream = ptr->our_router_id();
+        return info;
+      }
 
       PathRole
       Role() const
@@ -345,11 +357,6 @@ namespace llarp
       bool
       IsReady() const;
 
-      // Is this deprecated?
-      // nope not deprecated :^DDDD
-      PathID_t
-      TXID() const;
-
       RouterID
       Endpoint() const;
 
@@ -361,12 +368,6 @@ namespace llarp
 
       bool
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
-
-      PathID_t
-      RXID() const override;
-
-      RouterID
-      Upstream() const;
 
       std::string
       Name() const;

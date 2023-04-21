@@ -529,15 +529,13 @@ namespace llarp
       return h->HandleHiddenServiceFrame(*this);
     }
 
-    layers::flow::FlowTraffic
-    ProtocolMessage::to_flow_traffic() const
+    static layers::flow::FlowTraffic
+    get_flow_traffic(const ProtocolMessage& msg)
     {
       layers::flow::FlowTraffic traff;
-      traff.flow_info.dst =
-          layers::flow::FlowAddr{fmt::format("{}", handler->GetIdentity().pub.Addr())};
-      traff.flow_info.src = layers::flow::FlowAddr{fmt::format("{}", sender.Addr())};
-      traff.flow_info.tag = layers::flow::FlowTag{tag.as_array()};
-      switch (proto)
+      traff.flow_info.dst = layers::flow::FlowAddr{msg.handler->GetIdentity().pub.Addr()};
+      traff.flow_info.src = layers::flow::FlowAddr{msg.sender.Addr()};
+      switch (msg.proto)
       {
         case ProtocolType::Auth:
           traff.kind = layers::flow::FlowDataKind::auth;
@@ -559,9 +557,23 @@ namespace llarp
           traff.kind = layers::flow::FlowDataKind::unknown;
           break;
       }
+      return traff;
+    }
+
+    layers::flow::FlowTraffic
+    ProtocolMessage::to_flow_traffic() const
+    {
+      auto traff = get_flow_traffic(*this);
       traff.datum = payload;
       return traff;
     }
 
+    layers::flow::FlowTraffic
+    ProtocolMessage::steal_flow_traffic()
+    {
+      auto traff = get_flow_traffic(*this);
+      traff.datum = std::move(payload);
+      return traff;
+    }
   }  // namespace service
 }  // namespace llarp

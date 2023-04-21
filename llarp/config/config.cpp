@@ -1,7 +1,9 @@
 #include "config.hpp"
 #include "definition.hpp"
 #include "ini.hpp"
+#include "llarp/layers/platform/platform_addr.hpp"
 #include "llarp/net/ip_range.hpp"
+#include "llarp/net/sock_addr.hpp"
 
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
@@ -16,12 +18,14 @@
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 
-#include <llarp/service/name.hpp>
+#include <llarp/layers/flow/name_resolver.hpp>
 
 #include <chrono>
 #include <cstdlib>
 #include <ios>
 #include <iostream>
+#include <string>
+#include <string_view>
 
 namespace llarp
 {
@@ -512,33 +516,27 @@ namespace llarp
         [this](std::string arg) {
           if (arg.empty())
             return;
-          service::Address exit;
-          IPRange range;
+          IPRange range{"::/0"};
+
           const auto pos = arg.find(":");
-          if (pos == std::string::npos)
-          {
-            range.FromString("::/0");
-          }
-          else if (not range.FromString(arg.substr(pos + 1)))
-          {
-            throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
-          }
           if (pos != std::string::npos)
           {
+            range = IPRange{arg.substr(1 + pos)};
             arg = arg.substr(0, pos);
           }
 
-          if (service::NameIsValid(arg))
+          // special value for dropping packets.
+          else if (IsFalseValue(arg) or arg == "null")
           {
-            m_LNSExitMap.Insert(range, arg);
-            return;
+            arg = "";
+          }
+          else if (not layers::flow::NameResolver::name_well_formed(arg))
+          {
+            throw std::invalid_argument{"invalid exit: '{}'"_format(arg)};
           }
 
-          if (arg != "null" and not exit.FromString(arg))
-          {
-            throw std::invalid_argument{fmt::format("[network]:exit-node bad address: {}", arg)};
-          }
-          m_ExitMap.Insert(range, exit);
+          auto& [mapping, auth] = addr_map.mappings[arg];
+          mapping.owned_ranges.emplace_back(range);
         });
 
     conf.defineOption<std::string>(
@@ -556,29 +554,22 @@ namespace llarp
         [this](std::string arg) {
           if (arg.empty())
             return;
-          service::Address exit;
-          service::AuthInfo auth;
-          const auto pos = arg.find(":");
+          auto pos = arg.find(":");
           if (pos == std::string::npos)
-          {
-            throw std::invalid_argument(
-                "[network]:exit-auth invalid format, expects "
-                "exit-address.loki:auth-code-goes-here");
-          }
-          const auto exit_str = arg.substr(0, pos);
-          auth.token = arg.substr(pos + 1);
+            throw std::invalid_argument{"invalid exit auth: '{}'"_format(arg)};
 
-          if (service::NameIsValid(exit_str))
-          {
-            m_LNSExitAuths.emplace(exit_str, auth);
-            return;
-          }
+          auto authcode = arg.substr(1 + pos);
 
-          if (not exit.FromString(exit_str))
-          {
-            throw std::invalid_argument("[network]:exit-auth invalid exit address");
-          }
-          m_ExitAuths.emplace(exit, auth);
+          arg = arg.substr(pos);
+
+          if (not layers::flow::NameResolver::name_well_formed(arg))
+            throw std::invalid_argument{"invalid exit for auth: '{}'"_format(arg)};
+
+          if (authcode.empty())
+            throw std::invalid_argument{"authcode for '{} was empty'"_format(arg)};
+
+          auto& [mapping, auth] = addr_map.mappings[arg];
+          auth.token = authcode;
         });
 
     conf.defineOption<bool>(
@@ -666,42 +657,33 @@ namespace llarp
         MultiValue,
         Comment{
             "Map a remote `.loki` address to always use a fixed local IP. For example:",
-            "    mapaddr=whatever.loki:172.16.0.10",
-            "maps `whatever.loki` to `172.16.0.10` instead of using the next available IP.",
-            "The given IP address must be inside the range configured by ifaddr=",
-        },
+            "    mapaddr=whatever.loki,172.16.0.10",
+            "both maps `whatever.loki` to `172.16.0.10` instead of using the next available IPv4; "
+            "and",
+            "    mapaddr=things.loki,fd00::2",
+            "maps `things.loki` to fd00::2 for IPv6 traffic.",
+            "The given IP address must be a multicast address or inside the range configured by "
+            "ifaddr=",
+            "When providing only IPv4 addresses the delimiter `:` MAY be used in place of `,`."},
         [this](std::string arg) {
           if (arg.empty())
             return;
-          huint128_t ip;
-          service::Address addr;
-          const auto pos = arg.find(":");
-          if (pos == std::string::npos)
-          {
-            throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid entry: {}", arg)};
-          }
-          std::string addrstr = arg.substr(0, pos);
-          std::string ipstr = arg.substr(pos + 1);
-          if (not ip.FromString(ipstr))
-          {
-            huint32_t ipv4;
-            if (not ipv4.FromString(ipstr))
-            {
-              throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid ip: {}", ipstr)};
-            }
-            ip = net::ExpandV4(ipv4);
-          }
-          if (not addr.FromString(addrstr))
-          {
-            throw std::invalid_argument{
-                fmt::format("[endpoint]:mapaddr invalid addresss: {}", addrstr)};
-          }
-          if (m_mapAddrs.find(ip) != m_mapAddrs.end())
-          {
-            throw std::invalid_argument{
-                fmt::format("[endpoint]:mapaddr ip already mapped: {}", ipstr)};
-          }
-          m_mapAddrs[ip] = addr;
+          if (arg.find(",") == std::string::npos and arg.find(",") == std::string::npos)
+            throw std::invalid_argument{"invalid address mapping: '{}'"_format(arg)};
+
+          auto delim = arg.find(",") == std::string::npos ? ":" : ",";
+          auto parts = split(arg, delim);
+          if (parts.size() <= 1)
+            throw std::invalid_argument{"invalid address mapping: '{}'"_format(arg)};
+
+          auto name = std::string{parts[0]};
+          auto dst = std::string{parts[1]};
+
+          if (not layers::flow::NameResolver::name_well_formed(name))
+            throw std::invalid_argument{"address mapping has malformed name: '{}'"_format(name)};
+
+          auto& mapping = std::get<0>(addr_map.mappings[name]);
+          mapping.dst = layers::platform::PlatformAddr{dst};
         });
 
     conf.defineOption<std::string>(

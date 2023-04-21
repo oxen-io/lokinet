@@ -2,6 +2,7 @@
 
 #include "platform_addr.hpp"
 #include <llarp/layers/flow/flow_info.hpp>
+#include <llarp/net/ip_range_map.hpp>
 
 #include <chrono>
 #include <string>
@@ -18,22 +19,39 @@ namespace llarp::layers::flow
 namespace llarp::layers::platform
 {
 
-  class AddrMapper;
-
+  /// holds all info about a platform layer to flow layer mapping.
+  /// lets us keep track of which flow we are using and which kinds of ingres/egres traffic we
+  /// permit.
   struct AddressMapping
   {
+    /// the current flow layer info we are using for this mapping.
+
     std::optional<flow::FlowInfo> flow_info;
+
+    /// source and destination addresses for ingres traffic
+    /// we only allow ingres from src.
+    /// we only route ingres bound for dst.
     PlatformAddr src, dst;
-    /// ip ranges for "exit"
+
+    /// additional ranges we permit ingres traffic bound to as dst.
     std::vector<IPRange> owned_ranges;
 
     /// return true if we own this exact range range.
     bool
     owns_range(const IPRange& range) const;
 
+    /// return true if we allow ingres traffic with this src and dst address
+    bool
+    allows_ingres(const PlatformAddr& src, const PlatformAddr& dst) const;
+
+    /// return true if we allow egres traffic with this src and dst address
+    bool
+    allows_egres(const PlatformAddr& src, const PlatformAddr& dst) const;
+
     std::string
     ToString() const;
 
+    /// helper that tells us if we permit more than just traffic to dst.
     bool
     is_exit() const;
   };
@@ -108,8 +126,13 @@ namespace llarp::layers::platform
     /// unconditionally put an entry in.
     /// stomps existing entry.
     /// if full, removes the least frequenty used mapping.
-    void
+    /// returns entry now exists in the address map.
+    AddressMapping&
     put(AddressMapping&&);
+
+    /// unmap an address mapping.
+    /// returns true if it was removed.
+    bool unmap(AddressMapping);
 
     /// prune all mappings we have no flows for
     void

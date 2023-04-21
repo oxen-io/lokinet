@@ -1,8 +1,15 @@
 #include "platform_layer.hpp"
+#include <bits/chrono.h>
 #include "dns_bridge.hpp"
+#include "llarp/layers/flow/flow_info.hpp"
 #include "llarp/layers/platform/addr_mapper.hpp"
+#include "llarp/layers/platform/ethertype.hpp"
+#include "llarp/layers/platform/platform_addr.hpp"
 #include "llarp/net/ip_range.hpp"
+#include "llarp/service/auth.hpp"
+#include "oxen/log.hpp"
 
+#include <chrono>
 #include <llarp/config/config.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/layers/flow/flow_layer.hpp>
@@ -277,80 +284,147 @@ namespace llarp::layers::platform
       , addr_mapper{_netconf.ifaddr(router.Net())}
   {}
 
-  /// a functor that will try to map exits that are not currently mapped.
-  struct map_initial_exits : std::enable_shared_from_this<map_initial_exits>
+  /// a helper type that resolves a remote after putting an address mapping in for it.
+  /// calls result_handlers for resolve result.
+  /// can unmap entry on failure if desired.
+  struct map_remote_attempt
+  {
+    std::string name;
+    AddrMapper& addr_mapper;
+    llarp::layers::flow::FlowLayer& flow_layer;
+    AddressMapping& mapping;
+    std::string auth;
+    std::function<void(std::optional<flow::FlowInfo>, std::string)> result_handler;
+    bool unmap_on_fail{false};
+
+    void
+    attempt();
+
+    inline void
+    operator()()
+    {
+      attempt();
+    }
+  };
+
+  /// a functor that will try to set up all address mappings we provided in config.
+  struct add_initial_mappings : std::enable_shared_from_this<add_initial_mappings>
   {
     PlatformLayer& plat;
 
-    net::IPRangeMap<std::string> exits;
-    std::unordered_map<std::string, service::AuthInfo> auths;
-
-    std::unordered_set<std::string> pending;
-
-    explicit map_initial_exits(PlatformLayer& _plat)
-        : plat{_plat}, exits{_plat._netconf.m_LNSExitMap}, auths{_plat._netconf.m_LNSExitAuths}
-
+    struct AttemptInfo
     {
-      const auto& netconf = _plat._netconf;
+      decltype(AddressMapConfig::mappings)::mapped_type value;
+      std::chrono::duration<double> backoff{0ms};
+      bool busy{false};
 
-      for (const auto& [addr, auth] : netconf.m_ExitAuths)
-        auths[fmt::format("{}", addr)] = auth;
+      static constexpr std::chrono::duration<double> max_backoff = 5min;
 
-      netconf.m_ExitMap.ForEachEntry([this](const auto& range, const auto& addr) {
-        exits.Insert(range, fmt::format("{}", addr));
-      });
+      auto
+      apply_backoff()
+      {
+        backoff += 50ms;
+        backoff = std::min(backoff * 1.25, max_backoff);
+        return std::chrono::duration_cast<std::chrono::milliseconds>(backoff);
+      }
+    };
+
+    // name of exit -> attempt info mapping.
+    std::unordered_map<std::string, AttemptInfo> pending;
+
+    explicit add_initial_mappings(PlatformLayer& _plat) : plat{_plat}
+    {
+      for (const auto& [name, info] : plat._netconf.addr_map.mappings)
+      {
+        // initial attempt backoff of 50ms.
+        auto& attempt = pending[name] = AttemptInfo{info};
+
+        // make sure src is set.
+        auto& mapping = std::get<0>(attempt.value);
+        if (not mapping.src.ip.n)
+          mapping.src = plat._io->our_platform_addr();
+      }
     }
 
+    /// make an attempt on all pending entries to be mapped.
     void
     operator()()
     {
-      if (exits.Empty() and pending.empty())
+      if (pending.empty())
       {
-        // die if we have nothing left to do.
+        // there is nothing left to do.
+        // this will make the shared_ptr no longer exist.
         _self.reset();
         return;
       }
 
-      exits.ForEachEntry([this](const auto& range, const auto& exit) {
-        const auto& auth = auths[exit];
-        auto [itr, inserted] = pending.emplace(exit);
-        if (inserted)
-        {
-          log::info(logcat, "map {} via {}", range, exit);
-          plat.map_exit(
-              exit,
-              auth.token,
-              std::vector{range},
-              [this, exit = exit, range = range](bool ok, auto msg) {
-                on_result(ok, msg, exit, range);
-              });
-        }
-      });
+      for (auto& [name, info] : pending)
+      {
+        if (info.busy)
+          continue;
+
+        log::info(logcat, "try looking up {}", name);
+        // mark as requesting.
+        info.busy = true;
+        // do initial attempt.
+        if (info.backoff == 0ms)
+          plat._router.loop()->call_soon(make_attempt(name));
+        else
+          plat._router.loop()->call_later(info.apply_backoff(), make_attempt(name));
+      }
     }
 
-    void
+    /// return ourself after owning a shared pointer to ourself.
+    /// this will keep ourself alive.
+    add_initial_mappings&
     keep_alive()
     {
       _self = shared_from_this();
+      return *this;
     }
 
    private:
-    void
-    on_result(bool ok, std::string msg, std::string exit, IPRange range)
+    map_remote_attempt
+    make_attempt(std::string name)
     {
-      pending.erase(exit);
+      auto& ent = pending[name];
+      auto& mapping = std::get<0>(ent.value);
+      const auto& auth = std::get<1>(ent.value);
+
+      map_remote_attempt map_attempt{
+          name,
+          plat.addr_mapper,
+          plat._flow_layer,
+          mapping,
+          auth.token,
+          [this, name = name](auto maybe, auto msg) { on_result(maybe, msg, name); }};
+    }
+
+    void
+    on_result(std::optional<flow::FlowInfo> maybe, std::string msg, std::string name)
+    {
+      auto itr = pending.find(name);
+      if (itr == pending.end())
+        return;
+
+      bool ok{maybe};
       if (ok)
       {
-        log::info(logcat, "got exit from {}: {}", exit, msg);
-
-        exits.RemoveIf([entry = std::make_pair(range, exit)](auto itr) { return itr == entry; });
+        log::info(logcat, "mapped {}: {}", name, msg);
+        // put address mapping.
+        auto& mapping = std::get<0>(itr->second.value);
+        mapping.flow_info = maybe;
+        plat.addr_mapper.put(std::move(mapping));
+        // prevent any additional attempts.
+        pending.erase(itr);
+        return;
       }
-      else
-        log::info(logcat, "failed to map exit {}: {}", exit, msg);
+      itr->second.busy = false;
+      log::info(logcat, "failed to map {}: {}", name, msg);
     }
 
     /// a copy of itself, cleared to destroy itself.
-    std::shared_ptr<map_initial_exits> _self;
+    std::shared_ptr<add_initial_mappings> _self;
   };
 
   void
@@ -379,9 +453,8 @@ namespace llarp::layers::platform
     if (const auto& dns = _router.get_dns())
       dns->Start(netif->Info().index);
 
-    auto mapper = std::make_shared<map_initial_exits>(*this);
-    _router.loop()->call_every(500ms, mapper, *mapper);
-    mapper->keep_alive();
+    auto mapper = std::make_shared<add_initial_mappings>(*this);
+    _router.loop()->call_every(100ms, mapper, mapper->keep_alive());
   }
 
   void
@@ -392,42 +465,6 @@ namespace llarp::layers::platform
     if (_io)
       _io->detach();
   }
-
-  /// handles when we have established a flow with a remote.
-  struct got_flow_handler
-  {
-    AddrMapper& mapper;
-    AddressMapping entry;
-    std::string name;
-    std::function<void(std::optional<flow::FlowInfo>, std::string)> result_handler;
-    void
-    fail(std::string error_reason) const
-    {
-      std::string msg{"could not obtain flow to '{}': {}"_format(name, error_reason)};
-      log::info(logcat, msg);
-      mapper.remove_if_mapping(
-          [this](const auto& other) { return entry.src == other.src and entry.dst == other.dst; });
-      result_handler(std::nullopt, msg);
-    }
-
-    void
-    success(const flow::FlowInfo& flow_info)
-    {
-      entry.flow_info = flow_info;
-      mapper.put(std::move(entry));
-      log::info(logcat, "flow established on: {}", flow_info);
-      result_handler(flow_info, "");
-    }
-
-    void
-    operator()(std::optional<flow::FlowInfo> maybe_flow_info, std::string error)
-    {
-      if (maybe_flow_info)
-        success(*maybe_flow_info);
-      else
-        fail(std::move(error));
-    }
-  };
 
   /// called to handle when name resolution completes with either failure or success.
   struct resolved_name_handler
@@ -466,22 +503,15 @@ namespace llarp::layers::platform
       result_handler(std::nullopt, "address map full");
       return;
     }
+
     // reserve a mapping. dst is set even if it is an exit.
     auto& mapping = addr_mapper.allocate_mapping(src);
+    map_remote_attempt map_remote{name, addr_mapper, _flow_layer, mapping};
+    // add exits.
     mapping.owned_ranges = std::move(dst_ranges);
 
-    // call this when we got a flow to the remote.
-    got_flow_handler got_flow{addr_mapper, mapping, name, std::move(result_handler)};
-
-    // do any extra handshaking with a flow handshaker, then call the got flow handler
-    // todo: this really belongs in flow layer.
-    flow::FlowEstablish flow_establisher{std::move(got_flow), nullptr};
-    flow_establisher.authcode = std::move(auth);
-
-    resolved_name_handler resolved_name{_flow_layer, name, std::move(flow_establisher)};
-
-    // fire off the lookup.
-    _flow_layer.name_resolver.resolve_flow_addr_async(std::move(name), std::move(resolved_name));
+    // do the actual attempt.
+    map_remote();
   }
 
   std::shared_ptr<vpn::NetworkInterface>
@@ -505,6 +535,7 @@ namespace llarp::layers::platform
   }
 
   /// handles when we map an exit to an ip range after we have gotten a flow with it.
+  /// this puts the route poker up.
   struct map_exit_handler
   {
     AbstractRouter& router;
@@ -516,7 +547,7 @@ namespace llarp::layers::platform
       if (found)
       {
         log::info(logcat, "got exit {}: '{}'", found->dst, msg);
-        // found the result, put firewallup.
+        // found the result, put firewall up.
         if (const auto& poker = router.routePoker())
           poker->Up();
         result_handler(true, std::move(msg));
@@ -542,6 +573,38 @@ namespace llarp::layers::platform
         std::move(ranges),
         _io->our_platform_addr(),
         map_exit_handler{_router, std::move(result_handler)});
+  }
+
+  void
+  map_remote_attempt::attempt()
+  {
+    // wrap the result handler to unmap the address mapping if that was desired.
+    decltype(result_handler) handler = [result_handler = std::move(result_handler), this](
+                                           auto maybe, auto msg) {
+      if (unmap_on_fail and not maybe)
+        addr_mapper.unmap(mapping);
+
+      result_handler(maybe, msg);
+    };
+
+    // these events are called in bottom to top order.
+    // start from the end of the function and read the comments blocks in reverse order for the
+    // sequence of events.
+
+    // try to etablish a flow and call a handler that will do something when we get a flow or failed
+    // to get a flow. this does any additional pre setup auth with the remote before handing over
+    // the flow to those who care.
+    flow::FlowEstablish flow_establisher{std::move(handler), nullptr};
+    flow_establisher.authcode = std::move(auth);
+
+    // called when we resolved a name to the long form address.
+    // if we failed, we will fail the flow establisher we could not establish a flow because of a
+    // name resolve error. if we succeeded we will attempt to establish a flow on this flow
+    // establisher.
+    resolved_name_handler resolved_name{flow_layer, name, std::move(flow_establisher)};
+
+    // resolve the remote name to a long form address if it is needed.
+    flow_layer.name_resolver.resolve_flow_addr_async(std::move(name), std::move(resolved_name));
   }
 
   void

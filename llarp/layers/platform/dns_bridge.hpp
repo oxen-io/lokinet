@@ -31,7 +31,13 @@ namespace llarp::layers::platform
     /// any known cached ons names for this zone.
     std::vector<std::string> _ons_names;
     std::vector<dns::SRVData> _srv;
-    AddrMapper* const _addr_mapper;
+    const AddrMapper* _addr_mapper{nullptr};
+
+   public:
+    DNSZone() = default;
+
+    /// takes out zone info from an address mapper for a flow address addr.
+    DNSZone(const AddrMapper& mapper, flow::FlowAddr addr);
 
     /// synth srv records rdata.
     std::vector<dns::RData>
@@ -45,18 +51,15 @@ namespace llarp::layers::platform
     uint32_t
     ttl(dns::RRType rr_type) const;
 
+    /// the root dns name of this zone, basically just the flow address encoded for dns.
     std::string
     zone_name() const;
 
-    constexpr AddrMapper&
+    constexpr const AddrMapper&
     addr_mapper() const
     {
       return *_addr_mapper;
     }
-
-   public:
-    DNSZone();
-    DNSZone(AddrMapper& mapper, flow::FlowAddr addr);
 
     /// add a new srv recrod to this dns zone.
     void
@@ -83,13 +86,16 @@ namespace llarp::layers::platform
    public:
     explicit DNSQueryHandler(PlatformLayer& parent);
     ~DNSQueryHandler() override = default;
+    DNSQueryHandler(DNSQueryHandler&&) = delete;
+    DNSQueryHandler(const DNSQueryHandler&) = delete;
 
+    /// overrides dns::Resolver_Base
     int
     Rank() const override;
-
+    /// overrides dns::Resolver_Base
     std::string_view
     ResolverName() const override;
-
+    /// overrides dns::Resolver_Base
     bool
     MaybeHookDNS(
         std::shared_ptr<dns::PacketSource_Base> source,

@@ -507,7 +507,7 @@ namespace llarp
           return false;
         if (not path->SendRoutingMessage(reply, router))
           return false;
-        router->pathContext().PumpUpstream();
+        router->pathContext().trigger_downstream_flush();
         return true;
       }
       return true;

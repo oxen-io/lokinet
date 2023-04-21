@@ -1,4 +1,6 @@
 #include "dns_bridge.hpp"
+#include "llarp/dns/rr.hpp"
+#include "oxen/log.hpp"
 #include "platform_layer.hpp"
 #include "addr_mapper.hpp"
 
@@ -19,10 +21,7 @@ namespace llarp::layers::platform
 
   static auto logcat = log::Cat("dns");
 
-  DNSZone::DNSZone() : _flow_addr{}, _addr_mapper{nullptr}
-  {}
-
-  DNSZone::DNSZone(AddrMapper& addr_mapper, flow::FlowAddr addr)
+  DNSZone::DNSZone(const AddrMapper& addr_mapper, flow::FlowAddr addr)
       : _flow_addr{std::move(addr)}, _addr_mapper{&addr_mapper}
   {}
 
@@ -54,6 +53,29 @@ namespace llarp::layers::platform
   DNSZone::zone_name() const
   {
     return _flow_addr.ToString();
+  }
+
+  static auto
+  synth_rr_from_mapping(const DNSZone& zone, const AddressMapping& mapping, dns::RRType rr_type)
+  {
+    std::vector<dns::RData> recs;
+    if (auto maybe_v4 = mapping.dst.as_ipv4addr(); maybe_v4 and rr_type == dns::RRType::A)
+      recs.emplace_back(*maybe_v4);
+
+    else if (rr_type == dns::RRType::AAAA)
+      recs.emplace_back(mapping.dst.ip);
+    else if (rr_type == dns::RRType::SRV)
+    {
+      for (auto srv : zone.srv_records())
+        recs.insert(recs.end(), std::move(srv));
+    }
+    else if (rr_type == dns::RRType::CNAME)
+    {
+      for (auto cname : zone.cname_records())
+        recs.insert(recs.end(), std::move(cname));
+    }
+    else if (rr_type == dns::RRType::MX)
+      recs.emplace_back(uint16_t{10}, dns::split_dns_name(zone.zone_name()));
   }
 
   std::vector<dns::ResourceRecord>
@@ -146,17 +168,22 @@ namespace llarp::layers::platform
       const SockAddr& to,
       const SockAddr& from)
   {
+    log::debug(logcat, "maybe handle dns query: {}");
     if (query.questions.empty())
       return false;
 
     // make sure this query is meant for us.
     const auto& question = query.questions.at(0);
     if (not dns::is_lokinet_tld(question.tld()))
+    {
+      log::trace(logcat, "question is not for lokinet tld: {}", question);
       return false;
-    // make sure we understand the rr type requested.
+
+    }  // make sure we understand the rr type requested.
     auto maybe_qtype = dns::get_rr_type(question.qtype);
     if (not maybe_qtype)
     {
+      log::trace(logcat, "question RR of type {} not known", int{question.qtype});
       dns::Message reply{query};
       // no such rr type know by us. we dont serv fail so queries dont leak.
       source->SendTo(from, to, reply.nx().ToBuffer());
@@ -169,11 +196,13 @@ namespace llarp::layers::platform
           dns::Message msg{query};
           if (not maybe_zone)
           {
+            log::trace(logcat, "no zone found for {}", query);
             source->SendTo(from, to, msg.nx().ToBuffer());
             return;
           }
           for (auto found_rr : maybe_zone->synth_rr_for(qtype))
             msg.answers.emplace_back(std::move(found_rr));
+          log::trace(logcat, "zone found answers=({})", fmt::join(msg.answers, ","));
           source->SendTo(from, to, msg.ToBuffer());
         });
     return true;

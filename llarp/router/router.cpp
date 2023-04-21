@@ -1,6 +1,8 @@
 #include "router.hpp"
+#include <unbound.h>
 
 #include <exception>
+#include <functional>
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/files.hpp>
@@ -73,8 +75,6 @@ namespace llarp
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
     m_Pump = _loop->make_waker([this]() { PumpLL(); });
-
-    _inbound_link_layer_wakeup = _loop->make_waker([this]() { pathContext().PumpDownstream(); });
   }
 
   Router::~Router()
@@ -94,9 +94,8 @@ namespace llarp
     std::lock_guard lock{_pump_mtx};
 
     llarp::LogTrace("Router::PumpLL() start");
-    paths.PumpDownstream();
-    paths.PumpUpstream();
-    _outboundMessageHandler.Pump(false);
+    paths.Pump();
+    _outboundMessageHandler.Pump();
     _linkManager.PumpLinks();
     llarp::LogTrace("Router::PumpLL() end");
   }
@@ -182,10 +181,8 @@ namespace llarp
       LogWarn("no link session");
       return false;
     }
-    if (not inbound_link_msg_parser.ProcessFrom(session, buf))
-      return false;
-    _inbound_link_layer_wakeup->Trigger();
-    return true;
+
+    return inbound_link_msg_parser.ProcessFrom(session, buf);
   }
   void
   Router::Freeze()
@@ -263,18 +260,18 @@ namespace llarp
   void
   Router::TriggerPump()
   {
-    if (not _pump_mtx.try_lock())
-      return;
-    m_Pump->Trigger();
-    _pump_mtx.unlock();
+    pathContext().trigger_downstream_flush();
+    pathContext().trigger_upstream_flush();
+    linkManager().PumpLinks();
   }
 
   bool
   Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
   {
-    if (not _outboundMessageHandler.QueueMessage(remote, msg, handler))
+    auto& out = outboundMessageHandler();
+    if (not out.QueueMessage(remote, msg, handler))
       return false;
-    TriggerPump();
+    out.IdempotentPump();
     return true;
   }
 
@@ -760,7 +757,7 @@ namespace llarp
         &_linkManager,
         &_rcLookupHandler,
         &_routerProfiling,
-        _loop,
+        loop(),
         util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(strictConnectPubkeys, bootstrapRCList, whitelistRouters, m_isServiceNode);
@@ -892,6 +889,26 @@ namespace llarp
   }
 
   void
+  Router::connect_to_network()
+  {
+    auto isSvcNode = IsServiceNode();
+    if (not isSvcNode)
+    {
+      for (const auto& edge : m_Config->network.m_strictConnect)
+      {
+        outboundSessionMaker().CreateSessionTo(edge, [](auto, auto) {});
+      }
+    }
+
+    auto connectToNum = isSvcNode ? _outboundSessionMaker.minConnectedRouters
+                                  : _outboundSessionMaker.maxConnectedRouters;
+    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
+
+    if (strictConnect == 0)
+      ConnectToRandomRouters(static_cast<int>(connectToNum));
+  }
+
+  void
   Router::Tick()
   {
     const auto now = Now();
@@ -1016,25 +1033,12 @@ namespace llarp
 
     pathContext().periodic_tick();
 
-    size_t connected = NumberOfConnectedRouters();
-    if (not isSvcNode)
-    {
-      connected += _linkManager.NumberOfPendingConnections();
-    }
-
     const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
     if (timepoint_now >= m_NextExploreAt and not decom)
     {
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
-    }
-    size_t connectToNum = isSvcNode ? _outboundSessionMaker.minConnectedRouters
-                                    : _outboundSessionMaker.maxConnectedRouters;
-    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
-    if (strictConnect > 0 && connectToNum > strictConnect)
-    {
-      connectToNum = strictConnect;
     }
 
     if (isSvcNode and now >= m_NextDecommissionWarn)
@@ -1062,14 +1066,8 @@ namespace llarp
       }
     }
 
-    // if we need more sessions to routers and we are not a service node kicked from the network or
-    // we are a client we shall connect out to others
-    if (connected < connectToNum and (LooksFunded() or not isSvcNode))
-    {
-      size_t dlt = connectToNum - connected;
-      LogDebug("connecting to ", dlt, " random routers to keep alive");
-      _outboundSessionMaker.ConnectToRandomRouters(dlt);
-    }
+    // make sure we are connected to the network.
+    connect_to_network();
 
     // save profiles
     if (routerProfiling().ShouldSave(now) and m_Config->network.m_saveProfiles)
@@ -1507,11 +1505,11 @@ namespace llarp
     get_layers()->stop_all();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final upstream pump");
-    paths.PumpUpstream();
+    paths.trigger_upstream_flush();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final links pump");
     _linkManager.PumpLinks();
-    _loop->call_later(200ms, [this] { AfterStopIssued(); });
+    _loop->call_later(50ms, [this] { AfterStopIssued(); });
   }
 
   bool
@@ -1535,15 +1533,18 @@ namespace llarp
   void
   Router::ConnectToRandomRouters(int _want)
   {
+    if (_want <= 0)
+      return;
+
     const size_t want = _want;
     auto connected = NumberOfConnectedRouters();
-    if (not IsServiceNode())
-    {
-      connected += _linkManager.NumberOfPendingConnections();
-    }
-    if (connected >= want)
+    auto pending = _linkManager.NumberOfPendingConnections();
+    auto total = connected + pending;
+    if (total >= want)
       return;
-    _outboundSessionMaker.ConnectToRandomRouters(want);
+
+    auto dlt = want - total;
+    _outboundSessionMaker.ConnectToRandomRouters(static_cast<int>(dlt));
   }
 
   bool

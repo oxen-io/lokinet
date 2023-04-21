@@ -3,8 +3,10 @@
 #include "i_link_manager.hpp"
 
 #include <llarp/util/compare_ptr.hpp>
+#include "llarp/ev/ev.hpp"
 #include "server.hpp"
 
+#include <memory>
 #include <unordered_map>
 #include <set>
 #include <atomic>

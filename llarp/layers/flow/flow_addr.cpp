@@ -4,6 +4,9 @@
 
 #include <llarp/util/str.hpp>
 
+#include <llarp/router_id.hpp>
+#include <llarp/service/address.hpp>
+
 namespace llarp::layers::flow
 {
   FlowAddr::Kind
@@ -26,19 +29,42 @@ namespace llarp::layers::flow
       oxenc::from_base32z(str.begin(), str.end(), data.begin());
       return data;
     }
+
+    const std::array<byte_t, 32>&
+    get_data(const std::variant<service::Address, RouterID>& addr)
+    {
+      return var::visit(
+          [](auto&& addr) -> const std::array<byte_t, 32>& { return std::move(addr.as_array()); },
+          addr);
+    }
+
+    FlowAddr::Kind
+    find_kind(const std::variant<service::Address, RouterID>& addr)
+    {
+      return std::holds_alternative<RouterID>(addr) ? FlowAddr::Kind::snode : FlowAddr::Kind::snapp;
+    }
   }  // namespace
+
+  FlowAddr::FlowAddr() : FlowAddr{FlowAddr::Kind::none, {}}
+  {}
 
   FlowAddr::FlowAddr(std::string str)
       : llarp::AlignedBuffer<32>{decode_addr(split(str, ".", true)[0])}, _kind{get_kind(str)}
   {}
 
-  FlowAddr::FlowAddr(EndpointBase::AddressVariant_t addr)
-      : FlowAddr{var::visit([](auto&& a) -> std::string { return a.ToString(); }, addr)}
+  FlowAddr::FlowAddr(Kind k, array_t data)
+      : AlignedBuffer<32>{std::move(data)}
+      , _kind{k}
+
+      FlowAddr::FlowAddr(const std::variant<service::Address, RouterID>& addr)
+      : FlowAddr{find_kind(addr), get_data(addr)}
   {}
 
   std::string
   FlowAddr::ToString() const
   {
+    if (kind() == Kind::none)
+      return "null";
     return oxenc::to_base32z(begin(), end())
         + (kind() == Kind::snapp       ? ".loki"
                : kind() == Kind::snode ? ".snode"

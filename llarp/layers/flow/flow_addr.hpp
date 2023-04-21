@@ -1,10 +1,21 @@
 #pragma once
 
+#include <array>
 #include <llarp/util/aligned.hpp>
 #include <string>
 #include <string_view>
-#include <llarp/endpoint_base.hpp>
 #include <type_traits>
+
+#include <oxenc/variant.h>
+
+namespace llarp
+{
+  struct RouterID;
+  namespace service
+  {
+    struct Address;
+  }
+}  // namespace llarp
 
 namespace llarp::layers::flow
 {
@@ -13,18 +24,29 @@ namespace llarp::layers::flow
   class FlowAddr : public AlignedBuffer<32>
   {
    public:
+    using array_t = AlignedBuffer<32>::Data;
+    /// tells us if this flow address is for .loki/.snode/etc
     enum class Kind : uint8_t
     {
+      /// not set.
+      none,
+
+      /// for .loki
       snapp,
+      /// for .snode
       snode,
     };
 
-    FlowAddr() = default;
+    FlowAddr();
 
     /// construct from string
     explicit FlowAddr(std::string str);
 
-    explicit FlowAddr(EndpointBase::AddressVariant_t arg);
+    /// address for this kind with raw data.
+    FlowAddr(Kind k, array_t data);
+
+    /// construct from decprecated variant.
+    explicit FlowAddr(const std::variant<service::Address, RouterID>& arg);
 
     std::string
     ToString() const;
@@ -32,6 +54,7 @@ namespace llarp::layers::flow
     bool
     operator==(const FlowAddr& other) const;
 
+    /// tells us what type of flow address it is.
     Kind
     kind() const;
 

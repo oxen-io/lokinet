@@ -32,6 +32,8 @@
 
 #include <llarp/vpn/egres_packet_router.hpp>
 #include <llarp/dns/server.hpp>
+#include "llarp/path/ihophandler.hpp"
+#include "llarp/router_id.hpp"
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s

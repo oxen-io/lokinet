@@ -1,4 +1,5 @@
 #include "pathbuilder.hpp"
+#include "llarp/router_id.hpp"
 #include "oxen/log.hpp"
 #include "path_context.hpp"
 
@@ -139,7 +140,7 @@ namespace llarp::path
           router->pathContext().AddOwnPath(pathset, path_ptr);
           pathset->PathBuildStarted(path_ptr);
 
-          const RouterID remote = path_ptr->Upstream();
+          const RouterID remote = path_ptr->upstream();
           auto sentHandler = [router = router, path_ptr = path_ptr](auto status) {
             if (status != SendStatus::Success)
             {
@@ -174,6 +175,12 @@ namespace llarp::path
   BuildLimiter::Decay(llarp_time_t now)
   {
     m_EdgeLimiter.Decay(now);
+  }
+
+  RouterID
+  Builder::our_router_id() const
+  {
+    return m_router->pubkey();
   }
 
   bool
@@ -364,6 +371,8 @@ namespace llarp::path
               log_path,
               "cannot build path for '{}' because we are not collected to the network",
               Name());
+
+        m_router->connect_to_network();
         return std::nullopt;
       }
       hops.emplace_back(*maybe);

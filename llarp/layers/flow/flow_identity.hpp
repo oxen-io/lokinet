@@ -50,7 +50,7 @@ namespace llarp::layers::flow
   struct deprecated_path_ensure_handler;
 
   /// the local end of a one to one flow to a remote given a flow isolation metric (flow_tag)
-  /// flows do not change their source/destination address or their flow tag/convo tag.
+  /// flows do not change their source/destination address but may change their flow tag/convo tag.
   /// note: historically path handovers were allowed, but going forward this is discontinued.
   class FlowIdentity
   {
@@ -82,6 +82,14 @@ namespace llarp::layers::flow
     /// send flow traffic to the remote.
     void
     send_to_remote(std::vector<byte_t> dataum, FlowDataKind kind);
+
+    /// call this to update the flow tags we are using.
+    void
+    update_flow_tags(const std::set<flow::FlowTag>& tag);
+
+    /// remove all expired flow tags
+    void
+    prune_flow_tags();
 
     bool
     operator==(const FlowIdentity& other) const;

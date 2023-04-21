@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 #include <llarp/layers/flow/flow_layer.hpp>
+#include "llarp/layers/flow/flow_info.hpp"
+#include "llarp/layers/platform/platform_addr.hpp"
 
 namespace llarp::layers::platform
 {
@@ -40,6 +42,26 @@ namespace llarp::layers::platform
     if (itr == std::end(_addrs))
       return std::nullopt;
     return itr->access();
+  }
+
+  bool
+  AddressMapping::allows_ingres(const PlatformAddr& _src, const PlatformAddr& _dst) const
+  {
+    if (src != _src)
+      return false;
+
+    for (const auto& range : owned_ranges)
+    {
+      if (range.Contains(_dst.ip))
+        return true;
+    }
+    return dst == _dst;
+  }
+
+  bool
+  AddressMapping::allows_egres(const PlatformAddr& _src, const PlatformAddr& _dst) const
+  {
+    return allows_ingres(_dst, _src);
   }
 
   bool
@@ -188,7 +210,7 @@ namespace llarp::layers::platform
       _addrs.erase(lru_itr);
   }
 
-  void
+  AddressMapping&
   AddrMapper::put(AddressMapping&& ent)
   {
     auto itr = find_if([&ent](const auto& other) {
@@ -205,7 +227,11 @@ namespace llarp::layers::platform
       itr = _addrs.emplace(std::end(_addrs));
     }
     // access the entry for assignment to mark as just used now.
-    itr->access() = ent;
+    auto& mapping = itr->access();
+    // assign it
+    mapping = ent;
+    // return what we assigned.
+    return mapping;
   }
 
   void

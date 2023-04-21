@@ -4,6 +4,7 @@
 #include "hidden_service_address_lookup.hpp"
 
 #include "convotag.hpp"
+#include "llarp/router_id.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
@@ -85,24 +86,6 @@ namespace llarp
     {
       numDesiredPaths = conf.m_Paths.value_or(numDesiredPaths);
       numHops = conf.m_Hops.value_or(numHops);
-
-      conf.m_ExitMap.ForEachEntry([this, conf](const IPRange& range, const service::Address& addr) {
-        MapExitRange(range, addr);
-      });
-
-      for (const auto& [exit, auth] : conf.m_ExitAuths)
-      {
-        SetAuthInfoForEndpoint(exit, auth);
-      }
-
-      conf.m_LNSExitMap.ForEachEntry([this, conf](const IPRange& range, const std::string& name) {
-        std::optional<AuthInfo> auth;
-        const auto itr = conf.m_LNSExitAuths.find(name);
-        if (itr != conf.m_LNSExitAuths.end())
-          auth = itr->second;
-        LogInfo("map ", range, " to ", name);
-        m_StartupLNSMappings[name] = std::make_pair(range, auth);
-      });
 
       if (not m_state->Configure(conf))
         return false;
@@ -1676,9 +1659,9 @@ namespace llarp
               {
                 layers::flow::FlowTraffic traff;
                 traff.kind = layers::flow::FlowDataKind::direct_ip_unicast;
-                traff.flow_info.src = layers::flow::FlowAddr{snode.ToString()};
-                traff.flow_info.dst = layers::flow::FlowAddr{m_Identity.pub.Addr().ToString()};
-                traff.flow_info.tag = layers::flow::FlowTag{maybe->as_array()};
+                traff.flow_info.src = layers::flow::FlowAddr{snode};
+                traff.flow_info.dst = layers::flow::FlowAddr{m_Identity.pub.Addr()};
+
                 traff.datum = pkt.steal();
                 m_router->get_layers()->flow->offer_flow_traffic(std::move(traff));
               }
@@ -1793,28 +1776,21 @@ namespace llarp
         session->FlushDownstream();
 
       // handle inbound traffic sorted
-      util::ascending_priority_queue<ProtocolMessage> queue;
-      while (not m_InboundTrafficQueue.empty())
       {
-        // succ it out
-        queue.emplace(std::move(*m_InboundTrafficQueue.popFront()));
-      }
-      while (not queue.empty())
-      {
-        const auto& msg = queue.top();
-        LogDebug(
-            Name(),
-            " handle inbound packet on ",
-            msg.tag,
-            " ",
-            msg.payload.size(),
-            " bytes seqno=",
-            msg.seqno);
+        util::ascending_priority_queue<ProtocolMessage> queue;
+        while (not m_InboundTrafficQueue.empty())
+        {
+          // succ it out
+          queue.emplace(std::move(*m_InboundTrafficQueue.popFront()));
+        }
 
-        m_router->get_layers()->flow->offer_flow_traffic(msg.to_flow_traffic());
-        ConvoTagRX(msg.tag);
-
-        queue.pop();
+        while (not queue.empty())
+        {
+          const auto& msg = queue.top();
+          ConvoTagRX(msg.tag);
+          m_router->get_layers()->flow->offer_flow_traffic(msg.to_flow_traffic());
+          queue.pop();
+        }
       }
 
       auto router = Router();

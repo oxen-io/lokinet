@@ -12,6 +12,9 @@
 #include <llarp/service/endpoint.hpp>
 #include <llarp/path/path_context.hpp>
 #include <vector>
+#include "llarp/layers/flow/flow_info.hpp"
+#include "llarp/layers/flow/flow_tag.hpp"
+#include "llarp/service/convotag.hpp"
 
 namespace llarp::layers::flow
 {
@@ -56,8 +59,6 @@ namespace llarp::layers::flow
       // propagate flow traffic up to platform layer.
       if (auto traffic = flow_layer.poll_flow_traffic(); not traffic.empty())
         flow_layer.router.get_layers()->platform->flow_traffic(std::move(traffic));
-      // continue feeding any downstream traffic into the flow layer.
-      flow_layer.router.pathContext().PumpDownstream();
     }
   };
 
@@ -70,9 +71,12 @@ namespace llarp::layers::flow
     void
     operator()()
     {
+      // this Pump call calls SendRoutingMessage inside the gutts of service::Endpoint and queues
+      // them for send. we do not flush outbound queues for just the routing layer inside of
+      // SendRoutingMessage.
       flow_layer.local_deprecated_loki_endpoint()->Pump(time_now_ms());
-      // take the things we need to send out on paths and send them out.
-      flow_layer.router.pathContext().PumpUpstream();
+      // take the things we queued on paths for the routing and send them out.
+      flow_layer.router.pathContext().trigger_upstream_flush();
     }
   };
 
@@ -95,8 +99,11 @@ namespace llarp::layers::flow
       const auto& flow_tag = *maybe_tag;
       for (const auto& local_flow : _local_flows)
       {
-        if (local_flow->flow_info.tag == flow_tag)
-          return local_flow->flow_info.src;
+        for (const auto& tag : local_flow->flow_info.flow_tags)
+        {
+          if (tag == flow_tag)
+            return local_flow->flow_info.src;
+        }
       }
       throw std::invalid_argument{"no such local address for flow tag: {}"_format(flow_tag)};
     }
@@ -126,6 +133,9 @@ namespace llarp::layers::flow
     {
       log::trace(logcat, "tick");
       _deprecated_endpoint->Tick(router.Now());
+
+      for (auto& local_flow : _local_flows)
+        local_flow->prune_flow_tags();
     }
     log::trace(logcat, "ticked");
   }
@@ -141,11 +151,27 @@ namespace llarp::layers::flow
     }
   }
 
+  std::optional<FlowTag>
+  FlowLayer::best_flow_tag(const FlowInfo& flow_info) const
+  {
+    std::optional<FlowTag> maybe_best_tag;
+    for (const auto& tag : flow_info.flow_tags)
+    {}
+  }
+
   void
   FlowLayer::offer_flow_traffic(FlowTraffic&& traff)
   {
-    _recv.push_back(traff);
-    _wakeup_recv->Trigger();
+    for (auto& flow : _local_flows)
+    {
+      if (traff.flow_info == flow->flow_info)
+      {
+        flow->update_flow_tags(traff.flow_info.flow_tags);
+        _recv.push_back(traff);
+        _wakeup_recv->Trigger();
+        return;
+      }
+    }
   }
 
   bool
@@ -174,7 +200,7 @@ namespace llarp::layers::flow
   std::vector<FlowTraffic>
   FlowLayer::poll_flow_traffic()
   {
-    std::vector<FlowTraffic> ret{_recv.capacity()};
+    std::vector<FlowTraffic> ret;
     std::swap(ret, _recv);
     return ret;
   }
@@ -202,7 +228,7 @@ namespace llarp::layers::flow
   {
     for (const auto& local_flow : _local_flows)
     {
-      if (local_flow->flow_info.tag == flow_tag)
+      if (local_flow->flow_info.flow_tags.count(flow_tag))
         return true;
     }
     return false;

@@ -1,5 +1,6 @@
 #include "ihophandler.hpp"
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/path/path_context.hpp>
 
 namespace llarp
 {
@@ -13,7 +14,7 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->TriggerPump();
+      r->pathContext().trigger_upstream_flush();
       return true;
     }
 
@@ -25,7 +26,7 @@ namespace llarp
       pkt.first.resize(X.sz);
       std::copy_n(X.base, X.sz, pkt.first.begin());
       pkt.second = Y;
-      r->TriggerPump();
+      r->pathContext().trigger_downstream_flush();
       return true;
     }
 
@@ -35,5 +36,34 @@ namespace llarp
       m_UpstreamReplayFilter.Decay(now);
       m_DownstreamReplayFilter.Decay(now);
     }
+
+    RouterID
+    IHopHandler::upstream() const
+    {
+      auto info = hop_info();
+      return info.upstream;
+    }
+
+    RouterID
+    IHopHandler::downstream() const
+    {
+      auto info = hop_info();
+      return info.downstream;
+    }
+
+    PathID_t
+    IHopHandler::txID() const
+    {
+      auto info = hop_info();
+      return info.txID;
+    }
+
+    PathID_t
+    IHopHandler::rxID() const
+    {
+      auto info = hop_info();
+      return info.rxID;
+    }
+
   }  // namespace path
 }  // namespace llarp

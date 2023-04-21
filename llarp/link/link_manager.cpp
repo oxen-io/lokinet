@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <set>
+#include "llarp/ev/ev.hpp"
 
 namespace llarp
 {
@@ -107,13 +108,9 @@ namespace llarp
   LinkManager::PumpLinks()
   {
     for (const auto& link : inboundLinks)
-    {
-      link->Pump();
-    }
+      link->IdempotentPump();
     for (const auto& link : outboundLinks)
-    {
-      link->Pump();
-    }
+      link->IdempotentPump();
   }
 
   void

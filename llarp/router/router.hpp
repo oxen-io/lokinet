@@ -79,11 +79,6 @@ namespace llarp
     path::BuildLimiter m_PathBuildLimiter;
 
     std::shared_ptr<EventLoopWakeup> m_Pump;
-
-    /// wake this up when we get a link layer message recieved.
-    /// it will keep things pumping.
-    std::shared_ptr<EventLoopWakeup> _inbound_link_layer_wakeup;
-
     std::shared_ptr<dns::Server> m_DNS;
 
     std::unique_ptr<const layers::Layers> m_Layers;
@@ -336,6 +331,9 @@ namespace llarp
     {
       return _outboundMessageHandler;
     }
+
+    void
+    connect_to_network() override;
 
     IOutboundSessionMaker&
     outboundSessionMaker() override

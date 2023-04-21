@@ -64,18 +64,16 @@ namespace llarp::dns
     explicit UDPReader(Server& dns, const EventLoop_ptr& loop, llarp::SockAddr bindaddr)
         : m_DNS{dns}
     {
-      m_udp = loop->make_udp(
-          [&](auto&, SockAddr src, llarp::OwnedBuffer buf) {
-            auto laddr = m_udp->LocalAddr();
-
-            if (src == laddr)
-              return;
-            if (not m_DNS.MaybeHandlePacket(shared_from_this(), laddr, src, std::move(buf)))
-            {
-              log::warning(logcat, "did not handle dns packet from {} to {}", src, laddr);
-            }
-          },
-          bindaddr);
+      m_udp = loop->make_udp([this, bindaddr](auto&, SockAddr src, llarp::OwnedBuffer buf) {
+        auto laddr = m_udp->LocalAddr().value_or(bindaddr);
+        if (src == laddr)
+          return;
+        if (not m_DNS.MaybeHandlePacket(shared_from_this(), laddr, src, std::move(buf)))
+        {
+          log::warning(logcat, "did not handle dns packet from {} to {}", src, laddr);
+        }
+      });
+      m_udp->listen(bindaddr);
     }
 
     std::optional<SockAddr>
