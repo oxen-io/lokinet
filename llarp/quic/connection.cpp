@@ -1061,9 +1061,8 @@ namespace llarp::quic
     if (auto it = streams.find(id); it != streams.end())
     {
       it->second->acknowledge(size);
-      return 0;
     }
-    return NGTCP2_ERR_CALLBACK_FAILURE;
+    return 0;
   }
 
   Server*
