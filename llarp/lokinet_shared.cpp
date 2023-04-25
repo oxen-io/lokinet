@@ -668,14 +668,14 @@ extern "C"
       return;
     }
 
+    auto lock = ctx->acquire();
+
     if (auto itr = ctx->active_conns.find(remote); itr != ctx->active_conns.end())
     {
       result->success = true;
       llarp::LogError("Active connection to {} already exists", remote);
       return;
     }
-
-    auto lock = ctx->acquire();
 
     if (not ctx->impl->IsUp())
     {
@@ -730,10 +730,13 @@ extern "C"
         open_cb(success, user_data);
     };
 
-    auto on_close = [&ctx, localAddr, remote, close_cb](int rv, void* user_data) {
+    auto on_close = [ctx, localAddr, remote, close_cb](int rv, void* user_data) {
       llarp::log::info(logcat, "Quic tunnel {}<->{} closed.", localAddr, remote);
 
-      ctx->active_conns.erase(remote);
+      {
+        auto lock = ctx->acquire();
+        ctx->active_conns.erase(remote);
+      }
 
       if (close_cb)
         close_cb(rv, user_data);
