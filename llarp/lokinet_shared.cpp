@@ -672,7 +672,7 @@ extern "C"
 
       if (auto itr = ctx->active_conns.find(remote); itr != ctx->active_conns.end())
       {
-        result->success = true;
+        *result = lokinet_tcp_result{itr->second};
         llarp::LogError("Active connection to {} already exists", remote);
         return;
       }
@@ -715,17 +715,24 @@ extern "C"
       return;
     }
 
-    auto on_open = [result, localAddr, remotehost, remoteport, open_cb](
+    auto on_open = [ctx, localAddr, remote, open_cb](
                        bool success, void* user_data) {
       llarp::log::info(
           logcat,
-          "Quic tunnel {}<->{}:{} {}.",
+          "Quic tunnel {}<->{}.",
           localAddr,
-          remotehost,
-          remoteport,
+          remote,
           success ? "opened successfully" : "failed");
 
-      result->success = success;
+      auto lock = ctx->acquire();
+
+      if (auto conn = ctx->active_conns.find(remote); conn != ctx->active_conns.end())
+      {
+        if (success)
+          conn->second.success = success;
+        else
+          ctx->active_conns.erase(remote);
+      }
 
       if (open_cb)
         open_cb(success, user_data);
