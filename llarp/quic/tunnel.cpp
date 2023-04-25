@@ -120,7 +120,11 @@ namespace llarp::quic
           // otherwise
           if (auto locked_conn = weak_conn.lock())
           {
-            stream->close(-1);
+            // If this end of the stream closed due to an abrupt close to the local TCP
+            // connection rather than an EOF, send an error code along so the other end
+            // knows this end is dead.  Otherwise, the streams on either end should die
+            // gracefully when both ends of the TCP connection are properly closed.
+            stream->close(stream->has_eof() ? 0 : tunnel::ERROR_TCP);
           }
           stream->data(nullptr);
         }
@@ -129,6 +133,10 @@ namespace llarp::quic
       tcp.on<uvw::EndEvent>([](auto&, uvw::TCPHandle& c) {
         // This fires on eof, most likely because the other side of the TCP connection closed it.
         log::info(logcat, "EOF on connection to {}:{}", c.peer().ip, c.peer().port);
+        if (auto stream = c.data<Stream>())
+        {
+          stream->set_eof(); // CloseEvent will send graceful shutdown to other end
+        }
         c.close();
       });
       tcp.on<uvw::ErrorEvent>([](const uvw::ErrorEvent& e, uvw::TCPHandle& tcp) {
@@ -145,7 +153,7 @@ namespace llarp::quic
           stream->data(nullptr);
           tcp.data(nullptr);
         }
-        // tcp.closeReset();
+        tcp.close();
       });
       tcp.on<uvw::DataEvent>(on_outgoing_data);
       stream.data_callback = on_incoming_data;

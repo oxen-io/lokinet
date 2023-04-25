@@ -201,6 +201,20 @@ namespace llarp::quic
       return is_closing;
     }
 
+    // Informs the stream that TCP EOF has been received on this end
+    void
+    set_eof()
+    {
+      tcp_eof = true;
+    }
+
+    // Returns true of the TCP connection on this end gave us EOF
+    bool
+    has_eof()
+    {
+      return tcp_eof;
+    }
+
     // Callback invoked when data is received
     using data_callback_t = std::function<void(Stream&, bstring_view)>;
 
@@ -357,6 +371,7 @@ namespace llarp::quic
     bool is_closing{false};
     bool sent_fin{false};
     bool is_shutdown{false};
+    bool tcp_eof{false};
 
     // Async trigger we use to schedule when_available callbacks (so that we can make them happen in
     // batches rather than after each and every packet ack).
