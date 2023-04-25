@@ -12,9 +12,9 @@ extern "C"
   {
     /// set to zero on success otherwise the error that happened
     /// use strerror(3) to get printable string of this error
-    int error{0};
+    int error;
     /// set once the tcp connection is successfully established
-    bool success{false};
+    bool success;
     /// the local ip address we mapped the remote endpoint to
     /// null terminated
     char local_address[256];
