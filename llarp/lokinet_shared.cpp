@@ -886,15 +886,24 @@ extern "C"
   {
     if (not ctx)
       return;
-    auto lock = ctx->acquire();
-    if (not ctx->impl->IsUp())
-      return;
+
+    {
+      auto lock = ctx->acquire();
+      if (not ctx->impl->IsUp())
+        return;
+    }
 
     try
     {
       std::promise<void> promise;
-      bool inbound = ctx->tcp_conns.at(tcp_id);
+      bool inbound{false};
+      {
+        auto lock = ctx->acquire();
+        inbound = ctx->tcp_conns.at(tcp_id);
+      }
+
       ctx->impl->CallSafe([tcp_id, inbound, ctx, &promise]() {
+        auto lock = ctx->acquire();
         auto ep = ctx->endpoint();
         auto* quic = ep->GetQUICTunnel();
         try
@@ -908,10 +917,14 @@ extern "C"
         {}
         promise.set_value();
       });
-      for (auto& itr : ctx->active_conns)
+
       {
-        if (itr.second.tcp_id == tcp_id)
-          ctx->active_conns.erase(itr.first);
+        auto lock = ctx->acquire();
+        for (auto& itr : ctx->active_conns)
+        {
+          if (itr.second.tcp_id == tcp_id)
+            ctx->active_conns.erase(itr.first);
+        }
       }
       promise.get_future().get();
     }
