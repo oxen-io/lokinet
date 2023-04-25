@@ -408,7 +408,6 @@ struct lokinet_srv_lookup_private
   {
     std::promise<int> promise;
     {
-      auto lock = ctx->acquire();
       if (ctx->impl and ctx->impl->IsUp())
       {
         ctx->impl->CallSafe([host, service, &promise, ctx, this]() {
@@ -668,13 +667,15 @@ extern "C"
       return;
     }
 
-    auto lock = ctx->acquire();
-
-    if (auto itr = ctx->active_conns.find(remote); itr != ctx->active_conns.end())
     {
-      result->success = true;
-      llarp::LogError("Active connection to {} already exists", remote);
-      return;
+      auto lock = ctx->acquire();
+
+      if (auto itr = ctx->active_conns.find(remote); itr != ctx->active_conns.end())
+      {
+        result->success = true;
+        llarp::LogError("Active connection to {} already exists", remote);
+        return;
+      }
     }
 
     if (not ctx->impl->IsUp())
@@ -805,6 +806,7 @@ extern "C"
       return;
     }
 
+    auto lock = ctx->acquire();
     ctx->outbound_tcp(remote, *result);
     assert(result->error == 0);
     return;
@@ -829,7 +831,6 @@ extern "C"
       return -1;
     std::promise<int> promise;
     {
-      auto lock = ctx->acquire();
       if (not ctx->impl->IsUp())
       {
         return -1;
