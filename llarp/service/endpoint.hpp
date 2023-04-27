@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <netdb.h>
 #include <oxenc/variant.h>
 
 #include <llarp/vpn/egres_packet_router.hpp>
@@ -568,13 +569,17 @@ namespace llarp
       IntroSet&       introSet();
 
       using ConvoMap = std::unordered_map<ConvoTag, Session>;
-      const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
+        const ConvoMap& Sessions() const;
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
 
       /// for rate limiting introset lookups
       util::DecayingHashSet<Address> m_IntrosetLookupFilter;
+
+     public:
+      std::shared_ptr<OutboundContext>
+      remote_to(const Address& addr) const;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

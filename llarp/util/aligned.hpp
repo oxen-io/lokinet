@@ -1,10 +1,15 @@
 #pragma once
 
 #include "bencode.h"
+#include "llarp/util/str.hpp"
+#include "llarp/util/types.hpp"
+#include <cstdint>
+#include <functional>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/formattable.hpp>
 
 #include <oxenc/hex.h>
+#include <sodium/utils.h>
 
 #include <array>
 #include <cstddef>
@@ -12,8 +17,12 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <algorithm>
+#include <typeinfo>
+#include <valarray>
 
 extern "C"
 {
@@ -39,18 +48,15 @@ namespace llarp
         sz >= 8,
         "AlignedBuffer cannot be used with buffers smaller than 8 "
         "bytes");
-
-    static constexpr size_t SIZE = sz;
-
-    using Data = std::array<byte_t, SIZE>;
-
-    virtual ~AlignedBuffer() = default;
+    static inline constexpr auto SIZE = sz;
+    using Data = std::array<byte_t, sz>;
 
     AlignedBuffer() = default;
 
-    explicit AlignedBuffer(const byte_t* data)
+    explicit AlignedBuffer(const byte_t* data) : AlignedBuffer<sz>{}
     {
-      *this = data;
+      for (size_t idx = 0; idx < size(); ++idx)
+        m_data[idx] = data[idx];
     }
 
     constexpr explicit AlignedBuffer(const Data& buf) : m_data{buf}
@@ -67,81 +73,74 @@ namespace llarp
     }
 
     /// bitwise NOT
-    AlignedBuffer<sz>
+    constexpr AlignedBuffer<sz>
     operator~() const
     {
-      AlignedBuffer<sz> ret;
-      std::transform(begin(), end(), ret.begin(), [](byte_t a) { return ~a; });
-
-      return ret;
+      AlignedBuffer<sz> other{};
+      std::transform(begin(), end(), other.data(), std::bit_not<>());
+      return other;
     }
 
-    bool
+    constexpr bool
     operator==(const AlignedBuffer& other) const
     {
       return m_data == other.m_data;
     }
 
-    bool
+    constexpr bool
     operator!=(const AlignedBuffer& other) const
     {
-      return m_data != other.m_data;
+      return not(*this == other);
     }
 
-    bool
+    constexpr bool
     operator<(const AlignedBuffer& other) const
     {
       return m_data < other.m_data;
     }
 
-    bool
+    constexpr bool
     operator>(const AlignedBuffer& other) const
     {
       return m_data > other.m_data;
     }
 
-    bool
+    constexpr bool
     operator<=(const AlignedBuffer& other) const
     {
       return m_data <= other.m_data;
     }
 
-    bool
+    constexpr bool
     operator>=(const AlignedBuffer& other) const
     {
       return m_data >= other.m_data;
     }
 
-    AlignedBuffer
+    constexpr AlignedBuffer
     operator^(const AlignedBuffer& other) const
     {
-      AlignedBuffer<sz> ret;
-      std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<>());
-      return ret;
+      AlignedBuffer<sz> copy{m_data};
+      copy ^= other;
+      return other;
     }
 
-    AlignedBuffer&
+    constexpr AlignedBuffer&
     operator^=(const AlignedBuffer& other)
     {
-      // Mutate in place instead.
-      for (size_t i = 0; i < sz; ++i)
-      {
-        m_data[i] ^= other.m_data[i];
-      }
+      std::transform(other.begin(), other.end(), begin(), end(), std::bit_xor<>());
       return *this;
     }
 
-    byte_t&
+    inline byte_t&
     operator[](size_t idx)
     {
-      assert(idx < SIZE);
       return m_data[idx];
     }
 
-    const byte_t&
+    inline const byte_t&
     operator[](size_t idx) const
     {
-      assert(idx < SIZE);
       return m_data[idx];
     }
 
@@ -151,31 +150,31 @@ namespace llarp
       return sz;
     }
 
-    void
+    constexpr void
     Fill(byte_t f)
     {
       m_data.fill(f);
     }
 
-    Data&
+    constexpr Data&
     as_array()
     {
       return m_data;
     }
 
-    const Data&
+    constexpr const Data&
     as_array() const
     {
       return m_data;
     }
 
-    byte_t*
+    constexpr byte_t*
     data()
     {
       return m_data.data();
     }
 
-    const byte_t*
+    constexpr const byte_t*
     data() const
     {
       return m_data.data();
@@ -184,51 +183,50 @@ namespace llarp
     bool
     IsZero() const
     {
-      const uint64_t* ptr = reinterpret_cast<const uint64_t*>(data());
-      for (size_t idx = 0; idx < SIZE / sizeof(uint64_t); idx++)
-      {
-        if (ptr[idx])
-          return false;
-      }
-      return true;
+      return sodium_is_zero(data(), size());
     }
 
     void
     Zero()
     {
-      m_data.fill(0);
+      sodium_memzero(data(), size());
     }
 
     virtual void
     Randomize()
     {
-      randombytes(data(), SIZE);
+      randombytes(data(), size());
     }
 
-    typename Data::iterator
+    constexpr typename Data::iterator
     begin()
     {
       return m_data.begin();
     }
 
-    typename Data::iterator
+    constexpr typename Data::iterator
     end()
     {
       return m_data.end();
     }
 
-    typename Data::const_iterator
+    constexpr typename Data::const_iterator
     begin() const
     {
-      return m_data.cbegin();
+      return m_data.begin();
     }
 
-    typename Data::const_iterator
+    constexpr typename Data::const_iterator
     end() const
     {
-      return m_data.cend();
+      return m_data.end();
     }
 
+    constexpr std::string_view
+    ToView() const
+    {
+      return std::string_view{reinterpret_cast<const char*>(data()), size()};
+    }
     bool
     FromBytestring(llarp_buffer_t* buf)
     {
@@ -256,12 +254,6 @@ namespace llarp
         return false;
       }
       return FromBytestring(&strbuf);
-    }
-
-    std::string_view
-    ToView() const
-    {
-      return {reinterpret_cast<const char*>(data()), sz};
     }
 
     std::string
@@ -298,6 +290,7 @@ namespace llarp
     static std::false_type
     is_aligned_buffer_impl(...);
   }  // namespace detail
+
   // True if T is or is derived from AlignedBuffer<N> for any N
   template <typename T>
   constexpr inline bool is_aligned_buffer =

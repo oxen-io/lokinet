@@ -381,10 +381,7 @@ namespace llarp::rpc
     // populate map_exit request with old IP ranges
     for (const auto& mapping : current_exits)
     {
-      if (not mapping.flow_info)
-        continue;
-
-      if (mapping.flow_info->dst == old_exit)
+      if (mapping.flow_info.dst == old_exit)
       {
         map_request.request.ip_range = mapping.owned_ranges;
         unmap_request.request.ip_range = mapping.owned_ranges;

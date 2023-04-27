@@ -1,4 +1,5 @@
 #include "name_resolver.hpp"
+#include "flow_addr.hpp"
 #include "flow_layer.hpp"
 #include <llarp/service/endpoint.hpp>
 #include <functional>
@@ -26,8 +27,15 @@ namespace llarp::layers::flow
             result_handler(std::nullopt);
             return;
           }
-          result_handler(FlowAddr{*maybe_addr});
+          result_handler(to_flow_addr(*maybe_addr));
         });
+  }
+
+  bool
+  NameResolver::name_well_formed(std::string_view str)
+  {
+    // todo
+    return true;
   }
 
 }  // namespace llarp::layers::flow

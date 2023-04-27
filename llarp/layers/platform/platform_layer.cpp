@@ -211,7 +211,7 @@ namespace llarp::layers::platform
       }
       // find an existing flow.
       auto maybe_mapping = addr_mapper.mapping_for(os_pkt.src, os_pkt.dst);
-      if ((not maybe_mapping) or (not maybe_mapping->flow_info))
+      if (not maybe_mapping)
       {
         // we have no flows to that place so we will send an icmp reject back from our address to
         // whoever sent it.
@@ -224,7 +224,7 @@ namespace llarp::layers::platform
             os_pkt.kind, _io->our_platform_addr(), os_pkt.src, std::move(icmp));
         continue;
       }
-      const auto& flow_info = *maybe_mapping->flow_info;
+      const auto& flow_info = maybe_mapping->flow_info;
 
       if (os_pkt.data.size() > flow_info.mtu)
       {
@@ -413,7 +413,7 @@ namespace llarp::layers::platform
         log::info(logcat, "mapped {}: {}", name, msg);
         // put address mapping.
         auto& mapping = std::get<0>(itr->second.value);
-        mapping.flow_info = maybe;
+        mapping.flow_info = std::move(*maybe);
         plat.addr_mapper.put(std::move(mapping));
         // prevent any additional attempts.
         pending.erase(itr);
@@ -470,6 +470,7 @@ namespace llarp::layers::platform
   struct resolved_name_handler
   {
     flow::FlowLayer& flow_layer;
+    AddressMapping& mapping;
     std::string name;
     flow::FlowEstablish flow_establisher;
     bool hydrate_cache{false};
@@ -484,9 +485,12 @@ namespace llarp::layers::platform
         flow_establisher.fail(msg);
         return;
       }
-      log::info(logcat, "resolved {} to {}", name, *maybe_addr);
+      mapping.flow_info.dst = *maybe_addr;
+      log::info(logcat, "resolved {} to {}", name, mapping.flow_info);
+      // autovivify flow to resolved name.
+      auto flow = flow_layer.flow_to(mapping.flow_info.dst);
       // get a flow tag for this remote.
-      flow_layer.flow_to(*maybe_addr)->async_ensure_flow(std::move(flow_establisher));
+      flow->async_ensure_flow(std::move(flow_establisher));
     }
   };
 
@@ -601,7 +605,7 @@ namespace llarp::layers::platform
     // if we failed, we will fail the flow establisher we could not establish a flow because of a
     // name resolve error. if we succeeded we will attempt to establish a flow on this flow
     // establisher.
-    resolved_name_handler resolved_name{flow_layer, name, std::move(flow_establisher)};
+    resolved_name_handler resolved_name{flow_layer, mapping, name, std::move(flow_establisher)};
 
     // resolve the remote name to a long form address if it is needed.
     flow_layer.name_resolver.resolve_flow_addr_async(std::move(name), std::move(resolved_name));
@@ -611,7 +615,7 @@ namespace llarp::layers::platform
   PlatformLayer::unmap_all_exits_on_range(IPRange range)
   {
     log::info(logcat, "unmap all on {}", range);
-    addr_mapper.remove_if_mapping(
+    addr_mapper.remove_if(
         [range](const auto& mapping) -> bool { return mapping.owns_range(range); });
   }
 
@@ -624,9 +628,8 @@ namespace llarp::layers::platform
 
     log::info(logcat, "unmap {} via {}", addr, range_str.value_or("all"));
 
-    addr_mapper.remove_if_mapping([addr, range](const auto& mapping) -> bool {
-      return mapping.flow_info and mapping.flow_info->dst == addr
-          and (range ? mapping.owns_range(*range) : true);
+    addr_mapper.remove_if([addr, range](const auto& mapping) -> bool {
+      return mapping.flow_info.dst == addr and (range ? mapping.owns_range(*range) : true);
     });
   }
 
@@ -634,8 +637,10 @@ namespace llarp::layers::platform
   PlatformLayer::current_stats() const
   {
     PlatformStats st{};
-    addr_mapper.view_all_entries([&](const auto& ent) {
-      st.addrs.emplace_back(ent, _flow_layer);
+    auto& addrs = st.addrs;
+    // i HATE capture all by reference, so we capture this like so to avoid that.
+    addr_mapper.view_all_mappings([this, &addrs](const auto& m) {
+      addrs.emplace_back(m, _flow_layer);
       return true;
     });
 

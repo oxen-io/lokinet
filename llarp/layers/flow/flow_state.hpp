@@ -8,14 +8,10 @@ namespace llarp::layers::flow
 
   struct FlowState_Pimpl;
 
-  /// internal state of a flow on the flow layer.
-  class FlowState_Base
+  /// immutable snapshot of a flow's state.
+  struct FlowStateInfo
   {
-    std::shared_ptr<FlowState_Pimpl> _pimpl;
-
-   public:
-    FlowState_Base(const FlowState_Base&) = delete;
-    FlowState_Base(FlowState_Base&&) = delete;
+    explicit FlowStateInfo(const FlowState_Pimpl&);
 
     /// returns true if we have paths that are aligned to the right place on the network to send to
     /// the remote.
@@ -35,6 +31,19 @@ namespace llarp::layers::flow
     /// any authentication has completed and accepted.
     bool
     established() const;
+  };
+  /// internal state of a flow on the flow layer.
+  class FlowState
+  {
+    std::shared_ptr<FlowState_Pimpl> _pimpl;
+
+   public:
+    explicit FlowState(FlowState_Pimpl*);
+    FlowState(const FlowState&) = delete;
+    FlowState(FlowState&&) = delete;
+    /// get a snapshot of the current state.
+    FlowStateInfo
+    current() const;
   };
 
 }  // namespace llarp::layers::flow

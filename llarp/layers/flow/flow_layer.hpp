@@ -6,6 +6,7 @@
 #include "flow_tag.hpp"
 #include "flow_stats.hpp"
 #include "flow_traffic.hpp"
+#include "llarp/layers/flow/flow_state.hpp"
 #include "name_cache.hpp"
 #include "name_resolver.hpp"
 
@@ -71,11 +72,11 @@ namespace llarp::layers::flow
 
     /// return true if we have this flow.
     bool
-    has_flow(const flow::FlowInfo& flow_info) const;
+    has_flow(const FlowInfo& flow_info) const;
 
     /// remove a flow we have tracked. does nothing if we do not have it tracked.
     void
-    remove_flow(const flow::FlowInfo& flow_info);
+    remove_flow(const FlowInfo& flow_info);
 
     /// get our flow address of our local given a flow tag.
     /// if we give a nullopt flow tag we get our "default" inbound flow address we publish to the
@@ -91,6 +92,10 @@ namespace llarp::layers::flow
     std::shared_ptr<FlowIdentity>
     flow_to(const FlowAddr& to);
 
+    /// get the current state of a flow if we have it.
+    std::optional<FlowStateInfo>
+    current_state_for(const FlowInfo& info) const;
+
     /// pop off all flow layer traffic that we have processed.
     std::vector<FlowTraffic>
     poll_flow_traffic();
@@ -101,7 +106,11 @@ namespace llarp::layers::flow
 
     /// get the best flow tag used by a flow info given the current measured state.
     std::optional<FlowTag>
-    best_flow_tag(const flow::FlowInfo& flow_info) const;
+    best_flow_tag(const FlowInfo& flow_info) const;
+
+    /// return true if we have a flow that is established with this tag.
+    bool
+    is_established_flow(const FlowTag& tag) const;
 
     void
     start();

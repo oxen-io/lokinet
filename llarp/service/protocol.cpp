@@ -1,5 +1,6 @@
 #include "protocol.hpp"
 #include "endpoint.hpp"
+#include "llarp/layers/flow/flow_addr.hpp"
 #include <llarp/path/path.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/util/buffer.hpp>
@@ -533,8 +534,9 @@ namespace llarp
     get_flow_traffic(const ProtocolMessage& msg)
     {
       layers::flow::FlowTraffic traff;
-      traff.flow_info.dst = layers::flow::FlowAddr{msg.handler->GetIdentity().pub.Addr()};
-      traff.flow_info.src = layers::flow::FlowAddr{msg.sender.Addr()};
+      traff.flow_info.dst =
+          layers::flow::FlowAddr{msg.handler->GetIdentity().pub.Addr().ToString()};
+      traff.flow_info.src = layers::flow::FlowAddr{msg.sender.Addr().ToString()};
       switch (msg.proto)
       {
         case ProtocolType::Auth:

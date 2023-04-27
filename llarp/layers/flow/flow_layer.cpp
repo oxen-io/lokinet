@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -13,6 +14,7 @@
 #include <llarp/path/path_context.hpp>
 #include <vector>
 #include "llarp/layers/flow/flow_info.hpp"
+#include "llarp/layers/flow/flow_state.hpp"
 #include "llarp/layers/flow/flow_tag.hpp"
 #include "llarp/service/convotag.hpp"
 
@@ -232,6 +234,17 @@ namespace llarp::layers::flow
         return true;
     }
     return false;
+  }
+
+  std::optional<FlowStateInfo>
+  FlowLayer::current_state_for(const FlowInfo& info) const
+  {
+    for (const auto& local_flow : _local_flows)
+    {
+      if (local_flow->flow_info == info)
+        return local_flow->state.current();
+    }
+    return std::nullopt;
   }
 
   std::shared_ptr<service::Endpoint>

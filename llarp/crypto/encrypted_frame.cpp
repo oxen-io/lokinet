@@ -1,6 +1,7 @@
 #include "encrypted_frame.hpp"
 
 #include "crypto.hpp"
+#include "llarp/crypto/types.hpp"
 #include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
 
@@ -84,6 +85,16 @@ namespace llarp
     }
 
     return DoEncrypt(shared, false);
+  }
+
+  void
+  EncryptedFrame::EncryptDummy()
+  {
+    auto* crypto = CryptoManager::instance();
+    SecretKey sk;
+    crypto->encryption_keygen(sk);
+    Randomize();
+    EncryptInPlace(sk, sk.toPublic());
   }
 
   bool

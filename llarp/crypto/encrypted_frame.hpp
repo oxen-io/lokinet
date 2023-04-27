@@ -43,6 +43,10 @@ namespace llarp
 
     bool
     EncryptInPlace(const SecretKey& seckey, const PubKey& other);
+
+    /// randomize the plaintext and encrypt to itself using an ehpemeral x25519 key.
+    void
+    EncryptDummy();
   };
 
   template <typename User>

@@ -1,6 +1,7 @@
 #include "flow_identity.hpp"
 
 #include <oxenc/bt_serialize.h>
+#include <cstdint>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/service/endpoint.hpp>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <variant>
+#include "llarp/layers/flow/flow_addr.hpp"
 #include "llarp/layers/flow/flow_tag.hpp"
 #include "llarp/service/convotag.hpp"
 
@@ -36,8 +38,8 @@ namespace llarp::layers::flow
   const FlowAddr&
   FlowIdentityPrivateKeys::public_addr() const
   {
-    if (_root_pubkey.IsZero())
-      _root_pubkey = FlowAddr{service::Address{identity.toPublic()}};
+    if (not _root_pubkey)
+      _root_pubkey = to_flow_addr(service::Address{identity.toPublic()});
     return _root_pubkey;
   }
   const dht::Key_t&
@@ -75,7 +77,7 @@ namespace llarp::layers::flow
           return service::Address{addr.as_array()};
         default:
           throw std::invalid_argument{
-              "flow addr cannot be converted to EndpointBase::AddressVariant_t"};
+              "empty flow addr cannot be converted to EndpointBase::AddressVariant_t"};
       }
     }
 

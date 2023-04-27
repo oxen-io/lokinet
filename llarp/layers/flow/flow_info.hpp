@@ -16,6 +16,7 @@
 namespace llarp::layers::flow
 {
 
+  /// information about our flow identity.
   /// in lokinet our onion routed flows are comprised of a source and destination flow layer
   /// address, a flow tag (an identifier to mark a distinct flow), and a pivot that each is using in
   /// common which acts as our analog to an ipv6 flow label, see rfc6437.
@@ -24,6 +25,7 @@ namespace llarp::layers::flow
     /// source and destination addresses we associate with this flow.
     FlowAddr src, dst;
 
+    /// to be replaced by a std::optional<FlowTag>.
     /// all flow tags we are using on this flow right now.
     std::set<FlowTag> flow_tags;
 

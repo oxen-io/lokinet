@@ -25,26 +25,25 @@ namespace llarp::layers::platform
   struct AddressMapping
   {
     /// the current flow layer info we are using for this mapping.
-
-    std::optional<flow::FlowInfo> flow_info;
+    flow::FlowInfo flow_info;
 
     /// source and destination addresses for ingres traffic
     /// we only allow ingres from src.
     /// we only route ingres bound for dst.
     PlatformAddr src, dst;
 
-    /// additional ranges we permit ingres traffic bound to as dst.
+    /// additional ranges we permit ingres traffic bound to as dst and egress traffic from as src.
     std::vector<IPRange> owned_ranges;
 
     /// return true if we own this exact range range.
     bool
     owns_range(const IPRange& range) const;
 
-    /// return true if we allow ingres traffic with this src and dst address
+    /// return true if we allow ingres (os to lokinet) traffic with this src and dst address
     bool
     allows_ingres(const PlatformAddr& src, const PlatformAddr& dst) const;
 
-    /// return true if we allow egres traffic with this src and dst address
+    /// return true if we allow egres (lokinet to os) traffic with this src and dst address
     bool
     allows_egres(const PlatformAddr& src, const PlatformAddr& dst) const;
 
@@ -54,13 +53,26 @@ namespace llarp::layers::platform
     /// helper that tells us if we permit more than just traffic to dst.
     bool
     is_exit() const;
+
+    AddressMapping() = default;
+    AddressMapping(const AddressMapping&) = default;
+    AddressMapping(AddressMapping&&) = default;
+
+    AddressMapping&
+    operator=(AddressMapping&&) = default;
+    AddressMapping&
+    operator=(const AddressMapping&) = default;
+
+    bool
+    operator==(const AddressMapping& other) const;
   };
 
   /// container that holds an addressmapping and extra metadata we need in the addrmapper.
   class AddressMappingEntry
   {
+    using clock_t = std::chrono::steady_clock;
     /// the time this entry was last used.
-    std::chrono::steady_clock::time_point _last_used_at;
+    clock_t::time_point _last_used_at;
     /// the entry itself.
     AddressMapping _entry;
 
@@ -77,13 +89,14 @@ namespace llarp::layers::platform
     bool
     has_flow_info(const flow::FlowInfo& flow_info) const;
 
-    /// return how long since we last used this entry.
+    /// a helper that returns how long since we last used this entry.
     inline auto
-    idle_for() const
+    idle_for() const noexcept
     {
-      return decltype(_last_used_at)::clock::now() - _last_used_at;
+      return clock_t::now() - _last_used_at;
     }
 
+    /// readonly accessor for _last_used_at.
     constexpr const auto&
     last_used_at() const
     {
@@ -96,17 +109,14 @@ namespace llarp::layers::platform
 
     /// view address mapping without updating last use.
     const AddressMapping&
-    view() const;
+    view() const noexcept;
   };
 
   /// in charge of mapping flow addresses and platform addresses to each other
   class AddrMapper
   {
-    // remote flow mappings
+    /// all remotely routable ranges and their metadata.
     std::vector<AddressMappingEntry> _addrs;
-
-    const IPRange _our_range;
-
     /// remove the lease recently used mapping.
     void
     remove_lru();
@@ -119,57 +129,64 @@ namespace llarp::layers::platform
     friend class ReservedAddressMapping;
 
    public:
-    explicit AddrMapper(const IPRange& range);
-
+    /// our ip range that we are providing to the local system we are running on.
     const IPRange range;
 
-    /// unconditionally put an entry in.
-    /// stomps existing entry.
-    /// if full, removes the least frequenty used mapping.
-    /// returns entry now exists in the address map.
+    /// construct addr mapper with an ip range to provide to be routable locally to the system we
+    /// run on.
+    explicit AddrMapper(const IPRange& range);
+
+    /// unconditionally put an entry into the addrmapper, stomping any existing entry that used to
+    /// match the destination it went to. if the address mapper is full if we had to insert a new
+    /// entry, we remove the least frequenty used entry. returns a non const l-value reference to
+    /// the entry that now exists in the address map.
     AddressMapping&
-    put(AddressMapping&&);
+    put(AddressMapping&& ent);
 
     /// unmap an address mapping.
     /// returns true if it was removed.
-    bool unmap(AddressMapping);
+    bool
+    unmap(AddressMapping ent);
 
-    /// prune all mappings we have no flows for
+    /// remove all mappings we have no flows to.
     void
     prune(flow::FlowLayer&);
 
-    /// get a platform for a flow if it exists. updates last used time.
+    /// get a platform address for a flow if it exists and update its last used time.
+    /// returns std::nullopt if there is now mapping for this flow.
     std::optional<AddressMapping>
     get_addr_for_flow(const flow::FlowInfo& flow);
 
-    /// return true if we have an address for this flow info, will not update last used time.
+    /// return true if we have an address for this flow info but will not update last used time of
+    /// the entry if it exists.
     bool
     has_addr_for_flow(const flow::FlowInfo& flow) const;
 
-    /// find a mapping that best matches src/dst address.
-    /// updates last use time.
+    /// find the mapping that matches src/dst address.
+    /// updates last use time on the chosen entry.
     std::optional<AddressMapping>
     mapping_for(const PlatformAddr& src, const PlatformAddr& dst);
 
-    /// return all address mappings to this remote. does not update last used time.
+    /// return all address mappings to this remote and do not update last used time on any of the
+    /// entries.
     std::vector<AddressMapping>
     mappings_to(const flow::FlowAddr& remote) const;
 
     /// return true if we have mapped as many ip addresses as we are able to.
     bool
-    is_full() const;
+    is_full() const noexcept;
 
-    /// get a new address mapping with a filled out destination address and an optionally provided
-    /// source address. if the source address is nullopt we will use the base address of the range
-    /// as the source. throws if full.
+    /// explicitly allocate a new address mapping with an unused destination platform addr.
+    /// if a source address is not provided, our interface address with be used.
+    /// throws if the addrmapper is full.
     AddressMapping&
     allocate_mapping(std::optional<PlatformAddr> src = std::nullopt);
 
-    /// read only iterate over all entries.
+    /// read only iterate over all mappings.
     /// visit returns false to break iteration.
     template <typename Viewer_t>
     void
-    view_all_entries(Viewer_t&& visit) const
+    view_all_mappings(Viewer_t&& visit) const
     {
       for (const auto& ent : _addrs)
       {
@@ -178,30 +195,29 @@ namespace llarp::layers::platform
       }
     }
 
-    /// return an iterator for first entry matching predicate.
-    /// this is a helper so we will not update last used.
+    /// return an iterator for first mappings matching a predicate. will not update last used time.
     template <typename Predicate_t>
     [[nodiscard]] auto
-    find_if(Predicate_t&& pred)
+    find_if(Predicate_t&& pred) noexcept
     {
       return std::find_if(
           _addrs.begin(), _addrs.end(), [pred](const auto& ent) { return pred(ent.view()); });
     }
 
-    /// return an iterator for first entry matching predicate.
-    /// this is a helper so we will not update last used.
+    /// return a const iterator for first mapping matching a predicate. will not update last used
+    /// time.
     template <typename Predicate_t>
     [[nodiscard]] auto
-    find_if(Predicate_t&& pred) const
+    const_find_if(Predicate_t&& pred) const noexcept
     {
       return std::find_if(
-          _addrs.begin(), _addrs.end(), [pred](const auto& ent) { return pred(ent.view()); });
+          _addrs.cbegin(), _addrs.cend(), [pred](const auto& ent) { return pred(ent.view()); });
     }
 
-    /// remove via predicate on entry.
+    /// remove all entries that matches a predicate.
     template <typename Predicate_t>
     void
-    remove_if_entry(Predicate_t&& pred)
+    remove_if_entry(Predicate_t&& pred) noexcept
     {
       auto itr = _addrs.begin();
       while (itr != _addrs.end())
@@ -213,16 +229,16 @@ namespace llarp::layers::platform
       }
     }
 
-    /// remove via predicate on mapping.
+    /// remove all mappings that match a predicate.
     template <typename Predicate_t>
     void
-    remove_if_mapping(Predicate_t&& pred)
+    remove_if(Predicate_t&& pred) noexcept
     {
-      remove_if_entry([pred](auto& ent) { return pred(ent.view()); });
+      _addrs.erase(const_find_if(pred));
     }
 
-    /// return all exits we have.
-    /// last use time not updated.
+    /// return all mappings that we have that carry exit traffic.
+    /// last use time on entries will not be updated.
     std::vector<AddressMapping>
     all_exits() const;
 

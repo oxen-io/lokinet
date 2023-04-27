@@ -5,6 +5,7 @@
 
 #include "convotag.hpp"
 #include "llarp/router_id.hpp"
+#include "llarp/service/name.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
@@ -1659,8 +1660,8 @@ namespace llarp
               {
                 layers::flow::FlowTraffic traff;
                 traff.kind = layers::flow::FlowDataKind::direct_ip_unicast;
-                traff.flow_info.src = layers::flow::FlowAddr{snode};
-                traff.flow_info.dst = layers::flow::FlowAddr{m_Identity.pub.Addr()};
+                traff.flow_info.src = layers::flow::FlowAddr{snode.ToString()};
+                traff.flow_info.dst = layers::flow::FlowAddr{m_Identity.pub.Addr().ToString()};
 
                 traff.datum = pkt.steal();
                 m_router->get_layers()->flow->offer_flow_traffic(std::move(traff));
@@ -1747,6 +1748,14 @@ namespace llarp
       }
       LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
       return false;
+    }
+
+    std::shared_ptr<OutboundContext>
+    Endpoint::remote_to(const Address& remote) const
+    {
+      if (auto itr = m_state->m_RemoteSessions.find(remote); itr != m_state->m_RemoteSessions.end())
+        return itr->second;
+      return nullptr;
     }
 
     bool

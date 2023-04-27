@@ -1593,14 +1593,7 @@ namespace llarp
   {
     if (IsServiceNode())
       return false;
-    auto exits = get_layers()->platform->addr_mapper.all_exits();
-    auto flow_stats = get_layers()->flow->current_stats();
-    for (const auto& exit : exits)
-    {
-      if (exit.flow_info and flow_stats.has_good_flow_to(exit.flow_info->dst))
-        return true;
-    }
-    return false;
+    return get_layers()->platform->current_stats().client_exit_ready();
   }
 
   std::optional<std::variant<nuint32_t, nuint128_t>>

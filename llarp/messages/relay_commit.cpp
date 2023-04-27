@@ -1,4 +1,6 @@
 #include "relay_commit.hpp"
+#include "llarp/crypto/encrypted_frame.hpp"
+#include "llarp/crypto/types.hpp"
 #include "relay_status.hpp"
 
 #include <llarp/crypto/crypto.hpp>
@@ -151,7 +153,7 @@ namespace llarp
       work = std::make_unique<PoW>();
       return bencode_decode_dict(*work, buffer);
     }
-    return read;
+    return read or bencode_discard(buffer);
   }
 
   bool
@@ -441,9 +443,13 @@ namespace llarp
       frames[5] = self->frames[6];
       frames[6] = self->frames[7];
       // put our response on the end
-      frames[7] = EncryptedFrame(sz - EncryptedFrameOverheadSize);
-      // random junk for now
-      frames[7].Randomize();
+      {
+        auto& resp = frames[7];
+        resp = EncryptedFrame(sz - EncryptedFrameOverheadSize);
+        // put dummy reply
+        resp.EncryptDummy();
+      }
+
       self->frames = std::move(frames);
       if (self->context->HopIsUs(info.upstream))
       {

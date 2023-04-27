@@ -1,7 +1,8 @@
 #include "platform_stats.hpp"
 #include "addr_mapper.hpp"
-#include "llarp/layers/flow/flow_layer.hpp"
-#include "platform_layer.hpp"
+#include <llarp/layers/flow/flow_auth.hpp>
+#include <llarp/layers/flow/flow_layer.hpp>
+#include <llarp/layers/flow/flow_state.hpp>
 
 namespace llarp::layers::platform
 {
@@ -12,7 +13,7 @@ namespace llarp::layers::platform
   {
     for (const auto& addr : addrs)
     {
-      if (addr.is_exit())
+      if (addr.allows_transit())
         return true;
     }
     return false;
@@ -24,23 +25,43 @@ namespace llarp::layers::platform
   {
     for (const auto& addr : addrs)
     {
-      if (addr.is_exit() and addr.is_ready())
+      if (addr.allows_transit() and addr.is_ready())
         return true;
     }
     return false;
   }
 
-  namespace stats
+  MappingStats::MappingStats(const AddressMapping& ent, const flow::FlowLayer& flow_layer)
+      : MappingStats{}
   {
-    AddrInfo::AddrInfo(const AddressMapping& ent, const flow::FlowLayer& flow)
-        : addr{ent}, _flags{0}
-    {
-      if (ent.is_exit())
-        _flags |= _mask_exit;
+    reset();
 
-      if (ent.flow_info and flow.has_flow(*ent.flow_info))
-        _flags |= _mask_ready;
+    if (ent.is_exit())
+      set(_mask_routable_traffic);
+
+    auto maybe_state = flow_layer.current_state_for(ent.flow_info);
+    if (not maybe_state)
+      return;
+    const auto& state = *maybe_state;
+    // todo: initiator or recip?
+
+    if (state.established())
+      set(_mask_established);
+
+    if (state.requires_authentication())
+      set(_mask_auth_required);
+    switch (state.auth_phase())
+    {
+      case flow::FlowAuthPhase::auth_more:
+      case flow::FlowAuthPhase::auth_req_sent:
+        set(_mask_auth_pending);
+        return;
+      case flow::FlowAuthPhase::auth_ok:
+        set(_mask_auth_ok);
+        break;
+      default:
+        break;
     }
-  }  // namespace stats
+  }
 
 }  // namespace llarp::layers::platform

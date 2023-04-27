@@ -1,4 +1,5 @@
 #include "addr_mapper.hpp"
+#include <bits/types/clock_t.h>
 #include <fmt/core.h>
 #include <algorithm>
 #include <chrono>
@@ -15,15 +16,21 @@ namespace llarp::layers::platform
 
   static auto logcat = log::Cat("platform-layer");
 
+  bool
+  AddressMapping::operator==(const AddressMapping& other) const
+  {
+    return src == other.src and dst == other.dst and flow_info == other.flow_info;
+  }
+
   AddressMapping&
   AddressMappingEntry::access()
   {
-    _last_used_at = decltype(_last_used_at)::clock::now();
+    _last_used_at = clock_t::now();
     return _entry;
   }
 
   const AddressMapping&
-  AddressMappingEntry::view() const
+  AddressMappingEntry::view() const noexcept
   {
     return _entry;
   }
@@ -85,19 +92,15 @@ namespace llarp::layers::platform
   std::string
   AddressMapping::ToString() const
   {
-    std::optional<std::string> flow_info_str;
-    if (flow_info)
-      flow_info_str = flow_info->ToString();
-
     return fmt::format(
         "[AddressMapping flow={} src={} dst={} owned_ranges=({})]",
-        flow_info_str.value_or("none"),
+        flow_info,
         src,
         dst,
         fmt::join(owned_ranges, ", "));
   }
 
-  AddrMapper::AddrMapper(const IPRange& range) : _our_range{range}
+  AddrMapper::AddrMapper(const IPRange& range_) : range{range_}
   {}
 
   AddressMapping&
@@ -106,15 +109,15 @@ namespace llarp::layers::platform
     auto dst = next_addr();
     auto& mapping = _addrs.emplace_back().access();
     mapping.dst = dst;
-    mapping.src = src.value_or(PlatformAddr{_our_range.addr});
+    mapping.src = src.value_or(PlatformAddr{range.addr});
     return mapping;
   }
 
   PlatformAddr
   AddrMapper::next_addr()
   {
-    const PlatformAddr highest{_our_range.HighestAddr()};
-    const PlatformAddr lowest{huint128_t{1} + _our_range.addr};
+    const PlatformAddr highest{range.HighestAddr()};
+    const PlatformAddr lowest{huint128_t{1} + range.addr};
 
     // first try using highest mapped value.
     PlatformAddr next{lowest};
@@ -139,10 +142,10 @@ namespace llarp::layers::platform
   }
 
   bool
-  AddrMapper::is_full() const
+  AddrMapper::is_full() const noexcept
   {
-    const PlatformAddr highest{_our_range.HighestAddr()};
-    const PlatformAddr lowest{huint128_t{1} + _our_range.addr};
+    const PlatformAddr highest{range.HighestAddr()};
+    const PlatformAddr lowest{huint128_t{1} + range.addr};
 
     PlatformAddr lo{highest}, hi{lowest};
     for (const auto& addr : _addrs)
@@ -170,9 +173,9 @@ namespace llarp::layers::platform
   AddrMapper::all_exits() const
   {
     std::vector<AddressMapping> exits;
-    view_all_entries([&exits](const auto& ent) {
-      if (ent.is_exit())
-        exits.emplace_back(ent);
+    view_all_mappings([&exits](const auto& m) {
+      if (m.is_exit())
+        exits.emplace_back(m);
       return true;
     });
     return exits;
@@ -182,12 +185,10 @@ namespace llarp::layers::platform
   AddrMapper::exit_map() const
   {
     net::IPRangeMap<flow::FlowAddr> map{};
-    view_all_entries([&map](const auto& ent) {
-      for (const auto& range : ent.owned_ranges)
-      {
-        if (ent.flow_info)
-          map.Insert(range, ent.flow_info->dst);
-      }
+    view_all_mappings([&map](const auto& m) {
+      for (const auto& range : m.owned_ranges)
+
+        map.Insert(range, m.flow_info.dst);
 
       return true;
     });
@@ -197,27 +198,27 @@ namespace llarp::layers::platform
   void
   AddrMapper::remove_lru()
   {
-    std::chrono::steady_clock::time_point lru_time{std::chrono::steady_clock::time_point::max()};
-    auto lru_itr = _addrs.end();
-    for (auto itr = _addrs.begin(); itr != _addrs.end(); ++itr)
+    // we dont need do anything to an empty addr mapper.
+    if (_addrs.empty())
+      return;
+    using clock_t = std::chrono::steady_clock;
+    clock_t::time_point lru_time = clock_t::time_point::max();
+    auto lru_itr = _addrs.begin();
+    for (auto itr = lru_itr; itr != _addrs.end(); ++itr)
     {
-      if (lru_time >= itr->last_used_at())
+      const auto& last_used_at = itr->last_used_at();
+      if (lru_time <= last_used_at)
         continue;
       lru_itr = itr;
-      lru_time = lru_itr->last_used_at();
+      lru_time = last_used_at;
     }
-    if (lru_itr != _addrs.end())
-      _addrs.erase(lru_itr);
+    _addrs.erase(lru_itr);
   }
 
   AddressMapping&
   AddrMapper::put(AddressMapping&& ent)
   {
-    auto itr = find_if([&ent](const auto& other) {
-      if (ent.flow_info and other.flow_info)
-        return *ent.flow_info == *other.flow_info;
-      return ent.dst == other.dst and ent.src == other.src;
-    });
+    auto itr = find_if([&ent](const auto& other) { return ent == other; });
 
     // construct it if we dont have it.
     if (itr == std::end(_addrs))
@@ -242,15 +243,15 @@ namespace llarp::layers::platform
 
     remove_if_entry([&flow_layer, max_idle_threshold](const auto& ent) {
       // remove stale entries or ones that we dont have a flow on.
-      const auto& maybe_flow_info = ent.view().flow_info;
-      if ((not maybe_flow_info) or not flow_layer.has_flow(*maybe_flow_info))
+      const auto& flow_info = ent.view().flow_info;
+      if (not flow_layer.has_flow(flow_info))
         return ent.idle_for() > max_idle_threshold;
 
       // remove stale entries we have a flow for and remove the flow for them too.
       if (ent.idle_for() > max_idle_threshold)
-        flow_layer.remove_flow(*maybe_flow_info);
+        flow_layer.remove_flow(flow_info);
 
-      return not flow_layer.has_flow(*maybe_flow_info);
+      return not flow_layer.has_flow(flow_info);
     });
   }
 
@@ -258,14 +259,24 @@ namespace llarp::layers::platform
   AddrMapper::mappings_to(const flow::FlowAddr& remote) const
   {
     std::vector<AddressMapping> mappings;
-    view_all_entries([&mappings, remote](const auto& entry) {
-      if (not entry.flow_info)
-        return true;
-      if (entry.flow_info->dst == remote)
-        mappings.emplace_back(entry);
+    view_all_mappings([&mappings, &remote](const auto& m) {
+      if (m.flow_info.dst == remote)
+        mappings.emplace_back(m);
       return true;
     });
     return mappings;
+  }
+
+  bool
+  AddrMapper::unmap(AddressMapping mapping)
+  {
+    if (auto itr = find_if([mapping](const auto& ent) { return ent == mapping; });
+        itr != _addrs.end())
+    {
+      _addrs.erase(itr);
+      return true;
+    }
+    return false;
   }
 
   bool
@@ -285,17 +296,14 @@ namespace llarp
     for (const auto& range : mapping.owned_ranges)
       ranges.push_back(range.ToString());
 
-    auto object = nlohmann::json::object(
+    return nlohmann::json::object(
         {{"ranges", ranges},
+         {"local_addr", mapping.flow_info.src.ToString()},
+         {"remote_addr", mapping.flow_info.dst.ToString()},
          {"src_ip",
           var::visit([](auto&& addr) { return addr.ToString(); }, mapping.src.as_ipaddr())},
          {"dst_ip",
           var::visit([](auto&& addr) { return addr.ToString(); }, mapping.dst.as_ipaddr())}});
-    if (mapping.flow_info)
-    {
-      object["remote_addr"] = mapping.flow_info->dst.ToString();
-      object["local_addr"] = mapping.flow_info->src.ToString();
-    }
-    return object;
   }
+
 }  // namespace llarp

@@ -57,8 +57,7 @@ namespace llarp::layers::flow
     FlowLayer& _parent;
     const FlowIdentityPrivateKeys& _local_privkeys;
     /// internal state holder.
-    /// effectively a pimpl to abstract away .loki vs .snode codepaths.
-    std::unique_ptr<FlowState_Base> _state;
+    FlowState _state;
 
    protected:
     friend struct deprecated_path_ensure_handler;
@@ -90,6 +89,8 @@ namespace llarp::layers::flow
     /// remove all expired flow tags
     void
     prune_flow_tags();
+
+    const FlowState& state{_state};
 
     bool
     operator==(const FlowIdentity& other) const;
