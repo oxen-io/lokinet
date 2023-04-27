@@ -482,8 +482,8 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    if (m_isServiceNode)
-      _nodedb->Put(_rc);
+    if (IsServiceNode())
+      _nodedb->Put(rc());
     QueueDiskIO([&]() { HandleSaveRC(); });
     return true;
   }
