@@ -715,8 +715,7 @@ extern "C"
       return;
     }
 
-    auto on_open = [ctx, localAddr, remote, open_cb](
-                       bool success, void* user_data) {
+    auto on_open = [ctx, localAddr, remote, open_cb](bool success, void* user_data) {
       llarp::log::info(
           logcat,
           "Quic tunnel {}<->{}.",

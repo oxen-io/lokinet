@@ -135,7 +135,7 @@ namespace llarp::quic
         log::info(logcat, "EOF on connection to {}:{}", c.peer().ip, c.peer().port);
         if (auto stream = c.data<Stream>())
         {
-          stream->set_eof(); // CloseEvent will send graceful shutdown to other end
+          stream->set_eof();  // CloseEvent will send graceful shutdown to other end
         }
         c.close();
       });

@@ -298,7 +298,13 @@ namespace llarp::quic
     ngtcp2_pkt_info pi;
 
     auto written = ngtcp2_conn_write_connection_close(
-        conn, &conn.path.path, &pi, u8data(conn.conn_buffer), conn.conn_buffer.size(), &err, get_timestamp());
+        conn,
+        &conn.path.path,
+        &pi,
+        u8data(conn.conn_buffer),
+        conn.conn_buffer.size(),
+        &err,
+        get_timestamp());
     if (written <= 0)
     {
       log::warning(

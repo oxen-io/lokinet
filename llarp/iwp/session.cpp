@@ -144,6 +144,8 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
+      if (m_State == State::Closed)
+        return;
       m_EncryptNext.emplace_back(std::move(data));
       TriggerPump();
       if (!IsEstablished())
@@ -179,12 +181,9 @@ namespace llarp
         return;
       auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
       m_Parent->UnmapAddr(m_RemoteAddr);
-      m_State = State::Closed;
-      if (m_SentClosed.test_and_set())
-        return;
       EncryptAndSend(std::move(close_msg));
-
       LogInfo(m_Parent->PrintableName(), " closing connection to ", m_RemoteAddr);
+      m_State = State::Closed;
     }
 
     bool
@@ -355,7 +354,7 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if (m_State == State::Ready)
+      if (m_State == State::Ready || m_State == State::LinkIntro)
       {
         return now > m_LastRX
             && now - m_LastRX
