@@ -30,7 +30,7 @@ def next_byte():
     if is_hex:
         pair = f.read(2)
         assert pair is not None and len(pair) == 2
-        b = int(pair, 16).to_bytes()
+        b = int(pair, 16).to_bytes(1, 'big')
     else:
         b = f.read(1)
     assert b is not None and len(b) == 1
