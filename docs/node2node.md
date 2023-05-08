@@ -11,6 +11,8 @@
 
 direct node to node request/response messages sent on a bidi quic stream.
 
+a stream carries 1 type of request/response messages. we maintain 1 stream per type to each remote node with the exception of path stream which requires multiple instances of itself.
+
 the stream starts by sending 2 bytes identifying the stream kind of which there are the following:
 
 * network data lookup
