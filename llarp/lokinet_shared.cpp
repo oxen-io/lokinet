@@ -193,16 +193,27 @@ namespace
   };
 }  // namespace
 
+struct lokinet_config
+{
+  std::shraed_ptr<llarp::Config> impl;
+};
+
 struct lokinet_context
 {
   std::mutex m_access;
 
   std::shared_ptr<llarp::Context> impl = std::make_shared<Context>();
-  std::shared_ptr<llarp::Config> config = llarp::Config::EmbeddedConfig();
+  std::shared_ptr<llarp::Config> config;
 
   std::unique_ptr<std::thread> runner;
 
   int _socket_id = 0;
+
+  explicit lokinet_context(const std::shared_ptr<llarp::Config>& conf = nullptr) : config{conf}
+  {
+    if (not config)
+      config = llarp::Config::EmbeddedConfig();
+  }
 
   ~lokinet_context()
   {
@@ -523,6 +534,12 @@ extern "C"
   lokinet_context_new()
   {
     return new lokinet_context{};
+  }
+
+  struct lokinet_context* EXPORT
+  lokinet_context_from_config(struct lokinet_config* cfg)
+  {
+    return new lokinet_context{cfg ? cfg->impl : nullptr};
   }
 
   void EXPORT

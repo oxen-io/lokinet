@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lokinet_config.h"
 #include "lokinet_export.h"
 
 #include <stdbool.h>
@@ -13,9 +14,15 @@ extern "C"
 
   struct lokinet_context;
 
-  /// allocate a new lokinet context
-  struct lokinet_context* EXPORT
+  struct lokinet_config* EXPORT
   lokinet_context_new();
+
+  /// allocate a new lokinet context, passing in a loaded config, finalizing the config's loaded
+  /// values and injecting them into the lokinet context. if config is NULL we will load sensible
+  /// defaults. after calling lokinet_context_new the config can be released by calling
+  /// lokinet_config_free().
+  struct lokinet_context* EXPORT
+  lokinet_context_from_config(struct lokinet_config*);
 
   /// free a context allocated by lokinet_context_new
   void EXPORT
