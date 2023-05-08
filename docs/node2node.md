@@ -73,7 +73,7 @@ given we provide N nonces in the build we are opening up N path streams as we ma
 onion routed persisting stream connection to the pivot router for sending anonymised requests destined for the pivot router.
 
 streams are created for an existing path by opening a "path stream" stream providing the path's tx/rx id and 24 bytes nonce.
-on accepting the stream creation the node will open a "path stream" to their upstream router but with a nonce that is deterministically mutated `new_nonce = nonce ^ hash(nonce)`, this mutation reduces stream corrilation across hops.
+on accepting the stream creation the node will open a "path stream" to their upstream router but with a nonce that is deterministically mutated `new_nonce = nonce ^ hash(hop_ephemeral_secret)`, this mutation reduces stream corrilation across hops.
 on rejecting the stream creation the node will shutdown the read end of the stream, sending a reply signed by our identity key and then shutting down the write end of the stream (which fully closes the stream).
 if the accepting node is the pivot route it will write. 
 
