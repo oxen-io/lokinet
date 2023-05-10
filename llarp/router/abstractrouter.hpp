@@ -45,6 +45,11 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace consensus
+  {
+    class EdgeSelector;
+  }
+
   namespace dns
   {
     class I_SystemSettings;
@@ -129,6 +134,9 @@ namespace llarp
 
     virtual const RouterContact&
     rc() const = 0;
+
+    virtual const consensus::EdgeSelector&
+    edge_selector() const = 0;
 
     /// modify our rc
     /// modify returns nullopt if unmodified otherwise it returns the new rc to be sigend and

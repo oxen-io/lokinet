@@ -145,6 +145,7 @@ add_library(lokinet-config
 # lokinet-consensus is for deriving and tracking network consensus state for both service nodes and clients
 add_library(lokinet-consensus
   STATIC
+  consensus/edge_selector.cpp
   consensus/reachability_testing.cpp
 )
 

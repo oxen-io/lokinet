@@ -50,6 +50,7 @@ namespace llarp
   Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready{false}
       , m_lmq{std::make_shared<oxenmq::OxenMQ>()}
+      , _edge_selector{*this}
       , _loop{std::move(loop)}
       , _vpnPlatform{std::move(vpnPlatform)}
       , paths{this}
@@ -869,6 +870,12 @@ namespace llarp
     m_LastStatsReport = now;
   }
 
+  const consensus::EdgeSelector&
+  Router::edge_selector() const
+  {
+    return _edge_selector;
+  }
+
   std::string
   Router::status_line()
   {
@@ -1059,12 +1066,8 @@ namespace llarp
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
     }
-    size_t connectToNum = _outboundSessionMaker.minConnectedRouters;
-    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
-    if (strictConnect > 0 && connectToNum > strictConnect)
-    {
-      connectToNum = strictConnect;
-    }
+
+    size_t connectToNum = _outboundSessionMaker.maxConnectedRouters;
 
     if (isSvcNode and now >= m_NextDecommissionWarn)
     {
