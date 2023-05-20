@@ -87,7 +87,7 @@ namespace llarp
     ToString() const;
 
     std::string
-    hostString() const;
+    hostString(bool add_braces = true) const;
 
     inline int
     Family() const

@@ -75,8 +75,11 @@ namespace llarp::uv
     std::optional<SockAddr>
     LocalAddr() const override
     {
-      auto addr = handle->sock<uvw::IPv4>();
-      return SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+      if (auto addr = handle->sock<uvw::IPv4>(); not addr.ip.empty())
+        return SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+      if (auto addr = handle->sock<uvw::IPv6>(); not addr.ip.empty())
+        return SockAddr{addr.ip, huint16_t{static_cast<uint16_t>(addr.port)}};
+      return std::nullopt;
     }
 
     std::optional<int>

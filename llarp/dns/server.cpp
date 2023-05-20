@@ -177,10 +177,7 @@ namespace llarp::dns
       void
       AddUpstreamResolver(const SockAddr& dns)
       {
-        std::string str = dns.hostString();
-
-        if (const auto port = dns.getPort(); port != 53)
-          fmt::format_to(std::back_inserter(str), "@{}", port);
+        std::string str = fmt::format("{}@{}", dns.hostString(false), dns.getPort());
 
         if (auto err = ub_ctx_set_fwd(m_ctx, str.c_str()))
         {
