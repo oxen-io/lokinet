@@ -290,7 +290,7 @@ namespace llarp
   }
 
   std::string
-  SockAddr::hostString(bool add_braces) const
+  SockAddr::hostString(bool ipv6_brackets) const
   {
     std::array<char, 128> buf{};
     if (isIPv4())
@@ -301,7 +301,7 @@ namespace llarp
     }
 
     inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf.data(), buf.size());
-    if (not add_braces)
+    if (not ipv6_brackets)
       return buf.data();
 
     return fmt::format("[{}]", buf.data());

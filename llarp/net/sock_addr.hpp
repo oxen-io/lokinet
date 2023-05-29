@@ -86,8 +86,10 @@ namespace llarp
     std::string
     ToString() const;
 
+    /// convert ip address to string; ipv6_brackets - if true or omitted we add [...] around the
+    /// IPv6 address, otherwise we return it bare.
     std::string
-    hostString(bool add_braces = true) const;
+    hostString(bool ipv6_brackets = true) const;
 
     inline int
     Family() const
