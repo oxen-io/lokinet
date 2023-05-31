@@ -290,25 +290,21 @@ namespace llarp
   }
 
   std::string
-  SockAddr::hostString() const
+  SockAddr::hostString(bool ipv6_brackets) const
   {
-    std::string str;
-    char buf[INET6_ADDRSTRLEN] = {0x0};
+    std::array<char, 128> buf{};
     if (isIPv4())
     {
-      // handle IPv4 mapped addrs
-      inet_ntop(AF_INET, &m_addr4.sin_addr.s_addr, buf, sizeof(buf));
-      str = buf;
+      // IPv4 mapped addrs
+      inet_ntop(AF_INET, &m_addr4.sin_addr.s_addr, buf.data(), buf.size());
+      return buf.data();
     }
-    else
-    {
-      inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf, sizeof(buf));
-      str.reserve(std::strlen(buf) + 2);
-      str.append("[");
-      str.append(buf);
-      str.append("]");
-    }
-    return str;
+
+    inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf.data(), buf.size());
+    if (not ipv6_brackets)
+      return buf.data();
+
+    return fmt::format("[{}]", buf.data());
   }
 
   bool
