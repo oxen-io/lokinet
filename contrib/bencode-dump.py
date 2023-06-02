@@ -40,7 +40,7 @@ def next_byte():
 def parse_int():
     s = b''
     x = next_byte()
-    while x in b"0123456789":
+    while x in b"0123456789-":
         s += x
         x = next_byte()
     assert x == b'e' and len(s) > 0, "Invalid integer encoding"
