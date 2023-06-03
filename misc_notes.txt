@@ -1,0 +1,16 @@
+
+add_stream_data for stream <> returned:
+    [-240,0]
+        increase buflen until == 1200
+            add_stream_data for stream <> returned:
+                [1200,-1]
+                    Send packet
+    [0,-1]
+        Congestion limited or nothing to do
+            move on
+
+add_stream_data for non-stream returned:
+    [1200,-1] OR [{>0},-1]
+        send data packet
+    [0,-1]
+        Congestion limited or nothing to do

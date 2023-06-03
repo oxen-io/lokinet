@@ -11,6 +11,9 @@
 #include "linux.hpp"
 #endif
 #endif
+#ifdef __APPLE__
+#include "null.hpp"
+#endif
 
 #include <exception>
 
@@ -38,8 +41,11 @@ namespace llarp::vpn
 #endif
 #endif
 #ifdef __APPLE__
-    throw std::runtime_error{"not supported"};
+    plat = std::make_shared<NullPlatform>();
 #endif
+
+    if (not plat)
+      throw std::runtime_error{"not supported"};
     return plat;
   }
 

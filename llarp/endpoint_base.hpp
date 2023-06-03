@@ -122,7 +122,7 @@ namespace llarp
     virtual bool
     EnsurePathTo(
         AddressVariant_t addr,
-        std::function<void(std::optional<service::ConvoTag>)> hook,
+        std::function<void(std::optional<std::variant<service::Address, RouterID>>)> hook,
         llarp_time_t timeout) = 0;
 
     virtual void
@@ -134,7 +134,9 @@ namespace llarp
 
     virtual bool
     SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+        std::variant<service::Address, RouterID> addr,
+        const llarp_buffer_t& payload,
+        service::ProtocolType t) = 0;
 
     /// lookup srv records async
     virtual void

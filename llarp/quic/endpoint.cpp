@@ -1,5 +1,7 @@
 #include "endpoint.hpp"
 #include "client.hpp"
+#include "llarp/net/net_int.hpp"
+#include "ngtcp2/ngtcp2.h"
 #include "server.hpp"
 #include "uvw/async.h"
 #include <llarp/crypto/crypto.hpp>
@@ -22,6 +24,8 @@ extern "C"
 
 namespace llarp::quic
 {
+  static auto logcat = log::Cat("quic");
+
   Endpoint::Endpoint(EndpointBase& ep) : service_endpoint{ep}
   {
     randombytes_buf(static_secret.data(), static_secret.size());
@@ -31,7 +35,7 @@ namespace llarp::quic
     expiry_timer->on<uvw::TimerEvent>([this](const auto&, auto&) { check_timeouts(); });
     expiry_timer->start(250ms, 250ms);
 
-    LogDebug("Created QUIC endpoint");
+    log::debug(logcat, "Created QUIC endpoint");
   }
 
   Endpoint::~Endpoint()
@@ -48,49 +52,60 @@ namespace llarp::quic
     return loop;
   }
 
+  // TODO: does the lookup need to be done every single packet?
+  //    revisit this during libQUICinet
+  // Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
   void
-  Endpoint::receive_packet(const SockAddr& src, uint8_t ecn, bstring_view data)
+  Endpoint::receive_packet(Address remote, uint8_t ecn, bstring_view data)
   {
     // ngtcp2 wants a local address but we don't necessarily have something so just set it to
     // IPv4 or IPv6 "unspecified" address (0.0.0.0 or ::)
-    SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
+    // SockAddr local = src.isIPv6() ? SockAddr{in6addr_any} : SockAddr{nuint32_t{INADDR_ANY}};
 
-    Packet pkt{Path{local, src}, data, ngtcp2_pkt_info{.ecn = ecn}};
+    Packet pkt{
+        Path{Address{SockAddr{"::1"sv, huint16_t{0}}, std::nullopt}, remote},
+        data,
+        ngtcp2_pkt_info{.ecn = ecn}};
 
-    LogTrace("[", pkt.path, ",ecn=", pkt.info.ecn, "]: received ", data.size(), " bytes");
+    log::trace(logcat, "[{},ecn={}]: received {} bytes", pkt.path, pkt.info.ecn, data.size());
 
     handle_packet(pkt);
 
-    LogTrace("Done handling packet");
+    log::debug(logcat, "Done handling packet");
   }
 
   void
   Endpoint::handle_packet(const Packet& p)
   {
-    LogTrace("Handling incoming quic packet: ", buffer_printer{p.data});
     auto maybe_dcid = handle_packet_init(p);
     if (!maybe_dcid)
+    {
+      log::debug(logcat, "Handle packet init failed");
       return;
+    }
     auto& dcid = *maybe_dcid;
 
     // See if we have an existing connection already established for it
-    LogTrace("Incoming connection id ", dcid);
+    log::trace(logcat, "Incoming connection id {}", dcid);
     auto [connptr, alias] = get_conn(dcid);
     if (!connptr)
     {
       if (alias)
       {
-        LogDebug("Incoming packet QUIC CID is an expired alias; dropping");
+        log::debug(logcat, "Incoming packet QUIC CID is an expired alias; dropping");
         return;
       }
       connptr = accept_initial_connection(p);
       if (!connptr)
+      {
+        log::warning(logcat, "Connection could not be created");
         return;
+      }
     }
     if (alias)
-      LogTrace("CID is alias for primary CID ", connptr->base_cid);
+      log::debug(logcat, "CID is alias for primary CID {}", connptr->base_cid);
     else
-      LogTrace("CID is primary CID");
+      log::debug(logcat, "CID is primary CID");
 
     handle_conn_packet(*connptr, p);
   }
@@ -98,47 +113,40 @@ namespace llarp::quic
   std::optional<ConnectionID>
   Endpoint::handle_packet_init(const Packet& p)
   {
-    version_info vi;
-    auto rv = ngtcp2_pkt_decode_version_cid(
-        &vi.version,
-        &vi.dcid,
-        &vi.dcid_len,
-        &vi.scid,
-        &vi.scid_len,
-        u8data(p.data),
-        p.data.size(),
-        NGTCP2_MAX_CIDLEN);
-    if (rv == 1)
-    {  // 1 means Version Negotiation should be sent and otherwise the packet should be ignored
+    ngtcp2_version_cid vi;
+    auto rv = ngtcp2_pkt_decode_version_cid(&vi, u8data(p.data), p.data.size(), NGTCP2_MAX_CIDLEN);
+    if (rv == NGTCP2_ERR_VERSION_NEGOTIATION)
+    {  // Version Negotiation should be sent and otherwise the packet should be ignored
       send_version_negotiation(vi, p.path.remote);
       return std::nullopt;
     }
     if (rv != 0)
     {
-      LogWarn("QUIC packet header decode failed: ", ngtcp2_strerror(rv));
+      log::warning(logcat, "QUIC packet header decode failed: {}", ngtcp2_strerror(rv));
       return std::nullopt;
     }
 
-    if (vi.dcid_len > ConnectionID::max_size())
+    if (vi.dcidlen > ConnectionID::max_size())
     {
-      LogWarn("Internal error: destination ID is longer than should be allowed");
+      log::warning(logcat, "Internal error: destination ID is longer than should be allowed");
       return std::nullopt;
     }
 
-    return std::make_optional<ConnectionID>(vi.dcid, vi.dcid_len);
+    return std::make_optional<ConnectionID>(vi.dcid, vi.dcidlen);
   }
+
   void
   Endpoint::handle_conn_packet(Connection& conn, const Packet& p)
   {
     if (ngtcp2_conn_is_in_closing_period(conn))
     {
-      LogDebug("Connection is in closing period, dropping");
+      log::debug(logcat, "Connection is in closing period, dropping");
       close_connection(conn);
       return;
     }
     if (conn.draining)
     {
-      LogDebug("Connection is draining, dropping");
+      log::debug(logcat, "Connection is draining, dropping");
       // "draining" state means we received a connection close and we're keeping the
       // connection alive just to catch (and discard) straggling packets that arrive
       // out of order w.r.t to connection close.
@@ -147,29 +155,52 @@ namespace llarp::quic
 
     if (auto result = read_packet(p, conn); !result)
     {
-      LogWarn("Read packet failed! ", ngtcp2_strerror(result.error_code));
+      log::warning(logcat, "Read packet failed! {}", ngtcp2_strerror(result.error_code));
+      log::debug(logcat, "Packet: {}", buffer_printer{p.data});
     }
 
     // FIXME - reset idle timer?
-    LogTrace("Done with incoming packet");
+    log::trace(logcat, "Done with incoming packet");
   }
 
   io_result
   Endpoint::read_packet(const Packet& p, Connection& conn)
   {
-    LogTrace("Reading packet from ", p.path);
     auto rv =
         ngtcp2_conn_read_pkt(conn, p.path, &p.info, u8data(p.data), p.data.size(), get_timestamp());
 
     if (rv == 0)
       conn.io_ready();
-    else
-      LogWarn("read pkt error: ", ngtcp2_strerror(rv));
-
-    if (rv == NGTCP2_ERR_DRAINING)
+    else if (rv == NGTCP2_ERR_DRAINING)
+    {
+      log::debug(logcat, "Draining connection {}", conn.base_cid);
       start_draining(conn);
-    else if (rv == NGTCP2_ERR_DROP_CONN)
+    }
+    else if (rv == NGTCP2_ERR_PROTO)
+    {
+      log::warning(
+          logcat,
+          "Immediately closing connection {} due to error {}",
+          conn.base_cid,
+          ngtcp2_strerror(rv));
+      close_connection(conn, rv, "ERR_PROTO"sv);
+    }
+    else if (rv == NGTCP2_ERR_DROP_CONN)  // drop connection w/o calling
+                                          // ngtcp2_conn_write_connection_close()
+    {
+      log::warning(
+          logcat, "Deleting connection {} due to error {}", conn.base_cid, ngtcp2_strerror(rv));
       delete_conn(conn.base_cid);
+    }
+    else
+    {
+      log::warning(
+          logcat,
+          "Immediately closing connection {} due to error {}",
+          conn.base_cid,
+          ngtcp2_strerror(rv));
+      close_connection(conn, rv, ngtcp2_strerror(rv));
+    }
 
     return {rv};
   }
@@ -186,19 +217,24 @@ namespace llarp::quic
     bstring_view outgoing{buf_.data(), outgoing_len};
 
     if (service_endpoint.SendToOrQueue(
-            to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
+            *to.endpoint,
+            llarp_buffer_t{outgoing.data(), outgoing.size()},
+            service::ProtocolType::QUIC))
     {
-      LogTrace("[", to, "]: sent ", buffer_printer{outgoing});
+      log::trace(logcat, "[{}]: sent {}", to, buffer_printer{outgoing});
     }
     else
     {
-      LogDebug("Failed to send to quic endpoint ", to, "; was sending ", outgoing.size(), "B");
+      log::warning(
+          logcat, "Failed to send to quic endpoint {}; was sending {}B", to, outgoing.size());
+      return io_result{-1};
     }
-    return {};
+
+    return io_result{0};
   }
 
   void
-  Endpoint::send_version_negotiation(const version_info& vi, const Address& source)
+  Endpoint::send_version_negotiation(const ngtcp2_version_cid& vi, const Address& source)
   {
     std::array<std::byte, Endpoint::max_pkt_size_v4> buf;
     std::array<uint32_t, NGTCP2_PROTO_VER_MAX - NGTCP2_PROTO_VER_MIN + 2> versions;
@@ -212,65 +248,85 @@ namespace llarp::quic
         buf.size(),
         std::uniform_int_distribution<uint8_t>{0, 255}(rng),
         vi.dcid,
-        vi.dcid_len,
+        vi.dcidlen,
         vi.scid,
-        vi.scid_len,
+        vi.scidlen,
         versions.data(),
         versions.size());
     if (nwrote < 0)
-      LogWarn("Failed to construct version negotiation packet: ", ngtcp2_strerror(nwrote));
+      log::warning(
+          logcat, "Failed to construct version negotiation packet: {}", ngtcp2_strerror(nwrote));
     if (nwrote <= 0)
       return;
 
-    send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
+    if (auto rv = send_packet(source, bstring_view{buf.data(), static_cast<size_t>(nwrote)}, 0);
+        not rv)
+      log::warning(logcat, "Failed to send version negotiation packet");
   }
 
   void
-  Endpoint::close_connection(
-      Connection& conn, uint64_t code, bool application, std::string_view close_reason)
+  Endpoint::close_connection(Connection& conn, int code, std::string_view close_reason)
   {
-    LogDebug("Closing connection ", conn.base_cid);
-    if (!conn.closing)
+    log::debug(logcat, "Closing connection {}", conn.base_cid);
+
+    if (!conn || conn.closing || conn.draining)
+      return;
+
+    if (code == NGTCP2_ERR_IDLE_CLOSE)
     {
-      conn.conn_buffer.resize(max_pkt_size_v4);
-      Path path;
-      ngtcp2_pkt_info pi;
-
-      auto write_close_func = application ? ngtcp2_conn_write_application_close_versioned
-                                          : ngtcp2_conn_write_connection_close_versioned;
-
-      auto written = write_close_func(
-          conn,
-          path,
-          NGTCP2_PKT_INFO_VERSION,
-          &pi,
-          u8data(conn.conn_buffer),
-          conn.conn_buffer.size(),
-          code,
-          reinterpret_cast<const uint8_t*>(close_reason.data()),
-          close_reason.size(),
-          get_timestamp());
-      if (written <= 0)
-      {
-        LogWarn(
-            "Failed to write connection close packet: ",
-            written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
-        return;
-      }
-      assert(written <= (long)conn.conn_buffer.size());
-      conn.conn_buffer.resize(written);
-      conn.closing = true;
-
-      conn.path = path;
+      log::warning(logcat, "Connection {} passed idle expiry timer, closing now", conn.base_cid);
+      delete_conn(conn.base_cid);
+      return;
     }
+
+    //  "The error not specifically mentioned, including NGTCP2_ERR_HANDSHAKE_TIMEOUT,
+    //  should be dealt with by calling ngtcp2_conn_write_connection_close."
+    //  https://github.com/ngtcp2/ngtcp2/issues/670#issuecomment-1417300346
+    if (code == NGTCP2_ERR_HANDSHAKE_TIMEOUT)
+    {
+      log::warning(logcat, "Connection {} handshake timed out, closing now", conn.base_cid);
+    }
+
+    ngtcp2_connection_close_error err;
+    ngtcp2_connection_close_error_set_transport_error_liberr(
+        &err,
+        code,
+        reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
+        close_reason.size());
+
+    conn.conn_buffer.resize(max_pkt_size_v4);
+    ngtcp2_pkt_info pi;
+
+    auto written = ngtcp2_conn_write_connection_close(
+        conn,
+        &conn.path.path,
+        &pi,
+        u8data(conn.conn_buffer),
+        conn.conn_buffer.size(),
+        &err,
+        get_timestamp());
+    if (written <= 0)
+    {
+      log::warning(
+          logcat,
+          "Failed to write connection close packet: {}",
+          written < 0 ? ngtcp2_strerror(written) : "unknown error: closing is 0 bytes??");
+      log::warning(logcat, "Failed to write packet: removing connection {}", conn.base_cid);
+      delete_conn(conn.base_cid);
+      return;
+    }
+    assert(written <= (long)conn.conn_buffer.size());
+    conn.conn_buffer.resize(written);
+    conn.closing = true;
+
     assert(conn.closing && !conn.conn_buffer.empty());
 
     if (auto sent = send_packet(conn.path.remote, conn.conn_buffer, 0); not sent)
     {
-      LogWarn(
-          "Failed to send packet: ",
+      log::warning(
+          logcat,
+          "Failed to send packet: {}; removing connection {}",
           strerror(sent.error_code),
-          "; removing connection ",
           conn.base_cid);
       delete_conn(conn.base_cid);
       return;
@@ -285,7 +341,13 @@ namespace llarp::quic
   {
     if (conn.draining)
       return;
-    LogDebug("Putting ", conn.base_cid, " into draining mode");
+    if (conn.on_closing)
+    {
+      log::trace(logcat, "Calling Connection.on_closing for connection {}", conn.base_cid);
+      conn.on_closing(conn);  // only call once
+      conn.on_closing = nullptr;
+    }
+    log::debug(logcat, "Putting {} into draining mode", conn.base_cid);
     conn.draining = true;
     // Recommended draining time is 3*Probe Timeout
     draining.emplace(conn.base_cid, get_time() + ngtcp2_conn_get_pto(conn) * 3 * 1ns);
@@ -295,7 +357,6 @@ namespace llarp::quic
   Endpoint::check_timeouts()
   {
     auto now = get_time();
-    uint64_t now_ts = get_timestamp(now);
 
     // Destroy any connections that are finished draining
     bool cleanup = false;
@@ -305,25 +366,14 @@ namespace llarp::quic
       {
         if (std::holds_alternative<primary_conn_ptr>(it->second))
           cleanup = true;
-        LogDebug("Deleting connection ", it->first);
+        log::debug(logcat, "Deleting connection {}", it->first);
         conns.erase(it);
       }
       draining.pop();
     }
+
     if (cleanup)
       clean_alias_conns();
-
-    for (auto it = conns.begin(); it != conns.end(); ++it)
-    {
-      if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it->second))
-      {
-        Connection& conn = **conn_ptr;
-        auto exp = ngtcp2_conn_get_idle_expiry(conn);
-        if (exp >= now_ts || conn.draining)
-          continue;
-        start_draining(conn);
-      }
-    }
   }
 
   std::pair<std::shared_ptr<Connection>, bool>
@@ -344,15 +394,27 @@ namespace llarp::quic
     auto it = conns.find(cid);
     if (it == conns.end())
     {
-      LogDebug("Cannot delete connection ", cid, ": cid not found");
+      log::debug(logcat, "Cannot delete connection {}: cid not found", cid);
       return false;
     }
 
     bool primary = std::holds_alternative<primary_conn_ptr>(it->second);
-    LogDebug("Deleting ", primary ? "primary" : "alias", " connection ", cid);
+    if (primary)
+    {
+      auto ptr = var::get<primary_conn_ptr>(it->second);
+      if (ptr->on_closing)
+      {
+        log::trace(logcat, "Calling Connection.on_closing for connection {}", cid);
+        ptr->on_closing(*ptr);  // only call once
+        ptr->on_closing = nullptr;
+      }
+    }
+
+    log::debug(logcat, "Deleting {} connection {}", primary ? "primary" : "alias", cid);
     conns.erase(it);
     if (primary)
       clean_alias_conns();
+
     return true;
   }
 
@@ -378,7 +440,7 @@ namespace llarp::quic
       cid = ConnectionID::random(cid_length);
       inserted = conns.emplace(cid, conn.weak_from_this()).second;
     }
-    LogDebug("Created cid ", cid, " alias for ", conn.base_cid);
+    log::debug(logcat, "Created cid {} alias for {}", cid, conn.base_cid);
     return cid;
   }
 

@@ -245,6 +245,9 @@ namespace llarp::quic
     int
     setup_server_crypto_initial();
 
+    int
+    get_handshake_confirmed();
+
     // Flush any streams with pending data. Note that, depending on available ngtcp2 state, we may
     // not fully flush all streams -- some streams can individually block while waiting for
     // confirmation.
@@ -276,9 +279,9 @@ namespace llarp::quic
     // called.
     std::function<void(Connection&)> on_handshake_complete;
 
-    // Returns true iff this connection has completed a handshake with the remote end.
-    bool
-    get_handshake_completed();
+    // Returns non-zero iff this connection has not completed a handshake with the remote end.
+    int
+    complete_handshake();
 
     // Callback that is invoked whenever new streams become available: i.e. after handshaking, or
     // after existing streams are closed.  Note that this callback is invoked whenever the number of
@@ -286,6 +289,11 @@ namespace llarp::quic
     // how many streams are currently available call `get_streams_available()` (it will always be at
     // least 1 when this callback is invoked).
     std::function<void(Connection&)> on_stream_available;
+
+    // Callback that is invoked by the Connection's owning Endpoint whenever the Connection
+    // is put into a "closing" state (draining, closing, immediate dismissal, etc.)  After
+    // calling this once, the Endpoint clears it.
+    std::function<void(Connection&)> on_closing;
 
     // Returns the number of available streams that can currently be opened on the connection
     int
@@ -322,8 +330,8 @@ namespace llarp::quic
     send_magic(ngtcp2_crypto_level level);
     int
     send_transport_params(ngtcp2_crypto_level level);
-    void
-    complete_handshake();
+    // void
+    // complete_handshake();
   };
 
 }  // namespace llarp::quic

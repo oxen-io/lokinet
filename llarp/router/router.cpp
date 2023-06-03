@@ -72,11 +72,21 @@ namespace llarp
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
     m_Pump = _loop->make_waker([this]() { PumpLL(); });
+    m_Work = _loop->make_waker([this]() { submit_work(); });
   }
 
   Router::~Router()
   {
     llarp_dht_context_free(_dht);
+  }
+
+  void
+  Router::submit_work()
+  {
+    m_lmq->job([work = std::move(m_WorkJobs)]() {
+      for (const auto& job : work)
+        job();
+    });
   }
 
   void
@@ -411,7 +421,7 @@ namespace llarp
 
     if (log::get_level_default() != log::Level::off)
       log::reset_level(conf.logging.m_logLevel);
-    log::clear_sinks();
+    // log::clear_sinks();
     log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.m_logFile);
 
     // re-add rpc log sink if rpc enabled, else free it
@@ -482,8 +492,8 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    if (m_isServiceNode)
-      _nodedb->Put(_rc);
+    if (IsServiceNode())
+      _nodedb->Put(rc());
     QueueDiskIO([&]() { HandleSaveRC(); });
     return true;
   }
@@ -1631,7 +1641,10 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    m_lmq->job(std::move(func));
+    _loop->call([this, func = std::move(func)]() mutable {
+      m_WorkJobs.push_back(std::move(func));
+      m_Work->Trigger();
+    });
   }
 
   void

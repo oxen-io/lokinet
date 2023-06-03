@@ -6,11 +6,14 @@
 #include <llarp/router/abstractrouter.hpp>
 
 #include <queue>
+#include "oxen/log.hpp"
 
 namespace llarp
 {
   namespace iwp
   {
+    static auto logcat = log::Cat("endpoint");
+
     ILinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t minpad, size_t variance)
     {
@@ -141,6 +144,8 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
+      if (m_State == State::Closed)
+        return;
       m_EncryptNext.emplace_back(std::move(data));
       TriggerPump();
       if (!IsEstablished())
@@ -176,12 +181,9 @@ namespace llarp
         return;
       auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
       m_Parent->UnmapAddr(m_RemoteAddr);
-      m_State = State::Closed;
-      if (m_SentClosed.test_and_set())
-        return;
       EncryptAndSend(std::move(close_msg));
-
       LogInfo(m_Parent->PrintableName(), " closing connection to ", m_RemoteAddr);
+      m_State = State::Closed;
     }
 
     bool
@@ -352,7 +354,7 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if (m_State == State::Ready)
+      if (m_State == State::Ready || m_State == State::LinkIntro)
       {
         return now > m_LastRX
             && now - m_LastRX
@@ -588,7 +590,7 @@ namespace llarp
     {
       if (pkt.size() <= PacketOverhead)
       {
-        LogError("packet too small from ", m_RemoteAddr);
+        log::error(logcat, "Packet too small from {}", m_RemoteAddr);
         return false;
       }
       const llarp_buffer_t buf(pkt);
@@ -598,30 +600,27 @@ namespace llarp
       curbuf.sz -= ShortHash::SIZE;
       if (not CryptoManager::instance()->hmac(H.data(), curbuf, m_SessionKey))
       {
-        LogError("failed to caclulate keyed hash for ", m_RemoteAddr);
+        log::error(logcat, "Failed to calculate keyed hash for {}", m_RemoteAddr);
         return false;
       }
       const ShortHash expected{buf.base};
       if (H != expected)
       {
-        LogDebug(
+        log::debug(
+            logcat,
+            "{} keyed hash mismatch {} != {} from {} state={} size={}",
             m_Parent->PrintableName(),
-            " keyed hash mismatch ",
             H,
-            " != ",
             expected,
-            " from ",
             m_RemoteAddr,
-            " state=",
             int(m_State),
-            " size=",
             buf.sz);
         return false;
       }
       const TunnelNonce N{curbuf.base};
       curbuf.base += 32;
       curbuf.sz -= 32;
-      LogTrace("decrypt: ", curbuf.sz, " bytes from ", m_RemoteAddr);
+      log::trace(logcat, "Decrypt: {} bytes from {}", curbuf.sz, m_RemoteAddr);
       return CryptoManager::instance()->xchacha20(curbuf, m_SessionKey, N);
     }
 

@@ -16,20 +16,20 @@ namespace llarp::quic
     NullCrypto();
 
     void
-    client_initial(Connection& conn);
+    client_initial(ngtcp2_conn* conn);
 
     void
-    server_initial(Connection& conn);
+    server_initial(ngtcp2_conn* conn);
 
     bool
-    install_tx_handshake_key(Connection& conn);
+    install_tx_handshake_key(ngtcp2_conn* conn);
     bool
-    install_tx_key(Connection& conn);
+    install_tx_key(ngtcp2_conn* conn);
 
     bool
-    install_rx_handshake_key(Connection& conn);
+    install_rx_handshake_key(ngtcp2_conn* conn);
     bool
-    install_rx_key(Connection& conn);
+    install_rx_key(ngtcp2_conn* conn);
 
    private:
     std::array<uint8_t, 8> null_iv{};

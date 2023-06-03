@@ -31,6 +31,7 @@ if(SUBMODULE_CHECK)
     check_submodule(sqlite_orm)
     check_submodule(oxen-mq)
     check_submodule(oxen-encoding)
+    check_submodule(libuv)
     check_submodule(uvw)
     check_submodule(cpr)
     check_submodule(ngtcp2)
@@ -67,6 +68,8 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
 
+system_or_submodule(LIBUV uv_a libuv>=1.44.2 libuv)
+
 if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
     set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
 endif()
@@ -92,7 +95,7 @@ endif()
 
 add_library(uvw INTERFACE)
 target_include_directories(uvw INTERFACE uvw/src)
-target_link_libraries(uvw INTERFACE libuv)
+target_link_libraries(uvw INTERFACE uv_a::uv_a)
 
 # ngtcp2 needs some massaging to build nicely:
 include(ngtcp2_lib)

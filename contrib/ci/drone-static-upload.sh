@@ -60,6 +60,9 @@ elif [ -e build-mac ]; then
     archive="$base.tar.xz"
     mv build-mac/Lokinet*/ "$base"
     tar cJvf "$archive" "$base"
+elif [ -e build/iphone/ ]; then
+    archive="$base.tar.xz"
+    mv build/iphone/*.tar.xz "$archive"
 else
     cp -av build/daemon/lokinet{,-vpn} "$base"
     cp -av contrib/bootstrap/mainnet.signed "$base/bootstrap.signed"

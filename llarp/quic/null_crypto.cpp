@@ -5,7 +5,11 @@
 
 namespace llarp::quic
 {
-  // Cranks a value to "11", i.e. set it to its maximum
+  static auto logcat = log::Cat("quic");
+
+  // "It's one louder, init?"
+  // "Why not make '10' higher?"
+  // "...These go to 11"
   template <typename T>
   void
   crank_to_eleven(T& val)
@@ -22,10 +26,11 @@ namespace llarp::quic
   }
 
   void
-  NullCrypto::client_initial(Connection& conn)
+  NullCrypto::client_initial(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Client initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
-    ngtcp2_conn_install_initial_key(
+    int rv = ngtcp2_conn_install_initial_key(
         conn,
         &null_aead_ctx,
         null_iv.data(),
@@ -34,16 +39,20 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
+
+    if (rv != 0)
+      log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
+
     ngtcp2_conn_set_retry_aead(conn, &null_aead, &null_aead_ctx);
     ngtcp2_conn_set_crypto_ctx(conn, &null_ctx);
   }
 
   void
-  NullCrypto::server_initial(Connection& conn)
+  NullCrypto::server_initial(ngtcp2_conn* conn)
   {
-    LogDebug("Server initial null crypto setup");
+    log::debug(logcat, "Server initial null crypto setup");
     ngtcp2_conn_set_initial_crypto_ctx(conn, &null_ctx);
-    ngtcp2_conn_install_initial_key(
+    int rv = ngtcp2_conn_install_initial_key(
         conn,
         &null_aead_ctx,
         null_iv.data(),
@@ -52,26 +61,33 @@ namespace llarp::quic
         null_iv.data(),
         &null_cipher_ctx,
         null_iv.size());
+
+    if (rv != 0)
+      log::debug(logcat, "Call to ngtcp2_conn_set_initial_crypto_ctx unsuccessful at {}", __LINE__);
+
     ngtcp2_conn_set_crypto_ctx(conn, &null_ctx);
   }
 
   bool
-  NullCrypto::install_tx_handshake_key(Connection& conn)
+  NullCrypto::install_tx_handshake_key(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_tx_handshake_key(
                conn, &null_aead_ctx, null_iv.data(), null_iv.size(), &null_cipher_ctx)
         == 0;
   }
   bool
-  NullCrypto::install_rx_handshake_key(Connection& conn)
+  NullCrypto::install_rx_handshake_key(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_rx_handshake_key(
                conn, &null_aead_ctx, null_iv.data(), null_iv.size(), &null_cipher_ctx)
         == 0;
   }
   bool
-  NullCrypto::install_tx_key(Connection& conn)
+  NullCrypto::install_tx_key(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_tx_key(
                conn,
                null_iv.data(),
@@ -83,8 +99,9 @@ namespace llarp::quic
         == 0;
   }
   bool
-  NullCrypto::install_rx_key(Connection& conn)
+  NullCrypto::install_rx_key(ngtcp2_conn* conn)
   {
+    log::debug(logcat, "Calling {}", __PRETTY_FUNCTION__);
     return ngtcp2_conn_install_rx_key(
                conn, nullptr, 0, &null_aead_ctx, null_iv.data(), null_iv.size(), &null_cipher_ctx)
         == 0;

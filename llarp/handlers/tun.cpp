@@ -1255,9 +1255,10 @@ namespace llarp
       }
       // try sending it on an existing convotag
       // this succeds for inbound convos, probably.
-      if (auto maybe = GetBestConvoTagFor(to))
+      if (auto maybe_tag = GetBestConvoTagFor(to);
+          auto maybe_addr = GetEndpointWithConvoTag(*maybe_tag))
       {
-        if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+        if (SendToOrQueue(*maybe_addr, pkt.ConstBuffer(), type))
         {
           MarkIPActive(dst);
           Router()->TriggerPump();
@@ -1314,6 +1315,14 @@ namespace llarp
         uint64_t seqno)
     {
       LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
+      std::variant<service::Address, RouterID> addr;
+      if (auto maybe = GetEndpointWithConvoTag(tag))
+      {
+        addr = *maybe;
+      }
+      else
+        return false;
+
       if (t == service::ProtocolType::QUIC)
       {
         auto* quic = GetQUICTunnel();
@@ -1327,20 +1336,14 @@ namespace llarp
           LogWarn("invalid incoming quic packet, dropping");
           return false;
         }
-        LogInfo("tag active T=", tag);
-        quic->receive_packet(tag, buf);
+        log::trace(logcat, "tag active T={}", tag);
+
+        quic->receive_packet(std::move(addr), buf);
         return true;
       }
 
       if (t != service::ProtocolType::TrafficV4 && t != service::ProtocolType::TrafficV6
           && t != service::ProtocolType::Exit)
-        return false;
-      std::variant<service::Address, RouterID> addr;
-      if (auto maybe = GetEndpointWithConvoTag(tag))
-      {
-        addr = *maybe;
-      }
-      else
         return false;
       huint128_t src, dst;
 

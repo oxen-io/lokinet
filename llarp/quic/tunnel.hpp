@@ -78,7 +78,10 @@ namespace llarp::quic
     forget(int id);
 
     /// Called when open succeeds or times out.
-    using OpenCallback = std::function<void(bool success)>;
+    using OpenCallback = std::function<void(bool success, void* user_data)>;
+
+    /// Called when the tunnel is closed for any reason
+    using CloseCallback = std::function<void(int rv, void* user_data)>;
 
     /// Opens a quic tunnel to some remote lokinet address.  (Should only be called from the event
     /// loop thread.)
@@ -115,6 +118,7 @@ namespace llarp::quic
         std::string_view remote_addr,
         uint16_t port,
         OpenCallback on_open = {},
+        CloseCallback on_close = {},
         SockAddr bind_addr = {127, 0, 0, 1});
 
     /// Start closing an outgoing tunnel; takes the ID returned by `open()`.  Note that an existing
@@ -129,7 +133,7 @@ namespace llarp::quic
     /// \param buf - the raw arriving packet
     ///
     void
-    receive_packet(const service::ConvoTag& tag, const llarp_buffer_t& buf);
+    receive_packet(std::variant<service::Address, RouterID> remote, const llarp_buffer_t& buf);
 
     /// return true if we have any listeners added
     inline bool
@@ -147,6 +151,8 @@ namespace llarp::quic
       std::unique_ptr<Client> client;
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
+      // Callback to invoke when the tunnel is closed, if it was successfully opened
+      CloseCallback close_cb;
       // TCP listening socket
       std::shared_ptr<uvw::TCPHandle> tcp;
       // Accepted TCP connections
@@ -170,7 +176,10 @@ namespace llarp::quic
         uint16_t pseudo_port, bool step_success, std::string_view step_name, std::string_view addr);
 
     void
-    make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row);
+    make_client(
+        const uint16_t port,
+        std::variant<service::Address, RouterID> ep,
+        std::pair<const uint16_t, ClientTunnel>& row);
 
     void
     flush_pending_incoming(ClientTunnel& ct);

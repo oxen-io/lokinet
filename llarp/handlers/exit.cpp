@@ -97,42 +97,40 @@ namespace llarp
 
     bool
     ExitEndpoint::SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType type)
+        std::variant<service::Address, RouterID> addr,
+        const llarp_buffer_t& payload,
+        service::ProtocolType type)
     {
-      if (auto maybeAddr = GetEndpointWithConvoTag(tag))
+      if (std::holds_alternative<service::Address>(addr))
+        return false;
+      if (auto* rid = std::get_if<RouterID>(&addr))
       {
-        if (std::holds_alternative<service::Address>(*maybeAddr))
-          return false;
-        if (auto* rid = std::get_if<RouterID>(&*maybeAddr))
+        for (auto [itr, end] = m_ActiveExits.equal_range(PubKey{*rid}); itr != end; ++itr)
         {
-          for (auto [itr, end] = m_ActiveExits.equal_range(PubKey{*rid}); itr != end; ++itr)
+          if (not itr->second->LooksDead(Now()))
           {
-            if (not itr->second->LooksDead(Now()))
-            {
-              if (itr->second->QueueInboundTraffic(payload.copy(), type))
-                return true;
-            }
+            if (itr->second->QueueInboundTraffic(payload.copy(), type))
+              return true;
           }
-
-          if (not m_Router->PathToRouterAllowed(*rid))
-            return false;
-
-          ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
-            if (session and session->IsReady())
-            {
-              session->SendPacketToRemote(std::move(pkt), type);
-            }
-          });
         }
-        return true;
+
+        if (not m_Router->PathToRouterAllowed(*rid))
+          return false;
+
+        ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
+          if (session and session->IsReady())
+          {
+            session->SendPacketToRemote(std::move(pkt), type);
+          }
+        });
       }
-      return false;
+      return true;
     }
 
     bool
     ExitEndpoint::EnsurePathTo(
         AddressVariant_t addr,
-        std::function<void(std::optional<service::ConvoTag>)> hook,
+        std::function<void(std::optional<std::variant<service::Address, RouterID>>)> hook,
         llarp_time_t)
     {
       if (std::holds_alternative<service::Address>(addr))
@@ -142,15 +140,11 @@ namespace llarp
         if (m_SNodeKeys.count(PubKey{*rid}) or m_Router->PathToRouterAllowed(*rid))
         {
           ObtainSNodeSession(
-              *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
-                if (session and session->IsReady())
+              *rid, [hook, routerID = *rid, this](std::shared_ptr<exit::BaseSession> session) {
+                if (session and session->IsReady(); auto path = session->GetPathByRouter(routerID))
                 {
-                  if (auto path = session->GetPathByRouter(routerID))
-                  {
-                    hook(service::ConvoTag{path->RXID().as_array()});
-                  }
-                  else
-                    hook(std::nullopt);
+                  auto tag = service::ConvoTag{path->RXID().as_array()};
+                  hook(GetEndpointWithConvoTag(tag));
                 }
                 else
                   hook(std::nullopt);
@@ -159,7 +153,13 @@ namespace llarp
         else
         {
           // probably a client
-          hook(GetBestConvoTagFor(addr));
+          if (auto maybe_tag = GetBestConvoTagFor(addr);
+              auto maybe_addr = GetEndpointWithConvoTag(*maybe_tag))
+          {
+            hook(maybe_addr);
+          }
+          else
+            hook(std::nullopt);
         }
       }
       return true;

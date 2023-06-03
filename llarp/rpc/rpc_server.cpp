@@ -223,8 +223,9 @@ namespace llarp::rpc
 
     try
     {
+      // FIXME: real open/close callbacks
       auto [addr, id] = quic->open(
-          quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
+          quicconnect.request.remoteHost, quicconnect.request.port, nullptr, nullptr, laddr);
 
       util::StatusObject status;
       status["addr"] = addr.ToString();

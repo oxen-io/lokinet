@@ -206,7 +206,6 @@ namespace llarp
 
       std::atomic_flag m_PlaintextEmpty;
       llarp::thread::Queue<CryptoQueue_t> m_PlaintextRecv;
-      std::atomic_flag m_SentClosed;
 
       void
       EncryptWorker(CryptoQueue_t msgs);

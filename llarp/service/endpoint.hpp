@@ -346,7 +346,7 @@ namespace llarp
       bool
       EnsurePathTo(
           std::variant<Address, RouterID> addr,
-          std::function<void(std::optional<ConvoTag>)> hook,
+          std::function<void(std::optional<std::variant<Address, RouterID>>)> hook,
           llarp_time_t timeout) override;
 
       // passed a sendto context when we have a path established otherwise
@@ -468,19 +468,20 @@ namespace llarp
 
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
-      bool
-      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
+      // bool
+      // SendToOrQueue(std::variant<service::Address, RouterID> addr, const llarp_buffer_t& payload,
+      // ProtocolType t) override;
 
       // Send a to (or queues for sending) to either an address or router id
       bool
       SendToOrQueue(
-          const std::variant<Address, RouterID>& addr,
+          std::variant<Address, RouterID> addr,
           const llarp_buffer_t& payload,
-          ProtocolType t);
+          ProtocolType t) override;
 
       // Sends to (or queues for sending) to a remote client
       bool
-      SendToOrQueue(const Address& addr, const llarp_buffer_t& payload, ProtocolType t);
+      SendToOrQueue(const Address& remote, const llarp_buffer_t& payload, ProtocolType t);
 
       // Sends to (or queues for sending) to a router
       bool

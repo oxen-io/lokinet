@@ -50,6 +50,12 @@ extern "C"
   int EXPORT
   lokinet_add_bootstrap_rc(const char*, size_t, struct lokinet_context*);
 
+  /// set data directory for saving/loading node db
+  /// does nothing if called after lokinet_context_start
+  /// TODO: use for saving config changes in-client?
+  void EXPORT
+  lokinet_set_data_dir(const char*, struct lokinet_context*);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,8 +1,3 @@
-if(NOT APPLE)
-  return()
-endif()
-
-
 option(MACOS_SYSTEM_EXTENSION
   "Build the network extension as a system extension rather than a plugin.  This must be ON for non-app store release builds, and must be OFF for dev builds and Mac App Store distribution builds"
   OFF)

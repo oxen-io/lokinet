@@ -1,4 +1,3 @@
-
 CLANG_FORMAT_DESIRED_VERSION=14
 
 CLANG_FORMAT=$(command -v clang-format-$CLANG_FORMAT_DESIRED_VERSION 2>/dev/null)

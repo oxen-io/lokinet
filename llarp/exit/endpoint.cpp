@@ -119,7 +119,15 @@ namespace llarp
         if (not quic)
           return false;
         m_TxRate += buf.size();
-        quic->receive_packet(tag, std::move(buf));
+
+        std::variant<service::Address, RouterID> addr;
+
+        if (auto maybe = m_Parent->GetEndpointWithConvoTag(tag))
+          addr = *maybe;
+        else
+          return false;
+
+        quic->receive_packet(std::move(addr), std::move(buf));
         m_LastActive = m_Parent->Now();
         return true;
       }

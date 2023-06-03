@@ -1,4 +1,5 @@
 #include "client.hpp"
+#include "llarp/net/net_int.hpp"
 #include "tunnel.hpp"
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging.hpp>
@@ -12,7 +13,14 @@
 
 namespace llarp::quic
 {
-  Client::Client(EndpointBase& ep, const SockAddr& remote, uint16_t pseudo_port) : Endpoint{ep}
+  static auto logcat = log::Cat("quic");
+
+  Client::Client(
+      EndpointBase& ep,
+      const uint16_t port,
+      std::variant<service::Address, RouterID>&& remote,
+      uint16_t pseudo_port)
+      : Endpoint{ep}
   {
     default_stream_buffer_size =
         0;  // We steal uvw's provided buffers so don't need an outgoing data buffer
@@ -21,8 +29,7 @@ namespace llarp::quic
     // back to *this* client.
     local_addr.port(ToNet(huint16_t{pseudo_port}));
 
-    uint16_t tunnel_port = remote.getPort();
-    if (tunnel_port == 0)
+    if (port == 0)
       throw std::logic_error{"Cannot tunnel to port 0"};
 
     // TODO: need timers for:
@@ -34,10 +41,13 @@ namespace llarp::quic
     //
     // - key_update_timer
 
-    Path path{local_addr, remote};
-    llarp::LogDebug("Connecting to ", remote);
+    // to try: set ports to 0
+    Path path{
+        Address{SockAddr{"::1"sv, huint16_t{0}}, std::nullopt},
+        Address{SockAddr{"::1"sv, huint16_t{pseudo_port}}, std::move(remote)}};
 
-    auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), path, tunnel_port);
+    auto conn = std::make_shared<Connection>(*this, ConnectionID::random(), std::move(path), port);
+
     conn->io_ready();
     conns.emplace(conn->base_cid, std::move(conn));
   }
