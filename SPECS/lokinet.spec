@@ -1,5 +1,5 @@
 Name:           lokinet
-Version:        0.9.8
+Version:        0.9.11
 Release:        1%{?dist}
 Summary:        Lokinet anonymous, decentralized overlay network
 
@@ -97,7 +97,7 @@ install -Dm644 SOURCES/bootstrap.signed $RPM_BUILD_ROOT%{_sharedstatedir}/lokine
 
 %files
 
-%license LICENSE.txt
+%license LICENSE
 %doc readme.*
 %{_datadir}/polkit-1/rules.d/50-lokinet.rules
 %{_unitdir}/lokinet.service
@@ -122,7 +122,7 @@ if ! getent group _loki >/dev/null; then
     groupadd --system _loki
 fi
 if ! getent passwd _lokinet >/dev/null; then
-    useradd --badnames --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
+    useradd --badname --system --home-dir /var/lib/lokinet --group _loki --comment "Lokinet system user" _lokinet
 fi
 
 # Make sure the _lokinet user is part of the _loki group (in case it already existed)
@@ -154,6 +154,10 @@ systemctl enable --now lokinet
 %systemd_postun lokinet.service
 
 %changelog
+* Sat Jun 03 2023 Jason Rhinelander <jason@imaginary.ca> - 0.9.11-1
+- bump version
+- fix use of `--badnames` instead of `--badname`
+
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
 
