@@ -14,13 +14,13 @@ namespace llarp
   bool
   DHTImmediateMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == "m")
+    if (key.startswith("m"))
       return llarp::dht::DecodeMesssageList(dht::Key_t(session->GetPubKey()), buf, msgs);
-    if (key == "v")
+    if (key.startswith("v"))
     {
       if (!bencode_read_integer(buf, &version))
         return false;
-      return version == LLARP_PROTO_VERSION;
+      return version == llarp::constants::proto_version;
     }
     // bad key
     return false;
@@ -54,7 +54,7 @@ namespace llarp
       return false;
 
     // protocol version
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
       return false;
 
     return bencode_end(buf);

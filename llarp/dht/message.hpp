@@ -34,7 +34,7 @@ namespace llarp
 
       Key_t From;
       PathID_t pathID;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
     };
 
     IMessage::Ptr_t

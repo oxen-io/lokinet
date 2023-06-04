@@ -1,11 +1,10 @@
 #include "message.hpp"
+#include <oxenc/endian.h>
 
 #include "dns.hpp"
 #include "srv_data.hpp"
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
-#include <llarp/util/logging/logger.hpp>
-#include <llarp/util/printer.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/net/ip.hpp>
 
 #include <array>
@@ -14,6 +13,8 @@ namespace llarp
 {
   namespace dns
   {
+    static auto logcat = log::Cat("dns");
+
     bool
     MessageHeader::Encode(llarp_buffer_t* buf) const
     {
@@ -117,16 +118,16 @@ namespace llarp
       {
         if (!qd.Decode(buf))
         {
-          LogError("failed to decode question");
+          log::error(logcat, "failed to decode question");
           return false;
         }
-        LogDebug("dns question: ", qd);
+        log::debug(logcat, "question: {}", qd);
       }
       for (auto& an : answers)
       {
         if (not an.Decode(buf))
         {
-          LogDebug("failed to decode answer");
+          log::debug(logcat, "failed to decode answer");
           return false;
         }
       }
@@ -159,7 +160,8 @@ namespace llarp
       return OwnedBuffer::copy_used(buf);
     }
 
-    void Message::AddServFail(RR_TTL_t)
+    void
+    Message::AddServFail(RR_TTL_t)
     {
       if (questions.size())
       {
@@ -197,7 +199,7 @@ namespace llarp
           const auto addr = net::TruncateV6(ip);
           rec.rr_type = qTypeA;
           rec.rData.resize(4);
-          htobe32buf(rec.rData.data(), addr.h);
+          oxenc::write_host_as_big(addr.h, rec.rData.data());
         }
         answers.emplace_back(std::move(rec));
       }
@@ -219,7 +221,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -244,7 +246,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -269,7 +271,7 @@ namespace llarp
         rec.ttl = ttl;
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -295,7 +297,7 @@ namespace llarp
         std::array<byte_t, 512> tmp = {{0}};
         llarp_buffer_t buf(tmp);
         buf.put_uint16(priority);
-        if (EncodeName(&buf, name))
+        if (EncodeNameTo(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
           rec.rData.resize(buf.sz);
@@ -347,7 +349,7 @@ namespace llarp
           target = srv.target;
         }
 
-        if (not EncodeName(&buf, target))
+        if (not EncodeNameTo(&buf, target))
         {
           AddNXReply();
           return;
@@ -385,7 +387,8 @@ namespace llarp
       std::copy_n(buf.base, buf.sz, rec.rData.data());
     }
 
-    void Message::AddNXReply(RR_TTL_t)
+    void
+    Message::AddNXReply(RR_TTL_t)
     {
       if (questions.size())
       {
@@ -401,20 +404,31 @@ namespace llarp
       }
     }
 
-    std::ostream&
-    Message::print(std::ostream& stream, int level, int spaces) const
+    std::string
+    Message::ToString() const
     {
-      Printer printer(stream, level, spaces);
-
-      printer.printAttributeAsHex("dns message id", hdr_id);
-      printer.printAttributeAsHex("fields", hdr_fields);
-      printer.printAttribute("questions", questions);
-      printer.printAttribute("answers", answers);
-      printer.printAttribute("nameserer", authorities);
-      printer.printAttribute("additional", additional);
-
-      return stream;
+      return fmt::format(
+          "[DNSMessage id={:x} fields={:x} questions={{{}}} answers={{{}}} authorities={{{}}} "
+          "additional={{{}}}]",
+          hdr_id,
+          hdr_fields,
+          fmt::format("{}", fmt::join(questions, ",")),
+          fmt::format("{}", fmt::join(answers, ",")),
+          fmt::format("{}", fmt::join(authorities, ",")),
+          fmt::format("{}", fmt::join(additional, ",")));
     }
 
+    std::optional<Message>
+    MaybeParseDNSMessage(llarp_buffer_t buf)
+    {
+      MessageHeader hdr{};
+      if (not hdr.Decode(&buf))
+        return std::nullopt;
+
+      Message msg{hdr};
+      if (not msg.Decode(&buf))
+        return std::nullopt;
+      return msg;
+    }
   }  // namespace dns
 }  // namespace llarp

@@ -25,7 +25,7 @@ namespace llarp
 
     if (!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+    if (!BEncodeWriteDictInt("v", llarp::constants::proto_version, buf))
       return false;
     if (!BEncodeWriteDictEntry("x", X, buf))
       return false;
@@ -40,7 +40,7 @@ namespace llarp
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
+    if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
@@ -79,7 +79,7 @@ namespace llarp
 
     if (!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+    if (!BEncodeWriteDictInt("v", llarp::constants::proto_version, buf))
       return false;
     if (!BEncodeWriteDictEntry("x", X, buf))
       return false;
@@ -94,7 +94,7 @@ namespace llarp
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
+    if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;

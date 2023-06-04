@@ -45,7 +45,6 @@ namespace llarp
     EncryptInPlace(const SecretKey& seckey, const PubKey& other);
   };
 
-  /// TODO: can only handle 1 frame at a time
   template <typename User>
   struct AsyncFrameDecrypter
   {

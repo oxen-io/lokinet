@@ -2,31 +2,55 @@
 
 #include <llarp/dns/server.hpp>
 #include <llarp/ev/ev.hpp>
-#include <llarp/ev/vpn.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/util/codel.hpp>
+#include <llarp/service/protocol_type.hpp>
+#include <llarp/util/priority_queue.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
+#include <llarp/vpn/platform.hpp>
 
 #include <future>
-#include <queue>
 #include <type_traits>
 #include <variant>
-#include "service/protocol_type.hpp"
 
 namespace llarp
 {
   namespace handlers
   {
     struct TunEndpoint : public service::Endpoint,
-                         public dns::IQueryHandler,
+                         public dns::Resolver_Base,
                          public std::enable_shared_from_this<TunEndpoint>
     {
       TunEndpoint(AbstractRouter* r, llarp::service::Context* parent);
       ~TunEndpoint() override;
+
+      vpn::NetworkInterface*
+      GetVPNInterface() override
+      {
+        return m_NetIf.get();
+      }
+
+      int
+      Rank() const override
+      {
+        return 0;
+      }
+
+      std::string_view
+      ResolverName() const override
+      {
+        return "lokinet";
+      }
+
+      bool
+      MaybeHookDNS(
+          std::shared_ptr<dns::PacketSource_Base> source,
+          const dns::Message& query,
+          const SockAddr& to,
+          const SockAddr& from) override;
 
       path::PathSet_ptr
       GetSelf() override
@@ -43,9 +67,8 @@ namespace llarp
       void
       Thaw() override;
 
-      // Reconfigures DNS servers and restarts libunbound with the new servers.  Returns the old set
-      // of configured dns servers.
-      std::vector<SockAddr>
+      // Reconfigures DNS servers and restarts libunbound with the new servers.
+      void
       ReconfigureDNS(std::vector<SockAddr> servers);
 
       bool
@@ -70,11 +93,10 @@ namespace llarp
       SupportsV6() const override;
 
       bool
-      ShouldHookDNSMessage(const dns::Message& msg) const override;
+      ShouldHookDNSMessage(const dns::Message& msg) const;
 
       bool
-      HandleHookedDNSMessage(
-          dns::Message query, std::function<void(dns::Message)> sendreply) override;
+      HandleHookedDNSMessage(dns::Message query, std::function<void(dns::Message)> sendreply);
 
       void
       TickTun(llarp_time_t now);
@@ -94,6 +116,16 @@ namespace llarp
       /// set up tun interface, blocking
       bool
       SetupTun();
+
+      void
+      SetupDNS();
+
+      /// overrides Endpoint
+      std::shared_ptr<dns::Server>
+      DNS() const override
+      {
+        return m_DNS;
+      };
 
       /// overrides Endpoint
       bool
@@ -172,27 +204,20 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      using PacketQueue_t = llarp::util::CoDelQueue<
-          net::IPPacket,
-          net::IPPacket::GetTime,
-          net::IPPacket::PutTime,
-          net::IPPacket::CompareOrder,
-          net::IPPacket::GetNow>;
-
       struct WritePacket
       {
         uint64_t seqno;
         net::IPPacket pkt;
 
         bool
-        operator<(const WritePacket& other) const
+        operator>(const WritePacket& other) const
         {
-          return other.seqno < seqno;
+          return seqno > other.seqno;
         }
       };
 
       /// queue for sending packets to user from network
-      std::priority_queue<WritePacket> m_NetworkToUserPktQueue;
+      util::ascending_priority_queue<WritePacket> m_NetworkToUserPktQueue;
 
       void
       Pump(llarp_time_t now) override;
@@ -222,7 +247,20 @@ namespace llarp
       /// a hidden service
       std::unordered_map<AlignedBuffer<32>, bool> m_SNodes;
 
+      /// maps ip address to an exit endpoint, useful when we have multiple exits on a range
+      std::unordered_map<huint128_t, service::Address> m_ExitIPToExitAddress;
+
      private:
+      /// given an ip address that is not mapped locally find the address it shall be forwarded to
+      /// optionally provide a custom selection strategy, if none is provided it will choose a
+      /// random entry from the available choices
+      /// return std::nullopt if we cannot route this address to an exit
+      std::optional<service::Address>
+      ObtainExitAddressFor(
+          huint128_t ip,
+          std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat =
+              nullptr);
+
       template <typename Addr_t, typename Endpoint_t>
       void
       SendDNSReply(
@@ -242,8 +280,11 @@ namespace llarp
           query->AddNXReply();
         reply(*query);
       }
-      /// our dns resolver
-      std::shared_ptr<dns::PacketHandler> m_Resolver;
+
+      /// dns subsystem for this endpoint
+      std::shared_ptr<dns::Server> m_DNS;
+
+      DnsConfig m_DnsConfig;
 
       /// maps ip address to timestamp last active
       std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
@@ -258,12 +299,6 @@ namespace llarp
       huint128_t m_MaxIP;
       /// our ip range we are using
       llarp::IPRange m_OurRange;
-      /// upstream dns resolver list
-      std::vector<SockAddr> m_UpstreamResolvers;
-      /// dns host files list
-      std::vector<fs::path> m_hostfiles;
-      /// local dns
-      IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks
       std::vector<IpAddress> m_StrictConnectAddrs;
       /// use v6?
@@ -274,7 +309,7 @@ namespace llarp
 
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
 
-      std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
+      std::shared_ptr<vpn::PacketRouter> m_PacketRouter;
 
       std::optional<net::TrafficPolicy> m_TrafficPolicy;
       /// ranges we advetise as reachable
@@ -284,6 +319,9 @@ namespace llarp
 
       /// a file to load / store the ephemeral address map to
       std::optional<fs::path> m_PersistAddrMapFile;
+
+      /// for raw packet dns
+      std::shared_ptr<vpn::I_Packet_IO> m_RawDNS;
     };
 
   }  // namespace handlers

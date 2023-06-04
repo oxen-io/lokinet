@@ -15,18 +15,18 @@
 #include "service/protocol_type.hpp"
 #include "session.hpp"
 #include "lookup.hpp"
-#include <llarp/hook/ihook.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include "endpoint_types.hpp"
 #include "llarp/endpoint_base.hpp"
 
 #include "auth.hpp"
 
-#include <oxenmq/variant.h>
+#include <llarp/vpn/egres_packet_router.hpp>
+#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -48,13 +48,16 @@ namespace llarp
     struct OutboundContext;
 
     /// minimum interval for publishing introsets
-    static constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
+    inline constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
 
     /// how agressively should we retry publishing introset on failure
-    static constexpr auto IntrosetPublishRetryCooldown = 1s;
+    inline constexpr auto IntrosetPublishRetryCooldown = 1s;
 
     /// how aggressively should we retry looking up introsets
-    static constexpr auto IntrosetLookupCooldown = 250ms;
+    inline constexpr auto IntrosetLookupCooldown = 250ms;
+
+    /// number of unique snodes we want to talk to do to ons lookups
+    inline constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
@@ -64,7 +67,9 @@ namespace llarp
       Endpoint(AbstractRouter* r, Context* parent);
       ~Endpoint() override;
 
-      /// return true if we are ready to recv packets from the void
+      /// return true if we are ready to recv packets from the void.
+      /// really should be ReadyForInboundTraffic() but the diff is HUGE and we need to rewrite this
+      /// component anyways.
       bool
       IsReady() const;
 
@@ -167,6 +172,18 @@ namespace llarp
 
       void
       HandlePathDied(path::Path_ptr p) override;
+
+      virtual vpn::EgresPacketRouter*
+      EgresPacketRouter()
+      {
+        return nullptr;
+      };
+
+      virtual vpn::NetworkInterface*
+      GetVPNInterface()
+      {
+        return nullptr;
+      }
 
       bool
       PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
@@ -323,10 +340,15 @@ namespace llarp
       // nullptr if the path was not made before the timeout
       using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
 
+      static constexpr auto DefaultPathEnsureTimeout = 2s;
+
       /// return false if we have already called this function before for this
       /// address
       bool
-      EnsurePathToService(const Address remote, PathEnsureHook h, llarp_time_t timeoutMS);
+      EnsurePathToService(
+          const Address remote,
+          PathEnsureHook h,
+          llarp_time_t timeoutMS = DefaultPathEnsureTimeout);
 
       using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
@@ -343,6 +365,9 @@ namespace llarp
 
       bool
       HasPathToSNode(const RouterID remote) const;
+
+      bool
+      HasFlowToService(const Address remote) const;
 
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;
@@ -390,6 +415,10 @@ namespace llarp
 
       std::optional<uint64_t>
       GetSeqNoForConvo(const ConvoTag& tag);
+
+      /// count unique endpoints we are talking to
+      size_t
+      UniqueEndpoints() const;
 
       bool
       HasExit() const;
@@ -497,13 +526,19 @@ namespace llarp
         return false;
       }
 
+      /// return true if we are ready to do outbound and inbound traffic
+      bool
+      ReadyForNetwork() const;
+
      protected:
+      bool
+      ReadyToDoLookup(size_t num_paths) const;
+      path::Path::UniqueEndpointSet_t
+      GetUniqueEndpointsForLookup() const;
+
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
       net::IPRangeMap<service::Address> m_ExitMap;
-      hooks::Backend_ptr m_OnUp;
-      hooks::Backend_ptr m_OnDown;
-      hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;

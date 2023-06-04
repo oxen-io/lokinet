@@ -1,5 +1,5 @@
 #include "router_id.hpp"
-#include <oxenmq/base32z.h>
+#include <oxenc/base32z.h>
 
 namespace llarp
 {
@@ -8,7 +8,7 @@ namespace llarp
   std::string
   RouterID::ToString() const
   {
-    std::string b32 = oxenmq::to_base32z(begin(), end());
+    std::string b32 = oxenc::to_base32z(begin(), end());
     b32 += SNODE_TLD;
     return b32;
   }
@@ -17,7 +17,7 @@ namespace llarp
   RouterID::ShortString() const
   {
     // 5 bytes produces exactly 8 base32z characters:
-    return oxenmq::to_base32z(begin(), begin() + 5);
+    return oxenc::to_base32z(begin(), begin() + 5);
   }
 
   util::StatusObject
@@ -38,9 +38,9 @@ namespace llarp
     // - must end in a 1-bit value: 'o' or 'y' (i.e. 10000 or 00000)
     // - must have 51 preceeding base32z chars
     // - thus we get 51*5+1 = 256 bits = 32 bytes of output
-    if (str.size() != 52 || !oxenmq::is_base32z(str) || !(str.back() == 'o' || str.back() == 'y'))
+    if (str.size() != 52 || !oxenc::is_base32z(str) || !(str.back() == 'o' || str.back() == 'y'))
       return false;
-    oxenmq::from_base32z(str.begin(), str.end(), begin());
+    oxenc::from_base32z(str.begin(), str.end(), begin());
     return true;
   }
 }  // namespace llarp

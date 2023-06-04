@@ -1,5 +1,5 @@
 #include "gotname.hpp"
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 #include <llarp/dht/context.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/path/path_context.hpp>
@@ -19,15 +19,15 @@ namespace llarp::dht
   GotNameMessage::BEncode(llarp_buffer_t* buf) const
   {
     const std::string nonce((const char*)result.nonce.data(), result.nonce.size());
-    const auto data = oxenmq::bt_serialize(
-        oxenmq::bt_dict{{"A", "M"sv}, {"D", result.ciphertext}, {"N", nonce}, {"T", TxID}});
+    const auto data = oxenc::bt_serialize(
+        oxenc::bt_dict{{"A", "M"sv}, {"D", result.ciphertext}, {"N", nonce}, {"T", TxID}});
     return buf->write(data.begin(), data.end());
   }
 
   bool
   GotNameMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
-    if (key == "D")
+    if (key.startswith("D"))
     {
       llarp_buffer_t str{};
       if (not bencode_read_string(val, &str))
@@ -38,11 +38,11 @@ namespace llarp::dht
       std::copy_n(str.cur, str.sz, result.ciphertext.data());
       return true;
     }
-    if (key == "N")
+    if (key.startswith("N"))
     {
       return result.nonce.BDecode(val);
     }
-    if (key == "T")
+    if (key.startswith("T"))
     {
       return bencode_read_integer(val, &TxID);
     }

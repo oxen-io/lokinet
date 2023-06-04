@@ -7,7 +7,7 @@
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/tooling/path_event.hpp>
 
@@ -60,27 +60,27 @@ namespace llarp
   LR_StatusMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (key == "c")
+    if (key.startswith("c"))
     {
       return BEncodeReadArray(frames, buf);
     }
-    if (key == "p")
+    if (key.startswith("p"))
     {
       if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       {
         return false;
       }
     }
-    else if (key == "s")
+    else if (key.startswith("s"))
     {
       if (!BEncodeMaybeReadDictInt("s", status, read, key, buf))
       {
         return false;
       }
     }
-    else if (key == "v")
+    else if (key.startswith("v"))
     {
-      if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
+      if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       {
         return false;
       }
@@ -115,7 +115,7 @@ namespace llarp
     if (!BEncodeWriteDictInt("s", status, buf))
       return false;
     // version
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
       return false;
 
     return bencode_end(buf);
@@ -145,8 +145,8 @@ namespace llarp
   void
   LR_StatusMessage::SetDummyFrames()
   {
-    // TODO
-    return;
+    for (auto& f : frames)
+      f.Randomize();
   }
 
   // call this from a worker thread
@@ -190,7 +190,7 @@ namespace llarp
     LR_StatusRecord record;
 
     record.status = newStatus;
-    record.version = LLARP_PROTO_VERSION;
+    record.version = llarp::constants::proto_version;
 
     llarp_buffer_t buf(frame.data(), frame.size());
     buf.cur = buf.base + EncryptedFrameOverheadSize;
@@ -221,31 +221,43 @@ namespace llarp
       std::shared_ptr<path::TransitHop> hop)
   {
     router->loop()->call([router, nextHop, msg = std::move(msg), hop = std::move(hop)] {
-      SendMessage(router, nextHop, msg);
-      // destroy hop as needed
-      if ((msg->status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
-      {
-        hop->QueueDestroySelf(router);
-      }
+      SendMessage(router, nextHop, msg, hop);
     });
   }
 
   void
   LR_StatusMessage::SendMessage(
-      AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg)
+      AbstractRouter* router,
+      const RouterID nextHop,
+      std::shared_ptr<LR_StatusMessage> msg,
+      std::shared_ptr<path::TransitHop> hop)
   {
     llarp::LogDebug("Attempting to send LR_Status message to (", nextHop, ")");
-    if (not router->SendToOrQueue(nextHop, *msg))
-    {
-      llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop, " failed");
-    }
+
+    auto resultCallback = [hop, router, msg, nextHop](auto status) {
+      if ((msg->status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS
+          or status != SendStatus::Success)
+      {
+        llarp::LogError("Failed to propagate LR_Status message to ", nextHop);
+        hop->QueueDestroySelf(router);
+      }
+    };
+
+    // send the status message to previous hop
+    // if it fails we are hitting a failure case we can't cope with so ... drop.
+    if (not router->SendToOrQueue(nextHop, *msg, resultCallback))
+      resultCallback(SendStatus::Congestion);
+
+    // trigger idempotent pump to make sure stuff gets sent
+    router->TriggerPump();
   }
 
   bool
   LR_StatusRecord::BEncode(llarp_buffer_t* buf) const
   {
     return bencode_start_dict(buf) && BEncodeWriteDictInt("s", status, buf)
-        && bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION) && bencode_end(buf);
+        && bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version)
+        && bencode_end(buf);
   }
 
   bool
@@ -258,7 +270,8 @@ namespace llarp
 
     if (!BEncodeMaybeReadDictInt("s", status, read, *key, buffer))
       return false;
-    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key, buffer))
+    if (!BEncodeMaybeVerifyVersion(
+            "v", version, llarp::constants::proto_version, read, *key, buffer))
       return false;
 
     return read;
@@ -276,32 +289,33 @@ namespace llarp
     return status == other.status;
   }
 
+  using namespace std::literals;
+  static constexpr std::array code_strings = {
+      std::make_pair(LR_StatusRecord::SUCCESS, "success"sv),
+      std::make_pair(LR_StatusRecord::FAIL_TIMEOUT, "timeout"sv),
+      std::make_pair(LR_StatusRecord::FAIL_CONGESTION, "congestion"sv),
+      std::make_pair(LR_StatusRecord::FAIL_DEST_UNKNOWN, "destination unknown"sv),
+      std::make_pair(LR_StatusRecord::FAIL_DECRYPT_ERROR, "decrypt error"sv),
+      std::make_pair(LR_StatusRecord::FAIL_MALFORMED_RECORD, "malformed record"sv),
+      std::make_pair(LR_StatusRecord::FAIL_DEST_INVALID, "destination invalid"sv),
+      std::make_pair(LR_StatusRecord::FAIL_CANNOT_CONNECT, "cannot connect"sv),
+      std::make_pair(LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"sv)};
+
   std::string
   LRStatusCodeToString(uint64_t status)
   {
-    std::map<uint64_t, std::string> codes = {
-        {LR_StatusRecord::SUCCESS, "success"},
-        {LR_StatusRecord::FAIL_TIMEOUT, "timeout"},
-        {LR_StatusRecord::FAIL_CONGESTION, "congestion"},
-        {LR_StatusRecord::FAIL_DEST_UNKNOWN, "destination unknown"},
-        {LR_StatusRecord::FAIL_DECRYPT_ERROR, "decrypt error"},
-        {LR_StatusRecord::FAIL_MALFORMED_RECORD, "malformed record"},
-        {LR_StatusRecord::FAIL_DEST_INVALID, "destination invalid"},
-        {LR_StatusRecord::FAIL_CANNOT_CONNECT, "cannot connect"},
-        {LR_StatusRecord::FAIL_DUPLICATE_HOP, "duplicate hop"}};
-    std::stringstream ss;
-    ss << "[";
-    bool found = false;
-    for (const auto& [val, message] : codes)
+    std::string s = "[";
+    for (const auto& [val, message] : code_strings)
     {
       if ((status & val) == val)
       {
-        ss << (found ? ", " : "") << message;
-        found = true;
+        if (s.size() > 1)
+          s += ", ";
+        s += message;
       }
     }
-    ss << "]";
-    return ss.str();
+    s += ']';
+    return s;
   }
 
 }  // namespace llarp

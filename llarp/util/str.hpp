@@ -1,11 +1,11 @@
 #pragma once
 
 #include <string_view>
-#include <sstream>
 #include <vector>
 #include <chrono>
 #include <iterator>
 #include <charconv>
+#include <fmt/format.h>
 
 namespace llarp
 {
@@ -25,15 +25,6 @@ namespace llarp
   /// returns a std::string_view of the trimmed part of the string.
   [[nodiscard]] std::string_view
   TrimWhitespace(std::string_view str);
-
-  template <typename... T>
-  std::string
-  stringify(T&&... stuff)
-  {
-    std::ostringstream o;
-    (o << ... << std::forward<T>(stuff));
-    return o.str();
-  }
 
   using namespace std::literals;
 
@@ -57,21 +48,21 @@ namespace llarp
   }
 
   /// Returns true if the first argument begins with the second argument
-  inline bool
+  inline constexpr bool
   starts_with(std::string_view str, std::string_view prefix)
   {
     return str.substr(0, prefix.size()) == prefix;
   }
 
   /// Returns true if the first argument ends with the second argument
-  inline bool
+  inline constexpr bool
   ends_with(std::string_view str, std::string_view suffix)
   {
     return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
   }
 
   /// removes a prefix from a string if it exists
-  inline std::string_view
+  inline constexpr std::string_view
   strip_prefix(std::string_view str, std::string_view prefix)
   {
     if (starts_with(str, prefix))
@@ -105,17 +96,12 @@ namespace llarp
   split_any(std::string_view str, std::string_view delims, bool trim = false);
 
   /// Joins [begin, end) with a delimiter and returns the resulting string.  Elements can be
-  /// anything that can be sent to an ostream via `<<`.
+  /// anything that is fmt formattable.
   template <typename It>
   std::string
   join(std::string_view delimiter, It begin, It end)
   {
-    std::ostringstream o;
-    if (begin != end)
-      o << *begin++;
-    while (begin != end)
-      o << delimiter << *begin++;
-    return o.str();
+    return fmt::format("{}", fmt::join(delimiter, begin, end));
   }
 
   /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.
@@ -153,5 +139,9 @@ namespace llarp
   /// Converts a duration into a human friendlier string.
   std::string
   friendly_duration(std::chrono::nanoseconds dur);
+
+  /// convert a "normal" string into a wide string
+  std::wstring
+  to_wide(std::string data);
 
 }  // namespace llarp

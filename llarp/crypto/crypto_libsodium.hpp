@@ -104,6 +104,9 @@ namespace llarp
 
       bool
       check_identity_privkey(const SecretKey&) override;
+
+      bool
+      check_passwd_hash(std::string pwhash, std::string challenge) override;
     };
   }  // namespace sodium
 

@@ -1,7 +1,7 @@
 #include "types.hpp"
 
 #include <llarp/util/str.hpp>
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 #include <stdexcept>
 
 namespace llarp
@@ -103,7 +103,7 @@ namespace llarp
   {
     if (not buf)
       throw std::runtime_error("PeerStats: Can't use null buf");
-    const oxenmq::bt_dict data = {
+    const oxenc::bt_dict data = {
         {NumConnectionAttemptsKey, numConnectionAttempts},
         {NumConnectionSuccessesKey, numConnectionSuccesses},
         {NumConnectionRejectionsKey, numConnectionRejections},
@@ -120,7 +120,7 @@ namespace llarp
         {LeastRCRemainingLifetimeKey, leastRCRemainingLifetime.count()},
         {LastRCUpdatedKey, lastRCUpdated.count()},
     };
-    const auto serialized = oxenmq::bt_serialize(data);
+    const auto serialized = oxenc::bt_serialize(data);
     if (not buf->write(serialized.begin(), serialized.end()))
       throw std::runtime_error("PeerStats: buffer too small");
   }

@@ -39,7 +39,7 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override
     {
-      if (key == "a")
+      if (key.startswith("a"))
       {
         llarp_buffer_t strbuf;
         if (!bencode_read_string(buf, &strbuf))
@@ -69,7 +69,7 @@ namespace llarp
       DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
       {
         S = s;
-        version = LLARP_PROTO_VERSION;
+        version = llarp::constants::proto_version;
       }
 
       void

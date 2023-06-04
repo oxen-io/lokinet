@@ -27,9 +27,7 @@ namespace llarp
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
-    bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
-    LogWarn("ShouldGossipOurRC: ", should);
-    return should;
+    return now >= (m_LastGossipedOurRC + GossipOurRCInterval);
   }
 
   bool
@@ -42,6 +40,30 @@ namespace llarp
   RCGossiper::Decay(Time_t now)
   {
     m_Filter.Decay(now);
+  }
+
+  void
+  RCGossiper::Forget(const RouterID& pk)
+  {
+    m_Filter.Remove(pk);
+    if (m_OurRouterID == pk)
+      m_LastGossipedOurRC = 0s;
+  }
+
+  TimePoint_t
+  RCGossiper::NextGossipAt() const
+  {
+    if (auto maybe = LastGossipAt())
+      return *maybe + GossipOurRCInterval;
+    return DateClock_t::now();
+  }
+
+  std::optional<TimePoint_t>
+  RCGossiper::LastGossipAt() const
+  {
+    if (m_LastGossipedOurRC == 0s)
+      return std::nullopt;
+    return DateClock_t::time_point{m_LastGossipedOurRC};
   }
 
   bool
@@ -116,7 +138,7 @@ namespace llarp
       m_router->NotifyRouterEvent<tooling::RCGossipSentEvent>(m_router->pubkey(), rc);
 
       // send message
-      peerSession->SendMessageBuffer(std::move(msg), nullptr);
+      peerSession->SendMessageBuffer(std::move(msg), nullptr, gossip.Priority());
     });
     return true;
   }

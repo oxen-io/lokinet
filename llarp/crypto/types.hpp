@@ -35,7 +35,7 @@ namespace llarp
 
     operator RouterID() const
     {
-      return RouterID(as_array());
+      return {as_array()};
     }
 
     PubKey&
@@ -45,12 +45,6 @@ namespace llarp
       return *this;
     }
   };
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const PubKey& k)
-  {
-    return out << k.ToString();
-  }
 
   inline bool
   operator==(const PubKey& lhs, const PubKey& rhs)
@@ -97,12 +91,10 @@ namespace llarp
     bool
     Recalculate();
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const
+    std::string_view
+    ToString() const
     {
-      Printer printer(stream, level, spaces);
-      printer.printValue("secretkey");
-      return stream;
+      return "[secretkey]";
     }
 
     PubKey
@@ -122,14 +114,6 @@ namespace llarp
     bool
     SaveToFile(const fs::path& fname) const;
   };
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const SecretKey&)
-  {
-    // return out << k.ToHex();
-    // make sure we never print out secret keys
-    return out << "[secretkey]";
-  }
 
   /// PrivateKey is similar to SecretKey except that it only stores the private
   /// key value and a hash, unlike SecretKey which stores the seed from which
@@ -162,26 +146,16 @@ namespace llarp
       return data() + 32;
     }
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const
+    std::string_view
+    ToString() const
     {
-      Printer printer(stream, level, spaces);
-      printer.printValue("privatekey");
-      return stream;
+      return "[privatekey]";
     }
 
     /// Computes the public key
     bool
     toPublic(PubKey& pubkey) const;
   };
-
-  inline std::ostream&
-  operator<<(std::ostream& out, const PrivateKey&)
-  {
-    // return out << k.ToHex();
-    // make sure we never print out private keys
-    return out << "[privatekey]";
-  }
 
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer<32>
@@ -197,14 +171,22 @@ namespace llarp
     /// load service node seed from file
     bool
     LoadFromFile(const fs::path& fname);
+
+    std::string_view
+    ToString() const
+    {
+      return "[IdentitySecret]";
+    }
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const IdentitySecret&)
-  {
-    // make sure we never print out secret keys
-    return out << "[IdentitySecret]";
-  }
+  template <>
+  constexpr inline bool IsToStringFormattable<PubKey> = true;
+  template <>
+  constexpr inline bool IsToStringFormattable<SecretKey> = true;
+  template <>
+  constexpr inline bool IsToStringFormattable<PrivateKey> = true;
+  template <>
+  constexpr inline bool IsToStringFormattable<IdentitySecret> = true;
 
   using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
   using LongHash = AlignedBuffer<HASHSIZE>;

@@ -1,44 +1,50 @@
 #include "net_int.hpp"
 #include "ip.hpp"
 #include <string>
+#include <variant>
+
+#include <oxenc/endian.h>
 
 namespace llarp
 {
-  huint16_t
-  ToHost(nuint16_t n)
+  namespace net
   {
-    return xntohs(n);
-  }
+    huint16_t
+    ToHost(port_t x)
+    {
+      return huint16_t{oxenc::big_to_host(x.n)};
+    }
 
-  huint32_t
-  ToHost(nuint32_t n)
-  {
-    return xntohl(n);
-  }
+    huint32_t
+    ToHost(ipv4addr_t x)
+    {
+      return huint32_t{oxenc::big_to_host(x.n)};
+    }
 
-  huint128_t
-  ToHost(nuint128_t n)
-  {
-    return {ntoh128(n.n)};
-  }
+    huint128_t
+    ToHost(ipv6addr_t x)
+    {
+      return {ntoh128(x.n)};
+    }
 
-  nuint16_t
-  ToNet(huint16_t h)
-  {
-    return xhtons(h);
-  }
+    port_t
+    ToNet(huint16_t x)
+    {
+      return port_t{oxenc::host_to_big(x.h)};
+    }
 
-  nuint32_t
-  ToNet(huint32_t h)
-  {
-    return xhtonl(h);
-  }
+    ipv4addr_t
+    ToNet(huint32_t x)
+    {
+      return ipv4addr_t{oxenc::host_to_big(x.h)};
+    }
 
-  nuint128_t
-  ToNet(huint128_t h)
-  {
-    return {hton128(h.h)};
-  }
+    ipv6addr_t
+    ToNet(huint128_t x)
+    {
+      return ipv6addr_t{hton128(x.h)};
+    }
+  }  // namespace net
 
   template <>
   void
@@ -46,7 +52,7 @@ namespace llarp
   {
     c.resize(16);
     std::fill(c.begin(), c.end(), 0);
-    htobe32buf(c.data() + 12, h);
+    oxenc::write_host_as_big(h, c.data() + 12);
     c[11] = 0xff;
     c[10] = 0xff;
   }
@@ -126,6 +132,17 @@ namespace llarp
       return "";
     return tmp;
   }
+
+  template <>
+  std::string
+  nuint128_t::ToString() const
+  {
+    char tmp[INET6_ADDRSTRLEN] = {0};
+    if (!inet_ntop(AF_INET6, (void*)&n, tmp, sizeof(tmp)))
+      return "";
+    return tmp;
+  }
+
   template <>
   std::string
   huint16_t::ToString() const
@@ -139,4 +156,11 @@ namespace llarp
   {
     return std::to_string(ntohs(n));
   }
+
+  std::string
+  net::ToString(const ipaddr_t& ipaddr)
+  {
+    return std::visit([](const auto& ip) { return ip.ToString(); }, ipaddr);
+  }
+
 }  // namespace llarp

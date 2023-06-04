@@ -1,0 +1,13 @@
+ExecWait 'taskkill /f /t /im lokinet-gui.exe'
+ExecWait 'net stop lokinet'
+ExecWait 'sc stop windivert'
+ExecWait '$INSTDIR\bin\lokinet.exe --remove'
+
+IfFileExists '$INSTDIR\bin\WinDivert64.sys' 0 +2
+Delete /REBOOTOK '$INSTDIR\bin\WinDivert64.sys'
+
+IfFileExists '$INSTDIR\bin\WinDivert.sys' 0 +2
+Delete /REBOOTOK '$INSTDIR\bin\WinDivert.sys'
+
+RMDir /r /REBOOTOK C:\ProgramData\lokinet
+RMDir /r /REBOOTOK '$INSTDIR\share\conf.d'

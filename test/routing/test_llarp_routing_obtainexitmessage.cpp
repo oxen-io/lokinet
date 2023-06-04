@@ -28,6 +28,6 @@ TEST_CASE_METHOD(LlarpTest<>, "Sign-verify")
   CHECK(msg.Sign(alice));
   CHECK(msg.Verify());
   CHECK(msg.I == PubKey{seckey_topublic(alice)});
-  CHECK(msg.version == LLARP_PROTO_VERSION);
+  CHECK(msg.version == llarp::constants::proto_version);
   CHECK_FALSE(msg.Z.IsZero());
 }

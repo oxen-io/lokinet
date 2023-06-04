@@ -1,13 +1,11 @@
 #include "types.hpp"
 
 #include <llarp/util/buffer.hpp>
-
-#include <fstream>
-#include <llarp/util/fs.hpp>
+#include <llarp/util/file.hpp>
 
 #include <iterator>
 
-#include <oxenmq/hex.h>
+#include <oxenc/hex.h>
 
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_sign_ed25519.h>
@@ -20,42 +18,38 @@ namespace llarp
   {
     if (str.size() != 2 * size())
       return false;
-    oxenmq::from_hex(str.begin(), str.end(), begin());
+    oxenc::from_hex(str.begin(), str.end(), begin());
     return true;
   }
 
   std::string
   PubKey::ToString() const
   {
-    return oxenmq::to_hex(begin(), end());
+    return oxenc::to_hex(begin(), end());
   }
 
   bool
   SecretKey::LoadFromFile(const fs::path& fname)
   {
-    std::ifstream f(fname.string(), std::ios::in | std::ios::binary);
-    if (!f.is_open())
+    size_t sz;
+    std::array<byte_t, 128> tmp;
+    try
+    {
+      sz = util::slurp_file(fname, tmp.data(), tmp.size());
+    }
+    catch (const std::exception&)
     {
       return false;
     }
-
-    f.seekg(0, std::ios::end);
-    const size_t sz = f.tellg();
-    f.seekg(0, std::ios::beg);
 
     if (sz == size())
     {
       // is raw buffer
-      std::copy_n(std::istreambuf_iterator<char>(f), sz, begin());
+      std::copy_n(tmp.begin(), sz, begin());
       return true;
     }
-    std::array<byte_t, 128> tmp;
+
     llarp_buffer_t buf(tmp);
-    if (sz > sizeof(tmp))
-    {
-      return false;
-    }
-    f.read(reinterpret_cast<char*>(tmp.data()), sz);
     return BDecode(&buf);
   }
 
@@ -95,38 +89,43 @@ namespace llarp
   bool
   SecretKey::SaveToFile(const fs::path& fname) const
   {
-    std::array<byte_t, 128> tmp;
+    std::string tmp(128, 0);
     llarp_buffer_t buf(tmp);
     if (!BEncode(&buf))
+      return false;
+
+    tmp.resize(buf.cur - buf.base);
+    try
+    {
+      util::dump_file(fname, tmp);
+    }
+    catch (const std::exception&)
     {
       return false;
     }
-    auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-    if (!optional_f)
-      return false;
-    auto& f = *optional_f;
-    if (!f.is_open())
-      return false;
-    f.write((char*)buf.base, buf.cur - buf.base);
-    return f.good();
+    return true;
   }
 
   bool
   IdentitySecret::LoadFromFile(const fs::path& fname)
   {
-    auto optional = util::OpenFileStream<std::ifstream>(fname, std::ios::binary | std::ios::in);
-    if (!optional)
-      return false;
-    auto& f = *optional;
-    f.seekg(0, std::ios::end);
-    const size_t sz = f.tellg();
-    f.seekg(0, std::ios::beg);
-    if (sz != 32)
+    std::array<byte_t, SIZE> buf;
+    size_t sz;
+    try
     {
-      llarp::LogError("service node seed size invalid: ", sz, " != 32");
+      sz = util::slurp_file(fname, buf.data(), buf.size());
+    }
+    catch (const std::exception& e)
+    {
+      llarp::LogError("failed to load service node seed: ", e.what());
       return false;
     }
-    std::copy_n(std::istreambuf_iterator<char>(f), sz, begin());
+    if (sz != SIZE)
+    {
+      llarp::LogError("service node seed size invalid: ", sz, " != ", SIZE);
+      return false;
+    }
+    std::copy(buf.begin(), buf.end(), begin());
     return true;
   }
 

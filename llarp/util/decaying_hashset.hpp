@@ -72,6 +72,12 @@ namespace llarp
         m_CacheInterval = interval;
       }
 
+      void
+      Remove(const Val_t& val)
+      {
+        m_Values.erase(val);
+      }
+
      private:
       template <typename Predicate_t>
       void

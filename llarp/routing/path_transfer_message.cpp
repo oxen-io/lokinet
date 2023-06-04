@@ -40,7 +40,7 @@ namespace llarp
       if (!BEncodeWriteDictEntry("T", T, buf))
         return false;
 
-      if (!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("V", llarp::constants::proto_version, buf))
         return false;
       if (!BEncodeWriteDictEntry("Y", Y, buf))
         return false;

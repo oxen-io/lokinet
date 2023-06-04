@@ -8,7 +8,6 @@ extern "C"
 #endif
 
   /// the result of a lokinet stream mapping attempt
-#pragma pack(1)
   struct lokinet_stream_result
   {
     /// set to zero on success otherwise the error that happened
@@ -23,7 +22,6 @@ extern "C"
     /// the id of the stream we created
     int stream_id;
   };
-#pragma pack()
 
   /// connect out to a remote endpoint
   /// remoteAddr is in the form of "name:port"
@@ -39,7 +37,7 @@ extern "C"
   /// return 0 to accept
   /// return -1 to explicitly reject
   /// return -2 to silently drop
-  typedef int (*lokinet_stream_filter)(const char* remote, uint16_t port, void*);
+  typedef int (*lokinet_stream_filter)(const char* remote, uint16_t port, void* userdata);
 
   /// set stream accepter filter
   /// passes user parameter into stream filter as void *
@@ -52,6 +50,9 @@ extern "C"
   /// simple variant of lokinet_inbound_stream_filter that maps port to localhost:port
   int EXPORT
   lokinet_inbound_stream(uint16_t port, struct lokinet_context* context);
+
+  void EXPORT
+  lokinet_close_stream(int stream_id, struct lokinet_context* context);
 
 #ifdef __cplusplus
 }

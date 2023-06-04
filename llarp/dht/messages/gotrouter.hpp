@@ -30,7 +30,7 @@ namespace llarp
       /// gossip message
       GotRouterMessage(const RouterContact rc) : IMessage({}), foundRCs({rc}), txid(0)
       {
-        version = LLARP_PROTO_VERSION;
+        version = llarp::constants::proto_version;
       }
 
       GotRouterMessage(const GotRouterMessage& other)

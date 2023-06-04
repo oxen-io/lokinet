@@ -12,7 +12,7 @@ namespace llarp
   namespace service
   {
     /// holds all the hidden service endpoints we own
-    /// TODO: this should be refactored (removed entirely...?) now that lokinet
+    /// this should be refactored (removed entirely...?) now that lokinet
     ///       only supports one endpoint per instance
     struct Context
     {

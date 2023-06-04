@@ -1,6 +1,6 @@
 #pragma once
 
-#include <llarp/ev/vpn.hpp>
+#include <llarp/vpn/platform.hpp>
 #include "vpn_interface.hpp"
 #include "route_manager.hpp"
 
@@ -16,7 +16,8 @@ namespace llarp::apple
         llarp_route_callbacks route_callbacks,
         void* callback_context);
 
-    std::shared_ptr<vpn::NetworkInterface> ObtainInterface(vpn::InterfaceInfo) override;
+    std::shared_ptr<vpn::NetworkInterface>
+    ObtainInterface(vpn::InterfaceInfo, AbstractRouter*) override;
 
     vpn::IRouteManager&
     RouteManager() override

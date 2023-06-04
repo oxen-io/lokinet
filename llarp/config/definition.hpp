@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fmt/core.h>
 #include <initializer_list>
 #include <type_traits>
 #include <llarp/util/str.hpp>
@@ -96,12 +97,19 @@ namespace llarp
     template <typename U>
     constexpr bool is_default<U&> = is_default<remove_cvref_t<U>>;
 
+    template <typename T>
+    constexpr bool is_default_array = false;
+    template <typename T, size_t N>
+    constexpr bool is_default_array<std::array<Default<T>, N>> = true;
+    template <typename U>
+    constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
+
     template <typename T, typename Option>
     constexpr bool is_option =
         std::is_base_of_v<
             option_flag,
             remove_cvref_t<
-                Option>> or std::is_same_v<Comment, Option> or is_default<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
+                Option>> or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
   }  // namespace config
 
   /// A base class for specifying config options and their constraints. The basic to/from string
@@ -127,8 +135,8 @@ namespace llarp
     /// Subclasses should provide their default value as a string
     ///
     /// @return the option's default value represented as a string
-    virtual std::string
-    defaultValueAsString() = 0;
+    virtual std::vector<std::string>
+    defaultValuesAsString() = 0;
 
     /// Subclasses should parse and store the provided input
     ///
@@ -142,13 +150,11 @@ namespace llarp
     virtual size_t
     getNumberFound() const = 0;
 
-    /// Subclasess should write their parsed value as a string, optionally falling back to any
-    /// specified default if `useDefault` is true.
+    /// Subclasess should write their parsed values as strings.
     ///
-    /// @param useDefault should specify whether to fallback to default when possible
-    /// @return the option's value as a string
-    virtual std::string
-    valueAsString(bool useDefault) = 0;
+    /// @return the option's value(s) as strings
+    virtual std::vector<std::string>
+    valuesAsString() = 0;
 
     /// Subclassess should call their acceptor, if present. See OptionDefinition for more details.
     ///
@@ -169,9 +175,9 @@ namespace llarp
     std::vector<std::string> comments;
   };
 
-  /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
-  /// for implementations which can use the std::ostringstream and std::istringstream for to/from
-  /// string functionality.
+  /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows for
+  /// implementations which can use fmt::format for conversion to string and std::istringstream for
+  /// input from string.
   ///
   /// Note that types (T) used as template parameters here must be used verbatim when calling
   /// ConfigDefinition::getConfigValue(). Similar types such as uint32_t and int32_t cannot be
@@ -183,7 +189,7 @@ namespace llarp
     ///
     /// @param defaultValue_ is used in the following situations:
     /// 1) as the return value for getValue() if there is no parsed value and required==false
-    /// 2) as the output in defaultValueAsString(), used to generate config files
+    /// 2) as the output in defaultValuesAsString(), used to generate config files
     /// 3) as the output in valueAsString(), used to generate config files
     ///
     /// @param opts - 0 or more of config::Required, config::Hidden, config::Default{...}, etc.
@@ -196,23 +202,43 @@ namespace llarp
     OptionDefinition(std::string section_, std::string name_, Options&&... opts)
         : OptionDefinitionBase(section_, name_, opts...)
     {
+      constexpr bool has_default =
+          ((config::is_default_array<Options> || config::is_default<Options>) || ...);
+      constexpr bool has_required =
+          (std::is_same_v<config::remove_cvref_t<Options>, config::Required_t> || ...);
+      constexpr bool has_hidden =
+          (std::is_same_v<config::remove_cvref_t<Options>, config::Hidden_t> || ...);
+      static_assert(
+          not(has_default and has_required), "Default{...} and Required are mutually exclusive");
+      static_assert(not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
+
       (extractDefault(std::forward<Options>(opts)), ...);
       (extractAcceptor(std::forward<Options>(opts)), ...);
       (extractComments(std::forward<Options>(opts)), ...);
     }
 
-    /// Extracts a default value from an config::Default<U>; ignores anything that isn't an
-    /// config::Default<U>.
+    /// Extracts a default value from an config::Default<U> or an array of defaults (for
+    /// multi-valued options with multi-value default); ignores anything else.
     template <typename U>
     void
     extractDefault(U&& defaultValue_)
     {
-      if constexpr (config::is_default<U>)
+      if constexpr (config::is_default_array<U>)
+      {
+        if (!multiValued)
+          throw std::logic_error{"Array config defaults require multiValue mode"};
+
+        defaultValues.clear();
+        defaultValues.reserve(defaultValue_.size());
+        for (const auto& def : defaultValue_)
+          defaultValues.push_back(def.val);
+      }
+      else if constexpr (config::is_default<U>)
       {
         static_assert(
             std::is_convertible_v<decltype(std::forward<U>(defaultValue_).val), T>,
             "Cannot convert given llarp::config::Default to the required value type");
-        defaultValue = std::forward<U>(defaultValue_).val;
+        defaultValues = {std::forward<U>(defaultValue_).val};
       }
     }
 
@@ -235,34 +261,20 @@ namespace llarp
         comments = std::forward<U>(comment).comments;
     }
 
-    /// Returns the first parsed value, if available. Otherwise, provides the default value if the
-    /// option is not required. Otherwise, returns an empty optional.
+    /// Returns the first parsed value, if available. Otherwise, provides the (first) default value
+    /// if the option is not required. Otherwise, returns an empty optional.
     ///
-    /// @return an optional with the parsed value, the default value, or no value.
+    /// @return an optional with the parsed value, the (first) default value, or no value.
     std::optional<T>
     getValue() const
     {
-      if (parsedValues.size())
-        return parsedValues[0];
-      else if (not required and not multiValued)
-        return defaultValue;
-      else
-        return std::nullopt;
-    }
-
-    /// Returns the value at the given index.
-    ///
-    /// @param index
-    /// @return the value at the given index, if it exists
-    /// @throws range_error exception if index >= size
-    T
-    getValueAt(size_t index) const
-    {
-      if (index >= parsedValues.size())
-        throw std::range_error(
-            stringify("no value at index ", index, ", size: ", parsedValues.size()));
-
-      return parsedValues[index];
+      if (parsedValues.empty())
+      {
+        if (required || defaultValues.empty())
+          return std::nullopt;
+        return defaultValues.front();
+      }
+      return parsedValues.front();
     }
 
     /// Returns the number of values found.
@@ -274,18 +286,21 @@ namespace llarp
       return parsedValues.size();
     }
 
-    std::string
-    defaultValueAsString() override
+    std::vector<std::string>
+    defaultValuesAsString() override
     {
-      if (!defaultValue)
-        return "";
-
+      if (defaultValues.empty())
+        return {};
       if constexpr (std::is_same_v<fs::path, T>)
-        return defaultValue->string();
-
-      std::ostringstream oss;
-      oss << *defaultValue;
-      return oss.str();
+        return {{defaultValues.front().u8string()}};
+      else
+      {
+        std::vector<std::string> def_strs;
+        def_strs.reserve(defaultValues.size());
+        for (const auto& v : defaultValues)
+          def_strs.push_back(fmt::format("{}", v));
+        return def_strs;
+      }
     }
 
     void
@@ -293,8 +308,8 @@ namespace llarp
     {
       if (not multiValued and parsedValues.size() > 0)
       {
-        throw std::invalid_argument(
-            stringify("duplicate value for ", name, ", previous value: ", parsedValues[0]));
+        throw std::invalid_argument{
+            fmt::format("duplicate value for {}, previous value: {}", name, parsedValues[0])};
       }
 
       parsedValues.emplace_back(fromString(input));
@@ -313,50 +328,49 @@ namespace llarp
         T t;
         iss >> t;
         if (iss.fail())
-          throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
+          throw std::invalid_argument{fmt::format("{} is not a valid {}", input, typeid(T).name())};
         else
           return t;
       }
     }
 
-    std::string
-    valueAsString(bool useDefault) override
+    std::vector<std::string>
+    valuesAsString() override
     {
-      std::ostringstream oss;
-      if (parsedValues.size() > 0)
-        oss << parsedValues[0];
-      else if (useDefault and defaultValue)
-        oss << *defaultValue;
-
-      return oss.str();
+      if (parsedValues.empty())
+        return {};
+      std::vector<std::string> result;
+      result.reserve(parsedValues.size());
+      for (const auto& v : parsedValues)
+        result.push_back(fmt::format("{}", v));
+      return result;
     }
 
-    /// Attempts to call the acceptor function, if present. This function may throw if the value is
-    /// not acceptable. Additionally, tryAccept should not be called if the option is required and
-    /// no value has been provided.
+    /// Attempts to call the acceptor function, if present. This function may throw if the value
+    /// is not acceptable. Additionally, tryAccept should not be called if the option is required
+    /// and no value has been provided.
     ///
     /// @throws if required and no value present or if the acceptor throws
     void
     tryAccept() const override
     {
-      if (required and parsedValues.size() == 0)
+      if (required and parsedValues.empty())
       {
-        throw std::runtime_error(stringify(
-            "cannot call tryAccept() on [",
+        throw std::runtime_error{fmt::format(
+            "cannot call tryAccept() on [{}]:{} when required but no value available",
             section,
-            "]:",
-            name,
-            " when required but no value available"));
+            name)};
       }
-
-      // don't use default value if we are multi-valued and have no value
-      if (multiValued and parsedValues.size() == 0)
-        return;
 
       if (acceptor)
       {
         if (multiValued)
         {
+          // add default value in multi value mode
+          if (parsedValues.empty() and not defaultValues.empty())
+            for (const auto& v : defaultValues)
+              acceptor(v);
+
           for (auto value : parsedValues)
           {
             acceptor(value);
@@ -366,18 +380,12 @@ namespace llarp
         {
           auto maybe = getValue();
           if (maybe)
-          {
             acceptor(*maybe);
-          }
-          else
-          {
-            assert(not defaultValue);  // maybe should have a value if defaultValue does
-          }
         }
       }
     }
 
-    std::optional<T> defaultValue;
+    std::vector<T> defaultValues;
     std::vector<T> parsedValues;
     std::function<void(T)> acceptor;
   };
@@ -399,8 +407,8 @@ namespace llarp
   // map of section-name to map-of-definitions
   using SectionMap = std::unordered_map<std::string, DefinitionMap>;
 
-  /// A ConfigDefinition holds an ordered set of OptionDefinitions defining the allowable values and
-  /// their constraints (specified through calls to defineOption()).
+  /// A ConfigDefinition holds an ordered set of OptionDefinitions defining the allowable values
+  /// and their constraints (specified through calls to defineOption()).
   ///
   /// The layout and grouping of the config options are modelled after the INI file format; each
   /// option has a name and is grouped under a section. Duplicate option names are allowed only if
@@ -410,9 +418,9 @@ namespace llarp
   /// Configured values (e.g. those encountered when parsing a file) can be provided through calls
   /// to addConfigValue(). These take a std::string as a value, which is automatically parsed.
   ///
-  /// The ConfigDefinition can be used to print out a full config string (or file), including fields
-  /// with defaults and optionally fields which have a specified value (values provided through
-  /// calls to addConfigValue()).
+  /// The ConfigDefinition can be used to print out a full config string (or file), including
+  /// fields with defaults and optionally fields which have a specified value (values provided
+  /// through calls to addConfigValue()).
   struct ConfigDefinition
   {
     explicit ConfigDefinition(bool relay) : relay{relay}
@@ -421,8 +429,8 @@ namespace llarp
     /// Specify the parameters and type of a configuration option. The parameters are members of
     /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.
     ///
-    /// This function should be called for every option that this Configuration supports, and should
-    /// be done before any other interactions involving that option.
+    /// This function should be called for every option that this Configuration supports, and
+    /// should be done before any other interactions involving that option.
     ///
     /// @param def should be a unique_ptr to a valid subclass of OptionDefinitionBase
     /// @return `*this` for chaining calls
@@ -430,8 +438,8 @@ namespace llarp
     ConfigDefinition&
     defineOption(OptionDefinition_ptr def);
 
-    /// Convenience function which calls defineOption with a OptionDefinition of the specified type
-    /// and with parameters passed through to OptionDefinition's constructor.
+    /// Convenience function which calls defineOption with a OptionDefinition of the specified
+    /// type and with parameters passed through to OptionDefinition's constructor.
     template <typename T, typename... Params>
     ConfigDefinition&
     defineOption(Params&&... args)
@@ -443,8 +451,9 @@ namespace llarp
     /// representing the type used by the option (e.g. the type provided when defineOption() was
     /// called).
     ///
-    /// If the specified option doesn't exist, an exception will be thrown. Otherwise, the option's
-    /// parseValue() will be invoked, and should throw an exception if the string can't be parsed.
+    /// If the specified option doesn't exist, an exception will be thrown. Otherwise, the
+    /// option's parseValue() will be invoked, and should throw an exception if the string can't
+    /// be parsed.
     ///
     /// @param section is the section this value resides in
     /// @param name is the name of the value
@@ -472,8 +481,8 @@ namespace llarp
 
       auto derived = dynamic_cast<const OptionDefinition<T>*>(definition.get());
       if (not derived)
-        throw std::invalid_argument(
-            stringify("", typeid(T).name(), " is the incorrect type for [", section, "]:", name));
+        throw std::invalid_argument{
+            fmt::format("{} is the incorrect type for [{}]:{}", typeid(T).name(), section, name)};
 
       return derived->getValue();
     }
@@ -503,13 +512,21 @@ namespace llarp
     void
     validateRequiredFields();
 
-    /// Accept all options. This will call the acceptor (if present) on each option. Note that this
-    /// should only be called if all required fields are present (that is, validateRequiredFields()
-    /// has been or could be called without throwing).
+    /// Accept all options. This will call the acceptor (if present) on each option. Note that
+    /// this should only be called if all required fields are present (that is,
+    /// validateRequiredFields() has been or could be called without throwing).
     ///
     /// @throws if any option's acceptor throws
     void
     acceptAllOptions();
+
+    /// validates and accept all parsed options
+    inline void
+    process()
+    {
+      validateRequiredFields();
+      acceptAllOptions();
+    }
 
     /// Add comments for a given section. Comments are replayed in-order during config file
     /// generation. A proper comment prefix will automatically be applied, and the entire comment

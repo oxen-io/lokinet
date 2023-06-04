@@ -17,7 +17,7 @@ namespace llarp
       PathID_t pathID;
       llarp_time_t latency = 0s;
       llarp_time_t expiresAt = 0s;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
 
       util::StatusObject
       ExtractStatus() const;
@@ -34,8 +34,8 @@ namespace llarp
         return IsExpired(now + dlt);
       }
 
-      std::ostream&
-      print(std::ostream& stream, int level, int spaces) const;
+      std::string
+      ToString() const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;
@@ -55,8 +55,8 @@ namespace llarp
       bool
       operator<(const Introduction& other) const
       {
-        return expiresAt < other.expiresAt || pathID < other.pathID || router < other.router
-            || version < other.version || latency < other.latency;
+        return std::tie(expiresAt, pathID, router, version, latency)
+            < std::tie(other.expiresAt, other.pathID, other.router, other.version, other.latency);
       }
 
       bool
@@ -72,12 +72,6 @@ namespace llarp
       }
     };
 
-    inline std::ostream&
-    operator<<(std::ostream& out, const Introduction& i)
-    {
-      return i.print(out, -1, -1);
-    }
-
     /// comparator for introset timestamp
     struct CompareIntroTimestamp
     {
@@ -89,6 +83,9 @@ namespace llarp
     };
   }  // namespace service
 }  // namespace llarp
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::service::Introduction> = true;
 
 namespace std
 {

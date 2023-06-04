@@ -45,7 +45,7 @@ namespace llarp
       Endpoint* handler = nullptr;
       ConvoTag tag;
       uint64_t seqno = 0;
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
 
       /// encode metainfo for lmq endpoint auth
       std::vector<char>
@@ -64,9 +64,9 @@ namespace llarp
       ProcessAsync(path::Path_ptr p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
 
       bool
-      operator<(const ProtocolMessage& other) const
+      operator>(const ProtocolMessage& other) const
       {
-        return other.seqno < seqno;
+        return seqno > other.seqno;
       }
     };
 
@@ -155,7 +155,7 @@ namespace llarp
         N.Zero();
         Z.Zero();
         R = 0;
-        version = LLARP_PROTO_VERSION;
+        version = llarp::constants::proto_version;
       }
 
       bool

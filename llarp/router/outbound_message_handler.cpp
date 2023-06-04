@@ -30,25 +30,28 @@ namespace llarp
       DoCallback(callback, SendStatus::InvalidRouter);
       return true;
     }
-    const uint16_t priority = msg.Priority();
+    MessageQueueEntry ent;
+    ent.router = remote;
+    ent.inform = std::move(callback);
+    ent.pathid = msg.pathid;
+    ent.priority = msg.Priority();
+
     std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
-    llarp_buffer_t buf(linkmsg_buffer);
+    llarp_buffer_t buf{linkmsg_buffer};
 
     if (!EncodeBuffer(msg, buf))
     {
       return false;
     }
 
-    Message message;
-    message.first.resize(buf.sz);
-    message.second = callback;
+    ent.message.resize(buf.sz);
 
-    std::copy_n(buf.base, buf.sz, message.first.data());
+    std::copy_n(buf.base, buf.sz, ent.message.data());
 
     // if we have a session to the destination, queue the message and return
     if (_router->linkManager().HasSessionTo(remote))
     {
-      QueueOutboundMessage(remote, std::move(message), msg.pathid, priority);
+      QueueOutboundMessage(std::move(ent));
       return true;
     }
 
@@ -58,16 +61,11 @@ namespace llarp
     // in progress.
     bool shouldCreateSession = false;
     {
-      util::Lock l(_mutex);
+      util::Lock l{_mutex};
 
       // create queue for <remote> if it doesn't exist, and get iterator
       auto [queue_itr, is_new] = pendingSessionMessageQueues.emplace(remote, MessageQueue());
-
-      MessageQueueEntry entry;
-      entry.priority = priority;
-      entry.message = message;
-      entry.router = remote;
-      queue_itr->second.push(std::move(entry));
+      queue_itr->second.push(std::move(ent));
 
       shouldCreateSession = is_new;
     }
@@ -86,6 +84,9 @@ namespace llarp
     m_Killer.TryAccess([this]() {
       recentlyRemovedPaths.Decay();
       ProcessOutboundQueue();
+      // TODO: this probably shouldn't be pumping, as it defeats the purpose
+      // of having a limit on sends per tick, but chaning it is potentially bad
+      // and requires testing so it should be changed later.
       if (/*bool more = */ SendRoundRobin())
         _router->TriggerPump();
     });
@@ -151,7 +152,7 @@ namespace llarp
         return SendStatus::NoLink;
     }
     throw std::invalid_argument{
-        stringify("SessionResult ", result, " has no corrispoding SendStatus when transforming")};
+        fmt::format("SessionResult {} has no corresponding SendStatus when transforming", result)};
   }
 
   void
@@ -190,52 +191,48 @@ namespace llarp
   }
 
   bool
-  OutboundMessageHandler::Send(const RouterID& remote, const Message& msg)
+  OutboundMessageHandler::Send(const MessageQueueEntry& ent)
   {
-    const llarp_buffer_t buf(msg.first);
-    auto callback = msg.second;
+    const llarp_buffer_t buf{ent.message};
     m_queueStats.sent++;
-    return _router->linkManager().SendTo(remote, buf, [=](ILinkSession::DeliveryStatus status) {
-      if (status == ILinkSession::DeliveryStatus::eDeliverySuccess)
-        DoCallback(callback, SendStatus::Success);
-      else
-      {
-        DoCallback(callback, SendStatus::Congestion);
-      }
-    });
+    SendStatusHandler callback = ent.inform;
+    return _router->linkManager().SendTo(
+        ent.router,
+        buf,
+        [this, callback](ILinkSession::DeliveryStatus status) {
+          if (status == ILinkSession::DeliveryStatus::eDeliverySuccess)
+            DoCallback(callback, SendStatus::Success);
+          else
+          {
+            DoCallback(callback, SendStatus::Congestion);
+          }
+        },
+        ent.priority);
   }
 
   bool
-  OutboundMessageHandler::SendIfSession(const RouterID& remote, const Message& msg)
+  OutboundMessageHandler::SendIfSession(const MessageQueueEntry& ent)
   {
-    if (_router->linkManager().HasSessionTo(remote))
+    if (_router->linkManager().HasSessionTo(ent.router))
     {
-      return Send(remote, msg);
+      return Send(ent);
     }
     return false;
   }
 
   bool
-  OutboundMessageHandler::QueueOutboundMessage(
-      const RouterID& remote, Message&& msg, const PathID_t& pathid, uint16_t priority)
+  OutboundMessageHandler::QueueOutboundMessage(MessageQueueEntry entry)
   {
-    MessageQueueEntry entry;
-    entry.message = std::move(msg);
-
     // copy callback in case we need to call it, so we can std::move(entry)
-    auto callback_copy = entry.message.second;
-    entry.router = remote;
-    entry.pathid = pathid;
-    entry.priority = priority;
+    auto callback = entry.inform;
     if (outboundQueue.tryPushBack(std::move(entry)) != llarp::thread::QueueReturn::Success)
     {
       m_queueStats.dropped++;
-      DoCallback(callback_copy, SendStatus::Congestion);
+      DoCallback(callback, SendStatus::Congestion);
     }
     else
     {
       m_queueStats.queued++;
-
       uint32_t queueSize = outboundQueue.size();
       m_queueStats.queueWatermark = std::max(queueSize, m_queueStats.queueWatermark);
     }
@@ -272,7 +269,7 @@ namespace llarp
       }
       else
       {
-        DoCallback(entry.message.second, SendStatus::Congestion);
+        DoCallback(entry.inform, SendStatus::Congestion);
         m_queueStats.dropped++;
       }
     }
@@ -288,7 +285,7 @@ namespace llarp
     while (not routing_mq.empty())
     {
       const MessageQueueEntry& entry = routing_mq.top();
-      Send(entry.router, entry.message);
+      Send(entry);
       routing_mq.pop();
     }
 
@@ -331,7 +328,7 @@ namespace llarp
       {
         const MessageQueueEntry& entry = message_queue.top();
 
-        Send(entry.router, entry.message);
+        Send(entry);
         message_queue.pop();
 
         consecutive_empty = 0;
@@ -380,11 +377,11 @@ namespace llarp
 
       if (status == SendStatus::Success)
       {
-        Send(entry.router, entry.message);
+        Send(entry);
       }
       else
       {
-        DoCallback(entry.message.second, status);
+        DoCallback(entry.inform, status);
       }
       movedMessages.pop();
     }

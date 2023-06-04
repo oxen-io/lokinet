@@ -14,13 +14,18 @@
 #include <optional>
 #include <unordered_set>
 #include <set>
-#include "oxenmq/variant.h"
+#include "oxenc/variant.h"
 
 namespace llarp
 {
   namespace quic
   {
     class TunnelManager;
+  }
+
+  namespace dns
+  {
+    class Server;
   }
 
   class EndpointBase
@@ -71,6 +76,13 @@ namespace llarp
     /// add an srv record to this endpoint's descriptor
     void
     PutSRVRecord(dns::SRVData srv);
+
+    /// get dns serverr if we have on on this endpoint
+    virtual std::shared_ptr<dns::Server>
+    DNS() const
+    {
+      return nullptr;
+    };
 
     /// called when srv data changes in some way
     virtual void

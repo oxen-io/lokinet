@@ -40,7 +40,8 @@ namespace llarp
           uint64_t msgid,
           ILinkSession::Message_t data,
           llarp_time_t now,
-          ILinkSession::CompletionHandler handler);
+          ILinkSession::CompletionHandler handler,
+          uint16_t priority);
 
       ILinkSession::Message_t m_Data;
       uint64_t m_MsgID = 0;
@@ -49,6 +50,16 @@ namespace llarp
       llarp_time_t m_LastFlush = 0s;
       ShortHash m_Digest;
       llarp_time_t m_StartedAt = 0s;
+      uint16_t m_ResendPriority;
+
+      bool
+      operator<(const OutboundMessage& other) const
+      {
+        // yes, the first order is reversed as higher means more important
+        // second part is for queue order
+        int prioA = -m_ResendPriority, prioB = -other.m_ResendPriority;
+        return std::tie(prioA, m_MsgID) < std::tie(prioB, other.m_MsgID);
+      }
 
       ILinkSession::Packet_t
       XMIT() const;

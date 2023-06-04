@@ -1,0 +1,1 @@
+CreateShortCut '$SMPROGRAMS\$STARTMENU_FOLDER\Lokinet.lnk' '$INSTDIR\share\gui\lokinet-gui.exe'

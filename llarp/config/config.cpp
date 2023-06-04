@@ -4,22 +4,23 @@
 #include "config/definition.hpp"
 #include "ini.hpp"
 #include <llarp/constants/files.hpp>
+#include <llarp/constants/platform.hpp>
+#include <llarp/constants/version.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/router_contact.hpp>
 #include <stdexcept>
-#include <llarp/util/fs.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/file.hpp>
+#include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 
 #include <llarp/service/name.hpp>
 
 #include <cstdlib>
-#include <fstream>
 #include <ios>
 #include <iostream>
-#include <llarp/constants/version.hpp>
 
 namespace llarp
 {
@@ -33,6 +34,17 @@ namespace llarp
   constexpr int DefaultPublicPort = 1090;
 
   using namespace config;
+  namespace
+  {
+    struct ConfigGenParameters_impl : public ConfigGenParameters
+    {
+      const llarp::net::Platform*
+      Net_ptr() const
+      {
+        return llarp::net::Platform::Default_ptr();
+      }
+    };
+  }  // namespace
 
   void
   RouterConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
@@ -58,8 +70,8 @@ namespace llarp
         },
         [this](std::string arg) {
           if (arg.size() > NetID::size())
-            throw std::invalid_argument(
-                stringify("netid is too long, max length is ", NetID::size()));
+            throw std::invalid_argument{
+                fmt::format("netid is too long, max length is {}", NetID::size())};
 
           m_netId = std::move(arg);
         });
@@ -75,7 +87,8 @@ namespace llarp
         },
         [=](int arg) {
           if (arg < minConnections)
-            throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
+            throw std::invalid_argument{
+                fmt::format("min-connections must be >= {}", minConnections)};
 
           m_minConnectedRouters = arg;
         });
@@ -91,7 +104,8 @@ namespace llarp
         },
         [=](int arg) {
           if (arg < maxConnections)
-            throw std::invalid_argument(stringify("max-connections must be >= ", maxConnections));
+            throw std::invalid_argument{
+                fmt::format("max-connections must be >= {}", maxConnections)};
 
           m_maxConnectedRouters = arg;
         });
@@ -110,8 +124,8 @@ namespace llarp
           if (arg.empty())
             throw std::invalid_argument("[router]:data-dir is empty");
           if (not fs::exists(arg))
-            throw std::runtime_error(
-                stringify("Specified [router]:data-dir ", arg, " does not exist"));
+            throw std::runtime_error{
+                fmt::format("Specified [router]:data-dir {} does not exist", arg)};
 
           m_dataDir = std::move(arg);
         });
@@ -125,33 +139,24 @@ namespace llarp
             "this setting specifies the public IP at which this router is reachable. When",
             "provided the public-port option must also be specified.",
         },
-        [this](std::string arg) {
-          if (not arg.empty())
-          {
-            llarp::LogInfo("public ip ", arg, " size ", arg.size());
+        [this, net = params.Net_ptr()](std::string arg) {
+          if (arg.empty())
+            return;
+          nuint32_t addr{};
+          if (not addr.FromString(arg))
+            throw std::invalid_argument{fmt::format("{} is not a valid IPv4 address", arg)};
 
-            if (arg.size() > 15)
-              throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
+          if (net->IsBogonIP(addr))
+            throw std::invalid_argument{
+                fmt::format("{} is not a publicly routable ip address", addr)};
 
-            m_publicAddress.setAddress(arg);
-          }
+          PublicIP = addr;
         });
 
-    conf.defineOption<std::string>("router", "public-address", Hidden, [this](std::string arg) {
-      if (not arg.empty())
-      {
-        llarp::LogWarn(
-            "*** WARNING: The config option [router]:public-address=",
-            arg,
-            " is deprecated, use public-ip=",
-            arg,
-            " instead to avoid this warning and avoid future configuration problems.");
-
-        if (arg.size() > 15)
-          throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
-
-        m_publicAddress.setAddress(arg);
-      }
+    conf.defineOption<std::string>("router", "public-address", Hidden, [](std::string) {
+      throw std::invalid_argument{
+          "[router]:public-address option no longer supported, use [router]:public-ip and "
+          "[router]:public-port instead"};
     });
 
     conf.defineOption<int>(
@@ -166,8 +171,7 @@ namespace llarp
         [this](int arg) {
           if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
             throw std::invalid_argument("public-port must be >= 0 and <= 65536");
-
-          m_publicAddress.setPort(arg);
+          PublicPort = ToNet(huint16_t{static_cast<uint16_t>(arg)});
         });
 
     conf.defineOption<int>(
@@ -296,9 +300,9 @@ namespace llarp
             throw std::invalid_argument{"duplicate strict connect snode: " + value};
         },
         Comment{
-            "Public key of a router which will act as a pinned first-hop. This may be used to",
+            "Public keys of routers which will act as pinned first-hops. This may be used to",
             "provide a trusted router (consider that you are not fully anonymous with your",
-            "first hop).",
+            "first hop).  This REQUIRES two or more nodes to be specified.",
         });
 
     conf.defineOption<std::string>(
@@ -317,7 +321,7 @@ namespace llarp
         ClientOnly,
         Comment{
             "Set the endpoint authentication mechanism.",
-            "none/whitelist/lmq",
+            "none/whitelist/lmq/file",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -362,9 +366,45 @@ namespace llarp
         [this](std::string arg) {
           service::Address addr;
           if (not addr.FromString(arg))
-            throw std::invalid_argument(stringify("bad loki address: ", arg));
+            throw std::invalid_argument{fmt::format("bad loki address: {}", arg)};
           m_AuthWhitelist.emplace(std::move(addr));
         });
+
+    conf.defineOption<fs::path>(
+        "network",
+        "auth-file",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Read auth tokens from file to accept endpoint auth",
+            "Can be provided multiple times",
+        },
+        [this](fs::path arg) {
+          if (not fs::exists(arg))
+            throw std::invalid_argument{
+                fmt::format("cannot load auth file {}: file does not exist", arg)};
+          m_AuthFiles.emplace(std::move(arg));
+        });
+    conf.defineOption<std::string>(
+        "network",
+        "auth-file-type",
+        ClientOnly,
+        Comment{
+            "How to interpret the contents of an auth file.",
+            "Possible values: hashes, plaintext",
+        },
+        [this](std::string arg) { m_AuthFileType = service::ParseAuthFileType(std::move(arg)); });
+
+    conf.defineOption<std::string>(
+        "network",
+        "auth-static",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Manually add a static auth code to accept for endpoint auth",
+            "Can be provided multiple times",
+        },
+        [this](std::string arg) { m_AuthStaticTokens.emplace(std::move(arg)); });
 
     conf.defineOption<bool>(
         "network",
@@ -373,7 +413,7 @@ namespace llarp
         ReachableDefault,
         AssignmentAcceptor(m_reachable),
         Comment{
-            "Determines whether we will publish our snapp's introset to the DHT.",
+            "Determines whether we will pubish our snapp's introset to the DHT.",
         });
 
     conf.defineOption<int>(
@@ -399,7 +439,7 @@ namespace llarp
         },
         [this](int arg) {
           if (arg < 3 or arg > 8)
-            throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
+            throw std::invalid_argument("[endpoint]:paths must be >= 3 and <= 8");
           m_Paths = arg;
         });
 
@@ -419,9 +459,8 @@ namespace llarp
         "owned-range",
         MultiValue,
         Comment{
-            "When in exit mode announce we allow a private range in our introset"
-            "exmaple:",
-            "owned-range=10.0.0.0/24",
+            "When in exit mode announce we allow a private range in our introset.  For example:",
+            "    owned-range=10.0.0.0/24",
         },
         [this](std::string arg) {
           IPRange range;
@@ -435,12 +474,17 @@ namespace llarp
         "traffic-whitelist",
         MultiValue,
         Comment{
-            "List of ip traffic whitelist, anything not specified will be dropped by us."
-            "examples:",
-            "tcp for all tcp traffic regardless of port",
-            "0x69 for all packets using ip protocol 0x69"
-            "udp/53 for udp port 53",
-            "tcp/smtp for smtp port",
+            "Adds an IP traffic type whitelist; can be specified multiple times.  If any are",
+            "specified then only matched traffic will be allowed and all other traffic will be",
+            "dropped.  Examples:",
+            "    traffic-whitelist=tcp",
+            "would allow all TCP/IP packets (regardless of port);",
+            "    traffic-whitelist=0x69",
+            "would allow IP traffic with IP protocol 0x69;",
+            "    traffic-whitelist=udp/53",
+            "would allow UDP port 53; and",
+            "    traffic-whitelist=tcp/smtp",
+            "would allow TCP traffic on the standard smtp port (21).",
         },
         [this](std::string arg) {
           if (not m_TrafficPolicy)
@@ -454,11 +498,15 @@ namespace llarp
         "network",
         "exit-node",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify a `.loki` address and an optional ip range to use as an exit broker.",
-            "Example:",
-            "exit-node=whatever.loki # maps all exit traffic to whatever.loki",
-            "exit-node=stuff.loki:100.0.0.0/24 # maps 100.0.0.0/24 to stuff.loki",
+            "Examples:",
+            "    exit-node=whatever.loki",
+            "would map all exit traffic through whatever.loki; and",
+            "    exit-node=stuff.loki:100.0.0.0/24",
+            "would map the IP range 100.0.0.0/24 through stuff.loki.",
+            "This option can be specified multiple times (to map different IP ranges).",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -487,7 +535,7 @@ namespace llarp
 
           if (arg != "null" and not exit.FromString(arg))
           {
-            throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
+            throw std::invalid_argument{fmt::format("[network]:exit-node bad address: {}", arg)};
           }
           m_ExitMap.Insert(range, exit);
         });
@@ -496,12 +544,13 @@ namespace llarp
         "network",
         "exit-auth",
         ClientOnly,
+        MultiValue,
         Comment{
             "Specify an optional authentication code required to use a non-public exit node.",
             "For example:",
             "    exit-auth=myfavouriteexit.loki:abc",
             "uses the authentication code `abc` whenever myfavouriteexit.loki is accessed.",
-            "Can be specified multiple time to store codes for different exit nodes.",
+            "Can be specified multiple times to store codes for different exit nodes.",
         },
         [this](std::string arg) {
           if (arg.empty())
@@ -531,12 +580,36 @@ namespace llarp
           m_ExitAuths.emplace(exit, auth);
         });
 
+    conf.defineOption<bool>(
+        "network",
+        "auto-routing",
+        ClientOnly,
+        Default{true},
+        Comment{
+            "Enable / disable automatic route configuration.",
+            "When this is enabled and an exit is used Lokinet will automatically configure the",
+            "operating system routes to route public internet traffic through the exit node.",
+            "This is enabled by default, but can be disabled if advanced/manual exit routing",
+            "configuration is desired."},
+        AssignmentAcceptor(m_EnableRoutePoker));
+
+    conf.defineOption<bool>(
+        "network",
+        "blackhole-routes",
+        ClientOnly,
+        Default{true},
+        Comment{
+            "Enable / disable route configuration blackholes.",
+            "When enabled lokinet will drop IPv4 and IPv6 traffic (when in exit mode) that is not",
+            "handled in the exit configuration.  Enabled by default."},
+        AssignmentAcceptor(m_BlackholeRoutes));
+
     conf.defineOption<std::string>(
         "network",
         "ifname",
         Comment{
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
-            "lokinetN, starting at 0 (e.g. lokinet0, lokinet1, ...).",
+            "matching 'lokinetN', starting at N=0 (e.g. lokinet0, lokinet1, ...).",
         },
         AssignmentAcceptor(m_ifname));
 
@@ -551,7 +624,7 @@ namespace llarp
         [this](std::string arg) {
           if (not m_ifaddr.FromString(arg))
           {
-            throw std::invalid_argument(stringify("[network]:ifaddr invalid value: '", arg, "'"));
+            throw std::invalid_argument{fmt::format("[network]:ifaddr invalid value: '{}'", arg)};
           }
         });
 
@@ -560,10 +633,10 @@ namespace llarp
         "ip6-range",
         ClientOnly,
         Comment{
-            "For all ipv6 exit traffic you will use this as the base address bitwised or'd with "
+            "For all IPv6 exit traffic you will use this as the base address bitwised or'd with ",
             "the v4 address in use.",
             "To disable ipv6 set this to an empty value.",
-            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to "
+            "!!! WARNING !!! Disabling ipv6 tunneling when you have ipv6 routes WILL lead to ",
             "de-anonymization as lokinet will no longer carry your ipv6 traffic.",
         },
         IP6RangeDefault,
@@ -578,9 +651,10 @@ namespace llarp
           }
           m_baseV6Address = huint128_t{};
           if (not m_baseV6Address->FromString(arg))
-            throw std::invalid_argument(
-                stringify("[network]:ip6-range invalid value: '", arg, "'"));
+            throw std::invalid_argument{
+                fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
         });
+
     // TODO: could be useful for snodes in the future, but currently only implemented for clients:
     conf.defineOption<std::string>(
         "network",
@@ -601,7 +675,7 @@ namespace llarp
           const auto pos = arg.find(":");
           if (pos == std::string::npos)
           {
-            throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid entry: ", arg));
+            throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid entry: {}", arg)};
           }
           std::string addrstr = arg.substr(0, pos);
           std::string ipstr = arg.substr(pos + 1);
@@ -610,18 +684,19 @@ namespace llarp
             huint32_t ipv4;
             if (not ipv4.FromString(ipstr))
             {
-              throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid ip: ", ipstr));
+              throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid ip: {}", ipstr)};
             }
             ip = net::ExpandV4(ipv4);
           }
           if (not addr.FromString(addrstr))
           {
-            throw std::invalid_argument(
-                stringify("[endpoint]:mapaddr invalid addresss: ", addrstr));
+            throw std::invalid_argument{
+                fmt::format("[endpoint]:mapaddr invalid addresss: {}", addrstr)};
           }
           if (m_mapAddrs.find(ip) != m_mapAddrs.end())
           {
-            throw std::invalid_argument(stringify("[endpoint]:mapaddr ip already mapped: ", ipstr));
+            throw std::invalid_argument{
+                fmt::format("[endpoint]:mapaddr ip already mapped: {}", ipstr)};
           }
           m_mapAddrs[ip] = addr;
         });
@@ -638,11 +713,11 @@ namespace llarp
         [this](std::string arg) {
           RouterID id;
           if (not id.FromString(arg))
-            throw std::invalid_argument(stringify("Invalid RouterID: ", arg));
+            throw std::invalid_argument{fmt::format("Invalid RouterID: {}", arg)};
 
           auto itr = m_snodeBlacklist.emplace(std::move(id));
           if (not itr.second)
-            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
+            throw std::invalid_argument{fmt::format("Duplicate blacklist-snode: {}", arg)};
         });
 
     // TODO: support SRV records for routers, but for now client only
@@ -652,14 +727,18 @@ namespace llarp
         ClientOnly,
         MultiValue,
         Comment{
-            "Specify SRV Records for services hosted on the SNApp",
-            "for more info see https://docs.loki.network/Lokinet/Guides/HostingSNApps/",
-            "srv=_service._protocol priority weight port target.loki",
+            "Specify SRV Records for services hosted on the SNApp for protocols that use SRV",
+            "records for service discovery. Each line specifies a single SRV record as:",
+            "    srv=_service._protocol priority weight port target.loki",
+            "and can be specified multiple times as needed.",
+            "For more info see",
+            "https://docs.oxen.io/products-built-on-oxen/lokinet/snapps/hosting-snapps",
+            "and general description of DNS SRV record configuration.",
         },
         [this](std::string arg) {
           llarp::dns::SRVData newSRV;
           if (not newSRV.fromString(arg))
-            throw std::invalid_argument(stringify("Invalid SRV Record string: ", arg));
+            throw std::invalid_argument{fmt::format("Invalid SRV Record string: {}", arg)};
 
           m_SRVRecords.push_back(std::move(newSRV));
         });
@@ -669,8 +748,8 @@ namespace llarp
         "path-alignment-timeout",
         ClientOnly,
         Comment{
-            "time in seconds how long to wait for a path to align to pivot routers",
-            "if not provided a sensible default will be used",
+            "How long to wait (in seconds) for a path to align to a pivot router when establishing",
+            "a path through the network to a remote .loki address.",
         },
         [this](int val) {
           if (val <= 0)
@@ -685,9 +764,10 @@ namespace llarp
         ClientOnly,
         Default{fs::path{params.defaultDataDir / "addrmap.dat"}},
         Comment{
-            "persist mapped ephemeral addresses to a file",
-            "on restart the mappings will be loaded so that ip addresses will not be mapped to a "
-            "different address",
+            "If given this specifies a file in which to record mapped local tunnel addresses so",
+            "the same local address will be used for the same lokinet address on reboot.  If this",
+            "is not specified then the local IP of remote lokinet targets will not persist across",
+            "restarts of lokinet.",
         },
         [this](fs::path arg) {
           if (arg.empty())
@@ -707,22 +787,26 @@ namespace llarp
     // Most non-linux platforms have loopback as 127.0.0.1/32, but linux uses 127.0.0.1/8 so that we
     // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
     // 127.0.0.1:53.
+    constexpr std::array DefaultDNSBind{
 #ifdef __linux__
-    constexpr Default DefaultDNSBind{"127.3.2.1:53"};
-#else
-    constexpr Default DefaultDNSBind{"127.0.0.1:53"};
+#ifdef WITH_SYSTEMD
+        // when we have systemd support add a random high port on loopback as well
+        // see https://github.com/oxen-io/lokinet/issues/1887#issuecomment-1091897282
+        Default{"127.0.0.1:0"},
 #endif
+        Default{"127.3.2.1:53"},
+#else
+        Default{"127.0.0.1:53"},
+#endif
+    };
 
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
-    constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
+    constexpr Default DefaultUpstreamDNS{"9.9.9.10:53"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
-    if (!m_upstreamDNS.back().getPort())
-      m_upstreamDNS.back().setPort(53);
 
     conf.defineOption<std::string>(
         "dns",
         "upstream",
-        DefaultUpstreamDNS,
         MultiValue,
         Comment{
             "Upstream resolver(s) to use as fallback for non-loki addresses.",
@@ -734,25 +818,52 @@ namespace llarp
             m_upstreamDNS.clear();
             first = false;
           }
-          if (!arg.empty())
+          if (not arg.empty())
           {
             auto& entry = m_upstreamDNS.emplace_back(std::move(arg));
-            if (!entry.getPort())
+            if (not entry.getPort())
               entry.setPort(53);
           }
         });
+
+    conf.defineOption<bool>(
+        "dns",
+        "l3-intercept",
+        Default{
+            platform::is_windows or platform::is_android
+            or (platform::is_macos and not platform::is_apple_sysex)},
+        Comment{"Intercept all dns traffic (udp/53) going into our lokinet network interface "
+                "instead of binding a local udp socket"},
+        AssignmentAcceptor(m_raw_dns));
+
+    conf.defineOption<std::string>(
+        "dns",
+        "query-bind",
+#if defined(_WIN32)
+        Default{"0.0.0.0:0"},
+#else
+        Hidden,
+#endif
+        Comment{
+            "Address to bind to for sending upstream DNS requests.",
+        },
+        [this](std::string arg) { m_QueryBind = SockAddr{arg}; });
 
     conf.defineOption<std::string>(
         "dns",
         "bind",
         DefaultDNSBind,
+        MultiValue,
         Comment{
             "Address to bind to for handling DNS requests.",
         },
         [=](std::string arg) {
-          m_bind = SockAddr{std::move(arg)};
-          if (!m_bind.getPort())
-            m_bind.setPort(53);
+          SockAddr addr{arg};
+          // set dns port if no explicit port specified
+          // explicit :0 allowed
+          if (not addr.getPort() and not ends_with(arg, ":0"))
+            addr.setPort(53);
+          m_bind.emplace_back(addr);
         });
 
     conf.defineOption<fs::path>(
@@ -765,7 +876,7 @@ namespace llarp
             return;
           if (not fs::exists(path))
             throw std::invalid_argument{
-                stringify("cannot add hosts file ", path, " as it does not seem to exist")};
+                fmt::format("cannot add hosts file {} as it does not exist", path)};
           m_hostfiles.emplace_back(std::move(path));
         });
 
@@ -779,113 +890,204 @@ namespace llarp
             "(This is not used directly by lokinet itself, but by the lokinet init scripts",
             "on systems which use resolveconf)",
         });
-  }
 
-  LinksConfig::LinkInfo
-  LinksConfig::LinkInfoFromINIValues(std::string_view name, std::string_view value)
-  {
-    // we treat the INI k:v pair as:
-    // k: interface name, * indicating outbound
-    // v: a comma-separated list of values, an int indicating port (everything else ignored)
-    //    this is somewhat of a backwards- and forwards-compatibility thing
-
-    LinkInfo info;
-    info.port = 0;
-    info.addressFamily = AF_INET;
-
-    if (name == "address")
-    {
-      const IpAddress addr{value};
-      if (not addr.hasPort())
-        throw std::invalid_argument("no port provided in link address");
-      info.interface = addr.toHost();
-      info.port = *addr.getPort();
-    }
-    else
-    {
-      info.interface = std::string{name};
-
-      std::vector<std::string_view> splits = split(value, ",");
-      for (std::string_view str : splits)
-      {
-        int asNum = std::atoi(str.data());
-        if (asNum > 0)
-          info.port = asNum;
-
-        // otherwise, ignore ("future-proofing")
-      }
-    }
-
-    return info;
+    // forward the rest to libunbound
+    conf.addUndeclaredHandler("dns", [this](auto, std::string_view key, std::string_view val) {
+      m_ExtraOpts.emplace(key, val);
+    });
   }
 
   void
   LinksConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    constexpr Default DefaultOutboundLinkValue{"0"};
-
     conf.addSectionComments(
         "bind",
         {
-            "This section specifies network interface names and/or IPs as keys, and",
-            "ports as values to control the address(es) on which Lokinet listens for",
-            "incoming data.",
+            "This section allows specifying the IPs that lokinet uses for incoming and outgoing",
+            "connections.  For simple setups it can usually be left blank, but may be required",
+            "for routers with multiple IPs, or routers that must listen on a private IP with",
+            "forwarded public traffic.  It can also be useful for clients that want to use a",
+            "consistent outgoing port for which firewall rules can be configured.",
+        });
+
+    const auto* net_ptr = params.Net_ptr();
+
+    static constexpr Default DefaultInboundPort{uint16_t{1090}};
+    static constexpr Default DefaultOutboundPort{uint16_t{0}};
+
+    conf.defineOption<std::string>(
+        "bind",
+        "public-ip",
+        RelayOnly,
+        Comment{
+            "The IP address to advertise to the network instead of the incoming= or auto-detected",
+            "IP.  This is typically required only when incoming= is used to listen on an internal",
+            "private range IP address that received traffic forwarded from the public IP.",
+        },
+        [this](std::string_view arg) {
+          SockAddr pubaddr{arg};
+          PublicAddress = pubaddr.getIP();
+        });
+    conf.defineOption<uint16_t>(
+        "bind",
+        "public-port",
+        RelayOnly,
+        Comment{
+            "The port to advertise to the network instead of the incoming= (or default) port.",
+            "This is typically required only when incoming= is used to listen on an internal",
+            "private range IP address/port that received traffic forwarded from the public IP.",
+        },
+        [this](uint16_t arg) { PublicPort = net::port_t::from_host(arg); });
+
+    auto parse_addr_for_link = [net_ptr](
+                                   const std::string& arg, net::port_t default_port, bool inbound) {
+      std::optional<SockAddr> addr = std::nullopt;
+      // explicitly provided value
+      if (not arg.empty())
+      {
+        if (arg[0] == ':')
+        {
+          // port only case
+          default_port = net::port_t::from_string(arg.substr(1));
+          if (!inbound)
+            addr = net_ptr->WildcardWithPort(default_port);
+        }
+        else
+        {
+          addr = SockAddr{arg};
+          if (net_ptr->IsLoopbackAddress(addr->getIP()))
+            throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
+        }
+      }
+      if (not addr)
+      {
+        // infer public address
+        if (auto maybe_ifname = net_ptr->GetBestNetIF())
+          addr = net_ptr->GetInterfaceAddr(*maybe_ifname);
+      }
+
+      if (addr)
+      {
+        // set port if not explicitly provided
+        if (addr->getPort() == 0)
+          addr->setPort(default_port);
+      }
+      return addr;
+    };
+
+    conf.defineOption<std::string>(
+        "bind",
+        "inbound",
+        RelayOnly,
+        MultiValue,
+        Comment{
+            "IP and/or port to listen on for incoming connections.",
+            "",
+            "If IP is omitted then lokinet will search for a local network interface with a",
+            "public IP address and use that IP (and will exit with an error if no such IP is found",
+            "on the system).  If port is omitted then lokinet defaults to 1090.",
             "",
             "Examples:",
+            "    inbound=15.5.29.5:443",
+            "    inbound=10.0.2.2",
+            "    inbound=:1234",
             "",
-            "    eth0=1090",
-            "    0.0.0.0=1090",
-            "    1.2.3.4=1090",
-            "",
-            "The first bind to port 1090 on the network interface 'eth0'; the second binds",
-            "to port 1090 on all local network interfaces; and the third example binds to",
-            "port 1090 on the given IP address.",
-            "",
-            "If a private range IP address (or an interface with a private IP) is given, or",
-            "if the 0.0.0.0 all-address IP is given then you must also specify the",
-            "public-ip= and public-port= settings in the [router] section with a public",
-            "address at which this router can be reached.",
-            ""
-            "Typically this section can be left blank: if no inbound bind addresses are",
-            "configured then lokinet will search for a local network interface with a public",
-            "IP address and use that (with port 1090).",
+            "Using a private range IP address (like the second example entry) will require using",
+            "the public-ip= and public-port= to specify the public IP address at which this",
+            "router can be reached.",
+        },
+        [this, parse_addr_for_link](const std::string& arg) {
+          auto default_port = net::port_t::from_host(DefaultInboundPort.val);
+          if (auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/true))
+            InboundListenAddrs.emplace_back(std::move(*addr));
         });
 
     conf.defineOption<std::string>(
         "bind",
-        "*",
-        DefaultOutboundLinkValue,
-        Comment{
-            "Specify a source port for **outgoing** Lokinet traffic, for example if you want to",
-            "set up custom firewall rules based on the originating port. Typically this should",
-            "be left unset to automatically choose random source ports.",
+        "outbound",
+        MultiValue,
+        params.isRelay ? Comment{
+            "IP and/or port to use for outbound socket connections to other lokinet routers.",
+            "",
+            "If no outbound bind IP is configured, or the 0.0.0.0 wildcard IP is given, then",
+            "lokinet will bind to the same IP being used for inbound connections (either an",
+            "explicit inbound= provided IP, or the default).  If no port is given, or port is",
+            "given as 0, then a random high port will be used.",
+            "",
+            "If using multiple inbound= addresses then you *must* provide an explicit oubound= IP.",
+            "",
+            "Examples:",
+            "    outbound=1.2.3.4:5678",
+            "    outbound=:9000",
+            "    outbound=8.9.10.11",
+            "",
+            "The second example binds on the default incoming IP using port 9000; the third",
+            "example binds on the given IP address using a random high port.",
+        } : Comment{
+            "IP and/or port to use for outbound socket connections to lokinet routers.",
+            "",
+            "If no outbound bind IP is configured then lokinet will use a wildcard IP address",
+            "(equivalent to specifying 0.0.0.0).  If no port is given then a random high port",
+            "will be used.",
+            "",
+            "Examples:",
+            "    outbound=1.2.3.4:5678",
+            "    outbound=:9000",
+            "    outbound=8.9.10.11",
+            "",
+            "The second example binds on the wildcard address using port 9000; the third example",
+            "binds on the given IP address using a random high port.",
         },
-        [this](std::string arg) { m_OutboundLink = LinkInfoFromINIValues("*", arg); });
+        [this, net_ptr, parse_addr_for_link](const std::string& arg) {
+          auto default_port = net::port_t::from_host(DefaultOutboundPort.val);
+          auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/false);
+          if (not addr)
+            addr = net_ptr->WildcardWithPort(default_port);
+          OutboundLinks.emplace_back(std::move(*addr));
+        });
 
-    if (params.isRelay)
-    {
-      if (std::string best_if; GetBestNetIF(best_if))
-        m_InboundLinks.push_back(LinkInfoFromINIValues(best_if, std::to_string(DefaultPublicPort)));
-    }
     conf.addUndeclaredHandler(
-        "bind",
-        [&, defaulted = true](
-            std::string_view, std::string_view name, std::string_view value) mutable {
-          if (defaulted)
+        "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
+          LogWarn(
+              "using the [bind] section with *=/IP=/INTERFACE= is deprecated; use the inbound= "
+              "and/or outbound= settings instead");
+          std::optional<SockAddr> addr;
+          // special case: wildcard for outbound
+          if (key == "*")
           {
-            m_InboundLinks.clear();  // Clear the default
-            defaulted = false;
+            addr = net_ptr->Wildcard();
+            // set port, zero is acceptable here.
+            if (auto port = std::stoi(std::string{val});
+                port < std::numeric_limits<uint16_t>::max())
+            {
+              addr->setPort(port);
+            }
+            else
+              throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
+            OutboundLinks.emplace_back(std::move(*addr));
+            return;
           }
+          // try as interface name first
+          addr = net_ptr->GetInterfaceAddr(key, AF_INET);
+          if (addr and net_ptr->IsLoopbackAddress(addr->getIP()))
+            throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
+          // try as ip address next, throws if unable to parse
+          if (not addr)
+          {
+            addr = SockAddr{key, huint16_t{0}};
+            if (net_ptr->IsLoopbackAddress(addr->getIP()))
+              throw std::invalid_argument{fmt::format("{} is a loopback address", key)};
+          }
+          // parse port and set if acceptable non zero value
+          if (auto port = std::stoi(std::string{val});
+              port and port < std::numeric_limits<uint16_t>::max())
+          {
+            addr->setPort(port);
+          }
+          else
+            throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
 
-          LinkInfo info = LinkInfoFromINIValues(name, value);
-
-          if (info.port <= 0)
-            throw std::invalid_argument(
-                stringify("Invalid [bind] port specified on interface", name));
-
-          assert(name != "*");  // handled by defineOption("bind", "*", ...) above
-
-          m_InboundLinks.emplace_back(std::move(info));
+          InboundListenAddrs.emplace_back(std::move(*addr));
         });
   }
 
@@ -898,14 +1100,11 @@ namespace llarp
         "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
           fs::path file{value.begin(), value.end()};
           if (not fs::exists(file))
-            throw std::runtime_error(stringify(
-                "Specified bootstrap file ",
+            throw std::runtime_error{fmt::format(
+                "Specified bootstrap file {} specified in [{}]:{} does not exist",
                 value,
-                "specified in [",
                 section,
-                "]:",
-                name,
-                " does not exist"));
+                name)};
 
           routers.emplace_back(std::move(file));
           return true;
@@ -963,7 +1162,7 @@ namespace llarp
         RelayOnly,
         Default{true},
         Comment{
-            "Whether or not we should talk to lokid. Must be enabled for staked routers.",
+            "Whether or not we should talk to oxend. Must be enabled for staked routers.",
         },
         AssignmentAcceptor(whitelistRouters));
 
@@ -972,21 +1171,22 @@ namespace llarp
         return;
       throw std::invalid_argument(
           "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc config "
-          "option instead with lokid's lmq-local-control address -- typically a value such as "
-          "rpc=ipc:///var/lib/loki/lokid.sock or rpc=ipc:///home/snode/.loki/lokid.sock");
+          "option instead with oxend's lmq-local-control address -- typically a value such as "
+          "rpc=ipc:///var/lib/oxen/oxend.sock or rpc=ipc:///home/snode/.oxen/oxend.sock");
     });
 
     conf.defineOption<std::string>(
         "lokid",
         "rpc",
         RelayOnly,
+        Required,
         Comment{
-            "lokimq control address for for communicating with lokid. Depends on lokid's",
+            "oxenmq control address for for communicating with oxend. Depends on oxend's",
             "lmq-local-control configuration option. By default this value should be",
-            "ipc://LOKID-DATA-DIRECTORY/lokid.sock, such as:",
-            "    rpc=ipc:///var/lib/loki/lokid.sock",
-            "    rpc=ipc:///home/USER/.loki/lokid.sock",
-            "but can use (non-default) TCP if lokid is configured that way:",
+            "ipc://OXEND-DATA-DIRECTORY/oxend.sock, such as:",
+            "    rpc=ipc:///var/lib/oxen/oxend.sock",
+            "    rpc=ipc:///home/USER/.oxen/oxend.sock",
+            "but can use (non-default) TCP if oxend is configured that way:",
             "    rpc=tcp://127.0.0.1:5678",
         },
         [this](std::string arg) { lokidRPCAddr = oxenmq::address(arg); });
@@ -1015,7 +1215,7 @@ namespace llarp
         "add-node",
         MultiValue,
         Comment{
-            "Specify a bootstrap file containing a signed RouterContact of a service node",
+            "Specify a bootstrap file containing a list of signed RouterContacts of service nodes",
             "which can act as a bootstrap. Can be specified multiple times.",
         },
         [this](std::string arg) {
@@ -1036,38 +1236,29 @@ namespace llarp
   {
     (void)params;
 
-    constexpr Default DefaultLogType{"file"};
+    constexpr Default DefaultLogType{
+        platform::is_android or platform::is_apple ? "system" : "print"};
     constexpr Default DefaultLogFile{""};
-    constexpr Default DefaultLogLevel{"warn"};
+
+    const Default DefaultLogLevel{params.isRelay ? "warn" : "info"};
 
     conf.defineOption<std::string>(
         "logging",
         "type",
         DefaultLogType,
-        [this](std::string arg) {
-          LogType type = LogTypeFromString(arg);
-          if (type == LogType::Unknown)
-            throw std::invalid_argument(stringify("invalid log type: ", arg));
-
-          m_logType = type;
-        },
+        [this](std::string arg) { m_logType = log::type_from_string(arg); },
         Comment{
             "Log type (format). Valid options are:",
-            "  file - plaintext formatting",
-            "  syslog - logs directed to syslog",
+            "  print - print logs to standard output",
+            "  system - logs directed to the system logger (syslog/eventlog/etc.)",
+            "  file - plaintext formatting to a file",
         });
 
     conf.defineOption<std::string>(
         "logging",
         "level",
         DefaultLogLevel,
-        [this](std::string arg) {
-          std::optional<LogLevel> level = LogLevelFromString(arg);
-          if (not level)
-            throw std::invalid_argument(stringify("invalid log level value: ", arg));
-
-          m_logLevel = *level;
-        },
+        [this](std::string arg) { m_logLevel = log::level_from_string(arg); },
         Comment{
             "Minimum log level to print. Logging below this level will be ignored.",
             "Valid log levels, in ascending order, are:",
@@ -1076,6 +1267,8 @@ namespace llarp
             "  info",
             "  warn",
             "  error",
+            "  critical",
+            "  none",
         });
 
     conf.defineOption<std::string>(
@@ -1084,9 +1277,7 @@ namespace llarp
         DefaultLogFile,
         AssignmentAcceptor(m_logFile),
         Comment{
-            "When using type=file this is the output filename. If given the value 'stdout' or",
-            "left empty then logging is printed as standard output rather than written to a",
-            "file.",
+            "When using type=file this is the output filename.",
         });
   }
 
@@ -1114,9 +1305,9 @@ namespace llarp
           m_UniqueHopsNetmaskSize = arg;
         },
         Comment{
-            "Netmask for router path selection; each router must be from a distinct IP subnet "
+            "Netmask for router path selection; each router must be from a distinct IPv4 subnet",
             "of the given size.",
-            "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
+            "E.g. 16 ensures that all routers are using IPs from distinct /16 IP ranges."});
 
 #ifdef WITH_GEOIP
     conf.defineOption<std::string>(
@@ -1128,9 +1319,11 @@ namespace llarp
           m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
         },
         Comment{
-            "exclude a country given its 2 letter country code from being used in path builds",
-            "e.g. exclude-country=DE",
-            "can be listed multiple times to exclude multiple countries"});
+            "Exclude a country given its 2 letter country code from being used in path builds.",
+            "For example:",
+            "    exclude-country=DE",
+            "would avoid building paths through routers with IPs in Germany.",
+            "This option can be specified multiple times to exclude multiple countries"});
 #endif
   }
 
@@ -1155,8 +1348,14 @@ namespace llarp
     return true;
   }
 
-  Config::Config(fs::path datadir)
-      : m_DataDir(datadir.empty() ? fs::current_path() : std::move(datadir))
+  std::unique_ptr<ConfigGenParameters>
+  Config::MakeGenParams() const
+  {
+    return std::make_unique<ConfigGenParameters_impl>();
+  }
+
+  Config::Config(std::optional<fs::path> datadir)
+      : m_DataDir{datadir ? std::move(*datadir) : fs::current_path()}
   {}
 
   constexpr auto GetOverridesDir = [](auto datadir) -> fs::path { return datadir / "conf.d"; };
@@ -1177,15 +1376,25 @@ namespace llarp
   }
 
   void
-  Config::LoadOverrides()
+  Config::LoadOverrides(ConfigDefinition& conf) const
   {
+    ConfigParser parser;
     const auto overridesDir = GetOverridesDir(m_DataDir);
     if (fs::exists(overridesDir))
     {
       util::IterDir(overridesDir, [&](const fs::path& overrideFile) {
         if (overrideFile.extension() == ".ini")
         {
-          m_Parser.LoadFile(overrideFile);
+          ConfigParser parser;
+          if (not parser.LoadFile(overrideFile))
+            throw std::runtime_error{"cannot load '" + overrideFile.u8string() + "'"};
+
+          parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+            for (const auto& pair : values)
+            {
+              conf.addConfigValue(section, pair.first, pair.second);
+            }
+          });
         }
         return true;
       });
@@ -1199,80 +1408,72 @@ namespace llarp
   }
 
   bool
+  Config::LoadConfigData(std::string_view ini, std::optional<fs::path> filename, bool isRelay)
+  {
+    auto params = MakeGenParams();
+    params->isRelay = isRelay;
+    params->defaultDataDir = m_DataDir;
+    ConfigDefinition conf{isRelay};
+    addBackwardsCompatibleConfigOptions(conf);
+    initializeConfig(conf, *params);
+
+    for (const auto& item : m_Additional)
+    {
+      conf.addConfigValue(item[0], item[1], item[2]);
+    }
+
+    m_Parser.Clear();
+
+    if (filename)
+      m_Parser.Filename(*filename);
+    else
+      m_Parser.Filename(fs::path{});
+
+    if (not m_Parser.LoadFromStr(ini))
+      return false;
+
+    m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+      for (const auto& pair : values)
+      {
+        conf.addConfigValue(section, pair.first, pair.second);
+      }
+    });
+
+    LoadOverrides(conf);
+
+    conf.process();
+
+    return true;
+  }
+
+  bool
   Config::Load(std::optional<fs::path> fname, bool isRelay)
   {
-    if (not fname.has_value())
-      return LoadDefault(isRelay);
-    try
+    std::string ini;
+    if (fname)
     {
-      ConfigGenParameters params;
-      params.isRelay = isRelay;
-      params.defaultDataDir = m_DataDir;
-
-      ConfigDefinition conf{isRelay};
-      initializeConfig(conf, params);
-      addBackwardsCompatibleConfigOptions(conf);
-      m_Parser.Clear();
-      if (!m_Parser.LoadFile(*fname))
+      try
+      {
+        ini = util::slurp_file(*fname);
+      }
+      catch (const std::exception&)
       {
         return false;
       }
-      LoadOverrides();
-
-      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
-        for (const auto& pair : values)
-        {
-          conf.addConfigValue(section, pair.first, pair.second);
-        }
-      });
-
-      conf.acceptAllOptions();
-
-      return true;
     }
-    catch (const std::exception& e)
-    {
-      LogError("Error trying to init and parse config from file: ", e.what());
-      return false;
-    }
+    return LoadConfigData(ini, fname, isRelay);
+  }
+
+  bool
+  Config::LoadString(std::string_view ini, bool isRelay)
+  {
+    return LoadConfigData(ini, std::nullopt, isRelay);
   }
 
   bool
   Config::LoadDefault(bool isRelay)
   {
-    try
-    {
-      ConfigGenParameters params;
-      params.isRelay = isRelay;
-      params.defaultDataDir = m_DataDir;
-      ConfigDefinition conf{isRelay};
-      initializeConfig(conf, params);
-
-      m_Parser.Clear();
-      LoadOverrides();
-
-      /// load additional config options added
-      for (const auto& [sect, key, val] : m_Additional)
-      {
-        conf.addConfigValue(sect, key, val);
-      }
-
-      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
-        for (const auto& pair : values)
-        {
-          conf.addConfigValue(section, pair.first, pair.second);
-        }
-      });
-
-      conf.acceptAllOptions();
-
-      return true;
-    }
-    catch (const std::exception& e)
-    {
-      LogError("Error trying to init default config: ", e.what());
-      return false;
-    }
+    return LoadString("", isRelay);
   }
 
   void
@@ -1336,12 +1537,15 @@ namespace llarp
       confStr = config.generateBaseClientConfig();
 
     // open a filestream
-    auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
-    if (not stream or not stream->is_open())
-      throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
-
-    *stream << confStr;
-    stream->flush();
+    try
+    {
+      util::dump_file(confFile, confStr);
+    }
+    catch (const std::exception& e)
+    {
+      throw std::runtime_error{
+          fmt::format("Failed to write config data to {}: {}", confFile, e.what())};
+    }
 
     llarp::LogInfo("Generated new config ", confFile);
   }
@@ -1395,12 +1599,12 @@ namespace llarp
   std::string
   Config::generateBaseClientConfig()
   {
-    ConfigGenParameters params;
-    params.isRelay = false;
-    params.defaultDataDir = m_DataDir;
+    auto params = MakeGenParams();
+    params->isRelay = false;
+    params->defaultDataDir = m_DataDir;
 
     llarp::ConfigDefinition def{false};
-    initializeConfig(def, params);
+    initializeConfig(def, *params);
     generateCommonConfigComments(def);
     def.addSectionComments(
         "paths",
@@ -1420,19 +1624,19 @@ namespace llarp
   std::string
   Config::generateBaseRouterConfig()
   {
-    ConfigGenParameters params;
-    params.isRelay = true;
-    params.defaultDataDir = m_DataDir;
+    auto params = MakeGenParams();
+    params->isRelay = true;
+    params->defaultDataDir = m_DataDir;
 
     llarp::ConfigDefinition def{true};
-    initializeConfig(def, params);
+    initializeConfig(def, *params);
     generateCommonConfigComments(def);
 
-    // lokid
+    // oxend
     def.addSectionComments(
         "lokid",
         {
-            "Settings for communicating with lokid",
+            "Settings for communicating with oxend",
         });
 
     return def.generateINIConfig(true);
@@ -1441,9 +1645,9 @@ namespace llarp
   std::shared_ptr<Config>
   Config::EmbeddedConfig()
   {
-    auto config = std::make_shared<Config>(fs::path{});
+    auto config = std::make_shared<Config>();
     config->Load();
-    config->logging.m_logLevel = eLogNone;
+    config->logging.m_logLevel = log::Level::off;
     config->api.m_enableRPCServer = false;
     config->network.m_endpointType = "null";
     config->network.m_saveProfiles = false;

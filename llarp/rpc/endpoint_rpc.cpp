@@ -6,14 +6,16 @@ namespace llarp::rpc
   EndpointAuthRPC::EndpointAuthRPC(
       std::string url,
       std::string method,
-      Whitelist_t whitelist,
+      Whitelist_t whitelist_addrs,
+      std::unordered_set<std::string> whitelist_tokens,
       LMQ_ptr lmq,
       Endpoint_ptr endpoint)
-      : m_AuthURL(std::move(url))
-      , m_AuthMethod(std::move(method))
-      , m_AuthWhitelist(std::move(whitelist))
-      , m_LMQ(std::move(lmq))
-      , m_Endpoint(std::move(endpoint))
+      : m_AuthURL{std::move(url)}
+      , m_AuthMethod{std::move(method)}
+      , m_AuthWhitelist{std::move(whitelist_addrs)}
+      , m_AuthStaticTokens{std::move(whitelist_tokens)}
+      , m_LMQ{std::move(lmq)}
+      , m_Endpoint{std::move(endpoint)}
   {}
 
   void
@@ -25,7 +27,7 @@ namespace llarp::rpc
         oxenmq::address{m_AuthURL},
         [self = shared_from_this()](oxenmq::ConnectionID c) {
           self->m_Conn = std::move(c);
-          LogInfo("connected to endpoint auth server via ", *self->m_Conn);
+          LogInfo("connected to endpoint auth server");
         },
         [self = shared_from_this()](oxenmq::ConnectionID, std::string_view fail) {
           LogWarn("failed to connect to endpoint auth server: ", fail);
@@ -57,13 +59,6 @@ namespace llarp::rpc
       reply(service::AuthResult{service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
       return;
     }
-    if (not m_Conn.has_value())
-    {
-      // we don't have a connection to the backend so it's failed
-      reply(service::AuthResult{
-          service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
-      return;
-    }
 
     if (msg->proto != llarp::service::ProtocolType::Auth)
     {
@@ -72,9 +67,32 @@ namespace llarp::rpc
       return;
     }
 
+    std::string payload{(char*)msg->payload.data(), msg->payload.size()};
+
+    if (m_AuthStaticTokens.count(payload))
+    {
+      reply(service::AuthResult{service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
+      return;
+    }
+
+    if (not m_Conn.has_value())
+    {
+      if (m_AuthStaticTokens.empty())
+      {
+        // we don't have a connection to the backend so it's failed
+        reply(service::AuthResult{
+            service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
+      }
+      else
+      {
+        // static auth mode
+        reply(service::AuthResult{service::AuthResultCode::eAuthRejected, "access not permitted"});
+      }
+      return;
+    }
+
     const auto authinfo = msg->EncodeAuthInfo();
     std::string_view metainfo{authinfo.data(), authinfo.size()};
-    std::string_view payload{(char*)msg->payload.data(), msg->payload.size()};
     // call method with 2 parameters: metainfo and userdata
     m_LMQ->request(
         *m_Conn,

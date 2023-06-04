@@ -10,7 +10,7 @@
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/tooling/path_event.hpp>
 
@@ -22,14 +22,14 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if (key == "c")
+    if (key.startswith("c"))
     {
       /// so we dont put it into the shitty queue
       pathid.Fill('c');
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
-    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
+    if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       return false;
 
     return read;
@@ -54,7 +54,7 @@ namespace llarp
     if (!BEncodeWriteDictArray("c", frames, buf))
       return false;
     // version
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
       return false;
 
     return bencode_end(buf);
@@ -102,9 +102,10 @@ namespace llarp
       if (!BEncodeWriteDictEntry("u", *nextRC, buf))
         return false;
     }
-    if (!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
+
+    if (not bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
       return false;
-    if (work && !BEncodeWriteDictEntry("w", *work, buf))
+    if (work and not BEncodeWriteDictEntry("w", *work, buf))
       return false;
 
     return bencode_end(buf);
@@ -130,14 +131,15 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictEntry("t", txid, read, *key, buffer))
       return false;
-    if (*key == "u")
+    if (key->startswith("u"))
     {
       nextRC = std::make_unique<RouterContact>();
       return nextRC->BDecode(buffer);
     }
-    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key, buffer))
+    if (!BEncodeMaybeVerifyVersion(
+            "v", version, llarp::constants::proto_version, read, *key, buffer))
       return false;
-    if (*key == "w")
+    if (key->startswith("w"))
     {
       // check for duplicate
       if (work)
@@ -319,6 +321,8 @@ namespace llarp
         self->hop = nullptr;
       };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
+      // trigger idempotent pump to ensure that the build messages propagate
+      self->context->Router()->TriggerPump();
     }
 
     // this is called from the logic thread
@@ -407,13 +411,17 @@ namespace llarp
       if (self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug(
-            "LRCM extended lifetime by ", self->record.work->extendedLifetime, " for ", info);
+            "LRCM extended lifetime by ",
+            ToString(self->record.work->extendedLifetime),
+            " for ",
+            info);
         self->hop->lifetime += self->record.work->extendedLifetime;
       }
       else if (self->record.lifetime < path::default_lifetime && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime, " for ", info);
+        llarp::LogDebug(
+            "LRCM short lifespan set to ", ToString(self->hop->lifetime), " for ", info);
       }
 
       // TODO: check if we really want to accept it
@@ -456,6 +464,8 @@ namespace llarp
           self->decrypter = nullptr;
         });
       }
+      // trigger idempotent pump to ensure that the build messages propagate
+      self->context->Router()->TriggerPump();
     }
   };
 

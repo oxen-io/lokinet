@@ -8,6 +8,12 @@
 #include "util/thread/annotations.hpp"
 #include <map>
 
+namespace oxenc
+{
+  class bt_dict_consumer;
+  class bt_dict_producer;
+}  // namespace oxenc
+
 namespace llarp
 {
   struct RouterProfile
@@ -20,13 +26,21 @@ namespace llarp
     uint64_t pathTimeoutCount = 0;
     llarp_time_t lastUpdated = 0s;
     llarp_time_t lastDecay = 0s;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    RouterProfile() = default;
+    RouterProfile(oxenc::bt_dict_consumer dict);
 
-    bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+    void
+    BEncode(oxenc::bt_dict_producer& dict) const;
+    void
+    BEncode(oxenc::bt_dict_producer&& dict) const
+    {
+      BEncode(dict);
+    }
+
+    void
+    BDecode(oxenc::bt_dict_consumer dict);
 
     bool
     IsGood(uint64_t chances) const;
@@ -90,16 +104,6 @@ namespace llarp
     Tick() EXCLUDES(m_ProfilesMutex);
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
-
-    bool
-    BDecode(llarp_buffer_t* buf);
-
-    bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
-    // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
-
-    bool
     Load(const fs::path fname) EXCLUDES(m_ProfilesMutex);
 
     bool
@@ -115,6 +119,12 @@ namespace llarp
     Enable();
 
    private:
+    void
+    BEncode(oxenc::bt_dict_producer& dict) const;
+
+    void
+    BDecode(oxenc::bt_dict_consumer dict);
+
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0s;

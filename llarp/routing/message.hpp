@@ -16,7 +16,7 @@ namespace llarp
     {
       PathID_t from;
       uint64_t S{0};
-      uint64_t version = LLARP_PROTO_VERSION;
+      uint64_t version = llarp::constants::proto_version;
 
       IMessage() = default;
 

@@ -14,8 +14,9 @@
 #include <llarp/routing/path_latency_message.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/endian.hpp>
 #include <llarp/tooling/path_event.hpp>
+
+#include <oxenc/endian.h>
 
 #include <deque>
 #include <queue>
@@ -134,10 +135,15 @@ namespace llarp
     std::string
     Path::HopsString() const
     {
-      std::stringstream ss;
+      std::string hops_str;
+      hops_str.reserve(hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
       for (const auto& hop : hops)
-        ss << RouterID(hop.rc.pubkey) << " -> ";
-      return ss.str();
+      {
+        if (!hops.empty())
+          hops_str += " -> ";
+        hops_str += RouterID(hop.rc.pubkey).ToString();
+      }
+      return hops_str;
     }
 
     bool
@@ -302,7 +308,7 @@ namespace llarp
       }
       else if (st == ePathEstablished && _status == ePathBuilding)
       {
-        LogInfo("path ", Name(), " is built, took ", now - buildStarted);
+        LogInfo("path ", Name(), " is built, took ", ToString(now - buildStarted));
       }
       else if (st == ePathTimeout && _status == ePathEstablished)
       {
@@ -443,7 +449,7 @@ namespace llarp
           const auto dlt = now - buildStarted;
           if (dlt >= path::build_timeout)
           {
-            LogWarn(Name(), " waited for ", dlt, " and no path was built");
+            LogWarn(Name(), " waited for ", ToString(dlt), " and no path was built");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathExpired, now);
             return;
@@ -467,10 +473,15 @@ namespace llarp
         dlt = now - m_LastRecvMessage;
         if (dlt >= path::alive_timeout)
         {
-          LogWarn(Name(), " waited for ", dlt, " and path looks dead");
+          LogWarn(Name(), " waited for ", ToString(dlt), " and path looks dead");
           r->routerProfiling().MarkPathFail(this);
           EnterState(ePathTimeout, now);
         }
+      }
+      if (_status == ePathIgnore and now - m_LastRecvMessage >= path::alive_timeout)
+      {
+        // clean up this path as we dont use it anymore
+        EnterState(ePathExpired, now);
       }
     }
 
@@ -562,9 +573,7 @@ namespace llarp
     std::string
     Path::Name() const
     {
-      std::stringstream ss;
-      ss << "TX=" << TXID() << " RX=" << RXID();
-      return ss.str();
+      return fmt::format("TX={} RX={}", TXID(), RXID());
     }
 
     void
@@ -640,7 +649,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       // should help prevent bad paths with uninitialized members
       // FIXME: Why would we get uninitialized IMessages?
-      if (msg.version != LLARP_PROTO_VERSION)
+      if (msg.version != llarp::constants::proto_version)
         return false;
       if (!msg.BEncode(&buf))
       {
@@ -868,7 +877,7 @@ namespace llarp
       auto self = shared_from_this();
       bool result = true;
       for (const auto& hook : m_ObtainedExitHooks)
-        result &= hook(self, B);
+        result = hook(self, B) and result;
       m_ObtainedExitHooks.clear();
       return result;
     }
@@ -888,8 +897,8 @@ namespace llarp
       for (const auto& pkt : msg.X)
       {
         if (pkt.size() <= 8)
-          return false;
-        uint64_t counter = bufbe64toh(pkt.data());
+          continue;
+        auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
         if (m_ExitTrafficHandler(
                 self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
         {

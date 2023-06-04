@@ -4,8 +4,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "../util/meta/traits.hpp"
-#include "../util/endian.hpp"
+#include <oxenc/endian.h>
 
 namespace llarp
 {
@@ -142,25 +141,25 @@ namespace llarp
     constexpr bool
     operator<(const uint128_t& b) const
     {
-      return upper < b.upper || (upper == b.upper && lower < b.lower);
+      return std::tie(upper, lower) < std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator<=(const uint128_t& b) const
     {
-      return upper < b.upper || (upper == b.upper && lower <= b.lower);
+      return std::tie(upper, lower) <= std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator>(const uint128_t& b) const
     {
-      return upper > b.upper || (upper == b.upper && lower > b.lower);
+      return std::tie(upper, lower) > std::tie(b.upper, b.lower);
     }
 
     constexpr bool
     operator>=(const uint128_t& b) const
     {
-      return upper > b.upper || (upper == b.upper && lower >= b.lower);
+      return std::tie(upper, lower) >= std::tie(b.upper, b.lower);
     }
 
     constexpr uint128_t&
@@ -309,9 +308,9 @@ ntoh128(llarp::uint128_t i)
 #ifdef __BIG_ENDIAN__
   return i;
 #else
-  const auto loSwapped = htobe64(i.lower);
-  const auto hiSwapped = htobe64(i.upper);
-  return {loSwapped, hiSwapped};
+  const auto loSwapped = oxenc::big_to_host(i.lower);
+  const auto hiSwapped = oxenc::big_to_host(i.upper);
+  return {/*upper=*/loSwapped, /*lower=*/hiSwapped};
 #endif
 }
 

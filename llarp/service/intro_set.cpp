@@ -2,7 +2,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path.hpp>
 
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/bt_serialize.h>
 
 namespace llarp::service
 {
@@ -38,7 +38,7 @@ namespace llarp::service
   EncryptedIntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (key == "x")
+    if (key.startswith("x"))
     {
       llarp_buffer_t strbuf;
       if (not bencode_read_string(buf, &strbuf))
@@ -69,16 +69,16 @@ namespace llarp::service
     return signedAt < other.signedAt;
   }
 
-  std::ostream&
-  EncryptedIntroSet::print(std::ostream& out, int levels, int spaces) const
+  std::string
+  EncryptedIntroSet::ToString() const
   {
-    Printer printer(out, levels, spaces);
-    printer.printAttribute("d", derivedSigningKey);
-    printer.printAttribute("n", nounce);
-    printer.printAttribute("s", signedAt.count());
-    printer.printAttribute("x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
-    printer.printAttribute("z", sig);
-    return out;
+    return fmt::format(
+        "[EncIntroSet d={} n={} s={} x=[{} bytes] z={}]",
+        derivedSigningKey,
+        nounce,
+        signedAt.count(),
+        introsetPayload.size(),
+        sig);
   }
 
   std::optional<IntroSet>
@@ -155,11 +155,7 @@ namespace llarp::service
         supportedProtocols.begin(),
         supportedProtocols.end(),
         std::back_inserter(protocols),
-        [](const auto& proto) -> util::StatusObject {
-          std::stringstream ss;
-          ss << proto;
-          return ss.str();
-        });
+        [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
     obj["protos"] = protocols;
     std::vector<util::StatusObject> ranges;
     std::transform(
@@ -182,7 +178,7 @@ namespace llarp::service
     if (!BEncodeMaybeReadDictEntry("a", addressKeys, read, key, buf))
       return false;
 
-    if (key == "e")
+    if (key.startswith("e"))
     {
       net::TrafficPolicy policy;
       if (not policy.BDecode(buf))
@@ -191,7 +187,7 @@ namespace llarp::service
       return true;
     }
 
-    if (key == "i")
+    if (key.startswith("i"))
     {
       return BEncodeReadList(intros, buf);
     }
@@ -201,7 +197,7 @@ namespace llarp::service
     if (!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
       return false;
 
-    if (key == "p")
+    if (key.startswith("p"))
     {
       return bencode_read_list(
           [&](llarp_buffer_t* buf, bool more) {
@@ -217,12 +213,12 @@ namespace llarp::service
           buf);
     }
 
-    if (key == "r")
+    if (key.startswith("r"))
     {
       return BEncodeReadSet(ownedRanges, buf);
     }
 
-    if (key == "s")
+    if (key.startswith("s"))
     {
       byte_t* begin = buf->cur;
       if (not bencode_discard(buf))
@@ -235,9 +231,9 @@ namespace llarp::service
 
       try
       {
-        oxenmq::bt_deserialize(srvString, SRVs);
+        oxenc::bt_deserialize(srvString, SRVs);
       }
-      catch (const oxenmq::bt_deserialize_invalid& err)
+      catch (const oxenc::bt_deserialize_invalid& err)
       {
         LogError("Error decoding SRV records from IntroSet: ", err.what());
         return false;
@@ -321,7 +317,7 @@ namespace llarp::service
     // srv records
     if (not SRVs.empty())
     {
-      std::string serial = oxenmq::bt_serialize(SRVs);
+      std::string serial = oxenc::bt_serialize(SRVs);
       if (!bencode_write_bytestring(buf, "s", 1))
         return false;
       if (!buf->write(serial.begin(), serial.end()))
@@ -423,30 +419,17 @@ namespace llarp::service
     return maxTime;
   }
 
-  std::ostream&
-  IntroSet::print(std::ostream& stream, int level, int spaces) const
+  std::string
+  IntroSet::ToString() const
   {
-    Printer printer(stream, level, spaces);
-    printer.printAttribute("addressKeys", addressKeys);
-    printer.printAttribute("intros", intros);
-    printer.printAttribute("sntrupKey", sntrupKey);
-
-    std::string _topic = topic.ToString();
-
-    if (!_topic.empty())
-    {
-      printer.printAttribute("topic", _topic);
-    }
-    else
-    {
-      printer.printAttribute("topic", topic);
-    }
-
-    printer.printAttribute("signedAt", timestampSignedAt.count());
-
-    printer.printAttribute("version", version);
-    printer.printAttribute("sig", signature);
-
-    return stream;
+    return fmt::format(
+        "[IntroSet addressKeys={} intros={{{}}} sntrupKey={} topic={} signedAt={} v={} sig={}]",
+        addressKeys,
+        fmt::format("{}", fmt::join(intros, ",")),
+        sntrupKey,
+        topic,
+        timestampSignedAt.count(),
+        version,
+        signature);
   }
 }  // namespace llarp::service

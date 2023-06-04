@@ -35,6 +35,7 @@
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/service_manager.hpp>
 
 #include <functional>
 #include <list>
@@ -84,6 +85,9 @@ namespace llarp
       return m_PathBuildLimiter;
     }
 
+    const llarp::net::Platform&
+    Net() const override;
+
     const LMQ_ptr&
     lmq() const override
     {
@@ -101,6 +105,9 @@ namespace llarp
     {
       return _dht;
     }
+
+    std::optional<std::variant<nuint32_t, nuint128_t>>
+    OurPublicIP() const override;
 
     util::StatusObject
     ExtractStatus() const override;
@@ -137,7 +144,9 @@ namespace llarp
 
     void
     SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist, const std::vector<RouterID>& greylist) override;
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& unfunded) override;
 
     std::unordered_set<RouterID>
     GetRouterWhitelist() const override
@@ -197,6 +206,21 @@ namespace llarp
     bool
     LooksDecommissioned() const;
 
+    /// return true if we look like we are a registered, fully-staked service node (either active or
+    /// decommissioned).  This condition determines when we are allowed to (and attempt to) connect
+    /// to other peers when running as a service node.
+    bool
+    LooksFunded() const;
+
+    /// return true if we a registered service node; not that this only requires a partial stake,
+    /// and does not imply that this service node is *active* or fully funded.
+    bool
+    LooksRegistered() const;
+
+    /// return true if we look like we are allowed and able to test other routers
+    bool
+    ShouldTestOtherRouters() const;
+
     std::optional<SockAddr> _ourAddress;
 
     EventLoop_ptr _loop;
@@ -216,7 +240,6 @@ namespace llarp
     bool
     Sign(Signature& sig, const llarp_buffer_t& buf) const override;
 
-    uint16_t m_OutboundPort = 0;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
     llarp_time_t rcRegenInterval = 1h;
@@ -261,27 +284,13 @@ namespace llarp
     /// bootstrap RCs
     BootstrapList bootstrapRCList;
 
-    bool
-    ExitEnabled() const
-    {
-      return false;  // FIXME - have to fix the FIXME because FIXME
-      throw std::runtime_error("FIXME: this needs to be derived from config");
-      /*
-      // TODO: use equal_range ?
-      auto itr = netConfig.find("exit");
-      if (itr == netConfig.end())
-        return false;
-      return IsTrueValue(itr->second.c_str());
-      */
-    }
-
-    RoutePoker&
-    routePoker() override
+    const std::shared_ptr<RoutePoker>&
+    routePoker() const override
     {
       return m_RoutePoker;
     }
 
-    RoutePoker m_RoutePoker;
+    std::shared_ptr<RoutePoker> m_RoutePoker;
 
     void
     TriggerPump() override;
@@ -306,6 +315,9 @@ namespace llarp
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
+
+    std::string
+    status_line() override;
 
     using Clock_t = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;
@@ -342,6 +354,12 @@ namespace llarp
       return m_peerDb;
     }
 
+    inline int
+    OutboundUDPSocket() const override
+    {
+      return m_OutboundUDPSocket;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
@@ -352,7 +370,10 @@ namespace llarp
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
 
-    bool
+    void
+    InitInboundLinks();
+
+    void
     InitOutboundLinks();
 
     bool
@@ -370,6 +391,9 @@ namespace llarp
     bool
     IsServiceNode() const override;
 
+    std::optional<std::string>
+    OxendErrorState() const override;
+
     void
     Close();
 
@@ -378,6 +402,9 @@ namespace llarp
 
     bool
     StartRpcServer() override;
+
+    void
+    Freeze() override;
 
     void
     Thaw() override;
@@ -530,15 +557,7 @@ namespace llarp
       return m_Config;
     }
 
-#if defined(ANDROID)
     int m_OutboundUDPSocket = -1;
-
-    int
-    GetOutboundUDPSocket() const override
-    {
-      return m_OutboundUDPSocket;
-    }
-#endif
 
    private:
     std::atomic<bool> _stopping;
@@ -546,8 +565,11 @@ namespace llarp
 
     bool m_isServiceNode = false;
 
+    // Delay warning about being decommed/dereged until we've had enough time to sync up with oxend
+    static constexpr auto DECOMM_WARNING_STARTUP_DELAY = 15s;
+
     llarp_time_t m_LastStatsReport = 0s;
-    llarp_time_t m_NextDecommissionWarn = 0s;
+    llarp_time_t m_NextDecommissionWarn = time_now_ms() + DECOMM_WARNING_STARTUP_DELAY;
     std::shared_ptr<llarp::KeyManager> m_keyManager;
     std::shared_ptr<PeerDb> m_peerDb;
 
@@ -569,6 +591,9 @@ namespace llarp
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
+
+    bool
+    TooFewPeers() const;
 
    protected:
     virtual void

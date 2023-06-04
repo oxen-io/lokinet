@@ -1,27 +1,15 @@
 #include <constants/version.hpp>
-#include <constants/version.h>
 #include <constants/proto.hpp>
-
-// clang-format off
-#define LLARP_STRINGIFY2(val) #val
-#define LLARP_STRINGIFY(val) LLARP_STRINGIFY2(val)
-
-#define LLARP_VERSION_STR                                       \
-  LLARP_STRINGIFY(LLARP_VERSION_MAJOR)                          \
-  "." LLARP_STRINGIFY(LLARP_VERSION_MINOR) "." LLARP_STRINGIFY( \
-      LLARP_VERSION_PATCH)
-#define LLARP_VERSION_FULL LLARP_VERSION_STR "-@VERSIONTAG@"
 
 namespace llarp
 {
   // clang-format off
-  const std::array<uint16_t, 3> VERSION{{LLARP_VERSION_MAJOR, LLARP_VERSION_MINOR, LLARP_VERSION_PATCH}};
-  const std::array<uint64_t, 4> ROUTER_VERSION{{LLARP_PROTO_VERSION, LLARP_VERSION_MAJOR, LLARP_VERSION_MINOR, LLARP_VERSION_PATCH}};
-  const char* const VERSION_STR   = LLARP_VERSION_STR;
+  const std::array<uint16_t, 3> VERSION{{@lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
+  const std::array<uint64_t, 4> ROUTER_VERSION{{llarp::constants::proto_version, @lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
   const char* const VERSION_TAG   = "@VERSIONTAG@";
-  const char* const VERSION_FULL  = LLARP_NAME "-" LLARP_VERSION_STR "-@VERSIONTAG@";
+  const char* const VERSION_FULL  = "lokinet-@lokinet_VERSION_MAJOR@.@lokinet_VERSION_MINOR@.@lokinet_VERSION_PATCH@-@VERSIONTAG@";
 
-  const char* const RELEASE_MOTTO = LLARP_RELEASE_MOTTO;
-  const char* const DEFAULT_NETID = LLARP_DEFAULT_NETID;
+  const char* const RELEASE_MOTTO = "@RELEASE_MOTTO@";
+  const char* const DEFAULT_NETID = "lokinet";
   // clang-format on
 }  // namespace llarp

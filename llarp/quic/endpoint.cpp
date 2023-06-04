@@ -5,14 +5,14 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/ev/ev_libuv.hpp>
+#include <llarp/ev/libuv.hpp>
 
 #include <iostream>
 #include <random>
 #include <variant>
 
 #include <uvw/timer.h>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 
 extern "C"
 {
@@ -185,7 +185,8 @@ namespace llarp::quic
     std::memcpy(&buf_[header_size], data.data(), data.size());
     bstring_view outgoing{buf_.data(), outgoing_len};
 
-    if (service_endpoint.SendToOrQueue(to, outgoing, service::ProtocolType::QUIC))
+    if (service_endpoint.SendToOrQueue(
+            to, llarp_buffer_t{outgoing.data(), outgoing.size()}, service::ProtocolType::QUIC))
     {
       LogTrace("[", to, "]: sent ", buffer_printer{outgoing});
     }
@@ -225,7 +226,8 @@ namespace llarp::quic
   }
 
   void
-  Endpoint::close_connection(Connection& conn, uint64_t code, bool application)
+  Endpoint::close_connection(
+      Connection& conn, uint64_t code, bool application, std::string_view close_reason)
   {
     LogDebug("Closing connection ", conn.base_cid);
     if (!conn.closing)
@@ -245,6 +247,8 @@ namespace llarp::quic
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),
           code,
+          reinterpret_cast<const uint8_t*>(close_reason.data()),
+          close_reason.size(),
           get_timestamp());
       if (written <= 0)
       {

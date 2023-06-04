@@ -21,7 +21,7 @@ namespace llarp::quic
   class Address
   {
     sockaddr_in6 saddr{};
-    ngtcp2_addr a{sizeof(saddr), reinterpret_cast<sockaddr*>(&saddr)};
+    ngtcp2_addr a{reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)};
 
    public:
     Address() = default;
@@ -36,13 +36,16 @@ namespace llarp::quic
     operator=(const Address&);
 
     // Implicit conversion to sockaddr* and ngtcp2_addr& so that an Address can be passed wherever
-    // one of those is expected.
-    operator sockaddr*()
+    // one of those is expected.  Templatized so that implicit conversion to other things doesn't
+    // happen.
+    template <typename T, std::enable_if_t<std::is_same_v<T, sockaddr>, int> = 0>
+    operator T*()
     {
       return reinterpret_cast<sockaddr*>(&saddr);
     }
 
-    operator const sockaddr*() const
+    template <typename T, std::enable_if_t<std::is_same_v<T, sockaddr>, int> = 0>
+    operator const T*() const
     {
       return reinterpret_cast<const sockaddr*>(&saddr);
     }
@@ -90,7 +93,7 @@ namespace llarp::quic
     }
 
     std::string
-    to_string() const;
+    ToString() const;
   };
 
   // Wraps an ngtcp2_path (which is basically just and address pair) with remote/local components.
@@ -102,7 +105,7 @@ namespace llarp::quic
     Address local_, remote_;
 
    public:
-    ngtcp2_path path{{local_.sockaddr_size(), local_}, {remote_.sockaddr_size(), remote_}, nullptr};
+    ngtcp2_path path{{local_, local_.sockaddr_size()}, {remote_, remote_.sockaddr_size()}, nullptr};
 
     // Public accessors are const:
     const Address& local = local_;
@@ -124,24 +127,25 @@ namespace llarp::quic
     }
 
     // Equivalent to `&obj.path`, but slightly more convenient for passing into ngtcp2 functions
-    // taking a ngtcp2_path pointer.
-    operator ngtcp2_path*()
+    // taking a ngtcp2_path pointer.  Templatized to prevent implicit conversion to other type of
+    // pointers/ints.
+    template <typename T, std::enable_if_t<std::is_same_v<T, ngtcp2_path>, int> = 0>
+    operator T*()
     {
       return &path;
     }
-    operator const ngtcp2_path*() const
+    template <typename T, std::enable_if_t<std::is_same_v<T, ngtcp2_path>, int> = 0>
+    operator const T*() const
     {
       return &path;
     }
 
     std::string
-    to_string() const;
+    ToString() const;
   };
-
-  std::ostream&
-  operator<<(std::ostream& o, const Address& a);
-
-  std::ostream&
-  operator<<(std::ostream& o, const Path& p);
-
 }  // namespace llarp::quic
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::quic::Address> = true;
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::quic::Path> = true;

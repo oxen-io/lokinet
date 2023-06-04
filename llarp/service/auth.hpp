@@ -44,7 +44,7 @@ namespace llarp::service
 
   struct IAuthPolicy
   {
-    ~IAuthPolicy() = default;
+    virtual ~IAuthPolicy() = default;
 
     /// asynchronously determine if we accept new convotag from remote service, call hook with
     /// result later
@@ -71,12 +71,30 @@ namespace llarp::service
     /// manual whitelist
     eAuthTypeWhitelist,
     /// LMQ server
-    eAuthTypeLMQ
+    eAuthTypeLMQ,
+    /// static file
+    eAuthTypeFile,
+  };
+
+  /// how to interpret an file for auth
+  enum class AuthFileType
+  {
+    eAuthFilePlain,
+    eAuthFileHashes,
   };
 
   /// get an auth type from a string
   /// throws std::invalid_argument if arg is invalid
   AuthType
   ParseAuthType(std::string arg);
+
+  /// get an auth file type from a string
+  /// throws std::invalid_argument if arg is invalid
+  AuthFileType
+  ParseAuthFileType(std::string arg);
+
+  /// make an IAuthPolicy that reads out of a static file
+  std::shared_ptr<IAuthPolicy>
+  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files, AuthFileType fileType);
 
 }  // namespace llarp::service

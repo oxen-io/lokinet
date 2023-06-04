@@ -10,8 +10,27 @@ namespace llarp
   struct AbstractRouter;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::IQueryHandler, public EndpointBase
+    struct ExitEndpoint : public dns::Resolver_Base, public EndpointBase
     {
+      int
+      Rank() const override
+      {
+        return 0;
+      };
+
+      std::string_view
+      ResolverName() const override
+      {
+        return "snode";
+      }
+
+      bool
+      MaybeHookDNS(
+          std::shared_ptr<dns::PacketSource_Base> source,
+          const dns::Message& query,
+          const SockAddr& to,
+          const SockAddr& from) override;
+
       ExitEndpoint(std::string name, AbstractRouter* r);
       ~ExitEndpoint() override;
 
@@ -66,10 +85,10 @@ namespace llarp
       SupportsV6() const;
 
       bool
-      ShouldHookDNSMessage(const dns::Message& msg) const override;
+      ShouldHookDNSMessage(const dns::Message& msg) const;
 
       bool
-      HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>) override;
+      HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>);
 
       void
       LookupServiceAsync(
@@ -174,7 +193,7 @@ namespace llarp
       KickIdentOffExit(const PubKey& pk);
 
       AbstractRouter* m_Router;
-      std::shared_ptr<dns::Proxy> m_Resolver;
+      std::shared_ptr<dns::Server> m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
@@ -214,19 +233,13 @@ namespace llarp
 
       std::shared_ptr<quic::TunnelManager> m_QUIC;
 
-      using Pkt_t = net::IPPacket;
-      using PacketQueue_t = util::CoDelQueue<
-          Pkt_t,
-          Pkt_t::GetTime,
-          Pkt_t::PutTime,
-          Pkt_t::CompareOrder,
-          Pkt_t::GetNow,
-          util::NullMutex,
-          util::NullLock>;
+      using PacketQueue_t = std::
+          priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;
       bool m_UseV6;
+      DnsConfig m_DNSConf;
     };
   }  // namespace handlers
 }  // namespace llarp

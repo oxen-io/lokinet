@@ -43,7 +43,7 @@ namespace llarp
       bool read = false;
       if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
         return false;
-      if (k == "d")
+      if (k.startswith("d"))
       {
         llarp_buffer_t strbuf;
         if (!bencode_read_string(buf, &strbuf))
@@ -168,7 +168,7 @@ namespace llarp
     ProtocolFrame::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
-      if (key == "A")
+      if (key.startswith("A"))
       {
         llarp_buffer_t strbuf;
         if (!bencode_read_string(val, &strbuf))
@@ -191,7 +191,7 @@ namespace llarp
         return false;
       if (!BEncodeMaybeReadDictEntry("T", T, read, key, val))
         return false;
-      if (!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, key, val))
+      if (!BEncodeMaybeVerifyVersion("V", version, llarp::constants::proto_version, read, key, val))
         return false;
       if (!BEncodeMaybeReadDictEntry("Z", Z, read, key, val))
         return false;

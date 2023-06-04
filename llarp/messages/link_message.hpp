@@ -17,7 +17,7 @@ namespace llarp
   {
     /// who did this message come from or is going to
     ILinkSession* session = nullptr;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     PathID_t pathid;
 

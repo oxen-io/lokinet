@@ -71,12 +71,6 @@ namespace llarp
 
       std::string
       ToString() const;
-
-      friend std::ostream&
-      operator<<(std::ostream& o, const BuildStats& st)
-      {
-        return o << st.ToString();
-      }
     };
 
     /// the role of this path can fulfill
@@ -130,7 +124,7 @@ namespace llarp
 
       /// tick owned paths
       virtual void
-      Tick(llarp_time_t now) = 0;
+      Tick(llarp_time_t now);
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
@@ -216,19 +210,22 @@ namespace llarp
       BlacklistSNode(const RouterID) = 0;
 
       /// override me in subtype
-      virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
+      virtual bool
+      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
+      virtual bool
+      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
+      virtual bool
+      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
       {
         return false;
       }
@@ -320,7 +317,14 @@ namespace llarp
       using PathMap_t = std::unordered_map<std::pair<RouterID, PathID_t>, Path_ptr>;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
+
+     private:
+      std::unordered_map<RouterID, std::weak_ptr<path::Path>> m_PathCache;
     };
 
   }  // namespace path
+
+  template <>
+  constexpr inline bool IsToStringFormattable<path::BuildStats> = true;
+
 }  // namespace llarp

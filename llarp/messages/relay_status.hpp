@@ -105,7 +105,10 @@ namespace llarp
 
     static void
     SendMessage(
-        AbstractRouter* router, const RouterID nextHop, std::shared_ptr<LR_StatusMessage> msg);
+        AbstractRouter* router,
+        const RouterID nextHop,
+        std::shared_ptr<LR_StatusMessage> msg,
+        std::shared_ptr<path::TransitHop> hop);
 
     const char*
     Name() const override

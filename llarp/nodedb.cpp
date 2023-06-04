@@ -5,13 +5,13 @@
 #include "router_contact.hpp"
 #include "util/buffer.hpp"
 #include "util/fs.hpp"
-#include "util/logging/logger.hpp"
+#include "util/logging.hpp"
+#include "util/time.hpp"
 #include "util/mem.hpp"
 #include "util/str.hpp"
 #include "dht/kademlia.hpp"
 
 #include <algorithm>
-#include <fstream>
 #include <unordered_map>
 #include <utility>
 
@@ -20,6 +20,8 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
+  static auto logcat = log::Cat("nodedb");
+
   NodeDB::Entry::Entry(RouterContact value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
   {}
 
@@ -38,7 +40,7 @@ namespace llarp
     }
 
     if (not fs::is_directory(nodedbDir))
-      throw std::runtime_error(llarp::stringify("nodedb ", nodedbDir, " is not a directory"));
+      throw std::runtime_error{fmt::format("nodedb {} is not a directory", nodedbDir)};
 
     for (const char& ch : skiplist_subdirs)
     {
@@ -93,7 +95,7 @@ namespace llarp
   fs::path
   NodeDB::GetPathForPubkey(RouterID pubkey) const
   {
-    std::string hexString = oxenmq::to_hex(pubkey.begin(), pubkey.end());
+    std::string hexString = oxenc::to_hex(pubkey.begin(), pubkey.end());
     std::string skiplistDir;
 
     const llarp::RouterID r{pubkey};
@@ -109,6 +111,7 @@ namespace llarp
   {
     if (m_Root.empty())
       return;
+    std::set<fs::path> purge;
 
     for (const char& ch : skiplist_subdirs)
     {
@@ -119,14 +122,49 @@ namespace llarp
       fs::path sub = m_Root / p;
 
       llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-        if (fs::is_regular_file(f) and f.extension() == RC_FILE_EXT)
+        // skip files that are not suffixed with .signed
+        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+          return true;
+
+        RouterContact rc{};
+
+        if (not rc.Read(f))
         {
-          RouterContact rc{};
-          if (rc.Read(f) and rc.Verify(time_now_ms()))
-            m_Entries.emplace(rc.pubkey, rc);
+          // try loading it, purge it if it is junk
+          purge.emplace(f);
+          return true;
         }
+
+        if (not rc.FromOurNetwork())
+        {
+          // skip entries that are not from our network
+          return true;
+        }
+
+        if (rc.IsExpired(time_now_ms()))
+        {
+          // rc expired dont load it and purge it later
+          purge.emplace(f);
+          return true;
+        }
+
+        // validate signature and purge entries with invalid signatures
+        // load ones with valid signatures
+        if (rc.VerifySignature())
+          m_Entries.emplace(rc.pubkey, rc);
+        else
+          purge.emplace(f);
+
         return true;
       });
+    }
+
+    if (not purge.empty())
+    {
+      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+
+      for (const auto& fpath : purge)
+        fs::remove(fpath);
     }
   }
 

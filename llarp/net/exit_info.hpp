@@ -21,7 +21,7 @@ namespace llarp
     IpAddress ipAddress;
     IpAddress netmask;
     PubKey pubkey;
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = llarp::constants::proto_version;
 
     ExitInfo() = default;
 
@@ -40,13 +40,11 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
-    std::ostream&
-    print(std::ostream& stream, int level, int spaces) const;
+    std::string
+    ToString() const;
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const ExitInfo& xi)
-  {
-    return xi.print(out, -1, -1);
-  }
+  template <>
+  constexpr inline bool IsToStringFormattable<ExitInfo> = true;
+
 }  // namespace llarp

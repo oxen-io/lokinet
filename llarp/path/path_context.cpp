@@ -319,8 +319,22 @@ namespace llarp
     PathContext::CurrentTransitPaths()
     {
       SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
-      auto& map = m_TransitPaths.second;
+      const auto& map = m_TransitPaths.second;
       return map.size() / 2;
+    }
+
+    uint64_t
+    PathContext::CurrentOwnedPaths(path::PathStatus st)
+    {
+      uint64_t num{};
+      util::Lock lock{m_OurPaths.first};
+      auto& map = m_OurPaths.second;
+      for (auto itr = map.begin(); itr != map.end(); ++itr)
+      {
+        if (itr->second->Status() == st)
+          num++;
+      }
+      return num / 2;
     }
 
     void
@@ -398,7 +412,8 @@ namespace llarp
       return nullptr;
     }
 
-    void PathContext::RemovePathSet(PathSet_ptr)
+    void
+    PathContext::RemovePathSet(PathSet_ptr)
     {}
   }  // namespace path
 }  // namespace llarp

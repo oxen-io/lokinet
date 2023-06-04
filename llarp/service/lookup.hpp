@@ -35,7 +35,8 @@ namespace llarp
       }
 
       /// handle lookup result for introsets
-      virtual bool HandleNameResponse(std::optional<Address>)
+      virtual bool
+      HandleNameResponse(std::optional<Address>)
       {
         return false;
       }
@@ -76,7 +77,8 @@ namespace llarp
       RouterID endpoint;
 
       /// return true if this lookup is for a remote address
-      virtual bool IsFor(EndpointBase::AddressVariant_t) const
+      virtual bool
+      IsFor(EndpointBase::AddressVariant_t) const
       {
         return false;
       }

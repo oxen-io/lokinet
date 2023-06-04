@@ -28,7 +28,7 @@ namespace llarp
       if (!BEncodeMaybeReadDictInt("T", txID, read, k, val))
         return false;
 
-      if (!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, k, val))
+      if (!BEncodeMaybeVerifyVersion("V", version, llarp::constants::proto_version, read, k, val))
         return false;
 
       return read;
@@ -66,7 +66,7 @@ namespace llarp
       if (!BEncodeWriteDictInt("T", txID, buf))
         return false;
       // protocol version
-      if (!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("V", llarp::constants::proto_version, buf))
         return false;
 
       return bencode_end(buf);

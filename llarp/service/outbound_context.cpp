@@ -45,11 +45,10 @@ namespace llarp
       if (dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
         LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
-        MarkCurrentIntroBad(Now());
-        ShiftIntroduction(false);
-        UpdateIntroSet();
-        SwapIntros();
         markedBad = remoteIntro.IsExpired(Now());
+        MarkCurrentIntroBad(Now());
+        ShiftIntroRouter(p->Endpoint());
+        UpdateIntroSet();
       }
       return true;
     }
@@ -335,9 +334,10 @@ namespace llarp
     void
     OutboundContext::KeepAlive()
     {
-      Encrypted<64> tmp;
-      tmp.Randomize();
-      SendPacketToRemote(tmp, ProtocolType::Control);
+      std::array<byte_t, 64> tmp;
+      llarp_buffer_t buf{tmp};
+      CryptoManager::instance()->randomize(buf);
+      SendPacketToRemote(buf, ProtocolType::Control);
       m_LastKeepAliveAt = Now();
     }
 
@@ -479,7 +479,8 @@ namespace llarp
     {
       if (markedBad or path::Builder::BuildCooldownHit(now))
         return false;
-      if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
+
+      if (NumInStatus(path::ePathBuilding) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
         return false;
 
       size_t numValidPaths = 0;

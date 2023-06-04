@@ -1,7 +1,5 @@
-
-
-#include "lokinet.h"
-#include "llarp.hpp"
+#include <lokinet.h>
+#include <llarp.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/crypto/crypto_libsodium.hpp>
 
@@ -10,7 +8,16 @@
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/nodedb.hpp>
 
+#include <llarp/util/logging.hpp>
+#include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/logging/callback_sink.hpp>
+
+#include <oxenc/base32z.h>
+
 #include <mutex>
+#include <memory>
+#include <chrono>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define EHOSTDOWN ENETDOWN
@@ -28,24 +35,264 @@ namespace
       return std::make_shared<llarp::NodeDB>();
     }
   };
+
+  struct UDPFlow
+  {
+    using Clock_t = std::chrono::steady_clock;
+    void* m_FlowUserData;
+    std::chrono::seconds m_FlowTimeout;
+    std::chrono::time_point<Clock_t> m_ExpiresAt;
+    lokinet_udp_flowinfo m_FlowInfo;
+    lokinet_udp_flow_recv_func m_Recv;
+
+    /// call timeout hook for this flow
+    void
+    TimedOut(lokinet_udp_flow_timeout_func timeout)
+    {
+      timeout(&m_FlowInfo, m_FlowUserData);
+    }
+
+    /// mark this flow as active
+    /// updates the expires at timestamp
+    void
+    MarkActive()
+    {
+      m_ExpiresAt = Clock_t::now() + m_FlowTimeout;
+    }
+
+    /// returns true if we think this flow is expired
+    bool
+    IsExpired() const
+    {
+      return Clock_t::now() >= m_ExpiresAt;
+    }
+
+    void
+    HandlePacket(const llarp::net::IPPacket& pkt)
+    {
+      if (auto maybe = pkt.L4Data())
+      {
+        MarkActive();
+        m_Recv(&m_FlowInfo, maybe->first, maybe->second, m_FlowUserData);
+      }
+    }
+  };
+
+  struct UDPHandler
+  {
+    using AddressVariant_t = llarp::vpn::AddressVariant_t;
+    int m_SocketID;
+    llarp::nuint16_t m_LocalPort;
+    lokinet_udp_flow_filter m_Filter;
+    lokinet_udp_flow_recv_func m_Recv;
+    lokinet_udp_flow_timeout_func m_Timeout;
+    void* m_User;
+    std::weak_ptr<llarp::service::Endpoint> m_Endpoint;
+
+    std::unordered_map<AddressVariant_t, UDPFlow> m_Flows;
+
+    std::mutex m_Access;
+
+    explicit UDPHandler(
+        int socketid,
+        llarp::nuint16_t localport,
+        lokinet_udp_flow_filter filter,
+        lokinet_udp_flow_recv_func recv,
+        lokinet_udp_flow_timeout_func timeout,
+        void* user,
+        std::weak_ptr<llarp::service::Endpoint> ep)
+        : m_SocketID{socketid}
+        , m_LocalPort{localport}
+        , m_Filter{filter}
+        , m_Recv{recv}
+        , m_Timeout{timeout}
+        , m_User{user}
+        , m_Endpoint{std::move(ep)}
+    {}
+
+    void
+    KillAllFlows()
+    {
+      std::unique_lock lock{m_Access};
+      for (auto& item : m_Flows)
+      {
+        item.second.TimedOut(m_Timeout);
+      }
+      m_Flows.clear();
+    }
+
+    void
+    AddFlow(
+        const AddressVariant_t& from,
+        const lokinet_udp_flowinfo& flow_addr,
+        void* flow_userdata,
+        int flow_timeoutseconds,
+        std::optional<llarp::net::IPPacket> firstPacket = std::nullopt)
+    {
+      std::unique_lock lock{m_Access};
+      auto& flow = m_Flows[from];
+      flow.m_FlowInfo = flow_addr;
+      flow.m_FlowTimeout = std::chrono::seconds{flow_timeoutseconds};
+      flow.m_FlowUserData = flow_userdata;
+      flow.m_Recv = m_Recv;
+      if (firstPacket)
+        flow.HandlePacket(*firstPacket);
+    }
+
+    void
+    ExpireOldFlows()
+    {
+      std::unique_lock lock{m_Access};
+      for (auto itr = m_Flows.begin(); itr != m_Flows.end();)
+      {
+        if (itr->second.IsExpired())
+        {
+          itr->second.TimedOut(m_Timeout);
+          itr = m_Flows.erase(itr);
+        }
+        else
+          ++itr;
+      }
+    }
+
+    void
+    HandlePacketFrom(AddressVariant_t from, llarp::net::IPPacket pkt)
+    {
+      {
+        std::unique_lock lock{m_Access};
+        if (m_Flows.count(from))
+        {
+          m_Flows[from].HandlePacket(pkt);
+          return;
+        }
+      }
+      lokinet_udp_flowinfo flow_addr{};
+      // set flow remote address
+      std::string addrstr = var::visit([](auto&& from) { return from.ToString(); }, from);
+
+      std::copy_n(
+          addrstr.data(),
+          std::min(addrstr.size(), sizeof(flow_addr.remote_host)),
+          flow_addr.remote_host);
+      // set socket id
+      flow_addr.socket_id = m_SocketID;
+      // get source port
+      if (const auto srcport = pkt.SrcPort())
+      {
+        flow_addr.remote_port = ToHost(*srcport).h;
+      }
+      else
+        return;  // invalid data so we bail
+      void* flow_userdata = nullptr;
+      int flow_timeoutseconds{};
+      // got a new flow, let's check if we want it
+      if (m_Filter(m_User, &flow_addr, &flow_userdata, &flow_timeoutseconds))
+        return;
+      AddFlow(from, flow_addr, flow_userdata, flow_timeoutseconds, pkt);
+    }
+  };
 }  // namespace
 
 struct lokinet_context
 {
   std::mutex m_access;
 
-  std::shared_ptr<llarp::Context> impl;
-  std::shared_ptr<llarp::Config> config;
+  std::shared_ptr<llarp::Context> impl = std::make_shared<Context>();
+  std::shared_ptr<llarp::Config> config = llarp::Config::EmbeddedConfig();
 
   std::unique_ptr<std::thread> runner;
 
-  lokinet_context() : impl{std::make_shared<Context>()}, config{llarp::Config::EmbeddedConfig()}
-  {}
+  int _socket_id = 0;
 
   ~lokinet_context()
   {
     if (runner)
       runner->join();
+  }
+
+  int
+  next_socket_id()
+  {
+    int id = ++_socket_id;
+    // handle overflow
+    if (id < 0)
+    {
+      _socket_id = 0;
+      id = ++_socket_id;
+    }
+    return id;
+  }
+
+  /// make a udp handler and hold onto it
+  /// return its id
+  [[nodiscard]] std::optional<int>
+  make_udp_handler(
+      const std::shared_ptr<llarp::service::Endpoint>& ep,
+      llarp::net::port_t exposePort,
+      lokinet_udp_flow_filter filter,
+      lokinet_udp_flow_recv_func recv,
+      lokinet_udp_flow_timeout_func timeout,
+      void* user)
+  {
+    if (udp_sockets.empty())
+    {
+      // start udp flow expiration timer
+      impl->router->loop()->call_every(1s, std::make_shared<int>(0), [this]() {
+        std::unique_lock lock{m_access};
+        for (auto& item : udp_sockets)
+        {
+          item.second->ExpireOldFlows();
+        }
+      });
+    }
+    std::weak_ptr<llarp::service::Endpoint> weak{ep};
+    auto udp = std::make_shared<UDPHandler>(
+        next_socket_id(), exposePort, filter, recv, timeout, user, weak);
+    auto id = udp->m_SocketID;
+    std::promise<bool> result;
+
+    impl->router->loop()->call([ep, &result, udp, exposePort]() {
+      if (auto pkt = ep->EgresPacketRouter())
+      {
+        pkt->AddUDPHandler(llarp::net::ToHost(exposePort), [udp](auto from, auto pkt) {
+          udp->HandlePacketFrom(std::move(from), std::move(pkt));
+        });
+        result.set_value(true);
+      }
+      else
+        result.set_value(false);
+    });
+
+    if (result.get_future().get())
+    {
+      udp_sockets[udp->m_SocketID] = std::move(udp);
+      return id;
+    }
+    return std::nullopt;
+  }
+
+  void
+  remove_udp_handler(int socket_id)
+  {
+    std::shared_ptr<UDPHandler> udp;
+    {
+      std::unique_lock lock{m_access};
+      if (auto itr = udp_sockets.find(socket_id); itr != udp_sockets.end())
+      {
+        udp = std::move(itr->second);
+        udp_sockets.erase(itr);
+      }
+    }
+    if (udp)
+    {
+      udp->KillAllFlows();
+      // remove packet handler
+      impl->router->loop()->call(
+          [ep = udp->m_Endpoint.lock(), localport = llarp::ToHost(udp->m_LocalPort)]() {
+            if (auto pkt = ep->EgresPacketRouter())
+              pkt->RemoveUDPHandler(localport);
+          });
+    }
   }
 
   /// acquire mutex for accessing this context
@@ -62,6 +309,7 @@ struct lokinet_context
   }
 
   std::unordered_map<int, bool> streams;
+  std::unordered_map<int, std::shared_ptr<UDPHandler>> udp_sockets;
 
   void
   inbound_stream(int id)
@@ -78,8 +326,6 @@ struct lokinet_context
 
 namespace
 {
-  std::unique_ptr<lokinet_context> g_context;
-
   void
   stream_error(lokinet_stream_result* result, int err)
   {
@@ -115,8 +361,7 @@ namespace
     {
       return {host, serv->s_port};
     }
-    else
-      return {host, std::stoi(portStr)};
+    return {host, std::stoi(portStr)};
   }
 
   int
@@ -182,8 +427,8 @@ struct lokinet_srv_lookup_private
   void
   IterateAll(std::function<void(lokinet_srv_record*)> visit)
   {
-    for (size_t idx = 0; idx < results.size(); ++idx)
-      visit(&results[idx]);
+    for (auto& result : results)
+      visit(&result);
     // null terminator
     visit(nullptr);
   }
@@ -204,13 +449,21 @@ extern "C"
     return strdup(netid.c_str());
   }
 
+  static auto last_log_set = llarp::log::Level::info;
+
   int EXPORT
   lokinet_log_level(const char* level)
   {
-    if (auto maybe = llarp::LogLevelFromString(level))
+    try
     {
-      llarp::SetLogLevel(*maybe);
+      auto new_level = llarp::log::level_from_string(level);
+      llarp::log::reset_level(new_level);
+      last_log_set = new_level;
       return 0;
+    }
+    catch (std::invalid_argument& e)
+    {
+      llarp::LogError(e.what());
     }
     return -1;
   }
@@ -230,18 +483,39 @@ extern "C"
   int EXPORT
   lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
   {
+    if (data == nullptr or datalen == 0)
+      return -3;
     llarp_buffer_t buf{data, datalen};
-    llarp::RouterContact rc{};
     if (ctx == nullptr)
       return -3;
     auto lock = ctx->acquire();
     // add a temp cryptography implementation here so rc.Verify works
     llarp::CryptoManager instance{new llarp::sodium::CryptoLibSodium{}};
-    if (not rc.BDecode(&buf))
-      return -1;
-    if (not rc.Verify(llarp::time_now_ms()))
-      return -2;
-    ctx->config->bootstrap.routers.insert(std::move(rc));
+    if (data[0] == 'l')
+    {
+      if (not ctx->config->bootstrap.routers.BDecode(&buf))
+      {
+        llarp::LogError("Cannot decode bootstrap list: ", llarp::buffer_printer{buf});
+        return -1;
+      }
+      for (const auto& rc : ctx->config->bootstrap.routers)
+      {
+        if (not rc.Verify(llarp::time_now_ms()))
+          return -2;
+      }
+    }
+    else
+    {
+      llarp::RouterContact rc{};
+      if (not rc.BDecode(&buf))
+      {
+        llarp::LogError("failed to decode signle RC: ", llarp::buffer_printer{buf});
+        return -1;
+      }
+      if (not rc.Verify(llarp::time_now_ms()))
+        return -2;
+      ctx->config->bootstrap.routers.insert(std::move(rc));
+    }
     return 0;
   }
 
@@ -265,7 +539,7 @@ extern "C"
       return -1;
     auto lock = ctx->acquire();
     ctx->config->router.m_netId = lokinet_get_netid();
-    ctx->config->logging.m_logLevel = llarp::GetLogLevel();
+    ctx->config->logging.m_logLevel = last_log_set;
     ctx->runner = std::make_unique<std::thread>([ctx]() {
       llarp::util::SetThreadName("llarp-mainloop");
       ctx->impl->Configure(ctx->config);
@@ -334,11 +608,11 @@ extern "C"
       return;
     auto lock = ctx->acquire();
 
-    if (not ctx->impl->IsStopping())
-    {
-      ctx->impl->CloseAsync();
-      ctx->impl->Wait();
-    }
+    if (ctx->impl->IsStopping())
+      return;
+
+    ctx->impl->CloseAsync();
+    ctx->impl->Wait();
 
     if (ctx->runner)
       ctx->runner->join();
@@ -423,7 +697,7 @@ extern "C"
         {
           auto [addr, id] = quic->open(
               remotehost, remoteport, [](auto) {}, localAddr);
-          auto [host, port] = split_host_port(addr.toString());
+          auto [host, port] = split_host_port(addr.ToString());
           ctx->outbound_stream(id);
           stream_okay(result, host, port, id);
         }
@@ -523,6 +797,23 @@ extern "C"
     return id;
   }
 
+  char* EXPORT
+  lokinet_hex_to_base32z(const char* hex)
+  {
+    std::string_view hexview{hex};
+    if (not oxenc::is_hex(hexview))
+      return nullptr;
+
+    const size_t b32z_len = oxenc::to_base32z_size(oxenc::from_hex_size(hexview.size()));
+    auto buf = std::make_unique<char[]>(b32z_len + 1);
+    buf[b32z_len] = '\0';  // null terminate
+
+    oxenc::hex_decoder decode{hexview.begin(), hexview.end()};
+    oxenc::base32z_encoder encode{decode, decode.end()};
+    std::copy(encode, encode.end(), buf.get());
+    return buf.release();  // leak the buffer to the caller
+  }
+
   void EXPORT
   lokinet_close_stream(int stream_id, struct lokinet_context* ctx)
   {
@@ -593,5 +884,175 @@ extern "C"
       return;
     delete result->internal;
     result->internal = nullptr;
+  }
+
+  int EXPORT
+  lokinet_udp_bind(
+      uint16_t exposedPort,
+      lokinet_udp_flow_filter filter,
+      lokinet_udp_flow_recv_func recv,
+      lokinet_udp_flow_timeout_func timeout,
+      void* user,
+      struct lokinet_udp_bind_result* result,
+      struct lokinet_context* ctx)
+  {
+    if (filter == nullptr or recv == nullptr or timeout == nullptr or result == nullptr
+        or ctx == nullptr)
+      return EINVAL;
+
+    auto lock = ctx->acquire();
+    if (auto ep = ctx->endpoint())
+    {
+      if (auto maybe = ctx->make_udp_handler(
+              ep, llarp::net::port_t::from_host(exposedPort), filter, recv, timeout, user))
+      {
+        result->socket_id = *maybe;
+        return 0;
+      }
+    }
+    return EINVAL;
+  }
+
+  void EXPORT
+  lokinet_udp_close(int socket_id, struct lokinet_context* ctx)
+  {
+    if (ctx)
+    {
+      ctx->remove_udp_handler(socket_id);
+    }
+  }
+
+  int EXPORT
+  lokinet_udp_flow_send(
+      const struct lokinet_udp_flowinfo* remote,
+      const void* ptr,
+      size_t len,
+      struct lokinet_context* ctx)
+  {
+    if (remote == nullptr or remote->remote_port == 0 or ptr == nullptr or len == 0
+        or ctx == nullptr)
+      return EINVAL;
+    std::shared_ptr<llarp::EndpointBase> ep;
+    llarp::nuint16_t srcport{0};
+    auto dstport = llarp::net::port_t::from_host(remote->remote_port);
+    {
+      auto lock = ctx->acquire();
+      if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
+      {
+        ep = itr->second->m_Endpoint.lock();
+        srcport = itr->second->m_LocalPort;
+      }
+      else
+        return EHOSTUNREACH;
+    }
+    if (auto maybe = llarp::service::ParseAddress(std::string{remote->remote_host}))
+    {
+      llarp::net::IPPacket pkt = llarp::net::IPPacket::UDP(
+          llarp::nuint32_t{0},
+          srcport,
+          llarp::nuint32_t{0},
+          dstport,
+          llarp_buffer_t{reinterpret_cast<const uint8_t*>(ptr), len});
+
+      if (pkt.empty())
+        return EINVAL;
+      std::promise<int> ret;
+      ctx->impl->router->loop()->call([addr = *maybe, pkt = std::move(pkt), ep, &ret]() {
+        if (auto tag = ep->GetBestConvoTagFor(addr))
+        {
+          if (ep->SendToOrQueue(*tag, pkt.ConstBuffer(), llarp::service::ProtocolType::TrafficV4))
+          {
+            ret.set_value(0);
+            return;
+          }
+        }
+        ret.set_value(ENETUNREACH);
+      });
+      return ret.get_future().get();
+    }
+    return EINVAL;
+  }
+
+  int EXPORT
+  lokinet_udp_establish(
+      lokinet_udp_create_flow_func create_flow,
+      void* user,
+      const struct lokinet_udp_flowinfo* remote,
+      struct lokinet_context* ctx)
+  {
+    if (create_flow == nullptr or remote == nullptr or ctx == nullptr)
+      return EINVAL;
+    std::shared_ptr<llarp::EndpointBase> ep;
+    {
+      auto lock = ctx->acquire();
+      if (ctx->impl->router->loop()->inEventLoop())
+      {
+        llarp::LogError("cannot call udp_establish from internal event loop");
+        return EINVAL;
+      }
+      if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
+      {
+        ep = itr->second->m_Endpoint.lock();
+      }
+      else
+        return EHOSTUNREACH;
+    }
+    if (auto maybe = llarp::service::ParseAddress(std::string{remote->remote_host}))
+    {
+      {
+        // check for pre existing flow
+        auto lock = ctx->acquire();
+        if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
+        {
+          auto& udp = itr->second;
+          if (udp->m_Flows.count(*maybe))
+          {
+            // we already have a flow.
+            return EADDRINUSE;
+          }
+        }
+      }
+      std::promise<bool> gotten;
+      ctx->impl->router->loop()->call([addr = *maybe, ep, &gotten]() {
+        ep->MarkAddressOutbound(addr);
+        auto res = ep->EnsurePathTo(
+            addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
+        if (not res)
+        {
+          gotten.set_value(false);
+        }
+      });
+      if (gotten.get_future().get())
+      {
+        void* flow_data{nullptr};
+        int flow_timeoutseconds{};
+        create_flow(user, &flow_data, &flow_timeoutseconds);
+        {
+          auto lock = ctx->acquire();
+          if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
+          {
+            itr->second->AddFlow(*maybe, *remote, flow_data, flow_timeoutseconds);
+            return 0;
+          }
+          return EADDRINUSE;
+        }
+      }
+      else
+        return ETIMEDOUT;
+    }
+    return EINVAL;
+  }
+
+  void EXPORT
+  lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* user)
+  {
+    llarp::log::clear_sinks();
+    llarp::log::add_sink(std::make_shared<llarp::logging::CallbackSink_mt>(func, sync, user));
+  }
+
+  void EXPORT
+  lokinet_set_logger(lokinet_logger_func func, void* user)
+  {
+    lokinet_set_syncing_logger(func, nullptr, user);
   }
 }

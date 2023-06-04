@@ -10,20 +10,21 @@ TEST_CASE("OptionDefinition int parse test", "[config]")
 
   CHECK(def.getValue() == 42);
   CHECK(def.getNumberFound() == 0);
-
-  CHECK(def.defaultValueAsString() == "42");
+  CHECK(def.defaultValuesAsString().size() == 1);
+  CHECK(def.defaultValuesAsString()[0] == "42");
 
   CHECK_NOTHROW(def.parseValue("43"));
   CHECK(def.getValue() == 43);
   CHECK(def.getNumberFound() == 1);
 
-  CHECK(def.defaultValueAsString() == "42");
+  CHECK(def.defaultValuesAsString().size() == 1);
+  CHECK(def.defaultValuesAsString()[0] == "42");
 
   constexpr Default sqrt_625{25};
   llarp::OptionDefinition<int> def2("a", "b", sqrt_625);
   CHECK(def2.getValue() == 25);
-  CHECK(def2.defaultValueAsString() == "25");
-
+  CHECK(def2.defaultValuesAsString().size() == 1);
+  CHECK(def2.defaultValuesAsString()[0] == "25");
   CHECK_NOTHROW(def2.parseValue("99"));
   CHECK(def2.getValue() == 99);
   CHECK(def2.getNumberFound() == 1);
@@ -34,7 +35,8 @@ TEST_CASE("OptionDefinition string parse test", "[config]")
   llarp::OptionDefinition<std::string> def("foo", "bar", Default{"test"});
 
   CHECK(def.getValue() == "test");
-  CHECK(def.defaultValueAsString() == "test");
+  CHECK(not def.defaultValuesAsString().empty());
+  CHECK(def.defaultValuesAsString()[0] == "test");
 
   CHECK_NOTHROW(def.parseValue("foo"));
   CHECK(def.getValue() == "foo");
@@ -80,8 +82,8 @@ TEST_CASE("OptionDefinition acceptor test", "[config]")
 
   CHECK_NOTHROW(def.tryAccept());
   CHECK(def.getValue() == 42);
-  CHECK(def.defaultValue);
-  CHECK(*def.defaultValue == 42);
+  CHECK(not def.defaultValues.empty());
+  CHECK(def.defaultValues[0] == 42);
   CHECK(test == 42);
 
   def.parseValue("43");
@@ -102,7 +104,7 @@ TEST_CASE("OptionDefinition acceptor throws test", "[config]")
 TEST_CASE("OptionDefinition tryAccept missing option test", "[config]")
 {
   int unset = -1;
-  llarp::OptionDefinition<int> def("foo", "bar", Required, Default{1}, [&](int arg) {
+  llarp::OptionDefinition<int> def("foo", "bar", Required, [&](int arg) {
     (void)arg;
     unset = 0; // should never be called
   });
@@ -168,7 +170,6 @@ TEST_CASE("ConfigDefinition required test", "[config]")
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "router",
             "threads",
-            Default{1},
             Required));
 
   CHECK_THROWS(config.validateRequiredFields());
@@ -184,13 +185,13 @@ TEST_CASE("ConfigDefinition section test", "[config]")
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo",
             "bar",
-            Required,
-            Default{1}));
+            Required
+            ));
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "goo",
             "bar",
-            Required,
-            Default{1}));
+            Required
+            ));
 
   CHECK_THROWS(config.validateRequiredFields());
 

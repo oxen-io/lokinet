@@ -102,10 +102,13 @@ namespace llarp
     ForEachSession(std::function<void(ILinkSession*)> visit) EXCLUDES(m_AuthedLinksMutex);
 
     void
+    UnmapAddr(const SockAddr& addr);
+
+    void
     SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt);
 
-    virtual bool
-    Configure(AbstractRouter* loop, const std::string& ifname, int af, uint16_t port);
+    void
+    Bind(AbstractRouter* router, SockAddr addr);
 
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
@@ -132,7 +135,7 @@ namespace llarp
     virtual void
     Stop();
 
-    virtual const char*
+    virtual std::string_view
     Name() const = 0;
 
     util::StatusObject
@@ -148,7 +151,8 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed);
+        ILinkSession::CompletionHandler completed,
+        uint16_t priority);
 
     virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;
@@ -175,14 +179,14 @@ namespace llarp
     bool
     IsCompatable(const llarp::RouterContact& other) const
     {
-      const std::string us = Name();
+      const auto us = Name();
       for (const auto& ai : other.addrs)
         if (ai.dialect == us)
           return true;
       return false;
     }
 
-    virtual bool
+    bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
     void
@@ -203,7 +207,9 @@ namespace llarp
     bool
     operator<(const ILinkLayer& other) const
     {
-      return Rank() < other.Rank() || Name() < other.Name() || m_ourAddr < other.m_ourAddr;
+      auto rankA = Rank(), rankB = other.Rank();
+      auto nameA = Name(), nameB = other.Name();
+      return std::tie(rankA, nameA, m_ourAddr) < std::tie(rankB, nameB, other.m_ourAddr);
     }
 
     /// called by link session to remove a pending session who is timed out
@@ -227,6 +233,13 @@ namespace llarp
     Router() const
     {
       return m_Router;
+    }
+
+    /// Get the local sock addr we are bound on
+    const SockAddr&
+    LocalSocketAddr() const
+    {
+      return m_ourAddr;
     }
 
    private:
@@ -254,7 +267,7 @@ namespace llarp
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
-
+    std::unordered_map<SockAddr, RouterID> m_AuthedAddrs;
     std::unordered_map<SockAddr, llarp_time_t> m_RecentlyClosed;
 
    private:

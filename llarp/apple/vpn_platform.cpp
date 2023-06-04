@@ -15,8 +15,9 @@ namespace llarp::apple
       , m_OnReadable{std::move(on_readable)}
   {}
 
-  std::shared_ptr<vpn::NetworkInterface> VPNPlatform::ObtainInterface(vpn::InterfaceInfo)
+  std::shared_ptr<vpn::NetworkInterface>
+  VPNPlatform::ObtainInterface(vpn::InterfaceInfo, AbstractRouter* router)
   {
-    return std::make_shared<VPNInterface>(m_Context, m_PacketWriter, m_OnReadable);
+    return std::make_shared<VPNInterface>(m_Context, m_PacketWriter, m_OnReadable, router);
   }
 }  // namespace llarp::apple

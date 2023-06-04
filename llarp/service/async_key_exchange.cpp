@@ -70,7 +70,7 @@ namespace llarp
       // set sender
       self->msg.sender = self->m_LocalIdentity.pub;
       // set version
-      self->msg.version = LLARP_PROTO_VERSION;
+      self->msg.version = llarp::constants::proto_version;
       // encrypt and sign
       if (frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
         self->loop->call([self, frame] { AsyncKeyExchange::Result(self, frame); });

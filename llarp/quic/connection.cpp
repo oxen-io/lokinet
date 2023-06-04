@@ -2,7 +2,7 @@
 #include "client.hpp"
 #include "server.hpp"
 #include <limits>
-#include <llarp/util/logging/logger.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 
 #include <cassert>
@@ -15,8 +15,8 @@
 #include <uvw/timer.h>
 
 #include <iterator>
-#include <oxenmq/hex.h>
-#include <oxenmq/bt_serialize.h>
+#include <oxenc/hex.h>
+#include <oxenc/bt_serialize.h>
 
 extern "C"
 {
@@ -32,10 +32,10 @@ namespace llarp::quic
     std::memmove(data, cid, datalen);
   }
 
-  std::ostream&
-  operator<<(std::ostream& o, const ConnectionID& c)
+  std::string
+  ConnectionID::ToString() const
   {
-    return o << oxenmq::to_hex(c.data, c.data + c.datalen);
+    return oxenc::to_hex(data, data + datalen);
   }
 
   ConnectionID
@@ -297,7 +297,7 @@ namespace llarp::quic
       conn.endpoint.make_stateless_reset_token(cid, token);
       LogDebug(
           "make stateless reset token ",
-          oxenmq::to_hex(token, token + NGTCP2_STATELESS_RESET_TOKENLEN));
+          oxenc::to_hex(token, token + NGTCP2_STATELESS_RESET_TOKENLEN));
 
       return 0;
     }
@@ -333,13 +333,11 @@ namespace llarp::quic
   extern "C" inline void
   ngtcp_trace_logger([[maybe_unused]] void* user_data, const char* fmt, ...)
   {
+    std::array<char, 2048> buf{};
     va_list ap;
     va_start(ap, fmt);
-    if (char* msg; vasprintf(&msg, fmt, ap) >= 0)
-    {
-      LogTrace{msg};
-      std::free(msg);
-    }
+    if (vsnprintf(buf.data(), buf.size(), fmt, ap) >= 0)
+      LogTrace(fmt::format("{}", buf.data()));
     va_end(ap);
   }
 #endif
@@ -1093,7 +1091,7 @@ namespace llarp::quic
     uint16_t port;
     try
     {
-      oxenmq::bt_dict_consumer meta{lokinet_metadata};
+      oxenc::bt_dict_consumer meta{lokinet_metadata};
       // '#' contains the port the client wants us to forward to
       if (!meta.skip_until("#"))
       {
@@ -1108,7 +1106,7 @@ namespace llarp::quic
       }
       LogDebug("decoded lokinet tunnel port = ", port);
     }
-    catch (const oxenmq::bt_deserialize_invalid& c)
+    catch (const oxenc::bt_deserialize_invalid& c)
     {
       LogWarn("transport params lokinet metadata is invalid: ", c.what());
       return NGTCP2_ERR_TRANSPORT_PARAM;
@@ -1191,7 +1189,7 @@ namespace llarp::quic
       // reserved field code that QUIC parsers must ignore); currently we only include the port in
       // here (from the client to tell the server what it's trying to reach, and reflected from
       // the server for the client to verify).
-      std::string lokinet_metadata = bt_serialize(oxenmq::bt_dict{
+      std::string lokinet_metadata = bt_serialize(oxenc::bt_dict{
           {"#", tunnel_port},
       });
       copy_and_advance(buf, lokinet_metadata_code);

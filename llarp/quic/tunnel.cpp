@@ -4,10 +4,10 @@
 #include "service/name.hpp"
 #include "stream.hpp"
 #include <limits>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
-#include <llarp/util/logging/logger.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/ev/ev_libuv.hpp>
+#include <llarp/ev/libuv.hpp>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -170,7 +170,7 @@ namespace llarp::quic
       {
         LogWarn(
             "Remote connection returned invalid initial byte (0x",
-            oxenmq::to_hex(bdata.begin(), bdata.begin() + 1),
+            oxenc::to_hex(bdata.begin(), bdata.begin() + 1),
             "); dropping connection");
         stream.close(tunnel::ERROR_BAD_INIT);
         client.close();
@@ -479,9 +479,8 @@ namespace llarp::quic
     if (failed)
     {
       tcp_tunnel->close();
-      throw std::runtime_error{
-          "Failed to bind/listen local TCP tunnel socket on " + bind_addr.toString() + ": "
-          + failed};
+      throw std::runtime_error{fmt::format(
+          "Failed to bind/listen local TCP tunnel socket on {}: {}", bind_addr, failed)};
     }
 
     auto bound = tcp_tunnel->sock();

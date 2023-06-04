@@ -7,10 +7,12 @@
 #include <functional>
 #include <string_view>
 #include <type_traits>
-#include <oxenmq/variant.h>
+#include <oxenc/variant.h>
 #include <vector>
 #include <optional>
 #include <uvw/async.h>
+
+#include <llarp/util/formattable.hpp>
 
 namespace llarp::quic
 {
@@ -70,6 +72,9 @@ namespace llarp::quic
     {
       return s.id >= id;
     }
+
+    std::string
+    ToString() const;
   };
 
   // Application error code we close with if the data handle throws
@@ -78,10 +83,10 @@ namespace llarp::quic
   // Error code we send to a stream close callback if the stream's connection expires; this is *not*
   // sent over quic, hence using a value >= 2^62 (quic's maximum serializable integer).
   inline constexpr uint64_t STREAM_ERROR_CONNECTION_EXPIRED = (1ULL << 62) + 1;
-
-  std::ostream&
-  operator<<(std::ostream& o, const StreamID& s);
 }  // namespace llarp::quic
+
+template <>
+constexpr inline bool llarp::IsToStringFormattable<llarp::quic::StreamID> = true;
 
 namespace std
 {
