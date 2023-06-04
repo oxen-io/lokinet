@@ -22,9 +22,6 @@ BuildRequires:  libcurl-devel
 BuildRequires:  jemalloc-devel
 BuildRequires:  sqlite3-devel
 
-# Puts the rpm version instead of the git tag in the version string:
-Patch1: version-as-rpm-version.patch
-
 Requires: lokinet-bin = %{version}-%{release}
 %{?systemd_requires}
 
@@ -81,7 +78,7 @@ export CFLAGS="%{optflags} -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu
 %endif
 
 %undefine __cmake_in_source_build
-%cmake -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DGIT_VERSION="%{release}" -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF
+%cmake -DNATIVE_BUILD=OFF -DUSE_AVX2=OFF -DWITH_TESTS=OFF %{cmake_extra_args} -DCMAKE_BUILD_TYPE=Release -DLOKINET_VERSIONTAG="%{release}" -DWITH_SETCAP=OFF -DSUBMODULE_CHECK=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_LIBLOKINET=OFF
 %cmake_build
 
 %install
@@ -157,6 +154,7 @@ systemctl enable --now lokinet
 * Sat Jun 03 2023 Jason Rhinelander <jason@imaginary.ca> - 0.9.11-1
 - bump version
 - fix use of `--badnames` instead of `--badname`
+- drop version tag patch; there is a cmake option for that now
 
 * Wed Nov 17 2021 Technical Tumbleweed <necro_nemesis@hotmail.com> - 0.9.8-1
 - bump version
