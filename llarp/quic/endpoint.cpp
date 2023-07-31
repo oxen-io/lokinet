@@ -130,7 +130,7 @@ namespace llarp::quic
   void
   Endpoint::handle_conn_packet(Connection& conn, const Packet& p)
   {
-    if (ngtcp2_conn_is_in_closing_period(conn))
+    if (ngtcp2_conn_in_closing_period(conn))
     {
       LogDebug("Connection is in closing period, dropping");
       close_connection(conn);

@@ -25,12 +25,11 @@ if(SUBMODULE_CHECK)
 
     message(STATUS "Checking submodules")
     check_submodule(nlohmann)
-    check_submodule(ghc-filesystem)
-    check_submodule(oxen-logging fmt spdlog)
+#    check_submodule(ghc-filesystem)
+#    check_submodule(oxen-logging fmt spdlog)
     check_submodule(pybind11)
     check_submodule(sqlite_orm)
     check_submodule(oxen-mq)
-    check_submodule(oxen-encoding)
     check_submodule(uvw)
     check_submodule(cpr)
     check_submodule(oxen-libquic)
@@ -60,18 +59,17 @@ macro(system_or_submodule BIGNAME smallname pkgconf subdir)
   endif()
 endmacro()
 
-system_or_submodule(OXENC oxenc liboxenc>=1.0.4 oxen-encoding)
 system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.14 oxen-mq)
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 system_or_submodule(NLOHMANN nlohmann_json nlohmann_json>=3.7.0 nlohmann)
 
-if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
-    set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
-endif()
-set(OXEN_LOGGING_SOURCE_ROOT "${PROJECT_SOURCE_DIR}" CACHE INTERNAL "")
-add_subdirectory(oxen-logging)
+#if (STATIC OR FORCE_SPDLOG_SUBMODULE OR FORCE_FMT_SUBMODULE)
+#    set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
+#endif()
+#set(OXEN_LOGGING_SOURCE_ROOT "${PROJECT_SOURCE_DIR}" CACHE INTERNAL "")
+#add_subdirectory(oxen-logging)
 
 if(WITH_HIVE)
   add_subdirectory(pybind11 EXCLUDE_FROM_ALL)
@@ -97,6 +95,8 @@ target_link_libraries(uvw INTERFACE libuv)
 # ngtcp2 needs some massaging to build nicely:
 #include(ngtcp2_lib)
 #add_ngtcp2_lib()
+
+add_subdirectory(oxen-libquic)
 
 # cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires
 # 3.15+, and we target lower than that (and this is fairly simple to build).

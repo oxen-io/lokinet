@@ -324,9 +324,9 @@ namespace llarp::quic
     int
     recv_transport_params(std::basic_string_view<uint8_t> data);
     int
-    send_magic(ngtcp2_crypto_level level);
+    send_magic(ngtcp2_encryption_level level);
     int
-    send_transport_params(ngtcp2_crypto_level level);
+    send_transport_params(ngtcp2_encryption_level level);
     void
     complete_handshake();
   };

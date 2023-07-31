@@ -83,7 +83,7 @@ namespace llarp::quic
     int
     recv_crypto_data(
         ngtcp2_conn* conn_,
-        ngtcp2_crypto_level crypto_level,
+        ngtcp2_encryption_level crypto_level,
         uint64_t offset,
         const uint8_t* rawdata,
         size_t rawdatalen,
@@ -95,12 +95,12 @@ namespace llarp::quic
       auto& conn = *static_cast<Connection*>(user_data);
       switch (crypto_level)
       {
-        case NGTCP2_CRYPTO_LEVEL_EARLY:
-          // We don't currently use or support 0rtt
-          LogWarn("Invalid EARLY crypto level");
-          return FAIL;
+        // case NGTCP2_CRYPTO_LEVEL_EARLY:
+        //   // We don't currently use or support 0rtt
+        //   LogWarn("Invalid EARLY crypto level");
+        //   return FAIL;
 
-        case NGTCP2_CRYPTO_LEVEL_INITIAL:
+        case NGTCP2_ENCRYPTION_LEVEL_INITIAL:
           log::trace(log_cat, "Receiving initial crypto...");
           // "Initial" level means we are still handshaking; if we are server then we receive
           // the client's transport params (sent in client_initial, above) and blast ours
@@ -112,15 +112,15 @@ namespace llarp::quic
 
           if (ngtcp2_conn_is_server(conn))
           {
-            if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
+            if (auto rv = conn.send_magic(NGTCP2_ENCRYPTION_LEVEL_INITIAL); rv != 0)
               return rv;
-            if (auto rv = conn.send_transport_params(NGTCP2_CRYPTO_LEVEL_HANDSHAKE); rv != 0)
+            if (auto rv = conn.send_transport_params(NGTCP2_ENCRYPTION_LEVEL_HANDSHAKE); rv != 0)
               return rv;
           }
 
           break;
 
-        case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
+        case NGTCP2_ENCRYPTION_LEVEL_HANDSHAKE:
           log::trace(log_cat, "Receiving handshake crypto...");
           if (!ngtcp2_conn_is_server(conn))
           {
@@ -130,7 +130,7 @@ namespace llarp::quic
             // the server can install our rx key; we have to send *something* back to invoke
             // the server's HANDSHAKE callback (so that it knows handshake is complete) so
             // send the magic again.
-            if (auto rv = conn.send_magic(NGTCP2_CRYPTO_LEVEL_HANDSHAKE); rv != 0)
+            if (auto rv = conn.send_magic(NGTCP2_ENCRYPTION_LEVEL_HANDSHAKE); rv != 0)
               return rv;
           }
           else
@@ -398,7 +398,7 @@ namespace llarp::quic
 
     settings.initial_ts = get_timestamp();
     // FIXME: IPv6
-    settings.max_udp_payload_size = Endpoint::max_pkt_size_v4;
+    settings.max_tx_udp_payload_size = Endpoint::max_pkt_size_v4;
     settings.cc_algo = NGTCP2_CC_ALGO_CUBIC;
     // settings.initial_rtt = ???; # NGTCP2's default is 333ms
 
@@ -719,9 +719,6 @@ namespace llarp::quic
       if (nwrite == 0)
       {
         LogTrace("Nothing else to write for non-stream data for now (or we are congested)");
-        ngtcp2_conn_stat cstat;
-        ngtcp2_conn_get_conn_stat(*this, &cstat);
-        LogTrace("Current unacked bytes in flight: ", cstat.bytes_in_flight);
         break;
       }
 
@@ -773,7 +770,7 @@ namespace llarp::quic
     if (!good)
     {
       LogDebug("stream_open_callback returned failure, dropping stream ", id);
-      ngtcp2_conn_shutdown_stream(*this, id.id, 1);
+      ngtcp2_conn_shutdown_stream(*this, 0, id.id, 1);
       io_ready();
       return NGTCP2_ERR_CALLBACK_FAILURE;
     }
@@ -944,9 +941,9 @@ namespace llarp::quic
   {
     endpoint.null_crypto.client_initial(*this);
 
-    if (int rv = send_magic(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
+    if (int rv = send_magic(NGTCP2_ENCRYPTION_LEVEL_INITIAL); rv != 0)
       return rv;
-    if (int rv = send_transport_params(NGTCP2_CRYPTO_LEVEL_INITIAL); rv != 0)
+    if (int rv = send_transport_params(NGTCP2_ENCRYPTION_LEVEL_INITIAL); rv != 0)
       return rv;
 
     io_ready();
@@ -997,7 +994,7 @@ namespace llarp::quic
     endpoint.null_crypto.install_rx_key(*this);
     if (!ngtcp2_conn_is_server(*this))
       endpoint.null_crypto.install_tx_key(*this);
-    ngtcp2_conn_handshake_completed(*this);
+    ngtcp2_conn_tls_handshake_completed(*this);
 
     if (on_handshake_complete)
     {
@@ -1125,21 +1122,22 @@ namespace llarp::quic
       }
     }
 
-    ngtcp2_transport_params params;
+    // ngtcp2_transport_params params;
 
-    auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO
-                             : NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS;
+    // auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO
+    //                          : NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS;
 
-    auto rv = ngtcp2_decode_transport_params(&params, exttype, data.data(), data.size());
-    LogDebug("Decode transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
-    LogTrace("params orig dcid = ", ConnectionID(params.original_dcid));
-    LogTrace("params init scid = ", ConnectionID(params.initial_scid));
-    if (rv == 0)
-    {
-      rv = ngtcp2_conn_set_remote_transport_params(*this, &params);
-      LogDebug(
-          "Set remote transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
-    }
+    auto rv = ngtcp2_conn_decode_and_set_remote_transport_params(*this, data.data(), data.size());
+    // auto rv = ngtcp2_decode_transport_params(&params, exttype, data.data(), data.size());
+    // LogDebug("Decode transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
+    // LogTrace("params orig dcid = ", ConnectionID(params.original_dcid));
+    // LogTrace("params init scid = ", ConnectionID(params.initial_scid));
+    // if (rv == 0)
+    // {
+    //   rv = ngtcp2_conn_set_remote_transport_params(*this, &params);
+    //   LogDebug(
+    //       "Set remote transport params ", rv == 0 ? "success" : "fail: "s + ngtcp2_strerror(rv));
+    // }
 
     if (rv != 0)
     {
@@ -1153,7 +1151,7 @@ namespace llarp::quic
   // Sends our magic string at the given level.  This fixed magic string is taking the place of TLS
   // parameters in full QUIC.
   int
-  Connection::send_magic(ngtcp2_crypto_level level)
+  Connection::send_magic(ngtcp2_encryption_level level)
   {
     return ngtcp2_conn_submit_crypto_data(
         *this, level, handshake_magic.data(), handshake_magic.size());
@@ -1171,10 +1169,9 @@ namespace llarp::quic
   // Sends transport parameters.  `level` is expected to be INITIAL for clients (which send the
   // transport parameters in the initial packet), or HANDSHAKE for servers.
   int
-  Connection::send_transport_params(ngtcp2_crypto_level level)
+  Connection::send_transport_params(ngtcp2_encryption_level level)
   {
-    ngtcp2_transport_params tparams;
-    ngtcp2_conn_get_local_transport_params(*this, &tparams);
+    ngtcp2_transport_params tparams = *ngtcp2_conn_get_local_transport_params(*this);
 
     assert(conn_buffer.empty());
     conn_buffer.resize(Endpoint::max_pkt_size_v4);
@@ -1196,12 +1193,11 @@ namespace llarp::quic
       assert(buf < bufend);
     }
 
-    const bool is_server = ngtcp2_conn_is_server(*this);
-    auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
-                             : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
+    // const bool is_server = ngtcp2_conn_is_server(*this);
+    // auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
+    //                          : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
 
-    if (ngtcp2_ssize nwrite = ngtcp2_encode_transport_params(buf, bufend - buf, exttype, &tparams);
-        nwrite >= 0)
+    if (ngtcp2_ssize nwrite = ngtcp2_conn_encode_local_transport_params(*this, buf, bufend-buf); nwrite >= 0)
     {
       assert(nwrite > 0);
       conn_buffer.resize(buf - u8data(conn_buffer) + nwrite);
@@ -1211,6 +1207,7 @@ namespace llarp::quic
       conn_buffer.clear();
       return nwrite;
     }
+
     LogDebug("encoded transport params: ", buffer_printer{conn_buffer});
     return ngtcp2_conn_submit_crypto_data(*this, level, u8data(conn_buffer), conn_buffer.size());
   }

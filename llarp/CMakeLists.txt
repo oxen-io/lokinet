@@ -509,12 +509,13 @@ target_link_libraries(lokinet-platform PUBLIC
 
 target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
-  filesystem
+#  filesystem
   oxenc::oxenc
 )
 
 target_link_libraries(lokinet-plainquic PUBLIC
-  ngtcp2_static
+  ngtcp2_crypto
+  libquic
   uvw
 )
 

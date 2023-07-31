@@ -1,8 +1,11 @@
 #pragma once
 
+#include "connection.hpp"
+
+#include <llarp/router/abstractrouter.hpp>
 #include <llarp/router_id.hpp>
 
-#include <oxen-libquic/include/quic.hpp>
+#include <external/oxen-libquic/include/quic.hpp>
 
 namespace llarp::link
 {

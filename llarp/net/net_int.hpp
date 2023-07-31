@@ -256,25 +256,25 @@ namespace llarp
   template <>
   inline constexpr bool IsToStringFormattable<net::port_t> = true;
 
-  using nuint16_t [[deprecated("use llarp::net::port_t instead")]] = llarp::net::port_t;
-  using nuint32_t [[deprecated("use llarp::net::ipv4addr_t instead")]] = llarp::net::ipv4addr_t;
-  using nuint128_t [[deprecated("use llarp::net::ipv6addr_t instead")]] = llarp::net::ipv6addr_t;
+  using nuint16_t /* [[deprecated("use llarp::net::port_t instead")]] */ = llarp::net::port_t;
+  using nuint32_t /* [[deprecated("use llarp::net::ipv4addr_t instead")]] */ = llarp::net::ipv4addr_t;
+  using nuint128_t /* [[deprecated("use llarp::net::ipv6addr_t instead")]] */ = llarp::net::ipv6addr_t;
 
   template <typename UInt_t>
-  [[deprecated("use llarp::net::ToNet instead")]] inline llarp::nuint_t<UInt_t>
+/*   [[deprecated("use llarp::net::ToNet instead")]] */ inline llarp::nuint_t<UInt_t>
   ToNet(llarp::huint_t<UInt_t> x)
   {
     return llarp::net::ToNet(x);
   }
 
   template <typename UInt_t>
-  [[deprecated("use llarp::net::ToHost instead")]] inline llarp::huint_t<UInt_t>
+/*   [[deprecated("use llarp::net::ToHost instead")]] */ inline llarp::huint_t<UInt_t>
   ToHost(llarp::nuint_t<UInt_t> x)
   {
     return llarp::net::ToHost(x);
   }
 
-  [[deprecated("use llarp::net::ToHost instead")]] inline net::ipv4addr_t
+/*   [[deprecated("use llarp::net::ToHost instead")]] */ inline net::ipv4addr_t
   xhtonl(huint32_t x)
   {
     return ToNet(x);

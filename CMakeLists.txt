@@ -130,7 +130,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(cmake/unix.cmake)
 include(cmake/check_for_std_optional.cmake)
-include(cmake/check_for_std_filesystem.cmake)
+#include(cmake/check_for_std_filesystem.cmake)
 
 if(NOT WIN32)
   if(IOS OR ANDROID)

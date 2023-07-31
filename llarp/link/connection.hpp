@@ -3,7 +3,7 @@
 #include <llarp/router_id.hpp>
 #include <llarp/router_contact.hpp>
 
-#include <oxen-libquic/include/quic.hpp>
+#include <external/oxen-libquic/include/quic.hpp>
 
 namespace llarp::link
 {

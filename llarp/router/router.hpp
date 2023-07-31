@@ -47,6 +47,8 @@
 
 #include <oxenmq/address.h>
 
+#include <external/oxen-libquic/include/quic.hpp>
+
 namespace llarp
 {
   struct Router : public AbstractRouter
@@ -233,6 +235,7 @@ namespace llarp
     std::shared_ptr<NodeDB> _nodedb;
     llarp_time_t _startedAt;
     const oxenmq::TaggedThreadID m_DiskThread;
+    oxen::quic::Network _net;
 
     llarp_time_t
     Uptime() const override;

@@ -27,7 +27,7 @@ struct ManagedBuffer;
 /// TODO: replace usage of these with std::span (via a backport until we move to C++20).  That's a
 /// fairly big job, though, as llarp_buffer_t is currently used a bit differently (i.e. maintains
 /// both start and current position, plus has some value reading/writing methods).
-struct [[deprecated("this type is stupid, use something else")]] llarp_buffer_t
+struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buffer_t
 {
   /// starting memory address
   byte_t* base{nullptr};
