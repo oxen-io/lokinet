@@ -33,7 +33,7 @@ if(SUBMODULE_CHECK)
     check_submodule(oxen-encoding)
     check_submodule(uvw)
     check_submodule(cpr)
-    check_submodule(ngtcp2)
+    check_submodule(oxen-libquic)
     check_submodule(CLI11)
   endif()
 endif()
@@ -95,8 +95,8 @@ target_include_directories(uvw INTERFACE uvw/src)
 target_link_libraries(uvw INTERFACE libuv)
 
 # ngtcp2 needs some massaging to build nicely:
-include(ngtcp2_lib)
-add_ngtcp2_lib()
+#include(ngtcp2_lib)
+#add_ngtcp2_lib()
 
 # cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires
 # 3.15+, and we target lower than that (and this is fairly simple to build).

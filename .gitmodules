@@ -39,3 +39,6 @@
 [submodule "external/CLI11"]
 	path = external/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
+[submodule "external/oxen-libquic"]
+	path = external/oxen-libquic
+	url = https://github.com/oxen-io/oxen-libquic.git
