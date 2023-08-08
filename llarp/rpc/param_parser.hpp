@@ -151,9 +151,8 @@ namespace llarp::rpc
       typename BTConsumer,
       typename T,
       std::enable_if_t<
-          std::is_same_v<
-              BTConsumer,
-              oxenc::bt_dict_consumer> || std::is_same_v<BTConsumer, oxenc::bt_list_consumer>,
+          std::is_same_v<BTConsumer, oxenc::bt_dict_consumer>
+              || std::is_same_v<BTConsumer, oxenc::bt_list_consumer>,
           int> = 0>
   void
   load_value(BTConsumer& c, T& target)
@@ -245,8 +244,8 @@ namespace llarp::rpc
       target = current.get<std::string_view>();
     }
     else if constexpr (
-        llarp::rpc::json_is_binary<
-            T> || is_expandable_list<T> || is_tuple_like<T> || is_unordered_string_map<T>)
+        llarp::rpc::json_is_binary<T> || is_expandable_list<T> || is_tuple_like<T>
+        || is_unordered_string_map<T>)
     {
       try
       {
@@ -355,9 +354,8 @@ namespace llarp::rpc
     else
     {
       static_assert(
-          std::is_same_v<
-              json_range,
-              Input> || std::is_same_v<oxenc::bt_dict_consumer, Input> || std::is_same_v<std::monostate, Input>);
+          std::is_same_v<json_range, Input> || std::is_same_v<oxenc::bt_dict_consumer, Input>
+          || std::is_same_v<std::monostate, Input>);
       get_next_value(in, name, val);
       if constexpr (sizeof...(More) > 0)
       {

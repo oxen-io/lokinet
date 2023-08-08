@@ -105,11 +105,9 @@ namespace llarp
     constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
 
     template <typename T, typename Option>
-    constexpr bool is_option =
-        std::is_base_of_v<
-            option_flag,
-            remove_cvref_t<
-                Option>> or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
+    constexpr bool is_option = std::is_base_of_v<option_flag, remove_cvref_t<Option>>
+        or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option>
+        or std::is_invocable_v<remove_cvref_t<Option>, T>;
   }  // namespace config
 
   /// A base class for specifying config options and their constraints. The basic to/from string
@@ -298,7 +296,12 @@ namespace llarp
         std::vector<std::string> def_strs;
         def_strs.reserve(defaultValues.size());
         for (const auto& v : defaultValues)
-          def_strs.push_back(fmt::format("{}", v));
+        {
+          if constexpr (std::is_same_v<bool, T>)
+            def_strs.push_back(fmt::format("{}", (bool)v));
+          else
+            def_strs.push_back(fmt::format("{}", v));
+        }
         return def_strs;
       }
     }
@@ -308,8 +311,7 @@ namespace llarp
     {
       if (not multiValued and parsedValues.size() > 0)
       {
-        throw std::invalid_argument{
-            fmt::format("duplicate value for {}, previous value: {}", name, parsedValues[0])};
+        throw std::invalid_argument{fmt::format("duplicate value for {}", name)};
       }
 
       parsedValues.emplace_back(fromString(input));
@@ -329,8 +331,7 @@ namespace llarp
         iss >> t;
         if (iss.fail())
           throw std::invalid_argument{fmt::format("{} is not a valid {}", input, typeid(T).name())};
-        else
-          return t;
+        return t;
       }
     }
 
@@ -342,7 +343,12 @@ namespace llarp
       std::vector<std::string> result;
       result.reserve(parsedValues.size());
       for (const auto& v : parsedValues)
-        result.push_back(fmt::format("{}", v));
+      {
+        if constexpr (std::is_same_v<bool, T>)
+          result.push_back(fmt::format("{}", (bool)v));
+        else
+          result.push_back(fmt::format("{}", v));
+      }
       return result;
     }
 

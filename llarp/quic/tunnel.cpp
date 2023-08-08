@@ -196,10 +196,11 @@ namespace llarp::quic
       auto peer = client.peer();
       LogDebug("Closing connection to ", peer.ip, ":", peer.port);
       client.clear();
-      if (error_code)
-        client.close();
-      else
-        client.close();
+      // TOFIX: this logic
+      //   if (error_code)
+      // client.close();
+      //   else
+      client.close();
     }
 
   }  // namespace
@@ -265,7 +266,7 @@ namespace llarp::quic
       LogInfo("quic stream from ", lokinet_addr, " to ", port, " tunnelling to ", *tunnel_to);
 
       auto tcp = get_loop()->resource<uvw::TCPHandle>();
-      auto error_handler = tcp->once<uvw::ErrorEvent>(
+      [[maybe_unused]] auto error_handler = tcp->once<uvw::ErrorEvent>(
           [&stream, to = *tunnel_to](const uvw::ErrorEvent&, uvw::TCPHandle&) {
             LogWarn("Failed to connect to ", to, ", shutting down quic stream");
             stream.close(tunnel::ERROR_CONNECT);
@@ -275,8 +276,7 @@ namespace llarp::quic
       // tunnel to let the other end know the connection was successful, then set up regular
       // stream handling to handle any other to/from data.
       tcp->once<uvw::ConnectEvent>(
-          [streamw = stream.weak_from_this(), error_handler = std::move(error_handler)](
-              const uvw::ConnectEvent&, uvw::TCPHandle& tcp) {
+          [streamw = stream.weak_from_this()](const uvw::ConnectEvent&, uvw::TCPHandle& tcp) {
             auto peer = tcp.peer();
             auto stream = streamw.lock();
             if (!stream)
