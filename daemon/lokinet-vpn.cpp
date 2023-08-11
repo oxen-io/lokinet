@@ -210,7 +210,7 @@ main(int argc, char* argv[])
     if (auto err_it = maybe_halt->find("error");
         err_it != maybe_halt->end() and not err_it.value().is_null())
     {
-      return exit_error("{}", err_it.value());
+      return exit_error("{}", err_it.value().dump());
     }
   }
 
@@ -256,7 +256,7 @@ main(int argc, char* argv[])
     if (auto err_it = maybe_swap->find("error");
         err_it != maybe_swap->end() and not err_it.value().is_null())
     {
-      return exit_error("{}", err_it.value());
+      return exit_error("{}", err_it.value().dump());
     }
   }
 
@@ -274,7 +274,7 @@ main(int argc, char* argv[])
     if (auto err_it = maybe_result->find("error");
         err_it != maybe_result->end() and not err_it.value().is_null())
     {
-      return exit_error("{}", err_it.value());
+      return exit_error("{}", err_it.value().dump());
     }
   }
   if (options.vpnDown)
@@ -291,7 +291,7 @@ main(int argc, char* argv[])
     if (auto err_it = maybe_down->find("error");
         err_it != maybe_down->end() and not err_it.value().is_null())
     {
-      return exit_error("{}", err_it.value());
+      return exit_error("{}", err_it.value().dump());
     }
   }
 

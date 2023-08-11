@@ -90,7 +90,7 @@ namespace llarp::quic
         void* user_data)
     {
       std::basic_string_view data{rawdata, rawdatalen};
-      LogTrace("Receiving crypto data @ level ", crypto_level, " ", buffer_printer{data});
+      log::trace(log_cat, "Receiving crypto data: {}", buffer_printer{data});
 
       auto& conn = *static_cast<Connection*>(user_data);
       switch (crypto_level)
@@ -101,6 +101,7 @@ namespace llarp::quic
           return FAIL;
 
         case NGTCP2_CRYPTO_LEVEL_INITIAL:
+          log::trace(log_cat, "Receiving initial crypto...");
           // "Initial" level means we are still handshaking; if we are server then we receive
           // the client's transport params (sent in client_initial, above) and blast ours
           // back.  If we are a client then getting here means we received a response from the
@@ -120,6 +121,7 @@ namespace llarp::quic
           break;
 
         case NGTCP2_CRYPTO_LEVEL_HANDSHAKE:
+          log::trace(log_cat, "Receiving handshake crypto...");
           if (!ngtcp2_conn_is_server(conn))
           {
             if (auto rv = conn.recv_transport_params(data); rv != 0)
@@ -144,13 +146,8 @@ namespace llarp::quic
           conn.complete_handshake();
           break;
 
-        case NGTCP2_CRYPTO_LEVEL_APPLICATION:
-          // if (!conn.init_tx_key())
-          //    return FAIL;
-          break;
-
         default:
-          LogWarn("Unhandled crypto_level ", crypto_level);
+          LogWarn("Unhandled crypto_level");
           return FAIL;
       }
       conn.io_ready();

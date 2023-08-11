@@ -148,7 +148,6 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 
-
 if(NOT BUILD_STATIC_DEPS)
   pkg_check_modules(LIBUV libuv>=1.18.0 IMPORTED_TARGET)
 endif()

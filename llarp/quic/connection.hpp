@@ -21,6 +21,11 @@ extern "C"
 #include <uvw/poll.h>
 #include <uvw/timer.h>
 
+namespace
+{
+  static auto log_cat = llarp::log::Cat("lokinet.quic");
+}  // namespace
+
 namespace llarp::quic
 {
   // We send and verify this in the initial connection and handshake; this is designed to allow
