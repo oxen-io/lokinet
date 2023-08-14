@@ -72,11 +72,21 @@ namespace llarp
     _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
     m_Pump = _loop->make_waker([this]() { PumpLL(); });
+    m_Work = _loop->make_waker([this]() { submit_work(); });
   }
 
   Router::~Router()
   {
     llarp_dht_context_free(_dht);
+  }
+
+  void
+  Router::submit_work()
+  {
+    m_lmq->job([work = std::move(m_WorkJobs)]() {
+      for (const auto& job : work)
+        job();
+    });
   }
 
   void
@@ -1631,7 +1641,10 @@ namespace llarp
   void
   Router::QueueWork(std::function<void(void)> func)
   {
-    m_lmq->job(std::move(func));
+    _loop->call([this, func = std::move(func)]() mutable {
+      m_WorkJobs.push_back(std::move(func));
+      m_Work->Trigger();
+    });
   }
 
   void
