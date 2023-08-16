@@ -783,6 +783,11 @@ namespace llarp
   DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
+    conf.addSectionComments(
+        "dns",
+        {"This section is responsible for setting up dns subsystem."
+         "Any config items suffixed with a key suffixed with ':' (e.g. dns-cache-max:= 6000) are "
+         "forwarded to libunbound when it is configured on startup."});
 
     // Most non-linux platforms have loopback as 127.0.0.1/32, but linux uses 127.0.0.1/8 so that we
     // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
@@ -893,6 +898,9 @@ namespace llarp
 
     // forward the rest to libunbound
     conf.addUndeclaredHandler("dns", [this](auto, std::string_view key, std::string_view val) {
+      if (not ends_with(key, ":"))
+        throw std::invalid_argument{"Invalid option provided in dns config: '{}'"_format(key)};
+
       m_ExtraOpts.emplace(key, val);
     });
   }
