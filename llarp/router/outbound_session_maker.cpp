@@ -11,6 +11,7 @@
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/consensus/edge_selector.hpp>
 #include <utility>
 
 #include <llarp/rpc/lokid_rpc_client.hpp>
@@ -139,30 +140,23 @@ namespace llarp
   OutboundSessionMaker::ConnectToRandomRouters(int numDesired)
   {
     int remainingDesired = numDesired;
-    std::set<RouterID> exclude;
+    std::unordered_set<RouterID> exclude;
+    for (const auto& item : pendingSessions)
+      exclude.emplace(item.first);
+    _linkManager->ForEachPeer([&exclude](auto* session) {
+      if (session and session->IsEstablished())
+        exclude.emplace(session->GetPubKey());
+    });
     do
     {
-      auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
-
-      RouterContact other;
-      if (const auto maybe = _nodedb->GetRandom(filter))
-      {
-        other = *maybe;
-      }
-      else
+      auto maybe_rc = _router->edge_selector().select_path_edge(exclude);
+      if (not maybe_rc)
         break;
 
-      exclude.insert(other.pubkey);
-      if (not _rcLookup->SessionIsAllowed(other.pubkey))
-      {
-        continue;
-      }
-      if (not(_linkManager->HasSessionTo(other.pubkey) || HavePendingSessionTo(other.pubkey)))
-      {
-        CreateSessionTo(other, nullptr);
-        --remainingDesired;
-      }
-
+      const auto& rc = *maybe_rc;
+      exclude.insert(rc.pubkey);
+      CreateSessionTo(rc, nullptr);
+      --remainingDesired;
     } while (remainingDesired > 0);
     LogDebug(
         "connecting to ", numDesired - remainingDesired, " out of ", numDesired, " random routers");

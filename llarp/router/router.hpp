@@ -3,6 +3,7 @@
 #include "abstractrouter.hpp"
 
 #include <llarp/bootstrap.hpp>
+#include <llarp/consensus/edge_selector.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
 #include <llarp/constants/link_layer.hpp>
@@ -79,6 +80,8 @@ namespace llarp
 
     std::shared_ptr<EventLoopWakeup> m_Pump;
 
+    consensus::EdgeSelector _edge_selector;
+
     path::BuildLimiter&
     pathBuildLimiter() override
     {
@@ -147,6 +150,9 @@ namespace llarp
         const std::vector<RouterID>& whitelist,
         const std::vector<RouterID>& greylist,
         const std::vector<RouterID>& unfunded) override;
+
+    const consensus::EdgeSelector&
+    edge_selector() const override;
 
     std::unordered_set<RouterID>
     GetRouterWhitelist() const override
