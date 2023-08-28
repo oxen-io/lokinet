@@ -23,7 +23,7 @@ namespace llarp
 
     ~LinkManager() override = default;
 
-    llarp::link::Endpoint*
+    link::Endpoint*
     GetCompatibleLink(const RouterContact& rc) const override;
 
     IOutboundSessionMaker*
@@ -40,7 +40,7 @@ namespace llarp
     HaveConnection(const RouterID& remote) const override;
 
     bool
-    HaveClientConnection(const RouterID& remote) const
+    HaveClientConnection(const RouterID& remote) const override;
 
     void
     DeregisterPeer(RouterID remote) override;
@@ -141,7 +141,7 @@ namespace llarp
     // Network's destructor, so we need to be able to destroy it before this class.
     std::unique_ptr<oxen::quic::Network> quic { std::make_unique<oxen::quic::Network>() };
 
-    std::vector<Endpoint> endpoints;
+    std::vector<link::Endpoint> endpoints;
 
     //TODO: initialize creds
     std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;

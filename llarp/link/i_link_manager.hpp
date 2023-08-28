@@ -1,6 +1,8 @@
 #pragma once
 
+#include "endpoint.hpp"
 #include "server.hpp"
+
 #include <llarp/util/types.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 
@@ -20,7 +22,7 @@ namespace llarp
   {
     virtual ~ILinkManager() = default;
 
-    virtual llarp::link::Endpoint*
+    virtual link::Endpoint*
     GetCompatibleLink(const RouterContact& rc) const = 0;
 
     virtual IOutboundSessionMaker*
@@ -38,7 +40,7 @@ namespace llarp
 
     /// return true if we have a connection to the remote and it is not a relay,
     /// else return false
-    bool
+    virtual bool
     HaveClientConnection(const RouterID& remote) const = 0;
 
     virtual void

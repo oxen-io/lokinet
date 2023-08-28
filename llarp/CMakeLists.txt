@@ -333,7 +333,7 @@ add_library(lokinet-base INTERFACE)
 target_include_directories(lokinet-base
   INTERFACE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include
 )
-target_link_libraries(lokinet-base INTERFACE oxen::logging lokinet-cryptography)
+target_link_libraries(lokinet-base INTERFACE quic lokinet-cryptography)
 
 if(WITH_PEERSTATS)
   target_compile_definitions(lokinet-base INTERFACE -DLOKINET_PEERSTATS_BACKEND)
