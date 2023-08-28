@@ -513,7 +513,6 @@ target_link_libraries(lokinet-util PUBLIC
 )
 
 target_link_libraries(lokinet-plainquic PUBLIC
-  ngtcp2_crypto
   quic
   uvw
 )
