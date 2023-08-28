@@ -77,7 +77,7 @@ if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
 endif()
 if(BUILD_STATIC_DEPS)
   set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-  include(StaticBuild)
+  include(cmake/StaticBuild.cmake)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
