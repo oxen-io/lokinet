@@ -19,10 +19,8 @@ namespace llarp
   struct LinkManager final : public ILinkManager
   {
    public:
-     LinkManager(AbstractRouter* r) : router(r) {}
+     explicit LinkManager(AbstractRouter* r) : router{r} {}
 
-    IOutboundSessionMaker*
-    GetSessionMaker() const override;
 
     bool
     SendTo(

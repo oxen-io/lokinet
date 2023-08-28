@@ -52,9 +52,6 @@ namespace llarp
   {
     virtual ~ILinkManager() = default;
 
-    virtual IOutboundSessionMaker*
-    GetSessionMaker() const = 0;
-
     virtual bool
     SendTo(
         const RouterID& remote,
