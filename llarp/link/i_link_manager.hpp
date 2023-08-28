@@ -18,6 +18,9 @@ namespace llarp
   struct IOutboundSessionMaker;
   struct RouterID;
 
+  using bstring = std::basic_string<std::byte>;
+  using bstring_view = std::basic_string_view<std::byte>;
+
   struct ILinkManager
   {
     virtual ~ILinkManager() = default;

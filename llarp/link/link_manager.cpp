@@ -72,7 +72,9 @@ namespace llarp
     for (const auto& ep : endpoints)
     {
       if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
+      {
         itr->second.conn->close(); //TODO: libquic needs some function for this
+      }
     }
 
     LogInfo(remote, " has been de-registered");
@@ -186,7 +188,7 @@ namespace llarp
     {
       for (const auto& conn : ep.connections)
       {
-        if (not (conn.remote_is_relay and clients_only))
+        if (not (conn.second.remote_is_relay and clients_only))
           count++;
       }
     }

@@ -9,7 +9,6 @@
 
 namespace llarp::link
 {
-
   struct Endpoint
   {
     std::shared_ptr<oxen::quic::Endpoint> endpoint;
@@ -17,7 +16,7 @@ namespace llarp::link
 
     // for outgoing packets, we route via RouterID; map RouterID->Connection
     // for incoming packets, we get a ConnectionID; map ConnectionID->RouterID
-    std::unordered_map<RouterID, llarp::link::Connection> connections;
+    std::unordered_map<RouterID, link::Connection> connections;
     std::unordered_map<oxen::quic::ConnectionID, RouterID> connid_map;
 
   };
