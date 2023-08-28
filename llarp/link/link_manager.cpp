@@ -94,15 +94,15 @@ namespace llarp
   LinkManager::AddLink(const oxen::quic::opt::local_addr& bind, bool inbound)
   {
     //TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
-    auto ep = quic->endpoint(bind);
+    //      stream_opened, stream_data, stream_closed, conn_closed
+    oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
+    auto ep = quic->endpoint(bind, std::move(dgram_cb), oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
     endpoints.emplace_back();
     auto& endp = endpoints.back();
     endp.endpoint = std::move(ep);
     if (inbound)
     {
-      oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
-      oxen::quic::stream_data_callback stream_cb = [this](oxen::quic::Stream& stream, bstring_view packet){ HandleIncomingControlMessage(stream, packet); };
-      endp.endpoint->listen(tls_creds, dgram_cb, stream_cb);
+      endp.endpoint->listen(tls_creds);
       endp.inbound = true;
     }
   }
@@ -254,7 +254,6 @@ namespace llarp
       return;
 
     //TODO: connection established/failed callbacks
-    oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
     oxen::quic::stream_data_callback stream_cb = [this](oxen::quic::Stream& stream, bstring_view packet){ HandleIncomingControlMessage(stream, packet); };
 
     //TODO: once "compatible link" cares about address, actually choose addr to connect to
@@ -264,7 +263,8 @@ namespace llarp
     oxen::quic::opt::remote_addr remote{selected.IPString(), selected.port};
     //TODO: confirm remote end is using the expected pubkey (RouterID).
     //TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    auto conn_interface = ep->endpoint->connect(remote, dgram_cb, stream_cb, tls_creds);
+    //TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if so?
+    auto conn_interface = ep->endpoint->connect(remote, stream_cb, tls_creds);
 
     std::shared_ptr<oxen::quic::Stream> stream = conn_interface->get_new_stream();
 
