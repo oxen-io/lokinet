@@ -15,7 +15,7 @@ namespace llarp
 {
   struct PendingSession;
 
-  struct ILinkManager;
+  struct LinkManager;
   struct I_RCLookupHandler;
 
   struct OutboundSessionMaker final : public IOutboundSessionMaker
@@ -74,9 +74,6 @@ namespace llarp
 
    private:
     void
-    DoEstablish(const RouterID& router) EXCLUDES(_mutex);
-
-    void
     GotRouterContact(const RouterID& router, const RouterContact& rc) EXCLUDES(_mutex);
 
     void
@@ -98,15 +95,12 @@ namespace llarp
     void
     FinalizeRequest(const RouterID& router, const SessionResult type) EXCLUDES(_mutex);
 
-    mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
-
-    std::unordered_map<RouterID, std::shared_ptr<PendingSession>> pendingSessions
-        GUARDED_BY(_mutex);
+    mutable util::Mutex _mutex;  // protects pendingCallbacks
 
     std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
 
     AbstractRouter* _router = nullptr;
-    ILinkManager* _linkManager = nullptr;
+    LinkManager* _linkManager = nullptr;
     I_RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;
     std::shared_ptr<NodeDB> _nodedb;

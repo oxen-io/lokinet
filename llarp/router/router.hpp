@@ -311,8 +311,7 @@ namespace llarp
     Profiling _routerProfiling;
     fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
-    OutboundSessionMaker _outboundSessionMaker;
-    LinkManager _linkManager;
+    LinkManager _linkManager { this };
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 
@@ -328,12 +327,6 @@ namespace llarp
     outboundMessageHandler() override
     {
       return _outboundMessageHandler;
-    }
-
-    IOutboundSessionMaker&
-    outboundSessionMaker() override
-    {
-      return _outboundSessionMaker;
     }
 
     ILinkManager&
@@ -594,6 +587,9 @@ namespace llarp
 
     bool
     TooFewPeers() const;
+
+    void
+    AddAddressToRC(AddressInfo& ai);
 
    protected:
     virtual void

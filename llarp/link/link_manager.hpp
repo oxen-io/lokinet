@@ -4,6 +4,9 @@
 
 #include <llarp/util/compare_ptr.hpp>
 #include "server.hpp"
+#include "endpoint.hpp"
+
+#include <external/oxen-libquic/include/quic.hpp>
 
 #include <unordered_map>
 #include <set>
@@ -16,9 +19,11 @@ namespace llarp
   struct LinkManager final : public ILinkManager
   {
    public:
+     LinkManager(AbstractRouter* r) : router(r) {}
+
     ~LinkManager() override = default;
 
-    LinkLayer_ptr
+    llarp::link::Endpoint*
     GetCompatibleLink(const RouterContact& rc) const override;
 
     IOutboundSessionMaker*
@@ -32,25 +37,16 @@ namespace llarp
         uint16_t priority) override;
 
     bool
-    HasSessionTo(const RouterID& remote) const override;
+    HaveConnection(const RouterID& remote) const override;
 
     bool
-    HasOutboundSessionTo(const RouterID& remote) const override;
-
-    std::optional<bool>
-    SessionIsClient(RouterID remote) const override;
+    HaveClientConnection(const RouterID& remote) const
 
     void
     DeregisterPeer(RouterID remote) override;
 
     void
-    PumpLinks() override;
-
-    void
-    AddLink(LinkLayer_ptr link, bool inbound = false) override;
-
-    bool
-    StartLinks() override;
+    AddLink(oxen::quic::Address bind, bool inbound = false);
 
     void
     Stop() override;
@@ -58,27 +54,28 @@ namespace llarp
     void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
 
+    //TODO: change for libquic Connections
     void
     ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
         const override;
 
+    //TODO: change for libquic Connections
     void
     ForEachPeer(std::function<void(ILinkSession*)> visit) override;
 
+    //TODO: change for libquic Endpoints
     void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
+    //TODO: change for libquic Endpoints
     void
     ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
     size_t
-    NumberOfConnectedRouters() const override;
+    NumberOfConnectedRouters(bool clients_only = false) const override;
 
     size_t
     NumberOfConnectedClients() const override;
-
-    size_t
-    NumberOfPendingConnections() const override;
 
     bool
     GetRandomConnectedRouter(RouterContact& router) const override;
@@ -93,19 +90,39 @@ namespace llarp
     ExtractStatus() const override;
 
     void
-    Init(IOutboundSessionMaker* sessionMaker);
+    Init(I_RCLookupHandler* rcLookup);
+
+    // Do an RC lookup for the given RouterID; the result will trigger
+    // Connect(RouterContact) on success (or if we already have it), and will
+    // trigger connection failure callback on lookup failure.
+    void
+    Connect(RouterID router);
+
+    // Establish a connection to the remote `rc`.
+    //
+    // Connection established/failed callbacks should be invoked when either happens,
+    // but this function should do nothing if already connected.
+    void
+    Connect(RouterContact rc);
+
+    // Attempts to connect to a number of random routers.
+    //
+    // This will try to connect to *up to* numDesired routers, but will not
+    // check if we already have a connection to any of the random set, as making
+    // that thread safe would be slow...I think.
+    void
+    ConnectToRandomRouters(int numDesired);
+
+    //TODO: tune these (maybe even remove max?) now that we're switching to quic
+    /// always maintain this many connections to other routers
+    size_t minConnectedRouters = 4;
+    /// hard upperbound limit on the number of router to router connections
+    size_t maxConnectedRouters = 6;
 
    private:
-    LinkLayer_ptr
-    GetLinkWithSessionTo(const RouterID& remote) const;
 
     std::atomic<bool> stopping;
     mutable util::Mutex _mutex;  // protects m_PersistingSessions
-
-    using LinkSet = std::set<LinkLayer_ptr, ComparePtr<LinkLayer_ptr>>;
-
-    LinkSet outboundLinks;
-    LinkSet inboundLinks;
 
     // sessions to persist -> timestamp to end persist at
     std::unordered_map<RouterID, llarp_time_t> m_PersistingSessions GUARDED_BY(_mutex);
@@ -114,7 +131,24 @@ namespace llarp
 
     util::DecayingHashSet<RouterID> m_Clients{path::default_lifetime};
 
-    IOutboundSessionMaker* _sessionMaker;
+    I_RCLookupHandler* _rcLookup;
+    std::shared_ptr<NodeDB> _nodedb;
+
+    AbstractRouter* router;
+
+    // FIXME: Lokinet currently expects to be able to kill all network functionality before
+    // finishing other shutdown things, including destroying this class, and that is all in
+    // Network's destructor, so we need to be able to destroy it before this class.
+    std::unique_ptr<oxen::quic::Network> quic { std::make_unique<oxen::quic::Network>() };
+
+    std::vector<Endpoint> endpoints;
+
+    //TODO: initialize creds
+    std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
+
+    void HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram);
+    void HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet);
+
   };
 
 }  // namespace llarp

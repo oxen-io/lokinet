@@ -79,6 +79,8 @@ namespace llarp
     llarp_dht_context_free(_dht);
   }
 
+  //TODO: investigate changes needed for libquic integration
+  //      still needed at all?
   void
   Router::PumpLL()
   {
@@ -109,6 +111,7 @@ namespace llarp
         {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
   }
 
+  //TODO: investigate changes needed for libquic integration
   util::StatusObject
   Router::ExtractSummaryStatus() const
   {
@@ -206,6 +209,7 @@ namespace llarp
     return stats;
   }
 
+  //TODO: libquic change
   bool
   Router::HandleRecvLinkMessageBuffer(ILinkSession* session, const llarp_buffer_t& buf)
   {
@@ -219,6 +223,8 @@ namespace llarp
     }
     return inbound_link_msg_parser.ProcessFrom(session, buf);
   }
+
+  //TODO: investigate changes needed for libquic integration
   void
   Router::Freeze()
   {
@@ -230,6 +236,7 @@ namespace llarp
     });
   }
 
+  //TODO: investigate changes needed for libquic integration
   void
   Router::Thaw()
   {
@@ -305,12 +312,14 @@ namespace llarp
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
 
+  //TODO: if still needed/useful, replace this in line with libquic impl
   void
   Router::ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const
   {
     _linkManager.ForEachPeer(visit, randomize);
   }
 
+  //TODO: if still needed/useful, replace this in line with libquic impl
   void
   Router::ForEachPeer(std::function<void(ILinkSession*)> visit)
   {
@@ -329,7 +338,7 @@ namespace llarp
     if (remote.Verify(Now()))
     {
       LogDebug("verified signature");
-      _outboundSessionMaker.CreateSessionTo(remote, nullptr);
+      _linkManager->Connect(remote);
     }
     else
       LogError(rcfile, " contains invalid RC");
@@ -614,6 +623,7 @@ namespace llarp
     _rc = std::move(nextRC);
     if (rotateKeys)
     {
+      //TODO: libquic change
       // propagate RC by renegotiating sessions
       ForEachPeer([](ILinkSession* s) {
         if (s->RenegotiateSession())
@@ -650,8 +660,8 @@ namespace llarp
 
     // Router config
     _rc.SetNick(conf.router.m_nickname);
-    _outboundSessionMaker.maxConnectedRouters = conf.router.m_maxConnectedRouters;
-    _outboundSessionMaker.minConnectedRouters = conf.router.m_minConnectedRouters;
+    _linkManager.maxConnectedRouters = conf.router.m_maxConnectedRouters;
+    _linkManager.minConnectedRouters = conf.router.m_minConnectedRouters;
 
     encryption_keyfile = m_keyManager->m_encKeyPath;
     our_rc_file = m_keyManager->m_rcPath;
@@ -771,14 +781,7 @@ namespace llarp
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(this);
-    _outboundSessionMaker.Init(
-        this,
-        &_linkManager,
-        &_rcLookupHandler,
-        &_routerProfiling,
-        _loop,
-        util::memFn(&AbstractRouter::QueueWork, this));
-    _linkManager.Init(&_outboundSessionMaker);
+    _linkManager.Init(&_rcLookupHandler);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
@@ -791,10 +794,11 @@ namespace llarp
         whitelistRouters,
         m_isServiceNode);
 
-    // inbound links
-    InitInboundLinks();
-    // outbound links
-    InitOutboundLinks();
+    //FIXME: kludge for now, will be part of larger cleanup effort.
+    if (m_isServiceNode)
+      InitInboundLinks();
+    else
+      InitOutboundLinks();
 
     // profiling
     _profilesFile = conf.router.m_dataDir / "profiles.dat";
@@ -1047,10 +1051,6 @@ namespace llarp
     _linkManager.CheckPersistingSessions(now);
 
     size_t connected = NumberOfConnectedRouters();
-    if (not isSvcNode)
-    {
-      connected += _linkManager.NumberOfPendingConnections();
-    }
 
     const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
@@ -1059,7 +1059,7 @@ namespace llarp
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
     }
-    size_t connectToNum = _outboundSessionMaker.minConnectedRouters;
+    size_t connectToNum = _linkManager.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
     if (strictConnect > 0 && connectToNum > strictConnect)
     {
@@ -1097,7 +1097,7 @@ namespace llarp
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
-      _outboundSessionMaker.ConnectToRandomRouters(dlt);
+      _linkManager.ConnectToRandomRouters(dlt);
     }
 
     _hiddenServiceContext.Tick(now);
@@ -1134,6 +1134,7 @@ namespace llarp
       }
     }
 
+    //TODO: libquic change
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
     _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {
@@ -1156,6 +1157,7 @@ namespace llarp
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
+  //TODO: replace this in line with libquic impl
   void
   Router::SessionClosed(RouterID remote)
   {
@@ -1172,6 +1174,7 @@ namespace llarp
     }
   }
 
+  //TODO: replace this in line with libquic impl
   void
   Router::ConnectionTimedOut(ILinkSession* session)
   {
@@ -1195,6 +1198,7 @@ namespace llarp
     }
   }
 
+  //TODO: replace this in line with libquic impl
   bool
   Router::ConnectionEstablished(ILinkSession* session, bool inbound)
   {
@@ -1275,39 +1279,6 @@ namespace llarp
       _rc.routerVersion = RouterVersion(llarp::VERSION, llarp::constants::proto_version);
     }
 
-    _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
-      AddressInfo ai;
-      if (link->GetOurAddressInfo(ai))
-      {
-        // override ip and port as needed
-        if (_ourAddress)
-        {
-          const auto ai_ip = ai.IP();
-          const auto override_ip = _ourAddress->getIP();
-
-          auto ai_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, ai_ip);
-          auto override_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, override_ip);
-
-          if ((not Net().IsBogonIP(ai_ip)) and (not Net().IsBogonIP(override_ip))
-              and ai_ip != override_ip)
-            throw std::runtime_error{
-                "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
-                "[router]:public-ip setting or set a bind address in the [bind] section of the "
-                "config."_format(ai_ip_str, override_ip_str)};
-          ai.fromSockAddr(*_ourAddress);
-        }
-        if (RouterContact::BlockBogons && Net().IsBogon(ai.ip))
-          throw std::runtime_error{var::visit(
-              [](auto&& ip) {
-                return "cannot use " + ip.ToString()
-                    + " as a public ip as it is in a non routable ip range";
-              },
-              ai.IP())};
-        LogInfo("adding address: ", ai);
-        _rc.addrs.push_back(ai);
-      }
-    });
-
     if (IsServiceNode() and not _rc.IsPublicRouter())
     {
       LogError("we are configured as relay but have no reachable addresses");
@@ -1331,12 +1302,6 @@ namespace llarp
         LogError("failed to save RC");
         return false;
       }
-    }
-    _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks())
-    {
-      LogWarn("One or more links failed to start.");
-      return false;
     }
 
     if (IsServiceNode())
@@ -1426,6 +1391,11 @@ namespace llarp
           LogDebug("Establishing session to ", router, " for SN testing");
           // try to make a session to this random router
           // this will do a dht lookup if needed
+          _linkManager->Connect(router);
+
+          /*
+           * TODO: container of pending snode test routers to be queried on
+           *       connection success/failure, then do this stuff there.
           _outboundSessionMaker.CreateSessionTo(
               router, [previous_fails = fails, this](const auto& router, const auto result) {
                 auto rpc = RpcClient();
@@ -1465,6 +1435,7 @@ namespace llarp
                   rpc->InformConnection(router, result == SessionResult::Establish);
                 }
               });
+          */
         }
       });
     }
@@ -1569,7 +1540,7 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID& remote) const
   {
-    return _linkManager.HasSessionTo(remote);
+    return _linkManager.HaveConnection(remote);
   }
 
   std::string
@@ -1589,13 +1560,9 @@ namespace llarp
   {
     const size_t want = _want;
     auto connected = NumberOfConnectedRouters();
-    if (not IsServiceNode())
-    {
-      connected += _linkManager.NumberOfPendingConnections();
-    }
     if (connected >= want)
       return;
-    _outboundSessionMaker.ConnectToRandomRouters(want);
+    _linkManager.ConnectToRandomRouters(want);
   }
 
   bool
@@ -1623,7 +1590,7 @@ namespace llarp
       return false;
     }
 
-    _outboundSessionMaker.CreateSessionTo(rc, nullptr);
+    _linkManager->Connect(rc);
 
     return true;
   }
@@ -1649,6 +1616,8 @@ namespace llarp
     return ep and ep->HasExit();
   }
 
+  //TODO: change to use new LinkManager foreach semantics, or make function for this
+  //      on LinkManager itself
   std::optional<std::variant<nuint32_t, nuint128_t>>
   Router::OurPublicIP() const
   {
@@ -1663,6 +1632,37 @@ namespace llarp
         found = ai.IP();
     });
     return found;
+  }
+
+  void
+  AddAddressToRC(AddressInfo& ai)
+  {
+    // override ip and port as needed
+    if (_ourAddress)
+    {
+      const auto ai_ip = ai.IP();
+      const auto override_ip = _ourAddress->getIP();
+
+      auto ai_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, ai_ip);
+      auto override_ip_str = var::visit([](auto&& ip) { return ip.ToString(); }, override_ip);
+
+      if ((not Net().IsBogonIP(ai_ip)) and (not Net().IsBogonIP(override_ip))
+          and ai_ip != override_ip)
+        throw std::runtime_error{
+          "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
+            "[router]:public-ip setting or set a bind address in the [bind] section of the "
+            "config."_format(ai_ip_str, override_ip_str)};
+      ai.fromSockAddr(*_ourAddress);
+    }
+    if (RouterContact::BlockBogons && Net().IsBogon(ai.ip))
+      throw std::runtime_error{var::visit(
+          [](auto&& ip) {
+          return "cannot use " + ip.ToString()
+          + " as a public ip as it is in a non routable ip range";
+          },
+          ai.IP())};
+    LogInfo("adding address: ", ai);
+    _rc.addrs.push_back(ai);
   }
 
   void
@@ -1702,22 +1702,14 @@ namespace llarp
           throw std::runtime_error{"no public ip provided for inbound socket"};
       }
 
-      auto server = iwp::NewInboundLink(
-          m_keyManager,
-          loop(),
-          util::memFn(&AbstractRouter::rc, this),
-          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-          util::memFn(&AbstractRouter::Sign, this),
-          nullptr,
-          util::memFn(&Router::ConnectionEstablished, this),
-          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&Router::ConnectionTimedOut, this),
-          util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::TriggerPump, this),
-          util::memFn(&AbstractRouter::QueueWork, this));
+      _linkManager.AddLink(bind_addr.ToString(), true);
 
-      server->Bind(this, bind_addr);
-      _linkManager.AddLink(std::move(server), true);
+      AddressInfo ai;
+      ai.fromSockAddr(bind_addr);
+      ai.pubkey = llarp::seckey_topublic(_identity);
+      ai.dialect = "quicinet"; // FIXME: constant, also better name?
+      ai.rank = 2; // FIXME: hardcoded from the beginning...keep?
+      AddAddressToRC(ai);
     }
   }
 
@@ -1730,47 +1722,7 @@ namespace llarp
 
     for (auto& bind_addr : addrs)
     {
-      auto link = iwp::NewOutboundLink(
-          m_keyManager,
-          loop(),
-          util::memFn(&AbstractRouter::rc, this),
-          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-          util::memFn(&AbstractRouter::Sign, this),
-          [this](llarp::RouterContact rc) {
-            if (IsServiceNode())
-              return;
-            for (const auto& addr : rc.addrs)
-              m_RoutePoker->AddRoute(addr.IPv4());
-          },
-          util::memFn(&Router::ConnectionEstablished, this),
-          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&Router::ConnectionTimedOut, this),
-          util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::TriggerPump, this),
-          util::memFn(&AbstractRouter::QueueWork, this));
-
-      const auto& net = Net();
-
-      // If outbound is set to wildcard and we have just one inbound, then bind to the inbound IP;
-      // if you have more than one inbound you have to be explicit about your outbound.
-      if (net.IsWildcardAddress(bind_addr.getIP()))
-      {
-        bool multiple = false;
-        _linkManager.ForEachInboundLink([&bind_addr, &multiple](const auto& link) {
-          if (multiple)
-            throw std::runtime_error{
-                "outbound= IP address must be specified when using multiple inbound= addresses"};
-          multiple = true;
-          bind_addr.setIP(link->LocalSocketAddr().getIP());
-        });
-      }
-
-      link->Bind(this, bind_addr);
-
-      if constexpr (llarp::platform::is_android)
-        m_OutboundUDPSocket = link->GetUDPFD().value_or(-1);
-
-      _linkManager.AddLink(std::move(link), false);
+      _linkManager.AddLink(bind_addr.ToString(), false);
     }
   }
 

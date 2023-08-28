@@ -24,7 +24,7 @@ namespace llarp
       const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
   {
     // if the destination is invalid, callback with failure and return
-    if (not _router->linkManager().SessionIsClient(remote)
+    if (not _router->linkManager().HaveClientConnection(remote)
         and not _router->rcLookupHandler().SessionIsAllowed(remote))
     {
       DoCallback(callback, SendStatus::InvalidRouter);
@@ -49,7 +49,7 @@ namespace llarp
     std::copy_n(buf.base, buf.sz, ent.message.data());
 
     // if we have a session to the destination, queue the message and return
-    if (_router->linkManager().HasSessionTo(remote))
+    if (_router->linkManager().HaveConnection(remote))
     {
       QueueOutboundMessage(std::move(ent));
       return true;
@@ -213,7 +213,7 @@ namespace llarp
   bool
   OutboundMessageHandler::SendIfSession(const MessageQueueEntry& ent)
   {
-    if (_router->linkManager().HasSessionTo(ent.router))
+    if (_router->linkManager().HaveConnection(ent.router))
     {
       return Send(ent);
     }

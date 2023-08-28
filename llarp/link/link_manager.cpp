@@ -8,32 +8,25 @@
 
 namespace llarp
 {
-  LinkLayer_ptr
+  llarp::link::Endpoint*
   LinkManager::GetCompatibleLink(const RouterContact& rc) const
   {
     if (stopping)
       return nullptr;
 
-    for (auto& link : outboundLinks)
+    for (const auto& ep : endpoints)
     {
-      // TODO: may want to add some memory of session failures for a given
-      //      router on a given link and not return that link here for a
-      //      duration
-      if (not link->IsCompatable(rc))
-        continue;
-
-      return link;
+      //TODO: need some notion of "is this link compatible with that address".
+      //      iwp just checks that the link dialect ("iwp") matches the address info dialect,
+      //      but that feels insufficient.  For now, just return the first endpoint we have;
+      //      we should probably only have 1 for now anyway until we make ipv6 work.
+      return &ep;
     }
 
     return nullptr;
   }
 
-  IOutboundSessionMaker*
-  LinkManager::GetSessionMaker() const
-  {
-    return _sessionMaker;
-  }
-
+  //TODO: replace with control/data message sending with libquic
   bool
   LinkManager::SendTo(
       const RouterID& remote,
@@ -58,108 +51,48 @@ namespace llarp
   }
 
   bool
-  LinkManager::HasSessionTo(const RouterID& remote) const
+  LinkManager::HaveClientConnection(const RouterID& remote) const
   {
-    return GetLinkWithSessionTo(remote) != nullptr;
-  }
-
-  bool
-  LinkManager::HasOutboundSessionTo(const RouterID& remote) const
-  {
-    for (const auto& link : outboundLinks)
+    for (const auto& ep : endpoints)
     {
-      if (link->HasSessionTo(remote))
+      if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
+      {
+        if (itr->second.remote_is_relay)
+          return false;
         return true;
+      }
     }
     return false;
-  }
-
-  std::optional<bool>
-  LinkManager::SessionIsClient(RouterID remote) const
-  {
-    for (const auto& link : inboundLinks)
-    {
-      const auto session = link->FindSessionByPubkey(remote);
-      if (session)
-        return not session->IsRelay();
-    }
-    if (HasOutboundSessionTo(remote))
-      return false;
-    return std::nullopt;
   }
 
   void
   LinkManager::DeregisterPeer(RouterID remote)
   {
     m_PersistingSessions.erase(remote);
-    for (const auto& link : inboundLinks)
+    for (const auto& ep : endpoints)
     {
-      link->CloseSessionTo(remote);
+      if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
+        itr->second.conn->close(); //TODO: libquic needs some function for this
     }
-    for (const auto& link : outboundLinks)
-    {
-      link->CloseSessionTo(remote);
-    }
+
     LogInfo(remote, " has been de-registered");
   }
 
   void
-  LinkManager::PumpLinks()
+  AddLink(oxen::quic::Address bind, bool inbound = false)
   {
-    for (const auto& link : inboundLinks)
-    {
-      link->Pump();
-    }
-    for (const auto& link : outboundLinks)
-    {
-      link->Pump();
-    }
-  }
-
-  void
-  LinkManager::AddLink(LinkLayer_ptr link, bool inbound)
-  {
-    util::Lock l(_mutex);
-
+    //TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
+    auto ep = quic->endpoint(bind);
+    endpoints.emplace_back();
+    auto& endp = endpoints.back();
+    endp.endpoint = std::move(ep);
     if (inbound)
     {
-      inboundLinks.emplace(link);
+      oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
+      oxen::quic::stream_data_callback stream_cb = [this](oxen::quic::Stream& stream, bstring_view packet){ HandleIncomingControlMessage(stream, packet); };
+      endp.endpoint->listen(tls_creds, dgram_cb, stream_cb);
+      endp.inbound = true;
     }
-    else
-    {
-      outboundLinks.emplace(link);
-    }
-  }
-
-  bool
-  LinkManager::StartLinks()
-  {
-    LogInfo("starting ", outboundLinks.size(), " outbound links");
-    for (const auto& link : outboundLinks)
-    {
-      if (!link->Start())
-      {
-        LogWarn("outbound link '", link->Name(), "' failed to start");
-        return false;
-      }
-      LogDebug("Outbound Link ", link->Name(), " started");
-    }
-
-    if (inboundLinks.size())
-    {
-      LogInfo("starting ", inboundLinks.size(), " inbound links");
-      for (const auto& link : inboundLinks)
-      {
-        if (!link->Start())
-        {
-          LogWarn("Link ", link->Name(), " failed to start");
-          return false;
-        }
-        LogDebug("Inbound Link ", link->Name(), " started");
-      }
-    }
-
-    return true;
   }
 
   void
@@ -175,10 +108,7 @@ namespace llarp
     LogInfo("stopping links");
     stopping = true;
 
-    for (const auto& link : outboundLinks)
-      link->Stop();
-    for (const auto& link : inboundLinks)
-      link->Stop();
+    quic.reset();
   }
 
   void
@@ -190,13 +120,10 @@ namespace llarp
     util::Lock l(_mutex);
 
     m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
-    if (auto maybe = SessionIsClient(remote))
+    if (HaveClientConnection(remote))
     {
-      if (*maybe)
-      {
-        // mark this as a client so we don't try to back connect
-        m_Clients.Upsert(remote);
-      }
+      // mark this as a client so we don't try to back connect
+      m_Clients.Upsert(remote);
     }
   }
 
@@ -252,64 +179,28 @@ namespace llarp
   }
 
   size_t
-  LinkManager::NumberOfConnectedRouters() const
+  LinkManager::NumberOfConnectedRouters(bool clients_only) const
   {
-    std::set<RouterID> connectedRouters;
-
-    auto fn = [&connectedRouters](const ILinkSession* session, bool) {
-      if (session->IsEstablished())
+    size_t count{0};
+    for (const auto& ep : endpoints)
+    {
+      for (const auto& conn : ep.connections)
       {
-        const RouterContact rc(session->GetRemoteRC());
-        if (rc.IsPublicRouter())
-        {
-          connectedRouters.insert(rc.pubkey);
-        }
+        if (not (conn.remote_is_relay and clients_only))
+          count++;
       }
-    };
+    }
 
-    ForEachPeer(fn);
-
-    return connectedRouters.size();
+    return count;
   }
 
   size_t
   LinkManager::NumberOfConnectedClients() const
   {
-    std::set<RouterID> connectedClients;
-
-    auto fn = [&connectedClients](const ILinkSession* session, bool) {
-      if (session->IsEstablished())
-      {
-        const RouterContact rc(session->GetRemoteRC());
-        if (!rc.IsPublicRouter())
-        {
-          connectedClients.insert(rc.pubkey);
-        }
-      }
-    };
-
-    ForEachPeer(fn);
-
-    return connectedClients.size();
+    return NumberOfConnectedRouters(true);
   }
 
-  size_t
-  LinkManager::NumberOfPendingConnections() const
-  {
-    size_t pending = 0;
-    for (const auto& link : inboundLinks)
-    {
-      pending += link->NumberOfPendingSessions();
-    }
-
-    for (const auto& link : outboundLinks)
-    {
-      pending += link->NumberOfPendingSessions();
-    }
-
-    return pending;
-  }
-
+  //TODO: libquic
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact& router) const
   {
@@ -339,148 +230,142 @@ namespace llarp
     return false;
   }
 
+  //TODO: this?  perhaps no longer necessary in the same way?
   void
   LinkManager::CheckPersistingSessions(llarp_time_t now)
   {
     if (stopping)
       return;
-
-    std::vector<RouterID> sessionsNeeded;
-    std::vector<RouterID> sessionsClosed;
-
-    {
-      util::Lock l(_mutex);
-      for (auto [remote, until] : m_PersistingSessions)
-      {
-        if (now < until)
-        {
-          auto link = GetLinkWithSessionTo(remote);
-          if (link)
-          {
-            link->KeepAliveSessionTo(remote);
-          }
-          else if (not m_Clients.Contains(remote))
-          {
-            sessionsNeeded.push_back(remote);
-          }
-        }
-        else if (not m_Clients.Contains(remote))
-        {
-          sessionsClosed.push_back(remote);
-        }
-      }
-    }
-
-    for (const auto& router : sessionsNeeded)
-    {
-      LogDebug("ensuring session to ", router, " for previously made commitment");
-      _sessionMaker->CreateSessionTo(router, nullptr);
-    }
-
-    for (const auto& router : sessionsClosed)
-    {
-      m_PersistingSessions.erase(router);
-      ForEachOutboundLink([router](auto link) { link->CloseSessionTo(router); });
-    }
   }
 
+  //TODO: do we still need this concept?
   void
   LinkManager::updatePeerDb(std::shared_ptr<PeerDb> peerDb)
   {
-    std::vector<std::pair<RouterID, SessionStats>> statsToUpdate;
-
-    int64_t diffTotalTX = 0;
-
-    ForEachPeer([&](ILinkSession* session) {
-      // derive RouterID
-      RouterID id = RouterID(session->GetRemoteRC().pubkey);
-
-      SessionStats sessionStats = session->GetSessionStats();
-      SessionStats diff;
-      SessionStats& lastStats = m_lastRouterStats[id];
-
-      // TODO: operator overloads / member func for diff
-      diff.currentRateRX = std::max(sessionStats.currentRateRX, lastStats.currentRateRX);
-      diff.currentRateTX = std::max(sessionStats.currentRateTX, lastStats.currentRateTX);
-      diff.totalPacketsRX = sessionStats.totalPacketsRX - lastStats.totalPacketsRX;
-      diff.totalAckedTX = sessionStats.totalAckedTX - lastStats.totalAckedTX;
-      diff.totalDroppedTX = sessionStats.totalDroppedTX - lastStats.totalDroppedTX;
-
-      diffTotalTX = diff.totalAckedTX + diff.totalDroppedTX + diff.totalInFlightTX;
-
-      lastStats = sessionStats;
-
-      // TODO: if we have both inbound and outbound session, this will overwrite
-      statsToUpdate.push_back({id, diff});
-    });
-
-    for (auto& routerStats : statsToUpdate)
-    {
-      peerDb->modifyPeerStats(routerStats.first, [&](PeerStats& stats) {
-        // TODO: store separate stats for up vs down
-        const auto& diff = routerStats.second;
-
-        // note that 'currentRateRX' and 'currentRateTX' are per-second
-        stats.peakBandwidthBytesPerSec = std::max(
-            stats.peakBandwidthBytesPerSec,
-            (double)std::max(diff.currentRateRX, diff.currentRateTX));
-        stats.numPacketsDropped += diff.totalDroppedTX;
-        stats.numPacketsSent = diff.totalAckedTX;
-        stats.numPacketsAttempted = diffTotalTX;
-
-        // TODO: others -- we have slight mismatch on what we store
-      });
-    }
   }
 
+  //TODO: this
   util::StatusObject
   LinkManager::ExtractStatus() const
   {
-    std::vector<util::StatusObject> ob_links, ib_links;
-    std::transform(
-        inboundLinks.begin(),
-        inboundLinks.end(),
-        std::back_inserter(ib_links),
-        [](const auto& link) -> util::StatusObject { return link->ExtractStatus(); });
-    std::transform(
-        outboundLinks.begin(),
-        outboundLinks.end(),
-        std::back_inserter(ob_links),
-        [](const auto& link) -> util::StatusObject { return link->ExtractStatus(); });
-
-    util::StatusObject obj{{"outbound", ob_links}, {"inbound", ib_links}};
-
-    return obj;
+    return {};
   }
 
   void
-  LinkManager::Init(IOutboundSessionMaker* sessionMaker)
+  LinkManager::Init(I_RCLookupHandler* rcLookup)
   {
     stopping = false;
-    _sessionMaker = sessionMaker;
+    _rcLookup = rcLookup;
+    _nodedb = router->nodedb();
   }
 
-  LinkLayer_ptr
-  LinkManager::GetLinkWithSessionTo(const RouterID& remote) const
+  void
+  LinkManager::Connect(RouterID router)
   {
-    if (stopping)
-      return nullptr;
+    auto fn = [this](const RouterID& r, const RouterContact* const rc, const RCRequestResult res){
+        if (res == RCRequestResult::Success)
+          Connect(*rc);
+        /* TODO:
+        else
+          RC lookup failure callback here
+        */
+    };
 
-    for (const auto& link : outboundLinks)
+    _rcLookup->GetRC(router, fn);
+  }
+
+  // This function assumes the RC has already had its signature verified and connection is allowed.
+  void
+  LinkManager::Connect(RouterContact rc)
+  {
+    //TODO: connection failed callback
+    if (HaveConnection(rc.pubkey))
+      return;
+
+    // RC shouldn't be valid if this is the case, but may as well sanity check...
+    //TODO: connection failed callback
+    if (rc.addrs.empty())
+      return;
+
+    //TODO: connection failed callback
+    auto* ep = GetCompatibleLink(rc);
+    if (ep == nullptr)
+      return;
+
+    //TODO: connection established/failed callbacks
+    oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
+    oxen::quic::stream_data_callback stream_cb = [this](oxen::quic::Stream& stream, bstring_view packet){ HandleIncomingControlMessage(stream, packet); };
+
+    //TODO: once "compatible link" cares about address, actually choose addr to connect to
+    //      based on which one is compatible with the link we chose.  For now, just use
+    //      the first one.
+    auto& selected = rc.addrs[0];
+    llarp::quic::opt::remote_addr remote{selected.IPString(), selected.port};
+    //TODO: confirm remote end is using the expected pubkey (RouterID).
+    //TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
+    auto conn_interface = ep->connect(remote, dgram_cb, stream_cb, tls_creds);
+
+    std::shared_ptr<oxen::quic::Stream> stream = conn_interface->get_new_stream();
+
+    llarp::link::Connection conn;
+    conn.conn = conn_interface;
+    conn.control_stream = stream;
+    conn.remote_rc = rc;
+    conn.inbound = false;
+    conn.remote_is_relay = true;
+
+    ep->connections[rc.pubkey] = std::move(conn);
+    ep->connid_map[conn_interface->scid()] = rc.pubkey;
+  }
+
+  void
+  LinkManager::ConnectToRandomRouters(int numDesired)
+  {
+    std::set<RouterID> exclude;
+    do
     {
-      if (link->HasSessionTo(remote))
+      auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
+
+      RouterContact other;
+      if (const auto maybe = _nodedb->GetRandom(filter))
       {
-        return link;
+        other = *maybe;
+      }
+      else
+        break;
+
+      exclude.insert(other.pubkey);
+      if (not _rcLookup->SessionIsAllowed(other.pubkey))
+        continue;
+
+      Connect(other);
+      --remainingDesired;
+    } while (remainingDesired > 0);
+  }
+
+  bool
+  LinkManager::HaveConnection(const RouterID& remote)
+  {
+    for (const auto& ep : endpoints)
+    {
+      if (ep.connections.contains(remote))
+      {
+        return true;
       }
     }
-    for (const auto& link : inboundLinks)
-    {
-      if (link->HasSessionTo(remote))
-      {
-        return link;
-      }
-    }
-    return nullptr;
+    return false;
+  }
+
+  void
+  LinkManager::HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram)
+  {
+    //TODO: this
+  }
+
+  void
+  LinkManager::HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet)
+  {
+    //TODO: this
   }
 
 }  // namespace llarp

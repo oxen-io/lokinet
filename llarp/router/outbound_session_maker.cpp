@@ -6,7 +6,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/nodedb.hpp>
 #include "i_rc_lookup_handler.hpp"
-#include <llarp/link/i_link_manager.hpp>
+#include <llarp/link/link_manager.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/status.hpp>
@@ -17,19 +17,6 @@
 
 namespace llarp
 {
-  struct PendingSession
-  {
-    // TODO: add session establish status metadata, e.g. num retries
-
-    const RouterContact rc;
-    LinkLayer_ptr link;
-
-    size_t attemptCount = 0;
-
-    PendingSession(RouterContact _rc, LinkLayer_ptr _link)
-        : rc(std::move(_rc)), link(std::move(_link))
-    {}
-  };
 
   bool
   OutboundSessionMaker::OnSessionEstablished(ILinkSession* session)
@@ -67,12 +54,12 @@ namespace llarp
   void
   OutboundSessionMaker::CreateSessionTo(const RouterID& router, RouterCallback on_result)
   {
-    if (on_result)
     {
       util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
-      itr_pair.first->second.push_back(on_result);
+      if (on_result)
+        itr_pair.first->second.push_back(on_result);
     }
 
     if (HavePendingSessionTo(router))
@@ -85,7 +72,7 @@ namespace llarp
 
     // short-circuit to success callback if we already have an outbound session
     // to the remote
-    if (_linkManager->HasOutboundSessionTo(router))
+    if (_linkManager->HasConnection(router))
     {
       FinalizeRequest(router, SessionResult::Establish);
       return;
@@ -103,26 +90,18 @@ namespace llarp
   {
     const RouterID router{rc.pubkey};
 
-    if (on_result)
     {
       util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
-      itr_pair.first->second.push_back(on_result);
+      if (on_result)
+        itr_pair.first->second.push_back(on_result);
     }
 
     if (not HavePendingSessionTo(router))
     {
       LogDebug("Creating session establish attempt to ", router);
       CreatePendingSession(router);
-    }
-
-    // short-circuit to success callback if we already have an outbound session
-    // to the remote
-    if (_linkManager->HasOutboundSessionTo(router))
-    {
-      FinalizeRequest(router, SessionResult::Establish);
-      return;
     }
 
     GotRouterContact(router, rc);
@@ -132,7 +111,7 @@ namespace llarp
   OutboundSessionMaker::HavePendingSessionTo(const RouterID& router) const
   {
     util::Lock l(_mutex);
-    return pendingSessions.find(router) != pendingSessions.end();
+    return pendingCallbacks.find(router) != pendingCallbacks.end();
   }
 
   void
@@ -195,60 +174,25 @@ namespace llarp
   }
 
   void
-  OutboundSessionMaker::DoEstablish(const RouterID& router)
+  OutboundSessionMaker::GotRouterContact(const RouterID& router, const RouterContact& rc)
   {
-    std::unique_lock l{_mutex};
-
-    auto itr = pendingSessions.find(router);
-
-    if (itr == pendingSessions.end())
+    if (not _rcLookup->CheckRC(rc))
     {
+      FinalizeRequest(rc.pubkey, SessionResult::InvalidRouter);
       return;
     }
 
-    const auto& job = itr->second;
-    if (not job->link->TryEstablishTo(job->rc))
-    {
-      l.unlock();
-      FinalizeRequest(router, SessionResult::EstablishFail);
-    }
-  }
-
-  void
-  OutboundSessionMaker::GotRouterContact(const RouterID& router, const RouterContact& rc)
-  {
-    {
-      std::unique_lock l{_mutex};
-
-      // in case other request found RC for this router after this request was
-      // made
-      auto itr = pendingSessions.find(router);
-      if (itr == pendingSessions.end())
-      {
-        return;
-      }
-
-      LinkLayer_ptr link = _linkManager->GetCompatibleLink(rc);
-
-      if (not link)
-      {
-        l.unlock();
-        FinalizeRequest(router, SessionResult::NoLink);
-        return;
-      }
-
-      auto session = std::make_shared<PendingSession>(rc, link);
-
-      itr->second = session;
-    }
-    if (ShouldConnectTo(router))
-    {
-      _loop->call([this, router] { DoEstablish(router); });
-    }
-    else
+    if (not ShouldConnectTo(router))
     {
       FinalizeRequest(router, SessionResult::NoLink);
+      return;
     }
+
+    auto result = _linkManager->Connect(rc);
+    if (result)
+      FinalizeRequest(router, SessionResult::Establish);
+    else
+      FinalizeRequest(router, SessionResult::EstablishFail);
   }
 
   bool
@@ -256,16 +200,14 @@ namespace llarp
   {
     if (router == us or not _rcLookup->SessionIsAllowed(router))
       return false;
-    if (_linkManager->HasOutboundSessionTo(router))
-      return false;
     if (_router->IsServiceNode())
       return true;
 
     size_t numPending = 0;
     {
       util::Lock lock(_mutex);
-      if (pendingSessions.find(router) == pendingSessions.end())
-        numPending += pendingSessions.size();
+      if (pendingCallbacks.find(router) == pendingCallbacks.end())
+        numPending += pendingCallbacks.size();
     }
 
     return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
@@ -330,14 +272,10 @@ namespace llarp
     FinalizeRequest(rc.pubkey, SessionResult::Establish);
   }
 
+  //TODO: rename this, if we even want to keep it
   void
   OutboundSessionMaker::CreatePendingSession(const RouterID& router)
   {
-    {
-      util::Lock l(_mutex);
-      pendingSessions.emplace(router, nullptr);
-    }
-
     auto peerDb = _router->peerDb();
     if (peerDb)
     {
@@ -376,11 +314,6 @@ namespace llarp
     for (const auto& callback : movedCallbacks)
     {
       _loop->call([callback, router, type] { return callback(router, type); });
-    }
-
-    {
-      util::Lock l(_mutex);
-      pendingSessions.erase(router);
     }
   }
 

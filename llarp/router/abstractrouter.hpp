@@ -40,7 +40,6 @@ namespace llarp
   struct SecretKey;
   struct Signature;
   struct IOutboundMessageHandler;
-  struct IOutboundSessionMaker;
   struct ILinkManager;
   struct I_RCLookupHandler;
   struct RoutePoker;
@@ -174,9 +173,6 @@ namespace llarp
 
     virtual IOutboundMessageHandler&
     outboundMessageHandler() = 0;
-
-    virtual IOutboundSessionMaker&
-    outboundSessionMaker() = 0;
 
     virtual ILinkManager&
     linkManager() = 0;

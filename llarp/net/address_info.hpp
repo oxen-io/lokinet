@@ -65,6 +65,9 @@ namespace llarp
 
     std::string
     ToString() const;
+
+    std::string
+    IPString() const;
   };
 
   void

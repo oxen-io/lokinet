@@ -20,7 +20,7 @@ namespace llarp
   {
     virtual ~ILinkManager() = default;
 
-    virtual LinkLayer_ptr
+    virtual llarp::link::Endpoint*
     GetCompatibleLink(const RouterContact& rc) const = 0;
 
     virtual IOutboundSessionMaker*
@@ -34,28 +34,12 @@ namespace llarp
         uint16_t priority = 0) = 0;
 
     virtual bool
-    HasSessionTo(const RouterID& remote) const = 0;
+    HaveConnection(const RouterID& remote) const = 0;
 
-    // it is fine to have both an inbound and outbound session with
-    // another relay, and is useful for network testing.  This test
-    // is more specific for use with "should we connect outbound?"
-    virtual bool
-    HasOutboundSessionTo(const RouterID& remote) const = 0;
-
-    /// return true if the session with this pubkey is a client
-    /// return false if the session with this pubkey is a router
-    /// return std::nullopt we have no session with this pubkey
-    virtual std::optional<bool>
-    SessionIsClient(RouterID remote) const = 0;
-
-    virtual void
-    PumpLinks() = 0;
-
-    virtual void
-    AddLink(LinkLayer_ptr link, bool inbound = false) = 0;
-
-    virtual bool
-    StartLinks() = 0;
+    /// return true if we have a connection to the remote and it is not a relay,
+    /// else return false
+    bool
+    HaveClientConnection(const RouterID& remote) const = 0;
 
     virtual void
     Stop() = 0;
@@ -82,13 +66,10 @@ namespace llarp
     DeregisterPeer(RouterID remote) = 0;
 
     virtual size_t
-    NumberOfConnectedRouters() const = 0;
+    NumberOfConnectedRouters(bool clients_only = false) const = 0;
 
     virtual size_t
     NumberOfConnectedClients() const = 0;
-
-    virtual size_t
-    NumberOfPendingConnections() const = 0;
 
     virtual bool
     GetRandomConnectedRouter(RouterContact& router) const = 0;
