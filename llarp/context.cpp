@@ -96,8 +96,7 @@ namespace llarp
   std::shared_ptr<AbstractRouter>
   Context::makeRouter(const EventLoop_ptr& loop)
   {
-    return std::static_pointer_cast<AbstractRouter>(
-        std::make_shared<Router>(loop, makeVPNPlatform()));
+    return std::make_shared<Router>(loop, makeVPNPlatform());
   }
 
   std::shared_ptr<vpn::Platform>
