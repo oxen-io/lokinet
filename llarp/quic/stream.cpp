@@ -326,7 +326,7 @@ namespace llarp::quic
     else if (error_code)
     {
       is_closing = is_shutdown = true;
-      ngtcp2_conn_shutdown_stream(conn, stream_id.id, *error_code);
+      ngtcp2_conn_shutdown_stream(conn, 0, stream_id.id, *error_code);
     }
     else if (is_closing)
       LogDebug("Stream is already closing");

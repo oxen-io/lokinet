@@ -31,7 +31,7 @@ namespace llarp::quic
     {  // Invalid/unexpected version, send a version negotiation
       LogDebug("Invalid/unsupported version; sending version negotiation");
       send_version_negotiation(
-          version_info{hd.version, hd.dcid.data, hd.dcid.datalen, hd.scid.data, hd.scid.datalen},
+          ngtcp2_version_cid{hd.version, hd.dcid.data, hd.dcid.datalen, hd.scid.data, hd.scid.datalen},
           p.path.remote);
       return nullptr;
     }
@@ -42,7 +42,7 @@ namespace llarp::quic
       return nullptr;
     }
 
-    if (hd.type == NGTCP2_PKT_INITIAL && hd.token.len)
+    if (hd.type == NGTCP2_PKT_INITIAL && hd.tokenlen)
     {
       // This is a normal QUIC thing, but we don't do it:
       LogWarn("Unexpected token in initial packet");

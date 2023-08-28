@@ -185,7 +185,7 @@ namespace llarp::quic
     }
 
     void
-    send_version_negotiation(const version_info& vi, const Address& source);
+    send_version_negotiation(const ngtcp2_version_cid& vi, const Address& source);
 
     // Looks up a connection. Returns a shared_ptr (either copied for a primary connection, or
     // locked from an alias's weak pointer) if the connection was found or nullptr if not; and a

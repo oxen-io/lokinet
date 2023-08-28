@@ -98,19 +98,15 @@ namespace llarp::quic
   std::optional<ConnectionID>
   Endpoint::handle_packet_init(const Packet& p)
   {
-    version_info vi;
+    ngtcp2_version_cid vid;
     auto rv = ngtcp2_pkt_decode_version_cid(
-        &vi.version,
-        &vi.dcid,
-        &vi.dcid_len,
-        &vi.scid,
-        &vi.scid_len,
+        &vid,
         u8data(p.data),
         p.data.size(),
         NGTCP2_MAX_CIDLEN);
     if (rv == 1)
     {  // 1 means Version Negotiation should be sent and otherwise the packet should be ignored
-      send_version_negotiation(vi, p.path.remote);
+      send_version_negotiation(vid, p.path.remote);
       return std::nullopt;
     }
     if (rv != 0)
@@ -119,14 +115,15 @@ namespace llarp::quic
       return std::nullopt;
     }
 
-    if (vi.dcid_len > ConnectionID::max_size())
+    if (vid.dcidlen > ConnectionID::max_size())
     {
       LogWarn("Internal error: destination ID is longer than should be allowed");
       return std::nullopt;
     }
 
-    return std::make_optional<ConnectionID>(vi.dcid, vi.dcid_len);
+    return std::make_optional<ConnectionID>(vid.dcid, vid.dcidlen);
   }
+
   void
   Endpoint::handle_conn_packet(Connection& conn, const Packet& p)
   {
@@ -198,7 +195,7 @@ namespace llarp::quic
   }
 
   void
-  Endpoint::send_version_negotiation(const version_info& vi, const Address& source)
+  Endpoint::send_version_negotiation(const ngtcp2_version_cid& vi, const Address& source)
   {
     std::array<std::byte, Endpoint::max_pkt_size_v4> buf;
     std::array<uint32_t, NGTCP2_PROTO_VER_MAX - NGTCP2_PROTO_VER_MIN + 2> versions;
@@ -212,9 +209,9 @@ namespace llarp::quic
         buf.size(),
         std::uniform_int_distribution<uint8_t>{0, 255}(rng),
         vi.dcid,
-        vi.dcid_len,
+        vi.dcidlen,
         vi.scid,
-        vi.scid_len,
+        vi.scidlen,
         versions.data(),
         versions.size());
     if (nwrote < 0)
@@ -236,19 +233,16 @@ namespace llarp::quic
       Path path;
       ngtcp2_pkt_info pi;
 
-      auto write_close_func = application ? ngtcp2_conn_write_application_close_versioned
-                                          : ngtcp2_conn_write_connection_close_versioned;
+      ngtcp2_ccerr err;
+      ngtcp2_ccerr_set_liberr(&err, code, reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())), close_reason.size());
 
-      auto written = write_close_func(
+      auto written = ngtcp2_conn_write_connection_close(
           conn,
           path,
-          NGTCP2_PKT_INFO_VERSION,
           &pi,
           u8data(conn.conn_buffer),
           conn.conn_buffer.size(),
-          code,
-          reinterpret_cast<const uint8_t*>(close_reason.data()),
-          close_reason.size(),
+          &err,
           get_timestamp());
       if (written <= 0)
       {
@@ -318,7 +312,7 @@ namespace llarp::quic
       if (auto* conn_ptr = std::get_if<primary_conn_ptr>(&it->second))
       {
         Connection& conn = **conn_ptr;
-        auto exp = ngtcp2_conn_get_idle_expiry(conn);
+        auto exp = ngtcp2_conn_get_expiry(conn);
         if (exp >= now_ts || conn.draining)
           continue;
         start_draining(conn);
