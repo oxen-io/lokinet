@@ -100,6 +100,9 @@ namespace llarp
 
     std::vector<RouterID> gossipTo;
 
+    /*
+     * TODO: gossip RC via libquic
+     *
     // select peers to gossip to
     m_LinkManager->ForEachPeer(
         [&](const ILinkSession* peerSession, bool) {
@@ -140,6 +143,10 @@ namespace llarp
       // send message
       peerSession->SendMessageBuffer(std::move(msg), nullptr, gossip.Priority());
     });
+     *
+     *
+     */
+
     return true;
   }
 

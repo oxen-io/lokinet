@@ -236,7 +236,6 @@ add_library(lokinet-context
   context.cpp
   link/link_manager.cpp
   router/outbound_message_handler.cpp
-  router/outbound_session_maker.cpp
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp
@@ -515,7 +514,7 @@ target_link_libraries(lokinet-util PUBLIC
 
 target_link_libraries(lokinet-plainquic PUBLIC
   ngtcp2_crypto
-  libquic
+  quic
   uvw
 )
 

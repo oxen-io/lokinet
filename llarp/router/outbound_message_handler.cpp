@@ -168,11 +168,11 @@ namespace llarp
       _router->loop()->call([f = std::move(callback), status] { f(status); });
   }
 
+  //TODO: still necessary/desired?
   void
   OutboundMessageHandler::QueueSessionCreation(const RouterID& remote)
   {
-    auto fn = util::memFn(&OutboundMessageHandler::OnSessionResult, this);
-    _router->linkManager().GetSessionMaker()->CreateSessionTo(remote, fn);
+    _router->linkManager().Connect(remote);
   }
 
   bool

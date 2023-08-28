@@ -183,7 +183,7 @@ namespace llarp
   {
     char tmp[INET6_ADDRSTRLEN] = {0};
     inet_ntop(AF_INET6, (void*)&ip, tmp, sizeof(tmp));
-    return std::string{sizeof(tmp), tmp};
+    return std::string{tmp};
   }
 
   void

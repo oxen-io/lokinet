@@ -91,7 +91,6 @@ namespace llarp
     paths.PumpUpstream();
     _hiddenServiceContext.Pump();
     _outboundMessageHandler.Pump();
-    _linkManager.PumpLinks();
     llarp::LogTrace("Router::PumpLL() end");
   }
 
@@ -224,24 +223,30 @@ namespace llarp
     return inbound_link_msg_parser.ProcessFrom(session, buf);
   }
 
-  //TODO: investigate changes needed for libquic integration
   void
   Router::Freeze()
   {
     if (IsServiceNode())
       return;
+    /*
+     *TODO: investigate changes needed for libquic integration
+     *
     linkManager().ForEachPeer([](auto peer) {
       if (peer)
         peer->Close();
     });
+     *
+     */
   }
 
-  //TODO: investigate changes needed for libquic integration
   void
   Router::Thaw()
   {
     if (IsServiceNode())
       return;
+    /*
+     *TODO: investigate changes needed for libquic integration
+     *
     // get pubkeys we are connected to
     std::unordered_set<RouterID> peerPubkeys;
     linkManager().ForEachPeer([&peerPubkeys](auto peer) {
@@ -261,6 +266,8 @@ namespace llarp
       return true;
     });
     LogInfo("We are ready to go bruh...  probably");
+     *
+     */
   }
 
   void
@@ -316,14 +323,14 @@ namespace llarp
   void
   Router::ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const
   {
-    _linkManager.ForEachPeer(visit, randomize);
+    //_linkManager.ForEachPeer(visit, randomize);
   }
 
   //TODO: if still needed/useful, replace this in line with libquic impl
   void
   Router::ForEachPeer(std::function<void(ILinkSession*)> visit)
   {
-    _linkManager.ForEachPeer(visit);
+    //_linkManager.ForEachPeer(visit);
   }
 
   void
@@ -338,7 +345,7 @@ namespace llarp
     if (remote.Verify(Now()))
     {
       LogDebug("verified signature");
-      _linkManager->Connect(remote);
+      _linkManager.Connect(remote);
     }
     else
       LogError(rcfile, " contains invalid RC");
@@ -625,12 +632,14 @@ namespace llarp
     {
       //TODO: libquic change
       // propagate RC by renegotiating sessions
+      /*
       ForEachPeer([](ILinkSession* s) {
         if (s->RenegotiateSession())
           LogInfo("renegotiated session");
         else
           LogWarn("failed to renegotiate session");
       });
+      */
     }
     if (IsServiceNode())
       return SaveRC();
@@ -1032,6 +1041,9 @@ namespace llarp
     // find all deregistered relays
     std::unordered_set<PubKey> closePeers;
 
+    /*
+     * TODO: change for libquic
+     *
     _linkManager.ForEachPeer([&](auto session) {
       if (whitelistRouters and not gotWhitelist)
         return;
@@ -1043,6 +1055,9 @@ namespace llarp
         closePeers.emplace(pk);
       }
     });
+     *
+     *
+     */
 
     // mark peers as de-registered
     for (auto& peer : closePeers)
@@ -1134,7 +1149,9 @@ namespace llarp
       }
     }
 
-    //TODO: libquic change
+    /*
+     *TODO: libquic change
+     *
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
     _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {
@@ -1147,6 +1164,8 @@ namespace llarp
         [&peersWeHave](const dht::Key_t& k) -> bool { return peersWeHave.count(k) == 0; });
     // expire paths
     paths.ExpirePaths(now);
+     *
+     */
     // update tick timestamp
     _lastTick = llarp::time_now_ms();
   }
@@ -1184,7 +1203,6 @@ namespace llarp
       // TODO: make sure this is a public router (on whitelist)?
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionTimeouts++; });
     }
-    _outboundSessionMaker.OnConnectTimeout(session);
   }
 
   void
@@ -1209,7 +1227,6 @@ namespace llarp
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionSuccesses++; });
     }
     NotifyRouterEvent<tooling::LinkSessionEstablishedEvent>(pubkey(), id, inbound);
-    return _outboundSessionMaker.OnSessionEstablished(session);
   }
 
   bool
@@ -1391,7 +1408,7 @@ namespace llarp
           LogDebug("Establishing session to ", router, " for SN testing");
           // try to make a session to this random router
           // this will do a dht lookup if needed
-          _linkManager->Connect(router);
+          _linkManager.Connect(router);
 
           /*
            * TODO: container of pending snode test routers to be queried on
@@ -1533,7 +1550,6 @@ namespace llarp
     paths.PumpUpstream();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final links pump");
-    _linkManager.PumpLinks();
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
 
@@ -1590,7 +1606,7 @@ namespace llarp
       return false;
     }
 
-    _linkManager->Connect(rc);
+    _linkManager.Connect(rc);
 
     return true;
   }
@@ -1616,14 +1632,16 @@ namespace llarp
     return ep and ep->HasExit();
   }
 
-  //TODO: change to use new LinkManager foreach semantics, or make function for this
-  //      on LinkManager itself
   std::optional<std::variant<nuint32_t, nuint128_t>>
   Router::OurPublicIP() const
   {
     if (_ourAddress)
       return _ourAddress->getIP();
     std::optional<std::variant<nuint32_t, nuint128_t>> found;
+    /*
+     *TODO: change to use new LinkManager foreach semantics, or make function for this
+     *      on LinkManager itself
+     *
     _linkManager.ForEachInboundLink([&found](const auto& link) {
       if (found)
         return;
@@ -1631,11 +1649,14 @@ namespace llarp
       if (link->GetOurAddressInfo(ai))
         found = ai.IP();
     });
+     *
+     *
+     */
     return found;
   }
 
   void
-  AddAddressToRC(AddressInfo& ai)
+  Router::AddAddressToRC(AddressInfo& ai)
   {
     // override ip and port as needed
     if (_ourAddress)
@@ -1702,10 +1723,11 @@ namespace llarp
           throw std::runtime_error{"no public ip provided for inbound socket"};
       }
 
-      _linkManager.AddLink(bind_addr.ToString(), true);
-
       AddressInfo ai;
       ai.fromSockAddr(bind_addr);
+
+      _linkManager.AddLink({ai.IPString(), ai.port}, true);
+
       ai.pubkey = llarp::seckey_topublic(_identity);
       ai.dialect = "quicinet"; // FIXME: constant, also better name?
       ai.rank = 2; // FIXME: hardcoded from the beginning...keep?
@@ -1722,7 +1744,9 @@ namespace llarp
 
     for (auto& bind_addr : addrs)
     {
-      _linkManager.AddLink(bind_addr.ToString(), false);
+      AddressInfo ai;
+      ai.fromSockAddr(bind_addr);
+      _linkManager.AddLink({ai.IPString(), ai.port}, false);
     }
   }
 

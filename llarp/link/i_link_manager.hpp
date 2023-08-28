@@ -13,6 +13,33 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
+
+  //TODO: do we still want this?
+  enum class SessionResult
+  {
+    Establish,
+    Timeout,
+    RouterNotFound,
+    InvalidRouter,
+    NoLink,
+    EstablishFail
+  };
+
+  constexpr std::string_view
+  ToString(SessionResult sr)
+  {
+    return sr == llarp::SessionResult::Establish     ? "success"sv
+        : sr == llarp::SessionResult::Timeout        ? "timeout"sv
+        : sr == llarp::SessionResult::NoLink         ? "no link"sv
+        : sr == llarp::SessionResult::InvalidRouter  ? "invalid router"sv
+        : sr == llarp::SessionResult::RouterNotFound ? "not found"sv
+        : sr == llarp::SessionResult::EstablishFail  ? "establish failed"sv
+                                                     : "???"sv;
+  }
+  template <>
+  constexpr inline bool IsToStringFormattable<SessionResult> = true;
+
+
   struct RouterContact;
   struct ILinkSession;
   struct IOutboundSessionMaker;
@@ -25,9 +52,6 @@ namespace llarp
   {
     virtual ~ILinkManager() = default;
 
-    virtual link::Endpoint*
-    GetCompatibleLink(const RouterContact& rc) const = 0;
-
     virtual IOutboundSessionMaker*
     GetSessionMaker() const = 0;
 
@@ -39,7 +63,7 @@ namespace llarp
         uint16_t priority = 0) = 0;
 
     virtual bool
-    HaveConnection(const RouterID& remote) const = 0;
+    HaveConnection(const RouterID& remote, bool client_only = false) const = 0;
 
     /// return true if we have a connection to the remote and it is not a relay,
     /// else return false
@@ -51,19 +75,6 @@ namespace llarp
 
     virtual void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) = 0;
-
-    virtual void
-    ForEachPeer(
-        std::function<void(const ILinkSession*, bool)> visit, bool randomize = false) const = 0;
-
-    virtual void
-    ForEachPeer(std::function<void(ILinkSession*)> visit) = 0;
-
-    virtual void
-    ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
-
-    virtual void
-    ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
 
     /// close all connections to this peer
     /// remove all link layer commits
@@ -87,6 +98,19 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    // Do an RC lookup for the given RouterID; the result will trigger
+    // Connect(RouterContact) on success (or if we already have it), and will
+    // trigger connection failure callback on lookup failure.
+    virtual void
+    Connect(RouterID router) = 0;
+
+    // Establish a connection to the remote `rc`.
+    //
+    // Connection established/failed callbacks should be invoked when either happens,
+    // but this function should do nothing if already connected.
+    virtual void
+    Connect(RouterContact rc) = 0;
   };
 
 }  // namespace llarp

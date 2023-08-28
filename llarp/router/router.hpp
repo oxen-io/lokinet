@@ -19,7 +19,6 @@
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
 #include "outbound_message_handler.hpp"
-#include "outbound_session_maker.hpp"
 #include "rc_gossiper.hpp"
 #include "rc_lookup_handler.hpp"
 #include "route_poker.hpp"

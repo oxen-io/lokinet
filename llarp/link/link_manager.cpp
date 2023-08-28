@@ -1,6 +1,7 @@
 #include "link_manager.hpp"
 
-#include <llarp/router/i_outbound_session_maker.hpp>
+#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/crypto/crypto.hpp>
 
 #include <algorithm>
@@ -8,13 +9,13 @@
 
 namespace llarp
 {
-  llarp::link::Endpoint*
-  LinkManager::GetCompatibleLink(const RouterContact& rc) const
+  link::Endpoint*
+  LinkManager::GetCompatibleLink(const RouterContact& rc)
   {
     if (stopping)
       return nullptr;
 
-    for (const auto& ep : endpoints)
+    for (auto& ep : endpoints)
     {
       //TODO: need some notion of "is this link compatible with that address".
       //      iwp just checks that the link dialect ("iwp") matches the address info dialect,
@@ -37,8 +38,7 @@ namespace llarp
     if (stopping)
       return false;
 
-    auto link = GetLinkWithSessionTo(remote);
-    if (link == nullptr)
+    if (not HaveConnection(remote))
     {
       if (completed)
       {
@@ -47,22 +47,30 @@ namespace llarp
       return false;
     }
 
-    return link->SendTo(remote, buf, completed, priority);
+    //TODO: send the message
+    //TODO: if we keep bool return type, change this accordingly
+    return false;
   }
 
   bool
-  LinkManager::HaveClientConnection(const RouterID& remote) const
+  LinkManager::HaveConnection(const RouterID& remote, bool client_only) const
   {
     for (const auto& ep : endpoints)
     {
       if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
       {
-        if (itr->second.remote_is_relay)
-          return false;
-        return true;
+        if (not (itr->second.remote_is_relay and client_only))
+          return true;
+        return false;
       }
     }
     return false;
+  }
+
+  bool
+  LinkManager::HaveClientConnection(const RouterID& remote) const
+  {
+    return HaveConnection(remote, true);
   }
 
   void
@@ -73,7 +81,9 @@ namespace llarp
     {
       if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
       {
+        /*
         itr->second.conn->close(); //TODO: libquic needs some function for this
+        */
       }
     }
 
@@ -81,7 +91,7 @@ namespace llarp
   }
 
   void
-  AddLink(oxen::quic::Address bind, bool inbound = false)
+  LinkManager::AddLink(const oxen::quic::opt::local_addr& bind, bool inbound)
   {
     //TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
     auto ep = quic->endpoint(bind);
@@ -129,57 +139,6 @@ namespace llarp
     }
   }
 
-  void
-  LinkManager::ForEachPeer(
-      std::function<void(const ILinkSession*, bool)> visit, bool randomize) const
-  {
-    if (stopping)
-      return;
-
-    for (const auto& link : outboundLinks)
-    {
-      link->ForEachSession([visit](const ILinkSession* peer) { visit(peer, true); }, randomize);
-    }
-    for (const auto& link : inboundLinks)
-    {
-      link->ForEachSession([visit](const ILinkSession* peer) { visit(peer, false); }, randomize);
-    }
-  }
-
-  void
-  LinkManager::ForEachPeer(std::function<void(ILinkSession*)> visit)
-  {
-    if (stopping)
-      return;
-
-    for (const auto& link : outboundLinks)
-    {
-      link->ForEachSession([visit](ILinkSession* peer) { visit(peer); });
-    }
-    for (const auto& link : inboundLinks)
-    {
-      link->ForEachSession([visit](ILinkSession* peer) { visit(peer); });
-    }
-  }
-
-  void
-  LinkManager::ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const
-  {
-    for (const auto& link : inboundLinks)
-    {
-      visit(link);
-    }
-  }
-
-  void
-  LinkManager::ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const
-  {
-    for (const auto& link : outboundLinks)
-    {
-      visit(link);
-    }
-  }
-
   size_t
   LinkManager::NumberOfConnectedRouters(bool clients_only) const
   {
@@ -202,18 +161,18 @@ namespace llarp
     return NumberOfConnectedRouters(true);
   }
 
-  //TODO: libquic
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact& router) const
   {
     std::unordered_map<RouterID, RouterContact> connectedRouters;
 
-    ForEachPeer(
-        [&connectedRouters](const ILinkSession* peer, bool unused) {
-          (void)unused;
-          connectedRouters[peer->GetPubKey()] = peer->GetRemoteRC();
-        },
-        false);
+    for (const auto& ep : endpoints)
+    {
+      for (const auto& [router_id, conn] : ep.connections)
+      {
+        connectedRouters.emplace(router_id, conn.remote_rc);
+      }
+    }
 
     const auto sz = connectedRouters.size();
     if (sz)
@@ -302,10 +261,10 @@ namespace llarp
     //      based on which one is compatible with the link we chose.  For now, just use
     //      the first one.
     auto& selected = rc.addrs[0];
-    llarp::quic::opt::remote_addr remote{selected.IPString(), selected.port};
+    oxen::quic::opt::remote_addr remote{selected.IPString(), selected.port};
     //TODO: confirm remote end is using the expected pubkey (RouterID).
     //TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    auto conn_interface = ep->connect(remote, dgram_cb, stream_cb, tls_creds);
+    auto conn_interface = ep->endpoint->connect(remote, dgram_cb, stream_cb, tls_creds);
 
     std::shared_ptr<oxen::quic::Stream> stream = conn_interface->get_new_stream();
 
@@ -324,6 +283,7 @@ namespace llarp
   LinkManager::ConnectToRandomRouters(int numDesired)
   {
     std::set<RouterID> exclude;
+    auto remainingDesired = numDesired;
     do
     {
       auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
@@ -343,19 +303,6 @@ namespace llarp
       Connect(other);
       --remainingDesired;
     } while (remainingDesired > 0);
-  }
-
-  bool
-  LinkManager::HaveConnection(const RouterID& remote)
-  {
-    for (const auto& ep : endpoints)
-    {
-      if (ep.connections.contains(remote))
-      {
-        return true;
-      }
-    }
-    return false;
   }
 
   void

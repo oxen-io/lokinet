@@ -23,9 +23,6 @@ namespace llarp
 
     ~LinkManager() override = default;
 
-    link::Endpoint*
-    GetCompatibleLink(const RouterContact& rc) const override;
-
     IOutboundSessionMaker*
     GetSessionMaker() const override;
 
@@ -37,7 +34,7 @@ namespace llarp
         uint16_t priority) override;
 
     bool
-    HaveConnection(const RouterID& remote) const override;
+    HaveConnection(const RouterID& remote, bool client_only = false) const override;
 
     bool
     HaveClientConnection(const RouterID& remote) const override;
@@ -46,30 +43,13 @@ namespace llarp
     DeregisterPeer(RouterID remote) override;
 
     void
-    AddLink(oxen::quic::Address bind, bool inbound = false);
+    AddLink(const oxen::quic::opt::local_addr& bind, bool inbound = false);
 
     void
     Stop() override;
 
     void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
-
-    //TODO: change for libquic Connections
-    void
-    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
-        const override;
-
-    //TODO: change for libquic Connections
-    void
-    ForEachPeer(std::function<void(ILinkSession*)> visit) override;
-
-    //TODO: change for libquic Endpoints
-    void
-    ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
-
-    //TODO: change for libquic Endpoints
-    void
-    ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
     size_t
     NumberOfConnectedRouters(bool clients_only = false) const override;
@@ -92,16 +72,9 @@ namespace llarp
     void
     Init(I_RCLookupHandler* rcLookup);
 
-    // Do an RC lookup for the given RouterID; the result will trigger
-    // Connect(RouterContact) on success (or if we already have it), and will
-    // trigger connection failure callback on lookup failure.
     void
     Connect(RouterID router);
 
-    // Establish a connection to the remote `rc`.
-    //
-    // Connection established/failed callbacks should be invoked when either happens,
-    // but this function should do nothing if already connected.
     void
     Connect(RouterContact rc);
 
@@ -120,6 +93,9 @@ namespace llarp
     size_t maxConnectedRouters = 6;
 
    private:
+
+    link::Endpoint*
+    GetCompatibleLink(const RouterContact& rc);
 
     std::atomic<bool> stopping;
     mutable util::Mutex _mutex;  // protects m_PersistingSessions

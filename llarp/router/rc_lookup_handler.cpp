@@ -337,6 +337,9 @@ namespace llarp
       return;
 
     // explore via every connected peer
+    /*
+     * TODO: DHT explore via libquic
+     *
     _linkManager->ForEachPeer([&](ILinkSession* s) {
       if (!s->IsEstablished())
         return;
@@ -347,6 +350,9 @@ namespace llarp
         _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     });
+     *
+     *
+     */
   }
 
   void
