@@ -21,8 +21,6 @@ namespace llarp
    public:
      LinkManager(AbstractRouter* r) : router(r) {}
 
-    ~LinkManager() override = default;
-
     IOutboundSessionMaker*
     GetSessionMaker() const override;
 
@@ -73,10 +71,10 @@ namespace llarp
     Init(I_RCLookupHandler* rcLookup);
 
     void
-    Connect(RouterID router);
+    Connect(RouterID router) override;
 
     void
-    Connect(RouterContact rc);
+    Connect(RouterContact rc) override;
 
     // Attempts to connect to a number of random routers.
     //
