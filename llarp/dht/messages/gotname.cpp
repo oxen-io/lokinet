@@ -9,23 +9,30 @@ namespace llarp::dht
   constexpr size_t NameSizeLimit = 128;
 
   GotNameMessage::GotNameMessage(const Key_t& from, uint64_t txid, service::EncryptedName data)
-      : IMessage(from), result(std::move(data)), TxID(txid)
+      : AbstractDHTMessage(from), result(std::move(data)), TxID(txid)
   {
     if (result.ciphertext.size() > NameSizeLimit)
       throw std::invalid_argument("name data too big");
   }
 
-  bool
-  GotNameMessage::BEncode(llarp_buffer_t* buf) const
+  void
+  GotNameMessage::bt_encode(oxenc::bt_dict_producer& btdp) const
   {
-    const std::string nonce((const char*)result.nonce.data(), result.nonce.size());
-    const auto data = oxenc::bt_serialize(
-        oxenc::bt_dict{{"A", "M"sv}, {"D", result.ciphertext}, {"N", nonce}, {"T", TxID}});
-    return buf->write(data.begin(), data.end());
+    try
+    {
+      btdp.append("A", "M");
+      btdp.append("D", result.ciphertext);
+      btdp.append("N", result.nonce.ToView());
+      btdp.append("T", TxID);
+    }
+    catch (...)
+    {
+      log::error(dht_cat, "Error: GotNameMessage failed to bt encode contents!");
+    }
   }
 
   bool
-  GotNameMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
+  GotNameMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
     if (key.startswith("D"))
     {
@@ -50,7 +57,7 @@ namespace llarp::dht
   }
 
   bool
-  GotNameMessage::HandleMessage(struct llarp_dht_context* ctx, std::vector<Ptr_t>&) const
+  GotNameMessage::handle_message(struct llarp_dht_context* ctx, std::vector<Ptr_t>&) const
   {
     auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
     if (pathset == nullptr)

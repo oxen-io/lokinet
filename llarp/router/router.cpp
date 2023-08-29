@@ -79,8 +79,8 @@ namespace llarp
     llarp_dht_context_free(_dht);
   }
 
-  //TODO: investigate changes needed for libquic integration
-  //      still needed at all?
+  // TODO: investigate changes needed for libquic integration
+  //       still needed at all?
   void
   Router::PumpLL()
   {
@@ -110,7 +110,7 @@ namespace llarp
         {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
   }
 
-  //TODO: investigate changes needed for libquic integration
+  // TODO: investigate changes needed for libquic integration
   util::StatusObject
   Router::ExtractSummaryStatus() const
   {
@@ -208,9 +208,9 @@ namespace llarp
     return stats;
   }
 
-  //TODO: libquic change
+  // TODO: libquic change
   bool
-  Router::HandleRecvLinkMessageBuffer(ILinkSession* session, const llarp_buffer_t& buf)
+  Router::HandleRecvLinkMessageBuffer(AbstractLinkSession* session, const llarp_buffer_t& buf)
   {
     if (_stopping)
       return true;
@@ -314,21 +314,23 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler)
+  Router::SendToOrQueue(
+      const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler)
   {
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
 
-  //TODO: if still needed/useful, replace this in line with libquic impl
+  // TODO: if still needed/useful, replace this in line with libquic impl
   void
-  Router::ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const
+  Router::ForEachPeer(
+      std::function<void(const AbstractLinkSession*, bool)> visit, bool randomize) const
   {
     //_linkManager.ForEachPeer(visit, randomize);
   }
 
-  //TODO: if still needed/useful, replace this in line with libquic impl
+  // TODO: if still needed/useful, replace this in line with libquic impl
   void
-  Router::ForEachPeer(std::function<void(ILinkSession*)> visit)
+  Router::ForEachPeer(std::function<void(AbstractLinkSession*)> visit)
   {
     //_linkManager.ForEachPeer(visit);
   }
@@ -540,7 +542,7 @@ namespace llarp
 
   bool
   Router::ParseRoutingMessageBuffer(
-      const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid)
+      const llarp_buffer_t& buf, routing::AbstractRoutingMessageHandler* h, const PathID_t& rxid)
   {
     return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
   }
@@ -630,8 +632,8 @@ namespace llarp
     _rc = std::move(nextRC);
     if (rotateKeys)
     {
-      //TODO: libquic change
-      // propagate RC by renegotiating sessions
+      // TODO: libquic change
+      //  propagate RC by renegotiating sessions
       /*
       ForEachPeer([](ILinkSession* s) {
         if (s->RenegotiateSession())
@@ -803,7 +805,7 @@ namespace llarp
         whitelistRouters,
         m_isServiceNode);
 
-    //FIXME: kludge for now, will be part of larger cleanup effort.
+    // FIXME: kludge for now, will be part of larger cleanup effort.
     if (m_isServiceNode)
       InitInboundLinks();
     else
@@ -1176,7 +1178,7 @@ namespace llarp
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
-  //TODO: replace this in line with libquic impl
+  // TODO: replace this in line with libquic impl
   void
   Router::SessionClosed(RouterID remote)
   {
@@ -1193,9 +1195,9 @@ namespace llarp
     }
   }
 
-  //TODO: replace this in line with libquic impl
+  // TODO: replace this in line with libquic impl
   void
-  Router::ConnectionTimedOut(ILinkSession* session)
+  Router::ConnectionTimedOut(AbstractLinkSession* session)
   {
     if (m_peerDb)
     {
@@ -1216,9 +1218,9 @@ namespace llarp
     }
   }
 
-  //TODO: replace this in line with libquic impl
+  // TODO: replace this in line with libquic impl
   bool
-  Router::ConnectionEstablished(ILinkSession* session, bool inbound)
+  Router::ConnectionEstablished(AbstractLinkSession* session, bool inbound)
   {
     RouterID id{session->GetPubKey()};
     if (m_peerDb)
@@ -1670,7 +1672,7 @@ namespace llarp
       if ((not Net().IsBogonIP(ai_ip)) and (not Net().IsBogonIP(override_ip))
           and ai_ip != override_ip)
         throw std::runtime_error{
-          "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
+            "Lokinet is bound to public IP '{}', but public-ip is set to '{}'. Either fix the "
             "[router]:public-ip setting or set a bind address in the [bind] section of the "
             "config."_format(ai_ip_str, override_ip_str)};
       ai.fromSockAddr(*_ourAddress);
@@ -1678,8 +1680,8 @@ namespace llarp
     if (RouterContact::BlockBogons && Net().IsBogon(ai.ip))
       throw std::runtime_error{var::visit(
           [](auto&& ip) {
-          return "cannot use " + ip.ToString()
-          + " as a public ip as it is in a non routable ip range";
+            return "cannot use " + ip.ToString()
+                + " as a public ip as it is in a non routable ip range";
           },
           ai.IP())};
     LogInfo("adding address: ", ai);
@@ -1729,8 +1731,8 @@ namespace llarp
       _linkManager.AddLink({ai.IPString(), ai.port}, true);
 
       ai.pubkey = llarp::seckey_topublic(_identity);
-      ai.dialect = "quicinet"; // FIXME: constant, also better name?
-      ai.rank = 2; // FIXME: hardcoded from the beginning...keep?
+      ai.dialect = "quicinet";  // FIXME: constant, also better name?
+      ai.rank = 2;              // FIXME: hardcoded from the beginning...keep?
       AddAddressToRC(ai);
     }
   }

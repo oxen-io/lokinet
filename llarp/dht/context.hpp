@@ -89,7 +89,7 @@ namespace llarp
           uint64_t relayOrder) = 0;
 
       virtual void
-      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;
+      DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool keepalive = true) = 0;
 
       /// get routers closest to target excluding requester
       virtual bool
@@ -97,7 +97,7 @@ namespace llarp
           const Key_t& requester,
           uint64_t txid,
           const RouterID& target,
-          std::vector<std::unique_ptr<IMessage>>& reply) = 0;
+          std::vector<std::unique_ptr<AbstractDHTMessage>>& reply) = 0;
 
       /// handle rc lookup from requester for target
       virtual void
@@ -106,10 +106,10 @@ namespace llarp
           uint64_t txid,
           const Key_t& target,
           bool recursive,
-          std::vector<std::unique_ptr<IMessage>>& replies) = 0;
+          std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) = 0;
 
       virtual bool
-      RelayRequestForPath(const PathID_t& localPath, const IMessage& msg) = 0;
+      RelayRequestForPath(const PathID_t& localPath, const AbstractDHTMessage& msg) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void

@@ -21,7 +21,7 @@ namespace llarp
 
   bool
   OutboundMessageHandler::QueueMessage(
-      const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
+      const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler callback)
   {
     // if the destination is invalid, callback with failure and return
     if (not _router->linkManager().HaveClientConnection(remote)
@@ -34,19 +34,21 @@ namespace llarp
     ent.router = remote;
     ent.inform = std::move(callback);
     ent.pathid = msg.pathid;
-    ent.priority = msg.Priority();
+    ent.priority = msg.priority();
 
-    std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
-    llarp_buffer_t buf{linkmsg_buffer};
+    // std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
+    // llarp_buffer_t buf{linkmsg_buffer};
 
-    if (!EncodeBuffer(msg, buf))
+    llarp_buffer _buf{MAX_LINK_MSG_SIZE};
+
+    if (!EncodeBuffer(msg, _buf))
     {
       return false;
     }
 
-    ent.message.resize(buf.sz);
+    ent.message.resize(_buf.size());
 
-    std::copy_n(buf.base, buf.sz, ent.message.data());
+    std::copy_n(_buf.data(), _buf.size(), ent.message.data());
 
     // if we have a session to the destination, queue the message and return
     if (_router->linkManager().HaveConnection(remote))
@@ -168,7 +170,7 @@ namespace llarp
       _router->loop()->call([f = std::move(callback), status] { f(status); });
   }
 
-  //TODO: still necessary/desired?
+  // TODO: still necessary/desired?
   void
   OutboundMessageHandler::QueueSessionCreation(const RouterID& remote)
   {
@@ -176,18 +178,16 @@ namespace llarp
   }
 
   bool
-  OutboundMessageHandler::EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf)
+  OutboundMessageHandler::EncodeBuffer(const AbstractLinkMessage& msg, llarp_buffer& buf)
   {
-    if (!msg.BEncode(&buf))
+    if (auto str = msg.bt_encode(); not str.empty())
     {
-      LogWarn("failed to encode outbound message, buffer size left: ", buf.size_left());
-      return false;
+      buf = llarp_buffer{std::move(str)};
+      return true;
     }
-    // set size of message
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
 
-    return true;
+    log::error(link_cat, "Error: OutboundMessageHandler failed to encode outbound message!");
+    return false;
   }
 
   bool
@@ -199,8 +199,8 @@ namespace llarp
     return _router->linkManager().SendTo(
         ent.router,
         buf,
-        [this, callback](ILinkSession::DeliveryStatus status) {
-          if (status == ILinkSession::DeliveryStatus::eDeliverySuccess)
+        [this, callback](AbstractLinkSession::DeliveryStatus status) {
+          if (status == AbstractLinkSession::DeliveryStatus::eDeliverySuccess)
             DoCallback(callback, SendStatus::Success);
           else
           {

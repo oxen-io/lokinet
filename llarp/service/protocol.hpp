@@ -71,7 +71,7 @@ namespace llarp
     };
 
     /// outer message
-    struct ProtocolFrame final : public routing::IMessage
+    struct ProtocolFrame final : public routing::AbstractRoutingMessage
     {
       using Encrypted_t = Encrypted<2048>;
       PQCipherBlock C;
@@ -83,7 +83,7 @@ namespace llarp
       service::ConvoTag T;
 
       ProtocolFrame(const ProtocolFrame& other)
-          : routing::IMessage()
+          : routing::AbstractRoutingMessage()
           , C(other.C)
           , D(other.D)
           , R(other.R)
@@ -96,7 +96,7 @@ namespace llarp
         version = other.version;
       }
 
-      ProtocolFrame() : routing::IMessage{}
+      ProtocolFrame() : routing::AbstractRoutingMessage{}
       {
         Clear();
       }
@@ -162,7 +162,7 @@ namespace llarp
       Verify(const ServiceInfo& from) const;
 
       bool
-      HandleMessage(routing::IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(routing::AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

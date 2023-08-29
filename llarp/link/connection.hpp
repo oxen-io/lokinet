@@ -15,7 +15,7 @@ namespace llarp::link
 
     RouterContact remote_rc;
 
-    bool inbound; // one side of a connection will be responsible for some things, e.g. heartbeat
+    bool inbound;  // one side of a connection will be responsible for some things, e.g. heartbeat
     bool remote_is_relay;
   };
 }  // namespace llarp::link

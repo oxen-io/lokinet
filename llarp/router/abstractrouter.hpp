@@ -33,8 +33,8 @@ namespace llarp
   class NodeDB;
   struct Config;
   struct RouterID;
-  struct ILinkMessage;
-  struct ILinkSession;
+  struct AbstractLinkMessage;
+  struct AbstractLinkSession;
   struct PathID_t;
   struct Profiling;
   struct SecretKey;
@@ -71,7 +71,7 @@ namespace llarp
 
   namespace routing
   {
-    struct IMessageHandler;
+    struct AbstractRoutingMessageHandler;
   }
 
   namespace service
@@ -100,7 +100,7 @@ namespace llarp
     virtual ~AbstractRouter() = default;
 
     virtual bool
-    HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+    HandleRecvLinkMessageBuffer(AbstractLinkSession* from, const llarp_buffer_t& msg) = 0;
 
     virtual const net::Platform&
     Net() const = 0;
@@ -268,14 +268,18 @@ namespace llarp
 
     virtual bool
     SendToOrQueue(
-        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler = nullptr) = 0;
+        const RouterID& remote,
+        const AbstractLinkMessage& msg,
+        SendStatusHandler handler = nullptr) = 0;
 
     virtual void
     PersistSessionUntil(const RouterID& remote, llarp_time_t until) = 0;
 
     virtual bool
     ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid) = 0;
+        const llarp_buffer_t& buf,
+        routing::AbstractRoutingMessageHandler* h,
+        const PathID_t& rxid) = 0;
 
     /// count the number of service nodes we are connected to
     virtual size_t
@@ -318,7 +322,8 @@ namespace llarp
 
     /// visit each connected link session
     virtual void
-    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const = 0;
+    ForEachPeer(
+        std::function<void(const AbstractLinkSession*, bool)> visit, bool randomize) const = 0;
 
     virtual bool
     SessionToRouterAllowed(const RouterID& router) const = 0;

@@ -20,7 +20,7 @@
 namespace llarp
 {
   bool
-  LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  LR_CommitMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if (key.startswith("c"))
     {
@@ -36,32 +36,39 @@ namespace llarp
   }
 
   void
-  LR_CommitMessage::Clear()
+  LR_CommitMessage::clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
     version = 0;
   }
 
-  bool
-  LR_CommitMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  LR_CommitMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    // msg type
-    if (!BEncodeWriteDictMsgType(buf, "a", "c"))
-      return false;
-    // frames
-    if (!BEncodeWriteDictArray("c", frames, buf))
-      return false;
-    // version
-    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    return bencode_end(buf);
+    try
+    {
+      btdp.append("a", "c");
+      {
+        auto sublist = btdp.append_list("c");
+
+        for (auto& f : frames)
+          sublist.append({reinterpret_cast<const char*>(f.data()), f.size()});
+      }
+
+      btdp.append("v", llarp::constants::proto_version);
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: LR_CommitMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   bool
-  LR_CommitMessage::HandleMessage(AbstractRouter* router) const
+  LR_CommitMessage::handle_message(AbstractRouter* router) const
   {
     if (frames.size() != path::max_len)
     {

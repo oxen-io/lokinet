@@ -70,7 +70,7 @@ namespace llarp
 
     /// A path we made
     struct Path final : public IHopHandler,
-                        public routing::IMessageHandler,
+                        public routing::AbstractRoutingMessageHandler,
                         public std::enable_shared_from_this<Path>
     {
       using BuildResultHookFunc = std::function<void(Path_ptr)>;
@@ -291,7 +291,7 @@ namespace llarp
       Tick(llarp_time_t now, AbstractRouter* r);
 
       bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
+      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r) override;
 
       bool
       HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
@@ -337,7 +337,7 @@ namespace llarp
       HandleGotIntroMessage(const dht::GotIntroMessage& msg);
 
       bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
+      HandleDHTMessage(const dht::AbstractDHTMessage& msg, AbstractRouter* r) override;
 
       bool
       HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r);

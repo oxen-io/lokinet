@@ -238,7 +238,7 @@ namespace llarp
     {
       std::optional<RouterContact> found = std::nullopt;
       m_router->ForEachPeer(
-          [&](const ILinkSession* s, bool isOutbound) {
+          [&](const AbstractLinkSession* s, bool isOutbound) {
             if (s && s->IsEstablished() && isOutbound && not found.has_value())
             {
               const RouterContact rc = s->GetRemoteRC();

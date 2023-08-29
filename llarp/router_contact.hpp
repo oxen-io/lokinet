@@ -11,8 +11,9 @@
 
 #include "llarp/dns/srv_data.hpp"
 
-#include <functional>
+#include <oxenc/bt_producer.h>
 #include <nlohmann/json.hpp>
+#include <functional>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
@@ -110,6 +111,10 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t* buf) const;
+
+    // tofix: drop version 0 case, change parameter to take btlp reference
+    void
+    bt_encode_subdict(oxenc::bt_list_producer& btlp) const;
 
     bool
     BEncodeSignedSection(llarp_buffer_t* buf) const;

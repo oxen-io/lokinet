@@ -49,7 +49,7 @@ namespace llarp
       return handle(remote, found, endpoint, TimeLeft(time_now_ms()), relayOrder);
     }
 
-    std::shared_ptr<routing::IMessage>
+    std::shared_ptr<routing::AbstractRoutingMessage>
     HiddenServiceAddressLookup::BuildRequestMessage()
     {
       auto msg = std::make_shared<routing::DHTMessage>();

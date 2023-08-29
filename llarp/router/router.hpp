@@ -310,7 +310,7 @@ namespace llarp
     Profiling _routerProfiling;
     fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
-    LinkManager _linkManager { this };
+    LinkManager _linkManager{this};
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 
@@ -360,7 +360,7 @@ namespace llarp
     ~Router() override;
 
     bool
-    HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
+    HandleRecvLinkMessageBuffer(AbstractLinkSession* from, const llarp_buffer_t& msg) override;
 
     void
     InitInboundLinks();
@@ -459,14 +459,14 @@ namespace llarp
     /// MUST be called in the logic thread
     bool
     SendToOrQueue(
-        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler) override;
+        const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler) override;
 
     void
-    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
+    ForEachPeer(std::function<void(const AbstractLinkSession*, bool)> visit, bool randomize = false)
         const override;
 
     void
-    ForEachPeer(std::function<void(ILinkSession*)> visit);
+    ForEachPeer(std::function<void(AbstractLinkSession*)> visit);
 
     bool IsBootstrapNode(RouterID) const override;
 
@@ -483,11 +483,11 @@ namespace llarp
 
     /// called by link when an unestablished connection times out
     void
-    ConnectionTimedOut(ILinkSession* session);
+    ConnectionTimedOut(AbstractLinkSession* session);
 
     /// called by link when session is fully established
     bool
-    ConnectionEstablished(ILinkSession* session, bool inbound);
+    ConnectionEstablished(AbstractLinkSession* session, bool inbound);
 
     /// call internal router ticker
     void
@@ -504,7 +504,9 @@ namespace llarp
     /// return false
     bool
     ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid) override;
+        const llarp_buffer_t& buf,
+        routing::AbstractRoutingMessageHandler* h,
+        const PathID_t& rxid) override;
 
     void
     ConnectToRandomRouters(int N) override;

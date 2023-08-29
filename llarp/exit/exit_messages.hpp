@@ -10,7 +10,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct ObtainExitMessage final : public IMessage
+    struct ObtainExitMessage final : public AbstractRoutingMessage
     {
       std::vector<llarp::exit::Policy> B;
       uint64_t E{0};
@@ -20,7 +20,7 @@ namespace llarp
       uint64_t X{0};
       llarp::Signature Z;
 
-      ObtainExitMessage() : IMessage()
+      ObtainExitMessage() : AbstractRoutingMessage()
       {}
 
       ~ObtainExitMessage() override = default;
@@ -51,10 +51,10 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
 
-    struct GrantExitMessage final : public IMessage
+    struct GrantExitMessage final : public AbstractRoutingMessage
     {
       using Nonce_t = llarp::AlignedBuffer<16>;
 
@@ -75,7 +75,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
 
       void
       Clear() override
@@ -86,7 +86,7 @@ namespace llarp
       }
     };
 
-    struct RejectExitMessage final : public IMessage
+    struct RejectExitMessage final : public AbstractRoutingMessage
     {
       using Nonce_t = llarp::AlignedBuffer<16>;
       uint64_t B;
@@ -118,10 +118,10 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
 
-    struct UpdateExitVerifyMessage final : public IMessage
+    struct UpdateExitVerifyMessage final : public AbstractRoutingMessage
     {
       using Nonce_t = llarp::AlignedBuffer<16>;
       uint64_t T;
@@ -145,10 +145,10 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
 
-    struct UpdateExitMessage final : public IMessage
+    struct UpdateExitMessage final : public AbstractRoutingMessage
     {
       using Nonce_t = llarp::AlignedBuffer<16>;
       llarp::PathID_t P;
@@ -169,7 +169,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
 
       void
       Clear() override
@@ -181,7 +181,7 @@ namespace llarp
       }
     };
 
-    struct CloseExitMessage final : public IMessage
+    struct CloseExitMessage final : public AbstractRoutingMessage
     {
       using Nonce_t = llarp::AlignedBuffer<16>;
 
@@ -195,7 +195,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
 
       bool
       Sign(const llarp::SecretKey& sk);

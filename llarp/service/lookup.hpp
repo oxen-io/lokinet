@@ -64,7 +64,7 @@ namespace llarp
       }
 
       /// build request message for service lookup
-      virtual std::shared_ptr<routing::IMessage>
+      virtual std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() = 0;
 
       /// build a new request message and send it via a path

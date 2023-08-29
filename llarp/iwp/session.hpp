@@ -19,7 +19,7 @@ namespace llarp
     /// packet crypto overhead size
     static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
     /// creates a packet with plaintext size + wire overhead + random pad
-    ILinkSession::Packet_t
+    AbstractLinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16, size_t pad_variance = 16);
     /// Time how long we try delivery for
     static constexpr std::chrono::milliseconds DeliveryTimeout = 500ms;
@@ -36,7 +36,7 @@ namespace llarp
     /// How long we wait for a session to die with no tx from them
     static constexpr auto SessionAliveTimeout = PingInterval * 5;
 
-    struct Session : public ILinkSession, public std::enable_shared_from_this<Session>
+    struct Session : public AbstractLinkSession, public std::enable_shared_from_this<Session>
     {
       using Time_t = std::chrono::milliseconds;
 
@@ -61,14 +61,14 @@ namespace llarp
 
       bool
       SendMessageBuffer(
-          ILinkSession::Message_t msg,
+          AbstractLinkSession::Message_t msg,
           CompletionHandler resultHandler,
           uint16_t priority = 0) override;
 
       void
       Send_LL(const byte_t* buf, size_t sz);
 
-      void EncryptAndSend(ILinkSession::Packet_t);
+      void EncryptAndSend(AbstractLinkSession::Packet_t);
 
       void
       Start() override;
@@ -76,7 +76,7 @@ namespace llarp
       void
       Close() override;
 
-      bool Recv_LL(ILinkSession::Packet_t) override;
+      bool Recv_LL(AbstractLinkSession::Packet_t) override;
 
       bool
       SendKeepAlive() override;
@@ -251,7 +251,7 @@ namespace llarp
       GotRenegLIM(const LinkIntroMessage* msg);
 
       void
-      SendOurLIM(ILinkSession::CompletionHandler h = nullptr);
+      SendOurLIM(AbstractLinkSession::CompletionHandler h = nullptr);
 
       void
       HandleXMIT(Packet_t msg);

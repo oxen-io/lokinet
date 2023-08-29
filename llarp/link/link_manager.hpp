@@ -19,14 +19,14 @@ namespace llarp
   struct LinkManager final : public ILinkManager
   {
    public:
-     explicit LinkManager(AbstractRouter* r) : router{r} {}
-
+    explicit LinkManager(AbstractRouter* r) : router{r}
+    {}
 
     bool
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed,
+        AbstractLinkSession::CompletionHandler completed,
         uint16_t priority) override;
 
     bool
@@ -82,14 +82,13 @@ namespace llarp
     void
     ConnectToRandomRouters(int numDesired);
 
-    //TODO: tune these (maybe even remove max?) now that we're switching to quic
+    // TODO: tune these (maybe even remove max?) now that we're switching to quic
     /// always maintain this many connections to other routers
     size_t minConnectedRouters = 4;
     /// hard upperbound limit on the number of router to router connections
     size_t maxConnectedRouters = 6;
 
    private:
-
     link::Endpoint*
     GetCompatibleLink(const RouterContact& rc);
 
@@ -111,16 +110,17 @@ namespace llarp
     // FIXME: Lokinet currently expects to be able to kill all network functionality before
     // finishing other shutdown things, including destroying this class, and that is all in
     // Network's destructor, so we need to be able to destroy it before this class.
-    std::unique_ptr<oxen::quic::Network> quic { std::make_unique<oxen::quic::Network>() };
+    std::unique_ptr<oxen::quic::Network> quic{std::make_unique<oxen::quic::Network>()};
 
     std::vector<link::Endpoint> endpoints;
 
-    //TODO: initialize creds
+    // TODO: initialize creds
     std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
 
-    void HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram);
-    void HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet);
-
+    void
+    HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram);
+    void
+    HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet);
   };
 
 }  // namespace llarp

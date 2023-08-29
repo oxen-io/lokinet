@@ -17,22 +17,22 @@ namespace llarp
 
     for (auto& ep : endpoints)
     {
-      //TODO: need some notion of "is this link compatible with that address".
-      //      iwp just checks that the link dialect ("iwp") matches the address info dialect,
-      //      but that feels insufficient.  For now, just return the first endpoint we have;
-      //      we should probably only have 1 for now anyway until we make ipv6 work.
+      // TODO: need some notion of "is this link compatible with that address".
+      //       iwp just checks that the link dialect ("iwp") matches the address info dialect,
+      //       but that feels insufficient.  For now, just return the first endpoint we have;
+      //       we should probably only have 1 for now anyway until we make ipv6 work.
       return &ep;
     }
 
     return nullptr;
   }
 
-  //TODO: replace with control/data message sending with libquic
+  // TODO: replace with control/data message sending with libquic
   bool
   LinkManager::SendTo(
       const RouterID& remote,
       const llarp_buffer_t& buf,
-      ILinkSession::CompletionHandler completed,
+      AbstractLinkSession::CompletionHandler completed,
       uint16_t priority)
   {
     if (stopping)
@@ -42,13 +42,13 @@ namespace llarp
     {
       if (completed)
       {
-        completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
+        completed(AbstractLinkSession::DeliveryStatus::eDeliveryDropped);
       }
       return false;
     }
 
-    //TODO: send the message
-    //TODO: if we keep bool return type, change this accordingly
+    // TODO: send the message
+    // TODO: if we keep bool return type, change this accordingly
     return false;
   }
 
@@ -59,7 +59,7 @@ namespace llarp
     {
       if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
       {
-        if (not (itr->second.remote_is_relay and client_only))
+        if (not(itr->second.remote_is_relay and client_only))
           return true;
         return false;
       }
@@ -93,10 +93,16 @@ namespace llarp
   void
   LinkManager::AddLink(const oxen::quic::opt::local_addr& bind, bool inbound)
   {
-    //TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
-    //      stream_opened, stream_data, stream_closed, conn_closed
-    oxen::quic::dgram_data_callback dgram_cb = [this](oxen::quic::dgram_interface& dgi, bstring dgram){ HandleIncomingDataMessage(dgi, dgram); };
-    auto ep = quic->endpoint(bind, std::move(dgram_cb), oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
+    // TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
+    //       stream_opened, stream_data, stream_closed, conn_closed
+    oxen::quic::dgram_data_callback dgram_cb =
+        [this](oxen::quic::dgram_interface& dgi, bstring dgram) {
+          HandleIncomingDataMessage(dgi, dgram);
+        };
+    auto ep = quic->endpoint(
+        bind,
+        std::move(dgram_cb),
+        oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
     endpoints.emplace_back();
     auto& endp = endpoints.back();
     endp.endpoint = std::move(ep);
@@ -147,7 +153,7 @@ namespace llarp
     {
       for (const auto& conn : ep.connections)
       {
-        if (not (conn.second.remote_is_relay and clients_only))
+        if (not(conn.second.remote_is_relay and clients_only))
           count++;
       }
     }
@@ -191,7 +197,7 @@ namespace llarp
     return false;
   }
 
-  //TODO: this?  perhaps no longer necessary in the same way?
+  // TODO: this?  perhaps no longer necessary in the same way?
   void
   LinkManager::CheckPersistingSessions(llarp_time_t now)
   {
@@ -199,13 +205,12 @@ namespace llarp
       return;
   }
 
-  //TODO: do we still need this concept?
+  // TODO: do we still need this concept?
   void
   LinkManager::updatePeerDb(std::shared_ptr<PeerDb> peerDb)
-  {
-  }
+  {}
 
-  //TODO: this
+  // TODO: this
   util::StatusObject
   LinkManager::ExtractStatus() const
   {
@@ -223,13 +228,13 @@ namespace llarp
   void
   LinkManager::Connect(RouterID router)
   {
-    auto fn = [this](const RouterID& r, const RouterContact* const rc, const RCRequestResult res){
-        if (res == RCRequestResult::Success)
-          Connect(*rc);
-        /* TODO:
-        else
-          RC lookup failure callback here
-        */
+    auto fn = [this](const RouterID& r, const RouterContact* const rc, const RCRequestResult res) {
+      if (res == RCRequestResult::Success)
+        Connect(*rc);
+      /* TODO:
+      else
+        RC lookup failure callback here
+      */
     };
 
     _rcLookup->GetRC(router, fn);
@@ -239,31 +244,35 @@ namespace llarp
   void
   LinkManager::Connect(RouterContact rc)
   {
-    //TODO: connection failed callback
+    // TODO: connection failed callback
     if (HaveConnection(rc.pubkey))
       return;
 
     // RC shouldn't be valid if this is the case, but may as well sanity check...
-    //TODO: connection failed callback
+    // TODO: connection failed callback
     if (rc.addrs.empty())
       return;
 
-    //TODO: connection failed callback
+    // TODO: connection failed callback
     auto* ep = GetCompatibleLink(rc);
     if (ep == nullptr)
       return;
 
-    //TODO: connection established/failed callbacks
-    oxen::quic::stream_data_callback stream_cb = [this](oxen::quic::Stream& stream, bstring_view packet){ HandleIncomingControlMessage(stream, packet); };
+    // TODO: connection established/failed callbacks
+    oxen::quic::stream_data_callback stream_cb =
+        [this](oxen::quic::Stream& stream, bstring_view packet) {
+          HandleIncomingControlMessage(stream, packet);
+        };
 
-    //TODO: once "compatible link" cares about address, actually choose addr to connect to
-    //      based on which one is compatible with the link we chose.  For now, just use
-    //      the first one.
+    // TODO: once "compatible link" cares about address, actually choose addr to connect to
+    //       based on which one is compatible with the link we chose.  For now, just use
+    //       the first one.
     auto& selected = rc.addrs[0];
     oxen::quic::opt::remote_addr remote{selected.IPString(), selected.port};
-    //TODO: confirm remote end is using the expected pubkey (RouterID).
-    //TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    //TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if so?
+    // TODO: confirm remote end is using the expected pubkey (RouterID).
+    // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
+    // TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if
+    // so?
     auto conn_interface = ep->endpoint->connect(remote, stream_cb, tls_creds);
 
     std::shared_ptr<oxen::quic::Stream> stream = conn_interface->get_new_stream();
@@ -308,13 +317,13 @@ namespace llarp
   void
   LinkManager::HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram)
   {
-    //TODO: this
+    // TODO: this
   }
 
   void
   LinkManager::HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet)
   {
-    //TODO: this
+    // TODO: this
   }
 
 }  // namespace llarp

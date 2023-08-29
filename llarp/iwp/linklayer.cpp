@@ -48,9 +48,9 @@ namespace llarp::iwp
   }
 
   void
-  LinkLayer::RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt)
+  LinkLayer::RecvFrom(const SockAddr& from, AbstractLinkSession::Packet_t pkt)
   {
-    std::shared_ptr<ILinkSession> session;
+    std::shared_ptr<AbstractLinkSession> session;
     auto itr = m_AuthedAddrs.find(from);
     bool isNewSession = false;
     if (itr == m_AuthedAddrs.end())
@@ -83,7 +83,7 @@ namespace llarp::iwp
     }
   }
 
-  std::shared_ptr<ILinkSession>
+  std::shared_ptr<AbstractLinkSession>
   LinkLayer::NewOutboundSession(const RouterContact& rc, const AddressInfo& ai)
   {
     if (m_Inbound)

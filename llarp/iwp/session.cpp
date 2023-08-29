@@ -11,11 +11,11 @@ namespace llarp
 {
   namespace iwp
   {
-    ILinkSession::Packet_t
+    AbstractLinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t minpad, size_t variance)
     {
       const size_t pad = minpad > 0 ? minpad + (variance > 0 ? randint() % variance : 0) : 0;
-      ILinkSession::Packet_t pkt(PacketOverhead + plainsize + pad + CommandOverhead);
+      AbstractLinkSession::Packet_t pkt(PacketOverhead + plainsize + pad + CommandOverhead);
       // randomize pad
       if (pad)
       {
@@ -100,8 +100,8 @@ namespace llarp
       m_RemoteRC = msg->rc;
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
       assert(shared_from_this().use_count() > 1);
-      SendOurLIM([self = shared_from_this()](ILinkSession::DeliveryStatus st) {
-        if (st == ILinkSession::DeliveryStatus::eDeliverySuccess)
+      SendOurLIM([self = shared_from_this()](AbstractLinkSession::DeliveryStatus st) {
+        if (st == AbstractLinkSession::DeliveryStatus::eDeliverySuccess)
         {
           self->m_State = State::Ready;
           self->m_Parent->MapAddr(self->m_RemoteRC.pubkey, self.get());
@@ -112,24 +112,30 @@ namespace llarp
     }
 
     void
-    Session::SendOurLIM(ILinkSession::CompletionHandler h)
+    Session::SendOurLIM(AbstractLinkSession::CompletionHandler h)
     {
       LinkIntroMessage msg;
       msg.rc = m_Parent->GetOurRC();
-      msg.N.Randomize();
-      msg.P = 60000;
-      if (not msg.Sign(m_Parent->Sign))
+      msg.nonce.Randomize();
+      msg.session_period = 60000;
+      if (not msg.sign(m_Parent->Sign))
       {
         LogError("failed to sign our RC for ", m_RemoteAddr);
         return;
       }
-      ILinkSession::Message_t data(LinkIntroMessage::MaxSize + PacketOverhead);
+
+      AbstractLinkSession::Message_t data(LinkIntroMessage::MAX_MSG_SIZE + PacketOverhead);
       llarp_buffer_t buf(data);
-      if (not msg.BEncode(&buf))
+      if (auto str = msg.bt_encode(); not str.empty())
       {
-        LogError("failed to encode LIM for ", m_RemoteAddr);
+        buf.write(str.begin(), str.end());
+      }
+      else
+      {
+        log::critical(link_cat, "Error: Failed to encode LIM for {}", m_RemoteAddr);
         return;
       }
+
       if (not SendMessageBuffer(std::move(data), h))
       {
         LogError("failed to send LIM to ", m_RemoteAddr);
@@ -139,7 +145,7 @@ namespace llarp
     }
 
     void
-    Session::EncryptAndSend(ILinkSession::Packet_t data)
+    Session::EncryptAndSend(AbstractLinkSession::Packet_t data)
     {
       m_EncryptNext.emplace_back(std::move(data));
       TriggerPump();
@@ -186,12 +192,14 @@ namespace llarp
 
     bool
     Session::SendMessageBuffer(
-        ILinkSession::Message_t buf, ILinkSession::CompletionHandler completed, uint16_t priority)
+        AbstractLinkSession::Message_t buf,
+        AbstractLinkSession::CompletionHandler completed,
+        uint16_t priority)
     {
       if (m_TXMsgs.size() >= MaxSendQueueSize)
       {
         if (completed)
-          completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
+          completed(AbstractLinkSession::DeliveryStatus::eDeliveryDropped);
         return false;
       }
       const auto now = m_Parent->Now();
@@ -441,7 +449,7 @@ namespace llarp
       TunnelNonce N;
       N.Randomize();
       {
-        ILinkSession::Packet_t req(Introduction::SIZE + PacketOverhead);
+        AbstractLinkSession::Packet_t req(Introduction::SIZE + PacketOverhead);
         const auto pk = m_Parent->GetOurRC().pubkey;
         const auto e_pk = m_Parent->RouterEncryptionSecret().toPublic();
         auto itr = req.data() + PacketOverhead;
@@ -955,7 +963,7 @@ namespace llarp
     }
 
     bool
-    Session::Recv_LL(ILinkSession::Packet_t data)
+    Session::Recv_LL(AbstractLinkSession::Packet_t data)
     {
       m_RXRate += data.size();
 

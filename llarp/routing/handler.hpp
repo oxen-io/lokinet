@@ -8,7 +8,7 @@ namespace llarp
 
   namespace dht
   {
-    struct IMessage;
+    struct AbstractDHTMessage;
   }
 
   namespace service
@@ -31,7 +31,7 @@ namespace llarp
     struct PathLatencyMessage;
 
     // handles messages on the routing level
-    struct IMessageHandler
+    struct AbstractRoutingMessageHandler
     {
       virtual bool
       HandleObtainExitMessage(const ObtainExitMessage& msg, AbstractRouter* r) = 0;
@@ -69,10 +69,10 @@ namespace llarp
       virtual bool
       HandlePathLatencyMessage(const PathLatencyMessage& msg, AbstractRouter* r) = 0;
       virtual bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) = 0;
+      HandleDHTMessage(const dht::AbstractDHTMessage& msg, AbstractRouter* r) = 0;
     };
 
-    using MessageHandler_ptr = std::shared_ptr<IMessageHandler>;
+    using MessageHandler_ptr = std::shared_ptr<AbstractRoutingMessageHandler>;
 
   }  // namespace routing
 }  // namespace llarp

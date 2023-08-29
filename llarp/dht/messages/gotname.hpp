@@ -5,21 +5,20 @@
 
 namespace llarp::dht
 {
-  struct GotNameMessage : public IMessage
+  struct GotNameMessage : public AbstractDHTMessage
   {
     explicit GotNameMessage(const Key_t& from, uint64_t txid, service::EncryptedName data);
 
-    bool
-    BEncode(llarp_buffer_t* buf) const override;
+    void
+    bt_encode(oxenc::bt_dict_producer& btdp) const override;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
     bool
-    HandleMessage(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const override;
+    handle_message(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const override;
 
     service::EncryptedName result;
     uint64_t TxID;
   };
-
 }  // namespace llarp::dht

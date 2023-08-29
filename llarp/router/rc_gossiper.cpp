@@ -105,7 +105,7 @@ namespace llarp
      *
     // select peers to gossip to
     m_LinkManager->ForEachPeer(
-        [&](const ILinkSession* peerSession, bool) {
+        [&](const AbstractLinkSession* peerSession, bool) {
           // ensure connected session
           if (not(peerSession && peerSession->IsEstablished()))
             return;
@@ -122,7 +122,7 @@ namespace llarp
     std::sample(
         gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers, CSRNG{});
 
-    m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
+    m_LinkManager->ForEachPeer([&](AbstractLinkSession* peerSession) {
       if (not(peerSession && peerSession->IsEstablished()))
         return;
 
@@ -131,7 +131,7 @@ namespace llarp
         return;
 
       // encode message
-      ILinkSession::Message_t msg{};
+      AbstractLinkSession::Message_t msg{};
       msg.resize(MAX_LINK_MSG_SIZE / 2);
       llarp_buffer_t buf(msg);
       if (not gossip.BEncode(&buf))

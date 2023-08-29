@@ -45,12 +45,12 @@ namespace llarp
     OnKey(llarp_buffer_t* buffer, llarp_buffer_t* key);
   };
 
-  struct LR_CommitMessage : public ILinkMessage
+  struct LR_CommitMessage final : public AbstractLinkMessage
   {
     std::array<EncryptedFrame, 8> frames;
 
     LR_CommitMessage(std::array<EncryptedFrame, 8> _frames)
-        : ILinkMessage(), frames(std::move(_frames))
+        : AbstractLinkMessage(), frames(std::move(_frames))
     {}
 
     LR_CommitMessage() = default;
@@ -58,28 +58,28 @@ namespace llarp
     ~LR_CommitMessage() override = default;
 
     void
-    Clear() override;
+    clear() override;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
-
-    bool
-    HandleMessage(AbstractRouter* router) const override;
+    handle_message(AbstractRouter* router) const override;
 
     bool
     AsyncDecrypt(llarp::path::PathContext* context) const;
 
     const char*
-    Name() const override
+    name() const override
     {
       return "RelayCommit";
     }
 
-    virtual uint16_t
-    Priority() const override
+    uint16_t
+    priority() const override
     {
       return 5;
     }

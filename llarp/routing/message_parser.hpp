@@ -12,8 +12,8 @@ namespace llarp
 
   namespace routing
   {
-    struct IMessage;
-    struct IMessageHandler;
+    struct AbstractRoutingMessage;
+    struct AbstractRoutingMessageHandler;
 
     struct InboundMessageParser
     {
@@ -23,7 +23,7 @@ namespace llarp
       bool
       ParseMessageBuffer(
           const llarp_buffer_t& buf,
-          IMessageHandler* handler,
+          AbstractRoutingMessageHandler* handler,
           const PathID_t& from,
           AbstractRouter* r);
 
@@ -36,7 +36,7 @@ namespace llarp
       char ourKey{'\0'};
       struct MessageHolder;
 
-      IMessage* msg{nullptr};
+      AbstractRoutingMessage* msg{nullptr};
       std::unique_ptr<MessageHolder> m_Holder;
     };
   }  // namespace routing

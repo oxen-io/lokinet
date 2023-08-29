@@ -7,58 +7,57 @@
 #include <vector>
 #include <optional>
 
-namespace llarp
+namespace llarp::dht
 {
-  namespace dht
+  /// acknowledgement to PublishIntroMessage or reply to FindIntroMessage
+  struct GotIntroMessage : public AbstractDHTMessage
   {
-    /// acknowledgement to PublishIntroMessage or reply to FindIntroMessage
-    struct GotIntroMessage : public IMessage
+    /// the found introsets
+    std::vector<service::EncryptedIntroSet> found;
+    /// txid
+    uint64_t txid = 0;
+    /// the key of a router closer in keyspace if iterative lookup
+    std::optional<Key_t> closer;
+
+    GotIntroMessage(const Key_t& from) : AbstractDHTMessage(from)
+    {}
+
+    GotIntroMessage(const GotIntroMessage& other)
+        : AbstractDHTMessage(other.From), found(other.found), txid(other.txid), closer(other.closer)
     {
-      /// the found introsets
-      std::vector<service::EncryptedIntroSet> found;
-      /// txid
-      uint64_t txid = 0;
-      /// the key of a router closer in keyspace if iterative lookup
-      std::optional<Key_t> closer;
+      version = other.version;
+    }
 
-      GotIntroMessage(const Key_t& from) : IMessage(from)
-      {}
+    /// for iterative reply
+    GotIntroMessage(const Key_t& from, const Key_t& _closer, uint64_t _txid)
+        : AbstractDHTMessage(from), txid(_txid), closer(_closer)
+    {}
 
-      GotIntroMessage(const GotIntroMessage& other)
-          : IMessage(other.From), found(other.found), txid(other.txid), closer(other.closer)
-      {
-        version = other.version;
-      }
+    /// for recursive reply
+    GotIntroMessage(std::vector<service::EncryptedIntroSet> results, uint64_t txid);
 
-      /// for iterative reply
-      GotIntroMessage(const Key_t& from, const Key_t& _closer, uint64_t _txid)
-          : IMessage(from), txid(_txid), closer(_closer)
-      {}
+    ~GotIntroMessage() override = default;
 
-      /// for recursive reply
-      GotIntroMessage(std::vector<service::EncryptedIntroSet> results, uint64_t txid);
+    void
+    bt_encode(oxenc::bt_dict_producer& btdp) const override;
 
-      ~GotIntroMessage() override = default;
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    bool
+    handle_message(
+        llarp_dht_context* ctx, std::vector<AbstractDHTMessage::Ptr_t>& replies) const override;
+  };
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+  struct RelayedGotIntroMessage final : public GotIntroMessage
+  {
+    RelayedGotIntroMessage() : GotIntroMessage({})
+    {}
 
-      bool
-      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
-    };
+    bool
+    handle_message(
+        llarp_dht_context* ctx, std::vector<AbstractDHTMessage::Ptr_t>& replies) const override;
+  };
 
-    struct RelayedGotIntroMessage final : public GotIntroMessage
-    {
-      RelayedGotIntroMessage() : GotIntroMessage({})
-      {}
-
-      bool
-      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
-    };
-
-    using GotIntroMessage_constptr = std::shared_ptr<const GotIntroMessage>;
-  }  // namespace dht
-}  // namespace llarp
+  using GotIntroMessage_constptr = std::shared_ptr<const GotIntroMessage>;
+}  // namespace llarp::dht

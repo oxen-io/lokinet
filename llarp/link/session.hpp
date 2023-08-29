@@ -11,7 +11,7 @@
 namespace llarp
 {
   struct LinkIntroMessage;
-  struct ILinkMessage;
+  struct AbstractLinkMessage;
   struct ILinkLayer;
 
   struct SessionStats
@@ -27,9 +27,9 @@ namespace llarp
     uint64_t totalInFlightTX = 0;
   };
 
-  struct ILinkSession
+  struct AbstractLinkSession
   {
-    virtual ~ILinkSession() = default;
+    virtual ~AbstractLinkSession() = default;
 
     /// delivery status of a message
     enum class DeliveryStatus

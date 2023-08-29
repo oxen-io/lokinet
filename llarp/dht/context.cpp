@@ -110,7 +110,7 @@ namespace llarp
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
       void
-      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) override;
+      DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool keepalive = true) override;
 
       /// get routers closest to target excluding requester
       bool
@@ -118,7 +118,7 @@ namespace llarp
           const Key_t& requester,
           uint64_t txid,
           const RouterID& target,
-          std::vector<std::unique_ptr<IMessage>>& reply) override;
+          std::vector<std::unique_ptr<AbstractDHTMessage>>& reply) override;
 
       /// handle rc lookup from requester for target
       void
@@ -127,11 +127,11 @@ namespace llarp
           uint64_t txid,
           const Key_t& target,
           bool recursive,
-          std::vector<std::unique_ptr<IMessage>>& replies) override;
+          std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) override;
 
       /// relay a dht message from a local path to the main network
       bool
-      RelayRequestForPath(const llarp::PathID_t& localPath, const IMessage& msg) override;
+      RelayRequestForPath(const llarp::PathID_t& localPath, const AbstractDHTMessage& msg) override;
 
       /// send introset to peer as R/S
       void
@@ -374,7 +374,7 @@ namespace llarp
         uint64_t txid,
         const Key_t& target,
         bool recursive,
-        std::vector<std::unique_ptr<IMessage>>& replies)
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& replies)
     {
       if (target == ourKey)
       {
@@ -475,9 +475,9 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool)
+    Context::DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool)
     {
-      llarp::DHTImmediateMessage m;
+      DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, m);
       auto now = Now();
@@ -489,10 +489,10 @@ namespace llarp
     // namespace. by the time this is called, we are inside
     // llarp::routing::DHTMessage::HandleMessage()
     bool
-    Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
+    Context::RelayRequestForPath(const llarp::PathID_t& id, const AbstractDHTMessage& msg)
     {
-      llarp::routing::DHTMessage reply;
-      if (!msg.HandleMessage(router->dht(), reply.M))
+      routing::DHTMessage reply;
+      if (!msg.handle_message(router->dht(), reply.M))
         return false;
       if (not reply.M.empty())
       {
@@ -584,7 +584,7 @@ namespace llarp
         const Key_t& requester,
         uint64_t txid,
         const RouterID& target,
-        std::vector<std::unique_ptr<IMessage>>& reply)
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& reply)
     {
       std::vector<RouterID> closer;
       const Key_t t(target.as_array());

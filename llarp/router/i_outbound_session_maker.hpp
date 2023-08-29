@@ -10,7 +10,7 @@
 
 namespace llarp
 {
-  struct ILinkSession;
+  struct AbstractLinkSession;
   struct RouterID;
   struct RouterContact;
 
@@ -45,10 +45,10 @@ namespace llarp
     virtual ~IOutboundSessionMaker() = default;
 
     virtual bool
-    OnSessionEstablished(ILinkSession* session) = 0;
+    OnSessionEstablished(AbstractLinkSession* session) = 0;
 
     virtual void
-    OnConnectTimeout(ILinkSession* session) = 0;
+    OnConnectTimeout(AbstractLinkSession* session) = 0;
 
     virtual void
     CreateSessionTo(const RouterID& router, RouterCallback on_result) = 0;

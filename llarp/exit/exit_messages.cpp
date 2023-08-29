@@ -93,7 +93,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    ObtainExitMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleObtainExitMessage(*this, r);
     }
@@ -163,7 +163,7 @@ namespace llarp
     }
 
     bool
-    GrantExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    GrantExitMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleGrantExitMessage(*this, r);
     }
@@ -241,7 +241,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    RejectExitMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleRejectExitMessage(*this, r);
     }
@@ -311,7 +311,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    UpdateExitMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleUpdateExitMessage(*this, r);
     }
@@ -346,7 +346,8 @@ namespace llarp
     }
 
     bool
-    UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    UpdateExitVerifyMessage::HandleMessage(
+        AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleUpdateExitVerifyMessage(*this, r);
     }
@@ -412,7 +413,7 @@ namespace llarp
     }
 
     bool
-    CloseExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    CloseExitMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleCloseExitMessage(*this, r);
     }

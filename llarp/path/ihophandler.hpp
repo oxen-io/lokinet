@@ -17,7 +17,7 @@ namespace llarp
 
   namespace routing
   {
-    struct IMessage;
+    struct AbstractRoutingMessage;
   }
 
   namespace path
@@ -43,7 +43,7 @@ namespace llarp
 
       /// send routing message and increment sequence number
       virtual bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) = 0;
+      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r) = 0;
 
       // handle data in upstream direction
       virtual bool

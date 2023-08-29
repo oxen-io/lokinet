@@ -14,7 +14,7 @@ struct llarp_buffer_t;
 namespace llarp
 {
 
-  //TODO: do we still want this?
+  // TODO: do we still want this?
   enum class SessionResult
   {
     Establish,
@@ -39,14 +39,10 @@ namespace llarp
   template <>
   constexpr inline bool IsToStringFormattable<SessionResult> = true;
 
-
   struct RouterContact;
-  struct ILinkSession;
+  struct AbstractLinkSession;
   struct IOutboundSessionMaker;
   struct RouterID;
-
-  using bstring = std::basic_string<std::byte>;
-  using bstring_view = std::basic_string_view<std::byte>;
 
   struct ILinkManager
   {
@@ -56,7 +52,7 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed,
+        AbstractLinkSession::CompletionHandler completed,
         uint16_t priority = 0) = 0;
 
     virtual bool

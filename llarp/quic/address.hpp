@@ -105,7 +105,10 @@ namespace llarp::quic
     Address local_, remote_;
 
    public:
-    ngtcp2_path path{{local_, local_.sockaddr_size()}, {remote_, remote_.sockaddr_size()}, nullptr};
+    ngtcp2_path path{
+        {local_, static_cast<ngtcp2_socklen>(local_.sockaddr_size())},
+        {remote_, static_cast<ngtcp2_socklen>(remote_.sockaddr_size())},
+        nullptr};
 
     // Public accessors are const:
     const Address& local = local_;

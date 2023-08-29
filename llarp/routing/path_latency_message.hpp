@@ -6,7 +6,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct PathLatencyMessage final : public IMessage
+    struct PathLatencyMessage final : public AbstractRoutingMessage
     {
       uint64_t T = 0;
       uint64_t L = 0;
@@ -27,7 +27,7 @@ namespace llarp
       }
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

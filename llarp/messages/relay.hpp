@@ -9,60 +9,60 @@
 
 namespace llarp
 {
-  struct RelayUpstreamMessage : public ILinkMessage
+  struct RelayUpstreamMessage final : public AbstractLinkMessage
   {
-    Encrypted<MAX_LINK_MSG_SIZE - 128> X;
-    TunnelNonce Y;
+    Encrypted<MAX_LINK_MSG_SIZE - 128> enc;
+    TunnelNonce nonce;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
-
-    bool
-    HandleMessage(AbstractRouter* router) const override;
+    handle_message(AbstractRouter* router) const override;
 
     void
-    Clear() override;
-    const char*
+    clear() override;
 
-    Name() const override
+    const char*
+    name() const override
     {
       return "RelayUpstream";
     }
     uint16_t
-    Priority() const override
+    priority() const override
     {
       return 0;
     }
   };
 
-  struct RelayDownstreamMessage : public ILinkMessage
+  struct RelayDownstreamMessage final : public AbstractLinkMessage
   {
-    Encrypted<MAX_LINK_MSG_SIZE - 128> X;
-    TunnelNonce Y;
+    Encrypted<MAX_LINK_MSG_SIZE - 128> enc;
+    TunnelNonce nonce;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
-
-    bool
-    HandleMessage(AbstractRouter* router) const override;
+    handle_message(AbstractRouter* router) const override;
 
     void
-    Clear() override;
+    clear() override;
 
     const char*
-    Name() const override
+    name() const override
     {
       return "RelayDownstream";
     }
 
     uint16_t
-    Priority() const override
+    priority() const override
     {
       return 0;
     }

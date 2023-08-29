@@ -14,7 +14,7 @@ namespace llarp
       {
         llarp::dht::Key_t fromKey;
         fromKey.Zero();
-        return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
+        return llarp::dht::DecodeMessageList(fromKey, val, M, true);
       }
       if (key.startswith("S"))
       {
@@ -51,7 +51,7 @@ namespace llarp
     /// (e.g. dht::IMessage::HandleMessage()) in-place and is the case where a
     /// client receives a DHT message
     bool
-    DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    DHTMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
     {
       // set source as us
       const llarp::dht::Key_t us(r->pubkey());

@@ -44,7 +44,7 @@ namespace llarp
      * so for example an invalid destination still yields a true return.
      */
     bool
-    QueueMessage(const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
+    QueueMessage(const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler callback)
         override EXCLUDES(_mutex);
 
     /* Called when pumping output queues, typically scheduled via a call to Router::TriggerPump().
@@ -123,7 +123,7 @@ namespace llarp
     QueueSessionCreation(const RouterID& remote);
 
     bool
-    EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf);
+    EncodeBuffer(const AbstractLinkMessage& msg, llarp_buffer& buf);
 
     /* sends the message along to the link layer, and hopefully out to the network
      *

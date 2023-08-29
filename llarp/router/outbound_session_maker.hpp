@@ -29,10 +29,10 @@ namespace llarp
     ~OutboundSessionMaker() override = default;
 
     bool
-    OnSessionEstablished(ILinkSession* session) override;
+    OnSessionEstablished(AbstractLinkSession* session) override;
 
     void
-    OnConnectTimeout(ILinkSession* session) override;
+    OnConnectTimeout(AbstractLinkSession* session) override;
 
     void
     CreateSessionTo(const RouterID& router, RouterCallback on_result) override EXCLUDES(_mutex);

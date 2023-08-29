@@ -769,7 +769,7 @@ namespace llarp
           , m_relayOrder(relayOrder)
       {}
 
-      std::shared_ptr<routing::IMessage>
+      std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() override
       {
         auto msg = std::make_shared<routing::DHTMessage>();
@@ -988,7 +988,7 @@ namespace llarp
             namehash, llarp_buffer_t(lnsName.c_str(), lnsName.size()));
       }
 
-      std::shared_ptr<routing::IMessage>
+      std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() override
       {
         auto msg = std::make_shared<routing::DHTMessage>();

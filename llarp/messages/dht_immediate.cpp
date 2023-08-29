@@ -5,17 +5,41 @@
 namespace llarp
 {
   void
-  DHTImmediateMessage::Clear()
+  DHTImmediateMessage::clear()
   {
     msgs.clear();
     version = 0;
   }
 
+  std::string
+  DHTImmediateMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
+    {
+      btdp.append("a", "");
+      {
+        auto subdict = btdp.append_dict("m");
+        for (auto& m : msgs)
+          m->bt_encode(subdict);
+      }
+
+      btdp.append("v", llarp::constants::proto_version);
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: DHTImmediateMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
+  }
+
   bool
-  DHTImmediateMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  DHTImmediateMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if (key.startswith("m"))
-      return llarp::dht::DecodeMesssageList(dht::Key_t(session->GetPubKey()), buf, msgs);
+      return llarp::dht::DecodeMessageList(dht::Key_t(session->GetPubKey()), buf, msgs);
     if (key.startswith("v"))
     {
       if (!bencode_read_integer(buf, &version))
@@ -27,48 +51,14 @@ namespace llarp
   }
 
   bool
-  DHTImmediateMessage::BEncode(llarp_buffer_t* buf) const
-  {
-    if (!bencode_start_dict(buf))
-      return false;
-
-    // message type
-    if (!bencode_write_bytestring(buf, "a", 1))
-      return false;
-    if (!bencode_write_bytestring(buf, "m", 1))
-      return false;
-
-    // dht messages
-    if (!bencode_write_bytestring(buf, "m", 1))
-      return false;
-    // begin list
-    if (!bencode_start_list(buf))
-      return false;
-    for (const auto& msg : msgs)
-    {
-      if (!msg->BEncode(buf))
-        return false;
-    }
-    // end list
-    if (!bencode_end(buf))
-      return false;
-
-    // protocol version
-    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
-      return false;
-
-    return bencode_end(buf);
-  }
-
-  bool
-  DHTImmediateMessage::HandleMessage(AbstractRouter* router) const
+  DHTImmediateMessage::handle_message(AbstractRouter* router) const
   {
     DHTImmediateMessage reply;
     reply.session = session;
     bool result = true;
     for (auto& msg : msgs)
     {
-      result &= msg->HandleMessage(router->dht(), reply.msgs);
+      result &= msg->handle_message(router->dht(), reply.msgs);
     }
     if (reply.msgs.size())
     {

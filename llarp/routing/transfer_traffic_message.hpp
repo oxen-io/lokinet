@@ -13,7 +13,7 @@ namespace llarp
     constexpr size_t ExitPadSize = 512 - 48;
     constexpr size_t MaxExitMTU = 1500;
     constexpr size_t ExitOverhead = sizeof(uint64_t);
-    struct TransferTrafficMessage final : public IMessage
+    struct TransferTrafficMessage final : public AbstractRoutingMessage
     {
       std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> X;
       service::ProtocolType protocol;
@@ -45,7 +45,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

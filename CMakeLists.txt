@@ -96,7 +96,7 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_definitions(-DLOKINET_DEBUG)
 endif()
 
-option(WARN_DEPRECATED "show deprecation warnings" ${debug})
+option(WARN_DEPRECATED "show deprecation warnings" OFF)
 
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)

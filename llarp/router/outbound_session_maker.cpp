@@ -19,7 +19,7 @@ namespace llarp
 {
 
   bool
-  OutboundSessionMaker::OnSessionEstablished(ILinkSession* session)
+  OutboundSessionMaker::OnSessionEstablished(AbstractLinkSession* session)
   {
     // TODO: do we want to keep it
     const RouterContact rc = session->GetRemoteRC();
@@ -44,7 +44,7 @@ namespace llarp
   }
 
   void
-  OutboundSessionMaker::OnConnectTimeout(ILinkSession* session)
+  OutboundSessionMaker::OnConnectTimeout(AbstractLinkSession* session)
   {
     const auto router = RouterID(session->GetPubKey());
     LogWarn("Session establish attempt to ", router, " timed out.", session->GetRemoteEndpoint());
@@ -272,7 +272,7 @@ namespace llarp
     FinalizeRequest(rc.pubkey, SessionResult::Establish);
   }
 
-  //TODO: rename this, if we even want to keep it
+  // TODO: rename this, if we even want to keep it
   void
   OutboundSessionMaker::CreatePendingSession(const RouterID& router)
   {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.hpp"
+
 #include <llarp/link/session.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/bencode.hpp>
@@ -7,59 +9,69 @@
 
 #include <vector>
 
+namespace
+{
+  static auto link_cat = llarp::log::Cat("lokinet.link");
+}  // namespace
+
 namespace llarp
 {
-  struct ILinkSession;
+  struct AbstractLinkSession;
   struct AbstractRouter;
 
   /// parsed link layer message
-  struct ILinkMessage
+  struct AbstractLinkMessage : private AbstractSerializable
   {
     /// who did this message come from or is going to
-    ILinkSession* session = nullptr;
+    AbstractLinkSession* session = nullptr;
     uint64_t version = llarp::constants::proto_version;
 
     PathID_t pathid;
 
-    ILinkMessage() = default;
+    AbstractLinkMessage() = default;
 
-    virtual ~ILinkMessage() = default;
+    virtual ~AbstractLinkMessage() = default;
 
-    virtual bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
-
-    bool
-    BDecode(llarp_buffer_t* buf)
-    {
-      // default version if not specified is 0
-      uint64_t v = 0;
-      // seek for version and set it if we got it
-      if (BEncodeSeekDictVersion(v, buf, 'v'))
-      {
-        version = v;
-      }
-      // when we hit the code path version is set and we can tell how to decode
-      return bencode_decode_dict(*this, buf);
-    }
+    std::string
+    bt_encode() const override = 0;
 
     virtual bool
-    BEncode(llarp_buffer_t* buf) const = 0;
+    handle_message(AbstractRouter* router) const = 0;
 
     virtual bool
-    HandleMessage(AbstractRouter* router) const = 0;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) = 0;
 
     virtual void
-    Clear() = 0;
+    clear() = 0;
 
     // the name of this kind of message
     virtual const char*
-    Name() const = 0;
+    name() const = 0;
 
     /// get message prority, higher value means more important
     virtual uint16_t
-    Priority() const
+    priority() const
     {
       return 1;
+    }
+
+    // methods we do not want to inherit onwards from AbstractSerializable
+    void
+    bt_encode(llarp_buffer&) const final
+    {
+      throw std::runtime_error{"Error: Link messages should not encode directly to a buffer!"};
+    }
+    void
+    bt_encode(oxenc::bt_dict_producer&) const final
+    {
+      throw std::runtime_error{
+          "Error: Link messages should not encode directly to a bt list producer!"};
+    }
+    void
+    bt_encode(oxenc::bt_list_producer&) const final
+    {
+      throw std::runtime_error{
+          "Error: Link messages should not encode directly to a bt list producer!"};
     }
   };
 

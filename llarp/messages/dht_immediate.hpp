@@ -7,27 +7,27 @@
 
 namespace llarp
 {
-  struct DHTImmediateMessage final : public ILinkMessage
+  struct DHTImmediateMessage final : public AbstractLinkMessage
   {
     DHTImmediateMessage() = default;
     ~DHTImmediateMessage() override = default;
 
-    std::vector<std::unique_ptr<dht::IMessage>> msgs;
+    std::vector<std::unique_ptr<dht::AbstractDHTMessage>> msgs;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
-
-    bool
-    HandleMessage(AbstractRouter* router) const override;
+    handle_message(AbstractRouter* router) const override;
 
     void
-    Clear() override;
+    clear() override;
 
     const char*
-    Name() const override
+    name() const override
     {
       return "DHTImmediate";
     }

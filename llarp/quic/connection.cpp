@@ -95,10 +95,10 @@ namespace llarp::quic
       auto& conn = *static_cast<Connection*>(user_data);
       switch (crypto_level)
       {
-        // case NGTCP2_CRYPTO_LEVEL_EARLY:
-        //   // We don't currently use or support 0rtt
-        //   LogWarn("Invalid EARLY crypto level");
-        //   return FAIL;
+          // case NGTCP2_CRYPTO_LEVEL_EARLY:
+          //   // We don't currently use or support 0rtt
+          //   LogWarn("Invalid EARLY crypto level");
+          //   return FAIL;
 
         case NGTCP2_ENCRYPTION_LEVEL_INITIAL:
           log::trace(log_cat, "Receiving initial crypto...");
@@ -1197,7 +1197,8 @@ namespace llarp::quic
     // auto exttype = is_server ? NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS
     //                          : NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO;
 
-    if (ngtcp2_ssize nwrite = ngtcp2_conn_encode_local_transport_params(*this, buf, bufend-buf); nwrite >= 0)
+    if (ngtcp2_ssize nwrite = ngtcp2_conn_encode_local_transport_params(*this, buf, bufend - buf);
+        nwrite >= 0)
     {
       assert(nwrite > 0);
       conn_buffer.resize(buf - u8data(conn_buffer) + nwrite);

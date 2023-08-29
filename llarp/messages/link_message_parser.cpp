@@ -99,7 +99,7 @@ namespace llarp
     if (!key)
       return MessageDone();
 
-    return msg->DecodeKey(*key, buffer);
+    return msg->decode_key(*key, buffer);
   }
 
   bool
@@ -108,14 +108,14 @@ namespace llarp
     bool result = false;
     if (msg)
     {
-      result = msg->HandleMessage(router);
+      result = msg->handle_message(router);
     }
     Reset();
     return result;
   }
 
   bool
-  LinkMessageParser::ProcessFrom(ILinkSession* src, const llarp_buffer_t& buf)
+  LinkMessageParser::ProcessFrom(AbstractLinkSession* src, const llarp_buffer_t& buf)
   {
     if (!src)
     {
@@ -133,7 +133,7 @@ namespace llarp
   LinkMessageParser::Reset()
   {
     if (msg)
-      msg->Clear();
+      msg->clear();
     msg = nullptr;
   }
 }  // namespace llarp

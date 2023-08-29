@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct PathTransferMessage final : public IMessage
+    struct PathTransferMessage final : public AbstractRoutingMessage
     {
       PathID_t P;
       service::ProtocolFrame T;
@@ -29,7 +29,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      HandleMessage(IMessageHandler*, AbstractRouter* r) const override;
+      HandleMessage(AbstractRoutingMessageHandler*, AbstractRouter* r) const override;
 
       void
       Clear() override

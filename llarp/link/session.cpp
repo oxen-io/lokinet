@@ -3,7 +3,7 @@
 namespace llarp
 {
   bool
-  ILinkSession::IsRelay() const
+  AbstractLinkSession::IsRelay() const
   {
     return GetRemoteRC().IsPublicRouter();
   }

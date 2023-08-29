@@ -18,7 +18,7 @@ namespace llarp
   /// handle a link layer message. this allows for the message to be handled by "upper layers"
   ///
   /// currently called from iwp::Session when messages are sent or received.
-  using LinkMessageHandler = std::function<bool(ILinkSession*, const llarp_buffer_t&)>;
+  using LinkMessageHandler = std::function<bool(AbstractLinkSession*, const llarp_buffer_t&)>;
 
   /// sign a buffer with identity key. this function should take the given `llarp_buffer_t` and
   /// sign it, prividing the signature in the out variable `Signature&`.
@@ -29,7 +29,7 @@ namespace llarp
   /// handle connection timeout
   ///
   /// currently called from ILinkLayer::Pump() when an unestablished session times out
-  using TimeoutHandler = std::function<void(ILinkSession*)>;
+  using TimeoutHandler = std::function<void(AbstractLinkSession*)>;
 
   /// get our RC
   ///
@@ -41,7 +41,7 @@ namespace llarp
   /// return true to accept
   ///
   /// currently called in iwp::Session when a valid LIM is received.
-  using SessionEstablishedHandler = std::function<bool(ILinkSession*, bool)>;
+  using SessionEstablishedHandler = std::function<bool(AbstractLinkSession*, bool)>;
 
   /// f(new, old)
   /// handler of session renegotiation
@@ -95,11 +95,11 @@ namespace llarp
     HasSessionTo(const RouterID& pk);
 
     void
-    ForEachSession(std::function<void(const ILinkSession*)> visit, bool randomize = false) const
-        EXCLUDES(m_AuthedLinksMutex);
+    ForEachSession(std::function<void(const AbstractLinkSession*)> visit, bool randomize = false)
+        const EXCLUDES(m_AuthedLinksMutex);
 
     void
-    ForEachSession(std::function<void(ILinkSession*)> visit) EXCLUDES(m_AuthedLinksMutex);
+    ForEachSession(std::function<void(AbstractLinkSession*)> visit) EXCLUDES(m_AuthedLinksMutex);
 
     void
     UnmapAddr(const SockAddr& addr);
@@ -110,18 +110,18 @@ namespace llarp
     void
     Bind(AbstractRouter* router, SockAddr addr);
 
-    virtual std::shared_ptr<ILinkSession>
+    virtual std::shared_ptr<AbstractLinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
     /// fetch a session by the identity pubkey it claims
-    std::shared_ptr<ILinkSession>
+    std::shared_ptr<AbstractLinkSession>
     FindSessionByPubkey(RouterID pk);
 
     virtual void
     Pump();
 
     virtual void
-    RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) = 0;
+    RecvFrom(const SockAddr& from, AbstractLinkSession::Packet_t pkt) = 0;
 
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
@@ -151,14 +151,14 @@ namespace llarp
     SendTo(
         const RouterID& remote,
         const llarp_buffer_t& buf,
-        ILinkSession::CompletionHandler completed,
+        AbstractLinkSession::CompletionHandler completed,
         uint16_t priority);
 
     virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
     bool
-    VisitSessionByPubkey(const RouterID& pk, std::function<bool(ILinkSession*)> visit)
+    VisitSessionByPubkey(const RouterID& pk, std::function<bool(AbstractLinkSession*)> visit)
         EXCLUDES(m_AuthedLinksMutex);
 
     virtual uint16_t
@@ -187,7 +187,7 @@ namespace llarp
     }
 
     bool
-    MapAddr(const RouterID& pk, ILinkSession* s);
+    MapAddr(const RouterID& pk, AbstractLinkSession* s);
 
     void
     Tick(llarp_time_t now);
@@ -254,15 +254,15 @@ namespace llarp
     using Mutex_t = util::NullMutex;
 #endif
     bool
-    PutSession(const std::shared_ptr<ILinkSession>& s);
+    PutSession(const std::shared_ptr<AbstractLinkSession>& s);
 
     AbstractRouter* m_Router;
     SockAddr m_ourAddr;
     std::shared_ptr<llarp::UDPHandle> m_udp;
     SecretKey m_SecretKey;
 
-    using AuthedLinks = std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>>;
-    using Pending = std::unordered_map<SockAddr, std::shared_ptr<ILinkSession>>;
+    using AuthedLinks = std::unordered_multimap<RouterID, std::shared_ptr<AbstractLinkSession>>;
+    using Pending = std::unordered_map<SockAddr, std::shared_ptr<AbstractLinkSession>>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));

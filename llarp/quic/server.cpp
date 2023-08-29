@@ -31,7 +31,8 @@ namespace llarp::quic
     {  // Invalid/unexpected version, send a version negotiation
       LogDebug("Invalid/unsupported version; sending version negotiation");
       send_version_negotiation(
-          ngtcp2_version_cid{hd.version, hd.dcid.data, hd.dcid.datalen, hd.scid.data, hd.scid.datalen},
+          ngtcp2_version_cid{
+              hd.version, hd.dcid.data, hd.dcid.datalen, hd.scid.data, hd.scid.datalen},
           p.path.remote);
       return nullptr;
     }

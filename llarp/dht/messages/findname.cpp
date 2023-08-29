@@ -10,21 +10,26 @@
 namespace llarp::dht
 {
   FindNameMessage::FindNameMessage(const Key_t& from, Key_t namehash, uint64_t txid)
-      : IMessage(from), NameHash(std::move(namehash)), TxID(txid)
+      : AbstractDHTMessage(from), NameHash(std::move(namehash)), TxID(txid)
   {}
 
-  bool
-  FindNameMessage::BEncode(llarp_buffer_t* buf) const
+  void
+  FindNameMessage::bt_encode(oxenc::bt_dict_producer& btdp) const
   {
-    const auto data = oxenc::bt_serialize(oxenc::bt_dict{
-        {"A", "N"sv},
-        {"H", std::string_view{(char*)NameHash.data(), NameHash.size()}},
-        {"T", TxID}});
-    return buf->write(data.begin(), data.end());
+    try
+    {
+      btdp.append("A", "N");
+      btdp.append("H", NameHash.ToView());
+      btdp.append("T", TxID);
+    }
+    catch (...)
+    {
+      log::error(dht_cat, "Error: FindNameMessage failed to bt encode contents!");
+    }
   }
 
   bool
-  FindNameMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
+  FindNameMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
     if (key.startswith("H"))
     {
@@ -38,7 +43,7 @@ namespace llarp::dht
   }
 
   bool
-  FindNameMessage::HandleMessage(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const
+  FindNameMessage::handle_message(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const
   {
     (void)replies;
     auto r = dht->impl->GetRouter();

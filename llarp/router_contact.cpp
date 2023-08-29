@@ -110,6 +110,14 @@ namespace llarp
     return false;
   }
 
+  void
+  RouterContact::bt_encode_subdict(oxenc::bt_list_producer& btlp) const
+  {
+    btlp.append("1");
+    btlp.append(signature.ToView());
+    btlp.append(signed_bt_dict);
+  }
+
   std::string
   RouterContact::ToTXTRecord() const
   {
@@ -196,6 +204,7 @@ namespace llarp
     if (!bencode_write_uint64_entry(buf, "v", 1, version))
       return false;
 
+    // D We can delete this?
     if (serializeExit)
     {
       /* write xi if they exist */

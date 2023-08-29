@@ -53,7 +53,7 @@ namespace llarp
     return m_AuthedLinks.find(id) != m_AuthedLinks.end();
   }
 
-  std::shared_ptr<ILinkSession>
+  std::shared_ptr<AbstractLinkSession>
   ILinkLayer::FindSessionByPubkey(RouterID id)
   {
     Lock_t l(m_AuthedLinksMutex);
@@ -64,9 +64,10 @@ namespace llarp
   }
 
   void
-  ILinkLayer::ForEachSession(std::function<void(const ILinkSession*)> visit, bool randomize) const
+  ILinkLayer::ForEachSession(
+      std::function<void(const AbstractLinkSession*)> visit, bool randomize) const
   {
-    std::vector<std::shared_ptr<ILinkSession>> sessions;
+    std::vector<std::shared_ptr<AbstractLinkSession>> sessions;
     {
       Lock_t l(m_AuthedLinksMutex);
       if (m_AuthedLinks.size() == 0)
@@ -99,9 +100,10 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::VisitSessionByPubkey(const RouterID& pk, std::function<bool(ILinkSession*)> visit)
+  ILinkLayer::VisitSessionByPubkey(
+      const RouterID& pk, std::function<bool(AbstractLinkSession*)> visit)
   {
-    std::shared_ptr<ILinkSession> session;
+    std::shared_ptr<AbstractLinkSession> session;
     {
       Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.find(pk);
@@ -113,9 +115,9 @@ namespace llarp
   }
 
   void
-  ILinkLayer::ForEachSession(std::function<void(ILinkSession*)> visit)
+  ILinkLayer::ForEachSession(std::function<void(AbstractLinkSession*)> visit)
   {
-    std::vector<std::shared_ptr<ILinkSession>> sessions;
+    std::vector<std::shared_ptr<AbstractLinkSession>> sessions;
     {
       Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
@@ -138,7 +140,7 @@ namespace llarp
     m_Router = router;
     m_udp = m_Router->loop()->make_udp(
         [this]([[maybe_unused]] UDPHandle& udp, const SockAddr& from, llarp_buffer_t buf) {
-          ILinkSession::Packet_t pkt;
+          AbstractLinkSession::Packet_t pkt;
           pkt.resize(buf.sz);
           std::copy_n(buf.base, buf.sz, pkt.data());
           RecvFrom(from, std::move(pkt));
@@ -155,7 +157,7 @@ namespace llarp
   ILinkLayer::Pump()
   {
     std::unordered_set<RouterID> closedSessions;
-    std::vector<std::shared_ptr<ILinkSession>> closedPending;
+    std::vector<std::shared_ptr<AbstractLinkSession>> closedPending;
     auto _now = Now();
     {
       Lock_t l(m_AuthedLinksMutex);
@@ -223,7 +225,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
+  ILinkLayer::MapAddr(const RouterID& pk, AbstractLinkSession* s)
   {
     Lock_t l_authed(m_AuthedLinksMutex);
     Lock_t l_pending(m_PendingMutex);
@@ -321,7 +323,7 @@ namespace llarp
         return false;
       }
     }
-    std::shared_ptr<ILinkSession> s = NewOutboundSession(rc, to);
+    std::shared_ptr<AbstractLinkSession> s = NewOutboundSession(rc, to);
     if (BeforeConnect)
     {
       BeforeConnect(std::move(rc));
@@ -432,10 +434,10 @@ namespace llarp
   ILinkLayer::SendTo(
       const RouterID& remote,
       const llarp_buffer_t& buf,
-      ILinkSession::CompletionHandler completed,
+      AbstractLinkSession::CompletionHandler completed,
       uint16_t priority)
   {
-    std::shared_ptr<ILinkSession> s;
+    std::shared_ptr<AbstractLinkSession> s;
     {
       Lock_t l(m_AuthedLinksMutex);
       // pick lowest backlog session
@@ -450,7 +452,7 @@ namespace llarp
         }
       }
     }
-    ILinkSession::Message_t pkt(buf.sz);
+    AbstractLinkSession::Message_t pkt(buf.sz);
     std::copy_n(buf.base, buf.sz, pkt.begin());
     return s && s->SendMessageBuffer(std::move(pkt), completed, priority);
   }
@@ -478,7 +480,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::PutSession(const std::shared_ptr<ILinkSession>& s)
+  ILinkLayer::PutSession(const std::shared_ptr<AbstractLinkSession>& s)
   {
     Lock_t lock(m_PendingMutex);
     const auto address = s->GetRemoteEndpoint();

@@ -57,7 +57,7 @@ namespace llarp
   };
 
   bool
-  LR_StatusMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  LR_StatusMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (key.startswith("c"))
@@ -90,39 +90,43 @@ namespace llarp
   }
 
   void
-  LR_StatusMessage::Clear()
+  LR_StatusMessage::clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
     version = 0;
     status = 0;
   }
 
-  bool
-  LR_StatusMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  LR_StatusMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    // msg type
-    if (!BEncodeWriteDictMsgType(buf, "a", "s"))
-      return false;
-    // frames
-    if (!BEncodeWriteDictArray("c", frames, buf))
-      return false;
-    // path id
-    if (!BEncodeWriteDictEntry("p", pathid, buf))
-      return false;
-    // status (for now, only success bit is relevant)
-    if (!BEncodeWriteDictInt("s", status, buf))
-      return false;
-    // version
-    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    return bencode_end(buf);
+    try
+    {
+      btdp.append("a", "s");
+
+      {
+        auto sublist = btdp.append_list("c");
+
+        for (auto& f : frames)
+          sublist.append({reinterpret_cast<const char*>(f.data()), f.size()});
+      }
+
+      btdp.append("p", pathid.ToView());
+      btdp.append("s", status);
+      btdp.append("v", llarp::constants::proto_version);
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: LR_StatusMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   bool
-  LR_StatusMessage::HandleMessage(AbstractRouter* router) const
+  LR_StatusMessage::handle_message(AbstractRouter* router) const
   {
     llarp::LogDebug("Received LR_Status message from (", session->GetPubKey(), ")");
     if (frames.size() != path::max_len)
@@ -198,14 +202,14 @@ namespace llarp
     if (!record.BEncode(&buf))
     {
       // failed to encode?
-      LogError(Name(), " Failed to generate Status Record");
+      LogError(name(), " Failed to generate Status Record");
       DumpBuffer(buf);
       return false;
     }
     // use ephemeral keypair for frame
     if (!frame.DoEncrypt(pathKey, true))
     {
-      LogError(Name(), " Failed to encrypt LRSR");
+      LogError(name(), " Failed to encrypt LRSR");
       DumpBuffer(buf);
       return false;
     }

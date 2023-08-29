@@ -102,7 +102,7 @@ namespace tooling
         , from(msg.From)
         , targetKey(msg.targetKey)
         , iterative(msg.iterative)
-        , exploritory(msg.exploritory)
+        , exploritory(msg.exploratory)
         , txid(msg.txid)
         , version(msg.version)
     {}

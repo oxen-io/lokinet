@@ -53,7 +53,7 @@ namespace llarp
     }
 
     struct TransitHop : public IHopHandler,
-                        public routing::IMessageHandler,
+                        public routing::AbstractRoutingMessageHandler,
                         std::enable_shared_from_this<TransitHop>
     {
       TransitHop();
@@ -117,11 +117,11 @@ namespace llarp
 
       // send routing message when end of path
       bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
+      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r) override;
 
       // handle routing message when end of path
       bool
-      HandleRoutingMessage(const routing::IMessage& msg, AbstractRouter* r);
+      HandleRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r);
 
       bool
       HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
@@ -171,7 +171,7 @@ namespace llarp
       HandleGotIntroMessage(const dht::GotIntroMessage& msg);
 
       bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
+      HandleDHTMessage(const dht::AbstractDHTMessage& msg, AbstractRouter* r) override;
 
       void
       FlushUpstream(AbstractRouter* r) override;

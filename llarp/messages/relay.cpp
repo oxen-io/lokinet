@@ -7,109 +7,113 @@
 namespace llarp
 {
   void
-  RelayUpstreamMessage::Clear()
+  RelayUpstreamMessage::clear()
   {
     pathid.Zero();
-    X.Clear();
-    Y.Zero();
+    enc.Clear();
+    nonce.Zero();
     version = 0;
   }
 
-  bool
-  RelayUpstreamMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  RelayUpstreamMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    if (!BEncodeWriteDictMsgType(buf, "a", "u"))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    if (!BEncodeWriteDictEntry("p", pathid, buf))
-      return false;
-    if (!BEncodeWriteDictInt("v", llarp::constants::proto_version, buf))
-      return false;
-    if (!BEncodeWriteDictEntry("x", X, buf))
-      return false;
-    if (!BEncodeWriteDictEntry("y", Y, buf))
-      return false;
-    return bencode_end(buf);
+    try
+    {
+      btdp.append("a", "u");
+      btdp.append("p", pathid.ToView());
+      btdp.append("v", llarp::constants::proto_version);
+      btdp.append("x", std::string_view{reinterpret_cast<const char*>(enc.data()), enc.size()});
+      btdp.append("y", std::string_view{reinterpret_cast<const char*>(nonce.data()), nonce.size()});
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: RelayUpstreamMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   bool
-  RelayUpstreamMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  RelayUpstreamMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
     if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       return false;
-    if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("x", enc, read, key, buf))
       return false;
-    if (!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("y", nonce, read, key, buf))
       return false;
     return read;
   }
 
   bool
-  RelayUpstreamMessage::HandleMessage(AbstractRouter* r) const
+  RelayUpstreamMessage::handle_message(AbstractRouter* r) const
   {
     auto path = r->pathContext().GetByDownstream(session->GetPubKey(), pathid);
     if (path)
     {
-      return path->HandleUpstream(llarp_buffer_t(X), Y, r);
+      return path->HandleUpstream(llarp_buffer_t(enc), nonce, r);
     }
     return false;
   }
 
   void
-  RelayDownstreamMessage::Clear()
+  RelayDownstreamMessage::clear()
   {
     pathid.Zero();
-    X.Clear();
-    Y.Zero();
+    enc.Clear();
+    nonce.Zero();
     version = 0;
   }
 
-  bool
-  RelayDownstreamMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  RelayDownstreamMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    if (!BEncodeWriteDictMsgType(buf, "a", "d"))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    if (!BEncodeWriteDictEntry("p", pathid, buf))
-      return false;
-    if (!BEncodeWriteDictInt("v", llarp::constants::proto_version, buf))
-      return false;
-    if (!BEncodeWriteDictEntry("x", X, buf))
-      return false;
-    if (!BEncodeWriteDictEntry("y", Y, buf))
-      return false;
-    return bencode_end(buf);
+    try
+    {
+      btdp.append("a", "d");
+      btdp.append("p", pathid.ToView());
+      btdp.append("v", llarp::constants::proto_version);
+      btdp.append("x", std::string_view{reinterpret_cast<const char*>(enc.data()), enc.size()});
+      btdp.append("y", std::string_view{reinterpret_cast<const char*>(nonce.data()), nonce.size()});
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: RelayDownstreamMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   bool
-  RelayDownstreamMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  RelayDownstreamMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
     if (!BEncodeMaybeVerifyVersion("v", version, llarp::constants::proto_version, read, key, buf))
       return false;
-    if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("x", enc, read, key, buf))
       return false;
-    if (!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("y", nonce, read, key, buf))
       return false;
     return read;
   }
 
   bool
-  RelayDownstreamMessage::HandleMessage(AbstractRouter* r) const
+  RelayDownstreamMessage::handle_message(AbstractRouter* r) const
   {
     auto path = r->pathContext().GetByUpstream(session->GetPubKey(), pathid);
     if (path)
     {
-      return path->HandleDownstream(llarp_buffer_t(X), Y, r);
+      return path->HandleDownstream(llarp_buffer_t(enc), nonce, r);
     }
     llarp::LogWarn("no path for downstream message id=", pathid);
     return false;

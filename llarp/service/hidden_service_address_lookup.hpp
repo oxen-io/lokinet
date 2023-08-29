@@ -46,7 +46,7 @@ namespace llarp
       bool
       HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results) override;
 
-      std::shared_ptr<routing::IMessage>
+      std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() override;
     };
   }  // namespace service

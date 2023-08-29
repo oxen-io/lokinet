@@ -53,7 +53,7 @@ namespace llarp
   std::string
   LRStatusCodeToString(uint64_t status);
 
-  struct LR_StatusMessage : public ILinkMessage
+  struct LR_StatusMessage final : public AbstractLinkMessage
   {
     std::array<EncryptedFrame, 8> frames;
 
@@ -62,7 +62,7 @@ namespace llarp
     uint64_t status = 0;
 
     LR_StatusMessage(std::array<EncryptedFrame, 8> _frames)
-        : ILinkMessage(), frames(std::move(_frames))
+        : AbstractLinkMessage(), frames(std::move(_frames))
     {}
 
     LR_StatusMessage() = default;
@@ -70,16 +70,16 @@ namespace llarp
     ~LR_StatusMessage() override = default;
 
     void
-    Clear() override;
+    clear() override;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
-
-    bool
-    HandleMessage(AbstractRouter* router) const override;
+    handle_message(AbstractRouter* router) const override;
 
     void
     SetDummyFrames();
@@ -111,12 +111,12 @@ namespace llarp
         std::shared_ptr<path::TransitHop> hop);
 
     const char*
-    Name() const override
+    name() const override
     {
       return "RelayStatus";
     }
-    virtual uint16_t
-    Priority() const override
+    uint16_t
+    priority() const override
     {
       return 6;
     }

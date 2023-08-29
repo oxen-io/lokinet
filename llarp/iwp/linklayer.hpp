@@ -32,7 +32,7 @@ namespace llarp::iwp
         WorkerFunc_t dowork,
         bool permitInbound);
 
-    std::shared_ptr<ILinkSession>
+    std::shared_ptr<AbstractLinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) override;
 
     std::string_view
@@ -42,7 +42,7 @@ namespace llarp::iwp
     Rank() const override;
 
     void
-    RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) override;
+    RecvFrom(const SockAddr& from, AbstractLinkSession::Packet_t pkt) override;
 
     void
     WakeupPlaintext();
@@ -55,7 +55,7 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     const std::shared_ptr<EventLoopWakeup> m_Wakeup;
-    std::vector<ILinkSession*> m_WakingUp;
+    std::vector<AbstractLinkSession*> m_WakingUp;
     const bool m_Inbound;
   };
 

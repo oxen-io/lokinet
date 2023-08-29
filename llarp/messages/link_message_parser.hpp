@@ -8,8 +8,8 @@
 namespace llarp
 {
   struct AbstractRouter;
-  struct ILinkMessage;
-  struct ILinkSession;
+  struct AbstractLinkMessage;
+  struct AbstractLinkSession;
 
   struct LinkMessageParser
   {
@@ -21,7 +21,7 @@ namespace llarp
 
     /// start processig message from a link session
     bool
-    ProcessFrom(ILinkSession* from, const llarp_buffer_t& buf);
+    ProcessFrom(AbstractLinkSession* from, const llarp_buffer_t& buf);
 
     /// called when the message is fully read
     /// return true when the message was accepted otherwise returns false
@@ -39,8 +39,8 @@ namespace llarp
    private:
     bool firstkey;
     AbstractRouter* router;
-    ILinkSession* from;
-    ILinkMessage* msg;
+    AbstractLinkSession* from;
+    AbstractLinkMessage* msg;
 
     struct msg_holder_t;
 

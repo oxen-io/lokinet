@@ -6,47 +6,47 @@
 
 namespace llarp
 {
-  struct ILinkSession;
+  struct AbstractLinkSession;
 
-  struct LinkIntroMessage : public ILinkMessage
+  struct LinkIntroMessage final : public AbstractLinkMessage
   {
-    static constexpr size_t MaxSize = MAX_RC_SIZE + 256;
+    static constexpr size_t MAX_MSG_SIZE = MAX_RC_SIZE + 256;
 
-    LinkIntroMessage() : ILinkMessage()
+    LinkIntroMessage() : AbstractLinkMessage()
     {}
 
     RouterContact rc;
-    KeyExchangeNonce N;
-    Signature Z;
-    uint64_t P;
+    KeyExchangeNonce nonce;
+    Signature sig;
+    uint64_t session_period;
+
+    std::string
+    bt_encode() const override;
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    handle_message(AbstractRouter* router) const override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    HandleMessage(AbstractRouter* router) const override;
+    sign(std::function<bool(Signature&, const llarp_buffer_t&)> signer);
 
     bool
-    Sign(std::function<bool(Signature&, const llarp_buffer_t&)> signer);
-
-    bool
-    Verify() const;
+    verify() const;
 
     void
-    Clear() override;
+    clear() override;
 
     const char*
-    Name() const override
+    name() const override
     {
       return "LinkIntro";
     }
 
     // always first
     uint16_t
-    Priority() const override
+    priority() const override
     {
       return std::numeric_limits<uint16_t>::max();
     }

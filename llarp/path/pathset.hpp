@@ -230,7 +230,7 @@ namespace llarp
         return false;
       }
 
-      virtual routing::IMessageHandler*
+      virtual routing::AbstractRoutingMessageHandler*
       GetDHTHandler()
       {
         return nullptr;

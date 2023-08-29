@@ -99,11 +99,7 @@ namespace llarp::quic
   Endpoint::handle_packet_init(const Packet& p)
   {
     ngtcp2_version_cid vid;
-    auto rv = ngtcp2_pkt_decode_version_cid(
-        &vid,
-        u8data(p.data),
-        p.data.size(),
-        NGTCP2_MAX_CIDLEN);
+    auto rv = ngtcp2_pkt_decode_version_cid(&vid, u8data(p.data), p.data.size(), NGTCP2_MAX_CIDLEN);
     if (rv == 1)
     {  // 1 means Version Negotiation should be sent and otherwise the packet should be ignored
       send_version_negotiation(vid, p.path.remote);
@@ -234,7 +230,11 @@ namespace llarp::quic
       ngtcp2_pkt_info pi;
 
       ngtcp2_ccerr err;
-      ngtcp2_ccerr_set_liberr(&err, code, reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())), close_reason.size());
+      ngtcp2_ccerr_set_liberr(
+          &err,
+          code,
+          reinterpret_cast<uint8_t*>(const_cast<char*>(close_reason.data())),
+          close_reason.size());
 
       auto written = ngtcp2_conn_write_connection_close(
           conn,

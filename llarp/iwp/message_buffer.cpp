@@ -8,9 +8,9 @@ namespace llarp
   {
     OutboundMessage::OutboundMessage(
         uint64_t msgid,
-        ILinkSession::Message_t msg,
+        AbstractLinkSession::Message_t msg,
         llarp_time_t now,
-        ILinkSession::CompletionHandler handler,
+        AbstractLinkSession::CompletionHandler handler,
         uint16_t priority)
         : m_Data{std::move(msg)}
         , m_MsgID{msgid}
@@ -24,7 +24,7 @@ namespace llarp
       m_Acks.set(0);
     }
 
-    ILinkSession::Packet_t
+    AbstractLinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
       size_t extra = std::min(m_Data.size(), FragmentSize);
@@ -43,7 +43,7 @@ namespace llarp
     {
       if (m_Completed)
       {
-        m_Completed(ILinkSession::DeliveryStatus::eDeliverySuccess);
+        m_Completed(AbstractLinkSession::DeliveryStatus::eDeliverySuccess);
       }
       m_Completed = nullptr;
     }
@@ -62,7 +62,7 @@ namespace llarp
 
     void
     OutboundMessage::FlushUnAcked(
-        std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now)
+        std::function<void(AbstractLinkSession::Packet_t)> sendpkt, llarp_time_t now)
     {
       /// overhead for a data packet in plaintext
       static constexpr size_t Overhead = 10;
@@ -111,7 +111,7 @@ namespace llarp
     {
       if (m_Completed)
       {
-        m_Completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
+        m_Completed(AbstractLinkSession::DeliveryStatus::eDeliveryDropped);
       }
       m_Completed = nullptr;
     }
@@ -135,7 +135,7 @@ namespace llarp
       m_LastActiveAt = now;
     }
 
-    ILinkSession::Packet_t
+    AbstractLinkSession::Packet_t
     InboundMessage::ACKS() const
     {
       auto acks = CreatePacket(Command::eACKS, 9);
@@ -175,7 +175,8 @@ namespace llarp
     }
 
     void
-    InboundMessage::SendACKS(std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now)
+    InboundMessage::SendACKS(
+        std::function<void(AbstractLinkSession::Packet_t)> sendpkt, llarp_time_t now)
     {
       sendpkt(ACKS());
       m_LastACKSent = now;

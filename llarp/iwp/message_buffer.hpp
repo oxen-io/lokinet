@@ -38,15 +38,15 @@ namespace llarp
       OutboundMessage() = default;
       OutboundMessage(
           uint64_t msgid,
-          ILinkSession::Message_t data,
+          AbstractLinkSession::Message_t data,
           llarp_time_t now,
-          ILinkSession::CompletionHandler handler,
+          AbstractLinkSession::CompletionHandler handler,
           uint16_t priority);
 
-      ILinkSession::Message_t m_Data;
+      AbstractLinkSession::Message_t m_Data;
       uint64_t m_MsgID = 0;
       std::bitset<MAX_LINK_MSG_SIZE / FragmentSize> m_Acks;
-      ILinkSession::CompletionHandler m_Completed;
+      AbstractLinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0s;
       ShortHash m_Digest;
       llarp_time_t m_StartedAt = 0s;
@@ -61,14 +61,14 @@ namespace llarp
         return std::tie(prioA, m_MsgID) < std::tie(prioB, other.m_MsgID);
       }
 
-      ILinkSession::Packet_t
+      AbstractLinkSession::Packet_t
       XMIT() const;
 
       void
       Ack(byte_t bitmask);
 
       void
-      FlushUnAcked(std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now);
+      FlushUnAcked(std::function<void(AbstractLinkSession::Packet_t)> sendpkt, llarp_time_t now);
 
       bool
       ShouldFlush(llarp_time_t now) const;
@@ -91,7 +91,7 @@ namespace llarp
       InboundMessage() = default;
       InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h, llarp_time_t now);
 
-      ILinkSession::Message_t m_Data;
+      AbstractLinkSession::Message_t m_Data;
       ShortHash m_Digset;
       uint64_t m_MsgID = 0;
       llarp_time_t m_LastACKSent = 0s;
@@ -117,9 +117,9 @@ namespace llarp
       ShouldSendACKS(llarp_time_t now) const;
 
       void
-      SendACKS(std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now);
+      SendACKS(std::function<void(AbstractLinkSession::Packet_t)> sendpkt, llarp_time_t now);
 
-      ILinkSession::Packet_t
+      AbstractLinkSession::Packet_t
       ACKS() const;
     };
 
