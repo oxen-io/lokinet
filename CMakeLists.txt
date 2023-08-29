@@ -70,11 +70,17 @@ include(cmake/enable_lto.cmake)
 option(CROSS_PLATFORM "cross compiler platform" "Linux")
 option(CROSS_PREFIX "toolchain cross compiler prefix" "")
 
+option(BUILD_SHARED_LIBS "Build shared library" OFF)
 option(BUILD_STATIC_DEPS "Download, build, and statically link against core dependencies" OFF)
 option(STATIC_LINK "link statically against dependencies" ${BUILD_STATIC_DEPS})
 if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
   message(FATAL_ERROR "Option BUILD_STATIC_DEPS requires STATIC_LINK to be enabled as well")
 endif()
+
+if(BUILD_STATIC_DEPS AND BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Incompatible options: BUILD_STATIC_DEPS cannot be used with BUILD_SHARED_LIBS")
+endif()
+
 if(BUILD_STATIC_DEPS)
   set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
   include(cmake/StaticBuild.cmake)
@@ -91,11 +97,6 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 endif()
 
 option(WARN_DEPRECATED "show deprecation warnings" ${debug})
-
-if(BUILD_STATIC_DEPS AND STATIC_LINK)
-  message(STATUS "we are building static deps so we won't build shared libs")
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
-endif()
 
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
