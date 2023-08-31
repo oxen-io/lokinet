@@ -69,6 +69,21 @@ namespace llarp::path
       : txID(record.txid), rxID(record.rxid), upstream(record.nextHop), downstream(down)
   {}
 
+  /** Note: this is one of two places where AbstractRoutingMessage::bt_encode() is called, the
+      other of which is llarp/path/path.cpp in Path::SendRoutingMessage(). For now,
+      we will default to the override of ::bt_encode() that returns an std::string. The role that
+      llarp_buffer_t plays here is likely superfluous, and can be replaced with either a leaner
+      llarp_buffer, or just handled using strings.
+
+      One important consideration is the frequency at which routing messages are sent, making
+      superfluous copies important to optimize out here. We have to instantiate at least one
+      std::string whether we pass a bt_dict_producer as a reference or create one within the
+      ::bt_encode() call.
+
+      If we decide to stay with std::strings, the function Path::HandleUpstream (along with the
+      functions it calls and so on) will need to be modified to take an std::string that we can
+      std::move around.
+  */
   bool
   TransitHop::SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r)
   {
@@ -77,11 +92,10 @@ namespace llarp::path
 
     std::array<byte_t, MAX_LINK_MSG_SIZE - 128> tmp;
     llarp_buffer_t buf(tmp);
-    if (!msg.BEncode(&buf))
-    {
-      llarp::LogError("failed to encode routing message");
-      return false;
-    }
+
+    auto bte = msg.bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     TunnelNonce N;
     N.Randomize();
     buf.sz = buf.cur - buf.base;
@@ -250,8 +264,8 @@ namespace llarp::path
       const llarp::routing::PathLatencyMessage& msg, AbstractRouter* r)
   {
     llarp::routing::PathLatencyMessage reply;
-    reply.L = msg.T;
-    reply.S = msg.S;
+    reply.latency = msg.sent_time;
+    reply.sequence_number = msg.sequence_number;
     return SendRoutingMessage(reply, r);
   }
 
@@ -277,11 +291,11 @@ namespace llarp::path
   TransitHop::HandleObtainExitMessage(
       const llarp::routing::ObtainExitMessage& msg, AbstractRouter* r)
   {
-    if (msg.Verify() && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
+    if (msg.Verify() && r->exitContext().ObtainNewExit(msg.pubkey, info.rxID, msg.flag != 0))
     {
       llarp::routing::GrantExitMessage grant;
-      grant.S = NextSeqNo();
-      grant.T = msg.T;
+      grant.sequence_number = NextSeqNo();
+      grant.tx_id = msg.tx_id;
       if (!grant.Sign(r->identity()))
       {
         llarp::LogError("Failed to sign grant exit message");
@@ -292,8 +306,8 @@ namespace llarp::path
     // TODO: exponential backoff
     // TODO: rejected policies
     llarp::routing::RejectExitMessage reject;
-    reject.S = NextSeqNo();
-    reject.T = msg.T;
+    reject.sequence_number = NextSeqNo();
+    reject.tx_id = msg.tx_id;
     if (!reject.Sign(r->identity()))
     {
       llarp::LogError("Failed to sign reject exit message");
@@ -305,13 +319,13 @@ namespace llarp::path
   bool
   TransitHop::HandleCloseExitMessage(const llarp::routing::CloseExitMessage& msg, AbstractRouter* r)
   {
-    const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
+    const llarp::routing::DataDiscardMessage discard(info.rxID, msg.sequence_number);
     auto ep = r->exitContext().FindEndpointForPath(info.rxID);
     if (ep && msg.Verify(ep->PubKey()))
     {
       llarp::routing::CloseExitMessage reply;
-      reply.Y = msg.Y;
-      reply.S = NextSeqNo();
+      reply.nonce = msg.nonce;
+      reply.sequence_number = NextSeqNo();
       if (reply.Sign(r->identity()))
       {
         if (SendRoutingMessage(reply, r))
@@ -338,7 +352,7 @@ namespace llarp::path
   TransitHop::HandleUpdateExitMessage(
       const llarp::routing::UpdateExitMessage& msg, AbstractRouter* r)
   {
-    auto ep = r->exitContext().FindEndpointForPath(msg.P);
+    auto ep = r->exitContext().FindEndpointForPath(msg.path_id);
     if (ep)
     {
       if (!msg.Verify(ep->PubKey()))
@@ -347,13 +361,13 @@ namespace llarp::path
       if (ep->UpdateLocalPath(info.rxID))
       {
         llarp::routing::UpdateExitVerifyMessage reply;
-        reply.T = msg.T;
-        reply.S = NextSeqNo();
+        reply.tx_id = msg.tx_id;
+        reply.sequence_number = NextSeqNo();
         return SendRoutingMessage(reply, r);
       }
     }
     // on fail tell message was discarded
-    llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
+    llarp::routing::DataDiscardMessage discard(info.rxID, msg.sequence_number);
     return SendRoutingMessage(discard, r);
   }
 
@@ -384,7 +398,7 @@ namespace llarp::path
     if (endpoint)
     {
       bool sent = true;
-      for (const auto& pkt : msg.X)
+      for (const auto& pkt : msg.enc_buf)
       {
         // check short packet buffer
         if (pkt.size() <= 8)
@@ -399,7 +413,7 @@ namespace llarp::path
 
     llarp::LogError("No exit endpoint on ", info);
     // discarded
-    llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
+    llarp::routing::DataDiscardMessage discard(info.rxID, msg.sequence_number);
     return SendRoutingMessage(discard, r);
   }
 
@@ -407,14 +421,14 @@ namespace llarp::path
   TransitHop::HandlePathTransferMessage(
       const llarp::routing::PathTransferMessage& msg, AbstractRouter* r)
   {
-    auto path = r->pathContext().GetPathForTransfer(msg.P);
-    llarp::routing::DataDiscardMessage discarded{msg.P, msg.S};
-    if (path == nullptr || msg.T.F != info.txID)
+    auto path = r->pathContext().GetPathForTransfer(msg.path_id);
+    llarp::routing::DataDiscardMessage discarded{msg.path_id, msg.sequence_number};
+    if (path == nullptr || msg.protocol_frame_msg.path_id != info.txID)
     {
       return SendRoutingMessage(discarded, r);
     }
     // send routing message
-    if (path->SendRoutingMessage(msg.T, r))
+    if (path->SendRoutingMessage(msg.protocol_frame_msg, r))
     {
       m_FlushOthers.emplace(path);
       return true;

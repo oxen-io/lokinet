@@ -35,11 +35,11 @@ namespace llarp
       return bencode_decode_dict(*this, buf);
     }
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     /// Return an IpAddress representing the address portion of this AddressInfo
     IpAddress

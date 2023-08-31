@@ -23,7 +23,7 @@ namespace llarp
     DHTImmediateMessage m;
     LR_CommitMessage c;
     LR_StatusMessage s;
-    DiscardMessage x;
+    LinkDiscardMessage x;
 
     msg_holder_t() = default;
   };

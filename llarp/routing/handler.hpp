@@ -13,7 +13,7 @@ namespace llarp
 
   namespace service
   {
-    struct ProtocolFrame;
+    struct ProtocolFrameMessage;
   }
 
   namespace routing
@@ -61,7 +61,7 @@ namespace llarp
       HandlePathTransferMessage(const PathTransferMessage& msg, AbstractRouter* r) = 0;
 
       virtual bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& msg) = 0;
+      HandleHiddenServiceFrame(const service::ProtocolFrameMessage& msg) = 0;
 
       virtual bool
       HandlePathConfirmMessage(const PathConfirmMessage& msg, AbstractRouter* r) = 0;

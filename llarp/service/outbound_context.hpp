@@ -124,7 +124,7 @@ namespace llarp
       GetHopsForBuild() override;
 
       bool
-      HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);
+      HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrameMessage& frame);
 
       std::string
       Name() const override;

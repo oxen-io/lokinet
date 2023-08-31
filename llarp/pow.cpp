@@ -10,19 +10,16 @@ namespace llarp
   PoW::~PoW() = default;
 
   bool
-  PoW::DecodeKey(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
+  PoW::decode_key(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
   {
     // TODO: implement me
     return false;
   }
 
-  bool
-  PoW::BEncode(llarp_buffer_t* buf) const
+  std::string
+  PoW::bt_encode() const
   {
-    // TODO: implement me
-    if (!bencode_start_dict(buf))
-      return false;
-    return bencode_end(buf);
+    return ""s;
   }
 
   bool
@@ -34,9 +31,12 @@ namespace llarp
     ShortHash digest;
     std::array<byte_t, MaxSize> tmp;
     llarp_buffer_t buf(tmp);
-    // encode
-    if (!BEncode(&buf))
+
+    auto bte = bt_encode();
+
+    if (auto b = buf.write(bte.begin(), bte.end()); not b)
       return false;
+
     // rewind
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;

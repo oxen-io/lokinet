@@ -5,7 +5,7 @@
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_dht_message.hpp>
 
 namespace llarp::dht
 {
@@ -43,7 +43,9 @@ namespace llarp::dht
   }
 
   bool
-  FindNameMessage::handle_message(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const
+  FindNameMessage::handle_message(
+      struct llarp_dht_context* dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
     (void)replies;
     auto r = dht->impl->GetRouter();
@@ -53,14 +55,14 @@ namespace llarp::dht
       auto path = r->pathContext().GetPathForTransfer(pathID);
       if (path == nullptr)
         return;
-      routing::DHTMessage msg;
+      routing::PathDHTMessage msg;
       if (maybe.has_value())
       {
-        msg.M.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, *maybe));
+        msg.dht_msgs.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, *maybe));
       }
       else
       {
-        msg.M.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
+        msg.dht_msgs.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
       }
       path->SendRoutingMessage(msg, r);
     });

@@ -4,7 +4,7 @@
 #include "gotintro.hpp"
 #include <llarp/messages/dht_immediate.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
 
 #include <llarp/tooling/dht_event.hpp>

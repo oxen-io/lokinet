@@ -87,27 +87,27 @@ namespace llarp
     return bencode_write_bytestring(buf, data(), std::distance(begin(), term));
   }
 
-  bool
-  RouterContact::BEncode(llarp_buffer_t* buf) const
+  std::string
+  RouterContact::bt_encode() const
   {
-    if (version == 0)
-      return BEncodeSignedSection(buf);
-    else if (version == 1)
-    {
-      // TODO: heapless serialization for this in lokimq's bt serialization.
-      if (not buf->writef("li1e%zu:", signature.size()))
-        return false;
-      if (not buf->write(signature.begin(), signature.end()))
-        return false;
-      if (not buf->write(signed_bt_dict.begin(), signed_bt_dict.end()))
-        return false;
-      if (not buf->writef("e"))
-        return false;
+    oxenc::bt_list_producer btlp;
 
-      return true;
+    try
+    {
+      btlp.append(1);
+      btlp.append(signature.ToView());
+      btlp.append(signed_bt_dict);
+    }
+    catch (...)
+    {
+      log::critical(llarp_cat, "Error: RouterContact failed to bt encode contents!");
     }
 
-    return false;
+    return std::move(btlp).str();
+
+    // NOTE: Confirm that we are cutting checks for version == 0
+    // if (version == 0)
+    //   return BEncodeSignedSection(buf);
   }
 
   void
@@ -158,7 +158,7 @@ namespace llarp
     /* write signing pubkey */
     if (!bencode_write_bytestring(buf, "k", 1))
       return false;
-    if (!pubkey.BEncode(buf))
+    if (!pubkey.bt_encode(buf))
       return false;
 
     std::string nick = Nick();
@@ -178,7 +178,7 @@ namespace llarp
     /* write encryption pubkey */
     if (!bencode_write_bytestring(buf, "p", 1))
       return false;
-    if (!enckey.BEncode(buf))
+    if (!enckey.bt_encode(buf))
       return false;
 
     // write router version if present
@@ -221,7 +221,7 @@ namespace llarp
       /* write signature */
       if (!bencode_write_bytestring(buf, "z", 1))
         return false;
-      if (!signature.BEncode(buf))
+      if (!signature.bt_encode(buf))
         return false;
     }
 
@@ -342,7 +342,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  RouterContact::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (!BEncodeMaybeReadDictList("a", addrs, read, key, buf))
@@ -523,11 +523,10 @@ namespace llarp
       copy.signature.Zero();
       std::array<byte_t, MAX_RC_SIZE> tmp;
       llarp_buffer_t buf(tmp);
-      if (!copy.BEncode(&buf))
-      {
-        log::error(logcat, "bencode failed");
-        return false;
-      }
+
+      auto bte = copy.bt_encode();
+      buf.write(bte.begin(), bte.end());
+
       buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
       return CryptoManager::instance()->verify(pubkey, buf, signature);
@@ -563,10 +562,10 @@ namespace llarp
   {
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
-    if (!BEncode(&buf))
-    {
-      return false;
-    }
+
+    auto bte = bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     try
     {
       util::dump_file(fname, tmp.data(), buf.cur - buf.base);

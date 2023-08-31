@@ -1,39 +1,36 @@
 #include "policy.hpp"
 
-namespace llarp
+namespace llarp::exit
 {
-  namespace exit
+  void
+  Policy::bt_encode(oxenc::bt_dict_producer& btdp) const
   {
-    bool
-    Policy::BEncode(llarp_buffer_t* buf) const
+    try
     {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictInt("a", proto, buf))
-        return false;
-      if (!BEncodeWriteDictInt("b", port, buf))
-        return false;
-      if (!BEncodeWriteDictInt("d", drop, buf))
-        return false;
-      if (!BEncodeWriteDictInt("v", version, buf))
-        return false;
-      return bencode_end(buf);
+      btdp.append("a", proto);
+      btdp.append("b", port);
+      btdp.append("d", drop);
+      btdp.append("v", version);
     }
-
-    bool
-    Policy::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
+    catch (...)
     {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("b", port, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("d", drop, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
-        return false;
-      return read;
+      log::critical(policy_cat, "Error: exit Policy failed to bt encode contents!");
     }
+  }
 
-  }  // namespace exit
-}  // namespace llarp
+  bool
+  Policy::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("b", port, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("d", drop, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
+      return false;
+    return read;
+  }
+
+}  // namespace llarp::exit

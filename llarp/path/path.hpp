@@ -77,7 +77,7 @@ namespace llarp
       using CheckForDeadFunc = std::function<bool(Path_ptr, llarp_time_t)>;
       using DropHandlerFunc = std::function<bool(Path_ptr, const PathID_t&, uint64_t)>;
       using HopList = std::vector<PathHopConfig>;
-      using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrame&)>;
+      using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrameMessage&)>;
       using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
       using ExitClosedFunc = std::function<bool(Path_ptr)>;
       using ExitTrafficHandlerFunc =
@@ -331,7 +331,7 @@ namespace llarp
           const routing::PathTransferMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& frame) override;
+      HandleHiddenServiceFrame(const service::ProtocolFrameMessage& frame) override;
 
       bool
       HandleGotIntroMessage(const dht::GotIntroMessage& msg);

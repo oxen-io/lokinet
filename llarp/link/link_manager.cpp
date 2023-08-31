@@ -10,7 +10,7 @@
 namespace llarp
 {
   link::Endpoint*
-  LinkManager::GetCompatibleLink(const RouterContact& rc)
+  LinkManager::GetCompatibleLink(const RouterContact&)
   {
     if (stopping)
       return nullptr;
@@ -31,9 +31,9 @@ namespace llarp
   bool
   LinkManager::SendTo(
       const RouterID& remote,
-      const llarp_buffer_t& buf,
+      const llarp_buffer_t&,
       AbstractLinkSession::CompletionHandler completed,
-      uint16_t priority)
+      uint16_t)
   {
     if (stopping)
       return false;
@@ -199,7 +199,7 @@ namespace llarp
 
   // TODO: this?  perhaps no longer necessary in the same way?
   void
-  LinkManager::CheckPersistingSessions(llarp_time_t now)
+  LinkManager::CheckPersistingSessions(llarp_time_t)
   {
     if (stopping)
       return;
@@ -207,7 +207,7 @@ namespace llarp
 
   // TODO: do we still need this concept?
   void
-  LinkManager::updatePeerDb(std::shared_ptr<PeerDb> peerDb)
+  LinkManager::updatePeerDb(std::shared_ptr<PeerDb>)
   {}
 
   // TODO: this
@@ -228,7 +228,7 @@ namespace llarp
   void
   LinkManager::Connect(RouterID router)
   {
-    auto fn = [this](const RouterID& r, const RouterContact* const rc, const RCRequestResult res) {
+    auto fn = [this](const RouterID&, const RouterContact* const rc, const RCRequestResult res) {
       if (res == RCRequestResult::Success)
         Connect(*rc);
       /* TODO:
@@ -315,13 +315,13 @@ namespace llarp
   }
 
   void
-  LinkManager::HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram)
+  LinkManager::HandleIncomingDataMessage(oxen::quic::dgram_interface&, bstring)
   {
     // TODO: this
   }
 
   void
-  LinkManager::HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet)
+  LinkManager::HandleIncomingControlMessage(oxen::quic::Stream&, bstring_view)
   {
     // TODO: this
   }

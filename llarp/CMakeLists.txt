@@ -264,7 +264,7 @@ add_library(lokinet-peerstats
 # routing layer is anonymized over the onion layer
 add_library(lokinet-layer-routing
   STATIC
-  routing/dht_message.cpp
+  routing/path_dht_message.cpp
   routing/message_parser.cpp
   routing/path_confirm_message.cpp
   routing/path_latency_message.cpp

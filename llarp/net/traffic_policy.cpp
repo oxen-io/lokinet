@@ -105,59 +105,45 @@ namespace llarp::net
     return true;
   }
 
-  bool
-  ProtocolInfo::BEncode(llarp_buffer_t* buf) const
+  void
+  ProtocolInfo::bt_encode(oxenc::bt_list_producer& btlp) const
   {
-    if (not bencode_start_list(buf))
-      return false;
-    if (not bencode_write_uint64(buf, static_cast<std::underlying_type_t<IPProtocol>>(protocol)))
-      return false;
-    if (port)
+    try
     {
-      const auto hostint = ToHost(*port);
-      if (not bencode_write_uint64(buf, hostint.h))
-        return false;
+      {
+        auto sublist = btlp.append_list();
+        sublist.append(static_cast<uint8_t>(protocol));
+      }
+
+      btlp.append(ToHost(*port).h);
     }
-    return bencode_end(buf);
+    catch (...)
+    {
+      log::critical(net_cat, "Error: ProtocolInfo failed to bt encode contents!");
+    }
   }
 
-  bool
-  TrafficPolicy::BEncode(llarp_buffer_t* buf) const
+  void
+  TrafficPolicy::bt_encode(oxenc::bt_dict_producer& btdp) const
   {
-    if (not bencode_start_dict(buf))
-      return false;
-
-    if (not bencode_write_bytestring(buf, "p", 1))
-      return false;
-
-    if (not bencode_start_list(buf))
-      return false;
-
-    for (const auto& item : protocols)
+    try
     {
-      if (not item.BEncode(buf))
-        return false;
+      {
+        auto sublist = btdp.append_list("p");
+        for (auto& p : protocols)
+          p.bt_encode(sublist);
+      }
+
+      {
+        auto sublist = btdp.append_list("r");
+        for (auto& r : ranges)
+          r.bt_encode(sublist);
+      }
     }
-
-    if (not bencode_end(buf))
-      return false;
-
-    if (not bencode_write_bytestring(buf, "r", 1))
-      return false;
-
-    if (not bencode_start_list(buf))
-      return false;
-
-    for (const auto& item : ranges)
+    catch (...)
     {
-      if (not item.BEncode(buf))
-        return false;
+      log::critical(net_cat, "Error: TrafficPolicy failed to bt encode contents!");
     }
-
-    if (not bencode_end(buf))
-      return false;
-
-    return bencode_end(buf);
   }
 
   bool

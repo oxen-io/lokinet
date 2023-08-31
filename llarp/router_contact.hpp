@@ -109,8 +109,8 @@ namespace llarp
     std::string
     ToString() const;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
     // tofix: drop version 0 case, change parameter to take btlp reference
     void
@@ -155,7 +155,7 @@ namespace llarp
     BDecode(llarp_buffer_t* buf);
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
     HasNick() const;

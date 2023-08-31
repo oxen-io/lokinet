@@ -24,7 +24,7 @@
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
 #include <llarp/router/route_poker.hpp>
-#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
 
 #include <llarp/util/str.hpp>
@@ -122,33 +122,33 @@ namespace llarp
         return;
       }
 
-      introSet().supportedProtocols.clear();
+      introSet().supported_protocols.clear();
 
       // add supported ethertypes
       if (HasIfAddr())
       {
         if (IPRange::V4MappedRange().Contains(GetIfAddr()))
         {
-          introSet().supportedProtocols.push_back(ProtocolType::TrafficV4);
+          introSet().supported_protocols.push_back(ProtocolType::TrafficV4);
         }
         else
         {
-          introSet().supportedProtocols.push_back(ProtocolType::TrafficV6);
+          introSet().supported_protocols.push_back(ProtocolType::TrafficV6);
         }
 
         // exit related stuffo
         if (m_state->m_ExitEnabled)
         {
-          introSet().supportedProtocols.push_back(ProtocolType::Exit);
-          introSet().exitTrafficPolicy = GetExitPolicy();
-          introSet().ownedRanges = GetOwnedRanges();
+          introSet().supported_protocols.push_back(ProtocolType::Exit);
+          introSet().exit_policy = GetExitPolicy();
+          introSet().owned_ranges = GetOwnedRanges();
         }
       }
       // add quic ethertype if we have listeners set up
       if (auto* quic = GetQUICTunnel())
       {
         if (quic->hasListeners())
-          introSet().supportedProtocols.push_back(ProtocolType::QUIC);
+          introSet().supported_protocols.push_back(ProtocolType::QUIC);
       }
 
       introSet().intros.clear();
@@ -772,8 +772,8 @@ namespace llarp
       std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() override
       {
-        auto msg = std::make_shared<routing::DHTMessage>();
-        msg->M.emplace_back(
+        auto msg = std::make_shared<routing::PathDHTMessage>();
+        msg->dht_msgs.emplace_back(
             std::make_unique<dht::PublishIntroMessage>(m_IntroSet, txid, true, m_relayOrder));
         return msg;
       }
@@ -991,8 +991,8 @@ namespace llarp
       std::shared_ptr<routing::AbstractRoutingMessage>
       BuildRequestMessage() override
       {
-        auto msg = std::make_shared<routing::DHTMessage>();
-        msg->M.emplace_back(std::make_unique<dht::FindNameMessage>(
+        auto msg = std::make_shared<routing::PathDHTMessage>();
+        msg->dht_msgs.emplace_back(std::make_unique<dht::FindNameMessage>(
             dht::Key_t{}, dht::Key_t{namehash.as_array()}, txid));
         return msg;
       }
@@ -1153,11 +1153,11 @@ namespace llarp
       if (routers.find(router) == routers.end())
       {
         auto path = GetEstablishedPathClosestTo(router);
-        routing::DHTMessage msg;
+        routing::PathDHTMessage msg;
         auto txid = GenTXID();
-        msg.M.emplace_back(std::make_unique<FindRouterMessage>(txid, router));
+        msg.dht_msgs.emplace_back(std::make_unique<FindRouterMessage>(txid, router));
         if (path)
-          msg.S = path->NextSeqNo();
+          msg.sequence_number = path->NextSeqNo();
         if (path && path->SendRoutingMessage(msg, Router()))
         {
           RouterLookupJob job{this, [handler, router, nodedb = m_router->nodedb()](auto results) {
@@ -1170,8 +1170,8 @@ namespace llarp
                                   handler(results);
                               }};
 
-          assert(msg.M.size() == 1);
-          auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.M[0].get());
+          assert(msg.dht_msgs.size() == 1);
+          auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.dht_msgs[0].get());
           assert(dhtMsg != nullptr);
 
           m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), *dhtMsg);
@@ -1230,7 +1230,7 @@ namespace llarp
       Introduction intro = msg->introReply;
       if (HasInboundConvo(msg->sender.Addr()))
       {
-        intro.pathID = from;
+        intro.path_id = from;
         intro.router = p->Endpoint();
       }
       PutReplyIntroFor(msg->tag, intro);
@@ -1328,11 +1328,11 @@ namespace llarp
       // not applicable because we are not an exit or don't have an endpoint auth policy
       if ((not m_state->m_ExitEnabled) or m_AuthPolicy == nullptr)
         return;
-      ProtocolFrame f{};
-      f.R = AuthResultCodeAsInt(result.code);
-      f.T = tag;
-      f.F = path->intro.pathID;
-      f.N.Randomize();
+      ProtocolFrameMessage f{};
+      f.flag = AuthResultCodeAsInt(result.code);
+      f.convo_tag = tag;
+      f.path_id = path->intro.path_id;
+      f.nonce.Randomize();
       if (result.code == AuthResultCode::eAuthAccepted)
       {
         ProtocolMessage msg;
@@ -1386,10 +1386,10 @@ namespace llarp
     Endpoint::ResetConvoTag(ConvoTag tag, path::Path_ptr p, PathID_t from)
     {
       // send reset convo tag message
-      ProtocolFrame f{};
-      f.R = 1;
-      f.T = tag;
-      f.F = p->intro.pathID;
+      ProtocolFrameMessage f{};
+      f.flag = 1;
+      f.convo_tag = tag;
+      f.path_id = p->intro.path_id;
       f.Sign(m_Identity);
       {
         LogWarn("invalidating convotag T=", tag);
@@ -1400,25 +1400,25 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame)
+    Endpoint::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrameMessage& frame)
     {
-      if (frame.R)
+      if (frame.flag)
       {
         // handle discard
         ServiceInfo si;
-        if (!GetSenderFor(frame.T, si))
+        if (!GetSenderFor(frame.convo_tag, si))
           return false;
         // verify source
         if (!frame.Verify(si))
           return false;
         // remove convotag it doesn't exist
-        LogWarn("remove convotag T=", frame.T, " R=", frame.R, " from ", si.Addr());
-        RemoveConvoTag(frame.T);
+        LogWarn("remove convotag T=", frame.convo_tag, " R=", frame.flag, " from ", si.Addr());
+        RemoveConvoTag(frame.convo_tag);
         return true;
       }
       if (not frame.AsyncDecryptAndVerify(Router()->loop(), p, m_Identity, this))
       {
-        ResetConvoTag(frame.T, p, frame.F);
+        ResetConvoTag(frame.convo_tag, p, frame.path_id);
       }
       return true;
     }
@@ -1797,9 +1797,9 @@ namespace llarp
       while (not m_SendQueue.empty())
       {
         SendEvent_t item = m_SendQueue.popFront();
-        item.first->S = item.second->NextSeqNo();
+        item.first->sequence_number = item.second->NextSeqNo();
         if (item.second->SendRoutingMessage(*item.first, router))
-          ConvoTagTX(item.first->T.T);
+          ConvoTagTX(item.first->protocol_frame_msg.convo_tag);
       }
 
       UpstreamFlush(router);
@@ -1949,8 +1949,8 @@ namespace llarp
         // inbound conversation
         LogTrace("Have inbound convo");
         auto transfer = std::make_shared<routing::PathTransferMessage>();
-        ProtocolFrame& f = transfer->T;
-        f.R = 0;
+        ProtocolFrameMessage& f = transfer->protocol_frame_msg;
+        f.flag = 0;
         std::shared_ptr<path::Path> p;
         if (const auto maybe = GetBestConvoTagFor(remote))
         {
@@ -1983,33 +1983,35 @@ namespace llarp
             return false;
           }
 
-          f.T = tag;
+          f.convo_tag = tag;
           // TODO: check expiration of our end
-          auto m = std::make_shared<ProtocolMessage>(f.T);
+          auto m = std::make_shared<ProtocolMessage>(f.convo_tag);
           m->PutBuffer(data);
-          f.N.Randomize();
-          f.C.Zero();
-          f.R = 0;
-          transfer->Y.Randomize();
+          f.nonce.Randomize();
+          f.cipher.Zero();
+          f.flag = 0;
+          transfer->nonce.Randomize();
           m->proto = t;
           m->introReply = p->intro;
           m->sender = m_Identity.pub;
-          if (auto maybe = GetSeqNoForConvo(f.T))
+          if (auto maybe = GetSeqNoForConvo(f.convo_tag))
           {
             m->seqno = *maybe;
           }
           else
           {
-            LogWarn(Name(), " could not set sequence number, no session T=", f.T);
+            LogWarn(Name(), " could not set sequence number, no session T=", f.convo_tag);
             return false;
           }
-          f.S = m->seqno;
-          f.F = p->intro.pathID;
-          transfer->P = replyIntro.pathID;
+          f.sequence_number = m->seqno;
+          f.path_id = p->intro.path_id;
+          transfer->path_id = replyIntro.path_id;
           Router()->QueueWork([transfer, p, m, K, this]() {
-            if (not transfer->T.EncryptAndSign(*m, K, m_Identity))
+            if (not transfer->protocol_frame_msg.EncryptAndSign(*m, K, m_Identity))
             {
-              LogError("failed to encrypt and sign for sessionn T=", transfer->T.T);
+              LogError(
+                  "failed to encrypt and sign for sessionn T=",
+                  transfer->protocol_frame_msg.convo_tag);
               return;
             }
             m_SendQueue.tryPushBack(SendEvent_t{transfer, p});
@@ -2017,14 +2019,12 @@ namespace llarp
           });
           return true;
         }
-        else
-        {
-          LogWarn(
-              Name(),
-              " SendToOrQueue on inbound convo from ",
-              remote,
-              " but get-best returned none; bug?");
-        }
+
+        LogWarn(
+            Name(),
+            " SendToOrQueue on inbound convo from ",
+            remote,
+            " but get-best returned none; bug?");
       }
       if (not WantsOutboundSession(remote))
       {

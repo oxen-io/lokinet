@@ -4,6 +4,7 @@
 #include "bencode.h"
 #include "file.hpp"
 #include <llarp/util/logging.hpp>
+#include <oxenc/bt.h>
 #include "mem.hpp"
 
 #include <type_traits>
@@ -12,6 +13,8 @@
 
 namespace llarp
 {
+  static auto ben_cat = log::Cat("stupid.bencode");
+
   template <typename List_t>
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf);
@@ -34,7 +37,11 @@ namespace llarp
   bool
   BEncodeWriteDictEntry(const char* k, const Obj_t& o, llarp_buffer_t* buf)
   {
-    return bencode_write_bytestring(buf, k, 1) && o.BEncode(buf);
+    if (auto b = bencode_write_bytestring(buf, k, 1); not b)
+      return false;
+    auto bte = o.bt_encode();
+    buf->write(bte.begin(), bte.end());
+    return true;
   }
 
   template <typename Int_t>
@@ -128,15 +135,21 @@ namespace llarp
   bool
   BEncodeWriteDictBEncodeList(const char* k, const List_t& l, llarp_buffer_t* buf)
   {
-    if (!bencode_write_bytestring(buf, k, 1))
-      return false;
-    if (!bencode_start_list(buf))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    for (const auto& item : l)
-      if (!item->BEncode(buf))
-        return false;
-    return bencode_end(buf);
+    {
+      auto sublist = btdp.append_list(k);
+
+      for (const auto& item : l)
+      {
+        sublist.append(l.bt_encode());
+      }
+    }
+
+    auto view = btdp.view();
+    buf->write(view.begin(), view.end());
+
+    return true;
   }
 
   template <typename Array>
@@ -149,7 +162,7 @@ namespace llarp
       return false;
 
     for (size_t idx = 0; idx < array.size(); ++idx)
-      if (!array[idx].BEncode(buf))
+      if (!array[idx].bt_encode(buf))
         return false;
     return bencode_end(buf);
   }
@@ -158,14 +171,23 @@ namespace llarp
   bool
   BEncodeWriteList(Iter itr, Iter end, llarp_buffer_t* buf)
   {
-    if (!bencode_start_list(buf))
+    oxenc::bt_list_producer btlp;
+
+    try
+    {
+      while (itr != end)
+        btlp.append(itr->bt_encode());
+    }
+    catch (...)
+    {
+      log::critical(ben_cat, "Stupid bencode.hpp shim code failed.");
+    }
+
+    auto view = btlp.view();
+    if (auto b = buf->write(view.begin(), view.end()); not b)
       return false;
-    while (itr != end)
-      if (!itr->BEncode(buf))
-        return false;
-      else
-        ++itr;
-    return bencode_end(buf);
+
+    return true;
   }
 
   template <typename Sink>
@@ -207,7 +229,7 @@ namespace llarp
         [&](llarp_buffer_t* buffer, llarp_buffer_t* key) {
           if (key == nullptr)
             return true;
-          if (sink.DecodeKey(*key, buffer))
+          if (sink.decode_key(*key, buffer))
             return true;
           llarp::LogWarn("undefined key '", *key->cur, "' for entry in dict");
 
@@ -306,7 +328,7 @@ namespace llarp
 
     for (const auto& item : set)
     {
-      if (not item.BEncode(buffer))
+      if (not item.bt_encode(buffer))
         return false;
     }
 
@@ -326,10 +348,11 @@ namespace llarp
   {
     std::array<byte_t, bufsz> tmp;
     llarp_buffer_t buf(tmp);
-    if (val.BEncode(&buf))
-    {
+
+    auto bte = val.bt_encode();
+
+    if (auto b = buf.write(bte.begin(), bte.end()); b)
       llarp::DumpBuffer<decltype(buf), 128>(buf);
-    }
   }
 
   /// read entire file and decode its contents into t
@@ -357,8 +380,10 @@ namespace llarp
   {
     std::string tmp(bufsz, 0);
     llarp_buffer_t buf(tmp);
-    if (!t.BEncode(&buf))
-      return false;
+
+    auto bte = t.bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     tmp.resize(buf.cur - buf.base);
     try
     {

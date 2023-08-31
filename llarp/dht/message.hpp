@@ -25,10 +25,10 @@ namespace llarp::dht
     AbstractDHTMessage(const Key_t& from) : From(from)
     {}
 
-    using Ptr_t = std::unique_ptr<AbstractDHTMessage>;
-
     virtual bool
-    handle_message(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const = 0;
+    handle_message(
+        struct llarp_dht_context* dht,
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const = 0;
 
     void
     bt_encode(oxenc::bt_dict_producer& btdp) const override = 0;
@@ -58,14 +58,14 @@ namespace llarp::dht
     uint64_t version = llarp::constants::proto_version;
   };
 
-  AbstractDHTMessage::Ptr_t
+  std::unique_ptr<AbstractDHTMessage>
   DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false);
 
   bool
   DecodeMessageList(
       Key_t from,
       llarp_buffer_t* buf,
-      std::vector<AbstractDHTMessage::Ptr_t>& list,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& list,
       bool relayed = false);
 
 }  // namespace llarp::dht

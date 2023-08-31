@@ -3,52 +3,49 @@
 #include "handler.hpp"
 #include <llarp/util/bencode.hpp>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  PathLatencyMessage::PathLatencyMessage() = default;
+
+  bool
+  PathLatencyMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
-    PathLatencyMessage::PathLatencyMessage() = default;
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("L", latency, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", sent_time, read, key, val))
+      return false;
+    return read;
+  }
 
-    bool
-    PathLatencyMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
+  std::string
+  PathLatencyMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("L", L, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, key, val))
-        return false;
-      return read;
+      btdp.append("A", "L");
+      if (latency)
+        btdp.append("L", latency);
+      if (sent_time)
+        btdp.append("T", sent_time);
+      btdp.append("S", sequence_number);
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: PathLatencyMessage failed to bt encode contents!");
     }
 
-    bool
-    PathLatencyMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "L"))
-        return false;
-      if (L)
-      {
-        if (!BEncodeWriteDictInt("L", L, buf))
-          return false;
-      }
-      if (T)
-      {
-        if (!BEncodeWriteDictInt("T", T, buf))
-          return false;
-      }
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      return bencode_end(buf);
-    }
+    return std::move(btdp).str();
+  }
 
-    bool
-    PathLatencyMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
-    {
-      return h && h->HandlePathLatencyMessage(*this, r);
-    }
+  bool
+  PathLatencyMessage::handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
+  {
+    return h && h->HandlePathLatencyMessage(*this, r);
+  }
 
-  }  // namespace routing
-}  // namespace llarp
+}  // namespace llarp::routing

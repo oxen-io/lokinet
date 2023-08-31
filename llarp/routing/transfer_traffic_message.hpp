@@ -6,46 +6,44 @@
 
 #include <vector>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  constexpr size_t EXIT_PAD_SIZE = 512 - 48;
+  constexpr size_t MAX_EXIT_MTU = 1500;
+  constexpr size_t EXIT_OVERHEAD = sizeof(uint64_t);
+
+  struct TransferTrafficMessage final : public AbstractRoutingMessage
   {
-    constexpr size_t ExitPadSize = 512 - 48;
-    constexpr size_t MaxExitMTU = 1500;
-    constexpr size_t ExitOverhead = sizeof(uint64_t);
-    struct TransferTrafficMessage final : public AbstractRoutingMessage
+    std::vector<llarp::Encrypted<MAX_EXIT_MTU + EXIT_OVERHEAD>> enc_buf;
+    service::ProtocolType protocol;
+    size_t _size = 0;
+
+    void
+    clear() override
     {
-      std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> X;
-      service::ProtocolType protocol;
-      size_t _size = 0;
+      enc_buf.clear();
+      _size = 0;
+      version = 0;
+      protocol = service::ProtocolType::TrafficV4;
+    }
 
-      void
-      Clear() override
-      {
-        X.clear();
-        _size = 0;
-        version = 0;
-        protocol = service::ProtocolType::TrafficV4;
-      }
+    size_t
+    Size() const
+    {
+      return _size;
+    }
 
-      size_t
-      Size() const
-      {
-        return _size;
-      }
+    /// append buffer to X
+    bool
+    PutBuffer(const llarp_buffer_t& buf, uint64_t counter);
 
-      /// append buffer to X
-      bool
-      PutBuffer(const llarp_buffer_t& buf, uint64_t counter);
+    std::string
+    bt_encode() const override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    bool
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* val) override;
 
-      bool
-      DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val) override;
-
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-    };
-  }  // namespace routing
-}  // namespace llarp
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+  };
+}  // namespace llarp::routing

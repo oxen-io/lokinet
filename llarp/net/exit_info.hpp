@@ -29,7 +29,7 @@ namespace llarp
     {}
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    bt_encode(llarp_buffer_t* buf) const;
 
     bool
     BDecode(llarp_buffer_t* buf)
@@ -38,7 +38,7 @@ namespace llarp
     }
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     std::string
     ToString() const;

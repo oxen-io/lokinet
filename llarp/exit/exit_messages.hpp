@@ -6,210 +6,206 @@
 
 #include <vector>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  struct ObtainExitMessage final : public AbstractRoutingMessage
   {
-    struct ObtainExitMessage final : public AbstractRoutingMessage
+    std::vector<llarp::exit::Policy> blacklist_policy;
+    uint64_t flag{0};  // 0 for snode, 1 for internet access
+    llarp::PubKey pubkey;
+    uint64_t tx_id{0};
+    std::vector<llarp::exit::Policy> whitelist_policy;
+    uint64_t address_lifetime{0};
+    llarp::Signature sig;
+
+    ObtainExitMessage() : AbstractRoutingMessage()
+    {}
+
+    ~ObtainExitMessage() override = default;
+
+    void
+    clear() override
     {
-      std::vector<llarp::exit::Policy> B;
-      uint64_t E{0};
-      llarp::PubKey I;
-      uint64_t T{0};
-      std::vector<llarp::exit::Policy> W;
-      uint64_t X{0};
-      llarp::Signature Z;
+      blacklist_policy.clear();
+      flag = 0;
+      pubkey.Zero();
+      tx_id = 0;
+      whitelist_policy.clear();
+      address_lifetime = 0;
+      sig.Zero();
+    }
 
-      ObtainExitMessage() : AbstractRoutingMessage()
-      {}
+    /// populates I and signs
+    bool
+    Sign(const llarp::SecretKey& sk);
 
-      ~ObtainExitMessage() override = default;
+    bool
+    Verify() const;
 
-      void
-      Clear() override
-      {
-        B.clear();
-        E = 0;
-        I.Zero();
-        T = 0;
-        W.clear();
-        X = 0;
-        Z.Zero();
-      }
+    std::string
+    bt_encode() const override;
 
-      /// populates I and signs
-      bool
-      Sign(const llarp::SecretKey& sk);
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
-      bool
-      Verify() const;
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+  };
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+  struct GrantExitMessage final : public AbstractRoutingMessage
+  {
+    using Nonce_t = llarp::AlignedBuffer<16>;
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    uint64_t tx_id;
+    Nonce_t nonce;
+    llarp::Signature sig;
 
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-    };
+    std::string
+    bt_encode() const override;
 
-    struct GrantExitMessage final : public AbstractRoutingMessage
+    bool
+    Sign(const llarp::SecretKey& sk);
+
+    bool
+    Verify(const llarp::PubKey& pk) const;
+
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+
+    void
+    clear() override
     {
-      using Nonce_t = llarp::AlignedBuffer<16>;
+      tx_id = 0;
+      nonce.Zero();
+      sig.Zero();
+    }
+  };
 
-      uint64_t T;
-      Nonce_t Y;
-      llarp::Signature Z;
+  struct RejectExitMessage final : public AbstractRoutingMessage
+  {
+    using Nonce_t = llarp::AlignedBuffer<16>;
+    uint64_t backoff_time;
+    std::vector<llarp::exit::Policy> blacklist_policy;
+    uint64_t tx_id;
+    Nonce_t nonce;
+    llarp::Signature sig;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
-
-      bool
-      Sign(const llarp::SecretKey& sk);
-
-      bool
-      Verify(const llarp::PubKey& pk) const;
-
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
-
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-
-      void
-      Clear() override
-      {
-        T = 0;
-        Y.Zero();
-        Z.Zero();
-      }
-    };
-
-    struct RejectExitMessage final : public AbstractRoutingMessage
+    void
+    clear() override
     {
-      using Nonce_t = llarp::AlignedBuffer<16>;
-      uint64_t B;
-      std::vector<llarp::exit::Policy> R;
-      uint64_t T;
-      Nonce_t Y;
-      llarp::Signature Z;
+      backoff_time = 0;
+      blacklist_policy.clear();
+      tx_id = 0;
+      nonce.Zero();
+      sig.Zero();
+    }
 
-      void
-      Clear() override
-      {
-        B = 0;
-        R.clear();
-        T = 0;
-        Y.Zero();
-        Z.Zero();
-      }
+    bool
+    Sign(const llarp::SecretKey& sk);
 
-      bool
-      Sign(const llarp::SecretKey& sk);
+    bool
+    Verify(const llarp::PubKey& pk) const;
 
-      bool
-      Verify(const llarp::PubKey& pk) const;
+    std::string
+    bt_encode() const override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+  };
 
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-    };
+  struct UpdateExitVerifyMessage final : public AbstractRoutingMessage
+  {
+    using Nonce_t = llarp::AlignedBuffer<16>;
+    uint64_t tx_id;
+    Nonce_t nonce;
+    llarp::Signature sig;
 
-    struct UpdateExitVerifyMessage final : public AbstractRoutingMessage
+    ~UpdateExitVerifyMessage() override = default;
+
+    void
+    clear() override
     {
-      using Nonce_t = llarp::AlignedBuffer<16>;
-      uint64_t T;
-      Nonce_t Y;
-      llarp::Signature Z;
+      tx_id = 0;
+      nonce.Zero();
+      sig.Zero();
+    }
 
-      ~UpdateExitVerifyMessage() override = default;
+    std::string
+    bt_encode() const override;
 
-      void
-      Clear() override
-      {
-        T = 0;
-        Y.Zero();
-        Z.Zero();
-      }
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+  };
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+  struct UpdateExitMessage final : public AbstractRoutingMessage
+  {
+    using Nonce_t = llarp::AlignedBuffer<16>;
+    llarp::PathID_t path_id;
+    uint64_t tx_id;
+    Nonce_t nonce;
+    llarp::Signature sig;
 
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-    };
+    bool
+    Sign(const llarp::SecretKey& sk);
 
-    struct UpdateExitMessage final : public AbstractRoutingMessage
+    bool
+    Verify(const llarp::PubKey& pk) const;
+
+    std::string
+    bt_encode() const override;
+
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+
+    void
+    clear() override
     {
-      using Nonce_t = llarp::AlignedBuffer<16>;
-      llarp::PathID_t P;
-      uint64_t T;
-      Nonce_t Y;
-      llarp::Signature Z;
+      path_id.Zero();
+      tx_id = 0;
+      nonce.Zero();
+      sig.Zero();
+    }
+  };
 
-      bool
-      Sign(const llarp::SecretKey& sk);
+  struct CloseExitMessage final : public AbstractRoutingMessage
+  {
+    using Nonce_t = llarp::AlignedBuffer<16>;
 
-      bool
-      Verify(const llarp::PubKey& pk) const;
+    Nonce_t nonce;
+    llarp::Signature sig;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    std::string
+    bt_encode() const override;
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
 
-      void
-      Clear() override
-      {
-        P.Zero();
-        T = 0;
-        Y.Zero();
-        Z.Zero();
-      }
-    };
+    bool
+    Sign(const llarp::SecretKey& sk);
 
-    struct CloseExitMessage final : public AbstractRoutingMessage
+    bool
+    Verify(const llarp::PubKey& pk) const;
+
+    void
+    clear() override
     {
-      using Nonce_t = llarp::AlignedBuffer<16>;
-
-      Nonce_t Y;
-      llarp::Signature Z;
-
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
-
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
-
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-
-      bool
-      Sign(const llarp::SecretKey& sk);
-
-      bool
-      Verify(const llarp::PubKey& pk) const;
-
-      void
-      Clear() override
-      {
-        Y.Zero();
-        Z.Zero();
-      }
-    };
-
-  }  // namespace routing
-}  // namespace llarp
+      nonce.Zero();
+      sig.Zero();
+    }
+  };
+}  // namespace llarp::routing

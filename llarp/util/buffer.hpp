@@ -154,20 +154,15 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
 
   // These overloads, const_casting away the const, are not just gross but downright dangerous:
   template <typename Byte, typename = std::enable_if_t<is_basic_byte<Byte>>>
-  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
-      const Byte* buf, size_t sz)
-      : llarp_buffer_t{const_cast<Byte*>(buf), sz}
+  llarp_buffer_t(const Byte* buf, size_t sz) : llarp_buffer_t{const_cast<Byte*>(buf), sz}
   {}
 
   template <typename Byte, typename = std::enable_if_t<is_basic_byte<Byte>>>
-  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
-      const std::vector<Byte>& b)
-      : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
+  llarp_buffer_t(const std::vector<Byte>& b) : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
   {}
 
   template <typename Byte, size_t N, typename = std::enable_if_t<is_basic_byte<Byte>>>
-  [[deprecated("dangerous constructor that casts away constness, be very careful")]] llarp_buffer_t(
-      const std::array<Byte, N>& b)
+  llarp_buffer_t(const std::array<Byte, N>& b)
       : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
   {}
 
@@ -312,7 +307,7 @@ llarp_buffer_t::write(InputIt begin, InputIt end)
 /**
  Provide a copyable/moveable wrapper around `llarp_buffer_t`.
  */
-struct [[deprecated("deprecated along with llarp_buffer_t")]] ManagedBuffer
+struct ManagedBuffer
 {
   llarp_buffer_t underlying;
 
@@ -321,7 +316,7 @@ struct [[deprecated("deprecated along with llarp_buffer_t")]] ManagedBuffer
   explicit ManagedBuffer(const llarp_buffer_t& b) : underlying(b)
   {}
 
-  ManagedBuffer(ManagedBuffer &&) = default;
+  ManagedBuffer(ManagedBuffer&&) = default;
   ManagedBuffer(const ManagedBuffer&) = default;
 
   operator const llarp_buffer_t&() const

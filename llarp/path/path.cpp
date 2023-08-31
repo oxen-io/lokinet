@@ -10,7 +10,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/routing/path_latency_message.hpp>
 #include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/util/buffer.hpp>
@@ -53,7 +53,7 @@ namespace llarp::path
     }
     // initialize parts of the introduction
     intro.router = hops[hsz - 1].rc.pubkey;
-    intro.pathID = hops[hsz - 1].txID;
+    intro.path_id = hops[hsz - 1].txID;
     if (auto parent = m_PathSet.lock())
       EnterState(ePathBuilding, parent->Now());
   }
@@ -415,11 +415,11 @@ namespace llarp::path
     const auto now = r->Now();
     // send path latency test
     routing::PathLatencyMessage latency{};
-    latency.T = randint();
-    latency.S = NextSeqNo();
-    m_LastLatencyTestID = latency.T;
+    latency.sent_time = randint();
+    latency.sequence_number = NextSeqNo();
+    m_LastLatencyTestID = latency.sent_time;
     m_LastLatencyTestTime = now;
-    LogDebug(Name(), " send latency test id=", latency.T);
+    LogDebug(Name(), " send latency test id=", latency.sent_time);
     if (not SendRoutingMessage(latency, r))
       return false;
     FlushUpstream(r);
@@ -627,12 +627,12 @@ namespace llarp::path
       const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r)
   {
     (void)r;
-    if (m_UpdateExitTX && msg.T == m_UpdateExitTX)
+    if (m_UpdateExitTX && msg.tx_id == m_UpdateExitTX)
     {
       if (m_ExitUpdated)
         return m_ExitUpdated(shared_from_this());
     }
-    if (m_CloseExitTX && msg.T == m_CloseExitTX)
+    if (m_CloseExitTX && msg.tx_id == m_CloseExitTX)
     {
       if (m_ExitClosed)
         return m_ExitClosed(shared_from_this());
@@ -640,6 +640,21 @@ namespace llarp::path
     return false;
   }
 
+  /** Note: this is one of two places where AbstractRoutingMessage::bt_encode() is called, the
+      other of which is llarp/path/transit_hop.cpp in TransitHop::SendRoutingMessage(). For now,
+      we will default to the override of ::bt_encode() that returns an std::string. The role that
+      llarp_buffer_t plays here is likely superfluous, and can be replaced with either a leaner
+      llarp_buffer, or just handled using strings.
+
+      One important consideration is the frequency at which routing messages are sent, making
+      superfluous copies important to optimize out here. We have to instantiate at least one
+      std::string whether we pass a bt_dict_producer as a reference or create one within the
+      ::bt_encode() call.
+
+      If we decide to stay with std::strings, the function Path::HandleUpstream (along with the
+      functions it calls and so on) will need to be modified to take an std::string that we can
+      std::move around.
+  */
   bool
   Path::SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r)
   {
@@ -649,12 +664,10 @@ namespace llarp::path
     // FIXME: Why would we get uninitialized IMessages?
     if (msg.version != llarp::constants::proto_version)
       return false;
-    if (!msg.BEncode(&buf))
-    {
-      LogError("Bencode failed");
-      DumpBuffer(buf);
-      return false;
-    }
+
+    auto bte = msg.bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     // make nonce
     TunnelNonce N;
     N.Randomize();
@@ -667,7 +680,13 @@ namespace llarp::path
       buf.sz = pad_size;
     }
     buf.cur = buf.base;
-    LogDebug("send routing message ", msg.S, " with ", buf.sz, " bytes to endpoint ", Endpoint());
+    LogDebug(
+        "send routing message ",
+        msg.sequence_number,
+        " with ",
+        buf.sz,
+        " bytes to endpoint ",
+        Endpoint());
     return HandleUpstream(buf, N, r);
   }
 
@@ -684,7 +703,7 @@ namespace llarp::path
   {
     MarkActive(r->Now());
     if (m_DropHandler)
-      return m_DropHandler(shared_from_this(), msg.P, msg.S);
+      return m_DropHandler(shared_from_this(), msg.path_id, msg.sequence_number);
     return true;
   }
 
@@ -696,12 +715,12 @@ namespace llarp::path
     if (_status == ePathBuilding)
     {
       // finish initializing introduction
-      intro.expiresAt = buildStarted + hops[0].lifetime;
+      intro.expiry = buildStarted + hops[0].lifetime;
 
       r->routerProfiling().MarkPathSuccess(this);
 
       // persist session with upstream router until the path is done
-      r->PersistSessionUntil(Upstream(), intro.expiresAt);
+      r->PersistSessionUntil(Upstream(), intro.expiry);
       MarkActive(now);
       return SendLatencyMessage(r);
     }
@@ -716,7 +735,7 @@ namespace llarp::path
   }
 
   bool
-  Path::HandleHiddenServiceFrame(const service::ProtocolFrame& frame)
+  Path::HandleHiddenServiceFrame(const service::ProtocolFrameMessage& frame)
   {
     if (auto parent = m_PathSet.lock())
     {
@@ -768,10 +787,10 @@ namespace llarp::path
   Path::HandleDHTMessage(const dht::AbstractDHTMessage& msg, AbstractRouter* r)
   {
     MarkActive(r->Now());
-    routing::DHTMessage reply;
-    if (!msg.handle_message(r->dht(), reply.M))
+    routing::PathDHTMessage reply;
+    if (!msg.handle_message(r->dht(), reply.dht_msgs))
       return false;
-    if (reply.M.size())
+    if (reply.dht_msgs.size())
       return SendRoutingMessage(reply, r);
     return true;
   }
@@ -800,7 +819,7 @@ namespace llarp::path
   Path::SendExitRequest(const routing::ObtainExitMessage& msg, AbstractRouter* r)
   {
     LogInfo(Name(), " sending exit request to ", Endpoint());
-    m_ExitObtainTX = msg.T;
+    m_ExitObtainTX = msg.tx_id;
     return SendRoutingMessage(msg, r);
   }
 
@@ -834,7 +853,7 @@ namespace llarp::path
   bool
   Path::HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r)
   {
-    if (m_ExitObtainTX && msg.T == m_ExitObtainTX)
+    if (m_ExitObtainTX && msg.tx_id == m_ExitObtainTX)
     {
       if (!msg.Verify(EndpointPubKey()))
       {
@@ -843,7 +862,7 @@ namespace llarp::path
       }
       LogInfo(Name(), " ", Endpoint(), " Rejected exit");
       MarkActive(r->Now());
-      return InformExitResult(llarp_time_t(msg.B));
+      return InformExitResult(llarp_time_t(msg.backoff_time));
     }
     LogError(Name(), " got unwarranted RXM");
     return false;
@@ -852,7 +871,7 @@ namespace llarp::path
   bool
   Path::HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r)
   {
-    if (m_ExitObtainTX && msg.T == m_ExitObtainTX)
+    if (m_ExitObtainTX && msg.tx_id == m_ExitObtainTX)
     {
       if (!msg.Verify(EndpointPubKey()))
       {
@@ -889,9 +908,9 @@ namespace llarp::path
     // handle traffic if we have a handler
     if (!m_ExitTrafficHandler)
       return false;
-    bool sent = msg.X.size() > 0;
+    bool sent = msg.enc_buf.size() > 0;
     auto self = shared_from_this();
-    for (const auto& pkt : msg.X)
+    for (const auto& pkt : msg.enc_buf)
     {
       if (pkt.size() <= 8)
         continue;

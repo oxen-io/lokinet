@@ -11,6 +11,16 @@ namespace llarp
     version = 0;
   }
 
+  /** Note: this is where AbstractDHTMessage::bt_encode() is called. Contextually, this is a
+      bit confusing as it is within the ::bt_encode() method of DHTImmediateMessage, which is
+      not an AbstractDHTMessage, but an AbstractLinkMessage. To see why AbstractLinkMessage
+      overrides the ::bt_encode() that returns an std::string, see the comment in llarp/router/
+      outbound_message_handler.cpp above OutboundMessageHandler::EncodeBuffer(...).
+
+      In this context, there is already a bt_dict_producer being used by DHTImmediateMessage's
+      bt_encode() method. This allows us to easily choose the override of bt_encode() that returns
+      nothing, but takes a bt_dict_producer as a reference.
+  */
   std::string
   DHTImmediateMessage::bt_encode() const
   {

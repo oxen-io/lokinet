@@ -218,8 +218,8 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 1;
+        msg.address_lifetime = 0;
+        msg.flag = 1;
       }
     };
 
@@ -247,8 +247,8 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 0;
+        msg.address_lifetime = 0;
+        msg.flag = 0;
       }
     };
 

@@ -35,7 +35,7 @@ namespace llarp::service
   }
 
   bool
-  EncryptedIntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  EncryptedIntroSet::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (key.startswith("x"))
@@ -139,7 +139,7 @@ namespace llarp::service
   util::StatusObject
   IntroSet::ExtractStatus() const
   {
-    util::StatusObject obj{{"published", to_json(timestampSignedAt)}};
+    util::StatusObject obj{{"published", to_json(time_signed)}};
     std::vector<util::StatusObject> introsObjs;
     std::transform(
         intros.begin(),
@@ -152,27 +152,27 @@ namespace llarp::service
 
     std::vector<util::StatusObject> protocols;
     std::transform(
-        supportedProtocols.begin(),
-        supportedProtocols.end(),
+        supported_protocols.begin(),
+        supported_protocols.end(),
         std::back_inserter(protocols),
         [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
     obj["protos"] = protocols;
     std::vector<util::StatusObject> ranges;
     std::transform(
-        ownedRanges.begin(),
-        ownedRanges.end(),
+        owned_ranges.begin(),
+        owned_ranges.end(),
         std::back_inserter(ranges),
         [](const auto& range) -> util::StatusObject { return range.ToString(); });
 
     obj["advertisedRanges"] = ranges;
-    if (exitTrafficPolicy)
-      obj["exitPolicy"] = exitTrafficPolicy->ExtractStatus();
+    if (exit_policy)
+      obj["exitPolicy"] = exit_policy->ExtractStatus();
 
     return obj;
   }
 
   bool
-  IntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  IntroSet::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("a", addressKeys, read, key, buf))
@@ -183,7 +183,7 @@ namespace llarp::service
       net::TrafficPolicy policy;
       if (not policy.BDecode(buf))
         return false;
-      exitTrafficPolicy = policy;
+      exit_policy = policy;
       return true;
     }
 
@@ -191,7 +191,7 @@ namespace llarp::service
     {
       return BEncodeReadList(intros, buf);
     }
-    if (!BEncodeMaybeReadDictEntry("k", sntrupKey, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("k", sntru_pubkey, read, key, buf))
       return false;
 
     if (!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
@@ -206,7 +206,7 @@ namespace llarp::service
               uint64_t protoval;
               if (not bencode_read_integer(buf, &protoval))
                 return false;
-              supportedProtocols.emplace_back(static_cast<ProtocolType>(protoval));
+              supported_protocols.emplace_back(static_cast<ProtocolType>(protoval));
             }
             return true;
           },
@@ -215,7 +215,7 @@ namespace llarp::service
 
     if (key.startswith("r"))
     {
-      return BEncodeReadSet(ownedRanges, buf);
+      return BEncodeReadSet(owned_ranges, buf);
     }
 
     if (key.startswith("s"))
@@ -241,7 +241,7 @@ namespace llarp::service
       read = true;
     }
 
-    if (!BEncodeMaybeReadDictInt("t", timestampSignedAt, read, key, buf))
+    if (!BEncodeMaybeReadDictInt("t", time_signed, read, key, buf))
       return false;
 
     if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
@@ -253,96 +253,67 @@ namespace llarp::service
     return read or bencode_discard(buf);
   }
 
-  bool
-  IntroSet::BEncode(llarp_buffer_t* buf) const
+  std::string
+  IntroSet::bt_encode() const
   {
-    if (not bencode_start_dict(buf))
-      return false;
-    if (not BEncodeWriteDictEntry("a", addressKeys, buf))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    // exit policy if applicable
-    if (exitTrafficPolicy)
+    try
     {
-      if (not BEncodeWriteDictEntry("e", *exitTrafficPolicy, buf))
-        return false;
-    }
-    // start introduction list
-    if (not bencode_write_bytestring(buf, "i", 1))
-      return false;
-    if (not BEncodeWriteList(intros.begin(), intros.end(), buf))
-      return false;
-    // end introduction list
-
-    // pq pubkey
-    if (not BEncodeWriteDictEntry("k", sntrupKey, buf))
-      return false;
-
-    // topic tag
-    if (not topic.ToString().empty())
-    {
-      if (not BEncodeWriteDictEntry("n", topic, buf))
-        return false;
-    }
-
-    // supported ethertypes
-    if (not supportedProtocols.empty())
-    {
-      if (not bencode_write_bytestring(buf, "p", 1))
-        return false;
-
-      if (not bencode_start_list(buf))
-        return false;
-
-      for (const auto& proto : supportedProtocols)
       {
-        if (not bencode_write_uint64(buf, static_cast<uint64_t>(proto)))
-          return false;
+        auto subdict = btdp.append_dict("a");
+        addressKeys.bt_encode(subdict);
       }
 
-      if (not bencode_end(buf))
-        return false;
-    }
+      if (exit_policy)
+      {
+        auto subdict = btdp.append_dict("e");
+        exit_policy->bt_encode(subdict);
+      }
 
-    // owned ranges
-    if (not ownedRanges.empty())
+      {
+        auto subdict = btdp.append_dict("i");
+        for (auto& i : intros)
+          i.bt_encode(subdict);
+      }
+
+      btdp.append("k", sntru_pubkey.ToView());
+      btdp.append("n", topic.ToView());
+
+      if (not supported_protocols.empty())
+      {
+        auto sublist = btdp.append_list("p");
+        for (auto& p : supported_protocols)
+          sublist.append(static_cast<uint64_t>(p));
+      }
+
+      if (not owned_ranges.empty())
+      {
+        auto sublist = btdp.append_list("s");
+        for (auto& r : owned_ranges)
+          r.bt_encode(sublist);
+      }
+
+      if (not SRVs.empty())
+        btdp.append("s", oxenc::bt_serialize(SRVs));
+
+      btdp.append("t", time_signed.count());
+      btdp.append("v", version);
+      btdp.append("z", signature.ToView());
+    }
+    catch (...)
     {
-      if (not bencode_write_bytestring(buf, "r", 1))
-        return false;
-
-      if (not BEncodeWriteSet(ownedRanges, buf))
-        return false;
+      log::critical(net_cat, "Error: IntroSet failed to bt encode contents!");
     }
 
-    // srv records
-    if (not SRVs.empty())
-    {
-      std::string serial = oxenc::bt_serialize(SRVs);
-      if (!bencode_write_bytestring(buf, "s", 1))
-        return false;
-      if (!buf->write(serial.begin(), serial.end()))
-        return false;
-    }
-
-    // timestamp
-    if (!BEncodeWriteDictInt("t", timestampSignedAt.count(), buf))
-      return false;
-
-    // write version
-    if (!BEncodeWriteDictInt("v", version, buf))
-      return false;
-
-    if (!BEncodeWriteDictEntry("z", signature, buf))
-      return false;
-
-    return bencode_end(buf);
+    return std::move(btdp).str();
   }
 
   bool
   IntroSet::HasExpiredIntros(llarp_time_t now) const
   {
     for (const auto& intro : intros)
-      if (now >= intro.expiresAt)
+      if (now >= intro.expiry)
         return true;
     return false;
   }
@@ -386,10 +357,10 @@ namespace llarp::service
     IntroSet copy;
     copy = *this;
     copy.signature.Zero();
-    if (!copy.BEncode(&buf))
-    {
-      return false;
-    }
+
+    auto bte = copy.bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     // rewind and resize buffer
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
@@ -402,7 +373,7 @@ namespace llarp::service
     now += MAX_INTROSET_TIME_DELTA;
     for (const auto& intro : intros)
     {
-      if (intro.expiresAt > now && intro.expiresAt - now > path::default_lifetime)
+      if (intro.expiry > now && intro.expiry - now > path::default_lifetime)
       {
         return false;
       }
@@ -415,7 +386,7 @@ namespace llarp::service
   {
     llarp_time_t maxTime = 0s;
     for (const auto& intro : intros)
-      maxTime = std::max(intro.expiresAt, maxTime);
+      maxTime = std::max(intro.expiry, maxTime);
     return maxTime;
   }
 
@@ -426,9 +397,9 @@ namespace llarp::service
         "[IntroSet addressKeys={} intros={{{}}} sntrupKey={} topic={} signedAt={} v={} sig={}]",
         addressKeys,
         fmt::format("{}", fmt::join(intros, ",")),
-        sntrupKey,
+        sntru_pubkey,
         topic,
-        timestampSignedAt.count(),
+        time_signed.count(),
         version,
         signature);
   }

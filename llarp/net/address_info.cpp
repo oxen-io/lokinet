@@ -33,7 +33,7 @@ namespace llarp
   }
 
   bool
-  AddressInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  AddressInfo::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     uint64_t i;
     char tmp[128] = {0};
@@ -111,47 +111,30 @@ namespace llarp
     return false;
   }
 
-  bool
-  AddressInfo::BEncode(llarp_buffer_t* buff) const
+  std::string
+  AddressInfo::bt_encode() const
   {
     char ipbuff[128] = {0};
-    const char* ipstr;
-    if (!bencode_start_dict(buff))
-      return false;
-    /* rank */
-    if (!bencode_write_bytestring(buff, "c", 1))
-      return false;
-    if (!bencode_write_uint64(buff, rank))
-      return false;
-    /* dialect */
-    if (!bencode_write_bytestring(buff, "d", 1))
-      return false;
-    if (!bencode_write_bytestring(buff, dialect.c_str(), dialect.size()))
-      return false;
-    /* encryption key */
-    if (!bencode_write_bytestring(buff, "e", 1))
-      return false;
-    if (!bencode_write_bytestring(buff, pubkey.data(), PUBKEYSIZE))
-      return false;
-    /** ip */
-    ipstr = inet_ntop(AF_INET6, (void*)&ip, ipbuff, sizeof(ipbuff));
-    if (!ipstr)
-      return false;
-    if (!bencode_write_bytestring(buff, "i", 1))
-      return false;
-    if (!bencode_write_bytestring(buff, ipstr, strnlen(ipstr, sizeof(ipbuff))))
-      return false;
-    /** port */
-    if (!bencode_write_bytestring(buff, "p", 1))
-      return false;
-    if (!bencode_write_uint64(buff, port))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    /** version */
-    if (!bencode_write_uint64_entry(buff, "v", 1, llarp::constants::proto_version))
-      return false;
-    /** end */
-    return bencode_end(buff);
+    try
+    {
+      btdp.append("c", rank);
+      btdp.append("d", dialect);
+      btdp.append("e", pubkey.ToView());
+
+      const char* ipstr = inet_ntop(AF_INET6, (void*)&ip, ipbuff, sizeof(ipbuff));
+
+      btdp.append("i", std::string_view{ipstr, strnlen(ipstr, sizeof(ipbuff))});
+      btdp.append("p", port);
+      btdp.append("v", version);
+    }
+    catch (...)
+    {
+      log::critical(net_cat, "Error: AddressInfo failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   IpAddress
@@ -159,7 +142,7 @@ namespace llarp
   {
     SockAddr addr(ip);
     addr.setPort(port);
-    return IpAddress(addr);
+    return {addr};
   }
 
   void

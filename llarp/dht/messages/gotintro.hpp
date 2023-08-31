@@ -46,7 +46,8 @@ namespace llarp::dht
 
     bool
     handle_message(
-        llarp_dht_context* ctx, std::vector<AbstractDHTMessage::Ptr_t>& replies) const override;
+        llarp_dht_context* ctx,
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
   };
 
   struct RelayedGotIntroMessage final : public GotIntroMessage
@@ -56,7 +57,8 @@ namespace llarp::dht
 
     bool
     handle_message(
-        llarp_dht_context* ctx, std::vector<AbstractDHTMessage::Ptr_t>& replies) const override;
+        llarp_dht_context* ctx,
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
   };
 
   using GotIntroMessage_constptr = std::shared_ptr<const GotIntroMessage>;

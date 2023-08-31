@@ -17,22 +17,24 @@ namespace llarp
     return m_ProtoVersion == other.m_ProtoVersion;
   }
 
-  bool
-  RouterVersion::BEncode(llarp_buffer_t* buf) const
+  std::string
+  RouterVersion::bt_encode() const
   {
-    if (not bencode_start_list(buf))
-      return false;
-    if (not IsEmpty())
+    oxenc::bt_list_producer btlp;
+
+    try
     {
-      if (not bencode_write_uint64(buf, m_ProtoVersion))
-        return false;
-      for (const auto& i : m_Version)
-      {
-        if (not bencode_write_uint64(buf, i))
-          return false;
-      }
+      btlp.append(m_ProtoVersion);
+
+      for (auto& v : m_Version)
+        btlp.append(v);
     }
-    return bencode_end(buf);
+    catch (...)
+    {
+      log::critical(llarp_cat, "Error: RouterVersion failed to bt encode contents!");
+    }
+
+    return std::move(btlp).str();
   }
 
   void

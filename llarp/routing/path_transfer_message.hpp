@@ -5,41 +5,39 @@
 #include "message.hpp"
 #include <llarp/service/protocol.hpp>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  struct PathTransferMessage final : public AbstractRoutingMessage
   {
-    struct PathTransferMessage final : public AbstractRoutingMessage
+    PathID_t path_id;
+    service::ProtocolFrameMessage protocol_frame_msg;
+    TunnelNonce nonce;
+
+    PathTransferMessage() = default;
+    PathTransferMessage(const service::ProtocolFrameMessage& f, const PathID_t& p)
+        : path_id(p), protocol_frame_msg(f)
     {
-      PathID_t P;
-      service::ProtocolFrame T;
-      TunnelNonce Y;
+      nonce.Randomize();
+    }
+    ~PathTransferMessage() override = default;
 
-      PathTransferMessage() = default;
-      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p) : P(p), T(f)
-      {
-        Y.Randomize();
-      }
-      ~PathTransferMessage() override = default;
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+    std::string
+    bt_encode() const override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+    bool
+    handle_message(AbstractRoutingMessageHandler*, AbstractRouter* r) const override;
 
-      bool
-      HandleMessage(AbstractRoutingMessageHandler*, AbstractRouter* r) const override;
+    void
+    clear() override
+    {
+      path_id.Zero();
+      protocol_frame_msg.clear();
+      nonce.Zero();
+      version = 0;
+    }
+  };
 
-      void
-      Clear() override
-      {
-        P.Zero();
-        T.Clear();
-        Y.Zero();
-        version = 0;
-      }
-    };
-
-  }  // namespace routing
-}  // namespace llarp
+}  // namespace llarp::routing

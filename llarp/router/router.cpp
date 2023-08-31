@@ -322,15 +322,14 @@ namespace llarp
 
   // TODO: if still needed/useful, replace this in line with libquic impl
   void
-  Router::ForEachPeer(
-      std::function<void(const AbstractLinkSession*, bool)> visit, bool randomize) const
+  Router::ForEachPeer(std::function<void(const AbstractLinkSession*, bool)>, bool) const
   {
     //_linkManager.ForEachPeer(visit, randomize);
   }
 
   // TODO: if still needed/useful, replace this in line with libquic impl
   void
-  Router::ForEachPeer(std::function<void(AbstractLinkSession*)> visit)
+  Router::ForEachPeer(std::function<void(AbstractLinkSession*)>)
   {
     //_linkManager.ForEachPeer(visit);
   }
@@ -653,7 +652,8 @@ namespace llarp
   {
     // Set netid before anything else
     log::debug(logcat, "Network ID set to {}", conf.router.m_netId);
-    if (!conf.router.m_netId.empty() && strcmp(conf.router.m_netId.c_str(), llarp::DEFAULT_NETID))
+    if (!conf.router.m_netId.empty()
+        && strcmp(conf.router.m_netId.c_str(), llarp::DEFAULT_NETID) != 0)
     {
       const auto& netid = conf.router.m_netId;
       llarp::LogWarn(
@@ -1229,6 +1229,7 @@ namespace llarp
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionSuccesses++; });
     }
     NotifyRouterEvent<tooling::LinkSessionEstablishedEvent>(pubkey(), id, inbound);
+    return true;
   }
 
   bool

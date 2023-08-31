@@ -7,9 +7,9 @@
 
 namespace llarp
 {
-  struct DiscardMessage final : public AbstractLinkMessage
+  struct LinkDiscardMessage final : public AbstractLinkMessage
   {
-    DiscardMessage() : AbstractLinkMessage()
+    LinkDiscardMessage() : AbstractLinkMessage()
     {}
 
     std::string
@@ -67,13 +67,13 @@ namespace llarp
   {
     struct DataDiscardMessage final : public AbstractRoutingMessage
     {
-      PathID_t P;
+      PathID_t path_id;
 
       DataDiscardMessage() = default;
 
-      DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
+      DataDiscardMessage(const PathID_t& dst, uint64_t s) : path_id(dst)
       {
-        S = s;
+        sequence_number = s;
         version = llarp::constants::proto_version;
       }
 
@@ -93,9 +93,9 @@ namespace llarp
       decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf) override
       {
         bool read = false;
-        if (!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
+        if (!BEncodeMaybeReadDictEntry("P", path_id, read, k, buf))
           return false;
-        if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+        if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
           return false;
         if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
           return false;
@@ -110,8 +110,8 @@ namespace llarp
         try
         {
           btdp.append("A", "D");
-          btdp.append("P", P.ToView());
-          btdp.append("S", S);
+          btdp.append("P", path_id.ToView());
+          btdp.append("S", sequence_number);
           btdp.append("V", version);
         }
         catch (...)

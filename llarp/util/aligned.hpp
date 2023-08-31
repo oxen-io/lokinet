@@ -244,9 +244,15 @@ namespace llarp
     }
 
     bool
-    BEncode(llarp_buffer_t* buf) const
+    bt_encode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, data(), sz);
+    }
+
+    std::string
+    bt_encode() const
+    {
+      return {reinterpret_cast<const char*>(data()), sz};
     }
 
     bool

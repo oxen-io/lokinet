@@ -91,7 +91,7 @@ namespace llarp
   {
     std::string tmp(128, 0);
     llarp_buffer_t buf(tmp);
-    if (!BEncode(&buf))
+    if (!bt_encode(&buf))
       return false;
 
     tmp.resize(buf.cur - buf.base);

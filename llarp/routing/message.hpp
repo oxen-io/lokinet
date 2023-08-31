@@ -21,7 +21,7 @@ namespace llarp
     struct AbstractRoutingMessage : private AbstractSerializable
     {
       PathID_t from;
-      uint64_t S{0};
+      uint64_t sequence_number{0};
       uint64_t version = llarp::constants::proto_version;
 
       AbstractRoutingMessage() = default;
@@ -62,7 +62,7 @@ namespace llarp
       bool
       operator<(const AbstractRoutingMessage& other) const
       {
-        return other.S < S;
+        return other.sequence_number < sequence_number;
       }
     };
 

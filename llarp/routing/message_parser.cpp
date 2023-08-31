@@ -3,7 +3,7 @@
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/path/path_types.hpp>
-#include "dht_message.hpp"
+#include "path_dht_message.hpp"
 #include "path_confirm_message.hpp"
 #include "path_latency_message.hpp"
 #include "path_transfer_message.hpp"
@@ -16,10 +16,10 @@ namespace llarp::routing
   {
     DataDiscardMessage D;
     PathLatencyMessage L;
-    DHTMessage M;
+    PathDHTMessage M;
     PathConfirmMessage P;
     PathTransferMessage T;
-    service::ProtocolFrame H;
+    service::ProtocolFrameMessage H;
     TransferTrafficMessage I;
     GrantExitMessage G;
     RejectExitMessage J;
@@ -101,7 +101,7 @@ namespace llarp::routing
       return msg != nullptr;
     }
 
-    return msg->DecodeKey(*key, buffer);
+    return msg->decode_key(*key, buffer);
   }
 
   bool
@@ -124,8 +124,8 @@ namespace llarp::routing
     if (bencode_read_dict(*this, &copy))
     {
       msg->from = from;
-      LogDebug("handle routing message ", msg->S, " from ", from);
-      result = msg->HandleMessage(h, r);
+      LogDebug("handle routing message ", msg->sequence_number, " from ", from);
+      result = msg->handle_message(h, r);
       if (!result)
       {
         llarp::LogWarn("Failed to handle inbound routing message ", ourKey);
@@ -137,7 +137,7 @@ namespace llarp::routing
       llarp::DumpBuffer<llarp_buffer_t, 128>(buf);
     }
     if (msg)
-      msg->Clear();
+      msg->clear();
     msg = nullptr;
     version = 0;
     return result;

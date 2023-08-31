@@ -205,7 +205,7 @@ namespace llarp
       HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrame& msg);
+      HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrameMessage& msg);
 
       void
       SetEndpointAuth(std::shared_ptr<IAuthPolicy> policy);

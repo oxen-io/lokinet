@@ -3,56 +3,50 @@
 #include "handler.hpp"
 #include <llarp/util/buffer.hpp>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  bool
+  PathTransferMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* val)
   {
-    bool
-    PathTransferMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
+    bool read = false;
+    if (!BEncodeMaybeReadDictEntry("P", path_id, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("T", protocol_frame_msg, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictInt("V", version, read, key, val))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Y", nonce, read, key, val))
+      return false;
+    return read;
+  }
+
+  std::string
+  PathTransferMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      bool read = false;
-      if (!BEncodeMaybeReadDictEntry("P", P, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("T", T, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, key, val))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Y", Y, read, key, val))
-        return false;
-      return read;
+      btdp.append("A", "T");
+      btdp.append("P", path_id.ToView());
+      btdp.append("T", protocol_frame_msg.bt_encode());
+      btdp.append("V", version);
+      btdp.append("Y", nonce.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: PathTransferMessage failed to bt encode contents!");
     }
 
-    bool
-    PathTransferMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "T"))
-        return false;
-      if (!BEncodeWriteDictEntry("P", P, buf))
-        return false;
+    return std::move(btdp).str();
+  }
 
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
+  bool
+  PathTransferMessage::handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
+  {
+    return h->HandlePathTransferMessage(*this, r);
+  }
 
-      if (!BEncodeWriteDictEntry("T", T, buf))
-        return false;
-
-      if (!BEncodeWriteDictInt("V", llarp::constants::proto_version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Y", Y, buf))
-        return false;
-
-      return bencode_end(buf);
-    }
-
-    bool
-    PathTransferMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandlePathTransferMessage(*this, r);
-    }
-
-  }  // namespace routing
-}  // namespace llarp
+}  // namespace llarp::routing

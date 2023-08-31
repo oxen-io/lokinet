@@ -16,7 +16,7 @@ namespace llarp::dht
   struct MessageDecoder
   {
     const Key_t& From;
-    AbstractDHTMessage::Ptr_t msg;
+    std::unique_ptr<AbstractDHTMessage> msg;
     bool firstKey = true;
     bool relayed = false;
 
@@ -88,7 +88,7 @@ namespace llarp::dht
     }
   };
 
-  AbstractDHTMessage::Ptr_t
+  std::unique_ptr<AbstractDHTMessage>
   DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed)
   {
     MessageDecoder dec(from, relayed);
@@ -100,13 +100,14 @@ namespace llarp::dht
 
   struct ListDecoder
   {
-    ListDecoder(bool hasRelayed, const Key_t& from, std::vector<AbstractDHTMessage::Ptr_t>& list)
+    ListDecoder(
+        bool hasRelayed, const Key_t& from, std::vector<std::unique_ptr<AbstractDHTMessage>>& list)
         : relayed(hasRelayed), From(from), l(list)
     {}
 
     bool relayed;
     const Key_t& From;
-    std::vector<AbstractDHTMessage::Ptr_t>& l;
+    std::vector<std::unique_ptr<AbstractDHTMessage>>& l;
 
     bool
     operator()(llarp_buffer_t* buffer, bool has)
@@ -126,7 +127,10 @@ namespace llarp::dht
 
   bool
   DecodeMessageList(
-      Key_t from, llarp_buffer_t* buf, std::vector<AbstractDHTMessage::Ptr_t>& list, bool relayed)
+      Key_t from,
+      llarp_buffer_t* buf,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& list,
+      bool relayed)
   {
     ListDecoder dec(relayed, from, list);
     return bencode_read_list(dec, buf);

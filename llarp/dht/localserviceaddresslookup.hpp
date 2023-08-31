@@ -5,27 +5,24 @@
 
 #include <llarp/path/path_types.hpp>
 
-namespace llarp
+namespace llarp::dht
 {
-  namespace dht
+  struct LocalServiceAddressLookup : public ServiceAddressLookup
   {
-    struct LocalServiceAddressLookup : public ServiceAddressLookup
-    {
-      PathID_t localPath;
+    PathID_t localPath;
 
-      LocalServiceAddressLookup(
-          const PathID_t& pathid,
-          uint64_t txid,
-          uint64_t relayOrder,
-          const Key_t& addr,
-          AbstractContext* ctx,
-          [[maybe_unused]] const Key_t& askpeer);
+    LocalServiceAddressLookup(
+        const PathID_t& pathid,
+        uint64_t txid,
+        uint64_t relayOrder,
+        const Key_t& addr,
+        AbstractContext* ctx,
+        [[maybe_unused]] const Key_t& askpeer);
 
-      void
-      SendReply() override;
-    };
+    void
+    SendReply() override;
+  };
 
-  }  // namespace dht
-}  // namespace llarp
+}  // namespace llarp::dht
 
 #endif

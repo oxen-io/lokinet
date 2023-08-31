@@ -7,21 +7,18 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
 
-namespace llarp
+namespace llarp::dht
 {
-  namespace dht
+  struct LocalRouterLookup : public RecursiveRouterLookup
   {
-    struct LocalRouterLookup : public RecursiveRouterLookup
-    {
-      PathID_t localPath;
+    PathID_t localPath;
 
-      LocalRouterLookup(
-          const PathID_t& path, uint64_t txid, const RouterID& target, AbstractContext* ctx);
+    LocalRouterLookup(
+        const PathID_t& path, uint64_t txid, const RouterID& target, AbstractContext* ctx);
 
-      void
-      SendReply() override;
-    };
-  }  // namespace dht
-}  // namespace llarp
+    void
+    SendReply() override;
+  };
+}  // namespace llarp::dht
 
 #endif

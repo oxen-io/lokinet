@@ -5,63 +5,69 @@
 
 #include <oxenc/endian.h>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  bool
+  TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf, uint64_t counter)
   {
-    bool
-    TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf, uint64_t counter)
+    if (buf.sz > MAX_EXIT_MTU)
+      return false;
+    enc_buf.emplace_back(buf.sz + 8);
+    byte_t* ptr = enc_buf.back().data();
+    oxenc::write_host_as_big(counter, ptr);
+    ptr += 8;
+    memcpy(ptr, buf.base, buf.sz);
+    // 8 bytes encoding overhead and 8 bytes counter
+    _size += buf.sz + 16;
+    return true;
+  }
+
+  std::string
+  TransferTrafficMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      if (buf.sz > MaxExitMTU)
-        return false;
-      X.emplace_back(buf.sz + 8);
-      byte_t* ptr = X.back().data();
-      oxenc::write_host_as_big(counter, ptr);
-      ptr += 8;
-      memcpy(ptr, buf.base, buf.sz);
-      // 8 bytes encoding overhead and 8 bytes counter
-      _size += buf.sz + 16;
-      return true;
+      btdp.append("A", "I");
+      btdp.append("P", static_cast<uint64_t>(protocol));
+      btdp.append("S", sequence_number);
+      btdp.append("V", version);
+
+      {
+        auto sublist = btdp.append_list("X");
+
+        for (auto& b : enc_buf)
+          sublist.append(std::string_view{reinterpret_cast<const char*>(b.data()), b.size()});
+      }
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: PathLatencyMessage failed to bt encode contents!");
     }
 
-    bool
-    TransferTrafficMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "I"))
-        return false;
-      if (!BEncodeWriteDictInt("P", protocol, buf))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictList("X", X, buf))
-        return false;
-      return bencode_end(buf);
-    }
+    return std::move(btdp).str();
+  }
 
-    bool
-    TransferTrafficMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("P", protocol, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictList("X", X, read, key, buf))
-        return false;
-      return read or bencode_discard(buf);
-    }
+  bool
+  TransferTrafficMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("P", protocol, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("V", version, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictList("X", enc_buf, read, key, buf))
+      return false;
+    return read or bencode_discard(buf);
+  }
 
-    bool
-    TransferTrafficMessage::HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleTransferTrafficMessage(*this, r);
-    }
+  bool
+  TransferTrafficMessage::handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
+  {
+    return h->HandleTransferTrafficMessage(*this, r);
+  }
 
-  }  // namespace routing
-}  // namespace llarp
+}  // namespace llarp::routing

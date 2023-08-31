@@ -5,7 +5,7 @@
 #include <memory>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/routing/dht_message.hpp>
+#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <utility>
 

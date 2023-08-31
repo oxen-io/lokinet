@@ -160,7 +160,7 @@ namespace llarp
       HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& /*frame*/) override
+      HandleHiddenServiceFrame(const service::ProtocolFrameMessage& /*frame*/) override
       {
         /// TODO: implement me
         LogWarn("Got hidden service data on transit hop");

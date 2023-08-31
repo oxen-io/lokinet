@@ -16,7 +16,9 @@ namespace llarp::dht
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
     bool
-    handle_message(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const override;
+    handle_message(
+        struct llarp_dht_context* dht,
+        std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
 
     service::EncryptedName result;
     uint64_t TxID;

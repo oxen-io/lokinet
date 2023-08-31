@@ -177,6 +177,13 @@ namespace llarp
     _router->linkManager().Connect(remote);
   }
 
+  /** Note: This is where AbstractLinkMessage::bt_encode() is called. Contextually, this is
+      different than how the other Abstract message types invoke ::bt_encode(), namely that
+      there is no bt_dict_producer already being appended to. As a result, this use case
+      likely requires a span backport and/or re-designed llarp_buffer. Until then, the
+      ::bt_encode() override that returns an std::string upon destruction of its bt_dict_producer
+      will be used
+  */
   bool
   OutboundMessageHandler::EncodeBuffer(const AbstractLinkMessage& msg, llarp_buffer& buf)
   {

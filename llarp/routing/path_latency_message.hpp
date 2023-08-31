@@ -2,32 +2,29 @@
 
 #include "message.hpp"
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  struct PathLatencyMessage final : public AbstractRoutingMessage
   {
-    struct PathLatencyMessage final : public AbstractRoutingMessage
+    uint64_t sent_time = 0;
+    uint64_t latency = 0;
+    PathLatencyMessage();
+
+    std::string
+    bt_encode() const override;
+
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+
+    void
+    clear() override
     {
-      uint64_t T = 0;
-      uint64_t L = 0;
-      PathLatencyMessage();
+      sent_time = 0;
+      latency = 0;
+      version = 0;
+    }
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
-
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
-
-      void
-      Clear() override
-      {
-        T = 0;
-        L = 0;
-        version = 0;
-      }
-
-      bool
-      HandleMessage(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
-    };
-  }  // namespace routing
-}  // namespace llarp
+    bool
+    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+  };
+}  // namespace llarp::routing
