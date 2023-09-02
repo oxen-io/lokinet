@@ -2,6 +2,8 @@
 #include "definition.hpp"
 #include "ini.hpp"
 
+#include <oxenmq/address.h>
+#include <oxenmq/oxenmq.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
@@ -1152,10 +1154,46 @@ namespace llarp
             "Recommend localhost-only for security purposes.",
         });
 
-    conf.defineOption<std::string>("api", "authkey", Deprecated);
+    conf.defineOption<std::string>(
+        "api",
+        "bind_curve",
+        Default{""},
+        MultiValue,
+        [this](std::string arg) mutable {
+          if (arg.empty())
+            return;
 
-    // TODO: this was from pre-refactor:
-    // TODO: add pubkey to whitelist
+          auto pipe = arg.find("|");
+
+          if (pipe == arg.npos)
+            throw std::invalid_argument(
+                "Addresses and whitelisted pubkeys must be pipe-delimited key:value pairs");
+
+          auto key = arg.substr(0, pipe), values = arg.substr(pipe + 1, arg.npos);
+
+          if (not starts_with(key, "tcp://"))
+            key = "tcp://" + key;
+
+          auto pubkeys = split(values, ",", true);
+          oxenmq::address key_addr{key};
+
+          for (auto& pk : pubkeys)
+            m_rpcEncryptedAddresses[key_addr].emplace(pk);
+        },
+        Comment{
+            "Specify encrypted listener addresses and comma-delimited public keys to be accepted ",
+            "by exposed encrypted listener. Keys must be attached to a listener address.",
+            "",
+            "Example: ",
+            "   bind_curve=tcp://0.0.0.0:1234|pubkeyA,pubkeyB",
+            "   bind_curve=tcp://0.0.0.0:5678|pubkeyC,pubkeyD",
+            "",
+            "In the given example above, port 1234 is only accessible by whitelisted ",
+            "pubkeys A and B, while 5678 is accessible by C and D.",
+            "",
+            "Note: tcp addresses passed without \"tcp://\" prefix will have it prepended"});
+
+    conf.defineOption<std::string>("api", "authkey", Deprecated);
   }
 
   void

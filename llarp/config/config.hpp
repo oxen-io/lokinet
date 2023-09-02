@@ -2,8 +2,8 @@
 #include "ini.hpp"
 #include "definition.hpp"
 
+#include <oxenmq/auth.h>
 #include <chrono>
-
 #include <llarp/bootstrap.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/router_contact.hpp>
@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 #include <oxenmq/address.h>
 
@@ -190,6 +191,7 @@ namespace llarp
   {
     bool m_enableRPCServer = false;
     std::vector<oxenmq::address> m_rpcBindAddresses;
+    std::unordered_map<oxenmq::address, std::unordered_set<std::string>> m_rpcEncryptedAddresses;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

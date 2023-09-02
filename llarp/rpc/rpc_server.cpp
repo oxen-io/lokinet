@@ -1,5 +1,7 @@
 #include "rpc_server.hpp"
 #include "llarp/rpc/rpc_request_definitions.hpp"
+#include "llarp/util/logging.hpp"
+#include "oxen/log.hpp"
 #include "rpc_request.hpp"
 #include "llarp/service/address.hpp"
 #include <cmath>
@@ -106,7 +108,22 @@ namespace llarp::rpc
     for (const auto& addr : r.GetConfig()->api.m_rpcBindAddresses)
     {
       m_LMQ->listen_plain(addr.zmq_address());
-      LogInfo("Bound RPC server to ", addr.full_address());
+      log::info(logcat, "Bound RPC server to {}", addr.full_address());
+    }
+
+    for (const auto& [address, allowed_keys] : r.GetConfig()->api.m_rpcEncryptedAddresses)
+    {
+      m_LMQ->listen_curve(
+          address.zmq_address(), [allowed_keys = allowed_keys](auto addr, auto pk, ...) {
+            if (allowed_keys.count(std::string{pk}))
+              return oxenmq::AuthLevel::admin;
+
+            log::warning(
+                logcat,
+                "Curve pubkey not in whitelist, denying incoming RPC connection from {}",
+                addr);
+            return oxenmq::AuthLevel::denied;
+          });
     }
 
     AddCategories();
