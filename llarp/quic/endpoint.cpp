@@ -220,7 +220,10 @@ namespace llarp::quic
 
   void
   Endpoint::close_connection(
-      Connection& conn, uint64_t code, bool application, std::string_view close_reason)
+      Connection& conn,
+      uint64_t code,
+      [[maybe_unused]] bool application,
+      std::string_view close_reason)
   {
     LogDebug("Closing connection ", conn.base_cid);
     if (!conn.closing)

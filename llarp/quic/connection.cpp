@@ -1171,7 +1171,8 @@ namespace llarp::quic
   int
   Connection::send_transport_params(ngtcp2_encryption_level level)
   {
-    ngtcp2_transport_params tparams = *ngtcp2_conn_get_local_transport_params(*this);
+    [[maybe_unused]] ngtcp2_transport_params tparams =
+        *ngtcp2_conn_get_local_transport_params(*this);
 
     assert(conn_buffer.empty());
     conn_buffer.resize(Endpoint::max_pkt_size_v4);
