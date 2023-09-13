@@ -7,7 +7,7 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/tooling/path_event.hpp>
 #include <llarp/link/link_manager.hpp>

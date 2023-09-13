@@ -1,10 +1,10 @@
 #pragma once
 
-#include "i_outbound_session_maker.hpp"
+#include "rc_lookup_handler.hpp"
 
-#include "i_rc_lookup_handler.hpp"
 #include <llarp/util/thread/threading.hpp>
-
+#include <llarp/util/types.hpp>
+#include <llarp/util/formattable.hpp>
 #include <llarp/profiling.hpp>
 
 #include <unordered_map>
@@ -18,7 +18,33 @@ namespace llarp
   struct LinkManager;
   struct I_RCLookupHandler;
 
-  struct OutboundSessionMaker final : public IOutboundSessionMaker
+  enum class SessionResult
+  {
+    Establish,
+    Timeout,
+    RouterNotFound,
+    InvalidRouter,
+    NoLink,
+    EstablishFail
+  };
+
+  constexpr std::string_view
+  ToString(SessionResult sr)
+  {
+    return sr == llarp::SessionResult::Establish     ? "success"sv
+        : sr == llarp::SessionResult::Timeout        ? "timeout"sv
+        : sr == llarp::SessionResult::NoLink         ? "no link"sv
+        : sr == llarp::SessionResult::InvalidRouter  ? "invalid router"sv
+        : sr == llarp::SessionResult::RouterNotFound ? "not found"sv
+        : sr == llarp::SessionResult::EstablishFail  ? "establish failed"sv
+                                                     : "???"sv;
+  }
+  template <>
+  constexpr inline bool IsToStringFormattable<SessionResult> = true;
+
+  using RouterCallback = std::function<void(const RouterID&, const SessionResult)>;
+
+  struct OutboundSessionMaker
   {
     using Work_t = std::function<void(void)>;
     using WorkerFunc_t = std::function<void(Work_t)>;
@@ -26,31 +52,31 @@ namespace llarp
     using CallbacksQueue = std::list<RouterCallback>;
 
    public:
-    ~OutboundSessionMaker() override = default;
+    ~OutboundSessionMaker() = default;
 
     bool
-    OnSessionEstablished(AbstractLinkSession* session) override;
+    OnSessionEstablished(AbstractLinkSession* session);
 
     void
-    OnConnectTimeout(AbstractLinkSession* session) override;
+    OnConnectTimeout(AbstractLinkSession* session);
 
     void
-    CreateSessionTo(const RouterID& router, RouterCallback on_result) override EXCLUDES(_mutex);
+    CreateSessionTo(const RouterID& router, RouterCallback on_result) EXCLUDES(_mutex);
 
     void
-    CreateSessionTo(const RouterContact& rc, RouterCallback on_result) override EXCLUDES(_mutex);
+    CreateSessionTo(const RouterContact& rc, RouterCallback on_result) EXCLUDES(_mutex);
 
     bool
-    HavePendingSessionTo(const RouterID& router) const override EXCLUDES(_mutex);
+    HavePendingSessionTo(const RouterID& router) const EXCLUDES(_mutex);
 
     void
-    ConnectToRandomRouters(int numDesired) override;
+    ConnectToRandomRouters(int numDesired);
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const;
 
     bool
-    ShouldConnectTo(const RouterID& router) const override EXCLUDES(_mutex);
+    ShouldConnectTo(const RouterID& router) const EXCLUDES(_mutex);
 
     void
     Init(

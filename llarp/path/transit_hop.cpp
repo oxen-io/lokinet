@@ -3,7 +3,7 @@
 #include <llarp/dht/context.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/exit/exit_messages.hpp>
-#include <llarp/link/i_link_manager.hpp>
+#include <llarp/link/link_manager.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/messages/relay_status.hpp>

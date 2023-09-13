@@ -6,7 +6,7 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_outbound_message_handler.hpp>
+#include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>

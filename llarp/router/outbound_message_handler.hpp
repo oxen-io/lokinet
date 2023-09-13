@@ -1,7 +1,5 @@
 #pragma once
 
-#include "i_outbound_message_handler.hpp"
-
 #include <llarp/ev/ev.hpp>
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/decaying_hashset.hpp>
@@ -17,13 +15,32 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
+  enum class SendStatus
+  {
+    Success,
+    Timeout,
+    NoLink,
+    InvalidRouter,
+    RouterNotFound,
+    Congestion
+  };
+
   struct AbstractRouter;
   enum class SessionResult;
+  struct AbstractLinkMessage;
+  struct RouterID;
+  struct PathID_t;
 
-  struct OutboundMessageHandler final : public IOutboundMessageHandler
+  static const size_t MAX_PATH_QUEUE_SIZE = 100;
+  static const size_t MAX_OUTBOUND_QUEUE_SIZE = 1000;
+  static const size_t MAX_OUTBOUND_MESSAGES_PER_TICK = 500;
+
+  using SendStatusHandler = std::function<void(SendStatus)>;
+
+  struct OutboundMessageHandler final
   {
    public:
-    ~OutboundMessageHandler() override = default;
+    ~OutboundMessageHandler() = default;
 
     OutboundMessageHandler(size_t maxQueueSize = MAX_OUTBOUND_QUEUE_SIZE);
 
@@ -45,7 +62,7 @@ namespace llarp
      */
     bool
     QueueMessage(const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler callback)
-        override EXCLUDES(_mutex);
+        EXCLUDES(_mutex);
 
     /* Called when pumping output queues, typically scheduled via a call to Router::TriggerPump().
      *
@@ -59,16 +76,16 @@ namespace llarp
      * Sends messages from path queues until all are empty or a set cap has been reached.
      */
     void
-    Pump() override;
+    Pump();
 
     /* Called from outside this class to inform it that a path has died / expired
      * and its queue should be discarded.
      */
     void
-    RemovePath(const PathID_t& pathid) override;
+    RemovePath(const PathID_t& pathid);
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const;
 
     void
     Init(AbstractRouter* router);

@@ -5,7 +5,7 @@
 #include <llarp/dht/messages/gotrouter.hpp>
 
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 
 #include <utility>
 

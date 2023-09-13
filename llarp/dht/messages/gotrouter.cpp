@@ -4,7 +4,7 @@
 #include <memory>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/tooling/rc_event.hpp>
 
 namespace llarp::dht

@@ -323,19 +323,19 @@ namespace llarp
 
     TimePoint_t m_NextExploreAt;
 
-    IOutboundMessageHandler&
+    OutboundMessageHandler&
     outboundMessageHandler() override
     {
       return _outboundMessageHandler;
     }
 
-    ILinkManager&
+    LinkManager&
     linkManager() override
     {
       return _linkManager;
     }
 
-    I_RCLookupHandler&
+    RCLookupHandler&
     rcLookupHandler() override
     {
       return _rcLookupHandler;

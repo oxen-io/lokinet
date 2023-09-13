@@ -1,7 +1,5 @@
 #pragma once
 
-#include "i_link_manager.hpp"
-
 #include <llarp/util/compare_ptr.hpp>
 #include "server.hpp"
 #include "endpoint.hpp"
@@ -14,9 +12,31 @@
 
 namespace llarp
 {
-  struct IRouterContactManager;
+  enum class SessionResult
+  {
+    Establish,
+    Timeout,
+    RouterNotFound,
+    InvalidRouter,
+    NoLink,
+    EstablishFail
+  };
 
-  struct LinkManager final : public ILinkManager
+  constexpr std::string_view
+  ToString(SessionResult sr)
+  {
+    return sr == llarp::SessionResult::Establish     ? "success"sv
+        : sr == llarp::SessionResult::Timeout        ? "timeout"sv
+        : sr == llarp::SessionResult::NoLink         ? "no link"sv
+        : sr == llarp::SessionResult::InvalidRouter  ? "invalid router"sv
+        : sr == llarp::SessionResult::RouterNotFound ? "not found"sv
+        : sr == llarp::SessionResult::EstablishFail  ? "establish failed"sv
+                                                     : "???"sv;
+  }
+  template <>
+  constexpr inline bool IsToStringFormattable<SessionResult> = true;
+
+  struct LinkManager
   {
    public:
     explicit LinkManager(AbstractRouter* r) : router{r}
@@ -27,52 +47,52 @@ namespace llarp
         const RouterID& remote,
         const llarp_buffer_t& buf,
         AbstractLinkSession::CompletionHandler completed,
-        uint16_t priority) override;
+        uint16_t priority);
 
     bool
-    HaveConnection(const RouterID& remote, bool client_only = false) const override;
+    HaveConnection(const RouterID& remote, bool client_only = false) const;
 
     bool
-    HaveClientConnection(const RouterID& remote) const override;
+    HaveClientConnection(const RouterID& remote) const;
 
     void
-    DeregisterPeer(RouterID remote) override;
+    DeregisterPeer(RouterID remote);
 
     void
     AddLink(const oxen::quic::opt::local_addr& bind, bool inbound = false);
 
     void
-    Stop() override;
+    Stop();
 
     void
-    PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
+    PersistSessionUntil(const RouterID& remote, llarp_time_t until);
 
     size_t
-    NumberOfConnectedRouters(bool clients_only = false) const override;
+    NumberOfConnectedRouters(bool clients_only = false) const;
 
     size_t
-    NumberOfConnectedClients() const override;
+    NumberOfConnectedClients() const;
 
     bool
-    GetRandomConnectedRouter(RouterContact& router) const override;
+    GetRandomConnectedRouter(RouterContact& router) const;
 
     void
-    CheckPersistingSessions(llarp_time_t now) override;
+    CheckPersistingSessions(llarp_time_t now);
 
     void
-    updatePeerDb(std::shared_ptr<PeerDb> peerDb) override;
+    updatePeerDb(std::shared_ptr<PeerDb> peerDb);
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const;
 
     void
-    Init(I_RCLookupHandler* rcLookup);
+    Init(RCLookupHandler* rcLookup);
 
     void
-    Connect(RouterID router) override;
+    Connect(RouterID router);
 
     void
-    Connect(RouterContact rc) override;
+    Connect(RouterContact rc);
 
     // Attempts to connect to a number of random routers.
     //
@@ -102,7 +122,7 @@ namespace llarp
 
     util::DecayingHashSet<RouterID> m_Clients{path::default_lifetime};
 
-    I_RCLookupHandler* _rcLookup;
+    RCLookupHandler* _rcLookup;
     std::shared_ptr<NodeDB> _nodedb;
 
     AbstractRouter* router;

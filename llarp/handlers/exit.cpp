@@ -8,7 +8,7 @@
 #include <llarp/util/bits.hpp>
 
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 
 #include <cassert>
 #include <llarp/service/protocol_type.hpp>

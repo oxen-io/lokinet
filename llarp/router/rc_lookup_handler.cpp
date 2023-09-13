@@ -1,7 +1,7 @@
 #include <chrono>
 #include "rc_lookup_handler.hpp"
 
-#include <llarp/link/i_link_manager.hpp>
+#include <llarp/link/link_manager.hpp>
 #include <llarp/link/server.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/service/context.hpp>
@@ -361,7 +361,7 @@ namespace llarp
       std::shared_ptr<NodeDB> nodedb,
       EventLoop_ptr loop,
       WorkerFunc_t dowork,
-      ILinkManager* linkManager,
+      LinkManager* linkManager,
       service::Context* hiddenServiceContext,
       const std::unordered_set<RouterID>& strictConnectPubkeys,
       const std::set<RouterContact>& bootstrapRCList,

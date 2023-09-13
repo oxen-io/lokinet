@@ -1,10 +1,10 @@
 #pragma once
 
-#include <chrono>
-#include "i_rc_lookup_handler.hpp"
 
+#include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
 
+#include <chrono>
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
@@ -28,22 +28,34 @@ namespace llarp
 
   }  // namespace service
 
-  struct ILinkManager;
+  struct LinkManager;
+  struct RouterContact;
 
-  struct RCLookupHandler final : public I_RCLookupHandler
+  enum class RCRequestResult
+  {
+    Success,
+    InvalidRouter,
+    RouterNotFound,
+    BadRC
+  };
+
+  using RCRequestCallback =
+      std::function<void(const RouterID&, const RouterContact* const, const RCRequestResult)>;
+
+  struct RCLookupHandler
   {
    public:
     using Work_t = std::function<void(void)>;
     using WorkerFunc_t = std::function<void(Work_t)>;
     using CallbacksQueue = std::list<RCRequestCallback>;
 
-    ~RCLookupHandler() override = default;
+    ~RCLookupHandler() = default;
 
     void
-    AddValidRouter(const RouterID& router) override EXCLUDES(_mutex);
+    AddValidRouter(const RouterID& router) EXCLUDES(_mutex);
 
     void
-    RemoveValidRouter(const RouterID& router) override EXCLUDES(_mutex);
+    RemoveValidRouter(const RouterID& router) EXCLUDES(_mutex);
 
     void
     SetRouterWhitelist(
@@ -51,51 +63,51 @@ namespace llarp
         const std::vector<RouterID>& greylist,
         const std::vector<RouterID>& greenlist
 
-        ) override EXCLUDES(_mutex);
+        ) EXCLUDES(_mutex);
 
     bool
-    HaveReceivedWhitelist() const override;
+    HaveReceivedWhitelist() const;
 
     void
-    GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) override
+    GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false)
         EXCLUDES(_mutex);
 
     bool
-    PathIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+    PathIsAllowed(const RouterID& remote) const EXCLUDES(_mutex);
 
     bool
-    SessionIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+    SessionIsAllowed(const RouterID& remote) const EXCLUDES(_mutex);
 
     bool
-    IsGreylisted(const RouterID& remote) const override EXCLUDES(_mutex);
+    IsGreylisted(const RouterID& remote) const EXCLUDES(_mutex);
 
     // "greenlist" = new routers (i.e. "green") that aren't fully funded yet
     bool
-    IsGreenlisted(const RouterID& remote) const override EXCLUDES(_mutex);
+    IsGreenlisted(const RouterID& remote) const EXCLUDES(_mutex);
 
     // registered just means that there is at least an operator stake, but doesn't require the node
     // be fully funded, active, or not decommed.  (In other words: it is any of the white, grey, or
     // green list).
     bool
-    IsRegistered(const RouterID& remote) const override EXCLUDES(_mutex);
+    IsRegistered(const RouterID& remote) const EXCLUDES(_mutex);
 
     bool
-    CheckRC(const RouterContact& rc) const override;
+    CheckRC(const RouterContact& rc) const;
 
     bool
-    GetRandomWhitelistRouter(RouterID& router) const override EXCLUDES(_mutex);
+    GetRandomWhitelistRouter(RouterID& router) const EXCLUDES(_mutex);
 
     bool
-    CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc) override;
+    CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc);
 
     void
-    PeriodicUpdate(llarp_time_t now) override;
+    PeriodicUpdate(llarp_time_t now);
 
     void
-    ExploreNetwork() override;
+    ExploreNetwork();
 
     size_t
-    NumberOfStrictConnectRouters() const override;
+    NumberOfStrictConnectRouters() const;
 
     void
     Init(
@@ -103,7 +115,7 @@ namespace llarp
         std::shared_ptr<NodeDB> nodedb,
         std::shared_ptr<EventLoop> loop,
         WorkerFunc_t dowork,
-        ILinkManager* linkManager,
+        LinkManager* linkManager,
         service::Context* hiddenServiceContext,
         const std::unordered_set<RouterID>& strictConnectPubkeys,
         const std::set<RouterContact>& bootstrapRCList,
@@ -138,7 +150,7 @@ namespace llarp
     std::shared_ptr<EventLoop> _loop;
     WorkerFunc_t _work = nullptr;
     service::Context* _hiddenServiceContext = nullptr;
-    ILinkManager* _linkManager = nullptr;
+    LinkManager* _linkManager = nullptr;
 
     /// explicit whitelist of routers we will connect to directly (not for
     /// service nodes)

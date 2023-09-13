@@ -13,11 +13,11 @@ namespace llarp
   static constexpr auto GossipOurRCInterval = (RCGossipFilterDecayInterval * 2) - (5min);
 
   RCGossiper::RCGossiper()
-      : I_RCGossiper(), m_Filter(std::chrono::duration_cast<Time_t>(RCGossipFilterDecayInterval))
+      : m_Filter(std::chrono::duration_cast<Time_t>(RCGossipFilterDecayInterval))
   {}
 
   void
-  RCGossiper::Init(ILinkManager* l, const RouterID& ourID, AbstractRouter* router)
+  RCGossiper::Init(LinkManager* l, const RouterID& ourID, AbstractRouter* router)
   {
     m_OurRouterID = ourID;
     m_LinkManager = l;

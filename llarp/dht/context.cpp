@@ -19,7 +19,7 @@
 #include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <vector>
 

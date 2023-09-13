@@ -1,6 +1,6 @@
 #include "link_manager.hpp"
 
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/crypto/crypto.hpp>
 
@@ -218,7 +218,7 @@ namespace llarp
   }
 
   void
-  LinkManager::Init(I_RCLookupHandler* rcLookup)
+  LinkManager::Init(RCLookupHandler* rcLookup)
   {
     stopping = false;
     _rcLookup = rcLookup;

@@ -5,7 +5,7 @@
 #include <memory>
 #include <llarp/util/types.hpp>
 #include <llarp/util/status.hpp>
-#include "i_outbound_message_handler.hpp"
+#include "outbound_message_handler.hpp"
 #include <vector>
 #include <llarp/ev/ev.hpp>
 #include <functional>
@@ -39,9 +39,9 @@ namespace llarp
   struct Profiling;
   struct SecretKey;
   struct Signature;
-  struct IOutboundMessageHandler;
-  struct ILinkManager;
-  struct I_RCLookupHandler;
+  struct OutboundMessageHandler;
+  struct LinkManager;
+  struct RCLookupHandler;
   struct RoutePoker;
 
   namespace dht
@@ -176,16 +176,16 @@ namespace llarp
     virtual const service::Context&
     hiddenServiceContext() const = 0;
 
-    virtual IOutboundMessageHandler&
+    virtual OutboundMessageHandler&
     outboundMessageHandler() = 0;
 
-    virtual ILinkManager&
+    virtual LinkManager&
     linkManager() = 0;
 
     virtual const std::shared_ptr<RoutePoker>&
     routePoker() const = 0;
 
-    virtual I_RCLookupHandler&
+    virtual RCLookupHandler&
     rcLookupHandler() = 0;
 
     virtual std::shared_ptr<PeerDb>

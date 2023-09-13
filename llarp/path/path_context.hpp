@@ -7,7 +7,7 @@
 #include "pathset.hpp"
 #include "transit_hop.hpp"
 #include <llarp/routing/handler.hpp>
-#include <llarp/router/i_outbound_message_handler.hpp>
+#include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
