@@ -9,6 +9,7 @@ local default_deps_base = [
   'libsqlite3-dev',
   'libcurl4-openssl-dev',
   'libzmq3-dev',
+  'libgnutls28-dev',
   'make',
 ];
 local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
@@ -35,6 +36,7 @@ local debian_pipeline(name,
                       image,
                       arch='amd64',
                       deps=default_deps,
+                      extra_setup=[],
                       build_type='Release',
                       lto=false,
                       werror=true,
@@ -70,7 +72,8 @@ local debian_pipeline(name,
                     'echo deb http://deb.oxen.io $$(lsb_release -sc) main >/etc/apt/sources.list.d/oxen.list',
                     'eatmydata ' + apt_get_quiet + ' update',
                   ] else []
-                ) + [
+                ) + extra_setup 
+                + [
                   'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
                   'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y gdb cmake git pkg-config ccache ' + std.join(' ', deps),
                   'mkdir build',
@@ -90,6 +93,24 @@ local debian_pipeline(name,
     },
   ],
 };
+local local_gnutls(jobs=6, prefix='/usr/local') = [
+  apt_get_quiet + ' install -y curl ca-certificates',
+  'curl -sSL https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz | tar xfz -',
+  'curl -sSL https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz | tar xfJ -',
+  'export CC="ccache gcc"',
+  'export PKG_CONFIG_PATH=' + prefix + '/lib/pkgconfig:' + prefix + '/lib64/pkgconfig',
+  'export LD_LIBRARY_PATH=' + prefix + '/lib:' + prefix + '/lib64',
+  'cd nettle-3.9.1',
+  './configure --prefix=' + prefix,
+  'make -j' + jobs,
+  'make install',
+  'cd ..',
+  'cd gnutls-3.8.0',
+  './configure --prefix=' + prefix + ' --with-included-libtasn1 --with-included-unistring --without-p11-kit  --disable-libdane --disable-cxx --without-tpm --without-tpm2',
+  'make -j' + jobs,
+  'make install',
+  'cd ..',
+];
 local apk_builder(name, image, extra_cmds=[], allow_fail=false, jobs=6) = {
   kind: 'pipeline',
   type: 'docker',
@@ -367,12 +388,13 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   clang(13),
   full_llvm(13),
   debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable/i386'),
-  debian_pipeline('Debian buster (amd64)', docker_base + 'debian-buster', cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+  debian_pipeline('Debian buster (amd64)', docker_base + 'debian-buster', extra_setup=local_gnutls(), cmake_extra='-DDOWNLOAD_SODIUM=ON'),
   debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
   debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
   debian_pipeline('Ubuntu bionic (amd64)',
                   docker_base + 'ubuntu-bionic',
                   deps=['g++-8'] + default_deps_nocxx,
+                  extra_setup=local_gnutls(),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8',
                   oxen_repo=true),
 
