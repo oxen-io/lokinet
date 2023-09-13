@@ -14,7 +14,7 @@ namespace llarp::dht
       uint64_t txid,
       uint64_t relayOrder,
       const Key_t& addr,
-      AbstractContext* ctx,
+      AbstractDHTMessageHandler* ctx,
       [[maybe_unused]] const Key_t& askpeer)
       : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, relayOrder, nullptr)
       , localPath(pathid)

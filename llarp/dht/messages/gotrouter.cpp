@@ -75,13 +75,12 @@ namespace llarp::dht
 
   bool
   GotRouterMessage::handle_message(
-      llarp_dht_context* ctx,
+      AbstractDHTMessageHandler& dht,
       [[maybe_unused]] std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    auto& dht = *ctx->impl;
     if (relayed)
     {
-      auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
+      auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
       auto copy = std::make_shared<const GotRouterMessage>(*this);
       return pathset && pathset->HandleGotRouterMessage(copy);
     }

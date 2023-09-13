@@ -30,7 +30,7 @@ namespace llarp::dht
 
     bool
     handle_message(
-        llarp_dht_context* ctx,
+        AbstractDHTMessageHandler& dht,
         std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
 
     RouterID targetKey;
@@ -51,7 +51,7 @@ namespace llarp::dht
     /// TODO: smart path expiration logic needs to be implemented
     bool
     handle_message(
-        llarp_dht_context* ctx,
+        AbstractDHTMessageHandler& dht,
         std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
   };
 }  // namespace llarp::dht

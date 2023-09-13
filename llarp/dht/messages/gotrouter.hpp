@@ -52,7 +52,7 @@ namespace llarp::dht
 
     bool
     handle_message(
-        llarp_dht_context* ctx,
+        AbstractDHTMessageHandler& dht,
         std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
 
     std::vector<RouterContact> foundRCs;

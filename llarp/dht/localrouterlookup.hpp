@@ -14,7 +14,10 @@ namespace llarp::dht
     PathID_t localPath;
 
     LocalRouterLookup(
-        const PathID_t& path, uint64_t txid, const RouterID& target, AbstractContext* ctx);
+        const PathID_t& path,
+        uint64_t txid,
+        const RouterID& target,
+        AbstractDHTMessageHandler* ctx);
 
     void
     SendReply() override;

@@ -21,7 +21,7 @@ namespace llarp
       ServiceAddressLookup(
           const TXOwner& asker,
           const Key_t& addr,
-          AbstractContext* ctx,
+          AbstractDHTMessageHandler* ctx,
           uint32_t relayOrder,
           service::EncryptedIntroSetLookupHandler handler);
 

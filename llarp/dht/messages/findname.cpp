@@ -44,28 +44,30 @@ namespace llarp::dht
 
   bool
   FindNameMessage::handle_message(
-      struct llarp_dht_context* dht,
+      AbstractDHTMessageHandler& dht,
       std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
     (void)replies;
-    auto r = dht->impl->GetRouter();
-    if (pathID.IsZero() or not r->IsServiceNode())
+    auto router = dht.GetRouter();
+    if (pathID.IsZero() or not router->IsServiceNode())
       return false;
-    r->RpcClient()->LookupLNSNameHash(NameHash, [r, pathID = pathID, TxID = TxID](auto maybe) {
-      auto path = r->pathContext().GetPathForTransfer(pathID);
-      if (path == nullptr)
-        return;
-      routing::PathDHTMessage msg;
-      if (maybe.has_value())
-      {
-        msg.dht_msgs.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, *maybe));
-      }
-      else
-      {
-        msg.dht_msgs.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
-      }
-      path->SendRoutingMessage(msg, r);
-    });
+    router->RpcClient()->LookupLNSNameHash(
+        NameHash, [router, pathID = pathID, TxID = TxID](auto maybe) {
+          auto path = router->pathContext().GetPathForTransfer(pathID);
+          if (path == nullptr)
+            return;
+          routing::PathDHTMessage msg;
+          if (maybe.has_value())
+          {
+            msg.dht_msgs.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, *maybe));
+          }
+          else
+          {
+            msg.dht_msgs.emplace_back(
+                new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
+          }
+          path->SendRoutingMessage(msg, router);
+        });
     return true;
   }
 

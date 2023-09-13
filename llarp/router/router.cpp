@@ -54,7 +54,7 @@ namespace llarp
       , _vpnPlatform{std::move(vpnPlatform)}
       , paths{this}
       , _exitContext{this}
-      , _dht{llarp_dht_context_new(this)}
+      , _dht{dht::make_handler()}
       , m_DiskThread{m_lmq->add_tagged_thread("disk")}
       , inbound_link_msg_parser{this}
       , _hiddenServiceContext{this}
@@ -76,7 +76,7 @@ namespace llarp
 
   Router::~Router()
   {
-    llarp_dht_context_free(_dht);
+    _dht.reset();
   }
 
   // TODO: investigate changes needed for libquic integration
@@ -103,7 +103,7 @@ namespace llarp
     return util::StatusObject{
         {"running", true},
         {"numNodesKnown", _nodedb->NumLoaded()},
-        {"dht", _dht->impl->ExtractStatus()},
+        {"dht", _dht->ExtractStatus()},
         {"services", _hiddenServiceContext.ExtractStatus()},
         {"exit", _exitContext.ExtractStatus()},
         {"links", _linkManager.ExtractStatus()},
@@ -1183,7 +1183,7 @@ namespace llarp
   Router::SessionClosed(RouterID remote)
   {
     dht::Key_t k(remote);
-    dht()->impl->Nodes()->DelNode(k);
+    dht()->Nodes()->DelNode(k);
 
     LogInfo("Session to ", remote, " fully closed");
     if (IsServiceNode())
@@ -1366,12 +1366,12 @@ namespace llarp
       _nodedb->LoadFromDisk();
     }
 
-    llarp_dht_context_start(dht(), pubkey());
+    _dht->Init(llarp::dht::Key_t(pubkey()), this);
 
     for (const auto& rc : bootstrapRCList)
     {
       nodedb()->Put(rc);
-      _dht->impl->Nodes()->PutNode(rc);
+      _dht->Nodes()->PutNode(rc);
       LogInfo("added bootstrap node ", RouterID{rc.pubkey});
     }
 
@@ -1589,7 +1589,7 @@ namespace llarp
   {
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
-    llarp_dht_allow_transit(dht());
+    _dht->AllowTransit() = true;
     _exitContext.AddExitEndpoint("default", m_Config->network, m_Config->dns);
     return true;
   }

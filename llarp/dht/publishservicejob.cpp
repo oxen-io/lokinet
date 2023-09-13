@@ -13,7 +13,7 @@ namespace llarp::dht
   PublishServiceJob::PublishServiceJob(
       const TXOwner& asker,
       const service::EncryptedIntroSet& introset_,
-      AbstractContext* ctx,
+      AbstractDHTMessageHandler* ctx,
       uint64_t relayOrder_)
       : TX<TXOwner, service::EncryptedIntroSet>(asker, asker, ctx)
       , relayOrder(relayOrder_)
@@ -50,7 +50,7 @@ namespace llarp::dht
       const PathID_t& fromID,
       uint64_t _txid,
       const service::EncryptedIntroSet& introset,
-      AbstractContext* ctx,
+      AbstractDHTMessageHandler* ctx,
       uint64_t relayOrder)
       : PublishServiceJob(peer, introset, ctx, relayOrder), localPath(fromID), txid(_txid)
   {}

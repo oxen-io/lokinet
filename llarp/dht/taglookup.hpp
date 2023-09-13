@@ -13,7 +13,10 @@ namespace llarp
     {
       uint64_t recursionDepth;
       TagLookup(
-          const TXOwner& asker, const service::Tag& tag, AbstractContext* ctx, uint64_t recursion)
+          const TXOwner& asker,
+          const service::Tag& tag,
+          AbstractDHTMessageHandler* ctx,
+          uint64_t recursion)
           : TX<service::Tag, service::EncryptedIntroSet>(asker, tag, ctx), recursionDepth(recursion)
       {}
 

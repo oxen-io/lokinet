@@ -114,7 +114,7 @@ namespace llarp
         LogWarn("cannot lookup ", router, " anonymously");
       }
 
-      if (!_dht->impl->LookupRouter(router, fn))
+      if (!_dht->LookupRouter(router, fn))
       {
         FinalizeRequest(router, nullptr, RCRequestResult::RouterNotFound);
       }
@@ -196,11 +196,11 @@ namespace llarp
   {
     if (not SessionIsAllowed(rc.pubkey))
     {
-      _dht->impl->DelRCNodeAsync(dht::Key_t{rc.pubkey});
+      _dht->DelRCNodeAsync(dht::Key_t{rc.pubkey});
       return false;
     }
 
-    if (not rc.Verify(_dht->impl->Now()))
+    if (not rc.Verify(_dht->Now()))
     {
       LogWarn("RC for ", RouterID(rc.pubkey), " is invalid");
       return false;
@@ -211,7 +211,7 @@ namespace llarp
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
       _loop->call([rc, n = _nodedb] { n->PutIfNewer(rc); });
-      _dht->impl->PutRCNodeAsync(rc);
+      _dht->PutRCNodeAsync(rc);
     }
 
     return true;
@@ -252,9 +252,9 @@ namespace llarp
     _work(func);
 
     // update dht if required
-    if (_dht->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
+    if (_dht->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      _dht->impl->Nodes()->PutNode(newrc);
+      _dht->Nodes()->PutNode(newrc);
     }
 
     // TODO: check for other places that need updating the RC
@@ -296,7 +296,7 @@ namespace llarp
       for (const auto& rc : _bootstrapRCList)
       {
         LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
-        _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+        _dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     }
 
@@ -333,7 +333,7 @@ namespace llarp
       return;
     }
     // service nodes gossip, not explore
-    if (_dht->impl->GetRouter()->IsServiceNode())
+    if (_dht->GetRouter()->IsServiceNode())
       return;
 
     // explore via every connected peer
@@ -357,7 +357,7 @@ namespace llarp
 
   void
   RCLookupHandler::Init(
-      llarp_dht_context* dht,
+      std::shared_ptr<dht::AbstractDHTMessageHandler> dht,
       std::shared_ptr<NodeDB> nodedb,
       EventLoop_ptr loop,
       WorkerFunc_t dowork,

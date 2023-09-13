@@ -52,16 +52,16 @@ namespace llarp::dht
 
   bool
   PublishIntroMessage::handle_message(
-      llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    const auto now = ctx->impl->Now();
+    const auto now = dht.Now();
     const llarp::dht::Key_t addr{introset.derivedSigningKey.data()};
 
-    auto router = ctx->impl->GetRouter();
+    auto router = dht.GetRouter();
     router->NotifyRouterEvent<tooling::PubIntroReceivedEvent>(
         router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()), addr, txID, relayOrder);
 
-    auto& dht = *ctx->impl;
     if (!introset.Verify(now))
     {
       llarp::LogWarn("Received PublishIntroMessage with invalid introset: ", introset);

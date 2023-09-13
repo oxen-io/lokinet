@@ -17,6 +17,11 @@ namespace llarp
   class NodeDB;
   class EventLoop;
 
+  namespace dht
+  {
+    struct AbstractDHTMessageHandler;
+  }  // namespace dht
+
   namespace service
   {
     struct Context;
@@ -94,7 +99,7 @@ namespace llarp
 
     void
     Init(
-        llarp_dht_context* dht,
+        std::shared_ptr<dht::AbstractDHTMessageHandler> dht,
         std::shared_ptr<NodeDB> nodedb,
         std::shared_ptr<EventLoop> loop,
         WorkerFunc_t dowork,
@@ -128,7 +133,7 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 
-    llarp_dht_context* _dht = nullptr;
+    std::shared_ptr<dht::AbstractDHTMessageHandler> _dht = nullptr;
     std::shared_ptr<NodeDB> _nodedb;
     std::shared_ptr<EventLoop> _loop;
     WorkerFunc_t _work = nullptr;

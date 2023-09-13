@@ -7,6 +7,7 @@
 #include <llarp/config/key_manager.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/crypto/types.hpp>
+#include <llarp/dht/context.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
@@ -101,7 +102,7 @@ namespace llarp
       return m_lokidRpcClient;
     }
 
-    llarp_dht_context*
+    std::shared_ptr<dht::AbstractDHTMessageHandler>
     dht() const override
     {
       return _dht;
@@ -230,7 +231,7 @@ namespace llarp
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    llarp_dht_context* _dht = nullptr;
+    std::shared_ptr<dht::AbstractDHTMessageHandler> _dht;
     std::shared_ptr<NodeDB> _nodedb;
     llarp_time_t _startedAt;
     const oxenmq::TaggedThreadID m_DiskThread;
@@ -593,7 +594,7 @@ namespace llarp
     AddAddressToRC(AddressInfo& ai);
 
    protected:
-    virtual void
+    void
     HandleRouterEvent(tooling::RouterEventPtr event) const override;
 
     virtual bool

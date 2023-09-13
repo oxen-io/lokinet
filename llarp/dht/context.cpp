@@ -25,13 +25,13 @@
 
 namespace llarp::dht
 {
-  AbstractContext::~AbstractContext() = default;
+  AbstractDHTMessageHandler::~AbstractDHTMessageHandler() = default;
 
-  struct Context final : public AbstractContext
+  struct DHTMessageHandler final : public AbstractDHTMessageHandler
   {
-    Context();
+    DHTMessageHandler();
 
-    ~Context() override = default;
+    ~DHTMessageHandler() override = default;
 
     util::StatusObject
     ExtractStatus() const override;
@@ -280,6 +280,10 @@ namespace llarp::dht
     void
     ExploreNetworkVia(const Key_t& peer) override;
 
+    bool
+    handle_message(
+        const AbstractDHTMessage&, std::vector<std::unique_ptr<dht::AbstractDHTMessage>>&) override;
+
    private:
     std::shared_ptr<int> _timer_keepalive;
 
@@ -291,13 +295,13 @@ namespace llarp::dht
     Key_t ourKey;
   };
 
-  Context::Context()
+  DHTMessageHandler::DHTMessageHandler()
   {
     randombytes((byte_t*)&ids, sizeof(uint64_t));
   }
 
   void
-  Context::Explore(size_t N)
+  DHTMessageHandler::Explore(size_t N)
   {
     // ask N random peers for new routers
     llarp::LogDebug("Exploring network via ", N, " peers");
@@ -313,7 +317,7 @@ namespace llarp::dht
   }
 
   void
-  Context::ExploreNetworkVia(const Key_t& askpeer)
+  DHTMessageHandler::ExploreNetworkVia(const Key_t& askpeer)
   {
     uint64_t txid = ++ids;
     const TXOwner peer(askpeer, txid);
@@ -324,7 +328,7 @@ namespace llarp::dht
   }
 
   void
-  Context::handle_cleaner_timer()
+  DHTMessageHandler::handle_cleaner_timer()
   {
     // clean up transactions
     CleanupTX();
@@ -364,7 +368,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupRouterRelayed(
+  DHTMessageHandler::LookupRouterRelayed(
       const Key_t& requester,
       uint64_t txid,
       const Key_t& target,
@@ -424,7 +428,7 @@ namespace llarp::dht
   }
 
   std::optional<llarp::service::EncryptedIntroSet>
-  Context::GetIntroSetByLocation(const Key_t& key) const
+  DHTMessageHandler::GetIntroSetByLocation(const Key_t& key) const
   {
     auto itr = _services->nodes.find(key);
     if (itr == _services->nodes.end())
@@ -433,7 +437,7 @@ namespace llarp::dht
   }
 
   void
-  Context::CleanupTX()
+  DHTMessageHandler::CleanupTX()
   {
     auto now = Now();
     llarp::LogTrace("DHT tick");
@@ -444,7 +448,7 @@ namespace llarp::dht
   }
 
   util::StatusObject
-  Context::ExtractStatus() const
+  DHTMessageHandler::ExtractStatus() const
   {
     util::StatusObject obj{
         {"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
@@ -456,8 +460,15 @@ namespace llarp::dht
     return obj;
   }
 
+  bool
+  DHTMessageHandler::handle_message(
+      const AbstractDHTMessage& msg, std::vector<std::unique_ptr<dht::AbstractDHTMessage>>& replies)
+  {
+    return msg.handle_message(*this, replies);
+  }
+
   void
-  Context::Init(const Key_t& us, AbstractRouter* r)
+  DHTMessageHandler::Init(const Key_t& us, AbstractRouter* r)
   {
     router = r;
     ourKey = us;
@@ -470,7 +481,7 @@ namespace llarp::dht
   }
 
   void
-  Context::DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool)
+  DHTMessageHandler::DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool)
   {
     DHTImmediateMessage m;
     m.msgs.emplace_back(msg);
@@ -484,10 +495,10 @@ namespace llarp::dht
   // namespace. by the time this is called, we are inside
   // llarp::routing::DHTMessage::HandleMessage()
   bool
-  Context::RelayRequestForPath(const llarp::PathID_t& id, const AbstractDHTMessage& msg)
+  DHTMessageHandler::RelayRequestForPath(const llarp::PathID_t& id, const AbstractDHTMessage& msg)
   {
     routing::PathDHTMessage reply;
-    if (!msg.handle_message(router->dht(), reply.dht_msgs))
+    if (not handle_message(msg, reply.dht_msgs))
       return false;
     if (not reply.dht_msgs.empty())
     {
@@ -498,7 +509,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupIntroSetForPath(
+  DHTMessageHandler::LookupIntroSetForPath(
       const Key_t& addr,
       uint64_t txid,
       const llarp::PathID_t& path,
@@ -515,7 +526,7 @@ namespace llarp::dht
   }
 
   void
-  Context::PropagateIntroSetTo(
+  DHTMessageHandler::PropagateIntroSetTo(
       const Key_t& from,
       uint64_t txid,
       const service::EncryptedIntroSet& introset,
@@ -529,7 +540,7 @@ namespace llarp::dht
   }
 
   void
-  Context::PropagateLocalIntroSet(
+  DHTMessageHandler::PropagateLocalIntroSet(
       const PathID_t& from,
       uint64_t txid,
       const service::EncryptedIntroSet& introset,
@@ -546,7 +557,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupIntroSetRelayed(
+  DHTMessageHandler::LookupIntroSetRelayed(
       const Key_t& addr,
       const Key_t& whoasked,
       uint64_t txid,
@@ -561,7 +572,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupIntroSetDirect(
+  DHTMessageHandler::LookupIntroSetDirect(
       const Key_t& addr,
       const Key_t& whoasked,
       uint64_t txid,
@@ -575,7 +586,7 @@ namespace llarp::dht
   }
 
   bool
-  Context::HandleExploritoryRouterLookup(
+  DHTMessageHandler::HandleExploritoryRouterLookup(
       const Key_t& requester,
       uint64_t txid,
       const RouterID& target,
@@ -621,7 +632,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupRouterForPath(
+  DHTMessageHandler::LookupRouterForPath(
       const RouterID& target, uint64_t txid, const llarp::PathID_t& path, const Key_t& askpeer)
 
   {
@@ -632,7 +643,7 @@ namespace llarp::dht
   }
 
   void
-  Context::LookupRouterRecursive(
+  DHTMessageHandler::LookupRouterRecursive(
       const RouterID& target,
       const Key_t& whoasked,
       uint64_t txid,
@@ -646,15 +657,15 @@ namespace llarp::dht
   }
 
   llarp_time_t
-  Context::Now() const
+  DHTMessageHandler::Now() const
   {
     return router->Now();
   }
 
-  std::unique_ptr<AbstractContext>
-  makeContext()
+  std::unique_ptr<AbstractDHTMessageHandler>
+  make_handler()
   {
-    return std::make_unique<Context>();
+    return std::make_unique<DHTMessageHandler>();
   }
 
 }  // namespace llarp::dht

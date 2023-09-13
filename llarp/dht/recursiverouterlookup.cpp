@@ -16,7 +16,7 @@ namespace llarp
     RecursiveRouterLookup::RecursiveRouterLookup(
         const TXOwner& _whoasked,
         const RouterID& _target,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         RouterLookupHandler result)
         : TX<RouterID, RouterContact>(_whoasked, _target, ctx), resultHandler(std::move(result))
 

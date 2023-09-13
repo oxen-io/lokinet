@@ -44,6 +44,11 @@ namespace llarp
   struct I_RCLookupHandler;
   struct RoutePoker;
 
+  namespace dht
+  {
+    struct AbstractDHTMessageHandler;
+  }
+
   namespace dns
   {
     class I_SystemSettings;
@@ -114,7 +119,7 @@ namespace llarp
     virtual const std::shared_ptr<rpc::LokidRpcClient>&
     RpcClient() const = 0;
 
-    virtual llarp_dht_context*
+    virtual std::shared_ptr<dht::AbstractDHTMessageHandler>
     dht() const = 0;
 
     virtual const std::shared_ptr<NodeDB>&

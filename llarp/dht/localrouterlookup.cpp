@@ -11,7 +11,7 @@
 namespace llarp::dht
 {
   LocalRouterLookup::LocalRouterLookup(
-      const PathID_t& path, uint64_t txid, const RouterID& _target, AbstractContext* ctx)
+      const PathID_t& path, uint64_t txid, const RouterID& _target, AbstractDHTMessageHandler* ctx)
       : RecursiveRouterLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx, nullptr), localPath(path)
   {}
 

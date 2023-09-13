@@ -17,7 +17,7 @@ namespace llarp::dht
 
     bool
     handle_message(
-        struct llarp_dht_context* dht,
+        AbstractDHTMessageHandler& dht,
         std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const override;
 
     service::EncryptedName result;

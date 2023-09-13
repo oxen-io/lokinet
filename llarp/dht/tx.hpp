@@ -13,18 +13,18 @@ namespace llarp
 {
   namespace dht
   {
-    struct AbstractContext;
+    struct AbstractDHTMessageHandler;
 
     template <typename K, typename V>
     struct TX
     {
       K target;
-      AbstractContext* parent;
+      AbstractDHTMessageHandler* parent;
       std::set<Key_t> peersAsked;
       std::vector<V> valuesFound;
       TXOwner whoasked;
 
-      TX(const TXOwner& asker, const K& k, AbstractContext* p)
+      TX(const TXOwner& asker, const K& k, AbstractDHTMessageHandler* p)
           : target(k), parent(p), whoasked(asker)
       {}
 

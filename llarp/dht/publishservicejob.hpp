@@ -18,7 +18,7 @@ namespace llarp::dht
     PublishServiceJob(
         const TXOwner& asker,
         const service::EncryptedIntroSet& introset,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         uint64_t relayOrder);
 
     bool
@@ -40,7 +40,7 @@ namespace llarp::dht
         const PathID_t& fromID,
         uint64_t txid,
         const service::EncryptedIntroSet& introset,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         uint64_t relayOrder);
 
     void

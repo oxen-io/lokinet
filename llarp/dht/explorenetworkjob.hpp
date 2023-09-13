@@ -10,7 +10,7 @@ namespace llarp
   {
     struct ExploreNetworkJob : public TX<RouterID, RouterID>
     {
-      ExploreNetworkJob(const RouterID& peer, AbstractContext* ctx)
+      ExploreNetworkJob(const RouterID& peer, AbstractDHTMessageHandler* ctx)
           : TX<RouterID, RouterID>(TXOwner{}, peer, ctx)
       {}
 

@@ -17,6 +17,8 @@ namespace llarp::dht
 {
   constexpr size_t MAX_MSG_SIZE = 2048;
 
+  struct AbstractDHTMessageHandler;
+
   struct AbstractDHTMessage : private AbstractSerializable
   {
     virtual ~AbstractDHTMessage() = default;
@@ -27,7 +29,7 @@ namespace llarp::dht
 
     virtual bool
     handle_message(
-        struct llarp_dht_context* dht,
+        AbstractDHTMessageHandler& dht,
         std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const = 0;
 
     void

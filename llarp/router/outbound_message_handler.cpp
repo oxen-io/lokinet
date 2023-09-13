@@ -36,15 +36,11 @@ namespace llarp
     ent.pathid = msg.pathid;
     ent.priority = msg.priority();
 
-    // std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
-    // llarp_buffer_t buf{linkmsg_buffer};
-
-    llarp_buffer _buf{MAX_LINK_MSG_SIZE};
+    std::string _buf;
+    _buf.reserve(MAX_LINK_MSG_SIZE);
 
     if (!EncodeBuffer(msg, _buf))
-    {
       return false;
-    }
 
     ent.message.resize(_buf.size());
 
@@ -185,13 +181,10 @@ namespace llarp
       will be used
   */
   bool
-  OutboundMessageHandler::EncodeBuffer(const AbstractLinkMessage& msg, llarp_buffer& buf)
+  OutboundMessageHandler::EncodeBuffer(const AbstractLinkMessage& msg, std::string& buf)
   {
-    if (auto str = msg.bt_encode(); not str.empty())
-    {
-      buf = llarp_buffer{std::move(str)};
+    if (buf = msg.bt_encode(); not buf.empty())
       return true;
-    }
 
     log::error(link_cat, "Error: OutboundMessageHandler failed to encode outbound message!");
     return false;

@@ -32,13 +32,13 @@ namespace llarp
     static constexpr size_t IntroSetStorageRedundancy =
         (IntroSetRelayRedundancy * IntroSetRequestsPerRelay);
 
-    struct AbstractContext
+    struct AbstractDHTMessageHandler /* : public AbstractMessageHandler */
     {
       using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet>;
       using PendingRouterLookups = TXHolder<RouterID, RouterContact>;
       using PendingExploreLookups = TXHolder<RouterID, RouterID>;
 
-      virtual ~AbstractContext() = 0;
+      virtual ~AbstractDHTMessageHandler() = 0;
 
       virtual bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) = 0;
@@ -190,16 +190,20 @@ namespace llarp
 
       virtual void
       StoreRC(const RouterContact rc) const = 0;
+
+      virtual bool
+      handle_message(
+          const AbstractDHTMessage&, std::vector<std::unique_ptr<dht::AbstractDHTMessage>>&) = 0;
     };
 
-    std::unique_ptr<AbstractContext>
-    makeContext();
+    std::unique_ptr<AbstractDHTMessageHandler>
+    make_handler();
   }  // namespace dht
 }  // namespace llarp
 
 struct llarp_dht_context
 {
-  std::unique_ptr<llarp::dht::AbstractContext> impl;
+  std::unique_ptr<llarp::dht::AbstractDHTMessageHandler> impl;
   llarp::AbstractRouter* parent;
   llarp_dht_context(llarp::AbstractRouter* router);
 };

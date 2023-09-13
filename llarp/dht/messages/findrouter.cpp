@@ -13,9 +13,9 @@ namespace llarp::dht
 {
   bool
   RelayedFindRouterMessage::handle_message(
-      llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    auto& dht = *ctx->impl;
     /// lookup for us, send an immeidate reply
     const Key_t us = dht.OurKey();
     const Key_t k{targetKey};
@@ -118,10 +118,9 @@ namespace llarp::dht
 
   bool
   FindRouterMessage::handle_message(
-      llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    auto& dht = *ctx->impl;
-
     auto router = dht.GetRouter();
     router->NotifyRouterEvent<tooling::FindRouterReceivedEvent>(router->pubkey(), *this);
 

@@ -256,7 +256,7 @@ namespace llarp::path
   bool
   TransitHop::HandleDHTMessage(const llarp::dht::AbstractDHTMessage& msg, AbstractRouter* r)
   {
-    return r->dht()->impl->RelayRequestForPath(info.rxID, msg);
+    return r->dht()->RelayRequestForPath(info.rxID, msg);
   }
 
   bool

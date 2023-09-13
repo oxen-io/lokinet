@@ -158,7 +158,7 @@ namespace llarp
   void
   OutboundSessionMaker::Init(
       AbstractRouter* router,
-      ILinkManager* linkManager,
+      LinkManager* linkManager,
       I_RCLookupHandler* rcLookup,
       Profiling* profiler,
       EventLoop_ptr loop,

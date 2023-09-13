@@ -10,7 +10,10 @@ namespace llarp::dht
     PathID_t localPath;
 
     LocalTagLookup(
-        const PathID_t& path, uint64_t txid, const service::Tag& target, AbstractContext* ctx);
+        const PathID_t& path,
+        uint64_t txid,
+        const service::Tag& target,
+        AbstractDHTMessageHandler* ctx);
 
     void
     SendReply() override;

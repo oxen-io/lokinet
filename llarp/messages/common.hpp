@@ -18,4 +18,10 @@ namespace llarp
     virtual void
     bt_encode(oxenc::bt_list_producer& btlp) const = 0;
   };
+
+  struct AbstractMessageHandler
+  {
+    virtual bool
+    handle_message(AbstractSerializable&) = 0;
+  };
 }  // namespace llarp

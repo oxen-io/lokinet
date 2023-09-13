@@ -123,7 +123,7 @@ namespace llarp
     QueueSessionCreation(const RouterID& remote);
 
     bool
-    EncodeBuffer(const AbstractLinkMessage& msg, llarp_buffer& buf);
+    EncodeBuffer(const AbstractLinkMessage& msg, std::string& buf);
 
     /* sends the message along to the link layer, and hopefully out to the network
      *

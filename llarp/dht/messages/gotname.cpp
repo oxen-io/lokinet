@@ -58,9 +58,9 @@ namespace llarp::dht
 
   bool
   GotNameMessage::handle_message(
-      struct llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>&) const
+      AbstractDHTMessageHandler& dht, std::vector<std::unique_ptr<AbstractDHTMessage>>&) const
   {
-    auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
+    auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
     if (pathset == nullptr)
       return false;
     auto copy = std::make_shared<const GotNameMessage>(*this);

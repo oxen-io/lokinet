@@ -1,5 +1,6 @@
 #include "path.hpp"
 
+#include <llarp/dht/context.hpp>
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/i_link_manager.hpp>
 #include <llarp/messages/discard.hpp>
@@ -788,7 +789,7 @@ namespace llarp::path
   {
     MarkActive(r->Now());
     routing::PathDHTMessage reply;
-    if (!msg.handle_message(r->dht(), reply.dht_msgs))
+    if (not r->dht()->handle_message(msg, reply.dht_msgs))
       return false;
     if (reply.dht_msgs.size())
       return SendRoutingMessage(reply, r);

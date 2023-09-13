@@ -60,9 +60,9 @@ namespace llarp::dht
 
   bool
   FindIntroMessage::handle_message(
-      llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    auto& dht = *ctx->impl;
     if (dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, txID}))
     {
       llarp::LogWarn("duplicate FIM from ", From, " txid=", txID);

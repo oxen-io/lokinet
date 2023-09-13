@@ -12,7 +12,7 @@ namespace llarp
     ServiceAddressLookup::ServiceAddressLookup(
         const TXOwner& asker,
         const Key_t& addr,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         uint32_t order,
         service::EncryptedIntroSetLookupHandler handler)
         : TX<TXOwner, service::EncryptedIntroSet>(asker, asker, ctx)

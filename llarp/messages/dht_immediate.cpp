@@ -1,6 +1,7 @@
 #include "dht_immediate.hpp"
 
 #include <llarp/router/abstractrouter.hpp>
+#include <llarp/dht/context.hpp>
 
 namespace llarp
 {
@@ -66,9 +67,10 @@ namespace llarp
     DHTImmediateMessage reply;
     reply.session = session;
     bool result = true;
-    for (auto& msg : msgs)
+    auto dht = router->dht();
+    for (const auto& msg : msgs)
     {
-      result &= msg->handle_message(router->dht(), reply.msgs);
+      result &= dht->handle_message(*msg, reply.msgs);
     }
     if (reply.msgs.size())
     {

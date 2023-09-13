@@ -17,9 +17,9 @@ namespace llarp::dht
 
   bool
   GotIntroMessage::handle_message(
-      llarp_dht_context* ctx, std::vector<std::unique_ptr<AbstractDHTMessage>>& /*replies*/) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& /*replies*/) const
   {
-    auto& dht = *ctx->impl;
     auto* router = dht.GetRouter();
 
     router->NotifyRouterEvent<tooling::GotIntroReceivedEvent>(
@@ -60,11 +60,11 @@ namespace llarp::dht
 
   bool
   RelayedGotIntroMessage::handle_message(
-      llarp_dht_context* ctx,
+      AbstractDHTMessageHandler& dht,
       [[maybe_unused]] std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
     // TODO: implement me better?
-    auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
+    auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
     if (pathset)
     {
       auto copy = std::make_shared<const RelayedGotIntroMessage>(*this);
