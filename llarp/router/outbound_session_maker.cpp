@@ -5,7 +5,7 @@
 #include <llarp/link/server.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/nodedb.hpp>
-#include "i_rc_lookup_handler.hpp"
+#include "rc_lookup_handler.hpp"
 #include <llarp/link/link_manager.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -159,7 +159,7 @@ namespace llarp
   OutboundSessionMaker::Init(
       AbstractRouter* router,
       LinkManager* linkManager,
-      I_RCLookupHandler* rcLookup,
+      RCLookupHandler* rcLookup,
       Profiling* profiler,
       EventLoop_ptr loop,
       WorkerFunc_t dowork)

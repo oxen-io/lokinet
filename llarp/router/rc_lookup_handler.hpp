@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
 

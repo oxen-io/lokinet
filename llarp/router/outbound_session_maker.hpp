@@ -82,7 +82,7 @@ namespace llarp
     Init(
         AbstractRouter* router,
         LinkManager* linkManager,
-        I_RCLookupHandler* rcLookup,
+        RCLookupHandler* rcLookup,
         Profiling* profiler,
         EventLoop_ptr loop,
         WorkerFunc_t work);
@@ -127,7 +127,7 @@ namespace llarp
 
     AbstractRouter* _router = nullptr;
     LinkManager* _linkManager = nullptr;
-    I_RCLookupHandler* _rcLookup = nullptr;
+    RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;
     std::shared_ptr<NodeDB> _nodedb;
     EventLoop_ptr _loop;
