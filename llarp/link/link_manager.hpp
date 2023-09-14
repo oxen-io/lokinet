@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llarp/util/compare_ptr.hpp>
+
 #include "server.hpp"
 #include "endpoint.hpp"
 
@@ -9,6 +10,13 @@
 #include <unordered_map>
 #include <set>
 #include <atomic>
+
+#include <llarp/util/logging.hpp>
+
+namespace
+{
+  static auto quic_cat = llarp::log::Cat("lokinet.quic");
+}  // namespace
 
 namespace llarp
 {
@@ -36,63 +44,64 @@ namespace llarp
   template <>
   constexpr inline bool IsToStringFormattable<SessionResult> = true;
 
+  struct Router;
+
   struct LinkManager
   {
    public:
-    explicit LinkManager(AbstractRouter* r) : router{r}
-    {}
+    explicit LinkManager(Router& r);
 
     bool
-    SendTo(
+    send_to(
         const RouterID& remote,
         const llarp_buffer_t& buf,
         AbstractLinkSession::CompletionHandler completed,
         uint16_t priority);
 
     bool
-    HaveConnection(const RouterID& remote, bool client_only = false) const;
+    have_connection_to(const RouterID& remote, bool client_only = false) const;
 
     bool
-    HaveClientConnection(const RouterID& remote) const;
+    have_client_connection_to(const RouterID& remote) const;
 
     void
-    DeregisterPeer(RouterID remote);
+    deregister_peer(RouterID remote);
 
     void
-    AddLink(const oxen::quic::opt::local_addr& bind, bool inbound = false);
+    connect_to(const oxen::quic::opt::local_addr& remote);
 
     void
-    Stop();
+    connect_to(RouterID router);
 
     void
-    PersistSessionUntil(const RouterID& remote, llarp_time_t until);
+    connect_to(RouterContact rc);
+
+    void
+    stop();
+
+    void
+    set_conn_persist(const RouterID& remote, llarp_time_t until);
 
     size_t
-    NumberOfConnectedRouters(bool clients_only = false) const;
+    get_num_connected(bool clients_only = false) const;
 
     size_t
-    NumberOfConnectedClients() const;
+    get_num_connected_clients() const;
 
     bool
-    GetRandomConnectedRouter(RouterContact& router) const;
+    get_random_connected(RouterContact& router) const;
 
     void
-    CheckPersistingSessions(llarp_time_t now);
+    check_persisting_conns(llarp_time_t now);
 
     void
-    updatePeerDb(std::shared_ptr<PeerDb> peerDb);
+    update_peer_db(std::shared_ptr<PeerDb> peerDb);
 
     util::StatusObject
     ExtractStatus() const;
 
     void
-    Init(RCLookupHandler* rcLookup);
-
-    void
-    Connect(RouterID router);
-
-    void
-    Connect(RouterContact rc);
+    init(RCLookupHandler* rcLookup);
 
     // Attempts to connect to a number of random routers.
     //
@@ -100,47 +109,46 @@ namespace llarp
     // check if we already have a connection to any of the random set, as making
     // that thread safe would be slow...I think.
     void
-    ConnectToRandomRouters(int numDesired);
+    connect_to_random(int numDesired);
 
     // TODO: tune these (maybe even remove max?) now that we're switching to quic
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 4;
+    size_t min_connected_routers = 4;
     /// hard upperbound limit on the number of router to router connections
-    size_t maxConnectedRouters = 6;
+    size_t max_connected_routers = 6;
 
    private:
-    link::Endpoint*
-    GetCompatibleLink(const RouterContact& rc);
+    friend struct link::Endpoint;
+
+    std::shared_ptr<link::Connection>
+    get_compatible_link(const RouterContact& rc);
 
     std::atomic<bool> stopping;
     mutable util::Mutex _mutex;  // protects m_PersistingSessions
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t> m_PersistingSessions GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t> persisting_conns GUARDED_BY(_mutex);
 
-    std::unordered_map<RouterID, SessionStats> m_lastRouterStats;
+    std::unordered_map<RouterID, SessionStats> last_router_stats;
 
-    util::DecayingHashSet<RouterID> m_Clients{path::default_lifetime};
+    util::DecayingHashSet<RouterID> clients{path::default_lifetime};
 
     RCLookupHandler* _rcLookup;
     std::shared_ptr<NodeDB> _nodedb;
 
-    AbstractRouter* router;
+    Router& router;
 
     // FIXME: Lokinet currently expects to be able to kill all network functionality before
     // finishing other shutdown things, including destroying this class, and that is all in
     // Network's destructor, so we need to be able to destroy it before this class.
-    std::unique_ptr<oxen::quic::Network> quic{std::make_unique<oxen::quic::Network>()};
-
-    std::vector<link::Endpoint> endpoints;
-
-    // TODO: initialize creds
+    std::unique_ptr<oxen::quic::Network> quic;
     std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
+    link::Endpoint ep;
 
     void
-    HandleIncomingDataMessage(oxen::quic::dgram_interface& dgi, bstring dgram);
+    recv_data_message(oxen::quic::dgram_interface& dgi, bstring dgram);
     void
-    HandleIncomingControlMessage(oxen::quic::Stream& stream, bstring_view packet);
+    recv_control_message(oxen::quic::Stream& stream, bstring_view packet);
   };
 
 }  // namespace llarp

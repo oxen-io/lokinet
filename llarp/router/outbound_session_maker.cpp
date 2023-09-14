@@ -210,7 +210,7 @@ namespace llarp
         numPending += pendingCallbacks.size();
     }
 
-    return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
+    return _linkManager->get_num_connected() + numPending < maxConnectedRouters;
   }
 
   void

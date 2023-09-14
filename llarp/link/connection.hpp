@@ -7,9 +7,12 @@
 
 namespace llarp::link
 {
-
   struct Connection
   {
+    Connection(
+        std::shared_ptr<oxen::quic::connection_interface>& c,
+        std::shared_ptr<oxen::quic::Stream>& s);
+
     std::shared_ptr<oxen::quic::connection_interface> conn;
     std::shared_ptr<oxen::quic::Stream> control_stream;
 

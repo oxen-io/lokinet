@@ -1,5 +1,6 @@
 #include "link_manager.hpp"
 
+#include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -9,27 +10,31 @@
 
 namespace llarp
 {
-  link::Endpoint*
-  LinkManager::GetCompatibleLink(const RouterContact&)
+
+  LinkManager::LinkManager(Router& r)
+      : router{r}
+      , quic{std::make_unique<oxen::quic::Network>()}
+      , tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
+            {reinterpret_cast<const char*>(router.encryption().data()), router.encryption().size()},
+            {reinterpret_cast<const char*>(router.encryption().toPublic().data()), size_t{32}})}
+      , ep{quic->endpoint(router.local), *this}
+  {}
+
+  std::shared_ptr<link::Connection>
+  LinkManager::get_compatible_link(const RouterContact& rc)
   {
     if (stopping)
       return nullptr;
 
-    for (auto& ep : endpoints)
-    {
-      // TODO: need some notion of "is this link compatible with that address".
-      //       iwp just checks that the link dialect ("iwp") matches the address info dialect,
-      //       but that feels insufficient.  For now, just return the first endpoint we have;
-      //       we should probably only have 1 for now anyway until we make ipv6 work.
-      return &ep;
-    }
+    if (auto c = ep.get_conn(rc); c)
+      return c;
 
     return nullptr;
   }
 
   // TODO: replace with control/data message sending with libquic
   bool
-  LinkManager::SendTo(
+  LinkManager::send_to(
       const RouterID& remote,
       const llarp_buffer_t&,
       AbstractLinkSession::CompletionHandler completed,
@@ -38,7 +43,7 @@ namespace llarp
     if (stopping)
       return false;
 
-    if (not HaveConnection(remote))
+    if (not have_connection_to(remote))
     {
       if (completed)
       {
@@ -53,68 +58,40 @@ namespace llarp
   }
 
   bool
-  LinkManager::HaveConnection(const RouterID& remote, bool client_only) const
+  LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
   {
-    for (const auto& ep : endpoints)
-    {
-      if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
-      {
-        if (not(itr->second.remote_is_relay and client_only))
-          return true;
-        return false;
-      }
-    }
-    return false;
+    return ep.have_conn(remote, client_only);
   }
 
   bool
-  LinkManager::HaveClientConnection(const RouterID& remote) const
+  LinkManager::have_client_connection_to(const RouterID& remote) const
   {
-    return HaveConnection(remote, true);
+    return ep.have_conn(remote, true);
   }
 
   void
-  LinkManager::DeregisterPeer(RouterID remote)
+  LinkManager::deregister_peer(RouterID remote)
   {
-    m_PersistingSessions.erase(remote);
-    for (const auto& ep : endpoints)
+    if (auto rv = ep.deregister_peer(remote); rv)
     {
-      if (auto itr = ep.connections.find(remote); itr != ep.connections.end())
-      {
-        /*
-        itr->second.conn->close(); //TODO: libquic needs some function for this
-        */
-      }
+      persisting_conns.erase(remote);
+      log::info(logcat, "Peer {} successfully de-registered");
     }
-
-    LogInfo(remote, " has been de-registered");
+    else
+      log::warning(logcat, "Peer {} not found for de-registeration!");
   }
 
   void
-  LinkManager::AddLink(const oxen::quic::opt::local_addr& bind, bool inbound)
+  LinkManager::connect_to(const oxen::quic::opt::local_addr& remote)
   {
-    // TODO: libquic callbacks: new_conn_alpn_notify, new_conn_pubkey_ok, new_conn_established/ready
-    //       stream_opened, stream_data, stream_closed, conn_closed
-    oxen::quic::dgram_data_callback dgram_cb =
-        [this](oxen::quic::dgram_interface& dgi, bstring dgram) {
-          HandleIncomingDataMessage(dgi, dgram);
-        };
-    auto ep = quic->endpoint(
-        bind,
-        std::move(dgram_cb),
-        oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
-    endpoints.emplace_back();
-    auto& endp = endpoints.back();
-    endp.endpoint = std::move(ep);
-    if (inbound)
-    {
-      endp.endpoint->listen(tls_creds);
-      endp.inbound = true;
-    }
+    if (auto rv = ep.establish_connection(remote); rv)
+      log::info(quic_cat, "Connection to {} successfully established!", remote);
+    else
+      log::info(quic_cat, "Connection to {} unsuccessfully established", remote);
   }
 
   void
-  LinkManager::Stop()
+  LinkManager::stop()
   {
     if (stopping)
     {
@@ -130,23 +107,23 @@ namespace llarp
   }
 
   void
-  LinkManager::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
+  LinkManager::set_conn_persist(const RouterID& remote, llarp_time_t until)
   {
     if (stopping)
       return;
 
     util::Lock l(_mutex);
 
-    m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
-    if (HaveClientConnection(remote))
+    persisting_conns[remote] = std::max(until, persisting_conns[remote]);
+    if (have_client_connection_to(remote))
     {
       // mark this as a client so we don't try to back connect
-      m_Clients.Upsert(remote);
+      clients.Upsert(remote);
     }
   }
 
   size_t
-  LinkManager::NumberOfConnectedRouters(bool clients_only) const
+  LinkManager::get_num_connected(bool clients_only) const
   {
     size_t count{0};
     for (const auto& ep : endpoints)
@@ -162,13 +139,13 @@ namespace llarp
   }
 
   size_t
-  LinkManager::NumberOfConnectedClients() const
+  LinkManager::get_num_connected_clients() const
   {
-    return NumberOfConnectedRouters(true);
+    return get_num_connected(true);
   }
 
   bool
-  LinkManager::GetRandomConnectedRouter(RouterContact& router) const
+  LinkManager::get_random_connected(RouterContact& router) const
   {
     std::unordered_map<RouterID, RouterContact> connectedRouters;
 
@@ -199,7 +176,7 @@ namespace llarp
 
   // TODO: this?  perhaps no longer necessary in the same way?
   void
-  LinkManager::CheckPersistingSessions(llarp_time_t)
+  LinkManager::check_persisting_conns(llarp_time_t)
   {
     if (stopping)
       return;
@@ -207,7 +184,7 @@ namespace llarp
 
   // TODO: do we still need this concept?
   void
-  LinkManager::updatePeerDb(std::shared_ptr<PeerDb>)
+  LinkManager::update_peer_db(std::shared_ptr<PeerDb>)
   {}
 
   // TODO: this
@@ -218,7 +195,7 @@ namespace llarp
   }
 
   void
-  LinkManager::Init(RCLookupHandler* rcLookup)
+  LinkManager::init(RCLookupHandler* rcLookup)
   {
     stopping = false;
     _rcLookup = rcLookup;
@@ -226,11 +203,12 @@ namespace llarp
   }
 
   void
-  LinkManager::Connect(RouterID router)
+  LinkManager::connect_to(RouterID router)
   {
-    auto fn = [this](const RouterID&, const RouterContact* const rc, const RCRequestResult res) {
+    auto fn = [this](
+                  const RouterID& rid, const RouterContact* const rc, const RCRequestResult res) {
       if (res == RCRequestResult::Success)
-        Connect(*rc);
+        connect_to(*rc);
       /* TODO:
       else
         RC lookup failure callback here
@@ -242,10 +220,10 @@ namespace llarp
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
   void
-  LinkManager::Connect(RouterContact rc)
+  LinkManager::connect_to(RouterContact rc)
   {
     // TODO: connection failed callback
-    if (HaveConnection(rc.pubkey))
+    if (have_connection_to(rc.pubkey))
       return;
 
     // RC shouldn't be valid if this is the case, but may as well sanity check...
@@ -254,14 +232,14 @@ namespace llarp
       return;
 
     // TODO: connection failed callback
-    auto* ep = GetCompatibleLink(rc);
+    auto* ep = get_compatible_link(rc);
     if (ep == nullptr)
       return;
 
     // TODO: connection established/failed callbacks
     oxen::quic::stream_data_callback stream_cb =
         [this](oxen::quic::Stream& stream, bstring_view packet) {
-          HandleIncomingControlMessage(stream, packet);
+          recv_control_message(stream, packet);
         };
 
     // TODO: once "compatible link" cares about address, actually choose addr to connect to
@@ -289,7 +267,7 @@ namespace llarp
   }
 
   void
-  LinkManager::ConnectToRandomRouters(int numDesired)
+  LinkManager::connect_to_random(int numDesired)
   {
     std::set<RouterID> exclude;
     auto remainingDesired = numDesired;
@@ -315,13 +293,13 @@ namespace llarp
   }
 
   void
-  LinkManager::HandleIncomingDataMessage(oxen::quic::dgram_interface&, bstring)
+  LinkManager::recv_data_message(oxen::quic::dgram_interface&, bstring)
   {
     // TODO: this
   }
 
   void
-  LinkManager::HandleIncomingControlMessage(oxen::quic::Stream&, bstring_view)
+  LinkManager::recv_control_message(oxen::quic::Stream&, bstring_view)
   {
     // TODO: this
   }

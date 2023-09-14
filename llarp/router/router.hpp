@@ -47,11 +47,22 @@
 
 #include <oxenmq/address.h>
 
-#include <external/oxen-libquic/include/quic.hpp>
+namespace libquic = oxen::quic;
 
 namespace llarp
 {
-  struct Router : public AbstractRouter
+
+  class RouteManager final /* : public AbstractRouter */
+  {
+   public:
+    std::shared_ptr<libquic::connection_interface>
+    get_or_connect();
+
+   private:
+    std::shared_ptr<libquic::Endpoint> ep;
+  };
+
+  struct Router final : public AbstractRouter
   {
     llarp_time_t _lastPump = 0s;
     bool ready;
@@ -224,6 +235,7 @@ namespace llarp
     ShouldTestOtherRouters() const;
 
     std::optional<SockAddr> _ourAddress;
+    oxen::quic::Address local;
 
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpnPlatform;
@@ -311,7 +323,7 @@ namespace llarp
     Profiling _routerProfiling;
     fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
-    LinkManager _linkManager{this};
+    LinkManager _linkManager{*this};
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 

@@ -1,8 +1,14 @@
 #pragma once
 
 #include <llarp/util/buffer.hpp>
-
 #include <oxenc/bt.h>
+
+#include <llarp/util/logging.hpp>
+
+namespace
+{
+  static auto link_cat = llarp::log::Cat("lokinet.link");
+}  // namespace
 
 namespace llarp
 {

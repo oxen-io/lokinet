@@ -208,6 +208,8 @@ add_library(lokinet-layer-wire
 # a series of layer 1 symbols which are then transmitted between lokinet instances
 add_library(lokinet-layer-link
   STATIC
+  link/connection.cpp
+  link/endpoint.cpp
   link/link_manager.cpp
   link/session.cpp
   link/server.cpp

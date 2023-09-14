@@ -273,7 +273,7 @@ namespace llarp
   void
   Router::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
   {
-    _linkManager.PersistSessionUntil(remote, until);
+    _linkManager.set_conn_persist(remote, until);
   }
 
   void
@@ -599,13 +599,13 @@ namespace llarp
   size_t
   Router::NumberOfConnectedRouters() const
   {
-    return _linkManager.NumberOfConnectedRouters();
+    return _linkManager.get_num_connected();
   }
 
   size_t
   Router::NumberOfConnectedClients() const
   {
-    return _linkManager.NumberOfConnectedClients();
+    return _linkManager.get_num_connected_clients();
   }
 
   bool
@@ -671,8 +671,8 @@ namespace llarp
 
     // Router config
     _rc.SetNick(conf.router.m_nickname);
-    _linkManager.maxConnectedRouters = conf.router.m_maxConnectedRouters;
-    _linkManager.minConnectedRouters = conf.router.m_minConnectedRouters;
+    _linkManager.max_connected_routers = conf.router.m_maxConnectedRouters;
+    _linkManager.min_connected_routers = conf.router.m_minConnectedRouters;
 
     encryption_keyfile = m_keyManager->m_encKeyPath;
     our_rc_file = m_keyManager->m_rcPath;
@@ -792,7 +792,7 @@ namespace llarp
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(this);
-    _linkManager.Init(&_rcLookupHandler);
+    _linkManager.init(&_rcLookupHandler);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
@@ -1063,9 +1063,9 @@ namespace llarp
 
     // mark peers as de-registered
     for (auto& peer : closePeers)
-      _linkManager.DeregisterPeer(std::move(peer));
+      _linkManager.deregister_peer(std::move(peer));
 
-    _linkManager.CheckPersistingSessions(now);
+    _linkManager.check_persisting_conns(now);
 
     size_t connected = NumberOfConnectedRouters();
 
@@ -1076,7 +1076,7 @@ namespace llarp
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
     }
-    size_t connectToNum = _linkManager.minConnectedRouters;
+    size_t connectToNum = _linkManager.min_connected_routers;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
     if (strictConnect > 0 && connectToNum > strictConnect)
     {
@@ -1114,7 +1114,7 @@ namespace llarp
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
-      _linkManager.ConnectToRandomRouters(dlt);
+      _linkManager.connect_to_random(dlt);
     }
 
     _hiddenServiceContext.Tick(now);
@@ -1133,7 +1133,7 @@ namespace llarp
       // TODO: throttle this?
       // TODO: need to capture session stats when session terminates / is removed from link
       // manager
-      _linkManager.updatePeerDb(m_peerDb);
+      _linkManager.update_peer_db(m_peerDb);
 
       if (m_peerDb->shouldFlush(now))
       {
@@ -1235,7 +1235,7 @@ namespace llarp
   bool
   Router::GetRandomConnectedRouter(RouterContact& result) const
   {
-    return _linkManager.GetRandomConnectedRouter(result);
+    return _linkManager.get_random_connected(result);
   }
 
   void
@@ -1501,7 +1501,7 @@ namespace llarp
   void
   Router::StopLinks()
   {
-    _linkManager.Stop();
+    _linkManager.stop();
   }
 
   void
@@ -1559,7 +1559,7 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID& remote) const
   {
-    return _linkManager.HaveConnection(remote);
+    return _linkManager.have_connection_to(remote);
   }
 
   std::string
@@ -1581,7 +1581,7 @@ namespace llarp
     auto connected = NumberOfConnectedRouters();
     if (connected >= want)
       return;
-    _linkManager.ConnectToRandomRouters(want);
+    _linkManager.connect_to_random(want);
   }
 
   bool
@@ -1729,7 +1729,7 @@ namespace llarp
       AddressInfo ai;
       ai.fromSockAddr(bind_addr);
 
-      _linkManager.AddLink({ai.IPString(), ai.port}, true);
+      _linkManager.connect_to({ai.IPString(), ai.port}, true);
 
       ai.pubkey = llarp::seckey_topublic(_identity);
       ai.dialect = "quicinet";  // FIXME: constant, also better name?
@@ -1749,7 +1749,7 @@ namespace llarp
     {
       AddressInfo ai;
       ai.fromSockAddr(bind_addr);
-      _linkManager.AddLink({ai.IPString(), ai.port}, false);
+      _linkManager.connect_to({ai.IPString(), ai.port}, false);
     }
   }
 

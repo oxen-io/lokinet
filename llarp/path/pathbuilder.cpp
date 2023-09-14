@@ -505,7 +505,7 @@ namespace llarp
                 {
                   // remove all connections to this router as it's probably not registered anymore
                   LogWarn("removing router ", router, " because of path build timeout");
-                  r->linkManager().DeregisterPeer(router);
+                  r->linkManager().deregister_peer(router);
                   r->nodedb()->Remove(router);
                 }
               },

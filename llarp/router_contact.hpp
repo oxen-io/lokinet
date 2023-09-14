@@ -112,7 +112,6 @@ namespace llarp
     std::string
     bt_encode() const;
 
-    // tofix: drop version 0 case, change parameter to take btlp reference
     void
     bt_encode_subdict(oxenc::bt_list_producer& btlp) const;
 

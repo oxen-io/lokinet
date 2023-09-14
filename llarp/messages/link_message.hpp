@@ -9,11 +9,6 @@
 
 #include <vector>
 
-namespace
-{
-  static auto link_cat = llarp::log::Cat("lokinet.link");
-}  // namespace
-
 namespace llarp
 {
   struct AbstractLinkSession;
