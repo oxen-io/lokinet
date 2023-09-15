@@ -26,7 +26,7 @@ namespace llarp
     {
       std::set<RouterID> m_SnodeBlacklist;
 
-      AbstractRouter* m_Router;
+      Router* m_Router;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

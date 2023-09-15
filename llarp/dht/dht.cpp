@@ -2,14 +2,14 @@
 #include "dht.h"
 #include <llarp/router_contact.hpp>
 
-llarp_dht_context::llarp_dht_context(llarp::AbstractRouter* router)
+llarp_dht_context::llarp_dht_context(llarp::Router* router)
 {
   parent = router;
   impl = llarp::dht::make_handler();
 }
 
 struct llarp_dht_context*
-llarp_dht_context_new(llarp::AbstractRouter* router)
+llarp_dht_context_new(llarp::Router* router)
 {
   return new llarp_dht_context(router);
 }

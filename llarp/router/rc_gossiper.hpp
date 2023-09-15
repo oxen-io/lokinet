@@ -3,7 +3,6 @@
 #include <llarp/util/decaying_hashset.hpp>
 #include "outbound_message_handler.hpp"
 #include <llarp/link/link_manager.hpp>
-#include "abstractrouter.hpp"
 
 namespace llarp
 {
@@ -31,7 +30,7 @@ namespace llarp
     IsOurRC(const RouterContact& rc) const;
 
     void
-    Init(LinkManager*, const RouterID&, AbstractRouter*);
+    Init(LinkManager*, const RouterID&, Router*);
 
     void
     Forget(const RouterID& router);
@@ -43,11 +42,11 @@ namespace llarp
     LastGossipAt() const;
 
    private:
-    RouterID m_OurRouterID;
-    Time_t m_LastGossipedOurRC = 0s;
-    LinkManager* m_LinkManager = nullptr;
-    util::DecayingHashSet<RouterID> m_Filter;
+    RouterID rid;
+    Time_t last_rc_gossip = 0s;
+    LinkManager* link_manager = nullptr;
+    util::DecayingHashSet<RouterID> filter;
 
-    AbstractRouter* m_router;
+    Router* router;
   };
 }  // namespace llarp

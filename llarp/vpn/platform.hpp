@@ -11,7 +11,7 @@
 namespace llarp
 {
   struct Context;
-  struct AbstractRouter;
+  struct Router;
 }  // namespace llarp
 
 namespace llarp::vpn
@@ -123,7 +123,7 @@ namespace llarp::vpn
     /// get a new network interface fully configured given the interface info
     /// blocks until ready, throws on error
     virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
+    ObtainInterface(InterfaceInfo info, Router* router) = 0;
 
    public:
     Platform() = default;
@@ -133,7 +133,7 @@ namespace llarp::vpn
 
     /// create and start a network interface
     inline std::shared_ptr<NetworkInterface>
-    CreateInterface(InterfaceInfo info, AbstractRouter* router)
+    CreateInterface(InterfaceInfo info, Router* router)
     {
       if (auto netif = ObtainInterface(std::move(info), router))
       {

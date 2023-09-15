@@ -5,7 +5,7 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/transit_hop.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
@@ -68,19 +68,19 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::handle_message(AbstractRouter* router) const
+  LR_CommitMessage::handle_message(Router* router) const
   {
     if (frames.size() != path::max_len)
     {
       llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=", path::max_len);
       return false;
     }
-    if (!router->pathContext().AllowingTransit())
+    if (!router->path_context().AllowingTransit())
     {
       llarp::LogError("got LRCM when not permitting transit");
       return false;
     }
-    return AsyncDecrypt(&router->pathContext());
+    return AsyncDecrypt(&router->path_context());
   }
 
   bool
@@ -212,7 +212,7 @@ namespace llarp
 
     static void
     OnForwardLRCMResult(
-        AbstractRouter* router,
+        Router* router,
         std::shared_ptr<path::TransitHop> path,
         const PathID_t pathid,
         const RouterID nextHop,
@@ -246,7 +246,7 @@ namespace llarp
           std::abort();
           break;
       }
-      router->QueueWork([router, path, pathid, nextHop, pathKey, status] {
+      router->queue_work([router, path, pathid, nextHop, pathKey, status] {
         LR_StatusMessage::CreateAndSend(router, path, pathid, nextHop, pathKey, status);
       });
     }
@@ -259,7 +259,7 @@ namespace llarp
       {
         llarp::LogError("duplicate transit hop ", self->hop->info);
         LR_StatusMessage::CreateAndSend(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -278,7 +278,7 @@ namespace llarp
           // we hit a limit so tell it to slow tf down
           llarp::LogError("client path build hit limit ", *self->fromAddr);
           OnForwardLRCMResult(
-              self->context->Router(),
+              self->context->router(),
               self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
@@ -290,7 +290,7 @@ namespace llarp
 #endif
       }
 
-      if (not self->context->Router()->PathToRouterAllowed(self->hop->info.upstream))
+      if (not self->context->router()->PathToRouterAllowed(self->hop->info.upstream))
       {
         // we are not allowed to forward it ... now what?
         llarp::LogError(
@@ -298,7 +298,7 @@ namespace llarp
             self->hop->info.upstream,
             "not allowed, dropping build request on the floor");
         OnForwardLRCMResult(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -309,9 +309,9 @@ namespace llarp
       }
       // persist sessions to upstream and downstream routers until the commit
       // ends
-      self->context->Router()->PersistSessionUntil(
+      self->context->router()->PersistSessionUntil(
           self->hop->info.downstream, self->hop->ExpireTime() + 10s);
-      self->context->Router()->PersistSessionUntil(
+      self->context->router()->PersistSessionUntil(
           self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
@@ -319,7 +319,7 @@ namespace llarp
       using std::placeholders::_1;
       auto func = [self](auto status) {
         OnForwardLRCMResult(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -329,7 +329,7 @@ namespace llarp
       };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
       // trigger idempotent pump to ensure that the build messages propagate
-      self->context->Router()->TriggerPump();
+      self->context->router()->TriggerPump();
     }
 
     // this is called from the logic thread
@@ -346,14 +346,14 @@ namespace llarp
       else
       {
         // persist session to downstream until path expiration
-        self->context->Router()->PersistSessionUntil(
+        self->context->router()->PersistSessionUntil(
             self->hop->info.downstream, self->hop->ExpireTime() + 10s);
         // put hop
         self->context->PutTransitHop(self->hop);
       }
 
       if (!LR_StatusMessage::CreateAndSend(
-              self->context->Router(),
+              self->context->router(),
               self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
@@ -371,7 +371,7 @@ namespace llarp
     static void
     HandleDecrypted(llarp_buffer_t* buf, std::shared_ptr<LRCMFrameDecrypt> self)
     {
-      auto now = self->context->Router()->Now();
+      auto now = self->context->router()->Now();
       auto& info = self->hop->info;
       if (!buf)
       {
@@ -434,8 +434,8 @@ namespace llarp
       // TODO: check if we really want to accept it
       self->hop->started = now;
 
-      self->context->Router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
-          self->context->Router()->pubkey(), self->hop);
+      self->context->router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
+          self->context->router()->pubkey(), self->hop);
 
       size_t sz = self->frames[0].size();
       // shift
@@ -472,7 +472,7 @@ namespace llarp
         });
       }
       // trigger idempotent pump to ensure that the build messages propagate
-      self->context->Router()->TriggerPump();
+      self->context->router()->TriggerPump();
     }
   };
 
@@ -486,7 +486,7 @@ namespace llarp
 
     // decrypt frames async
     frameDecrypt->decrypter->AsyncDecrypt(
-        frameDecrypt->frames[0], frameDecrypt, [r = context->Router()](auto func) {
+        frameDecrypt->frames[0], frameDecrypt, [r = context->router()](auto func) {
           r->QueueWork(std::move(func));
         });
     return true;

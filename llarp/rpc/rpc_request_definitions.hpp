@@ -2,7 +2,6 @@
 
 #include "rpc_request_decorators.hpp"
 #include "llarp/net/ip_range.hpp"
-#include "llarp/router/abstractrouter.hpp"
 #include "llarp/router/route_poker.hpp"
 #include "llarp/service/address.hpp"
 #include "llarp/service/endpoint.hpp"

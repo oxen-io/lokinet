@@ -4,7 +4,7 @@
 #include <llarp/dht/context.hpp>
 #include <memory>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <utility>
@@ -22,7 +22,7 @@ namespace llarp::dht
   {
     auto* router = dht.GetRouter();
 
-    router->NotifyRouterEvent<tooling::GotIntroReceivedEvent>(
+    router->notify_router_event<tooling::GotIntroReceivedEvent>(
         router->pubkey(),
         Key_t(From.data()),
         (found.size() > 0 ? found[0] : llarp::service::EncryptedIntroSet{}),
@@ -64,7 +64,7 @@ namespace llarp::dht
       [[maybe_unused]] std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
     // TODO: implement me better?
-    auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
+    auto pathset = dht.GetRouter()->path_context().GetLocalPathSet(pathID);
     if (pathset)
     {
       auto copy = std::make_shared<const RelayedGotIntroMessage>(*this);

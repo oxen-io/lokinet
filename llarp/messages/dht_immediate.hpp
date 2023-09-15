@@ -21,7 +21,7 @@ namespace llarp
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRouter* router) const override;
+    handle_message(Router* router) const override;
 
     void
     clear() override;

@@ -1,6 +1,6 @@
 #include "outbound_session_maker.hpp"
 
-#include "abstractrouter.hpp"
+#include "Router.hpp"
 #include <llarp/tooling/peer_stats_event.hpp>
 #include <llarp/link/server.hpp>
 #include <llarp/router_contact.hpp>
@@ -157,7 +157,7 @@ namespace llarp
 
   void
   OutboundSessionMaker::Init(
-      AbstractRouter* router,
+      Router* router,
       LinkManager* linkManager,
       RCLookupHandler* rcLookup,
       Profiling* profiler,

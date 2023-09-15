@@ -44,6 +44,6 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& k, llarp_buffer_t* val) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
   };
 }  // namespace llarp::routing

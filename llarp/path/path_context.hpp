@@ -17,7 +17,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   struct LR_CommitMessage;
   struct RelayDownstreamMessage;
   struct RelayUpstreamMessage;
@@ -32,7 +32,7 @@ namespace llarp
 
     struct PathContext
     {
-      explicit PathContext(AbstractRouter* router);
+      explicit PathContext(Router* router);
 
       /// called from router tick function
       void
@@ -160,9 +160,6 @@ namespace llarp
       const EventLoop_ptr&
       loop();
 
-      AbstractRouter*
-      Router();
-
       const SecretKey&
       EncryptionSecretKey();
 
@@ -178,7 +175,7 @@ namespace llarp
       CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
 
      private:
-      AbstractRouter* m_Router;
+      Router* router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;

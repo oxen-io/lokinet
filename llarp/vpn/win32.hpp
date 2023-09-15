@@ -3,7 +3,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/win32/exec.hpp>
 #include <llarp.hpp>
 
@@ -63,7 +63,7 @@ namespace llarp::win32
     DelDefaultRouteViaInterface(NetworkInterface& vpn) override;
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override;
+    ObtainInterface(InterfaceInfo info, Router* router) override;
 
     std::shared_ptr<I_Packet_IO>
     create_packet_io(

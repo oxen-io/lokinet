@@ -11,7 +11,7 @@ namespace tooling
   {
     HiveContext(RouterHive* hive);
 
-    std::shared_ptr<llarp::AbstractRouter>
+    std::shared_ptr<llarp::Router>
     makeRouter(const llarp::EventLoop_ptr& loop) override;
 
     /// Get this context's router as a HiveRouter.

@@ -5,7 +5,7 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <utility>
 
@@ -14,7 +14,7 @@ namespace llarp::exit
   BaseSession::BaseSession(
       const llarp::RouterID& routerId,
       std::function<bool(const llarp_buffer_t&)> writepkt,
-      AbstractRouter* r,
+      Router* r,
       size_t numpaths,
       size_t hoplen,
       EndpointBase* parent)
@@ -76,7 +76,7 @@ namespace llarp::exit
   {
     if (numHops == 1)
     {
-      if (auto maybe = m_router->nodedb()->Get(m_ExitRouter))
+      if (auto maybe = m_router->node_db()->Get(m_ExitRouter))
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
@@ -187,7 +187,7 @@ namespace llarp::exit
       }
     };
     ForEachPath(sendExitClose);
-    m_router->pathContext().RemovePathSet(shared_from_this());
+    m_router->path_context().RemovePathSet(shared_from_this());
     return path::Builder::Stop();
   }
 
@@ -309,7 +309,7 @@ namespace llarp::exit
       if (numHops == 1)
       {
         auto r = m_router;
-        if (const auto maybe = r->nodedb()->Get(m_ExitRouter); maybe.has_value())
+        if (const auto maybe = r->node_db()->Get(m_ExitRouter); maybe.has_value())
           r->TryConnectAsync(*maybe, 5);
         else
           r->LookupRouter(m_ExitRouter, [r](const std::vector<RouterContact>& results) {
@@ -337,7 +337,7 @@ namespace llarp::exit
   SNodeSession::SNodeSession(
       const llarp::RouterID& snodeRouter,
       std::function<bool(const llarp_buffer_t&)> writepkt,
-      AbstractRouter* r,
+      Router* r,
       size_t numpaths,
       size_t hoplen,
       bool useRouterSNodeKey,

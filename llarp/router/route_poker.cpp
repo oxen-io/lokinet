@@ -1,5 +1,5 @@
 #include "route_poker.hpp"
-#include <llarp/router/abstractrouter.hpp>
+#include "router.hpp"
 #include <llarp/net/sock_addr.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/dns/platform.hpp>
@@ -36,7 +36,7 @@ namespace llarp
   {
     if (ip.n and gateway.n and IsEnabled())
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+      vpn::IRouteManager& route = m_Router->vpn_platform()->RouteManager();
       route.DelRoute(ip, gateway);
     }
   }
@@ -46,7 +46,7 @@ namespace llarp
   {
     if (ip.n and gateway.n and IsEnabled())
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+      vpn::IRouteManager& route = m_Router->vpn_platform()->RouteManager();
       route.AddRoute(ip, gateway);
     }
   }
@@ -63,7 +63,7 @@ namespace llarp
   }
 
   void
-  RoutePoker::Start(AbstractRouter* router)
+  RoutePoker::Start(Router* router)
   {
     m_Router = router;
     if (not IsEnabled())
@@ -101,10 +101,10 @@ namespace llarp
 
   RoutePoker::~RoutePoker()
   {
-    if (not m_Router or not m_Router->GetVPNPlatform())
+    if (not m_Router or not m_Router->vpn_platform())
       return;
 
-    auto& route = m_Router->GetVPNPlatform()->RouteManager();
+    auto& route = m_Router->vpn_platform()->RouteManager();
     for (const auto& [ip, gateway] : m_PokedRoutes)
     {
       if (gateway.n and ip.n)
@@ -120,7 +120,7 @@ namespace llarp
       throw std::runtime_error{"Attempting to use RoutePoker before calling Init"};
     if (m_Router->IsServiceNode())
       return false;
-    if (const auto& conf = m_Router->GetConfig())
+    if (const auto& conf = m_Router->config())
       return conf->network.m_EnableRoutePoker;
 
     throw std::runtime_error{"Attempting to use RoutePoker with router with no config set"};
@@ -137,7 +137,7 @@ namespace llarp
     if (ep == nullptr)
       return;
     // ensure we have a vpn platform
-    auto* platform = m_Router->GetVPNPlatform();
+    auto* platform = m_Router->vpn_platform();
     if (platform == nullptr)
       return;
     // ensure we have a vpn interface
@@ -214,10 +214,10 @@ namespace llarp
       {
         log::info(logcat, "RoutePoker coming up; poking routes");
 
-        vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+        vpn::IRouteManager& route = m_Router->vpn_platform()->RouteManager();
 
         // black hole all routes if enabled
-        if (m_Router->GetConfig()->network.m_BlackholeRoutes)
+        if (m_Router->config()->network.m_BlackholeRoutes)
           route.AddBlackhole();
 
         // explicit route pokes for first hops
@@ -246,7 +246,7 @@ namespace llarp
 
     if (IsEnabled() and m_up)
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+      vpn::IRouteManager& route = m_Router->vpn_platform()->RouteManager();
       const auto ep = m_Router->hiddenServiceContext().GetDefault();
       if (auto* vpn = ep->GetVPNInterface())
         route.DelDefaultRouteViaInterface(*vpn);

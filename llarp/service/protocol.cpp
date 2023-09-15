@@ -5,7 +5,7 @@
 #include <llarp/util/mem.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include "endpoint.hpp"
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <utility>
 
 namespace llarp::service
@@ -412,7 +412,7 @@ namespace llarp::service
       auto dh = std::make_shared<AsyncFrameDecrypt>(
           loop, localIdent, handler, msg, *this, recvPath->intro);
       dh->path = recvPath;
-      handler->Router()->QueueWork([dh = std::move(dh)] { return AsyncFrameDecrypt::Work(dh); });
+      handler->router()->queue_work([dh = std::move(dh)] { return AsyncFrameDecrypt::Work(dh); });
       return true;
     }
 
@@ -447,7 +447,7 @@ namespace llarp::service
         loop->call([msg, hook]() { hook(msg); });
       }
     };
-    handler->Router()->QueueWork(
+    handler->router()->queue_work(
         [v, msg = std::move(msg), recvPath = std::move(recvPath), callback, handler]() {
           auto resetTag =
               [handler, tag = v->frame.convo_tag, from = v->frame.path_id, path = recvPath]() {
@@ -508,7 +508,7 @@ namespace llarp::service
 
   bool
   ProtocolFrameMessage::handle_message(
-      routing::AbstractRoutingMessageHandler* h, AbstractRouter* /*r*/) const
+      routing::AbstractRoutingMessageHandler* h, Router* /*r*/) const
   {
     return h->HandleHiddenServiceFrame(*this);
   }

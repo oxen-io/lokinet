@@ -90,10 +90,10 @@ namespace llarp
   Context::makeNodeDB()
   {
     return std::make_shared<NodeDB>(
-        nodedb_dirname, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+        nodedb_dirname, [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); });
   }
 
-  std::shared_ptr<AbstractRouter>
+  std::shared_ptr<Router>
   Context::makeRouter(const EventLoop_ptr& loop)
   {
     return std::make_shared<Router>(loop, makeVPNPlatform());

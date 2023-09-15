@@ -5,7 +5,7 @@
 #include "endpoint_util.hpp"
 #include "protocol_type.hpp"
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/util/meta/memfn.hpp>
@@ -53,7 +53,7 @@ namespace llarp::service
   constexpr auto OutboundContextNumPaths = 4;
 
   OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
-      : path::Builder{parent->Router(), OutboundContextNumPaths, parent->numHops}
+      : path::Builder{parent->router(), OutboundContextNumPaths, parent->numHops}
       , SendContext{introset.addressKeys, {}, this, parent}
       , location{introset.addressKeys.Addr().ToKey()}
       , addr{introset.addressKeys.Addr()}
@@ -266,7 +266,7 @@ namespace llarp::service
     // ensure we have a sender put for this convo tag
     m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
     // encrypt frame async
-    m_Endpoint->Router()->QueueWork([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
+    m_Endpoint->router()->queue_work([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
 
     LogInfo(Name(), " send intro frame T=", currentConvoTag);
   }
@@ -302,7 +302,7 @@ namespace llarp::service
           m_Endpoint->GenTXID(),
           (IntrosetUpdateInterval / 2) + (2 * path->intro.latency) + IntrosetLookupGraceInterval);
       relayOrder++;
-      if (job->SendRequestViaPath(path, m_Endpoint->Router()))
+      if (job->SendRequestViaPath(path, m_Endpoint->router()))
         updatingIntroSet = true;
     }
   }

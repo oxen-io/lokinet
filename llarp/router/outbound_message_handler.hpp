@@ -25,7 +25,7 @@ namespace llarp
     Congestion
   };
 
-  struct AbstractRouter;
+  struct Router;
   enum class SessionResult;
   struct AbstractLinkMessage;
   struct RouterID;
@@ -88,7 +88,7 @@ namespace llarp
     ExtractStatus() const;
 
     void
-    Init(AbstractRouter* router);
+    Init(Router* router);
 
    private:
     /* A message that has been queued for sending, but not yet
@@ -210,7 +210,7 @@ namespace llarp
 
     std::queue<PathID_t> roundRobinOrder;
 
-    AbstractRouter* _router;
+    Router* _router;
 
     util::ContentionKiller m_Killer;
 

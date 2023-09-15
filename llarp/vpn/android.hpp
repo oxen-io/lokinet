@@ -88,7 +88,7 @@ namespace llarp::vpn
     {}
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
+    ObtainInterface(InterfaceInfo info, Router*) override
     {
       return std::make_shared<AndroidInterface>(std::move(info), fd);
     }

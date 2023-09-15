@@ -1,4 +1,3 @@
-#include "server.hpp"
 #include <llarp/ev/ev.hpp>
 #include <llarp/ev/udp_handle.hpp>
 #include <llarp/crypto/crypto.hpp>
@@ -7,7 +6,7 @@
 #include <llarp/util/fs.hpp>
 #include <utility>
 #include <unordered_set>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <oxenc/variant.h>
 
 static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
@@ -132,7 +131,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::Bind(AbstractRouter* router, SockAddr bind_addr)
+  ILinkLayer::Bind(Router* router, SockAddr bind_addr)
   {
     if (router->Net().IsLoopbackAddress(bind_addr.getIP()))
       throw std::runtime_error{"cannot udp bind socket on loopback"};
@@ -244,21 +243,6 @@ namespace llarp
       itr = m_Pending.erase(itr);
       m_Router->TriggerPump();
       return true;
-    }
-    return false;
-  }
-
-  bool
-  ILinkLayer::PickAddress(const RouterContact& rc, llarp::AddressInfo& picked) const
-  {
-    auto OurDialect = Name();
-    for (const auto& addr : rc.addrs)
-    {
-      if (addr.dialect == OurDialect)
-      {
-        picked = addr;
-        return true;
-      }
     }
     return false;
   }

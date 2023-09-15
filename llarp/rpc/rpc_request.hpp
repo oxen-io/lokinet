@@ -7,7 +7,7 @@
 #include "json_bt.hpp"
 #include <string_view>
 #include <llarp/config/config.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <oxenmq/oxenmq.h>
 #include <oxenmq/address.h>
 #include <oxen/log/omq_logger.hpp>

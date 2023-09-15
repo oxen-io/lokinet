@@ -4,7 +4,7 @@
 #include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/dht/messages/pubintro.hpp>
 #include <llarp/routing/path_dht_message.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 #include <random>
 
@@ -62,7 +62,7 @@ namespace llarp::path
   }
 
   void
-  PathSet::TickPaths(AbstractRouter* r)
+  PathSet::TickPaths(Router* r)
   {
     const auto now = llarp::time_now_ms();
     Lock_t l{m_PathsMutex};
@@ -92,7 +92,7 @@ namespace llarp::path
   }
 
   void
-  PathSet::ExpirePaths(llarp_time_t now, AbstractRouter* router)
+  PathSet::ExpirePaths(llarp_time_t now, Router* router)
   {
     Lock_t l(m_PathsMutex);
     if (m_Paths.size() == 0)
@@ -452,13 +452,13 @@ namespace llarp::path
   }
 
   void
-  PathSet::UpstreamFlush(AbstractRouter* r)
+  PathSet::UpstreamFlush(Router* r)
   {
     ForEachPath([r](const Path_ptr& p) { p->FlushUpstream(r); });
   }
 
   void
-  PathSet::DownstreamFlush(AbstractRouter* r)
+  PathSet::DownstreamFlush(Router* r)
   {
     ForEachPath([r](const Path_ptr& p) { p->FlushDownstream(r); });
   }

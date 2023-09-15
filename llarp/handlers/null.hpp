@@ -3,7 +3,7 @@
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/quic/tunnel.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/vpn/egres_packet_router.hpp>
 
@@ -12,7 +12,7 @@ namespace llarp::handlers
   struct NullEndpoint final : public llarp::service::Endpoint,
                               public std::enable_shared_from_this<NullEndpoint>
   {
-    NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
+    NullEndpoint(Router* r, llarp::service::Context* parent)
         : llarp::service::Endpoint{r, parent}
         , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
           var::visit(

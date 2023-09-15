@@ -1,5 +1,13 @@
 #pragma once
 
+/*
+    Note:
+      - this class is marked for destruction
+      - functionality to be absorbed into llarp/link/link_manager.hpp
+        - can be subdivided into multiple objects
+
+*/
+
 #include "rc_lookup_handler.hpp"
 
 #include <llarp/util/thread/threading.hpp>
@@ -80,7 +88,7 @@ namespace llarp
 
     void
     Init(
-        AbstractRouter* router,
+        Router* router,
         LinkManager* linkManager,
         RCLookupHandler* rcLookup,
         Profiling* profiler,
@@ -125,7 +133,7 @@ namespace llarp
 
     std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
 
-    AbstractRouter* _router = nullptr;
+    Router* _router = nullptr;
     LinkManager* _linkManager = nullptr;
     RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;

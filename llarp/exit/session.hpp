@@ -38,7 +38,7 @@ namespace llarp
       BaseSession(
           const llarp::RouterID& exitRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           EndpointBase* parent);
@@ -198,7 +198,7 @@ namespace llarp
       ExitSession(
           const llarp::RouterID& snodeRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           EndpointBase* parent)
@@ -228,7 +228,7 @@ namespace llarp
       SNodeSession(
           const llarp::RouterID& snodeRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           bool useRouterSNodeKey,

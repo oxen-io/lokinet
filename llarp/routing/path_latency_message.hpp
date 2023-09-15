@@ -25,6 +25,6 @@ namespace llarp::routing
     }
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
   };
 }  // namespace llarp::routing

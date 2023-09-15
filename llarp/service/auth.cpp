@@ -1,7 +1,7 @@
 #include "auth.hpp"
 #include <unordered_map>
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include "protocol.hpp"
 #include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
@@ -87,7 +87,7 @@ namespace llarp::service
   {
     const std::set<fs::path> m_Files;
     const AuthFileType m_Type;
-    AbstractRouter* const m_Router;
+    Router* const m_Router;
     mutable util::Mutex m_Access;
     std::unordered_set<ConvoTag> m_Pending;
     /// returns an auth result for a auth info challange, opens every file until it finds a token
@@ -131,7 +131,7 @@ namespace llarp::service
     }
 
    public:
-    FileAuthPolicy(AbstractRouter* r, std::set<fs::path> files, AuthFileType filetype)
+    FileAuthPolicy(Router* r, std::set<fs::path> files, AuthFileType filetype)
         : m_Files{std::move(files)}, m_Type{filetype}, m_Router{r}
     {}
 
@@ -153,7 +153,7 @@ namespace llarp::service
       }
       if (msg->proto == ProtocolType::Auth)
       {
-        m_Router->QueueDiskIO(
+        m_Router->queue_disk_io(
             [self = shared_from_this(),
              auth = AuthInfo{std::string{
                  reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()}},
@@ -180,7 +180,7 @@ namespace llarp::service
   };
 
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter* r, std::set<fs::path> files, AuthFileType filetype)
+  MakeFileAuthPolicy(Router* r, std::set<fs::path> files, AuthFileType filetype)
   {
     return std::make_shared<FileAuthPolicy>(r, std::move(files), filetype);
   }

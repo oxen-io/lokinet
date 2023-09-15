@@ -15,7 +15,7 @@
 #include "taglookup.hpp"
 #include <llarp/messages/dht_immediate.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
@@ -39,7 +39,7 @@ namespace llarp::dht
     void
     StoreRC(const RouterContact rc) const override
     {
-      GetRouter()->rcLookupHandler().CheckRC(rc);
+      GetRouter()->rc_lookup_handler().check_rc(rc);
     }
 
     void
@@ -148,7 +148,7 @@ namespace llarp::dht
 
     /// initialize dht context and explore every exploreInterval milliseconds
     void
-    Init(const Key_t& us, AbstractRouter* router) override;
+    Init(const Key_t& us, Router* router) override;
 
     /// get localally stored introset by service address
     std::optional<llarp::service::EncryptedIntroSet>
@@ -161,7 +161,7 @@ namespace llarp::dht
     void
     Explore(size_t N = 3);
 
-    llarp::AbstractRouter* router{nullptr};
+    llarp::Router* router{nullptr};
     // for router contacts
     std::unique_ptr<Bucket<RCNode>> _nodes;
 
@@ -211,7 +211,7 @@ namespace llarp::dht
       return ourKey;
     }
 
-    llarp::AbstractRouter*
+    llarp::Router*
     GetRouter() const override
     {
       return router;
@@ -220,7 +220,7 @@ namespace llarp::dht
     bool
     GetRCFromNodeDB(const Key_t& k, llarp::RouterContact& rc) const override
     {
-      if (const auto maybe = router->nodedb()->Get(k.as_array()); maybe.has_value())
+      if (const auto maybe = router->node_db()->Get(k.as_array()); maybe.has_value())
       {
         rc = *maybe;
         return true;
@@ -387,7 +387,7 @@ namespace llarp::dht
       replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
       return;
     }
-    const auto rc = GetRouter()->nodedb()->FindClosestTo(target);
+    const auto rc = GetRouter()->node_db()->FindClosestTo(target);
     const Key_t next(rc.pubkey);
     {
       if (next == target)
@@ -468,7 +468,7 @@ namespace llarp::dht
   }
 
   void
-  DHTMessageHandler::Init(const Key_t& us, AbstractRouter* r)
+  DHTMessageHandler::Init(const Key_t& us, Router* r)
   {
     router = r;
     ourKey = us;
@@ -502,7 +502,7 @@ namespace llarp::dht
       return false;
     if (not reply.dht_msgs.empty())
     {
-      auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
+      auto path = router->path_context().GetByUpstream(router->pubkey(), id);
       return path && path->SendRoutingMessage(reply, router);
     }
     return true;
@@ -622,7 +622,7 @@ namespace llarp::dht
     {
       const RouterID id = f.as_array();
       // discard shit routers
-      if (router->routerProfiling().IsBadForConnect(id))
+      if (router->router_profiling().IsBadForConnect(id))
         continue;
       closer.emplace_back(id);
     }

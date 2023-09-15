@@ -3,7 +3,7 @@
 #include <llarp/dht/context.hpp>
 #include "gotintro.hpp"
 #include <llarp/messages/dht_immediate.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
 
@@ -79,7 +79,8 @@ namespace llarp::dht
     }
 
     // identify closest 4 routers
-    auto closestRCs = dht.GetRouter()->nodedb()->FindManyClosestTo(addr, IntroSetStorageRedundancy);
+    auto closestRCs =
+        dht.GetRouter()->node_db()->FindManyClosestTo(addr, IntroSetStorageRedundancy);
     if (closestRCs.size() != IntroSetStorageRedundancy)
     {
       llarp::LogWarn("Received PublishIntroMessage but only know ", closestRCs.size(), " nodes");

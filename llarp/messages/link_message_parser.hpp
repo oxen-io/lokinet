@@ -7,13 +7,13 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   struct AbstractLinkMessage;
   struct AbstractLinkSession;
 
   struct LinkMessageParser
   {
-    LinkMessageParser(AbstractRouter* router);
+    LinkMessageParser(Router* router);
     ~LinkMessageParser();
 
     bool
@@ -38,7 +38,7 @@ namespace llarp
 
    private:
     bool firstkey;
-    AbstractRouter* router;
+    Router* router;
     AbstractLinkSession* from;
     AbstractLinkMessage* msg;
 

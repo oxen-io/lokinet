@@ -13,7 +13,7 @@ namespace
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   namespace routing
   {
     struct AbstractRoutingMessageHandler;
@@ -35,7 +35,7 @@ namespace llarp
       bt_encode() const override = 0;
 
       virtual bool
-      handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const = 0;
+      handle_message(AbstractRoutingMessageHandler* h, Router* r) const = 0;
 
       virtual void
       clear() = 0;

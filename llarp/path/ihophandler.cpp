@@ -1,5 +1,5 @@
 #include "ihophandler.hpp"
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 namespace llarp
 {
@@ -7,7 +7,7 @@ namespace llarp
   {
     // handle data in upstream direction
     bool
-    IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router* r)
     {
       auto& pkt = m_UpstreamQueue.emplace_back();
       pkt.first.resize(X.sz);
@@ -19,7 +19,7 @@ namespace llarp
 
     // handle data in downstream direction
     bool
-    IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
+    IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router* r)
     {
       auto& pkt = m_DownstreamQueue.emplace_back();
       pkt.first.resize(X.sz);

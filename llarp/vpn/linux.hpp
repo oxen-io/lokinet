@@ -18,7 +18,7 @@
 
 #include <oxenc/endian.h>
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp.hpp>
 
 #include <llarp/util/fs.hpp>
@@ -442,7 +442,7 @@ namespace llarp::vpn
 
    public:
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
+    ObtainInterface(InterfaceInfo info, Router*) override
     {
       return std::make_shared<LinuxInterface>(std::move(info));
     };

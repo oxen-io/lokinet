@@ -12,42 +12,41 @@ namespace llarp
   // (30 minutes * 2) - 5 minutes
   static constexpr auto GossipOurRCInterval = (RCGossipFilterDecayInterval * 2) - (5min);
 
-  RCGossiper::RCGossiper()
-      : m_Filter(std::chrono::duration_cast<Time_t>(RCGossipFilterDecayInterval))
+  RCGossiper::RCGossiper() : filter(std::chrono::duration_cast<Time_t>(RCGossipFilterDecayInterval))
   {}
 
   void
-  RCGossiper::Init(LinkManager* l, const RouterID& ourID, AbstractRouter* router)
+  RCGossiper::Init(LinkManager* l, const RouterID& ourID, Router* router)
   {
-    m_OurRouterID = ourID;
-    m_LinkManager = l;
-    m_router = router;
+    rid = ourID;
+    link_manager = l;
+    router = router;
   }
 
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
-    return now >= (m_LastGossipedOurRC + GossipOurRCInterval);
+    return now >= (last_rc_gossip + GossipOurRCInterval);
   }
 
   bool
   RCGossiper::IsOurRC(const RouterContact& rc) const
   {
-    return rc.pubkey == m_OurRouterID;
+    return rc.pubkey == rid;
   }
 
   void
   RCGossiper::Decay(Time_t now)
   {
-    m_Filter.Decay(now);
+    filter.Decay(now);
   }
 
   void
   RCGossiper::Forget(const RouterID& pk)
   {
-    m_Filter.Remove(pk);
-    if (m_OurRouterID == pk)
-      m_LastGossipedOurRC = 0s;
+    filter.Remove(pk);
+    if (rid == pk)
+      last_rc_gossip = 0s;
   }
 
   TimePoint_t
@@ -61,9 +60,9 @@ namespace llarp
   std::optional<TimePoint_t>
   RCGossiper::LastGossipAt() const
   {
-    if (m_LastGossipedOurRC == 0s)
+    if (last_rc_gossip == 0s)
       return std::nullopt;
-    return DateClock_t::time_point{m_LastGossipedOurRC};
+    return DateClock_t::time_point{last_rc_gossip};
   }
 
   bool
@@ -72,13 +71,13 @@ namespace llarp
     // only distribute public routers
     if (not rc.IsPublicRouter())
       return false;
-    if (m_LinkManager == nullptr)
+    if (link_manager == nullptr)
       return false;
     const RouterID pubkey(rc.pubkey);
     // filter check
-    if (m_Filter.Contains(pubkey))
+    if (filter.Contains(pubkey))
       return false;
-    m_Filter.Insert(pubkey);
+    filter.Insert(pubkey);
 
     const auto now = time_now_ms();
     // is this our rc?
@@ -91,7 +90,7 @@ namespace llarp
         return false;
       }
       // ya pop it
-      m_LastGossipedOurRC = now;
+      last_rc_gossip = now;
     }
 
     // send a GRCM as gossip method

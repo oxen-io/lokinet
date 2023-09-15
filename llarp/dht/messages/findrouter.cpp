@@ -4,7 +4,7 @@
 #include "gotrouter.hpp"
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 
 #include <llarp/tooling/dht_event.hpp>
@@ -21,7 +21,7 @@ namespace llarp::dht
     const Key_t k{targetKey};
     if (k == us)
     {
-      auto path = dht.GetRouter()->pathContext().GetByUpstream(targetKey, pathID);
+      auto path = dht.GetRouter()->path_context().GetByUpstream(targetKey, pathID);
       if (path)
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {dht.GetRouter()->rc()}, false));
@@ -39,7 +39,7 @@ namespace llarp::dht
       return true;
     }
     // check netdb
-    const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(k);
+    const auto rc = dht.GetRouter()->node_db()->FindClosestTo(k);
     if (rc.pubkey == targetKey)
     {
       replies.emplace_back(new GotRouterMessage(k, txid, {rc}, false));
@@ -122,7 +122,7 @@ namespace llarp::dht
       std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
     auto router = dht.GetRouter();
-    router->NotifyRouterEvent<tooling::FindRouterReceivedEvent>(router->pubkey(), *this);
+    router->notify_router_event<tooling::FindRouterReceivedEvent>(router->pubkey(), *this);
 
     if (!dht.AllowTransit())
     {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/vpn/platform.hpp>
 #include "context_wrapper.h"
 

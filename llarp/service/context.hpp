@@ -16,7 +16,7 @@ namespace llarp
     ///       only supports one endpoint per instance
     struct Context
     {
-      explicit Context(AbstractRouter* r);
+      explicit Context(Router* r);
       ~Context();
 
       void
@@ -66,7 +66,7 @@ namespace llarp
       StartAll();
 
      private:
-      AbstractRouter* const m_Router;
+      Router* const m_Router;
       std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_Endpoints;
       std::list<std::shared_ptr<Endpoint>> m_Stopped;
     };

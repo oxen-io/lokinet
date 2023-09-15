@@ -2,7 +2,6 @@
 
 #include "llarp/constants/version.hpp"
 #include "llarp/crypto/types.hpp"
-#include "llarp/net/address_info.hpp"
 #include "llarp/net/exit_info.hpp"
 #include "llarp/util/aligned.hpp"
 #include "llarp/util/bencode.hpp"
@@ -10,6 +9,8 @@
 #include "router_version.hpp"
 
 #include "llarp/dns/srv_data.hpp"
+
+#include <external/oxen-libquic/include/quic.hpp>
 
 #include <oxenc/bt_producer.h>
 #include <nlohmann/json.hpp>
@@ -75,7 +76,7 @@ namespace llarp
     }
 
     // advertised addresses
-    std::vector<AddressInfo> addrs;
+    oxen::quic::Address addr;
     // network identifier
     NetID netID;
     // public encryption public key
@@ -124,7 +125,7 @@ namespace llarp
     bool
     operator==(const RouterContact& other) const
     {
-      return addrs == other.addrs && enckey == other.enckey && pubkey == other.pubkey
+      return addr == other.addr && enckey == other.enckey && pubkey == other.pubkey
           && signature == other.signature && nickname == other.nickname
           && last_updated == other.last_updated && netID == other.netID;
     }

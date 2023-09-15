@@ -2,7 +2,7 @@
 #include "findintro.hpp"
 #include "gotintro.hpp"
 #include <llarp/routing/message.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/nodedb.hpp>
 
 namespace llarp::dht
@@ -92,7 +92,7 @@ namespace llarp::dht
       }
 
       auto closestRCs =
-          dht.GetRouter()->nodedb()->FindManyClosestTo(location, IntroSetStorageRedundancy);
+          dht.GetRouter()->node_db()->FindManyClosestTo(location, IntroSetStorageRedundancy);
 
       if (closestRCs.size() <= relayOrder)
       {

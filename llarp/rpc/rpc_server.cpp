@@ -17,7 +17,7 @@
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/auth.hpp>
 #include <llarp/service/name.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/dns/dns.hpp>
 #include <vector>
 #include <oxenmq/fmt.h>
@@ -77,7 +77,7 @@ namespace llarp::rpc
   }
 
   std::shared_ptr<EndpointBase>
-  GetEndpointByName(AbstractRouter& r, std::string name)
+  GetEndpointByName(Router& r, std::string name)
   {
     if (r.IsServiceNode())
     {
@@ -99,11 +99,11 @@ namespace llarp::rpc
     regs.emplace(RPC::name, std::move(cback));
   }
 
-  RPCServer::RPCServer(LMQ_ptr lmq, AbstractRouter& r)
+  RPCServer::RPCServer(LMQ_ptr lmq, Router& r)
       : m_LMQ{std::move(lmq)}, m_Router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
   {
     // copied logic loop as placeholder
-    for (const auto& addr : r.GetConfig()->api.m_rpcBindAddresses)
+    for (const auto& addr : r.get_config()->api.m_rpcBindAddresses)
     {
       m_LMQ->listen_plain(addr.zmq_address());
       LogInfo("Bound RPC server to ", addr.full_address());

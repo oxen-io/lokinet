@@ -1,54 +1,103 @@
 #include "link_manager.hpp"
+#include "connection.hpp"
 
 #include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/crypto/crypto.hpp>
 
 #include <algorithm>
 #include <set>
 
 namespace llarp
 {
+  namespace link
+  {
+    std::shared_ptr<link::Connection>
+    Endpoint::get_conn(const RouterContact& rc) const
+    {
+      for (const auto& [rid, conn] : conns)
+      {
+        if (conn->remote_rc == rc)
+          return conn;
+      }
+
+      return nullptr;
+    }
+
+    bool
+    Endpoint::have_conn(const RouterID& remote, bool client_only) const
+    {
+      if (auto itr = conns.find(remote); itr != conns.end())
+      {
+        if (not(itr->second->remote_is_relay and client_only))
+          return true;
+      }
+
+      return false;
+    }
+
+    bool
+    Endpoint::deregister_peer(RouterID remote)
+    {
+      if (auto itr = conns.find(remote); itr != conns.end())
+      {
+        itr->second->conn->close_connection();
+        conns.erase(itr);
+        return true;
+      }
+
+      return false;
+    }
+
+    size_t
+    Endpoint::num_connected(bool clients_only) const
+    {
+      size_t count = 0;
+
+      for (const auto& c : conns)
+      {
+        if (not(c.second->remote_is_relay and clients_only))
+          count += 1;
+      }
+
+      return count;
+    }
+
+    bool
+    Endpoint::get_random_connection(RouterContact& router) const
+    {
+      if (const auto size = conns.size(); size)
+      {
+        auto itr = conns.begin();
+        std::advance(itr, randint() % size);
+        router = itr->second->remote_rc;
+        return true;
+      }
+
+      log::warning(quic_cat, "Error: failed to fetch random connection");
+      return false;
+    }
+  }  // namespace link
 
   LinkManager::LinkManager(Router& r)
       : router{r}
       , quic{std::make_unique<oxen::quic::Network>()}
       , tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
-            {reinterpret_cast<const char*>(router.encryption().data()), router.encryption().size()},
-            {reinterpret_cast<const char*>(router.encryption().toPublic().data()), size_t{32}})}
+            {reinterpret_cast<const char*>(router.identity().data()), size_t{32}},
+            {reinterpret_cast<const char*>(router.identity().toPublic().data()), size_t{32}})}
       , ep{quic->endpoint(router.local), *this}
   {}
 
-  std::shared_ptr<link::Connection>
-  LinkManager::get_compatible_link(const RouterContact& rc)
-  {
-    if (stopping)
-      return nullptr;
-
-    if (auto c = ep.get_conn(rc); c)
-      return c;
-
-    return nullptr;
-  }
-
   // TODO: replace with control/data message sending with libquic
   bool
-  LinkManager::send_to(
-      const RouterID& remote,
-      const llarp_buffer_t&,
-      AbstractLinkSession::CompletionHandler completed,
-      uint16_t)
+  LinkManager::send_to(const RouterID& remote, const llarp_buffer_t&, uint16_t)
   {
     if (stopping)
       return false;
 
     if (not have_connection_to(remote))
     {
-      if (completed)
-      {
-        completed(AbstractLinkSession::DeliveryStatus::eDeliveryDropped);
-      }
+      // TODO: some error callback to report message send failure
       return false;
     }
 
@@ -82,15 +131,6 @@ namespace llarp
   }
 
   void
-  LinkManager::connect_to(const oxen::quic::opt::local_addr& remote)
-  {
-    if (auto rv = ep.establish_connection(remote); rv)
-      log::info(quic_cat, "Connection to {} successfully established!", remote);
-    else
-      log::info(quic_cat, "Connection to {} unsuccessfully established", remote);
-  }
-
-  void
   LinkManager::stop()
   {
     if (stopping)
@@ -98,7 +138,7 @@ namespace llarp
       return;
     }
 
-    util::Lock l(_mutex);
+    util::Lock l(m);
 
     LogInfo("stopping links");
     stopping = true;
@@ -112,7 +152,7 @@ namespace llarp
     if (stopping)
       return;
 
-    util::Lock l(_mutex);
+    util::Lock l(m);
 
     persisting_conns[remote] = std::max(until, persisting_conns[remote]);
     if (have_client_connection_to(remote))
@@ -125,17 +165,7 @@ namespace llarp
   size_t
   LinkManager::get_num_connected(bool clients_only) const
   {
-    size_t count{0};
-    for (const auto& ep : endpoints)
-    {
-      for (const auto& conn : ep.connections)
-      {
-        if (not(conn.second.remote_is_relay and clients_only))
-          count++;
-      }
-    }
-
-    return count;
+    return ep.num_connected(clients_only);
   }
 
   size_t
@@ -147,31 +177,7 @@ namespace llarp
   bool
   LinkManager::get_random_connected(RouterContact& router) const
   {
-    std::unordered_map<RouterID, RouterContact> connectedRouters;
-
-    for (const auto& ep : endpoints)
-    {
-      for (const auto& [router_id, conn] : ep.connections)
-      {
-        connectedRouters.emplace(router_id, conn.remote_rc);
-      }
-    }
-
-    const auto sz = connectedRouters.size();
-    if (sz)
-    {
-      auto itr = connectedRouters.begin();
-      if (sz > 1)
-      {
-        std::advance(itr, randint() % sz);
-      }
-
-      router = itr->second;
-
-      return true;
-    }
-
-    return false;
+    return ep.get_random_connection(router);
   }
 
   // TODO: this?  perhaps no longer necessary in the same way?
@@ -189,7 +195,7 @@ namespace llarp
 
   // TODO: this
   util::StatusObject
-  LinkManager::ExtractStatus() const
+  LinkManager::extract_status() const
   {
     return {};
   }
@@ -198,15 +204,17 @@ namespace llarp
   LinkManager::init(RCLookupHandler* rcLookup)
   {
     stopping = false;
-    _rcLookup = rcLookup;
-    _nodedb = router->nodedb();
+    rc_lookup = rcLookup;
+    node_db = router.node_db();
   }
 
   void
   LinkManager::connect_to(RouterID router)
   {
     auto fn = [this](
-                  const RouterID& rid, const RouterContact* const rc, const RCRequestResult res) {
+                  [[maybe_unused]] const RouterID& rid,
+                  const RouterContact* const rc,
+                  const RCRequestResult res) {
       if (res == RCRequestResult::Success)
         connect_to(*rc);
       /* TODO:
@@ -215,26 +223,18 @@ namespace llarp
       */
     };
 
-    _rcLookup->GetRC(router, fn);
+    rc_lookup->get_rc(router, fn);
   }
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
   void
   LinkManager::connect_to(RouterContact rc)
   {
-    // TODO: connection failed callback
     if (have_connection_to(rc.pubkey))
+    {
+      // TODO: connection failed callback
       return;
-
-    // RC shouldn't be valid if this is the case, but may as well sanity check...
-    // TODO: connection failed callback
-    if (rc.addrs.empty())
-      return;
-
-    // TODO: connection failed callback
-    auto* ep = get_compatible_link(rc);
-    if (ep == nullptr)
-      return;
+    }
 
     // TODO: connection established/failed callbacks
     oxen::quic::stream_data_callback stream_cb =
@@ -245,51 +245,41 @@ namespace llarp
     // TODO: once "compatible link" cares about address, actually choose addr to connect to
     //       based on which one is compatible with the link we chose.  For now, just use
     //       the first one.
-    auto& selected = rc.addrs[0];
-    oxen::quic::opt::remote_addr remote{selected.IPString(), selected.port};
+    auto& remote_addr = rc.addr;
+
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
     // TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if
     // so?
-    auto conn_interface = ep->endpoint->connect(remote, stream_cb, tls_creds);
-
-    std::shared_ptr<oxen::quic::Stream> stream = conn_interface->get_new_stream();
-
-    llarp::link::Connection conn;
-    conn.conn = conn_interface;
-    conn.control_stream = stream;
-    conn.remote_rc = rc;
-    conn.inbound = false;
-    conn.remote_is_relay = true;
-
-    ep->connections[rc.pubkey] = std::move(conn);
-    ep->connid_map[conn_interface->scid()] = rc.pubkey;
+    if (auto rv = ep.establish_connection(remote_addr, rc, stream_cb, tls_creds); rv)
+    {
+      log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
+      return;
+    }
+    log::warning(quic_cat, "Connection to {} successfully established!", remote_addr);
   }
 
   void
-  LinkManager::connect_to_random(int numDesired)
+  LinkManager::connect_to_random(int num_conns)
   {
     std::set<RouterID> exclude;
-    auto remainingDesired = numDesired;
+    auto remainder = num_conns;
+
     do
     {
       auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
 
-      RouterContact other;
-      if (const auto maybe = _nodedb->GetRandom(filter))
+      if (auto maybe_other = node_db->GetRandom(filter))
       {
-        other = *maybe;
+        exclude.insert(maybe_other->pubkey);
+
+        if (not rc_lookup->is_session_allowed(maybe_other->pubkey))
+          continue;
+
+        connect_to(*maybe_other);
+        --remainder;
       }
-      else
-        break;
-
-      exclude.insert(other.pubkey);
-      if (not _rcLookup->SessionIsAllowed(other.pubkey))
-        continue;
-
-      Connect(other);
-      --remainingDesired;
-    } while (remainingDesired > 0);
+    } while (remainder > 0);
   }
 
   void

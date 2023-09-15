@@ -3,7 +3,7 @@
 #include "context.hpp"
 #include <llarp/dht/messages/gotintro.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 
 namespace llarp::dht
@@ -20,7 +20,7 @@ namespace llarp::dht
   LocalTagLookup::SendReply()
   {
     auto path =
-        parent->GetRouter()->pathContext().GetByUpstream(parent->OurKey().as_array(), localPath);
+        parent->GetRouter()->path_context().GetByUpstream(parent->OurKey().as_array(), localPath);
     if (!path)
     {
       llarp::LogWarn(

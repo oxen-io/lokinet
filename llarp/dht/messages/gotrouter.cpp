@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/tooling/rc_event.hpp>
 
@@ -80,7 +80,7 @@ namespace llarp::dht
   {
     if (relayed)
     {
-      auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
+      auto pathset = dht.GetRouter()->path_context().GetLocalPathSet(pathID);
       auto copy = std::make_shared<const GotRouterMessage>(*this);
       return pathset && pathset->HandleGotRouterMessage(copy);
     }
@@ -113,15 +113,15 @@ namespace llarp::dht
     // store if valid
     for (const auto& rc : foundRCs)
     {
-      if (not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
+      if (not dht.GetRouter()->rc_lookup_handler().check_rc(rc))
         return false;
       if (txid == 0)  // txid == 0 on gossip
       {
         auto* router = dht.GetRouter();
-        router->NotifyRouterEvent<tooling::RCGossipReceivedEvent>(router->pubkey(), rc);
+        router->notify_router_event<tooling::RCGossipReceivedEvent>(router->pubkey(), rc);
         router->GossipRCIfNeeded(rc);
 
-        auto peerDb = router->peerDb();
+        auto peerDb = router->peer_db();
         if (peerDb)
           peerDb->handleGossipedRC(rc);
       }

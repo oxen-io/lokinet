@@ -1,6 +1,6 @@
 #include "sendcontext.hpp"
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
 #include "endpoint.hpp"
 #include <utility>
@@ -30,7 +30,7 @@ namespace llarp::service
                 std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.path_id), path))
             == thread::QueueReturn::Success)
     {
-      m_Endpoint->Router()->TriggerPump();
+      m_Endpoint->router()->TriggerPump();
       return true;
     }
     return false;
@@ -39,7 +39,7 @@ namespace llarp::service
   void
   SendContext::FlushUpstream()
   {
-    auto r = m_Endpoint->Router();
+    auto r = m_Endpoint->router();
     std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
     auto rttRMS = 0ms;
     while (auto maybe = m_SendQueue.tryPopFront())
@@ -112,7 +112,7 @@ namespace llarp::service
     m->sender = m_Endpoint->GetIdentity().pub;
     m->tag = f->convo_tag;
     m->PutBuffer(payload);
-    m_Endpoint->Router()->QueueWork([f, m, shared, path, this] {
+    m_Endpoint->router()->queue_work([f, m, shared, path, this] {
       if (not f->EncryptAndSign(*m, shared, m_Endpoint->GetIdentity()))
       {
         LogError(m_PathSet->Name(), " failed to sign message");

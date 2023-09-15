@@ -111,7 +111,7 @@ namespace llarp::win32
   }
 
   std::shared_ptr<NetworkInterface>
-  VPNPlatform::ObtainInterface(InterfaceInfo info, AbstractRouter* router)
+  VPNPlatform::ObtainInterface(InterfaceInfo info, Router* router)
   {
     return wintun::make_interface(std::move(info), router);
   }

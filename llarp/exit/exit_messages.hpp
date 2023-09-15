@@ -49,7 +49,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
   };
 
   struct GrantExitMessage final : public AbstractRoutingMessage
@@ -73,7 +73,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
 
     void
     clear() override
@@ -116,7 +116,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
   };
 
   struct UpdateExitVerifyMessage final : public AbstractRoutingMessage
@@ -143,7 +143,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
   };
 
   struct UpdateExitMessage final : public AbstractRoutingMessage
@@ -167,7 +167,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
 
     void
     clear() override
@@ -193,7 +193,7 @@ namespace llarp::routing
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler* h, Router* r) const override;
 
     bool
     Sign(const llarp::SecretKey& sk);

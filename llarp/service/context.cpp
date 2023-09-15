@@ -3,7 +3,7 @@
 #include <llarp/handlers/null.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include "endpoint.hpp"
 #include <stdexcept>
 
@@ -14,29 +14,28 @@ namespace llarp
     static auto logcat = log::Cat("service");
     namespace
     {
-      using EndpointConstructor =
-          std::function<service::Endpoint_ptr(AbstractRouter*, service::Context*)>;
+      using EndpointConstructor = std::function<service::Endpoint_ptr(Router*, service::Context*)>;
       using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
       static EndpointConstructors endpointConstructors = {
           {"tun",
-           [](AbstractRouter* r, service::Context* c) {
+           [](Router* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
           {"android",
-           [](AbstractRouter* r, service::Context* c) {
+           [](Router* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
           {"ios",
-           [](AbstractRouter* r, service::Context* c) {
+           [](Router* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(r, c);
            }},
-          {"null", [](AbstractRouter* r, service::Context* c) {
+          {"null", [](Router* r, service::Context* c) {
              return std::make_shared<handlers::NullEndpoint>(r, c);
            }}};
 
     }  // namespace
-    Context::Context(AbstractRouter* r) : m_Router(r)
+    Context::Context(Router* r) : m_Router(r)
     {}
 
     Context::~Context() = default;

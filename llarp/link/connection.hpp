@@ -9,16 +9,17 @@ namespace llarp::link
 {
   struct Connection
   {
-    Connection(
-        std::shared_ptr<oxen::quic::connection_interface>& c,
-        std::shared_ptr<oxen::quic::Stream>& s);
-
     std::shared_ptr<oxen::quic::connection_interface> conn;
     std::shared_ptr<oxen::quic::Stream> control_stream;
-
     RouterContact remote_rc;
 
-    bool inbound;  // one side of a connection will be responsible for some things, e.g. heartbeat
-    bool remote_is_relay;
+    // one side of a connection will be responsible for some things, e.g. heartbeat
+    bool inbound{false};
+    bool remote_is_relay{true};
+
+    Connection(
+        std::shared_ptr<oxen::quic::connection_interface>& c,
+        std::shared_ptr<oxen::quic::Stream>& s,
+        RouterContact& rc);
   };
 }  // namespace llarp::link

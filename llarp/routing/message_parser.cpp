@@ -106,10 +106,7 @@ namespace llarp::routing
 
   bool
   InboundMessageParser::ParseMessageBuffer(
-      const llarp_buffer_t& buf,
-      AbstractRoutingMessageHandler* h,
-      const PathID_t& from,
-      AbstractRouter* r)
+      const llarp_buffer_t& buf, AbstractRoutingMessageHandler* h, const PathID_t& from, Router* r)
   {
     bool result = false;
     msg = nullptr;

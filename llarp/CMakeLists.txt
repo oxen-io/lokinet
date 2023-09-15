@@ -194,25 +194,14 @@ add_library(lokinet-layer-onion
   messages/relay_status.cpp
 )
 
-# lokinet-layer-wire is a layer 1 analog which splits up
-# layer 2 frames into layer 1 symbols which in the case of iwp are encrypted udp/ip packets
-add_library(lokinet-layer-wire
-  STATIC
-  iwp/iwp.cpp
-  iwp/linklayer.cpp
-  iwp/message_buffer.cpp
-  iwp/session.cpp
-)
 
 # lokinet-layer-link is for our layer 2 analog which splits up layer 2 frames into
 # a series of layer 1 symbols which are then transmitted between lokinet instances
 add_library(lokinet-layer-link
   STATIC
   link/connection.cpp
-  link/endpoint.cpp
   link/link_manager.cpp
   link/session.cpp
-  link/server.cpp
   messages/dht_immediate.cpp
   messages/link_intro.cpp
   messages/link_message_parser.cpp
@@ -454,7 +443,6 @@ link_lokinet_layers(
   lokinet-layer-routing
   lokinet-layer-onion
   lokinet-layer-link
-  lokinet-layer-wire
 )
 
 # set me to OFF to disable old codepath
@@ -481,7 +469,6 @@ target_link_libraries(lokinet-layers INTERFACE
   lokinet-layer-routing
   lokinet-layer-onion
   lokinet-layer-link
-  lokinet-layer-wire
 )
 
 

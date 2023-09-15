@@ -3,7 +3,7 @@
 #include <pybind11/iostream.h>
 
 #include <llarp/tooling/router_hive.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp.hpp>
 
 namespace tooling

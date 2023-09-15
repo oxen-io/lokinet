@@ -67,14 +67,14 @@ namespace llarp
                       public IDataHandler,
                       public EndpointBase
     {
-      Endpoint(AbstractRouter* r, Context* parent);
+      Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void.
       /// really should be ReadyForInboundTraffic() but the diff is HUGE and we need to rewrite this
       /// component anyways.
       bool
-      IsReady() const;
+      is_ready() const;
 
       void
       QueueRecvData(RecvDataEvent ev) override;
@@ -146,8 +146,8 @@ namespace llarp
       const EventLoop_ptr&
       Loop() override;
 
-      AbstractRouter*
-      Router();
+      Router*
+      router();
 
       virtual bool
       LoadKeyFile();
@@ -189,11 +189,11 @@ namespace llarp
       }
 
       bool
-      PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
+      PublishIntroSet(const EncryptedIntroSet& i, Router* r) override;
 
       bool
       PublishIntroSetVia(
-          const EncryptedIntroSet& i, AbstractRouter* r, path::Path_ptr p, uint64_t relayOrder);
+          const EncryptedIntroSet& i, Router* r, path::Path_ptr p, uint64_t relayOrder);
 
       bool
       HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage> msg) override;

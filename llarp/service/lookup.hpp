@@ -69,7 +69,7 @@ namespace llarp
 
       /// build a new request message and send it via a path
       virtual bool
-      SendRequestViaPath(path::Path_ptr p, AbstractRouter* r);
+      SendRequestViaPath(path::Path_ptr p, Router* r);
 
       ILookupHolder* m_parent;
       uint64_t txid;

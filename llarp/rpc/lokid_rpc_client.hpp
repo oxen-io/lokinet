@@ -10,16 +10,14 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 
   namespace rpc
   {
-    using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
-
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
     {
-      explicit LokidRpcClient(LMQ_ptr lmq, std::weak_ptr<AbstractRouter> r);
+      explicit LokidRpcClient(std::shared_ptr<oxenmq::OxenMQ> lmq, std::weak_ptr<Router> r);
 
       /// Connect to lokid async
       void
@@ -87,9 +85,9 @@ namespace llarp
       HandleNewBlock(oxenmq::Message& msg);
 
       std::optional<oxenmq::ConnectionID> m_Connection;
-      LMQ_ptr m_lokiMQ;
+      std::shared_ptr<oxenmq::OxenMQ> m_lokiMQ;
 
-      std::weak_ptr<AbstractRouter> m_Router;
+      std::weak_ptr<Router> m_Router;
       std::atomic<bool> m_UpdatingList;
       std::string m_LastUpdateHash;
 

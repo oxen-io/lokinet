@@ -95,6 +95,6 @@ namespace llarp::service
 
   /// make an IAuthPolicy that reads out of a static file
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files, AuthFileType fileType);
+  MakeFileAuthPolicy(Router*, std::set<fs::path> files, AuthFileType fileType);
 
 }  // namespace llarp::service

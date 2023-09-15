@@ -2,7 +2,7 @@
 #include <oxenc/bt_serialize.h>
 #include <llarp/dht/context.hpp>
 #include "gotname.hpp"
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/routing/path_dht_message.hpp>
@@ -51,9 +51,9 @@ namespace llarp::dht
     auto router = dht.GetRouter();
     if (pathID.IsZero() or not router->IsServiceNode())
       return false;
-    router->RpcClient()->LookupLNSNameHash(
+    router->rpc_client()->LookupLNSNameHash(
         NameHash, [router, pathID = pathID, TxID = TxID](auto maybe) {
-          auto path = router->pathContext().GetPathForTransfer(pathID);
+          auto path = router->path_context().GetPathForTransfer(pathID);
           if (path == nullptr)
             return;
           routing::PathDHTMessage msg;

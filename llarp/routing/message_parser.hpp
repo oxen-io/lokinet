@@ -7,7 +7,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   struct PathID_t;
 
   namespace routing
@@ -25,7 +25,7 @@ namespace llarp
           const llarp_buffer_t& buf,
           AbstractRoutingMessageHandler* handler,
           const PathID_t& from,
-          AbstractRouter* r);
+          Router* r);
 
       bool
       operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);

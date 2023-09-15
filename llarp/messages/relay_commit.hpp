@@ -13,7 +13,7 @@
 namespace llarp
 {
   // forward declare
-  struct AbstractRouter;
+  struct Router;
   namespace path
   {
     struct PathContext;
@@ -67,7 +67,7 @@ namespace llarp
     bt_encode() const override;
 
     bool
-    handle_message(AbstractRouter* router) const override;
+    handle_message(Router* router) const override;
 
     bool
     AsyncDecrypt(llarp::path::PathContext* context) const;

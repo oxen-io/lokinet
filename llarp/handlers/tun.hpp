@@ -24,7 +24,7 @@ namespace llarp
                          public dns::Resolver_Base,
                          public std::enable_shared_from_this<TunEndpoint>
     {
-      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent);
+      TunEndpoint(Router* r, llarp::service::Context* parent);
       ~TunEndpoint() override;
 
       vpn::NetworkInterface*

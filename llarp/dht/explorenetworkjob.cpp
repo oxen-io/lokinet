@@ -2,7 +2,7 @@
 
 #include "context.hpp"
 #include <llarp/dht/messages/findrouter.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 #include <llarp/nodedb.hpp>
 
@@ -33,7 +33,7 @@ namespace llarp
       for (const auto& pk : valuesFound)
       {
         // lookup router
-        if (router and router->nodedb()->Has(pk))
+        if (router and router->node_db()->Has(pk))
           continue;
         parent->LookupRouter(
             pk, [router, pk](const auto& res) { router->HandleDHTLookupForExplore(pk, res); });

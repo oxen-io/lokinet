@@ -21,7 +21,7 @@ namespace llarp
     bt_encode() const override;
 
     bool
-    handle_message(AbstractRouter* router) const override;
+    handle_message(Router* router) const override;
 
     void
     clear() override;
@@ -50,7 +50,7 @@ namespace llarp
     bt_encode() const override;
 
     bool
-    handle_message(AbstractRouter* router) const override;
+    handle_message(Router* router) const override;
 
     void
     clear() override;

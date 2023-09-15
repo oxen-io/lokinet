@@ -43,7 +43,7 @@ namespace llarp::routing
   }
 
   bool
-  PathLatencyMessage::handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
+  PathLatencyMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
   {
     return h && h->HandlePathLatencyMessage(*this, r);
   }

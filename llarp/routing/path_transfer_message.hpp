@@ -28,7 +28,7 @@ namespace llarp::routing
     bt_encode() const override;
 
     bool
-    handle_message(AbstractRoutingMessageHandler*, AbstractRouter* r) const override;
+    handle_message(AbstractRoutingMessageHandler*, Router* r) const override;
 
     void
     clear() override

@@ -100,8 +100,7 @@ namespace llarp
       }
 
       bool
-      HandleLRSM(
-          uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
+      HandleLRSM(uint64_t status, std::array<EncryptedFrame, 8>& frames, Router* r) override;
 
       std::string
       ToString() const;
@@ -117,47 +116,45 @@ namespace llarp
 
       // send routing message when end of path
       bool
-      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r) override;
+      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
 
       // handle routing message when end of path
       bool
-      HandleRoutingMessage(const routing::AbstractRoutingMessage& msg, AbstractRouter* r);
+      HandleRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r);
 
       bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
+      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, Router* r) override;
 
       bool
-      HandlePathConfirmMessage(AbstractRouter* r);
+      HandlePathConfirmMessage(Router* r);
 
       bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, AbstractRouter* r) override;
+      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, Router* r) override;
       bool
-      HandlePathTransferMessage(
-          const routing::PathTransferMessage& msg, AbstractRouter* r) override;
+      HandlePathTransferMessage(const routing::PathTransferMessage& msg, Router* r) override;
       bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r) override;
+      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, Router* r) override;
 
       bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
+      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, Router* r) override;
 
       bool
       HandleUpdateExitVerifyMessage(
-          const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r) override;
+          const routing::UpdateExitVerifyMessage& msg, Router* r) override;
 
       bool
-      HandleTransferTrafficMessage(
-          const routing::TransferTrafficMessage& msg, AbstractRouter* r) override;
+      HandleTransferTrafficMessage(const routing::TransferTrafficMessage& msg, Router* r) override;
 
       bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, AbstractRouter* r) override;
+      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, Router* r) override;
 
       bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r) override;
+      HandleGrantExitMessage(const routing::GrantExitMessage& msg, Router* r) override;
       bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r) override;
+      HandleRejectExitMessage(const routing::RejectExitMessage& msg, Router* r) override;
 
       bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
+      HandleCloseExitMessage(const routing::CloseExitMessage& msg, Router* r) override;
 
       bool
       HandleHiddenServiceFrame(const service::ProtocolFrameMessage& /*frame*/) override
@@ -171,29 +168,29 @@ namespace llarp
       HandleGotIntroMessage(const dht::GotIntroMessage& msg);
 
       bool
-      HandleDHTMessage(const dht::AbstractDHTMessage& msg, AbstractRouter* r) override;
+      HandleDHTMessage(const dht::AbstractDHTMessage& msg, Router* r) override;
 
       void
-      FlushUpstream(AbstractRouter* r) override;
+      FlushUpstream(Router* r) override;
 
       void
-      FlushDownstream(AbstractRouter* r) override;
+      FlushDownstream(Router* r) override;
 
       void
-      QueueDestroySelf(AbstractRouter* r);
+      QueueDestroySelf(Router* r);
 
      protected:
       void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      UpstreamWork(TrafficQueue_t queue, Router* r) override;
 
       void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      DownstreamWork(TrafficQueue_t queue, Router* r) override;
 
       void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
+      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r) override;
 
       void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
+      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) override;
 
      private:
       void

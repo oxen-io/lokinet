@@ -57,7 +57,7 @@ namespace llarp
     }
 
     bool
-    handle_message(AbstractRouter* /*router*/) const override
+    handle_message(Router* /*router*/) const override
     {
       return true;
     }
@@ -84,7 +84,7 @@ namespace llarp
       }
 
       bool
-      handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const override
+      handle_message(AbstractRoutingMessageHandler* h, Router* r) const override
       {
         return h->HandleDataDiscardMessage(*this, r);
       }

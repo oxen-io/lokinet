@@ -2,7 +2,7 @@
 
 #include <llarp/handlers/exit.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/quic/tunnel.hpp>
 
 namespace llarp::exit
@@ -58,7 +58,7 @@ namespace llarp::exit
     if (!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
       return false;
     const RouterID us{m_Parent->GetRouter()->pubkey()};
-    m_CurrentPath = m_Parent->GetRouter()->pathContext().GetByUpstream(us, nextPath);
+    m_CurrentPath = m_Parent->GetRouter()->path_context().GetByUpstream(us, nextPath);
     return true;
   }
 

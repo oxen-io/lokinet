@@ -3,7 +3,7 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/ihophandler.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
@@ -23,14 +23,14 @@ namespace llarp
     std::array<EncryptedFrame, 8> frames;
     uint64_t status = 0;
     HopHandler_ptr hop;
-    AbstractRouter* router;
+    Router* router;
     PathID_t pathid;
 
     LRSM_AsyncHandler(
         std::array<EncryptedFrame, 8> _frames,
         uint64_t _status,
         HopHandler_ptr _hop,
-        AbstractRouter* _router,
+        Router* _router,
         PathID_t pathid)
         : frames{std::move(_frames)}
         , status{_status}
@@ -44,7 +44,8 @@ namespace llarp
     void
     handle()
     {
-      router->NotifyRouterEvent<tooling::PathStatusReceivedEvent>(router->pubkey(), pathid, status);
+      router->notify_router_event<tooling::PathStatusReceivedEvent>(
+          router->pubkey(), pathid, status);
       hop->HandleLRSM(status, frames, router);
     }
 
@@ -52,7 +53,7 @@ namespace llarp
     queue_handle()
     {
       auto func = [self = shared_from_this()] { self->handle(); };
-      router->QueueWork(func);
+      router->queue_work(func);
     }
   };
 
@@ -126,7 +127,7 @@ namespace llarp
   }
 
   bool
-  LR_StatusMessage::handle_message(AbstractRouter* router) const
+  LR_StatusMessage::handle_message(Router* router) const
   {
     llarp::LogDebug("Received LR_Status message from (", session->GetPubKey(), ")");
     if (frames.size() != path::max_len)
@@ -135,7 +136,7 @@ namespace llarp
       return false;
     }
 
-    auto path = router->pathContext().GetByUpstream(session->GetPubKey(), pathid);
+    auto path = router->path_context().GetByUpstream(session->GetPubKey(), pathid);
     if (not path)
     {
       llarp::LogWarn("unhandled LR_Status message: no associated path found pathid=", pathid);
@@ -156,7 +157,7 @@ namespace llarp
   // call this from a worker thread
   bool
   LR_StatusMessage::CreateAndSend(
-      AbstractRouter* router,
+      Router* router,
       std::shared_ptr<path::TransitHop> hop,
       const PathID_t pathid,
       const RouterID nextHop,
@@ -219,7 +220,7 @@ namespace llarp
 
   void
   LR_StatusMessage::QueueSendMessage(
-      AbstractRouter* router,
+      Router* router,
       const RouterID nextHop,
       std::shared_ptr<LR_StatusMessage> msg,
       std::shared_ptr<path::TransitHop> hop)
@@ -231,7 +232,7 @@ namespace llarp
 
   void
   LR_StatusMessage::SendMessage(
-      AbstractRouter* router,
+      Router* router,
       const RouterID nextHop,
       std::shared_ptr<LR_StatusMessage> msg,
       std::shared_ptr<path::TransitHop> hop)

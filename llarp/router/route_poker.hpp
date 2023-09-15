@@ -8,7 +8,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 
   struct RoutePoker : public std::enable_shared_from_this<RoutePoker>
   {
@@ -19,7 +19,7 @@ namespace llarp
     DelRoute(net::ipv4addr_t ip);
 
     void
-    Start(AbstractRouter* router);
+    Start(Router* router);
 
     ~RoutePoker();
 
@@ -62,7 +62,7 @@ namespace llarp
 
     std::optional<net::ipv4addr_t> m_CurrentGateway;
 
-    AbstractRouter* m_Router = nullptr;
+    Router* m_Router = nullptr;
     bool m_up{false};
   };
 }  // namespace llarp

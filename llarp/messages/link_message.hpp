@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 
-#include <llarp/link/session.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/path/path_types.hpp>
@@ -12,7 +11,7 @@
 namespace llarp
 {
   struct AbstractLinkSession;
-  struct AbstractRouter;
+  struct Router;
 
   /// parsed link layer message
   struct AbstractLinkMessage : private AbstractSerializable
@@ -31,7 +30,7 @@ namespace llarp
     bt_encode() const override = 0;
 
     virtual bool
-    handle_message(AbstractRouter* router) const = 0;
+    handle_message(Router* router) const = 0;
 
     virtual bool
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) = 0;

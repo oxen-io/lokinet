@@ -57,14 +57,14 @@ namespace llarp
       DoPathBuildBackoff();
 
      public:
-      AbstractRouter* const m_router;
+      Router* const m_router;
       SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild = 0s;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
       /// construct
-      Builder(AbstractRouter* p_router, size_t numDesiredPaths, size_t numHops);
+      Builder(Router* p_router, size_t numDesiredPaths, size_t numHops);
 
       virtual ~Builder() = default;
 

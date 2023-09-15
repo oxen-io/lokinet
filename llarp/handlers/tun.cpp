@@ -11,7 +11,7 @@
 #include <llarp/dns/dns.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/router/route_poker.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
@@ -49,7 +49,7 @@ namespace llarp
 
       auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
       if (HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
-        Router()->TriggerPump();
+        router()->TriggerPump();
       else
         job->Cancel();
       return true;
@@ -125,7 +125,7 @@ namespace llarp
       virtual ~TunDNS() = default;
 
       explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
-          : dns::Server{ep->Router()->loop(), conf, 0}
+          : dns::Server{ep->router()->loop(), conf, 0}
           , m_QueryBind{conf.m_QueryBind}
           , m_OurIP{ToNet(ep->GetIfAddr())}
           , m_Endpoint{ep}
@@ -145,8 +145,7 @@ namespace llarp
       }
     };
 
-    TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
-        : service::Endpoint{r, parent}
+    TunEndpoint::TunEndpoint(Router* r, service::Context* parent) : service::Endpoint{r, parent}
     {
       m_PacketRouter = std::make_shared<vpn::PacketRouter>(
           [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
@@ -180,7 +179,7 @@ namespace llarp
 
       if (m_DnsConfig.m_raw_dns)
       {
-        if (auto vpn = Router()->GetVPNPlatform())
+        if (auto vpn = router()->vpn_platform())
         {
           // get the first local address we know of
           std::optional<SockAddr> localaddr;
@@ -196,7 +195,7 @@ namespace llarp
           if (platform::is_windows)
           {
             auto dns_io = vpn->create_packet_io(0, localaddr);
-            Router()->loop()->add_ticker([r = Router(), dns_io, handler = m_PacketRouter]() {
+            router()->loop()->add_ticker([r = router(), dns_io, handler = m_PacketRouter]() {
               net::IPPacket pkt = dns_io->ReadNextPacket();
               while (not pkt.empty())
               {
@@ -306,7 +305,7 @@ namespace llarp
             method,
             conf.m_AuthWhitelist,
             conf.m_AuthStaticTokens,
-            Router()->lmq(),
+            router()->lmq(),
             shared_from_this());
         auth->Start();
         m_AuthPolicy = std::move(auth);
@@ -334,7 +333,7 @@ namespace llarp
       m_IfName = conf.m_ifname;
       if (m_IfName.empty())
       {
-        const auto maybe = m_router->Net().FindFreeTun();
+        const auto maybe = m_router->net().FindFreeTun();
         if (not maybe.has_value())
           throw std::runtime_error("cannot find free interface name");
         m_IfName = *maybe;
@@ -343,7 +342,7 @@ namespace llarp
       m_OurRange = conf.m_ifaddr;
       if (!m_OurRange.addr.h)
       {
-        const auto maybe = m_router->Net().FindFreeRange();
+        const auto maybe = m_router->net().FindFreeRange();
         if (not maybe.has_value())
         {
           throw std::runtime_error("cannot find free address range");
@@ -716,7 +715,7 @@ namespace llarp
         if (is_random_snode(msg))
         {
           RouterID random;
-          if (Router()->GetRandomGoodRouter(random))
+          if (router()->GetRandomGoodRouter(random))
           {
             msg.AddCNAMEReply(random.ToString(), 1);
           }
@@ -766,7 +765,7 @@ namespace llarp
         else if (is_random_snode(msg))
         {
           RouterID random;
-          if (Router()->GetRandomGoodRouter(random))
+          if (router()->GetRandomGoodRouter(random))
           {
             msg.AddCNAMEReply(random.ToString(), 1);
             return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
@@ -1024,7 +1023,7 @@ namespace llarp
 
       try
       {
-        m_NetIf = Router()->GetVPNPlatform()->CreateInterface(std::move(info), Router());
+        m_NetIf = router()->vpn_platform()->CreateInterface(std::move(info), router());
       }
       catch (std::exception& ex)
       {
@@ -1040,7 +1039,7 @@ namespace llarp
         pkt_router->HandleIPPacket(std::move(pkt));
       };
 
-      if (not Router()->loop()->add_network_interface(m_NetIf, std::move(handle_packet)))
+      if (not router()->loop()->add_network_interface(m_NetIf, std::move(handle_packet)))
       {
         LogError(Name(), " failed to add network interface");
         return false;
@@ -1051,7 +1050,7 @@ namespace llarp
 
       if constexpr (not llarp::platform::is_apple)
       {
-        if (auto maybe = m_router->Net().GetInterfaceIPv6Address(m_IfName))
+        if (auto maybe = m_router->net().GetInterfaceIPv6Address(m_IfName))
         {
           m_OurIPv6 = *maybe;
           LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
@@ -1134,7 +1133,7 @@ namespace llarp
       if (auto itr = m_ExitIPToExitAddress.find(ip); itr != m_ExitIPToExitAddress.end())
         return itr->second;
 
-      const auto& net = m_router->Net();
+      const auto& net = m_router->net();
       const bool is_bogon = net.IsBogonIP(ip);
       // build up our candidates to choose
 
@@ -1209,7 +1208,7 @@ namespace llarp
         std::function<void(void)> extra_cb;
         if (not HasFlowToService(addr))
         {
-          extra_cb = [poker = Router()->routePoker()]() { poker->Up(); };
+          extra_cb = [poker = router()->routePoker()]() { poker->Up(); };
         }
         pkt.ZeroSourceAddress();
         MarkAddressOutbound(addr);
@@ -1221,7 +1220,7 @@ namespace llarp
                 if (extra_cb)
                   extra_cb();
                 ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
-                Router()->TriggerPump();
+                router()->TriggerPump();
                 return;
               }
               LogWarn("cannot ensure path to exit ", addr, " so we drop some packets");
@@ -1260,7 +1259,7 @@ namespace llarp
         if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
         {
           MarkIPActive(dst);
-          Router()->TriggerPump();
+          router()->TriggerPump();
           return;
         }
       }
@@ -1280,7 +1279,7 @@ namespace llarp
             if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
             {
               MarkIPActive(dst);
-              Router()->TriggerPump();
+              router()->TriggerPump();
             }
             else
             {
@@ -1436,7 +1435,7 @@ namespace llarp
       }
       m_NetworkToUserPktQueue.push(std::move(write));
       // wake up so we ensure that all packets are written to user
-      Router()->TriggerPump();
+      router()->TriggerPump();
       return true;
     }
 

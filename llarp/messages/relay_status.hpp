@@ -13,7 +13,7 @@
 namespace llarp
 {
   // forward declare
-  struct AbstractRouter;
+  struct Router;
   namespace path
   {
     struct PathContext;
@@ -79,14 +79,14 @@ namespace llarp
     bt_encode() const override;
 
     bool
-    handle_message(AbstractRouter* router) const override;
+    handle_message(Router* router) const override;
 
     void
     SetDummyFrames();
 
     static bool
     CreateAndSend(
-        AbstractRouter* router,
+        Router* router,
         std::shared_ptr<path::TransitHop> hop,
         const PathID_t pathid,
         const RouterID nextHop,
@@ -98,14 +98,14 @@ namespace llarp
 
     static void
     QueueSendMessage(
-        AbstractRouter* router,
+        Router* router,
         const RouterID nextHop,
         std::shared_ptr<LR_StatusMessage> msg,
         std::shared_ptr<path::TransitHop> hop);
 
     static void
     SendMessage(
-        AbstractRouter* router,
+        Router* router,
         const RouterID nextHop,
         std::shared_ptr<LR_StatusMessage> msg,
         std::shared_ptr<path::TransitHop> hop);

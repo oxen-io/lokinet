@@ -1,6 +1,6 @@
 #include "path_dht_message.hpp"
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include "handler.hpp"
 
 namespace llarp::routing
@@ -58,7 +58,7 @@ namespace llarp::routing
   /// (e.g. dht::IMessage::HandleMessage()) in-place and is the case where a
   /// client receives a DHT message
   bool
-  PathDHTMessage::handle_message(AbstractRoutingMessageHandler* h, AbstractRouter* r) const
+  PathDHTMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
   {
     // set source as us
     const llarp::dht::Key_t us(r->pubkey());

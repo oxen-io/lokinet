@@ -19,7 +19,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 
   namespace dht
   {
@@ -130,7 +130,7 @@ namespace llarp
           uint64_t relayOrder) = 0;
 
       virtual void
-      Init(const Key_t& us, AbstractRouter* router) = 0;
+      Init(const Key_t& us, Router* router) = 0;
 
       virtual std::optional<llarp::service::EncryptedIntroSet>
       GetIntroSetByLocation(const Key_t& location) const = 0;
@@ -141,7 +141,7 @@ namespace llarp
       virtual void
       ExploreNetworkVia(const Key_t& peer) = 0;
 
-      virtual llarp::AbstractRouter*
+      virtual llarp::Router*
       GetRouter() const = 0;
 
       virtual bool
@@ -204,8 +204,8 @@ namespace llarp
 struct llarp_dht_context
 {
   std::unique_ptr<llarp::dht::AbstractDHTMessageHandler> impl;
-  llarp::AbstractRouter* parent;
-  llarp_dht_context(llarp::AbstractRouter* router);
+  llarp::Router* parent;
+  llarp_dht_context(llarp::Router* router);
 };
 
 #endif

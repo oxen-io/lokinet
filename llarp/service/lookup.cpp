@@ -2,12 +2,12 @@
 
 #include <llarp/path/path.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <utility>
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 
   namespace service
   {
@@ -19,7 +19,7 @@ namespace llarp
     }
 
     bool
-    IServiceLookup::SendRequestViaPath(path::Path_ptr path, AbstractRouter* r)
+    IServiceLookup::SendRequestViaPath(path::Path_ptr path, Router* r)
     {
       auto msg = BuildRequestMessage();
       if (!msg)

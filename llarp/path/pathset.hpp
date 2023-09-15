@@ -156,7 +156,7 @@ namespace llarp
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
-      ExpirePaths(llarp_time_t now, AbstractRouter* router);
+      ExpirePaths(llarp_time_t now, Router* router);
 
       /// get the number of paths in this status
       size_t
@@ -268,7 +268,7 @@ namespace llarp
           std::function<bool(const service::Introduction&)> filter) const;
 
       virtual bool
-      PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)
+      PublishIntroSet(const service::EncryptedIntroSet&, Router*)
       {
         return false;
       }
@@ -299,10 +299,10 @@ namespace llarp
       }
 
       void
-      UpstreamFlush(AbstractRouter* r);
+      UpstreamFlush(Router* r);
 
       void
-      DownstreamFlush(AbstractRouter* r);
+      DownstreamFlush(Router* r);
 
       size_t numDesiredPaths;
 
@@ -310,7 +310,7 @@ namespace llarp
       BuildStats m_BuildStats;
 
       void
-      TickPaths(AbstractRouter* r);
+      TickPaths(Router* r);
 
       using Mtx_t = util::NullMutex;
       using Lock_t = util::NullLock;

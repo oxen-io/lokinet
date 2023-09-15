@@ -1,7 +1,7 @@
 #include "gotname.hpp"
 #include <oxenc/bt_serialize.h>
 #include <llarp/dht/context.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/path/path_context.hpp>
 
 namespace llarp::dht
@@ -60,7 +60,7 @@ namespace llarp::dht
   GotNameMessage::handle_message(
       AbstractDHTMessageHandler& dht, std::vector<std::unique_ptr<AbstractDHTMessage>>&) const
   {
-    auto pathset = dht.GetRouter()->pathContext().GetLocalPathSet(pathID);
+    auto pathset = dht.GetRouter()->path_context().GetLocalPathSet(pathID);
     if (pathset == nullptr)
       return false;
     auto copy = std::make_shared<const GotNameMessage>(*this);

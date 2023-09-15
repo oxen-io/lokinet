@@ -1,6 +1,6 @@
 #include "dht_immediate.hpp"
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/dht/context.hpp>
 
 namespace llarp
@@ -62,7 +62,7 @@ namespace llarp
   }
 
   bool
-  DHTImmediateMessage::handle_message(AbstractRouter* router) const
+  DHTImmediateMessage::handle_message(Router* router) const
   {
     DHTImmediateMessage reply;
     reply.session = session;
