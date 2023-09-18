@@ -22,12 +22,12 @@ namespace llarp
 
   namespace path
   {
-    struct IHopHandler
+    struct AbstractHopHandler
     {
       using TrafficEvent_t = std::pair<std::vector<byte_t>, TunnelNonce>;
       using TrafficQueue_t = std::list<TrafficEvent_t>;
 
-      virtual ~IHopHandler() = default;
+      virtual ~AbstractHopHandler() = default;
 
       virtual PathID_t
       RXID() const = 0;
@@ -90,6 +90,6 @@ namespace llarp
       HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) = 0;
     };
 
-    using HopHandler_ptr = std::shared_ptr<IHopHandler>;
+    using HopHandler_ptr = std::shared_ptr<AbstractHopHandler>;
   }  // namespace path
 }  // namespace llarp

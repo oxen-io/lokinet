@@ -2,7 +2,7 @@
 
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/net/ip_address.hpp>
-#include "ihophandler.hpp"
+#include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
 #include "transit_hop.hpp"

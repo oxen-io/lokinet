@@ -1,6 +1,7 @@
 #pragma once
 
 #include "path_types.hpp"
+#include <llarp/router_contact.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/routing/message.hpp>

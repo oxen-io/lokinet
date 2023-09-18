@@ -70,7 +70,7 @@ namespace llarp::path
   {
     if (not m_UpstreamReplayFilter.Insert(Y))
       return false;
-    return IHopHandler::HandleUpstream(X, Y, r);
+    return AbstractHopHandler::HandleUpstream(X, Y, r);
   }
 
   bool
@@ -78,7 +78,7 @@ namespace llarp::path
   {
     if (not m_DownstreamReplayFilter.Insert(Y))
       return false;
-    return IHopHandler::HandleDownstream(X, Y, r);
+    return AbstractHopHandler::HandleDownstream(X, Y, r);
   }
 
   RouterID
@@ -332,9 +332,8 @@ namespace llarp::path
   util::StatusObject
   PathHopConfig::ExtractStatus() const
   {
-    const auto ip = net::In6ToHUInt(rc.addrs[0].ip);
     util::StatusObject obj{
-        {"ip", ip.ToString()},
+        {"ip", rc.addr.to_string()},
         {"lifetime", to_json(lifetime)},
         {"router", rc.pubkey.ToHex()},
         {"txid", txID.ToHex()},

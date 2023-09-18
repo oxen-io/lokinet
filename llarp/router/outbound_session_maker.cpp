@@ -1,8 +1,7 @@
 #include "outbound_session_maker.hpp"
 
-#include "Router.hpp"
+#include "router.hpp"
 #include <llarp/tooling/peer_stats_event.hpp>
-#include <llarp/link/server.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/nodedb.hpp>
 #include "rc_lookup_handler.hpp"

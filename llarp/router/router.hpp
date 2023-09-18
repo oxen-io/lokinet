@@ -63,7 +63,15 @@ namespace llarp
 
   struct Router : std::enable_shared_from_this<Router>
   {
+    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
+
+    ~Router();
+
    private:
+    std::shared_ptr<RoutePoker> _route_poker;
+    /// bootstrap RCs
+    BootstrapList bootstrap_rc_list;
+    std::chrono::steady_clock::time_point _next_explore_at;
     llarp_time_t last_pump = 0s;
     // transient iwp encryption key
     fs::path transport_keyfile;
@@ -89,26 +97,52 @@ namespace llarp
     bool is_service_node = false;
 
     std::optional<SockAddr> _ourAddress;
-    oxen::quic::Address local;
+    oxen::quic::Address _local_addr;
 
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpn;
     path::PathContext paths;
-    exit::Context _exitContext;
+    exit::Context _exit_context;
     SecretKey _identity;
     SecretKey _encryption;
     std::shared_ptr<dht::AbstractDHTMessageHandler> _dht;
     std::shared_ptr<NodeDB> _node_db;
-    llarp_time_t _startedAt;
+    llarp_time_t _started_at;
     const oxenmq::TaggedThreadID _disk_thread;
     oxen::quic::Network _net;
 
     llarp_time_t _last_stats_report = 0s;
-    llarp_time_t next_decomm_warning = time_now_ms() + 15s;
+    llarp_time_t _next_decomm_warning = time_now_ms() + 15s;
     std::shared_ptr<llarp::KeyManager> _key_manager;
     std::shared_ptr<PeerDb> _peer_db;
     std::shared_ptr<Config> _config;
     uint32_t _path_build_count = 0;
+
+    std::unique_ptr<rpc::RPCServer> m_RPCServer;
+
+    const llarp_time_t _randomStartDelay;
+
+    std::shared_ptr<rpc::LokidRpcClient> _rpc_client;
+
+    oxenmq::address rpc_addr;
+    Profiling _router_profiling;
+    fs::path _profile_file;
+    OutboundMessageHandler _outboundMessageHandler;
+    LinkManager _link_manager{*this};
+    RCLookupHandler _rc_lookup_handler;
+    RCGossiper _rcGossiper;
+
+    /// how often do we resign our RC? milliseconds.
+    // TODO: make configurable
+    llarp_time_t rc_regen_interval = 1h;
+
+    // should we be sending padded messages every interval?
+    bool send_padding = false;
+
+    LinkMessageParser inbound_link_msg_parser;
+    routing::InboundMessageParser inbound_routing_msg_parser;
+
+    service::Context _hidden_service_context;
 
     consensus::reachability_testing router_testing;
 
@@ -208,7 +242,7 @@ namespace llarp
     exit::Context&
     exitContext()
     {
-      return _exitContext;
+      return _exit_context;
     }
 
     const std::shared_ptr<KeyManager>&
@@ -265,7 +299,7 @@ namespace llarp
       return router_contact;
     }
 
-    std::optional<std::variant<nuint32_t, nuint128_t>>
+    oxen::quic::Address
     public_ip() const;
 
     util::StatusObject
@@ -306,18 +340,18 @@ namespace llarp
 
     /// return true if we look like we are a decommissioned service node
     bool
-    appear_decommed() const;
+    appears_decommed() const;
 
     /// return true if we look like we are a registered, fully-staked service node (either active or
     /// decommissioned).  This condition determines when we are allowed to (and attempt to) connect
     /// to other peers when running as a service node.
     bool
-    appear_funded() const;
+    appears_funded() const;
 
     /// return true if we a registered service node; not that this only requires a partial stake,
     /// and does not imply that this service node is *active* or fully funded.
     bool
-    appear_registered() const;
+    appears_registered() const;
 
     /// return true if we look like we are allowed and able to test other routers
     bool
@@ -329,28 +363,16 @@ namespace llarp
     bool
     Sign(Signature& sig, const llarp_buffer_t& buf) const;
 
-    /// how often do we resign our RC? milliseconds.
-    // TODO: make configurable
-    llarp_time_t rcRegenInterval = 1h;
-
-    // should we be sending padded messages every interval?
-    bool sendPadding = false;
-
-    LinkMessageParser inbound_link_msg_parser;
-    routing::InboundMessageParser inbound_routing_msg_parser;
-
-    service::Context _hiddenServiceContext;
-
     service::Context&
     hiddenServiceContext()
     {
-      return _hiddenServiceContext;
+      return _hidden_service_context;
     }
 
     const service::Context&
     hiddenServiceContext() const
     {
-      return _hiddenServiceContext;
+      return _hidden_service_context;
     }
 
     llarp_time_t _lastTick = 0s;
@@ -370,16 +392,11 @@ namespace llarp
       return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
     }
 
-    /// bootstrap RCs
-    BootstrapList bootstrapRCList;
-
     const std::shared_ptr<RoutePoker>&
     routePoker() const
     {
-      return m_RoutePoker;
+      return _route_poker;
     }
-
-    std::shared_ptr<RoutePoker> m_RoutePoker;
 
     void
     TriggerPump();
@@ -387,33 +404,11 @@ namespace llarp
     void
     PumpLL();
 
-    std::unique_ptr<rpc::RPCServer> m_RPCServer;
-
-    const llarp_time_t _randomStartDelay;
-
-    std::shared_ptr<rpc::LokidRpcClient> _rpc_client;
-
-    oxenmq::address lokidRPCAddr;
-    Profiling _router_profiling;
-    fs::path _profilesFile;
-    OutboundMessageHandler _outboundMessageHandler;
-    LinkManager _link_manager{*this};
-    RCLookupHandler _rc_lookup_handler;
-    RCGossiper _rcGossiper;
-
     std::string
     status_line();
 
-    using TimePoint_t = std::chrono::steady_clock::time_point;
-
-    TimePoint_t m_NextExploreAt;
-
     void
     GossipRCIfNeeded(const RouterContact rc);
-
-    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
-
-    ~Router();
 
     bool
     HandleRecvLinkMessageBuffer(AbstractLinkSession* from, const llarp_buffer_t& msg);

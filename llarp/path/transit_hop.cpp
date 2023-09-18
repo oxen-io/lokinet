@@ -27,7 +27,7 @@ namespace llarp::path
   }
 
   TransitHop::TransitHop()
-      : IHopHandler{}
+      : AbstractHopHandler{}
       , m_UpstreamGather{transit_hop_queue_size}
       , m_DownstreamGather{transit_hop_queue_size}
   {

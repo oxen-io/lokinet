@@ -4,6 +4,7 @@
 #include <llarp/util/time.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/tooling/rc_event.hpp>
+#include <llarp/link/link_manager.hpp>
 
 namespace llarp
 {
@@ -16,11 +17,11 @@ namespace llarp
   {}
 
   void
-  RCGossiper::Init(LinkManager* l, const RouterID& ourID, Router* router)
+  RCGossiper::Init(LinkManager* l, const RouterID& ourID, Router* r)
   {
     rid = ourID;
     link_manager = l;
-    router = router;
+    router = r;
   }
 
   bool

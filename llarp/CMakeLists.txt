@@ -183,7 +183,7 @@ add_library(lokinet-layer-flow
 # with onion paths. onion paths anonymize routing layer pdu.
 add_library(lokinet-layer-onion
   STATIC
-  path/ihophandler.cpp
+  path/abstracthophandler.cpp
   path/path_context.cpp
   path/path.cpp
   path/pathbuilder.cpp

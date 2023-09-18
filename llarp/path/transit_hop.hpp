@@ -1,7 +1,7 @@
 #pragma once
 
 #include <llarp/constants/path.hpp>
-#include <llarp/path/ihophandler.hpp>
+#include <llarp/path/abstracthophandler.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/router_id.hpp>
@@ -52,7 +52,7 @@ namespace llarp
           < std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
     }
 
-    struct TransitHop : public IHopHandler,
+    struct TransitHop : public AbstractHopHandler,
                         public routing::AbstractRoutingMessageHandler,
                         std::enable_shared_from_this<TransitHop>
     {

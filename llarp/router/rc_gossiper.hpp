@@ -2,12 +2,13 @@
 
 #include <llarp/util/decaying_hashset.hpp>
 #include "outbound_message_handler.hpp"
-#include <llarp/link/link_manager.hpp>
 
 namespace llarp
 {
   /// The maximum number of peers we will flood a gossiped RC to when propagating an RC
   constexpr size_t MaxGossipPeers = 20;
+  struct LinkManager;
+  struct RouterContact;
 
   struct RCGossiper
   {

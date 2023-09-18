@@ -15,11 +15,8 @@ namespace llarp
     std::shared_ptr<link::Connection>
     Endpoint::get_conn(const RouterContact& rc) const
     {
-      for (const auto& [rid, conn] : conns)
-      {
-        if (conn->remote_rc == rc)
-          return conn;
-      }
+      if (auto itr = conns.find(rc.pubkey); itr != conns.end())
+        return itr->second;
 
       return nullptr;
     }
@@ -79,32 +76,130 @@ namespace llarp
     }
   }  // namespace link
 
+  // TODO: pass connection open callback to endpoint constructor!
   LinkManager::LinkManager(Router& r)
       : router{r}
       , quic{std::make_unique<oxen::quic::Network>()}
       , tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
             {reinterpret_cast<const char*>(router.identity().data()), size_t{32}},
             {reinterpret_cast<const char*>(router.identity().toPublic().data()), size_t{32}})}
-      , ep{quic->endpoint(router.local), *this}
+      , ep{quic->endpoint(
+               router.public_ip(),
+               [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); }),
+           *this}
   {}
 
   // TODO: replace with control/data message sending with libquic
   bool
-  LinkManager::send_to(const RouterID& remote, const llarp_buffer_t&, uint16_t)
+  LinkManager::send_to(const RouterID& remote, bstring data, uint16_t priority)
   {
     if (stopping)
       return false;
 
     if (not have_connection_to(remote))
     {
+      auto pending = PendingMessage(data, priority);
+
+      auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
+      itr->second.push(std::move(pending));
+
+      rc_lookup->get_rc(
+          remote,
+          [this](
+              [[maybe_unused]] const RouterID& rid,
+              const RouterContact* const rc,
+              const RCRequestResult res) {
+            if (res == RCRequestResult::Success)
+              connect_to(*rc);
+            else
+              log::warning(quic_cat, "Do something intelligent here for error handling");
+          });
+
       // TODO: some error callback to report message send failure
+      // or, should we connect and pass a send-msg callback as the connection successful cb?
       return false;
     }
 
     // TODO: send the message
     // TODO: if we keep bool return type, change this accordingly
+
     return false;
   }
+
+  void
+  LinkManager::connect_to(RouterID router)
+  {
+    rc_lookup->get_rc(
+        router,
+        [this](
+            [[maybe_unused]] const RouterID& rid,
+            const RouterContact* const rc,
+            const RCRequestResult res) {
+          if (res == RCRequestResult::Success)
+            connect_to(*rc);
+          /* TODO:
+          else
+            RC lookup failure callback here
+          */
+        });
+  }
+
+  // This function assumes the RC has already had its signature verified and connection is allowed.
+  void
+  LinkManager::connect_to(RouterContact rc)
+  {
+    if (have_connection_to(rc.pubkey))
+    {
+      // TODO: connection failed callback
+      return;
+    }
+
+    // TODO: connection established/failed callbacks
+    oxen::quic::stream_data_callback stream_cb =
+        [this](oxen::quic::Stream& stream, bstring_view packet) {
+          recv_control_message(stream, packet);
+        };
+
+    // TODO: once "compatible link" cares about address, actually choose addr to connect to
+    //       based on which one is compatible with the link we chose.  For now, just use
+    //       the first one.
+    auto& remote_addr = rc.addr;
+
+    // TODO: confirm remote end is using the expected pubkey (RouterID).
+    // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
+    // TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if
+    // so?
+    if (auto rv = ep.establish_connection(remote_addr, rc, stream_cb, tls_creds); rv)
+    {
+      log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
+      return;
+    }
+    log::warning(quic_cat, "Connection to {} successfully established!", remote_addr);
+  }
+
+  void
+  LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
+  {
+    router.loop()->call([]() {});
+
+    const auto& scid = ci.scid();
+    const auto& rid = ep.connid_map[scid];
+
+    if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
+    {
+      auto& que = itr->second;
+
+      while (not que.empty())
+      {
+        auto& m = que.top();
+
+        (m.is_control) ? ep.conns[rid]->control_stream->send(std::move(m.buf))
+                       : ci.send_datagram(std::move(m.buf));
+
+        que.pop();
+      }
+    }
+  };
 
   bool
   LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
@@ -124,10 +219,10 @@ namespace llarp
     if (auto rv = ep.deregister_peer(remote); rv)
     {
       persisting_conns.erase(remote);
-      log::info(logcat, "Peer {} successfully de-registered");
+      log::info(logcat, "Peer {} successfully de-registered", remote);
     }
     else
-      log::warning(logcat, "Peer {} not found for de-registeration!");
+      log::warning(logcat, "Peer {} not found for de-registration!", remote);
   }
 
   void
@@ -206,57 +301,6 @@ namespace llarp
     stopping = false;
     rc_lookup = rcLookup;
     node_db = router.node_db();
-  }
-
-  void
-  LinkManager::connect_to(RouterID router)
-  {
-    auto fn = [this](
-                  [[maybe_unused]] const RouterID& rid,
-                  const RouterContact* const rc,
-                  const RCRequestResult res) {
-      if (res == RCRequestResult::Success)
-        connect_to(*rc);
-      /* TODO:
-      else
-        RC lookup failure callback here
-      */
-    };
-
-    rc_lookup->get_rc(router, fn);
-  }
-
-  // This function assumes the RC has already had its signature verified and connection is allowed.
-  void
-  LinkManager::connect_to(RouterContact rc)
-  {
-    if (have_connection_to(rc.pubkey))
-    {
-      // TODO: connection failed callback
-      return;
-    }
-
-    // TODO: connection established/failed callbacks
-    oxen::quic::stream_data_callback stream_cb =
-        [this](oxen::quic::Stream& stream, bstring_view packet) {
-          recv_control_message(stream, packet);
-        };
-
-    // TODO: once "compatible link" cares about address, actually choose addr to connect to
-    //       based on which one is compatible with the link we chose.  For now, just use
-    //       the first one.
-    auto& remote_addr = rc.addr;
-
-    // TODO: confirm remote end is using the expected pubkey (RouterID).
-    // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    // TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if
-    // so?
-    if (auto rv = ep.establish_connection(remote_addr, rc, stream_cb, tls_creds); rv)
-    {
-      log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
-      return;
-    }
-    log::warning(quic_cat, "Connection to {} successfully established!", remote_addr);
   }
 
   void

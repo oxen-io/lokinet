@@ -17,7 +17,7 @@ namespace llarp
   namespace path
   {
     struct PathContext;
-    struct IHopHandler;
+    struct AbstractHopHandler;
     struct TransitHop;
   }  // namespace path
 

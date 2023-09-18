@@ -18,7 +18,7 @@ namespace llarp
 {
   struct LRSM_AsyncHandler : public std::enable_shared_from_this<LRSM_AsyncHandler>
   {
-    using HopHandler_ptr = std::shared_ptr<llarp::path::IHopHandler>;
+    using HopHandler_ptr = std::shared_ptr<llarp::path::AbstractHopHandler>;
 
     std::array<EncryptedFrame, 8> frames;
     uint64_t status = 0;

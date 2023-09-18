@@ -1,5 +1,7 @@
 #pragma once
 
+#include "connection.hpp"
+
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/peerstats/peer_db.hpp>
@@ -13,6 +15,7 @@
 #include <atomic>
 
 #include <llarp/util/logging.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 namespace
 {
@@ -91,15 +94,65 @@ namespace llarp
   template <>
   constexpr inline bool IsToStringFormattable<SessionResult> = true;
 
+  struct PendingMessage
+  {
+    bstring buf;
+    uint16_t priority;
+    bool is_control{false};
+
+    PendingMessage(bstring b, uint16_t p, bool c = false)
+        : buf{std::move(b)}, priority{p}, is_control{c}
+    {}
+  };
+
+  using MessageQueue = util::ascending_priority_queue<PendingMessage>;
+
   struct Router;
 
   struct LinkManager
   {
+   private:
+    friend struct link::Endpoint;
+
+    std::atomic<bool> stopping;
+    // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
+    mutable util::Mutex m;  // protects persisting_conns
+
+    // sessions to persist -> timestamp to end persist at
+    std::unordered_map<RouterID, llarp_time_t> persisting_conns GUARDED_BY(_mutex);
+
+    // holds any messages we attempt to send while connections are establishing
+    std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
+
+    util::DecayingHashSet<RouterID> clients{path::default_lifetime};
+
+    RCLookupHandler* rc_lookup;
+    std::shared_ptr<NodeDB> node_db;
+
+    oxen::quic::Address addr;
+
+    Router& router;
+
+    // FIXME: Lokinet currently expects to be able to kill all network functionality before
+    // finishing other shutdown things, including destroying this class, and that is all in
+    // Network's destructor, so we need to be able to destroy it before this class.
+    std::unique_ptr<oxen::quic::Network> quic;
+    std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
+    link::Endpoint ep;
+
+    void
+    recv_data_message(oxen::quic::dgram_interface& dgi, bstring dgram);
+    void
+    recv_control_message(oxen::quic::Stream& stream, bstring_view packet);
+
+    void
+    on_conn_open(oxen::quic::connection_interface& ci);
+
    public:
     explicit LinkManager(Router& r);
 
     bool
-    send_to(const RouterID& remote, const llarp_buffer_t& buf, uint16_t priority);
+    send_to(const RouterID& remote, bstring data, uint16_t priority);
 
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
@@ -156,37 +209,6 @@ namespace llarp
     size_t min_connected_routers = 4;
     /// hard upperbound limit on the number of router to router connections
     size_t max_connected_routers = 6;
-
-   private:
-    friend struct link::Endpoint;
-
-    std::atomic<bool> stopping;
-    // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
-    mutable util::Mutex m;  // protects persisting_conns
-
-    // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t> persisting_conns GUARDED_BY(_mutex);
-
-    util::DecayingHashSet<RouterID> clients{path::default_lifetime};
-
-    RCLookupHandler* rc_lookup;
-    std::shared_ptr<NodeDB> node_db;
-
-    oxen::quic::Address addr;
-
-    Router& router;
-
-    // FIXME: Lokinet currently expects to be able to kill all network functionality before
-    // finishing other shutdown things, including destroying this class, and that is all in
-    // Network's destructor, so we need to be able to destroy it before this class.
-    std::unique_ptr<oxen::quic::Network> quic;
-    std::shared_ptr<oxen::quic::GNUTLSCreds> tls_creds;
-    link::Endpoint ep;
-
-    void
-    recv_data_message(oxen::quic::dgram_interface& dgi, bstring dgram);
-    void
-    recv_control_message(oxen::quic::Stream& stream, bstring_view packet);
   };
 
   namespace link
@@ -205,13 +227,13 @@ namespace llarp
 
         auto conn_interface =
             endpoint->connect(remote, link_manager.tls_creds, dgram_cb, std::forward<Opt>(opts)...);
-        auto control_stream = conn_interface->get_new_stream();
 
-        // TOFIX: get a real RouterID after refactoring RouterID
-        RouterID rid;
-        auto [itr, b] = conns.emplace(rid);
+        // emplace immediately for connection open callback to find scid
+        connid_map.emplace(conn_interface->scid(), rc.pubkey);
+        auto [itr, b] = conns.emplace(rc.pubkey);
+
+        auto control_stream = conn_interface->get_new_stream();
         itr->second = std::make_shared<link::Connection>(conn_interface, rc, control_stream);
-        connid_map.emplace(conn_interface->scid(), rid);
 
         return true;
       }
@@ -232,6 +254,7 @@ namespace llarp
 
 - Combine llarp/link/server.hpp::ILinkLayer into llarp/link/endpoint.hpp::Endpoint
   - must maintain metadata storage, callbacks, etc
+
 - If: one endpoint for ipv4 and ipv6
   - Then: can potentially combine:
     - llarp/link/endpoint.hpp
@@ -241,5 +264,13 @@ namespace llarp
 
   -> Yields mega-combo endpoint managing object?
     - Can avoid "kitchen sink" by greatly reducing complexity of implementation
+
+
+  llarp/router/outbound_message_handler.hpp
+    - pendingsessionmessagequeue
+      - establish queue of messages to be sent on a connection we are creating
+      - upon creation, send these messages in the connection established callback
+    - if connection times out, flush queue
+    - TOCHECK: is priority used at all??
 
 */

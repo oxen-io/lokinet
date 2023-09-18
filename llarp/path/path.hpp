@@ -4,7 +4,7 @@
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/messages/relay.hpp>
-#include "ihophandler.hpp"
+#include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathbuilder.hpp"
 #include "pathset.hpp"
@@ -69,7 +69,7 @@ namespace llarp
     }
 
     /// A path we made
-    struct Path final : public IHopHandler,
+    struct Path final : public AbstractHopHandler,
                         public routing::AbstractRoutingMessageHandler,
                         public std::enable_shared_from_this<Path>
     {
