@@ -19,17 +19,17 @@ namespace llarp::apple
     std::shared_ptr<vpn::NetworkInterface>
     ObtainInterface(vpn::InterfaceInfo, Router*) override;
 
-    vpn::IRouteManager&
+    vpn::AbstractRouteManager&
     RouteManager() override
     {
-      return m_RouteManager;
+      return _route_manager;
     }
 
    private:
-    Context& m_Context;
-    apple::RouteManager m_RouteManager;
-    VPNInterface::packet_write_callback m_PacketWriter;
-    VPNInterface::on_readable_callback m_OnReadable;
+    Context& _context;
+    apple::RouteManager _route_manager;
+    VPNInterface::packet_write_callback _packet_writer;
+    VPNInterface::on_readable_callback _read_cb;
   };
 
 }  // namespace llarp::apple

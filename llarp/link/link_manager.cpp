@@ -34,12 +34,20 @@ namespace llarp
     }
 
     bool
-    Endpoint::deregister_peer(RouterID remote)
+    Endpoint::deregister_peer(RouterID _rid)
     {
-      if (auto itr = conns.find(remote); itr != conns.end())
+      if (auto itr = conns.find(_rid); itr != conns.end())
       {
-        itr->second->conn->close_connection();
-        conns.erase(itr);
+        auto& c = itr->second;
+        auto& _scid = c->conn->scid();
+
+        link_manager.router.loop()->call([this, scid = _scid, rid = _rid]() {
+          endpoint->close_connection(scid);
+
+          conns.erase(rid);
+          connid_map.erase(scid);
+        });
+
         return true;
       }
 
@@ -74,7 +82,41 @@ namespace llarp
       log::warning(quic_cat, "Error: failed to fetch random connection");
       return false;
     }
+
+    void
+    Endpoint::for_each_connection(std::function<void(link::Connection&)> func)
+    {
+      for (const auto& [rid, conn] : conns)
+        func(*conn);
+    }
+
+    void
+    Endpoint::close_connection(RouterID _rid)
+    {
+      if (auto itr = conns.find(_rid); itr != conns.end())
+      {
+        auto& c = itr->second;
+        auto& _scid = c->conn->scid();
+
+        link_manager.router.loop()->call([this, scid = _scid, rid = _rid]() {
+          endpoint->close_connection(scid);
+
+          conns.erase(rid);
+          connid_map.erase(scid);
+        });
+      }
+    }
+
   }  // namespace link
+
+  void
+  LinkManager::for_each_connection(std::function<void(link::Connection&)> func)
+  {
+    if (is_stopping)
+      return;
+
+    return ep.for_each_connection(func);
+  }
 
   // TODO: pass connection open callback to endpoint constructor!
   LinkManager::LinkManager(Router& r)
@@ -85,7 +127,10 @@ namespace llarp
             {reinterpret_cast<const char*>(router.identity().toPublic().data()), size_t{32}})}
       , ep{quic->endpoint(
                router.public_ip(),
-               [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); }),
+               [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
+               [this](oxen::quic::connection_interface& ci, uint64_t ec) {
+                 return on_conn_closed(ci, ec);
+               }),
            *this}
   {}
 
@@ -93,7 +138,7 @@ namespace llarp
   bool
   LinkManager::send_to(const RouterID& remote, bstring data, uint16_t priority)
   {
-    if (stopping)
+    if (is_stopping)
       return false;
 
     if (not have_connection_to(remote))
@@ -127,10 +172,16 @@ namespace llarp
   }
 
   void
-  LinkManager::connect_to(RouterID router)
+  LinkManager::close_connection(RouterID rid)
+  {
+    return ep.close_connection(rid);
+  }
+
+  void
+  LinkManager::connect_to(RouterID rid)
   {
     rc_lookup->get_rc(
-        router,
+        rid,
         [this](
             [[maybe_unused]] const RouterID& rid,
             const RouterContact* const rc,
@@ -177,29 +228,55 @@ namespace llarp
     log::warning(quic_cat, "Connection to {} successfully established!", remote_addr);
   }
 
+  // TODO: should we add routes here now that Router::SessionOpen is gone?
   void
   LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
   {
-    router.loop()->call([]() {});
+    router.loop()->call([this, &conn_interface = ci]() {
+      const auto& scid = conn_interface.scid();
+      const auto& rid = ep.connid_map[scid];
 
-    const auto& scid = ci.scid();
-    const auto& rid = ep.connid_map[scid];
-
-    if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
-    {
-      auto& que = itr->second;
-
-      while (not que.empty())
+      if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
       {
-        auto& m = que.top();
+        auto& que = itr->second;
 
-        (m.is_control) ? ep.conns[rid]->control_stream->send(std::move(m.buf))
-                       : ci.send_datagram(std::move(m.buf));
+        while (not que.empty())
+        {
+          auto& m = que.top();
 
-        que.pop();
+          (m.is_control) ? ep.conns[rid]->control_stream->send(std::move(m.buf))
+                         : conn_interface.send_datagram(std::move(m.buf));
+
+          que.pop();
+        }
       }
-    }
+    });
   };
+
+  void
+  LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
+  {
+    router.loop()->call([this, &conn_interface = ci, error_code = ec]() {
+      const auto& scid = conn_interface.scid();
+
+      log::debug(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
+
+      if (const auto& c_itr = ep.connid_map.find(scid); c_itr != ep.connid_map.end())
+      {
+        const auto& rid = c_itr->second;
+
+        if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
+          pending_conn_msg_queue.erase(p_itr);
+
+        if (auto m_itr = ep.conns.find(rid); m_itr != ep.conns.end())
+          ep.conns.erase(m_itr);
+
+        ep.connid_map.erase(c_itr);
+
+        log::debug(quic_cat, "Quic connection CID:{} purged successfully", scid);
+      }
+    });
+  }
 
   bool
   LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
@@ -228,7 +305,7 @@ namespace llarp
   void
   LinkManager::stop()
   {
-    if (stopping)
+    if (is_stopping)
     {
       return;
     }
@@ -236,7 +313,7 @@ namespace llarp
     util::Lock l(m);
 
     LogInfo("stopping links");
-    stopping = true;
+    is_stopping = true;
 
     quic.reset();
   }
@@ -244,7 +321,7 @@ namespace llarp
   void
   LinkManager::set_conn_persist(const RouterID& remote, llarp_time_t until)
   {
-    if (stopping)
+    if (is_stopping)
       return;
 
     util::Lock l(m);
@@ -279,7 +356,7 @@ namespace llarp
   void
   LinkManager::check_persisting_conns(llarp_time_t)
   {
-    if (stopping)
+    if (is_stopping)
       return;
   }
 
@@ -298,7 +375,7 @@ namespace llarp
   void
   LinkManager::init(RCLookupHandler* rcLookup)
   {
-    stopping = false;
+    is_stopping = false;
     rc_lookup = rcLookup;
     node_db = router.node_db();
   }

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "rc_gossiper.hpp"
+#include "rc_lookup_handler.hpp"
+#include "route_poker.hpp"
+
 #include <llarp/bootstrap.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
@@ -10,7 +14,6 @@
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/link/link_manager.hpp>
-#include <llarp/messages/link_message_parser.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/peerstats/peer_db.hpp>
@@ -18,10 +21,6 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/tooling/router_event.hpp>
-#include "outbound_message_handler.hpp"
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
-#include "route_poker.hpp"
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message_parser.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
@@ -46,7 +45,10 @@
 
 #include <oxenmq/address.h>
 
-namespace libquic = oxen::quic;
+/*
+  TONUKE:
+    - hidden_service_context
+*/
 
 namespace llarp
 {
@@ -54,11 +56,11 @@ namespace llarp
   class RouteManager final /* : public Router */
   {
    public:
-    std::shared_ptr<libquic::connection_interface>
+    std::shared_ptr<oxen::quic::connection_interface>
     get_or_connect();
 
    private:
-    std::shared_ptr<libquic::Endpoint> ep;
+    std::shared_ptr<oxen::quic::Endpoint> ep;
   };
 
   struct Router : std::enable_shared_from_this<Router>
@@ -139,9 +141,6 @@ namespace llarp
     // should we be sending padded messages every interval?
     bool send_padding = false;
 
-    LinkMessageParser inbound_link_msg_parser;
-    routing::InboundMessageParser inbound_routing_msg_parser;
-
     service::Context _hidden_service_context;
 
     consensus::reachability_testing router_testing;
@@ -166,7 +165,7 @@ namespace llarp
 
    protected:
     void
-    handle_router_event(tooling::RouterEventPtr event) const;
+    handle_router_event(std::unique_ptr<tooling::RouterEvent> event) const;
 
     virtual bool
     disableGossipingRC_TestingOnly()
@@ -175,6 +174,9 @@ namespace llarp
     };
 
    public:
+    void
+    for_each_connection(std::function<void(link::Connection&)> func);
+
     std::shared_ptr<Config>
     config() const
     {
@@ -364,36 +366,36 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const;
 
     service::Context&
-    hiddenServiceContext()
+    hidden_service_context()
     {
       return _hidden_service_context;
     }
 
     const service::Context&
-    hiddenServiceContext() const
+    hidden_service_context() const
     {
       return _hidden_service_context;
     }
 
-    llarp_time_t _lastTick = 0s;
+    llarp_time_t _last_tick = 0s;
 
-    std::function<void(void)> _onDown;
+    std::function<void(void)> _router_close_cb;
 
     void
-    SetDownHook(std::function<void(void)> hook)
+    set_router_close_cb(std::function<void(void)> hook)
     {
-      _onDown = hook;
+      _router_close_cb = hook;
     }
 
     bool
     LooksAlive() const
     {
       const llarp_time_t now = Now();
-      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+      return now <= _last_tick || (now - _last_tick) <= llarp_time_t{30000};
     }
 
     const std::shared_ptr<RoutePoker>&
-    routePoker() const
+    route_poker() const
     {
       return _route_poker;
     }
@@ -410,8 +412,9 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc);
 
+    // TODO: this is not used anywhere?
     bool
-    HandleRecvLinkMessageBuffer(AbstractLinkSession* from, const llarp_buffer_t& msg);
+    recv_link_message_buffer(std::shared_ptr<link::Connection> conn, bstring_view msg);
 
     void
     InitInboundLinks();
@@ -513,13 +516,6 @@ namespace llarp
     SendToOrQueue(
         const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler);
 
-    void
-    ForEachPeer(
-        std::function<void(const AbstractLinkSession*, bool)> visit, bool randomize = false) const;
-
-    void
-    ForEachPeer(std::function<void(AbstractLinkSession*)> visit);
-
     bool IsBootstrapNode(RouterID) const;
 
     /// check if newRc matches oldRC and update local rc for this remote contact
@@ -528,18 +524,6 @@ namespace llarp
     /// returns false otherwise
     bool
     CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC);
-
-    /// called by link when a remote session has no more sessions open
-    void
-    SessionClosed(RouterID remote);
-
-    /// called by link when an unestablished connection times out
-    void
-    ConnectionTimedOut(AbstractLinkSession* session);
-
-    /// called by link when session is fully established
-    bool
-    ConnectionEstablished(AbstractLinkSession* session, bool inbound);
 
     /// call internal router ticker
     void

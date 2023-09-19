@@ -9,6 +9,7 @@
 #include <llarp/util/compare_ptr.hpp>
 
 #include <external/oxen-libquic/include/quic.hpp>
+#include <quic.hpp>
 
 #include <unordered_map>
 #include <set>
@@ -66,6 +67,12 @@ namespace llarp
       bool
       establish_connection(const oxen::quic::Address& remote, RouterContact& rc, Opt&&... opts);
 
+      void
+      for_each_connection(std::function<void(link::Connection&)> func);
+
+      void
+      close_connection(RouterID rid);
+
      private:
     };
   }  // namespace link
@@ -114,7 +121,7 @@ namespace llarp
    private:
     friend struct link::Endpoint;
 
-    std::atomic<bool> stopping;
+    std::atomic<bool> is_stopping;
     // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
     mutable util::Mutex m;  // protects persisting_conns
 
@@ -148,8 +155,23 @@ namespace llarp
     void
     on_conn_open(oxen::quic::connection_interface& ci);
 
+    void
+    on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec);
+
    public:
     explicit LinkManager(Router& r);
+
+    const link::Endpoint&
+    endpoint()
+    {
+      return ep;
+    }
+
+    const oxen::quic::Address&
+    local()
+    {
+      return addr;
+    }
 
     bool
     send_to(const RouterID& remote, bstring data, uint16_t priority);
@@ -168,6 +190,9 @@ namespace llarp
 
     void
     connect_to(RouterContact rc);
+
+    void
+    close_connection(RouterID rid);
 
     void
     stop();
@@ -195,6 +220,9 @@ namespace llarp
 
     void
     init(RCLookupHandler* rcLookup);
+
+    void
+    for_each_connection(std::function<void(link::Connection&)> func);
 
     // Attempts to connect to a number of random routers.
     //

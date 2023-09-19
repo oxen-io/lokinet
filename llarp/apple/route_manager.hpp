@@ -6,7 +6,7 @@
 
 namespace llarp::apple
 {
-  class RouteManager final : public llarp::vpn::IRouteManager
+  class RouteManager final : public llarp::vpn::AbstractRouteManager
   {
    public:
     RouteManager(llarp::Context& ctx, llarp_route_callbacks rcs, void* callback_context)
@@ -16,33 +16,31 @@ namespace llarp::apple
     /// These are called for poking route holes, but we don't have to do that at all on macos
     /// because the appex isn't subject to its own rules.
     void
-    AddRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
+    add_route(oxen::quic::Address /*ip*/, oxen::quic::Address /*gateway*/) override
     {}
 
     void
-    DelRoute(net::ipaddr_t /*ip*/, net::ipaddr_t /*gateway*/) override
+    delete_route(oxen::quic::Address /*ip*/, oxen::quic::Address /*gateway*/) override
     {}
 
     void
-    AddDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
+    add_default_route_via_interface(vpn::NetworkInterface& vpn) override;
 
     void
-    DelDefaultRouteViaInterface(vpn::NetworkInterface& vpn) override;
+    delete_default_route_via_interface(vpn::NetworkInterface& vpn) override;
 
     void
-    AddRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
+    add_route_via_interface(vpn::NetworkInterface& vpn, IPRange range) override;
 
     void
-    DelRouteViaInterface(vpn::NetworkInterface& vpn, IPRange range) override;
+    delete_route_via_interface(vpn::NetworkInterface& vpn, IPRange range) override;
 
-    std::vector<net::ipaddr_t>
-    GetGatewaysNotOnInterface(vpn::NetworkInterface& /*vpn*/) override
+    std::vector<oxen::quic::Address>
+    get_non_interface_gateways(vpn::NetworkInterface& /*vpn*/) override
     {
       // We can't get this on mac from our sandbox, but we don't actually need it because we
       // ignore the gateway for AddRoute/DelRoute anyway, so just return a zero IP.
-      std::vector<net::ipaddr_t> ret;
-      ret.emplace_back(net::ipv4addr_t{});
-      return ret;
+      return std::vector<oxen::quic::Address>{};
     }
 
    private:

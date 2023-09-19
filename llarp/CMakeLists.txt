@@ -103,7 +103,6 @@ endif()
 add_library(lokinet-nodedb
   STATIC
   bootstrap.cpp
-  net/address_info.cpp
   net/exit_info.cpp
   net/traffic_policy.cpp
   nodedb.cpp
@@ -201,10 +200,8 @@ add_library(lokinet-layer-link
   STATIC
   link/connection.cpp
   link/link_manager.cpp
-  link/session.cpp
   messages/dht_immediate.cpp
   messages/link_intro.cpp
-  messages/link_message_parser.cpp
 )
 
 # lokinet-plainquic is for holding the tunneled plainquic code, not quic wire protocol code
@@ -333,7 +330,6 @@ endif()
 # interface libraries for internal linkage
 add_library(lokinet-layers INTERFACE)
 add_library(lokinet-amalgum INTERFACE)
-
 
 # helper function to link a library to lokinet-base, enable lto, add to lokinet-amalgum and then link to other libs
 function(lokinet_link_lib libname)

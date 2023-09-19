@@ -10,17 +10,20 @@
 
 namespace llarp
 {
-  struct AbstractLinkSession;
+  namespace link
+  {
+    struct Connection;
+  }
+
   struct Router;
 
   /// parsed link layer message
   struct AbstractLinkMessage : private AbstractSerializable
   {
-    /// who did this message come from or is going to
-    AbstractLinkSession* session = nullptr;
-    uint64_t version = llarp::constants::proto_version;
-
+    std::shared_ptr<link::Connection> conn;
     PathID_t pathid;
+
+    uint64_t version = llarp::constants::proto_version;
 
     AbstractLinkMessage() = default;
 

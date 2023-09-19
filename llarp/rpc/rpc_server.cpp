@@ -84,7 +84,7 @@ namespace llarp::rpc
       return r.exitContext().GetExitEndpoint(name);
     }
 
-    return r.hiddenServiceContext().GetEndpointByName(name);
+    return r.hidden_service_context().GetEndpointByName(name);
   }
 
   template <typename RPC>
@@ -360,7 +360,7 @@ namespace llarp::rpc
     // steal replier from exit RPC endpoint
     exit_request.replier.emplace(mapexit.move());
 
-    m_Router.hiddenServiceContext().GetDefault()->map_exit(
+    m_Router.hidden_service_context().GetDefault()->map_exit(
         mapexit.request.address,
         mapexit.request.token,
         mapexit.request.ip_range,
@@ -375,13 +375,13 @@ namespace llarp::rpc
   void
   RPCServer::invoke(ListExits& listexits)
   {
-    if (not m_Router.hiddenServiceContext().hasEndpoints())
+    if (not m_Router.hidden_service_context().hasEndpoints())
     {
       SetJSONError("No mapped endpoints found", listexits.response);
       return;
     }
 
-    auto status = m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["exitMap"];
+    auto status = m_Router.hidden_service_context().GetDefault()->ExtractStatus()["exitMap"];
 
     SetJSONResponse((status.empty()) ? "No exits" : status, listexits.response);
   }
@@ -413,7 +413,7 @@ namespace llarp::rpc
   {
     MapExit map_request;
     UnmapExit unmap_request;
-    auto endpoint = m_Router.hiddenServiceContext().GetDefault();
+    auto endpoint = m_Router.hidden_service_context().GetDefault();
     auto current_exits = endpoint->ExtractStatus()["exitMap"];
 
     if (current_exits.empty())
