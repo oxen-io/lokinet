@@ -8,7 +8,6 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/compare_ptr.hpp>
 
-#include <external/oxen-libquic/include/quic.hpp>
 #include <quic.hpp>
 
 #include <unordered_map>
@@ -45,8 +44,11 @@ namespace llarp
       std::unordered_map<RouterID, std::shared_ptr<link::Connection>> conns;
       std::unordered_map<oxen::quic::ConnectionID, RouterID> connid_map;
 
+      // TODO: see which of these is actually useful and delete the other
       std::shared_ptr<link::Connection>
       get_conn(const RouterContact&) const;
+      std::shared_ptr<link::Connection>
+      get_conn(const RouterID&) const;
 
       bool
       have_conn(const RouterID& remote, bool client_only) const;
@@ -103,23 +105,61 @@ namespace llarp
 
   struct PendingMessage
   {
-    bstring buf;
-    uint16_t priority;
+    std::string body;
+    RouterID rid;
     bool is_control{false};
 
-    PendingMessage(bstring b, uint16_t p, bool c = false)
-        : buf{std::move(b)}, priority{p}, is_control{c}
+    PendingMessage(std::string b, bool control = false) : body{std::move(b)}, is_control{control}
     {}
   };
 
-  using MessageQueue = util::ascending_priority_queue<PendingMessage>;
+  struct PendingDataMessage : PendingMessage
+  {
+    PendingDataMessage(std::string b) : PendingMessage(b)
+    {}
+  };
+
+  struct PendingControlMessage : PendingMessage
+  {
+    std::string endpoint;
+    bool is_request{false};  // true if request, false if command
+
+    PendingControlMessage(std::string b, std::string e, bool request = true)
+        : PendingMessage(b, true), endpoint{std::move(e)}, is_request{request}
+    {}
+  };
+
+  using MessageQueue = std::deque<PendingMessage>;
 
   struct Router;
 
   struct LinkManager
   {
+   public:
+    explicit LinkManager(Router& r);
+
+    // set is_request to true for RPC requests, false for RPC commands
+    bool
+    send_control_message(
+        const RouterID& remote, std::string endpoint, std::string body, bool is_request = true);
+
+    bool
+    send_data_message(const RouterID& remote, std::string data);
+
    private:
     friend struct link::Endpoint;
+
+    const std::unordered_map<
+        std::string,
+        std::function<std::optional<std::string>(std::optional<std::string>)>>
+        rpc_map{
+            /** TODO:
+                key: RPC endpoint name
+                value: function that takes command body as parameter
+
+                returns: commands will return std::nullopt while requests will return a response
+            */
+        };
 
     std::atomic<bool> is_stopping;
     // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
@@ -149,8 +189,9 @@ namespace llarp
 
     void
     recv_data_message(oxen::quic::dgram_interface& dgi, bstring dgram);
+
     void
-    recv_control_message(oxen::quic::Stream& stream, bstring_view packet);
+    recv_control_message(oxen::quic::message msg);
 
     void
     on_conn_open(oxen::quic::connection_interface& ci);
@@ -158,9 +199,10 @@ namespace llarp
     void
     on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec);
 
-   public:
-    explicit LinkManager(Router& r);
+    std::shared_ptr<oxen::quic::Endpoint>
+    startup_endpoint();
 
+   public:
     const link::Endpoint&
     endpoint()
     {
@@ -172,9 +214,6 @@ namespace llarp
     {
       return addr;
     }
-
-    bool
-    send_to(const RouterID& remote, bstring data, uint16_t priority);
 
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
@@ -248,19 +287,15 @@ namespace llarp
     {
       try
       {
-        oxen::quic::dgram_data_callback dgram_cb =
-            [this](oxen::quic::dgram_interface& dgi, bstring dgram) {
-              link_manager.recv_data_message(dgi, dgram);
-            };
-
         auto conn_interface =
-            endpoint->connect(remote, link_manager.tls_creds, dgram_cb, std::forward<Opt>(opts)...);
+            endpoint->connect(remote, link_manager.tls_creds, std::forward<Opt>(opts)...);
 
         // emplace immediately for connection open callback to find scid
         connid_map.emplace(conn_interface->scid(), rc.pubkey);
         auto [itr, b] = conns.emplace(rc.pubkey);
 
-        auto control_stream = conn_interface->get_new_stream();
+        auto control_stream =
+            conn_interface->template get_new_stream<oxen::quic::BTRequestStream>();
         itr->second = std::make_shared<link::Connection>(conn_interface, rc, control_stream);
 
         return true;
@@ -292,7 +327,6 @@ namespace llarp
 
   -> Yields mega-combo endpoint managing object?
     - Can avoid "kitchen sink" by greatly reducing complexity of implementation
-
 
   llarp/router/outbound_message_handler.hpp
     - pendingsessionmessagequeue

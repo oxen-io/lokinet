@@ -201,11 +201,10 @@ namespace llarp
         , context(ctx)
         , hop(std::make_shared<Hop>())
         , fromAddr(
-              commit->session->GetRemoteRC().IsPublicRouter()
-                  ? std::optional<IpAddress>{}
-                  : commit->session->GetRemoteEndpoint())
+              commit->conn->remote_rc.IsPublicRouter() ? std::optional<oxen::quic::Address>{}
+                                                       : commit->conn->remote_rc.addr)
     {
-      hop->info.downstream = commit->session->GetPubKey();
+      hop->info.downstream = commit->conn->remote_rc.pubkey;
     }
 
     ~LRCMFrameDecrypt() = default;
@@ -434,8 +433,8 @@ namespace llarp
       // TODO: check if we really want to accept it
       self->hop->started = now;
 
-      self->context->router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
-          self->context->router()->pubkey(), self->hop);
+      // self->context->router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
+      //     self->context->router()->pubkey(), self->hop);
 
       size_t sz = self->frames[0].size();
       // shift
@@ -487,7 +486,7 @@ namespace llarp
     // decrypt frames async
     frameDecrypt->decrypter->AsyncDecrypt(
         frameDecrypt->frames[0], frameDecrypt, [r = context->router()](auto func) {
-          r->QueueWork(std::move(func));
+          r->loop()->call([&]() { func(); });
         });
     return true;
   }

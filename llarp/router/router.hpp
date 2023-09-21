@@ -210,7 +210,11 @@ namespace llarp
       return _dht;
     }
 
-    // TOFIX: THIS
+    /** TOFIX: this
+          - refactor path types (path_context, pathset) to use unified ID type, not PathID_t
+          - refactor all callers to use new implementation of remove_path
+
+    */
     OutboundMessageHandler&
     outboundMessageHandler()
     {
@@ -411,10 +415,6 @@ namespace llarp
 
     void
     GossipRCIfNeeded(const RouterContact rc);
-
-    // TODO: this is not used anywhere?
-    bool
-    recv_link_message_buffer(std::shared_ptr<link::Connection> conn, bstring_view msg);
 
     void
     InitInboundLinks();

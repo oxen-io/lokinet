@@ -2,7 +2,6 @@
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/path/ihophandler.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
@@ -129,14 +128,14 @@ namespace llarp
   bool
   LR_StatusMessage::handle_message(Router* router) const
   {
-    llarp::LogDebug("Received LR_Status message from (", session->GetPubKey(), ")");
+    llarp::LogDebug("Received LR_Status message from (", conn->remote_rc.pubkey, ")");
     if (frames.size() != path::max_len)
     {
       llarp::LogError("LRSM invalid number of records, ", frames.size(), "!=", path::max_len);
       return false;
     }
 
-    auto path = router->path_context().GetByUpstream(session->GetPubKey(), pathid);
+    auto path = router->path_context().GetByUpstream(conn->remote_rc.pubkey, pathid);
     if (not path)
     {
       llarp::LogWarn("unhandled LR_Status message: no associated path found pathid=", pathid);

@@ -84,7 +84,6 @@ namespace llarp
     paths.PumpDownstream();
     paths.PumpUpstream();
     _hidden_service_context.Pump();
-    // _outboundMessageHandler.Pump();
     llarp::LogTrace("Router::PumpLL() end");
   }
 
@@ -201,22 +200,6 @@ namespace llarp
       stats["lokiAddress"] = services["default"]["identity"];
     }
     return stats;
-  }
-
-  // TODO: libquic change
-  bool
-  Router::recv_link_message_buffer(std::shared_ptr<link::Connection> conn, bstring_view buf)
-  {
-    if (is_stopping)
-      return true;
-
-    if (!conn)
-    {
-      log::warning(quic_cat, "No connection to pass link message buffer to!");
-      return false;
-    }
-
-    return inbound_link_msg_parser.ProcessFrom(session, buf);
   }
 
   void
@@ -509,9 +492,7 @@ namespace llarp
   bool
   Router::ParseRoutingMessageBuffer(
       const llarp_buffer_t& buf, routing::AbstractRoutingMessageHandler* h, const PathID_t& rxid)
-  {
-    return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
-  }
+  {}
 
   bool
   Router::appears_decommed() const

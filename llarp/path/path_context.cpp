@@ -10,7 +10,7 @@ namespace llarp::path
   static constexpr auto DefaultPathBuildLimit = 500ms;
 
   PathContext::PathContext(Router* router)
-      : router(router), m_AllowTransit(false), m_PathLimits(DefaultPathBuildLimit)
+      : _router(router), m_AllowTransit(false), m_PathLimits(DefaultPathBuildLimit)
   {}
 
   void
@@ -43,19 +43,19 @@ namespace llarp::path
   const EventLoop_ptr&
   PathContext::loop()
   {
-    return router->loop();
+    return _router->loop();
   }
 
   const SecretKey&
   PathContext::EncryptionSecretKey()
   {
-    return router->encryption();
+    return _router->encryption();
   }
 
   bool
   PathContext::HopIsUs(const RouterID& k) const
   {
-    return std::equal(router->pubkey(), router->pubkey() + PUBKEYSIZE, k.begin());
+    return std::equal(_router->pubkey(), _router->pubkey() + PUBKEYSIZE, k.begin());
   }
 
   PathContext::EndpointPathPtrSet
@@ -85,7 +85,7 @@ namespace llarp::path
 
     LogDebug("forwarding LRCM to ", nextHop);
 
-    return router->SendToOrQueue(nextHop, msg, handler);
+    return _router->SendToOrQueue(nextHop, msg, handler);
   }
 
   template <
@@ -273,7 +273,7 @@ namespace llarp::path
   const byte_t*
   PathContext::OurRouterID() const
   {
-    return router->pubkey();
+    return _router->pubkey();
   }
 
   TransitHop_ptr
@@ -296,15 +296,15 @@ namespace llarp::path
   void
   PathContext::PumpUpstream()
   {
-    m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(router); });
-    m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(router); });
+    m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(_router); });
+    m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(_router); });
   }
 
   void
   PathContext::PumpDownstream()
   {
-    m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(router); });
-    m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(router); });
+    m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(_router); });
+    m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(_router); });
   }
 
   uint64_t
@@ -350,7 +350,7 @@ namespace llarp::path
       {
         if (itr->second->Expired(now))
         {
-          router->outboundMessageHandler().RemovePath(itr->first);
+          _router->outboundMessageHandler().RemovePath(itr->first);
           itr = map.erase(itr);
         }
         else

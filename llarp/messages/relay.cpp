@@ -54,7 +54,7 @@ namespace llarp
   bool
   RelayUpstreamMessage::handle_message(Router* r) const
   {
-    auto path = r->path_context().GetByDownstream(session->GetPubKey(), pathid);
+    auto path = r->path_context().GetByDownstream(conn->remote_rc.pubkey, pathid);
     if (path)
     {
       return path->HandleUpstream(llarp_buffer_t(enc), nonce, r);
@@ -110,7 +110,7 @@ namespace llarp
   bool
   RelayDownstreamMessage::handle_message(Router* r) const
   {
-    auto path = r->path_context().GetByUpstream(session->GetPubKey(), pathid);
+    auto path = r->path_context().GetByUpstream(conn->remote_rc.pubkey, pathid);
     if (path)
     {
       return path->HandleDownstream(llarp_buffer_t(enc), nonce, r);

@@ -21,6 +21,15 @@ namespace llarp
       return nullptr;
     }
 
+    std::shared_ptr<link::Connection>
+    Endpoint::get_conn(const RouterID& rid) const
+    {
+      if (auto itr = conns.find(rid); itr != conns.end())
+        return itr->second;
+
+      return nullptr;
+    }
+
     bool
     Endpoint::have_conn(const RouterID& remote, bool client_only) const
     {
@@ -118,35 +127,64 @@ namespace llarp
     return ep.for_each_connection(func);
   }
 
-  // TODO: pass connection open callback to endpoint constructor!
+  std::shared_ptr<oxen::quic::Endpoint>
+  LinkManager::startup_endpoint()
+  {
+    /** Parameters:
+          - local bind address
+          - conection open callback
+          - connection close callback
+          - stream constructor callback
+            - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
+
+    */
+    return quic->endpoint(
+        router.public_ip(),
+        [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
+        [this](oxen::quic::connection_interface& ci, uint64_t ec) {
+          return on_conn_closed(ci, ec);
+        },
+        [this](oxen::quic::dgram_interface& di, bstring dgram) { recv_data_message(di, dgram); },
+        [&](oxen::quic::Connection& c,
+            oxen::quic::Endpoint& e,
+            std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
+          if (id && id == 0)
+          {
+            return std::make_shared<oxen::quic::BTRequestStream>(
+                c, e, [this](oxen::quic::message msg) { return recv_control_message(msg); });
+          }
+          return std::make_shared<oxen::quic::Stream>(c, e);
+        });
+  }
+
   LinkManager::LinkManager(Router& r)
       : router{r}
       , quic{std::make_unique<oxen::quic::Network>()}
       , tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
             {reinterpret_cast<const char*>(router.identity().data()), size_t{32}},
             {reinterpret_cast<const char*>(router.identity().toPublic().data()), size_t{32}})}
-      , ep{quic->endpoint(
-               router.public_ip(),
-               [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
-               [this](oxen::quic::connection_interface& ci, uint64_t ec) {
-                 return on_conn_closed(ci, ec);
-               }),
-           *this}
+      , ep{startup_endpoint(), *this}
   {}
 
-  // TODO: replace with control/data message sending with libquic
   bool
-  LinkManager::send_to(const RouterID& remote, bstring data, uint16_t priority)
+  LinkManager::send_control_message(
+      const RouterID& remote, std::string endpoint, std::string body, bool is_request)
   {
     if (is_stopping)
       return false;
 
-    if (not have_connection_to(remote))
+    if (auto conn = ep.get_conn(remote); conn)
     {
-      auto pending = PendingMessage(data, priority);
+      (is_request) ? conn->control_stream->request(endpoint, body)
+                   : conn->control_stream->command(endpoint, body);
+      return true;
+    }
+
+    router.loop()->call([&]() {
+      auto pending = PendingControlMessage(body, endpoint);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
-      itr->second.push(std::move(pending));
+      itr->second.push_back(std::move(pending));
 
       rc_lookup->get_rc(
           remote,
@@ -159,14 +197,41 @@ namespace llarp
             else
               log::warning(quic_cat, "Do something intelligent here for error handling");
           });
+    });
 
-      // TODO: some error callback to report message send failure
-      // or, should we connect and pass a send-msg callback as the connection successful cb?
+    return false;
+  }
+
+  bool
+  LinkManager::send_data_message(const RouterID& remote, std::string body)
+  {
+    if (is_stopping)
       return false;
+
+    if (auto conn = ep.get_conn(remote); conn)
+    {
+      conn->conn->send_datagram(std::move(body));
+      return true;
     }
 
-    // TODO: send the message
-    // TODO: if we keep bool return type, change this accordingly
+    router.loop()->call([&]() {
+      auto pending = PendingDataMessage(body);
+
+      auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
+      itr->second.push_back(std::move(pending));
+
+      rc_lookup->get_rc(
+          remote,
+          [this](
+              [[maybe_unused]] const RouterID& rid,
+              const RouterContact* const rc,
+              const RCRequestResult res) {
+            if (res == RCRequestResult::Success)
+              connect_to(*rc);
+            else
+              log::warning(quic_cat, "Do something intelligent here for error handling");
+          });
+    });
 
     return false;
   }
@@ -199,28 +264,18 @@ namespace llarp
   void
   LinkManager::connect_to(RouterContact rc)
   {
-    if (have_connection_to(rc.pubkey))
+    if (auto conn = ep.get_conn(rc.pubkey); conn)
     {
-      // TODO: connection failed callback
+      // TODO: should implement some connection failed logic, but not the same logic that
+      // would be executed for another failure case
       return;
     }
 
-    // TODO: connection established/failed callbacks
-    oxen::quic::stream_data_callback stream_cb =
-        [this](oxen::quic::Stream& stream, bstring_view packet) {
-          recv_control_message(stream, packet);
-        };
-
-    // TODO: once "compatible link" cares about address, actually choose addr to connect to
-    //       based on which one is compatible with the link we chose.  For now, just use
-    //       the first one.
     auto& remote_addr = rc.addr;
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    // TODO: does connect() inherit the endpoint's datagram data callback, and do we want it to if
-    // so?
-    if (auto rv = ep.establish_connection(remote_addr, rc, stream_cb, tls_creds); rv)
+    if (auto rv = ep.establish_connection(remote_addr, rc, tls_creds); rv)
     {
       log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
       return;
@@ -236,18 +291,29 @@ namespace llarp
       const auto& scid = conn_interface.scid();
       const auto& rid = ep.connid_map[scid];
 
+      // check to see if this connection was established while we were attempting to queue
+      // messages to the remote
       if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
       {
         auto& que = itr->second;
 
         while (not que.empty())
         {
-          auto& m = que.top();
+          auto& m = que.front();
 
-          (m.is_control) ? ep.conns[rid]->control_stream->send(std::move(m.buf))
-                         : conn_interface.send_datagram(std::move(m.buf));
+          if (m.is_control)
+          {
+            auto& msg = reinterpret_cast<PendingControlMessage&>(m);
+            msg.is_request ? ep.conns[rid]->control_stream->request(msg.endpoint, msg.body)
+                           : ep.conns[rid]->control_stream->command(msg.endpoint, msg.body);
+          }
+          else
+          {
+            auto& msg = reinterpret_cast<PendingDataMessage&>(m);
+            conn_interface.send_datagram(std::move(msg.body));
+          }
 
-          que.pop();
+          que.pop_front();
         }
       }
     });
@@ -410,9 +476,44 @@ namespace llarp
   }
 
   void
-  LinkManager::recv_control_message(oxen::quic::Stream&, bstring_view)
+  LinkManager::recv_control_message(oxen::quic::message msg)
   {
-    // TODO: this
+    // if the message is not expired, it will pass this conditional
+    if (msg)
+    {
+      std::string ep{msg.endpoint()}, body{msg.body()};
+      bool is_request = (msg.type() == "Q"sv) ? true : false;
+
+      if (auto itr = rpc_map.find(ep); itr != rpc_map.end())
+      {
+        router.loop()->call([&]() {
+          // execute mapped callback
+          auto maybe_response = itr->second(body);
+
+          if (is_request)
+          {
+            if (maybe_response)
+            {
+              // respond here
+              msg.respond(msg.rid(), *maybe_response);
+            }
+
+            // TODO: revisit the logic of these conditionals after defining the callback functions
+            // to see if returning/taking optionals makes sense
+          }
+        });
+      }
+      else
+      {
+        msg.respond(msg.rid(), "INVALID REQUEST", true);
+        return;
+      }
+    }
+    else
+    {
+      // RPC request was sent out but we received no response
+      log::info(link_cat, "RPC request (RID: {}) timed out", msg.rid());
+    }
   }
 
 }  // namespace llarp

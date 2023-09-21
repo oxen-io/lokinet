@@ -95,7 +95,7 @@ namespace llarp
   {
     if (!verify())
       return false;
-    return session->GotLIM(this);
+    return conn->GotLIM(this);
   }
 
   void

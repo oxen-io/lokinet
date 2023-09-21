@@ -174,8 +174,14 @@ namespace llarp
       uint64_t
       CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
 
+      Router*
+      router() const
+      {
+        return _router;
+      }
+
      private:
-      Router* router;
+      Router* _router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;

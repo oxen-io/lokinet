@@ -4,6 +4,7 @@
 #include <llarp/crypto/types.hpp>
 #include <llarp/messages/link_message.hpp>
 #include <llarp/path/path_types.hpp>
+#include <llarp/router_contact.hpp>
 #include <llarp/pow.hpp>
 
 #include <array>
