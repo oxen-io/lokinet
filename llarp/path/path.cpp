@@ -488,7 +488,7 @@ namespace llarp::path
   {
     for (const auto& msg : msgs)
     {
-      if (r->SendToOrQueue(Upstream(), msg))
+      if (r->send_data_message(Upstream(), msg))
       {
         m_TXRate += msg.enc.size();
       }

@@ -9,7 +9,11 @@
 
 namespace llarp
 {
-  struct RelayUpstreamMessage final : public AbstractLinkMessage
+  /*
+      Data messages to be sent via quic datagrams
+  */
+
+  struct RelayUpstreamMessage final : public AbstractDataMessage
   {
     Encrypted<MAX_LINK_MSG_SIZE - 128> enc;
     TunnelNonce nonce;
@@ -38,7 +42,7 @@ namespace llarp
     }
   };
 
-  struct RelayDownstreamMessage final : public AbstractLinkMessage
+  struct RelayDownstreamMessage final : public AbstractDataMessage
   {
     Encrypted<MAX_LINK_MSG_SIZE - 128> enc;
     TunnelNonce nonce;

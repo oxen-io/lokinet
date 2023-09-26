@@ -72,4 +72,9 @@ namespace llarp
     }
   };
 
+  struct AbstractDataMessage : public AbstractLinkMessage
+  {
+    using AbstractLinkMessage::AbstractLinkMessage;
+  };
+
 }  // namespace llarp

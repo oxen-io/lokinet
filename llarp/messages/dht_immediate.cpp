@@ -29,7 +29,7 @@ namespace llarp
 
     try
     {
-      btdp.append("a", "");
+      btdp.append("a", "m");
       {
         auto subdict = btdp.append_dict("m");
         for (auto& m : msgs)
@@ -50,7 +50,7 @@ namespace llarp
   DHTImmediateMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if (key.startswith("m"))
-      return llarp::dht::DecodeMessageList(dht::Key_t(session->GetPubKey()), buf, msgs);
+      return llarp::dht::DecodeMessageList(dht::Key_t(conn->remote_rc.pubkey), buf, msgs);
     if (key.startswith("v"))
     {
       if (!bencode_read_integer(buf, &version))
@@ -65,7 +65,7 @@ namespace llarp
   DHTImmediateMessage::handle_message(Router* router) const
   {
     DHTImmediateMessage reply;
-    reply.session = session;
+    reply.conn = conn;
     bool result = true;
     auto dht = router->dht();
     for (const auto& msg : msgs)
@@ -76,7 +76,7 @@ namespace llarp
     {
       if (result)
       {
-        result = router->SendToOrQueue(session->GetPubKey(), reply);
+        result = router->SendToOrQueue(conn->remote_rc.pubkey, reply);
       }
     }
     return true;

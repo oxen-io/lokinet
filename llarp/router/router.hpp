@@ -213,7 +213,6 @@ namespace llarp
     /** TOFIX: this
           - refactor path types (path_context, pathset) to use unified ID type, not PathID_t
           - refactor all callers to use new implementation of remove_path
-
     */
     OutboundMessageHandler&
     outboundMessageHandler()
@@ -515,6 +514,12 @@ namespace llarp
     bool
     SendToOrQueue(
         const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler);
+
+    bool
+    send_data_message(const RouterID& remote, const AbstractDataMessage& msg);
+
+    bool
+    send_control_message(const RouterID& remote, const AbstractLinkMessage& msg);
 
     bool IsBootstrapNode(RouterID) const;
 

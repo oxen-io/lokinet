@@ -279,6 +279,18 @@ namespace llarp
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
 
+  bool
+  Router::send_data_message(const RouterID &remote, const AbstractDataMessage &msg)
+  {
+    return _link_manager.send_data_message(remote, msg.bt_encode());
+  }
+
+  bool
+  Router::send_control_message(const RouterID &remote, const AbstractLinkMessage &msg)
+  {
+    
+  }
+
   void
   Router::try_connect(fs::path rcfile)
   {

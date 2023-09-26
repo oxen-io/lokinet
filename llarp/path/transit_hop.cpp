@@ -206,7 +206,7 @@ namespace llarp::path
             info.downstream,
             " to ",
             info.upstream);
-        r->SendToOrQueue(info.upstream, msg);
+        r->send_data_message(info.upstream, msg);
       }
     }
     r->TriggerPump();
@@ -224,7 +224,7 @@ namespace llarp::path
           info.upstream,
           " to ",
           info.downstream);
-      r->SendToOrQueue(info.downstream, msg);
+      r->send_data_message(info.downstream, msg);
     }
     r->TriggerPump();
   }
@@ -299,8 +299,7 @@ namespace llarp::path
       }
       return SendRoutingMessage(grant, r);
     }
-    // TODO: exponential backoff
-    // TODO: rejected policies
+    // TODO: exponential backoff, rejected policies ?
     llarp::routing::RejectExitMessage reject;
     reject.sequence_number = NextSeqNo();
     reject.tx_id = msg.tx_id;
