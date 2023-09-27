@@ -22,7 +22,7 @@ namespace llarp::exit
       , m_ExitRouter{routerId}
       , m_WritePacket{std::move(writepkt)}
       , m_Counter{0}
-      , m_LastUse{r->Now()}
+      , m_LastUse{r->now()}
       , m_BundleRC{false}
       , m_Parent{parent}
   {
@@ -87,7 +87,7 @@ namespace llarp::exit
   bool
   BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
   {
-    return dlt >= path::alive_timeout;
+    return dlt >= path::ALIVE_TIMEOUT;
   }
 
   void
@@ -214,7 +214,7 @@ namespace llarp::exit
       llarp::net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return false;
-      m_LastUse = m_router->Now();
+      m_LastUse = m_router->now();
       m_Downstream.emplace(counter, pkt);
       return true;
     }
@@ -225,7 +225,7 @@ namespace llarp::exit
   BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p, const PathID_t& path, uint64_t s)
   {
     llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s, " P=", path);
-    p->EnterState(path::ePathIgnore, m_router->Now());
+    p->EnterState(path::ePathIgnore, m_router->now());
     return true;
   }
 
@@ -283,7 +283,7 @@ namespace llarp::exit
   bool
   BaseSession::FlushUpstream()
   {
-    auto now = m_router->Now();
+    auto now = m_router->now();
     auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
     if (path)
     {

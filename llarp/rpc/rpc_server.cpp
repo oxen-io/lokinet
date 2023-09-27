@@ -103,7 +103,7 @@ namespace llarp::rpc
       : m_LMQ{std::move(lmq)}, m_Router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
   {
     // copied logic loop as placeholder
-    for (const auto& addr : r.get_config()->api.m_rpcBindAddresses)
+    for (const auto& addr : r.config()->api.m_rpcBindAddresses)
     {
       m_LMQ->listen_plain(addr.zmq_address());
       LogInfo("Bound RPC server to ", addr.full_address());
@@ -392,7 +392,7 @@ namespace llarp::rpc
     try
     {
       for (auto& ip : unmapexit.request.ip_range)
-        m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
+        m_Router.hidden_service_context().GetDefault()->UnmapExitRange(ip);
     }
     catch (std::exception& e)
     {

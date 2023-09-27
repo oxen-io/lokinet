@@ -272,7 +272,7 @@ namespace llarp::path
       if (failedAt)
         edge = *failedAt;
       r->loop()->call([r, self = shared_from_this(), edge]() {
-        self->EnterState(ePathFailed, r->Now());
+        self->EnterState(ePathFailed, r->now());
         if (auto parent = self->m_PathSet.lock())
         {
           parent->HandlePathBuildFailedAt(self, edge);
@@ -412,7 +412,7 @@ namespace llarp::path
   bool
   Path::SendLatencyMessage(Router* r)
   {
-    const auto now = r->Now();
+    const auto now = r->now();
     // send path latency test
     routing::PathLatencyMessage latency{};
     latency.sent_time = randint();
@@ -445,7 +445,7 @@ namespace llarp::path
       if (now >= buildStarted)
       {
         const auto dlt = now - buildStarted;
-        if (dlt >= path::build_timeout)
+        if (dlt >= path::BUILD_TIMEOUT)
         {
           LogWarn(Name(), " waited for ", ToString(dlt), " and no path was built");
           r->router_profiling().MarkPathFail(this);
@@ -458,7 +458,7 @@ namespace llarp::path
     if (_status == ePathEstablished)
     {
       auto dlt = now - m_LastLatencyTestTime;
-      if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
+      if (dlt > path::LATENCY_INTERVAL && m_LastLatencyTestID == 0)
       {
         SendLatencyMessage(r);
         // latency test FEC
@@ -469,14 +469,14 @@ namespace llarp::path
         return;
       }
       dlt = now - m_LastRecvMessage;
-      if (dlt >= path::alive_timeout)
+      if (dlt >= path::ALIVE_TIMEOUT)
       {
         LogWarn(Name(), " waited for ", ToString(dlt), " and path looks dead");
         r->router_profiling().MarkPathFail(this);
         EnterState(ePathTimeout, now);
       }
     }
-    if (_status == ePathIgnore and now - m_LastRecvMessage >= path::alive_timeout)
+    if (_status == ePathIgnore and now - m_LastRecvMessage >= path::ALIVE_TIMEOUT)
     {
       // clean up this path as we dont use it anymore
       EnterState(ePathExpired, now);
@@ -507,15 +507,18 @@ namespace llarp::path
     size_t idx = 0;
     for (auto& ev : msgs)
     {
-      const llarp_buffer_t buf(ev.first);
       TunnelNonce n = ev.second;
+
+      uint8_t* buf = ev.first.data();
+      size_t sz = ev.first.size();
+
       for (const auto& hop : hops)
       {
-        CryptoManager::instance()->xchacha20(buf, hop.shared, n);
+        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, n);
         n ^= hop.nonceXOR;
       }
       auto& msg = sendmsgs[idx];
-      msg.enc = buf;
+      std::memcpy(msg.enc.data(), buf, sz);
       msg.nonce = ev.second;
       msg.pathid = TXID();
       ++idx;
@@ -581,14 +584,18 @@ namespace llarp::path
     size_t idx = 0;
     for (auto& ev : msgs)
     {
-      const llarp_buffer_t buf(ev.first);
       sendMsgs[idx].nonce = ev.second;
+
+      uint8_t* buf = ev.first.data();
+      size_t sz = ev.first.size();
+
       for (const auto& hop : hops)
       {
         sendMsgs[idx].nonce ^= hop.nonceXOR;
-        CryptoManager::instance()->xchacha20(buf, hop.shared, sendMsgs[idx].nonce);
+        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
       }
-      sendMsgs[idx].enc = buf;
+
+      std::memcpy(sendMsgs[idx].enc.data(), buf, sz);
       ++idx;
     }
     r->loop()->call([self = shared_from_this(), msgs = std::move(sendMsgs), r]() mutable {
@@ -606,7 +613,7 @@ namespace llarp::path
       if (HandleRoutingMessage(buf, r))
       {
         r->TriggerPump();
-        m_LastRecvMessage = r->Now();
+        m_LastRecvMessage = r->now();
       }
     }
   }
@@ -672,11 +679,11 @@ namespace llarp::path
     N.Randomize();
     buf.sz = buf.cur - buf.base;
     // pad smaller messages
-    if (buf.sz < pad_size)
+    if (buf.sz < PAD_SIZE)
     {
       // randomize padding
-      CryptoManager::instance()->randbytes(buf.cur, pad_size - buf.sz);
-      buf.sz = pad_size;
+      CryptoManager::instance()->randbytes(buf.cur, PAD_SIZE - buf.sz);
+      buf.sz = PAD_SIZE;
     }
     buf.cur = buf.base;
     LogDebug(
@@ -699,7 +706,7 @@ namespace llarp::path
   bool
   Path::HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, Router* r)
   {
-    MarkActive(r->Now());
+    MarkActive(r->now());
     if (m_DropHandler)
       return m_DropHandler(shared_from_this(), msg.path_id, msg.sequence_number);
     return true;
@@ -760,7 +767,7 @@ namespace llarp::path
   bool
   Path::HandlePathLatencyMessage(const routing::PathLatencyMessage&, Router* r)
   {
-    const auto now = r->Now();
+    const auto now = r->now();
     MarkActive(now);
     if (m_LastLatencyTestID)
     {
@@ -784,7 +791,7 @@ namespace llarp::path
   bool
   Path::HandleDHTMessage(const dht::AbstractDHTMessage& msg, Router* r)
   {
-    MarkActive(r->Now());
+    MarkActive(r->now());
     routing::PathDHTMessage reply;
     if (not r->dht()->handle_message(msg, reply.dht_msgs))
       return false;
@@ -859,7 +866,7 @@ namespace llarp::path
         return false;
       }
       LogInfo(Name(), " ", Endpoint(), " Rejected exit");
-      MarkActive(r->Now());
+      MarkActive(r->now());
       return InformExitResult(llarp_time_t(msg.backoff_time));
     }
     LogError(Name(), " got unwarranted RXM");
@@ -879,7 +886,7 @@ namespace llarp::path
       // we now can send exit traffic
       _role |= ePathRoleExit;
       LogInfo(Name(), " ", Endpoint(), " Granted exit");
-      MarkActive(r->Now());
+      MarkActive(r->now());
       return InformExitResult(0s);
     }
     LogError(Name(), " got unwarranted GXM");
@@ -916,8 +923,8 @@ namespace llarp::path
       if (m_ExitTrafficHandler(
               self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
       {
-        MarkActive(r->Now());
-        EnterState(ePathEstablished, r->Now());
+        MarkActive(r->now());
+        EnterState(ePathEstablished, r->now());
       }
     }
     return sent;

@@ -127,6 +127,19 @@ namespace llarp
     return ep.for_each_connection(func);
   }
 
+  void
+  LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
+  {
+    for (const auto& [name, func] : rpc_commands)
+    {
+      s->register_command(name, [this, f = func](oxen::quic::message m) {
+        router.loop()->call([this, func = f, msg = std::move(m)]() mutable {
+          std::invoke(func, this, std::move(msg));
+        });
+      });
+    }
+  }
+
   std::shared_ptr<oxen::quic::Endpoint>
   LinkManager::startup_endpoint()
   {
@@ -136,7 +149,6 @@ namespace llarp
           - connection close callback
           - stream constructor callback
             - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
-
     */
     return quic->endpoint(
         router.public_ip(),
@@ -150,8 +162,9 @@ namespace llarp
             std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
           if (id && id == 0)
           {
-            return std::make_shared<oxen::quic::BTRequestStream>(
-                c, e, [this](oxen::quic::message msg) { return recv_control_message(msg); });
+            auto s = std::make_shared<oxen::quic::BTRequestStream>();
+            register_commands(s);
+            return s;
           }
           return std::make_shared<oxen::quic::Stream>(c, e);
         });
@@ -168,20 +181,22 @@ namespace llarp
 
   bool
   LinkManager::send_control_message(
-      const RouterID& remote, std::string endpoint, std::string body, bool is_request)
+      const RouterID& remote,
+      std::string endpoint,
+      std::string body,
+      std::function<void(oxen::quic::message)> func)
   {
     if (is_stopping)
       return false;
 
     if (auto conn = ep.get_conn(remote); conn)
     {
-      (is_request) ? conn->control_stream->request(endpoint, body)
-                   : conn->control_stream->command(endpoint, body);
+      conn->control_stream->command(endpoint, body, std::move(func));
       return true;
     }
 
     router.loop()->call([&]() {
-      auto pending = PendingControlMessage(body, endpoint);
+      auto pending = PendingControlMessage(body, endpoint, func);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
@@ -304,8 +319,7 @@ namespace llarp
           if (m.is_control)
           {
             auto& msg = reinterpret_cast<PendingControlMessage&>(m);
-            msg.is_request ? ep.conns[rid]->control_stream->request(msg.endpoint, msg.body)
-                           : ep.conns[rid]->control_stream->command(msg.endpoint, msg.body);
+            ep.conns[rid]->control_stream->command(msg.endpoint, msg.body, msg.func);
           }
           else
           {
@@ -476,44 +490,204 @@ namespace llarp
   }
 
   void
-  LinkManager::recv_control_message(oxen::quic::message msg)
+  LinkManager::handle_find_name(oxen::quic::message m)
   {
-    // if the message is not expired, it will pass this conditional
-    if (msg)
+    try
     {
-      std::string ep{msg.endpoint()}, body{msg.body()};
-      bool is_request = (msg.type() == "Q"sv) ? true : false;
+      oxenc::bt_dict_consumer btdp{m.body()};
+      std::string name_hash, tx_id;
 
-      if (auto itr = rpc_map.find(ep); itr != rpc_map.end())
-      {
-        router.loop()->call([&]() {
-          // execute mapped callback
-          auto maybe_response = itr->second(body);
+      if (btdp.skip_until("H"))
+        name_hash = btdp.consume_string();
 
-          if (is_request)
-          {
-            if (maybe_response)
-            {
-              // respond here
-              msg.respond(msg.rid(), *maybe_response);
-            }
+      if (btdp.skip_until("T"))
+        tx_id = btdp.consume_string();
 
-            // TODO: revisit the logic of these conditionals after defining the callback functions
-            // to see if returning/taking optionals makes sense
-          }
-        });
-      }
-      else
-      {
-        msg.respond(msg.rid(), "INVALID REQUEST", true);
-        return;
-      }
+      router.rpc_client()->LookupLNSNameHash(name_hash, [](auto /* maybe */) {
+
+      });
     }
-    else
+    catch (const std::exception& e)
     {
-      // RPC request was sent out but we received no response
-      log::info(link_cat, "RPC request (RID: {}) timed out", msg.rid());
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond("ERROR", true);
     }
   }
 
+  void
+  LinkManager::handle_find_router(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_publish_intro(oxen::quic::message m)
+  {
+    std::string introset, tx_id, derived_signing_key, sig;
+    uint64_t is_relayed, relay_order;
+    std::chrono::milliseconds signed_at;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc_a{m.body()};
+
+      if (btdc_a.skip_until("I"))
+        introset = btdc_a.consume_string();
+
+      if (btdc_a.skip_until("O"))
+        relay_order = btdc_a.consume_integer<uint64_t>();
+
+      if (btdc_a.skip_until("R"))
+        is_relayed = btdc_a.consume_integer<uint64_t>();
+
+      if (btdc_a.skip_until("T"))
+        tx_id = btdc_a.consume_string();
+
+      oxenc::bt_dict_consumer btdc_b{introset};
+
+      if (btdc_b.skip_until("d"))
+        derived_signing_key = btdc_b.consume_string();
+
+      if (btdc_b.skip_until("s"))
+        signed_at = std::chrono::milliseconds{btdc_b.consume_integer<int64_t>()};
+
+      if (btdc_b.skip_until("z"))
+        sig = btdc_b.consume_string();
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond("ERROR", true);
+      return;
+    }
+
+    const auto now = router.now();
+    const auto addr = dht::Key_t{reinterpret_cast<uint8_t*>(derived_signing_key.data())};
+    const auto local_key = router.rc().pubkey;
+
+    if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
+    {
+      log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
+      m.respond("INVALID INTROSET", true);
+      return;
+    }
+
+    if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
+    {
+      log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
+      m.respond("EXPIRED INTROSET", true);
+      return;
+    }
+
+    auto closest_rcs = router.node_db()->FindManyClosestTo(addr, INTROSET_STORAGE_REDUNDANCY);
+
+    if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
+    {
+      log::error(
+          link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
+      m.respond("INSUFFICIENT NODES", true);
+      return;
+    }
+
+    if (is_relayed)
+    {
+      if (relay_order >= INTROSET_STORAGE_REDUNDANCY)
+      {
+        log::error(
+            link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
+        m.respond("INVALID ORDER", true);
+        return;
+      }
+
+      log::info(link_cat, "Relaying PublishIntroMessage for {} (TXID: {})", addr, tx_id);
+
+      const auto& peer_rc = closest_rcs[relay_order];
+      const auto& peer_key = peer_rc.pubkey;
+
+      if (peer_key == local_key)
+      {
+        log::info(
+            link_cat,
+            "Received PublishIntroMessage in which we are peer index {}.. storing introset",
+            relay_order);
+
+        // TODO: replace this concept
+        // dht->services()->PutNode(introset);
+
+        // TODO: should this be a call to send_control_message instead?
+        m.respond("got_intro");
+      }
+      else
+      {
+        log::info(
+            link_cat, "Received PublishIntroMessage; propagating to peer index {}", relay_order);
+
+        send_control_message(
+            peer_key, "publish_intro", std::move(introset), [this](oxen::quic::message m) {
+              return handle_got_intro(std::move(m));
+            });
+      }
+
+      return;
+    }
+
+    int rc_index = -1, index = 0;
+
+    for (const auto& rc : closest_rcs)
+    {
+      if (rc.pubkey == local_key)
+      {
+        rc_index = index;
+        break;
+      }
+      ++index;
+    }
+
+    if (rc_index >= 0)
+    {
+      log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
+
+      // TODO: should this be a call to send_control_message instead?
+      m.respond("got_intro");
+    }
+    else
+      log::warning(
+          link_cat,
+          "Received non-relayed PublishIntroMessage from {}; we are not the candidate",
+          addr);
+  }
+
+  void
+  LinkManager::handle_find_intro(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_path_confirm(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_path_latency(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_update_exit(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_obtain_exit(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_close_exit(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_got_intro(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_got_name(oxen::quic::message)
+  {}
+
+  void
+  LinkManager::handle_got_router(oxen::quic::message)
+  {}
 }  // namespace llarp

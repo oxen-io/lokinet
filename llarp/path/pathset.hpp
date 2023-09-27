@@ -269,7 +269,7 @@ namespace llarp
           std::function<bool(const service::Introduction&)> filter) const;
 
       virtual bool
-      PublishIntroSet(const service::EncryptedIntroSet&, Router*)
+      PublishIntroSet(const service::EncryptedIntroSet&)
       {
         return false;
       }

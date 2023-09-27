@@ -37,7 +37,7 @@ namespace llarp
 
       void
       LookupLNSNameHash(
-          dht::Key_t namehash,
+          std::string namehash,
           std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 
       /// inform that if connected to a router successfully

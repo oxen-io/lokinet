@@ -45,7 +45,7 @@ namespace llarp
           throw std::runtime_error("invalid address");
       }
 
-      explicit Address(const Data& buf) : AlignedBuffer<32>(buf)
+      explicit Address(const std::array<byte_t, SIZE>& buf) : AlignedBuffer<32>(buf)
       {}
 
       Address(const Address& other)

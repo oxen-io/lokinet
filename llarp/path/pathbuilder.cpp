@@ -73,7 +73,7 @@ namespace llarp
         record.nextRC = std::make_unique<RouterContact>(path->hops[idx].rc);
       }
       // build record
-      record.lifetime = path::default_lifetime;
+      record.lifetime = path::DEFAULT_LIFETIME;
       record.version = llarp::constants::proto_version;
       record.txid = hop.txID;
       record.rxid = hop.rxID;
@@ -125,7 +125,7 @@ namespace llarp
       result = func;
       work = worker;
 
-      for (size_t i = 0; i < path::max_len; ++i)
+      for (size_t i = 0; i < path::MAX_LEN; ++i)
       {
         LRCM.frames[i].Randomize();
       }
@@ -148,7 +148,7 @@ namespace llarp
     auto sentHandler = [router = ctx->router, path = ctx->path](auto status) {
       if (status != SendStatus::Success)
       {
-        path->EnterState(path::ePathFailed, router->Now());
+        path->EnterState(path::ePathFailed, router->now());
       }
     };
     if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
@@ -237,28 +237,23 @@ namespace llarp
     Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RouterContact> found = std::nullopt;
-      m_router->ForEachPeer(
-          [&](const AbstractLinkSession* s, bool isOutbound) {
-            if (s && s->IsEstablished() && isOutbound && not found.has_value())
-            {
-              const RouterContact rc = s->GetRemoteRC();
+      m_router->for_each_connection([&](link::Connection& conn) {
+        const auto& rc = conn.remote_rc;
 #ifndef TESTNET
-              if (m_router->IsBootstrapNode(rc.pubkey))
-                return;
+        if (m_router->IsBootstrapNode(rc.pubkey))
+          return;
 #endif
-              if (exclude.count(rc.pubkey))
-                return;
+        if (exclude.count(rc.pubkey))
+          return;
 
-              if (BuildCooldownHit(rc.pubkey))
-                return;
+        if (BuildCooldownHit(rc.pubkey))
+          return;
 
-              if (m_router->router_profiling().IsBadForPath(rc.pubkey))
-                return;
+        if (m_router->router_profiling().IsBadForPath(rc.pubkey))
+          return;
 
-              found = rc;
-            }
-          },
-          true);
+        found = rc;
+      });
       return found;
     }
 
@@ -422,7 +417,7 @@ namespace llarp
     llarp_time_t
     Builder::Now() const
     {
-      return m_router->Now();
+      return m_router->now();
     }
 
     void

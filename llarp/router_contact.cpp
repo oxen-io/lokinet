@@ -230,7 +230,6 @@ namespace llarp
   void
   RouterContact::Clear()
   {
-    addrs.clear();
     signature.Zero();
     nickname.Zero();
     enckey.Zero();
@@ -248,7 +247,7 @@ namespace llarp
         {"lastUpdated", last_updated.count()},
         {"publicRouter", IsPublicRouter()},
         {"identity", pubkey.ToString()},
-        {"addresses", addrs}};
+        {"address", addr.to_string()}};
 
     if (HasNick())
     {
@@ -344,7 +343,7 @@ namespace llarp
   RouterContact::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (!BEncodeMaybeReadDictList("a", addrs, read, key, buf))
+    if (!BEncodeMaybeReadDictList("a", addr, read, key, buf))
       return false;
 
     if (!BEncodeMaybeReadDictEntry("i", netID, read, key, buf))
@@ -406,7 +405,7 @@ namespace llarp
   {
     if (not routerVersion)
       return false;
-    return !addrs.empty();
+    return addr.is_addressable();
   }
 
   bool
@@ -496,14 +495,13 @@ namespace llarp
 
     // TODO: make net* overridable
     const auto* net = net::Platform::Default_ptr();
-    for (const auto& a : addrs)
+
+    if (net->IsBogon(addr.in4()) && BlockBogons)
     {
-      if (net->IsBogon(a.ip) && BlockBogons)
-      {
-        log::error(logcat, "invalid address info: {}", a);
-        return false;
-      }
+      log::error(logcat, "invalid address info: {}", addr);
+      return false;
     }
+
     if (!VerifySignature())
     {
       log::error(logcat, "invalid signature: {}", *this);
@@ -524,17 +522,18 @@ namespace llarp
       llarp_buffer_t buf(tmp);
 
       auto bte = copy.bt_encode();
-      buf.write(bte.begin(), bte.end());
-
-      buf.sz = buf.cur - buf.base;
-      buf.cur = buf.base;
-      return CryptoManager::instance()->verify(pubkey, buf, signature);
+      return CryptoManager::instance()->verify(
+          pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
     }
     /* else */
     if (version == 1)
     {
       llarp_buffer_t buf{signed_bt_dict};
-      return CryptoManager::instance()->verify(pubkey, buf, signature);
+      return CryptoManager::instance()->verify(
+          pubkey,
+          reinterpret_cast<uint8_t*>(const_cast<char*>(signed_bt_dict.data())),
+          signed_bt_dict.size(),
+          signature);
     }
 
     return false;
@@ -603,7 +602,7 @@ namespace llarp
         last_updated.count(),
         netID,
         version,
-        fmt::format("{}", fmt::join(addrs, ",")),
+        fmt::format("{}", addr),
         enckey,
         signature);
   }

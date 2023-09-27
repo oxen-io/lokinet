@@ -17,7 +17,6 @@
 #include <llarp/service/sendcontext.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/service/session.hpp>
-#include <llarp/service/lookup.hpp>
 #include <llarp/service/endpoint_types.hpp>
 #include <llarp/endpoint_base.hpp>
 #include <llarp/service/auth.hpp>
@@ -51,7 +50,7 @@ namespace llarp
     struct OutboundContext;
 
     /// minimum interval for publishing introsets
-    inline constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
+    inline constexpr auto IntrosetPublishInterval = path::INTRO_PATH_SPREAD / 2;
 
     /// how agressively should we retry publishing introset on failure
     inline constexpr auto IntrosetPublishRetryCooldown = 1s;
@@ -62,10 +61,7 @@ namespace llarp
     /// number of unique snodes we want to talk to do to ons lookups
     inline constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
 
-    struct Endpoint : public path::Builder,
-                      public ILookupHolder,
-                      public IDataHandler,
-                      public EndpointBase
+    struct Endpoint : public path::Builder, public IDataHandler, public EndpointBase
     {
       Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
@@ -189,7 +185,7 @@ namespace llarp
       }
 
       bool
-      PublishIntroSet(const EncryptedIntroSet& i, Router* r) override;
+      PublishIntroSet(const EncryptedIntroSet& i) override;
 
       bool
       PublishIntroSetVia(
@@ -275,7 +271,7 @@ namespace llarp
       const Identity&
       GetIdentity() const
       {
-        return m_Identity;
+        return _identity;
       }
 
       void
@@ -295,7 +291,7 @@ namespace llarp
           std::function<void(bool, std::string)> result);
 
       void
-      PutLookup(IServiceLookup* lookup, uint64_t txid) override;
+      PutLookup(IServiceLookup* lookup, uint64_t txid);
 
       void
       HandlePathBuilt(path::Path_ptr path) override;
@@ -442,7 +438,7 @@ namespace llarp
       std::optional<std::vector<RouterContact>>
       GetHopsForBuildWithEndpoint(RouterID endpoint);
 
-      virtual void
+      void
       PathBuildStarted(path::Path_ptr path) override;
 
       virtual void
@@ -502,7 +498,7 @@ namespace llarp
       SupportsV6() const = 0;
 
       void
-      RegenAndPublishIntroSet();
+      regen_and_publish_introset();
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
@@ -549,26 +545,26 @@ namespace llarp
       path::Path::UniqueEndpointSet_t
       GetUniqueEndpointsForLookup() const;
 
-      IDataHandler* m_DataHandler = nullptr;
-      Identity m_Identity;
-      net::IPRangeMap<service::Address> m_ExitMap;
-      bool m_PublishIntroSet = true;
-      std::unique_ptr<EndpointState> m_state;
-      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
-      std::unordered_map<Address, AuthInfo> m_RemoteAuthInfos;
-      std::unique_ptr<quic::TunnelManager> m_quic;
+      IDataHandler* _data_handler = nullptr;
+      Identity _identity;
+      net::IPRangeMap<service::Address> _exit_map;
+      bool _publish_introset = true;
+      std::unique_ptr<EndpointState> _state;
+      std::shared_ptr<IAuthPolicy> _auth_policy;
+      std::unordered_map<Address, AuthInfo> _remote_auth_infos;
+      std::unique_ptr<quic::TunnelManager> _tunnel_manager;
 
-      /// (lns name, optional exit range, optional auth info) for looking up on startup
+      /// (ons name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>
-          m_StartupLNSMappings;
+          _startup_ons_mappings;
 
-      RecvPacketQueue_t m_InboundTrafficQueue;
+      RecvPacketQueue_t _inbound_queue;
 
      public:
-      SendMessageQueue_t m_SendQueue;
+      SendMessageQueue_t _send_queue;
 
      private:
-      llarp_time_t m_LastIntrosetRegenAttempt = 0s;
+      llarp_time_t _last_introset_regen_attempt = 0s;
 
      protected:
       void
@@ -577,17 +573,17 @@ namespace llarp
       friend struct EndpointUtil;
 
       // clang-format off
-      const IntroSet& introSet() const;
-      IntroSet&       introSet();
+      const IntroSet& intro_set() const;
+      IntroSet&       intro_set();
 
       using ConvoMap = std::unordered_map<ConvoTag, Session>;
       const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
       // clang-format on
-      thread::Queue<RecvDataEvent> m_RecvQueue;
+      thread::Queue<RecvDataEvent> _recv_event_queue;
 
       /// for rate limiting introset lookups
-      util::DecayingHashSet<Address> m_IntrosetLookupFilter;
+      util::DecayingHashSet<Address> _introset_lookup_filter;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

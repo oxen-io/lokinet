@@ -11,7 +11,7 @@ namespace llarp
 {
   namespace service
   {
-    static constexpr auto SessionLifetime = path::default_lifetime * 2;
+    static constexpr auto SessionLifetime = path::DEFAULT_LIFETIME * 2;
 
     struct Session
     {

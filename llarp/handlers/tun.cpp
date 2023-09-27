@@ -279,18 +279,18 @@ namespace llarp
     {
       if (conf.m_reachable)
       {
-        m_PublishIntroSet = true;
+        _publish_introset = true;
         LogInfo(Name(), " setting to be reachable by default");
       }
       else
       {
-        m_PublishIntroSet = false;
+        _publish_introset = false;
         LogInfo(Name(), " setting to be not reachable by default");
       }
 
       if (conf.m_AuthType == service::AuthType::eAuthTypeFile)
       {
-        m_AuthPolicy = service::MakeFileAuthPolicy(m_router, conf.m_AuthFiles, conf.m_AuthFileType);
+        _auth_policy = service::MakeFileAuthPolicy(m_router, conf.m_AuthFiles, conf.m_AuthFileType);
       }
       else if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
       {
@@ -308,7 +308,7 @@ namespace llarp
             router()->lmq(),
             shared_from_this());
         auth->Start();
-        m_AuthPolicy = std::move(auth);
+        _auth_policy = std::move(auth);
       }
 
       m_DnsConfig = dnsConf;
@@ -656,7 +656,7 @@ namespace llarp
             if (HasExit())
             {
               std::string s;
-              m_ExitMap.ForEachEntry([&s](const auto& range, const auto& exit) {
+              _exit_map.ForEachEntry([&s](const auto& range, const auto& exit) {
                 fmt::format_to(std::back_inserter(s), "{}={}; ", range, exit);
               });
               msg.AddTXTReply(std::move(s));
@@ -727,7 +727,7 @@ namespace llarp
           const auto subdomain = msg.questions[0].Subdomains();
           if (subdomain == "exit" and HasExit())
           {
-            m_ExitMap.ForEachEntry(
+            _exit_map.ForEachEntry(
                 [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString(), 1); });
           }
           else
@@ -783,7 +783,7 @@ namespace llarp
             {
               if (HasExit())
               {
-                m_ExitMap.ForEachEntry(
+                _exit_map.ForEachEntry(
                     [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
                 msg.AddINReply(ip, isV6);
               }
@@ -794,7 +794,7 @@ namespace llarp
             }
             else
             {
-              msg.AddCNAMEReply(m_Identity.pub.Name(), 1);
+              msg.AddCNAMEReply(_identity.pub.Name(), 1);
               msg.AddINReply(ip, isV6);
             }
           }
@@ -999,7 +999,7 @@ namespace llarp
       llarp::LogInfo(Name(), " set ", m_IfName, " to have address ", m_OurIP);
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ", m_OurRange);
 
-      const service::Address ourAddr = m_Identity.pub.Addr();
+      const service::Address ourAddr = _identity.pub.Addr();
 
       if (not MapAddress(ourAddr, GetIfAddr(), false))
       {
@@ -1138,7 +1138,7 @@ namespace llarp
       // build up our candidates to choose
 
       std::unordered_set<service::Address> candidates;
-      for (const auto& entry : m_ExitMap.FindAllEntries(ip))
+      for (const auto& entry : _exit_map.FindAllEntries(ip))
       {
         // in the event the exit's range is a bogon range, make sure the ip is located in that range
         // to allow it
@@ -1186,7 +1186,7 @@ namespace llarp
         }
       }
 
-      if (m_state->m_ExitEnabled)
+      if (_state->m_ExitEnabled)
       {
         dst = net::ExpandV4(net::TruncateV6(dst));
       }
@@ -1238,8 +1238,8 @@ namespace llarp
       else
       {
         to = service::Address{itr->second.as_array()};
-        type = m_state->m_ExitEnabled and src != m_OurIP ? service::ProtocolType::Exit
-                                                         : pkt.ServiceProtocol();
+        type = _state->m_ExitEnabled and src != m_OurIP ? service::ProtocolType::Exit
+                                                        : pkt.ServiceProtocol();
       }
 
       // prepare packet for insertion into network
@@ -1347,7 +1347,7 @@ namespace llarp
       if (not pkt.Load(buf))
         return false;
 
-      if (m_state->m_ExitEnabled)
+      if (_state->m_ExitEnabled)
       {
         // exit side from exit
 

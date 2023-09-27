@@ -21,7 +21,7 @@ namespace llarp
     explicit PubKey(const byte_t* ptr) : AlignedBuffer<SIZE>(ptr)
     {}
 
-    explicit PubKey(const Data& data) : AlignedBuffer<SIZE>(data)
+    explicit PubKey(const std::array<byte_t, SIZE>& data) : AlignedBuffer<SIZE>(data)
     {}
 
     explicit PubKey(const AlignedBuffer<SIZE>& other) : AlignedBuffer<SIZE>(other)

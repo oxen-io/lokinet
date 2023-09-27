@@ -66,9 +66,9 @@ namespace llarp::service
   }
 
   bool
-  Identity::Sign(Signature& sig, const llarp_buffer_t& buf) const
+  Identity::Sign(Signature& sig, uint8_t* buf, size_t size) const
   {
-    return CryptoManager::instance()->sign(sig, signkey, buf);
+    return CryptoManager::instance()->sign(sig, signkey, buf, size);
   }
 
   void
@@ -151,12 +151,13 @@ namespace llarp::service
   }
 
   std::optional<EncryptedIntroSet>
-  Identity::EncryptAndSignIntroSet(const IntroSet& other_i, llarp_time_t now) const
+  Identity::encrypt_and_sign_introset(const IntroSet& other_i, llarp_time_t now) const
   {
     EncryptedIntroSet encrypted;
 
     if (other_i.intros.empty())
       return std::nullopt;
+
     IntroSet i{other_i};
     encrypted.nounce.Randomize();
     // set timestamp
@@ -164,21 +165,17 @@ namespace llarp::service
     i.time_signed = now;
     encrypted.signedAt = now;
     // set service info
-    i.addressKeys = pub;
+    i.address_keys = pub;
     // set public encryption key
     i.sntru_pubkey = pq_keypair_to_public(pq);
-    std::array<byte_t, MAX_INTROSET_SIZE> tmp;
-    llarp_buffer_t buf{tmp};
 
     auto bte = i.bt_encode();
-    buf.write(bte.begin(), bte.end());
 
-    // rewind and resize buffer
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
-    const SharedSecret k{i.addressKeys.Addr()};
-    CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
-    encrypted.introsetPayload = buf.copy();
+    const SharedSecret k{i.address_keys.Addr()};
+    CryptoManager::instance()->xchacha20(
+        reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nounce);
+
+    std::memcpy(encrypted.introsetPayload.data(), bte.data(), bte.size());
 
     if (not encrypted.Sign(derivedSignKey))
       return std::nullopt;

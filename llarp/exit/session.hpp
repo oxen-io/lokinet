@@ -27,7 +27,7 @@ namespace llarp
 
     using SessionReadyFunc = std::function<void(BaseSession_ptr)>;
 
-    static constexpr auto LifeSpan = path::default_lifetime;
+    static constexpr auto LifeSpan = path::DEFAULT_LIFETIME;
 
     /// a persisting exit session with an exit router
     struct BaseSession : public llarp::path::Builder,

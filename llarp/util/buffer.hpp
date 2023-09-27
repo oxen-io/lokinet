@@ -20,6 +20,8 @@
 namespace llarp
 {
   using byte_view_t = std::basic_string_view<byte_t>;
+  using ustring = std::basic_string<uint8_t>;
+  using ustring_view = std::basic_string_view<uint8_t>;
   using bstring = std::basic_string<std::byte>;
   using bstring_view = std::basic_string_view<std::byte>;
 

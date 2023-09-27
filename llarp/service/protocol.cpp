@@ -193,10 +193,10 @@ namespace llarp::service
   ProtocolFrameMessage::DecryptPayloadInto(
       const SharedSecret& sharedkey, ProtocolMessage& msg) const
   {
-    Encrypted_t tmp = enc;
-    auto buf = tmp.Buffer();
-    CryptoManager::instance()->xchacha20(*buf, sharedkey, nonce);
-    return bencode_decode_dict(msg, buf);
+    Encrypted<2048> tmp = enc;
+    CryptoManager::instance()->xchacha20(tmp.data(), tmp.size(), sharedkey, nonce);
+
+    return bencode_decode_dict(msg, tmp.Buffer());
   }
 
   bool
@@ -213,7 +213,7 @@ namespace llarp::service
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
     // sign
-    return localIdent.Sign(sig, buf);
+    return localIdent.Sign(sig, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool
@@ -224,25 +224,18 @@ namespace llarp::service
     llarp_buffer_t buf1(tmp);
     // encode message
     auto bte1 = msg.bt_encode();
-    buf1.write(bte1.begin(), bte1.end());
-    // rewind
-    buf1.sz = buf1.cur - buf1.base;
-    buf1.cur = buf1.base;
     // encrypt
-    CryptoManager::instance()->xchacha20(buf1, sessionKey, nonce);
+    CryptoManager::instance()->xchacha20(
+        reinterpret_cast<uint8_t*>(bte1.data()), bte1.size(), sessionKey, nonce);
     // put encrypted buffer
+    std::memcpy(enc.data(), bte1.data(), bte1.size());
     enc = buf1;
     // zero out signature
     sig.Zero();
 
-    llarp_buffer_t buf2(tmp);
     auto bte2 = bt_encode();
-    buf2.write(bte2.begin(), bte2.end());
-    // rewind
-    buf2.sz = buf2.cur - buf2.base;
-    buf2.cur = buf2.base;
     // sign
-    if (!localIdent.Sign(sig, buf2))
+    if (!localIdent.Sign(sig, reinterpret_cast<uint8_t*>(bte2.data()), bte2.size()))
     {
       LogError("failed to sign? wtf?!");
       return false;
@@ -280,7 +273,7 @@ namespace llarp::service
     {
       auto crypto = CryptoManager::instance();
       SharedSecret K;
-      SharedSecret sharedKey;
+      SharedSecret shared_key;
       // copy
       ProtocolFrameMessage frame(self->frame);
       if (!crypto->pqe_decrypt(
@@ -291,15 +284,21 @@ namespace llarp::service
         return;
       }
       // decrypt
-      auto buf = frame.enc.Buffer();
-      crypto->xchacha20(*buf, K, self->frame.nonce);
-      if (!bencode_decode_dict(*self->msg, buf))
+      // auto buf = frame.enc.Buffer();
+      uint8_t* buf = frame.enc.data();
+      size_t sz = frame.enc.size();
+      crypto->xchacha20(buf, sz, K, self->frame.nonce);
+
+      auto bte = self->msg->bt_encode();
+
+      if (bte.empty())
       {
-        LogError("failed to decode inner protocol message");
+        log::error(logcat, "Failed to decode inner protocol message");
         DumpBuffer(*buf);
         self->msg.reset();
         return;
       }
+
       // verify signature of outer message after we parsed the inner message
       if (!self->frame.Verify(self->msg->sender))
       {
@@ -323,23 +322,24 @@ namespace llarp::service
       }
 
       // PKE (A, B, N)
-      SharedSecret sharedSecret;
+      SharedSecret shared_secret;
       path_dh_func dh_server = util::memFn(&Crypto::dh_server, CryptoManager::instance());
 
       if (!self->m_LocalIdentity.KeyExchange(
-              dh_server, sharedSecret, self->msg->sender, self->frame.nonce))
+              dh_server, shared_secret, self->msg->sender, self->frame.nonce))
       {
         LogError("x25519 key exchange failed");
         Dump<MAX_PROTOCOL_MESSAGE_SIZE>(self->frame);
         self->msg.reset();
         return;
       }
-      std::array<byte_t, 64> tmp;
+      std::array<uint8_t, 64> tmp;
       // K
-      std::copy(K.begin(), K.end(), tmp.begin());
+      std::memcpy(tmp.begin(), K.begin(), K.size());
       // S = HS( K + PKE( A, B, N))
-      std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
-      crypto->shorthash(sharedKey, llarp_buffer_t(tmp));
+      std::memcpy(tmp.begin() + 32, shared_secret.begin(), shared_secret.size());
+
+      crypto->shorthash(shared_key, tmp.data(), tmp.size());
 
       std::shared_ptr<ProtocolMessage> msg = std::move(self->msg);
       path::Path_ptr path = std::move(self->path);
@@ -347,7 +347,7 @@ namespace llarp::service
       msg->handler = self->handler;
       self->handler->AsyncProcessAuthMessage(
           msg,
-          [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
+          [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, shared_key](
               AuthResult result) {
             if (result.code == AuthResultCode::eAuthAccepted)
             {
@@ -360,7 +360,7 @@ namespace llarp::service
                 handler->PutSenderFor(msg->tag, msg->sender, true);
               }
               handler->PutReplyIntroFor(msg->tag, msg->introReply);
-              handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
+              handler->PutCachedSessionKeyFor(msg->tag, shared_key);
               handler->SendAuthResult(path, from, msg->tag, result);
               LogInfo("auth okay for T=", msg->tag, " from ", msg->sender.Addr());
               ProtocolMessage::ProcessAsync(path, from, msg);
@@ -489,21 +489,10 @@ namespace llarp::service
   ProtocolFrameMessage::Verify(const ServiceInfo& svc) const
   {
     ProtocolFrameMessage copy(*this);
-    // save signature
-    // zero out signature for verify
     copy.sig.Zero();
-    // serialize
-    std::array<byte_t, MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    // rewind buffer
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
-    // verify
-    return svc.Verify(buf, sig);
+    return svc.verify(reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool

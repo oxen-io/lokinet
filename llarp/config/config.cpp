@@ -1343,13 +1343,10 @@ namespace llarp
     std::set<IPRange> seenRanges;
     for (const auto& hop : rcs)
     {
-      for (const auto& addr : hop.addrs)
+      const auto network_addr = net::In6ToHUInt(hop.addr.in6().sin6_addr) & netmask;
+      if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
       {
-        const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
-        if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
-        {
-          return false;
-        }
+        return false;
       }
     }
     return true;

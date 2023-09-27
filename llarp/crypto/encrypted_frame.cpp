@@ -9,42 +9,29 @@ namespace llarp
   bool
   EncryptedFrame::DoEncrypt(const SharedSecret& shared, bool noDH)
   {
-    byte_t* hash = data();
-    byte_t* noncePtr = hash + SHORTHASHSIZE;
-    byte_t* pubkey = noncePtr + TUNNONCESIZE;
-    byte_t* body = pubkey + PUBKEYSIZE;
-
     auto crypto = CryptoManager::instance();
 
-    // if noDH flag, means key exchange has already taken place
-    // in this case, set pubkey to random noise and choose a
-    // random nonce here
+    uint8_t* hash_ptr = data();
+    uint8_t* nonce_ptr = hash_ptr + SHORTHASHSIZE;
+    uint8_t* pubkey_ptr = nonce_ptr + TUNNONCESIZE;
+    uint8_t* body_ptr = pubkey_ptr + PUBKEYSIZE;
+
     if (noDH)
     {
-      crypto->randbytes(noncePtr, TUNNONCESIZE);
-      crypto->randbytes(pubkey, PUBKEYSIZE);
+      crypto->randbytes(nonce_ptr, TUNNONCESIZE);
+      crypto->randbytes(pubkey_ptr, PUBKEYSIZE);
     }
 
-    TunnelNonce nonce(noncePtr);
-
-    llarp_buffer_t buf;
-    buf.base = body;
-    buf.cur = buf.base;
-    buf.sz = size() - EncryptedFrameOverheadSize;
+    TunnelNonce nonce(nonce_ptr);
 
     // encrypt body
-    if (!crypto->xchacha20(buf, shared, nonce))
+    if (!crypto->xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
     {
       llarp::LogError("encrypt failed");
       return false;
     }
 
-    // generate message auth
-    buf.base = noncePtr;
-    buf.cur = buf.base;
-    buf.sz = size() - SHORTHASHSIZE;
-
-    if (!crypto->hmac(hash, buf, shared))
+    if (!crypto->hmac(hash_ptr, nonce_ptr, size() - SHORTHASHSIZE, shared))
     {
       llarp::LogError("Failed to generate message auth");
       return false;
@@ -89,36 +76,28 @@ namespace llarp
   bool
   EncryptedFrame::DoDecrypt(const SharedSecret& shared)
   {
-    ShortHash hash(data());
-    byte_t* noncePtr = data() + SHORTHASHSIZE;
-    byte_t* body = data() + EncryptedFrameOverheadSize;
-    TunnelNonce nonce(noncePtr);
-
     auto crypto = CryptoManager::instance();
 
-    llarp_buffer_t buf;
-    buf.base = noncePtr;
-    buf.cur = buf.base;
-    buf.sz = size() - SHORTHASHSIZE;
+    uint8_t* hash_ptr = data();
+    uint8_t* nonce_ptr = hash_ptr + SHORTHASHSIZE;
+    uint8_t* body_ptr = hash_ptr + EncryptedFrameOverheadSize;
+
+    TunnelNonce nonce(nonce_ptr);
 
     ShortHash digest;
-    if (!crypto->hmac(digest.data(), buf, shared))
+    if (!crypto->hmac(digest.data(), nonce_ptr, size() - SHORTHASHSIZE, shared))
     {
       llarp::LogError("Digest failed");
       return false;
     }
 
-    if (!std::equal(digest.begin(), digest.end(), hash.begin()))
+    if (!std::equal(digest.begin(), digest.end(), hash_ptr))
     {
       llarp::LogError("message authentication failed");
       return false;
     }
 
-    buf.base = body;
-    buf.cur = body;
-    buf.sz = size() - EncryptedFrameOverheadSize;
-
-    if (!crypto->xchacha20(buf, shared, nonce))
+    if (!crypto->xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
     {
       llarp::LogError("decrypt failed");
       return false;

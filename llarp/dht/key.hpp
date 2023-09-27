@@ -15,7 +15,7 @@ namespace llarp
       explicit Key_t(const byte_t* buf) : AlignedBuffer<SIZE>(buf)
       {}
 
-      explicit Key_t(const Data& data) : AlignedBuffer<SIZE>(data)
+      explicit Key_t(const std::array<byte_t, SIZE>& data) : AlignedBuffer<SIZE>(data)
       {}
 
       explicit Key_t(const AlignedBuffer<SIZE>& data) : AlignedBuffer<SIZE>(data)

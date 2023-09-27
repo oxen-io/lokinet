@@ -352,10 +352,11 @@ namespace llarp::rpc
 
   void
   LokidRpcClient::LookupLNSNameHash(
-      dht::Key_t namehash, std::function<void(std::optional<service::EncryptedName>)> resultHandler)
+      std::string namehash,
+      std::function<void(std::optional<service::EncryptedName>)> resultHandler)
   {
     LogDebug("Looking Up LNS NameHash ", namehash);
-    const nlohmann::json req{{"type", 2}, {"name_hash", namehash.ToHex()}};
+    const nlohmann::json req{{"type", 2}, {"name_hash", oxenc::to_hex(namehash)}};
     Request(
         "rpc.lns_resolve",
         [this, resultHandler](bool success, std::vector<std::string> data) {

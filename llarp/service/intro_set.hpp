@@ -28,7 +28,7 @@ namespace llarp::service
 
   struct IntroSet
   {
-    ServiceInfo addressKeys;
+    ServiceInfo address_keys;
     std::vector<Introduction> intros;
     PQPubKey sntru_pubkey;
     Tag topic;
@@ -90,7 +90,7 @@ namespace llarp::service
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
     bool
-    Verify(llarp_time_t now) const;
+    verify(llarp_time_t now) const;
 
     util::StatusObject
     ExtractStatus() const;
@@ -99,14 +99,14 @@ namespace llarp::service
   inline bool
   operator<(const IntroSet& lhs, const IntroSet& rhs)
   {
-    return lhs.addressKeys < rhs.addressKeys;
+    return lhs.address_keys < rhs.address_keys;
   }
 
   inline bool
   operator==(const IntroSet& lhs, const IntroSet& rhs)
   {
     return std::tie(
-               lhs.addressKeys,
+               lhs.address_keys,
                lhs.intros,
                lhs.sntru_pubkey,
                lhs.time_signed,
@@ -114,7 +114,7 @@ namespace llarp::service
                lhs.topic,
                lhs.signature)
         == std::tie(
-               rhs.addressKeys,
+               rhs.address_keys,
                rhs.intros,
                rhs.sntru_pubkey,
                rhs.time_signed,
@@ -132,11 +132,9 @@ namespace llarp::service
   /// public version of the introset that is encrypted
   struct EncryptedIntroSet
   {
-    using Payload_t = std::vector<byte_t>;
-
     PubKey derivedSigningKey;
     llarp_time_t signedAt = 0s;
-    Payload_t introsetPayload;
+    std::vector<byte_t> introsetPayload;
     TunnelNonce nounce;
     std::optional<Tag> topic;
     Signature sig;
@@ -147,8 +145,8 @@ namespace llarp::service
     bool
     IsExpired(llarp_time_t now) const;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
     bool
     BDecode(llarp_buffer_t* buf)
@@ -164,7 +162,10 @@ namespace llarp::service
 
     /// verify signature and timestamp
     bool
-    Verify(llarp_time_t now) const;
+    verify(llarp_time_t now) const;
+
+    static bool
+    verify(std::string introset, std::string key, std::string sig);
 
     std::string
     ToString() const;

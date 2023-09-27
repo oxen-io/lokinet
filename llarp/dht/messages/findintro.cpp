@@ -84,7 +84,7 @@ namespace llarp::dht
     // we are relaying this message for e.g. a client
     if (relayed)
     {
-      if (relayOrder >= IntroSetStorageRedundancy)
+      if (relayOrder >= INTROSET_STORAGE_REDUNDANCY)
       {
         llarp::LogWarn("Invalid relayOrder received: ", relayOrder);
         replies.emplace_back(new GotIntroMessage({}, txID));

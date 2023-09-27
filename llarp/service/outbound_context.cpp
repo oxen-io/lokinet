@@ -54,9 +54,9 @@ namespace llarp::service
 
   OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
       : path::Builder{parent->router(), OutboundContextNumPaths, parent->numHops}
-      , SendContext{introset.addressKeys, {}, this, parent}
-      , location{introset.addressKeys.Addr().ToKey()}
-      , addr{introset.addressKeys.Addr()}
+      , SendContext{introset.address_keys, {}, this, parent}
+      , location{introset.address_keys.Addr().ToKey()}
+      , addr{introset.address_keys.Addr()}
       , currentIntroSet{introset}
 
   {
@@ -88,7 +88,7 @@ namespace llarp::service
     if (remoteIntro != m_NextIntro)
     {
       remoteIntro = m_NextIntro;
-      m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
+      m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
       m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
       ShiftIntroRouter(m_NextIntro.router);
       // if we have not made a handshake to the remote endpoint do so
@@ -264,7 +264,7 @@ namespace llarp::service
     frame->flag = 0;
     generatedIntro = true;
     // ensure we have a sender put for this convo tag
-    m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.addressKeys, false);
+    m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
     // encrypt frame async
     m_Endpoint->router()->queue_work([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
 
@@ -274,7 +274,7 @@ namespace llarp::service
   std::string
   OutboundContext::Name() const
   {
-    return "OBContext:" + currentIntroSet.addressKeys.Addr().ToString();
+    return "OBContext:" + currentIntroSet.address_keys.Addr().ToString();
   }
 
   void
@@ -366,8 +366,8 @@ namespace llarp::service
     }
     // check for stale intros
     // update the introset if we think we need to
-    if (currentIntroSet.HasStaleIntros(now, path::intro_path_spread)
-        or remoteIntro.ExpiresSoon(now, path::intro_path_spread))
+    if (currentIntroSet.HasStaleIntros(now, path::INTRO_PATH_SPREAD)
+        or remoteIntro.ExpiresSoon(now, path::INTRO_PATH_SPREAD))
     {
       UpdateIntroSet();
       ShiftIntroduction(false);
@@ -381,7 +381,7 @@ namespace llarp::service
         std::vector<Introduction> otherIntros;
         ForEachPath([now, router = remoteIntro.router, &otherIntros](auto path) {
           if (path and path->IsReady() and path->Endpoint() != router
-              and not path->ExpiresSoon(now, path::intro_path_spread))
+              and not path->ExpiresSoon(now, path::INTRO_PATH_SPREAD))
           {
             otherIntros.emplace_back(path->intro);
           }
@@ -485,7 +485,7 @@ namespace llarp::service
     ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](path::Path_ptr path) {
       if (not path->IsReady())
         return;
-      if (not path->intro.ExpiresSoon(now, path::default_lifetime - path::intro_path_spread))
+      if (not path->intro.ExpiresSoon(now, path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
       {
         numValidPaths++;
         if (path->intro.router == m_NextIntro.router)
@@ -699,7 +699,7 @@ namespace llarp::service
       {
         LogWarn("invalidating convotag T=", frame.convo_tag);
         m_Endpoint->RemoveConvoTag(frame.convo_tag);
-        m_Endpoint->m_SendQueue.tryPushBack(
+        m_Endpoint->_send_queue.tryPushBack(
             SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.path_id), p});
       }
     }

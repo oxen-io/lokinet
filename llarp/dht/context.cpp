@@ -483,9 +483,7 @@ namespace llarp::dht
   void
   DHTMessageHandler::DHTSendTo(const RouterID& peer, AbstractDHTMessage* msg, bool)
   {
-    DHTImmediateMessage m;
-    m.msgs.emplace_back(msg);
-    router->SendToOrQueue(peer, m);
+    router->SendToOrQueue(peer, msg);
     auto now = Now();
     router->PersistSessionUntil(peer, now + 1min);
   }
@@ -659,7 +657,7 @@ namespace llarp::dht
   llarp_time_t
   DHTMessageHandler::Now() const
   {
-    return router->Now();
+    return router->now();
   }
 
   std::unique_ptr<AbstractDHTMessageHandler>

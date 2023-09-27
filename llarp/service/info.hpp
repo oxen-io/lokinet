@@ -34,7 +34,7 @@ namespace llarp::service
     }
 
     bool
-    Verify(const llarp_buffer_t& payload, const Signature& sig) const;
+    verify(uint8_t* buf, size_t size, const Signature& sig) const;
 
     const PubKey&
     EncryptionPublicKey() const

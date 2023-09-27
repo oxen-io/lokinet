@@ -354,7 +354,7 @@ namespace llarp::handlers
   llarp_time_t
   ExitEndpoint::Now() const
   {
-    return router->Now();
+    return router->now();
   }
 
   bool
@@ -650,7 +650,7 @@ namespace llarp::handlers
   void
   ExitEndpoint::MarkIPActive(huint128_t ip)
   {
-    ip_activity[ip] = GetRouter()->Now();
+    ip_activity[ip] = GetRouter()->now();
   }
 
   void

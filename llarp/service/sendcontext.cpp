@@ -48,7 +48,7 @@ namespace llarp::service
       msg->sequence_number = path->NextSeqNo();
       if (path->SendRoutingMessage(*msg, r))
       {
-        lastGoodSend = r->Now();
+        lastGoodSend = r->now();
         flushpaths.emplace(path);
         m_Endpoint->ConvoTagTX(msg->protocol_frame_msg.convo_tag);
         const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;

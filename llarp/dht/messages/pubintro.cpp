@@ -2,7 +2,6 @@
 
 #include <llarp/dht/context.hpp>
 #include "gotintro.hpp"
-#include <llarp/messages/dht_immediate.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
@@ -59,10 +58,10 @@ namespace llarp::dht
     const llarp::dht::Key_t addr{introset.derivedSigningKey.data()};
 
     auto router = dht.GetRouter();
-    router->NotifyRouterEvent<tooling::PubIntroReceivedEvent>(
+    router->notify_router_event<tooling::PubIntroReceivedEvent>(
         router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()), addr, txID, relayOrder);
 
-    if (!introset.Verify(now))
+    if (!introset.verify(now))
     {
       llarp::LogWarn("Received PublishIntroMessage with invalid introset: ", introset);
       // don't propogate or store
@@ -80,8 +79,8 @@ namespace llarp::dht
 
     // identify closest 4 routers
     auto closestRCs =
-        dht.GetRouter()->node_db()->FindManyClosestTo(addr, IntroSetStorageRedundancy);
-    if (closestRCs.size() != IntroSetStorageRedundancy)
+        dht.GetRouter()->node_db()->FindManyClosestTo(addr, INTROSET_STORAGE_REDUNDANCY);
+    if (closestRCs.size() != INTROSET_STORAGE_REDUNDANCY)
     {
       llarp::LogWarn("Received PublishIntroMessage but only know ", closestRCs.size(), " nodes");
       replies.emplace_back(new GotIntroMessage({}, txID));
@@ -92,7 +91,7 @@ namespace llarp::dht
 
     // function to identify the closest 4 routers we know of for this introset
     auto propagateIfNotUs = [&](size_t index) {
-      assert(index < IntroSetStorageRedundancy);
+      assert(index < INTROSET_STORAGE_REDUNDANCY);
 
       const auto& rc = closestRCs[index];
       const Key_t peer{rc.pubkey};
@@ -120,7 +119,7 @@ namespace llarp::dht
 
     if (relayed)
     {
-      if (relayOrder >= IntroSetStorageRedundancy)
+      if (relayOrder >= INTROSET_STORAGE_REDUNDANCY)
       {
         llarp::LogWarn("Received PublishIntroMessage with invalid relayOrder: ", relayOrder);
         replies.emplace_back(new GotIntroMessage({}, txID));
@@ -179,7 +178,7 @@ namespace llarp::dht
     try
     {
       btdp.append("A", "I");
-      btdp.append("T", introset.ToString());
+      btdp.append("I", introset.ToString());
       btdp.append("O", relayOrder);
       btdp.append("R", relayed ? 1 : 0);
       btdp.append("T", txID);

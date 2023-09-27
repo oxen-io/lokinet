@@ -42,8 +42,6 @@ namespace llarp
 
     static constexpr size_t SIZE = sz;
 
-    using Data = std::array<byte_t, SIZE>;
-
     virtual ~AlignedBuffer() = default;
 
     AlignedBuffer()
@@ -56,7 +54,7 @@ namespace llarp
       *this = data;
     }
 
-    explicit AlignedBuffer(const Data& buf)
+    explicit AlignedBuffer(const std::array<byte_t, SIZE>& buf)
     {
       m_data = buf;
     }
@@ -159,13 +157,13 @@ namespace llarp
       m_data.fill(f);
     }
 
-    Data&
+    std::array<byte_t, SIZE>&
     as_array()
     {
       return m_data;
     }
 
-    const Data&
+    const std::array<byte_t, SIZE>&
     as_array() const
     {
       return m_data;
@@ -207,25 +205,25 @@ namespace llarp
       randombytes(data(), SIZE);
     }
 
-    typename Data::iterator
+    typename std::array<byte_t, SIZE>::iterator
     begin()
     {
       return m_data.begin();
     }
 
-    typename Data::iterator
+    typename std::array<byte_t, SIZE>::iterator
     end()
     {
       return m_data.end();
     }
 
-    typename Data::const_iterator
+    typename std::array<byte_t, SIZE>::const_iterator
     begin() const
     {
       return m_data.cbegin();
     }
 
-    typename Data::const_iterator
+    typename std::array<byte_t, SIZE>::const_iterator
     end() const
     {
       return m_data.cend();
@@ -294,7 +292,7 @@ namespace llarp
     }
 
    private:
-    Data m_data;
+    std::array<byte_t, SIZE> m_data;
   };
 
   namespace detail

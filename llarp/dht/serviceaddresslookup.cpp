@@ -26,7 +26,7 @@ namespace llarp
     bool
     ServiceAddressLookup::Validate(const service::EncryptedIntroSet& value) const
     {
-      if (!value.Verify(parent->Now()))
+      if (!value.verify(parent->Now()))
       {
         llarp::LogWarn("Got invalid introset from service lookup");
         return false;

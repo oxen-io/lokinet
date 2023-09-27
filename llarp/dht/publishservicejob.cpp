@@ -29,7 +29,7 @@ namespace llarp::dht
       return false;
     }
     const llarp_time_t now = llarp::time_now_ms();
-    return value.Verify(now);
+    return value.verify(now);
   }
 
   void

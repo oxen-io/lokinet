@@ -12,9 +12,9 @@
 namespace llarp::service
 {
   bool
-  ServiceInfo::Verify(const llarp_buffer_t& payload, const Signature& sig) const
+  ServiceInfo::verify(uint8_t* buf, size_t size, const Signature& sig) const
   {
-    return CryptoManager::instance()->verify(signkey, payload, sig);
+    return CryptoManager::instance()->verify(signkey, buf, size, sig);
   }
 
   bool

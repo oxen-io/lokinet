@@ -44,7 +44,7 @@ namespace llarp
       ~ProtocolMessage();
       ProtocolType proto = ProtocolType::TrafficV4;
       llarp_time_t queued = 0s;
-      std::vector<byte_t> payload;    // encrypted AbstractLinkMessage
+      std::vector<byte_t> payload;  // encrypted AbstractLinkMessage
       Introduction introReply;
       ServiceInfo sender;
       Endpoint* handler = nullptr;
@@ -78,9 +78,8 @@ namespace llarp
     /// outer message
     struct ProtocolFrameMessage final : public routing::AbstractRoutingMessage
     {
-      using Encrypted_t = Encrypted<2048>;
       PQCipherBlock cipher;
-      Encrypted_t enc;
+      Encrypted<2048> enc;
       uint64_t flag;  // set to indicate in plaintext a nack, aka "dont try again"
       KeyExchangeNonce nonce;
       Signature sig;

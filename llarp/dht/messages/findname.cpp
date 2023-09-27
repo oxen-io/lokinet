@@ -44,10 +44,9 @@ namespace llarp::dht
 
   bool
   FindNameMessage::handle_message(
-      AbstractDHTMessageHandler& dht,
-      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
+      AbstractDHTMessageHandler&, std::vector<std::unique_ptr<AbstractDHTMessage>>&) const
   {
-    (void)replies;
+    /* (void)replies;
     auto router = dht.GetRouter();
     if (pathID.IsZero() or not router->IsServiceNode())
       return false;
@@ -67,7 +66,7 @@ namespace llarp::dht
                 new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
           }
           path->SendRoutingMessage(msg, router);
-        });
+        }); */
     return true;
   }
 

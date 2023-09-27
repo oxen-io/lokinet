@@ -129,9 +129,9 @@ namespace llarp
   LR_StatusMessage::handle_message(Router* router) const
   {
     llarp::LogDebug("Received LR_Status message from (", conn->remote_rc.pubkey, ")");
-    if (frames.size() != path::max_len)
+    if (frames.size() != path::MAX_LEN)
     {
-      llarp::LogError("LRSM invalid number of records, ", frames.size(), "!=", path::max_len);
+      llarp::LogError("LRSM invalid number of records, ", frames.size(), "!=", path::MAX_LEN);
       return false;
     }
 

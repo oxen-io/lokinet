@@ -30,7 +30,7 @@ namespace llarp::dht
 
     for (const auto& introset : found)
     {
-      if (!introset.Verify(dht.Now()))
+      if (!introset.verify(dht.Now()))
       {
         LogWarn(
             "Invalid introset while handling direct GotIntro "

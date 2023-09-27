@@ -8,33 +8,24 @@ namespace llarp::routing
   bool
   ObtainExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    std::array<byte_t, 1024> tmp;
-    llarp_buffer_t buf(tmp);
     pubkey = seckey_topublic(sk);
     sig.Zero();
 
     auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->sign(sig, sk, buf);
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool
   ObtainExitMessage::Verify() const
   {
-    std::array<byte_t, 1024> tmp;
-    llarp_buffer_t buf(tmp);
     ObtainExitMessage copy;
     copy = *this;
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    // rewind buffer
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->verify(pubkey, buf, sig);
+    return CryptoManager::instance()->verify(
+        pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   std::string
@@ -150,32 +141,24 @@ namespace llarp::routing
   bool
   GrantExitMessage::Verify(const llarp::PubKey& pk) const
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     GrantExitMessage copy;
     copy = *this;
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->verify(pk, buf, sig);
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
   GrantExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     sig.Zero();
     nonce.Randomize();
 
     auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->sign(sig, sk, buf);
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool
@@ -239,32 +222,24 @@ namespace llarp::routing
   bool
   RejectExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     sig.Zero();
     nonce.Randomize();
 
     auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->sign(sig, sk, buf);
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool
   RejectExitMessage::Verify(const llarp::PubKey& pk) const
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     RejectExitMessage copy;
     copy = *this;
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->verify(pk, buf, sig);
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
@@ -314,33 +289,24 @@ namespace llarp::routing
 
   bool
   UpdateExitMessage::Verify(const llarp::PubKey& pk) const
-
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     UpdateExitMessage copy;
     copy = *this;
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->verify(pk, buf, sig);
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
   UpdateExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     nonce.Randomize();
 
     auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->sign(sig, sk, buf);
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool
@@ -427,32 +393,24 @@ namespace llarp::routing
   bool
   CloseExitMessage::Verify(const llarp::PubKey& pk) const
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     CloseExitMessage copy;
     copy = *this;
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->verify(pk, buf, sig);
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
   CloseExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    std::array<byte_t, 512> tmp;
-    llarp_buffer_t buf(tmp);
     sig.Zero();
     nonce.Randomize();
 
     auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    buf.sz = buf.cur - buf.base;
-    return CryptoManager::instance()->sign(sig, sk, buf);
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
   }
 
   bool

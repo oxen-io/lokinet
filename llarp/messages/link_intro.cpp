@@ -145,7 +145,8 @@ namespace llarp
     buf.cur = buf.base;
 
     // outer signature
-    if (!CryptoManager::instance()->verify(rc.pubkey, buf, sig))
+    if (!CryptoManager::instance()->verify(
+            rc.pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig))
     {
       log::error(link_cat, "Error: outer signature failed!");
       return false;

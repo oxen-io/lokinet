@@ -9,7 +9,6 @@
 #include <llarp/config/key_manager.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/dht/context.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
@@ -48,10 +47,22 @@
 /*
   TONUKE:
     - hidden_service_context
+
+  TODO:
+    - router should hold DHT nodes container? in either a class or a map
+    -
 */
 
 namespace llarp
 {
+  /// number of routers to publish to
+  static constexpr size_t INTROSET_RELAY_REDUNDANCY = 2;
+
+  /// number of dht locations handled per relay
+  static constexpr size_t INTROSET_REQS_PER_RELAY = 2;
+
+  static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
+      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
 
   class RouteManager final /* : public Router */
   {
@@ -120,7 +131,7 @@ namespace llarp
     std::shared_ptr<Config> _config;
     uint32_t _path_build_count = 0;
 
-    std::unique_ptr<rpc::RPCServer> m_RPCServer;
+    std::unique_ptr<rpc::RPCServer> _rpc_server;
 
     const llarp_time_t _randomStartDelay;
 
@@ -393,8 +404,8 @@ namespace llarp
     bool
     LooksAlive() const
     {
-      const llarp_time_t now = Now();
-      return now <= _last_tick || (now - _last_tick) <= llarp_time_t{30000};
+      const llarp_time_t current = now();
+      return current <= _last_tick || (current - _last_tick) <= llarp_time_t{30000};
     }
 
     const std::shared_ptr<RoutePoker>&
@@ -535,7 +546,7 @@ namespace llarp
     Tick();
 
     llarp_time_t
-    Now() const
+    now() const
     {
       return llarp::time_now_ms();
     }

@@ -70,9 +70,9 @@ namespace llarp
   bool
   LR_CommitMessage::handle_message(Router* router) const
   {
-    if (frames.size() != path::max_len)
+    if (frames.size() != path::MAX_LEN)
     {
-      llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=", path::max_len);
+      llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=", path::MAX_LEN);
       return false;
     }
     if (!router->path_context().AllowingTransit())
@@ -93,7 +93,7 @@ namespace llarp
       return false;
     if (!BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
-    if (lifetime > 10s && lifetime < path::default_lifetime)
+    if (lifetime > 10s && lifetime < path::DEFAULT_LIFETIME)
     {
       if (!BEncodeWriteDictInt("i", lifetime.count(), buf))
         return false;
@@ -370,7 +370,7 @@ namespace llarp
     static void
     HandleDecrypted(llarp_buffer_t* buf, std::shared_ptr<LRCMFrameDecrypt> self)
     {
-      auto now = self->context->router()->Now();
+      auto now = self->context->router()->now();
       auto& info = self->hop->info;
       if (!buf)
       {
@@ -423,7 +423,7 @@ namespace llarp
             info);
         self->hop->lifetime += self->record.work->extendedLifetime;
       }
-      else if (self->record.lifetime < path::default_lifetime && self->record.lifetime > 10s)
+      else if (self->record.lifetime < path::DEFAULT_LIFETIME && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
         llarp::LogDebug(

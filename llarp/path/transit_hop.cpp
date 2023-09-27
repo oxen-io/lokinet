@@ -28,8 +28,8 @@ namespace llarp::path
 
   TransitHop::TransitHop()
       : AbstractHopHandler{}
-      , m_UpstreamGather{transit_hop_queue_size}
-      , m_DownstreamGather{transit_hop_queue_size}
+      , m_UpstreamGather{TRANSIT_HOP_QUEUE_SIZE}
+      , m_DownstreamGather{TRANSIT_HOP_QUEUE_SIZE}
   {
     m_UpstreamGather.enable();
     m_DownstreamGather.enable();
@@ -100,10 +100,10 @@ namespace llarp::path
     N.Randomize();
     buf.sz = buf.cur - buf.base;
     // pad to nearest MESSAGE_PAD_SIZE bytes
-    auto dlt = buf.sz % pad_size;
+    auto dlt = buf.sz % PAD_SIZE;
     if (dlt)
     {
-      dlt = pad_size - dlt;
+      dlt = PAD_SIZE - dlt;
       // randomize padding
       CryptoManager::instance()->randbytes(buf.cur, dlt);
       buf.sz += dlt;
@@ -126,11 +126,17 @@ namespace llarp::path
     for (auto& ev : msgs)
     {
       RelayDownstreamMessage msg;
-      const llarp_buffer_t buf(ev.first);
+
+      // const llarp_buffer_t buf(ev.first);
+      uint8_t* buf = ev.first.data();
+      size_t sz = ev.first.size();
+
       msg.pathid = info.rxID;
       msg.nonce = ev.second ^ nonceXOR;
-      CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
-      msg.enc = buf;
+
+      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+      std::memcpy(msg.enc.data(), buf, sz);
+
       llarp::LogDebug(
           "relay ",
           msg.enc.size(),
@@ -153,12 +159,17 @@ namespace llarp::path
   {
     for (auto& ev : msgs)
     {
-      const llarp_buffer_t buf(ev.first);
       RelayUpstreamMessage msg;
-      CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
+
+      uint8_t* buf = ev.first.data();
+      size_t sz = ev.first.size();
+
+      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+
       msg.pathid = info.txID;
       msg.nonce = ev.second ^ nonceXOR;
-      msg.enc = buf;
+      std::memcpy(msg.enc.data(), buf, sz);
+
       if (m_UpstreamGather.tryPushBack(msg) != thread::QueueReturn::Success)
         break;
     }
@@ -186,7 +197,7 @@ namespace llarp::path
         {
           LogWarn("invalid upstream data on endpoint ", info);
         }
-        m_LastActivity = r->Now();
+        m_LastActivity = r->now();
       }
       FlushDownstream(r);
       for (const auto& other : m_FlushOthers)

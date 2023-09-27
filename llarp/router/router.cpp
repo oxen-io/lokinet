@@ -54,7 +54,7 @@ namespace llarp
       , _exit_context{this}
       , _dht{dht::make_handler()}
       , _disk_thread{_lmq->add_tagged_thread("disk")}
-      , m_RPCServer{nullptr}
+      , _rpc_server{nullptr}
       , _randomStartDelay{platform::is_simulation ? std::chrono::milliseconds{(llarp::randint() % 1250) + 2000} : 0s}
       , _hidden_service_context{this}
   {
@@ -280,15 +280,15 @@ namespace llarp
   }
 
   bool
-  Router::send_data_message(const RouterID &remote, const AbstractDataMessage &msg)
+  Router::send_data_message(const RouterID& remote, const AbstractDataMessage& msg)
   {
-    return _link_manager.send_data_message(remote, msg.bt_encode());
+    return _link_manager.send_or_queue_data(remote, msg.bt_encode());
   }
 
   bool
-  Router::send_control_message(const RouterID &remote, const AbstractLinkMessage &msg)
+  Router::send_control_message(const RouterID& remote, const AbstractLinkMessage& msg)
   {
-    
+    return _link_manager.send_or_queue_data(remote, msg.bt_encode());
   }
 
   void
@@ -300,7 +300,7 @@ namespace llarp
       LogError("failure to decode or verify of remote RC");
       return;
     }
-    if (remote.Verify(Now()))
+    if (remote.Verify(now()))
     {
       LogDebug("verified signature");
       _link_manager.connect_to(remote);
@@ -455,7 +455,7 @@ namespace llarp
   Router::SaveRC()
   {
     LogDebug("verify RC signature");
-    if (!router_contact.Verify(Now()))
+    if (!router_contact.Verify(now()))
     {
       Dump<MAX_RC_SIZE>(rc());
       LogError("RC is invalid, not saving");
@@ -503,8 +503,10 @@ namespace llarp
 
   bool
   Router::ParseRoutingMessageBuffer(
-      const llarp_buffer_t& buf, routing::AbstractRoutingMessageHandler* h, const PathID_t& rxid)
-  {}
+      const llarp_buffer_t&, routing::AbstractRoutingMessageHandler*, const PathID_t&)
+  {
+    return false;
+  }
 
   bool
   Router::appears_decommed() const
@@ -710,7 +712,7 @@ namespace llarp
       {
         if (it->IsObsoleteBootstrap())
           log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID{it->pubkey});
-        else if (not it->Verify(Now()))
+        else if (not it->Verify(now()))
           log::warning(logcat, "ignoring invalid bootstrap RC: {}", RouterID{it->pubkey});
         else
         {
@@ -830,7 +832,7 @@ namespace llarp
   void
   Router::report_stats()
   {
-    const auto now = Now();
+    const auto now = now();
     LogInfo(node_db()->NumLoaded(), " RCs loaded");
     LogInfo(bootstrap_rc_list.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
@@ -903,7 +905,7 @@ namespace llarp
     if (is_stopping)
       return;
     // LogDebug("tick router");
-    const auto now = Now();
+    const auto now = now();
     if (const auto delta = now - _last_tick; _last_tick != 0s and delta > TimeskipDetectedDuration)
     {
       // we detected a time skip into the futre, thaw the network
@@ -1183,7 +1185,7 @@ namespace llarp
   Router::StartRpcServer()
   {
     if (_config->api.m_enableRPCServer)
-      m_RPCServer = std::make_unique<rpc::RPCServer>(_lmq, *this);
+      _rpc_server = std::make_unique<rpc::RPCServer>(_lmq, *this);
 
     return true;
   }
@@ -1283,7 +1285,7 @@ namespace llarp
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _route_poker->start();
     is_running.store(true);
-    _started_at = Now();
+    _started_at = now();
     if (follow_whitelist)
     {
       // do service node testing if we are in service node whitelist mode
@@ -1375,7 +1377,7 @@ namespace llarp
   llarp_time_t
   Router::Uptime() const
   {
-    const llarp_time_t _now = Now();
+    const llarp_time_t _now = now();
     if (_started_at > 0s && _now > _started_at)
       return _now - _started_at;
     return 0s;
@@ -1602,9 +1604,7 @@ namespace llarp
 
     for (auto& bind_addr : addrs)
     {
-      AddressInfo ai;
-      ai.fromSockAddr(bind_addr);
-      _linkManager.connect_to({ai.IPString(), ai.port}, false);
+      _link_manager.connect_to({bind_addr.ToString()}, false);
     }
   }
 

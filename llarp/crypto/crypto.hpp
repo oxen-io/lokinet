@@ -9,104 +9,105 @@
 
 #include <cstdint>
 
-/**
- * crypto.hpp
- *
- * libsodium abstraction layer
- * potentially allow libssl support in the future
- */
-
 namespace llarp
 {
-  /// library crypto configuration
   struct Crypto
   {
-    virtual ~Crypto() = 0;
+    Crypto();
 
-    /// decrypt cipherText name given the key generated from name
-    virtual std::optional<AlignedBuffer<32>>
-    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name) = 0;
+    ~Crypto() = default;
+
+    /// decrypt cipherText given the key generated from name
+    std::optional<AlignedBuffer<32>>
+    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name);
 
     /// xchacha symmetric cipher
-    virtual bool
-    xchacha20(const llarp_buffer_t&, const SharedSecret&, const TunnelNonce&) = 0;
+    bool
+    xchacha20(uint8_t*, size_t size, const SharedSecret&, const TunnelNonce&);
 
     /// xchacha symmetric cipher (multibuffer)
-    virtual bool
-    xchacha20_alt(
-        const llarp_buffer_t&, const llarp_buffer_t&, const SharedSecret&, const byte_t*) = 0;
+    bool
+    xchacha20_alt(const llarp_buffer_t&, const llarp_buffer_t&, const SharedSecret&, const byte_t*);
 
     /// path dh creator's side
-    virtual bool
-    dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
+    bool
+    dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
     /// path dh relay side
-    virtual bool
-    dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
+    bool
+    dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
     /// transport dh client side
-    virtual bool
-    transport_dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
+    bool
+    transport_dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
     /// transport dh server side
-    virtual bool
-    transport_dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&) = 0;
+    bool
+    transport_dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
     /// blake2b 256 bit
-    virtual bool
-    shorthash(ShortHash&, const llarp_buffer_t&) = 0;
-    /// blake2s 256 bit "hmac" (keyed hash)
-    virtual bool
-    hmac(byte_t*, const llarp_buffer_t&, const SharedSecret&) = 0;
+    bool
+    shorthash(ShortHash&, uint8_t*, size_t size);
+    /// blake2s 256 bit hmac
+    bool
+    hmac(uint8_t*, uint8_t*, size_t, const SharedSecret&);
     /// ed25519 sign
-    virtual bool
-    sign(Signature&, const SecretKey&, const llarp_buffer_t&) = 0;
+    bool
+    sign(Signature&, const SecretKey&, uint8_t* buf, size_t size);
     /// ed25519 sign (custom with derived keys)
-    virtual bool
-    sign(Signature&, const PrivateKey&, const llarp_buffer_t&) = 0;
+    bool
+    sign(Signature&, const PrivateKey&, uint8_t* buf, size_t size);
     /// ed25519 verify
-    virtual bool
-    verify(const PubKey&, const llarp_buffer_t&, const Signature&) = 0;
+    bool
+    verify(const PubKey&, uint8_t*, size_t, const Signature&);
+    bool
+    verify(uint8_t*, uint8_t*, size_t, uint8_t*);
 
-    /// derive sub keys for public keys
-    virtual bool
-    derive_subkey(PubKey&, const PubKey&, uint64_t, const AlignedBuffer<32>* = nullptr) = 0;
+    /// derive sub keys for public keys.  hash is really only intended for
+    /// testing ands key_n if given.
+    bool
+    derive_subkey(
+        PubKey& derived,
+        const PubKey& root,
+        uint64_t key_n,
+        const AlignedBuffer<32>* hash = nullptr);
 
-    /// derive sub keys for private keys
-    virtual bool
+    /// derive sub keys for private keys.  hash is really only intended for
+    /// testing ands key_n if given.
+    bool
     derive_subkey_private(
-        PrivateKey&, const SecretKey&, uint64_t, const AlignedBuffer<32>* = nullptr) = 0;
+        PrivateKey& derived,
+        const SecretKey& root,
+        uint64_t key_n,
+        const AlignedBuffer<32>* hash = nullptr);
 
     /// seed to secretkey
-    virtual bool
-    seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&) = 0;
+    bool
+    seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&);
     /// randomize buffer
-    virtual void
-    randomize(const llarp_buffer_t&) = 0;
+    void
+    randomize(const llarp_buffer_t&);
     /// randomizer memory
-    virtual void
-    randbytes(byte_t*, size_t) = 0;
+    void
+    randbytes(byte_t*, size_t);
     /// generate signing keypair
-    virtual void
-    identity_keygen(SecretKey&) = 0;
+    void
+    identity_keygen(SecretKey&);
     /// generate encryption keypair
-    virtual void
-    encryption_keygen(SecretKey&) = 0;
+    void
+    encryption_keygen(SecretKey&);
     /// generate post quantum encrytion key
-    virtual void
-    pqe_keygen(PQKeyPair&) = 0;
+    void
+    pqe_keygen(PQKeyPair&);
     /// post quantum decrypt (buffer, sharedkey_dst, sec)
-    virtual bool
-    pqe_decrypt(const PQCipherBlock&, SharedSecret&, const byte_t*) = 0;
+    bool
+    pqe_decrypt(const PQCipherBlock&, SharedSecret&, const byte_t*);
     /// post quantum encrypt (buffer, sharedkey_dst,  pub)
-    virtual bool
-    pqe_encrypt(PQCipherBlock&, SharedSecret&, const PQPubKey&) = 0;
+    bool
+    pqe_encrypt(PQCipherBlock&, SharedSecret&, const PQPubKey&);
 
-    virtual bool
-    check_identity_privkey(const SecretKey&) = 0;
+    bool
+    check_identity_privkey(const SecretKey&);
 
-    /// check if a password hash string matches the challenge
-    virtual bool
-    check_passwd_hash(std::string pwhash, std::string challenge) = 0;
+    bool
+    check_passwd_hash(std::string pwhash, std::string challenge);
   };
-
-  inline Crypto::~Crypto() = default;
 
   /// return random 64bit unsigned interger
   uint64_t

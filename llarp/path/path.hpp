@@ -55,7 +55,7 @@ namespace llarp
       /// nonce for key exchange
       TunnelNonce nonce;
       // lifetime
-      llarp_time_t lifetime = default_lifetime;
+      llarp_time_t lifetime = DEFAULT_LIFETIME;
 
       util::StatusObject
       ExtractStatus() const;

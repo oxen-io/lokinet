@@ -1,6 +1,7 @@
 #pragma once
 
 #include "connection.hpp"
+#include "link_endpoints.hpp"
 
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
@@ -122,10 +123,11 @@ namespace llarp
   struct PendingControlMessage : PendingMessage
   {
     std::string endpoint;
-    bool is_request{false};  // true if request, false if command
+    std::function<void(oxen::quic::message)> func;
 
-    PendingControlMessage(std::string b, std::string e, bool request = true)
-        : PendingMessage(b, true), endpoint{std::move(e)}, is_request{request}
+    PendingControlMessage(
+        std::string b, std::string e, std::function<void(oxen::quic::message)> f = nullptr)
+        : PendingMessage(b, true), endpoint{std::move(e)}, func{std::move(f)}
     {}
   };
 
@@ -141,25 +143,16 @@ namespace llarp
     // set is_request to true for RPC requests, false for RPC commands
     bool
     send_control_message(
-        const RouterID& remote, std::string endpoint, std::string body, bool is_request = true);
+        const RouterID& remote,
+        std::string endpoint,
+        std::string body,
+        std::function<void(oxen::quic::message)> = nullptr);
 
     bool
     send_data_message(const RouterID& remote, std::string data);
 
    private:
     friend struct link::Endpoint;
-
-    const std::unordered_map<
-        std::string,
-        std::function<std::optional<std::string>(std::optional<std::string>)>>
-        rpc_map{
-            /** TODO:
-                key: RPC endpoint name
-                value: function that takes command body as parameter
-
-                returns: commands will return std::nullopt while requests will return a response
-            */
-        };
 
     std::atomic<bool> is_stopping;
     // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
@@ -171,7 +164,7 @@ namespace llarp
     // holds any messages we attempt to send while connections are establishing
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
 
-    util::DecayingHashSet<RouterID> clients{path::default_lifetime};
+    util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
 
     RCLookupHandler* rc_lookup;
     std::shared_ptr<NodeDB> node_db;
@@ -201,6 +194,9 @@ namespace llarp
 
     std::shared_ptr<oxen::quic::Endpoint>
     startup_endpoint();
+
+    void
+    register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s);
 
    public:
     const link::Endpoint&
@@ -276,6 +272,40 @@ namespace llarp
     size_t min_connected_routers = 4;
     /// hard upperbound limit on the number of router to router connections
     size_t max_connected_routers = 6;
+
+   private:
+    // Control message
+
+    // Bridge (relay) message
+    void handle_publish_intro(oxen::quic::message);
+    void handle_find_intro(oxen::quic::message);
+    void handle_find_name(oxen::quic::message);
+    void handle_path_confirm(oxen::quic::message);
+    void handle_path_latency(oxen::quic::message);
+    void handle_update_exit(oxen::quic::message);
+    void handle_obtain_exit(oxen::quic::message);
+    void handle_close_exit(oxen::quic::message);
+
+    // Control and bridge message (separate into two type)
+
+    // Unsure
+    void handle_find_router(oxen::quic::message);  // maybe both
+
+    std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
+        {"find_name", &LinkManager::handle_find_name},
+        {"find_router", &LinkManager::handle_find_router},
+        {"publish_intro", &LinkManager::handle_publish_intro},
+        {"find_intro", &LinkManager::handle_find_intro},
+        {"path_confirm", &LinkManager::handle_path_confirm},
+        {"path_latency", &LinkManager::handle_path_latency},
+        {"update_exit", &LinkManager::handle_update_exit},
+        {"obtain_exit", &LinkManager::handle_obtain_exit},
+        {"close_exit", &LinkManager::handle_close_exit}};
+
+    // response handling functions
+    void handle_got_intro(oxen::quic::message);
+    void handle_got_name(oxen::quic::message);
+    void handle_got_router(oxen::quic::message);
   };
 
   namespace link
@@ -334,5 +364,24 @@ namespace llarp
       - upon creation, send these messages in the connection established callback
     - if connection times out, flush queue
     - TOCHECK: is priority used at all??
+
+
+std::unordered_map<std::string, void (llarp::link::LinkManager::*)(oxen::quic::message)>
+rpc_commands = {
+    {"find_name", &handle_find_name},
+    {"find_router", &handle_find_router},
+    // ...
+};
+
+for (const auto& [name, mfn] : rpc_commands)
+    bparser.add_command(name, [this, mfn] (oxen::quic::message m) {
+        router->call([this, mfn, m=std::move(m)] mutable {
+            try {
+                std::invoke(mfn, this, std::move(m));
+            } catch (const std::exception& e) {
+                m.respond("Error: "s + e.what(), true);
+            }
+        });
+    });
 
 */

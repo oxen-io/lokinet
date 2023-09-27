@@ -1,7 +1,6 @@
 include(Version)
 
 target_sources(lokinet-cryptography PRIVATE
-  crypto/crypto_libsodium.cpp
   crypto/crypto.cpp
   crypto/encrypted_frame.cpp
   crypto/types.cpp
@@ -150,7 +149,6 @@ add_library(lokinet-consensus
 # lokinet-dht holds all logic related to interacting with and participating in the DHT hashring
 add_library(lokinet-dht
   STATIC
-  dht/context.cpp
   dht/dht.cpp
   dht/explorenetworkjob.cpp
   dht/localtaglookup.cpp
@@ -200,7 +198,6 @@ add_library(lokinet-layer-link
   STATIC
   link/connection.cpp
   link/link_manager.cpp
-  messages/dht_immediate.cpp
   messages/link_intro.cpp
 )
 

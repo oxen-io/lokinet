@@ -48,10 +48,10 @@ namespace llarp::service
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
     std::optional<EncryptedIntroSet>
-    EncryptAndSignIntroSet(const IntroSet& i, llarp_time_t now) const;
+    encrypt_and_sign_introset(const IntroSet& i, llarp_time_t now) const;
 
     bool
-    Sign(Signature& sig, const llarp_buffer_t& buf) const;
+    Sign(Signature& sig, uint8_t* buf, size_t size) const;
 
     /// zero out all secret key members
     void
