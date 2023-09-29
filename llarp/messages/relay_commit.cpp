@@ -193,16 +193,16 @@ namespace llarp
     // the actual hop
     std::shared_ptr<Hop> hop;
 
-    const std::optional<IpAddress> fromAddr;
+    oxen::quic::Address from_addr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec, const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
         , hop(std::make_shared<Hop>())
-        , fromAddr(
-              commit->conn->remote_rc.IsPublicRouter() ? std::optional<oxen::quic::Address>{}
-                                                       : commit->conn->remote_rc.addr)
+        , from_addr{
+              commit->conn->remote_rc.IsPublicRouter() ? oxen::quic::Address{}
+                                                       : commit->conn->remote_rc.addr}
     {
       hop->info.downstream = commit->conn->remote_rc.pubkey;
     }
@@ -268,14 +268,14 @@ namespace llarp
         return;
       }
 
-      if (self->fromAddr)
+      if (self->from_addr.is_addressable())
       {
         // only do ip limiting from non service nodes
 #ifndef LOKINET_HIVE
-        if (self->context->CheckPathLimitHitByIP(*self->fromAddr))
+        if (self->context->CheckPathLimitHitByIP(self->from_addr.to_string()))
         {
           // we hit a limit so tell it to slow tf down
-          llarp::LogError("client path build hit limit ", *self->fromAddr);
+          llarp::LogError("client path build hit limit ", self->from_addr);
           OnForwardLRCMResult(
               self->context->router(),
               self->hop,
@@ -413,7 +413,7 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(self->hop->nonceXOR, llarp_buffer_t(self->hop->pathKey));
+      crypto->shorthash(self->hop->nonceXOR, self->hop->pathKey.data(), self->hop->pathKey.size());
       if (self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug(

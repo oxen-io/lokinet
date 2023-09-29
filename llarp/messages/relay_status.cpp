@@ -249,8 +249,10 @@ namespace llarp
 
     // send the status message to previous hop
     // if it fails we are hitting a failure case we can't cope with so ... drop.
-    if (not router->SendToOrQueue(nextHop, *msg, resultCallback))
-      resultCallback(SendStatus::Congestion);
+
+    // TODO: replace with new message serialization
+    // if (not router->SendToOrQueue(nextHop, *msg, resultCallback))
+    //   resultCallback(SendStatus::Congestion);
 
     // trigger idempotent pump to make sure stuff gets sent
     router->TriggerPump();

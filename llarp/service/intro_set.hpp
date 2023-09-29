@@ -139,6 +139,15 @@ namespace llarp::service
     std::optional<Tag> topic;
     Signature sig;
 
+    EncryptedIntroSet() = default;
+
+    explicit EncryptedIntroSet(
+        std::string signing_key,
+        std::chrono::milliseconds signed_at,
+        std::string enc_payload,
+        std::string nonce,
+        std::string sig);
+
     bool
     Sign(const PrivateKey& k);
 
@@ -163,6 +172,9 @@ namespace llarp::service
     /// verify signature and timestamp
     bool
     verify(llarp_time_t now) const;
+
+    static bool
+    verify(uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig);
 
     static bool
     verify(std::string introset, std::string key, std::string sig);

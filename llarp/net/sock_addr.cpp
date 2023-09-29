@@ -78,11 +78,6 @@ namespace llarp
     fromString(addr, false);
   }
 
-  SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
-  {
-    setPort(huint16_t{info.port});
-  }
-
   SockAddr::SockAddr(const SockAddr& other)
   {
     *this = other;

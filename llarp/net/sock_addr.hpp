@@ -17,8 +17,6 @@
 
 namespace llarp
 {
-  struct AddressInfo;
-
   /// A simple SockAddr wrapper which provides a sockaddr_in (IPv4). Memory management is handled
   /// in constructor and destructor (if needed) and copying is disabled.
   struct SockAddr
@@ -38,8 +36,6 @@ namespace llarp
     // String ctors
     SockAddr(std::string_view addr);
     SockAddr(std::string_view addr, huint16_t port);  // port is in native (host) order
-
-    SockAddr(const AddressInfo&);
 
     SockAddr(const SockAddr&);
     SockAddr&

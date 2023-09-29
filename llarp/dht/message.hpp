@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dht.h"
 #include "key.hpp"
 #include <llarp/messages/link_message.hpp>
 #include <llarp/path/path_types.hpp>
@@ -39,16 +38,6 @@ namespace llarp::dht
     decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
 
     // methods we do not want to inherit onwards from AbstractSerializable
-    void
-    bt_encode(oxenc::bt_list_producer&) const final
-    {
-      throw std::runtime_error{"Error: DHT messages should encode directly to a bt dict producer!"};
-    }
-    void
-    bt_encode(llarp_buffer&) const final
-    {
-      throw std::runtime_error{"Error: DHT messages should encode directly to a bt dict producer!"};
-    }
     std::string
     bt_encode() const final
     {

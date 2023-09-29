@@ -64,6 +64,10 @@ namespace llarp
   static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
 
+  static constexpr size_t RC_LOOKUP_STORAGE_REDUNDANCY{4};
+
+  struct Contacts;
+
   class RouteManager final /* : public Router */
   {
    public:
@@ -118,7 +122,8 @@ namespace llarp
     exit::Context _exit_context;
     SecretKey _identity;
     SecretKey _encryption;
-    std::shared_ptr<dht::AbstractDHTMessageHandler> _dht;
+    std::shared_ptr<dht::AbstractDHTMessageHandler> _dh_t;
+    std::shared_ptr<Contacts> _contacts;
     std::shared_ptr<NodeDB> _node_db;
     llarp_time_t _started_at;
     const oxenmq::TaggedThreadID _disk_thread;
@@ -140,7 +145,6 @@ namespace llarp
     oxenmq::address rpc_addr;
     Profiling _router_profiling;
     fs::path _profile_file;
-    OutboundMessageHandler _outboundMessageHandler;
     LinkManager _link_manager{*this};
     RCLookupHandler _rc_lookup_handler;
     RCGossiper _rcGossiper;
@@ -178,15 +182,15 @@ namespace llarp
     void
     handle_router_event(std::unique_ptr<tooling::RouterEvent> event) const;
 
-    virtual bool
-    disableGossipingRC_TestingOnly()
-    {
-      return false;
-    };
-
    public:
     void
     for_each_connection(std::function<void(link::Connection&)> func);
+
+    Contacts*
+    contacts() const
+    {
+      return _contacts.get();
+    }
 
     std::shared_ptr<Config>
     config() const
@@ -213,22 +217,6 @@ namespace llarp
     rpc_client() const
     {
       return _rpc_client;
-    }
-
-    std::shared_ptr<dht::AbstractDHTMessageHandler>
-    dht() const
-    {
-      return _dht;
-    }
-
-    /** TOFIX: this
-          - refactor path types (path_context, pathset) to use unified ID type, not PathID_t
-          - refactor all callers to use new implementation of remove_path
-    */
-    OutboundMessageHandler&
-    outboundMessageHandler()
-    {
-      return _outboundMessageHandler;
     }
 
     LinkManager&
@@ -375,9 +363,6 @@ namespace llarp
 
     llarp_time_t
     Uptime() const;
-
-    bool
-    Sign(Signature& sig, const llarp_buffer_t& buf) const;
 
     service::Context&
     hidden_service_context()
@@ -530,7 +515,11 @@ namespace llarp
     send_data_message(const RouterID& remote, const AbstractDataMessage& msg);
 
     bool
-    send_control_message(const RouterID& remote, const AbstractLinkMessage& msg);
+    send_control_message(
+        const RouterID& remote,
+        std::string endpoint,
+        std::string body,
+        std::function<void(oxen::quic::message m)> func = nullptr);
 
     bool IsBootstrapNode(RouterID) const;
 

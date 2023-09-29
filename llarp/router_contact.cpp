@@ -136,95 +136,33 @@ namespace llarp
     return netID == NetID::DefaultValue();
   }
 
-  bool
-  RouterContact::BEncodeSignedSection(llarp_buffer_t* buf) const
+  std::string
+  RouterContact::bencode_signed_section() const
   {
-    /* write dict begin */
-    if (!bencode_start_dict(buf))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    /* write ai if they exist */
-    if (!bencode_write_bytestring(buf, "a", 1))
-      return false;
-    if (!BEncodeWriteList(addrs.begin(), addrs.end(), buf))
-      return false;
+    btdp.append("a", addr.to_string());
+    btdp.append("i", netID.ToView());
+    btdp.append("k", pubkey.bt_encode());
 
-    /* write netid */
-    if (!bencode_write_bytestring(buf, "i", 1))
-      return false;
-    if (!netID.BEncode(buf))
-      return false;
-    /* write signing pubkey */
-    if (!bencode_write_bytestring(buf, "k", 1))
-      return false;
-    if (!pubkey.bt_encode(buf))
-      return false;
+    auto n = Nick();
+    if (not n.empty())
+      btdp.append("n", n);
 
-    std::string nick = Nick();
-    if (!nick.empty())
+    btdp.append("p", enckey.ToView());
+    btdp.append("r", routerVersion);
+
+    if (not srvRecords.empty())
     {
-      /* write nickname */
-      if (!bencode_write_bytestring(buf, "n", 1))
-      {
-        return false;
-      }
-      if (!bencode_write_bytestring(buf, nick.c_str(), nick.size()))
-      {
-        return false;
-      }
+      auto sublist = btdp.append_list("s");
+
+      for (auto& s : srvRecords)
+        sublist.append(s.bt_encode());
     }
 
-    /* write encryption pubkey */
-    if (!bencode_write_bytestring(buf, "p", 1))
-      return false;
-    if (!enckey.bt_encode(buf))
-      return false;
+    btdp.append("u", last_updated.count());
 
-    // write router version if present
-    if (routerVersion)
-    {
-      if (not BEncodeWriteDictEntry("r", *routerVersion, buf))
-        return false;
-    }
-
-    if (version > 0)
-    {
-      // srv records if present
-      if (not BEncodeWriteDictList("s", srvRecords, buf))
-        return false;
-    }
-    /* write last updated */
-    if (!bencode_write_bytestring(buf, "u", 1))
-      return false;
-    if (!bencode_write_uint64(buf, last_updated.count()))
-      return false;
-
-    /* write versions */
-    if (!bencode_write_uint64_entry(buf, "v", 1, version))
-      return false;
-
-    // D We can delete this?
-    if (serializeExit)
-    {
-      /* write xi if they exist */
-      if (!bencode_write_bytestring(buf, "x", 1))
-        return false;
-      /* no exits anymore in RCs */
-      const std::vector<AlignedBuffer<8>> exits{};
-      if (!BEncodeWriteList(exits.begin(), exits.end(), buf))
-        return false;
-    }
-
-    if (version == 0)
-    {
-      /* write signature */
-      if (!bencode_write_bytestring(buf, "z", 1))
-        return false;
-      if (!signature.bt_encode(buf))
-        return false;
-    }
-
-    return bencode_end(buf);
+    return std::move(btdp).str();
   }
 
   void
@@ -458,26 +396,16 @@ namespace llarp
   RouterContact::Sign(const SecretKey& secretkey)
   {
     pubkey = llarp::seckey_topublic(secretkey);
-    std::array<byte_t, MAX_RC_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
     signature.Zero();
     last_updated = time_now_ms();
 
-    if (!BEncodeSignedSection(&buf))
-    {
-      return false;
-    }
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
+    signed_bt_dict = bencode_signed_section();
 
-    signed_bt_dict = std::string(reinterpret_cast<char*>(buf.base), buf.sz);
-
-    if (version == 0 or version == 1)
-    {
-      return CryptoManager::instance()->sign(signature, secretkey, buf);
-    }
-
-    return false;
+    return CryptoManager::instance()->sign(
+        signature,
+        secretkey,
+        reinterpret_cast<uint8_t*>(signed_bt_dict.data()),
+        signed_bt_dict.size());
   }
 
   bool

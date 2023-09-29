@@ -149,19 +149,18 @@ add_library(lokinet-consensus
 # lokinet-dht holds all logic related to interacting with and participating in the DHT hashring
 add_library(lokinet-dht
   STATIC
-  dht/dht.cpp
   dht/explorenetworkjob.cpp
   dht/localtaglookup.cpp
   dht/localrouterlookup.cpp
   dht/localserviceaddresslookup.cpp
   dht/message.cpp
-  dht/messages/findintro.cpp
-  dht/messages/findrouter.cpp
-  dht/messages/gotintro.cpp
-  dht/messages/gotrouter.cpp
-  dht/messages/pubintro.cpp
-  dht/messages/findname.cpp
-  dht/messages/gotname.cpp
+  # dht/messages/findintro.cpp
+  # dht/messages/findrouter.cpp
+  # dht/messages/gotintro.cpp
+  # dht/messages/gotrouter.cpp
+  # dht/messages/pubintro.cpp
+  # dht/messages/findname.cpp
+  # dht/messages/gotname.cpp
   dht/publishservicejob.cpp
   dht/recursiverouterlookup.cpp
   dht/serviceaddresslookup.cpp
@@ -197,6 +196,7 @@ add_library(lokinet-layer-onion
 add_library(lokinet-layer-link
   STATIC
   link/connection.cpp
+  link/contacts.cpp
   link/link_manager.cpp
   messages/link_intro.cpp
 )
@@ -220,7 +220,6 @@ add_library(lokinet-context
   STATIC
   context.cpp
   link/link_manager.cpp
-  router/outbound_message_handler.cpp
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp

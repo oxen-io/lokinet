@@ -24,9 +24,9 @@ namespace llarp
   namespace service
   {
     struct Context;
-
   }  // namespace service
 
+  struct Contacts;
   struct LinkManager;
   struct RouterContact;
 
@@ -109,7 +109,7 @@ namespace llarp
 
     void
     init(
-        std::shared_ptr<dht::AbstractDHTMessageHandler> dht,
+        std::shared_ptr<Contacts> contacts,
         std::shared_ptr<NodeDB> nodedb,
         std::shared_ptr<EventLoop> loop,
         worker_func dowork,
@@ -143,7 +143,7 @@ namespace llarp
 
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 
-    std::shared_ptr<dht::AbstractDHTMessageHandler> dht = nullptr;
+    std::shared_ptr<Contacts> contacts = nullptr;
     std::shared_ptr<NodeDB> node_db;
     std::shared_ptr<EventLoop> loop;
     worker_func work_func = nullptr;

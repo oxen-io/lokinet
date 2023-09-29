@@ -10,7 +10,7 @@ namespace llarp::path
   static constexpr auto DefaultPathBuildLimit = 500ms;
 
   PathContext::PathContext(Router* router)
-      : _router(router), m_AllowTransit(false), m_PathLimits(DefaultPathBuildLimit)
+      : _router(router), m_AllowTransit(false), path_limits(DefaultPathBuildLimit)
   {}
 
   void
@@ -36,7 +36,22 @@ namespace llarp::path
     remote.setPort(0);
     // try inserting remote address by ip into decaying hash set
     // if it cannot insert it has hit a limit
-    return not m_PathLimits.Insert(remote);
+    return not path_limits.Insert(remote);
+#endif
+  }
+
+  bool
+  PathContext::CheckPathLimitHitByIP(const std::string& ip)
+  {
+#ifdef TESTNET
+    return false;
+#else
+    IpAddress remote{ip};
+    // null out the port -- we don't care about it for path limiting purposes
+    remote.setPort(0);
+    // try inserting remote address by ip into decaying hash set
+    // if it cannot insert it has hit a limit
+    return not path_limits.Insert(remote);
 #endif
   }
 
@@ -85,7 +100,9 @@ namespace llarp::path
 
     LogDebug("forwarding LRCM to ", nextHop);
 
-    return _router->SendToOrQueue(nextHop, msg, handler);
+    // TODO: replace with new message serialization for LRCM
+    // return _router->SendToOrQueue(nextHop, msg, handler);
+    return true;
   }
 
   template <
@@ -340,7 +357,7 @@ namespace llarp::path
   PathContext::ExpirePaths(llarp_time_t now)
   {
     // decay limits
-    m_PathLimits.Decay(now);
+    path_limits.Decay(now);
 
     {
       SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
@@ -350,7 +367,8 @@ namespace llarp::path
       {
         if (itr->second->Expired(now))
         {
-          _router->outboundMessageHandler().RemovePath(itr->first);
+          // TODO: this
+          // _router->outboundMessageHandler().RemovePath(itr->first);
           itr = map.erase(itr);
         }
         else

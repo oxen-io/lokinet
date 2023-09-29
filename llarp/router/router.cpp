@@ -5,10 +5,9 @@
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/time.hpp>
-#include <llarp/crypto/crypto_libsodium.hpp>
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/dht/context.hpp>
 #include <llarp/dht/node.hpp>
+#include <llarp/link/contacts.hpp>
 #include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
 #include <stdexcept>
@@ -46,16 +45,16 @@ namespace llarp
   static auto logcat = log::Cat("router");
 
   Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
-      : _route_poker{std::make_shared<RoutePoker>(this)}
+      : _route_poker{std::make_shared<RoutePoker>(*this)}
       , _lmq{std::make_shared<oxenmq::OxenMQ>()}
       , _loop{std::move(loop)}
       , _vpn{std::move(vpnPlatform)}
       , paths{this}
       , _exit_context{this}
-      , _dht{dht::make_handler()}
       , _disk_thread{_lmq->add_tagged_thread("disk")}
       , _rpc_server{nullptr}
       , _randomStartDelay{platform::is_simulation ? std::chrono::milliseconds{(llarp::randint() % 1250) + 2000} : 0s}
+      , _link_manager{*this}
       , _hidden_service_context{this}
   {
     _key_manager = std::make_shared<KeyManager>();
@@ -70,7 +69,7 @@ namespace llarp
 
   Router::~Router()
   {
-    _dht.reset();
+    _contacts.reset();
   }
 
   // TODO: investigate changes needed for libquic integration
@@ -97,7 +96,7 @@ namespace llarp
     return util::StatusObject{
         {"running", true},
         {"numNodesKnown", _node_db->NumLoaded()},
-        {"dht", _dht->ExtractStatus()},
+        {"contacts", _contacts->extract_status()},
         {"services", _hidden_service_context.ExtractStatus()},
         {"exit", _exit_context.ExtractStatus()},
         {"links", _link_manager.extract_status()},
@@ -238,9 +237,6 @@ namespace llarp
   void
   Router::GossipRCIfNeeded(const RouterContact rc)
   {
-    if (disableGossipingRC_TestingOnly())
-      return;
-
     /// if we are not a service node forget about gossip
     if (not IsServiceNode())
       return;
@@ -273,22 +269,20 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(
-      const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler)
-  {
-    return _outboundMessageHandler.QueueMessage(remote, msg, handler);
-  }
-
-  bool
   Router::send_data_message(const RouterID& remote, const AbstractDataMessage& msg)
   {
-    return _link_manager.send_or_queue_data(remote, msg.bt_encode());
+    return _link_manager.send_data_message(remote, msg.bt_encode());
   }
 
   bool
-  Router::send_control_message(const RouterID& remote, const AbstractLinkMessage& msg)
+  Router::send_control_message(
+      const RouterID& remote,
+      std::string ep,
+      std::string body,
+      std::function<void(oxen::quic::message m)> func)
   {
-    return _link_manager.send_or_queue_data(remote, msg.bt_encode());
+    return _link_manager.send_control_message(
+        remote, std::move(ep), std::move(body), std::move(func));
   }
 
   void
@@ -754,10 +748,9 @@ namespace llarp
       LogInfo("Loaded ", bootstrap_rc_list.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(this);
     _link_manager.init(&_rc_lookup_handler);
     _rc_lookup_handler.init(
-        _dht,
+        _contacts,
         _node_db,
         _loop,
         util::memFn(&Router::queue_work, this),
@@ -832,7 +825,7 @@ namespace llarp
   void
   Router::report_stats()
   {
-    const auto now = now();
+    const auto now = llarp::time_now_ms();
     LogInfo(node_db()->NumLoaded(), " RCs loaded");
     LogInfo(bootstrap_rc_list.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
@@ -905,7 +898,7 @@ namespace llarp
     if (is_stopping)
       return;
     // LogDebug("tick router");
-    const auto now = now();
+    const auto now = llarp::time_now_ms();
     if (const auto delta = now - _last_tick; _last_tick != 0s and delta > TimeskipDetectedDuration)
     {
       // we detected a time skip into the futre, thaw the network
@@ -1111,19 +1104,13 @@ namespace llarp
     for_each_connection(
         [&peer_keys](link::Connection& conn) { peer_keys.emplace(conn.remote_rc.pubkey); });
 
-    dht()->Nodes()->RemoveIf(
+    _contacts->rc_nodes()->RemoveIf(
         [&peer_keys](const dht::Key_t& k) -> bool { return peer_keys.count(k) == 0; });
 
     paths.ExpirePaths(now);
 
     // update tick timestamp
     _last_tick = llarp::time_now_ms();
-  }
-
-  bool
-  Router::Sign(Signature& sig, const llarp_buffer_t& buf) const
-  {
-    return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
   void
@@ -1271,12 +1258,12 @@ namespace llarp
       _node_db->LoadFromDisk();
     }
 
-    _dht->Init(llarp::dht::Key_t(pubkey()), this);
+    _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
 
     for (const auto& rc : bootstrap_rc_list)
     {
       node_db()->Put(rc);
-      _dht->Nodes()->PutNode(rc);
+      _contacts->rc_nodes()->PutNode(rc);
       LogInfo("added bootstrap node ", RouterID{rc.pubkey});
     }
 
@@ -1494,7 +1481,7 @@ namespace llarp
   {
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
-    _dht->AllowTransit() = true;
+    _contacts->set_transit_allowed(true);
     _exit_context.AddExitEndpoint("default", _config->network, _config->dns);
     return true;
   }
@@ -1549,63 +1536,63 @@ namespace llarp
   void
   Router::InitInboundLinks()
   {
-    auto addrs = _config->links.InboundListenAddrs;
-    if (is_service_node and addrs.empty())
-    {
-      LogInfo("Inferring Public Address");
+    // auto addrs = _config->links.InboundListenAddrs;
+    // if (is_service_node and addrs.empty())
+    // {
+    //   LogInfo("Inferring Public Address");
 
-      auto maybe_port = _config->links.PublicPort;
-      if (_config->router.PublicPort and not maybe_port)
-        maybe_port = _config->router.PublicPort;
-      if (not maybe_port)
-        maybe_port = net::port_t::from_host(constants::DefaultInboundIWPPort);
+    //   auto maybe_port = _config->links.PublicPort;
+    //   if (_config->router.PublicPort and not maybe_port)
+    //     maybe_port = _config->router.PublicPort;
+    //   if (not maybe_port)
+    //     maybe_port = net::port_t::from_host(constants::DefaultInboundIWPPort);
 
-      if (auto maybe_addr = net().MaybeInferPublicAddr(*maybe_port))
-      {
-        LogInfo("Public Address looks to be ", *maybe_addr);
-        addrs.emplace_back(std::move(*maybe_addr));
-      }
-    }
-    if (is_service_node and addrs.empty())
-      throw std::runtime_error{"we are a service node and we have no inbound links configured"};
+    //   if (auto maybe_addr = net().MaybeInferPublicAddr(*maybe_port))
+    //   {
+    //     LogInfo("Public Address looks to be ", *maybe_addr);
+    //     addrs.emplace_back(std::move(*maybe_addr));
+    //   }
+    // }
+    // if (is_service_node and addrs.empty())
+    //   throw std::runtime_error{"we are a service node and we have no inbound links configured"};
 
-    // create inbound links, if we are a service node
-    for (auto bind_addr : addrs)
-    {
-      if (bind_addr.getPort() == 0)
-        throw std::invalid_argument{"inbound link cannot use port 0"};
+    // // create inbound links, if we are a service node
+    // for (auto bind_addr : addrs)
+    // {
+    //   if (bind_addr.getPort() == 0)
+    //     throw std::invalid_argument{"inbound link cannot use port 0"};
 
-      if (net().IsWildcardAddress(bind_addr.getIP()))
-      {
-        if (auto maybe_ip = public_ip())
-          bind_addr.setIP(*maybe_ip);
-        else
-          throw std::runtime_error{"no public ip provided for inbound socket"};
-      }
+    //   if (net().IsWildcardAddress(bind_addr.getIP()))
+    //   {
+    //     if (auto maybe_ip = public_ip())
+    //       bind_addr.setIP(public_ip().host());
+    //     else
+    //       throw std::runtime_error{"no public ip provided for inbound socket"};
+    //   }
 
-      AddressInfo ai;
-      ai.fromSockAddr(bind_addr);
+    //   AddressInfo ai;
+    //   ai.fromSockAddr(bind_addr);
 
-      _link_manager.connect_to({ai.IPString(), ai.port}, true);
+    //   _link_manager.connect_to({ai.IPString(), ai.port}, true);
 
-      ai.pubkey = llarp::seckey_topublic(_identity);
-      ai.dialect = "quicinet";  // FIXME: constant, also better name?
-      ai.rank = 2;              // FIXME: hardcoded from the beginning...keep?
-      AddAddressToRC(ai);
-    }
+    //   ai.pubkey = llarp::seckey_topublic(_identity);
+    //   ai.dialect = "quicinet";  // FIXME: constant, also better name?
+    //   ai.rank = 2;              // FIXME: hardcoded from the beginning...keep?
+    //   AddAddressToRC(ai);
+    // }
   }
 
   void
   Router::InitOutboundLinks()
   {
-    auto addrs = config()->links.OutboundLinks;
-    if (addrs.empty())
-      addrs.emplace_back(net().Wildcard());
+    // auto addrs = config()->links.OutboundLinks;
+    // if (addrs.empty())
+    //   addrs.emplace_back(net().Wildcard());
 
-    for (auto& bind_addr : addrs)
-    {
-      _link_manager.connect_to({bind_addr.ToString()}, false);
-    }
+    // for (auto& bind_addr : addrs)
+    // {
+    //   _link_manager.connect_to({bind_addr.ToString()}, false);
+    // }
   }
 
   const llarp::net::Platform&

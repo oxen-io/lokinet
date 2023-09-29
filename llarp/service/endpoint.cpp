@@ -1,7 +1,6 @@
 #include "endpoint.hpp"
 #include "endpoint_state.hpp"
 #include "endpoint_util.hpp"
-#include "hidden_service_address_lookup.hpp"
 #include "auth.hpp"
 #include "llarp/util/logging.hpp"
 #include "outbound_context.hpp"
@@ -11,7 +10,6 @@
 
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/dht/context.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/messages/findname.hpp>
@@ -408,7 +406,7 @@ namespace llarp
       std::set<EncryptedIntroSet> remote;
       for (const auto& introset : msg->found)
       {
-        if (not introset.Verify(Now()))
+        if (not introset.verify(Now()))
         {
           LogError(Name(), " got invalid introset");
           return false;
@@ -425,7 +423,7 @@ namespace llarp
       }
       std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
       lookups.erase(itr);
-      lookup->HandleIntrosetResponse(remote);
+      // lookup->HandleIntrosetResponse(remote);
       return true;
     }
 
@@ -716,43 +714,31 @@ namespace llarp
       auto* r = router();
 
       const auto paths = GetManyPathsWithUniqueEndpoints(
-          this,
-          llarp::dht::INTROSET_RELAY_REDUNDANCY,
-          dht::Key_t{introset.derivedSigningKey.as_array()});
+          this, INTROSET_RELAY_REDUNDANCY, dht::Key_t{introset.derivedSigningKey.as_array()});
 
-      if (paths.size() != llarp::dht::INTROSET_RELAY_REDUNDANCY)
+      if (paths.size() != INTROSET_RELAY_REDUNDANCY)
       {
         LogWarn(
             "Cannot publish intro set because we only have ",
             paths.size(),
             " paths, but need ",
-            llarp::dht::INTROSET_RELAY_REDUNDANCY);
+            INTROSET_RELAY_REDUNDANCY);
         return false;
       }
 
-      // do publishing for each path selected
-      size_t published = 0;
-
       for (const auto& path : paths)
       {
-        for (size_t i = 0; i < llarp::dht::INTROSET_REQS_PER_RELAY; ++i)
+        for (size_t i = 0; i < INTROSET_REQS_PER_RELAY; ++i)
         {
           r->notify_router_event<tooling::PubIntroSentEvent>(
               r->pubkey(),
               llarp::dht::Key_t{introset.derivedSigningKey.as_array()},
-              RouterID(path->hops[path->hops.size() - 1].rc.pubkey),
-              published);
-          if (PublishIntroSetVia(introset, r, path, published))
-            published++;
+              RouterID(path->hops[path->hops.size() - 1].rc.pubkey));
+
+          m_router->send_control_message(path->Upstream(), "publish_intro", introset.bt_encode());
         }
       }
-      if (published != llarp::dht::INTROSET_STORAGE_REDUNDANCY)
-        LogWarn(
-            "Publish introset failed: could only publish ",
-            published,
-            " copies but wanted ",
-            llarp::dht::INTROSET_STORAGE_REDUNDANCY);
-      return published == llarp::dht::INTROSET_STORAGE_REDUNDANCY;
+      return true;
     }
 
     struct PublishIntroSetJob : public IServiceLookup

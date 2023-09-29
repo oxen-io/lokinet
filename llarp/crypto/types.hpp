@@ -33,6 +33,9 @@ namespace llarp
     bool
     FromString(const std::string& str);
 
+    static PubKey
+    from_string(const std::string& s);
+
     operator RouterID() const
     {
       return {as_array()};

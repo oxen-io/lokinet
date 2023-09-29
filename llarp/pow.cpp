@@ -29,19 +29,11 @@ namespace llarp
       return false;
 
     ShortHash digest;
-    std::array<byte_t, MaxSize> tmp;
-    llarp_buffer_t buf(tmp);
+    auto buf = bt_encode();
 
-    auto bte = bt_encode();
-
-    if (auto b = buf.write(bte.begin(), bte.end()); not b)
-      return false;
-
-    // rewind
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
     // hash
-    if (!CryptoManager::instance()->shorthash(digest, buf))
+    if (!CryptoManager::instance()->shorthash(
+            digest, reinterpret_cast<uint8_t*>(buf.data()), buf.size()))
       return false;
     // check bytes required
     uint32_t required = std::floor(std::log(extendedLifetime.count()));

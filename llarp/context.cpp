@@ -3,8 +3,7 @@
 #include "constants/evloop.hpp"
 
 #include "config/config.hpp"
-#include "crypto/crypto_libsodium.hpp"
-#include "dht/context.hpp"
+#include "crypto/crypto.hpp"
 #include "ev/ev.hpp"
 #include <memory>
 #include "nodedb.hpp"
@@ -75,7 +74,7 @@ namespace llarp
       loop = EventLoop::create(jobQueueSize);
     }
 
-    crypto = std::make_shared<sodium::CryptoLibSodium>();
+    crypto = std::make_shared<Crypto>();
     cryptoManager = std::make_shared<CryptoManager>(crypto.get());
 
     router = makeRouter(loop);

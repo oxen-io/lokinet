@@ -1,6 +1,7 @@
 #include <chrono>
 #include "rc_lookup_handler.hpp"
 
+#include <llarp/link/contacts.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/service/context.hpp>
@@ -8,7 +9,6 @@
 #include <llarp/util/types.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/dht/context.hpp>
 #include "router.hpp"
 
 #include <iterator>
@@ -113,7 +113,7 @@ namespace llarp
         LogWarn("cannot lookup ", router, " anonymously");
       }
 
-      if (!dht->LookupRouter(router, fn))
+      if (not contacts->lookup_router(router, fn))
       {
         finalize_request(router, nullptr, RCRequestResult::RouterNotFound);
       }
@@ -195,11 +195,11 @@ namespace llarp
   {
     if (not is_session_allowed(rc.pubkey))
     {
-      dht->DelRCNodeAsync(dht::Key_t{rc.pubkey});
+      contacts->delete_rc_node_async(dht::Key_t{rc.pubkey});
       return false;
     }
 
-    if (not rc.Verify(dht->Now()))
+    if (not rc.Verify(llarp::time_now_ms()))
     {
       LogWarn("RC for ", RouterID(rc.pubkey), " is invalid");
       return false;
@@ -210,7 +210,7 @@ namespace llarp
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
       loop->call([rc, n = node_db] { n->PutIfNewer(rc); });
-      dht->PutRCNodeAsync(rc);
+      contacts->put_rc_node_async(rc);
     }
 
     return true;
@@ -251,9 +251,9 @@ namespace llarp
     work_func(func);
 
     // update dht if required
-    if (dht->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
+    if (contacts->rc_nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      dht->Nodes()->PutNode(newrc);
+      contacts->rc_nodes()->PutNode(newrc);
     }
 
     // TODO: check for other places that need updating the RC
@@ -295,7 +295,8 @@ namespace llarp
       for (const auto& rc : bootstrap_rc_list)
       {
         LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
-        dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+        // TODO: replace this concept
+        // dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     }
 
@@ -332,7 +333,7 @@ namespace llarp
       return;
     }
     // service nodes gossip, not explore
-    if (dht->GetRouter()->IsServiceNode())
+    if (contacts->router()->IsServiceNode())
       return;
 
     // explore via every connected peer
@@ -356,7 +357,7 @@ namespace llarp
 
   void
   RCLookupHandler::init(
-      std::shared_ptr<dht::AbstractDHTMessageHandler> d,
+      std::shared_ptr<Contacts> c,
       std::shared_ptr<NodeDB> nodedb,
       EventLoop_ptr l,
       worker_func dowork,
@@ -367,7 +368,7 @@ namespace llarp
       bool useWhitelist_arg,
       bool isServiceNode_arg)
   {
-    dht = d;
+    contacts = c;
     node_db = std::move(nodedb);
     loop = std::move(l);
     work_func = std::move(dowork);

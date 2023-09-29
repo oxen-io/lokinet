@@ -92,7 +92,7 @@ namespace llarp::path
   }
 
   void
-  PathSet::ExpirePaths(llarp_time_t now, Router* router)
+  PathSet::ExpirePaths(llarp_time_t now, [[maybe_unused]] Router* router)
   {
     Lock_t l(m_PathsMutex);
     if (m_Paths.size() == 0)
@@ -102,10 +102,11 @@ namespace llarp::path
     {
       if (itr->second->Expired(now))
       {
+        // TODO: this
         PathID_t txid = itr->second->TXID();
-        router->outboundMessageHandler().RemovePath(std::move(txid));
+        // router->outboundMessageHandler().RemovePath(std::move(txid));
         PathID_t rxid = itr->second->RXID();
-        router->outboundMessageHandler().RemovePath(std::move(rxid));
+        // router->outboundMessageHandler().RemovePath(std::move(rxid));
         itr = m_Paths.erase(itr);
       }
       else

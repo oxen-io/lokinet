@@ -116,8 +116,8 @@ namespace llarp
     void
     bt_encode_subdict(oxenc::bt_list_producer& btlp) const;
 
-    bool
-    BEncodeSignedSection(llarp_buffer_t* buf) const;
+    std::string
+    bencode_signed_section() const;
 
     std::string
     ToTXTRecord() const;

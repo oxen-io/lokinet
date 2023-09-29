@@ -7,149 +7,145 @@
 #include <atomic>
 #include <set>
 
-namespace llarp
+namespace llarp::path
 {
-  namespace path
+  // milliseconds waiting between builds on a path per router
+  static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
+  static constexpr auto PATH_BUILD_RATE = 100ms;
+
+  /// limiter for path builds
+  /// prevents overload and such
+  class BuildLimiter
   {
-    // milliseconds waiting between builds on a path per router
-    static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
-    static constexpr auto PATH_BUILD_RATE = 100ms;
+    util::DecayingHashSet<RouterID> m_EdgeLimiter;
 
-    /// limiter for path builds
-    /// prevents overload and such
-    class BuildLimiter
+   public:
+    /// attempt a build
+    /// return true if we are allowed to continue
+    bool
+    Attempt(const RouterID& router);
+
+    /// decay limit entries
+    void
+    Decay(llarp_time_t now);
+
+    /// return true if this router is currently limited
+    bool
+    Limited(const RouterID& router) const;
+  };
+
+  struct Builder : public PathSet
+  {
+   private:
+    llarp_time_t m_LastWarn = 0s;
+
+   protected:
+    /// flag for PathSet::Stop()
+    std::atomic<bool> _run;
+
+    virtual bool
+    UrgentBuild(llarp_time_t now) const;
+
+    /// return true if we hit our soft limit for building paths too fast on a first hop
+    bool
+    BuildCooldownHit(RouterID edge) const;
+
+   private:
+    void
+    DoPathBuildBackoff();
+
+   public:
+    Router* const m_router;
+    SecretKey enckey;
+    size_t numHops;
+    llarp_time_t lastBuild = 0s;
+    llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+
+    /// construct
+    Builder(Router* p_router, size_t numDesiredPaths, size_t numHops);
+
+    virtual ~Builder() = default;
+
+    util::StatusObject
+    ExtractStatus() const;
+
+    bool
+    ShouldBuildMore(llarp_time_t now) const override;
+
+    /// should we bundle RCs in builds?
+    virtual bool
+    ShouldBundleRC() const = 0;
+
+    void
+    ResetInternalState() override;
+
+    /// return true if we hit our soft limit for building paths too fast
+    bool
+    BuildCooldownHit(llarp_time_t now) const;
+
+    /// get roles for this path builder
+    virtual PathRole
+    GetRoles() const
     {
-      util::DecayingHashSet<RouterID> m_EdgeLimiter;
+      return ePathRoleAny;
+    }
 
-     public:
-      /// attempt a build
-      /// return true if we are allowed to continue
-      bool
-      Attempt(const RouterID& router);
-
-      /// decay limit entries
-      void
-      Decay(llarp_time_t now);
-
-      /// return true if this router is currently limited
-      bool
-      Limited(const RouterID& router) const;
-    };
-
-    struct Builder : public PathSet
+    BuildStats
+    CurrentBuildStats() const
     {
-     private:
-      llarp_time_t m_LastWarn = 0s;
+      return m_BuildStats;
+    }
 
-     protected:
-      /// flag for PathSet::Stop()
-      std::atomic<bool> _run;
+    bool
+    Stop() override;
 
-      virtual bool
-      UrgentBuild(llarp_time_t now) const;
+    bool
+    IsStopped() const override;
 
-      /// return true if we hit our soft limit for building paths too fast on a first hop
-      bool
-      BuildCooldownHit(RouterID edge) const;
+    bool
+    ShouldRemove() const override;
 
-     private:
-      void
-      DoPathBuildBackoff();
+    llarp_time_t
+    Now() const override;
 
-     public:
-      Router* const m_router;
-      SecretKey enckey;
-      size_t numHops;
-      llarp_time_t lastBuild = 0s;
-      llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+    void
+    Tick(llarp_time_t now) override;
 
-      /// construct
-      Builder(Router* p_router, size_t numDesiredPaths, size_t numHops);
+    void
+    BuildOne(PathRole roles = ePathRoleAny) override;
 
-      virtual ~Builder() = default;
+    bool
+    BuildOneAlignedTo(const RouterID endpoint) override;
 
-      util::StatusObject
-      ExtractStatus() const;
+    std::optional<std::vector<RouterContact>>
+    GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude = {});
 
-      bool
-      ShouldBuildMore(llarp_time_t now) const override;
+    void
+    Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) override;
 
-      /// should we bundle RCs in builds?
-      virtual bool
-      ShouldBundleRC() const = 0;
+    /// pick a first hop
+    std::optional<RouterContact>
+    SelectFirstHop(const std::set<RouterID>& exclude = {}) const;
 
-      void
-      ResetInternalState() override;
+    std::optional<std::vector<RouterContact>>
+    GetHopsForBuild() override;
 
-      /// return true if we hit our soft limit for building paths too fast
-      bool
-      BuildCooldownHit(llarp_time_t now) const;
+    void
+    ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
 
-      /// get roles for this path builder
-      virtual PathRole
-      GetRoles() const
-      {
-        return ePathRoleAny;
-      }
+    const SecretKey&
+    GetTunnelEncryptionSecretKey() const;
 
-      BuildStats
-      CurrentBuildStats() const
-      {
-        return m_BuildStats;
-      }
+    void
+    HandlePathBuilt(Path_ptr p) override;
 
-      bool
-      Stop() override;
+    void
+    HandlePathBuildTimeout(Path_ptr p) override;
 
-      bool
-      IsStopped() const override;
+    void
+    HandlePathBuildFailedAt(Path_ptr p, RouterID hop) override;
+  };
 
-      bool
-      ShouldRemove() const override;
+  using Builder_ptr = std::shared_ptr<Builder>;
 
-      llarp_time_t
-      Now() const override;
-
-      virtual void
-      Tick(llarp_time_t now) override;
-
-      void
-      BuildOne(PathRole roles = ePathRoleAny) override;
-
-      bool
-      BuildOneAlignedTo(const RouterID endpoint) override;
-
-      std::optional<std::vector<RouterContact>>
-      GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude = {});
-
-      void
-      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) override;
-
-      /// pick a first hop
-      std::optional<RouterContact>
-      SelectFirstHop(const std::set<RouterID>& exclude = {}) const;
-
-      virtual std::optional<std::vector<RouterContact>>
-      GetHopsForBuild() override;
-
-      void
-      ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
-
-      virtual const SecretKey&
-      GetTunnelEncryptionSecretKey() const;
-
-      virtual void
-      HandlePathBuilt(Path_ptr p) override;
-
-      virtual void
-      HandlePathBuildTimeout(Path_ptr p) override;
-
-      virtual void
-      HandlePathBuildFailedAt(Path_ptr p, RouterID hop) override;
-    };
-
-    using Builder_ptr = std::shared_ptr<Builder>;
-
-  }  // namespace path
-
-}  // namespace llarp
+}  // namespace llarp::path

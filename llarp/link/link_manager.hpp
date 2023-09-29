@@ -1,7 +1,6 @@
 #pragma once
 
 #include "connection.hpp"
-#include "link_endpoints.hpp"
 
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
@@ -140,7 +139,6 @@ namespace llarp
    public:
     explicit LinkManager(Router& r);
 
-    // set is_request to true for RPC requests, false for RPC commands
     bool
     send_control_message(
         const RouterID& remote,
@@ -152,6 +150,13 @@ namespace llarp
     send_data_message(const RouterID& remote, std::string data);
 
    private:
+    bool
+    send_control_message_impl(
+        const RouterID& remote,
+        std::string endpoint,
+        std::string body,
+        std::function<void(oxen::quic::message)> = nullptr);
+
     friend struct link::Endpoint;
 
     std::atomic<bool> is_stopping;
@@ -302,34 +307,20 @@ namespace llarp
         {"obtain_exit", &LinkManager::handle_obtain_exit},
         {"close_exit", &LinkManager::handle_close_exit}};
 
+    std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_responses = {
+        {"find_name", &LinkManager::handle_find_name_response},
+        {"find_router", &LinkManager::handle_find_router_response},
+        {"publish_intro", &LinkManager::handle_publish_intro_response},
+        {"find_intro", &LinkManager::handle_find_intro_response}};
+
     // response handling functions
     void handle_publish_intro_response(oxen::quic::message);
-    void handle_find_name_response(oxen::quic::message);    // not used?
+    void handle_find_name_response(oxen::quic::message);  // not used?
     void handle_find_router_response(oxen::quic::message);
     void handle_find_intro_response(oxen::quic::message);
 
     std::string
     serialize_response(bool success, oxenc::bt_dict supplement = {});
-
-    /** Searches the bt dict held by a dict consumer for a specific key `k`, setting
-        the value at `dest` and throwing if not found. This is equivalent to calling:
-
-          if (not bdca.skip_until(k))
-            throw std::invalid_argument{"..."};
-          dest = btdc.consume_integer<int_type>()   OR   btdc.consume_string();
-    */
-    template <typename T>
-    void
-    safe_fetch_value(oxenc::bt_dict_consumer& btdc, const char* k, T& dest)
-    {
-      if (not btdc.skip_until(k))
-        throw std::invalid_argument{""};
-
-      if constexpr (std::is_integral_v<T>)
-        dest = btdc.consume_integer<T>();
-      else
-        dest = btdc.consume_string();
-    }
   };
 
   namespace link
@@ -346,11 +337,11 @@ namespace llarp
 
         // emplace immediately for connection open callback to find scid
         connid_map.emplace(conn_interface->scid(), rc.pubkey);
-        auto [itr, b] = conns.emplace(rc.pubkey);
+        auto [itr, b] = conns.emplace(rc.pubkey, nullptr);
 
         auto control_stream =
             conn_interface->template get_new_stream<oxen::quic::BTRequestStream>();
-        itr->second = std::make_shared<link::Connection>(conn_interface, rc, control_stream);
+        itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, rc);
 
         return true;
       }

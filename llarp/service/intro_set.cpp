@@ -6,6 +6,19 @@
 
 namespace llarp::service
 {
+  EncryptedIntroSet::EncryptedIntroSet(
+      std::string signing_key,
+      std::chrono::milliseconds signed_at,
+      std::string enc_payload,
+      std::string nonce,
+      std::string s)
+      : signedAt{signed_at}, nounce{reinterpret_cast<uint8_t*>(nonce.data())}
+  {
+    derivedSigningKey = PubKey::from_string(signing_key);
+    introsetPayload = oxenc::bt_deserialize<std::vector<uint8_t>>(enc_payload);
+    sig.from_string(std::move(s));
+  }
+
   util::StatusObject
   EncryptedIntroSet::ExtractStatus() const
   {
@@ -130,6 +143,12 @@ namespace llarp::service
     auto bte = copy.bt_encode();
     return CryptoManager::instance()->verify(
         derivedSigningKey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
+
+  bool
+  EncryptedIntroSet::verify(uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig)
+  {
+    return CryptoManager::instance()->verify(key, introset, introset_size, sig);
   }
 
   bool

@@ -18,11 +18,7 @@ namespace llarp
     virtual std::string
     bt_encode() const = 0;
     virtual void
-    bt_encode(llarp_buffer& b) const = 0;
-    virtual void
     bt_encode(oxenc::bt_dict_producer& btdp) const = 0;
-    virtual void
-    bt_encode(oxenc::bt_list_producer& btlp) const = 0;
   };
 
   struct AbstractMessageHandler

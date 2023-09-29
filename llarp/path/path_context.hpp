@@ -54,6 +54,9 @@ namespace llarp
       CheckPathLimitHitByIP(const IpAddress& ip);
 
       bool
+      CheckPathLimitHitByIP(const std::string& ip);
+
+      bool
       AllowingTransit() const;
 
       bool
@@ -185,7 +188,7 @@ namespace llarp
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
-      util::DecayingHashSet<IpAddress> m_PathLimits;
+      util::DecayingHashSet<IpAddress> path_limits;
     };
   }  // namespace path
 }  // namespace llarp
