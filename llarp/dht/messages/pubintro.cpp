@@ -1,6 +1,5 @@
 #include "pubintro.hpp"
 
-#include <llarp/dht/context.hpp>
 #include "gotintro.hpp"
 #include <llarp/router/router.hpp>
 #include <llarp/routing/path_dht_message.hpp>

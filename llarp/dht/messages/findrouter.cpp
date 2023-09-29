@@ -59,7 +59,7 @@ namespace llarp::dht
     try
     {
       btdp.append("A", "R");
-      btdp.append("T", exploratory ? 1 : 0);
+      btdp.append("E", exploratory ? 1 : 0);
       btdp.append("I", iterative ? 1 : 0);
       btdp.append("K", targetKey.ToView());
       btdp.append("T", txid);

@@ -36,7 +36,7 @@ namespace llarp
       }
 
       void
-      LookupLNSNameHash(
+      lookup_ons_hash(
           std::string namehash,
           std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 

@@ -1,4 +1,3 @@
-#include <llarp/dht/context.hpp>
 #include "findintro.hpp"
 #include "gotintro.hpp"
 #include <llarp/routing/message.hpp>
@@ -20,6 +19,9 @@ namespace llarp::dht
     if (!BEncodeMaybeReadDictInt("O", relayOrder, read, k, val))
       return false;
 
+    if (!BEncodeMaybeReadDictInt("R", relayed, read, k, val))
+      return false;
+
     if (!BEncodeMaybeReadDictEntry("S", location, read, k, val))
       return false;
 
@@ -38,17 +40,10 @@ namespace llarp::dht
     try
     {
       btdp.append("A", "F");
-      if (tagName.Empty())
-      {
-        btdp.append("O", relayOrder);
-        btdp.append("S", location.ToView());
-      }
-      else
-      {
-        btdp.append("N", tagName.ToView());
-        btdp.append("O", relayOrder);
-      }
-
+      btdp.append("N", tagName.ToView());
+      btdp.append("O", relayOrder);
+      btdp.append("R", relayed ? 1 : 0);
+      btdp.append("S", location.ToView());
       btdp.append("T", txID);
       btdp.append("V", llarp::constants::proto_version);
     }
@@ -92,7 +87,7 @@ namespace llarp::dht
       }
 
       auto closestRCs =
-          dht.GetRouter()->node_db()->FindManyClosestTo(location, IntroSetStorageRedundancy);
+          dht.GetRouter()->node_db()->FindManyClosestTo(location, INTROSET_STORAGE_REDUNDANCY);
 
       if (closestRCs.size() <= relayOrder)
       {

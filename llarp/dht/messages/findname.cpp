@@ -1,6 +1,5 @@
 #include "findname.hpp"
 #include <oxenc/bt_serialize.h>
-#include <llarp/dht/context.hpp>
 #include "gotname.hpp"
 #include <llarp/router/router.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
@@ -44,13 +43,14 @@ namespace llarp::dht
 
   bool
   FindNameMessage::handle_message(
-      AbstractDHTMessageHandler&, std::vector<std::unique_ptr<AbstractDHTMessage>>&) const
+      AbstractDHTMessageHandler& dht,
+      std::vector<std::unique_ptr<AbstractDHTMessage>>& replies) const
   {
-    /* (void)replies;
+    (void)replies;
     auto router = dht.GetRouter();
     if (pathID.IsZero() or not router->IsServiceNode())
       return false;
-    router->rpc_client()->LookupLNSNameHash(
+    router->rpc_client()->lookup_ons_hash(
         NameHash, [router, pathID = pathID, TxID = TxID](auto maybe) {
           auto path = router->path_context().GetPathForTransfer(pathID);
           if (path == nullptr)
@@ -66,7 +66,7 @@ namespace llarp::dht
                 new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
           }
           path->SendRoutingMessage(msg, router);
-        }); */
+        });
     return true;
   }
 

@@ -303,9 +303,33 @@ namespace llarp
         {"close_exit", &LinkManager::handle_close_exit}};
 
     // response handling functions
-    void handle_got_intro(oxen::quic::message);
-    void handle_got_name(oxen::quic::message);
-    void handle_got_router(oxen::quic::message);
+    void handle_publish_intro_response(oxen::quic::message);
+    void handle_find_name_response(oxen::quic::message);    // not used?
+    void handle_find_router_response(oxen::quic::message);
+    void handle_find_intro_response(oxen::quic::message);
+
+    std::string
+    serialize_response(bool success, oxenc::bt_dict supplement = {});
+
+    /** Searches the bt dict held by a dict consumer for a specific key `k`, setting
+        the value at `dest` and throwing if not found. This is equivalent to calling:
+
+          if (not bdca.skip_until(k))
+            throw std::invalid_argument{"..."};
+          dest = btdc.consume_integer<int_type>()   OR   btdc.consume_string();
+    */
+    template <typename T>
+    void
+    safe_fetch_value(oxenc::bt_dict_consumer& btdc, const char* k, T& dest)
+    {
+      if (not btdc.skip_until(k))
+        throw std::invalid_argument{""};
+
+      if constexpr (std::is_integral_v<T>)
+        dest = btdc.consume_integer<T>();
+      else
+        dest = btdc.consume_string();
+    }
   };
 
   namespace link

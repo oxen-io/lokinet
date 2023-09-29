@@ -351,7 +351,7 @@ namespace llarp::rpc
   }
 
   void
-  LokidRpcClient::LookupLNSNameHash(
+  LokidRpcClient::lookup_ons_hash(
       std::string namehash,
       std::function<void(std::optional<service::EncryptedName>)> resultHandler)
   {

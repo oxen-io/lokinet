@@ -184,7 +184,7 @@ namespace llarp
       const RouterID& remote,
       std::string endpoint,
       std::string body,
-      std::function<void(oxen::quic::message)> func)
+      std::function<void(oxen::quic::message m)> func)
   {
     if (is_stopping)
       return false;
@@ -492,70 +492,97 @@ namespace llarp
   void
   LinkManager::handle_find_name(oxen::quic::message m)
   {
+    std::string name_hash;
+    uint64_t tx_id;
+
     try
     {
       oxenc::bt_dict_consumer btdp{m.body()};
-      std::string name_hash, tx_id;
 
-      if (btdp.skip_until("H"))
-        name_hash = btdp.consume_string();
-
-      if (btdp.skip_until("T"))
-        tx_id = btdp.consume_string();
-
-      router.rpc_client()->LookupLNSNameHash(name_hash, [](auto /* maybe */) {
-
-      });
+      safe_fetch_value(btdp, "H", name_hash);
+      safe_fetch_value(btdp, "T", tx_id);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
       m.respond("ERROR", true);
     }
+
+    router.rpc_client()->lookup_ons_hash(
+        name_hash, [this, msg = std::move(m)](std::optional<service::EncryptedName> maybe) mutable {
+          
+          if (maybe.has_value())
+            msg.respond(serialize_response(true, {"NAME", maybe->ciphertext.c_str()}));
+          else
+            msg.respond(serialize_response(false, {"STATUS", "NOT FOUND"}), true);
+        });
+  }
+
+  std::string
+  LinkManager::serialize_response(bool success, oxenc::bt_dict supplement)
+  {
+    return oxenc::bt_serialize(oxenc::bt_list{(success) ? 1 : 0, supplement});
   }
 
   void
-  LinkManager::handle_find_router(oxen::quic::message)
-  {}
+  LinkManager::handle_find_router(oxen::quic::message m)
+  {
+    ustring target_key;
+    uint64_t is_exploratory, is_iterative, tx_id;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      
+
+      safe_fetch_value(btdc, "E", is_exploratory);
+      safe_fetch_value(btdc, "I", is_iterative);
+      safe_fetch_value(btdc, "K", target_key);
+      safe_fetch_value(btdc, "T", tx_id);
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+
+    // TODO: do we need a replacement for dht.AllowTransit() etc here?
+
+    // TODO: do we need a replacement for dht.pendingIntroSetLookups() etc here?
+
+    const auto target_addr = dht::Key_t{};
+
+    
+  }
 
   void
   LinkManager::handle_publish_intro(oxen::quic::message m)
   {
-    std::string introset, tx_id, derived_signing_key, sig;
-    uint64_t is_relayed, relay_order;
+    std::string introset, derived_signing_key, sig;
+    uint64_t is_relayed, relay_order, tx_id;
     std::chrono::milliseconds signed_at;
 
     try
     {
       oxenc::bt_dict_consumer btdc_a{m.body()};
 
-      if (btdc_a.skip_until("I"))
-        introset = btdc_a.consume_string();
-
-      if (btdc_a.skip_until("O"))
-        relay_order = btdc_a.consume_integer<uint64_t>();
-
-      if (btdc_a.skip_until("R"))
-        is_relayed = btdc_a.consume_integer<uint64_t>();
-
-      if (btdc_a.skip_until("T"))
-        tx_id = btdc_a.consume_string();
+      safe_fetch_value(btdc_a, "I", introset);
+      safe_fetch_value(btdc_a, "O", relay_order);
+      safe_fetch_value(btdc_a, "R", is_relayed);
+      safe_fetch_value(btdc_a, "T", tx_id);
 
       oxenc::bt_dict_consumer btdc_b{introset};
 
-      if (btdc_b.skip_until("d"))
-        derived_signing_key = btdc_b.consume_string();
-
-      if (btdc_b.skip_until("s"))
-        signed_at = std::chrono::milliseconds{btdc_b.consume_integer<int64_t>()};
-
-      if (btdc_b.skip_until("z"))
-        sig = btdc_b.consume_string();
+      safe_fetch_value(btdc_b, "d", derived_signing_key);
+      safe_fetch_value(btdc_b, "s", signed_at);
+      safe_fetch_value(btdc_b, "z", sig);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond("ERROR", true);
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
       return;
     }
 
@@ -566,14 +593,14 @@ namespace llarp
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
       log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
-      m.respond("INVALID INTROSET", true);
+      m.respond(serialize_response(false, {"STATUS", "INVALID INTROSET"}), true);
       return;
     }
 
     if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
     {
       log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
-      m.respond("EXPIRED INTROSET", true);
+      m.respond(serialize_response(false, {"STATUS", "EXPIRED INTROSET"}), true);
       return;
     }
 
@@ -583,7 +610,7 @@ namespace llarp
     {
       log::error(
           link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
-      m.respond("INSUFFICIENT NODES", true);
+      m.respond(serialize_response(false, {"STATUS", "INSUFFICIENT NODES"}), true);
       return;
     }
 
@@ -593,7 +620,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
-        m.respond("INVALID ORDER", true);
+        m.respond(serialize_response(false, {"STATUS", "INVALID ORDER"}), true);
         return;
       }
 
@@ -611,9 +638,7 @@ namespace llarp
 
         // TODO: replace this concept
         // dht->services()->PutNode(introset);
-
-        // TODO: should this be a call to send_control_message instead?
-        m.respond("got_intro");
+        m.respond(serialize_response(true));
       }
       else
       {
@@ -621,8 +646,8 @@ namespace llarp
             link_cat, "Received PublishIntroMessage; propagating to peer index {}", relay_order);
 
         send_control_message(
-            peer_key, "publish_intro", std::move(introset), [this](oxen::quic::message m) {
-              return handle_got_intro(std::move(m));
+            peer_key, "publish_intro", m.body_str(), [this](oxen::quic::message m) {
+              return handle_publish_intro_response(std::move(m));
             });
       }
 
@@ -644,9 +669,9 @@ namespace llarp
     if (rc_index >= 0)
     {
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
-
-      // TODO: should this be a call to send_control_message instead?
-      m.respond("got_intro");
+      // TODO: replace this concept
+      // dht->services()->PutNode(introset);
+      m.respond(serialize_response(true));
     }
     else
       log::warning(
@@ -656,38 +681,201 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_find_intro(oxen::quic::message)
-  {}
+  LinkManager::handle_find_intro(oxen::quic::message m)
+  {
+    std::string tag_name, location;
+    uint64_t tx_id, relay_order, is_relayed;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      safe_fetch_value(btdc, "N", tag_name);
+      safe_fetch_value(btdc, "O", relay_order);
+      safe_fetch_value(btdc, "R", is_relayed);
+      safe_fetch_value(btdc, "S", location);
+      safe_fetch_value(btdc, "T", tx_id);
+      safe_fetch_value(btdc, "N", tag_name);
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+
+    // TODO: do we need a replacement for dht.pendingIntroSetLookups() etc here?
+
+    const auto addr = dht::Key_t{reinterpret_cast<uint8_t*>(location.data())};
+
+    if (is_relayed)
+    {
+      if (relay_order >= INTROSET_STORAGE_REDUNDANCY)
+      {
+        log::warning(
+            link_cat, "Received FindIntroMessage with invalid relay order: {}", relay_order);
+        m.respond(serialize_response(false, {"STATUS", "INVALID ORDER"}), true);
+        return;
+      }
+
+      auto closest_rcs = router.node_db()->FindManyClosestTo(addr, INTROSET_STORAGE_REDUNDANCY);
+
+      if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
+      {
+        log::error(
+            link_cat, "Received FindIntroMessage but only know {} nodes", closest_rcs.size());
+        m.respond(serialize_response(false, {"STATUS", "INSUFFICIENT NODES"}), true);
+        return;
+      }
+
+      log::info(link_cat, "Relaying FindIntroMessage for {} (TXID: {})", addr, tx_id);
+
+      const auto& peer_rc = closest_rcs[relay_order];
+      const auto& peer_key = peer_rc.pubkey;
+
+      send_control_message(peer_key, "find_intro", m.body_str(), [this](oxen::quic::message m) {
+        return handle_find_intro_response(std::move(m));
+      });
+      return;
+    }
+
+    // TODO: replace this concept and add it to the response
+    // const auto maybe = dht.GetIntroSetByLocation(location);
+    m.respond(serialize_response(true, {"INTROSET", ""}));
+  }
 
   void
-  LinkManager::handle_path_confirm(oxen::quic::message)
-  {}
+  LinkManager::handle_path_confirm(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_path_latency(oxen::quic::message)
-  {}
+  LinkManager::handle_path_latency(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_update_exit(oxen::quic::message)
-  {}
+  LinkManager::handle_update_exit(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_obtain_exit(oxen::quic::message)
-  {}
+  LinkManager::handle_obtain_exit(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_close_exit(oxen::quic::message)
-  {}
+  LinkManager::handle_close_exit(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_got_intro(oxen::quic::message)
-  {}
+  LinkManager::handle_publish_intro_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_got_name(oxen::quic::message)
-  {}
+  LinkManager::handle_find_name_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 
   void
-  LinkManager::handle_got_router(oxen::quic::message)
-  {}
+  LinkManager::handle_find_router_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_find_intro_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response(false, {"STATUS", "EXCEPTION"}), true);
+      return;
+    }
+  }
 }  // namespace llarp
