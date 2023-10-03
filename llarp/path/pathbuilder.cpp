@@ -185,7 +185,7 @@ namespace llarp
     }
 
     Builder::Builder(Router* p_router, size_t pathNum, size_t hops)
-        : path::PathSet{pathNum}, _run{true}, m_router{p_router}, numHops{hops}
+        : path::PathSet{pathNum}, _run{true}, router{p_router}, numHops{hops}
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }
@@ -202,12 +202,12 @@ namespace llarp
     {
       PathSet::Tick(now);
       now = llarp::time_now_ms();
-      m_router->pathbuild_limiter().Decay(now);
+      router->pathbuild_limiter().Decay(now);
 
-      ExpirePaths(now, m_router);
+      ExpirePaths(now, router);
       if (ShouldBuildMore(now))
         BuildOne();
-      TickPaths(m_router);
+      TickPaths(router);
       if (m_BuildStats.attempts > 50)
       {
         if (m_BuildStats.SuccessRatio() <= BuildStats::MinGoodRatio && now - m_LastWarn > 5s)
@@ -237,10 +237,10 @@ namespace llarp
     Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RouterContact> found = std::nullopt;
-      m_router->for_each_connection([&](link::Connection& conn) {
+      router->for_each_connection([&](link::Connection& conn) {
         const auto& rc = conn.remote_rc;
 #ifndef TESTNET
-        if (m_router->IsBootstrapNode(rc.pubkey))
+        if (router->IsBootstrapNode(rc.pubkey))
           return;
 #endif
         if (exclude.count(rc.pubkey))
@@ -249,7 +249,7 @@ namespace llarp
         if (BuildCooldownHit(rc.pubkey))
           return;
 
-        if (m_router->router_profiling().IsBadForPath(rc.pubkey))
+        if (router->router_profiling().IsBadForPath(rc.pubkey))
           return;
 
         found = rc;
@@ -260,10 +260,10 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsForBuild()
     {
-      auto filter = [r = m_router](const auto& rc) -> bool {
+      auto filter = [r = router](const auto& rc) -> bool {
         return not r->router_profiling().IsBadForPath(rc.pubkey, 1);
       };
-      if (const auto maybe = m_router->node_db()->GetRandom(filter))
+      if (const auto maybe = router->node_db()->GetRandom(filter))
       {
         return GetHopsAlignedToForBuild(maybe->pubkey);
       }
@@ -304,7 +304,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(RouterID edge) const
     {
-      return m_router->pathbuild_limiter().Limited(edge);
+      return router->pathbuild_limiter().Limited(edge);
     }
 
     bool
@@ -339,7 +339,7 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
-      const auto pathConfig = m_router->config()->paths;
+      const auto pathConfig = router->config()->paths;
 
       std::vector<RouterContact> hops;
       {
@@ -353,7 +353,7 @@ namespace llarp
       };
 
       RouterContact endpointRC;
-      if (const auto maybe = m_router->node_db()->Get(endpoint))
+      if (const auto maybe = router->node_db()->Get(endpoint))
       {
         endpointRC = *maybe;
       }
@@ -369,7 +369,7 @@ namespace llarp
         else
         {
           auto filter =
-              [&hops, r = m_router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
+              [&hops, r = router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
             if (exclude.count(rc.pubkey))
               return false;
 
@@ -393,7 +393,7 @@ namespace llarp
             return rc.pubkey != endpointRC.pubkey;
           };
 
-          if (const auto maybe = m_router->node_db()->GetRandom(filter))
+          if (const auto maybe = router->node_db()->GetRandom(filter))
             hops.emplace_back(*maybe);
           else
             return std::nullopt;
@@ -417,7 +417,7 @@ namespace llarp
     llarp_time_t
     Builder::Now() const
     {
-      return m_router->now();
+      return router->now();
     }
 
     void
@@ -427,26 +427,26 @@ namespace llarp
         return;
       lastBuild = Now();
       const RouterID edge{hops[0].pubkey};
-      if (not m_router->pathbuild_limiter().Attempt(edge))
+      if (not router->pathbuild_limiter().Attempt(edge))
       {
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
       }
       // async generate keys
       auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
-      ctx->router = m_router;
+      ctx->router = router;
       auto self = GetSelf();
       ctx->pathset = self;
-      std::string path_shortName = "[path " + m_router->ShortName() + "-";
-      path_shortName = path_shortName + std::to_string(m_router->NextPathBuildNumber()) + "]";
+      std::string path_shortName = "[path " + router->ShortName() + "-";
+      path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
       auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(
           path,
-          m_router->loop(),
-          [r = m_router](auto func) { r->queue_work(std::move(func)); },
+          router->loop(),
+          [r = router](auto func) { r->queue_work(std::move(func)); },
           &PathBuilderKeysGenerated);
     }
 
@@ -454,7 +454,7 @@ namespace llarp
     Builder::HandlePathBuilt(Path_ptr p)
     {
       buildIntervalLimit = PATH_BUILD_RATE;
-      m_router->router_profiling().MarkPathSuccess(p.get());
+      router->router_profiling().MarkPathSuccess(p.get());
 
       LogInfo(p->Name(), " built latency=", ToString(p->intro.latency));
       m_BuildStats.success++;
@@ -479,14 +479,14 @@ namespace llarp
     void
     Builder::HandlePathBuildTimeout(Path_ptr p)
     {
-      m_router->router_profiling().MarkPathTimeout(p.get());
+      router->router_profiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
       for (const auto& hop : p->hops)
       {
         const RouterID router{hop.rc.pubkey};
         // look up router and see if it's still on the network
-        m_router->loop()->call_soon([router, r = m_router]() {
+        router->loop()->call_soon([router, r = router]() {
           LogInfo("looking up ", router, " because of path build timeout");
           r->rc_lookup_handler().get_rc(
               router,

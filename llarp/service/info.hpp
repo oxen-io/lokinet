@@ -101,6 +101,9 @@ namespace llarp::service
     }
 
     void
+    bt_decode(oxenc::bt_dict_consumer&);
+
+    void
     bt_encode(oxenc::bt_dict_producer& btdp) const;
 
     bool

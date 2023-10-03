@@ -96,7 +96,7 @@ namespace llarp
     return util::StatusObject{
         {"running", true},
         {"numNodesKnown", _node_db->NumLoaded()},
-        {"contacts", _contacts->extract_status()},
+        {"contacts", _contacts->ExtractStatus()},
         {"services", _hidden_service_context.ExtractStatus()},
         {"exit", _exit_context.ExtractStatus()},
         {"links", _link_manager.extract_status()},

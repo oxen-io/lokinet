@@ -268,12 +268,6 @@ namespace llarp
       GetCurrentIntroductionsWithFilter(
           std::function<bool(const service::Introduction&)> filter) const;
 
-      virtual bool
-      PublishIntroSet(const service::EncryptedIntroSet&)
-      {
-        return false;
-      }
-
       /// reset all cooldown timers
       virtual void
       ResetInternalState() = 0;

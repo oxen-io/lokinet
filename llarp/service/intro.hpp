@@ -24,6 +24,8 @@ namespace llarp::service
     llarp_time_t expiry = 0s;
     uint64_t version = llarp::constants::proto_version;
 
+    Introduction(std::string buf);
+
     util::StatusObject
     ExtractStatus() const;
 
@@ -43,7 +45,7 @@ namespace llarp::service
     ToString() const;
 
     void
-    bt_encode(oxenc::bt_dict_producer& btdp) const;
+    bt_encode(oxenc::bt_list_producer& btlp) const;
 
     bool
     BDecode(llarp_buffer_t* buf)

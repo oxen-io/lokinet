@@ -1,6 +1,5 @@
 #include "outbound_context.hpp"
 #include "async_key_exchange.hpp"
-#include "hidden_service_address_lookup.hpp"
 #include "endpoint.hpp"
 #include "endpoint_util.hpp"
 #include "protocol_type.hpp"
@@ -289,21 +288,24 @@ namespace llarp::service
     // we want to use the parent endpoint's paths because outbound context
     // does not implement path::PathSet::HandleGotIntroMessage
     const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2, location);
-    uint64_t relayOrder = 0;
-    for (const auto& path : paths)
+    [[maybe_unused]] uint64_t relayOrder = 0;
+    for ([[maybe_unused]] const auto& path : paths)
     {
-      HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          m_Endpoint,
-          util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-          location,
-          PubKey{addr.as_array()},
-          path->Endpoint(),
-          relayOrder,
-          m_Endpoint->GenTXID(),
-          (IntrosetUpdateInterval / 2) + (2 * path->intro.latency) + IntrosetLookupGraceInterval);
-      relayOrder++;
-      if (job->SendRequestViaPath(path, m_Endpoint->router()))
-        updatingIntroSet = true;
+      // TODO: implement this
+
+      // HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+      //     m_Endpoint,
+      //     util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
+      //     location,
+      //     PubKey{addr.as_array()},
+      //     path->Endpoint(),
+      //     relayOrder,
+      //     m_Endpoint->GenTXID(),
+      //     (IntrosetUpdateInterval / 2) + (2 * path->intro.latency) +
+      //     IntrosetLookupGraceInterval);
+      // relayOrder++;
+      // if (job->SendRequestViaPath(path, m_Endpoint->router()))
+      //   updatingIntroSet = true;
     }
   }
 
@@ -449,7 +451,7 @@ namespace llarp::service
     }
     if (m_ReadyHooks.empty())
     {
-      m_router->loop()->call_later(timeout, [this]() {
+      router->loop()->call_later(timeout, [this]() {
         LogWarn(Name(), " did not obtain session in time");
         for (const auto& hook : m_ReadyHooks)
           hook(nullptr);

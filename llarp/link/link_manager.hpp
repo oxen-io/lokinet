@@ -1,6 +1,8 @@
 #pragma once
 
 #include "connection.hpp"
+#include <llarp/constants/path.hpp>
+#include <llarp/util/decaying_hashset.hpp>
 
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
@@ -279,22 +281,23 @@ namespace llarp
     size_t max_connected_routers = 6;
 
    private:
-    // Control message
+    // DHT messages
+    void handle_find_name(oxen::quic::message);      // relay
+    void handle_find_intro(oxen::quic::message);     // relay
+    void handle_publish_intro(oxen::quic::message);  // relay
+    void handle_find_router(oxen::quic::message);    // relay + path
 
-    // Bridge (relay) message
-    void handle_publish_intro(oxen::quic::message);
-    void handle_find_intro(oxen::quic::message);
-    void handle_find_name(oxen::quic::message);
-    void handle_path_confirm(oxen::quic::message);
-    void handle_path_latency(oxen::quic::message);
-    void handle_update_exit(oxen::quic::message);
-    void handle_obtain_exit(oxen::quic::message);
-    void handle_close_exit(oxen::quic::message);
+    // Path messages
+    void handle_relay_commit(oxen::quic::message);   // relay
+    void handle_relay_status(oxen::quic::message);   // relay
+    void handle_path_confirm(oxen::quic::message);   // relay
+    void handle_path_latency(oxen::quic::message);   // relay
+    void handle_path_transfer(oxen::quic::message);  // relay
 
-    // Control and bridge message (separate into two type)
-
-    // Unsure
-    void handle_find_router(oxen::quic::message);  // maybe both
+    // Exit messages
+    void handle_obtain_exit(oxen::quic::message);  // relay
+    void handle_update_exit(oxen::quic::message);  // relay
+    void handle_close_exit(oxen::quic::message);   // relay
 
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
         {"find_name", &LinkManager::handle_find_name},
@@ -307,20 +310,32 @@ namespace llarp
         {"obtain_exit", &LinkManager::handle_obtain_exit},
         {"close_exit", &LinkManager::handle_close_exit}};
 
+    // DHT responses
+    void handle_find_name_response(oxen::quic::message);
+    void handle_find_intro_response(oxen::quic::message);
+    void handle_publish_intro_response(oxen::quic::message);
+    void handle_find_router_response(oxen::quic::message);
+
+    // Path responses
+    void handle_relay_commit_response(oxen::quic::message);
+    void handle_relay_status_response(oxen::quic::message);
+    void handle_path_confirm_response(oxen::quic::message);
+    void handle_path_latency_response(oxen::quic::message);
+    void handle_path_transfer_response(oxen::quic::message);
+
+    // Exit responses
+    void handle_obtain_exit_response(oxen::quic::message);
+    void handle_update_exit_response(oxen::quic::message);
+    void handle_close_exit_response(oxen::quic::message);
+
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_responses = {
         {"find_name", &LinkManager::handle_find_name_response},
         {"find_router", &LinkManager::handle_find_router_response},
         {"publish_intro", &LinkManager::handle_publish_intro_response},
         {"find_intro", &LinkManager::handle_find_intro_response}};
 
-    // response handling functions
-    void handle_publish_intro_response(oxen::quic::message);
-    void handle_find_name_response(oxen::quic::message);  // not used?
-    void handle_find_router_response(oxen::quic::message);
-    void handle_find_intro_response(oxen::quic::message);
-
     std::string
-    serialize_response(bool success, oxenc::bt_dict supplement = {});
+    serialize_response(oxenc::bt_dict supplement = {});
   };
 
   namespace link

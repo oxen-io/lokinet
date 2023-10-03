@@ -220,8 +220,6 @@ namespace llarp::service
   ProtocolFrameMessage::EncryptAndSign(
       const ProtocolMessage& msg, const SharedSecret& sessionKey, const Identity& localIdent)
   {
-    std::array<byte_t, MAX_PROTOCOL_MESSAGE_SIZE> tmp;
-    llarp_buffer_t buf1(tmp);
     // encode message
     auto bte1 = msg.bt_encode();
     // encrypt
@@ -229,7 +227,6 @@ namespace llarp::service
         reinterpret_cast<uint8_t*>(bte1.data()), bte1.size(), sessionKey, nonce);
     // put encrypted buffer
     std::memcpy(enc.data(), bte1.data(), bte1.size());
-    enc = buf1;
     // zero out signature
     sig.Zero();
 

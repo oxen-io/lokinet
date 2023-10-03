@@ -1,6 +1,5 @@
 #include "gotname.hpp"
 #include <oxenc/bt_serialize.h>
-#include <llarp/dht/context.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/path/path_context.hpp>
 

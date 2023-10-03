@@ -76,7 +76,7 @@ namespace llarp::exit
   {
     if (numHops == 1)
     {
-      if (auto maybe = m_router->node_db()->Get(m_ExitRouter))
+      if (auto maybe = router->node_db()->Get(m_ExitRouter))
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
@@ -108,7 +108,7 @@ namespace llarp::exit
       llarp::LogError("Failed to sign exit request");
       return;
     }
-    if (p->SendExitRequest(obtain, m_router))
+    if (p->SendExitRequest(obtain, router))
       llarp::LogInfo("asking ", m_ExitRouter, " for exit");
     else
       llarp::LogError("failed to send exit request");
@@ -161,7 +161,7 @@ namespace llarp::exit
       {
         llarp::LogInfo(p->Name(), " closing exit path");
         routing::CloseExitMessage msg;
-        if (msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, m_router))
+        if (msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router))
         {
           p->ClearRoles(roles);
         }
@@ -182,12 +182,12 @@ namespace llarp::exit
       {
         LogInfo(p->Name(), " closing exit path");
         routing::CloseExitMessage msg;
-        if (!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, m_router)))
+        if (!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router)))
           LogWarn(p->Name(), " failed to send exit close message");
       }
     };
     ForEachPath(sendExitClose);
-    m_router->path_context().RemovePathSet(shared_from_this());
+    router->path_context().RemovePathSet(shared_from_this());
     return path::Builder::Stop();
   }
 
@@ -214,7 +214,7 @@ namespace llarp::exit
       llarp::net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return false;
-      m_LastUse = m_router->now();
+      m_LastUse = router->now();
       m_Downstream.emplace(counter, pkt);
       return true;
     }
@@ -225,7 +225,7 @@ namespace llarp::exit
   BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p, const PathID_t& path, uint64_t s)
   {
     llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s, " P=", path);
-    p->EnterState(path::ePathIgnore, m_router->now());
+    p->EnterState(path::ePathIgnore, router->now());
     return true;
   }
 
@@ -283,7 +283,7 @@ namespace llarp::exit
   bool
   BaseSession::FlushUpstream()
   {
-    auto now = m_router->now();
+    auto now = router->now();
     auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
     if (path)
     {
@@ -293,7 +293,7 @@ namespace llarp::exit
         {
           auto& msg = queue.front();
           msg.sequence_number = path->NextSeqNo();
-          path->SendRoutingMessage(msg, m_router);
+          path->SendRoutingMessage(msg, router);
           queue.pop_front();
         }
       }
@@ -308,7 +308,7 @@ namespace llarp::exit
       m_Upstream.clear();
       if (numHops == 1)
       {
-        auto r = m_router;
+        auto r = router;
         if (const auto maybe = r->node_db()->Get(m_ExitRouter); maybe.has_value())
           r->TryConnectAsync(*maybe, 5);
         else

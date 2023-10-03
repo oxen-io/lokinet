@@ -18,6 +18,8 @@ namespace llarp::net
     /// the layer 3 port if applicable
     std::optional<nuint16_t> port;
 
+    ProtocolInfo(std::string buf);
+
     void
     bt_encode(oxenc::bt_list_producer& btlp) const;
 
@@ -54,6 +56,8 @@ namespace llarp::net
 
     void
     bt_encode(oxenc::bt_dict_producer& btdp) const;
+    void
+    bt_decode(oxenc::bt_dict_consumer& btdc);
 
     bool
     BDecode(llarp_buffer_t* buf);

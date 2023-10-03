@@ -276,7 +276,6 @@ add_library(lokinet-service-deprecated-kitchensink
   service/endpoint_state.cpp
   service/endpoint_util.cpp
   service/endpoint.cpp
-  service/hidden_service_address_lookup.cpp
   service/identity.cpp
   service/info.cpp
   service/intro_set.cpp

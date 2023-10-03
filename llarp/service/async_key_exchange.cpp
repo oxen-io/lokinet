@@ -1,4 +1,5 @@
 #include "async_key_exchange.hpp"
+#include "endpoint.hpp"
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/crypto/types.hpp>
@@ -13,7 +14,7 @@ namespace llarp::service
       const Identity& localident,
       const PQPubKey& introsetPubKey,
       const Introduction& remote,
-      IDataHandler* h,
+      Endpoint* h,
       const ConvoTag& t,
       ProtocolType proto)
       : loop(std::move(l))
@@ -44,9 +45,9 @@ namespace llarp::service
       std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
   {
     // derive ntru session key component
-    SharedSecret K;
+    SharedSecret secret;
     auto crypto = CryptoManager::instance();
-    crypto->pqe_encrypt(frame->cipher, K, self->introPubKey);
+    crypto->pqe_encrypt(frame->cipher, secret, self->introPubKey);
     // randomize Nonce
     frame->nonce.Randomize();
     // compure post handshake session key
@@ -57,12 +58,11 @@ namespace llarp::service
     {
       LogError("failed to derive x25519 shared key component");
     }
-    std::array<byte_t, 64> tmp = {{0}};
-    // K
-    std::copy(K.begin(), K.end(), tmp.begin());
+
+    auto buf = secret.bt_encode() + sharedSecret.bt_encode();
     // H (K + PKE(A, B, N))
-    std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
-    crypto->shorthash(self->sharedKey, llarp_buffer_t(tmp));
+    crypto->shorthash(self->sharedKey, reinterpret_cast<uint8_t*>(buf.data()), buf.size());
+
     // set tag
     self->msg.tag = self->tag;
     // set sender
@@ -70,7 +70,7 @@ namespace llarp::service
     // set version
     self->msg.version = llarp::constants::proto_version;
     // encrypt and sign
-    if (frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
+    if (frame->EncryptAndSign(self->msg, secret, self->m_LocalIdentity))
       self->loop->call([self, frame] { AsyncKeyExchange::Result(self, frame); });
     else
     {

@@ -110,16 +110,45 @@ namespace llarp::net
   {
     try
     {
-      {
-        auto sublist = btlp.append_list();
-        sublist.append(static_cast<uint8_t>(protocol));
-      }
-
+      btlp.append(static_cast<uint8_t>(protocol));
       btlp.append(ToHost(*port).h);
     }
     catch (...)
     {
       log::critical(net_cat, "Error: ProtocolInfo failed to bt encode contents!");
+    }
+  }
+
+  ProtocolInfo::ProtocolInfo(std::string buf)
+  {
+    try
+    {
+      oxenc::bt_list_consumer btlc{std::move(buf)};
+      protocol = static_cast<IPProtocol>(btlc.consume_integer<uint8_t>());
+      port->FromString(btlc.consume_string());
+    }
+    catch (...)
+    {
+      log::critical(net_cat, "Error: ProtocolInfo failed to bt encode contents!");
+    }
+  }
+
+  void
+  TrafficPolicy::bt_decode(oxenc::bt_dict_consumer& btdc)
+  {
+    try
+    {
+      {
+        auto sublist = btdc.consume_list_consumer();
+        while (not sublist.is_finished())
+        {
+          protocols.emplace(sublist.consume_string());
+        }
+      }
+    }
+    catch (...)
+    {
+      log::critical(net_cat, "Error: TrafficPolicy failed to populate with bt encoded contents");
     }
   }
 

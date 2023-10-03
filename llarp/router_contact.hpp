@@ -75,6 +75,8 @@ namespace llarp
       Clear();
     }
 
+    RouterContact(std::string buf);
+
     // advertised addresses
     oxen::quic::Address addr;
     // network identifier

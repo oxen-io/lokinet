@@ -26,31 +26,28 @@ namespace llarp
 
     using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
 
-    using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
-    using SendMessageQueue_t = thread::Queue<SendEvent_t>;
+    using SendEvent = std::pair<Msg_ptr, path::Path_ptr>;
+    using SendMessageEventQueue = thread::Queue<SendEvent>;
 
-    using PendingBufferQueue = std::deque<PendingBuffer>;
-    using PendingTraffic = std::unordered_map<Address, PendingBufferQueue>;
+    using PendingBufferDeque = std::deque<PendingBuffer>;
+    using PendingTrafficMap = std::unordered_map<Address, PendingBufferDeque>;
 
     using ProtocolMessagePtr = std::shared_ptr<ProtocolMessage>;
     using RecvPacketQueue_t = thread::Queue<ProtocolMessagePtr>;
 
-    using PendingRouters = std::unordered_map<RouterID, RouterLookupJob>;
+    using PendingRoutersMap = std::unordered_map<RouterID, RouterLookupJob>;
 
-    using PendingLookups = std::unordered_map<uint64_t, std::unique_ptr<IServiceLookup>>;
+    using PendingLookupsMap = std::unordered_map<uint64_t, std::unique_ptr<IServiceLookup>>;
 
-    using Sessions = std::unordered_multimap<Address, std::shared_ptr<OutboundContext>>;
+    using ConnectionMap = std::unordered_multimap<Address, std::shared_ptr<OutboundContext>>;
 
-    using SNodeSessions = std::unordered_map<RouterID, std::shared_ptr<exit::BaseSession>>;
+    using SNodeConnectionMap = std::unordered_map<RouterID, std::shared_ptr<exit::BaseSession>>;
 
     using ConvoMap = std::unordered_map<ConvoTag, Session>;
 
-    /// set of outbound addresses to maintain to
-    using OutboundSessions_t = std::unordered_set<Address>;
+    using EnsurePathCallback = std::function<void(Address, OutboundContext*)>;
 
-    using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
-
-    using LNSNameCache = std::unordered_map<std::string, std::pair<Address, llarp_time_t>>;
+    using ONSNameCache = std::unordered_map<std::string, std::pair<Address, llarp_time_t>>;
 
   }  // namespace service
 }  // namespace llarp

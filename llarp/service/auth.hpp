@@ -3,8 +3,12 @@
 #include <string>
 #include <functional>
 #include "address.hpp"
-#include "handler.hpp"
 #include <llarp/crypto/types.hpp>
+
+namespace llarp
+{
+  struct Router;
+}
 
 namespace llarp::service
 {
@@ -37,6 +41,9 @@ namespace llarp::service
     AuthResultCode code;
     std::string reason;
   };
+
+  struct ProtocolMessage;
+  struct ConvoTag;
 
   /// maybe get auth result from string
   std::optional<AuthResultCode>

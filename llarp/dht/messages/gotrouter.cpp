@@ -1,4 +1,3 @@
-#include <llarp/dht/context.hpp>
 #include "gotrouter.hpp"
 
 #include <memory>

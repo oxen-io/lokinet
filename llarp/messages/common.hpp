@@ -1,9 +1,14 @@
 #pragma once
 
+#include <llarp/dht/key.hpp>
+#include <llarp/path/path_types.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/service/tag.hpp>
+#include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
-#include <oxenc/bt.h>
-
 #include <llarp/util/logging.hpp>
+
+#include <oxenc/bt.h>
 
 namespace
 {

@@ -7,35 +7,41 @@ namespace llarp::service
   struct EndpointUtil
   {
     static void
-    ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions);
+    ExpireSNodeSessions(llarp_time_t now, SNodeConnectionMap& sessions);
 
     static void
-    ExpirePendingTx(llarp_time_t now, PendingLookups& lookups);
+    ExpirePendingTx(llarp_time_t now, PendingLookupsMap& lookups);
 
     static void
-    ExpirePendingRouterLookups(llarp_time_t now, PendingRouters& routers);
+    ExpirePendingRouterLookups(llarp_time_t now, PendingRoutersMap& routers);
 
     static void
-    DeregisterDeadSessions(llarp_time_t now, Sessions& sessions);
+    DeregisterDeadSessions(llarp_time_t now, ConnectionMap& sessions);
 
     static void
     TickRemoteSessions(
-        llarp_time_t now, Sessions& remoteSessions, Sessions& deadSessions, ConvoMap& sessions);
+        llarp_time_t now,
+        ConnectionMap& remoteSessions,
+        ConnectionMap& deadSessions,
+        std::unordered_map<ConvoTag, Session>& sessions);
 
     static void
-    ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions);
+    ExpireConvoSessions(llarp_time_t now, std::unordered_map<ConvoTag, Session>& sessions);
 
     static void
-    StopRemoteSessions(Sessions& remoteSessions);
+    StopRemoteSessions(ConnectionMap& remoteSessions);
 
     static void
-    StopSnodeSessions(SNodeSessions& sessions);
+    StopSnodeSessions(SNodeConnectionMap& sessions);
 
     static bool
-    HasPathToService(const Address& addr, const Sessions& remoteSessions);
+    HasPathToService(const Address& addr, const ConnectionMap& remoteSessions);
 
     static bool
-    GetConvoTagsForService(const ConvoMap& sessions, const Address& addr, std::set<ConvoTag>& tags);
+    GetConvoTagsForService(
+        const std::unordered_map<ConvoTag, Session>& sessions,
+        const Address& addr,
+        std::set<ConvoTag>& tags);
   };
 
   template <typename Endpoint_t>

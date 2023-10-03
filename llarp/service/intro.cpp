@@ -32,16 +32,34 @@ namespace llarp::service
     return read;
   }
 
-  void
-  Introduction::bt_encode(oxenc::bt_dict_producer& btdp) const
+  Introduction::Introduction(std::string buf)
   {
     try
     {
-      btdp.append("k", router.ToView());
-      btdp.append("l", latency.count());
-      btdp.append("p", path_id.ToView());
-      btdp.append("v", version);
-      btdp.append("x", expiry.count());
+      oxenc::bt_dict_consumer btdc{std::move(buf)};
+
+      router.FromString(btdc.require<std::string>("k"));
+      latency = std::chrono::milliseconds{btdc.require<uint64_t>("l")};
+      path_id.from_string(btdc.require<std::string>("p"));
+      expiry = std::chrono::milliseconds{btdc.require<uint64_t>("x")};
+    }
+    catch (...)
+    {
+      log::critical(intro_cat, "Error: Introduction failed to populate with bt encoded contents");
+    }
+  }
+
+  void
+  Introduction::bt_encode(oxenc::bt_list_producer& btlp) const
+  {
+    try
+    {
+      auto subdict = btlp.append_dict();
+
+      subdict.append("k", router.ToView());
+      subdict.append("l", latency.count());
+      subdict.append("p", path_id.ToView());
+      subdict.append("x", expiry.count());
     }
     catch (...)
     {

@@ -35,6 +35,10 @@ namespace llarp::service
     std::vector<llarp::dns::SRVTuple> SRVs;
     llarp_time_t time_signed = 0s;
 
+    IntroSet() = default;
+
+    explicit IntroSet(std::string bt_payload);
+
     /// ethertypes we advertise that we speak
     std::vector<ProtocolType> supported_protocols;
     /// aonnuce that these ranges are reachable via our endpoint
@@ -134,7 +138,7 @@ namespace llarp::service
   {
     PubKey derivedSigningKey;
     llarp_time_t signedAt = 0s;
-    std::vector<byte_t> introsetPayload;
+    ustring introsetPayload;
     TunnelNonce nounce;
     std::optional<Tag> topic;
     Signature sig;
@@ -147,6 +151,8 @@ namespace llarp::service
         std::string enc_payload,
         std::string nonce,
         std::string sig);
+
+    explicit EncryptedIntroSet(std::string bt_payload);
 
     bool
     Sign(const PrivateKey& k);
@@ -185,8 +191,8 @@ namespace llarp::service
     util::StatusObject
     ExtractStatus() const;
 
-    std::optional<IntroSet>
-    MaybeDecrypt(const PubKey& rootKey) const;
+    IntroSet
+    decrypt(const PubKey& root) const;
   };
 
   inline bool

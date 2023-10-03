@@ -55,8 +55,8 @@ namespace llarp
         , _introset_lookup_filter{5s}
     {
       _state = std::make_unique<EndpointState>();
-      _state->m_Router = r;
-      _state->m_Name = "endpoint";
+      _state->router = r;
+      _state->name = "endpoint";
       _recv_event_queue.enable();
 
       if (Loop()->MaybeGetUVWLoop())
@@ -94,13 +94,13 @@ namespace llarp
     bool
     Endpoint::HasPendingPathToService(const Address& addr) const
     {
-      return _state->m_PendingServiceLookups.find(addr) != _state->m_PendingServiceLookups.end();
+      return _state->pending_service_lookups.find(addr) != _state->pending_service_lookups.end();
     }
 
     bool
     Endpoint::is_ready() const
     {
-      const auto now = Now();
+      const auto now = llarp::time_now_ms();
       if (intro_set().intros.empty())
         return false;
       if (intro_set().IsExpired(now))
@@ -111,7 +111,7 @@ namespace llarp
     bool
     Endpoint::HasPendingRouterLookup(const RouterID remote) const
     {
-      const auto& routers = _state->m_PendingRouters;
+      const auto& routers = _state->pending_routers;
       return routers.find(remote) != routers.end();
     }
 
@@ -124,7 +124,7 @@ namespace llarp
         return itr->second.remote.Addr();
       }
 
-      for (const auto& item : _state->m_SNodeSessions)
+      for (const auto& item : _state->snode_sessions)
       {
         if (const auto maybe = item.second->CurrentPath())
         {
@@ -155,7 +155,7 @@ namespace llarp
            auth = AuthInfo{token},
            ranges,
            result_handler,
-           poker = m_router->route_poker()](auto maybe_addr) {
+           poker = router()->route_poker()](auto maybe_addr) {
             if (not maybe_addr)
             {
               result_handler(false, "exit not found: {}"_format(name));
@@ -214,7 +214,7 @@ namespace llarp
       auto handleGotPathToService = [resultHandler, service, this](auto addr) {
         // we can probably get this info before we have a path to them but we do this after we
         // have a path so when we send the response back they can send shit to them immediately
-        const auto& container = _state->m_RemoteSessions;
+        const auto& container = _state->remote_sessions;
         if (auto itr = container.find(addr); itr != container.end())
         {
           // parse the stuff we need from this guy
@@ -290,7 +290,7 @@ namespace llarp
     bool
     Endpoint::IntrosetIsStale() const
     {
-      return intro_set().HasExpiredIntros(Now());
+      return intro_set().HasExpiredIntros(llarp::time_now_ms());
     }
 
     util::StatusObject
@@ -326,17 +326,15 @@ namespace llarp
       // expire name cache
       _state->nameCache.Decay(now);
       // expire snode sessions
-      EndpointUtil::ExpireSNodeSessions(now, _state->m_SNodeSessions);
-      // expire pending tx
-      EndpointUtil::ExpirePendingTx(now, _state->m_PendingLookups);
+      EndpointUtil::ExpireSNodeSessions(now, _state->snode_sessions);
       // expire pending router lookups
-      EndpointUtil::ExpirePendingRouterLookups(now, _state->m_PendingRouters);
+      EndpointUtil::ExpirePendingRouterLookups(now, _state->pending_routers);
 
       // deregister dead sessions
-      EndpointUtil::DeregisterDeadSessions(now, _state->m_DeadSessions);
+      EndpointUtil::DeregisterDeadSessions(now, _state->dead_sessions);
       // tick remote sessions
       EndpointUtil::TickRemoteSessions(
-          now, _state->m_RemoteSessions, _state->m_DeadSessions, Sessions());
+          now, _state->remote_sessions, _state->dead_sessions, Sessions());
       // expire convotags
       EndpointUtil::ExpireConvoSessions(now, Sessions());
 
@@ -370,10 +368,10 @@ namespace llarp
     {
       // stop remote sessions
       log::debug(logcat, "Endpoint stopping remote sessions.");
-      EndpointUtil::StopRemoteSessions(_state->m_RemoteSessions);
+      EndpointUtil::StopRemoteSessions(_state->remote_sessions);
       // stop snode sessions
       log::debug(logcat, "Endpoint stopping snode sessions.");
-      EndpointUtil::StopSnodeSessions(_state->m_SNodeSessions);
+      EndpointUtil::StopSnodeSessions(_state->snode_sessions);
       log::debug(logcat, "Endpoint stopping its path builder.");
       return path::Builder::Stop();
     }
@@ -381,23 +379,13 @@ namespace llarp
     uint64_t
     Endpoint::GenTXID()
     {
-      uint64_t txid = randint();
-      const auto& lookups = _state->m_PendingLookups;
-      while (lookups.find(txid) != lookups.end())
-        ++txid;
-      return txid;
+      return randint();
     }
 
     std::string
     Endpoint::Name() const
     {
-      return _state->m_Name + ":" + _identity.pub.Name();
-    }
-
-    void
-    Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
-    {
-      _state->m_PendingLookups.emplace(txid, std::unique_ptr<IServiceLookup>(lookup));
+      return _state->name + ":" + _identity.pub.Name();
     }
 
     bool
@@ -413,7 +401,7 @@ namespace llarp
         }
         remote.insert(introset);
       }
-      auto& lookups = _state->m_PendingLookups;
+      auto& lookups = _state->pending_lookups;
       auto itr = lookups.find(msg->txid);
       if (itr == lookups.end())
       {
@@ -588,7 +576,7 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
-      const auto& keyfile = _state->m_Keyfile;
+      const auto& keyfile = _state->key_file;
       if (!keyfile.empty())
       {
         _identity.EnsureKeys(keyfile, router()->key_manager()->needBackup());
@@ -603,16 +591,11 @@ namespace llarp
     bool
     Endpoint::Start()
     {
-      // how can I tell if a m_Identity isn't loaded?
-      if (!_data_handler)
-      {
-        _data_handler = this;
-      }
       // this does network isolation
-      while (_state->m_OnInit.size())
+      while (_state->on_init_callbacks.size())
       {
-        if (_state->m_OnInit.front()())
-          _state->m_OnInit.pop_front();
+        if (_state->on_init_callbacks.front()())
+          _state->on_init_callbacks.pop_front();
         else
         {
           LogWarn("Can't call init of network isolation");
@@ -665,7 +648,7 @@ namespace llarp
         }
 
         // exit related stuffo
-        if (_state->m_ExitEnabled)
+        if (_state->is_exit_enabled)
         {
           intro_set().supported_protocols.push_back(ProtocolType::Exit);
           intro_set().exit_policy = GetExitPolicy();
@@ -698,7 +681,7 @@ namespace llarp
         LogWarn("failed to generate introset for endpoint ", Name());
         return;
       }
-      if (PublishIntroSet(*maybe))
+      if (publish_introset(*maybe))
       {
         LogInfo("(re)publishing introset for endpoint ", Name());
       }
@@ -709,10 +692,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(const EncryptedIntroSet& introset)
+    Endpoint::publish_introset(const EncryptedIntroSet& introset)
     {
-      auto* r = router();
-
       const auto paths = GetManyPathsWithUniqueEndpoints(
           this, INTROSET_RELAY_REDUNDANCY, dht::Key_t{introset.derivedSigningKey.as_array()});
 
@@ -730,91 +711,20 @@ namespace llarp
       {
         for (size_t i = 0; i < INTROSET_REQS_PER_RELAY; ++i)
         {
-          r->notify_router_event<tooling::PubIntroSentEvent>(
-              r->pubkey(),
-              llarp::dht::Key_t{introset.derivedSigningKey.as_array()},
-              RouterID(path->hops[path->hops.size() - 1].rc.pubkey));
-
-          m_router->send_control_message(path->Upstream(), "publish_intro", introset.bt_encode());
+          router()->send_control_message(path->Upstream(), "publish_intro", introset.bt_encode());
         }
       }
+
       return true;
-    }
-
-    struct PublishIntroSetJob : public IServiceLookup
-    {
-      EncryptedIntroSet m_IntroSet;
-      Endpoint* m_Endpoint;
-      uint64_t m_relayOrder;
-      PublishIntroSetJob(
-          Endpoint* parent,
-          uint64_t id,
-          EncryptedIntroSet introset,
-          uint64_t relayOrder,
-          llarp_time_t timeout)
-          : IServiceLookup(parent, id, "PublishIntroSet", timeout)
-          , m_IntroSet(std::move(introset))
-          , m_Endpoint(parent)
-          , m_relayOrder(relayOrder)
-      {}
-
-      std::shared_ptr<routing::AbstractRoutingMessage>
-      BuildRequestMessage()
-      {
-        auto msg = std::make_shared<routing::PathDHTMessage>();
-        msg->dht_msgs.emplace_back(
-            std::make_unique<dht::PublishIntroMessage>(m_IntroSet, txid, true, m_relayOrder));
-        return msg;
-      }
-
-      bool
-      HandleIntrosetResponse(const std::set<EncryptedIntroSet>& response)
-      {
-        if (not response.empty())
-          m_Endpoint->IntroSetPublished();
-        else
-          m_Endpoint->IntroSetPublishFail();
-
-        return true;
-      }
-    };
-
-    void
-    Endpoint::IntroSetPublishFail()
-    {
-      auto now = Now();
-      if (ShouldPublishDescriptors(now))
-      {
-        regen_and_publish_introset();
-      }
-      else if (NumInStatus(path::ePathEstablished) < 3)
-      {
-        if (intro_set().HasExpiredIntros(now))
-          ManualRebuild(1);
-      }
     }
 
     size_t
     Endpoint::UniqueEndpoints() const
     {
-      return _state->m_RemoteSessions.size() + _state->m_SNodeSessions.size();
+      return _state->remote_sessions.size() + _state->snode_sessions.size();
     }
 
     constexpr auto PublishIntrosetTimeout = 20s;
-
-    bool
-    Endpoint::PublishIntroSetVia(
-        const EncryptedIntroSet& introset, Router* r, path::Path_ptr path, uint64_t relayOrder)
-    {
-      auto job =
-          new PublishIntroSetJob(this, GenTXID(), introset, relayOrder, PublishIntrosetTimeout);
-      if (job->SendRequestViaPath(path, r))
-      {
-        _state->m_LastPublishAttempt = Now();
-        return true;
-      }
-      return false;
-    }
 
     void
     Endpoint::ResetInternalState()
@@ -825,8 +735,8 @@ namespace llarp
           getter(item)->ResetInternalState();
         });
       };
-      resetState(_state->m_RemoteSessions, [](const auto& item) { return item.second; });
-      resetState(_state->m_SNodeSessions, [](const auto& item) { return item.second; });
+      resetState(_state->remote_sessions, [](const auto& item) { return item.second; });
+      resetState(_state->snode_sessions, [](const auto& item) { return item.second; });
     }
 
     bool
@@ -835,28 +745,13 @@ namespace llarp
       if (not _publish_introset)
         return false;
 
-      const auto lastEventAt = std::max(_state->m_LastPublishAttempt, _state->m_LastPublish);
+      const auto lastEventAt = std::max(_state->last_publish_attempt, _state->last_publish);
       const auto next_pub = lastEventAt
-          + (_state->m_IntroSet.HasStaleIntros(now, path::INTRO_STALE_THRESHOLD)
+          + (_state->local_introset.HasStaleIntros(now, path::INTRO_STALE_THRESHOLD)
                  ? IntrosetPublishRetryCooldown
                  : IntrosetPublishInterval);
 
       return now >= next_pub;
-    }
-
-    void
-    Endpoint::IntroSetPublished()
-    {
-      const auto now = Now();
-      // We usually get 4 confirmations back (one for each DHT location), which
-      // is noisy: suppress this log message if we already had a confirmation in
-      // the last second.
-      if (_state->m_LastPublish < now - 1s)
-        LogInfo(Name(), " IntroSet publish confirmed");
-      else
-        LogDebug(Name(), " Additional IntroSet publish confirmed");
-
-      _state->m_LastPublish = now;
     }
 
     std::optional<std::vector<RouterContact>>
@@ -865,7 +760,7 @@ namespace llarp
       std::unordered_set<RouterID> exclude;
       ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
       const auto maybe =
-          m_router->node_db()->GetRandom([exclude, r = m_router](const auto& rc) -> bool {
+          router()->node_db()->GetRandom([exclude, r = router()](const auto& rc) -> bool {
             return exclude.count(rc.pubkey) == 0
                 and not r->router_profiling().IsBadForPath(rc.pubkey);
           });
@@ -893,7 +788,7 @@ namespace llarp
     {
       const Address addr{introset.address_keys.Addr()};
 
-      auto& remoteSessions = _state->m_RemoteSessions;
+      auto& remoteSessions = _state->remote_sessions;
 
       if (remoteSessions.count(addr) < MaxOutboundContextPerRemote)
       {
@@ -912,7 +807,7 @@ namespace llarp
     void
     Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid)
     {
-      auto& pendingRouters = _state->m_PendingRouters;
+      auto& pendingRouters = _state->pending_routers;
       auto itr = pendingRouters.find(id);
       if (itr != pendingRouters.end())
       {
@@ -942,7 +837,7 @@ namespace llarp
       }
       else
       {
-        auto& routers = _state->m_PendingRouters;
+        auto& routers = _state->pending_routers;
         auto itr = routers.begin();
         while (itr != routers.end())
         {
@@ -957,45 +852,6 @@ namespace llarp
       }
       return true;
     }
-
-    struct LookupNameJob : public IServiceLookup
-    {
-      std::function<void(std::optional<Address>)> handler;
-      ShortHash namehash;
-
-      LookupNameJob(
-          Endpoint* parent,
-          uint64_t id,
-          std::string lnsName,
-          std::function<void(std::optional<Address>)> resultHandler)
-          : IServiceLookup(parent, id, lnsName), handler(resultHandler)
-      {
-        CryptoManager::instance()->shorthash(
-            namehash, reinterpret_cast<uint8_t*>(lnsName.data()), lnsName.size());
-      }
-
-      std::shared_ptr<routing::AbstractRoutingMessage>
-      BuildRequestMessage() override
-      {
-        auto msg = std::make_shared<routing::PathDHTMessage>();
-        msg->dht_msgs.emplace_back(std::make_unique<dht::FindNameMessage>(
-            dht::Key_t{}, dht::Key_t{namehash.as_array()}, txid));
-        return msg;
-      }
-
-      bool
-      HandleNameResponse(std::optional<Address> addr) override
-      {
-        handler(addr);
-        return true;
-      }
-
-      void
-      HandleTimeout() override
-      {
-        HandleNameResponse(std::nullopt);
-      }
-    };
 
     bool
     Endpoint::HasExit() const
@@ -1099,14 +955,14 @@ namespace llarp
       {
         LogInfo(Name(), " lookup ", name, " from ", path->Endpoint());
         auto job = new LookupNameJob{this, GenTXID(), name, resultHandler};
-        job->SendRequestViaPath(path, m_router);
+        job->SendRequestViaPath(path, router);
       }
     }
 
     bool
     Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg)
     {
-      auto& lookups = _state->m_PendingLookups;
+      auto& lookups = _state->pending_lookups;
       auto itr = lookups.find(msg->TxID);
       if (itr == lookups.end())
         return false;
@@ -1135,7 +991,7 @@ namespace llarp
     {
       using llarp::dht::FindRouterMessage;
 
-      auto& routers = _state->m_PendingRouters;
+      auto& routers = _state->pending_routers;
       if (routers.find(rid) == routers.end())
       {
         auto path = GetEstablishedPathClosestTo(rid);
@@ -1146,7 +1002,7 @@ namespace llarp
           msg.sequence_number = path->NextSeqNo();
         if (path && path->SendRoutingMessage(msg, router()))
         {
-          RouterLookupJob job{this, [handler, rid, nodedb = m_router->node_db()](auto results) {
+          RouterLookupJob job{this, [handler, rid, nodedb = router()->node_db()](auto results) {
                                 if (results.empty())
                                 {
                                   LogInfo("could not find ", rid, ", remove it from nodedb");
@@ -1159,8 +1015,6 @@ namespace llarp
           assert(msg.dht_msgs.size() == 1);
           auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.dht_msgs[0].get());
           assert(dhtMsg != nullptr);
-
-          m_router->notify_router_event<tooling::FindRouterSentEvent>(router()->pubkey(), *dhtMsg);
 
           routers.emplace(rid, std::move(job));
           return true;
@@ -1227,7 +1081,7 @@ namespace llarp
     bool
     Endpoint::HasPathToSNode(const RouterID ident) const
     {
-      auto range = _state->m_SNodeSessions.equal_range(ident);
+      auto range = _state->snode_sessions.equal_range(ident);
       auto itr = range.first;
       while (itr != range.second)
       {
@@ -1261,7 +1115,7 @@ namespace llarp
       {
         remote.insert(item.second.remote.Addr());
       }
-      for (const auto& item : _state->m_SNodeSessions)
+      for (const auto& item : _state->snode_sessions)
       {
         remote.insert(item.first);
       }
@@ -1272,7 +1126,7 @@ namespace llarp
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
       if ((msg->proto == ProtocolType::Exit
-           && (_state->m_ExitEnabled || _exit_map.ContainsValue(msg->sender.Addr())))
+           && (_state->is_exit_enabled || _exit_map.ContainsValue(msg->sender.Addr())))
           || msg->proto == ProtocolType::TrafficV4 || msg->proto == ProtocolType::TrafficV6
           || (msg->proto == ProtocolType::QUIC and _tunnel_manager))
       {
@@ -1312,7 +1166,7 @@ namespace llarp
         path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
     {
       // not applicable because we are not an exit or don't have an endpoint auth policy
-      if ((not _state->m_ExitEnabled) or _auth_policy == nullptr)
+      if ((not _state->is_exit_enabled) or _auth_policy == nullptr)
         return;
       ProtocolFrameMessage f{};
       f.flag = AuthResultCodeAsInt(result.code);
@@ -1359,7 +1213,7 @@ namespace llarp
         }
       }
       _send_queue.tryPushBack(
-          SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, replyPath), path});
+          SendEvent{std::make_shared<routing::PathTransferMessage>(f, replyPath), path});
     }
 
     void
@@ -1381,7 +1235,7 @@ namespace llarp
         LogWarn("invalidating convotag T=", tag);
         RemoveConvoTag(tag);
         _send_queue.tryPushBack(
-            SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, from), p});
+            SendEvent{std::make_shared<routing::PathTransferMessage>(f, from), p});
       }
     }
 
@@ -1412,7 +1266,7 @@ namespace llarp
     void
     Endpoint::HandlePathDied(path::Path_ptr p)
     {
-      m_router->router_profiling().MarkPathTimeout(p.get());
+      router()->router_profiling().MarkPathTimeout(p.get());
       ManualRebuild(1);
       path::Builder::HandlePathDied(p);
       regen_and_publish_introset();
@@ -1435,10 +1289,10 @@ namespace llarp
       // tell all our existing remote sessions about this introset update
 
       const auto now = router()->now();
-      auto& lookups = _state->m_PendingServiceLookups;
+      auto& lookups = _state->pending_service_lookups;
       if (introset)
       {
-        auto& sessions = _state->m_RemoteSessions;
+        auto& sessions = _state->remote_sessions;
         auto range = sessions.equal_range(addr);
         auto itr = range.first;
         while (itr != range.second)
@@ -1460,7 +1314,7 @@ namespace llarp
           ++itr;
         }
       }
-      auto& fails = _state->m_ServiceLookupFails;
+      auto& fails = _state->service_lookup_fails;
       if (not introset or introset->IsExpired(now))
       {
         LogError(
@@ -1474,8 +1328,8 @@ namespace llarp
         fails[endpoint] = fails[endpoint] + 1;
 
         const auto pendingForAddr = std::count_if(
-            _state->m_PendingLookups.begin(),
-            _state->m_PendingLookups.end(),
+            _state->pending_lookups.begin(),
+            _state->pending_lookups.end(),
             [addr](const auto& item) -> bool { return item.second->IsFor(addr); });
 
         // inform all if we have no more pending lookups for this address
@@ -1493,7 +1347,7 @@ namespace llarp
       }
       // check for established outbound context
 
-      if (_state->m_RemoteSessions.count(addr) > 0)
+      if (_state->remote_sessions.count(addr) > 0)
         return true;
 
       PutNewOutboundContext(*introset, timeLeft);
@@ -1516,7 +1370,7 @@ namespace llarp
     void
     Endpoint::InformPathToService(const Address remote, OutboundContext* ctx)
     {
-      auto& serviceLookups = _state->m_PendingServiceLookups;
+      auto& serviceLookups = _state->pending_service_lookups;
       auto range = serviceLookups.equal_range(remote);
       auto itr = range.first;
       while (itr != range.second)
@@ -1528,7 +1382,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook, llarp_time_t timeout)
+    Endpoint::EnsurePathToService(
+        const Address remote, PathEnsureHook hook, [[maybe_unused]] llarp_time_t timeout)
     {
       if (not WantsOutboundSession(remote))
       {
@@ -1544,9 +1399,9 @@ namespace llarp
       static constexpr size_t RequestsPerLookup = 2;
 
       // add response hook to list for address.
-      _state->m_PendingServiceLookups.emplace(remote, hook);
+      _state->pending_service_lookups.emplace(remote, hook);
 
-      auto& sessions = _state->m_RemoteSessions;
+      auto& sessions = _state->remote_sessions;
       {
         auto range = sessions.equal_range(remote);
         auto itr = range.first;
@@ -1624,7 +1479,7 @@ namespace llarp
     bool
     Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
     {
-      auto& nodeSessions = _state->m_SNodeSessions;
+      auto& nodeSessions = _state->snode_sessions;
 
       using namespace std::placeholders;
       if (nodeSessions.count(snode) == 0)
@@ -1640,8 +1495,8 @@ namespace llarp
                 return false;
               pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              auto itr = _state->m_SNodeSessions.find(snode);
-              if (itr == _state->m_SNodeSessions.end())
+              auto itr = _state->snode_sessions.find(snode);
+              if (itr == _state->snode_sessions.end())
                 return false;
               if (const auto maybe = itr->second->CurrentPath())
                 return HandleInboundPacket(
@@ -1653,7 +1508,7 @@ namespace llarp
             numHops,
             false,
             this);
-        _state->m_SNodeSessions[snode] = session;
+        _state->snode_sessions[snode] = session;
       }
       EnsureRouterIsKnown(snode);
       auto range = nodeSessions.equal_range(snode);
@@ -1698,7 +1553,7 @@ namespace llarp
           if (*ptr == _identity.pub.Addr())
           {
             ConvoTagTX(tag);
-            _state->m_Router->TriggerPump();
+            _state->router->TriggerPump();
             if (not HandleInboundPacket(tag, pkt, t, 0))
               return false;
             ConvoTagRX(tag);
@@ -1713,30 +1568,12 @@ namespace llarp
       return false;
     }
 
-    bool
-    Endpoint::SendToOrQueue(const RouterID& addr, const llarp_buffer_t& buf, ProtocolType t)
-    {
-      LogTrace("SendToOrQueue: sending to snode ", addr);
-      auto pkt = std::make_shared<net::IPPacket>();
-      if (!pkt->Load(buf))
-        return false;
-      EnsurePathToSNode(
-          addr, [this, t, pkt = std::move(pkt)](RouterID, exit::BaseSession_ptr s, ConvoTag) {
-            if (s)
-            {
-              s->SendPacketToRemote(pkt->ConstBuffer(), t);
-              router()->TriggerPump();
-            }
-          });
-      return true;
-    }
-
     void
     Endpoint::Pump(llarp_time_t now)
     {
       FlushRecvData();
       // send downstream packets to user for snode
-      for (const auto& [router, session] : _state->m_SNodeSessions)
+      for (const auto& [router, session] : _state->snode_sessions)
         session->FlushDownstream();
 
       // handle inbound traffic sorted
@@ -1770,19 +1607,19 @@ namespace llarp
 
       auto r = router();
       // TODO: locking on this container
-      for (const auto& [addr, outctx] : _state->m_RemoteSessions)
+      for (const auto& [addr, outctx] : _state->remote_sessions)
       {
         outctx->FlushUpstream();
         outctx->Pump(now);
       }
       // TODO: locking on this container
-      for (const auto& [r, session] : _state->m_SNodeSessions)
+      for (const auto& [r, session] : _state->snode_sessions)
         session->FlushUpstream();
 
       // send queue flush
       while (not _send_queue.empty())
       {
-        SendEvent_t item = _send_queue.popFront();
+        SendEvent item = _send_queue.popFront();
         item.first->sequence_number = item.second->NextSeqNo();
         if (item.second->SendRoutingMessage(*item.first, r))
           ConvoTagTX(item.first->protocol_frame_msg.convo_tag);
@@ -1832,7 +1669,7 @@ namespace llarp
             }
             else
             {
-              auto range = _state->m_RemoteSessions.equal_range(*ptr);
+              auto range = _state->remote_sessions.equal_range(*ptr);
               auto itr = range.first;
               while (itr != range.second)
               {
@@ -1853,8 +1690,8 @@ namespace llarp
       }
       if (auto* ptr = std::get_if<RouterID>(&remote))
       {
-        auto itr = _state->m_SNodeSessions.find(*ptr);
-        if (itr == _state->m_SNodeSessions.end())
+        auto itr = _state->snode_sessions.find(*ptr);
+        if (itr == _state->snode_sessions.end())
           return std::nullopt;
         if (auto maybe = itr->second->CurrentPath())
           return ConvoTag{maybe->as_array()};
@@ -1922,151 +1759,6 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(const Address& remote, const llarp_buffer_t& data, ProtocolType t)
-    {
-      LogTrace("SendToOrQueue: sending to address ", remote);
-      if (data.sz == 0)
-      {
-        LogTrace("SendToOrQueue: dropping because data.sz == 0");
-        return false;
-      }
-      if (HasInboundConvo(remote))
-      {
-        // inbound conversation
-        LogTrace("Have inbound convo");
-        auto transfer = std::make_shared<routing::PathTransferMessage>();
-        ProtocolFrameMessage& f = transfer->protocol_frame_msg;
-        f.flag = 0;
-        std::shared_ptr<path::Path> p;
-        if (const auto maybe = GetBestConvoTagFor(remote))
-        {
-          // the remote guy's intro
-          Introduction replyIntro;
-          SharedSecret K;
-          const auto tag = *maybe;
-
-          if (not GetCachedSessionKeyFor(tag, K))
-          {
-            LogError(Name(), " no cached key for inbound session from ", remote, " T=", tag);
-            return false;
-          }
-          if (not GetReplyIntroFor(tag, replyIntro))
-          {
-            LogError(Name(), "no reply intro for inbound session from ", remote, " T=", tag);
-            return false;
-          }
-          // get path for intro
-          auto p = GetPathByRouter(replyIntro.router);
-
-          if (not p)
-          {
-            LogWarn(
-                Name(),
-                " has no path for intro router ",
-                RouterID{replyIntro.router},
-                " for inbound convo T=",
-                tag);
-            return false;
-          }
-
-          f.convo_tag = tag;
-          // TODO: check expiration of our end
-          auto m = std::make_shared<ProtocolMessage>(f.convo_tag);
-          m->PutBuffer(data);
-          f.nonce.Randomize();
-          f.cipher.Zero();
-          f.flag = 0;
-          transfer->nonce.Randomize();
-          m->proto = t;
-          m->introReply = p->intro;
-          m->sender = _identity.pub;
-          if (auto maybe = GetSeqNoForConvo(f.convo_tag))
-          {
-            m->seqno = *maybe;
-          }
-          else
-          {
-            LogWarn(Name(), " could not set sequence number, no session T=", f.convo_tag);
-            return false;
-          }
-          f.sequence_number = m->seqno;
-          f.path_id = p->intro.path_id;
-          transfer->path_id = replyIntro.path_id;
-          router()->queue_work([transfer, p, m, K, this]() {
-            if (not transfer->protocol_frame_msg.EncryptAndSign(*m, K, _identity))
-            {
-              LogError(
-                  "failed to encrypt and sign for sessionn T=",
-                  transfer->protocol_frame_msg.convo_tag);
-              return;
-            }
-            _send_queue.tryPushBack(SendEvent_t{transfer, p});
-            router()->TriggerPump();
-          });
-          return true;
-        }
-
-        LogWarn(
-            Name(),
-            " SendToOrQueue on inbound convo from ",
-            remote,
-            " but get-best returned none; bug?");
-      }
-      if (not WantsOutboundSession(remote))
-      {
-        LogWarn(
-            Name(),
-            " SendToOrQueue on outbound session we did not mark as outbound (remote=",
-            remote,
-            ")");
-        return false;
-      }
-
-      // Failed to find a suitable inbound convo, look for outbound
-      LogTrace("Not an inbound convo");
-      auto& sessions = _state->m_RemoteSessions;
-      auto range = sessions.equal_range(remote);
-      for (auto itr = range.first; itr != range.second; ++itr)
-      {
-        if (itr->second->ReadyToSend())
-        {
-          LogTrace("Found an outbound session to use to reach ", remote);
-          itr->second->AsyncEncryptAndSendTo(data, t);
-          return true;
-        }
-      }
-      LogTrace("Making an outbound session and queuing the data");
-      // add pending traffic
-      auto& traffic = _state->m_PendingTraffic;
-      traffic[remote].emplace_back(data, t);
-      EnsurePathToService(
-          remote,
-          [this](Address addr, OutboundContext* ctx) {
-            if (ctx)
-            {
-              for (auto& pending : m_state->m_PendingTraffic[addr])
-              {
-                ctx->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
-              }
-            }
-            else
-            {
-              LogWarn("no path made to ", addr);
-            }
-            _state->m_PendingTraffic.erase(addr);
-          },
-          PathAlignmentTimeout());
-      return true;
-    }
-
-    bool
-    Endpoint::SendToOrQueue(
-        const std::variant<Address, RouterID>& addr, const llarp_buffer_t& data, ProtocolType t)
-    {
-      return var::visit([&](auto& addr) { return SendToOrQueue(addr, data, t); }, addr);
-    }
-
-    bool
     Endpoint::HasConvoTag(const ConvoTag& t) const
     {
       return Sessions().find(t) != Sessions().end();
@@ -2096,7 +1788,7 @@ namespace llarp
     Router*
     Endpoint::router()
     {
-      return _state->m_Router;
+      return _state->router;
     }
 
     const EventLoop_ptr&
@@ -2108,34 +1800,34 @@ namespace llarp
     void
     Endpoint::BlacklistSNode(const RouterID snode)
     {
-      _state->m_SnodeBlacklist.insert(snode);
+      _state->snode_blacklist.insert(snode);
     }
 
     const std::set<RouterID>&
     Endpoint::SnodeBlacklist() const
     {
-      return _state->m_SnodeBlacklist;
+      return _state->snode_blacklist;
     }
 
     const IntroSet&
     Endpoint::intro_set() const
     {
-      return _state->m_IntroSet;
+      return _state->local_introset;
     }
 
     IntroSet&
     Endpoint::intro_set()
     {
-      return _state->m_IntroSet;
+      return _state->local_introset;
     }
 
-    const ConvoMap&
+    const std::unordered_map<ConvoTag, Session>&
     Endpoint::Sessions() const
     {
       return _state->m_Sessions;
     }
 
-    ConvoMap&
+    std::unordered_map<ConvoTag, Session>&
     Endpoint::Sessions()
     {
       return _state->m_Sessions;
@@ -2177,7 +1869,7 @@ namespace llarp
       });
 
       if (_exit_map.Empty())
-        m_router->route_poker()->put_down();
+        router()->route_poker()->put_down();
     }
 
     void
@@ -2194,7 +1886,7 @@ namespace llarp
       });
 
       if (_exit_map.Empty())
-        m_router->route_poker()->put_down();
+        router()->route_poker()->put_down();
     }
 
     std::optional<AuthInfo>

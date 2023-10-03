@@ -113,7 +113,7 @@ namespace llarp
         LogWarn("cannot lookup ", router, " anonymously");
       }
 
-      if (not contacts->lookup_router(router, fn))
+      if (not contacts->lookup_router(router))
       {
         finalize_request(router, nullptr, RCRequestResult::RouterNotFound);
       }

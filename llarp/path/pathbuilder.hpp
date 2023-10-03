@@ -55,7 +55,7 @@ namespace llarp::path
     DoPathBuildBackoff();
 
    public:
-    Router* const m_router;
+    Router* const router;
     SecretKey enckey;
     size_t numHops;
     llarp_time_t lastBuild = 0s;

@@ -55,7 +55,7 @@ namespace llarp
       Loop() override;
 
       std::unordered_set<EndpointBase::AddressVariant_t>
-      AllRemoteEndpoints() const override;
+      AllRemoteEndpoints() const;
 
       void
       SRVRecordsChanged() override;

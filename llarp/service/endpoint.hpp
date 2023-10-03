@@ -10,7 +10,6 @@
 
 // --- begin kitchen sink headers ----
 #include <llarp/service/address.hpp>
-#include <llarp/service/handler.hpp>
 #include <llarp/service/identity.hpp>
 #include <llarp/service/pendingbuffer.hpp>
 #include <llarp/service/protocol.hpp>
@@ -61,7 +60,15 @@ namespace llarp
     /// number of unique snodes we want to talk to do to ons lookups
     inline constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
 
-    struct Endpoint : public path::Builder, public IDataHandler, public EndpointBase
+    // TODO: delete this, it is copied from the late llarp/service/handler.hpp
+    struct RecvDataEvent
+    {
+      path::Path_ptr fromPath;
+      PathID_t pathid;
+      std::shared_ptr<ProtocolMessage> msg;
+    };
+
+    struct Endpoint : public path::Builder, public EndpointBase
     {
       Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
@@ -73,7 +80,7 @@ namespace llarp
       is_ready() const;
 
       void
-      QueueRecvData(RecvDataEvent ev) override;
+      QueueRecvData(RecvDataEvent ev);
 
       /// return true if our introset has expired intros
       bool
@@ -85,9 +92,6 @@ namespace llarp
 
       virtual util::StatusObject
       ExtractStatus() const;
-
-      void
-      SetHandler(IDataHandler* h);
 
       virtual bool
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf);
@@ -185,11 +189,7 @@ namespace llarp
       }
 
       bool
-      PublishIntroSet(const EncryptedIntroSet& i) override;
-
-      bool
-      PublishIntroSetVia(
-          const EncryptedIntroSet& i, Router* r, path::Path_ptr p, uint64_t relayOrder);
+      publish_introset(const EncryptedIntroSet& i);
 
       bool
       HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage> msg) override;
@@ -226,7 +226,7 @@ namespace llarp
 
       bool
       HandleDataMessage(
-          path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) override;
+          path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg);
 
       /// handle packet io from service node or hidden service to frontend
       virtual bool
@@ -291,9 +291,6 @@ namespace llarp
           std::function<void(bool, std::string)> result);
 
       void
-      PutLookup(IServiceLookup* lookup, uint64_t txid);
-
-      void
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
@@ -308,7 +305,7 @@ namespace llarp
       RemoveAllConvoTagsFor(service::Address remote);
 
       bool
-      WantsOutboundSession(const Address&) const override;
+      WantsOutboundSession(const Address&) const;
 
       /// this MUST be called if you want to call EnsurePathTo on the given address
       void MarkAddressOutbound(AddressVariant_t) override;
@@ -327,7 +324,7 @@ namespace llarp
       GetEndpointWithConvoTag(ConvoTag t) const override;
 
       bool
-      HasConvoTag(const ConvoTag& t) const override;
+      HasConvoTag(const ConvoTag& t) const;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -379,45 +376,46 @@ namespace llarp
       HasFlowToService(const Address remote) const;
 
       void
-      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound);
 
       bool
-      HasInboundConvo(const Address& addr) const override;
+      HasInboundConvo(const Address& addr) const;
 
       bool
-      HasOutboundConvo(const Address& addr) const override;
+      HasOutboundConvo(const Address& addr) const;
 
       bool
-      GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const override;
-      void
-      PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) override;
-
-      bool
-      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const override;
+      GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const;
 
       void
-      PutIntroFor(const ConvoTag& remote, const Introduction& intro) override;
+      PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret);
 
       bool
-      GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
+      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const;
 
       void
-      RemoveConvoTag(const ConvoTag& remote) override;
-
-      void
-      ConvoTagTX(const ConvoTag& remote) override;
-
-      void
-      ConvoTagRX(const ConvoTag& remote) override;
-
-      void
-      PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro) override;
+      PutIntroFor(const ConvoTag& remote, const Introduction& intro);
 
       bool
-      GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const override;
+      GetIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      void
+      RemoveConvoTag(const ConvoTag& remote);
+
+      void
+      ConvoTagTX(const ConvoTag& remote);
+
+      void
+      ConvoTagRX(const ConvoTag& remote);
+
+      void
+      PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro);
 
       bool
-      GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const override;
+      GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      bool
+      GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const;
 
       void
       PutNewOutboundContext(const IntroSet& introset, llarp_time_t timeLeftToAlign);
@@ -441,11 +439,6 @@ namespace llarp
       void
       PathBuildStarted(path::Path_ptr path) override;
 
-      virtual void
-      IntroSetPublishFail();
-      virtual void
-      IntroSetPublished();
-
       void
       AsyncProcessAuthMessage(
           std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
@@ -466,21 +459,6 @@ namespace llarp
       // or a snode (or nothing, if the convo tag is unknown).
       bool
       SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
-
-      // Send a to (or queues for sending) to either an address or router id
-      bool
-      SendToOrQueue(
-          const std::variant<Address, RouterID>& addr,
-          const llarp_buffer_t& payload,
-          ProtocolType t);
-
-      // Sends to (or queues for sending) to a remote client
-      bool
-      SendToOrQueue(const Address& addr, const llarp_buffer_t& payload, ProtocolType t);
-
-      // Sends to (or queues for sending) to a router
-      bool
-      SendToOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);
@@ -545,7 +523,6 @@ namespace llarp
       path::Path::UniqueEndpointSet_t
       GetUniqueEndpointsForLookup() const;
 
-      IDataHandler* _data_handler = nullptr;
       Identity _identity;
       net::IPRangeMap<service::Address> _exit_map;
       bool _publish_introset = true;
@@ -561,7 +538,7 @@ namespace llarp
       RecvPacketQueue_t _inbound_queue;
 
      public:
-      SendMessageQueue_t _send_queue;
+      SendMessageEventQueue _send_queue;
 
      private:
       llarp_time_t _last_introset_regen_attempt = 0s;
@@ -576,9 +553,8 @@ namespace llarp
       const IntroSet& intro_set() const;
       IntroSet&       intro_set();
 
-      using ConvoMap = std::unordered_map<ConvoTag, Session>;
-      const ConvoMap& Sessions() const;
-      ConvoMap&       Sessions();
+      const std::unordered_map<ConvoTag, Session>& Sessions() const;
+      std::unordered_map<ConvoTag, Session>&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> _recv_event_queue;
 

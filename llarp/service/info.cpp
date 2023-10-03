@@ -46,11 +46,25 @@ namespace llarp::service
   }
 
   void
+  ServiceInfo::bt_decode(oxenc::bt_dict_consumer& btdc)
+  {
+    try
+    {
+      enckey.FromString(btdc.require<std::string>("e"));
+      signkey.FromString(btdc.require<std::string>("s"));
+      vanity.from_string(btdc.require<std::string>("x"));
+    }
+    catch (...)
+    {
+      log::critical(info_cat, "ServiceInfo failed to populate with bt encoded contents");
+    }
+  }
+
+  void
   ServiceInfo::bt_encode(oxenc::bt_dict_producer& btdp) const
   {
     btdp.append("e", enckey.ToView());
     btdp.append("s", signkey.ToView());
-    btdp.append("v", version);
 
     if (not vanity.IsZero())
       btdp.append("x", vanity.ToView());

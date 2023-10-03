@@ -87,6 +87,21 @@ namespace llarp
     return bencode_write_bytestring(buf, data(), std::distance(begin(), term));
   }
 
+  RouterContact::RouterContact(std::string buf)
+  {
+    try
+    {
+      oxenc::bt_list_consumer btlc{buf};
+
+      signature.from_string(btlc.consume_string());
+      signed_bt_dict = btlc.consume_string();
+    }
+    catch (...)
+    {
+      log::critical(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
+    }
+  }
+
   std::string
   RouterContact::bt_encode() const
   {
@@ -94,7 +109,6 @@ namespace llarp
 
     try
     {
-      btlp.append(1);
       btlp.append(signature.ToView());
       btlp.append(signed_bt_dict);
     }
@@ -104,16 +118,11 @@ namespace llarp
     }
 
     return std::move(btlp).str();
-
-    // NOTE: Confirm that we are cutting checks for version == 0
-    // if (version == 0)
-    //   return BEncodeSignedSection(buf);
   }
 
   void
   RouterContact::bt_encode_subdict(oxenc::bt_list_producer& btlp) const
   {
-    btlp.append("1");
     btlp.append(signature.ToView());
     btlp.append(signed_bt_dict);
   }
@@ -441,30 +450,13 @@ namespace llarp
   bool
   RouterContact::VerifySignature() const
   {
-    if (version == 0)
-    {
-      RouterContact copy;
-      copy = *this;
-      copy.signature.Zero();
-      std::array<byte_t, MAX_RC_SIZE> tmp;
-      llarp_buffer_t buf(tmp);
+    RouterContact copy;
+    copy = *this;
+    copy.signature.Zero();
 
-      auto bte = copy.bt_encode();
-      return CryptoManager::instance()->verify(
-          pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
-    }
-    /* else */
-    if (version == 1)
-    {
-      llarp_buffer_t buf{signed_bt_dict};
-      return CryptoManager::instance()->verify(
-          pubkey,
-          reinterpret_cast<uint8_t*>(const_cast<char*>(signed_bt_dict.data())),
-          signed_bt_dict.size(),
-          signature);
-    }
-
-    return false;
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
   }
 
   static constexpr std::array obsolete_bootstraps = {

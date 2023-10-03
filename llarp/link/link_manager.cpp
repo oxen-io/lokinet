@@ -2,6 +2,7 @@
 #include "connection.hpp"
 #include "contacts.hpp"
 
+#include <llarp/messages/dht.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
@@ -190,17 +191,14 @@ namespace llarp
       std::string body,
       std::function<void(oxen::quic::message m)> func)
   {
-    if (func)
-      return send_control_message_impl(
-          remote, std::move(endpoint), std::move(body), std::move(func));
+    if (not func and rpc_responses.count(endpoint))
+    {
+      func = [&](oxen::quic::message m) {
+        return std::invoke(rpc_responses[endpoint], this, std::move(m));
+      };
+    }
 
-    if (auto itr = rpc_responses.find(endpoint); itr != rpc_responses.end())
-      return send_control_message_impl(
-          remote, std::move(endpoint), std::move(body), [&](oxen::quic::message m) {
-            return std::invoke(itr->second, this, std::move(m));
-          });
-
-    return send_control_message_impl(remote, std::move(endpoint), std::move(body));
+    return send_control_message_impl(remote, std::move(endpoint), std::move(body), std::move(func));
   }
 
   bool
@@ -213,12 +211,13 @@ namespace llarp
     if (is_stopping)
       return false;
 
-    auto cb = [this, f = std::move(func), endpoint](oxen::quic::message m) {
-      f(m);
+    // DISCUSS: uncomment this if we want to excecute two callbacks
+    // auto cb = [this, f = std::move(func), endpoint](oxen::quic::message m) {
+    //   f(m);
 
-      if (auto itr = rpc_responses.find(endpoint); itr != rpc_responses.end())
-        std::invoke(itr->second, this, std::move(m));
-    };
+    //   if (auto itr = rpc_responses.find(endpoint); itr != rpc_responses.end())
+    //     std::invoke(itr->second, this, std::move(m));
+    // };
 
     if (auto conn = ep.get_conn(remote); conn)
     {
@@ -520,6 +519,12 @@ namespace llarp
     // TODO: this
   }
 
+  std::string
+  LinkManager::serialize_response(oxenc::bt_dict supplement)
+  {
+    return oxenc::bt_serialize(supplement);
+  }
+
   void
   LinkManager::handle_find_name(oxen::quic::message m)
   {
@@ -536,22 +541,59 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond("ERROR", true);
+      m.respond(serialize_response({{"STATUS", FindNameMessage::EXCEPTION}}), true);
     }
 
     router.rpc_client()->lookup_ons_hash(
         name_hash, [this, msg = std::move(m)](std::optional<service::EncryptedName> maybe) mutable {
           if (maybe.has_value())
-            msg.respond(serialize_response(true, {{"NAME", maybe->ciphertext.c_str()}}));
+            msg.respond(serialize_response({{"NAME", maybe->ciphertext.c_str()}}));
           else
-            msg.respond(serialize_response(false, {{"STATUS", "NOT FOUND"}}), true);
+            msg.respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}), true);
         });
   }
 
-  std::string
-  LinkManager::serialize_response(bool success, oxenc::bt_dict supplement)
+  void
+  LinkManager::handle_find_name_response(oxen::quic::message m)
   {
-    return oxenc::bt_serialize(oxenc::bt_list{(success) ? 1 : 0, supplement});
+    if (m.timed_out)
+    {
+      // do something smart here inshallah
+    }
+
+    std::string payload;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+      payload = btdc.require<std::string>(m ? "NAME" : "STATUS");
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+
+    if (m)
+    {
+      // TODO: wtf
+    }
+    else
+    {
+      if (payload == FindNameMessage::EXCEPTION)
+      {
+        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+
+        // resend?
+      }
+      else if (payload == FindNameMessage::NOT_FOUND)
+      {
+        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+        // what to do here?
+      }
+      else
+        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+    }
   }
 
   void
@@ -566,18 +608,17 @@ namespace llarp
 
       is_exploratory = btdc.require<uint64_t>("E");
       is_iterative = btdc.require<uint64_t>("I");
-      target_key = btdc.require<std::string>("E");
+      target_key = btdc.require<std::string>("K");
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(
+          serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"RECIPIENT", ""}}), true);
       return;
     }
 
     // TODO: do we need a replacement for dht.AllowTransit() etc here?
-
-    // TODO: do we need a replacement for dht.pendingIntroSetLookups() etc here?
 
     RouterID target_rid;
     target_rid.FromString(target_key);
@@ -602,7 +643,7 @@ namespace llarp
 
       m.respond(
           serialize_response(
-              false, {{"STATUS", "RETRY EXPLORATORY"}, {"ROUTERS", neighbors.c_str()}}),
+              {{"STATUS", FindRouterMessage::RETRY_EXP}, {"RECIPIENT", neighbors.c_str()}}),
           true);
     }
     else
@@ -615,38 +656,102 @@ namespace llarp
       {
         if (closest_rc.ExpiresSoon(llarp::time_now_ms()))
         {
-          send_control_message_impl(
-              target_rid, "find_router", m.body_str(), [this](oxen::quic::message m) {
-                return handle_find_router_response(std::move(m));
-              });
+          send_control_message(
+              target_rid, "find_router", FindRouterMessage::serialize(target_rid, false, false, 0));
         }
         else
         {
-          m.respond(serialize_response(true, {{"RC", closest_rc.ToString().c_str()}}));
+          m.respond(serialize_response({{"RC", closest_rc.ToString().c_str()}}));
         }
       }
       else if (not is_iterative)
       {
         if ((closest_key ^ target_addr) < (local_key ^ target_addr))
         {
-          send_control_message_impl(
-              closest_rc.pubkey, "find_router", m.body_str(), [this](oxen::quic::message m) {
-                return handle_find_router_response(std::move(m));
-              });
+          send_control_message(
+              closest_rid,
+              "find_router",
+              FindRouterMessage::serialize(closest_rid, false, false, 0));
         }
         else
         {
-          m.respond(serialize_response(false, {{"STATUS", "RETRY ITERATIVE"}}), true);
+          m.respond(
+              serialize_response(
+                  {{"STATUS", FindRouterMessage::RETRY_ITER}, {"RECIPIENT", target_addr.data()}}),
+              true);
         }
       }
       else
       {
         m.respond(
             serialize_response(
-                false,
-                {{"STATUS", "RETRY NEW RECIPIENT"},
+                {{"STATUS", FindRouterMessage::RETRY_NEW},
                  {"RECIPIENT", reinterpret_cast<const char*>(closest_rid.data())}}),
             true);
+      }
+    }
+  }
+
+  void
+  LinkManager::handle_find_router_response(oxen::quic::message m)
+  {
+    if (m.timed_out)
+    {
+      log::critical(link_cat, "FindRouterMessage timed out!");
+      return;
+    }
+
+    std::string status, payload;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      if (m)
+        payload = btdc.require<std::string>("RC");
+      else
+      {
+        status = btdc.require<std::string>("STATUS");
+        payload = btdc.require<std::string>("RECIPIENT");
+      }
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+
+    if (m)
+    {
+      router.node_db()->PutIfNewer(RouterContact{payload});
+    }
+    else
+    {
+      if (status == FindRouterMessage::EXCEPTION)
+      {
+        log::critical(link_cat, "FindRouterMessage failed with remote exception!");
+        // Do something smart here probably
+        return;
+      }
+
+      RouterID target{reinterpret_cast<uint8_t*>(payload.data())};
+      if (status == FindRouterMessage::RETRY_EXP)
+      {
+        log::critical(link_cat, "FindRouterMessage failed, retrying as exploratory!");
+        send_control_message(
+            target, "find_router", FindRouterMessage::serialize(target, false, true, 0));
+      }
+      else if (status == FindRouterMessage::RETRY_ITER)
+      {
+        log::critical(link_cat, "FindRouterMessage failed, retrying as iterative!");
+        send_control_message(
+            target, "find_router", FindRouterMessage::serialize(target, true, false, 0));
+      }
+      else if (status == FindRouterMessage::RETRY_NEW)
+      {
+        log::critical(link_cat, "FindRouterMessage failed, retrying with new recipient!");
+        send_control_message(
+            target, "find_router", FindRouterMessage::serialize(target, false, false, 0));
       }
     }
   }
@@ -678,7 +783,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", PublishIntroMessage::EXCEPTION}}), true);
       return;
     }
 
@@ -689,14 +794,14 @@ namespace llarp
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
       log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
-      m.respond(serialize_response(false, {{"STATUS", "INVALID INTROSET"}}), true);
+      m.respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_INTROSET}}), true);
       return;
     }
 
     if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
     {
       log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
-      m.respond(serialize_response(false, {{"STATUS", "EXPIRED INTROSET"}}), true);
+      m.respond(serialize_response({{"STATUS", PublishIntroMessage::EXPIRED}}), true);
       return;
     }
 
@@ -706,7 +811,7 @@ namespace llarp
     {
       log::error(
           link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
-      m.respond(serialize_response(false, {{"STATUS", "INSUFFICIENT NODES"}}), true);
+      m.respond(serialize_response({{"STATUS", PublishIntroMessage::INSUFFICIENT}}), true);
       return;
     }
 
@@ -718,7 +823,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
-        m.respond(serialize_response(false, {{"STATUS", "INVALID ORDER"}}), true);
+        m.respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_ORDER}}), true);
         return;
       }
 
@@ -735,17 +840,17 @@ namespace llarp
             relay_order);
 
         router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-        m.respond(serialize_response(true));
+        m.respond(serialize_response({{"STATUS", ""}}));
       }
       else
       {
         log::info(
             link_cat, "Received PublishIntroMessage; propagating to peer index {}", relay_order);
 
-        send_control_message_impl(
-            peer_key, "publish_intro", m.body_str(), [this](oxen::quic::message m) {
-              return handle_publish_intro_response(std::move(m));
-            });
+        send_control_message(
+            peer_key,
+            "publish_intro",
+            PublishIntroMessage::serialize(introset, relay_order, is_relayed, tx_id));
       }
 
       return;
@@ -768,7 +873,7 @@ namespace llarp
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
       router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-      m.respond(serialize_response(true));
+      m.respond(serialize_response());
     }
     else
       log::warning(
@@ -778,9 +883,52 @@ namespace llarp
   }
 
   void
+  LinkManager::handle_publish_intro_response(oxen::quic::message m)
+  {
+    std::string payload;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+      payload = btdc.require<std::string>("STATUS");
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+
+    if (m)
+    {
+      // DISCUSS: not sure what to do on success of a publish intro command?
+    }
+    else
+    {
+      if (payload == PublishIntroMessage::EXCEPTION)
+      {
+        log::critical(link_cat, "PublishIntroMessage failed with remote exception!");
+        // Do something smart here probably
+        return;
+      }
+
+      log::critical(link_cat, "PublishIntroMessage failed with error code: {}", payload);
+
+      if (payload == PublishIntroMessage::INVALID_INTROSET)
+      {}
+      else if (payload == PublishIntroMessage::EXPIRED)
+      {}
+      else if (payload == PublishIntroMessage::INSUFFICIENT)
+      {}
+      else if (payload == PublishIntroMessage::INVALID_ORDER)
+      {}
+    }
+  }
+
+  void
   LinkManager::handle_find_intro(oxen::quic::message m)
   {
-    std::string tag_name, location;
+    std::string tag_name;
+    ustring location;
     uint64_t tx_id, relay_order, is_relayed;
 
     try
@@ -790,19 +938,17 @@ namespace llarp
       tag_name = btdc.require<std::string>("N");
       relay_order = btdc.require<uint64_t>("O");
       is_relayed = btdc.require<uint64_t>("R");
-      location = btdc.require<std::string>("S");
+      location = btdc.require<ustring>("S");
       tx_id = btdc.require<uint64_t>("T");
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", FindIntroMessage::EXCEPTION}}), true);
       return;
     }
 
-    // TODO: do we need a replacement for dht.pendingIntroSetLookups() etc here?
-
-    const auto addr = dht::Key_t{reinterpret_cast<uint8_t*>(location.data())};
+    const auto addr = dht::Key_t{location.data()};
 
     if (is_relayed)
     {
@@ -810,7 +956,7 @@ namespace llarp
       {
         log::warning(
             link_cat, "Received FindIntroMessage with invalid relay order: {}", relay_order);
-        m.respond(serialize_response(false, {{"STATUS", "INVALID ORDER"}}), true);
+        m.respond(serialize_response({{"STATUS", FindIntroMessage::INVALID_ORDER}}), true);
         return;
       }
 
@@ -820,7 +966,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received FindIntroMessage but only know {} nodes", closest_rcs.size());
-        m.respond(serialize_response(false, {{"STATUS", "INSUFFICIENT NODES"}}), true);
+        m.respond(serialize_response({{"STATUS", FindIntroMessage::INSUFFICIENT_NODES}}), true);
         return;
       }
 
@@ -829,16 +975,63 @@ namespace llarp
       const auto& peer_rc = closest_rcs[relay_order];
       const auto& peer_key = peer_rc.pubkey;
 
-      send_control_message_impl(
-          peer_key, "find_intro", m.body_str(), [this](oxen::quic::message m) {
-            return handle_find_intro_response(std::move(m));
-          });
+      send_control_message(
+          peer_key,
+          "find_intro",
+          FindIntroMessage::serialize(
+              dht::Key_t{peer_key}, tag_name, tx_id, is_relayed, relay_order));
+    }
+    else
+    {
+      if (auto maybe_intro = router.contacts()->get_introset_by_location(addr))
+        m.respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
+      else
+      {
+        log::warning(
+            link_cat,
+            "Received FindIntroMessage with relayed == false and no local introset entry");
+        m.respond(serialize_response({{"STATUS", FindIntroMessage::NOT_FOUND}}), true);
+      }
+    }
+  }
+
+  void
+  LinkManager::handle_find_intro_response(oxen::quic::message m)
+  {
+    if (m.timed_out)
+    {
+      log::critical(link_cat, "FindIntroMessage timed out!");
       return;
     }
 
-    // TODO: replace this concept and add it to the response
-    // const auto maybe = dht.GetIntroSetByLocation(location);
-    m.respond(serialize_response(true, {{"INTROSET", ""}}));
+    std::string payload;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      if (m)
+        payload = btdc.require<std::string>("INTROSET");
+      else
+        payload = btdc.require<std::string>("STATUS");
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+
+    // success case, neither timed out nor errored
+    if (m)
+    {
+      service::EncryptedIntroSet enc{payload};
+      router.contacts()->services()->PutNode(std::move(enc));
+    }
+    else
+    {
+      log::critical(link_cat, "FindIntroMessage failed with error: {}", payload);
+      // Do something smart here probably
+    }
   }
 
   void
@@ -851,7 +1044,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
   }
@@ -866,7 +1059,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
   }
@@ -881,7 +1074,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
   }
@@ -905,7 +1098,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
 
@@ -925,70 +1118,8 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
-  }
-
-  void
-  LinkManager::handle_publish_intro_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
-      return;
-    }
-  }
-
-  void
-  LinkManager::handle_find_name_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
-      return;
-    }
-  }
-
-  void
-  LinkManager::handle_find_router_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
-      return;
-    }
-  }
-
-  void
-  LinkManager::handle_find_intro_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response(false, {{"STATUS", "EXCEPTION"}}), true);
-      return;
-    }
-
-    // check if we have any pending intro lookups in contacts
   }
 }  // namespace llarp

@@ -35,20 +35,18 @@ namespace llarp
       return not transit_allowed.exchange(b) == b;
     }
 
-    std::unordered_map<RouterID, std::function<void(const std::vector<RouterContact>&)>>
-        pending_lookups;
-
     void
     on_clean_contacts();
 
     std::optional<service::EncryptedIntroSet>
     get_introset_by_location(const dht::Key_t& key) const;
 
+    // TODO: rename every ExtractStatus function to be uniformly snake cased
     util::StatusObject
-    extract_status() const;
+    ExtractStatus() const;
 
     bool
-    lookup_router(const RouterID&, std::function<void(const std::vector<RouterContact>&)>);
+    lookup_router(const RouterID&);
 
     void
     put_rc_node_async(const dht::RCNode& val);

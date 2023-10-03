@@ -1,7 +1,6 @@
 #include "gotintro.hpp"
 
 #include <llarp/service/intro.hpp>
-#include <llarp/dht/context.hpp>
 #include <memory>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>

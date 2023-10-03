@@ -1,6 +1,8 @@
 #pragma once
 #include "ini.hpp"
 #include "definition.hpp"
+#include <llarp/net/traffic_policy.hpp>
+#include <llarp/net/net.hpp>
 
 #include <chrono>
 

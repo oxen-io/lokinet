@@ -60,7 +60,7 @@ namespace llarp
   }
 
   util::StatusObject
-  Contacts::extract_status() const
+  Contacts::ExtractStatus() const
   {
     util::StatusObject obj{
         {"nodes", _rc_nodes->ExtractStatus()},
@@ -70,19 +70,14 @@ namespace llarp
   }
 
   bool
-  Contacts::lookup_router(
-      const RouterID& rid, std::function<void(const std::vector<RouterContact>&)> func)
+  Contacts::lookup_router(const RouterID& rid)
   {
     dht::Key_t ask_peer;
 
     if (not _rc_nodes->FindClosest(dht::Key_t{rid}, ask_peer))
       return false;
 
-    _router.loop()->call([this, rid, func]() {
-      pending_lookups[rid] = [](const std::vector<RouterContact>&) {
-        // TODO: combine this concept with service::Endpoint introset lookups?
-      };
-
+    _router.loop()->call([this, rid]() {
       _router.send_control_message(
           rid, "find_router", FindRouterMessage::serialize(rid, false, false, 0));
     });

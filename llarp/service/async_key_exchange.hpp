@@ -17,7 +17,7 @@ namespace llarp::service
     const PQPubKey introPubKey;
     Introduction remoteIntro;
     std::function<void(std::shared_ptr<ProtocolFrameMessage>)> hook;
-    IDataHandler* handler;
+    Endpoint* handler;
     ConvoTag tag;
 
     AsyncKeyExchange(
@@ -26,7 +26,7 @@ namespace llarp::service
         const Identity& localident,
         const PQPubKey& introsetPubKey,
         const Introduction& remote,
-        IDataHandler* h,
+        Endpoint* h,
         const ConvoTag& t,
         ProtocolType proto);
 
