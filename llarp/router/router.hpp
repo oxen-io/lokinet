@@ -466,7 +466,7 @@ namespace llarp
     StopLinks();
 
     void
-    PersistSessionUntil(const RouterID& remote, llarp_time_t until);
+    persist_connection_until(const RouterID& remote, llarp_time_t until);
 
     bool
     EnsureIdentity();

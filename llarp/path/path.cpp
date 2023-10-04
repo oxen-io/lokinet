@@ -1,6 +1,5 @@
 #include "path.hpp"
 
-#include <llarp/dht/context.hpp>
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/discard.hpp>
@@ -114,13 +113,13 @@ namespace llarp::path
   }
 
   bool
-  Path::IsEndpoint(const RouterID& r, const PathID_t& id) const
+  Path::is_endpoint(const RouterID& r, const PathID_t& id) const
   {
     return hops[hops.size() - 1].rc.pubkey == r && hops[hops.size() - 1].txID == id;
   }
 
   RouterID
-  Path::Upstream() const
+  Path::upstream() const
   {
     return hops[0].rc.pubkey;
   }
@@ -206,7 +205,7 @@ namespace llarp::path
       {
         r->notify_router_event<tooling::PathBuildRejectedEvent>(Endpoint(), RXID(), *failedAt);
         LogWarn(
-            Name(),
+            name(),
             " build failed at ",
             *failedAt,
             " status=",
@@ -302,16 +301,16 @@ namespace llarp::path
     }
     else if (st == ePathBuilding)
     {
-      LogInfo("path ", Name(), " is building");
+      LogInfo("path ", name(), " is building");
       buildStarted = now;
     }
     else if (st == ePathEstablished && _status == ePathBuilding)
     {
-      LogInfo("path ", Name(), " is built, took ", ToString(now - buildStarted));
+      LogInfo("path ", name(), " is built, took ", ToString(now - buildStarted));
     }
     else if (st == ePathTimeout && _status == ePathEstablished)
     {
-      LogInfo("path ", Name(), " died");
+      LogInfo("path ", name(), " died");
       _status = st;
       if (auto parent = m_PathSet.lock())
       {
@@ -320,11 +319,11 @@ namespace llarp::path
     }
     else if (st == ePathEstablished && _status == ePathTimeout)
     {
-      LogInfo("path ", Name(), " reanimated");
+      LogInfo("path ", name(), " reanimated");
     }
     else if (st == ePathIgnore)
     {
-      LogInfo("path ", Name(), " ignored");
+      LogInfo("path ", name(), " ignored");
     }
     _status = st;
   }
@@ -404,7 +403,7 @@ namespace llarp::path
       std::vector<RouterContact> newHops;
       for (const auto& hop : hops)
         newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", ShortName());
+      LogInfo(name(), " rebuilding on ", ShortName());
       parent->Build(newHops);
     }
   }
@@ -419,7 +418,7 @@ namespace llarp::path
     latency.sequence_number = NextSeqNo();
     m_LastLatencyTestID = latency.sent_time;
     m_LastLatencyTestTime = now;
-    LogDebug(Name(), " send latency test id=", latency.sent_time);
+    LogDebug(name(), " send latency test id=", latency.sent_time);
     if (not SendRoutingMessage(latency, r))
       return false;
     FlushUpstream(r);
@@ -447,7 +446,7 @@ namespace llarp::path
         const auto dlt = now - buildStarted;
         if (dlt >= path::BUILD_TIMEOUT)
         {
-          LogWarn(Name(), " waited for ", ToString(dlt), " and no path was built");
+          LogWarn(name(), " waited for ", ToString(dlt), " and no path was built");
           r->router_profiling().MarkPathFail(this);
           EnterState(ePathExpired, now);
           return;
@@ -471,7 +470,7 @@ namespace llarp::path
       dlt = now - m_LastRecvMessage;
       if (dlt >= path::ALIVE_TIMEOUT)
       {
-        LogWarn(Name(), " waited for ", ToString(dlt), " and path looks dead");
+        LogWarn(name(), " waited for ", ToString(dlt), " and path looks dead");
         r->router_profiling().MarkPathFail(this);
         EnterState(ePathTimeout, now);
       }
@@ -488,13 +487,13 @@ namespace llarp::path
   {
     for (const auto& msg : msgs)
     {
-      if (r->send_data_message(Upstream(), msg))
+      if (r->send_data_message(upstream(), msg))
       {
         m_TXRate += msg.enc.size();
       }
       else
       {
-        LogDebug("failed to send upstream to ", Upstream());
+        LogDebug("failed to send upstream to ", upstream());
       }
     }
     r->TriggerPump();
@@ -572,7 +571,7 @@ namespace llarp::path
   }
 
   std::string
-  Path::Name() const
+  Path::name() const
   {
     return fmt::format("TX={} RX={}", TXID(), RXID());
   }
@@ -725,7 +724,7 @@ namespace llarp::path
       r->router_profiling().MarkPathSuccess(this);
 
       // persist session with upstream router until the path is done
-      r->PersistSessionUntil(Upstream(), intro.expiry);
+      r->persist_connection_until(upstream(), intro.expiry);
       MarkActive(now);
       return SendLatencyMessage(r);
     }
@@ -808,22 +807,22 @@ namespace llarp::path
     {
       if (msg.Verify(EndpointPubKey()))
       {
-        LogInfo(Name(), " had its exit closed");
+        LogInfo(name(), " had its exit closed");
         _role &= ~ePathRoleExit;
         return true;
       }
 
-      LogError(Name(), " CXM from exit with bad signature");
+      LogError(name(), " CXM from exit with bad signature");
     }
     else
-      LogError(Name(), " unwarranted CXM");
+      LogError(name(), " unwarranted CXM");
     return false;
   }
 
   bool
   Path::SendExitRequest(const routing::ObtainExitMessage& msg, Router* r)
   {
-    LogInfo(Name(), " sending exit request to ", Endpoint());
+    LogInfo(name(), " sending exit request to ", Endpoint());
     m_ExitObtainTX = msg.tx_id;
     return SendRoutingMessage(msg, r);
   }
@@ -831,7 +830,7 @@ namespace llarp::path
   bool
   Path::SendExitClose(const routing::CloseExitMessage& msg, Router* r)
   {
-    LogInfo(Name(), " closing exit to ", Endpoint());
+    LogInfo(name(), " closing exit to ", Endpoint());
     // mark as not exit anymore
     _role &= ~ePathRoleExit;
     return SendRoutingMessage(msg, r);
@@ -842,7 +841,7 @@ namespace llarp::path
   {
     (void)msg;
     (void)r;
-    LogError(Name(), " got unwarranted OXM");
+    LogError(name(), " got unwarranted OXM");
     return false;
   }
 
@@ -851,7 +850,7 @@ namespace llarp::path
   {
     (void)msg;
     (void)r;
-    LogError(Name(), " got unwarranted UXM");
+    LogError(name(), " got unwarranted UXM");
     return false;
   }
 
@@ -862,14 +861,14 @@ namespace llarp::path
     {
       if (!msg.Verify(EndpointPubKey()))
       {
-        LogError(Name(), "RXM invalid signature");
+        LogError(name(), "RXM invalid signature");
         return false;
       }
-      LogInfo(Name(), " ", Endpoint(), " Rejected exit");
+      LogInfo(name(), " ", Endpoint(), " Rejected exit");
       MarkActive(r->now());
       return InformExitResult(llarp_time_t(msg.backoff_time));
     }
-    LogError(Name(), " got unwarranted RXM");
+    LogError(name(), " got unwarranted RXM");
     return false;
   }
 
@@ -880,16 +879,16 @@ namespace llarp::path
     {
       if (!msg.Verify(EndpointPubKey()))
       {
-        LogError(Name(), " GXM signature failed");
+        LogError(name(), " GXM signature failed");
         return false;
       }
       // we now can send exit traffic
       _role |= ePathRoleExit;
-      LogInfo(Name(), " ", Endpoint(), " Granted exit");
+      LogInfo(name(), " ", Endpoint(), " Granted exit");
       MarkActive(r->now());
       return InformExitResult(0s);
     }
-    LogError(Name(), " got unwarranted GXM");
+    LogError(name(), " got unwarranted GXM");
     return false;
   }
 

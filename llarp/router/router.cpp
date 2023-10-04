@@ -229,7 +229,7 @@ namespace llarp
   }
 
   void
-  Router::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
+  Router::persist_connection_until(const RouterID& remote, llarp_time_t until)
   {
     _link_manager.set_conn_persist(remote, until);
   }

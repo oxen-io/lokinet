@@ -711,7 +711,7 @@ namespace llarp
       {
         for (size_t i = 0; i < INTROSET_REQS_PER_RELAY; ++i)
         {
-          router()->send_control_message(path->Upstream(), "publish_intro", introset.bt_encode());
+          router()->send_control_message(path->upstream(), "publish_intro", introset.bt_encode());
         }
       }
 

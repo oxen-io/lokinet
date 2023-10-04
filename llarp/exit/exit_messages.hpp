@@ -10,11 +10,9 @@ namespace llarp::routing
 {
   struct ObtainExitMessage final : public AbstractRoutingMessage
   {
-    std::vector<llarp::exit::Policy> blacklist_policy;
     uint64_t flag{0};  // 0 for snode, 1 for internet access
     llarp::PubKey pubkey;
     uint64_t tx_id{0};
-    std::vector<llarp::exit::Policy> whitelist_policy;
     uint64_t address_lifetime{0};
     llarp::Signature sig;
 
@@ -26,11 +24,9 @@ namespace llarp::routing
     void
     clear() override
     {
-      blacklist_policy.clear();
       flag = 0;
       pubkey.Zero();
       tx_id = 0;
-      whitelist_policy.clear();
       address_lifetime = 0;
       sig.Zero();
     }
@@ -88,7 +84,6 @@ namespace llarp::routing
   {
     using Nonce_t = llarp::AlignedBuffer<16>;
     uint64_t backoff_time;
-    std::vector<llarp::exit::Policy> blacklist_policy;
     uint64_t tx_id;
     Nonce_t nonce;
     llarp::Signature sig;
@@ -97,7 +92,6 @@ namespace llarp::routing
     clear() override
     {
       backoff_time = 0;
-      blacklist_policy.clear();
       tx_id = 0;
       nonce.Zero();
       sig.Zero();

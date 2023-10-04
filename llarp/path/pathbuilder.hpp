@@ -10,35 +10,6 @@
 
 namespace llarp::path
 {
-
-  /// configuration for a single hop when building a path
-  struct PathHopConfig
-  {
-    /// path id
-    PathID_t txID, rxID;
-    // router contact of router
-    RouterContact rc;
-    // temp public encryption key
-    SecretKey commkey;
-    /// shared secret at this hop
-    SharedSecret shared;
-    /// hash of shared secret used for nonce mutation
-    ShortHash nonceXOR;
-    /// next hop's router id
-    RouterID upstream;
-    /// nonce for key exchange
-    TunnelNonce nonce;
-    // lifetime
-    llarp_time_t lifetime = DEFAULT_LIFETIME;
-
-    util::StatusObject
-    ExtractStatus() const;
-  };
-
-  // milliseconds waiting between builds on a path per router
-  static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
-  static constexpr auto PATH_BUILD_RATE = 100ms;
-
   /// limiter for path builds
   /// prevents overload and such
   class BuildLimiter
@@ -81,10 +52,10 @@ namespace llarp::path
     DoPathBuildBackoff();
 
     void
-    SetupHopKeys(path::PathHopConfig& hop, const RouterID& nextHop);
+    setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop);
 
     std::string
-    CreateHopInfoFrame(const path::PathHopConfig& hop);
+    create_hop_info_frame(const path::PathHopConfig& hop);
 
    public:
     Router* const router;

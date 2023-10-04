@@ -35,28 +35,11 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "O");
-
-      {
-        auto subdict = btdp.append_dict("B");
-
-        for (auto& b : blacklist_policy)
-          b.bt_encode(subdict);
-      }
-
       btdp.append("E", flag);
       btdp.append("I", pubkey.ToView());
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
       btdp.append("V", version);
-
-      {
-        auto subdict = btdp.append_dict("B");
-
-        for (auto& w : whitelist_policy)
-          w.bt_encode(subdict);
-      }
-
       btdp.append("X", address_lifetime);
       btdp.append("Z", sig.ToView());
     }
@@ -72,8 +55,6 @@ namespace llarp::routing
   ObtainExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (!BEncodeMaybeReadDictList("B", blacklist_policy, read, k, buf))
-      return false;
     if (!BEncodeMaybeReadDictInt("E", flag, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("I", pubkey, read, k, buf))
@@ -83,8 +64,6 @@ namespace llarp::routing
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictList("W", whitelist_policy, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("X", address_lifetime, read, k, buf))
       return false;
@@ -106,7 +85,6 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "G");
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
       btdp.append("V", version);
@@ -174,16 +152,7 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "J");
       btdp.append("B", backoff_time);
-
-      {
-        auto subdict = btdp.append_dict("R");
-
-        for (auto& b : blacklist_policy)
-          b.bt_encode(subdict);
-      }
-
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
       btdp.append("V", version);
@@ -203,8 +172,6 @@ namespace llarp::routing
   {
     bool read = false;
     if (!BEncodeMaybeReadDictInt("B", backoff_time, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictList("R", blacklist_policy, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
       return false;
@@ -255,7 +222,6 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "V");
       btdp.append("P", path_id.ToView());
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
@@ -322,7 +288,6 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "V");
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
       btdp.append("V", version);

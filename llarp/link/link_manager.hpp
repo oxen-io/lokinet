@@ -289,10 +289,11 @@ namespace llarp
 
     // Path messages
     void handle_path_build(oxen::quic::message);     // relay
-    void handle_relay_status(oxen::quic::message);   // relay
     void handle_path_confirm(oxen::quic::message);   // relay
     void handle_path_latency(oxen::quic::message);   // relay
     void handle_path_transfer(oxen::quic::message);  // relay
+    void handle_relay_commit(oxen::quic::message);   // relay
+    void handle_relay_status(oxen::quic::message);   // relay
 
     // Exit messages
     void handle_obtain_exit(oxen::quic::message);  // relay
@@ -319,6 +320,7 @@ namespace llarp
 
     // Path responses
     void handle_path_build_response(oxen::quic::message);
+    void handle_relay_commit_response(oxen::quic::message);
     void handle_relay_status_response(oxen::quic::message);
     void handle_path_confirm_response(oxen::quic::message);
     void handle_path_latency_response(oxen::quic::message);

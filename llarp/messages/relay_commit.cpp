@@ -308,9 +308,9 @@ namespace llarp
       }
       // persist sessions to upstream and downstream routers until the commit
       // ends
-      self->context->router()->PersistSessionUntil(
+      self->context->router()->persist_connection_until(
           self->hop->info.downstream, self->hop->ExpireTime() + 10s);
-      self->context->router()->PersistSessionUntil(
+      self->context->router()->persist_connection_until(
           self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
@@ -345,7 +345,7 @@ namespace llarp
       else
       {
         // persist session to downstream until path expiration
-        self->context->router()->PersistSessionUntil(
+        self->context->router()->persist_connection_until(
             self->hop->info.downstream, self->hop->ExpireTime() + 10s);
         // put hop
         self->context->PutTransitHop(self->hop);

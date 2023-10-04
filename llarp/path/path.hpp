@@ -34,15 +34,9 @@ namespace llarp
   {
     struct TransitHop;
     struct TransitHopInfo;
+    struct PathHopConfig;
 
     using TransitHop_ptr = std::shared_ptr<TransitHop>;
-
-    inline bool
-    operator<(const PathHopConfig& lhs, const PathHopConfig& rhs)
-    {
-      return std::tie(lhs.txID, lhs.rxID, lhs.rc, lhs.upstream, lhs.lifetime)
-          < std::tie(rhs.txID, rhs.rxID, rhs.rc, rhs.upstream, rhs.lifetime);
-    }
 
     /// A path we made
     struct Path final : public AbstractHopHandler,
@@ -330,16 +324,16 @@ namespace llarp
       EndpointPubKey() const;
 
       bool
-      IsEndpoint(const RouterID& router, const PathID_t& path) const;
+      is_endpoint(const RouterID& router, const PathID_t& path) const;
 
       PathID_t
       RXID() const override;
 
       RouterID
-      Upstream() const;
+      upstream() const;
 
       std::string
-      Name() const;
+      name() const;
 
       void
       AddObtainExitHandler(ObtainedExitHandler handler)

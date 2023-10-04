@@ -90,25 +90,20 @@ namespace llarp::path
     if (!IsEndpoint(r->pubkey()))
       return false;
 
-    std::array<byte_t, MAX_LINK_MSG_SIZE - 128> tmp;
-    llarp_buffer_t buf(tmp);
-
-    auto bte = msg.bt_encode();
-    buf.write(bte.begin(), bte.end());
+    auto buf = msg.bt_encode();
 
     TunnelNonce N;
     N.Randomize();
-    buf.sz = buf.cur - buf.base;
     // pad to nearest MESSAGE_PAD_SIZE bytes
-    auto dlt = buf.sz % PAD_SIZE;
+    auto dlt = buf.size() % PAD_SIZE;
+
     if (dlt)
     {
       dlt = PAD_SIZE - dlt;
       // randomize padding
-      CryptoManager::instance()->randbytes(buf.cur, dlt);
-      buf.sz += dlt;
+      CryptoManager::instance()->randbytes(reinterpret_cast<uint8_t*>(buf.data()), dlt);
     }
-    buf.cur = buf.base;
+
     return HandleDownstream(buf, N, r);
   }
 

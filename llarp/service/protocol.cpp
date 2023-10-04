@@ -32,7 +32,7 @@ namespace llarp::service
       path::Path_ptr path, PathID_t from, std::shared_ptr<ProtocolMessage> self)
   {
     if (!self->handler->HandleDataMessage(path, from, self))
-      LogWarn("failed to handle data message from ", path->Name());
+      LogWarn("failed to handle data message from ", path->name());
   }
 
   bool

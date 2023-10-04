@@ -3,6 +3,8 @@
 #include "contacts.hpp"
 
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/exit.hpp>
+#include <llarp/messages/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
@@ -198,6 +200,13 @@ namespace llarp
       };
     }
 
+    if (func)
+    {
+      func = [this, f = std::move(func)](oxen::quic::message m) mutable {
+        router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(msg); });
+      };
+    }
+
     return send_control_message_impl(remote, std::move(endpoint), std::move(body), std::move(func));
   }
 
@@ -211,22 +220,14 @@ namespace llarp
     if (is_stopping)
       return false;
 
-    // DISCUSS: uncomment this if we want to excecute two callbacks
-    // auto cb = [this, f = std::move(func), endpoint](oxen::quic::message m) {
-    //   f(m);
-
-    //   if (auto itr = rpc_responses.find(endpoint); itr != rpc_responses.end())
-    //     std::invoke(itr->second, this, std::move(m));
-    // };
-
     if (auto conn = ep.get_conn(remote); conn)
     {
       conn->control_stream->command(endpoint, body, std::move(func));
       return true;
     }
 
-    router.loop()->call([&]() {
-      auto pending = PendingControlMessage(body, endpoint, func);
+    router.loop()->call([this, remote, endpoint, body, f = std::move(func)]() {
+      auto pending = PendingControlMessage(body, endpoint, f);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
@@ -547,7 +548,7 @@ namespace llarp
     router.rpc_client()->lookup_ons_hash(
         name_hash, [this, msg = std::move(m)](std::optional<service::EncryptedName> maybe) mutable {
           if (maybe.has_value())
-            msg.respond(serialize_response({{"NAME", maybe->ciphertext.c_str()}}));
+            msg.respond(serialize_response({{"NAME", maybe->ciphertext}}));
           else
             msg.respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}), true);
         });
@@ -600,14 +601,14 @@ namespace llarp
   LinkManager::handle_find_router(oxen::quic::message m)
   {
     std::string target_key;
-    uint64_t is_exploratory, is_iterative;
+    bool is_exploratory, is_iterative;
 
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
 
-      is_exploratory = btdc.require<uint64_t>("E");
-      is_iterative = btdc.require<uint64_t>("I");
+      is_exploratory = btdc.require<bool>("E");
+      is_iterative = btdc.require<bool>("I");
       target_key = btdc.require<std::string>("K");
     }
     catch (const std::exception& e)
@@ -642,8 +643,7 @@ namespace llarp
       }
 
       m.respond(
-          serialize_response(
-              {{"STATUS", FindRouterMessage::RETRY_EXP}, {"RECIPIENT", neighbors.c_str()}}),
+          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"RECIPIENT", neighbors}}),
           true);
     }
     else
@@ -661,7 +661,7 @@ namespace llarp
         }
         else
         {
-          m.respond(serialize_response({{"RC", closest_rc.ToString().c_str()}}));
+          m.respond(serialize_response({{"RC", closest_rc.ToString()}}));
         }
       }
       else if (not is_iterative)
@@ -735,6 +735,7 @@ namespace llarp
       }
 
       RouterID target{reinterpret_cast<uint8_t*>(payload.data())};
+
       if (status == FindRouterMessage::RETRY_EXP)
       {
         log::critical(link_cat, "FindRouterMessage failed, retrying as exploratory!");
@@ -1035,6 +1036,36 @@ namespace llarp
   }
 
   void
+  LinkManager::handle_path_build(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_path_build_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
   LinkManager::handle_path_confirm(oxen::quic::message m)
   {
     try
@@ -1050,7 +1081,114 @@ namespace llarp
   }
 
   void
+  LinkManager::handle_path_confirm_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
   LinkManager::handle_path_latency(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_path_latency_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_path_transfer(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_path_transfer_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_obtain_exit(oxen::quic::message m)
+  {
+    // TODO: implement transit_hop things like nextseqno(), info.rxID, etc
+    std::string copy{m.body_str()};
+    ustring pubkey, signature;
+    uint64_t flag, tx_id, seq_no;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{copy};
+
+      flag = btdc.require<uint64_t>("E");
+      pubkey = btdc.require<ustring>("I");
+      seq_no = btdc.require<uint64_t>("S");
+      tx_id = btdc.require<uint64_t>("T");
+      signature = btdc.require<ustring>("Z");
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", ObtainExit::EXCEPTION}}), true);
+      return;
+    }
+
+    RouterID target{pubkey.data()};
+
+    if (CryptoManager::instance()->verify(
+            pubkey.data(), reinterpret_cast<uint8_t*>(copy.data()), copy.size(), signature.data()))
+    {}
+  }
+
+  void
+  LinkManager::handle_obtain_exit_response(oxen::quic::message m)
   {
     try
     {
@@ -1080,20 +1218,11 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_obtain_exit(oxen::quic::message m)
+  LinkManager::handle_update_exit_response(oxen::quic::message m)
   {
-    // TODO: implement transit_hop things like nextseqno(), info.rxID, etc
-    std::string payload{m.body_str()}, pubkey;
-    [[maybe_unused]] uint64_t flag, tx_id, seq_no;
-
     try
     {
-      oxenc::bt_dict_consumer btdc{payload};
-
-      flag = btdc.require<uint64_t>("E");
-      pubkey = btdc.require<std::string>("I");
-      seq_no = btdc.require<uint64_t>("S");
-      tx_id = btdc.require<uint64_t>("T");
+      oxenc::bt_dict_consumer btdc{m.body()};
     }
     catch (const std::exception& e)
     {
@@ -1101,11 +1230,6 @@ namespace llarp
       m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
-
-    RouterID target;
-    target.FromString(pubkey);
-
-    // auto handler = router.path_context().GetByDownstream(target, tx_id);
   }
 
   void
@@ -1124,6 +1248,17 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_build(oxen::quic::message)
-  {}
+  LinkManager::handle_close_exit_response(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      return;
+    }
+  }
 }  // namespace llarp

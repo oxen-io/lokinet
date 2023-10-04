@@ -24,6 +24,7 @@ namespace llarp::service
     llarp_time_t expiry = 0s;
     uint64_t version = llarp::constants::proto_version;
 
+    Introduction() = default;
     Introduction(std::string buf);
 
     util::StatusObject

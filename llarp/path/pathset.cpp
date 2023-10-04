@@ -233,7 +233,7 @@ namespace llarp::path
     auto itr = m_Paths.begin();
     while (itr != m_Paths.end())
     {
-      if (itr->second->IsEndpoint(ep, id))
+      if (itr->second->is_endpoint(ep, id))
       {
         return itr->second;
       }
@@ -290,7 +290,7 @@ namespace llarp::path
   PathSet::AddPath(Path_ptr path)
   {
     Lock_t l(m_PathsMutex);
-    const auto upstream = path->Upstream();  // RouterID
+    const auto upstream = path->upstream();  // RouterID
     const auto RXID = path->RXID();          // PathID
     if (not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
     {

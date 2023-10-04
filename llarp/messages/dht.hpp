@@ -6,10 +6,10 @@ namespace llarp
 {
   namespace FindRouterMessage
   {
-    inline const char* EXCEPTION = "EXCEPTION";
-    inline const char* RETRY_EXP = "RETRY AS EXPLORATORY";
-    inline const char* RETRY_ITER = "RETRY AS ITERATIVE";
-    inline const char* RETRY_NEW = "RETRY WITH NEW RECIPIENT";
+    inline auto EXCEPTION = "EXCEPTION"sv;
+    inline auto RETRY_EXP = "RETRY AS EXPLORATORY"sv;
+    inline auto RETRY_ITER = "RETRY AS ITERATIVE"sv;
+    inline auto RETRY_NEW = "RETRY WITH NEW RECIPIENT"sv;
 
     inline static std::string
     serialize(const RouterID& rid, bool is_iterative, bool is_exploratory, uint64_t tx_id)
@@ -18,7 +18,6 @@ namespace llarp
 
       try
       {
-        btdp.append("A", "R");
         btdp.append("E", is_exploratory);
         btdp.append("I", is_iterative);
         btdp.append("K", rid.ToView());
@@ -35,10 +34,10 @@ namespace llarp
 
   namespace FindIntroMessage
   {
-    inline const char* EXCEPTION = "EXCEPTION";
-    inline const char* NOT_FOUND = "NOT FOUND";
-    inline const char* INVALID_ORDER = "INVALID ORDER";
-    inline const char* INSUFFICIENT_NODES = "INSUFFICIENT NODES";
+    inline auto EXCEPTION = "EXCEPTION"sv;
+    inline auto NOT_FOUND = "NOT FOUND"sv;
+    inline auto INVALID_ORDER = "INVALID ORDER"sv;
+    inline auto INSUFFICIENT_NODES = "INSUFFICIENT NODES"sv;
 
     inline static std::string
     serialize(
@@ -48,7 +47,6 @@ namespace llarp
 
       try
       {
-        btdp.append("A", "F");
         btdp.append("N", tag);
         btdp.append("O", order);
         btdp.append("R", is_relayed ? 1 : 0);
@@ -66,8 +64,8 @@ namespace llarp
 
   namespace FindNameMessage
   {
-    inline const char* EXCEPTION = "EXCEPTION";
-    inline const char* NOT_FOUND = "NOT FOUND";
+    inline auto EXCEPTION = "EXCEPTION"sv;
+    inline auto NOT_FOUND = "NOT FOUND"sv;
 
     inline static std::string
     serialize([[maybe_unused]] const dht::Key_t& from, dht::Key_t name_hash, uint64_t tx_id)
@@ -76,7 +74,6 @@ namespace llarp
 
       try
       {
-        btdp.append("A", "N");
         btdp.append("H", name_hash.ToView());
         btdp.append("T", tx_id);
       }
@@ -91,11 +88,11 @@ namespace llarp
 
   namespace PublishIntroMessage
   {
-    inline const char* EXCEPTION = "EXCEPTION";
-    inline const char* INVALID_INTROSET = "INVALID INTROSET";
-    inline const char* EXPIRED = "EXPIRED INTROSET";
-    inline const char* INSUFFICIENT = "INSUFFICIENT NODES";
-    inline const char* INVALID_ORDER = "INVALID ORDER";
+    inline auto EXCEPTION = "EXCEPTION"sv;
+    inline auto INVALID_INTROSET = "INVALID INTROSET"sv;
+    inline auto EXPIRED = "EXPIRED INTROSET"sv;
+    inline auto INSUFFICIENT = "INSUFFICIENT NODES"sv;
+    inline auto INVALID_ORDER = "INVALID ORDER"sv;
 
     inline static std::string
     serialize(std::string introset, uint64_t relay_order, uint64_t is_relayed, uint64_t tx_id)
@@ -104,7 +101,6 @@ namespace llarp
 
       try
       {
-        btdp.append("A", "I");
         btdp.append("I", introset);
         btdp.append("O", relay_order);
         btdp.append("R", is_relayed);

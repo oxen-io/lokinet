@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/router_id.hpp>

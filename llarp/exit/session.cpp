@@ -159,14 +159,14 @@ namespace llarp::exit
       const static auto roles = llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
       if (p->SupportsAnyRoles(roles))
       {
-        llarp::LogInfo(p->Name(), " closing exit path");
+        llarp::LogInfo(p->name(), " closing exit path");
         routing::CloseExitMessage msg;
         if (msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router))
         {
           p->ClearRoles(roles);
         }
         else
-          llarp::LogWarn(p->Name(), " failed to send exit close message");
+          llarp::LogWarn(p->name(), " failed to send exit close message");
       }
     };
     ForEachPath(sendExitClose);
@@ -180,10 +180,10 @@ namespace llarp::exit
     auto sendExitClose = [&](const path::Path_ptr p) {
       if (p->SupportsAnyRoles(path::ePathRoleExit))
       {
-        LogInfo(p->Name(), " closing exit path");
+        LogInfo(p->name(), " closing exit path");
         routing::CloseExitMessage msg;
         if (!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router)))
-          LogWarn(p->Name(), " failed to send exit close message");
+          LogWarn(p->name(), " failed to send exit close message");
       }
     };
     ForEachPath(sendExitClose);

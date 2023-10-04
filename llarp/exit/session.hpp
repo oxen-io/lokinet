@@ -210,7 +210,7 @@ namespace llarp
       std::string
       Name() const override;
 
-      virtual void
+      void
       SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
@@ -239,7 +239,7 @@ namespace llarp
       std::string
       Name() const override;
 
-      virtual void
+      void
       SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
