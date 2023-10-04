@@ -288,7 +288,7 @@ namespace llarp
     void handle_find_router(oxen::quic::message);    // relay + path
 
     // Path messages
-    void handle_relay_commit(oxen::quic::message);   // relay
+    void handle_path_build(oxen::quic::message);     // relay
     void handle_relay_status(oxen::quic::message);   // relay
     void handle_path_confirm(oxen::quic::message);   // relay
     void handle_path_latency(oxen::quic::message);   // relay
@@ -304,6 +304,7 @@ namespace llarp
         {"find_router", &LinkManager::handle_find_router},
         {"publish_intro", &LinkManager::handle_publish_intro},
         {"find_intro", &LinkManager::handle_find_intro},
+        {"path_build", &LinkManager::handle_path_build},
         {"path_confirm", &LinkManager::handle_path_confirm},
         {"path_latency", &LinkManager::handle_path_latency},
         {"update_exit", &LinkManager::handle_update_exit},
@@ -317,7 +318,7 @@ namespace llarp
     void handle_find_router_response(oxen::quic::message);
 
     // Path responses
-    void handle_relay_commit_response(oxen::quic::message);
+    void handle_path_build_response(oxen::quic::message);
     void handle_relay_status_response(oxen::quic::message);
     void handle_path_confirm_response(oxen::quic::message);
     void handle_path_latency_response(oxen::quic::message);

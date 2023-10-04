@@ -1122,4 +1122,8 @@ namespace llarp
       return;
     }
   }
+
+  void
+  LinkManager::handle_path_build(oxen::quic::message)
+  {}
 }  // namespace llarp

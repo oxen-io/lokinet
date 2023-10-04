@@ -3,12 +3,38 @@
 #include "pathset.hpp"
 #include <llarp/util/status.hpp>
 #include <llarp/util/decaying_hashset.hpp>
+#include "path.hpp"
 
 #include <atomic>
 #include <set>
 
 namespace llarp::path
 {
+
+  /// configuration for a single hop when building a path
+  struct PathHopConfig
+  {
+    /// path id
+    PathID_t txID, rxID;
+    // router contact of router
+    RouterContact rc;
+    // temp public encryption key
+    SecretKey commkey;
+    /// shared secret at this hop
+    SharedSecret shared;
+    /// hash of shared secret used for nonce mutation
+    ShortHash nonceXOR;
+    /// next hop's router id
+    RouterID upstream;
+    /// nonce for key exchange
+    TunnelNonce nonce;
+    // lifetime
+    llarp_time_t lifetime = DEFAULT_LIFETIME;
+
+    util::StatusObject
+    ExtractStatus() const;
+  };
+
   // milliseconds waiting between builds on a path per router
   static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
   static constexpr auto PATH_BUILD_RATE = 100ms;
@@ -54,9 +80,14 @@ namespace llarp::path
     void
     DoPathBuildBackoff();
 
+    void
+    SetupHopKeys(path::PathHopConfig& hop, const RouterID& nextHop);
+
+    std::string
+    CreateHopInfoFrame(const path::PathHopConfig& hop);
+
    public:
     Router* const router;
-    SecretKey enckey;
     size_t numHops;
     llarp_time_t lastBuild = 0s;
     llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
@@ -132,9 +163,6 @@ namespace llarp::path
 
     void
     ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
-
-    const SecretKey&
-    GetTunnelEncryptionSecretKey() const;
 
     void
     HandlePathBuilt(Path_ptr p) override;

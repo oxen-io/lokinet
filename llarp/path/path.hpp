@@ -37,30 +37,6 @@ namespace llarp
 
     using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
-    /// configuration for a single hop when building a path
-    struct PathHopConfig
-    {
-      /// path id
-      PathID_t txID, rxID;
-      // router contact of router
-      RouterContact rc;
-      // temp public encryption key
-      SecretKey commkey;
-      /// shared secret at this hop
-      SharedSecret shared;
-      /// hash of shared secret used for nonce mutation
-      ShortHash nonceXOR;
-      /// next hop's router id
-      RouterID upstream;
-      /// nonce for key exchange
-      TunnelNonce nonce;
-      // lifetime
-      llarp_time_t lifetime = DEFAULT_LIFETIME;
-
-      util::StatusObject
-      ExtractStatus() const;
-    };
-
     inline bool
     operator<(const PathHopConfig& lhs, const PathHopConfig& rhs)
     {

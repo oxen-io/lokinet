@@ -21,149 +21,6 @@ namespace llarp
     auto log_path = log::Cat("path");
   }
 
-  struct AsyncPathKeyExchangeContext : std::enable_shared_from_this<AsyncPathKeyExchangeContext>
-  {
-    using WorkFunc_t = std::function<void(void)>;
-    using WorkerFunc_t = std::function<void(WorkFunc_t)>;
-    using Path_t = path::Path_ptr;
-    using PathSet_t = path::PathSet_ptr;
-    PathSet_t pathset = nullptr;
-    Path_t path = nullptr;
-    using Handler = std::function<void(std::shared_ptr<AsyncPathKeyExchangeContext>)>;
-
-    Handler result;
-    size_t idx = 0;
-    Router* router = nullptr;
-    WorkerFunc_t work;
-    EventLoop_ptr loop;
-    LR_CommitMessage LRCM;
-
-    void
-    GenerateNextKey()
-    {
-      // current hop
-      auto& hop = path->hops[idx];
-      auto& frame = LRCM.frames[idx];
-
-      auto crypto = CryptoManager::instance();
-
-      // generate key
-      crypto->encryption_keygen(hop.commkey);
-      hop.nonce.Randomize();
-      // do key exchange
-      if (!crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey, hop.nonce))
-      {
-        LogError(pathset->Name(), " Failed to generate shared key for path build");
-        return;
-      }
-      // generate nonceXOR valueself->hop->pathKey
-      crypto->shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
-      ++idx;
-
-      bool isFarthestHop = idx == path->hops.size();
-
-      LR_CommitRecord record;
-      if (isFarthestHop)
-      {
-        hop.upstream = hop.rc.pubkey;
-      }
-      else
-      {
-        hop.upstream = path->hops[idx].rc.pubkey;
-        record.nextRC = std::make_unique<RouterContact>(path->hops[idx].rc);
-      }
-      // build record
-      record.lifetime = path::DEFAULT_LIFETIME;
-      record.version = llarp::constants::proto_version;
-      record.txid = hop.txID;
-      record.rxid = hop.rxID;
-      record.tunnelNonce = hop.nonce;
-      record.nextHop = hop.upstream;
-      record.commkey = seckey_topublic(hop.commkey);
-
-      llarp_buffer_t buf(frame.data(), frame.size());
-      buf.cur = buf.base + EncryptedFrameOverheadSize;
-      // encode record
-      if (!record.BEncode(&buf))
-      {
-        // failed to encode?
-        LogError(pathset->Name(), " Failed to generate Commit Record");
-        DumpBuffer(buf);
-        return;
-      }
-      // use ephemeral keypair for frame
-      SecretKey framekey;
-      crypto->encryption_keygen(framekey);
-      if (!frame.EncryptInPlace(framekey, hop.rc.enckey))
-      {
-        LogError(pathset->Name(), " Failed to encrypt LRCR");
-        return;
-      }
-
-      if (isFarthestHop)
-      {
-        // farthest hop
-        // TODO: encrypt junk frames because our public keys are not eligator
-        loop->call([self = shared_from_this()] {
-          self->result(self);
-          self->result = nullptr;
-        });
-      }
-      else
-      {
-        // next hop
-        work([self = shared_from_this()] { self->GenerateNextKey(); });
-      }
-    }
-
-    /// Generate all keys asynchronously and call handler when done
-    void
-    AsyncGenerateKeys(Path_t p, EventLoop_ptr l, WorkerFunc_t worker, Handler func)
-    {
-      path = p;
-      loop = std::move(l);
-      result = func;
-      work = worker;
-
-      for (size_t i = 0; i < path::MAX_LEN; ++i)
-      {
-        LRCM.frames[i].Randomize();
-      }
-      work([self = shared_from_this()] { self->GenerateNextKey(); });
-    }
-  };
-
-  static void
-  PathBuilderKeysGenerated(std::shared_ptr<AsyncPathKeyExchangeContext> ctx)
-  {
-    if (ctx->pathset->IsStopped())
-      return;
-
-    ctx->router->notify_router_event<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
-
-    ctx->router->path_context().AddOwnPath(ctx->pathset, ctx->path);
-    ctx->pathset->PathBuildStarted(ctx->path);
-
-    const RouterID remote = ctx->path->Upstream();
-    auto sentHandler = [router = ctx->router, path = ctx->path](auto status) {
-      if (status != SendStatus::Success)
-      {
-        path->EnterState(path::ePathFailed, router->now());
-      }
-    };
-    if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
-    {
-      // persist session with router until this path is done
-      if (ctx->path)
-        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-    }
-    else
-    {
-      LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
-      sentHandler(SendStatus::NoLink);
-    }
-  }
-
   namespace path
   {
     bool
@@ -186,8 +43,119 @@ namespace llarp
 
     Builder::Builder(Router* p_router, size_t pathNum, size_t hops)
         : path::PathSet{pathNum}, _run{true}, router{p_router}, numHops{hops}
+    {}
+
+    /* - For each hop:
+     * SetupHopKeys:
+     *   - Generate Ed keypair for the hop. ("commkey")
+     *   - Use that key and the hop's pubkey for DH key exchange (makes "hop.shared")
+     *     - Note: this *was* using hop's "enckey" but we're getting rid of that
+     *   - hop's "upstream" RouterID is next hop, or that hop's ID if it is terminal hop
+     *   - hop's chacha nonce is hash of symmetric key (hop.shared) from DH
+     *   - hop's "txID" and "rxID" are chosen before this step
+     *     - txID is the path ID for messages coming *from* the client/path origin
+     *     - rxID is the path ID for messages going *to* it.
+     *
+     * CreateHopInfoFrame:
+     *   - bt-encode "hop info":
+     *     - path lifetime
+     *     - protocol version
+     *     - txID
+     *     - rxID
+     *     - nonce
+     *     - upstream hop RouterID
+     *     - ephemeral public key (for DH)
+     *   - generate *second* ephemeral Ed keypair... ("framekey") TODO: why?
+     *   - generate DH symmetric key using "framekey" and hop's pubkey
+     *   - generate nonce for second encryption
+     *   - encrypt "hop info" using this symmetric key
+     *   - bt-encode nonce, "framekey" pubkey, encrypted "hop info"
+     *   - hash this bt-encoded string
+     *   - bt-encode hash and the frame in a dict, serialize
+     *
+     *
+     *  all of these "frames" go in a list, along with any needed dummy frames
+     */
+
+    void
+    Builder::SetupHopKeys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
-      CryptoManager::instance()->encryption_keygen(enckey);
+      auto crypto = CryptoManager::instance();
+
+      // generate key
+      crypto->encryption_keygen(hop.commkey);
+
+      hop.nonce.Randomize();
+      // do key exchange
+      if (!crypto->dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      {
+        LogError(Name(), " Failed to generate shared key for path build");
+        throw std::runtime_error{"Failed to generate shared key for path build"};
+      }
+      // generate nonceXOR value self->hop->pathKey
+      crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
+
+      hop.upstream = nextHop;
+    }
+
+    // FIXME: this is definitely not optimal using bt_dict instead of bt_dict_producer, among other
+    // things
+    std::string
+    Builder::CreateHopInfoFrame(const path::PathHopConfig& hop)
+    {
+      auto crypto = CryptoManager::instance();
+
+      oxenc::bt_dict hop_info_dict;
+      hop_info_dict["lifetime"] = path::DEFAULT_LIFETIME.count();  // milliseconds
+      hop_info_dict["txid"] = hop.txID;
+      hop_info_dict["rxid"] = hop.rxID;
+      hop_info_dict["nonce"] = hop.nonce;
+      hop_info_dict["next"] = hop.upstream;
+      hop_info_dict["commkey"] = hop.commkey.toPublic();  // pubkey of ephemeral Ed key for DH
+
+      auto hop_info = oxenc::bt_serialize(hop_info_dict);
+      SecretKey framekey;
+      crypto->encryption_keygen(framekey);
+
+      SharedSecret shared;
+      TunnelNonce outer_nonce;
+      outer_nonce.Randomize();
+      // derive (outer) shared key
+      if (!crypto->dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      {
+        llarp::LogError("DH failed during hop info encryption");
+        throw std::runtime_error{"DH failed during hop info encryption"};
+      }
+
+      // encrypt hop_info (mutates in-place)
+      if (!crypto->xchacha20(
+              reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
+      {
+        llarp::LogError("hop info encrypt failed");
+        throw std::runtime_error{"hop info encrypt failed"};
+      }
+      oxenc::bt_dict hashed_dict;
+      hashed_dict["encrypted"] = hop_info;
+      hashed_dict["pubkey"] = framekey.toPublic();
+      hashed_dict["nonce"] = nonce;
+      auto hashed_data = oxenc::bt_serialize(hashed_dict);
+
+      std::basic_string<uint8_t> hash{SHORTHASHSIZE, '\0'};
+      if (!crypto->hmac(
+              hash.data(),
+              reinterpret_cast<uint8_t*>(hashed_data.data()),
+              hashed_data.size(),
+              shared))
+      {
+        llarp::LogError("Failed to generate HMAC for hop info");
+        throw std::runtime_error{"Failed to generate HMAC for hop info"};
+      }
+
+      oxenc::bt_dict final_frame;
+      final_frame["hash"] = hash;
+      final_frame["frame"] = hashed_data;
+
+      return oxenc::bt_serialize(final_frame);
     }
 
     void
@@ -293,12 +261,6 @@ namespace llarp
     Builder::ShouldRemove() const
     {
       return IsStopped() and NumInStatus(ePathEstablished) == 0;
-    }
-
-    const SecretKey&
-    Builder::GetTunnelEncryptionSecretKey() const
-    {
-      return enckey;
     }
 
     bool
@@ -432,22 +394,55 @@ namespace llarp
         LogWarn(Name(), " building too fast to edge router ", edge);
         return;
       }
-      // async generate keys
-      auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
-      ctx->router = router;
-      auto self = GetSelf();
-      ctx->pathset = self;
+
       std::string path_shortName = "[path " + router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
       auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
-      path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
-      ctx->AsyncGenerateKeys(
-          path,
-          router->loop(),
-          [r = router](auto func) { r->queue_work(std::move(func)); },
-          &PathBuilderKeysGenerated);
+      oxenc::bt_list_producer frames;
+      auto& path_hops = path->hops;
+      size_t last_len{0};
+      for (size_t i = 0; i < path_hops.size(); i++)
+      {
+        bool lastHop = (i == (path_hops.size() - 1));
+        const auto& nextHop = lastHop ? path_hops[i].rc.pubkey : path_hops[i + 1].rc.pubkey;
+        SetupHopKeys(path_hops[i], nextHop);
+        auto frame_str = CreateHopInfoFrame(path_hops[i]);
+        if (last_len != 0)
+          assert(
+              frame_str.size()
+              == last_len);  // all frames should be the same length...not sure what that is yet
+        last_len = frame_str.size();
+        frames.append(frame_str);
+      }
+
+      std::string dummy{last_len, '\0'};
+      // append dummy frames; path build request must always have MAX_LEN frames
+      for (size_t i = 0; i < path::MAX_LEN - path_hops.size(); i++)
+      {
+        randombytes(reinterpret_cast<uint8_t*>(dummy.data()), dummy.size());
+        frames.append(dummy);
+      }
+
+      m_router->notify_router_event<tooling::PathAttemptEvent>(m_router->pubkey(), path);
+
+      auto self = GetSelf();
+      m_router->path_context().AddOwnPath(self, path);
+      PathBuildStarted(path);
+
+      auto response_cb = [self](oxen::quic::message m) {
+        // TODO: this (replaces handling LRSM, which also needs replacing)
+      };
+
+      if (not m_router->send_control_message(
+              path->Upstream(), "path_build", std::move(frames.str()), std::move(response_cb)))
+      {
+        log::warning(log_path, "Error sending path_build control message");
+        path->EnterState(path::ePathFailed, m_router->now());
+      }
+
+      m_router->PersistSessionUntil(path->Upstream(), path->ExpireTime());
     }
 
     void

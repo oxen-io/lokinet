@@ -16,7 +16,7 @@ namespace llarp::path
   constexpr std::size_t PAD_SIZE = 128;
   /// default path lifetime in ms
   constexpr std::chrono::milliseconds DEFAULT_LIFETIME = 20min;
-  /// minimum into lifetime we will advertise
+  /// minimum intro lifetime we will advertise
   constexpr std::chrono::milliseconds MIN_INTRO_LIFETIME = DEFAULT_LIFETIME / 2;
   /// number of slices of path lifetime to spread intros out via
   constexpr auto INTRO_SPREAD_SLICES = 4;
