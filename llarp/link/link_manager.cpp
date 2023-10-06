@@ -559,7 +559,8 @@ namespace llarp
   {
     if (m.timed_out)
     {
-      // do something smart here inshallah
+      log::info(link_cat, "FindNameMessage timed out!");
+      return;
     }
 
     std::string payload;
@@ -583,17 +584,17 @@ namespace llarp
     {
       if (payload == FindNameMessage::EXCEPTION)
       {
-        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+        log::info(link_cat, "FindNameMessage failed with unkown error!");
 
         // resend?
       }
       else if (payload == FindNameMessage::NOT_FOUND)
       {
-        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+        log::info(link_cat, "FindNameMessage failed with unkown error!");
         // what to do here?
       }
       else
-        log::critical(link_cat, "FindNameMessage failed with unkown error!");
+        log::info(link_cat, "FindNameMessage failed with unkown error!");
     }
   }
 
@@ -697,7 +698,7 @@ namespace llarp
   {
     if (m.timed_out)
     {
-      log::critical(link_cat, "FindRouterMessage timed out!");
+      log::info(link_cat, "FindRouterMessage timed out!");
       return;
     }
 
@@ -729,7 +730,7 @@ namespace llarp
     {
       if (status == FindRouterMessage::EXCEPTION)
       {
-        log::critical(link_cat, "FindRouterMessage failed with remote exception!");
+        log::info(link_cat, "FindRouterMessage failed with remote exception!");
         // Do something smart here probably
         return;
       }
@@ -738,19 +739,19 @@ namespace llarp
 
       if (status == FindRouterMessage::RETRY_EXP)
       {
-        log::critical(link_cat, "FindRouterMessage failed, retrying as exploratory!");
+        log::info(link_cat, "FindRouterMessage failed, retrying as exploratory!");
         send_control_message(
             target, "find_router", FindRouterMessage::serialize(target, false, true, 0));
       }
       else if (status == FindRouterMessage::RETRY_ITER)
       {
-        log::critical(link_cat, "FindRouterMessage failed, retrying as iterative!");
+        log::info(link_cat, "FindRouterMessage failed, retrying as iterative!");
         send_control_message(
             target, "find_router", FindRouterMessage::serialize(target, true, false, 0));
       }
       else if (status == FindRouterMessage::RETRY_NEW)
       {
-        log::critical(link_cat, "FindRouterMessage failed, retrying with new recipient!");
+        log::info(link_cat, "FindRouterMessage failed, retrying with new recipient!");
         send_control_message(
             target, "find_router", FindRouterMessage::serialize(target, false, false, 0));
       }
@@ -886,6 +887,12 @@ namespace llarp
   void
   LinkManager::handle_publish_intro_response(oxen::quic::message m)
   {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "PublishIntroMessage timed out!");
+      return;
+    }
+
     std::string payload;
 
     try
@@ -907,12 +914,12 @@ namespace llarp
     {
       if (payload == PublishIntroMessage::EXCEPTION)
       {
-        log::critical(link_cat, "PublishIntroMessage failed with remote exception!");
+        log::info(link_cat, "PublishIntroMessage failed with remote exception!");
         // Do something smart here probably
         return;
       }
 
-      log::critical(link_cat, "PublishIntroMessage failed with error code: {}", payload);
+      log::info(link_cat, "PublishIntroMessage failed with error code: {}", payload);
 
       if (payload == PublishIntroMessage::INVALID_INTROSET)
       {}
@@ -980,7 +987,22 @@ namespace llarp
           peer_key,
           "find_intro",
           FindIntroMessage::serialize(
-              dht::Key_t{peer_key}, tag_name, tx_id, is_relayed, relay_order));
+              dht::Key_t{peer_key}, tag_name, tx_id, is_relayed, relay_order),
+          [original_msg = std::move(m)](oxen::quic::message relay_response) mutable {
+            if (relay_response)
+              log::info(
+                  link_cat,
+                  "Relayed FindIntroMessage returned successful response; transmitting to initial "
+                  "requester");
+            else if (relay_response.timed_out)
+              log::critical(
+                  link_cat, "Relayed FindIntroMessage timed out! Notifying initial requester");
+            else
+              log::critical(
+                  link_cat, "Relayed FindIntroMessage failed! Notifying initial requester");
+
+            original_msg.respond(relay_response.body_str(), not relay_response);
+          });
     }
     else
     {
@@ -1001,7 +1023,7 @@ namespace llarp
   {
     if (m.timed_out)
     {
-      log::critical(link_cat, "FindIntroMessage timed out!");
+      log::info(link_cat, "FindIntroMessage timed out!");
       return;
     }
 
@@ -1010,11 +1032,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-
-      if (m)
-        payload = btdc.require<std::string>("INTROSET");
-      else
-        payload = btdc.require<std::string>("STATUS");
+      payload = btdc.require<std::string>((m) ? "INTROSET" : "STATUS");
     }
     catch (const std::exception& e)
     {
@@ -1030,7 +1048,7 @@ namespace llarp
     }
     else
     {
-      log::critical(link_cat, "FindIntroMessage failed with error: {}", payload);
+      log::info(link_cat, "FindIntroMessage failed with error: {}", payload);
       // Do something smart here probably
     }
   }
@@ -1158,47 +1176,79 @@ namespace llarp
   void
   LinkManager::handle_obtain_exit(oxen::quic::message m)
   {
-    // TODO: implement transit_hop things like nextseqno(), info.rxID, etc
-    std::string copy{m.body_str()};
-    ustring pubkey, signature;
-    uint64_t flag, tx_id, seq_no;
-
     try
     {
-      oxenc::bt_dict_consumer btdc{copy};
+      uint64_t flag;
+      ustring_view pubkey, sig;
+      std::string_view tx_id;
 
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
       flag = btdc.require<uint64_t>("E");
-      pubkey = btdc.require<ustring>("I");
-      seq_no = btdc.require<uint64_t>("S");
-      tx_id = btdc.require<uint64_t>("T");
-      signature = btdc.require<ustring>("Z");
+      pubkey = btdc.require<ustring_view>("I");
+      tx_id = btdc.require<std::string_view>("T");
+
+      RouterID target{pubkey.data()};
+      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
+          router.path_context().GetByUpstream(target, PathID_t{to_usv(tx_id).data()}));
+
+      const auto rx_id = transit_hop->info.rxID;
+      const auto next_seqno = transit_hop->NextSeqNo();
+
+      auto success =
+          (CryptoManager::instance()->verify(pubkey, to_usv(dict_data), sig)
+           and router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
+
+      m.respond(
+          ObtainExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id),
+          not success);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
       m.respond(serialize_response({{"STATUS", ObtainExit::EXCEPTION}}), true);
-      return;
+      throw;
     }
-
-    RouterID target{pubkey.data()};
-
-    if (CryptoManager::instance()->verify(
-            pubkey.data(), reinterpret_cast<uint8_t*>(copy.data()), copy.size(), signature.data()))
-    {}
   }
 
   void
   LinkManager::handle_obtain_exit_response(oxen::quic::message m)
   {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "ObtainExitMessage timed out!");
+      return;
+    }
+    if (m.is_error)
+    {
+      // TODO: what to do here
+    }
+
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      std::string_view tx_id;
+      ustring_view sig;
+
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
+      tx_id = btdc.require<std::string_view>("T");
+
+      auto path_ptr = std::static_pointer_cast<path::Path>(
+          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+
+      if (CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+        path_ptr->enable_exit_traffic();
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
-      return;
+      throw;
     }
   }
 
@@ -1207,12 +1257,38 @@ namespace llarp
   {
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      std::string_view path_id, tx_id;
+      ustring_view sig;
+
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
+      path_id = btdc.require<std::string_view>("P");
+      tx_id = btdc.require<std::string_view>("T");
+
+      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
+          router.path_context().GetByUpstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+
+      const auto next_seqno = transit_hop->NextSeqNo();
+
+      if (auto exit_ep = router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
+      {
+        if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
+        {
+          (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
+              ? m.respond(
+                  UpdateExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id))
+              : m.respond(serialize_response({{"STATUS", UpdateExit::UPDATE_FAILED}}), true);
+        }
+        // If we fail to verify the message, no-op
+      }
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", UpdateExit::EXCEPTION}}), true);
       return;
     }
   }
@@ -1220,14 +1296,45 @@ namespace llarp
   void
   LinkManager::handle_update_exit_response(oxen::quic::message m)
   {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "UpdateExitMessage timed out!");
+      return;
+    }
+    if (m.is_error)
+    {
+      // TODO: what to do here
+    }
+
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      std::string tx_id;
+      ustring_view sig;
+
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
+      tx_id = btdc.require<std::string_view>("T");
+
+      auto path_ptr = std::static_pointer_cast<path::Path>(
+          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+
+      if (CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+      {
+        if (path_ptr->update_exit(std::stoul(tx_id)))
+        {
+          // TODO: talk to tom and Jason about how this stupid shit was a no-op originally
+          // see Path::HandleUpdateExitVerifyMessage
+        }
+        else
+        {}
+      }
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1237,12 +1344,37 @@ namespace llarp
   {
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      std::string_view tx_id;
+      ustring_view sig;
+
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
+      tx_id = btdc.require<std::string_view>("T");
+
+      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
+          router.path_context().GetByUpstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+
+      const auto rx_id = transit_hop->info.rxID;
+      const auto next_seqno = transit_hop->NextSeqNo();
+
+      if (auto exit_ep = router.exitContext().FindEndpointForPath(rx_id))
+      {
+        if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
+        {
+          exit_ep->Close();
+          m.respond(CloseExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id));
+        }
+      }
+
+      m.respond(serialize_response({{"STATUS", CloseExit::UPDATE_FAILED}}), true);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", CloseExit::EXCEPTION}}), true);
       return;
     }
   }
@@ -1250,14 +1382,39 @@ namespace llarp
   void
   LinkManager::handle_close_exit_response(oxen::quic::message m)
   {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "CloseExitMessage timed out!");
+      return;
+    }
+    if (m.is_error)
+    {
+      // TODO: what to do here
+    }
+
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      std::string_view nonce, tx_id;
+      ustring_view sig;
+
+      oxenc::bt_list_consumer btlc{m.body()};
+      auto dict_data = btlc.consume_dict_data();
+      oxenc::bt_dict_consumer btdc{dict_data};
+
+      sig = to_usv(btlc.consume_string_view());
+      tx_id = btdc.require<std::string_view>("T");
+      nonce = btdc.require<std::string_view>("Y");
+
+      auto path_ptr = std::static_pointer_cast<path::Path>(
+          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+
+      if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
+          and CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+        path_ptr->close_exit();
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
       return;
     }
   }

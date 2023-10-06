@@ -9,44 +9,6 @@
 
 namespace llarp
 {
-  bool
-  IsFalseValue(std::string_view str);
-
-  struct CaselessLessThan
-  {
-    bool
-    operator()(std::string_view lhs, std::string_view rhs) const;
-  };
-
-  bool
-  IsTrueValue(std::string_view str);
-
-  /// Trim leading and trailing (ascii) whitespace from the given string;
-  /// returns a std::string_view of the trimmed part of the string.
-  [[nodiscard]] std::string_view
-  TrimWhitespace(std::string_view str);
-
-  using namespace std::literals;
-
-  /// Returns true if the first string is equal to the second string, compared case-insensitively.
-  inline bool
-  string_iequal(std::string_view s1, std::string_view s2)
-  {
-    return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(), [](char a, char b) {
-      return std::tolower(static_cast<unsigned char>(a))
-          == std::tolower(static_cast<unsigned char>(b));
-    });
-  }
-
-  /// Returns true if the first string matches any of the given strings case-insensitively.
-  /// Arguments must be string literals, std::string, or std::string_views
-  template <typename S1, typename... S>
-  bool
-  string_iequal_any(const S1& s1, const S&... s)
-  {
-    return (... || string_iequal(s1, s));
-  }
-
   /// Returns true if the first argument begins with the second argument
   inline constexpr bool
   starts_with(std::string_view str, std::string_view prefix)
@@ -112,11 +74,6 @@ namespace llarp
     return join(delimiter, c.begin(), c.end());
   }
 
-  /// Simple version of whitespace trimming: mutates the given string view to remove leading
-  /// space, \t, \r, \n.  (More exotic and locale-dependent whitespace is not removed).
-  void
-  trim(std::string_view& s);
-
   /// Parses an integer of some sort from a string, requiring that the entire string be consumed
   /// during parsing.  Return false if parsing failed, sets `value` and returns true if the entire
   /// string was consumed.
@@ -135,13 +92,4 @@ namespace llarp
 
   std::string
   lowercase_ascii_string(std::string src);
-
-  /// Converts a duration into a human friendlier string.
-  std::string
-  friendly_duration(std::chrono::nanoseconds dur);
-
-  /// convert a "normal" string into a wide string
-  std::wstring
-  to_wide(std::string data);
-
 }  // namespace llarp

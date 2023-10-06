@@ -36,6 +36,7 @@ namespace llarp
   {
     inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto NOT_FOUND = "NOT FOUND"sv;
+    inline auto TIMED_OUT = "TIMED OUT"sv;
     inline auto INVALID_ORDER = "INVALID ORDER"sv;
     inline auto INSUFFICIENT_NODES = "INSUFFICIENT NODES"sv;
 

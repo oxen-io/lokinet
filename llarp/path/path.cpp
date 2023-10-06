@@ -425,6 +425,22 @@ namespace llarp::path
     return true;
   }
 
+  bool
+  Path::update_exit(uint64_t tx_id)
+  {
+    if (m_UpdateExitTX && tx_id == m_UpdateExitTX)
+    {
+      if (m_ExitUpdated)
+        return m_ExitUpdated(shared_from_this());
+    }
+    if (m_CloseExitTX && tx_id == m_CloseExitTX)
+    {
+      if (m_ExitClosed)
+        return m_ExitClosed(shared_from_this());
+    }
+    return false;
+  }
+
   void
   Path::Tick(llarp_time_t now, Router* r)
   {

@@ -11,6 +11,12 @@
 
 namespace llarp
 {
+  /*
+      TODO:
+        - make uint8_t pointers const where needed
+        -
+  */
+
   struct Crypto
   {
     Crypto();
@@ -24,10 +30,6 @@ namespace llarp
     /// xchacha symmetric cipher
     bool
     xchacha20(uint8_t*, size_t size, const SharedSecret&, const TunnelNonce&);
-
-    /// xchacha symmetric cipher (multibuffer)
-    bool
-    xchacha20_alt(const llarp_buffer_t&, const llarp_buffer_t&, const SharedSecret&, const byte_t*);
 
     /// path dh creator's side
     bool
@@ -50,12 +52,18 @@ namespace llarp
     /// ed25519 sign
     bool
     sign(Signature&, const SecretKey&, uint8_t* buf, size_t size);
+    /// ed25519 sign, using pointers
+    bool
+    sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size);
+    bool
+    sign(uint8_t* sig, const SecretKey& sk, ustring_view buf);
     /// ed25519 sign (custom with derived keys)
     bool
     sign(Signature&, const PrivateKey&, uint8_t* buf, size_t size);
     /// ed25519 verify
     bool
     verify(const PubKey&, uint8_t*, size_t, const Signature&);
+    bool verify(ustring_view, ustring_view, ustring_view);
     bool
     verify(uint8_t*, uint8_t*, size_t, uint8_t*);
 

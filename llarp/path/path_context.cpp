@@ -251,16 +251,6 @@ namespace llarp::path
         [](const std::shared_ptr<TransitHop>& h) -> HopHandler_ptr { return h; });
   }
 
-  bool
-  PathContext::TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& otherRouter)
-  {
-    SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
-    auto itr = m_TransitPaths.second.find(path);
-    if (itr == m_TransitPaths.second.end())
-      return false;
-    return itr->second->info.downstream == otherRouter;
-  }
-
   HopHandler_ptr
   PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
   {
@@ -271,6 +261,16 @@ namespace llarp::path
           return hop->info.downstream == remote;
         },
         [](const std::shared_ptr<TransitHop>& h) -> HopHandler_ptr { return h; });
+  }
+
+  bool
+  PathContext::TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& otherRouter)
+  {
+    SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
+    auto itr = m_TransitPaths.second.find(path);
+    if (itr == m_TransitPaths.second.end())
+      return false;
+    return itr->second->info.downstream == otherRouter;
   }
 
   PathSet_ptr

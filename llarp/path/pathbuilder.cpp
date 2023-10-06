@@ -436,7 +436,6 @@ namespace llarp
 
         const auto& nextHop = lastHop ? path_hops[i].rc.pubkey : path_hops[i + 1].rc.pubkey;
 
-        // TODO: talk to Tom about what he thinks about this
         PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
         auto frame_str = PathBuildMessage::serialize(path_hops[i]);
 
@@ -457,9 +456,6 @@ namespace llarp
         randombytes(reinterpret_cast<uint8_t*>(dummy.data()), dummy.size());
         frames.append(dummy);
       }
-
-      // TODO: talk to Tom about whether we do still this or not
-      // router->notify_router_event<tooling::PathAttemptEvent>(router->pubkey(), path);
 
       auto self = GetSelf();
       router->path_context().AddOwnPath(self, path);

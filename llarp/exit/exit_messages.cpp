@@ -39,8 +39,6 @@ namespace llarp::routing
       btdp.append("I", pubkey.ToView());
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
-      btdp.append("V", version);
-      btdp.append("X", address_lifetime);
       btdp.append("Z", sig.ToView());
     }
     catch (...)
@@ -63,10 +61,6 @@ namespace llarp::routing
       return false;
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
       return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("X", address_lifetime, read, k, buf))
-      return false;
     if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
       return false;
     return read;
@@ -87,7 +81,6 @@ namespace llarp::routing
     {
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
-      btdp.append("V", version);
       btdp.append("Y", nonce.ToView());
       btdp.append("Z", sig.ToView());
     }
@@ -106,8 +99,6 @@ namespace llarp::routing
     if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
       return false;
@@ -155,7 +146,6 @@ namespace llarp::routing
       btdp.append("B", backoff_time);
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
-      btdp.append("V", version);
       btdp.append("Y", nonce.ToView());
       btdp.append("Z", sig.ToView());
     }
@@ -176,8 +166,6 @@ namespace llarp::routing
     if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
       return false;
@@ -225,7 +213,6 @@ namespace llarp::routing
       btdp.append("P", path_id.ToView());
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
-      btdp.append("V", version);
       btdp.append("Z", sig.ToView());
     }
     catch (...)
@@ -243,8 +230,6 @@ namespace llarp::routing
     if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("P", path_id, read, k, buf))
       return false;
@@ -290,7 +275,6 @@ namespace llarp::routing
     {
       btdp.append("S", sequence_number);
       btdp.append("T", tx_id);
-      btdp.append("V", version);
     }
     catch (...)
     {
@@ -308,8 +292,6 @@ namespace llarp::routing
       return false;
     if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
       return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-      return false;
     return read;
   }
 
@@ -326,9 +308,7 @@ namespace llarp::routing
 
     try
     {
-      btdp.append("A", "C");
       btdp.append("S", sequence_number);
-      btdp.append("V", version);
       btdp.append("Y", nonce.ToView());
       btdp.append("Z", sig.ToView());
     }
@@ -345,8 +325,6 @@ namespace llarp::routing
   {
     bool read = false;
     if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
       return false;

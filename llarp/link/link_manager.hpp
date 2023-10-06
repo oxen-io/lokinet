@@ -335,7 +335,10 @@ namespace llarp
         {"find_name", &LinkManager::handle_find_name_response},
         {"find_router", &LinkManager::handle_find_router_response},
         {"publish_intro", &LinkManager::handle_publish_intro_response},
-        {"find_intro", &LinkManager::handle_find_intro_response}};
+        {"find_intro", &LinkManager::handle_find_intro_response},
+        {"update_exit", &LinkManager::handle_update_exit_response},
+        {"obtain_exit", &LinkManager::handle_obtain_exit_response},
+        {"close_exit", &LinkManager::handle_close_exit_response}};
 
     std::string
     serialize_response(oxenc::bt_dict supplement = {});

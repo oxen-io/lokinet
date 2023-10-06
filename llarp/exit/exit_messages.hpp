@@ -13,7 +13,6 @@ namespace llarp::routing
     uint64_t flag{0};  // 0 for snode, 1 for internet access
     llarp::PubKey pubkey;
     uint64_t tx_id{0};
-    uint64_t address_lifetime{0};
     llarp::Signature sig;
 
     ObtainExitMessage() : AbstractRoutingMessage()
@@ -27,7 +26,6 @@ namespace llarp::routing
       flag = 0;
       pubkey.Zero();
       tx_id = 0;
-      address_lifetime = 0;
       sig.Zero();
     }
 
@@ -50,10 +48,8 @@ namespace llarp::routing
 
   struct GrantExitMessage final : public AbstractRoutingMessage
   {
-    using Nonce_t = llarp::AlignedBuffer<16>;
-
     uint64_t tx_id;
-    Nonce_t nonce;
+    llarp::AlignedBuffer<16> nonce;
     llarp::Signature sig;
 
     std::string
@@ -82,10 +78,9 @@ namespace llarp::routing
 
   struct RejectExitMessage final : public AbstractRoutingMessage
   {
-    using Nonce_t = llarp::AlignedBuffer<16>;
     uint64_t backoff_time;
     uint64_t tx_id;
-    Nonce_t nonce;
+    llarp::AlignedBuffer<16> nonce;
     llarp::Signature sig;
 
     void
@@ -115,9 +110,8 @@ namespace llarp::routing
 
   struct UpdateExitVerifyMessage final : public AbstractRoutingMessage
   {
-    using Nonce_t = llarp::AlignedBuffer<16>;
     uint64_t tx_id;
-    Nonce_t nonce;
+    llarp::AlignedBuffer<16> nonce;
     llarp::Signature sig;
 
     ~UpdateExitVerifyMessage() override = default;
@@ -142,10 +136,9 @@ namespace llarp::routing
 
   struct UpdateExitMessage final : public AbstractRoutingMessage
   {
-    using Nonce_t = llarp::AlignedBuffer<16>;
     llarp::PathID_t path_id;
     uint64_t tx_id;
-    Nonce_t nonce;
+    llarp::AlignedBuffer<16> nonce;
     llarp::Signature sig;
 
     bool
@@ -175,9 +168,7 @@ namespace llarp::routing
 
   struct CloseExitMessage final : public AbstractRoutingMessage
   {
-    using Nonce_t = llarp::AlignedBuffer<16>;
-
-    Nonce_t nonce;
+    llarp::AlignedBuffer<16> nonce;
     llarp::Signature sig;
 
     std::string

@@ -248,6 +248,23 @@ namespace llarp
         return now >= (ExpireTime() - dlt);
       }
 
+      void
+      enable_exit_traffic()
+      {
+        log::info(path_cat, "{} {} granted exit", name(), Endpoint());
+        _role |= ePathRoleExit;
+      }
+
+      void
+      close_exit()
+      {
+        log::info(path_cat, "{} hd its exit closed", name());
+        _role &= ePathRoleExit;
+      }
+
+      bool
+      update_exit(uint64_t tx_id);
+
       bool
       Expired(llarp_time_t now) const override;
 
@@ -277,8 +294,10 @@ namespace llarp
 
       bool
       HandleCloseExitMessage(const routing::CloseExitMessage& msg, Router* r) override;
+
       bool
       HandleGrantExitMessage(const routing::GrantExitMessage& msg, Router* r) override;
+
       bool
       HandleRejectExitMessage(const routing::RejectExitMessage& msg, Router* r) override;
 

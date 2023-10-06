@@ -25,6 +25,13 @@ namespace llarp
   using bstring = std::basic_string<std::byte>;
   using bstring_view = std::basic_string_view<std::byte>;
 
+  // Helper function to switch between string_view and ustring_view
+  inline ustring_view
+  to_usv(std::string_view v)
+  {
+    return {reinterpret_cast<const uint8_t*>(v.data()), v.size()};
+  }
+
   struct llarp_buffer
   {
    private:

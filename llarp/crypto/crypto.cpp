@@ -134,15 +134,6 @@ namespace llarp
   }
 
   bool
-  Crypto::xchacha20_alt(
-      const llarp_buffer_t& out, const llarp_buffer_t& in, const SharedSecret& k, const byte_t* n)
-  {
-    if (in.sz > out.sz)
-      return false;
-    return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n, k.data()) == 0;
-  }
-
-  bool
   Crypto::dh_client(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
@@ -196,6 +187,18 @@ namespace llarp
   }
 
   bool
+  Crypto::sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
+  {
+    return crypto_sign_detached(sig, nullptr, buf, size, sk) != -1;
+  }
+
+  bool
+  Crypto::sign(uint8_t* sig, const SecretKey& sk, ustring_view buf)
+  {
+    return crypto_sign_detached(sig, nullptr, buf.data(), buf.size(), sk.data()) != -1;
+  }
+
+  bool
   Crypto::sign(Signature& sig, const PrivateKey& privkey, uint8_t* buf, size_t size)
   {
     PubKey pubkey;
@@ -243,6 +246,14 @@ namespace llarp
   Crypto::verify(const PubKey& pub, uint8_t* buf, size_t size, const Signature& sig)
   {
     return crypto_sign_verify_detached(sig.data(), buf, size, pub.data()) != -1;
+  }
+
+  bool
+  Crypto::verify(ustring_view pub, ustring_view buf, ustring_view sig)
+  {
+    return (pub.size() == 32 && sig.size() == 64)
+        ? crypto_sign_verify_detached(sig.data(), buf.data(), buf.size(), pub.data()) != -1
+        : false;
   }
 
   bool
