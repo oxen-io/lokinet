@@ -17,7 +17,7 @@ namespace llarp::service
   }
 
   bool
-  NameIsValid(std::string_view lnsName)
+  is_valid_name(std::string_view lnsName)
   {
     // make sure it ends with .loki because no fucking shit right?
     if (not ends_with(lnsName, ".loki"))

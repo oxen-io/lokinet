@@ -41,6 +41,12 @@ namespace llarp
       virtual bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
 
+      virtual void
+      send_path_control_message(
+          std::string method,
+          std::string body,
+          std::function<void(oxen::quic::message m)> func) = 0;
+
       /// send routing message and increment sequence number
       virtual bool
       SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) = 0;

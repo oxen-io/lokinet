@@ -47,20 +47,18 @@ namespace llarp
           llarp_time_t timeout) override;
 
       void
-      LookupNameAsync(
-          std::string name,
-          std::function<void(std::optional<AddressVariant_t>)> resultHandler) override;
+      lookup_name(std::string name, std::function<void(oxen::quic::message)> func) override;
 
       const EventLoop_ptr&
       Loop() override;
 
       std::unordered_set<EndpointBase::AddressVariant_t>
-      AllRemoteEndpoints() const;
+      AllRemoteEndpoints() const override;
 
       void
       SRVRecordsChanged() override;
 
-      void MarkAddressOutbound(AddressVariant_t) override{};
+      void MarkAddressOutbound(service::Address) override{};
 
       bool
       SendToOrQueue(

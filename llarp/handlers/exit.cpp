@@ -27,11 +27,9 @@ namespace llarp::handlers
   ExitEndpoint::~ExitEndpoint() = default;
 
   void
-  ExitEndpoint::LookupNameAsync(
-      std::string, std::function<void(std::optional<AddressVariant_t>)> resultHandler)
+  ExitEndpoint::lookup_name(std::string, std::function<void(oxen::quic::message)>)
   {
     // TODO: implement me
-    resultHandler(std::nullopt);
   }
 
   void

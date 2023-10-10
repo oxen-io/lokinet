@@ -288,7 +288,7 @@ namespace llarp::handlers
 
     if (conf.m_AuthType == service::AuthType::eAuthTypeFile)
     {
-      _auth_policy = service::MakeFileAuthPolicy(router, conf.m_AuthFiles, conf.m_AuthFileType);
+      _auth_policy = service::MakeFileAuthPolicy(router(), conf.m_AuthFiles, conf.m_AuthFileType);
     }
     else if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
     {
@@ -331,7 +331,7 @@ namespace llarp::handlers
     m_IfName = conf.m_ifname;
     if (m_IfName.empty())
     {
-      const auto maybe = router->net().FindFreeTun();
+      const auto maybe = router()->net().FindFreeTun();
       if (not maybe.has_value())
         throw std::runtime_error("cannot find free interface name");
       m_IfName = *maybe;
@@ -340,7 +340,7 @@ namespace llarp::handlers
     m_OurRange = conf.m_ifaddr;
     if (!m_OurRange.addr.h)
     {
-      const auto maybe = router->net().FindFreeRange();
+      const auto maybe = router()->net().FindFreeRange();
       if (not maybe.has_value())
       {
         throw std::runtime_error("cannot find free address range");
@@ -412,7 +412,7 @@ namespace llarp::handlers
 
             if (const auto* str = std::get_if<std::string>(&value))
             {
-              if (auto maybe = service::ParseAddress(*str))
+              if (auto maybe = service::parse_address(*str))
               {
                 addr = *maybe;
               }
@@ -549,17 +549,12 @@ namespace llarp::handlers
     };
 
     auto ReplyToDNSWhenReady = [ReplyToLokiDNSWhenReady, ReplyToSNodeDNSWhenReady](
-                                   auto addr, auto msg, bool isV6) {
-      if (auto ptr = std::get_if<RouterID>(&addr))
-      {
-        ReplyToSNodeDNSWhenReady(*ptr, msg, isV6);
-        return;
-      }
-      if (auto ptr = std::get_if<service::Address>(&addr))
-      {
-        ReplyToLokiDNSWhenReady(*ptr, msg, isV6);
-        return;
-      }
+                                   std::string name, auto msg, bool isV6) {
+      if (auto saddr = service::Address(); saddr.FromString(name))
+        ReplyToLokiDNSWhenReady(saddr, msg, isV6);
+
+      if (auto rid = RouterID(); rid.FromString(name))
+        ReplyToSNodeDNSWhenReady(rid, msg, isV6);
     };
 
     auto ReplyToLokiSRVWhenReady = [this, reply, timeout = PathAlignmentTimeout()](
@@ -618,18 +613,18 @@ namespace llarp::handlers
     }
     std::string qname = msg.questions[0].Name();
     const auto nameparts = split(qname, ".");
-    std::string lnsName;
+    std::string ons_name;
     if (nameparts.size() >= 2 and ends_with(qname, ".loki"))
     {
-      lnsName = nameparts[nameparts.size() - 2];
-      lnsName += ".loki"sv;
+      ons_name = nameparts[nameparts.size() - 2];
+      ons_name += ".loki"sv;
     }
     if (msg.questions[0].qtype == dns::qTypeTXT)
     {
       RouterID snode;
       if (snode.FromString(qname))
       {
-        router->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
+        router()->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
           if (found.empty())
           {
             msg.AddNXReply();
@@ -665,7 +660,7 @@ namespace llarp::handlers
         }
         else if (subdomain == "netid")
         {
-          msg.AddTXTReply(fmt::format("netid={};", router->rc().netID));
+          msg.AddTXTReply(fmt::format("netid={};", router()->rc().netID));
         }
         else
         {
@@ -688,19 +683,31 @@ namespace llarp::handlers
       {
         msg.AddMXReply(qname, 1);
       }
-      else if (service::NameIsValid(lnsName))
+      else if (service::is_valid_name(ons_name))
       {
-        LookupNameAsync(lnsName, [msg, lnsName, reply](auto maybe) mutable {
-          if (maybe.has_value())
+        lookup_name(ons_name, [msg, ons_name, reply](oxen::quic::message m) mutable {
+          if (m)
           {
-            var::visit([&](auto&& value) { msg.AddMXReply(value.ToString(), 1); }, *maybe);
+            std::string result;
+            try
+            {
+              oxenc::bt_dict_consumer btdc{m.body()};
+              result = btdc.require<std::string>("NAME");
+            }
+            catch (...)
+            {
+              log::warning(log_cat, "Failed to parse find name response!");
+              throw;
+            }
+
+            msg.AddMXReply(result, 1);
           }
           else
-          {
             msg.AddNXReply();
-          }
+
           reply(msg);
         });
+
         return true;
       }
       else
@@ -823,24 +830,38 @@ namespace llarp::handlers
               addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
         }
       }
-      else if (service::NameIsValid(lnsName))
+      else if (service::is_valid_name(ons_name))
       {
-        LookupNameAsync(
-            lnsName,
+        lookup_name(
+            ons_name,
             [msg = std::make_shared<dns::Message>(msg),
              name = Name(),
-             lnsName,
+             ons_name,
              isV6,
              reply,
-             ReplyToDNSWhenReady](auto maybe) {
-              if (not maybe.has_value())
+             ReplyToDNSWhenReady](oxen::quic::message m) mutable {
+              if (m)
               {
-                LogWarn(name, " lns name ", lnsName, " not resolved");
+                std::string name;
+                try
+                {
+                  oxenc::bt_dict_consumer btdc{m.body()};
+                  name = btdc.require<std::string>("NAME");
+                }
+                catch (...)
+                {
+                  log::warning(log_cat, "Failed to parse find name response!");
+                  throw;
+                }
+
+                ReplyToDNSWhenReady(name, msg, isV6);
+              }
+              else
+              {
+                log::warning(log_cat, "{} (ONS name: {}) not resolved", name, ons_name);
                 msg->AddNXReply();
                 reply(*msg);
-                return;
               }
-              ReplyToDNSWhenReady(*maybe, msg, isV6);
             });
         return true;
       }
@@ -1047,7 +1068,7 @@ namespace llarp::handlers
 
     if constexpr (not llarp::platform::is_apple)
     {
-      if (auto maybe = router->net().GetInterfaceIPv6Address(m_IfName))
+      if (auto maybe = router()->net().GetInterfaceIPv6Address(m_IfName))
       {
         m_OurIPv6 = *maybe;
         LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
@@ -1056,7 +1077,7 @@ namespace llarp::handlers
 
     LogInfo(Name(), " setting up dns...");
     SetupDNS();
-    Loop()->call_soon([this]() { router->route_poker()->set_dns_mode(false); });
+    Loop()->call_soon([this]() { router()->route_poker()->set_dns_mode(false); });
     return HasAddress(ourAddr);
   }
 
@@ -1130,7 +1151,7 @@ namespace llarp::handlers
     if (auto itr = m_ExitIPToExitAddress.find(ip); itr != m_ExitIPToExitAddress.end())
       return itr->second;
 
-    const auto& net = router->net();
+    const auto& net = router()->net();
     const bool is_bogon = net.IsBogonIP(ip);
     // build up our candidates to choose
 

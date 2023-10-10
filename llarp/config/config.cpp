@@ -527,7 +527,7 @@ namespace llarp
             arg = arg.substr(0, pos);
           }
 
-          if (service::NameIsValid(arg))
+          if (service::is_valid_name(arg))
           {
             m_LNSExitMap.Insert(range, arg);
             return;
@@ -567,7 +567,7 @@ namespace llarp
           const auto exit_str = arg.substr(0, pos);
           auth.token = arg.substr(pos + 1);
 
-          if (service::NameIsValid(exit_str))
+          if (service::is_valid_name(exit_str))
           {
             m_LNSExitAuths.emplace(exit_str, auth);
             return;

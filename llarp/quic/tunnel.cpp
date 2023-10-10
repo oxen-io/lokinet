@@ -436,10 +436,10 @@ namespace llarp::quic
     std::pair<SockAddr, uint16_t> result;
     auto& [saddr, pport] = result;
 
-    auto maybe_remote = service::ParseAddress(remote_addr);
+    auto maybe_remote = service::parse_address(remote_addr);
     if (!maybe_remote)
     {
-      if (not service::NameIsValid(remote_addr))
+      if (not service::is_valid_name(remote_addr))
         throw std::invalid_argument{"Invalid remote lokinet name/address"};
       // Otherwise it's a valid ONS name, so we'll initiate an ONS lookup below
     }
@@ -518,17 +518,46 @@ namespace llarp::quic
     {
       // We were given an ONS address, so it's a two-step process: first we resolve the ONS name,
       // then we have to build a path to that address.
-      service_endpoint_.LookupNameAsync(
+      service_endpoint_.lookup_name(
+          remote_addr,
+          [this, raddr = std::move(remote_addr), after = std::move(after_path), pp = pport](
+              oxen::quic::message m) mutable {
+            if (not continue_connecting(pp, m, "endpoint ONS lookup", raddr))
+              return;
+
+            service::Address addr{};
+          });
+
+      service_endpoint_.lookup_name(
           remote_addr,
           [this,
            after_path = std::move(after_path),
            pport = pport,
-           remote_addr = std::move(remote_addr)](auto maybe_remote) {
-            if (not continue_connecting(
-                    pport, (bool)maybe_remote, "endpoint ONS lookup", remote_addr))
+           remote_addr = std::move(remote_addr)](oxen::quic::message m) {
+            if (not continue_connecting(pport, (bool)m, "endpoint ONS lookup", remote_addr))
               return;
-            service_endpoint_.MarkAddressOutbound(*maybe_remote);
-            service_endpoint_.EnsurePathTo(*maybe_remote, after_path, open_timeout);
+
+            std::string name;
+
+            if (m)
+            {
+              try
+              {
+                oxenc::bt_dict_consumer btdc{m.body()};
+                name = btdc.require<std::string>("NAME");
+              }
+              catch (...)
+              {
+                log::warning(log_cat, "Tunnel Manager failed to parse find name response");
+                throw;
+              }
+
+              if (auto saddr = service::Address(); saddr.FromString(name))
+              {
+                service_endpoint_.MarkAddressOutbound(saddr);
+                service_endpoint_.EnsurePathTo(saddr, std::move(after_path), open_timeout);
+              }
+            }
           });
       return result;
     }
@@ -540,7 +569,8 @@ namespace llarp::quic
       after_path(maybe_convo);
     else
     {
-      service_endpoint_.MarkAddressOutbound(remote);
+      if (auto* ptr = std::get_if<service::Address>(&remote))
+        service_endpoint_.MarkAddressOutbound(*ptr);
       service_endpoint_.EnsurePathTo(remote, after_path, open_timeout);
     }
 

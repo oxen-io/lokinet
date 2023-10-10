@@ -64,6 +64,7 @@ namespace llarp
       llarp_time_t buildStarted = 0s;
 
       Path(
+          Router* rtr,
           const std::vector<RouterContact>& routers,
           std::weak_ptr<PathSet> parent,
           PathRole startingRoles,
@@ -276,6 +277,18 @@ namespace llarp
       void
       Tick(llarp_time_t now, Router* r);
 
+      void
+      find_name(std::string name, std::function<void(oxen::quic::message m)> func = nullptr);
+
+      void
+      find_router(std::string rid, std::function<void(oxen::quic::message m)> func = nullptr);
+
+      void
+      send_path_control_message(
+          std::string method,
+          std::string body,
+          std::function<void(oxen::quic::message m)> func = nullptr) override;
+
       bool
       SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
 
@@ -393,6 +406,7 @@ namespace llarp
       bool
       InformExitResult(llarp_time_t b);
 
+      Router& router;
       BuildResultHookFunc m_BuiltHook;
       DataHandlerFunc m_DataHandler;
       DropHandlerFunc m_DropHandler;

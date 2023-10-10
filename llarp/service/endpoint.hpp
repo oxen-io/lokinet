@@ -58,7 +58,9 @@ namespace llarp
     inline constexpr auto IntrosetLookupCooldown = 250ms;
 
     /// number of unique snodes we want to talk to do to ons lookups
-    inline constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
+    inline constexpr size_t MIN_ONS_LOOKUP_ENDPOINTS = 2;
+
+    inline constexpr size_t MAX_ONS_LOOKUP_ENDPOINTS = 7;
 
     // TODO: delete this, it is copied from the late llarp/service/handler.hpp
     struct RecvDataEvent
@@ -192,15 +194,6 @@ namespace llarp
       publish_introset(const EncryptedIntroSet& i);
 
       bool
-      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage> msg) override;
-
-      bool
-      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage> msg) override;
-
-      bool
-      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg) override;
-
-      bool
       HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrameMessage& msg);
 
       void
@@ -244,16 +237,14 @@ namespace llarp
       void
       EnsureRouterIsKnown(const RouterID& router);
 
-      /// lookup a router via closest path
+      // "find router" via closest path
       bool
-      LookupRouterAnon(RouterID router, RouterLookupHandler handler);
+      lookup_router(RouterID router);
 
+      // "find name"
       void
-      LookupNameAsync(
-          std::string name,
-          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler)
-          override;
-
+      lookup_name(std::string name, std::function<void(oxen::quic::message)> func) override;
+      // "find introset?""
       void
       LookupServiceAsync(
           std::string name,
@@ -308,7 +299,7 @@ namespace llarp
       WantsOutboundSession(const Address&) const;
 
       /// this MUST be called if you want to call EnsurePathTo on the given address
-      void MarkAddressOutbound(AddressVariant_t) override;
+      void MarkAddressOutbound(service::Address) override;
 
       bool
       ShouldBundleRC() const override
@@ -487,14 +478,6 @@ namespace llarp
      private:
       void
       HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
-
-      bool
-      OnLookup(
-          const service::Address& addr,
-          std::optional<IntroSet> i,
-          const RouterID& endpoint,
-          llarp_time_t timeLeft,
-          uint64_t relayOrder);
 
       bool
       DoNetworkIsolation(bool failed);

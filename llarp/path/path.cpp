@@ -2,6 +2,7 @@
 
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/link_manager.hpp>
+#include <llarp/messages/dht.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/messages/relay_status.hpp>
@@ -24,12 +25,15 @@
 namespace llarp::path
 {
   Path::Path(
+      Router* rtr,
       const std::vector<RouterContact>& h,
       std::weak_ptr<PathSet> pathset,
       PathRole startingRoles,
       std::string shortName)
-      : m_PathSet{std::move(pathset)}, _role{startingRoles}, m_shortName{std::move(shortName)}
-
+      : m_PathSet{std::move(pathset)}
+      , router{*rtr}
+      , _role{startingRoles}
+      , m_shortName{std::move(shortName)}
   {
     hops.resize(h.size());
     size_t hsz = h.size();
@@ -56,6 +60,27 @@ namespace llarp::path
     intro.path_id = hops[hsz - 1].txID;
     if (auto parent = m_PathSet.lock())
       EnterState(ePathBuilding, parent->Now());
+  }
+
+  void
+  Path::find_name(std::string name, std::function<void(oxen::quic::message m)> func)
+  {
+    send_path_control_message(
+        "find_router", FindNameMessage::serialize(std::move(name)), std::move(func));
+  }
+
+  void
+  Path::find_router(std::string rid, std::function<void(oxen::quic::message m)> func)
+  {
+    send_path_control_message(
+        "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
+  }
+
+  void
+  Path::send_path_control_message(
+      std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
+  {
+    router.send_control_message(upstream(), std::move(method), std::move(body), std::move(func));
   }
 
   void

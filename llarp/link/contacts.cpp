@@ -79,7 +79,7 @@ namespace llarp
 
     _router.loop()->call([this, rid]() {
       _router.send_control_message(
-          rid, "find_router", FindRouterMessage::serialize(rid, false, false, 0));
+          rid, "find_router", FindRouterMessage::serialize(rid, false, false));
     });
 
     return true;

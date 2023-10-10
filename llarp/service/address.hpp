@@ -87,7 +87,7 @@ namespace llarp
     };
 
     std::optional<std::variant<Address, RouterID>>
-    ParseAddress(std::string_view lokinet_addr);
+    parse_address(std::string_view lokinet_addr);
 
   }  // namespace service
 

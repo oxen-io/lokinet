@@ -95,8 +95,6 @@ namespace llarp
 
     if (shouldDoLookup)
     {
-      auto fn = [this, router](const auto& res) { handle_dht_lookup_result(router, res); };
-
       // if we are a client try using the hidden service endpoints
       if (!isServiceNode)
       {
@@ -104,7 +102,7 @@ namespace llarp
         LogInfo("Lookup ", router, " anonymously");
         hidden_service_context->ForEachService(
             [&](const std::string&, const std::shared_ptr<service::Endpoint>& ep) -> bool {
-              const bool success = ep->LookupRouterAnon(router, fn);
+              const bool success = ep->lookup_router(router);
               sent = sent || success;
               return !success;
             });
@@ -114,13 +112,9 @@ namespace llarp
       }
 
       if (not contacts->lookup_router(router))
-      {
         finalize_request(router, nullptr, RCRequestResult::RouterNotFound);
-      }
       else
-      {
         router_lookup_times[router] = std::chrono::steady_clock::now();
-      }
     }
   }
 

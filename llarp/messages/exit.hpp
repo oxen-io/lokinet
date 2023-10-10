@@ -6,7 +6,8 @@ namespace llarp
 {
   /*
       TODO:
-        - change these parameters to ustringviews and ustrings where needed
+        - change these parameters to ustringviews and ustrings where needed after bumping oxenc
+        - nuke seq_no's
   */
 
   namespace ObtainExit

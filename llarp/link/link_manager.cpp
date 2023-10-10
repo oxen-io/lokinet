@@ -196,7 +196,7 @@ namespace llarp
     if (not func and rpc_responses.count(endpoint))
     {
       func = [&](oxen::quic::message m) {
-        return std::invoke(rpc_responses[endpoint], this, std::move(m));
+        std::invoke(rpc_responses[endpoint], this, std::move(m));
       };
     }
 
@@ -530,14 +530,12 @@ namespace llarp
   LinkManager::handle_find_name(oxen::quic::message m)
   {
     std::string name_hash;
-    [[maybe_unused]] uint64_t tx_id;
 
     try
     {
       oxenc::bt_dict_consumer btdp{m.body()};
 
       name_hash = btdp.require<std::string>("H");
-      tx_id = btdp.require<uint64_t>("T");
     }
     catch (const std::exception& e)
     {
@@ -598,6 +596,8 @@ namespace llarp
     }
   }
 
+  // TODO: add callback to relayed messages (calls to send_control_message so the
+  // response finds its way back)
   void
   LinkManager::handle_find_router(oxen::quic::message m)
   {
@@ -624,6 +624,7 @@ namespace llarp
 
     RouterID target_rid;
     target_rid.FromString(target_key);
+
     const auto target_addr = dht::Key_t{reinterpret_cast<uint8_t*>(target_key.data())};
     const auto& local_rid = router.rc().pubkey;
     const auto local_key = dht::Key_t{local_rid};
@@ -658,7 +659,12 @@ namespace llarp
         if (closest_rc.ExpiresSoon(llarp::time_now_ms()))
         {
           send_control_message(
-              target_rid, "find_router", FindRouterMessage::serialize(target_rid, false, false, 0));
+              target_rid,
+              "find_router",
+              FindRouterMessage::serialize(target_rid, false, false),
+              [original = std::move(m)](oxen::quic::message msg) mutable {
+                original.respond(msg.body_str(), not msg);
+              });
         }
         else
         {
@@ -672,7 +678,10 @@ namespace llarp
           send_control_message(
               closest_rid,
               "find_router",
-              FindRouterMessage::serialize(closest_rid, false, false, 0));
+              FindRouterMessage::serialize(closest_rid, false, false),
+              [original = std::move(m)](oxen::quic::message msg) mutable {
+                original.respond(msg.body_str(), not msg);
+              });
         }
         else
         {
@@ -741,19 +750,19 @@ namespace llarp
       {
         log::info(link_cat, "FindRouterMessage failed, retrying as exploratory!");
         send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, false, true, 0));
+            target, "find_router", FindRouterMessage::serialize(target, false, true));
       }
       else if (status == FindRouterMessage::RETRY_ITER)
       {
         log::info(link_cat, "FindRouterMessage failed, retrying as iterative!");
         send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, true, false, 0));
+            target, "find_router", FindRouterMessage::serialize(target, true, false));
       }
       else if (status == FindRouterMessage::RETRY_NEW)
       {
         log::info(link_cat, "FindRouterMessage failed, retrying with new recipient!");
         send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, false, false, 0));
+            target, "find_router", FindRouterMessage::serialize(target, false, false));
       }
     }
   }
@@ -762,7 +771,7 @@ namespace llarp
   LinkManager::handle_publish_intro(oxen::quic::message m)
   {
     std::string introset, derived_signing_key, payload, sig, nonce;
-    uint64_t is_relayed, relay_order, tx_id;
+    uint64_t is_relayed, relay_order;
     std::chrono::milliseconds signed_at;
 
     try
@@ -772,7 +781,6 @@ namespace llarp
       introset = btdc_a.require<std::string>("I");
       relay_order = btdc_a.require<uint64_t>("O");
       is_relayed = btdc_a.require<uint64_t>("R");
-      tx_id = btdc_a.require<uint64_t>("T");
 
       oxenc::bt_dict_consumer btdc_b{introset.data()};
 
@@ -829,7 +837,7 @@ namespace llarp
         return;
       }
 
-      log::info(link_cat, "Relaying PublishIntroMessage for {} (TXID: {})", addr, tx_id);
+      log::info(link_cat, "Relaying PublishIntroMessage for {}", addr);
 
       const auto& peer_rc = closest_rcs[relay_order];
       const auto& peer_key = peer_rc.pubkey;
@@ -852,7 +860,7 @@ namespace llarp
         send_control_message(
             peer_key,
             "publish_intro",
-            PublishIntroMessage::serialize(introset, relay_order, is_relayed, tx_id));
+            PublishIntroMessage::serialize(introset, relay_order, is_relayed));
       }
 
       return;
@@ -937,7 +945,7 @@ namespace llarp
   {
     std::string tag_name;
     ustring location;
-    uint64_t tx_id, relay_order, is_relayed;
+    uint64_t relay_order, is_relayed;
 
     try
     {
@@ -947,7 +955,6 @@ namespace llarp
       relay_order = btdc.require<uint64_t>("O");
       is_relayed = btdc.require<uint64_t>("R");
       location = btdc.require<ustring>("S");
-      tx_id = btdc.require<uint64_t>("T");
     }
     catch (const std::exception& e)
     {
@@ -978,7 +985,7 @@ namespace llarp
         return;
       }
 
-      log::info(link_cat, "Relaying FindIntroMessage for {} (TXID: {})", addr, tx_id);
+      log::info(link_cat, "Relaying FindIntroMessage for {}", addr);
 
       const auto& peer_rc = closest_rcs[relay_order];
       const auto& peer_key = peer_rc.pubkey;
@@ -986,8 +993,7 @@ namespace llarp
       send_control_message(
           peer_key,
           "find_intro",
-          FindIntroMessage::serialize(
-              dht::Key_t{peer_key}, tag_name, tx_id, is_relayed, relay_order),
+          FindIntroMessage::serialize(dht::Key_t{peer_key}, tag_name, is_relayed, relay_order),
           [original_msg = std::move(m)](oxen::quic::message relay_response) mutable {
             if (relay_response)
               log::info(

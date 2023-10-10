@@ -114,6 +114,12 @@ namespace llarp
         return now >= ExpireTime() - dlt;
       }
 
+      void
+      send_path_control_message(
+          std::string method,
+          std::string body,
+          std::function<void(oxen::quic::message m)> func) override;
+
       // send routing message when end of path
       bool
       SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
