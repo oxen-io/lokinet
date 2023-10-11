@@ -451,6 +451,9 @@ namespace llarp
       dummy.reserve(last_len);
 
       // append dummy frames; path build request must always have MAX_LEN frames
+      // TODO: with the data structured as it is now (bt-encoded dict as each frame)
+      //       the dummy frames can't be completely random; they need to look like
+      //       normal frames
       for (size_t i = 0; i < path::MAX_LEN - n_hops; i++)
       {
         randombytes(reinterpret_cast<uint8_t*>(dummy.data()), dummy.size());

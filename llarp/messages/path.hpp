@@ -6,6 +6,14 @@ namespace llarp
 {
   namespace PathBuildMessage
   {
+    inline auto OK = "OK"sv;
+    inline auto EXCEPTION = "EXCEPTION"sv;
+    inline auto BAD_FRAMES = "BAD_FRAMES"sv;
+    inline auto BAD_CRYPTO = "BAD_CRYPTO"sv;
+    inline auto NO_TRANSIT = "NOT ALLOWING TRANSIT"sv;
+    inline auto BAD_PATHID = "BAD PATH ID"sv;
+    inline auto BAD_LIFETIME = "BAD PATH LIFETIME (TOO LONG)"sv;
+
     inline static void
     setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
@@ -64,7 +72,10 @@ namespace llarp
 
       // encrypt hop_info (mutates in-place)
       if (!crypto->xchacha20(
-              reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
+              reinterpret_cast<unsigned char*>(hop_info.data()),
+              hop_info.size(),
+              shared,
+              outer_nonce))
       {
         log::error(path_cat, "Hop info encryption failed!");
         throw std::runtime_error{"Hop info encrypttion failed"};

@@ -1062,14 +1062,178 @@ namespace llarp
   void
   LinkManager::handle_path_build(oxen::quic::message m)
   {
+    if (!router.path_context().AllowingTransit())
+    {
+      log::warning("got path build request when not permitting transit");
+      m.respond(serialize_response({{"STATUS", PathBuildMessage::NO_TRANSIT}}), true);
+      return;
+    }
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      // not using list_consumer here because we need to move the first (our) frame
+      // to the end and re-send, unless we're the terminal hop.  This could be done
+      // with list_consumer, but it would involve messy mucking around with the
+      // encoded list.  Revisit if optimization issue (shouldn't be).
+      auto frame_list = oxenc::bt_deserialize<oxenc::bt_list>(m.body());
+      if (frames.size() != path::MAX_LEN)
+      {
+        log::info(
+            link_cat,
+            "Path build request has invalid number of records, ",
+            frame_list.size(),
+            "!=",
+            path::MAX_LEN);
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_FRAMES}}), true);
+        return;
+      }
+
+      const auto& hash = frame_list[0].at("hash");
+      auto& frame_str = frame_list[0].at("frame");
+
+      oxenc::bt_dict_consumer frame_dict{frame_str};
+
+      auto hop_info = frame_dict.require<ustring>("encrypted");
+      TunnelNonce nonce;
+      nonce.from_string_view(frame_dict.require<std::string_view>("nonce"));
+      Pubkey otherPubkey;
+      otherPubkey.from_string_view(frame_dict.require<std::string_view>("pubkey"));
+
+      auto crypto = CryptoManager::instance();
+
+      SharedSecret shared;
+      // derive shared secret using ephemeral pubkey and our secret key (and nonce)
+      if (!crypto->dh_server(shared, otherPubkey, router.identity(), nonce))
+      {
+        log::info("DH failed during path build.");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      // hash data and check against given hash
+      ShortHash digest;
+      if (!crypto->hmac(
+              digest.data(),
+              reinterpret_cast<unsigned char*>(frame_str.data()),
+              frame_str.size(),
+              shared))
+      {
+        log::error(link_cat, "HMAC failed on path build request");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+      if (!std::equal(
+              digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
+      {
+        log::info("HMAC mismatch on path build request");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      // decrypt frame with our hop info
+      if (!crypto->xchacha20(
+              reinterpret_cast<unsigned char*>(hop_info.data()), hop_info.size(), shared, nonce))
+      {
+        log::info("decrypt failed on path build request");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      // populate transit hop object with hop info
+      // TODO: how to get downstream hop RouterID from here (all we have is oxen::quic::message)
+      //       could do message->btstream->stream->connection_interface->connectionid
+      //       and check our mapping, but that feels ugly as sin (and message->stream is private)
+      // TODO: also need downstream for IP / path build limiting clients
+      auto hop = std::make_shared<path::TransitHop>();
+      // hop->info.downstream = m.from(); // TODO: RouterID m.from() or similar
+      auto hop_dict = oxenc::bt_dict_consumer{hop_info};
+
+      // extract pathIDs and check if zero or used
+      hop->info.txID.from_string_view(hop_dict.require<std::string_view>("txid"));
+      hop->info.rxID.from_string_view(hop_dict.require<std::string_view>("rxid"));
+      if (info.txID.IsZero() || info.rxID.IsZero())
+      {
+        log::info("Invalid PathID; PathIDs must be non-zero.");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_PATHID}}), true);
+        return;
+      }
+      hop->info.upstream.from_string_view(hop_dict.require<std::string_view>("next");
+
+      // TODO: need downstream (above), and also the whole transit hop container is garbage.
+      //       namely the PathID uniqueness checking uses the PathIDs and upstream/downstream
+      //       but if someone made a path with txid, rxid, and downstream the same but
+      //       a different upstream, that would be "unique" but we wouldn't know where
+      //       to route messages (nevermind that messages don't currently know the RouterID
+      //       they came from).
+      if (router.path_context.HasTransitHop(hop->info))
+      {
+        log::info("Invalid PathID; PathIDs must be unique.");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_PATHID}}), true);
+        return;
+      }
+
+      otherPubkey.from_string_view(hop_dict.require<std::string_view>("commkey"));
+      nonce.from_string_view(hop_dict.require<std::string_view>("nonce"));
+
+      if (!crypto->dh_server(hop->pathKey, otherPubkey, router.identity(), nonce))
+      {
+        log::info("DH failed during path build.");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+      // generate hash of hop key for nonce mutation
+      crypto->shorthash(hop->nonceXOR, hop->pathKey.data(), hop->pathKey.size());
+
+      // set and check path lifetime
+      hop->lifetime = 1ms * hop_dict.require<int64_t>("lifetime");
+      if (hop->lifetime >= path::DEFAULT_LIFETIME)
+      {
+        log::info("path build attempt with too long of a lifetime.");
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_LIFETIME}}), true);
+        return;
+      }
+      hop->started = router.now();
+      router.persist_connection_until(hop->info.downstream, hop->ExpireTime() + 10s);
+
+      if (hop->info.upstream == router.pubkey())
+      {
+        // we are terminal hop and everything is okay
+        router.path_context.PutTransitHop(hop);
+        m.respond(serialize_response({{"STATUS", PathBuildMessage::OK}}), false);
+        return;
+      }
+      else
+      {
+        // rotate our frame to the end of the list and forward upstream
+        frame_list.splice(frame_list.end(), frame_list, frame_list.begin());
+
+        send_control_message(
+            hop->info.upstream,
+            "path_build",
+            bt_serialize(frame_list),
+            [hop, this, prev_message = std::move(m)](oxen::quic::message response) {
+              if (response)
+              {
+                log::info(
+                    link_cat,
+                    "Upstream returned successful path build response; giving hop info to Router, "
+                    "then relaying response");
+                router.path_context.PutTransitHop(hop);
+                m.respond(response.body_str(), false);
+                return;
+              }
+              else if (response.timed_out)
+                log::info(link_cat, "Upstream timed out on path build; relaying timeout");
+              else
+                log::info(link_cat, "Upstream returned path build failure; relaying response");
+
+              m.respond(response.body_str(), true);
+            });
+      }
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{"STATUS", PathBuildMessage::EXCEPTION}}), true);
       return;
     }
   }
