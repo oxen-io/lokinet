@@ -2,7 +2,6 @@
 #include "endpoint_state.hpp"
 #include "endpoint_util.hpp"
 #include "auth.hpp"
-#include "llarp/util/logging.hpp"
 #include "outbound_context.hpp"
 #include "protocol.hpp"
 #include "info.hpp"
@@ -19,6 +18,7 @@
 #include <llarp/dht/messages/gotrouter.hpp>
 #include <llarp/dht/messages/pubintro.hpp>
 #include <llarp/messages/dht.hpp>
+#include <llarp/link/contacts.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
@@ -30,6 +30,7 @@
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/link/link_manager.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/tooling/dht_event.hpp>
 #include <llarp/quic/server.hpp>
 #include <llarp/quic/tunnel.hpp>
@@ -930,16 +931,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::lookup_router(RouterID rid)
+    Endpoint::lookup_router(RouterID rid, std::function<void(oxen::quic::message)> func)
     {
-      using llarp::dht::FindRouterMessage;
-
-      auto& routers = _state->pending_routers;
+      const auto& routers = _state->pending_routers;
 
       if (routers.find(rid) == routers.end())
       {
         auto path = GetEstablishedPathClosestTo(rid);
-        path->find_router("find_router");
+        path->find_router("find_router", func);
         return true;
       }
 
@@ -1287,7 +1286,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
+    Endpoint::EnsurePathToSNode(
+        const RouterID snode,
+        std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)> hook)
     {
       auto& nodeSessions = _state->snode_sessions;
 
@@ -1326,17 +1327,17 @@ namespace llarp
       while (itr != range.second)
       {
         if (itr->second->IsReady())
-          h(snode, itr->second, ConvoTag{itr->second->CurrentPath()->as_array()});
+          hook(snode, itr->second, ConvoTag{itr->second->CurrentPath()->as_array()});
         else
         {
-          itr->second->AddReadyHook([h, snode](auto session) {
+          itr->second->AddReadyHook([hook, snode](auto session) {
             if (session)
             {
-              h(snode, session, ConvoTag{session->CurrentPath()->as_array()});
+              hook(snode, session, ConvoTag{session->CurrentPath()->as_array()});
             }
             else
             {
-              h(snode, nullptr, ConvoTag{});
+              hook(snode, nullptr, ConvoTag{});
             }
           });
           if (not itr->second->BuildCooldownHit(Now()))
@@ -1349,7 +1350,9 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(
-        const Address remote, PathEnsureHook hook, [[maybe_unused]] llarp_time_t timeout)
+        const Address remote,
+        std::function<void(Address, OutboundContext*)> hook,
+        [[maybe_unused]] llarp_time_t timeout)
     {
       if (not WantsOutboundSession(remote))
       {
@@ -1361,8 +1364,6 @@ namespace llarp
 
       /// how many routers to use for lookups
       static constexpr size_t NumParallelLookups = 2;
-      /// how many requests per router
-      static constexpr size_t RequestsPerLookup = 2;
 
       // add response hook to list for address.
       _state->pending_service_lookups.emplace(remote, hook);
@@ -1387,9 +1388,7 @@ namespace llarp
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
-      using namespace std::placeholders;
       const dht::Key_t location = remote.ToKey();
-      uint64_t order = 0;
 
       // flag to only add callback to list of callbacks for
       // address once.
@@ -1397,36 +1396,28 @@ namespace llarp
 
       for (const auto& path : paths)
       {
-        for (size_t count = 0; count < RequestsPerLookup; ++count)
-        {
-          HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-              this,
-              [this](auto addr, auto result, auto from, auto left, auto order) {
-                return OnLookup(addr, result, from, left, order);
-              },
-              location,
-              PubKey{remote.as_array()},
-              path->Endpoint(),
-              order,
-              GenTXID(),
-              timeout + (2 * path->intro.latency) + IntrosetLookupGraceInterval);
-          LogInfo(
-              "doing lookup for ",
-              remote,
-              " via ",
-              path->Endpoint(),
-              " at ",
-              location,
-              " order=",
-              order);
-          order++;
-          if (job->SendRequestViaPath(path, router()))
+        path->find_intro(location, false, 0, [this, hook](oxen::quic::message m) mutable {
+          if (m)
           {
-            hookAdded = true;
+            std::string introset;
+
+            try
+            {
+              oxenc::bt_dict_consumer btdc{m.body()};
+              introset = btdc.require<std::string>("INTROSET");
+            }
+            catch (...)
+            {
+              log::warning(log_cat, "Failed to parse find name response!");
+              throw;
+            }
+
+            service::EncryptedIntroSet enc{introset};
+            router()->contacts()->services()->PutNode(std::move(enc));
+
+            // TODO: finish this
           }
-          else
-            LogError(Name(), " send via path failed for lookup");
-        }
+        });
       }
       return hookAdded;
     }
@@ -1450,6 +1441,7 @@ namespace llarp
         LogWarn("SendToOrQueue failed: convo tag is zero");
         return false;
       }
+
       LogDebug(Name(), " send ", pkt.sz, " bytes on T=", tag);
       if (auto maybe = GetEndpointWithConvoTag(tag))
       {

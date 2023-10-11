@@ -943,7 +943,6 @@ namespace llarp
   void
   LinkManager::handle_find_intro(oxen::quic::message m)
   {
-    std::string tag_name;
     ustring location;
     uint64_t relay_order, is_relayed;
 
@@ -951,7 +950,6 @@ namespace llarp
     {
       oxenc::bt_dict_consumer btdc{m.body()};
 
-      tag_name = btdc.require<std::string>("N");
       relay_order = btdc.require<uint64_t>("O");
       is_relayed = btdc.require<uint64_t>("R");
       location = btdc.require<ustring>("S");
@@ -993,7 +991,7 @@ namespace llarp
       send_control_message(
           peer_key,
           "find_intro",
-          FindIntroMessage::serialize(dht::Key_t{peer_key}, tag_name, is_relayed, relay_order),
+          FindIntroMessage::serialize(dht::Key_t{peer_key}, is_relayed, relay_order),
           [original_msg = std::move(m)](oxen::quic::message relay_response) mutable {
             if (relay_response)
               log::info(

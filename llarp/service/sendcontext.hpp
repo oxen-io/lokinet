@@ -39,8 +39,8 @@ namespace llarp::service
     Introduction remoteIntro;
     ConvoTag currentConvoTag;
     path::PathSet* const m_PathSet;
-    Endpoint* const m_DataHandler;
-    Endpoint* const m_Endpoint;
+    // Endpoint* const m_DataHandler;
+    Endpoint* const service_endpoint;
     uint64_t sequenceNo = 0;
     llarp_time_t lastGoodSend = 0s;
     const llarp_time_t createdAt;

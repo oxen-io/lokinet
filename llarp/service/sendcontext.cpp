@@ -16,8 +16,7 @@ namespace llarp::service
       : remoteIdent(std::move(ident))
       , remoteIntro(intro)
       , m_PathSet(send)
-      , m_DataHandler(ep)
-      , m_Endpoint(ep)
+      , service_endpoint(ep)
       , createdAt(ep->Now())
       , m_SendQueue(SendContextQueueSize)
   {}
@@ -30,7 +29,7 @@ namespace llarp::service
                 std::make_shared<routing::PathTransferMessage>(*msg, remoteIntro.path_id), path))
             == thread::QueueReturn::Success)
     {
-      m_Endpoint->router()->TriggerPump();
+      service_endpoint->router()->TriggerPump();
       return true;
     }
     return false;
@@ -39,7 +38,7 @@ namespace llarp::service
   void
   SendContext::FlushUpstream()
   {
-    auto r = m_Endpoint->router();
+    auto r = service_endpoint->router();
     std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
     auto rttRMS = 0ms;
     while (auto maybe = m_SendQueue.tryPopFront())
@@ -50,7 +49,7 @@ namespace llarp::service
       {
         lastGoodSend = r->now();
         flushpaths.emplace(path);
-        m_Endpoint->ConvoTagTX(msg->protocol_frame_msg.convo_tag);
+        service_endpoint->ConvoTagTX(msg->protocol_frame_msg.convo_tag);
         const auto rtt = (path->intro.latency + remoteIntro.latency) * 2;
         rttRMS += rtt * rtt.count();
       }
@@ -85,7 +84,7 @@ namespace llarp::service
       return;
     }
 
-    if (!m_DataHandler->GetCachedSessionKeyFor(f->convo_tag, shared))
+    if (!service_endpoint->GetCachedSessionKeyFor(f->convo_tag, shared))
     {
       LogWarn(
           m_PathSet->Name(),
@@ -95,10 +94,10 @@ namespace llarp::service
     }
 
     auto m = std::make_shared<ProtocolMessage>();
-    m_DataHandler->PutIntroFor(f->convo_tag, remoteIntro);
-    m_DataHandler->PutReplyIntroFor(f->convo_tag, path->intro);
+    service_endpoint->PutIntroFor(f->convo_tag, remoteIntro);
+    service_endpoint->PutReplyIntroFor(f->convo_tag, path->intro);
     m->proto = t;
-    if (auto maybe = m_Endpoint->GetSeqNoForConvo(f->convo_tag))
+    if (auto maybe = service_endpoint->GetSeqNoForConvo(f->convo_tag))
     {
       m->seqno = *maybe;
     }
@@ -109,11 +108,11 @@ namespace llarp::service
     }
     m->introReply = path->intro;
     f->path_id = m->introReply.path_id;
-    m->sender = m_Endpoint->GetIdentity().pub;
+    m->sender = service_endpoint->GetIdentity().pub;
     m->tag = f->convo_tag;
     m->PutBuffer(payload);
-    m_Endpoint->router()->queue_work([f, m, shared, path, this] {
-      if (not f->EncryptAndSign(*m, shared, m_Endpoint->GetIdentity()))
+    service_endpoint->router()->queue_work([f, m, shared, path, this] {
+      if (not f->EncryptAndSign(*m, shared, service_endpoint->GetIdentity()))
       {
         LogError(m_PathSet->Name(), " failed to sign message");
         return;
@@ -125,7 +124,7 @@ namespace llarp::service
   void
   SendContext::AsyncSendAuth(std::function<void(AuthResult)> resultHandler)
   {
-    if (const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr()))
+    if (const auto maybe = service_endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr()))
     {
       // send auth message
       const llarp_buffer_t authdata{maybe->token};
@@ -154,7 +153,7 @@ namespace llarp::service
           "to prevent bullshittery");
       return;
     }
-    const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
+    const auto maybe = service_endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
     if (maybe.has_value())
     {
       // send auth message

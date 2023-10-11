@@ -284,6 +284,13 @@ namespace llarp
       find_router(std::string rid, std::function<void(oxen::quic::message m)> func = nullptr);
 
       void
+      find_intro(
+          const dht::Key_t& location,
+          bool is_relayed = false,
+          uint64_t order = 0,
+          std::function<void(oxen::quic::message m)> func = nullptr);
+
+      void
       send_path_control_message(
           std::string method,
           std::string body,

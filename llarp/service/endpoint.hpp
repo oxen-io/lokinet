@@ -239,11 +239,13 @@ namespace llarp
 
       // "find router" via closest path
       bool
-      lookup_router(RouterID router);
+      lookup_router(RouterID router, std::function<void(oxen::quic::message)> func = nullptr);
 
       // "find name"
       void
-      lookup_name(std::string name, std::function<void(oxen::quic::message)> func) override;
+      lookup_name(
+          std::string name, std::function<void(oxen::quic::message)> func = nullptr) override;
+
       // "find introset?""
       void
       LookupServiceAsync(
@@ -333,10 +335,6 @@ namespace llarp
           std::function<void(std::optional<ConvoTag>)> hook,
           llarp_time_t timeout) override;
 
-      // passed a sendto context when we have a path established otherwise
-      // nullptr if the path was not made before the timeout
-      using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
-
       static constexpr auto DefaultPathEnsureTimeout = 2s;
 
       /// return false if we have already called this function before for this
@@ -344,17 +342,17 @@ namespace llarp
       bool
       EnsurePathToService(
           const Address remote,
-          PathEnsureHook h,
+          std::function<void(Address, OutboundContext*)> h,
           llarp_time_t timeoutMS = DefaultPathEnsureTimeout);
-
-      using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
       void
       InformPathToService(const Address remote, OutboundContext* ctx);
 
       /// ensure a path to a service node by public key
       bool
-      EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);
+      EnsurePathToSNode(
+          const RouterID remote,
+          std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)> h);
 
       /// return true if this endpoint is trying to lookup this router right now
       bool

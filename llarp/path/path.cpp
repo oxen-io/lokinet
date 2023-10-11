@@ -63,10 +63,21 @@ namespace llarp::path
   }
 
   void
+  Path::find_intro(
+      const dht::Key_t& location,
+      bool is_relayed,
+      uint64_t order,
+      std::function<void(oxen::quic::message m)> func)
+  {
+    send_path_control_message(
+        "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
+  }
+
+  void
   Path::find_name(std::string name, std::function<void(oxen::quic::message m)> func)
   {
     send_path_control_message(
-        "find_router", FindNameMessage::serialize(std::move(name)), std::move(func));
+        "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
   }
 
   void

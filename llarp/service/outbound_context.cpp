@@ -31,7 +31,7 @@ namespace llarp::service
   bool
   OutboundContext::ShouldBundleRC() const
   {
-    return m_Endpoint->ShouldBundleRC();
+    return service_endpoint->ShouldBundleRC();
   }
 
   bool
@@ -87,8 +87,8 @@ namespace llarp::service
     if (remoteIntro != m_NextIntro)
     {
       remoteIntro = m_NextIntro;
-      m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
-      m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+      service_endpoint->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
+      service_endpoint->PutIntroFor(currentConvoTag, remoteIntro);
       ShiftIntroRouter(m_NextIntro.router);
       // if we have not made a handshake to the remote endpoint do so
       if (not IntroGenerated())
@@ -241,19 +241,19 @@ namespace llarp::service
     auto frame = std::make_shared<ProtocolFrameMessage>();
     frame->clear();
     auto ex = std::make_shared<AsyncKeyExchange>(
-        m_Endpoint->Loop(),
+        service_endpoint->Loop(),
         remoteIdent,
-        m_Endpoint->GetIdentity(),
+        service_endpoint->GetIdentity(),
         currentIntroSet.sntru_pubkey,
         remoteIntro,
-        m_DataHandler,
+        service_endpoint,
         currentConvoTag,
         t);
 
     ex->hook = [self = shared_from_this(), path](auto frame) {
       if (not self->Send(std::move(frame), path))
         return;
-      self->m_Endpoint->Loop()->call_later(
+      self->service_endpoint->Loop()->call_later(
           self->remoteIntro.latency, [self]() { self->sentIntro = true; });
     };
 
@@ -263,9 +263,10 @@ namespace llarp::service
     frame->flag = 0;
     generatedIntro = true;
     // ensure we have a sender put for this convo tag
-    m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
+    service_endpoint->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
     // encrypt frame async
-    m_Endpoint->router()->queue_work([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
+    service_endpoint->router()->queue_work(
+        [ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
 
     LogInfo(Name(), " send intro frame T=", currentConvoTag);
   }
@@ -287,7 +288,7 @@ namespace llarp::service
     m_LastIntrosetUpdateAt = now;
     // we want to use the parent endpoint's paths because outbound context
     // does not implement path::PathSet::HandleGotIntroMessage
-    const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2, location);
+    const auto paths = GetManyPathsWithUniqueEndpoints(service_endpoint, 2, location);
     [[maybe_unused]] uint64_t relayOrder = 0;
     for ([[maybe_unused]] const auto& path : paths)
     {
@@ -352,7 +353,7 @@ namespace llarp::service
       // if we dont have a cached session key after sending intro we are in a fugged state so
       // expunge
       SharedSecret discardme;
-      if (not m_DataHandler->GetCachedSessionKeyFor(currentConvoTag, discardme))
+      if (not service_endpoint->GetCachedSessionKeyFor(currentConvoTag, discardme))
       {
         LogError(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
         return true;
@@ -397,7 +398,7 @@ namespace llarp::service
     }
     // lookup router in intro if set and unknown
     if (not m_NextIntro.router.IsZero())
-      m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
+      service_endpoint->EnsureRouterIsKnown(m_NextIntro.router);
 
     if (ReadyToSend() and not m_ReadyHooks.empty())
     {
@@ -470,7 +471,7 @@ namespace llarp::service
     }
     if (m_NextIntro.router.IsZero())
       return std::nullopt;
-    return GetHopsAlignedToForBuild(m_NextIntro.router, m_Endpoint->SnodeBlacklist());
+    return GetHopsAlignedToForBuild(m_NextIntro.router, service_endpoint->SnodeBlacklist());
   }
 
   bool
@@ -538,7 +539,7 @@ namespace llarp::service
     {
       if (intro.ExpiresSoon(now))
         continue;
-      if (m_Endpoint->SnodeBlacklist().count(intro.router))
+      if (service_endpoint->SnodeBlacklist().count(intro.router))
         continue;
       if (remoteIntro.router == intro.router)
       {
@@ -554,9 +555,9 @@ namespace llarp::service
       /// pick newer intro not on same router
       for (const auto& intro : intros)
       {
-        if (m_Endpoint->SnodeBlacklist().count(intro.router))
+        if (service_endpoint->SnodeBlacklist().count(intro.router))
           continue;
-        m_Endpoint->EnsureRouterIsKnown(intro.router);
+        service_endpoint->EnsureRouterIsKnown(intro.router);
         if (intro.ExpiresSoon(now))
           continue;
         if (m_NextIntro != intro)
@@ -627,13 +628,13 @@ namespace llarp::service
   bool
   OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrameMessage& frame)
   {
-    m_LastInboundTraffic = m_Endpoint->Now();
+    m_LastInboundTraffic = service_endpoint->Now();
     m_GotInboundTraffic = true;
     if (frame.flag)
     {
       // handle discard
       ServiceInfo si;
-      if (!m_Endpoint->GetSenderFor(frame.convo_tag, si))
+      if (!service_endpoint->GetSenderFor(frame.convo_tag, si))
       {
         LogWarn("no sender for T=", frame.convo_tag);
         return false;
@@ -651,7 +652,7 @@ namespace llarp::service
       if (const auto maybe = AuthResultCodeFromInt(frame.flag))
         result.code = *maybe;
       SharedSecret sessionKey{};
-      if (m_DataHandler->GetCachedSessionKeyFor(frame.convo_tag, sessionKey))
+      if (service_endpoint->GetCachedSessionKeyFor(frame.convo_tag, sessionKey))
       {
         ProtocolMessage msg{};
         if (frame.DecryptPayloadInto(sessionKey, msg))
@@ -664,7 +665,7 @@ namespace llarp::service
         }
       }
 
-      m_Endpoint->RemoveConvoTag(frame.convo_tag);
+      service_endpoint->RemoveConvoTag(frame.convo_tag);
       if (authResultListener)
       {
         authResultListener(result);
@@ -687,8 +688,8 @@ namespace llarp::service
         handler(result);
       };
     }
-    const auto& ident = m_Endpoint->GetIdentity();
-    if (not frame.AsyncDecryptAndVerify(m_Endpoint->Loop(), p, ident, m_Endpoint, hook))
+    const auto& ident = service_endpoint->GetIdentity();
+    if (not frame.AsyncDecryptAndVerify(service_endpoint->Loop(), p, ident, service_endpoint, hook))
     {
       // send reset convo tag message
       LogError("failed to decrypt and verify frame");
@@ -700,8 +701,8 @@ namespace llarp::service
       f.Sign(ident);
       {
         LogWarn("invalidating convotag T=", frame.convo_tag);
-        m_Endpoint->RemoveConvoTag(frame.convo_tag);
-        m_Endpoint->_send_queue.tryPushBack(
+        service_endpoint->RemoveConvoTag(frame.convo_tag);
+        service_endpoint->_send_queue.tryPushBack(
             SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.path_id), p});
       }
     }

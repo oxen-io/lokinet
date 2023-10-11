@@ -59,13 +59,12 @@ namespace llarp
     inline auto INSUFFICIENT_NODES = "INSUFFICIENT NODES"sv;
 
     inline static std::string
-    serialize(const dht::Key_t& location, std::string tag, bool is_relayed, uint64_t order)
+    serialize(const dht::Key_t& location, bool is_relayed, uint64_t order)
     {
       oxenc::bt_dict_producer btdp;
 
       try
       {
-        btdp.append("N", tag);
         btdp.append("O", order);
         btdp.append("R", is_relayed ? 1 : 0);
         btdp.append("S", location.ToView());

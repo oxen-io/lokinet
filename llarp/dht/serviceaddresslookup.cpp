@@ -1,6 +1,5 @@
 #include "serviceaddresslookup.hpp"
 
-#include "context.hpp"
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/messages/gotintro.hpp>
 #include <utility>
