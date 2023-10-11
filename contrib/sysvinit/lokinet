@@ -1,0 +1,59 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: lokinet
+# Required-Start:	$syslog $local_fs $remote_fs $network
+# Required-Stop:	$syslog $local_fs $remote_fs $network
+# Default-Start:	2 3 4 5
+# Default-Stop:		0 1 6
+# Short-Description: LokiNET: Anonymous Network layer thingydoo, client
+### END INIT INFO
+
+. /lib/lsb/init-functions
+prog=lokinet
+PIDFILE=/var/run/$prog.pid
+DESC="LokiNET: Anonymous Network layer thingydoo, client"
+start() {
+	log_daemon_msg "Starting $DESC" "$prog"
+	if start-stop-daemon --start --quiet --oknodo --chuid lokinet:lokinet --background --make-pidfile --pidfile $PIDFILE --exec  /usr/bin/$prog /var/lib/lokinet/lokinet.ini; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+}
+
+stop() {
+	log_daemon_msg "Stopping $DESC" "$prog"
+	if start-stop-daemon --stop --quiet --oknodo --remove-pidfile --pidfile $PIDFILE --exec /usr/bin/$prog ; then
+		log_end_msg 0 || true
+	else
+		log_end_msg 1 || true
+	fi
+}
+
+reload() {
+    log_daemon_msg "Reload $DESC" "$prog"
+	if pkill -SIGUSR1 $(cat $PIDFILE ) ; then
+        log_end_msg 0 || true
+    else
+        log_end_msg 1 || true
+    fi
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	force-reload)
+		force_reload
+		;;
+	restart)
+		stop
+		start
+		;;
+	*)
+		echo "Usage: $prog {start|stop|reload|restart}"
+		exit 2
+esac
