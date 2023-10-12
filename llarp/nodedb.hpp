@@ -41,8 +41,6 @@ namespace llarp
 
     llarp_time_t m_NextFlushAt;
 
-    mutable util::NullMutex m_Access;
-
     /// asynchronously remove the files for a set of rcs on disk given their public ident key
     void
     remove_many_from_disk_async(std::unordered_set<RouterID> idents) const;

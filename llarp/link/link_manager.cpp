@@ -232,17 +232,15 @@ namespace llarp
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(
-          remote,
-          [this](
-              [[maybe_unused]] const RouterID& rid,
-              const RouterContact* const rc,
-              const RCRequestResult res) {
-            if (res == RCRequestResult::Success)
-              connect_to(*rc);
-            else
-              log::warning(quic_cat, "Do something intelligent here for error handling");
-          });
+      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
+        if (success)
+        {
+          _router.node_db()->put_rc_if_newer(*rc);
+          connect_to(*rc);
+        }
+        else
+          log::warning(quic_cat, "Do something intelligent here for error handling");
+      });
     });
 
     return false;
@@ -266,17 +264,15 @@ namespace llarp
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(
-          remote,
-          [this](
-              [[maybe_unused]] const RouterID& rid,
-              const RouterContact* const rc,
-              const RCRequestResult res) {
-            if (res == RCRequestResult::Success)
-              connect_to(*rc);
-            else
-              log::warning(quic_cat, "Do something intelligent here for error handling");
-          });
+      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
+        if (success)
+        {
+          _router.node_db()->put_rc_if_newer(*rc);
+          connect_to(*rc);
+        }
+        else
+          log::warning(quic_cat, "Do something intelligent here for error handling");
+      });
     });
 
     return false;
@@ -291,19 +287,15 @@ namespace llarp
   void
   LinkManager::connect_to(const RouterID& rid)
   {
-    rc_lookup->get_rc(
-        rid,
-        [this](
-            [[maybe_unused]] const RouterID& rid,
-            const RouterContact* const rc,
-            const RCRequestResult res) {
-          if (res == RCRequestResult::Success)
-            connect_to(*rc);
-          /* TODO:
-          else
-            RC lookup failure callback here
-          */
-        });
+    rc_lookup->get_rc(rid, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
+      if (success)
+      {
+        _router.node_db()->put_rc_if_newer(*rc);
+        connect_to(*rc);
+      }
+      else
+        log::warning(quic_cat, "Do something intelligent here for error handling");
+    });
   }
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
@@ -771,6 +763,12 @@ namespace llarp
   void
   LinkManager::handle_find_router_error(oxen::quic::message&& m)
   {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "FindRouterMessage timed out!");
+      return;
+    }
+
     std::string status, payload;
 
     try

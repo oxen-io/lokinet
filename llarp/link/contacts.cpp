@@ -17,12 +17,14 @@ namespace llarp
   std::optional<service::EncryptedIntroSet>
   Contacts::get_introset_by_location(const dht::Key_t& key) const
   {
-    auto& introsets = _introset_nodes->nodes;
+    return _router.loop()->call_get([this, key]() -> std::optional<service::EncryptedIntroSet> {
+      auto& introsets = _introset_nodes->nodes;
 
-    if (auto itr = introsets.find(key); itr != introsets.end())
-      return itr->second.introset;
+      if (auto itr = introsets.find(key); itr != introsets.end())
+        return itr->second.introset;
 
-    return std::nullopt;
+      return std::nullopt;
+    });
   }
 
   void

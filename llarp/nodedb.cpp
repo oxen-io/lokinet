@@ -75,18 +75,18 @@ namespace llarp
 
     if (now > m_NextFlushAt)
     {
-      m_NextFlushAt += FlushInterval;
-      // make copy of all rcs
-      std::vector<RouterContact> copy;
-      for (const auto& item : entries)
-        copy.push_back(item.second.rc);
-      // flush them to disk in one big job
-      // TODO: split this up? idk maybe some day...
-      disk([this, data = std::move(copy)]() {
-        for (const auto& rc : data)
-        {
-          rc.Write(get_path_by_pubkey(rc.pubkey));
-        }
+      router.loop()->call([this]() {
+        m_NextFlushAt += FlushInterval;
+        // make copy of all rcs
+        std::vector<RouterContact> copy;
+        for (const auto& item : entries)
+          copy.push_back(item.second.rc);
+        // flush them to disk in one big job
+        // TODO: split this up? idk maybe some day...
+        disk([this, data = std::move(copy)]() {
+          for (const auto& rc : data)
+            rc.Write(get_path_by_pubkey(rc.pubkey));
+        });
       });
     }
   }
@@ -110,61 +110,64 @@ namespace llarp
   {
     if (m_Root.empty())
       return;
-    std::set<fs::path> purge;
 
-    for (const char& ch : skiplist_subdirs)
-    {
-      if (!ch)
-        continue;
-      std::string p;
-      p += ch;
-      fs::path sub = m_Root / p;
+    router.loop()->call([this]() {
+      std::set<fs::path> purge;
 
-      llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-        // skip files that are not suffixed with .signed
-        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+      for (const char& ch : skiplist_subdirs)
+      {
+        if (!ch)
+          continue;
+        std::string p;
+        p += ch;
+        fs::path sub = m_Root / p;
+
+        llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
+          // skip files that are not suffixed with .signed
+          if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+            return true;
+
+          RouterContact rc{};
+
+          if (not rc.Read(f))
+          {
+            // try loading it, purge it if it is junk
+            purge.emplace(f);
+            return true;
+          }
+
+          if (not rc.FromOurNetwork())
+          {
+            // skip entries that are not from our network
+            return true;
+          }
+
+          if (rc.IsExpired(time_now_ms()))
+          {
+            // rc expired dont load it and purge it later
+            purge.emplace(f);
+            return true;
+          }
+
+          // validate signature and purge entries with invalid signatures
+          // load ones with valid signatures
+          if (rc.VerifySignature())
+            entries.emplace(rc.pubkey, rc);
+          else
+            purge.emplace(f);
+
           return true;
+        });
+      }
 
-        RouterContact rc{};
+      if (not purge.empty())
+      {
+        log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
 
-        if (not rc.Read(f))
-        {
-          // try loading it, purge it if it is junk
-          purge.emplace(f);
-          return true;
-        }
-
-        if (not rc.FromOurNetwork())
-        {
-          // skip entries that are not from our network
-          return true;
-        }
-
-        if (rc.IsExpired(time_now_ms()))
-        {
-          // rc expired dont load it and purge it later
-          purge.emplace(f);
-          return true;
-        }
-
-        // validate signature and purge entries with invalid signatures
-        // load ones with valid signatures
-        if (rc.VerifySignature())
-          entries.emplace(rc.pubkey, rc);
-        else
-          purge.emplace(f);
-
-        return true;
-      });
-    }
-
-    if (not purge.empty())
-    {
-      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
-
-      for (const auto& fpath : purge)
-        fs::remove(fpath);
-    }
+        for (const auto& fpath : purge)
+          fs::remove(fpath);
+      }
+    });
   }
 
   void
@@ -190,8 +193,10 @@ namespace llarp
   {
     return router.loop()->call_get([this, pk]() -> std::optional<RouterContact> {
       const auto itr = entries.find(pk);
+
       if (itr == entries.end())
         return std::nullopt;
+
       return itr->second.rc;
     });
   }

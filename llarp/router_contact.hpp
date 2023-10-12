@@ -103,6 +103,12 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const;
 
+    RouterID
+    router_id() const
+    {
+      return pubkey;
+    }
+
     nlohmann::json
     ToJson() const
     {

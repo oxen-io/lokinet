@@ -515,29 +515,27 @@ namespace llarp
       DoPathBuildBackoff();
       for (const auto& hop : p->hops)
       {
-        const RouterID rid{hop.rc.pubkey};
+        const RouterID target{hop.rc.pubkey};
         // look up router and see if it's still on the network
-        router->loop()->call_soon([rid, r = router]() {
-          log::info(path_cat, "Looking up RouterID {} due to path build timeout", rid);
-          r->rc_lookup_handler().get_rc(
-              rid,
-              [r](const auto& rid, const auto* rc, auto result) {
-                if (result == RCRequestResult::Success && rc != nullptr)
-                {
-                  log::info(path_cat, "Refreshed RouterContact for {}", rid);
-                  ;
-                  r->node_db()->put_rc_if_newer(*rc);
-                }
-                else
-                {
-                  // remove all connections to this router as it's probably not registered anymore
-                  log::warning(path_cat, "Removing router {} due to path build timeout", rid);
-                  r->link_manager().deregister_peer(rid);
-                  r->node_db()->remove_router(rid);
-                }
-              },
-              true);
-        });
+        log::info(path_cat, "Looking up RouterID {} due to path build timeout", target);
+
+        router->rc_lookup_handler().get_rc(
+            target,
+            [this](auto rid, auto rc, auto success) {
+              if (success && rc)
+              {
+                log::info(path_cat, "Refreshed RouterContact for {}", rid);
+                router->node_db()->put_rc_if_newer(*rc);
+              }
+              else
+              {
+                // remove all connections to this router as it's probably not registered anymore
+                log::warning(path_cat, "Removing router {} due to path build timeout", rid);
+                router->link_manager().deregister_peer(rid);
+                router->node_db()->remove_router(rid);
+              }
+            },
+            true);
       }
     }
 
