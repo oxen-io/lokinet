@@ -54,7 +54,7 @@ namespace llarp
         auto& c = itr->second;
         auto& _scid = c->conn->scid();
 
-        link_manager.router.loop()->call([this, scid = _scid, rid = _rid]() {
+        link_manager._router.loop()->call([this, scid = _scid, rid = _rid]() {
           endpoint->close_connection(scid);
 
           conns.erase(rid);
@@ -111,7 +111,7 @@ namespace llarp
         auto& c = itr->second;
         auto& _scid = c->conn->scid();
 
-        link_manager.router.loop()->call([this, scid = _scid, rid = _rid]() {
+        link_manager._router.loop()->call([this, scid = _scid, rid = _rid]() {
           endpoint->close_connection(scid);
 
           conns.erase(rid);
@@ -137,7 +137,7 @@ namespace llarp
     for (const auto& [name, func] : rpc_commands)
     {
       s->register_command(name, [this, f = func](oxen::quic::message m) {
-        router.loop()->call([this, func = f, msg = std::move(m)]() mutable {
+        _router.loop()->call([this, func = f, msg = std::move(m)]() mutable {
           std::invoke(func, this, std::move(msg));
         });
       });
@@ -155,7 +155,7 @@ namespace llarp
             - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
     */
     auto ep = quic->endpoint(
-        router.public_ip(),
+        _router.public_ip(),
         [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
         [this](oxen::quic::connection_interface& ci, uint64_t ec) {
           return on_conn_closed(ci, ec);
@@ -178,11 +178,11 @@ namespace llarp
   }
 
   LinkManager::LinkManager(Router& r)
-      : router{r}
+      : _router{r}
       , quic{std::make_unique<oxen::quic::Network>()}
       , tls_creds{oxen::quic::GNUTLSCreds::make_from_ed_keys(
-            {reinterpret_cast<const char*>(router.identity().data()), size_t{32}},
-            {reinterpret_cast<const char*>(router.identity().toPublic().data()), size_t{32}})}
+            {reinterpret_cast<const char*>(_router.identity().data()), size_t{32}},
+            {reinterpret_cast<const char*>(_router.identity().toPublic().data()), size_t{32}})}
       , ep{startup_endpoint(), *this}
   {}
 
@@ -203,7 +203,7 @@ namespace llarp
     if (func)
     {
       func = [this, f = std::move(func)](oxen::quic::message m) mutable {
-        router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(msg); });
+        _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(msg); });
       };
     }
 
@@ -226,7 +226,7 @@ namespace llarp
       return true;
     }
 
-    router.loop()->call([this, remote, endpoint, body, f = std::move(func)]() {
+    _router.loop()->call([this, remote, endpoint, body, f = std::move(func)]() {
       auto pending = PendingControlMessage(body, endpoint, f);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
@@ -260,7 +260,7 @@ namespace llarp
       return true;
     }
 
-    router.loop()->call([&]() {
+    _router.loop()->call([&]() {
       auto pending = PendingDataMessage(body);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
@@ -289,7 +289,7 @@ namespace llarp
   }
 
   void
-  LinkManager::connect_to(RouterID rid)
+  LinkManager::connect_to(const RouterID& rid)
   {
     rc_lookup->get_rc(
         rid,
@@ -308,7 +308,7 @@ namespace llarp
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
   void
-  LinkManager::connect_to(RouterContact rc)
+  LinkManager::connect_to(const RouterContact& rc)
   {
     if (auto conn = ep.get_conn(rc.pubkey); conn)
     {
@@ -333,7 +333,7 @@ namespace llarp
   void
   LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
   {
-    router.loop()->call([this, &conn_interface = ci]() {
+    _router.loop()->call([this, &conn_interface = ci]() {
       const auto& scid = conn_interface.scid();
       const auto& rid = ep.connid_map[scid];
 
@@ -367,7 +367,7 @@ namespace llarp
   void
   LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
   {
-    router.loop()->call([this, &conn_interface = ci, error_code = ec]() {
+    _router.loop()->call([this, &conn_interface = ci, error_code = ec]() {
       const auto& scid = conn_interface.scid();
 
       log::debug(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
@@ -488,7 +488,7 @@ namespace llarp
   {
     is_stopping = false;
     rc_lookup = rcLookup;
-    node_db = router.node_db();
+    node_db = _router.node_db();
   }
 
   void
@@ -543,7 +543,7 @@ namespace llarp
       m.respond(serialize_response({{"STATUS", FindNameMessage::EXCEPTION}}), true);
     }
 
-    router.rpc_client()->lookup_ons_hash(
+    _router.rpc_client()->lookup_ons_hash(
         name_hash, [this, msg = std::move(m)](std::optional<service::EncryptedName> maybe) mutable {
           if (maybe.has_value())
             msg.respond(serialize_response({{"NAME", maybe->ciphertext}}));
@@ -616,7 +616,7 @@ namespace llarp
     {
       log::warning(link_cat, "Exception: {}", e.what());
       m.respond(
-          serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"RECIPIENT", ""}}), true);
+          serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"TARGET", ""}}), true);
       return;
     }
 
@@ -626,31 +626,32 @@ namespace llarp
     target_rid.FromString(target_key);
 
     const auto target_addr = dht::Key_t{reinterpret_cast<uint8_t*>(target_key.data())};
-    const auto& local_rid = router.rc().pubkey;
+    const auto& local_rid = _router.rc().pubkey;
     const auto local_key = dht::Key_t{local_rid};
 
     if (is_exploratory)
     {
       std::string neighbors{};
       const auto closest_rcs =
-          router.node_db()->FindManyClosestTo(target_addr, RC_LOOKUP_STORAGE_REDUNDANCY);
+          _router.node_db()->find_many_closest_to(target_addr, RC_LOOKUP_STORAGE_REDUNDANCY);
 
       for (const auto& rc : closest_rcs)
       {
         const auto& rid = rc.pubkey;
-        if (router.router_profiling().IsBadForConnect(rid) || target_rid == rid || local_rid == rid)
+        if (_router.router_profiling().IsBadForConnect(rid) || target_rid == rid
+            || local_rid == rid)
           continue;
 
-        neighbors += oxenc::bt_serialize(rid.ToString());
+        neighbors += rid.bt_encode();
       }
 
       m.respond(
-          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"RECIPIENT", neighbors}}),
+          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}),
           true);
     }
     else
     {
-      const auto closest_rc = router.node_db()->FindClosestTo(target_addr);
+      const auto closest_rc = _router.node_db()->find_closest_to(target_addr);
       const auto& closest_rid = closest_rc.pubkey;
       const auto closest_key = dht::Key_t{closest_rid};
 
@@ -668,7 +669,7 @@ namespace llarp
         }
         else
         {
-          m.respond(serialize_response({{"RC", closest_rc.ToString()}}));
+          m.respond(serialize_response({{"RC", closest_rc.bt_encode()}}));
         }
       }
       else if (not is_iterative)
@@ -687,7 +688,7 @@ namespace llarp
         {
           m.respond(
               serialize_response(
-                  {{"STATUS", FindRouterMessage::RETRY_ITER}, {"RECIPIENT", target_addr.data()}}),
+                  {{"STATUS", FindRouterMessage::RETRY_ITER}, {"TARGET", target_addr.data()}}),
               true);
         }
       }
@@ -696,7 +697,7 @@ namespace llarp
         m.respond(
             serialize_response(
                 {{"STATUS", FindRouterMessage::RETRY_NEW},
-                 {"RECIPIENT", reinterpret_cast<const char*>(closest_rid.data())}}),
+                 {"TARGET", reinterpret_cast<const char*>(closest_rid.data())}}),
             true);
       }
     }
@@ -721,8 +722,8 @@ namespace llarp
         payload = btdc.require<std::string>("RC");
       else
       {
-        status = btdc.require<std::string>("STATUS");
         payload = btdc.require<std::string>("RECIPIENT");
+        status = btdc.require<std::string>("TARGET");
       }
     }
     catch (const std::exception& e)
@@ -733,7 +734,7 @@ namespace llarp
 
     if (m)
     {
-      router.node_db()->PutIfNewer(RouterContact{payload});
+      _router.node_db()->put_rc_if_newer(RouterContact{payload});
     }
     else
     {
@@ -768,6 +769,53 @@ namespace llarp
   }
 
   void
+  LinkManager::handle_find_router_error(oxen::quic::message&& m)
+  {
+    std::string status, payload;
+
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      payload = btdc.require<std::string>("RECIPIENT");
+      status = btdc.require<std::string>("TARGET");
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+
+    if (status == FindRouterMessage::EXCEPTION)
+    {
+      log::info(link_cat, "FindRouterMessage failed with remote exception!");
+      // Do something smart here probably
+      return;
+    }
+
+    RouterID target{reinterpret_cast<uint8_t*>(payload.data())};
+
+    if (status == FindRouterMessage::RETRY_EXP)
+    {
+      log::info(link_cat, "FindRouterMessage failed, retrying as exploratory!");
+      send_control_message(
+          target, "find_router", FindRouterMessage::serialize(target, false, true));
+    }
+    else if (status == FindRouterMessage::RETRY_ITER)
+    {
+      log::info(link_cat, "FindRouterMessage failed, retrying as iterative!");
+      send_control_message(
+          target, "find_router", FindRouterMessage::serialize(target, true, false));
+    }
+    else if (status == FindRouterMessage::RETRY_NEW)
+    {
+      log::info(link_cat, "FindRouterMessage failed, retrying with new recipient!");
+      send_control_message(
+          target, "find_router", FindRouterMessage::serialize(target, false, false));
+    }
+  }
+
+  void
   LinkManager::handle_publish_intro(oxen::quic::message m)
   {
     std::string introset, derived_signing_key, payload, sig, nonce;
@@ -797,9 +845,9 @@ namespace llarp
       return;
     }
 
-    const auto now = router.now();
+    const auto now = _router.now();
     const auto addr = dht::Key_t{reinterpret_cast<uint8_t*>(derived_signing_key.data())};
-    const auto local_key = router.rc().pubkey;
+    const auto local_key = _router.rc().pubkey;
 
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
@@ -815,7 +863,7 @@ namespace llarp
       return;
     }
 
-    auto closest_rcs = router.node_db()->FindManyClosestTo(addr, INTROSET_STORAGE_REDUNDANCY);
+    auto closest_rcs = _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
 
     if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
     {
@@ -849,7 +897,7 @@ namespace llarp
             "Received PublishIntroMessage in which we are peer index {}.. storing introset",
             relay_order);
 
-        router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
+        _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
         m.respond(serialize_response({{"STATUS", ""}}));
       }
       else
@@ -882,7 +930,7 @@ namespace llarp
     {
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
-      router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
+      _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
       m.respond(serialize_response());
     }
     else
@@ -973,7 +1021,7 @@ namespace llarp
         return;
       }
 
-      auto closest_rcs = router.node_db()->FindManyClosestTo(addr, INTROSET_STORAGE_REDUNDANCY);
+      auto closest_rcs = _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
 
       if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
       {
@@ -1010,7 +1058,7 @@ namespace llarp
     }
     else
     {
-      if (auto maybe_intro = router.contacts()->get_introset_by_location(addr))
+      if (auto maybe_intro = _router.contacts()->get_introset_by_location(addr))
         m.respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
       else
       {
@@ -1048,7 +1096,7 @@ namespace llarp
     if (m)
     {
       service::EncryptedIntroSet enc{payload};
-      router.contacts()->services()->PutNode(std::move(enc));
+      _router.contacts()->services()->PutNode(std::move(enc));
     }
     else
     {
@@ -1060,7 +1108,7 @@ namespace llarp
   void
   LinkManager::handle_path_build(oxen::quic::message m)
   {
-    if (!router.path_context().AllowingTransit())
+    if (!_router.path_context().AllowingTransit())
     {
       log::warning("got path build request when not permitting transit");
       m.respond(serialize_response({{"STATUS", PathBuildMessage::NO_TRANSIT}}), true);
@@ -1100,7 +1148,7 @@ namespace llarp
 
       SharedSecret shared;
       // derive shared secret using ephemeral pubkey and our secret key (and nonce)
-      if (!crypto->dh_server(shared, otherPubkey, router.identity(), nonce))
+      if (!crypto->dh_server(shared, otherPubkey, _router.identity(), nonce))
       {
         log::info("DH failed during path build.");
         m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
@@ -1162,7 +1210,7 @@ namespace llarp
       //       a different upstream, that would be "unique" but we wouldn't know where
       //       to route messages (nevermind that messages don't currently know the RouterID
       //       they came from).
-      if (router.path_context.HasTransitHop(hop->info))
+      if (_router.path_context.HasTransitHop(hop->info))
       {
         log::info("Invalid PathID; PathIDs must be unique.");
         m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_PATHID}}), true);
@@ -1172,7 +1220,7 @@ namespace llarp
       otherPubkey.from_string_view(hop_dict.require<std::string_view>("commkey"));
       nonce.from_string_view(hop_dict.require<std::string_view>("nonce"));
 
-      if (!crypto->dh_server(hop->pathKey, otherPubkey, router.identity(), nonce))
+      if (!crypto->dh_server(hop->pathKey, otherPubkey, _router.identity(), nonce))
       {
         log::info("DH failed during path build.");
         m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
@@ -1189,13 +1237,13 @@ namespace llarp
         m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_LIFETIME}}), true);
         return;
       }
-      hop->started = router.now();
-      router.persist_connection_until(hop->info.downstream, hop->ExpireTime() + 10s);
+      hop->started = _router.now();
+      _router.persist_connection_until(hop->info.downstream, hop->ExpireTime() + 10s);
 
-      if (hop->info.upstream == router.pubkey())
+      if (hop->info.upstream == _router.pubkey())
       {
         // we are terminal hop and everything is okay
-        router.path_context.PutTransitHop(hop);
+        _router.path_context.PutTransitHop(hop);
         m.respond(serialize_response({{"STATUS", PathBuildMessage::OK}}), false);
         return;
       }
@@ -1215,7 +1263,7 @@ namespace llarp
                     link_cat,
                     "Upstream returned successful path build response; giving hop info to Router, "
                     "then relaying response");
-                router.path_context.PutTransitHop(hop);
+                _router.path_context.PutTransitHop(hop);
                 m.respond(response.body_str(), false);
                 return;
               }
@@ -1361,17 +1409,17 @@ namespace llarp
 
       RouterID target{pubkey.data()};
       auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          router.path_context().GetByUpstream(target, PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByUpstream(target, PathID_t{to_usv(tx_id).data()}));
 
       const auto rx_id = transit_hop->info.rxID;
       const auto next_seqno = transit_hop->NextSeqNo();
 
       auto success =
           (CryptoManager::instance()->verify(pubkey, to_usv(dict_data), sig)
-           and router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
+           and _router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
 
       m.respond(
-          ObtainExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id),
+          ObtainExit::sign_and_serialize_response(_router.identity(), next_seqno, tx_id),
           not success);
     }
     catch (const std::exception& e)
@@ -1408,9 +1456,9 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
 
       auto path_ptr = std::static_pointer_cast<path::Path>(
-          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
-      if (CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+      if (CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
         path_ptr->enable_exit_traffic();
     }
     catch (const std::exception& e)
@@ -1437,17 +1485,18 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
 
       auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          router.path_context().GetByUpstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByUpstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
       const auto next_seqno = transit_hop->NextSeqNo();
 
-      if (auto exit_ep = router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
+      if (auto exit_ep =
+              _router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
       {
         if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
               ? m.respond(
-                  UpdateExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id))
+                  UpdateExit::sign_and_serialize_response(_router.identity(), next_seqno, tx_id))
               : m.respond(serialize_response({{"STATUS", UpdateExit::UPDATE_FAILED}}), true);
         }
         // If we fail to verify the message, no-op
@@ -1487,9 +1536,9 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
 
       auto path_ptr = std::static_pointer_cast<path::Path>(
-          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
-      if (CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+      if (CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
       {
         if (path_ptr->update_exit(std::stoul(tx_id)))
         {
@@ -1523,7 +1572,7 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
 
       auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          router.path_context().GetByUpstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByUpstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
       const auto rx_id = transit_hop->info.rxID;
       const auto next_seqno = transit_hop->NextSeqNo();
@@ -1533,7 +1582,7 @@ namespace llarp
         if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           exit_ep->Close();
-          m.respond(CloseExit::sign_and_serialize_response(router.identity(), next_seqno, tx_id));
+          m.respond(CloseExit::sign_and_serialize_response(_router.identity(), next_seqno, tx_id));
         }
       }
 
@@ -1574,10 +1623,10 @@ namespace llarp
       nonce = btdc.require<std::string_view>("Y");
 
       auto path_ptr = std::static_pointer_cast<path::Path>(
-          router.path_context().GetByDownstream(router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
       if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
-          and CryptoManager::instance()->verify(router.pubkey(), to_usv(dict_data), sig))
+          and CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
         path_ptr->close_exit();
     }
     catch (const std::exception& e)

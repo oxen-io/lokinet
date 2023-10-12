@@ -13,7 +13,6 @@
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/link/link_manager.hpp>
-#include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 #include <llarp/profiling.hpp>
@@ -67,16 +66,6 @@ namespace llarp
   static constexpr size_t RC_LOOKUP_STORAGE_REDUNDANCY{4};
 
   struct Contacts;
-
-  class RouteManager final /* : public Router */
-  {
-   public:
-    std::shared_ptr<oxen::quic::connection_interface>
-    get_or_connect();
-
-   private:
-    std::shared_ptr<oxen::quic::Endpoint> ep;
-  };
 
   struct Router : std::enable_shared_from_this<Router>
   {
@@ -185,6 +174,15 @@ namespace llarp
    public:
     void
     for_each_connection(std::function<void(link::Connection&)> func);
+
+    void
+    lookup_router(RouterID rid, std::function<void(oxen::quic::message)> = nullptr);
+
+    void
+    connect_to(const RouterID& rid);
+
+    void
+    connect_to(const RouterContact& rc);
 
     Contacts*
     contacts() const
@@ -496,12 +494,6 @@ namespace llarp
       return seckey_topublic(_identity);
     }
 
-    void
-    try_connect(fs::path rcfile);
-
-    bool
-    TryConnectAsync(RouterContact rc, uint16_t tries);
-
     /// send to remote router or queue for sending
     /// returns false on overflow
     /// returns true on successful queue
@@ -563,9 +555,6 @@ namespace llarp
 
     void
     HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results);
-
-    void
-    LookupRouter(RouterID remote, RouterLookupHandler resultHandler);
 
     bool
     HasSessionTo(const RouterID& remote) const;

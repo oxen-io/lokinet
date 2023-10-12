@@ -70,19 +70,10 @@ namespace llarp
   }
 
   bool
-  Contacts::lookup_router(const RouterID& rid)
+  Contacts::lookup_router(const RouterID& rid, std::function<void(oxen::quic::message)> func)
   {
-    dht::Key_t ask_peer;
-
-    if (not _rc_nodes->FindClosest(dht::Key_t{rid}, ask_peer))
-      return false;
-
-    _router.loop()->call([this, rid]() {
-      _router.send_control_message(
-          rid, "find_router", FindRouterMessage::serialize(rid, false, false));
-    });
-
-    return true;
+    return _router.send_control_message(
+        rid, "find_router", FindRouterMessage::serialize(rid, false, false), std::move(func));
   }
 
   void

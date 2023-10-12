@@ -277,7 +277,7 @@ namespace llarp::path
         {
           r->loop()->call([nodedb = r->node_db(), router = *failedAt]() {
             LogInfo("router ", router, " is deregistered so we remove it");
-            nodedb->Remove(router);
+            nodedb->remove_router(router);
           });
         }
       }

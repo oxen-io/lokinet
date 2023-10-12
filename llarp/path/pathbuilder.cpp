@@ -332,7 +332,7 @@ namespace llarp
       };
 
       RouterContact endpointRC;
-      if (const auto maybe = router->node_db()->Get(endpoint))
+      if (const auto maybe = router->node_db()->get_rc(endpoint))
       {
         endpointRC = *maybe;
       }
@@ -526,14 +526,14 @@ namespace llarp
                 {
                   log::info(path_cat, "Refreshed RouterContact for {}", rid);
                   ;
-                  r->node_db()->PutIfNewer(*rc);
+                  r->node_db()->put_rc_if_newer(*rc);
                 }
                 else
                 {
                   // remove all connections to this router as it's probably not registered anymore
                   log::warning(path_cat, "Removing router {} due to path build timeout", rid);
                   r->link_manager().deregister_peer(rid);
-                  r->node_db()->Remove(rid);
+                  r->node_db()->remove_router(rid);
                 }
               },
               true);

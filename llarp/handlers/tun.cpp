@@ -624,23 +624,39 @@ namespace llarp::handlers
       RouterID snode;
       if (snode.FromString(qname))
       {
-        router()->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
-          if (found.empty())
-          {
-            msg.AddNXReply();
-          }
-          else
-          {
-            std::string recs;
-            for (const auto& rc : found)
-              recs += rc.ToTXTRecord();
-            msg.AddTXTReply(std::move(recs));
-          }
-          reply(msg);
-        });
+        router()->lookup_router(
+            snode, [r = router(), msg = std::move(msg), reply](oxen::quic::message m) mutable {
+              if (m)
+              {
+                std::string payload;
+
+                try
+                {
+                  oxenc::bt_dict_consumer btdc{m.body()};
+                  payload = btdc.require<std::string>("RC");
+                }
+                catch (...)
+                {
+                  log::warning(link_cat, "Failed to parse Find Router response!");
+                  throw;
+                }
+
+                r->node_db()->put_rc_if_newer(RouterContact{payload});
+                msg.AddTXTReply(payload);
+              }
+              else
+              {
+                msg.AddNXReply();
+                r->link_manager().handle_find_router_error(std::move(m));
+              }
+
+              reply(msg);
+            });
+
         return true;
       }
-      else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+
+      if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
       {
         const auto subdomain = msg.questions[0].Subdomains();
         if (subdomain == "exit")

@@ -63,13 +63,11 @@ namespace llarp
 
       bool
       get_random_connection(RouterContact& router) const;
-      // DISCUSS: added template to forward callbacks/etc to endpoint->connect(...).
-      // This would be useful after combining link_manager with the redundant classes
-      // listed below. As a result, link_manager would be holding all the relevant
-      // callbacks, tls_creds, and other context required for endpoint management
+
       template <typename... Opt>
       bool
-      establish_connection(const oxen::quic::Address& remote, RouterContact& rc, Opt&&... opts);
+      establish_connection(
+          const oxen::quic::Address& remote, const RouterContact& rc, Opt&&... opts);
 
       void
       for_each_connection(std::function<void(link::Connection&)> func);
@@ -151,6 +149,12 @@ namespace llarp
     bool
     send_data_message(const RouterID& remote, std::string data);
 
+    Router&
+    router() const
+    {
+      return _router;
+    }
+
    private:
     bool
     send_control_message_impl(
@@ -178,7 +182,7 @@ namespace llarp
 
     oxen::quic::Address addr;
 
-    Router& router;
+    Router& _router;
 
     // FIXME: Lokinet currently expects to be able to kill all network functionality before
     // finishing other shutdown things, including destroying this class, and that is all in
@@ -228,10 +232,10 @@ namespace llarp
     deregister_peer(RouterID remote);
 
     void
-    connect_to(RouterID router);
+    connect_to(const RouterID& router);
 
     void
-    connect_to(RouterContact rc);
+    connect_to(const RouterContact& rc);
 
     void
     close_connection(RouterID rid);
@@ -342,6 +346,12 @@ namespace llarp
 
     std::string
     serialize_response(oxenc::bt_dict supplement = {});
+
+   public:
+    // Public response functions and error handling functions invoked elsehwere. These take
+    // r-value references s.t. that message is taken out of calling scope
+    void
+    handle_find_router_error(oxen::quic::message&& m);
   };
 
   namespace link
@@ -349,7 +359,7 @@ namespace llarp
     template <typename... Opt>
     bool
     Endpoint::establish_connection(
-        const oxen::quic::Address& remote, RouterContact& rc, Opt&&... opts)
+        const oxen::quic::Address& remote, const RouterContact& rc, Opt&&... opts)
     {
       try
       {

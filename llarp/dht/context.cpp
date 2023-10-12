@@ -42,22 +42,22 @@ namespace llarp::dht
       GetRouter()->rc_lookup_handler().check_rc(rc);
     }
 
-    void
-    LookupIntroSetRelayed(
-        const Key_t& target,
-        const Key_t& whoasked,
-        uint64_t whoaskedTX,
-        const Key_t& askpeer,
-        uint64_t relayOrder,
-        service::EncryptedIntroSetLookupHandler result = nullptr) override;
+    // void
+    // LookupIntroSetRelayed(
+    //     const Key_t& target,
+    //     const Key_t& whoasked,
+    //     uint64_t whoaskedTX,
+    //     const Key_t& askpeer,
+    //     uint64_t relayOrder,
+    //     service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
-    void
-    LookupIntroSetDirect(
-        const Key_t& target,
-        const Key_t& whoasked,
-        uint64_t whoaskedTX,
-        const Key_t& askpeer,
-        service::EncryptedIntroSetLookupHandler result = nullptr) override;
+    // void
+    // LookupIntroSetDirect(
+    //     const Key_t& target,
+    //     const Key_t& whoasked,
+    //     uint64_t whoaskedTX,
+    //     const Key_t& askpeer,
+    //     service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
     /// on behalf of whoasked request router with public key target from dht
     /// router with key askpeer

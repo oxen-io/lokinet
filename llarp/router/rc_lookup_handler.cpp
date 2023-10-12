@@ -68,7 +68,7 @@ namespace llarp
     RouterContact remoteRC;
     if (not forceLookup)
     {
-      if (const auto maybe = node_db->Get(router); maybe.has_value())
+      if (const auto maybe = node_db->get_rc(router); maybe.has_value())
       {
         remoteRC = *maybe;
         if (callback)
@@ -95,14 +95,43 @@ namespace llarp
 
     if (shouldDoLookup)
     {
+      auto lookup_cb = [this](oxen::quic::message m) mutable {
+        auto& r = link_manager->router();
+
+        if (m)
+        {
+          std::string payload;
+
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            payload = btdc.require<std::string>("RC");
+          }
+          catch (...)
+          {
+            log::warning(link_cat, "Failed to parse Find Router response!");
+            throw;
+          }
+
+          RouterContact result{std::move(payload)};
+          r.node_db()->put_rc_if_newer(result);
+          r.connect_to(result);
+        }
+        else
+        {
+          link_manager->handle_find_router_error(std::move(m));
+        }
+      };
+
       // if we are a client try using the hidden service endpoints
       if (!isServiceNode)
       {
         bool sent = false;
         LogInfo("Lookup ", router, " anonymously");
         hidden_service_context->ForEachService(
-            [&](const std::string&, const std::shared_ptr<service::Endpoint>& ep) -> bool {
-              const bool success = ep->lookup_router(router);
+            [&, cb = lookup_cb](
+                const std::string&, const std::shared_ptr<service::Endpoint>& ep) -> bool {
+              const bool success = ep->lookup_router(router, cb);
               sent = sent || success;
               return !success;
             });
@@ -111,7 +140,7 @@ namespace llarp
         LogWarn("cannot lookup ", router, " anonymously");
       }
 
-      if (not contacts->lookup_router(router))
+      if (not contacts->lookup_router(router, lookup_cb))
         finalize_request(router, nullptr, RCRequestResult::RouterNotFound);
       else
         router_lookup_times[router] = std::chrono::steady_clock::now();
@@ -203,7 +232,7 @@ namespace llarp
     if (rc.IsPublicRouter())
     {
       LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
-      loop->call([rc, n = node_db] { n->PutIfNewer(rc); });
+      loop->call([rc, n = node_db] { n->put_rc_if_newer(rc); });
       contacts->put_rc_node_async(rc);
     }
 
@@ -273,13 +302,13 @@ namespace llarp
       get_rc(router, nullptr, true);
     }
 
-    node_db->RemoveStaleRCs(boostrap_rid_list, now - RouterContact::StaleInsertionAge);
+    node_db->remove_stale_rcs(boostrap_rid_list, now - RouterContact::StaleInsertionAge);
   }
 
   void
   RCLookupHandler::explore_network()
   {
-    const size_t known = node_db->NumLoaded();
+    const size_t known = node_db->num_loaded();
     if (bootstrap_rc_list.empty() && known == 0)
     {
       LogError("we have no bootstrap nodes specified");
@@ -302,19 +331,20 @@ namespace llarp
       std::vector<RouterID> lookupRouters;
       lookupRouters.reserve(LookupPerTick);
 
-      const auto now = std::chrono::steady_clock::now();
+      std::vector<RouterID> lrs = link_manager->router().loop()->call_get([this]() {
+        std::vector<RouterID> lookups;
+        lookups.reserve(LookupPerTick);
 
-      {
-        // if we are using a whitelist look up a few routers we don't have
-        util::Lock l(_mutex);
+        const auto now = std::chrono::steady_clock::now();
+
         for (const auto& r : router_whitelist)
         {
-          if (now > router_lookup_times[r] + RerequestInterval and not node_db->Has(r))
-          {
-            lookupRouters.emplace_back(r);
-          }
+          if (now > router_lookup_times[r] + RerequestInterval and not node_db->has_router(r))
+            lookups.emplace_back(r);
         }
-      }
+
+        return lookups;
+      });
 
       if (lookupRouters.size() > LookupPerTick)
       {

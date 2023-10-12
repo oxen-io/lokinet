@@ -240,7 +240,7 @@ namespace llarp
       // handles when we resolved a .snode
       auto handleResolvedSNodeName = [resultHandler, nodedb = router()->node_db()](auto router_id) {
         std::vector<dns::SRVData> result{};
-        if (auto maybe_rc = nodedb->Get(router_id))
+        if (auto maybe_rc = nodedb->get_rc(router_id))
         {
           result = maybe_rc->srvRecords;
         }
@@ -924,7 +924,7 @@ namespace llarp
     {
       if (rid.IsZero())
         return;
-      if (!router()->node_db()->Has(rid))
+      if (!router()->node_db()->has_router(rid))
       {
         lookup_router(rid);
       }

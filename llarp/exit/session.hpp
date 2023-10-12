@@ -117,7 +117,7 @@ namespace llarp
       const llarp::RouterID
       Endpoint() const
       {
-        return m_ExitRouter;
+        return exit_router;
       }
 
       std::optional<PathID_t>
@@ -138,9 +138,9 @@ namespace llarp
       AddReadyHook(SessionReadyFunc func);
 
      protected:
-      llarp::RouterID m_ExitRouter;
-      llarp::SecretKey m_ExitIdentity;
-      std::function<bool(const llarp_buffer_t&)> m_WritePacket;
+      llarp::RouterID exit_router;
+      llarp::SecretKey exit_key;
+      std::function<bool(const llarp_buffer_t&)> packet_write_func;
 
       virtual void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
@@ -159,11 +159,9 @@ namespace llarp
           service::ProtocolType t);
 
      private:
-      std::set<RouterID> m_SnodeBlacklist;
+      std::set<RouterID> snode_blacklist;
 
-      using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
-      using TieredQueue_t = std::map<uint8_t, UpstreamTrafficQueue_t>;
-      TieredQueue_t m_Upstream;
+      std::map<uint8_t, std::deque<routing::TransferTrafficMessage>> m_Upstream;
 
       PathID_t m_CurrentPath;
 

@@ -2,12 +2,13 @@
 
 #include "router_contact.hpp"
 #include "router_id.hpp"
+#include "dht/key.hpp"
+#include "crypto/crypto.hpp"
 #include "util/common.hpp"
 #include "util/fs.hpp"
 #include "util/thread/threading.hpp"
 #include "util/thread/annotations.hpp"
-#include "dht/key.hpp"
-#include "crypto/crypto.hpp"
+#include <llarp/router/router.hpp>
 
 #include <set>
 #include <optional>
@@ -19,6 +20,8 @@
 
 namespace llarp
 {
+  struct Router;
+
   class NodeDB
   {
     struct Entry
@@ -27,12 +30,13 @@ namespace llarp
       llarp_time_t insertedAt;
       explicit Entry(RouterContact rc);
     };
+
     using NodeMap = std::unordered_map<RouterID, Entry>;
 
-    NodeMap m_Entries;
+    NodeMap entries;
 
+    const Router& router;
     const fs::path m_Root;
-
     const std::function<void(std::function<void()>)> disk;
 
     llarp_time_t m_NextFlushAt;
@@ -41,29 +45,30 @@ namespace llarp
 
     /// asynchronously remove the files for a set of rcs on disk given their public ident key
     void
-    AsyncRemoveManyFromDisk(std::unordered_set<RouterID> idents) const;
+    remove_many_from_disk_async(std::unordered_set<RouterID> idents) const;
 
     /// get filename of an RC file given its public ident key
     fs::path
-    GetPathForPubkey(RouterID pk) const;
+    get_path_by_pubkey(RouterID pk) const;
 
    public:
-    explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller);
+    explicit NodeDB(
+        fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
 
     /// in memory nodedb
     NodeDB();
 
     /// load all entries from disk syncrhonously
     void
-    LoadFromDisk();
+    load_from_disk();
 
     /// explicit save all RCs to disk synchronously
     void
-    SaveToDisk() const;
+    save_to_disk() const;
 
     /// the number of RCs that are loaded from disk
     size_t
-    NumLoaded() const;
+    num_loaded() const;
 
     /// do periodic tasks like flush to disk and expiration
     void
@@ -71,39 +76,39 @@ namespace llarp
 
     /// find the absolute closets router to a dht location
     RouterContact
-    FindClosestTo(dht::Key_t location) const;
+    find_closest_to(dht::Key_t location) const;
 
     /// find many routers closest to dht key
     std::vector<RouterContact>
-    FindManyClosestTo(dht::Key_t location, uint32_t numRouters) const;
+    find_many_closest_to(dht::Key_t location, uint32_t numRouters) const;
 
     /// return true if we have an rc by its ident pubkey
     bool
-    Has(RouterID pk) const;
+    has_router(RouterID pk) const;
 
     /// maybe get an rc by its ident pubkey
     std::optional<RouterContact>
-    Get(RouterID pk) const;
+    get_rc(RouterID pk) const;
 
     template <typename Filter>
     std::optional<RouterContact>
     GetRandom(Filter visit) const
     {
-      util::NullLock lock{m_Access};
+      return router.loop()->call_get([this, visit]() -> std::optional<RouterContact> {
+        std::vector<const decltype(entries)::value_type*> entries;
+        for (const auto& entry : entries)
+          entries.push_back(entry);
 
-      std::vector<const decltype(m_Entries)::value_type*> entries;
-      for (const auto& entry : m_Entries)
-        entries.push_back(&entry);
+        std::shuffle(entries.begin(), entries.end(), llarp::CSRNG{});
 
-      std::shuffle(entries.begin(), entries.end(), llarp::CSRNG{});
+        for (const auto entry : entries)
+        {
+          if (visit(entry->second.rc))
+            return entry->second.rc;
+        }
 
-      for (const auto entry : entries)
-      {
-        if (visit(entry->second.rc))
-          return entry->second.rc;
-      }
-
-      return std::nullopt;
+        return std::nullopt;
+      });
     }
 
     /// visit all entries
@@ -111,11 +116,10 @@ namespace llarp
     void
     VisitAll(Visit visit) const
     {
-      util::NullLock lock{m_Access};
-      for (const auto& item : m_Entries)
-      {
-        visit(item.second.rc);
-      }
+      router.loop()->call([this, visit]() {
+        for (const auto& item : entries)
+          visit(item.second.rc);
+      });
     }
 
     /// visit all entries inserted before a timestamp
@@ -123,50 +127,52 @@ namespace llarp
     void
     VisitInsertedBefore(Visit visit, llarp_time_t insertedBefore)
     {
-      util::NullLock lock{m_Access};
-      for (const auto& item : m_Entries)
-      {
-        if (item.second.insertedAt < insertedBefore)
-          visit(item.second.rc);
-      }
+      router.loop()->call([this, visit, insertedBefore]() {
+        for (const auto& item : entries)
+        {
+          if (item.second.insertedAt < insertedBefore)
+            visit(item.second.rc);
+        }
+      });
     }
 
     /// remove an entry via its ident pubkey
     void
-    Remove(RouterID pk);
+    remove_router(RouterID pk);
 
     /// remove an entry given a filter that inspects the rc
     template <typename Filter>
     void
     RemoveIf(Filter visit)
     {
-      util::NullLock lock{m_Access};
-      std::unordered_set<RouterID> removed;
-      auto itr = m_Entries.begin();
-      while (itr != m_Entries.end())
-      {
-        if (visit(itr->second.rc))
+      router.loop()->call([this, visit]() {
+        std::unordered_set<RouterID> removed;
+        auto itr = entries.begin();
+        while (itr != entries.end())
         {
-          removed.insert(itr->second.rc.pubkey);
-          itr = m_Entries.erase(itr);
+          if (visit(itr->second.rc))
+          {
+            removed.insert(itr->second.rc.pubkey);
+            itr = entries.erase(itr);
+          }
+          else
+            ++itr;
         }
-        else
-          ++itr;
-      }
-      if (not removed.empty())
-        AsyncRemoveManyFromDisk(std::move(removed));
+        if (not removed.empty())
+          remove_many_from_disk_async(std::move(removed));
+      });
     }
 
     /// remove rcs that are not in keep and have been inserted before cutoff
     void
-    RemoveStaleRCs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
+    remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
 
     /// put this rc into the cache if it is not there or newer than the one there already
     void
-    PutIfNewer(RouterContact rc);
+    put_rc_if_newer(RouterContact rc);
 
     /// unconditional put of rc into cache
     void
-    Put(RouterContact rc);
+    put_rc(RouterContact rc);
   };
 }  // namespace llarp

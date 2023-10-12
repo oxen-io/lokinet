@@ -19,14 +19,14 @@ namespace llarp::exit
       size_t hoplen,
       EndpointBase* parent)
       : llarp::path::Builder{r, numpaths, hoplen}
-      , m_ExitRouter{routerId}
-      , m_WritePacket{std::move(writepkt)}
+      , exit_router{routerId}
+      , packet_write_func{std::move(writepkt)}
       , m_Counter{0}
       , m_LastUse{r->now()}
       , m_BundleRC{false}
       , m_Parent{parent}
   {
-    CryptoManager::instance()->identity_keygen(m_ExitIdentity);
+    CryptoManager::instance()->identity_keygen(exit_key);
   }
 
   BaseSession::~BaseSession() = default;
@@ -42,16 +42,16 @@ namespace llarp::exit
   {
     auto obj = path::Builder::ExtractStatus();
     obj["lastExitUse"] = to_json(m_LastUse);
-    auto pub = m_ExitIdentity.toPublic();
+    auto pub = exit_key.toPublic();
     obj["exitIdentity"] = pub.ToString();
-    obj["endpoint"] = m_ExitRouter.ToString();
+    obj["endpoint"] = exit_router.ToString();
     return obj;
   }
 
   bool
   BaseSession::LoadIdentityFromFile(const char* fname)
   {
-    return m_ExitIdentity.LoadFromFile(fname);
+    return exit_key.LoadFromFile(fname);
   }
 
   bool
@@ -68,7 +68,7 @@ namespace llarp::exit
   void
   BaseSession::BlacklistSNode(const RouterID snode)
   {
-    m_SnodeBlacklist.insert(std::move(snode));
+    snode_blacklist.insert(std::move(snode));
   }
 
   std::optional<std::vector<RouterContact>>
@@ -76,12 +76,12 @@ namespace llarp::exit
   {
     if (numHops == 1)
     {
-      if (auto maybe = router->node_db()->Get(m_ExitRouter))
+      if (auto maybe = router->node_db()->get_rc(exit_router))
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
     else
-      return GetHopsAlignedToForBuild(m_ExitRouter);
+      return GetHopsAlignedToForBuild(exit_router);
   }
 
   bool
@@ -103,13 +103,13 @@ namespace llarp::exit
     obtain.sequence_number = p->NextSeqNo();
     obtain.tx_id = llarp::randint();
     PopulateRequest(obtain);
-    if (!obtain.Sign(m_ExitIdentity))
+    if (!obtain.Sign(exit_key))
     {
       llarp::LogError("Failed to sign exit request");
       return;
     }
     if (p->SendExitRequest(obtain, router))
-      llarp::LogInfo("asking ", m_ExitRouter, " for exit");
+      llarp::LogInfo("asking ", exit_router, " for exit");
     else
       llarp::LogError("failed to send exit request");
   }
@@ -161,7 +161,7 @@ namespace llarp::exit
       {
         llarp::LogInfo(p->name(), " closing exit path");
         routing::CloseExitMessage msg;
-        if (msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router))
+        if (msg.Sign(exit_key) && p->SendExitClose(msg, router))
         {
           p->ClearRoles(roles);
         }
@@ -182,7 +182,7 @@ namespace llarp::exit
       {
         LogInfo(p->name(), " closing exit path");
         routing::CloseExitMessage msg;
-        if (!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router)))
+        if (!(msg.Sign(exit_key) && p->SendExitClose(msg, router)))
           LogWarn(p->name(), " failed to send exit close message");
       }
     };
@@ -209,7 +209,7 @@ namespace llarp::exit
       return true;
     }
 
-    if (m_WritePacket)
+    if (packet_write_func)
     {
       llarp::net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
@@ -224,7 +224,7 @@ namespace llarp::exit
   bool
   BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p, const PathID_t& path, uint64_t s)
   {
-    llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s, " P=", path);
+    llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
     p->EnterState(path::ePathIgnore, router->now());
     return true;
   }
@@ -309,16 +309,37 @@ namespace llarp::exit
       if (numHops == 1)
       {
         auto r = router;
-        if (const auto maybe = r->node_db()->Get(m_ExitRouter); maybe.has_value())
-          r->TryConnectAsync(*maybe, 5);
+        if (const auto maybe = r->node_db()->get_rc(exit_router); maybe.has_value())
+          r->connect_to(*maybe);
         else
-          r->LookupRouter(m_ExitRouter, [r](const std::vector<RouterContact>& results) {
-            if (results.size())
-              r->TryConnectAsync(results[0], 5);
+          r->lookup_router(exit_router, [r](oxen::quic::message m) mutable {
+            if (m)
+            {
+              std::string payload;
+
+              try
+              {
+                oxenc::bt_dict_consumer btdc{m.body()};
+                payload = btdc.require<std::string>("RC");
+              }
+              catch (...)
+              {
+                log::warning(link_cat, "Failed to parse Find Router response!");
+                throw;
+              }
+
+              RouterContact result{std::move(payload)};
+              r->node_db()->put_rc_if_newer(result);
+              r->connect_to(result);
+            }
+            else
+            {
+              r->link_manager().handle_find_router_error(std::move(m));
+            }
           });
       }
       else if (UrgentBuild(now))
-        BuildOneAlignedTo(m_ExitRouter);
+        BuildOneAlignedTo(exit_router);
     }
     return true;
   }
@@ -328,8 +349,8 @@ namespace llarp::exit
   {
     while (m_Downstream.size())
     {
-      if (m_WritePacket)
-        m_WritePacket(const_cast<net::IPPacket&>(m_Downstream.top().second).steal());
+      if (packet_write_func)
+        packet_write_func(const_cast<net::IPPacket&>(m_Downstream.top().second).steal());
       m_Downstream.pop();
     }
   }
@@ -346,20 +367,20 @@ namespace llarp::exit
   {
     if (useRouterSNodeKey)
     {
-      m_ExitIdentity = r->identity();
+      exit_key = r->identity();
     }
   }
 
   std::string
   SNodeSession::Name() const
   {
-    return "SNode::" + m_ExitRouter.ToString();
+    return "SNode::" + exit_router.ToString();
   }
 
   std::string
   ExitSession::Name() const
   {
-    return "Exit::" + m_ExitRouter.ToString();
+    return "Exit::" + exit_router.ToString();
   }
 
   void

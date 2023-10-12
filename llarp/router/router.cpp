@@ -1,31 +1,32 @@
-#include <memory>
 #include "router.hpp"
 
+#include <llarp/nodedb.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/time.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dht/node.hpp>
+#include <llarp/ev/ev.hpp>
 #include <llarp/link/contacts.hpp>
+#include <llarp/messages/dht.hpp>
 #include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
-#include <stdexcept>
+#include <llarp/tooling/peer_stats_event.hpp>
+#include <llarp/tooling/router_event.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/ev/ev.hpp>
-#include <llarp/tooling/peer_stats_event.hpp>
-
-#include <llarp/tooling/router_event.hpp>
 #include <llarp/util/status.hpp>
 
+#include <memory>
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
 #include <unordered_map>
 #include <utility>
+#include <stdexcept>
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
@@ -95,7 +96,7 @@ namespace llarp
 
     return util::StatusObject{
         {"running", true},
-        {"numNodesKnown", _node_db->NumLoaded()},
+        {"numNodesKnown", _node_db->num_loaded()},
         {"contacts", _contacts->ExtractStatus()},
         {"services", _hidden_service_context.ExtractStatus()},
         {"exit", _exit_context.ExtractStatus()},
@@ -185,7 +186,7 @@ namespace llarp
         {"uptime", to_json(Uptime())},
         {"numPathsBuilt", pathsCount},
         {"numPeersConnected", peers},
-        {"numRoutersKnown", _node_db->NumLoaded()},
+        {"numRoutersKnown", _node_db->num_loaded()},
         {"ratio", ratio},
         {"txRate", tx_rate},
         {"rxRate", rx_rate},
@@ -268,6 +269,28 @@ namespace llarp
     loop_wakeup->Trigger();
   }
 
+  void
+  Router::connect_to(const RouterID& rid)
+  {
+    _link_manager.connect_to(rid);
+  }
+
+  void
+  Router::connect_to(const RouterContact& rc)
+  {
+    _link_manager.connect_to(rc);
+  }
+
+  void
+  Router::lookup_router(RouterID rid, std::function<void(oxen::quic::message)> func)
+  {
+    _link_manager.send_control_message(
+        rid,
+        "find_router",
+        FindRouterMessage::serialize(std::move(rid), false, false),
+        std::move(func));
+  }
+
   bool
   Router::send_data_message(const RouterID& remote, const AbstractDataMessage& msg)
   {
@@ -285,23 +308,6 @@ namespace llarp
         remote, std::move(ep), std::move(body), std::move(func));
   }
 
-  void
-  Router::try_connect(fs::path rcfile)
-  {
-    RouterContact remote;
-    if (!remote.Read(rcfile.string().c_str()))
-    {
-      LogError("failure to decode or verify of remote RC");
-      return;
-    }
-    if (remote.Verify(now()))
-    {
-      LogDebug("verified signature");
-      _link_manager.connect_to(remote);
-    }
-    else
-      LogError(rcfile, " contains invalid RC");
-  }
   void
   Router::for_each_connection(std::function<void(link::Connection&)> func)
   {
@@ -456,7 +462,7 @@ namespace llarp
       return false;
     }
     if (is_service_node)
-      _node_db->Put(router_contact);
+      _node_db->put_rc(router_contact);
     queue_disk_io([&]() { HandleSaveRC(); });
     return true;
   }
@@ -471,7 +477,7 @@ namespace llarp
   Router::insufficient_peers() const
   {
     constexpr int KnownPeerWarningThreshold = 5;
-    return node_db()->NumLoaded() < KnownPeerWarningThreshold;
+    return node_db()->num_loaded() < KnownPeerWarningThreshold;
   }
 
   std::optional<std::string>
@@ -826,7 +832,7 @@ namespace llarp
   Router::report_stats()
   {
     const auto now = llarp::time_now_ms();
-    LogInfo(node_db()->NumLoaded(), " RCs loaded");
+    LogInfo(node_db()->num_loaded(), " RCs loaded");
     LogInfo(bootstrap_rc_list.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
     if (IsServiceNode())
@@ -851,7 +857,7 @@ namespace llarp
       fmt::format_to(
           out,
           " snode | known/svc/clients: {}/{}/{}",
-          node_db()->NumLoaded(),
+          node_db()->num_loaded(),
           NumberOfConnectedRouters(),
           NumberOfConnectedClients());
       fmt::format_to(
@@ -871,7 +877,7 @@ namespace llarp
       fmt::format_to(
           out,
           " client | known/connected: {}/{}",
-          node_db()->NumLoaded(),
+          node_db()->num_loaded(),
           NumberOfConnectedRouters());
 
       if (auto ep = hidden_service_context().GetDefault())
@@ -1051,7 +1057,7 @@ namespace llarp
         log::error(
             logcat,
             "We appear to be an active service node, but have only {} known peers.",
-            node_db()->NumLoaded());
+            node_db()->num_loaded());
         _next_decomm_warning = now + DecommissionWarnInterval;
       }
     }
@@ -1137,26 +1143,6 @@ namespace llarp
     {
       _rc_lookup_handler.check_rc(rc);
     }
-  }
-
-  // TODO: refactor callers and remove this function
-  void
-  Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
-  {
-    _rc_lookup_handler.get_rc(
-        remote,
-        [=](const RouterID& id, const RouterContact* const rc, const RCRequestResult result) {
-          (void)id;
-          if (resultHandler)
-          {
-            std::vector<RouterContact> routers;
-            if (result == RCRequestResult::Success && rc != nullptr)
-            {
-              routers.push_back(*rc);
-            }
-            resultHandler(routers);
-          }
-        });
   }
 
   void
@@ -1255,19 +1241,19 @@ namespace llarp
 
     {
       LogInfo("Loading nodedb from disk...");
-      _node_db->LoadFromDisk();
+      _node_db->load_from_disk();
     }
 
     _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
 
     for (const auto& rc : bootstrap_rc_list)
     {
-      node_db()->Put(rc);
+      node_db()->put_rc(rc);
       _contacts->rc_nodes()->PutNode(rc);
       LogInfo("added bootstrap node ", RouterID{rc.pubkey});
     }
 
-    LogInfo("have ", _node_db->NumLoaded(), " routers");
+    LogInfo("have ", _node_db->num_loaded(), " routers");
 
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _route_poker->start();
@@ -1386,7 +1372,7 @@ namespace llarp
     log::debug(logcat, "stopping links");
     StopLinks();
     log::debug(logcat, "saving nodedb to disk");
-    node_db()->SaveToDisk();
+    node_db()->save_to_disk();
     _loop->call_later(200ms, [this] { AfterStopLinks(); });
   }
 
@@ -1483,26 +1469,6 @@ namespace llarp
     paths.AllowTransit();
     _contacts->set_transit_allowed(true);
     _exit_context.AddExitEndpoint("default", _config->network, _config->dns);
-    return true;
-  }
-
-  bool
-  Router::TryConnectAsync(RouterContact rc, uint16_t tries)
-  {
-    (void)tries;
-
-    if (rc.pubkey == pubkey())
-    {
-      return false;
-    }
-
-    if (not _rc_lookup_handler.is_session_allowed(rc.pubkey))
-    {
-      return false;
-    }
-
-    _link_manager.connect_to(rc);
-
     return true;
   }
 

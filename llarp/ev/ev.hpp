@@ -11,6 +11,8 @@
 #include <future>
 #include <utility>
 
+using oxen::log::slns::source_location;
+
 namespace uvw
 {
   class Loop;
@@ -20,6 +22,21 @@ namespace llarp
 {
   struct SockAddr;
   struct UDPHandle;
+
+  static auto loop_cat = llarp::log::Cat("ev-loop");
+
+  template <typename... T>
+  void
+  loop_trace_log(
+      const log::logger_ptr& cat_logger,
+      [[maybe_unused]] const source_location& location,
+      [[maybe_unused]] fmt::format_string<T...> fmt,
+      [[maybe_unused]] T&&... args)
+  {
+    if (cat_logger)
+      cat_logger->log(
+          log::detail::spdlog_sloc(location), log::Level::trace, fmt, std::forward<T>(args)...);
+  }
 
   namespace vpn
   {
@@ -141,6 +158,35 @@ namespace llarp
                                  // the only thing holding the repeater; ideally it would be a
                                  // unique_ptr, but std::function says nuh-uh).
           });
+    }
+
+    /// Calls a function and synchronously obtains its return value.  If called from within the
+    /// event loop, the function is called and returned immediately, otherwise a promise/future
+    /// is used with `call_soon` to block until the event loop comes around and calls the
+    /// function.
+    template <typename Callable, typename Ret = decltype(std::declval<Callable>()())>
+    Ret
+    call_get(Callable&& f, source_location src = source_location::current())
+    {
+      if (inEventLoop())
+      {
+        loop_trace_log(loop_cat, src, "Event loop calling `{}`", src.function_name());
+        return f();
+      }
+
+      std::promise<Ret> prom;
+      auto fut = prom.get_future();
+      call_soon([&f, &prom] {
+        try
+        {
+          prom.set_value(f());
+        }
+        catch (...)
+        {
+          prom.set_exception(std::current_exception());
+        }
+      });
+      return fut.get();
     }
 
     // Wraps a lambda with a lambda that triggers it to be called via loop->call()
