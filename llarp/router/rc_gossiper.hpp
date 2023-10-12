@@ -1,10 +1,14 @@
 #pragma once
 
 #include <llarp/util/decaying_hashset.hpp>
-#include "outbound_message_handler.hpp"
+
+#include <optional>
+#include "llarp/router_id.hpp"
 
 namespace llarp
 {
+  struct Router;
+
   /// The maximum number of peers we will flood a gossiped RC to when propagating an RC
   constexpr size_t MaxGossipPeers = 20;
   struct LinkManager;

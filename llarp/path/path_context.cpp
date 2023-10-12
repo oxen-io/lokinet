@@ -3,7 +3,6 @@
 
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/router/outbound_message_handler.hpp>
 
 namespace llarp::path
 {
@@ -82,27 +81,6 @@ namespace llarp::path
         found.insert(p);
     });
     return found;
-  }
-
-  bool
-  PathContext::ForwardLRCM(
-      const RouterID& nextHop,
-      const std::array<EncryptedFrame, 8>& frames,
-      SendStatusHandler handler)
-  {
-    if (handler == nullptr)
-    {
-      LogError("Calling ForwardLRCM without passing result handler");
-      return false;
-    }
-
-    const LR_CommitMessage msg{frames};
-
-    LogDebug("forwarding LRCM to ", nextHop);
-
-    // TODO: replace with new message serialization for LRCM
-    // return _router->SendToOrQueue(nextHop, msg, handler);
-    return true;
   }
 
   template <

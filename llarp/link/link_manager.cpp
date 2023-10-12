@@ -222,7 +222,7 @@ namespace llarp
 
     if (auto conn = ep.get_conn(remote); conn)
     {
-      conn->control_stream->command(endpoint, body, std::move(func));
+      conn->control_stream->command(std::move(endpoint), std::move(body), std::move(func));
       return true;
     }
 
@@ -537,7 +537,7 @@ namespace llarp
 
     _router.rpc_client()->lookup_ons_hash(
         name_hash, [this, msg = std::move(m)](std::optional<service::EncryptedName> maybe) mutable {
-          if (maybe.has_value())
+          if (maybe)
             msg.respond(serialize_response({{"NAME", maybe->ciphertext}}));
           else
             msg.respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}), true);

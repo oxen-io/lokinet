@@ -133,8 +133,7 @@ namespace llarp
     Loop() = 0;
 
     virtual bool
-    SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+    send_to(service::ConvoTag tag, std::string payload) = 0;
 
     /// lookup srv records async
     virtual void

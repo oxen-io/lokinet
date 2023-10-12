@@ -246,7 +246,7 @@ namespace llarp
       lookup_name(
           std::string name, std::function<void(oxen::quic::message)> func = nullptr) override;
 
-      // "find introset?""
+      // "find introset?"
       void
       LookupServiceAsync(
           std::string name,
@@ -447,7 +447,7 @@ namespace llarp
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
       bool
-      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
+      send_to(ConvoTag tag, std::string payload) override;
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);

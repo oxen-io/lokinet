@@ -188,6 +188,18 @@ namespace llarp::net
       return buf;
     }
 
+    inline std::string
+    to_string()
+    {
+      return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
+    }
+
+    inline std::string_view
+    to_view()
+    {
+      return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
+    }
+
     inline byte_t*
     data()
     {

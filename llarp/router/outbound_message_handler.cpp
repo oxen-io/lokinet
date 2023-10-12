@@ -1,4 +1,3 @@
-#include "outbound_message_handler.hpp"
 
 #include <llarp/messages/link_message.hpp>
 #include "router.hpp"

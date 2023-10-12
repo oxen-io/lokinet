@@ -61,8 +61,7 @@ namespace llarp
       void MarkAddressOutbound(service::Address) override{};
 
       bool
-      SendToOrQueue(
-          service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
+      send_to(service::ConvoTag tag, std::string payload) override;
 
       void
       Tick(llarp_time_t now);

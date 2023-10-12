@@ -75,6 +75,9 @@ namespace llarp
 
   // TODO: investigate changes needed for libquic integration
   //       still needed at all?
+
+  // TODO: No. The answer is No.
+  // TONUKE: EVERYTHING ABOUT THIS
   void
   Router::PumpLL()
   {
@@ -255,7 +258,7 @@ namespace llarp
       return _rc_lookup_handler.get_random_whitelist_router(router);
     }
 
-    if (const auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
+    if (auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
     {
       router = maybe->pubkey;
       return true;
@@ -292,9 +295,9 @@ namespace llarp
   }
 
   bool
-  Router::send_data_message(const RouterID& remote, const AbstractDataMessage& msg)
+  Router::send_data_message(const RouterID& remote, std::string payload)
   {
-    return _link_manager.send_data_message(remote, msg.bt_encode());
+    return _link_manager.send_data_message(remote, std::move(payload));
   }
 
   bool
@@ -1565,19 +1568,6 @@ namespace llarp
   Router::net() const
   {
     return *llarp::net::Platform::Default_ptr();
-  }
-
-  void
-  Router::message_sent(const RouterID& remote, SendStatus status)
-  {
-    if (status == SendStatus::Success)
-    {
-      LogDebug("Message successfully sent to ", remote);
-    }
-    else
-    {
-      LogDebug("Message failed sending to ", remote);
-    }
   }
 
   void

@@ -1,5 +1,3 @@
-#include "link_intro.hpp"
-
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/router/router.hpp>

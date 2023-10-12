@@ -539,7 +539,7 @@ namespace llarp::path
   {
     for (const auto& msg : msgs)
     {
-      if (r->send_data_message(upstream(), msg))
+      if (r->send_data_message(upstream(), msg.bt_encode()))
       {
         m_TXRate += msg.enc.size();
       }

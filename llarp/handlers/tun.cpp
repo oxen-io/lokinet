@@ -1224,7 +1224,9 @@ namespace llarp::handlers
     {
       dst = net::ExpandV4(net::TruncateV6(dst));
     }
+
     auto itr = m_IPToAddr.find(dst);
+
     if (itr == m_IPToAddr.end())
     {
       service::Address addr{};
@@ -1239,13 +1241,17 @@ namespace llarp::handlers
 
         return;
       }
+
       std::function<void(void)> extra_cb;
+
       if (not HasFlowToService(addr))
       {
         extra_cb = [poker = router()->route_poker()]() { poker->put_up(); };
       }
+
       pkt.ZeroSourceAddress();
       MarkAddressOutbound(addr);
+
       EnsurePathToService(
           addr,
           [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) {
@@ -1290,7 +1296,7 @@ namespace llarp::handlers
     // this succeds for inbound convos, probably.
     if (auto maybe = GetBestConvoTagFor(to))
     {
-      if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+      if (send_to(*maybe, pkt.to_string()))
       {
         MarkIPActive(dst);
         router()->TriggerPump();
@@ -1301,7 +1307,7 @@ namespace llarp::handlers
     // will fail if it's an inbound convo
     EnsurePathTo(
         to,
-        [pkt, type, dst, to, this](auto maybe) {
+        [pkt, dst, to, this](auto maybe) mutable {
           if (not maybe)
           {
             var::visit(
@@ -1310,7 +1316,7 @@ namespace llarp::handlers
                 },
                 to);
           }
-          if (SendToOrQueue(*maybe, pkt.ConstBuffer(), type))
+          if (send_to(*maybe, pkt.to_string()))
           {
             MarkIPActive(dst);
             router()->TriggerPump();

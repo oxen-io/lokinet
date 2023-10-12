@@ -1434,34 +1434,29 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t)
+    Endpoint::send_to(ConvoTag tag, std::string payload)
     {
       if (tag.IsZero())
       {
-        LogWarn("SendToOrQueue failed: convo tag is zero");
+        log::warning(log_cat, "SendToOrQueue failed: convo tag is zero");
         return false;
       }
 
-      LogDebug(Name(), " send ", pkt.sz, " bytes on T=", tag);
+      log::debug(log_cat, "{} sending {} bytes (Tag: {})", Name(), payload.size(), tag);
+
       if (auto maybe = GetEndpointWithConvoTag(tag))
       {
-        if (auto* ptr = std::get_if<Address>(&*maybe))
+        if (auto rid = std::get_if<RouterID>(&*maybe))
         {
-          if (*ptr == _identity.pub.Addr())
-          {
-            ConvoTagTX(tag);
-            _state->router->TriggerPump();
-            if (not HandleInboundPacket(tag, pkt, t, 0))
-              return false;
-            ConvoTagRX(tag);
-            return true;
-          }
+          return router()->send_data_message(*rid, payload);
         }
-        if (not SendToOrQueue(*maybe, pkt, t))
-          return false;
-        return true;
+        if (auto saddr = std::get_if<Address>(&*maybe))
+        {
+          return router()->send_data_message(saddr->ToRouter(), payload);
+        }
       }
-      LogDebug("SendToOrQueue failed: no endpoint for convo tag ", tag);
+
+      log::debug(log_cat, "SendToOrQueue failed: no endpoint for convo tag {}", tag);
       return false;
     }
 

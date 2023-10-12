@@ -82,7 +82,7 @@ namespace llarp
       RouterID
       ToRouter() const
       {
-        return RouterID(as_array());
+        return {as_array()};
       }
     };
 

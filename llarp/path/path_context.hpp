@@ -7,7 +7,6 @@
 #include "pathset.hpp"
 #include "transit_hop.hpp"
 #include <llarp/routing/handler.hpp>
-#include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
@@ -96,12 +95,6 @@ namespace llarp
       /// get a set of all paths that we own who's endpoint is r
       EndpointPathPtrSet
       FindOwnedPathsWithEndpoint(const RouterID& r);
-
-      bool
-      ForwardLRCM(
-          const RouterID& nextHop,
-          const std::array<EncryptedFrame, 8>& frames,
-          SendStatusHandler handler);
 
       bool
       HopIsUs(const RouterID& k) const;

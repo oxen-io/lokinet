@@ -1,5 +1,3 @@
-#include "relay_status.hpp"
-
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>

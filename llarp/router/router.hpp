@@ -161,9 +161,6 @@ namespace llarp
     bool
     from_config(const Config& conf);
 
-    void
-    message_sent(const RouterID& remote, SendStatus status);
-
     bool
     insufficient_peers() const;
 
@@ -499,12 +496,12 @@ namespace llarp
     /// returns true on successful queue
     /// NOT threadsafe
     /// MUST be called in the logic thread
-    bool
-    SendToOrQueue(
-        const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler);
+    // bool
+    // SendToOrQueue(
+    //     const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler);
 
     bool
-    send_data_message(const RouterID& remote, const AbstractDataMessage& msg);
+    send_data_message(const RouterID& remote, std::string payload);
 
     bool
     send_control_message(

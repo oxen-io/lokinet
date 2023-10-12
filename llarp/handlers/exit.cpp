@@ -94,8 +94,7 @@ namespace llarp::handlers
   }
 
   bool
-  ExitEndpoint::SendToOrQueue(
-      service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType type)
+  ExitEndpoint::send_to(service::ConvoTag tag, std::string payload)
   {
     if (auto maybeAddr = GetEndpointWithConvoTag(tag))
     {
@@ -758,7 +757,7 @@ namespace llarp::handlers
   }
 
   huint128_t
-  ExitEndpoint::ObtainServiceNodeIP(const RouterID& other)
+  ExitEndpoint::ObtainServiceNodeIP(const RouterID& other)  // "find router"
   {
     const PubKey pubKey{other};
     const PubKey us{router->pubkey()};
