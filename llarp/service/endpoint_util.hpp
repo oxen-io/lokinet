@@ -45,7 +45,7 @@ namespace llarp::service
   };
 
   template <typename Endpoint_t>
-  static path::Path::UniqueEndpointSet_t
+  static std::unordered_set<path::Path_ptr, path::Endpoint_Hash, path::endpoint_comparator>
   GetManyPathsWithUniqueEndpoints(
       Endpoint_t* ep,
       size_t N,
@@ -53,7 +53,7 @@ namespace llarp::service
       size_t tries = 10)
   {
     std::unordered_set<RouterID> exclude;
-    path::Path::UniqueEndpointSet_t paths;
+    path::UniqueEndpointSet_t paths;
     do
     {
       --tries;

@@ -2,7 +2,6 @@
 
 #include <llarp/crypto/types.hpp>
 #include "policy.hpp"
-#include <llarp/routing/message.hpp>
 
 #include <vector>
 

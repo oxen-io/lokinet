@@ -1265,8 +1265,8 @@ namespace llarp
         m.respond(serialize_response({{"STATUS", PathBuildMessage::OK}}), false);
         return;
       }
-      // rotate our frame to the end of the list and forward upstream
 
+      // rotate our frame to the end of the list and forward upstream
       auto payload_list = oxenc::bt_deserialize<oxenc::bt_list>(payload);
       payload_list.splice(payload_list.end(), payload_list, payload_list.begin());
 
@@ -1432,12 +1432,13 @@ namespace llarp
           (CryptoManager::instance()->verify(pubkey, to_usv(dict_data), sig)
            and _router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
 
-      m.respond(ObtainExit::sign_and_serialize_response(_router.identity(), tx_id), not success);
+      m.respond(
+          ObtainExitMessage::sign_and_serialize_response(_router.identity(), tx_id), not success);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", ObtainExit::EXCEPTION}}), true);
+      m.respond(serialize_response({{"STATUS", ObtainExitMessage::EXCEPTION}}), true);
       throw;
     }
   }
@@ -1505,8 +1506,8 @@ namespace llarp
         if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
-              ? m.respond(UpdateExit::sign_and_serialize_response(_router.identity(), tx_id))
-              : m.respond(serialize_response({{"STATUS", UpdateExit::UPDATE_FAILED}}), true);
+              ? m.respond(UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
+              : m.respond(serialize_response({{"STATUS", UpdateExitMessage::UPDATE_FAILED}}), true);
         }
         // If we fail to verify the message, no-op
       }
@@ -1514,7 +1515,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", UpdateExit::EXCEPTION}}), true);
+      m.respond(serialize_response({{"STATUS", UpdateExitMessage::EXCEPTION}}), true);
       return;
     }
   }
@@ -1590,16 +1591,16 @@ namespace llarp
         if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           exit_ep->Close();
-          m.respond(CloseExit::sign_and_serialize_response(_router.identity(), tx_id));
+          m.respond(CloseExitMessage::sign_and_serialize_response(_router.identity(), tx_id));
         }
       }
 
-      m.respond(serialize_response({{"STATUS", CloseExit::UPDATE_FAILED}}), true);
+      m.respond(serialize_response({{"STATUS", CloseExitMessage::UPDATE_FAILED}}), true);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", CloseExit::EXCEPTION}}), true);
+      m.respond(serialize_response({{"STATUS", CloseExitMessage::EXCEPTION}}), true);
       return;
     }
   }
@@ -1635,7 +1636,7 @@ namespace llarp
 
       if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
           and CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
-        path_ptr->close_exit();
+        path_ptr->mark_exit_closed();
     }
     catch (const std::exception& e)
     {

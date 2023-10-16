@@ -1,5 +1,6 @@
 #include "sendcontext.hpp"
 
+#include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/routing/path_transfer_message.hpp>
 #include "endpoint.hpp"
@@ -18,7 +19,6 @@ namespace llarp::service
       , m_PathSet(send)
       , service_endpoint(ep)
       , createdAt(ep->Now())
-      , m_SendQueue(SendContextQueueSize)
   {}
 
   bool
@@ -39,7 +39,7 @@ namespace llarp::service
   SendContext::FlushUpstream()
   {
     auto r = service_endpoint->router();
-    std::unordered_set<path::Path_ptr, path::Path::Ptr_Hash> flushpaths;
+    std::unordered_set<path::Path_ptr, path::Ptr_Hash> flushpaths;
     auto rttRMS = 0ms;
     while (auto maybe = m_SendQueue.tryPopFront())
     {

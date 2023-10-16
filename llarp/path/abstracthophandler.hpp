@@ -41,7 +41,7 @@ namespace llarp
       virtual bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
 
-      virtual void
+      virtual bool
       send_path_control_message(
           std::string method,
           std::string body,
@@ -61,9 +61,6 @@ namespace llarp
       /// return timestamp last remote activity happened at
       virtual llarp_time_t
       LastRemoteActivityAt() const = 0;
-
-      virtual bool
-      HandleLRSM(uint64_t status, std::array<EncryptedFrame, 8>& frames, Router* r) = 0;
 
       uint64_t
       NextSeqNo()

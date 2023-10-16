@@ -1,9 +1,6 @@
 #include "path.hpp"
 #include "pathset.hpp"
 
-#include <llarp/router/outbound_message_handler.hpp>
-#include <llarp/dht/messages/pubintro.hpp>
-#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/router/router.hpp>
 
 #include <random>

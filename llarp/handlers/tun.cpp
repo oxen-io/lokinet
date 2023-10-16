@@ -113,9 +113,9 @@ namespace llarp::handlers
 
   class TunDNS : public dns::Server
   {
+    TunEndpoint* const m_Endpoint;
     std::optional<SockAddr> m_QueryBind;
     net::ipaddr_t m_OurIP;
-    TunEndpoint* const m_Endpoint;
 
    public:
     std::shared_ptr<dns::PacketSource_Base> PacketSource;
@@ -124,9 +124,9 @@ namespace llarp::handlers
 
     explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
         : dns::Server{ep->router()->loop(), conf, 0}
+        , m_Endpoint{ep}
         , m_QueryBind{conf.m_QueryBind}
         , m_OurIP{ToNet(ep->GetIfAddr())}
-        , m_Endpoint{ep}
     {}
 
     std::shared_ptr<dns::PacketSource_Base>
@@ -278,12 +278,12 @@ namespace llarp::handlers
     if (conf.m_reachable)
     {
       _publish_introset = true;
-      LogInfo(Name(), " setting to be reachable by default");
+      log::info(link_cat, "TunEndpoint setting to be reachable by default");
     }
     else
     {
       _publish_introset = false;
-      LogInfo(Name(), " setting to be not reachable by default");
+      log::info(link_cat, "TunEndpoint setting to be not reachable by default");
     }
 
     if (conf.m_AuthType == service::AuthType::eAuthTypeFile)

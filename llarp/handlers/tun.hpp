@@ -213,12 +213,6 @@ namespace llarp::handlers
       }
     };
 
-    /// queue for sending packets to user from network
-    util::ascending_priority_queue<WritePacket> m_NetworkToUserPktQueue;
-
-    void
-    Pump(llarp_time_t now) override;
-
     /// return true if we have a remote loki address for this ip address
     bool
     HasRemoteForIP(huint128_t ipv4) const;

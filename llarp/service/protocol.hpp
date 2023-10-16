@@ -2,8 +2,6 @@
 
 #include <llarp/crypto/encrypted.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/dht/message.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/convotag.hpp>
 #include "protocol_type.hpp"
 #include "identity.hpp"

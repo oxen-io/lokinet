@@ -10,13 +10,13 @@ namespace llarp
         - nuke seq_no's
   */
 
-  namespace ObtainExit
+  namespace ObtainExitMessage
   {
     inline auto EXCEPTION = "EXCEPTION"sv;
 
     // flag: 0 = Exit, 1 = Snode
     inline std::string
-    sign_and_serialize(SecretKey sk, uint64_t flag, std::string pubkey, std::string tx_id)
+    sign_and_serialize(SecretKey sk, uint64_t flag, std::string tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -25,7 +25,6 @@ namespace llarp
         auto btdp = btlp.append_dict();
 
         btdp.append("E", flag);
-        btdp.append("I", pubkey);
         btdp.append("T", tx_id);
 
         if (not CryptoManager::instance()->sign(
@@ -62,9 +61,9 @@ namespace llarp
       return std::move(btlp).str();
     }
 
-  }  // namespace ObtainExit
+  }  // namespace ObtainExitMessage
 
-  namespace UpdateExit
+  namespace UpdateExitMessage
   {
     inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto UPDATE_FAILED = "EXIT UPDATE FAILED"sv;
@@ -114,9 +113,9 @@ namespace llarp
       btlp.append(sig.data());
       return std::move(btlp).str();
     }
-  }  // namespace UpdateExit
+  }  // namespace UpdateExitMessage
 
-  namespace CloseExit
+  namespace CloseExitMessage
   {
     inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto UPDATE_FAILED = "CLOSE EXIT FAILED"sv;
@@ -168,6 +167,6 @@ namespace llarp
       btlp.append(sig.data());
       return std::move(btlp).str();
     }
-  }  // namespace CloseExit
+  }  // namespace CloseExitMessage
 
 }  // namespace llarp

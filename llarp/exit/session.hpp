@@ -1,10 +1,8 @@
 #pragma once
 
-#include "exit_messages.hpp"
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/constants/path.hpp>
 
 #include <deque>

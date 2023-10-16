@@ -1,10 +1,9 @@
 #pragma once
-#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/endpoint_base.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/session.hpp>
 #include <llarp/net/ip_range_map.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/path/path.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include <llarp/util/compare_ptr.hpp>
 
@@ -70,7 +69,9 @@ namespace llarp
       std::shared_ptr<ProtocolMessage> msg;
     };
 
-    struct Endpoint : public path::Builder, public EndpointBase
+    struct Endpoint : public path::Builder,
+                      public EndpointBase,
+                      public std::enable_shared_from_this<Endpoint>
     {
       Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
@@ -474,9 +475,6 @@ namespace llarp
       PrefetchServicesByTag(const Tag& tag);
 
      private:
-      void
-      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
-
       bool
       DoNetworkIsolation(bool failed);
 
@@ -501,7 +499,8 @@ namespace llarp
      protected:
       bool
       ReadyToDoLookup(size_t num_paths) const;
-      path::Path::UniqueEndpointSet_t
+
+      auto
       GetUniqueEndpointsForLookup() const;
 
       Identity _identity;
@@ -530,13 +529,16 @@ namespace llarp
 
       friend struct EndpointUtil;
 
-      // clang-format off
-      const IntroSet& intro_set() const;
-      IntroSet&       intro_set();
+      const IntroSet&
+      intro_set() const;
+      IntroSet&
+      intro_set();
 
-      const std::unordered_map<ConvoTag, Session>& Sessions() const;
-      std::unordered_map<ConvoTag, Session>&       Sessions();
-      // clang-format on
+      const std::unordered_map<ConvoTag, Session>&
+      Sessions() const;
+      std::unordered_map<ConvoTag, Session>&
+      Sessions();
+
       thread::Queue<RecvDataEvent> _recv_event_queue;
 
       /// for rate limiting introset lookups

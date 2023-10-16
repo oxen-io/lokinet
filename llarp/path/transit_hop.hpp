@@ -3,7 +3,6 @@
 #include <llarp/constants/path.hpp>
 #include <llarp/path/abstracthophandler.hpp>
 #include <llarp/path/path_types.hpp>
-#include <llarp/routing/handler.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/thread/queue.hpp>
@@ -52,9 +51,7 @@ namespace llarp
           < std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
     }
 
-    struct TransitHop : public AbstractHopHandler,
-                        public routing::AbstractRoutingMessageHandler,
-                        std::enable_shared_from_this<TransitHop>
+    struct TransitHop : public AbstractHopHandler, std::enable_shared_from_this<TransitHop>
     {
       TransitHop();
 
@@ -99,9 +96,6 @@ namespace llarp
         return m_LastActivity;
       }
 
-      bool
-      HandleLRSM(uint64_t status, std::array<EncryptedFrame, 8>& frames, Router* r) override;
-
       std::string
       ToString() const;
 
@@ -114,7 +108,7 @@ namespace llarp
         return now >= ExpireTime() - dlt;
       }
 
-      void
+      bool
       send_path_control_message(
           std::string method,
           std::string body,
@@ -123,55 +117,6 @@ namespace llarp
       // send routing message when end of path
       bool
       SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
-
-      // handle routing message when end of path
-      bool
-      HandleRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r);
-
-      bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, Router* r) override;
-
-      bool
-      HandlePathConfirmMessage(Router* r);
-
-      bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, Router* r) override;
-      bool
-      HandlePathTransferMessage(const routing::PathTransferMessage& msg, Router* r) override;
-      bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, Router* r) override;
-
-      bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, Router* r) override;
-
-      bool
-      HandleUpdateExitVerifyMessage(
-          const routing::UpdateExitVerifyMessage& msg, Router* r) override;
-
-      bool
-      HandleTransferTrafficMessage(const routing::TransferTrafficMessage& msg, Router* r) override;
-
-      bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, Router* r) override;
-
-      bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg, Router* r) override;
-      bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg, Router* r) override;
-
-      bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg, Router* r) override;
-
-      bool
-      HandleHiddenServiceFrame(const service::ProtocolFrameMessage& /*frame*/) override
-      {
-        /// TODO: implement me
-        LogWarn("Got hidden service data on transit hop");
-        return false;
-      }
-
-      bool
-      HandleGotIntroMessage(const dht::GotIntroMessage& msg);
 
       bool
       HandleDHTMessage(const dht::AbstractDHTMessage& msg, Router* r) override;

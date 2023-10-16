@@ -1,11 +1,10 @@
 #pragma once
 #include "intro.hpp"
+#include "protocol.hpp"
 
 #include <llarp/path/pathset.hpp>
-#include <llarp/routing/path_transfer_message.hpp>
 #include <llarp/constants/path.hpp>
 #include <llarp/service/convotag.hpp>
-#include "protocol.hpp"
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/types.hpp>
 #include <llarp/util/thread/queue.hpp>
@@ -49,10 +48,6 @@ namespace llarp::service
     llarp_time_t shiftTimeout = (path::BUILD_TIMEOUT * 5) / 2;
     llarp_time_t estimatedRTT = 0s;
     bool markedBad = false;
-    using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
-    using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
-
-    thread::Queue<SendEvent_t> m_SendQueue;
 
     std::function<void(AuthResult)> authResultListener;
 

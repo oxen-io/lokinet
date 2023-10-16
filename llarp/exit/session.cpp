@@ -94,24 +94,16 @@ namespace llarp::exit
   BaseSession::HandlePathBuilt(llarp::path::Path_ptr p)
   {
     path::Builder::HandlePathBuilt(p);
-    p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
-    p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
-    p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
-    p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
+    // p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
+    // p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
+    // p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
+    // p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
 
-    routing::ObtainExitMessage obtain;
-    obtain.sequence_number = p->NextSeqNo();
-    obtain.tx_id = llarp::randint();
-    PopulateRequest(obtain);
-    if (!obtain.Sign(exit_key))
-    {
-      llarp::LogError("Failed to sign exit request");
-      return;
-    }
-    if (p->SendExitRequest(obtain, router))
-      llarp::LogInfo("asking ", exit_router, " for exit");
+    if (p->obtain_exit(
+            exit_key, std::is_same_v<decltype(p), ExitSession> ? 1 : 0, p->TXID().bt_encode()))
+      log::info(link_cat, "Asking {} for exit", exit_router);
     else
-      llarp::LogError("failed to send exit request");
+      log::warning(link_cat, "Failed to send exit request");
   }
 
   void
@@ -159,16 +151,14 @@ namespace llarp::exit
       const static auto roles = llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
       if (p->SupportsAnyRoles(roles))
       {
-        llarp::LogInfo(p->name(), " closing exit path");
-        routing::CloseExitMessage msg;
-        if (msg.Sign(exit_key) && p->SendExitClose(msg, router))
-        {
+        log::info(link_cat, "{} closing exit path", p->name());
+        if (p->close_exit(exit_key, p->TXID().bt_encode()))
           p->ClearRoles(roles);
-        }
         else
           llarp::LogWarn(p->name(), " failed to send exit close message");
       }
     };
+
     ForEachPath(sendExitClose);
     path::Builder::ResetInternalState();
   }

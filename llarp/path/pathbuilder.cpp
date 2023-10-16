@@ -1,4 +1,5 @@
 #include "pathbuilder.hpp"
+#include "path.hpp"
 #include "path_context.hpp"
 
 #include <llarp/crypto/crypto.hpp>
@@ -110,12 +111,12 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("lifetime", path::DEFAULT_LIFETIME.count());
-        btdp.append("txid", hop.txID.ToView());
-        btdp.append("rxid", hop.rxID.ToView());
-        btdp.append("nonce", hop.nonce.ToView());
-        btdp.append("next", hop.upstream.ToView());
-        btdp.append("commkey", hop.commkey.toPublic().ToView());
+        btdp.append("COMMKEY", hop.commkey.toPublic().ToView());
+        btdp.append("LIFETIME", path::DEFAULT_LIFETIME.count());
+        btdp.append("NONCE", hop.nonce.ToView());
+        btdp.append("RX", hop.rxID.ToView());
+        btdp.append("TX", hop.txID.ToView());
+        btdp.append("UPSTREAM", hop.upstream.ToView());
 
         hop_info = std::move(btdp).str();
       }
@@ -147,9 +148,9 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("encrypted", hop_info);
-        btdp.append("pubkey", framekey.toPublic().ToView());
-        btdp.append("nonce", outer_nonce.ToView());
+        btdp.append("ENCRYPTED", hop_info);
+        btdp.append("NONCE", outer_nonce.ToView());
+        btdp.append("PUBKEY", framekey.toPublic().ToView());
 
         hashed_data = std::move(btdp).str();
       }
@@ -169,8 +170,8 @@ namespace llarp
 
       oxenc::bt_dict_producer btdp;
 
-      btdp.append("hash", hash);
-      btdp.append("frame", hashed_data);
+      btdp.append("FRAME", hashed_data);
+      btdp.append("HASH", hash);
 
       return std::move(btdp).str();
     }

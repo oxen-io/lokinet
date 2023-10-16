@@ -3,7 +3,6 @@
 #include "pathset.hpp"
 #include <llarp/util/status.hpp>
 #include <llarp/util/decaying_hashset.hpp>
-#include "path.hpp"
 
 #include <atomic>
 #include <set>

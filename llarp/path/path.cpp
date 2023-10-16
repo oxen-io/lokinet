@@ -1,19 +1,15 @@
 #include "path.hpp"
+#include "pathbuilder.hpp"
+#include "transit_hop.hpp"
 
 #include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/discard.hpp>
-#include <llarp/messages/relay_commit.hpp>
-#include <llarp/messages/relay_status.hpp>
-#include "pathbuilder.hpp"
-#include "transit_hop.hpp"
+#include <llarp/messages/exit.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/routing/path_dht_message.hpp>
-#include <llarp/routing/path_latency_message.hpp>
-#include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/tooling/path_event.hpp>
 
@@ -62,42 +58,57 @@ namespace llarp::path
       EnterState(ePathBuilding, parent->Now());
   }
 
-  void
+  bool
+  Path::obtain_exit(
+      SecretKey sk,
+      uint64_t flag,
+      std::string tx_id,
+      std::function<void(oxen::quic::message m)> func)
+  {
+    return send_path_control_message(
+        "obtain_exit",
+        ObtainExitMessage::sign_and_serialize(sk, flag, std::move(tx_id)),
+        std::move(func));
+  }
+
+  bool
+  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(oxen::quic::message m)> func)
+  {
+    return send_path_control_message(
+        "close_exit", CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)), std::move(func));
+  }
+
+  bool
   Path::find_intro(
       const dht::Key_t& location,
       bool is_relayed,
       uint64_t order,
       std::function<void(oxen::quic::message m)> func)
   {
-    send_path_control_message(
+    return send_path_control_message(
         "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
   }
 
-  void
+  bool
   Path::find_name(std::string name, std::function<void(oxen::quic::message m)> func)
   {
-    send_path_control_message(
+    return send_path_control_message(
         "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
   }
 
-  void
+  bool
   Path::find_router(std::string rid, std::function<void(oxen::quic::message m)> func)
   {
-    send_path_control_message(
+    return send_path_control_message(
         "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
   }
 
-  void
+  bool
   Path::send_path_control_message(
       std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
   {
-    router.send_control_message(upstream(), std::move(method), std::move(body), std::move(func));
-  }
-
-  void
-  Path::SetBuildResultHook(BuildResultHookFunc func)
-  {
-    m_BuiltHook = func;
+    return router.send_control_message(
+        upstream(), std::move(method), std::move(body), std::move(func));
   }
 
   bool
@@ -179,145 +190,6 @@ namespace llarp::path
     }
     return hops_str;
   }
-
-  bool
-  Path::HandleLRSM(uint64_t status, std::array<EncryptedFrame, 8>& frames, Router* r)
-  {
-    uint64_t currentStatus = status;
-
-    size_t index = 0;
-    std::optional<RouterID> failedAt;
-    while (index < hops.size())
-    {
-      if (!frames[index].DoDecrypt(hops[index].shared))
-      {
-        currentStatus = LR_StatusRecord::FAIL_DECRYPT_ERROR;
-        failedAt = hops[index].rc.pubkey;
-        break;
-      }
-      llarp::LogDebug("decrypted LRSM frame from ", hops[index].rc.pubkey);
-
-      llarp_buffer_t* buf = frames[index].Buffer();
-      buf->cur = buf->base + EncryptedFrameOverheadSize;
-
-      LR_StatusRecord record;
-      // successful decrypt
-      if (!record.BDecode(buf))
-      {
-        llarp::LogWarn("malformed frame inside LRCM from ", hops[index].rc.pubkey);
-        currentStatus = LR_StatusRecord::FAIL_MALFORMED_RECORD;
-        failedAt = hops[index].rc.pubkey;
-        break;
-      }
-      llarp::LogDebug("Decoded LR Status Record from ", hops[index].rc.pubkey);
-
-      currentStatus = record.status;
-      if ((record.status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
-      {
-        if (record.status & LR_StatusRecord::FAIL_CONGESTION and index == 0)
-        {
-          // first hop building too fast
-          failedAt = hops[index].rc.pubkey;
-          break;
-        }
-        // failed at next hop
-        if (index + 1 < hops.size())
-        {
-          failedAt = hops[index + 1].rc.pubkey;
-        }
-        break;
-      }
-      ++index;
-    }
-
-    if ((currentStatus & LR_StatusRecord::SUCCESS) == LR_StatusRecord::SUCCESS)
-    {
-      llarp::LogDebug("LR_Status message processed, path build successful");
-      r->loop()->call([r, self = shared_from_this()] { self->HandlePathConfirmMessage(r); });
-    }
-    else
-    {
-      if (failedAt)
-      {
-        r->notify_router_event<tooling::PathBuildRejectedEvent>(Endpoint(), RXID(), *failedAt);
-        LogWarn(
-            name(),
-            " build failed at ",
-            *failedAt,
-            " status=",
-            LRStatusCodeToString(currentStatus),
-            " hops=",
-            HopsString());
-        r->router_profiling().MarkHopFail(*failedAt);
-      }
-      else
-        r->router_profiling().MarkPathFail(this);
-      llarp::LogDebug("LR_Status message processed, path build failed");
-
-      if (currentStatus & LR_StatusRecord::FAIL_TIMEOUT)
-      {
-        llarp::LogDebug("Path build failed due to timeout");
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_CONGESTION)
-      {
-        llarp::LogDebug("Path build failed due to congestion");
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_DEST_UNKNOWN)
-      {
-        llarp::LogDebug(
-            "Path build failed due to one or more nodes giving destination "
-            "unknown");
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_DEST_INVALID)
-      {
-        llarp::LogDebug(
-            "Path build failed due to one or more nodes considered an "
-            "invalid destination");
-        if (failedAt)
-        {
-          r->loop()->call([nodedb = r->node_db(), router = *failedAt]() {
-            LogInfo("router ", router, " is deregistered so we remove it");
-            nodedb->remove_router(router);
-          });
-        }
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_CANNOT_CONNECT)
-      {
-        llarp::LogDebug(
-            "Path build failed due to a node being unable to connect to the "
-            "next hop");
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_MALFORMED_RECORD)
-      {
-        llarp::LogDebug(
-            "Path build failed due to a malformed record in the build status "
-            "message");
-      }
-      else if (currentStatus & LR_StatusRecord::FAIL_DECRYPT_ERROR)
-      {
-        llarp::LogDebug(
-            "Path build failed due to a decrypt error in the build status "
-            "message");
-      }
-      else
-      {
-        llarp::LogDebug("Path build failed for an unspecified reason");
-      }
-      RouterID edge{};
-      if (failedAt)
-        edge = *failedAt;
-      r->loop()->call([r, self = shared_from_this(), edge]() {
-        self->EnterState(ePathFailed, r->now());
-        if (auto parent = self->m_PathSet.lock())
-        {
-          parent->HandlePathBuildFailedAt(self, edge);
-        }
-      });
-    }
-
-    // TODO: meaningful return value?
-    return true;
-  }  // namespace path
 
   void
   Path::EnterState(PathStatus st, llarp_time_t now)
@@ -445,35 +317,26 @@ namespace llarp::path
   }
 
   bool
-  Path::SendLatencyMessage(Router* r)
+  Path::SendLatencyMessage(Router*)
   {
-    const auto now = r->now();
-    // send path latency test
-    routing::PathLatencyMessage latency{};
-    latency.sent_time = randint();
-    latency.sequence_number = NextSeqNo();
-    m_LastLatencyTestID = latency.sent_time;
-    m_LastLatencyTestTime = now;
-    LogDebug(name(), " send latency test id=", latency.sent_time);
-    if (not SendRoutingMessage(latency, r))
-      return false;
-    FlushUpstream(r);
+    // const auto now = r->now();
+    // // send path latency test
+    // routing::PathLatencyMessage latency{};
+    // latency.sent_time = randint();
+    // latency.sequence_number = NextSeqNo();
+    // m_LastLatencyTestID = latency.sent_time;
+    // m_LastLatencyTestTime = now;
+    // LogDebug(name(), " send latency test id=", latency.sent_time);
+    // if (not SendRoutingMessage(latency, r))
+    //   return false;
+    // FlushUpstream(r);
     return true;
   }
 
   bool
-  Path::update_exit(uint64_t tx_id)
+  Path::update_exit(uint64_t)
   {
-    if (m_UpdateExitTX && tx_id == m_UpdateExitTX)
-    {
-      if (m_ExitUpdated)
-        return m_ExitUpdated(shared_from_this());
-    }
-    if (m_CloseExitTX && tx_id == m_CloseExitTX)
-    {
-      if (m_ExitClosed)
-        return m_ExitClosed(shared_from_this());
-    }
+    // TODO: do we still want this concept?
     return false;
   }
 
@@ -661,40 +524,12 @@ namespace llarp::path
     {
       const llarp_buffer_t buf{msg.enc};
       m_RXRate += buf.sz;
-      if (HandleRoutingMessage(buf, r))
-      {
-        r->TriggerPump();
-        m_LastRecvMessage = r->now();
-      }
+      // if (HandleRoutingMessage(buf, r))
+      // {
+      //   r->TriggerPump();
+      //   m_LastRecvMessage = r->now();
+      // }
     }
-  }
-
-  bool
-  Path::HandleRoutingMessage(const llarp_buffer_t& buf, Router* r)
-  {
-    if (!r->ParseRoutingMessageBuffer(buf, this, RXID()))
-    {
-      LogWarn("Failed to parse inbound routing message");
-      return false;
-    }
-    return true;
-  }
-
-  bool
-  Path::HandleUpdateExitVerifyMessage(const routing::UpdateExitVerifyMessage& msg, Router* r)
-  {
-    (void)r;
-    if (m_UpdateExitTX && msg.tx_id == m_UpdateExitTX)
-    {
-      if (m_ExitUpdated)
-        return m_ExitUpdated(shared_from_this());
-    }
-    if (m_CloseExitTX && msg.tx_id == m_CloseExitTX)
-    {
-      if (m_ExitClosed)
-        return m_ExitClosed(shared_from_this());
-    }
-    return false;
   }
 
   /** Note: this is one of two places where AbstractRoutingMessage::bt_encode() is called, the
@@ -717,10 +552,6 @@ namespace llarp::path
   {
     std::array<byte_t, MAX_LINK_MSG_SIZE / 2> tmp;
     llarp_buffer_t buf(tmp);
-    // should help prevent bad paths with uninitialized members
-    // FIXME: Why would we get uninitialized IMessages?
-    if (msg.version != llarp::constants::proto_version)
-      return false;
 
     auto bte = msg.bt_encode();
     buf.write(bte.begin(), bte.end());
@@ -747,60 +578,6 @@ namespace llarp::path
     return HandleUpstream(buf, N, r);
   }
 
-  bool
-  Path::HandlePathTransferMessage(const routing::PathTransferMessage& /*msg*/, Router* /*r*/)
-  {
-    LogWarn("unwarranted path transfer message on tx=", TXID(), " rx=", RXID());
-    return false;
-  }
-
-  bool
-  Path::HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, Router* r)
-  {
-    MarkActive(r->now());
-    if (m_DropHandler)
-      return m_DropHandler(shared_from_this(), msg.path_id, msg.sequence_number);
-    return true;
-  }
-
-  bool
-  Path::HandlePathConfirmMessage(Router* r)
-  {
-    LogDebug("Path Build Confirm, path: ", ShortName());
-    const auto now = llarp::time_now_ms();
-    if (_status == ePathBuilding)
-    {
-      // finish initializing introduction
-      intro.expiry = buildStarted + hops[0].lifetime;
-
-      r->router_profiling().MarkPathSuccess(this);
-
-      // persist session with upstream router until the path is done
-      r->persist_connection_until(upstream(), intro.expiry);
-      MarkActive(now);
-      return SendLatencyMessage(r);
-    }
-    LogWarn("got unwarranted path confirm message on tx=", RXID(), " rx=", RXID());
-    return false;
-  }
-
-  bool
-  Path::HandlePathConfirmMessage(const routing::PathConfirmMessage& /*msg*/, Router* r)
-  {
-    return HandlePathConfirmMessage(r);
-  }
-
-  bool
-  Path::HandleHiddenServiceFrame(const service::ProtocolFrameMessage& frame)
-  {
-    if (auto parent = m_PathSet.lock())
-    {
-      MarkActive(parent->Now());
-      return m_DataHandler && m_DataHandler(shared_from_this(), frame);
-    }
-    return false;
-  }
-
   template <typename Samples_t>
   static llarp_time_t
   computeLatency(const Samples_t& samps)
@@ -812,173 +589,4 @@ namespace llarp::path
       mean += samp;
     return mean / samps.size();
   }
-
-  constexpr auto MaxLatencySamples = 8;
-
-  bool
-  Path::HandlePathLatencyMessage(const routing::PathLatencyMessage&, Router* r)
-  {
-    const auto now = r->now();
-    MarkActive(now);
-    if (m_LastLatencyTestID)
-    {
-      m_LatencySamples.emplace_back(now - m_LastLatencyTestTime);
-
-      while (m_LatencySamples.size() > MaxLatencySamples)
-        m_LatencySamples.pop_front();
-
-      intro.latency = computeLatency(m_LatencySamples);
-      m_LastLatencyTestID = 0;
-      EnterState(ePathEstablished, now);
-      if (m_BuiltHook)
-        m_BuiltHook(shared_from_this());
-      m_BuiltHook = nullptr;
-    }
-    return true;
-  }
-
-  /// this is the Client's side of handling a DHT message. it's handled
-  /// in-place.
-  bool
-  Path::HandleDHTMessage(const dht::AbstractDHTMessage& msg, Router* r)
-  {
-    MarkActive(r->now());
-    routing::PathDHTMessage reply;
-    if (not r->dht()->handle_message(msg, reply.dht_msgs))
-      return false;
-    if (reply.dht_msgs.size())
-      return SendRoutingMessage(reply, r);
-    return true;
-  }
-
-  bool
-  Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg, Router* /*r*/)
-  {
-    /// allows exits to close from their end
-    if (SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
-    {
-      if (msg.Verify(EndpointPubKey()))
-      {
-        LogInfo(name(), " had its exit closed");
-        _role &= ~ePathRoleExit;
-        return true;
-      }
-
-      LogError(name(), " CXM from exit with bad signature");
-    }
-    else
-      LogError(name(), " unwarranted CXM");
-    return false;
-  }
-
-  bool
-  Path::SendExitRequest(const routing::ObtainExitMessage& msg, Router* r)
-  {
-    LogInfo(name(), " sending exit request to ", Endpoint());
-    m_ExitObtainTX = msg.tx_id;
-    return SendRoutingMessage(msg, r);
-  }
-
-  bool
-  Path::SendExitClose(const routing::CloseExitMessage& msg, Router* r)
-  {
-    LogInfo(name(), " closing exit to ", Endpoint());
-    // mark as not exit anymore
-    _role &= ~ePathRoleExit;
-    return SendRoutingMessage(msg, r);
-  }
-
-  bool
-  Path::HandleObtainExitMessage(const routing::ObtainExitMessage& msg, Router* r)
-  {
-    (void)msg;
-    (void)r;
-    LogError(name(), " got unwarranted OXM");
-    return false;
-  }
-
-  bool
-  Path::HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, Router* r)
-  {
-    (void)msg;
-    (void)r;
-    LogError(name(), " got unwarranted UXM");
-    return false;
-  }
-
-  bool
-  Path::HandleRejectExitMessage(const routing::RejectExitMessage& msg, Router* r)
-  {
-    if (m_ExitObtainTX && msg.tx_id == m_ExitObtainTX)
-    {
-      if (!msg.Verify(EndpointPubKey()))
-      {
-        LogError(name(), "RXM invalid signature");
-        return false;
-      }
-      LogInfo(name(), " ", Endpoint(), " Rejected exit");
-      MarkActive(r->now());
-      return InformExitResult(llarp_time_t(msg.backoff_time));
-    }
-    LogError(name(), " got unwarranted RXM");
-    return false;
-  }
-
-  bool
-  Path::HandleGrantExitMessage(const routing::GrantExitMessage& msg, Router* r)
-  {
-    if (m_ExitObtainTX && msg.tx_id == m_ExitObtainTX)
-    {
-      if (!msg.Verify(EndpointPubKey()))
-      {
-        LogError(name(), " GXM signature failed");
-        return false;
-      }
-      // we now can send exit traffic
-      _role |= ePathRoleExit;
-      LogInfo(name(), " ", Endpoint(), " Granted exit");
-      MarkActive(r->now());
-      return InformExitResult(0s);
-    }
-    LogError(name(), " got unwarranted GXM");
-    return false;
-  }
-
-  bool
-  Path::InformExitResult(llarp_time_t B)
-  {
-    auto self = shared_from_this();
-    bool result = true;
-    for (const auto& hook : m_ObtainedExitHooks)
-      result = hook(self, B) and result;
-    m_ObtainedExitHooks.clear();
-    return result;
-  }
-
-  bool
-  Path::HandleTransferTrafficMessage(const routing::TransferTrafficMessage& msg, Router* r)
-  {
-    // check if we can handle exit data
-    if (!SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
-      return false;
-    // handle traffic if we have a handler
-    if (!m_ExitTrafficHandler)
-      return false;
-    bool sent = msg.enc_buf.size() > 0;
-    auto self = shared_from_this();
-    for (const auto& pkt : msg.enc_buf)
-    {
-      if (pkt.size() <= 8)
-        continue;
-      auto counter = oxenc::load_big_to_host<uint64_t>(pkt.data());
-      if (m_ExitTrafficHandler(
-              self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter, msg.protocol))
-      {
-        MarkActive(r->now());
-        EnterState(ePathEstablished, r->now());
-      }
-    }
-    return sent;
-  }
-
 }  // namespace llarp::path

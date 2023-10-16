@@ -4,7 +4,6 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/intro_set.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -31,6 +30,7 @@ namespace std
 
 namespace llarp
 {
+  struct Router;
   struct RouterContact;
   class NodeDB;
 
@@ -209,12 +209,6 @@ namespace llarp
 
       virtual void
       BlacklistSNode(const RouterID) = 0;
-
-      virtual routing::AbstractRoutingMessageHandler*
-      GetDHTHandler()
-      {
-        return nullptr;
-      }
 
       Path_ptr
       GetEstablishedPathClosestTo(
