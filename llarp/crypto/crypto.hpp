@@ -30,6 +30,8 @@ namespace llarp
     /// xchacha symmetric cipher
     bool
     xchacha20(uint8_t*, size_t size, const SharedSecret&, const TunnelNonce&);
+    bool
+    xchacha20(uint8_t*, size_t size, const uint8_t*, const uint8_t*);
 
     /// path dh creator's side
     bool
@@ -37,6 +39,12 @@ namespace llarp
     /// path dh relay side
     bool
     dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
+    bool
+    dh_server(
+        uint8_t* shared_secret,
+        const uint8_t* other_pk,
+        const uint8_t* local_pk,
+        const uint8_t* nonce);
     /// transport dh client side
     bool
     transport_dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);

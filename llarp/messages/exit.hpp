@@ -16,8 +16,7 @@ namespace llarp
 
     // flag: 0 = Exit, 1 = Snode
     inline std::string
-    sign_and_serialize(
-        SecretKey sk, uint64_t flag, std::string pubkey, uint64_t seq_no, std::string tx_id)
+    sign_and_serialize(SecretKey sk, uint64_t flag, std::string pubkey, std::string tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -27,7 +26,6 @@ namespace llarp
 
         btdp.append("E", flag);
         btdp.append("I", pubkey);
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
 
         if (not CryptoManager::instance()->sign(
@@ -41,7 +39,7 @@ namespace llarp
     }
 
     inline std::string
-    sign_and_serialize_response(SecretKey sk, uint64_t seq_no, std::string_view tx_id)
+    sign_and_serialize_response(SecretKey sk, std::string_view tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -51,7 +49,6 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
@@ -73,7 +70,7 @@ namespace llarp
     inline auto UPDATE_FAILED = "EXIT UPDATE FAILED"sv;
 
     inline std::string
-    sign_and_serialize(SecretKey sk, std::string path_id, std::string seq_no, std::string tx_id)
+    sign_and_serialize(SecretKey sk, std::string path_id, std::string tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -82,7 +79,6 @@ namespace llarp
         auto btdp = btlp.append_dict();
 
         btdp.append("P", path_id);
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
 
         if (not CryptoManager::instance()->sign(
@@ -96,7 +92,7 @@ namespace llarp
     }
 
     inline std::string
-    sign_and_serialize_response(SecretKey sk, uint64_t seq_no, std::string_view tx_id)
+    sign_and_serialize_response(SecretKey sk, std::string_view tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -106,7 +102,6 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
@@ -127,7 +122,7 @@ namespace llarp
     inline auto UPDATE_FAILED = "CLOSE EXIT FAILED"sv;
 
     inline std::string
-    sign_and_serialize(SecretKey sk, std::string seq_no, std::string tx_id)
+    sign_and_serialize(SecretKey sk, std::string tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -137,7 +132,6 @@ namespace llarp
       {
         auto btdp = btlp.append_dict();
 
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
@@ -152,7 +146,7 @@ namespace llarp
     }
 
     inline std::string
-    sign_and_serialize_response(SecretKey sk, uint64_t seq_no, std::string_view tx_id)
+    sign_and_serialize_response(SecretKey sk, std::string_view tx_id)
     {
       oxenc::bt_list_producer btlp;
       std::string sig(64, '\0');
@@ -162,7 +156,6 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("S", seq_no);
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 

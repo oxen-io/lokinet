@@ -27,7 +27,7 @@ namespace llarp
       if (!crypto->dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
       {
         auto err = fmt::format("Failed to generate shared key for path build!");
-        log::error(path_cat, err);
+        log::warning(path_cat, err);
         throw std::runtime_error{std::move(err)};
       }
       // generate nonceXOR value self->hop->pathKey
@@ -46,12 +46,12 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("lifetime", path::DEFAULT_LIFETIME.count());
-        btdp.append("txid", hop.txID.ToView());
-        btdp.append("rxid", hop.rxID.ToView());
-        btdp.append("nonce", hop.nonce.ToView());
-        btdp.append("next", hop.upstream.ToView());
-        btdp.append("commkey", hop.commkey.toPublic().ToView());
+        btdp.append("COMMKEY", hop.commkey.toPublic().ToView());
+        btdp.append("LIFETIME", path::DEFAULT_LIFETIME.count());
+        btdp.append("NONCE", hop.nonce.ToView());
+        btdp.append("RX", hop.rxID.ToView());
+        btdp.append("TX", hop.txID.ToView());
+        btdp.append("UPSTREAM", hop.upstream.ToView());
 
         hop_info = std::move(btdp).str();
       }
@@ -66,7 +66,7 @@ namespace llarp
       // derive (outer) shared key
       if (!crypto->dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
       {
-        log::error(path_cat, "DH client failed during hop info encryption!");
+        log::warning(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};
       }
 
@@ -77,8 +77,8 @@ namespace llarp
               shared,
               outer_nonce))
       {
-        log::error(path_cat, "Hop info encryption failed!");
-        throw std::runtime_error{"Hop info encrypttion failed"};
+        log::warning(path_cat, "Hop info encryption failed!");
+        throw std::runtime_error{"Hop info encryption failed"};
       }
 
       std::string hashed_data;
@@ -86,9 +86,9 @@ namespace llarp
       {
         oxenc::bt_dict_producer btdp;
 
-        btdp.append("encrypted", hop_info);
-        btdp.append("pubkey", framekey.toPublic().ToView());
-        btdp.append("nonce", outer_nonce.ToView());
+        btdp.append("ENCRYPTED", hop_info);
+        btdp.append("NONCE", outer_nonce.ToView());
+        btdp.append("PUBKEY", framekey.toPublic().ToView());
 
         hashed_data = std::move(btdp).str();
       }
@@ -102,14 +102,14 @@ namespace llarp
               hashed_data.size(),
               shared))
       {
-        log::error(path_cat, "Failed to generate HMAC for hop info");
+        log::warning(path_cat, "Failed to generate HMAC for hop info");
         throw std::runtime_error{"Failed to generate HMAC for hop info"};
       }
 
       oxenc::bt_dict_producer btdp;
 
-      btdp.append("hash", hash);
-      btdp.append("frame", hashed_data);
+      btdp.append("HASH", hash);
+      btdp.append("FRAME", hashed_data);
 
       return std::move(btdp).str();
     }

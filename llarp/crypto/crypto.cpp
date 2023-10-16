@@ -46,6 +46,28 @@ namespace llarp
   }
 
   static bool
+  dh(uint8_t* out,
+     const uint8_t* client_pk,
+     const uint8_t* server_pk,
+     const uint8_t* themPub,
+     const uint8_t* usSec)
+  {
+    llarp::SharedSecret shared;
+    crypto_generichash_state h;
+
+    if (crypto_scalarmult_curve25519(shared.data(), usSec, themPub))
+    {
+      return false;
+    }
+    crypto_generichash_blake2b_init(&h, nullptr, 0U, shared.size());
+    crypto_generichash_blake2b_update(&h, client_pk, 32);
+    crypto_generichash_blake2b_update(&h, server_pk, 32);
+    crypto_generichash_blake2b_update(&h, shared.data(), 32);
+    crypto_generichash_blake2b_final(&h, out, shared.size());
+    return true;
+  }
+
+  static bool
   dh_client_priv(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
@@ -56,6 +78,7 @@ namespace llarp
       return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32, dh_result.data(), 32)
           != -1;
     }
+
     llarp::LogWarn("crypto::dh_client - dh failed");
     return false;
   }
@@ -65,11 +88,27 @@ namespace llarp
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     llarp::SharedSecret dh_result;
+
     if (dh(dh_result, pk, sk.toPublic(), pk.data(), sk))
     {
       return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32, dh_result.data(), 32)
           != -1;
     }
+
+    llarp::LogWarn("crypto::dh_server - dh failed");
+    return false;
+  }
+
+  static bool
+  dh_server_priv(uint8_t* shared, const uint8_t* pk, const uint8_t* sk, const uint8_t* nonce)
+  {
+    llarp::SharedSecret dh_result;
+
+    if (dh(dh_result.data(), pk, sk, pk, sk))
+    {
+      return crypto_generichash_blake2b(shared, 32, nonce, 32, dh_result.data(), 32) != -1;
+    }
+
     llarp::LogWarn("crypto::dh_server - dh failed");
     return false;
   }
@@ -134,6 +173,12 @@ namespace llarp
   }
 
   bool
+  Crypto::xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce)
+  {
+    return crypto_stream_xchacha20_xor(buf, buf, size, nonce, secret) == 0;
+  }
+
+  bool
   Crypto::dh_client(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
@@ -145,6 +190,15 @@ namespace llarp
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     return dh_server_priv(shared, pk, sk, n);
+  }
+  bool
+  Crypto::dh_server(
+      uint8_t* shared_secret,
+      const uint8_t* other_pk,
+      const uint8_t* local_pk,
+      const uint8_t* nonce)
+  {
+    return dh_server_priv(shared_secret, other_pk, local_pk, nonce);
   }
   /// transport dh client side
   bool

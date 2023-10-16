@@ -478,6 +478,7 @@ namespace llarp
         path->EnterState(path::ePathFailed, router->now());
       }
 
+      // TODO: we don't use this concept anymore?
       router->persist_connection_until(path->upstream(), path->ExpireTime());
     }
 
