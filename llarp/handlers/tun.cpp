@@ -712,7 +712,7 @@ namespace llarp::handlers
             }
             catch (...)
             {
-              log::warning(log_cat, "Failed to parse find name response!");
+              log::warning(logcat, "Failed to parse find name response!");
               throw;
             }
 
@@ -790,8 +790,8 @@ namespace llarp::handlers
           msg.AddCNAMEReply(random.ToString(), 1);
           return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
         }
-        else
-          msg.AddNXReply();
+
+        msg.AddNXReply();
       }
       else if (is_localhost_loki(msg))
       {
@@ -866,7 +866,7 @@ namespace llarp::handlers
                 }
                 catch (...)
                 {
-                  log::warning(log_cat, "Failed to parse find name response!");
+                  log::warning(logcat, "Failed to parse find name response!");
                   throw;
                 }
 
@@ -874,7 +874,7 @@ namespace llarp::handlers
               }
               else
               {
-                log::warning(log_cat, "{} (ONS name: {}) not resolved", name, ons_name);
+                log::warning(logcat, "{} (ONS name: {}) not resolved", name, ons_name);
                 msg->AddNXReply();
                 reply(*msg);
               }
