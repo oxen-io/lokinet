@@ -1,6 +1,7 @@
 include(Version)
 
-target_sources(lokinet-cryptography PRIVATE
+add_library(lokinet-cryptography
+  STATIC
   crypto/crypto.cpp
   crypto/encrypted_frame.cpp
   crypto/types.cpp
@@ -250,7 +251,7 @@ add_library(lokinet-base INTERFACE)
 target_include_directories(lokinet-base
   INTERFACE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include
 )
-target_link_libraries(lokinet-base INTERFACE quic lokinet-cryptography)
+target_link_libraries(lokinet-base INTERFACE quic)
 
 if(WITH_PEERSTATS)
   target_compile_definitions(lokinet-base INTERFACE -DLOKINET_PEERSTATS_BACKEND)
@@ -270,7 +271,7 @@ function(lokinet_link_lib libname)
 endfunction()
 
 # internal public linkages of components
-lokinet_link_lib(lokinet-util)
+lokinet_link_lib(lokinet-util lokinet-libntrup)
 lokinet_link_lib(lokinet-cryptography lokinet-libcrypt lokinet-util)
 lokinet_link_lib(lokinet-peerstats lokinet-context)
 lokinet_link_lib(lokinet-consensus lokinet-context)
