@@ -157,13 +157,12 @@ namespace llarp::net
     {
       if (auto* vec = std::get_if<std::vector<byte_t>>(&udp_body))
         return make_udp(src.getIP(), src.port(), dst.getIP(), dst.port(), std::move(*vec));
-      else if (auto* buf = std::get_if<OwnedBuffer>(&udp_body))
+      if (auto* buf = std::get_if<OwnedBuffer>(&udp_body))
         return make_udp(src, dst, buf->copy());
-      else
-        return net::IPPacket{size_t{}};
+      return net::IPPacket{size_t{}};
     }
 
-    [[deprecated("deprecated because of llarp_buffer_t")]] inline bool
+    inline bool
     Load(const llarp_buffer_t& buf)
     {
       _buf = buf.copy();
@@ -173,7 +172,7 @@ namespace llarp::net
       return false;
     }
 
-    [[deprecated("deprecated because of llarp_buffer_t")]] inline llarp_buffer_t
+    inline llarp_buffer_t
     ConstBuffer() const
     {
       return llarp_buffer_t{_buf};
@@ -187,6 +186,18 @@ namespace llarp::net
       buf.resize(0);
       std::swap(_buf, buf);
       return buf;
+    }
+
+    inline std::string
+    to_string()
+    {
+      return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
+    }
+
+    inline std::string_view
+    to_view()
+    {
+      return {reinterpret_cast<const char*>(_buf.data()), _buf.size()};
     }
 
     inline byte_t*
@@ -275,8 +286,7 @@ namespace llarp::net
     {
       if (IsV4())
         return Header()->protocol;
-      else
-        return HeaderV6()->protocol;
+      return HeaderV6()->protocol;
     }
 
     inline bool

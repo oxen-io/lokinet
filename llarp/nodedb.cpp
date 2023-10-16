@@ -1,8 +1,8 @@
 #include "nodedb.hpp"
 
+#include "router_contact.hpp"
 #include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
-#include "router_contact.hpp"
 #include "util/buffer.hpp"
 #include "util/fs.hpp"
 #include "util/logging.hpp"
@@ -58,15 +58,14 @@ namespace llarp
 
   constexpr auto FlushInterval = 5min;
 
-  NodeDB::NodeDB(fs::path root, std::function<void(std::function<void()>)> diskCaller)
-      : m_Root{std::move(root)}
+  NodeDB::NodeDB(fs::path root, std::function<void(std::function<void()>)> diskCaller, Router* r)
+      : router{*r}
+      , m_Root{std::move(root)}
       , disk(std::move(diskCaller))
       , m_NextFlushAt{time_now_ms() + FlushInterval}
   {
     EnsureSkiplist(m_Root);
   }
-  NodeDB::NodeDB() : m_Root{}, disk{[](auto) {}}, m_NextFlushAt{0s}
-  {}
 
   void
   NodeDB::Tick(llarp_time_t now)
@@ -76,24 +75,24 @@ namespace llarp
 
     if (now > m_NextFlushAt)
     {
-      m_NextFlushAt += FlushInterval;
-      // make copy of all rcs
-      std::vector<RouterContact> copy;
-      for (const auto& item : m_Entries)
-        copy.push_back(item.second.rc);
-      // flush them to disk in one big job
-      // TODO: split this up? idk maybe some day...
-      disk([this, data = std::move(copy)]() {
-        for (const auto& rc : data)
-        {
-          rc.Write(GetPathForPubkey(rc.pubkey));
-        }
+      router.loop()->call([this]() {
+        m_NextFlushAt += FlushInterval;
+        // make copy of all rcs
+        std::vector<RouterContact> copy;
+        for (const auto& item : entries)
+          copy.push_back(item.second.rc);
+        // flush them to disk in one big job
+        // TODO: split this up? idk maybe some day...
+        disk([this, data = std::move(copy)]() {
+          for (const auto& rc : data)
+            rc.Write(get_path_by_pubkey(rc.pubkey));
+        });
       });
     }
   }
 
   fs::path
-  NodeDB::GetPathForPubkey(RouterID pubkey) const
+  NodeDB::get_path_by_pubkey(RouterID pubkey) const
   {
     std::string hexString = oxenc::to_hex(pubkey.begin(), pubkey.end());
     std::string skiplistDir;
@@ -107,156 +106,164 @@ namespace llarp
   }
 
   void
-  NodeDB::LoadFromDisk()
+  NodeDB::load_from_disk()
   {
     if (m_Root.empty())
       return;
-    std::set<fs::path> purge;
 
-    for (const char& ch : skiplist_subdirs)
-    {
-      if (!ch)
-        continue;
-      std::string p;
-      p += ch;
-      fs::path sub = m_Root / p;
+    router.loop()->call([this]() {
+      std::set<fs::path> purge;
 
-      llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-        // skip files that are not suffixed with .signed
-        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+      for (const char& ch : skiplist_subdirs)
+      {
+        if (!ch)
+          continue;
+        std::string p;
+        p += ch;
+        fs::path sub = m_Root / p;
+
+        llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
+          // skip files that are not suffixed with .signed
+          if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
+            return true;
+
+          RouterContact rc{};
+
+          if (not rc.Read(f))
+          {
+            // try loading it, purge it if it is junk
+            purge.emplace(f);
+            return true;
+          }
+
+          if (not rc.FromOurNetwork())
+          {
+            // skip entries that are not from our network
+            return true;
+          }
+
+          if (rc.IsExpired(time_now_ms()))
+          {
+            // rc expired dont load it and purge it later
+            purge.emplace(f);
+            return true;
+          }
+
+          // validate signature and purge entries with invalid signatures
+          // load ones with valid signatures
+          if (rc.VerifySignature())
+            entries.emplace(rc.pubkey, rc);
+          else
+            purge.emplace(f);
+
           return true;
+        });
+      }
 
-        RouterContact rc{};
+      if (not purge.empty())
+      {
+        log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
 
-        if (not rc.Read(f))
-        {
-          // try loading it, purge it if it is junk
-          purge.emplace(f);
-          return true;
-        }
-
-        if (not rc.FromOurNetwork())
-        {
-          // skip entries that are not from our network
-          return true;
-        }
-
-        if (rc.IsExpired(time_now_ms()))
-        {
-          // rc expired dont load it and purge it later
-          purge.emplace(f);
-          return true;
-        }
-
-        // validate signature and purge entries with invalid signatures
-        // load ones with valid signatures
-        if (rc.VerifySignature())
-          m_Entries.emplace(rc.pubkey, rc);
-        else
-          purge.emplace(f);
-
-        return true;
-      });
-    }
-
-    if (not purge.empty())
-    {
-      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
-
-      for (const auto& fpath : purge)
-        fs::remove(fpath);
-    }
+        for (const auto& fpath : purge)
+          fs::remove(fpath);
+      }
+    });
   }
 
   void
-  NodeDB::SaveToDisk() const
+  NodeDB::save_to_disk() const
   {
     if (m_Root.empty())
       return;
 
-    for (const auto& item : m_Entries)
-    {
-      item.second.rc.Write(GetPathForPubkey(item.first));
-    }
+    router.loop()->call([this]() {
+      for (const auto& item : entries)
+        item.second.rc.Write(get_path_by_pubkey(item.first));
+    });
   }
 
   bool
-  NodeDB::Has(RouterID pk) const
+  NodeDB::has_router(RouterID pk) const
   {
-    util::NullLock lock{m_Access};
-    return m_Entries.find(pk) != m_Entries.end();
+    return router.loop()->call_get([this, pk]() { return entries.find(pk) != entries.end(); });
   }
 
   std::optional<RouterContact>
-  NodeDB::Get(RouterID pk) const
+  NodeDB::get_rc(RouterID pk) const
   {
-    util::NullLock lock{m_Access};
-    const auto itr = m_Entries.find(pk);
-    if (itr == m_Entries.end())
-      return std::nullopt;
-    return itr->second.rc;
+    return router.loop()->call_get([this, pk]() -> std::optional<RouterContact> {
+      const auto itr = entries.find(pk);
+
+      if (itr == entries.end())
+        return std::nullopt;
+
+      return itr->second.rc;
+    });
   }
 
   void
-  NodeDB::Remove(RouterID pk)
+  NodeDB::remove_router(RouterID pk)
   {
-    util::NullLock lock{m_Access};
-    m_Entries.erase(pk);
-    AsyncRemoveManyFromDisk({pk});
+    router.loop()->call([this, pk]() {
+      entries.erase(pk);
+      remove_many_from_disk_async({pk});
+    });
   }
 
   void
-  NodeDB::RemoveStaleRCs(std::unordered_set<RouterID> keep, llarp_time_t cutoff)
+  NodeDB::remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff)
   {
-    util::NullLock lock{m_Access};
-    std::unordered_set<RouterID> removed;
-    auto itr = m_Entries.begin();
-    while (itr != m_Entries.end())
-    {
-      if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.pubkey) == 0)
+    router.loop()->call([this, keep, cutoff]() {
+      std::unordered_set<RouterID> removed;
+      auto itr = entries.begin();
+      while (itr != entries.end())
       {
-        removed.insert(itr->second.rc.pubkey);
-        itr = m_Entries.erase(itr);
+        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.pubkey) == 0)
+        {
+          removed.insert(itr->second.rc.pubkey);
+          itr = entries.erase(itr);
+        }
+        else
+          ++itr;
       }
-      else
-        ++itr;
-    }
-    if (not removed.empty())
-      AsyncRemoveManyFromDisk(std::move(removed));
+      if (not removed.empty())
+        remove_many_from_disk_async(std::move(removed));
+    });
   }
 
   void
-  NodeDB::Put(RouterContact rc)
+  NodeDB::put_rc(RouterContact rc)
   {
-    util::NullLock lock{m_Access};
-    m_Entries.erase(rc.pubkey);
-    m_Entries.emplace(rc.pubkey, rc);
+    router.loop()->call([this, rc]() {
+      entries.erase(rc.pubkey);
+      entries.emplace(rc.pubkey, rc);
+    });
   }
 
   size_t
-  NodeDB::NumLoaded() const
+  NodeDB::num_loaded() const
   {
-    util::NullLock lock{m_Access};
-    return m_Entries.size();
+    return router.loop()->call_get([this]() { return entries.size(); });
   }
 
   void
-  NodeDB::PutIfNewer(RouterContact rc)
+  NodeDB::put_rc_if_newer(RouterContact rc)
   {
-    util::NullLock lock{m_Access};
-    auto itr = m_Entries.find(rc.pubkey);
-    if (itr == m_Entries.end() or itr->second.rc.OtherIsNewer(rc))
-    {
-      // delete if existing
-      if (itr != m_Entries.end())
-        m_Entries.erase(itr);
-      // add new entry
-      m_Entries.emplace(rc.pubkey, rc);
-    }
+    router.loop()->call([this, rc]() {
+      auto itr = entries.find(rc.pubkey);
+      if (itr == entries.end() or itr->second.rc.OtherIsNewer(rc))
+      {
+        // delete if existing
+        if (itr != entries.end())
+          entries.erase(itr);
+        // add new entry
+        entries.emplace(rc.pubkey, rc);
+      }
+    });
   }
 
   void
-  NodeDB::AsyncRemoveManyFromDisk(std::unordered_set<RouterID> remove) const
+  NodeDB::remove_many_from_disk_async(std::unordered_set<RouterID> remove) const
   {
     if (m_Root.empty())
       return;
@@ -264,7 +271,7 @@ namespace llarp
     std::set<fs::path> files;
     for (auto id : remove)
     {
-      files.emplace(GetPathForPubkey(std::move(id)));
+      files.emplace(get_path_by_pubkey(std::move(id)));
     }
     // remove them from the disk via the diskio thread
     disk([files]() {
@@ -274,50 +281,50 @@ namespace llarp
   }
 
   llarp::RouterContact
-  NodeDB::FindClosestTo(llarp::dht::Key_t location) const
+  NodeDB::find_closest_to(llarp::dht::Key_t location) const
   {
-    util::NullLock lock{m_Access};
-    llarp::RouterContact rc;
-    const llarp::dht::XorMetric compare(location);
-    VisitAll([&rc, compare](const auto& otherRC) {
-      if (rc.pubkey.IsZero())
-      {
-        rc = otherRC;
-        return;
-      }
-      if (compare(
-              llarp::dht::Key_t{otherRC.pubkey.as_array()},
-              llarp::dht::Key_t{rc.pubkey.as_array()}))
-        rc = otherRC;
+    return router.loop()->call_get([this, location]() {
+      llarp::RouterContact rc;
+      const llarp::dht::XorMetric compare(location);
+      VisitAll([&rc, compare](const auto& otherRC) {
+        if (rc.pubkey.IsZero())
+        {
+          rc = otherRC;
+          return;
+        }
+        if (compare(
+                llarp::dht::Key_t{otherRC.pubkey.as_array()},
+                llarp::dht::Key_t{rc.pubkey.as_array()}))
+          rc = otherRC;
+      });
+      return rc;
     });
-    return rc;
   }
 
   std::vector<RouterContact>
-  NodeDB::FindManyClosestTo(llarp::dht::Key_t location, uint32_t numRouters) const
+  NodeDB::find_many_closest_to(llarp::dht::Key_t location, uint32_t numRouters) const
   {
-    util::NullLock lock{m_Access};
-    std::vector<const RouterContact*> all;
+    return router.loop()->call_get([this, location, numRouters]() {
+      std::vector<const RouterContact*> all;
 
-    const auto& entries = m_Entries;
+      all.reserve(entries.size());
+      for (auto& entry : entries)
+      {
+        all.push_back(&entry.second.rc);
+      }
 
-    all.reserve(entries.size());
-    for (auto& entry : entries)
-    {
-      all.push_back(&entry.second.rc);
-    }
+      auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
+      std::partial_sort(
+          all.begin(), it_mid, all.end(), [compare = dht::XorMetric{location}](auto* a, auto* b) {
+            return compare(*a, *b);
+          });
 
-    auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
-    std::partial_sort(
-        all.begin(), it_mid, all.end(), [compare = dht::XorMetric{location}](auto* a, auto* b) {
-          return compare(*a, *b);
-        });
+      std::vector<RouterContact> closest;
+      closest.reserve(numRouters);
+      for (auto it = all.begin(); it != it_mid; ++it)
+        closest.push_back(**it);
 
-    std::vector<RouterContact> closest;
-    closest.reserve(numRouters);
-    for (auto it = all.begin(); it != it_mid; ++it)
-      closest.push_back(**it);
-
-    return closest;
+      return closest;
+    });
   }
 }  // namespace llarp

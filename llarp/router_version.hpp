@@ -6,6 +6,11 @@
 #include "constants/proto.hpp"
 #include "util/formattable.hpp"
 
+namespace
+{
+  static auto llarp_cat = llarp::log::Cat("lokinet.llarp");
+}  // namespace
+
 namespace llarp
 {
   struct RouterVersion
@@ -16,8 +21,8 @@ namespace llarp
 
     explicit RouterVersion(const Version_t& routerVersion, uint64_t protoVersion);
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
     bool
     BDecode(llarp_buffer_t* buf);

@@ -20,7 +20,7 @@ namespace llarp::apple
         Context& ctx,
         packet_write_callback packet_writer,
         on_readable_callback on_readable,
-        AbstractRouter* router);
+        Router* router);
 
     // Method to call when a packet has arrived to deliver the packet to lokinet
     bool
@@ -50,7 +50,7 @@ namespace llarp::apple
 
     thread::Queue<net::IPPacket> m_ReadQueue{PacketQueueSize};
 
-    AbstractRouter* const _router;
+    Router* const _router;
   };
 
 }  // namespace llarp::apple

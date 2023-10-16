@@ -2,8 +2,7 @@
 
 #include <llarp/crypto/types.hpp>
 #include <llarp/net/ip_packet.hpp>
-#include <llarp/path/ihophandler.hpp>
-#include <llarp/routing/transfer_traffic_message.hpp>
+#include <llarp/path/abstracthophandler.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/time.hpp>
 

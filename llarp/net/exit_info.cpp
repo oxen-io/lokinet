@@ -14,7 +14,7 @@
 namespace llarp
 {
   bool
-  ExitInfo::BEncode(llarp_buffer_t* buf) const
+  ExitInfo::bt_encode(llarp_buffer_t* buf) const
   {
     SockAddr exitaddr = ipAddress.createSockAddr();
     const auto* exitaddr6 = static_cast<const sockaddr_in6*>(exitaddr);
@@ -62,7 +62,7 @@ namespace llarp
   }
 
   bool
-  ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  ExitInfo::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))

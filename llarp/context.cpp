@@ -3,8 +3,7 @@
 #include "constants/evloop.hpp"
 
 #include "config/config.hpp"
-#include "crypto/crypto_libsodium.hpp"
-#include "dht/context.hpp"
+#include "crypto/crypto.hpp"
 #include "ev/ev.hpp"
 #include <memory>
 #include "nodedb.hpp"
@@ -75,7 +74,7 @@ namespace llarp
       loop = EventLoop::create(jobQueueSize);
     }
 
-    crypto = std::make_shared<sodium::CryptoLibSodium>();
+    crypto = std::make_shared<Crypto>();
     cryptoManager = std::make_shared<CryptoManager>(crypto.get());
 
     router = makeRouter(loop);
@@ -90,10 +89,10 @@ namespace llarp
   Context::makeNodeDB()
   {
     return std::make_shared<NodeDB>(
-        nodedb_dirname, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+        nodedb_dirname, [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); });
   }
 
-  std::shared_ptr<AbstractRouter>
+  std::shared_ptr<Router>
   Context::makeRouter(const EventLoop_ptr& loop)
   {
     return std::make_shared<Router>(loop, makeVPNPlatform());

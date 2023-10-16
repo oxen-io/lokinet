@@ -3,7 +3,7 @@
 #include <llarp.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 namespace llarp
 {

@@ -22,6 +22,14 @@ namespace llarp
     return true;
   }
 
+  PubKey
+  PubKey::from_string(const std::string& s)
+  {
+    PubKey p;
+    oxenc::from_hex(s.begin(), s.end(), p.begin());
+    return p;
+  }
+
   std::string
   PubKey::ToString() const
   {
@@ -91,7 +99,7 @@ namespace llarp
   {
     std::string tmp(128, 0);
     llarp_buffer_t buf(tmp);
-    if (!BEncode(&buf))
+    if (!bt_encode(&buf))
       return false;
 
     tmp.resize(buf.cur - buf.base);

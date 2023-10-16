@@ -7,37 +7,42 @@
 
 namespace llarp
 {
-  struct DiscardMessage final : public ILinkMessage
+  struct LinkDiscardMessage final : public AbstractLinkMessage
   {
-    DiscardMessage() : ILinkMessage()
+    LinkDiscardMessage() : AbstractLinkMessage()
     {}
 
-    bool
-    BEncode(llarp_buffer_t* buf) const override
+    std::string
+    bt_encode() const override
     {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!bencode_write_bytestring(buf, "a", 1))
-        return false;
-      if (!bencode_write_bytestring(buf, "x", 1))
-        return false;
-      return bencode_end(buf);
+      oxenc::bt_dict_producer btdp;
+
+      try
+      {
+        btdp.append("a", "x");
+      }
+      catch (...)
+      {
+        log::critical(link_cat, "Error: RelayDownstreamMessage failed to bt encode contents!");
+      }
+
+      return std::move(btdp).str();
     }
 
     void
-    Clear() override
+    clear() override
     {
       version = 0;
     }
 
     const char*
-    Name() const override
+    name() const override
     {
       return "Discard";
     }
 
     bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf) override
     {
       if (key.startswith("a"))
       {
@@ -52,7 +57,7 @@ namespace llarp
     }
 
     bool
-    HandleMessage(AbstractRouter* /*router*/) const override
+    handle_message(Router* /*router*/) const override
     {
       return true;
     }
@@ -60,59 +65,61 @@ namespace llarp
 
   namespace routing
   {
-    struct DataDiscardMessage final : public IMessage
+    struct DataDiscardMessage final : public AbstractRoutingMessage
     {
-      PathID_t P;
+      PathID_t path_id;
 
       DataDiscardMessage() = default;
 
-      DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
+      DataDiscardMessage(const PathID_t& dst, uint64_t s) : path_id(dst)
       {
-        S = s;
+        sequence_number = s;
         version = llarp::constants::proto_version;
       }
 
       void
-      Clear() override
+      clear() override
       {
         version = 0;
       }
 
       bool
-      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override
+      handle_message(AbstractRoutingMessageHandler* h, Router* r) const override
       {
         return h->HandleDataDiscardMessage(*this, r);
       }
 
       bool
-      DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override
+      decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf) override
       {
         bool read = false;
-        if (!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
+        if (!BEncodeMaybeReadDictEntry("P", path_id, read, k, buf))
           return false;
-        if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+        if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
           return false;
         if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
           return false;
         return read;
       }
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override
+      std::string
+      bt_encode() const override
       {
-        if (!bencode_start_dict(buf))
-          return false;
+        oxenc::bt_dict_producer btdp;
 
-        if (!BEncodeWriteDictMsgType(buf, "A", "D"))
-          return false;
-        if (!BEncodeWriteDictEntry("P", P, buf))
-          return false;
-        if (!BEncodeWriteDictInt("S", S, buf))
-          return false;
-        if (!BEncodeWriteDictInt("V", version, buf))
-          return false;
+        try
+        {
+          btdp.append("A", "D");
+          btdp.append("P", path_id.ToView());
+          btdp.append("S", sequence_number);
+          btdp.append("V", version);
+        }
+        catch (...)
+        {
+          log::critical(route_cat, "Error: DataDiscardMessage failed to bt encode contents!");
+        }
 
-        return bencode_end(buf);
+        return std::move(btdp).str();
       }
     };
   }  // namespace routing

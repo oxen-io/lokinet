@@ -21,7 +21,7 @@ namespace llarp
   CryptoTypes_Init(py::module& mod);
 
   void
-  AbstractRouter_Init(py::module& mod);
+  Router_Init(py::module& mod);
 
   void
   RouterID_Init(py::module& mod);

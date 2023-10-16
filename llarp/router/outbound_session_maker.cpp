@@ -1,11 +1,10 @@
 #include "outbound_session_maker.hpp"
 
-#include "abstractrouter.hpp"
+#include "router.hpp"
 #include <llarp/tooling/peer_stats_event.hpp>
-#include <llarp/link/server.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/nodedb.hpp>
-#include "i_rc_lookup_handler.hpp"
+#include "rc_lookup_handler.hpp"
 #include <llarp/link/link_manager.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -19,7 +18,7 @@ namespace llarp
 {
 
   bool
-  OutboundSessionMaker::OnSessionEstablished(ILinkSession* session)
+  OutboundSessionMaker::OnSessionEstablished(AbstractLinkSession* session)
   {
     // TODO: do we want to keep it
     const RouterContact rc = session->GetRemoteRC();
@@ -44,7 +43,7 @@ namespace llarp
   }
 
   void
-  OutboundSessionMaker::OnConnectTimeout(ILinkSession* session)
+  OutboundSessionMaker::OnConnectTimeout(AbstractLinkSession* session)
   {
     const auto router = RouterID(session->GetPubKey());
     LogWarn("Session establish attempt to ", router, " timed out.", session->GetRemoteEndpoint());
@@ -157,9 +156,9 @@ namespace llarp
 
   void
   OutboundSessionMaker::Init(
-      AbstractRouter* router,
-      ILinkManager* linkManager,
-      I_RCLookupHandler* rcLookup,
+      Router* router,
+      LinkManager* linkManager,
+      RCLookupHandler* rcLookup,
       Profiling* profiler,
       EventLoop_ptr loop,
       WorkerFunc_t dowork)
@@ -210,7 +209,7 @@ namespace llarp
         numPending += pendingCallbacks.size();
     }
 
-    return _linkManager->NumberOfConnectedRouters() + numPending < maxConnectedRouters;
+    return _linkManager->get_num_connected() + numPending < maxConnectedRouters;
   }
 
   void
@@ -272,7 +271,7 @@ namespace llarp
     FinalizeRequest(rc.pubkey, SessionResult::Establish);
   }
 
-  //TODO: rename this, if we even want to keep it
+  // TODO: rename this, if we even want to keep it
   void
   OutboundSessionMaker::CreatePendingSession(const RouterID& router)
   {

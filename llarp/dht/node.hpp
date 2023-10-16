@@ -5,63 +5,60 @@
 #include <llarp/service/intro_set.hpp>
 #include <utility>
 
-namespace llarp
+namespace llarp::dht
 {
-  namespace dht
+  struct RCNode
   {
-    struct RCNode
+    RouterContact rc;
+    Key_t ID;
+
+    RCNode()
     {
-      RouterContact rc;
-      Key_t ID;
+      ID.Zero();
+    }
 
-      RCNode()
-      {
-        ID.Zero();
-      }
+    RCNode(const RouterContact& other) : rc(other), ID(other.pubkey)
+    {}
 
-      RCNode(const RouterContact& other) : rc(other), ID(other.pubkey)
-      {}
-
-      util::StatusObject
-      ExtractStatus() const
-      {
-        return rc.ExtractStatus();
-      }
-
-      bool
-      operator<(const RCNode& other) const
-      {
-        return rc.last_updated < other.rc.last_updated;
-      }
-    };
-
-    struct ISNode
+    util::StatusObject
+    ExtractStatus() const
     {
-      service::EncryptedIntroSet introset;
+      return rc.ExtractStatus();
+    }
 
-      Key_t ID;
+    bool
+    operator<(const RCNode& other) const
+    {
+      return rc.last_updated < other.rc.last_updated;
+    }
+  };
 
-      ISNode()
-      {
-        ID.Zero();
-      }
+  struct ISNode
+  {
+    service::EncryptedIntroSet introset;
 
-      ISNode(service::EncryptedIntroSet other) : introset(std::move(other))
-      {
-        ID = Key_t(introset.derivedSigningKey.as_array());
-      }
+    Key_t ID;
 
-      util::StatusObject
-      ExtractStatus() const
-      {
-        return introset.ExtractStatus();
-      }
+    ISNode()
+    {
+      ID.Zero();
+    }
 
-      bool
-      operator<(const ISNode& other) const
-      {
-        return introset.signedAt < other.introset.signedAt;
-      }
-    };
-  }  // namespace dht
-}  // namespace llarp
+    ISNode(service::EncryptedIntroSet other) : introset(std::move(other))
+    {
+      ID = Key_t(introset.derivedSigningKey.as_array());
+    }
+
+    util::StatusObject
+    ExtractStatus() const
+    {
+      return introset.ExtractStatus();
+    }
+
+    bool
+    operator<(const ISNode& other) const
+    {
+      return introset.signedAt < other.introset.signedAt;
+    }
+  };
+}  // namespace llarp::dht

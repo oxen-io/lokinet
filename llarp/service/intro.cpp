@@ -1,81 +1,91 @@
 #include "intro.hpp"
 #include <llarp/util/time.hpp>
 
-namespace llarp
+namespace llarp::service
 {
-  namespace service
+  util::StatusObject
+  Introduction::ExtractStatus() const
   {
-    util::StatusObject
-    Introduction::ExtractStatus() const
+    util::StatusObject obj{
+        {"router", router.ToHex()},
+        {"path", path_id.ToHex()},
+        {"expiresAt", to_json(expiry)},
+        {"latency", to_json(latency)},
+        {"version", uint64_t(version)}};
+    return obj;
+  }
+
+  bool
+  Introduction::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictEntry("k", router, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("l", latency, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("p", path_id, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("x", expiry, read, key, buf))
+      return false;
+    return read;
+  }
+
+  Introduction::Introduction(std::string buf)
+  {
+    try
     {
-      util::StatusObject obj{
-          {"router", router.ToHex()},
-          {"path", pathID.ToHex()},
-          {"expiresAt", to_json(expiresAt)},
-          {"latency", to_json(latency)},
-          {"version", uint64_t(version)}};
-      return obj;
-    }
+      oxenc::bt_dict_consumer btdc{std::move(buf)};
 
-    bool
-    Introduction::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+      router.FromString(btdc.require<std::string>("k"));
+      latency = std::chrono::milliseconds{btdc.require<uint64_t>("l")};
+      path_id.from_string(btdc.require<std::string>("p"));
+      expiry = std::chrono::milliseconds{btdc.require<uint64_t>("x")};
+    }
+    catch (...)
     {
-      bool read = false;
-      if (!BEncodeMaybeReadDictEntry("k", router, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("l", latency, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("p", pathID, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("x", expiresAt, read, key, buf))
-        return false;
-      return read;
+      log::critical(intro_cat, "Error: Introduction failed to populate with bt encoded contents");
     }
+  }
 
-    bool
-    Introduction::BEncode(llarp_buffer_t* buf) const
+  void
+  Introduction::bt_encode(oxenc::bt_list_producer& btlp) const
+  {
+    try
     {
-      if (!bencode_start_dict(buf))
-        return false;
+      auto subdict = btlp.append_dict();
 
-      if (!BEncodeWriteDictEntry("k", router, buf))
-        return false;
-      if (latency > 0s)
-      {
-        if (!BEncodeWriteDictInt("l", latency.count(), buf))
-          return false;
-      }
-      if (!BEncodeWriteDictEntry("p", pathID, buf))
-        return false;
-      if (!BEncodeWriteDictInt("v", version, buf))
-        return false;
-      if (!BEncodeWriteDictInt("x", expiresAt.count(), buf))
-        return false;
-      return bencode_end(buf);
+      subdict.append("k", router.ToView());
+      subdict.append("l", latency.count());
+      subdict.append("p", path_id.ToView());
+      subdict.append("x", expiry.count());
     }
-
-    void
-    Introduction::Clear()
+    catch (...)
     {
-      router.Zero();
-      pathID.Zero();
-      latency = 0s;
-      expiresAt = 0s;
+      log::critical(intro_cat, "Error: Introduction failed to bt encode contents!");
     }
+  }
 
-    std::string
-    Introduction::ToString() const
-    {
-      return fmt::format(
-          "[Intro k={} l={} p={} v={} x={}]",
-          RouterID{router},
-          latency.count(),
-          pathID,
-          version,
-          expiresAt.count());
-    }
+  void
+  Introduction::Clear()
+  {
+    router.Zero();
+    path_id.Zero();
+    latency = 0s;
+    expiry = 0s;
+  }
 
-  }  // namespace service
-}  // namespace llarp
+  std::string
+  Introduction::ToString() const
+  {
+    return fmt::format(
+        "[Intro k={} l={} p={} v={} x={}]",
+        RouterID{router},
+        latency.count(),
+        path_id,
+        version,
+        expiry.count());
+  }
+
+}  // namespace llarp::service

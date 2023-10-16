@@ -3,418 +3,362 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/routing/handler.hpp>
 
-namespace llarp
+namespace llarp::routing
 {
-  namespace routing
+  bool
+  ObtainExitMessage::Sign(const llarp::SecretKey& sk)
   {
-    bool
-    ObtainExitMessage::Sign(const llarp::SecretKey& sk)
+    pubkey = seckey_topublic(sk);
+    sig.Zero();
+
+    auto bte = bt_encode();
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
+  }
+
+  bool
+  ObtainExitMessage::Verify() const
+  {
+    ObtainExitMessage copy;
+    copy = *this;
+    copy.sig.Zero();
+
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
+
+  std::string
+  ObtainExitMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      std::array<byte_t, 1024> tmp;
-      llarp_buffer_t buf(tmp);
-      I = seckey_topublic(sk);
-      Z.Zero();
-      if (!BEncode(&buf))
-      {
-        return false;
-      }
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->sign(Z, sk, buf);
+      btdp.append("E", flag);
+      btdp.append("I", pubkey.ToView());
+      btdp.append("S", sequence_number);
+      btdp.append("T", tx_id);
+      btdp.append("Z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: ObtainExitMessage failed to bt encode contents!");
     }
 
-    bool
-    ObtainExitMessage::Verify() const
+    return std::move(btdp).str();
+  }
+
+  bool
+  ObtainExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("E", flag, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("I", pubkey, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
+      return false;
+    return read;
+  }
+
+  bool
+  ObtainExitMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleObtainExitMessage(*this, r);
+  }
+
+  std::string
+  GrantExitMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      std::array<byte_t, 1024> tmp;
-      llarp_buffer_t buf(tmp);
-      ObtainExitMessage copy;
-      copy = *this;
-      copy.Z.Zero();
-      if (!copy.BEncode(&buf))
-      {
-        return false;
-      }
-      // rewind buffer
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->verify(I, buf, Z);
+      btdp.append("S", sequence_number);
+      btdp.append("T", tx_id);
+      btdp.append("Y", nonce.ToView());
+      btdp.append("Z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: GrantExitMessage failed to bt encode contents!");
     }
 
-    bool
-    ObtainExitMessage::BEncode(llarp_buffer_t* buf) const
+    return std::move(btdp).str();
+  }
+
+  bool
+  GrantExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
+      return false;
+    return read;
+  }
+
+  bool
+  GrantExitMessage::Verify(const llarp::PubKey& pk) const
+  {
+    GrantExitMessage copy;
+    copy = *this;
+    copy.sig.Zero();
+
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
+
+  bool
+  GrantExitMessage::Sign(const llarp::SecretKey& sk)
+  {
+    sig.Zero();
+    nonce.Randomize();
+
+    auto bte = bt_encode();
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
+  }
+
+  bool
+  GrantExitMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleGrantExitMessage(*this, r);
+  }
+
+  std::string
+  RejectExitMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "O"))
-        return false;
-      if (!BEncodeWriteDictArray("B", B, buf))
-        return false;
-      if (!BEncodeWriteDictInt("E", E, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("I", I, buf))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("T", T, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictArray("W", W, buf))
-        return false;
-      if (!BEncodeWriteDictInt("X", X, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Z", Z, buf))
-        return false;
-      return bencode_end(buf);
+      btdp.append("B", backoff_time);
+      btdp.append("S", sequence_number);
+      btdp.append("T", tx_id);
+      btdp.append("Y", nonce.ToView());
+      btdp.append("Z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: RejectExitMessage failed to bt encode contents!");
     }
 
-    bool
-    ObtainExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
+    return std::move(btdp).str();
+  }
+
+  bool
+  RejectExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("B", backoff_time, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
+      return false;
+    return read;
+  }
+
+  bool
+  RejectExitMessage::Sign(const llarp::SecretKey& sk)
+  {
+    sig.Zero();
+    nonce.Randomize();
+
+    auto bte = bt_encode();
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
+  }
+
+  bool
+  RejectExitMessage::Verify(const llarp::PubKey& pk) const
+  {
+    RejectExitMessage copy;
+    copy = *this;
+    copy.sig.Zero();
+
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
+
+  bool
+  RejectExitMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleRejectExitMessage(*this, r);
+  }
+
+  std::string
+  UpdateExitMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      bool read = false;
-      if (!BEncodeMaybeReadDictList("B", B, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("E", E, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("I", I, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictList("W", W, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("X", X, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
-        return false;
-      return read;
+      btdp.append("P", path_id.ToView());
+      btdp.append("S", sequence_number);
+      btdp.append("T", tx_id);
+      btdp.append("Z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: UpdateExitMessage failed to bt encode contents!");
     }
 
-    bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
+    return std::move(btdp).str();
+  }
+
+  bool
+  UpdateExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("P", path_id, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
+      return false;
+    return read;
+  }
+
+  bool
+  UpdateExitMessage::Verify(const llarp::PubKey& pk) const
+  {
+    UpdateExitMessage copy;
+    copy = *this;
+    copy.sig.Zero();
+
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
+
+  bool
+  UpdateExitMessage::Sign(const llarp::SecretKey& sk)
+  {
+    nonce.Randomize();
+
+    auto bte = bt_encode();
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
+  }
+
+  bool
+  UpdateExitMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleUpdateExitMessage(*this, r);
+  }
+
+  std::string
+  UpdateExitVerifyMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      return h->HandleObtainExitMessage(*this, r);
+      btdp.append("S", sequence_number);
+      btdp.append("T", tx_id);
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: UpdateExitVerifyMessage failed to bt encode contents!");
     }
 
-    bool
-    GrantExitMessage::BEncode(llarp_buffer_t* buf) const
+    return std::move(btdp).str();
+  }
+
+  bool
+  UpdateExitVerifyMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictInt("T", tx_id, read, k, buf))
+      return false;
+    return read;
+  }
+
+  bool
+  UpdateExitVerifyMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleUpdateExitVerifyMessage(*this, r);
+  }
+
+  std::string
+  CloseExitMessage::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+
+    try
     {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "G"))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("T", T, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Y", Y, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Z", Z, buf))
-        return false;
-      return bencode_end(buf);
+      btdp.append("S", sequence_number);
+      btdp.append("Y", nonce.ToView());
+      btdp.append("Z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(route_cat, "Error: CloseExitMessage failed to bt encode contents!");
     }
 
-    bool
-    GrantExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
-        return false;
-      return read;
-    }
+    return std::move(btdp).str();
+  }
 
-    bool
-    GrantExitMessage::Verify(const llarp::PubKey& pk) const
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      GrantExitMessage copy;
-      copy = *this;
-      copy.Z.Zero();
-      if (!copy.BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->verify(pk, buf, Z);
-    }
+  bool
+  CloseExitMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
+  {
+    bool read = false;
+    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Y", nonce, read, k, buf))
+      return false;
+    if (!BEncodeMaybeReadDictEntry("Z", sig, read, k, buf))
+      return false;
+    return read;
+  }
 
-    bool
-    GrantExitMessage::Sign(const llarp::SecretKey& sk)
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      Z.Zero();
-      Y.Randomize();
-      if (!BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->sign(Z, sk, buf);
-    }
+  bool
+  CloseExitMessage::Verify(const llarp::PubKey& pk) const
+  {
+    CloseExitMessage copy;
+    copy = *this;
+    copy.sig.Zero();
 
-    bool
-    GrantExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleGrantExitMessage(*this, r);
-    }
+    auto bte = copy.bt_encode();
+    return CryptoManager::instance()->verify(
+        pk, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+  }
 
-    bool
-    RejectExitMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "J"))
-        return false;
-      if (!BEncodeWriteDictInt("B", B, buf))
-        return false;
-      if (!BEncodeWriteDictList("R", R, buf))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("T", T, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Y", Y, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Z", Z, buf))
-        return false;
-      return bencode_end(buf);
-    }
+  bool
+  CloseExitMessage::Sign(const llarp::SecretKey& sk)
+  {
+    sig.Zero();
+    nonce.Randomize();
 
-    bool
-    RejectExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("B", B, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictList("R", R, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
-        return false;
-      return read;
-    }
+    auto bte = bt_encode();
+    return CryptoManager::instance()->sign(
+        sig, sk, reinterpret_cast<uint8_t*>(bte.data()), bte.size());
+  }
 
-    bool
-    RejectExitMessage::Sign(const llarp::SecretKey& sk)
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      Z.Zero();
-      Y.Randomize();
-      if (!BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->sign(Z, sk, buf);
-    }
-
-    bool
-    RejectExitMessage::Verify(const llarp::PubKey& pk) const
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      RejectExitMessage copy;
-      copy = *this;
-      copy.Z.Zero();
-      if (!copy.BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->verify(pk, buf, Z);
-    }
-
-    bool
-    RejectExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleRejectExitMessage(*this, r);
-    }
-
-    bool
-    UpdateExitMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "V"))
-        return false;
-      if (!BEncodeWriteDictEntry("P", P, buf))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("T", T, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Z", Z, buf))
-        return false;
-      return bencode_end(buf);
-    }
-
-    bool
-    UpdateExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
-        return false;
-      return read;
-    }
-
-    bool
-    UpdateExitMessage::Verify(const llarp::PubKey& pk) const
-
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      UpdateExitMessage copy;
-      copy = *this;
-      copy.Z.Zero();
-      if (!copy.BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->verify(pk, buf, Z);
-    }
-
-    bool
-    UpdateExitMessage::Sign(const llarp::SecretKey& sk)
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      Y.Randomize();
-      if (!BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->sign(Z, sk, buf);
-    }
-
-    bool
-    UpdateExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleUpdateExitMessage(*this, r);
-    }
-
-    bool
-    UpdateExitVerifyMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "V"))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("T", T, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      return bencode_end(buf);
-    }
-
-    bool
-    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      return read;
-    }
-
-    bool
-    UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleUpdateExitVerifyMessage(*this, r);
-    }
-
-    bool
-    CloseExitMessage::BEncode(llarp_buffer_t* buf) const
-    {
-      if (!bencode_start_dict(buf))
-        return false;
-      if (!BEncodeWriteDictMsgType(buf, "A", "C"))
-        return false;
-      if (!BEncodeWriteDictInt("S", S, buf))
-        return false;
-      if (!BEncodeWriteDictInt("V", version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Y", Y, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("Z", Z, buf))
-        return false;
-      return bencode_end(buf);
-    }
-
-    bool
-    CloseExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
-    {
-      bool read = false;
-      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
-        return false;
-      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
-        return false;
-      return read;
-    }
-
-    bool
-    CloseExitMessage::Verify(const llarp::PubKey& pk) const
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      CloseExitMessage copy;
-      copy = *this;
-      copy.Z.Zero();
-      if (!copy.BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->verify(pk, buf, Z);
-    }
-
-    bool
-    CloseExitMessage::Sign(const llarp::SecretKey& sk)
-    {
-      std::array<byte_t, 512> tmp;
-      llarp_buffer_t buf(tmp);
-      Z.Zero();
-      Y.Randomize();
-      if (!BEncode(&buf))
-        return false;
-      buf.sz = buf.cur - buf.base;
-      return CryptoManager::instance()->sign(Z, sk, buf);
-    }
-
-    bool
-    CloseExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
-    {
-      return h->HandleCloseExitMessage(*this, r);
-    }
-  }  // namespace routing
-}  // namespace llarp
+  bool
+  CloseExitMessage::handle_message(AbstractRoutingMessageHandler* h, Router* r) const
+  {
+    return h->HandleCloseExitMessage(*this, r);
+  }
+}  // namespace llarp::routing

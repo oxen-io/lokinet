@@ -5,8 +5,8 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/transit_hop.hpp>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_outbound_message_handler.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/router/outbound_message_handler.hpp>
 #include <llarp/routing/path_confirm_message.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/buffer.hpp>
@@ -20,7 +20,7 @@
 namespace llarp
 {
   bool
-  LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  LR_CommitMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if (key.startswith("c"))
     {
@@ -36,44 +36,51 @@ namespace llarp
   }
 
   void
-  LR_CommitMessage::Clear()
+  LR_CommitMessage::clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
     version = 0;
   }
 
-  bool
-  LR_CommitMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  LR_CommitMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    // msg type
-    if (!BEncodeWriteDictMsgType(buf, "a", "c"))
-      return false;
-    // frames
-    if (!BEncodeWriteDictArray("c", frames, buf))
-      return false;
-    // version
-    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    return bencode_end(buf);
+    try
+    {
+      btdp.append("a", "c");
+      {
+        auto sublist = btdp.append_list("c");
+
+        for (auto& f : frames)
+          sublist.append({reinterpret_cast<const char*>(f.data()), f.size()});
+      }
+
+      btdp.append("v", llarp::constants::proto_version);
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: LR_CommitMessage failed to bt encode contents!");
+    }
+
+    return std::move(btdp).str();
   }
 
   bool
-  LR_CommitMessage::HandleMessage(AbstractRouter* router) const
+  LR_CommitMessage::handle_message(Router* router) const
   {
-    if (frames.size() != path::max_len)
+    if (frames.size() != path::MAX_LEN)
     {
-      llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=", path::max_len);
+      llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=", path::MAX_LEN);
       return false;
     }
-    if (!router->pathContext().AllowingTransit())
+    if (!router->path_context().AllowingTransit())
     {
       llarp::LogError("got LRCM when not permitting transit");
       return false;
     }
-    return AsyncDecrypt(&router->pathContext());
+    return AsyncDecrypt(&router->path_context());
   }
 
   bool
@@ -86,7 +93,7 @@ namespace llarp
       return false;
     if (!BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
-    if (lifetime > 10s && lifetime < path::default_lifetime)
+    if (lifetime > 10s && lifetime < path::DEFAULT_LIFETIME)
     {
       if (!BEncodeWriteDictInt("i", lifetime.count(), buf))
         return false;
@@ -186,26 +193,25 @@ namespace llarp
     // the actual hop
     std::shared_ptr<Hop> hop;
 
-    const std::optional<IpAddress> fromAddr;
+    oxen::quic::Address from_addr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec, const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
         , hop(std::make_shared<Hop>())
-        , fromAddr(
-              commit->session->GetRemoteRC().IsPublicRouter()
-                  ? std::optional<IpAddress>{}
-                  : commit->session->GetRemoteEndpoint())
+        , from_addr{
+              commit->conn->remote_rc.IsPublicRouter() ? oxen::quic::Address{}
+                                                       : commit->conn->remote_rc.addr}
     {
-      hop->info.downstream = commit->session->GetPubKey();
+      hop->info.downstream = commit->conn->remote_rc.pubkey;
     }
 
     ~LRCMFrameDecrypt() = default;
 
     static void
     OnForwardLRCMResult(
-        AbstractRouter* router,
+        Router* router,
         std::shared_ptr<path::TransitHop> path,
         const PathID_t pathid,
         const RouterID nextHop,
@@ -239,7 +245,7 @@ namespace llarp
           std::abort();
           break;
       }
-      router->QueueWork([router, path, pathid, nextHop, pathKey, status] {
+      router->queue_work([router, path, pathid, nextHop, pathKey, status] {
         LR_StatusMessage::CreateAndSend(router, path, pathid, nextHop, pathKey, status);
       });
     }
@@ -252,7 +258,7 @@ namespace llarp
       {
         llarp::LogError("duplicate transit hop ", self->hop->info);
         LR_StatusMessage::CreateAndSend(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -262,16 +268,16 @@ namespace llarp
         return;
       }
 
-      if (self->fromAddr)
+      if (self->from_addr.is_addressable())
       {
         // only do ip limiting from non service nodes
 #ifndef LOKINET_HIVE
-        if (self->context->CheckPathLimitHitByIP(*self->fromAddr))
+        if (self->context->CheckPathLimitHitByIP(self->from_addr.to_string()))
         {
           // we hit a limit so tell it to slow tf down
-          llarp::LogError("client path build hit limit ", *self->fromAddr);
+          llarp::LogError("client path build hit limit ", self->from_addr);
           OnForwardLRCMResult(
-              self->context->Router(),
+              self->context->router(),
               self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
@@ -283,7 +289,7 @@ namespace llarp
 #endif
       }
 
-      if (not self->context->Router()->PathToRouterAllowed(self->hop->info.upstream))
+      if (not self->context->router()->PathToRouterAllowed(self->hop->info.upstream))
       {
         // we are not allowed to forward it ... now what?
         llarp::LogError(
@@ -291,7 +297,7 @@ namespace llarp
             self->hop->info.upstream,
             "not allowed, dropping build request on the floor");
         OnForwardLRCMResult(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -302,9 +308,9 @@ namespace llarp
       }
       // persist sessions to upstream and downstream routers until the commit
       // ends
-      self->context->Router()->PersistSessionUntil(
+      self->context->router()->persist_connection_until(
           self->hop->info.downstream, self->hop->ExpireTime() + 10s);
-      self->context->Router()->PersistSessionUntil(
+      self->context->router()->persist_connection_until(
           self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
@@ -312,7 +318,7 @@ namespace llarp
       using std::placeholders::_1;
       auto func = [self](auto status) {
         OnForwardLRCMResult(
-            self->context->Router(),
+            self->context->router(),
             self->hop,
             self->hop->info.rxID,
             self->hop->info.downstream,
@@ -322,7 +328,7 @@ namespace llarp
       };
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
       // trigger idempotent pump to ensure that the build messages propagate
-      self->context->Router()->TriggerPump();
+      self->context->router()->TriggerPump();
     }
 
     // this is called from the logic thread
@@ -339,14 +345,14 @@ namespace llarp
       else
       {
         // persist session to downstream until path expiration
-        self->context->Router()->PersistSessionUntil(
+        self->context->router()->persist_connection_until(
             self->hop->info.downstream, self->hop->ExpireTime() + 10s);
         // put hop
         self->context->PutTransitHop(self->hop);
       }
 
       if (!LR_StatusMessage::CreateAndSend(
-              self->context->Router(),
+              self->context->router(),
               self->hop,
               self->hop->info.rxID,
               self->hop->info.downstream,
@@ -364,7 +370,7 @@ namespace llarp
     static void
     HandleDecrypted(llarp_buffer_t* buf, std::shared_ptr<LRCMFrameDecrypt> self)
     {
-      auto now = self->context->Router()->Now();
+      auto now = self->context->router()->now();
       auto& info = self->hop->info;
       if (!buf)
       {
@@ -407,7 +413,7 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(self->hop->nonceXOR, llarp_buffer_t(self->hop->pathKey));
+      crypto->shorthash(self->hop->nonceXOR, self->hop->pathKey.data(), self->hop->pathKey.size());
       if (self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug(
@@ -417,7 +423,7 @@ namespace llarp
             info);
         self->hop->lifetime += self->record.work->extendedLifetime;
       }
-      else if (self->record.lifetime < path::default_lifetime && self->record.lifetime > 10s)
+      else if (self->record.lifetime < path::DEFAULT_LIFETIME && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
         llarp::LogDebug(
@@ -427,8 +433,8 @@ namespace llarp
       // TODO: check if we really want to accept it
       self->hop->started = now;
 
-      self->context->Router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
-          self->context->Router()->pubkey(), self->hop);
+      // self->context->router()->NotifyRouterEvent<tooling::PathRequestReceivedEvent>(
+      //     self->context->router()->pubkey(), self->hop);
 
       size_t sz = self->frames[0].size();
       // shift
@@ -465,7 +471,7 @@ namespace llarp
         });
       }
       // trigger idempotent pump to ensure that the build messages propagate
-      self->context->Router()->TriggerPump();
+      self->context->router()->TriggerPump();
     }
   };
 
@@ -479,8 +485,8 @@ namespace llarp
 
     // decrypt frames async
     frameDecrypt->decrypter->AsyncDecrypt(
-        frameDecrypt->frames[0], frameDecrypt, [r = context->Router()](auto func) {
-          r->QueueWork(std::move(func));
+        frameDecrypt->frames[0], frameDecrypt, [r = context->router()](auto func) {
+          r->loop()->call([&]() { func(); });
         });
     return true;
   }

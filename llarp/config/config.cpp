@@ -527,7 +527,7 @@ namespace llarp
             arg = arg.substr(0, pos);
           }
 
-          if (service::NameIsValid(arg))
+          if (service::is_valid_name(arg))
           {
             m_LNSExitMap.Insert(range, arg);
             return;
@@ -567,7 +567,7 @@ namespace llarp
           const auto exit_str = arg.substr(0, pos);
           auth.token = arg.substr(pos + 1);
 
-          if (service::NameIsValid(exit_str))
+          if (service::is_valid_name(exit_str))
           {
             m_LNSExitAuths.emplace(exit_str, auth);
             return;
@@ -1343,13 +1343,10 @@ namespace llarp
     std::set<IPRange> seenRanges;
     for (const auto& hop : rcs)
     {
-      for (const auto& addr : hop.addrs)
+      const auto network_addr = net::In6ToHUInt(hop.addr.in6().sin6_addr) & netmask;
+      if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
       {
-        const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
-        if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
-        {
-          return false;
-        }
+        return false;
       }
     }
     return true;

@@ -3,6 +3,7 @@
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <oxenc/variant.h>
+#include <external/oxen-libquic/include/quic.hpp>
 
 #include "i_packet_io.hpp"
 
@@ -11,7 +12,7 @@
 namespace llarp
 {
   struct Context;
-  struct AbstractRouter;
+  struct Router;
 }  // namespace llarp
 
 namespace llarp::vpn
@@ -70,13 +71,13 @@ namespace llarp::vpn
     MaybeWakeUpperLayers() const {};
   };
 
-  class IRouteManager
+  class AbstractRouteManager
   {
    public:
-    IRouteManager() = default;
-    IRouteManager(const IRouteManager&) = delete;
-    IRouteManager(IRouteManager&&) = delete;
-    virtual ~IRouteManager() = default;
+    AbstractRouteManager() = default;
+    AbstractRouteManager(const AbstractRouteManager&) = delete;
+    AbstractRouteManager(AbstractRouteManager&&) = delete;
+    virtual ~AbstractRouteManager() = default;
 
     virtual const llarp::net::Platform*
     Net_ptr() const;
@@ -88,31 +89,31 @@ namespace llarp::vpn
     }
 
     virtual void
-    AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway) = 0;
+    add_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
 
     virtual void
-    DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway) = 0;
+    delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
 
     virtual void
-    AddDefaultRouteViaInterface(NetworkInterface& vpn) = 0;
+    add_default_route_via_interface(NetworkInterface& vpn) = 0;
 
     virtual void
-    DelDefaultRouteViaInterface(NetworkInterface& vpn) = 0;
+    delete_default_route_via_interface(NetworkInterface& vpn) = 0;
 
     virtual void
-    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
+    add_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
 
     virtual void
-    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) = 0;
+    delete_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
 
-    virtual std::vector<net::ipaddr_t>
-    GetGatewaysNotOnInterface(NetworkInterface& vpn) = 0;
-
-    virtual void
-    AddBlackhole(){};
+    virtual std::vector<oxen::quic::Address>
+    get_non_interface_gateways(NetworkInterface& vpn) = 0;
 
     virtual void
-    DelBlackhole(){};
+    add_blackhole(){};
+
+    virtual void
+    delete_blackhole(){};
   };
 
   /// a vpn platform
@@ -123,7 +124,7 @@ namespace llarp::vpn
     /// get a new network interface fully configured given the interface info
     /// blocks until ready, throws on error
     virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) = 0;
+    ObtainInterface(InterfaceInfo info, Router* router) = 0;
 
    public:
     Platform() = default;
@@ -133,7 +134,7 @@ namespace llarp::vpn
 
     /// create and start a network interface
     inline std::shared_ptr<NetworkInterface>
-    CreateInterface(InterfaceInfo info, AbstractRouter* router)
+    CreateInterface(InterfaceInfo info, Router* router)
     {
       if (auto netif = ObtainInterface(std::move(info), router))
       {
@@ -144,7 +145,7 @@ namespace llarp::vpn
     }
 
     /// get owned ip route manager for managing routing table
-    virtual IRouteManager&
+    virtual AbstractRouteManager&
     RouteManager() = 0;
 
     /// create a packet io that will read (and optionally write) packets on a network interface the

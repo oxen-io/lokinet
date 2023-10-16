@@ -2,13 +2,11 @@
 
 #include <llarp/crypto/encrypted.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/dht/message.hpp>
-#include <llarp/routing/message.hpp>
+#include <llarp/service/convotag.hpp>
 #include "protocol_type.hpp"
 #include "identity.hpp"
 #include "info.hpp"
 #include "intro.hpp"
-#include "handler.hpp"
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/time.hpp>
 #include <llarp/path/pathset.hpp>
@@ -31,6 +29,11 @@ namespace llarp
 
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
+    /*  Note: Talk to Tom and Jason about switching the names of ProtocolFrameMessage (carrier
+        object) and ProtocolMessage (inner object) to something like ProtocolMessageCarrier and
+        ProtocolMessage?
+    */
+
     /// inner message
     struct ProtocolMessage
     {
@@ -39,7 +42,7 @@ namespace llarp
       ~ProtocolMessage();
       ProtocolType proto = ProtocolType::TrafficV4;
       llarp_time_t queued = 0s;
-      std::vector<byte_t> payload;
+      std::vector<byte_t> payload;  // encrypted AbstractLinkMessage
       Introduction introReply;
       ServiceInfo sender;
       Endpoint* handler = nullptr;
@@ -52,10 +55,10 @@ namespace llarp
       EncodeAuthInfo() const;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val);
+      decode_key(const llarp_buffer_t& key, llarp_buffer_t* val);
 
-      bool
-      BEncode(llarp_buffer_t* buf) const;
+      std::string
+      bt_encode() const;
 
       void
       PutBuffer(const llarp_buffer_t& payload);
@@ -71,49 +74,48 @@ namespace llarp
     };
 
     /// outer message
-    struct ProtocolFrame final : public routing::IMessage
+    struct ProtocolFrameMessage final : public routing::AbstractRoutingMessage
     {
-      using Encrypted_t = Encrypted<2048>;
-      PQCipherBlock C;
-      Encrypted_t D;
-      uint64_t R;
-      KeyExchangeNonce N;
-      Signature Z;
-      PathID_t F;
-      service::ConvoTag T;
+      PQCipherBlock cipher;
+      Encrypted<2048> enc;
+      uint64_t flag;  // set to indicate in plaintext a nack, aka "dont try again"
+      KeyExchangeNonce nonce;
+      Signature sig;
+      PathID_t path_id;
+      service::ConvoTag convo_tag;
 
-      ProtocolFrame(const ProtocolFrame& other)
-          : routing::IMessage()
-          , C(other.C)
-          , D(other.D)
-          , R(other.R)
-          , N(other.N)
-          , Z(other.Z)
-          , F(other.F)
-          , T(other.T)
+      ProtocolFrameMessage(const ProtocolFrameMessage& other)
+          : routing::AbstractRoutingMessage(other)
+          , cipher(other.cipher)
+          , enc(other.enc)
+          , flag(other.flag)
+          , nonce(other.nonce)
+          , sig(other.sig)
+          , path_id(other.path_id)
+          , convo_tag(other.convo_tag)
       {
-        S = other.S;
+        sequence_number = other.sequence_number;
         version = other.version;
       }
 
-      ProtocolFrame() : routing::IMessage{}
+      ProtocolFrameMessage() : routing::AbstractRoutingMessage{}
       {
-        Clear();
+        clear();
       }
 
-      ~ProtocolFrame() override;
+      ~ProtocolFrameMessage() override;
 
       bool
-      operator==(const ProtocolFrame& other) const;
+      operator==(const ProtocolFrameMessage& other) const;
 
       bool
-      operator!=(const ProtocolFrame& other) const
+      operator!=(const ProtocolFrameMessage& other) const
       {
         return !(*this == other);
       }
 
-      ProtocolFrame&
-      operator=(const ProtocolFrame& other);
+      ProtocolFrameMessage&
+      operator=(const ProtocolFrameMessage& other);
 
       bool
       EncryptAndSign(
@@ -134,10 +136,15 @@ namespace llarp
       DecryptPayloadInto(const SharedSecret& sharedkey, ProtocolMessage& into) const;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+      decode_key(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      bool
-      BEncode(llarp_buffer_t* buf) const override;
+      /** Note: this method needs to be re-examined where it is called in the other class methods,
+          like ::Sign(), ::EncryptAndSign(), and ::Verify(). In all 3 of these cases, the subsequent
+          methods that the llarp_buffer_t is passed to must be refactored to take either a string, a
+          redesigned llarp_buffer, or some span backport.
+      */
+      std::string
+      bt_encode() const override;
 
       bool
       BDecode(llarp_buffer_t* buf)
@@ -146,15 +153,15 @@ namespace llarp
       }
 
       void
-      Clear() override
+      clear() override
       {
-        C.Zero();
-        D.Clear();
-        F.Zero();
-        T.Zero();
-        N.Zero();
-        Z.Zero();
-        R = 0;
+        cipher.Zero();
+        enc.Clear();
+        path_id.Zero();
+        convo_tag.Zero();
+        nonce.Zero();
+        sig.Zero();
+        flag = 0;
         version = llarp::constants::proto_version;
       }
 
@@ -162,7 +169,7 @@ namespace llarp
       Verify(const ServiceInfo& from) const;
 
       bool
-      HandleMessage(routing::IMessageHandler* h, AbstractRouter* r) const override;
+      handle_message(routing::AbstractRoutingMessageHandler* h, Router* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

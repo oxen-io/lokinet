@@ -3,8 +3,12 @@
 #include <string>
 #include <functional>
 #include "address.hpp"
-#include "handler.hpp"
 #include <llarp/crypto/types.hpp>
+
+namespace llarp
+{
+  struct Router;
+}
 
 namespace llarp::service
 {
@@ -37,6 +41,9 @@ namespace llarp::service
     AuthResultCode code;
     std::string reason;
   };
+
+  struct ProtocolMessage;
+  struct ConvoTag;
 
   /// maybe get auth result from string
   std::optional<AuthResultCode>
@@ -95,6 +102,6 @@ namespace llarp::service
 
   /// make an IAuthPolicy that reads out of a static file
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files, AuthFileType fileType);
+  MakeFileAuthPolicy(Router*, std::set<fs::path> files, AuthFileType fileType);
 
 }  // namespace llarp::service

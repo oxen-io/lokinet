@@ -1,10 +1,6 @@
 #pragma once
 
 #include <llarp/endpoint_base.hpp>
-#include "stream.hpp"
-#include "address.hpp"
-#include "client.hpp"
-#include "server.hpp"
 
 #include <charconv>
 #include <cstdint>
@@ -13,8 +9,10 @@
 
 #include <uvw/tcp.h>
 
-namespace llarp::quic
+namespace llarp::link
 {
+  struct Endpoint;
+
   namespace tunnel
   {
     // The server sends back a 0x00 to signal that the remote TCP connection was established and
@@ -144,7 +142,7 @@ namespace llarp::quic
     struct ClientTunnel
     {
       // quic endpoint
-      std::unique_ptr<Client> client;
+      std::unique_ptr<Endpoint> client;
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
       // TCP listening socket
@@ -202,4 +200,4 @@ namespace llarp::quic
     std::shared_ptr<int> timer_keepalive_ = std::make_shared<int>(0);
   };
 
-}  // namespace llarp::quic
+}  // namespace llarp::link

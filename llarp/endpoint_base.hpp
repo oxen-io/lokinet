@@ -15,6 +15,7 @@
 #include <unordered_set>
 #include <set>
 #include "oxenc/variant.h"
+#include <quic.hpp>
 
 namespace llarp
 {
@@ -126,15 +127,13 @@ namespace llarp
         llarp_time_t timeout) = 0;
 
     virtual void
-    LookupNameAsync(
-        std::string name, std::function<void(std::optional<AddressVariant_t>)> resultHandler) = 0;
+    lookup_name(std::string name, std::function<void(oxen::quic::message)> func) = 0;
 
     virtual const EventLoop_ptr&
     Loop() = 0;
 
     virtual bool
-    SendToOrQueue(
-        service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) = 0;
+    send_to(service::ConvoTag tag, std::string payload) = 0;
 
     /// lookup srv records async
     virtual void
@@ -144,7 +143,7 @@ namespace llarp
         std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
 
     virtual void
-    MarkAddressOutbound(AddressVariant_t remote) = 0;
+    MarkAddressOutbound(service::Address remote) = 0;
   };
 
 }  // namespace llarp

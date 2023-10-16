@@ -2,7 +2,7 @@
 
 #include <llarp.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 #include <chrono>
 #include <algorithm>

@@ -20,10 +20,10 @@ namespace llarp
     IsValid(llarp_time_t now) const;
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val);
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* val);
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
     bool
     operator==(const PoW& other) const

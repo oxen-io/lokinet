@@ -365,3 +365,16 @@ namespace llarp
 #endif
 
 };  // namespace llarp
+
+/*
+  - How does a SN/quorum of SN determine if an operator is acting in good faith on the network
+    - w/o the other operator knowing
+  - Observing and gathering data in a meaningful way
+
+  - What type of stats could you even collect off lokinet?
+    - Collecting network-wide data can't be automatically actioned unless the SN is collecting
+
+  - Redundancy model
+    - Don't rely on an individual, but a collection of them
+
+*/

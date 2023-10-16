@@ -21,7 +21,7 @@ namespace llarp
     explicit PubKey(const byte_t* ptr) : AlignedBuffer<SIZE>(ptr)
     {}
 
-    explicit PubKey(const Data& data) : AlignedBuffer<SIZE>(data)
+    explicit PubKey(const std::array<byte_t, SIZE>& data) : AlignedBuffer<SIZE>(data)
     {}
 
     explicit PubKey(const AlignedBuffer<SIZE>& other) : AlignedBuffer<SIZE>(other)
@@ -32,6 +32,9 @@ namespace llarp
 
     bool
     FromString(const std::string& str);
+
+    static PubKey
+    from_string(const std::string& s);
 
     operator RouterID() const
     {

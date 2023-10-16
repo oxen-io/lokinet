@@ -4,8 +4,8 @@
 #include <llarp/dht/messages/findrouter.hpp>
 #include <llarp/dht/messages/gotrouter.hpp>
 
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 
 #include <utility>
 
@@ -16,7 +16,7 @@ namespace llarp
     RecursiveRouterLookup::RecursiveRouterLookup(
         const TXOwner& _whoasked,
         const RouterID& _target,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         RouterLookupHandler result)
         : TX<RouterID, RouterContact>(_whoasked, _target, ctx), resultHandler(std::move(result))
 
@@ -49,7 +49,7 @@ namespace llarp
         RouterContact found;
         for (const auto& rc : valuesFound)
         {
-          if (found.OtherIsNewer(rc) && parent->GetRouter()->rcLookupHandler().CheckRC(rc))
+          if (found.OtherIsNewer(rc) && parent->GetRouter()->rc_lookup_handler().check_rc(rc))
             found = rc;
         }
         valuesFound.clear();

@@ -1,10 +1,9 @@
 #pragma once
 
-#include <chrono>
-#include "i_rc_lookup_handler.hpp"
-
+#include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
 
+#include <chrono>
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
@@ -15,90 +14,101 @@ struct llarp_dht_context;
 namespace llarp
 {
   class NodeDB;
+  struct Router;
   class EventLoop;
+
+  namespace dht
+  {
+    struct AbstractDHTMessageHandler;
+  }  // namespace dht
 
   namespace service
   {
     struct Context;
-
   }  // namespace service
 
-  struct ILinkManager;
+  struct Contacts;
+  struct LinkManager;
+  struct RouterContact;
 
-  struct RCLookupHandler final : public I_RCLookupHandler
+  enum class RCRequestResult
+  {
+    Success,
+    InvalidRouter,
+    RouterNotFound,
+    BadRC
+  };
+
+  using RCRequestCallback =
+      std::function<void(const RouterID&, std::optional<RouterContact>, bool success)>;
+
+  struct RCLookupHandler
   {
    public:
-    using Work_t = std::function<void(void)>;
-    using WorkerFunc_t = std::function<void(Work_t)>;
-    using CallbacksQueue = std::list<RCRequestCallback>;
-
-    ~RCLookupHandler() override = default;
+    ~RCLookupHandler() = default;
 
     void
-    AddValidRouter(const RouterID& router) override EXCLUDES(_mutex);
+    add_valid_router(const RouterID& router);
 
     void
-    RemoveValidRouter(const RouterID& router) override EXCLUDES(_mutex);
+    remove_valid_router(const RouterID& router);
 
     void
-    SetRouterWhitelist(
+    set_router_whitelist(
         const std::vector<RouterID>& whitelist,
         const std::vector<RouterID>& greylist,
-        const std::vector<RouterID>& greenlist
-
-        ) override EXCLUDES(_mutex);
+        const std::vector<RouterID>& greenlist);
 
     bool
-    HaveReceivedWhitelist() const override;
+    has_received_whitelist() const;
 
     void
-    GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) override
-        EXCLUDES(_mutex);
+    get_rc(const RouterID& router, RCRequestCallback callback, bool forceLookup = false);
 
     bool
-    PathIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+    is_path_allowed(const RouterID& remote) const;
 
     bool
-    SessionIsAllowed(const RouterID& remote) const override EXCLUDES(_mutex);
+    is_session_allowed(const RouterID& remote) const;
 
     bool
-    IsGreylisted(const RouterID& remote) const override EXCLUDES(_mutex);
+    is_grey_listed(const RouterID& remote) const;
 
     // "greenlist" = new routers (i.e. "green") that aren't fully funded yet
     bool
-    IsGreenlisted(const RouterID& remote) const override EXCLUDES(_mutex);
+    is_green_listed(const RouterID& remote) const;
 
     // registered just means that there is at least an operator stake, but doesn't require the node
     // be fully funded, active, or not decommed.  (In other words: it is any of the white, grey, or
     // green list).
     bool
-    IsRegistered(const RouterID& remote) const override EXCLUDES(_mutex);
+    is_registered(const RouterID& remote) const;
 
     bool
-    CheckRC(const RouterContact& rc) const override;
+    check_rc(const RouterContact& rc) const;
 
     bool
-    GetRandomWhitelistRouter(RouterID& router) const override EXCLUDES(_mutex);
+    get_random_whitelist_router(RouterID& router) const;
 
     bool
-    CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc) override;
+    check_renegotiate_valid(RouterContact newrc, RouterContact oldrc);
 
     void
-    PeriodicUpdate(llarp_time_t now) override;
+    periodic_update(llarp_time_t now);
 
     void
-    ExploreNetwork() override;
+    explore_network();
 
     size_t
-    NumberOfStrictConnectRouters() const override;
+    num_strict_connect_routers() const;
 
     void
-    Init(
-        llarp_dht_context* dht,
+    init(
+        std::shared_ptr<Contacts> contacts,
         std::shared_ptr<NodeDB> nodedb,
         std::shared_ptr<EventLoop> loop,
-        WorkerFunc_t dowork,
-        ILinkManager* linkManager,
+        std::function<void(std::function<void()>)> dowork,
+        LinkManager* linkManager,
         service::Context* hiddenServiceContext,
         const std::unordered_set<RouterID>& strictConnectPubkeys,
         const std::set<RouterContact>& bootstrapRCList,
@@ -106,56 +116,38 @@ namespace llarp
         bool isServiceNode_arg);
 
     std::unordered_set<RouterID>
-    Whitelist() const
-    {
-      util::Lock lock{_mutex};
-      return whitelistRouters;
-    }
+    whitelist() const;
 
    private:
-    void
-    HandleDHTLookupResult(RouterID remote, const std::vector<RouterContact>& results);
-
     bool
-    HavePendingLookup(RouterID remote) const EXCLUDES(_mutex);
+    is_remote_in_bootstrap(const RouterID& remote) const;
 
-    bool
-    RemoteInBootstrap(const RouterID& remote) const;
-
-    void
-    FinalizeRequest(const RouterID& router, const RouterContact* const rc, RCRequestResult result)
-        EXCLUDES(_mutex);
-
-    mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
-
-    llarp_dht_context* _dht = nullptr;
-    std::shared_ptr<NodeDB> _nodedb;
-    std::shared_ptr<EventLoop> _loop;
-    WorkerFunc_t _work = nullptr;
-    service::Context* _hiddenServiceContext = nullptr;
-    ILinkManager* _linkManager = nullptr;
+    std::shared_ptr<Contacts> contacts = nullptr;
+    std::shared_ptr<NodeDB> node_db;
+    std::shared_ptr<EventLoop> loop;
+    std::function<void(std::function<void()>)> work_func = nullptr;
+    service::Context* hidden_service_context = nullptr;
+    LinkManager* link_manager = nullptr;
+    Router* router;
 
     /// explicit whitelist of routers we will connect to directly (not for
     /// service nodes)
-    std::unordered_set<RouterID> _strictConnectPubkeys;
+    std::unordered_set<RouterID> strict_connect_pubkeys;
 
-    std::set<RouterContact> _bootstrapRCList;
-    std::unordered_set<RouterID> _bootstrapRouterIDList;
+    std::set<RouterContact> bootstrap_rc_list;
+    std::unordered_set<RouterID> boostrap_rid_list;
 
-    std::unordered_map<RouterID, CallbacksQueue> pendingCallbacks GUARDED_BY(_mutex);
-
-    bool useWhitelist = false;
-    bool isServiceNode = false;
+    // Now that all calls are made through the event loop, any access to these
+    // booleans is not guarded by a mutex
+    std::atomic<bool> useWhitelist = false;
+    std::atomic<bool> isServiceNode = false;
 
     // whitelist = active routers
-    std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_whitelist GUARDED_BY(_mutex);
     // greylist = fully funded, but decommissioned routers
-    std::unordered_set<RouterID> greylistRouters GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_greylist GUARDED_BY(_mutex);
     // greenlist = registered but not fully-staked routers
-    std::unordered_set<RouterID> greenlistRouters GUARDED_BY(_mutex);
-
-    using TimePoint = std::chrono::steady_clock::time_point;
-    std::unordered_map<RouterID, TimePoint> _routerLookupTimes;
+    std::unordered_set<RouterID> router_greenlist GUARDED_BY(_mutex);
   };
 
 }  // namespace llarp

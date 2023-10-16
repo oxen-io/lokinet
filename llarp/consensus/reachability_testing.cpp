@@ -1,7 +1,7 @@
 
 #include "reachability_testing.hpp"
 #include <chrono>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/crypto/crypto.hpp>
 
@@ -72,7 +72,7 @@ namespace llarp::consensus
   }
 
   std::optional<RouterID>
-  reachability_testing::next_random(AbstractRouter* router, const time_point_t& now, bool requeue)
+  reachability_testing::next_random(Router* router, const time_point_t& now, bool requeue)
   {
     if (next_general_test > now)
       return std::nullopt;
@@ -104,7 +104,7 @@ namespace llarp::consensus
     // We exhausted the queue so repopulate it and try again
 
     testing_queue.clear();
-    const auto all = router->GetRouterWhitelist();
+    const auto all = router->router_whitelist();
     testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
 
     std::shuffle(testing_queue.begin(), testing_queue.end(), rng);

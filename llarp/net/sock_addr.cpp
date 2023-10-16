@@ -1,6 +1,5 @@
 #include "sock_addr.hpp"
 #include "ip_range.hpp"
-#include "address_info.hpp"
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include "net.hpp"
@@ -77,11 +76,6 @@ namespace llarp
     init();
     setPort(port);
     fromString(addr, false);
-  }
-
-  SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
-  {
-    setPort(huint16_t{info.port});
   }
 
   SockAddr::SockAddr(const SockAddr& other)

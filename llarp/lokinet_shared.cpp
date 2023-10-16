@@ -3,7 +3,7 @@
 #include <llarp/config/config.hpp>
 #include <llarp/crypto/crypto_libsodium.hpp>
 
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/quic/tunnel.hpp>
 #include <llarp/nodedb.hpp>

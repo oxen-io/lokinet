@@ -72,7 +72,7 @@ namespace llarp::service
   }
 
   std::optional<std::variant<Address, RouterID>>
-  ParseAddress(std::string_view lokinet_addr)
+  parse_address(std::string_view lokinet_addr)
   {
     RouterID router{};
     service::Address addr{};

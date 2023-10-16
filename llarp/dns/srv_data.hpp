@@ -57,8 +57,8 @@ namespace llarp::dns
       return toTupleRef() == other.toTupleRef();
     }
 
-    bool
-    BEncode(llarp_buffer_t*) const;
+    std::string
+    bt_encode() const;
 
     bool
     BDecode(llarp_buffer_t*);

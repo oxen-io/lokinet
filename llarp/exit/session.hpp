@@ -1,10 +1,8 @@
 #pragma once
 
-#include "exit_messages.hpp"
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/routing/transfer_traffic_message.hpp>
 #include <llarp/constants/path.hpp>
 
 #include <deque>
@@ -27,7 +25,7 @@ namespace llarp
 
     using SessionReadyFunc = std::function<void(BaseSession_ptr)>;
 
-    static constexpr auto LifeSpan = path::default_lifetime;
+    static constexpr auto LifeSpan = path::DEFAULT_LIFETIME;
 
     /// a persisting exit session with an exit router
     struct BaseSession : public llarp::path::Builder,
@@ -38,7 +36,7 @@ namespace llarp
       BaseSession(
           const llarp::RouterID& exitRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           EndpointBase* parent);
@@ -117,7 +115,7 @@ namespace llarp
       const llarp::RouterID
       Endpoint() const
       {
-        return m_ExitRouter;
+        return exit_router;
       }
 
       std::optional<PathID_t>
@@ -138,9 +136,9 @@ namespace llarp
       AddReadyHook(SessionReadyFunc func);
 
      protected:
-      llarp::RouterID m_ExitRouter;
-      llarp::SecretKey m_ExitIdentity;
-      std::function<bool(const llarp_buffer_t&)> m_WritePacket;
+      llarp::RouterID exit_router;
+      llarp::SecretKey exit_key;
+      std::function<bool(const llarp_buffer_t&)> packet_write_func;
 
       virtual void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
@@ -159,11 +157,9 @@ namespace llarp
           service::ProtocolType t);
 
      private:
-      std::set<RouterID> m_SnodeBlacklist;
+      std::set<RouterID> snode_blacklist;
 
-      using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
-      using TieredQueue_t = std::map<uint8_t, UpstreamTrafficQueue_t>;
-      TieredQueue_t m_Upstream;
+      std::map<uint8_t, std::deque<routing::TransferTrafficMessage>> m_Upstream;
 
       PathID_t m_CurrentPath;
 
@@ -198,7 +194,7 @@ namespace llarp
       ExitSession(
           const llarp::RouterID& snodeRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           EndpointBase* parent)
@@ -210,7 +206,7 @@ namespace llarp
       std::string
       Name() const override;
 
-      virtual void
+      void
       SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
@@ -218,8 +214,8 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 1;
+        // msg.address_lifetime = 0;
+        msg.flag = 1;
       }
     };
 
@@ -228,7 +224,7 @@ namespace llarp
       SNodeSession(
           const llarp::RouterID& snodeRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
-          AbstractRouter* r,
+          Router* r,
           size_t numpaths,
           size_t hoplen,
           bool useRouterSNodeKey,
@@ -239,7 +235,7 @@ namespace llarp
       std::string
       Name() const override;
 
-      virtual void
+      void
       SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
      protected:
@@ -247,8 +243,8 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
-        msg.X = 0;
-        msg.E = 0;
+        // msg.address_lifetime = 0;
+        msg.flag = 0;
       }
     };
 

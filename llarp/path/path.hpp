@@ -1,16 +1,15 @@
 #pragma once
 
+#include "abstracthophandler.hpp"
+#include "path_types.hpp"
+#include "pathset.hpp"
+// #include "pathbuilder.hpp"
+
 #include <llarp/constants/path.hpp>
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/messages/relay.hpp>
-#include "ihophandler.hpp"
-#include "path_types.hpp"
-#include "pathbuilder.hpp"
-#include "pathset.hpp"
 #include <llarp/router_id.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/intro.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/compare_ptr.hpp>
@@ -27,57 +26,33 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   struct LR_CommitMessage;
 
   namespace path
   {
     struct TransitHop;
     struct TransitHopInfo;
+    struct PathHopConfig;
 
     using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
-    /// configuration for a single hop when building a path
-    struct PathHopConfig
-    {
-      /// path id
-      PathID_t txID, rxID;
-      // router contact of router
-      RouterContact rc;
-      // temp public encryption key
-      SecretKey commkey;
-      /// shared secret at this hop
-      SharedSecret shared;
-      /// hash of shared secret used for nonce mutation
-      ShortHash nonceXOR;
-      /// next hop's router id
-      RouterID upstream;
-      /// nonce for key exchange
-      TunnelNonce nonce;
-      // lifetime
-      llarp_time_t lifetime = default_lifetime;
+    struct Ptr_hash;
+    struct Endpoint_Hash;
+    struct endpoint_comparator;
 
-      util::StatusObject
-      ExtractStatus() const;
-    };
-
-    inline bool
-    operator<(const PathHopConfig& lhs, const PathHopConfig& rhs)
-    {
-      return std::tie(lhs.txID, lhs.rxID, lhs.rc, lhs.upstream, lhs.lifetime)
-          < std::tie(rhs.txID, rhs.rxID, rhs.rc, rhs.upstream, rhs.lifetime);
-    }
+    /// unordered set of paths with unique endpoints
+    using UniqueEndpointSet_t = std::unordered_set<Path_ptr, Endpoint_Hash, endpoint_comparator>;
 
     /// A path we made
-    struct Path final : public IHopHandler,
-                        public routing::IMessageHandler,
-                        public std::enable_shared_from_this<Path>
+    struct Path final : public AbstractHopHandler, public std::enable_shared_from_this<Path>
     {
       using BuildResultHookFunc = std::function<void(Path_ptr)>;
       using CheckForDeadFunc = std::function<bool(Path_ptr, llarp_time_t)>;
       using DropHandlerFunc = std::function<bool(Path_ptr, const PathID_t&, uint64_t)>;
       using HopList = std::vector<PathHopConfig>;
-      using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrame&)>;
+      // using DataHandlerFunc = std::function<bool(Path_ptr, const
+      // service::ProtocolFrameMessage&)>;
       using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
       using ExitClosedFunc = std::function<bool(Path_ptr)>;
       using ExitTrafficHandlerFunc =
@@ -94,6 +69,7 @@ namespace llarp
       llarp_time_t buildStarted = 0s;
 
       Path(
+          Router* rtr,
           const std::vector<RouterContact>& routers,
           std::weak_ptr<PathSet> parent,
           PathRole startingRoles,
@@ -107,60 +83,6 @@ namespace llarp
       {
         return _role;
       }
-
-      struct Hash
-      {
-        size_t
-        operator()(const Path& p) const
-        {
-          const auto& tx = p.hops[0].txID;
-          const auto& rx = p.hops[0].rxID;
-          const auto& r = p.hops[0].upstream;
-          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor{});
-          return std::accumulate(
-              rx.begin(),
-              rx.begin(),
-              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor{}),
-              std::bit_xor{});
-        }
-      };
-
-      /// hash for std::shared_ptr<Path>
-      struct Ptr_Hash
-      {
-        size_t
-        operator()(const Path_ptr& p) const
-        {
-          if (p == nullptr)
-            return 0;
-          return Hash{}(*p);
-        }
-      };
-
-      /// hash for std::shared_ptr<Path> by path endpoint
-      struct Endpoint_Hash
-      {
-        size_t
-        operator()(const Path_ptr& p) const
-        {
-          if (p == nullptr)
-            return 0;
-          return std::hash<RouterID>{}(p->Endpoint());
-        }
-      };
-
-      /// comparision for equal endpoints
-      struct Endpoint_Equals
-      {
-        bool
-        operator()(const Path_ptr& left, const Path_ptr& right) const
-        {
-          return left && right && left->Endpoint() == left->Endpoint();
-        }
-      };
-
-      /// unordered set of paths with unique endpoints
-      using UniqueEndpointSet_t = std::unordered_set<Path_ptr, Endpoint_Hash, Endpoint_Equals>;
 
       bool
       operator<(const Path& other) const
@@ -203,11 +125,11 @@ namespace llarp
 
       // handle data in upstream direction
       bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
       // handle data in downstream direction
 
       bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
 
       const std::string&
       ShortName() const;
@@ -219,49 +141,6 @@ namespace llarp
       LastRemoteActivityAt() const override
       {
         return m_LastRecvMessage;
-      }
-
-      bool
-      HandleLRSM(
-          uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
-
-      void
-      SetBuildResultHook(BuildResultHookFunc func);
-
-      void
-      SetExitTrafficHandler(ExitTrafficHandlerFunc handler)
-      {
-        m_ExitTrafficHandler = handler;
-      }
-
-      void
-      SetCloseExitFunc(ExitClosedFunc handler)
-      {
-        m_ExitClosed = handler;
-      }
-
-      void
-      SetUpdateExitFunc(ExitUpdatedFunc handler)
-      {
-        m_ExitUpdated = handler;
-      }
-
-      void
-      SetDataHandler(DataHandlerFunc func)
-      {
-        m_DataHandler = func;
-      }
-
-      void
-      SetDropHandler(DropHandlerFunc func)
-      {
-        m_DropHandler = func;
-      }
-
-      void
-      SetDeadChecker(CheckForDeadFunc func)
-      {
-        m_CheckForDead = func;
       }
 
       void
@@ -279,6 +158,23 @@ namespace llarp
         return now >= (ExpireTime() - dlt);
       }
 
+      void
+      enable_exit_traffic()
+      {
+        log::info(path_cat, "{} {} granted exit", name(), Endpoint());
+        _role |= ePathRoleExit;
+      }
+
+      void
+      mark_exit_closed()
+      {
+        log::info(path_cat, "{} hd its exit closed", name());
+        _role &= ePathRoleExit;
+      }
+
+      bool
+      update_exit(uint64_t tx_id);
+
       bool
       Expired(llarp_time_t now) const override;
 
@@ -288,59 +184,42 @@ namespace llarp
       Rebuild();
 
       void
-      Tick(llarp_time_t now, AbstractRouter* r);
+      Tick(llarp_time_t now, Router* r);
 
       bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
+      find_name(std::string name, std::function<void(oxen::quic::message m)> func = nullptr);
 
       bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
+      find_router(std::string rid, std::function<void(oxen::quic::message m)> func = nullptr);
 
       bool
-      HandleUpdateExitVerifyMessage(
-          const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r) override;
+      find_intro(
+          const dht::Key_t& location,
+          bool is_relayed = false,
+          uint64_t order = 0,
+          std::function<void(oxen::quic::message m)> func = nullptr);
 
       bool
-      HandleTransferTrafficMessage(
-          const routing::TransferTrafficMessage& msg, AbstractRouter* r) override;
+      close_exit(
+          SecretKey sk,
+          std::string tx_id,
+          std::function<void(oxen::quic::message m)> func = nullptr);
 
       bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, AbstractRouter* r) override;
+      obtain_exit(
+          SecretKey sk,
+          uint64_t flag,
+          std::string tx_id,
+          std::function<void(oxen::quic::message m)> func = nullptr);
 
       bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
-      bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r) override;
-      bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r) override;
+      send_path_control_message(
+          std::string method,
+          std::string body,
+          std::function<void(oxen::quic::message m)> func = nullptr) override;
 
       bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandlePathConfirmMessage(AbstractRouter* r);
-
-      bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandlePathTransferMessage(
-          const routing::PathTransferMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& frame) override;
-
-      bool
-      HandleGotIntroMessage(const dht::GotIntroMessage& msg);
-
-      bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r);
+      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
 
       bool
       IsReady() const;
@@ -357,64 +236,45 @@ namespace llarp
       EndpointPubKey() const;
 
       bool
-      IsEndpoint(const RouterID& router, const PathID_t& path) const;
+      is_endpoint(const RouterID& router, const PathID_t& path) const;
 
       PathID_t
       RXID() const override;
 
       RouterID
-      Upstream() const;
+      upstream() const;
 
       std::string
-      Name() const;
+      name() const;
 
       void
-      AddObtainExitHandler(ObtainedExitHandler handler)
-      {
-        m_ObtainedExitHooks.push_back(handler);
-      }
-
-      bool
-      SendExitRequest(const routing::ObtainExitMessage& msg, AbstractRouter* r);
-
-      bool
-      SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r);
+      FlushUpstream(Router* r) override;
 
       void
-      FlushUpstream(AbstractRouter* r) override;
-
-      void
-      FlushDownstream(AbstractRouter* r) override;
+      FlushDownstream(Router* r) override;
 
      protected:
       void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      UpstreamWork(TrafficQueue_t queue, Router* r) override;
 
       void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      DownstreamWork(TrafficQueue_t queue, Router* r) override;
 
       void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
+      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r) override;
 
       void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
+      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) override;
 
      private:
       bool
-      SendLatencyMessage(AbstractRouter* r);
+      SendLatencyMessage(Router* r);
 
       /// call obtained exit hooks
       bool
       InformExitResult(llarp_time_t b);
 
-      BuildResultHookFunc m_BuiltHook;
-      DataHandlerFunc m_DataHandler;
-      DropHandlerFunc m_DropHandler;
-      CheckForDeadFunc m_CheckForDead;
-      ExitUpdatedFunc m_ExitUpdated;
-      ExitClosedFunc m_ExitClosed;
-      ExitTrafficHandlerFunc m_ExitTrafficHandler;
-      std::vector<ObtainedExitHandler> m_ObtainedExitHooks;
+      Router& router;
       llarp_time_t m_LastRecvMessage = 0s;
       llarp_time_t m_LastLatencyTestTime = 0s;
       uint64_t m_LastLatencyTestID = 0;
@@ -429,6 +289,57 @@ namespace llarp
       uint64_t m_TXRate = 0;
       std::deque<llarp_time_t> m_LatencySamples;
       const std::string m_shortName;
+    };
+
+    struct Hash
+    {
+      size_t
+      operator()(const Path& p) const
+      {
+        const auto& tx = p.hops[0].txID;
+        const auto& rx = p.hops[0].rxID;
+        const auto& r = p.hops[0].upstream;
+        const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor{});
+        return std::accumulate(
+            rx.begin(),
+            rx.begin(),
+            std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor{}),
+            std::bit_xor{});
+      }
+    };
+
+    /// hash for std::shared_ptr<Path>
+    struct Ptr_Hash
+    {
+      size_t
+      operator()(const Path_ptr& p) const
+      {
+        if (p == nullptr)
+          return 0;
+        return Hash{}(*p);
+      }
+    };
+
+    /// hash for std::shared_ptr<Path> by path endpoint
+    struct Endpoint_Hash
+    {
+      size_t
+      operator()(const Path_ptr& p) const
+      {
+        if (p == nullptr)
+          return 0;
+        return std::hash<RouterID>{}(p->Endpoint());
+      }
+    };
+
+    /// comparision for equal endpoints
+    struct endpoint_comparator
+    {
+      bool
+      operator()(const Path_ptr& left, const Path_ptr& right) const
+      {
+        return left && right && left->Endpoint() == left->Endpoint();
+      }
     };
   }  // namespace path
 }  // namespace llarp

@@ -1,4 +1,3 @@
-#include "outbound_message_handler.hpp"
 
 #include <llarp/messages/link_message.hpp>
 #include "router.hpp"
@@ -21,11 +20,11 @@ namespace llarp
 
   bool
   OutboundMessageHandler::QueueMessage(
-      const RouterID& remote, const ILinkMessage& msg, SendStatusHandler callback)
+      const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler callback)
   {
     // if the destination is invalid, callback with failure and return
-    if (not _router->linkManager().HaveClientConnection(remote)
-        and not _router->rcLookupHandler().SessionIsAllowed(remote))
+    if (not _router->link_manager().have_client_connection_to(remote)
+        and not _router->rc_lookup_handler().is_session_allowed(remote))
     {
       DoCallback(callback, SendStatus::InvalidRouter);
       return true;
@@ -34,22 +33,20 @@ namespace llarp
     ent.router = remote;
     ent.inform = std::move(callback);
     ent.pathid = msg.pathid;
-    ent.priority = msg.Priority();
+    ent.priority = msg.priority();
 
-    std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
-    llarp_buffer_t buf{linkmsg_buffer};
+    std::string _buf;
+    _buf.reserve(MAX_LINK_MSG_SIZE);
 
-    if (!EncodeBuffer(msg, buf))
-    {
+    if (!EncodeBuffer(msg, _buf))
       return false;
-    }
 
-    ent.message.resize(buf.sz);
+    ent.message.resize(_buf.size());
 
-    std::copy_n(buf.base, buf.sz, ent.message.data());
+    std::copy_n(_buf.data(), _buf.size(), ent.message.data());
 
     // if we have a session to the destination, queue the message and return
-    if (_router->linkManager().HaveConnection(remote))
+    if (_router->link_manager().have_connection_to(remote))
     {
       QueueOutboundMessage(std::move(ent));
       return true;
@@ -128,7 +125,7 @@ namespace llarp
   }
 
   void
-  OutboundMessageHandler::Init(AbstractRouter* router)
+  OutboundMessageHandler::Init(Router* router)
   {
     _router = router;
     outboundMessageQueues.emplace(zeroID, MessageQueue());
@@ -168,26 +165,28 @@ namespace llarp
       _router->loop()->call([f = std::move(callback), status] { f(status); });
   }
 
-  //TODO: still necessary/desired?
+  // TODO: still necessary/desired?
   void
   OutboundMessageHandler::QueueSessionCreation(const RouterID& remote)
   {
-    _router->linkManager().Connect(remote);
+    _router->link_manager().Connect(remote);
   }
 
+  /** Note: This is where AbstractLinkMessage::bt_encode() is called. Contextually, this is
+      different than how the other Abstract message types invoke ::bt_encode(), namely that
+      there is no bt_dict_producer already being appended to. As a result, this use case
+      likely requires a span backport and/or re-designed llarp_buffer. Until then, the
+      ::bt_encode() override that returns an std::string upon destruction of its bt_dict_producer
+      will be used
+  */
   bool
-  OutboundMessageHandler::EncodeBuffer(const ILinkMessage& msg, llarp_buffer_t& buf)
+  OutboundMessageHandler::EncodeBuffer(const AbstractLinkMessage& msg, std::string& buf)
   {
-    if (!msg.BEncode(&buf))
-    {
-      LogWarn("failed to encode outbound message, buffer size left: ", buf.size_left());
-      return false;
-    }
-    // set size of message
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
+    if (buf = msg.bt_encode(); not buf.empty())
+      return true;
 
-    return true;
+    log::error(link_cat, "Error: OutboundMessageHandler failed to encode outbound message!");
+    return false;
   }
 
   bool
@@ -196,11 +195,11 @@ namespace llarp
     const llarp_buffer_t buf{ent.message};
     m_queueStats.sent++;
     SendStatusHandler callback = ent.inform;
-    return _router->linkManager().SendTo(
+    return _router->link_manager().send_to(
         ent.router,
         buf,
-        [this, callback](ILinkSession::DeliveryStatus status) {
-          if (status == ILinkSession::DeliveryStatus::eDeliverySuccess)
+        [this, callback](AbstractLinkSession::DeliveryStatus status) {
+          if (status == AbstractLinkSession::DeliveryStatus::eDeliverySuccess)
             DoCallback(callback, SendStatus::Success);
           else
           {
@@ -213,7 +212,7 @@ namespace llarp
   bool
   OutboundMessageHandler::SendIfSession(const MessageQueueEntry& ent)
   {
-    if (_router->linkManager().HaveConnection(ent.router))
+    if (_router->link_manager().have_connection_to(ent.router))
     {
       return Send(ent);
     }

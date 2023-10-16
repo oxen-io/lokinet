@@ -1,6 +1,5 @@
 #include "serviceaddresslookup.hpp"
 
-#include "context.hpp"
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/messages/gotintro.hpp>
 #include <utility>
@@ -12,7 +11,7 @@ namespace llarp
     ServiceAddressLookup::ServiceAddressLookup(
         const TXOwner& asker,
         const Key_t& addr,
-        AbstractContext* ctx,
+        AbstractDHTMessageHandler* ctx,
         uint32_t order,
         service::EncryptedIntroSetLookupHandler handler)
         : TX<TXOwner, service::EncryptedIntroSet>(asker, asker, ctx)
@@ -26,7 +25,7 @@ namespace llarp
     bool
     ServiceAddressLookup::Validate(const service::EncryptedIntroSet& value) const
     {
-      if (!value.Verify(parent->Now()))
+      if (!value.verify(parent->Now()))
       {
         llarp::LogWarn("Got invalid introset from service lookup");
         return false;

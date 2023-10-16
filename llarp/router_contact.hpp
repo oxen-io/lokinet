@@ -2,7 +2,6 @@
 
 #include "llarp/constants/version.hpp"
 #include "llarp/crypto/types.hpp"
-#include "llarp/net/address_info.hpp"
 #include "llarp/net/exit_info.hpp"
 #include "llarp/util/aligned.hpp"
 #include "llarp/util/bencode.hpp"
@@ -11,8 +10,11 @@
 
 #include "llarp/dns/srv_data.hpp"
 
-#include <functional>
+#include <external/oxen-libquic/include/quic.hpp>
+
+#include <oxenc/bt_producer.h>
 #include <nlohmann/json.hpp>
+#include <functional>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
@@ -73,8 +75,10 @@ namespace llarp
       Clear();
     }
 
+    RouterContact(std::string buf);
+
     // advertised addresses
-    std::vector<AddressInfo> addrs;
+    oxen::quic::Address addr;
     // network identifier
     NetID netID;
     // public encryption public key
@@ -99,6 +103,12 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const;
 
+    RouterID
+    router_id() const
+    {
+      return pubkey;
+    }
+
     nlohmann::json
     ToJson() const
     {
@@ -108,11 +118,14 @@ namespace llarp
     std::string
     ToString() const;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
-    bool
-    BEncodeSignedSection(llarp_buffer_t* buf) const;
+    void
+    bt_encode_subdict(oxenc::bt_list_producer& btlp) const;
+
+    std::string
+    bencode_signed_section() const;
 
     std::string
     ToTXTRecord() const;
@@ -120,7 +133,7 @@ namespace llarp
     bool
     operator==(const RouterContact& other) const
     {
-      return addrs == other.addrs && enckey == other.enckey && pubkey == other.pubkey
+      return addr == other.addr && enckey == other.enckey && pubkey == other.pubkey
           && signature == other.signature && nickname == other.nickname
           && last_updated == other.last_updated && netID == other.netID;
     }
@@ -150,7 +163,7 @@ namespace llarp
     BDecode(llarp_buffer_t* buf);
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
     HasNick() const;

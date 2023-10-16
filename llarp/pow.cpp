@@ -10,19 +10,16 @@ namespace llarp
   PoW::~PoW() = default;
 
   bool
-  PoW::DecodeKey(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
+  PoW::decode_key(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
   {
     // TODO: implement me
     return false;
   }
 
-  bool
-  PoW::BEncode(llarp_buffer_t* buf) const
+  std::string
+  PoW::bt_encode() const
   {
-    // TODO: implement me
-    if (!bencode_start_dict(buf))
-      return false;
-    return bencode_end(buf);
+    return ""s;
   }
 
   bool
@@ -32,16 +29,11 @@ namespace llarp
       return false;
 
     ShortHash digest;
-    std::array<byte_t, MaxSize> tmp;
-    llarp_buffer_t buf(tmp);
-    // encode
-    if (!BEncode(&buf))
-      return false;
-    // rewind
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
+    auto buf = bt_encode();
+
     // hash
-    if (!CryptoManager::instance()->shorthash(digest, buf))
+    if (!CryptoManager::instance()->shorthash(
+            digest, reinterpret_cast<uint8_t*>(buf.data()), buf.size()))
       return false;
     // check bytes required
     uint32_t required = std::floor(std::log(extendedLifetime.count()));

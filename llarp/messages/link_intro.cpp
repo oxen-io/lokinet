@@ -1,15 +1,15 @@
-#include "link_intro.hpp"
-
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/bencode.h>
 #include <llarp/util/logging.hpp>
+
+#include <oxenc/bt_producer.h>
 
 namespace llarp
 {
   bool
-  LinkIntroMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
+  LinkIntroMessage::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if (key.startswith("a"))
     {
@@ -22,14 +22,14 @@ namespace llarp
     }
     if (key.startswith("n"))
     {
-      if (N.BDecode(buf))
+      if (nonce.BDecode(buf))
         return true;
       llarp::LogWarn("failed to decode nonce in LIM");
       return false;
     }
     if (key.startswith("p"))
     {
-      return bencode_read_integer(buf, &P);
+      return bencode_read_integer(buf, &session_period);
     }
     if (key.startswith("r"))
     {
@@ -54,103 +54,106 @@ namespace llarp
     }
     if (key.startswith("z"))
     {
-      return Z.BDecode(buf);
+      return sig.BDecode(buf);
     }
 
     llarp::LogWarn("invalid LIM key: ", *key.cur);
     return false;
   }
 
-  bool
-  LinkIntroMessage::BEncode(llarp_buffer_t* buf) const
+  std::string
+  LinkIntroMessage::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
+    oxenc::bt_dict_producer btdp;
 
-    if (!bencode_write_bytestring(buf, "a", 1))
-      return false;
-    if (!bencode_write_bytestring(buf, "i", 1))
-      return false;
+    try
+    {
+      btdp.append("a", "i");
+      btdp.append("n", nonce.ToView());
+      btdp.append("p", session_period);
 
-    if (!bencode_write_bytestring(buf, "n", 1))
-      return false;
-    if (!N.BEncode(buf))
-      return false;
+      {
+        auto subdict = btdp.append_list("r");
+        rc.bt_encode_subdict(subdict);
+      }
 
-    if (!bencode_write_bytestring(buf, "p", 1))
-      return false;
-    if (!bencode_write_uint64(buf, P))
-      return false;
+      btdp.append("v", llarp::constants::proto_version);
+      btdp.append("z", sig.ToView());
+    }
+    catch (...)
+    {
+      log::critical(link_cat, "Error: LinkIntroMessage failed to bt encode contents!");
+    }
 
-    if (!bencode_write_bytestring(buf, "r", 1))
-      return false;
-    if (!rc.BEncode(buf))
-      return false;
-
-    if (!bencode_write_uint64_entry(buf, "v", 1, llarp::constants::proto_version))
-      return false;
-
-    if (!bencode_write_bytestring(buf, "z", 1))
-      return false;
-    if (!Z.BEncode(buf))
-      return false;
-
-    return bencode_end(buf);
+    return std::move(btdp).str();
   }
 
   bool
-  LinkIntroMessage::HandleMessage(AbstractRouter* /*router*/) const
+  LinkIntroMessage::handle_message(Router* /*router*/) const
   {
-    if (!Verify())
+    if (!verify())
       return false;
-    return session->GotLIM(this);
+    return true;
+    // return conn->GotLIM(this);
   }
 
   void
-  LinkIntroMessage::Clear()
+  LinkIntroMessage::clear()
   {
-    P = 0;
-    N.Zero();
+    session_period = 0;
+    nonce.Zero();
     rc.Clear();
-    Z.Zero();
+    sig.Zero();
     version = 0;
   }
 
   bool
-  LinkIntroMessage::Sign(std::function<bool(Signature&, const llarp_buffer_t&)> signer)
+  LinkIntroMessage::sign(std::function<bool(Signature&, const llarp_buffer_t&)> signer)
   {
-    Z.Zero();
-    std::array<byte_t, MaxSize> tmp;
+    sig.Zero();
+    // need to keep this as a llarp_buffer_t for now, as all the crypto code expects
+    // byte_t types -- fix this later
+    std::array<byte_t, MAX_MSG_SIZE> tmp;
     llarp_buffer_t buf(tmp);
-    if (!BEncode(&buf))
-      return false;
+
+    auto bte = bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
-    return signer(Z, buf);
+
+    return signer(sig, buf);
   }
 
   bool
-  LinkIntroMessage::Verify() const
+  LinkIntroMessage::verify() const
   {
     LinkIntroMessage copy;
     copy = *this;
-    copy.Z.Zero();
-    std::array<byte_t, MaxSize> tmp;
+    copy.sig.Zero();
+
+    // need to keep this as a llarp_buffer_t for now, as all the crypto code expects
+    // byte_t types -- fix this later
+    std::array<byte_t, MAX_MSG_SIZE> tmp;
     llarp_buffer_t buf(tmp);
-    if (!copy.BEncode(&buf))
-      return false;
+
+    auto bte = copy.bt_encode();
+    buf.write(bte.begin(), bte.end());
+
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
+
     // outer signature
-    if (!CryptoManager::instance()->verify(rc.pubkey, buf, Z))
+    if (!CryptoManager::instance()->verify(
+            rc.pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig))
     {
-      llarp::LogError("outer signature failure");
+      log::error(link_cat, "Error: outer signature failed!");
       return false;
     }
     // verify RC
     if (!rc.Verify(llarp::time_now_ms()))
     {
-      llarp::LogError("invalid RC in link intro");
+      log::error(link_cat, "Error: invalid RC in link intro!");
       return false;
     }
     return true;

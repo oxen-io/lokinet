@@ -16,7 +16,7 @@ namespace llarp
       RecursiveRouterLookup(
           const TXOwner& whoasked,
           const RouterID& target,
-          AbstractContext* ctx,
+          AbstractDHTMessageHandler* ctx,
           RouterLookupHandler result);
 
       bool

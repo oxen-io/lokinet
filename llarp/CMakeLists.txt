@@ -1,7 +1,6 @@
 include(Version)
 
 target_sources(lokinet-cryptography PRIVATE
-  crypto/crypto_libsodium.cpp
   crypto/crypto.cpp
   crypto/encrypted_frame.cpp
   crypto/types.cpp
@@ -103,7 +102,6 @@ endif()
 add_library(lokinet-nodedb
   STATIC
   bootstrap.cpp
-  net/address_info.cpp
   net/exit_info.cpp
   net/traffic_policy.cpp
   nodedb.cpp
@@ -133,14 +131,14 @@ endforeach()
 configure_file("bootstrap-fallbacks.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp" @ONLY)
 target_sources(lokinet-nodedb PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/bootstrap-fallbacks.cpp")
 
-
 # lokinet-config is for all configuration types and parsers
 add_library(lokinet-config
   STATIC
   config/config.cpp
   config/definition.cpp
   config/ini.cpp
-  config/key_manager.cpp)
+  config/key_manager.cpp
+)
 
 # lokinet-consensus is for deriving and tracking network consensus state for both service nodes and clients
 add_library(lokinet-consensus
@@ -148,85 +146,27 @@ add_library(lokinet-consensus
   consensus/reachability_testing.cpp
 )
 
-# lokinet-dht holds all logic related to interacting with and participating in the DHT hashring
-add_library(lokinet-dht
-  STATIC
-  dht/context.cpp
-  dht/dht.cpp
-  dht/explorenetworkjob.cpp
-  dht/localtaglookup.cpp
-  dht/localrouterlookup.cpp
-  dht/localserviceaddresslookup.cpp
-  dht/message.cpp
-  dht/messages/findintro.cpp
-  dht/messages/findrouter.cpp
-  dht/messages/gotintro.cpp
-  dht/messages/gotrouter.cpp
-  dht/messages/pubintro.cpp
-  dht/messages/findname.cpp
-  dht/messages/gotname.cpp
-  dht/publishservicejob.cpp
-  dht/recursiverouterlookup.cpp
-  dht/serviceaddresslookup.cpp
-  dht/taglookup.cpp
-)
-
-# lokinet-layer-flow is the flow layer which sits atop the routing layer which manages
-# flows between lokinet snapp endpoints be they .loki or .snode
-add_library(lokinet-layer-flow
-  STATIC
-  layers/flow/stub.cpp # todo: remove me
-)
-
-
 # lokinet-layer-onion is the "dumb" onion routing layer with builds manages and does i/o
 # with onion paths. onion paths anonymize routing layer pdu.
 add_library(lokinet-layer-onion
   STATIC
-  path/ihophandler.cpp
+  path/abstracthophandler.cpp
   path/path_context.cpp
   path/path.cpp
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
   messages/relay.cpp
-  messages/relay_commit.cpp
-  messages/relay_status.cpp
-)
-
-# lokinet-layer-wire is a layer 1 analog which splits up
-# layer 2 frames into layer 1 symbols which in the case of iwp are encrypted udp/ip packets
-add_library(lokinet-layer-wire
-  STATIC
-  iwp/iwp.cpp
-  iwp/linklayer.cpp
-  iwp/message_buffer.cpp
-  iwp/session.cpp
 )
 
 # lokinet-layer-link is for our layer 2 analog which splits up layer 2 frames into
 # a series of layer 1 symbols which are then transmitted between lokinet instances
 add_library(lokinet-layer-link
   STATIC
+  link/connection.cpp
+  link/contacts.cpp
   link/link_manager.cpp
-  link/session.cpp
-  link/server.cpp
-  messages/dht_immediate.cpp
-  messages/link_intro.cpp
-  messages/link_message_parser.cpp
-)
-
-# lokinet-plainquic is for holding the tunneled plainquic code, not quic wire protocol code
-add_library(lokinet-plainquic
-  STATIC
-  quic/address.cpp
-  quic/client.cpp
-  quic/connection.cpp
-  quic/endpoint.cpp
-  quic/null_crypto.cpp
-  quic/server.cpp
-  quic/stream.cpp
-  quic/tunnel.cpp
+  # link/tunnel.cpp
 )
 
 # lokinet-context holds the contextualized god objects for a lokinet instance
@@ -235,7 +175,6 @@ add_library(lokinet-context
   STATIC
   context.cpp
   link/link_manager.cpp
-  router/outbound_message_handler.cpp
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp
@@ -260,18 +199,6 @@ add_library(lokinet-peerstats
   peerstats/types.cpp
 )
 
-# lokinet-layer-routing holds logic related to the routing layer
-# routing layer is anonymized over the onion layer
-add_library(lokinet-layer-routing
-  STATIC
-  routing/dht_message.cpp
-  routing/message_parser.cpp
-  routing/path_confirm_message.cpp
-  routing/path_latency_message.cpp
-  routing/path_transfer_message.cpp
-  routing/transfer_traffic_message.cpp
-)
-
 # kitchen sink to be removed after refactor
 add_library(lokinet-service-deprecated-kitchensink
   STATIC
@@ -292,25 +219,17 @@ add_library(lokinet-service-deprecated-kitchensink
   service/endpoint_state.cpp
   service/endpoint_util.cpp
   service/endpoint.cpp
-  service/hidden_service_address_lookup.cpp
   service/identity.cpp
   service/info.cpp
   service/intro_set.cpp
   service/intro.cpp
   service/lns_tracker.cpp
-  service/lookup.cpp
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
-  service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
   service/tag.cpp
-)
-
-add_library(lokinet-layer-platform
-  STATIC
-  layers/platform/stub.cpp # todo: remove me
 )
 
 
@@ -325,7 +244,6 @@ if(WITH_HIVE)
   )
   target_link_libraries(lokinet-tooling INTERFACE lokinet-hive-tooling)
 endif()
-
 
 # interface library for setting commone includes, linkage and flags.
 add_library(lokinet-base INTERFACE)
@@ -342,7 +260,6 @@ endif()
 # interface libraries for internal linkage
 add_library(lokinet-layers INTERFACE)
 add_library(lokinet-amalgum INTERFACE)
-
 
 # helper function to link a library to lokinet-base, enable lto, add to lokinet-amalgum and then link to other libs
 function(lokinet_link_lib libname)
@@ -388,12 +305,7 @@ lokinet_link_lib(lokinet-context
   lokinet-rpc
 )
 
-lokinet_link_lib(lokinet-dht
-  lokinet-util
-  lokinet-nodedb
-)
-
-lokinet_link_lib(lokinet-plainquic
+lokinet_link_lib(
   lokinet-platform
   lokinet-config
 )
@@ -447,12 +359,8 @@ function(link_lokinet_layers)
 endfunction()
 
 link_lokinet_layers(
-  lokinet-layer-platform
-  lokinet-layer-flow
-  lokinet-layer-routing
   lokinet-layer-onion
   lokinet-layer-link
-  lokinet-layer-wire
 )
 
 # set me to OFF to disable old codepath
@@ -463,10 +371,7 @@ if(use_old_impl)
     lokinet-dns
     lokinet-nodedb
     lokinet-context
-    lokinet-plainquic
-    lokinet-layer-routing
     lokinet-layer-onion
-    lokinet-dht
     lokinet-platform
     lokinet-rpc
   )
@@ -474,12 +379,8 @@ if(use_old_impl)
 endif()
 
 target_link_libraries(lokinet-layers INTERFACE
-  lokinet-layer-platform
-  lokinet-layer-flow
-  lokinet-layer-routing
   lokinet-layer-onion
   lokinet-layer-link
-  lokinet-layer-wire
 )
 
 
@@ -512,7 +413,7 @@ target_link_libraries(lokinet-util PUBLIC
   oxenc::oxenc
 )
 
-target_link_libraries(lokinet-plainquic PUBLIC
+target_link_libraries(lokinet-layer-link PUBLIC
   quic
   uvw
 )

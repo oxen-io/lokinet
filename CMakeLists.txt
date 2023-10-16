@@ -96,7 +96,7 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_definitions(-DLOKINET_DEBUG)
 endif()
 
-option(WARN_DEPRECATED "show deprecation warnings" ${debug})
+option(WARN_DEPRECATED "show deprecation warnings" OFF)
 
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
@@ -187,11 +187,7 @@ set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werro
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   list(APPEND warning_flags -Wno-unknown-warning-option)
 endif()
-if(WARN_DEPRECATED)
-  list(APPEND warning_flags -Wdeprecated-declarations)
-else()
-  list(APPEND warning_flags -Wno-deprecated-declarations)
-endif()
+list(APPEND warning_flags -Wno-deprecated-declarations)
 
 # If we blindly add these directly as compile_options then they get passed to swiftc on Apple and
 # break, so we use a generate expression to set them only for C++/C/ObjC

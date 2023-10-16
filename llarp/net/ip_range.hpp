@@ -2,14 +2,22 @@
 
 #include "ip.hpp"
 #include "net_bits.hpp"
+#include <oxen/log/catlogger.hpp>
 #include <llarp/util/bits.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/types.hpp>
+#include <llarp/util/logging.hpp>
+#include <oxenc/bt.h>
 
 #include <list>
 #include <optional>
 #include <stdexcept>
 #include <string>
+
+namespace
+{
+  static auto net_cat = llarp::log::Cat("lokinet.net");
+}  // namespace
 
 namespace llarp
 {
@@ -150,8 +158,8 @@ namespace llarp
     bool
     FromString(std::string str);
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    void
+    bt_encode(oxenc::bt_list_producer& btlc) const;
 
     bool
     BDecode(llarp_buffer_t* buf);

@@ -18,60 +18,55 @@
 
 #include <oxenc/variant.h>
 
-namespace llarp
+namespace llarp::service
 {
-  namespace service
+  struct EndpointState
   {
-    struct EndpointState
-    {
-      std::set<RouterID> m_SnodeBlacklist;
+    std::set<RouterID> snode_blacklist;
 
-      AbstractRouter* m_Router;
-      std::string m_Keyfile;
-      std::string m_Name;
-      std::string m_NetNS;
-      bool m_ExitEnabled = false;
+    Router* router;
+    std::string key_file;
+    std::string name;
+    std::string net_NS;
+    bool is_exit_enabled = false;
 
-      PendingTraffic m_PendingTraffic;
+    PendingTrafficMap pending_traffic;
 
-      Sessions m_RemoteSessions;
-      Sessions m_DeadSessions;
+    ConnectionMap remote_sessions;
+    ConnectionMap dead_sessions;
 
-      std::set<ConvoTag> m_InboundConvos;
+    std::set<ConvoTag> inbound_convotags;
 
-      SNodeSessions m_SNodeSessions;
+    SNodeConnectionMap snode_sessions;
 
-      std::unordered_multimap<Address, PathEnsureHook> m_PendingServiceLookups;
-      std::unordered_map<Address, llarp_time_t> m_LastServiceLookupTimes;
+    std::unordered_multimap<Address, EnsurePathCallback> pending_service_lookups;
+    std::unordered_map<Address, llarp_time_t> last_service_lookup_time;
 
-      std::unordered_map<RouterID, uint32_t> m_ServiceLookupFails;
+    std::unordered_map<RouterID, uint32_t> service_lookup_fails;
 
-      PendingRouters m_PendingRouters;
+    PendingRoutersMap pending_routers;
 
-      llarp_time_t m_LastPublish = 0s;
-      llarp_time_t m_LastPublishAttempt = 0s;
-      /// our introset
-      IntroSet m_IntroSet;
-      /// pending remote service lookups by id
-      PendingLookups m_PendingLookups;
-      /// on initialize functions
-      std::list<std::function<bool(void)>> m_OnInit;
+    llarp_time_t last_publish = 0s;
+    llarp_time_t last_publish_attempt = 0s;
+    /// our introset
+    IntroSet local_introset;
+    /// on initialize functions
+    std::list<std::function<bool(void)>> on_init_callbacks;
 
-      /// conversations
-      ConvoMap m_Sessions;
+    /// conversations
+    std::unordered_map<ConvoTag, Session> m_Sessions;
 
-      OutboundSessions_t m_OutboundSessions;
+    std::unordered_set<Address> m_OutboundSessions;
 
-      util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
-          nameCache;
+    util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
+        nameCache;
 
-      LNSLookupTracker lnsTracker;
+    LNSLookupTracker lnsTracker;
 
-      bool
-      Configure(const NetworkConfig& conf);
+    bool
+    Configure(const NetworkConfig& conf);
 
-      util::StatusObject
-      ExtractStatus(util::StatusObject& obj) const;
-    };
-  }  // namespace service
-}  // namespace llarp
+    util::StatusObject
+    ExtractStatus(util::StatusObject& obj) const;
+  };
+}  // namespace llarp::service

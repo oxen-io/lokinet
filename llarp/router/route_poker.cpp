@@ -1,5 +1,5 @@
 #include "route_poker.hpp"
-#include <llarp/router/abstractrouter.hpp>
+#include "router.hpp"
 #include <llarp/net/sock_addr.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/dns/platform.hpp>
@@ -10,134 +10,133 @@ namespace llarp
   static auto logcat = log::Cat("route-poker");
 
   void
-  RoutePoker::AddRoute(net::ipv4addr_t ip)
+  RoutePoker::add_route(oxen::quic::Address ip)
   {
-    if (not m_up)
+    if (not is_up)
       return;
-    bool has_existing = m_PokedRoutes.count(ip);
+
+    bool has_existing = poked_routes.count(ip);
+
     // set up route and apply as needed
-    auto& gw = m_PokedRoutes[ip];
-    if (m_CurrentGateway)
+    auto& gw = poked_routes[ip];
+
+    if (current_gateway)
     {
       // remove existing mapping as needed
       if (has_existing)
-        DisableRoute(ip, gw);
+        disable_route(ip, gw);
       // update and add new mapping
-      gw = *m_CurrentGateway;
-      log::info(logcat, "add route {} via {}", ip, gw);
-      EnableRoute(ip, gw);
+      gw = *current_gateway;
+
+      log::info(logcat, "Added route to {} via {}", ip, gw);
+
+      enable_route(ip, gw);
     }
     else
-      gw = net::ipv4addr_t{};
+      gw = oxen::quic::Address{};
   }
 
   void
-  RoutePoker::DisableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway)
+  RoutePoker::disable_route(oxen::quic::Address ip, oxen::quic::Address gateway)
   {
-    if (ip.n and gateway.n and IsEnabled())
+    if (ip.is_set() and gateway.is_set() and is_enabled())
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-      route.DelRoute(ip, gateway);
+      vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();
+      route.delete_route(ip, gateway);
     }
   }
 
   void
-  RoutePoker::EnableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway)
+  RoutePoker::enable_route(oxen::quic::Address ip, oxen::quic::Address gateway)
   {
-    if (ip.n and gateway.n and IsEnabled())
+    if (ip.is_set() and gateway.is_set() and is_enabled())
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-      route.AddRoute(ip, gateway);
+      vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();
+      route.add_route(ip, gateway);
     }
   }
 
   void
-  RoutePoker::DelRoute(net::ipv4addr_t ip)
+  RoutePoker::delete_route(oxen::quic::Address ip)
   {
-    const auto itr = m_PokedRoutes.find(ip);
-    if (itr == m_PokedRoutes.end())
-      return;
-    log::info(logcat, "del route {} via {}", itr->first, itr->second);
-    DisableRoute(itr->first, itr->second);
-    m_PokedRoutes.erase(itr);
+    if (const auto itr = poked_routes.find(ip); itr != poked_routes.end())
+    {
+      log::info(logcat, "Deleting route to {} via {}", itr->first, itr->second);
+      disable_route(itr->first, itr->second);
+      poked_routes.erase(itr);
+    }
   }
 
   void
-  RoutePoker::Start(AbstractRouter* router)
+  RoutePoker::start()
   {
-    m_Router = router;
-    if (not IsEnabled())
+    if (not is_enabled())
       return;
 
-    m_Router->loop()->call_every(100ms, weak_from_this(), [self = weak_from_this()]() {
+    router.loop()->call_every(100ms, weak_from_this(), [self = weak_from_this()]() {
       if (auto ptr = self.lock())
-        ptr->Update();
+        ptr->update();
     });
   }
 
   void
-  RoutePoker::DeleteAllRoutes()
+  RoutePoker::delete_all_routes()
   {
     // DelRoute will check enabled, so no need here
-    for (const auto& item : m_PokedRoutes)
-      DelRoute(item.first);
+    for (const auto& item : poked_routes)
+      delete_route(item.first);
   }
 
   void
-  RoutePoker::DisableAllRoutes()
+  RoutePoker::disable_all_routes()
   {
-    for (const auto& [ip, gateway] : m_PokedRoutes)
+    for (const auto& [ip, gateway] : poked_routes)
     {
-      DisableRoute(ip, gateway);
+      disable_route(ip, gateway);
     }
   }
 
   void
-  RoutePoker::RefreshAllRoutes()
+  RoutePoker::refresh_all_routes()
   {
-    for (const auto& item : m_PokedRoutes)
-      AddRoute(item.first);
+    for (const auto& item : poked_routes)
+      add_route(item.first);
   }
 
   RoutePoker::~RoutePoker()
   {
-    if (not m_Router or not m_Router->GetVPNPlatform())
+    if (not router.vpn_platform())
       return;
 
-    auto& route = m_Router->GetVPNPlatform()->RouteManager();
-    for (const auto& [ip, gateway] : m_PokedRoutes)
+    auto& route = router.vpn_platform()->RouteManager();
+    for (const auto& [ip, gateway] : poked_routes)
     {
-      if (gateway.n and ip.n)
-        route.DelRoute(ip, gateway);
+      if (gateway.is_set() and ip.is_set())
+        route.delete_route(ip, gateway);
     }
-    route.DelBlackhole();
+    route.delete_blackhole();
   }
 
   bool
-  RoutePoker::IsEnabled() const
+  RoutePoker::is_enabled() const
   {
-    if (not m_Router)
-      throw std::runtime_error{"Attempting to use RoutePoker before calling Init"};
-    if (m_Router->IsServiceNode())
+    if (router.IsServiceNode())
       return false;
-    if (const auto& conf = m_Router->GetConfig())
+    if (const auto& conf = router.config())
       return conf->network.m_EnableRoutePoker;
 
     throw std::runtime_error{"Attempting to use RoutePoker with router with no config set"};
   }
 
   void
-  RoutePoker::Update()
+  RoutePoker::update()
   {
-    if (not m_Router)
-      throw std::runtime_error{"Attempting to use RoutePoker before calling Init"};
-
     // ensure we have an endpoint
-    auto ep = m_Router->hiddenServiceContext().GetDefault();
+    auto ep = router.hidden_service_context().GetDefault();
     if (ep == nullptr)
       return;
     // ensure we have a vpn platform
-    auto* platform = m_Router->GetVPNPlatform();
+    auto* platform = router.vpn_platform();
     if (platform == nullptr)
       return;
     // ensure we have a vpn interface
@@ -148,47 +147,48 @@ namespace llarp
     auto& route = platform->RouteManager();
 
     // get current gateways, assume sorted by lowest metric first
-    auto gateways = route.GetGatewaysNotOnInterface(*vpn);
-    std::optional<net::ipv4addr_t> next_gw;
-    for (auto& gateway : gateways)
+    auto gateways = route.get_non_interface_gateways(*vpn);
+    std::optional<oxen::quic::Address> next_gw;
+
+    for (auto& g : gateways)
     {
-      if (auto* gw_ptr = std::get_if<net::ipv4addr_t>(&gateway))
+      if (g.is_ipv4())
       {
-        next_gw = *gw_ptr;
+        next_gw = g;
         break;
       }
     }
 
     // update current gateway and apply state changes as needed
-    if (m_CurrentGateway != next_gw)
+    if (!(current_gateway == next_gw))
     {
-      if (next_gw and m_CurrentGateway)
+      if (next_gw and current_gateway)
       {
-        log::info(logcat, "default gateway changed from {} to {}", *m_CurrentGateway, *next_gw);
-        m_CurrentGateway = next_gw;
-        m_Router->Thaw();
-        RefreshAllRoutes();
+        log::info(logcat, "default gateway changed from {} to {}", *current_gateway, *next_gw);
+        current_gateway = next_gw;
+        router.Thaw();
+        refresh_all_routes();
       }
-      else if (m_CurrentGateway)
+      else if (current_gateway)
       {
-        log::warning(logcat, "default gateway {} has gone away", *m_CurrentGateway);
-        m_CurrentGateway = next_gw;
-        m_Router->Freeze();
+        log::warning(logcat, "default gateway {} has gone away", *current_gateway);
+        current_gateway = next_gw;
+        router.Freeze();
       }
       else  // next_gw and not m_CurrentGateway
       {
         log::info(logcat, "default gateway found at {}", *next_gw);
-        m_CurrentGateway = next_gw;
+        current_gateway = next_gw;
       }
     }
-    else if (m_Router->HasClientExit())
-      Up();
+    else if (router.HasClientExit())
+      put_up();
   }
 
   void
-  RoutePoker::SetDNSMode(bool exit_mode_on) const
+  RoutePoker::set_dns_mode(bool exit_mode_on) const
   {
-    auto ep = m_Router->hiddenServiceContext().GetDefault();
+    auto ep = router.hidden_service_context().GetDefault();
     if (not ep)
       return;
     if (auto dns_server = ep->DNS())
@@ -196,17 +196,17 @@ namespace llarp
   }
 
   void
-  RoutePoker::Up()
+  RoutePoker::put_up()
   {
-    bool was_up = m_up;
-    m_up = true;
+    bool was_up = is_up;
+    is_up = true;
     if (not was_up)
     {
-      if (not IsEnabled())
+      if (not is_enabled())
       {
         log::warning(logcat, "RoutePoker coming up, but route poking is disabled by config");
       }
-      else if (not m_CurrentGateway)
+      else if (not current_gateway)
       {
         log::warning(logcat, "RokerPoker came up, but we don't know of a gateway!");
       }
@@ -214,50 +214,48 @@ namespace llarp
       {
         log::info(logcat, "RoutePoker coming up; poking routes");
 
-        vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
+        vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();
 
         // black hole all routes if enabled
-        if (m_Router->GetConfig()->network.m_BlackholeRoutes)
-          route.AddBlackhole();
+        if (router.config()->network.m_BlackholeRoutes)
+          route.add_blackhole();
 
         // explicit route pokes for first hops
-        m_Router->ForEachPeer(
-            [this](auto session, auto) { AddRoute(session->GetRemoteEndpoint().getIPv4()); },
-            false);
+        router.for_each_connection(
+            [this](link::Connection conn) { add_route(conn.remote_rc.addr); });
+
+        add_route(router.link_manager().local());
         // add default route
-        const auto ep = m_Router->hiddenServiceContext().GetDefault();
+        const auto ep = router.hidden_service_context().GetDefault();
         if (auto* vpn = ep->GetVPNInterface())
-          route.AddDefaultRouteViaInterface(*vpn);
+          route.add_default_route_via_interface(*vpn);
         log::info(logcat, "route poker up");
       }
     }
     if (not was_up)
-      SetDNSMode(true);
+      set_dns_mode(true);
   }
 
   void
-  RoutePoker::Down()
+  RoutePoker::put_down()
   {
     // unpoke routes for first hops
-    m_Router->ForEachPeer(
-        [this](auto session, auto) { DelRoute(session->GetRemoteEndpoint().getIPv4()); }, false);
-
-    // remove default route
-
-    if (IsEnabled() and m_up)
+    router.for_each_connection(
+        [this](link::Connection conn) { delete_route(conn.remote_rc.addr); });
+    if (is_enabled() and is_up)
     {
-      vpn::IRouteManager& route = m_Router->GetVPNPlatform()->RouteManager();
-      const auto ep = m_Router->hiddenServiceContext().GetDefault();
+      vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();
+      const auto ep = router.hidden_service_context().GetDefault();
       if (auto* vpn = ep->GetVPNInterface())
-        route.DelDefaultRouteViaInterface(*vpn);
+        route.delete_default_route_via_interface(*vpn);
 
       // delete route blackhole
-      route.DelBlackhole();
+      route.delete_blackhole();
       log::info(logcat, "route poker down");
     }
-    if (m_up)
-      SetDNSMode(false);
-    m_up = false;
+    if (is_up)
+      set_dns_mode(false);
+    is_up = false;
   }
 
 }  // namespace llarp

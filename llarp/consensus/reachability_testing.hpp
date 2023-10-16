@@ -12,7 +12,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 }
 
 namespace llarp::consensus
@@ -117,8 +117,7 @@ namespace llarp::consensus
     // `requeue` is mainly for internal use: if false it avoids rebuilding the queue if we run
     // out (and instead just return nullopt).
     std::optional<RouterID>
-    next_random(
-        AbstractRouter* router, const time_point_t& now = clock_t::now(), bool requeue = true);
+    next_random(Router* router, const time_point_t& now = clock_t::now(), bool requeue = true);
 
     // Removes and returns up to MAX_RETESTS_PER_TICK nodes that are due to be tested (i.e.
     // next-testing-time <= now).  Returns [snrecord, #previous-failures] for each.

@@ -1,16 +1,18 @@
 #include "pathbuilder.hpp"
+#include "path.hpp"
 #include "path_context.hpp"
 
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/link/link_manager.hpp>
+#include <llarp/messages/path.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/util/logging.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/router/i_rc_lookup_handler.hpp>
-#include <llarp/util/buffer.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/tooling/path_event.hpp>
-#include <llarp/link/link_manager.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <functional>
 
@@ -19,149 +21,6 @@ namespace llarp
   namespace
   {
     auto log_path = log::Cat("path");
-  }
-
-  struct AsyncPathKeyExchangeContext : std::enable_shared_from_this<AsyncPathKeyExchangeContext>
-  {
-    using WorkFunc_t = std::function<void(void)>;
-    using WorkerFunc_t = std::function<void(WorkFunc_t)>;
-    using Path_t = path::Path_ptr;
-    using PathSet_t = path::PathSet_ptr;
-    PathSet_t pathset = nullptr;
-    Path_t path = nullptr;
-    using Handler = std::function<void(std::shared_ptr<AsyncPathKeyExchangeContext>)>;
-
-    Handler result;
-    size_t idx = 0;
-    AbstractRouter* router = nullptr;
-    WorkerFunc_t work;
-    EventLoop_ptr loop;
-    LR_CommitMessage LRCM;
-
-    void
-    GenerateNextKey()
-    {
-      // current hop
-      auto& hop = path->hops[idx];
-      auto& frame = LRCM.frames[idx];
-
-      auto crypto = CryptoManager::instance();
-
-      // generate key
-      crypto->encryption_keygen(hop.commkey);
-      hop.nonce.Randomize();
-      // do key exchange
-      if (!crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey, hop.nonce))
-      {
-        LogError(pathset->Name(), " Failed to generate shared key for path build");
-        return;
-      }
-      // generate nonceXOR valueself->hop->pathKey
-      crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
-      ++idx;
-
-      bool isFarthestHop = idx == path->hops.size();
-
-      LR_CommitRecord record;
-      if (isFarthestHop)
-      {
-        hop.upstream = hop.rc.pubkey;
-      }
-      else
-      {
-        hop.upstream = path->hops[idx].rc.pubkey;
-        record.nextRC = std::make_unique<RouterContact>(path->hops[idx].rc);
-      }
-      // build record
-      record.lifetime = path::default_lifetime;
-      record.version = llarp::constants::proto_version;
-      record.txid = hop.txID;
-      record.rxid = hop.rxID;
-      record.tunnelNonce = hop.nonce;
-      record.nextHop = hop.upstream;
-      record.commkey = seckey_topublic(hop.commkey);
-
-      llarp_buffer_t buf(frame.data(), frame.size());
-      buf.cur = buf.base + EncryptedFrameOverheadSize;
-      // encode record
-      if (!record.BEncode(&buf))
-      {
-        // failed to encode?
-        LogError(pathset->Name(), " Failed to generate Commit Record");
-        DumpBuffer(buf);
-        return;
-      }
-      // use ephemeral keypair for frame
-      SecretKey framekey;
-      crypto->encryption_keygen(framekey);
-      if (!frame.EncryptInPlace(framekey, hop.rc.enckey))
-      {
-        LogError(pathset->Name(), " Failed to encrypt LRCR");
-        return;
-      }
-
-      if (isFarthestHop)
-      {
-        // farthest hop
-        // TODO: encrypt junk frames because our public keys are not eligator
-        loop->call([self = shared_from_this()] {
-          self->result(self);
-          self->result = nullptr;
-        });
-      }
-      else
-      {
-        // next hop
-        work([self = shared_from_this()] { self->GenerateNextKey(); });
-      }
-    }
-
-    /// Generate all keys asynchronously and call handler when done
-    void
-    AsyncGenerateKeys(Path_t p, EventLoop_ptr l, WorkerFunc_t worker, Handler func)
-    {
-      path = p;
-      loop = std::move(l);
-      result = func;
-      work = worker;
-
-      for (size_t i = 0; i < path::max_len; ++i)
-      {
-        LRCM.frames[i].Randomize();
-      }
-      work([self = shared_from_this()] { self->GenerateNextKey(); });
-    }
-  };
-
-  static void
-  PathBuilderKeysGenerated(std::shared_ptr<AsyncPathKeyExchangeContext> ctx)
-  {
-    if (ctx->pathset->IsStopped())
-      return;
-
-    ctx->router->NotifyRouterEvent<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
-
-    ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-    ctx->pathset->PathBuildStarted(ctx->path);
-
-    const RouterID remote = ctx->path->Upstream();
-    auto sentHandler = [router = ctx->router, path = ctx->path](auto status) {
-      if (status != SendStatus::Success)
-      {
-        path->EnterState(path::ePathFailed, router->Now());
-      }
-    };
-    if (ctx->router->SendToOrQueue(remote, ctx->LRCM, sentHandler))
-    {
-      // persist session with router until this path is done
-      if (ctx->path)
-        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-    }
-    else
-    {
-      LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
-      sentHandler(SendStatus::NoLink);
-    }
   }
 
   namespace path
@@ -184,10 +43,137 @@ namespace llarp
       return m_EdgeLimiter.Contains(router);
     }
 
-    Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet{pathNum}, _run{true}, m_router{p_router}, numHops{hops}
+    Builder::Builder(Router* p_router, size_t pathNum, size_t hops)
+        : path::PathSet{pathNum}, _run{true}, router{p_router}, numHops{hops}
+    {}
+
+    /* - For each hop:
+     * SetupHopKeys:
+     *   - Generate Ed keypair for the hop. ("commkey")
+     *   - Use that key and the hop's pubkey for DH key exchange (makes "hop.shared")
+     *     - Note: this *was* using hop's "enckey" but we're getting rid of that
+     *   - hop's "upstream" RouterID is next hop, or that hop's ID if it is terminal hop
+     *   - hop's chacha nonce is hash of symmetric key (hop.shared) from DH
+     *   - hop's "txID" and "rxID" are chosen before this step
+     *     - txID is the path ID for messages coming *from* the client/path origin
+     *     - rxID is the path ID for messages going *to* it.
+     *
+     * CreateHopInfoFrame:
+     *   - bt-encode "hop info":
+     *     - path lifetime
+     *     - protocol version
+     *     - txID
+     *     - rxID
+     *     - nonce
+     *     - upstream hop RouterID
+     *     - ephemeral public key (for DH)
+     *   - generate *second* ephemeral Ed keypair... ("framekey") TODO: why?
+     *   - generate DH symmetric key using "framekey" and hop's pubkey
+     *   - generate nonce for second encryption
+     *   - encrypt "hop info" using this symmetric key
+     *   - bt-encode nonce, "framekey" pubkey, encrypted "hop info"
+     *   - hash this bt-encoded string
+     *   - bt-encode hash and the frame in a dict, serialize
+     *
+     *
+     *  all of these "frames" go in a list, along with any needed dummy frames
+     */
+
+    void
+    Builder::setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
-      CryptoManager::instance()->encryption_keygen(enckey);
+      auto crypto = CryptoManager::instance();
+
+      // generate key
+      crypto->encryption_keygen(hop.commkey);
+
+      hop.nonce.Randomize();
+      // do key exchange
+      if (!crypto->dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      {
+        auto err = fmt::format("{} failed to generate shared key for path build!", Name());
+        log::error(path_cat, err);
+        throw std::runtime_error{std::move(err)};
+      }
+      // generate nonceXOR value self->hop->pathKey
+      crypto->shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
+
+      hop.upstream = nextHop;
+    }
+
+    std::string
+    Builder::create_hop_info_frame(const path::PathHopConfig& hop)
+    {
+      auto crypto = CryptoManager::instance();
+
+      std::string hop_info;
+
+      {
+        oxenc::bt_dict_producer btdp;
+
+        btdp.append("COMMKEY", hop.commkey.toPublic().ToView());
+        btdp.append("LIFETIME", path::DEFAULT_LIFETIME.count());
+        btdp.append("NONCE", hop.nonce.ToView());
+        btdp.append("RX", hop.rxID.ToView());
+        btdp.append("TX", hop.txID.ToView());
+        btdp.append("UPSTREAM", hop.upstream.ToView());
+
+        hop_info = std::move(btdp).str();
+      }
+
+      SecretKey framekey;
+      crypto->encryption_keygen(framekey);
+
+      SharedSecret shared;
+      TunnelNonce outer_nonce;
+      outer_nonce.Randomize();
+
+      // derive (outer) shared key
+      if (!crypto->dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      {
+        log::error(path_cat, "DH client failed during hop info encryption!");
+        throw std::runtime_error{"DH failed during hop info encryption"};
+      }
+
+      // encrypt hop_info (mutates in-place)
+      if (!crypto->xchacha20(
+              reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
+      {
+        log::error(path_cat, "Hop info encryption failed!");
+        throw std::runtime_error{"Hop info encrypttion failed"};
+      }
+
+      std::string hashed_data;
+
+      {
+        oxenc::bt_dict_producer btdp;
+
+        btdp.append("ENCRYPTED", hop_info);
+        btdp.append("NONCE", outer_nonce.ToView());
+        btdp.append("PUBKEY", framekey.toPublic().ToView());
+
+        hashed_data = std::move(btdp).str();
+      }
+
+      std::string hash;
+      hash.reserve(SHORTHASHSIZE);
+
+      if (!crypto->hmac(
+              reinterpret_cast<uint8_t*>(hash.data()),
+              reinterpret_cast<uint8_t*>(hashed_data.data()),
+              hashed_data.size(),
+              shared))
+      {
+        log::error(path_cat, "Failed to generate HMAC for hop info");
+        throw std::runtime_error{"Failed to generate HMAC for hop info"};
+      }
+
+      oxenc::bt_dict_producer btdp;
+
+      btdp.append("FRAME", hashed_data);
+      btdp.append("HASH", hash);
+
+      return std::move(btdp).str();
     }
 
     void
@@ -202,12 +188,12 @@ namespace llarp
     {
       PathSet::Tick(now);
       now = llarp::time_now_ms();
-      m_router->pathBuildLimiter().Decay(now);
+      router->pathbuild_limiter().Decay(now);
 
-      ExpirePaths(now, m_router);
+      ExpirePaths(now, router);
       if (ShouldBuildMore(now))
         BuildOne();
-      TickPaths(m_router);
+      TickPaths(router);
       if (m_BuildStats.attempts > 50)
       {
         if (m_BuildStats.SuccessRatio() <= BuildStats::MinGoodRatio && now - m_LastWarn > 5s)
@@ -237,38 +223,33 @@ namespace llarp
     Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RouterContact> found = std::nullopt;
-      m_router->ForEachPeer(
-          [&](const ILinkSession* s, bool isOutbound) {
-            if (s && s->IsEstablished() && isOutbound && not found.has_value())
-            {
-              const RouterContact rc = s->GetRemoteRC();
+      router->for_each_connection([&](link::Connection& conn) {
+        const auto& rc = conn.remote_rc;
 #ifndef TESTNET
-              if (m_router->IsBootstrapNode(rc.pubkey))
-                return;
+        if (router->IsBootstrapNode(rc.pubkey))
+          return;
 #endif
-              if (exclude.count(rc.pubkey))
-                return;
+        if (exclude.count(rc.pubkey))
+          return;
 
-              if (BuildCooldownHit(rc.pubkey))
-                return;
+        if (BuildCooldownHit(rc.pubkey))
+          return;
 
-              if (m_router->routerProfiling().IsBadForPath(rc.pubkey))
-                return;
+        if (router->router_profiling().IsBadForPath(rc.pubkey))
+          return;
 
-              found = rc;
-            }
-          },
-          true);
+        found = rc;
+      });
       return found;
     }
 
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsForBuild()
     {
-      auto filter = [r = m_router](const auto& rc) -> bool {
-        return not r->routerProfiling().IsBadForPath(rc.pubkey, 1);
+      auto filter = [r = router](const auto& rc) -> bool {
+        return not r->router_profiling().IsBadForPath(rc.pubkey, 1);
       };
-      if (const auto maybe = m_router->nodedb()->GetRandom(filter))
+      if (const auto maybe = router->node_db()->GetRandom(filter))
       {
         return GetHopsAlignedToForBuild(maybe->pubkey);
       }
@@ -300,16 +281,10 @@ namespace llarp
       return IsStopped() and NumInStatus(ePathEstablished) == 0;
     }
 
-    const SecretKey&
-    Builder::GetTunnelEncryptionSecretKey() const
-    {
-      return enckey;
-    }
-
     bool
     Builder::BuildCooldownHit(RouterID edge) const
     {
-      return m_router->pathBuildLimiter().Limited(edge);
+      return router->pathbuild_limiter().Limited(edge);
     }
 
     bool
@@ -344,7 +319,7 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
-      const auto pathConfig = m_router->GetConfig()->paths;
+      const auto pathConfig = router->config()->paths;
 
       std::vector<RouterContact> hops;
       {
@@ -358,7 +333,7 @@ namespace llarp
       };
 
       RouterContact endpointRC;
-      if (const auto maybe = m_router->nodedb()->Get(endpoint))
+      if (const auto maybe = router->node_db()->get_rc(endpoint))
       {
         endpointRC = *maybe;
       }
@@ -374,7 +349,7 @@ namespace llarp
         else
         {
           auto filter =
-              [&hops, r = m_router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
+              [&hops, r = router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
             if (exclude.count(rc.pubkey))
               return false;
 
@@ -382,7 +357,7 @@ namespace llarp
             hopsSet.insert(endpointRC);
             hopsSet.insert(hops.begin(), hops.end());
 
-            if (r->routerProfiling().IsBadForPath(rc.pubkey, 1))
+            if (r->router_profiling().IsBadForPath(rc.pubkey, 1))
               return false;
             for (const auto& hop : hopsSet)
             {
@@ -398,7 +373,7 @@ namespace llarp
             return rc.pubkey != endpointRC.pubkey;
           };
 
-          if (const auto maybe = m_router->nodedb()->GetRandom(filter))
+          if (const auto maybe = router->node_db()->GetRandom(filter))
             hops.emplace_back(*maybe);
           else
             return std::nullopt;
@@ -422,46 +397,99 @@ namespace llarp
     llarp_time_t
     Builder::Now() const
     {
-      return m_router->Now();
+      return router->now();
     }
 
     void
     Builder::Build(std::vector<RouterContact> hops, PathRole roles)
     {
       if (IsStopped())
-        return;
-      lastBuild = Now();
-      const RouterID edge{hops[0].pubkey};
-      if (not m_router->pathBuildLimiter().Attempt(edge))
       {
-        LogWarn(Name(), " building too fast to edge router ", edge);
+        log::info(path_cat, "Path builder is stopped, aborting path build...");
         return;
       }
-      // async generate keys
-      auto ctx = std::make_shared<AsyncPathKeyExchangeContext>();
-      ctx->router = m_router;
-      auto self = GetSelf();
-      ctx->pathset = self;
-      std::string path_shortName = "[path " + m_router->ShortName() + "-";
-      path_shortName = path_shortName + std::to_string(m_router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
-      LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
-      path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
-      ctx->AsyncGenerateKeys(
-          path,
-          m_router->loop(),
-          [r = m_router](auto func) { r->QueueWork(std::move(func)); },
-          &PathBuilderKeysGenerated);
+      lastBuild = llarp::time_now_ms();
+      const RouterID edge{hops[0].pubkey};
+
+      if (not router->pathbuild_limiter().Attempt(edge))
+      {
+        log::warning(path_cat, "{} building too quickly to edge router {}", Name(), edge);
+        return;
+      }
+
+      std::string path_shortName = "[path " + router->ShortName() + "-";
+      path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
+      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
+
+      log::info(
+          path_cat, "{} building path -> {} : {}", Name(), path->ShortName(), path->HopsString());
+
+      oxenc::bt_list_producer frames;
+
+      auto& path_hops = path->hops;
+      size_t n_hops = path_hops.size();
+      size_t last_len{0};
+
+      for (size_t i = 0; i < n_hops; i++)
+      {
+        bool lastHop = (i == (n_hops - 1));
+
+        const auto& nextHop = lastHop ? path_hops[i].rc.pubkey : path_hops[i + 1].rc.pubkey;
+
+        PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
+        auto frame_str = PathBuildMessage::serialize(path_hops[i]);
+
+        // all frames should be the same length...not sure what that is yet
+        if (last_len != 0)
+          assert(frame_str.size() == last_len);
+
+        last_len = frame_str.size();
+        frames.append(std::move(frame_str));
+      }
+
+      std::string dummy;
+      dummy.reserve(last_len);
+
+      // append dummy frames; path build request must always have MAX_LEN frames
+      // TODO: with the data structured as it is now (bt-encoded dict as each frame)
+      //       the dummy frames can't be completely random; they need to look like
+      //       normal frames
+      for (size_t i = 0; i < path::MAX_LEN - n_hops; i++)
+      {
+        randombytes(reinterpret_cast<uint8_t*>(dummy.data()), dummy.size());
+        frames.append(dummy);
+      }
+
+      auto self = GetSelf();
+      router->path_context().AddOwnPath(self, path);
+      PathBuildStarted(path);
+
+      auto response_cb = [self](oxen::quic::message) {
+        // TODO: this (replaces handling LRSM, which also needs replacing)
+
+        // TODO: Talk to Tom about why are we using it as a response callback?
+        // Do you mean TransitHop::HandleLRSM?
+      };
+
+      if (not router->send_control_message(
+              path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
+      {
+        log::warning(log_path, "Error sending path_build control message");
+        path->EnterState(path::ePathFailed, router->now());
+      }
+
+      // TODO: we don't use this concept anymore?
+      router->persist_connection_until(path->upstream(), path->ExpireTime());
     }
 
     void
     Builder::HandlePathBuilt(Path_ptr p)
     {
       buildIntervalLimit = PATH_BUILD_RATE;
-      m_router->routerProfiling().MarkPathSuccess(p.get());
+      router->router_profiling().MarkPathSuccess(p.get());
 
-      LogInfo(p->Name(), " built latency=", ToString(p->intro.latency));
+      LogInfo(p->name(), " built latency=", ToString(p->intro.latency));
       m_BuildStats.success++;
     }
 
@@ -484,33 +512,32 @@ namespace llarp
     void
     Builder::HandlePathBuildTimeout(Path_ptr p)
     {
-      m_router->routerProfiling().MarkPathTimeout(p.get());
+      router->router_profiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
       for (const auto& hop : p->hops)
       {
-        const RouterID router{hop.rc.pubkey};
+        const RouterID target{hop.rc.pubkey};
         // look up router and see if it's still on the network
-        m_router->loop()->call_soon([router, r = m_router]() {
-          LogInfo("looking up ", router, " because of path build timeout");
-          r->rcLookupHandler().GetRC(
-              router,
-              [r](const auto& router, const auto* rc, auto result) {
-                if (result == RCRequestResult::Success && rc != nullptr)
-                {
-                  LogInfo("refreshed rc for ", router);
-                  r->nodedb()->PutIfNewer(*rc);
-                }
-                else
-                {
-                  // remove all connections to this router as it's probably not registered anymore
-                  LogWarn("removing router ", router, " because of path build timeout");
-                  r->linkManager().DeregisterPeer(router);
-                  r->nodedb()->Remove(router);
-                }
-              },
-              true);
-        });
+        log::info(path_cat, "Looking up RouterID {} due to path build timeout", target);
+
+        router->rc_lookup_handler().get_rc(
+            target,
+            [this](auto rid, auto rc, auto success) {
+              if (success && rc)
+              {
+                log::info(path_cat, "Refreshed RouterContact for {}", rid);
+                router->node_db()->put_rc_if_newer(*rc);
+              }
+              else
+              {
+                // remove all connections to this router as it's probably not registered anymore
+                log::warning(path_cat, "Removing router {} due to path build timeout", rid);
+                router->link_manager().deregister_peer(rid);
+                router->node_db()->remove_router(rid);
+              }
+            },
+            true);
       }
     }
 

@@ -1,49 +1,57 @@
 #pragma once
 
 #include <llarp/util/decaying_hashset.hpp>
-#include "i_gossiper.hpp"
-#include "i_outbound_message_handler.hpp"
-#include <llarp/link/i_link_manager.hpp>
-#include "abstractrouter.hpp"
+
+#include <optional>
+#include "llarp/router_id.hpp"
 
 namespace llarp
 {
-  struct RCGossiper : public I_RCGossiper
+  struct Router;
+
+  /// The maximum number of peers we will flood a gossiped RC to when propagating an RC
+  constexpr size_t MaxGossipPeers = 20;
+  struct LinkManager;
+  struct RouterContact;
+
+  struct RCGossiper
   {
+    using Time_t = Duration_t;
+
     RCGossiper();
 
-    ~RCGossiper() override = default;
+    ~RCGossiper() = default;
 
     bool
-    GossipRC(const RouterContact& rc) override;
+    GossipRC(const RouterContact& rc);
 
     void
-    Decay(Time_t now) override;
+    Decay(Time_t now);
 
     bool
-    ShouldGossipOurRC(Time_t now) const override;
+    ShouldGossipOurRC(Time_t now) const;
 
     bool
-    IsOurRC(const RouterContact& rc) const override;
+    IsOurRC(const RouterContact& rc) const;
 
     void
-    Init(ILinkManager*, const RouterID&, AbstractRouter*);
+    Init(LinkManager*, const RouterID&, Router*);
 
     void
-    Forget(const RouterID& router) override;
+    Forget(const RouterID& router);
 
     TimePoint_t
-    NextGossipAt() const override;
+    NextGossipAt() const;
 
     std::optional<TimePoint_t>
-    LastGossipAt() const override;
+    LastGossipAt() const;
 
    private:
-    RouterID m_OurRouterID;
-    Time_t m_LastGossipedOurRC = 0s;
-    ILinkManager* m_LinkManager = nullptr;
-    util::DecayingHashSet<RouterID> m_Filter;
+    RouterID rid;
+    Time_t last_rc_gossip = 0s;
+    LinkManager* link_manager = nullptr;
+    util::DecayingHashSet<RouterID> filter;
 
-    AbstractRouter* m_router;
+    Router* router;
   };
 }  // namespace llarp

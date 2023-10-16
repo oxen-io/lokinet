@@ -2,12 +2,11 @@
 
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/net/ip_address.hpp>
-#include "ihophandler.hpp"
+#include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
 #include "transit_hop.hpp"
 #include <llarp/routing/handler.hpp>
-#include <llarp/router/i_outbound_message_handler.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
@@ -17,7 +16,7 @@
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   struct LR_CommitMessage;
   struct RelayDownstreamMessage;
   struct RelayUpstreamMessage;
@@ -32,7 +31,7 @@ namespace llarp
 
     struct PathContext
     {
-      explicit PathContext(AbstractRouter* router);
+      explicit PathContext(Router* router);
 
       /// called from router tick function
       void
@@ -52,6 +51,9 @@ namespace llarp
 
       bool
       CheckPathLimitHitByIP(const IpAddress& ip);
+
+      bool
+      CheckPathLimitHitByIP(const std::string& ip);
 
       bool
       AllowingTransit() const;
@@ -93,12 +95,6 @@ namespace llarp
       /// get a set of all paths that we own who's endpoint is r
       EndpointPathPtrSet
       FindOwnedPathsWithEndpoint(const RouterID& r);
-
-      bool
-      ForwardLRCM(
-          const RouterID& nextHop,
-          const std::array<EncryptedFrame, 8>& frames,
-          SendStatusHandler handler);
 
       bool
       HopIsUs(const RouterID& k) const;
@@ -160,9 +156,6 @@ namespace llarp
       const EventLoop_ptr&
       loop();
 
-      AbstractRouter*
-      Router();
-
       const SecretKey&
       EncryptionSecretKey();
 
@@ -177,12 +170,18 @@ namespace llarp
       uint64_t
       CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
 
+      Router*
+      router() const
+      {
+        return _router;
+      }
+
      private:
-      AbstractRouter* m_Router;
+      Router* _router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
-      util::DecayingHashSet<IpAddress> m_PathLimits;
+      util::DecayingHashSet<IpAddress> path_limits;
     };
   }  // namespace path
 }  // namespace llarp

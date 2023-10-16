@@ -1,18 +1,18 @@
 #pragma once
 
+#include <llarp/router/router.hpp>
+#include <llarp.hpp>
+#include <llarp/win32/exec.hpp>
 #include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/win32/exec.hpp>
-#include <llarp.hpp>
 
 #include "platform.hpp"
 
 namespace llarp::win32
 {
   using namespace llarp::vpn;
-  class VPNPlatform : public Platform, public IRouteManager
+  class VPNPlatform : public Platform, public AbstractRouteManager
   {
     llarp::Context* const _ctx;
     const int m_Metric{2};
@@ -20,17 +20,17 @@ namespace llarp::win32
     const auto&
     Net() const
     {
-      return _ctx->router->Net();
+      return _ctx->router->net();
     }
 
     void
-    Route(std::string ip, std::string gw, std::string cmd);
+    make_route(std::string ip, std::string gw, std::string cmd);
 
     void
-    DefaultRouteViaInterface(NetworkInterface& vpn, std::string cmd);
+    default_route_via_interface(NetworkInterface& vpn, std::string cmd);
 
     void
-    RouteViaInterface(NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd);
+    route_via_interface(NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd);
 
    public:
     VPNPlatform(const VPNPlatform&) = delete;
@@ -42,34 +42,34 @@ namespace llarp::win32
     ~VPNPlatform() override = default;
 
     void
-    AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override;
+    add_route(oxen::quic::Address ip, oxen::quic::Address gateway) override;
 
     void
-    DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override;
+    delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) override;
 
     void
-    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override;
+    add_route_via_interface(NetworkInterface& vpn, IPRange range) override;
 
     void
-    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override;
+    delete_route_via_interface(NetworkInterface& vpn, IPRange range) override;
 
-    std::vector<net::ipaddr_t>
-    GetGatewaysNotOnInterface(NetworkInterface& vpn) override;
-
-    void
-    AddDefaultRouteViaInterface(NetworkInterface& vpn) override;
+    std::vector<oxen::quic::Address>
+    get_non_interface_gateways(NetworkInterface& vpn) override;
 
     void
-    DelDefaultRouteViaInterface(NetworkInterface& vpn) override;
+    add_default_route_via_interface(NetworkInterface& vpn) override;
+
+    void
+    delete_default_route_via_interface(NetworkInterface& vpn) override;
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter* router) override;
+    ObtainInterface(InterfaceInfo info, Router* router) override;
 
     std::shared_ptr<I_Packet_IO>
     create_packet_io(
         unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src) override;
 
-    IRouteManager&
+    AbstractRouteManager&
     RouteManager() override
     {
       return *this;
