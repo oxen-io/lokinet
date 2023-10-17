@@ -18,7 +18,6 @@
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
-#define NICKLEN (32)
 
 namespace oxenc
 {
@@ -87,8 +86,6 @@ namespace llarp
     llarp::PubKey pubkey;
     // signature
     llarp::Signature signature;
-    /// node nickname, yw kee
-    llarp::AlignedBuffer<NICKLEN> nickname;
 
     llarp_time_t last_updated = 0s;
     uint64_t version = llarp::constants::proto_version;
@@ -134,7 +131,7 @@ namespace llarp
     operator==(const RouterContact& other) const
     {
       return addr == other.addr && enckey == other.enckey && pubkey == other.pubkey
-          && signature == other.signature && nickname == other.nickname
+          && signature == other.signature
           && last_updated == other.last_updated && netID == other.netID;
     }
 
@@ -166,16 +163,7 @@ namespace llarp
     decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
-    HasNick() const;
-
-    std::string
-    Nick() const;
-
-    bool
     IsPublicRouter() const;
-
-    void
-    SetNick(std::string_view nick);
 
     bool
     Verify(llarp_time_t now, bool allowExpired = true) const;

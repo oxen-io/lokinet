@@ -110,7 +110,7 @@ namespace llarp
           m_maxConnectedRouters = arg;
         });
 
-    conf.defineOption<std::string>("router", "nickname", Hidden, AssignmentAcceptor(m_nickname));
+    conf.defineOption<std::string>("router", "nickname", Deprecated);
 
     conf.defineOption<fs::path>(
         "router",
