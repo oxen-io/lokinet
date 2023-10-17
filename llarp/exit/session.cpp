@@ -21,8 +21,8 @@ namespace llarp::exit
       : llarp::path::Builder{r, numpaths, hoplen}
       , exit_router{routerId}
       , packet_write_func{std::move(writepkt)}
-      , m_Counter{0}
-      , m_LastUse{r->now()}
+      , _counter{0}
+      , _last_use{r->now()}
       , m_BundleRC{false}
       , m_Parent{parent}
   {
@@ -41,7 +41,7 @@ namespace llarp::exit
   BaseSession::ExtractStatus() const
   {
     auto obj = path::Builder::ExtractStatus();
-    obj["lastExitUse"] = to_json(m_LastUse);
+    obj["lastExitUse"] = to_json(_last_use);
     auto pub = exit_key.toPublic();
     obj["exitIdentity"] = pub.ToString();
     obj["endpoint"] = exit_router.ToString();
@@ -80,8 +80,8 @@ namespace llarp::exit
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
-    else
-      return GetHopsAlignedToForBuild(exit_router);
+    
+    return GetHopsAlignedToForBuild(exit_router);
   }
 
   bool
@@ -204,7 +204,7 @@ namespace llarp::exit
       llarp::net::IPPacket pkt{buf.view_all()};
       if (pkt.empty())
         return false;
-      m_LastUse = router->now();
+      _last_use = router->now();
       m_Downstream.emplace(counter, pkt);
       return true;
     }
@@ -231,7 +231,7 @@ namespace llarp::exit
     {
       queue.emplace_back();
       queue.back().protocol = t;
-      return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
+      return queue.back().PutBuffer(llarp_buffer_t{pkt}, _counter++);
     }
     auto& back = queue.back();
     // pack to nearest N
@@ -239,10 +239,10 @@ namespace llarp::exit
     {
       queue.emplace_back();
       queue.back().protocol = t;
-      return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
+      return queue.back().PutBuffer(llarp_buffer_t{pkt}, _counter++);
     }
     back.protocol = t;
-    return back.PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
+    return back.PutBuffer(llarp_buffer_t{pkt}, _counter++);
   }
 
   bool
@@ -257,7 +257,7 @@ namespace llarp::exit
   bool
   BaseSession::IsExpired(llarp_time_t now) const
   {
-    return now > m_LastUse && now - m_LastUse > LifeSpan;
+    return now > _last_use && now - _last_use > LifeSpan;
   }
 
   bool
@@ -296,6 +296,7 @@ namespace llarp::exit
       for (auto& [i, queue] : m_Upstream)
         queue.clear();
       m_Upstream.clear();
+
       if (numHops == 1)
       {
         auto r = router;
@@ -374,23 +375,25 @@ namespace llarp::exit
   }
 
   void
-  SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
+  ExitSession::send_packet_to_remote(std::string buf)
   {
     net::IPPacket pkt{buf.view_all()};
     if (pkt.empty())
       return;
     pkt.ZeroAddresses();
-    QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
+
+    // QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
   }
 
   void
-  ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
+  SNodeSession::send_packet_to_remote(std::string buf)
   {
     net::IPPacket pkt{buf.view_all()};
     if (pkt.empty())
       return;
 
     pkt.ZeroSourceAddress();
-    QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
+    
+    // QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
   }
 }  // namespace llarp::exit

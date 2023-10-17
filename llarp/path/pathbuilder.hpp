@@ -73,10 +73,6 @@ namespace llarp::path
     bool
     ShouldBuildMore(llarp_time_t now) const override;
 
-    /// should we bundle RCs in builds?
-    virtual bool
-    ShouldBundleRC() const = 0;
-
     void
     ResetInternalState() override;
 

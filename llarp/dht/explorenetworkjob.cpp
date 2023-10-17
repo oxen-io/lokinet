@@ -1,6 +1,5 @@
 #include "explorenetworkjob.hpp"
 
-#include <llarp/dht/messages/findrouter.hpp>
 #include <llarp/router/router.hpp>
 
 #include <llarp/nodedb.hpp>

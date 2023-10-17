@@ -108,8 +108,8 @@ namespace llarp
 
       oxenc::bt_dict_producer btdp;
 
-      btdp.append("HASH", hash);
       btdp.append("FRAME", hashed_data);
+      btdp.append("HASH", hash);
 
       return std::move(btdp).str();
     }

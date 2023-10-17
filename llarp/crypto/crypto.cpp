@@ -457,9 +457,9 @@ namespace llarp
     return crypto_sign_ed25519_seed_keypair(secret.data() + 32, secret.data(), seed.data()) != -1;
   }
   void
-  Crypto::randomize(const llarp_buffer_t& buff)
+  Crypto::randomize(uint8_t* buf, size_t len)
   {
-    randombytes((unsigned char*)buff.base, buff.sz);
+    randombytes(buf, len);
   }
 
   void

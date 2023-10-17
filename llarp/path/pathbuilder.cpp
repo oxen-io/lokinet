@@ -20,7 +20,7 @@ namespace llarp
 {
   namespace
   {
-    auto log_path = log::Cat("path");
+    auto path_cat = log::Cat("path");
   }
 
   namespace path
@@ -326,7 +326,7 @@ namespace llarp
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
         {
-          log::warning(log_path, "{} has no first hop candidate", Name());
+          log::warning(path_cat, "{} has no first hop candidate", Name());
           return std::nullopt;
         }
         hops.emplace_back(*maybe);
@@ -465,22 +465,44 @@ namespace llarp
       router->path_context().AddOwnPath(self, path);
       PathBuildStarted(path);
 
-      auto response_cb = [self](oxen::quic::message) {
-        // TODO: this (replaces handling LRSM, which also needs replacing)
+      // TODO:
+      // Path build fail and success are handled poorly at best and changing how we
+      // handle these responses as well as how we store and use Paths as a whole might
+      // be worth doing sooner rather than later.  Leaving some TODOs below where fail
+      // and success live.
+      auto response_cb = [self](oxen::quic::message m) {
+        if (m)
+        {
+          std::string status;
 
-        // TODO: Talk to Tom about why are we using it as a response callback?
-        // Do you mean TransitHop::HandleLRSM?
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            status = btdc.require<std::string>("STATUS");
+          }
+          catch (...)
+          {
+            log::warning(path_cat, "Error: Failed to parse path build response!", status);
+            m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+            throw;
+          }
+
+          // TODO: success logic
+        }
+        else
+        {
+          log::warning(path_cat, "Path build request returned failure {}");
+          // TODO: failure logic
+        }
       };
 
       if (not router->send_control_message(
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
-        log::warning(log_path, "Error sending path_build control message");
+        log::warning(path_cat, "Error sending path_build control message");
+        // TODO: inform failure (what this means needs revisiting, badly)
         path->EnterState(path::ePathFailed, router->now());
       }
-
-      // TODO: we don't use this concept anymore?
-      router->persist_connection_until(path->upstream(), path->ExpireTime());
     }
 
     void

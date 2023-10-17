@@ -1254,12 +1254,12 @@ namespace llarp::handlers
 
       EnsurePathToService(
           addr,
-          [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) {
+          [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) mutable {
             if (ctx)
             {
               if (extra_cb)
                 extra_cb();
-              ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
+              ctx->send_packet_to_remote(pkt.to_string());
               router()->TriggerPump();
               return;
             }

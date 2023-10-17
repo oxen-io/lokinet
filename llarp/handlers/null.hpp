@@ -1,8 +1,8 @@
 #pragma once
 
+#include <llarp/link/tunnel.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/protocol_type.hpp>
-#include <llarp/quic/tunnel.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/vpn/egres_packet_router.hpp>
@@ -25,7 +25,7 @@ namespace llarp::handlers
       r->loop()->add_ticker([this] { Pump(Now()); });
     }
 
-    virtual bool
+    bool
     HandleInboundPacket(
         const service::ConvoTag tag,
         const llarp_buffer_t& buf,
@@ -74,6 +74,9 @@ namespace llarp::handlers
       return true;
     }
 
+    void
+    send_packet_to_remote(std::string) override {};
+
     std::string
     GetIfName() const override
     {
@@ -97,9 +100,6 @@ namespace llarp::handlers
     {
       return false;
     }
-
-    void
-    SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
     huint128_t
     ObtainIPForAddr(std::variant<service::Address, RouterID>) override
