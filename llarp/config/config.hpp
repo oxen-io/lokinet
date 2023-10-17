@@ -61,7 +61,6 @@ namespace llarp
     size_t m_maxConnectedRouters = 0;
 
     std::string m_netId;
-    std::string m_nickname;
 
     fs::path m_dataDir;
 

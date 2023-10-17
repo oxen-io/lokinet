@@ -635,7 +635,6 @@ namespace llarp
     }
 
     // Router config
-    router_contact.SetNick(conf.router.m_nickname);
     _link_manager.max_connected_routers = conf.router.m_maxConnectedRouters;
     _link_manager.min_connected_routers = conf.router.m_minConnectedRouters;
 
