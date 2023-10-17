@@ -571,39 +571,15 @@ namespace llarp
   }
 
   bool
-  Router::update_rc(bool rotateKeys)
+  Router::update_rc()
   {
     SecretKey nextOnionKey;
     RouterContact nextRC = router_contact;
-    if (rotateKeys)
-    {
-      CryptoManager::instance()->encryption_keygen(nextOnionKey);
-      std::string f = encryption_keyfile.string();
-      // TODO: use disk worker
-      if (nextOnionKey.SaveToFile(f.c_str()))
-      {
-        nextRC.enckey = seckey_topublic(nextOnionKey);
-        _encryption = nextOnionKey;
-      }
-    }
     if (!nextRC.Sign(identity()))
       return false;
     if (!nextRC.Verify(time_now_ms(), false))
       return false;
     router_contact = std::move(nextRC);
-    if (rotateKeys)
-    {
-      // TODO: libquic change
-      //  propagate RC by renegotiating sessions
-      /*
-      ForEachPeer([](ILinkSession* s) {
-        if (s->RenegotiateSession())
-          LogInfo("renegotiated session");
-        else
-          LogWarn("failed to renegotiate session");
-      });
-      */
-    }
     if (IsServiceNode())
       return SaveRC();
     return true;

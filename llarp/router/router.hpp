@@ -154,7 +154,7 @@ namespace llarp
     report_stats();
 
     bool
-    update_rc(bool rotateKeys = false);
+    update_rc();
 
     bool
     from_config(const Config& conf);
