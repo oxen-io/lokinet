@@ -110,7 +110,7 @@ namespace llarp
         else
         {
           r.node_db()->put_rc_if_newer(result);
-          r.connect_to(result);
+          // r.connect_to(result);
         }
       }
       else
@@ -306,7 +306,8 @@ namespace llarp
     {
       for (const auto& rc : bootstrap_rc_list)
       {
-        LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
+        log::info(link_cat, "Doing explore via bootstrap node: {}", RouterID(rc.pubkey));
+
         // TODO: replace this concept
         // dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }

@@ -140,7 +140,7 @@ namespace llarp
       virtual void
       HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
-      virtual void
+      void
       PathBuildStarted(Path_ptr path);
 
       /// a path died now what?
@@ -249,7 +249,7 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) = 0;
+      send_packet_to_remote(std::string buf) = 0;
 
       virtual std::optional<std::vector<RouterContact>>
       GetHopsForBuild() = 0;

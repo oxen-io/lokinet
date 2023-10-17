@@ -107,33 +107,41 @@ namespace llarp::path
   Path::send_path_control_message(
       std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
   {
-    oxenc::bt_dict_producer btdp;
-    btdp.append("METHOD", method);
-    btdp.append("BODY", body);
-    auto payload = std::move(btdp).str();
-    auto* payload_ptr = reinterpret_cast<unsigned char*>(payload.data());
+    std::string payload;
 
-    // TODO: old impl padded messages if smaller than a certain size; do we still want to?
-
-    auto crypto = CryptoManager::instance();
+    {
+      oxenc::bt_dict_producer btdp;
+      btdp.append("BODY", body);
+      btdp.append("METHOD", method);
+      payload = std::move(btdp).str();
+    }
 
     TunnelNonce nonce;
-    outer_nonce.Randomize();
+    nonce.Randomize();
+
     for (const auto& hop : hops)
     {
       // do a round of chacha for each hop and mutate the nonce with that hop's nonce
-      CryptoManager::instance()->xchacha20(payload_ptr, hop.shared, nonce);
+      CryptoManager::instance()->xchacha20(
+          reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce);
+
       nonce ^= hop.nonceXOR;
     }
 
     oxenc::bt_dict_producer outer_dict;
-    outer_dict.append("PATHID", TXID().ToView());
     outer_dict.append("NONCE", nonce.ToView());
+    outer_dict.append("PATHID", TXID().ToView());
     outer_dict.append("PAYLOAD", payload);
 
-
     return router.send_control_message(
-        upstream(), "path_control", std::move(outer_dict.str()), std::move(func));
+        upstream(),
+        "path_control",
+        std::move(outer_dict).str(),
+        [response_cb = std::move(func)](oxen::quic::message m) {
+          {
+            // do path hop logic here
+          }
+        });
   }
 
   bool

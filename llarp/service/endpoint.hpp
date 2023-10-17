@@ -304,12 +304,6 @@ namespace llarp
       /// this MUST be called if you want to call EnsurePathTo on the given address
       void MarkAddressOutbound(service::Address) override;
 
-      bool
-      ShouldBundleRC() const override
-      {
-        return false;
-      }
-
       void
       BlacklistSNode(const RouterID snode) override;
 
@@ -425,9 +419,6 @@ namespace llarp
 
       std::optional<std::vector<RouterContact>>
       GetHopsForBuildWithEndpoint(RouterID endpoint);
-
-      void
-      PathBuildStarted(path::Path_ptr path) override;
 
       void
       AsyncProcessAuthMessage(

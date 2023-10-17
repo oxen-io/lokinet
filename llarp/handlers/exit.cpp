@@ -114,10 +114,10 @@ namespace llarp::handlers
         if (not router->PathToRouterAllowed(*rid))
           return false;
 
-        ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
+        ObtainSNodeSession(*rid, [pkt = std::move(payload)](auto session) mutable {
           if (session and session->IsReady())
           {
-            session->SendPacketToRemote(std::move(pkt), type);
+            session->send_packet_to_remote(std::move(pkt));
           }
         });
       }
@@ -381,7 +381,7 @@ namespace llarp::handlers
           maybe_pk = itr->second;
       }
 
-      auto buf = const_cast<net::IPPacket&>(top).steal();
+      auto buf = const_cast<net::IPPacket&>(top);
       inet_to_network.pop();
       // we have no session for public key so drop
       if (not maybe_pk)
@@ -398,7 +398,7 @@ namespace llarp::handlers
         auto itr = snode_sessions.find(pk);
         if (itr != snode_sessions.end())
         {
-          itr->second->SendPacketToRemote(std::move(buf), service::ProtocolType::TrafficV4);
+          itr->second->send_packet_to_remote(buf.to_string());
           // we are in a while loop
           continue;
         }

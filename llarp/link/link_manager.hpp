@@ -28,6 +28,12 @@ namespace llarp
 {
   struct LinkManager;
 
+  inline std::string
+  serialize_response(oxenc::bt_dict supplement = {})
+  {
+    return oxenc::bt_serialize(supplement);
+  }
+
   namespace link
   {
     struct Connection;
@@ -316,6 +322,9 @@ namespace llarp
         {"obtain_exit", &LinkManager::handle_obtain_exit},
         {"close_exit", &LinkManager::handle_close_exit}};
 
+    // Path relaying
+    void handle_path_control(oxen::quic::message);
+
     // DHT responses
     void handle_find_name_response(oxen::quic::message);
     void handle_find_intro_response(oxen::quic::message);
@@ -343,9 +352,6 @@ namespace llarp
         {"update_exit", &LinkManager::handle_update_exit_response},
         {"obtain_exit", &LinkManager::handle_obtain_exit_response},
         {"close_exit", &LinkManager::handle_close_exit_response}};
-
-    std::string
-    serialize_response(oxenc::bt_dict supplement = {});
 
    public:
     // Public response functions and error handling functions invoked elsehwere. These take

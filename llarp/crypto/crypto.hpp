@@ -98,7 +98,7 @@ namespace llarp
     seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&);
     /// randomize buffer
     void
-    randomize(const llarp_buffer_t&);
+    randomize(uint8_t* buf, size_t len);
     /// randomizer memory
     void
     randbytes(byte_t*, size_t);

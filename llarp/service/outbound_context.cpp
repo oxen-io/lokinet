@@ -17,46 +17,27 @@ namespace llarp::service
   bool
   OutboundContext::Stop()
   {
-    markedBad = true;
+    marked_bad = true;
     return path::Builder::Stop();
   }
 
   bool
-  OutboundContext::IsDone(llarp_time_t now) const
+  OutboundContext::IsDone(std::chrono::milliseconds now) const
   {
     (void)now;
     return AvailablePaths(path::ePathRoleAny) == 0 && ShouldRemove();
-  }
-
-  bool
-  OutboundContext::ShouldBundleRC() const
-  {
-    return service_endpoint->ShouldBundleRC();
-  }
-
-  bool
-  OutboundContext::HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t seq)
-  {
-    // pick another intro
-    if (dst == remoteIntro.path_id && remoteIntro.router == p->Endpoint())
-    {
-      LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
-      markedBad = remoteIntro.IsExpired(Now());
-      MarkCurrentIntroBad(Now());
-      ShiftIntroRouter(p->Endpoint());
-      UpdateIntroSet();
-    }
-    return true;
   }
 
   constexpr auto OutboundContextNumPaths = 4;
 
   OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
       : path::Builder{parent->router(), OutboundContextNumPaths, parent->numHops}
-      , SendContext{introset.address_keys, {}, this, parent}
-      , location{introset.address_keys.Addr().ToKey()}
-      , addr{introset.address_keys.Addr()}
-      , currentIntroSet{introset}
+      , ep{*parent}
+      , current_intro{introset}
+      , location{current_intro.address_keys.Addr().ToKey()}
+      , addr{current_intro.address_keys.Addr()}
+      , remote_identity{current_intro.address_keys}
+      , created_at{ep.Now()}
 
   {
     assert(not introset.intros.empty());
@@ -69,29 +50,29 @@ namespace llarp::service
       CSRNG rng{};
       it += std::uniform_int_distribution<size_t>{0, introset.intros.size() - 1}(rng);
     }
-    m_NextIntro = *it;
-    currentConvoTag.Randomize();
-    lastShift = Now();
+    next_intro = *it;
+    current_tag.Randomize();
+    last_shift = Now();
     // add send and connect timeouts to the parent endpoints path alignment timeout
     // this will make it so that there is less of a chance for timing races
-    sendTimeout += parent->PathAlignmentTimeout();
-    connectTimeout += parent->PathAlignmentTimeout();
+    send_timeout += parent->PathAlignmentTimeout();
+    connect_timeout += parent->PathAlignmentTimeout();
   }
 
   OutboundContext::~OutboundContext() = default;
 
   /// actually swap intros
   void
-  OutboundContext::SwapIntros()
+  OutboundContext::swap_intros()
   {
-    if (remoteIntro != m_NextIntro)
+    if (remote_intro != next_intro)
     {
-      remoteIntro = m_NextIntro;
-      service_endpoint->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
-      service_endpoint->PutIntroFor(currentConvoTag, remoteIntro);
-      ShiftIntroRouter(m_NextIntro.router);
+      remote_intro = next_intro;
+      ep.PutSenderFor(current_tag, current_intro.address_keys, false);
+      ep.PutIntroFor(current_tag, remote_intro);
+      ShiftIntroRouter(next_intro.router);
       // if we have not made a handshake to the remote endpoint do so
-      if (not IntroGenerated())
+      if (not generated_intro)
       {
         KeepAlive();
       }
@@ -109,10 +90,10 @@ namespace llarp::service
       const Address&,
       std::optional<IntroSet> foundIntro,
       const RouterID& endpoint,
-      llarp_time_t,
+      std::chrono::milliseconds,
       uint64_t relayOrder)
   {
-    if (markedBad)
+    if (marked_bad)
       return true;
     updatingIntroSet = false;
     if (foundIntro)
@@ -122,25 +103,25 @@ namespace llarp::service
         LogWarn(Name(), " got introset with zero timestamp: ", *foundIntro);
         return true;
       }
-      if (currentIntroSet.time_signed > foundIntro->time_signed)
+      if (current_intro.time_signed > foundIntro->time_signed)
       {
         LogInfo("introset is old, dropping");
         return true;
       }
 
-      const llarp_time_t now = Now();
+      const std::chrono::milliseconds now = Now();
       if (foundIntro->IsExpired(now))
       {
         LogError("got expired introset from lookup from ", endpoint);
         return true;
       }
-      currentIntroSet = *foundIntro;
+      current_intro = *foundIntro;
       ShiftIntroRouter(RouterID{});
     }
     else if (relayOrder > 0)
     {
-      ++m_LookupFails;
-      LogWarn(Name(), " failed to look up introset, fails=", m_LookupFails);
+      ++lookup_fails;
+      LogWarn(Name(), " failed to look up introset, fails=", lookup_fails);
     }
     return true;
   }
@@ -148,11 +129,11 @@ namespace llarp::service
   bool
   OutboundContext::ReadyToSend() const
   {
-    if (markedBad)
+    if (marked_bad)
       return false;
-    if (remoteIntro.router.IsZero())
+    if (remote_intro.router.IsZero())
       return false;
-    return IntroSent() and GetPathByRouter(remoteIntro.router);
+    return sent_intro and GetPathByRouter(remote_intro.router);
   }
 
   void
@@ -160,7 +141,7 @@ namespace llarp::service
   {
     const auto now = Now();
     Introduction selectedIntro{};
-    for (const auto& intro : currentIntroSet.intros)
+    for (const auto& intro : current_intro.intros)
     {
       if (intro.expiry > selectedIntro.expiry and intro.router != r)
       {
@@ -169,8 +150,8 @@ namespace llarp::service
     }
     if (selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
       return;
-    m_NextIntro = selectedIntro;
-    lastShift = now;
+    next_intro = selectedIntro;
+    last_shift = now;
   }
 
   void
@@ -195,86 +176,86 @@ namespace llarp::service
   OutboundContext::HandlePathBuilt(path::Path_ptr p)
   {
     path::Builder::HandlePathBuilt(p);
-    p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
-      if (auto ptr = self.lock())
-        return ptr->HandleHiddenServiceFrame(path, frame);
-      return false;
-    });
-    p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
-      if (auto ptr = self.lock())
-        return ptr->HandleDataDrop(path, id, seqno);
-      return false;
-    });
-    if (markedBad)
+    // p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
+    //   if (auto ptr = self.lock())
+    //     return ptr->HandleHiddenServiceFrame(path, frame);
+    //   return false;
+    // });
+    // p->SetDropHandler([self = weak_from_this()](auto path, auto id, auto seqno) {
+    //   if (auto ptr = self.lock())
+    //     return ptr->HandleDataDrop(path, id, seqno);
+    //   return false;
+    // });
+    if (marked_bad)
     {
       // ignore new path if we are marked dead
       LogInfo(Name(), " marked bad, ignoring new path");
       p->EnterState(path::ePathIgnore, Now());
     }
-    else if (p->Endpoint() == m_NextIntro.router)
+    else if (p->Endpoint() == next_intro.router)
     {
       // we now have a path to the next intro, swap intros
-      SwapIntros();
+      swap_intros();
     }
   }
 
   void
   OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
   {
-    if (generatedIntro)
+    if (generated_intro)
     {
       LogWarn(Name(), " dropping packet as we are not fully handshaked right now");
       return;
     }
-    if (remoteIntro.router.IsZero())
+    if (remote_intro.router.IsZero())
     {
       LogWarn(Name(), " dropping intro frame we have no intro ready yet");
       return;
     }
 
-    auto path = GetPathByRouter(remoteIntro.router);
+    auto path = GetPathByRouter(remote_intro.router);
     if (path == nullptr)
     {
-      LogError(Name(), " has no path to ", remoteIntro.router, " when we should have had one");
+      LogError(Name(), " has no path to ", remote_intro.router, " when we should have had one");
       return;
     }
     auto frame = std::make_shared<ProtocolFrameMessage>();
     frame->clear();
     auto ex = std::make_shared<AsyncKeyExchange>(
-        service_endpoint->Loop(),
-        remoteIdent,
-        service_endpoint->GetIdentity(),
-        currentIntroSet.sntru_pubkey,
-        remoteIntro,
-        service_endpoint,
-        currentConvoTag,
+        ep.Loop(),
+        remote_identity,
+        ep.GetIdentity(),
+        current_intro.sntru_pubkey,
+        remote_intro,
+        ep,
+        current_tag,
         t);
 
     ex->hook = [self = shared_from_this(), path](auto frame) {
       if (not self->Send(std::move(frame), path))
         return;
-      self->service_endpoint->Loop()->call_later(
-          self->remoteIntro.latency, [self]() { self->sentIntro = true; });
+      self->ep.Loop()->call_later(
+          self->remote_intro.latency, [self]() { self->sent_intro = true; });
     };
 
     ex->msg.PutBuffer(payload);
     ex->msg.introReply = path->intro;
     frame->path_id = ex->msg.introReply.path_id;
     frame->flag = 0;
-    generatedIntro = true;
+    generated_intro = true;
     // ensure we have a sender put for this convo tag
-    service_endpoint->PutSenderFor(currentConvoTag, currentIntroSet.address_keys, false);
+    ep.PutSenderFor(current_tag, current_intro.address_keys, false);
     // encrypt frame async
-    service_endpoint->router()->queue_work(
+    ep.router()->queue_work(
         [ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
 
-    LogInfo(Name(), " send intro frame T=", currentConvoTag);
+    LogInfo(Name(), " send intro frame T=", current_tag);
   }
 
   std::string
   OutboundContext::Name() const
   {
-    return "OBContext:" + currentIntroSet.address_keys.Addr().ToString();
+    return "OBContext:" + current_intro.address_keys.Addr().ToString();
   }
 
   void
@@ -282,14 +263,17 @@ namespace llarp::service
   {
     constexpr auto IntrosetUpdateInterval = 10s;
     const auto now = Now();
-    if (updatingIntroSet or markedBad or now < m_LastIntrosetUpdateAt + IntrosetUpdateInterval)
+    if (updatingIntroSet or marked_bad or now < last_introset_update + IntrosetUpdateInterval)
       return;
-    LogInfo(Name(), " updating introset");
-    m_LastIntrosetUpdateAt = now;
+    
+    log::info(link_cat, "{} updating introset", Name());
+    last_introset_update = now;
+
     // we want to use the parent endpoint's paths because outbound context
     // does not implement path::PathSet::HandleGotIntroMessage
-    const auto paths = GetManyPathsWithUniqueEndpoints(service_endpoint, 2, location);
+    const auto paths = GetManyPathsWithUniqueEndpoints(&ep, 2, location);
     [[maybe_unused]] uint64_t relayOrder = 0;
+    
     for ([[maybe_unused]] const auto& path : paths)
     {
       // TODO: implement this
@@ -314,19 +298,17 @@ namespace llarp::service
   OutboundContext::ExtractStatus() const
   {
     auto obj = path::Builder::ExtractStatus();
-    obj["estimatedRTT"] = to_json(estimatedRTT);
-    obj["currentConvoTag"] = currentConvoTag.ToHex();
-    obj["remoteIntro"] = remoteIntro.ExtractStatus();
-    obj["sessionCreatedAt"] = to_json(createdAt);
-    obj["lastGoodSend"] = to_json(lastGoodSend);
-    obj["lastRecv"] = to_json(m_LastInboundTraffic);
-    obj["lastIntrosetUpdate"] = to_json(m_LastIntrosetUpdateAt);
-    obj["seqno"] = sequenceNo;
-    obj["markedBad"] = markedBad;
-    obj["lastShift"] = to_json(lastShift);
-    obj["remoteIdentity"] = addr.ToString();
-    obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
-    obj["nextIntro"] = m_NextIntro.ExtractStatus();
+    obj["current_tag"] = current_tag.ToHex();
+    obj["remote_intro"] = remote_intro.ExtractStatus();
+    obj["session_created"] = to_json(created_at);
+    obj["last_send"] = to_json(last_send);
+    obj["lastRecv"] = to_json(last_inbound_traffic);
+    obj["lastIntrosetUpdate"] = to_json(last_introset_update);
+    obj["marked_bad"] = marked_bad;
+    obj["last_shift"] = to_json(last_shift);
+    obj["remote_identityity"] = addr.ToString();
+    obj["currentRemote_introset"] = current_intro.ExtractStatus();
+    obj["nextIntro"] = next_intro.ExtractStatus();
     obj["readyToSend"] = ReadyToSend();
     return obj;
   }
@@ -334,43 +316,45 @@ namespace llarp::service
   void
   OutboundContext::KeepAlive()
   {
-    std::array<byte_t, 64> tmp;
-    llarp_buffer_t buf{tmp};
-    CryptoManager::instance()->randomize(buf);
+    ustring buf(64, '\0');
+    
+    CryptoManager::instance()->randomize(buf.data(), buf.size());
+    
     SendPacketToRemote(buf, ProtocolType::Control);
-    m_LastKeepAliveAt = Now();
+
+    last_keep_alive = Now();
   }
 
   bool
-  OutboundContext::Pump(llarp_time_t now)
+  OutboundContext::Pump(std::chrono::milliseconds now)
   {
-    if (ReadyToSend() and remoteIntro.router.IsZero())
+    if (ReadyToSend() and remote_intro.router.IsZero())
     {
-      SwapIntros();
+      swap_intros();
     }
     if (ReadyToSend())
     {
       // if we dont have a cached session key after sending intro we are in a fugged state so
       // expunge
       SharedSecret discardme;
-      if (not service_endpoint->GetCachedSessionKeyFor(currentConvoTag, discardme))
+      if (not ep.GetCachedSessionKeyFor(current_tag, discardme))
       {
         LogError(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
         return true;
       }
     }
 
-    if (m_GotInboundTraffic and m_LastInboundTraffic + sendTimeout <= now)
+    if (got_inbound_traffic and last_inbound_traffic + send_timeout <= now)
     {
       // timeout on other side
       UpdateIntroSet();
       MarkCurrentIntroBad(now);
-      ShiftIntroRouter(remoteIntro.router);
+      ShiftIntroRouter(remote_intro.router);
     }
     // check for stale intros
     // update the introset if we think we need to
-    if (currentIntroSet.HasStaleIntros(now, path::INTRO_PATH_SPREAD)
-        or remoteIntro.ExpiresSoon(now, path::INTRO_PATH_SPREAD))
+    if (current_intro.HasStaleIntros(now, path::INTRO_PATH_SPREAD)
+        or remote_intro.ExpiresSoon(now, path::INTRO_PATH_SPREAD))
     {
       UpdateIntroSet();
       ShiftIntroduction(false);
@@ -378,11 +362,11 @@ namespace llarp::service
 
     if (ReadyToSend())
     {
-      if (not remoteIntro.router.IsZero() and not GetPathByRouter(remoteIntro.router))
+      if (not remote_intro.router.IsZero() and not GetPathByRouter(remote_intro.router))
       {
         // pick another good intro if we have no path on our current intro
         std::vector<Introduction> otherIntros;
-        ForEachPath([now, router = remoteIntro.router, &otherIntros](auto path) {
+        ForEachPath([now, router = remote_intro.router, &otherIntros](auto path) {
           if (path and path->IsReady() and path->Endpoint() != router
               and not path->ExpiresSoon(now, path::INTRO_PATH_SPREAD))
           {
@@ -392,33 +376,30 @@ namespace llarp::service
         if (not otherIntros.empty())
         {
           std::shuffle(otherIntros.begin(), otherIntros.end(), CSRNG{});
-          remoteIntro = otherIntros[0];
+          remote_intro = otherIntros[0];
         }
       }
     }
     // lookup router in intro if set and unknown
-    if (not m_NextIntro.router.IsZero())
-      service_endpoint->EnsureRouterIsKnown(m_NextIntro.router);
+    if (not next_intro.router.IsZero())
+      ep.EnsureRouterIsKnown(next_intro.router);
 
-    if (ReadyToSend() and not m_ReadyHooks.empty())
+    if (ReadyToSend() and not ready_hooks.empty())
     {
-      const auto path = GetPathByRouter(remoteIntro.router);
+      const auto path = GetPathByRouter(remote_intro.router);
       if (not path)
       {
-        LogWarn(Name(), " ready but no path to ", remoteIntro.router, " ???");
+        LogWarn(Name(), " ready but no path to ", remote_intro.router, " ???");
         return true;
       }
-      for (const auto& hook : m_ReadyHooks)
-        hook(this);
-      m_ReadyHooks.clear();
     }
 
-    const auto timeout = std::max(lastGoodSend, m_LastInboundTraffic);
-    if (lastGoodSend > 0s and now >= timeout + (sendTimeout / 2))
+    const auto timeout = std::max(last_send, last_inbound_traffic);
+    if (last_send > 0s and now >= timeout + (send_timeout / 2))
     {
       // send a keep alive to keep this session alive
       KeepAlive();
-      if (markedBad)
+      if (marked_bad)
       {
         LogWarn(Name(), " keepalive timeout hit");
         return true;
@@ -426,14 +407,14 @@ namespace llarp::service
     }
 
     // check for half open state where we can send but we get nothing back
-    if (m_LastInboundTraffic == 0s and now - createdAt > connectTimeout)
+    if (last_inbound_traffic == 0s and now - created_at > connect_timeout)
     {
       LogWarn(Name(), " half open state, we can send but we got nothing back");
       return true;
     }
     // if we are dead return true so we are removed
-    const bool removeIt = timeout > 0s ? (now >= timeout && now - timeout > sendTimeout)
-                                       : (now >= createdAt && now - createdAt > connectTimeout);
+    const bool removeIt = timeout > 0s ? (now >= timeout && now - timeout > send_timeout)
+                                       : (now >= created_at && now - created_at > connect_timeout);
     if (removeIt)
     {
       LogInfo(Name(), " session is stale");
@@ -442,42 +423,22 @@ namespace llarp::service
     return false;
   }
 
-  void
-  OutboundContext::AddReadyHook(std::function<void(OutboundContext*)> hook, llarp_time_t timeout)
-  {
-    if (ReadyToSend())
-    {
-      hook(this);
-      return;
-    }
-    if (m_ReadyHooks.empty())
-    {
-      router->loop()->call_later(timeout, [this]() {
-        LogWarn(Name(), " did not obtain session in time");
-        for (const auto& hook : m_ReadyHooks)
-          hook(nullptr);
-        m_ReadyHooks.clear();
-      });
-    }
-    m_ReadyHooks.push_back(hook);
-  }
-
   std::optional<std::vector<RouterContact>>
   OutboundContext::GetHopsForBuild()
   {
-    if (m_NextIntro.router.IsZero())
+    if (next_intro.router.IsZero())
     {
       ShiftIntroduction(false);
     }
-    if (m_NextIntro.router.IsZero())
+    if (next_intro.router.IsZero())
       return std::nullopt;
-    return GetHopsAlignedToForBuild(m_NextIntro.router, service_endpoint->SnodeBlacklist());
+    return GetHopsAlignedToForBuild(next_intro.router, ep.SnodeBlacklist());
   }
 
   bool
-  OutboundContext::ShouldBuildMore(llarp_time_t now) const
+  OutboundContext::ShouldBuildMore(std::chrono::milliseconds now) const
   {
-    if (markedBad or path::Builder::BuildCooldownHit(now))
+    if (marked_bad or path::Builder::BuildCooldownHit(now))
       return false;
 
     if (NumInStatus(path::ePathBuilding) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
@@ -491,44 +452,25 @@ namespace llarp::service
       if (not path->intro.ExpiresSoon(now, path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
       {
         numValidPaths++;
-        if (path->intro.router == m_NextIntro.router)
+        if (path->intro.router == next_intro.router)
           havePathToNextIntro = true;
       }
     });
     return numValidPaths < numDesiredPaths or not havePathToNextIntro;
   }
 
-  void
-  OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
-  {
-    MarkIntroBad(remoteIntro, now);
-  }
-
-  void
-  OutboundContext::MarkIntroBad(const Introduction&, llarp_time_t)
-  {}
-
-  bool
-  OutboundContext::IntroSent() const
-  {
-    return sentIntro;
-  }
-
-  bool
-  OutboundContext::IntroGenerated() const
-  {
-    return generatedIntro;
-  }
-
   bool
   OutboundContext::ShiftIntroduction(bool rebuild)
   {
-    bool success = false;
+    bool success = false, shifted = false;
     const auto now = Now();
-    if (abs(now - lastShift) < shiftTimeout)
+    auto shift_timeout = send_timeout * 5 / 2;
+    
+    if (abs(now - last_shift) < shift_timeout)
       return false;
-    bool shifted = false;
-    std::vector<Introduction> intros = currentIntroSet.intros;
+    
+    std::vector<Introduction> intros = current_intro.intros;
+    
     if (intros.size() > 1)
     {
       std::shuffle(intros.begin(), intros.end(), CSRNG{});
@@ -539,14 +481,14 @@ namespace llarp::service
     {
       if (intro.ExpiresSoon(now))
         continue;
-      if (service_endpoint->SnodeBlacklist().count(intro.router))
+      if (ep.SnodeBlacklist().count(intro.router))
         continue;
-      if (remoteIntro.router == intro.router)
+      if (remote_intro.router == intro.router)
       {
-        if (intro.expiry > m_NextIntro.expiry)
+        if (intro.expiry > next_intro.expiry)
         {
           success = true;
-          m_NextIntro = intro;
+          next_intro = intro;
         }
       }
     }
@@ -555,28 +497,28 @@ namespace llarp::service
       /// pick newer intro not on same router
       for (const auto& intro : intros)
       {
-        if (service_endpoint->SnodeBlacklist().count(intro.router))
+        if (ep.SnodeBlacklist().count(intro.router))
           continue;
-        service_endpoint->EnsureRouterIsKnown(intro.router);
+        ep.EnsureRouterIsKnown(intro.router);
         if (intro.ExpiresSoon(now))
           continue;
-        if (m_NextIntro != intro)
+        if (next_intro != intro)
         {
-          if (intro.expiry > m_NextIntro.expiry)
+          if (intro.expiry > next_intro.expiry)
           {
-            shifted = intro.router != m_NextIntro.router;
-            m_NextIntro = intro;
+            shifted = intro.router != next_intro.router;
+            next_intro = intro;
             success = true;
           }
         }
       }
     }
-    if (m_NextIntro.router.IsZero())
+    if (next_intro.router.IsZero())
       return false;
     if (shifted)
-      lastShift = now;
+      last_shift = now;
     if (rebuild && !BuildCooldownHit(Now()))
-      BuildOneAlignedTo(m_NextIntro.router);
+      BuildOneAlignedTo(next_intro.router);
     return success;
   }
 
@@ -587,7 +529,7 @@ namespace llarp::service
     UpdateIntroSet();
     const RouterID endpoint{path->Endpoint()};
     // if a path to our current intro died...
-    if (endpoint == remoteIntro.router)
+    if (endpoint == remote_intro.router)
     {
       // figure out how many paths to this router we have
       size_t num = 0;
@@ -600,117 +542,33 @@ namespace llarp::service
         // we have no more paths to this endpoint so we want to pivot off of it
         MarkCurrentIntroBad(Now());
         ShiftIntroRouter(endpoint);
-        if (m_NextIntro.router != endpoint)
-          BuildOneAlignedTo(m_NextIntro.router);
+        if (next_intro.router != endpoint)
+          BuildOneAlignedTo(next_intro.router);
       }
     }
   }
 
   bool
-  OutboundContext::ShouldKeepAlive(llarp_time_t now) const
+  OutboundContext::ShouldKeepAlive(std::chrono::milliseconds now) const
   {
-    const auto SendKeepAliveInterval = sendTimeout / 2;
-    if (not m_GotInboundTraffic)
+    const auto SendKeepAliveInterval = send_timeout / 2;
+    if (not got_inbound_traffic)
       return false;
-    if (m_LastInboundTraffic == 0s)
+    if (last_inbound_traffic == 0s)
       return false;
-    return (now - m_LastKeepAliveAt) >= SendKeepAliveInterval;
+    return (now - last_keep_alive) >= SendKeepAliveInterval;
   }
 
   void
-  OutboundContext::Tick(llarp_time_t now)
+  OutboundContext::Tick(std::chrono::milliseconds now)
   {
     path::Builder::Tick(now);
     if (ShouldKeepAlive(now))
       KeepAlive();
   }
 
-  bool
-  OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrameMessage& frame)
-  {
-    m_LastInboundTraffic = service_endpoint->Now();
-    m_GotInboundTraffic = true;
-    if (frame.flag)
-    {
-      // handle discard
-      ServiceInfo si;
-      if (!service_endpoint->GetSenderFor(frame.convo_tag, si))
-      {
-        LogWarn("no sender for T=", frame.convo_tag);
-        return false;
-      }
-      // verify source
-      if (!frame.Verify(si))
-      {
-        LogWarn("signature verification failed, T=", frame.convo_tag);
-        return false;
-      }
-      // remove convotag it doesn't exist
-      LogWarn("remove convotag T=", frame.convo_tag, " R=", frame.flag);
-
-      AuthResult result{AuthResultCode::eAuthFailed, "unknown reason"};
-      if (const auto maybe = AuthResultCodeFromInt(frame.flag))
-        result.code = *maybe;
-      SharedSecret sessionKey{};
-      if (service_endpoint->GetCachedSessionKeyFor(frame.convo_tag, sessionKey))
-      {
-        ProtocolMessage msg{};
-        if (frame.DecryptPayloadInto(sessionKey, msg))
-        {
-          if (msg.proto == ProtocolType::Auth and not msg.payload.empty())
-          {
-            result.reason =
-                std::string{reinterpret_cast<const char*>(msg.payload.data()), msg.payload.size()};
-          }
-        }
-      }
-
-      service_endpoint->RemoveConvoTag(frame.convo_tag);
-      if (authResultListener)
-      {
-        authResultListener(result);
-        authResultListener = nullptr;
-      }
-      return true;
-    }
-    std::function<void(std::shared_ptr<ProtocolMessage>)> hook = nullptr;
-    if (authResultListener)
-    {
-      std::function<void(AuthResult)> handler = authResultListener;
-      authResultListener = nullptr;
-      hook = [handler](std::shared_ptr<ProtocolMessage> msg) {
-        AuthResult result{AuthResultCode::eAuthAccepted, "OK"};
-        if (msg->proto == ProtocolType::Auth and not msg->payload.empty())
-        {
-          result.reason =
-              std::string{reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()};
-        }
-        handler(result);
-      };
-    }
-    const auto& ident = service_endpoint->GetIdentity();
-    if (not frame.AsyncDecryptAndVerify(service_endpoint->Loop(), p, ident, service_endpoint, hook))
-    {
-      // send reset convo tag message
-      LogError("failed to decrypt and verify frame");
-      ProtocolFrameMessage f;
-      f.flag = 1;
-      f.convo_tag = frame.convo_tag;
-      f.path_id = p->intro.path_id;
-
-      f.Sign(ident);
-      {
-        LogWarn("invalidating convotag T=", frame.convo_tag);
-        service_endpoint->RemoveConvoTag(frame.convo_tag);
-        service_endpoint->_send_queue.tryPushBack(
-            SendEvent_t{std::make_shared<routing::PathTransferMessage>(f, frame.path_id), p});
-      }
-    }
-    return true;
-  }
-
   void
-  OutboundContext::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
+  OutboundContext::send_packet_to_remote(std::string buf)
   {
     AsyncEncryptAndSendTo(buf, t);
   }

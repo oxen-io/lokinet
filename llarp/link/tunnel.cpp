@@ -2,7 +2,6 @@
 #include <llarp/service/convotag.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/name.hpp>
-#include "stream.hpp"
 #include <limits>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>

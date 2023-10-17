@@ -512,12 +512,6 @@ namespace llarp
     // TODO: this
   }
 
-  std::string
-  LinkManager::serialize_response(oxenc::bt_dict supplement)
-  {
-    return oxenc::bt_serialize(supplement);
-  }
-
   void
   LinkManager::handle_find_name(oxen::quic::message m)
   {
@@ -537,8 +531,7 @@ namespace llarp
 
     _router.rpc_client()->lookup_ons_hash(
         name_hash,
-        [this,
-         msg = std::move(m)]([[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
+        [msg = std::move(m)]([[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
           if (maybe)
             msg.respond(serialize_response({{"NAME", maybe->ciphertext}}));
           else
@@ -1644,4 +1637,25 @@ namespace llarp
       return;
     }
   }
+
+  void
+  LinkManager::handle_path_control(oxen::quic::message m)
+  {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "Path control message timed out!");
+      return;
+    }
+
+    try
+    {
+      
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+  }
+
 }  // namespace llarp
