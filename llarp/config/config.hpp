@@ -198,7 +198,6 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool whitelistRouters = false;
     fs::path ident_keyfile;
     oxenmq::address lokidRPCAddr;
 
