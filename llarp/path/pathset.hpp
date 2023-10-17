@@ -140,7 +140,7 @@ namespace llarp
       virtual void
       HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
-      virtual void
+      void
       PathBuildStarted(Path_ptr path);
 
       /// a path died now what?

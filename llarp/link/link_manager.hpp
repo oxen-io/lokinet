@@ -286,23 +286,21 @@ namespace llarp
 
    private:
     // DHT messages
-    void handle_find_name(oxen::quic::message);      // relay
-    void handle_find_intro(oxen::quic::message);     // relay
-    void handle_publish_intro(oxen::quic::message);  // relay
-    void handle_find_router(oxen::quic::message);    // relay + path
+    void handle_find_name(oxen::quic::message, const RouterID& from);      // relay
+    void handle_find_intro(oxen::quic::message, const RouterID& from);     // relay
+    void handle_publish_intro(oxen::quic::message, const RouterID& from);  // relay
+    void handle_find_router(oxen::quic::message, const RouterID& from);    // relay + path
 
     // Path messages
-    void handle_path_build(oxen::quic::message);     // relay
-    void handle_path_confirm(oxen::quic::message);   // relay
-    void handle_path_latency(oxen::quic::message);   // relay
-    void handle_path_transfer(oxen::quic::message);  // relay
-    void handle_relay_commit(oxen::quic::message);   // relay
-    void handle_relay_status(oxen::quic::message);   // relay
+    void handle_path_build(oxen::quic::message, const RouterID& from);     // relay
+    void handle_path_confirm(oxen::quic::message, const RouterID& from);   // relay
+    void handle_path_latency(oxen::quic::message, const RouterID& from);   // relay
+    void handle_path_transfer(oxen::quic::message, const RouterID& from);  // relay
 
     // Exit messages
-    void handle_obtain_exit(oxen::quic::message);  // relay
-    void handle_update_exit(oxen::quic::message);  // relay
-    void handle_close_exit(oxen::quic::message);   // relay
+    void handle_obtain_exit(oxen::quic::message, const RouterID& from);  // relay
+    void handle_update_exit(oxen::quic::message, const RouterID& from);  // relay
+    void handle_close_exit(oxen::quic::message, const RouterID& from);   // relay
 
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
         {"find_name", &LinkManager::handle_find_name},

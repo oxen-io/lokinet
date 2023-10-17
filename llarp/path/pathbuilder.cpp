@@ -465,17 +465,44 @@ namespace llarp
       router->path_context().AddOwnPath(self, path);
       PathBuildStarted(path);
 
-      auto response_cb = [self](oxen::quic::message) {
-        // TODO: this (replaces handling LRSM, which also needs replacing)
+      // TODO:
+      // Path build fail and success are handled poorly at best and changing how we
+      // handle these responses as well as how we store and use Paths as a whole might
+      // be worth doing sooner rather than later.  Leaving some TODOs below where fail
+      // and success live.
+      auto response_cb = [self](oxen::quic::message m) {
+        try
+        {
+          if (not m)
+          {
+            if (m.timed_out)
+            {
+              log::warning(log_path, "Path build timed out");
+            }
+            else
+            {
+              oxenc::bt_dict_consumer d{m.body()};
+              auto status = d.require<std::string_view>("STATUS");
+              log::warning(log_path, "Path build returned failure status: {}", status);
+            }
+            // TODO: inform failure (what this means needs revisiting, badly)
+            return;
+          }
 
-        // TODO: Talk to Tom about why are we using it as a response callback?
-        // Do you mean TransitHop::HandleLRSM?
+          // TODO: inform success (what this means needs revisiting, badly)
+        }
+        catch (const std::exception& e)
+        {
+          log::warning("Failed parsing path build response.");
+          // TODO: inform failure (what this means needs revisiting, badly)
+        }
       };
 
       if (not router->send_control_message(
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
         log::warning(log_path, "Error sending path_build control message");
+        // TODO: inform failure (what this means needs revisiting, badly)
         path->EnterState(path::ePathFailed, router->now());
       }
 

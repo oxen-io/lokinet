@@ -427,9 +427,6 @@ namespace llarp
       GetHopsForBuildWithEndpoint(RouterID endpoint);
 
       void
-      PathBuildStarted(path::Path_ptr path) override;
-
-      void
       AsyncProcessAuthMessage(
           std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
 

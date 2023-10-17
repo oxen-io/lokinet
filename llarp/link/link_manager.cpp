@@ -134,11 +134,13 @@ namespace llarp
   void
   LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
   {
+    assert(ep.connid_map.contains(s.conn_id()));
+    RouterID rid = ep.connid_map[s.conn_id()];
     for (const auto& [name, func] : rpc_commands)
     {
-      s->register_command(name, [this, f = func](oxen::quic::message m) {
-        _router.loop()->call([this, func = f, msg = std::move(m)]() mutable {
-          std::invoke(func, this, std::move(msg));
+      s->register_command(name, [this, rid, &func](oxen::quic::message m) {
+        _router.loop()->call([this, &func, &rid, msg = std::move(m)]() mutable {
+          std::invoke(func, this, std::move(msg), rid);
         });
       });
     }
@@ -519,7 +521,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_find_name(oxen::quic::message m)
+  LinkManager::handle_find_name(oxen::quic::message m, const RouterID& from)
   {
     std::string name_hash;
 
@@ -593,7 +595,7 @@ namespace llarp
   // TODO: add callback to relayed messages (calls to send_control_message so the
   // response finds its way back)
   void
-  LinkManager::handle_find_router(oxen::quic::message m)
+  LinkManager::handle_find_router(oxen::quic::message m, const RouterID& from)
   {
     std::string target_key;
     bool is_exploratory, is_iterative;
@@ -816,7 +818,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_publish_intro(oxen::quic::message m)
+  LinkManager::handle_publish_intro(oxen::quic::message m, const RouterID& from)
   {
     std::string introset, derived_signing_key, payload, sig, nonce;
     uint64_t is_relayed, relay_order;
@@ -989,7 +991,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_find_intro(oxen::quic::message m)
+  LinkManager::handle_find_intro(oxen::quic::message m, const RouterID& from)
   {
     ustring location;
     uint64_t relay_order, is_relayed;
@@ -1106,7 +1108,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_build(oxen::quic::message m)
+  LinkManager::handle_path_build(oxen::quic::message m, const RouterID& from)
   {
     if (!_router.path_context().AllowingTransit())
     {
@@ -1201,12 +1203,9 @@ namespace llarp
       }
 
       // populate transit hop object with hop info
-      // TODO: how to get downstream hop RouterID from here (all we have is oxen::quic::message)
-      //       could do message->btstream->stream->connection_interface->connectionid
-      //       and check our mapping, but that feels ugly as sin (and message->stream is private)
-      // TODO: also need downstream for IP / path build limiting clients
+      // TODO: IP / path build limiting clients
       auto hop = std::make_shared<path::TransitHop>();
-      // hop->info.downstream = m.from(); // TODO: RouterID m.from() or similar
+      hop->info.downstream = m.from();
 
       // extract pathIDs and check if zero or used
       auto& hop_info = hop->info;
@@ -1222,12 +1221,11 @@ namespace llarp
 
       hop_info.upstream.from_string_view(upstream);
 
-      // TODO: need downstream (above), and also the whole transit hop container is garbage.
+      // TODO: the whole transit hop container is garbage.
       //       namely the PathID uniqueness checking uses the PathIDs and upstream/downstream
       //       but if someone made a path with txid, rxid, and downstream the same but
       //       a different upstream, that would be "unique" but we wouldn't know where
-      //       to route messages (nevermind that messages don't currently know the RouterID
-      //       they came from).
+      //       to route messages.
       if (_router.path_context().HasTransitHop(hop_info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
@@ -1315,7 +1313,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_confirm(oxen::quic::message m)
+  LinkManager::handle_path_confirm(oxen::quic::message m, const RouterID& from)
   {
     try
     {
@@ -1345,7 +1343,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_latency(oxen::quic::message m)
+  LinkManager::handle_path_latency(oxen::quic::message m, const RouterID& from)
   {
     try
     {
@@ -1375,7 +1373,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_transfer(oxen::quic::message m)
+  LinkManager::handle_path_transfer(oxen::quic::message m, const RouterID& from)
   {
     try
     {
@@ -1405,7 +1403,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_obtain_exit(oxen::quic::message m)
+  LinkManager::handle_obtain_exit(oxen::quic::message m, const RouterID& from)
   {
     try
     {
@@ -1482,7 +1480,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_update_exit(oxen::quic::message m)
+  LinkManager::handle_update_exit(oxen::quic::message m, const RouterID& from)
   {
     try
     {
@@ -1567,7 +1565,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_close_exit(oxen::quic::message m)
+  LinkManager::handle_close_exit(oxen::quic::message m, const RouterID& from)
   {
     try
     {

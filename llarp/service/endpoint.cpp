@@ -779,12 +779,6 @@ namespace llarp::service
     return path::Builder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());
   }
 
-  void
-  Endpoint::PathBuildStarted(path::Path_ptr path)
-  {
-    path::Builder::PathBuildStarted(path);
-  }
-
   constexpr auto MaxOutboundContextPerRemote = 1;
 
   void
