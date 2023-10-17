@@ -135,14 +135,21 @@ namespace llarp
   void
   LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
   {
+    assert(ep.connid_map.count(s->conn_id()));
+    RouterID rid = ep.connid_map[s->conn_id()];
     for (const auto& [name, func] : rpc_commands)
     {
-      s->register_command(name, [this, f = func](oxen::quic::message m) {
-        _router.loop()->call([this, func = f, msg = std::move(m)]() mutable {
+      s->register_command(name, [this, func=func](oxen::quic::message m) {
+        _router.loop()->call([this, func, msg = std::move(m)]() mutable {
           std::invoke(func, this, std::move(msg));
         });
       });
     }
+
+    s->register_command("path_build"s, [this, rid](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
+    });
   }
 
   std::shared_ptr<oxen::quic::Endpoint>
@@ -973,13 +980,17 @@ namespace llarp
       log::info(link_cat, "PublishIntroMessage failed with error code: {}", payload);
 
       if (payload == PublishIntroMessage::INVALID_INTROSET)
-      {}
+      {
+      }
       else if (payload == PublishIntroMessage::EXPIRED)
-      {}
+      {
+      }
       else if (payload == PublishIntroMessage::INSUFFICIENT)
-      {}
+      {
+      }
       else if (payload == PublishIntroMessage::INVALID_ORDER)
-      {}
+      {
+      }
     }
   }
 
@@ -1101,7 +1112,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_build(oxen::quic::message m)
+  LinkManager::handle_path_build(oxen::quic::message m, const RouterID& from)
   {
     if (!_router.path_context().AllowingTransit())
     {
@@ -1194,12 +1205,9 @@ namespace llarp
       }
 
       // populate transit hop object with hop info
-      // TODO: how to get downstream hop RouterID from here (all we have is oxen::quic::message)
-      //       could do message->btstream->stream->connection_interface->connectionid
-      //       and check our mapping, but that feels ugly as sin (and message->stream is private)
-      // TODO: also need downstream for IP / path build limiting clients
+      // TODO: IP / path build limiting clients
       auto hop = std::make_shared<path::TransitHop>();
-      // hop->info.downstream = m.from(); // TODO: RouterID m.from() or similar
+      hop->info.downstream = from;
 
       // extract pathIDs and check if zero or used
       auto& hop_info = hop->info;
@@ -1215,12 +1223,11 @@ namespace llarp
 
       hop_info.upstream.from_string(upstream);
 
-      // TODO: need downstream (above), and also the whole transit hop container is garbage.
+      // TODO: the whole transit hop container is garbage.
       //       namely the PathID uniqueness checking uses the PathIDs and upstream/downstream
       //       but if someone made a path with txid, rxid, and downstream the same but
       //       a different upstream, that would be "unique" but we wouldn't know where
-      //       to route messages (nevermind that messages don't currently know the RouterID
-      //       they came from).
+      //       to route messages.
       if (_router.path_context().HasTransitHop(hop_info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
@@ -1549,7 +1556,8 @@ namespace llarp
           // see Path::HandleUpdateExitVerifyMessage
         }
         else
-        {}
+        {
+        }
       }
     }
     catch (const std::exception& e)

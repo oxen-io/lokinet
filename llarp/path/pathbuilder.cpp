@@ -1,4 +1,6 @@
 #include "pathbuilder.hpp"
+#include "path.hpp"
+#include "path_context.hpp"
 
 #include "path.hpp"
 #include "path_context.hpp"
@@ -6,11 +8,14 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
+
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
+
+#include <functional>
 
 namespace llarp
 {
@@ -470,28 +475,30 @@ namespace llarp
       // be worth doing sooner rather than later.  Leaving some TODOs below where fail
       // and success live.
       auto response_cb = [self](oxen::quic::message m) {
-        if (m)
+        try
         {
-          std::string status;
-
-          try
+          if (not m)
           {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            status = btdc.require<std::string>("STATUS");
-          }
-          catch (...)
-          {
-            log::warning(path_cat, "Error: Failed to parse path build response!", status);
-            m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
-            throw;
+            if (m.timed_out)
+            {
+              log::warning(path_cat, "Path build timed out");
+            }
+            else
+            {
+              oxenc::bt_dict_consumer d{m.body()};
+              auto status = d.require<std::string_view>("STATUS");
+              log::warning(path_cat, "Path build returned failure status: {}", status);
+            }
+            // TODO: inform failure (what this means needs revisiting, badly)
+            return;
           }
 
-          // TODO: success logic
+          // TODO: inform success (what this means needs revisiting, badly)
         }
-        else
+        catch (const std::exception& e)
         {
-          log::warning(path_cat, "Path build request returned failure {}");
-          // TODO: failure logic
+          log::warning(path_cat, "Failed parsing path build response.");
+          // TODO: inform failure (what this means needs revisiting, badly)
         }
       };
 
