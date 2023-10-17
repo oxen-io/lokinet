@@ -90,8 +90,6 @@ namespace llarp
     bool use_file_logging = false;
     // our router contact
     RouterContact router_contact;
-    /// should we obey the service node whitelist?
-    bool follow_whitelist = false;
     std::shared_ptr<oxenmq::OxenMQ> _lmq;
     path::BuildLimiter _pathbuild_limiter;
     std::shared_ptr<EventLoopWakeup> loop_wakeup;
@@ -336,6 +334,10 @@ namespace llarp
 
     void
     queue_disk_io(std::function<void(void)> func);
+
+    /// Return true if we are operating as a service node and have received a service node whitelist
+    bool
+    have_snode_whitelist() const;
 
     /// return true if we look like we are a decommissioned service node
     bool

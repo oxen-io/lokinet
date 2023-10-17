@@ -253,7 +253,7 @@ namespace llarp
   bool
   Router::GetRandomGoodRouter(RouterID& router)
   {
-    if (follow_whitelist)
+    if (IsServiceNode())
     {
       return _rc_lookup_handler.get_random_whitelist_router(router);
     }
@@ -322,7 +322,7 @@ namespace llarp
   {
     _encryption = _key_manager->encryptionKey;
 
-    if (follow_whitelist)
+    if (IsServiceNode())
     {
 #if defined(ANDROID) || defined(IOS)
       LogError("running a service node on mobile device is not possible.");
@@ -404,8 +404,9 @@ namespace llarp
 
     log::debug(logcat, "Configuring router");
 
-    follow_whitelist = conf.lokid.whitelistRouters;
-    if (follow_whitelist)
+    is_service_node = conf.router.m_isRelay;
+
+    if (is_service_node)
     {
       rpc_addr = oxenmq::address(conf.lokid.lokidRPCAddr);
       _rpc_client = std::make_shared<rpc::LokidRpcClient>(_lmq, weak_from_this());
@@ -423,11 +424,10 @@ namespace llarp
 
     _node_db = std::move(nodedb);
 
-    is_service_node = conf.router.m_isRelay;
     log::debug(
         logcat, is_service_node ? "Running as a relay (service node)" : "Running as a client");
 
-    if (follow_whitelist)
+    if (is_service_node)
     {
       _rpc_client->ConnectAsync(rpc_addr);
     }
@@ -512,36 +512,33 @@ namespace llarp
   }
 
   bool
+  Router::have_snode_whitelist() const
+  {
+    return IsServiceNode() and _rc_lookup_handler.has_received_whitelist();
+  }
+
+  bool
   Router::appears_decommed() const
   {
-    return IsServiceNode() and follow_whitelist and _rc_lookup_handler.has_received_whitelist()
-        and _rc_lookup_handler.is_grey_listed(pubkey());
+    return have_snode_whitelist() and _rc_lookup_handler.is_grey_listed(pubkey());
   }
 
   bool
   Router::appears_funded() const
   {
-    return IsServiceNode() and follow_whitelist and _rc_lookup_handler.has_received_whitelist()
-        and _rc_lookup_handler.is_session_allowed(pubkey());
+    return have_snode_whitelist() and _rc_lookup_handler.is_session_allowed(pubkey());
   }
 
   bool
   Router::appears_registered() const
   {
-    return IsServiceNode() and follow_whitelist and _rc_lookup_handler.has_received_whitelist()
-        and _rc_lookup_handler.is_registered(pubkey());
+    return have_snode_whitelist() and _rc_lookup_handler.is_registered(pubkey());
   }
 
   bool
   Router::can_test_routers() const
   {
-    if (not IsServiceNode())
-      return false;
-    if (not follow_whitelist)
-      return true;
-    if (not _rc_lookup_handler.has_received_whitelist())
-      return false;
-    return _rc_lookup_handler.is_session_allowed(pubkey());
+    return appears_funded();
   }
 
   bool
@@ -766,7 +763,6 @@ namespace llarp
         &_hidden_service_context,
         strictConnectPubkeys,
         bootstrap_rc_list,
-        follow_whitelist,
         is_service_node);
 
     // FIXME: kludge for now, will be part of larger cleanup effort.
@@ -932,8 +928,7 @@ namespace llarp
     const bool has_whitelist = _rc_lookup_handler.has_received_whitelist();
     const bool is_snode = IsServiceNode();
     const bool is_decommed = appears_decommed();
-    bool should_gossip = is_snode and follow_whitelist and has_whitelist
-        and _rc_lookup_handler.is_session_allowed(pubkey());
+    bool should_gossip = appears_funded();
 
     if (is_snode
         and (router_contact.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000)) or (now - router_contact.last_updated) > rc_regen_interval))
@@ -985,9 +980,8 @@ namespace llarp
         return false;
       }
 
-      // if we have a whitelist enabled and we don't
-      // have the whitelist yet don't remove the entry
-      if (follow_whitelist and not has_whitelist)
+      // if we don't have the whitelist yet don't remove the entry
+      if (not has_whitelist)
       {
         log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.pubkey);
         return false;
@@ -1004,22 +998,22 @@ namespace llarp
       return false;
     });
 
-    // find all deregistered relays
-    std::unordered_set<PubKey> close_peers;
+    if (not is_snode or not has_whitelist)
+    {
+      // find all deregistered relays
+      std::unordered_set<PubKey> close_peers;
 
-    for_each_connection([this, &has_whitelist, &close_peers](link::Connection& conn) {
-      if (follow_whitelist && has_whitelist)
-        return;
+      for_each_connection([this, &close_peers](link::Connection& conn) {
+        const auto& pk = conn.remote_rc.pubkey;
 
-      const auto pk = conn.remote_rc.pubkey;
+        if (conn.remote_is_relay and not _rc_lookup_handler.is_session_allowed(pk))
+          close_peers.insert(pk);
+      });
 
-      if (conn.remote_is_relay and not _rc_lookup_handler.is_session_allowed(pk))
-        close_peers.emplace(pk);
-    });
-
-    // mark peers as de-registered
-    for (auto& peer : close_peers)
-      _link_manager.deregister_peer(std::move(peer));
+      // mark peers as de-registered
+      for (auto& peer : close_peers)
+        _link_manager.deregister_peer(std::move(peer));
+    }
 
     _link_manager.check_persisting_conns(now);
 
@@ -1261,7 +1255,7 @@ namespace llarp
     _route_poker->start();
     is_running.store(true);
     _started_at = now();
-    if (follow_whitelist)
+    if (IsServiceNode())
     {
       // do service node testing if we are in service node whitelist mode
       _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, weak_from_this(), [this] {

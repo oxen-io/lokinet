@@ -151,7 +151,7 @@ namespace llarp
       return false;
     }
 
-    if (not useWhitelist)
+    if (not isServiceNode)
       return false;
 
     return router->loop()->call_get([this, remote]() { return router_greylist.count(remote); });
@@ -182,7 +182,7 @@ namespace llarp
         return false;
       }
 
-      if (not useWhitelist)
+      if (not isServiceNode)
         return true;
 
       return router_whitelist.count(rid) != 0;
@@ -199,7 +199,7 @@ namespace llarp
         return false;
       }
 
-      if (not useWhitelist)
+      if (not isServiceNode)
         return true;
 
       return router_whitelist.count(rid) or router_greylist.count(rid);
@@ -312,7 +312,7 @@ namespace llarp
       }
     }
 
-    if (useWhitelist)
+    if (isServiceNode)
     {
       static constexpr size_t LookupPerTick = 5;
 
@@ -372,7 +372,6 @@ namespace llarp
       service::Context* hiddenServiceContext,
       const std::unordered_set<RouterID>& strictConnectPubkeys,
       const std::set<RouterContact>& bootstrapRCList,
-      bool useWhitelist_arg,
       bool isServiceNode_arg)
   {
     contacts = c;
@@ -384,7 +383,6 @@ namespace llarp
     bootstrap_rc_list = bootstrapRCList;
     link_manager = linkManager;
     router = &link_manager->router();
-    useWhitelist = useWhitelist_arg;
     isServiceNode = isServiceNode_arg;
 
     for (const auto& rc : bootstrap_rc_list)
