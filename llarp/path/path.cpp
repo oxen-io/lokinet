@@ -104,6 +104,7 @@ namespace llarp::path
       payload = std::move(btdp).str();
     }
 
+    // TODO: old impl padded messages if smaller than a certain size; do we still want to?
     TunnelNonce nonce;
     nonce.Randomize();
 
