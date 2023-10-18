@@ -1210,8 +1210,8 @@ namespace llarp
 
       // extract pathIDs and check if zero or used
       auto& hop_info = hop->info;
-      hop_info.txID.from_string_view(tx_id);
-      hop_info.rxID.from_string_view(rx_id);
+      hop_info.txID.from_string(tx_id);
+      hop_info.rxID.from_string(rx_id);
 
       if (hop_info.txID.IsZero() || hop_info.rxID.IsZero())
       {
@@ -1220,7 +1220,7 @@ namespace llarp
         return;
       }
 
-      hop_info.upstream.from_string_view(upstream);
+      hop_info.upstream.from_string(upstream);
 
       // TODO: need downstream (above), and also the whole transit hop container is garbage.
       //       namely the PathID uniqueness checking uses the PathIDs and upstream/downstream
