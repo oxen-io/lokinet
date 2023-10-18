@@ -64,7 +64,7 @@ namespace llarp
   {
     /// for unit tests
     static bool BlockBogons;
-    
+
     static llarp_time_t Lifetime;
     static llarp_time_t UpdateInterval;
     static llarp_time_t StaleInsertionAge;

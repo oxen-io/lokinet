@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llarp/path/pathbuilder.hpp>
+#include <llarp/service/auth.hpp>
 #include <llarp/service/convotag.hpp>
 #include <llarp/util/status.hpp>
 
@@ -29,16 +30,16 @@ namespace llarp::service
     Introduction remote_intro;
 
     ConvoTag current_tag;
-    
+
     uint64_t update_introset_tx = 0;
     uint16_t lookup_fails = 0;
     uint16_t build_fails = 0;
-    
+
     bool got_inbound_traffic = false;
-    bool generated_intro = false;
-    bool sent_intro = false;
+    bool generated_convo_intro = false;
+    bool sent_convo_intro = false;
     bool marked_bad = false;
-    
+
     const std::chrono::milliseconds created_at;
     std::chrono::milliseconds last_send = 0ms;
     std::chrono::milliseconds send_timeout = path::BUILD_TIMEOUT;
@@ -48,13 +49,27 @@ namespace llarp::service
     std::chrono::milliseconds last_introset_update = 0ms;
     std::chrono::milliseconds last_keep_alive = 0ms;
 
+    void
+    gen_intro_async_impl(
+        std::string payload, std::function<void(std::string, bool)> func = nullptr);
+
    public:
     OutboundContext(const IntroSet& introSet, Endpoint* parent);
-    
+
     ~OutboundContext() override;
 
     void
+    gen_intro_async(std::string payload);
+
+    void
     encrypt_and_send(std::string buf);
+
+    /// for exits
+    void
+    send_packet_to_remote(std::string buf) override;
+
+    void
+    send_auth_async(std::function<void(std::string, bool)> resultHandler);
 
     void
     Tick(std::chrono::milliseconds now) override;
@@ -102,10 +117,6 @@ namespace llarp::service
     bool
     ReadyToSend() const;
 
-    /// for exits
-    void
-    send_packet_to_remote(std::string buf) override;
-
     bool
     ShouldBuildMore(std::chrono::milliseconds now) const override;
 
@@ -120,9 +131,6 @@ namespace llarp::service
 
     bool
     CheckPathIsDead(path::Path_ptr p, std::chrono::milliseconds dlt);
-
-    void
-    AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t);
 
     /// issues a lookup to find the current intro set of the remote service
     void

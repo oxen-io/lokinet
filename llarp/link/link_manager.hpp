@@ -310,6 +310,9 @@ namespace llarp
     void handle_update_exit(oxen::quic::message);  // relay
     void handle_close_exit(oxen::quic::message);   // relay
 
+    // Misc
+    void handle_convo_intro(oxen::quic::message);
+
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
         {"find_name", &LinkManager::handle_find_name},
         {"find_router", &LinkManager::handle_find_router},
@@ -320,7 +323,8 @@ namespace llarp
         {"path_latency", &LinkManager::handle_path_latency},
         {"update_exit", &LinkManager::handle_update_exit},
         {"obtain_exit", &LinkManager::handle_obtain_exit},
-        {"close_exit", &LinkManager::handle_close_exit}};
+        {"close_exit", &LinkManager::handle_close_exit},
+        {"convo_intro", &LinkManager::handle_convo_intro}};
 
     // Path relaying
     void handle_path_control(oxen::quic::message);

@@ -138,6 +138,7 @@ namespace llarp::path
         "path_control",
         std::move(outer_dict).str(),
         [response_cb = std::move(func)](oxen::quic::message m) {
+          if (m)
           {
             // do path hop logic here
           }

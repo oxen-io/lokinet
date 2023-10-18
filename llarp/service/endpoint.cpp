@@ -182,11 +182,13 @@ namespace llarp::service
                             result_handler(false, result.reason);
                             return;
                           }
+
                           for (const auto& range : ranges)
                             ptr->MapExitRange(range, addr);
 
                           if (poker)
                             poker->put_up();
+
                           result_handler(true, result.reason);
                         };
 
@@ -959,11 +961,13 @@ namespace llarp::service
   {
     PutSenderFor(msg->tag, msg->sender, true);
     Introduction intro = msg->introReply;
+
     if (HasInboundConvo(msg->sender.Addr()))
     {
       intro.path_id = from;
       intro.router = p->Endpoint();
     }
+
     PutReplyIntroFor(msg->tag, intro);
     ConvoTagRX(msg->tag);
     return ProcessDataMessage(msg);
@@ -1036,7 +1040,7 @@ namespace llarp::service
 
   void
   Endpoint::AsyncProcessAuthMessage(
-      std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook)
+      std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook)
   {
     if (_auth_policy)
     {
@@ -1048,29 +1052,29 @@ namespace llarp::service
     }
     else
     {
-      router()->loop()->call([h = std::move(hook)] { h({AuthResultCode::eAuthAccepted, "OK"}); });
+      router()->loop()->call([h = std::move(hook)] { h("OK", true); });
     }
   }
 
   void
-  Endpoint::SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
+  Endpoint::SendAuthResult(
+      path::Path_ptr path, PathID_t replyPath, ConvoTag tag, std::string result, bool success)
   {
     // not applicable because we are not an exit or don't have an endpoint auth policy
     if ((not _state->is_exit_enabled) or _auth_policy == nullptr)
       return;
+
     ProtocolFrameMessage f{};
-    f.flag = AuthResultCodeAsInt(result.code);
+    f.flag = int(not success);
     f.convo_tag = tag;
     f.path_id = path->intro.path_id;
     f.nonce.Randomize();
-    if (result.code == AuthResultCode::eAuthAccepted)
+
+    if (success)
     {
       ProtocolMessage msg;
+      msg.put_buffer(result);
 
-      std::vector<byte_t> reason{};
-      reason.resize(result.reason.size());
-      std::copy_n(result.reason.c_str(), reason.size(), reason.data());
-      msg.PutBuffer(reason);
       if (_auth_policy)
         msg.proto = ProtocolType::Auth;
       else
@@ -1081,13 +1085,16 @@ namespace llarp::service
         LogError("Failed to send auth reply: no reply intro");
         return;
       }
+
       msg.sender = _identity.pub;
       SharedSecret sessionKey{};
+
       if (not GetCachedSessionKeyFor(tag, sessionKey))
       {
         LogError("failed to send auth reply: no cached session key");
         return;
       }
+
       if (not f.EncryptAndSign(msg, sessionKey, _identity))
       {
         LogError("Failed to encrypt and sign auth reply");
@@ -1225,7 +1232,7 @@ namespace llarp::service
 
       return EnsurePathToService(
           *ptr,
-          [hook](auto, auto* ctx) {
+          [hook](auto, auto* ctx) -> bool {
             if (ctx)
             {
               hook(ctx->currentConvoTag);
@@ -1438,22 +1445,23 @@ namespace llarp::service
 
     // handle inbound traffic sorted
     util::ascending_priority_queue<ProtocolMessage> queue;
+
     while (not _inbound_queue.empty())
     {
       // succ it out
       queue.emplace(std::move(*_inbound_queue.popFront()));
     }
+
     while (not queue.empty())
     {
       const auto& msg = queue.top();
-      LogDebug(
+      log::debug(
+          logcat,
+          "{} handling inbound packet (size {}B) on tag {}",
           Name(),
-          " handle inbound packet on ",
           msg.tag,
-          " ",
-          msg.payload.size(),
-          " bytes seqno=",
-          msg.seqno);
+          msg.payload.size());
+
       if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
       {
         ConvoTagRX(msg.tag);
@@ -1462,10 +1470,13 @@ namespace llarp::service
       {
         LogWarn("Failed to handle inbound message");
       }
+
       queue.pop();
+      a
     }
 
     auto r = router();
+
     // TODO: locking on this container
     for (const auto& [addr, outctx] : _state->remote_sessions)
     {
@@ -1694,8 +1705,10 @@ namespace llarp::service
   Endpoint::MaybeGetAuthInfoForEndpoint(Address remote)
   {
     const auto itr = _remote_auth_infos.find(remote);
+
     if (itr == _remote_auth_infos.end())
       return std::nullopt;
+
     return itr->second;
   }
 

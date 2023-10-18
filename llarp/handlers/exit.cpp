@@ -106,20 +106,21 @@ namespace llarp::handlers
         {
           if (not itr->second->LooksDead(Now()))
           {
-            if (itr->second->QueueInboundTraffic(payload.copy(), type))
-              return true;
+            return router->send_data_message(itr->second->PubKey(), std::move(payload));
           }
         }
 
         if (not router->PathToRouterAllowed(*rid))
           return false;
 
-        ObtainSNodeSession(*rid, [pkt = std::move(payload)](auto session) mutable {
-          if (session and session->IsReady())
-          {
-            session->send_packet_to_remote(std::move(pkt));
-          }
-        });
+        ObtainSNodeSession(
+            *rid,
+            [pkt = std::move(payload)](std::shared_ptr<llarp::exit::BaseSession> session) mutable {
+              if (session and session->IsReady())
+              {
+                session->send_packet_to_remote(std::move(pkt));
+              }
+            });
       }
       return true;
     }
@@ -404,7 +405,7 @@ namespace llarp::handlers
         }
       }
       auto tryFlushingTraffic = [this, buf = std::move(buf), pk](exit::Endpoint* const ep) -> bool {
-        if (!ep->QueueInboundTraffic(buf, service::ProtocolType::TrafficV4))
+        if (!ep->QueueInboundTraffic(buf._buf, service::ProtocolType::TrafficV4))
         {
           LogWarn(
               Name(),

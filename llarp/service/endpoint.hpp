@@ -12,7 +12,6 @@
 #include <llarp/service/identity.hpp>
 #include <llarp/service/pendingbuffer.hpp>
 #include <llarp/service/protocol.hpp>
-#include <llarp/service/sendcontext.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/service/session.hpp>
 #include <llarp/service/endpoint_types.hpp>
@@ -422,10 +421,11 @@ namespace llarp
 
       void
       AsyncProcessAuthMessage(
-          std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
+          std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook);
 
       void
-      SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+      SendAuthResult(
+          path::Path_ptr path, PathID_t replyPath, ConvoTag tag, std::string result, bool success);
 
       uint64_t
       GenTXID();

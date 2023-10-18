@@ -1648,9 +1648,7 @@ namespace llarp
     }
 
     try
-    {
-      
-    }
+    {}
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());

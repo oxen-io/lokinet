@@ -68,6 +68,22 @@ namespace llarp::service
   }
 
   void
+  Introduction::bt_encode(oxenc::bt_dict_producer& subdict) const
+  {
+    try
+    {
+      subdict.append("k", router.ToView());
+      subdict.append("l", latency.count());
+      subdict.append("p", path_id.ToView());
+      subdict.append("x", expiry.count());
+    }
+    catch (...)
+    {
+      log::critical(intro_cat, "Error: Introduction failed to bt encode contents!");
+    }
+  }
+
+  void
   Introduction::Clear()
   {
     router.Zero();

@@ -182,6 +182,12 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
   explicit llarp_buffer_t(T&& t) : llarp_buffer_t{t.data(), t.size()}
   {}
 
+  std::string
+  to_string() const
+  {
+    return {reinterpret_cast<const char*>(base), sz};
+  }
+
   byte_t*
   begin()
   {
