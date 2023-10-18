@@ -153,11 +153,6 @@ namespace llarp
     btdp.append("a", addr.to_string());
     btdp.append("i", netID.ToView());
     btdp.append("k", pubkey.bt_encode());
-
-    auto n = Nick();
-    if (not n.empty())
-      btdp.append("n", n);
-
     btdp.append("p", enckey.ToView());
     btdp.append("r", routerVersion);
 
@@ -178,7 +173,6 @@ namespace llarp
   RouterContact::Clear()
   {
     signature.Zero();
-    nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
     routerVersion = std::optional<RouterVersion>{};
@@ -196,10 +190,6 @@ namespace llarp
         {"identity", pubkey.ToString()},
         {"address", addr.to_string()}};
 
-    if (HasNick())
-    {
-      obj["nickname"] = Nick();
-    }
     if (routerVersion)
     {
       obj["routerVersion"] = routerVersion->ToString();
@@ -308,22 +298,6 @@ namespace llarp
       return true;
     }
 
-    if (key.startswith("n"))
-    {
-      llarp_buffer_t strbuf;
-      if (!bencode_read_string(buf, &strbuf))
-      {
-        return false;
-      }
-      if (strbuf.sz > llarp::AlignedBuffer<(32)>::size())
-      {
-        return false;
-      }
-      nickname.Zero();
-      std::copy(strbuf.base, strbuf.base + strbuf.sz, nickname.begin());
-      return true;
-    }
-
     if (not BEncodeMaybeReadDictList("s", srvRecords, read, key, buf))
       return false;
 
@@ -356,20 +330,6 @@ namespace llarp
   }
 
   bool
-  RouterContact::HasNick() const
-  {
-    return nickname[0] != 0;
-  }
-
-  void
-  RouterContact::SetNick(std::string_view nick)
-  {
-    nickname.Zero();
-    std::copy(
-        nick.begin(), nick.begin() + std::min(nick.size(), nickname.size()), nickname.begin());
-  }
-
-  bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
     return Age(now) >= rc_expire_age;
@@ -392,13 +352,6 @@ namespace llarp
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
     return TimeUntilExpires(now) <= dlt;
-  }
-
-  std::string
-  RouterContact::Nick() const
-  {
-    auto term = std::find(nickname.begin(), nickname.end(), '\0');
-    return std::string(nickname.begin(), term);
   }
 
   bool

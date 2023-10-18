@@ -242,7 +242,7 @@ namespace llarp
     }
 
     bool
-    from_string_view(std::string_view b)
+    from_string(std::string_view b)
     {
       if (b.size() != sz)
       {
@@ -252,12 +252,6 @@ namespace llarp
 
       std::memcpy(_data.data(), b.data(), b.size());
       return true;
-    }
-
-    bool
-    from_string(std::string b)
-    {
-      return from_string_view(b);
     }
 
     bool

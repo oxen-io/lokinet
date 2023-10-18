@@ -112,7 +112,6 @@ namespace llarp
         service::Context* hiddenServiceContext,
         const std::unordered_set<RouterID>& strictConnectPubkeys,
         const std::set<RouterContact>& bootstrapRCList,
-        bool useWhitelist_arg,
         bool isServiceNode_arg);
 
     std::unordered_set<RouterID>
@@ -139,7 +138,6 @@ namespace llarp
 
     // Now that all calls are made through the event loop, any access to these
     // booleans is not guarded by a mutex
-    std::atomic<bool> useWhitelist = false;
     std::atomic<bool> isServiceNode = false;
 
     // whitelist = active routers

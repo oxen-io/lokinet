@@ -110,7 +110,7 @@ namespace llarp
           m_maxConnectedRouters = arg;
         });
 
-    conf.defineOption<std::string>("router", "nickname", Hidden, AssignmentAcceptor(m_nickname));
+    conf.defineOption<std::string>("router", "nickname", Deprecated);
 
     conf.defineOption<fs::path>(
         "router",
@@ -1163,15 +1163,7 @@ namespace llarp
   {
     (void)params;
 
-    conf.defineOption<bool>(
-        "lokid",
-        "enabled",
-        RelayOnly,
-        Default{true},
-        Comment{
-            "Whether or not we should talk to oxend. Must be enabled for staked routers.",
-        },
-        AssignmentAcceptor(whitelistRouters));
+    conf.defineOption<bool>("lokid", "enabled", RelayOnly, Deprecated);
 
     conf.defineOption<std::string>("lokid", "jsonrpc", RelayOnly, [](std::string arg) {
       if (arg.empty())
