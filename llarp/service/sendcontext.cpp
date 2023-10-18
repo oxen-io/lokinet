@@ -110,7 +110,7 @@ namespace llarp::service
     f->path_id = m->introReply.path_id;
     m->sender = service_endpoint->GetIdentity().pub;
     m->tag = f->convo_tag;
-    m->PutBuffer(payload);
+    m->put_buffer(payload);
     service_endpoint->router()->queue_work([f, m, shared, path, this] {
       if (not f->EncryptAndSign(*m, shared, service_endpoint->GetIdentity()))
       {

@@ -1,10 +1,9 @@
 #include "protocol.hpp"
+#include "endpoint.hpp"
+
 #include <llarp/path/path.hpp>
-#include <llarp/routing/handler.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
-#include <llarp/util/meta/memfn.hpp>
-#include "endpoint.hpp"
 #include <llarp/router/router.hpp>
 #include <utility>
 
@@ -21,10 +20,10 @@ namespace llarp::service
   ProtocolMessage::~ProtocolMessage() = default;
 
   void
-  ProtocolMessage::PutBuffer(const llarp_buffer_t& buf)
+  ProtocolMessage::put_buffer(std::string buf)
   {
-    payload.resize(buf.sz);
-    memcpy(payload.data(), buf.base, buf.sz);
+    payload.resize(buf.size());
+    memcpy(payload.data(), buf.data(), buf.size());
   }
 
   void
@@ -39,25 +38,21 @@ namespace llarp::service
   ProtocolMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
-      return false;
+    // if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
+    //   return false;
     if (k.startswith("d"))
     {
       llarp_buffer_t strbuf;
       if (!bencode_read_string(buf, &strbuf))
         return false;
-      PutBuffer(strbuf);
+      put_buffer(strbuf.to_string());
       return true;
     }
     if (!BEncodeMaybeReadDictEntry("i", introReply, read, k, buf))
       return false;
-    if (!BEncodeMaybeReadDictInt("n", seqno, read, k, buf))
-      return false;
     if (!BEncodeMaybeReadDictEntry("s", sender, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictEntry("t", tag, read, k, buf))
-      return false;
-    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
     return read;
   }
@@ -69,7 +64,7 @@ namespace llarp::service
 
     try
     {
-      btdp.append("a", static_cast<uint64_t>(proto));
+      // btdp.append("a", static_cast<uint64_t>(proto));
 
       if (not payload.empty())
         btdp.append(
@@ -80,19 +75,16 @@ namespace llarp::service
         introReply.bt_encode(subdict);
       }
 
-      btdp.append("n", seqno);
-
       {
         auto subdict = btdp.append_dict("s");
         sender.bt_encode(subdict);
       }
 
       btdp.append("t", tag.ToView());
-      btdp.append("v", version);
     }
     catch (...)
     {
-      log::critical(route_cat, "Error: ProtocolMessage failed to bt encode contents!");
+      log::critical(logcat, "Error: ProtocolMessage failed to bt encode contents!");
     }
 
     return std::move(btdp).str();
@@ -105,7 +97,7 @@ namespace llarp::service
 
     try
     {
-      btdp.append("a", static_cast<uint64_t>(proto));
+      // btdp.append("a", static_cast<uint64_t>(proto));
 
       {
         auto subdict = btdp.append_dict("s");
@@ -113,11 +105,10 @@ namespace llarp::service
       }
 
       btdp.append("t", tag.ToView());
-      btdp.append("v", version);
     }
     catch (...)
     {
-      log::critical(route_cat, "Error: ProtocolMessage failed to bt encode auth info");
+      log::critical(logcat, "Error: ProtocolMessage failed to bt encode auth info");
     }
 
     auto view = btdp.view();
@@ -127,8 +118,6 @@ namespace llarp::service
     std::copy_n(view.data(), view.size(), data.data());
     return data;
   }
-
-  ProtocolFrameMessage::~ProtocolFrameMessage() = default;
 
   std::string
   ProtocolFrameMessage::bt_encode() const
@@ -144,12 +133,11 @@ namespace llarp::service
       btdp.append("N", nonce.ToView());
       btdp.append("R", flag);
       btdp.append("T", convo_tag.ToView());
-      btdp.append("V", version);
       btdp.append("Z", sig.ToView());
     }
     catch (...)
     {
-      log::critical(route_cat, "Error: ProtocolFrameMessage failed to bt encode contents!");
+      log::critical(logcat, "Error: ProtocolFrameMessage failed to bt encode contents!");
     }
 
     return std::move(btdp).str();
@@ -176,13 +164,9 @@ namespace llarp::service
       return false;
     if (!BEncodeMaybeReadDictEntry("N", nonce, read, key, val))
       return false;
-    if (!BEncodeMaybeReadDictInt("S", sequence_number, read, key, val))
-      return false;
     if (!BEncodeMaybeReadDictInt("R", flag, read, key, val))
       return false;
     if (!BEncodeMaybeReadDictEntry("T", convo_tag, read, key, val))
-      return false;
-    if (!BEncodeMaybeVerifyVersion("V", version, llarp::constants::proto_version, read, key, val))
       return false;
     if (!BEncodeMaybeReadDictEntry("Z", sig, read, key, val))
       return false;
@@ -320,7 +304,9 @@ namespace llarp::service
 
       // PKE (A, B, N)
       SharedSecret shared_secret;
-      path_dh_func dh_server = util::memFn(&Crypto::dh_server, CryptoManager::instance());
+      path_dh_func dh_server = [crypto = CryptoManager::instance()](auto&& params...) -> bool {
+        return crypto->dh_server(std::forward<decltype(params)>(params));
+      };
 
       if (!self->m_LocalIdentity.KeyExchange(
               dh_server, shared_secret, self->msg->sender, self->frame.nonce))
@@ -345,8 +331,8 @@ namespace llarp::service
       self->handler->AsyncProcessAuthMessage(
           msg,
           [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, shared_key](
-              AuthResult result) {
-            if (result.code == AuthResultCode::eAuthAccepted)
+              std::string result, bool success) {
+            if (success)
             {
               if (handler->WantsOutboundSession(msg->sender.Addr()))
               {
@@ -358,33 +344,21 @@ namespace llarp::service
               }
               handler->PutReplyIntroFor(msg->tag, msg->introReply);
               handler->PutCachedSessionKeyFor(msg->tag, shared_key);
-              handler->SendAuthResult(path, from, msg->tag, result);
-              LogInfo("auth okay for T=", msg->tag, " from ", msg->sender.Addr());
+              handler->SendAuthResult(path, from, msg->tag, result, success);
+
+              log::info(
+                  logcat, "Auth accepted for tag {} from sender {}", msg->tag, msg->sender.Addr());
               ProtocolMessage::ProcessAsync(path, from, msg);
             }
             else
             {
-              LogWarn("auth not okay for T=", msg->tag, ": ", result.reason);
+              log::warning(logcat, "Auth invalid for tag {} (code: {})", msg->tag, result);
             }
+
             handler->Pump(time_now_ms());
           });
     }
   };
-
-  ProtocolFrameMessage&
-  ProtocolFrameMessage::operator=(const ProtocolFrameMessage& other)
-  {
-    cipher = other.cipher;
-    enc = other.enc;
-    path_id = other.path_id;
-    nonce = other.nonce;
-    sig = other.sig;
-    convo_tag = other.convo_tag;
-    flag = other.flag;
-    sequence_number = other.sequence_number;
-    version = other.version;
-    return *this;
-  }
 
   struct AsyncDecrypt
   {
@@ -478,8 +452,7 @@ namespace llarp::service
   ProtocolFrameMessage::operator==(const ProtocolFrameMessage& other) const
   {
     return cipher == other.cipher && enc == other.enc && nonce == other.nonce && sig == other.sig
-        && convo_tag == other.convo_tag && sequence_number == other.sequence_number
-        && version == other.version;
+        && convo_tag == other.convo_tag;
   }
 
   bool
@@ -493,10 +466,9 @@ namespace llarp::service
   }
 
   bool
-  ProtocolFrameMessage::handle_message(
-      routing::AbstractRoutingMessageHandler* h, Router* /*r*/) const
+  ProtocolFrameMessage::handle_message(Router* /*r*/) const
   {
-    return h->HandleHiddenServiceFrame(*this);
+    return true;
   }
 
 }  // namespace llarp::service

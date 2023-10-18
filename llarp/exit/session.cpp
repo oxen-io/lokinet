@@ -80,7 +80,7 @@ namespace llarp::exit
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
-    
+
     return GetHopsAlignedToForBuild(exit_router);
   }
 
@@ -377,7 +377,7 @@ namespace llarp::exit
   void
   ExitSession::send_packet_to_remote(std::string buf)
   {
-    net::IPPacket pkt{buf.view_all()};
+    net::IPPacket pkt{buf};
     if (pkt.empty())
       return;
     pkt.ZeroAddresses();
@@ -388,12 +388,12 @@ namespace llarp::exit
   void
   SNodeSession::send_packet_to_remote(std::string buf)
   {
-    net::IPPacket pkt{buf.view_all()};
+    net::IPPacket pkt{buf};
     if (pkt.empty())
       return;
 
     pkt.ZeroSourceAddress();
-    
+
     // QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
   }
 }  // namespace llarp::exit

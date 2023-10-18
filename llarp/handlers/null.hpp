@@ -74,8 +74,7 @@ namespace llarp::handlers
       return true;
     }
 
-    void
-    send_packet_to_remote(std::string) override {};
+    void send_packet_to_remote(std::string) override{};
 
     std::string
     GetIfName() const override

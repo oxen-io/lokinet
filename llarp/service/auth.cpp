@@ -137,7 +137,7 @@ namespace llarp::service
 
     void
     AuthenticateAsync(
-        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) override
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) override
     {
       auto reply = m_Router->loop()->make_caller(
           [tag = msg->tag, hook, self = shared_from_this()](AuthResult result) {
@@ -145,7 +145,7 @@ namespace llarp::service
               util::Lock _lock{self->m_Access};
               self->m_Pending.erase(tag);
             }
-            hook(result);
+            hook(result.reason, result.code == AuthResultCode::eAuthAccepted);
           });
       {
         util::Lock _lock{m_Access};

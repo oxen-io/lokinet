@@ -38,7 +38,6 @@ namespace llarp::service
       , addr{current_intro.address_keys.Addr()}
       , remote_identity{current_intro.address_keys}
       , created_at{ep.Now()}
-
   {
     assert(not introset.intros.empty());
     updatingIntroSet = false;
@@ -72,7 +71,7 @@ namespace llarp::service
       ep.PutIntroFor(current_tag, remote_intro);
       ShiftIntroRouter(next_intro.router);
       // if we have not made a handshake to the remote endpoint do so
-      if (not generated_intro)
+      if (not generated_convo_intro)
       {
         KeepAlive();
       }
@@ -133,7 +132,7 @@ namespace llarp::service
       return false;
     if (remote_intro.router.IsZero())
       return false;
-    return sent_intro and GetPathByRouter(remote_intro.router);
+    return sent_convo_intro and GetPathByRouter(remote_intro.router);
   }
 
   void
@@ -199,59 +198,6 @@ namespace llarp::service
     }
   }
 
-  void
-  OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
-  {
-    if (generated_intro)
-    {
-      LogWarn(Name(), " dropping packet as we are not fully handshaked right now");
-      return;
-    }
-    if (remote_intro.router.IsZero())
-    {
-      LogWarn(Name(), " dropping intro frame we have no intro ready yet");
-      return;
-    }
-
-    auto path = GetPathByRouter(remote_intro.router);
-    if (path == nullptr)
-    {
-      LogError(Name(), " has no path to ", remote_intro.router, " when we should have had one");
-      return;
-    }
-    auto frame = std::make_shared<ProtocolFrameMessage>();
-    frame->clear();
-    auto ex = std::make_shared<AsyncKeyExchange>(
-        ep.Loop(),
-        remote_identity,
-        ep.GetIdentity(),
-        current_intro.sntru_pubkey,
-        remote_intro,
-        ep,
-        current_tag,
-        t);
-
-    ex->hook = [self = shared_from_this(), path](auto frame) {
-      if (not self->Send(std::move(frame), path))
-        return;
-      self->ep.Loop()->call_later(
-          self->remote_intro.latency, [self]() { self->sent_intro = true; });
-    };
-
-    ex->msg.PutBuffer(payload);
-    ex->msg.introReply = path->intro;
-    frame->path_id = ex->msg.introReply.path_id;
-    frame->flag = 0;
-    generated_intro = true;
-    // ensure we have a sender put for this convo tag
-    ep.PutSenderFor(current_tag, current_intro.address_keys, false);
-    // encrypt frame async
-    ep.router()->queue_work(
-        [ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
-
-    LogInfo(Name(), " send intro frame T=", current_tag);
-  }
-
   std::string
   OutboundContext::Name() const
   {
@@ -265,7 +211,7 @@ namespace llarp::service
     const auto now = Now();
     if (updatingIntroSet or marked_bad or now < last_introset_update + IntrosetUpdateInterval)
       return;
-    
+
     log::info(link_cat, "{} updating introset", Name());
     last_introset_update = now;
 
@@ -273,7 +219,7 @@ namespace llarp::service
     // does not implement path::PathSet::HandleGotIntroMessage
     const auto paths = GetManyPathsWithUniqueEndpoints(&ep, 2, location);
     [[maybe_unused]] uint64_t relayOrder = 0;
-    
+
     for ([[maybe_unused]] const auto& path : paths)
     {
       // TODO: implement this
@@ -316,12 +262,11 @@ namespace llarp::service
   void
   OutboundContext::KeepAlive()
   {
-    ustring buf(64, '\0');
-    
-    CryptoManager::instance()->randomize(buf.data(), buf.size());
-    
-    SendPacketToRemote(buf, ProtocolType::Control);
+    std::string buf(64, '\0');
 
+    CryptoManager::instance()->randomize(reinterpret_cast<unsigned char*>(buf.data()), buf.size());
+
+    send_packet_to_remote(buf);
     last_keep_alive = Now();
   }
 
@@ -348,7 +293,6 @@ namespace llarp::service
     {
       // timeout on other side
       UpdateIntroSet();
-      MarkCurrentIntroBad(now);
       ShiftIntroRouter(remote_intro.router);
     }
     // check for stale intros
@@ -384,7 +328,7 @@ namespace llarp::service
     if (not next_intro.router.IsZero())
       ep.EnsureRouterIsKnown(next_intro.router);
 
-    if (ReadyToSend() and not ready_hooks.empty())
+    if (ReadyToSend())
     {
       const auto path = GetPathByRouter(remote_intro.router);
       if (not path)
@@ -465,12 +409,12 @@ namespace llarp::service
     bool success = false, shifted = false;
     const auto now = Now();
     auto shift_timeout = send_timeout * 5 / 2;
-    
+
     if (abs(now - last_shift) < shift_timeout)
       return false;
-    
+
     std::vector<Introduction> intros = current_intro.intros;
-    
+
     if (intros.size() > 1)
     {
       std::shuffle(intros.begin(), intros.end(), CSRNG{});
@@ -540,7 +484,6 @@ namespace llarp::service
       if (num == 0)
       {
         // we have no more paths to this endpoint so we want to pivot off of it
-        MarkCurrentIntroBad(Now());
         ShiftIntroRouter(endpoint);
         if (next_intro.router != endpoint)
           BuildOneAlignedTo(next_intro.router);
@@ -552,10 +495,13 @@ namespace llarp::service
   OutboundContext::ShouldKeepAlive(std::chrono::milliseconds now) const
   {
     const auto SendKeepAliveInterval = send_timeout / 2;
+
     if (not got_inbound_traffic)
       return false;
+
     if (last_inbound_traffic == 0s)
       return false;
+
     return (now - last_keep_alive) >= SendKeepAliveInterval;
   }
 
@@ -563,14 +509,147 @@ namespace llarp::service
   OutboundContext::Tick(std::chrono::milliseconds now)
   {
     path::Builder::Tick(now);
+
     if (ShouldKeepAlive(now))
       KeepAlive();
   }
 
   void
+  OutboundContext::send_auth_async(std::function<void(std::string, bool)> resultHandler)
+  {
+    if (const auto maybe = ep.MaybeGetAuthInfoForEndpoint(remote_identity.Addr()))
+      gen_intro_async_impl(maybe->token, std::move(resultHandler));
+    else
+      resultHandler("No auth needed", true);
+  }
+
+  void
+  OutboundContext::gen_intro_async_impl(
+      std::string payload, std::function<void(std::string, bool)> func)
+  {
+    auto path = GetPathByRouter(remote_intro.router);
+
+    if (path == nullptr)
+    {
+      log::warning(logcat, "{} unexpectedly has no path to remote {}", Name(), remote_intro.router);
+      return;
+    }
+
+    auto frame = std::make_shared<ProtocolFrameMessage>();
+    frame->clear();
+
+    auto ex = std::make_shared<AsyncKeyExchange>(
+        ep.Loop(),
+        remote_identity,
+        ep.GetIdentity(),
+        current_intro.sntru_pubkey,
+        remote_intro,
+        ep,
+        current_tag);
+
+    if (const auto maybe = ep.MaybeGetAuthInfoForEndpoint(remote_identity.Addr()); not maybe)
+      ex->msg.proto = ProtocolType::Auth;
+
+    ex->hook = [this, path, cb = std::move(func)](auto frame) mutable {
+      auto hook = [&, frame, path](oxen::quic::message) {
+        // TODO: revisit this
+        ep.HandleHiddenServiceFrame(path, *frame.get());
+      };
+
+      if (path->send_path_control_message("convo_intro", frame->bt_encode(), hook))
+        sent_convo_intro = true;
+    };
+
+    ex->msg.put_buffer(payload);
+    ex->msg.introReply = path->intro;
+    frame->path_id = ex->msg.introReply.path_id;
+    frame->flag = 0;
+    generated_convo_intro = true;
+    // ensure we have a sender put for this convo tag
+    ep.PutSenderFor(current_tag, current_intro.address_keys, false);
+    // encrypt frame async
+    ep.router()->queue_work([ex, frame] { return AsyncKeyExchange::Encrypt(ex, frame); });
+
+    log::info(logcat, "{} send convo intro frame for tag {}", Name(), current_tag);
+  }
+
+  void
+  OutboundContext::gen_intro_async(std::string payload)
+  {
+    if (generated_convo_intro)
+    {
+      LogWarn(Name(), " dropping packet as we are not fully handshaked right now");
+      return;
+    }
+    if (remote_intro.router.IsZero())
+    {
+      LogWarn(Name(), " dropping convo intro frame we have no intro ready yet");
+      return;
+    }
+
+    gen_intro_async_impl(std::move(payload));
+  }
+
+  void
   OutboundContext::send_packet_to_remote(std::string buf)
   {
-    AsyncEncryptAndSendTo(buf, t);
+    if (sent_convo_intro)
+    {
+      encrypt_and_send(std::move(buf));
+      return;
+    }
+
+    if (generated_convo_intro)
+    {
+      log::warning(link_cat, "{} has generated an unsent initial handshake; dropping packet");
+      return;
+    }
+
+    gen_intro_async(std::move(buf));
+  }
+
+  void
+  OutboundContext::encrypt_and_send(std::string buf)
+  {
+    SharedSecret shared;
+    auto f = std::make_shared<ProtocolFrameMessage>();
+    f->flag = 0;
+    f->nonce.Randomize();
+    f->convo_tag = current_tag;
+
+    auto path = GetPathByRouter(remote_intro.router);
+
+    if (!path)
+    {
+      ShiftIntroRouter(remote_intro.router);
+      log::warning(
+          logcat, "{} cannot encrypt and send: no path for intro {}", Name(), remote_intro);
+      return;
+    }
+
+    if (!ep.GetCachedSessionKeyFor(f->convo_tag, shared))
+    {
+      log::warning(
+          logcat, "{} could not send; no cached session keys for tag {}", Name(), f->convo_tag);
+      return;
+    }
+
+    auto msg = std::make_shared<ProtocolMessage>();
+    ep.PutIntroFor(f->convo_tag, remote_intro);
+    ep.PutReplyIntroFor(f->convo_tag, path->intro);
+
+    msg->introReply = path->intro;
+    f->path_id = msg->introReply.path_id;
+    msg->sender = ep.GetIdentity().pub;
+    msg->tag = f->convo_tag;
+    msg->put_buffer(buf);
+
+    router->loop()->call_soon([this, f, msg, shared, path]() {
+      if (f->EncryptAndSign(*msg, shared, ep.GetIdentity()))
+        path->send_path_control_message("convo_intro", msg->bt_encode());
+      else
+        log::warning(logcat, "{} failed to sign protocol frame message!", Name());
+    });
   }
 
 }  // namespace llarp::service
