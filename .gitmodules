@@ -35,3 +35,6 @@
 [submodule "external/span-lite"]
 	path = external/span-lite
 	url = https://github.com/martinmoene/span-lite.git
+[submodule "external/oxen-encoding"]
+	path = external/oxen-encoding
+	url = https://github.com/oxen-io/oxen-encoding.git
