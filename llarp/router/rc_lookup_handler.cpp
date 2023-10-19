@@ -328,7 +328,7 @@ namespace llarp
 
       if (lookup_routers.size() > LookupPerTick)
       {
-        std::shuffle(lookup_routers.begin(), lookup_routers.end(), CSRNG{});
+        std::shuffle(lookup_routers.begin(), lookup_routers.end(), llarp::csrng);
         lookup_routers.resize(LookupPerTick);
       }
 

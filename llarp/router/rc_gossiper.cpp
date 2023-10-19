@@ -117,7 +117,8 @@ namespace llarp
     std::unordered_set<RouterID> keys;
     // grab the keys we want to use
     std::sample(
-        gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers, CSRNG{});
+        gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers,
+    llarp::csrng);
 
     m_LinkManager->ForEachPeer([&](AbstractLinkSession* peerSession) {
       if (not(peerSession && peerSession->IsEstablished()))

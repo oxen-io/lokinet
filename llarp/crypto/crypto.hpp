@@ -15,12 +15,8 @@ namespace llarp
         -
   */
 
-  struct Crypto
+  namespace crypto
   {
-    Crypto();
-
-    ~Crypto() = default;
-
     /// decrypt cipherText given the key generated from name
     std::optional<AlignedBuffer<32>>
     maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name);
@@ -136,39 +132,6 @@ namespace llarp
   const byte_t*
   pq_keypair_to_secret(const PQKeyPair& keypair);
 
-  struct CryptoManager
-  {
-   private:
-    static Crypto* m_crypto;
-
-    Crypto* m_prevCrypto;
-
-   public:
-    explicit CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
-    {
-      m_crypto = crypto;
-    }
-
-    ~CryptoManager()
-    {
-      m_crypto = m_prevCrypto;
-    }
-
-    static Crypto*
-    instance()
-    {
-#ifdef NDEBUG
-      return m_crypto;
-#else
-      if (m_crypto)
-        return m_crypto;
-
-      assert(false && "Cryptomanager::instance() was undefined");
-      abort();
-#endif
-    }
-  };
-
   /// rng type that uses llarp::randint(), which is cryptographically secure
   struct CSRNG
   {
@@ -178,19 +141,21 @@ namespace llarp
     min()
     {
       return std::numeric_limits<uint64_t>::min();
-    };
+    }
 
     static constexpr uint64_t
     max()
     {
       return std::numeric_limits<uint64_t>::max();
-    };
+    }
 
     uint64_t
     operator()()
     {
       return llarp::randint();
-    };
+    }
   };
+
+  extern CSRNG csrng;
 
 }  // namespace llarp

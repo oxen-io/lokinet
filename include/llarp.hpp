@@ -19,8 +19,6 @@ namespace llarp
   struct Config;
   struct RouterContact;
   struct Config;
-  struct Crypto;
-  struct CryptoManager;
   struct Router;
   class NodeDB;
 
@@ -38,8 +36,6 @@ namespace llarp
 
   struct Context
   {
-    std::shared_ptr<Crypto> crypto = nullptr;
-    std::shared_ptr<CryptoManager> cryptoManager = nullptr;
     std::shared_ptr<Router> router = nullptr;
     std::shared_ptr<EventLoop> loop = nullptr;
     std::shared_ptr<NodeDB> nodedb = nullptr;

@@ -67,7 +67,7 @@ namespace llarp::service
   Address::ToKey() const
   {
     PubKey k;
-    CryptoManager::instance()->derive_subkey(k, PubKey(data()), 1);
+    crypto::derive_subkey(k, PubKey(data()), 1);
     return dht::Key_t{k.as_array()};
   }
 

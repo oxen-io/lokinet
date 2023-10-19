@@ -78,21 +78,19 @@ namespace llarp
     void
     Builder::setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
-      auto crypto = CryptoManager::instance();
-
       // generate key
-      crypto->encryption_keygen(hop.commkey);
+      crypto::encryption_keygen(hop.commkey);
 
       hop.nonce.Randomize();
       // do key exchange
-      if (!crypto->dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      if (!crypto::dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
       {
         auto err = fmt::format("{} failed to generate shared key for path build!", Name());
         log::error(path_cat, err);
         throw std::runtime_error{std::move(err)};
       }
       // generate nonceXOR value self->hop->pathKey
-      crypto->shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
+      crypto::shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
 
       hop.upstream = nextHop;
     }
@@ -100,8 +98,6 @@ namespace llarp
     std::string
     Builder::create_hop_info_frame(const path::PathHopConfig& hop)
     {
-      auto crypto = CryptoManager::instance();
-
       std::string hop_info;
 
       {
@@ -118,21 +114,21 @@ namespace llarp
       }
 
       SecretKey framekey;
-      crypto->encryption_keygen(framekey);
+      crypto::encryption_keygen(framekey);
 
       SharedSecret shared;
       TunnelNonce outer_nonce;
       outer_nonce.Randomize();
 
       // derive (outer) shared key
-      if (!crypto->dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      if (!crypto::dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
       {
         log::error(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};
       }
 
       // encrypt hop_info (mutates in-place)
-      if (!crypto->xchacha20(
+      if (!crypto::xchacha20(
               reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
       {
         log::error(path_cat, "Hop info encryption failed!");
@@ -154,7 +150,7 @@ namespace llarp
       std::string hash;
       hash.reserve(SHORTHASHSIZE);
 
-      if (!crypto->hmac(
+      if (!crypto::hmac(
               reinterpret_cast<uint8_t*>(hash.data()),
               reinterpret_cast<uint8_t*>(hashed_data.data()),
               hashed_data.size(),

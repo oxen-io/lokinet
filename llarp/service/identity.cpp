@@ -42,12 +42,11 @@ namespace llarp::service
   void
   Identity::RegenerateKeys()
   {
-    auto crypto = CryptoManager::instance();
-    crypto->identity_keygen(signkey);
-    crypto->encryption_keygen(enckey);
+    crypto::identity_keygen(signkey);
+    crypto::encryption_keygen(enckey);
     pub.Update(seckey_topublic(signkey), seckey_topublic(enckey));
-    crypto->pqe_keygen(pq);
-    if (not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
+    crypto::pqe_keygen(pq);
+    if (not crypto::derive_subkey_private(derivedSignKey, signkey, 1))
     {
       throw std::runtime_error("failed to derive subkey");
     }
@@ -66,7 +65,7 @@ namespace llarp::service
   bool
   Identity::Sign(Signature& sig, uint8_t* buf, size_t size) const
   {
-    return CryptoManager::instance()->sign(sig, signkey, buf, size);
+    return crypto::sign(sig, signkey, buf, size);
   }
 
   void
@@ -127,22 +126,21 @@ namespace llarp::service
       if (!bencode_decode_dict(*this, &buf))
         throw std::length_error{"could not decode service identity"};
     }
-    auto crypto = CryptoManager::instance();
 
     // ensure that the encryption key is set
     if (enckey.IsZero())
-      crypto->encryption_keygen(enckey);
+      crypto::encryption_keygen(enckey);
 
     // also ensure the ntru key is set
     if (pq.IsZero())
-      crypto->pqe_keygen(pq);
+      crypto::pqe_keygen(pq);
 
     std::optional<VanityNonce> van;
     if (!vanity.IsZero())
       van = vanity;
     // update pubkeys
     pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
-    if (not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
+    if (not crypto::derive_subkey_private(derivedSignKey, signkey, 1))
     {
       throw std::runtime_error("failed to derive subkey");
     }
@@ -170,7 +168,7 @@ namespace llarp::service
     auto bte = i.bt_encode();
 
     const SharedSecret k{i.address_keys.Addr()};
-    CryptoManager::instance()->xchacha20(
+    crypto::xchacha20(
         reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nounce);
 
     std::memcpy(encrypted.introsetPayload.data(), bte.data(), bte.size());

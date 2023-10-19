@@ -13,7 +13,7 @@ namespace llarp::win32
   MakeDeterministicGUID(Data data)
   {
     ShortHash h{};
-    auto hash = [&h](auto data) { CryptoManager::instance()->shorthash(h, data); };
+    auto hash = [&h](auto data) { crypto::shorthash(h, data); };
 
     if constexpr (std::is_same_v<Data, std::string>)
       hash(llarp_buffer_t{reinterpret_cast<const byte_t*>(data.data()), data.size()});

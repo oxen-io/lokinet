@@ -9,8 +9,6 @@ namespace llarp
   bool
   EncryptedFrame::DoEncrypt(const SharedSecret& shared, bool noDH)
   {
-    auto crypto = CryptoManager::instance();
-
     uint8_t* hash_ptr = data();
     uint8_t* nonce_ptr = hash_ptr + SHORTHASHSIZE;
     uint8_t* pubkey_ptr = nonce_ptr + TUNNONCESIZE;
@@ -18,20 +16,20 @@ namespace llarp
 
     if (noDH)
     {
-      crypto->randbytes(nonce_ptr, TUNNONCESIZE);
-      crypto->randbytes(pubkey_ptr, PUBKEYSIZE);
+        crypto::randbytes(nonce_ptr, TUNNONCESIZE);
+        crypto::randbytes(pubkey_ptr, PUBKEYSIZE);
     }
 
     TunnelNonce nonce(nonce_ptr);
 
     // encrypt body
-    if (!crypto->xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
+    if (!crypto::xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
     {
       llarp::LogError("encrypt failed");
       return false;
     }
 
-    if (!crypto->hmac(hash_ptr, nonce_ptr, size() - SHORTHASHSIZE, shared))
+    if (!crypto::hmac(hash_ptr, nonce_ptr, size() - SHORTHASHSIZE, shared))
     {
       llarp::LogError("Failed to generate message auth");
       return false;
@@ -55,16 +53,14 @@ namespace llarp
 
     SharedSecret shared;
 
-    auto crypto = CryptoManager::instance();
-
     // set our pubkey
     memcpy(pubkey, ourSecretKey.toPublic().data(), PUBKEYSIZE);
     // randomize nonce
-    crypto->randbytes(noncePtr, TUNNONCESIZE);
+    crypto::randbytes(noncePtr, TUNNONCESIZE);
     TunnelNonce nonce(noncePtr);
 
     // derive shared key
-    if (!crypto->dh_client(shared, otherPubkey, ourSecretKey, nonce))
+    if (!crypto::dh_client(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::LogError("DH failed");
       return false;
@@ -76,8 +72,6 @@ namespace llarp
   bool
   EncryptedFrame::DoDecrypt(const SharedSecret& shared)
   {
-    auto crypto = CryptoManager::instance();
-
     uint8_t* hash_ptr = data();
     uint8_t* nonce_ptr = hash_ptr + SHORTHASHSIZE;
     uint8_t* body_ptr = hash_ptr + EncryptedFrameOverheadSize;
@@ -85,7 +79,7 @@ namespace llarp
     TunnelNonce nonce(nonce_ptr);
 
     ShortHash digest;
-    if (!crypto->hmac(digest.data(), nonce_ptr, size() - SHORTHASHSIZE, shared))
+    if (!crypto::hmac(digest.data(), nonce_ptr, size() - SHORTHASHSIZE, shared))
     {
       llarp::LogError("Digest failed");
       return false;
@@ -97,7 +91,7 @@ namespace llarp
       return false;
     }
 
-    if (!crypto->xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
+    if (!crypto::xchacha20(body_ptr, size() - EncryptedFrameOverheadSize, shared, nonce))
     {
       llarp::LogError("decrypt failed");
       return false;
@@ -121,10 +115,8 @@ namespace llarp
 
     SharedSecret shared;
 
-    auto crypto = CryptoManager::instance();
-
     // use dh_server because we are not the creator of this message
-    if (!crypto->dh_server(shared, otherPubkey, ourSecretKey, nonce))
+    if (!crypto::dh_server(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::LogError("DH failed");
       return false;
