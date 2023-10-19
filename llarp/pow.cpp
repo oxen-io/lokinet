@@ -31,7 +31,7 @@ namespace llarp
     auto buf = bt_encode();
 
     // hash
-    if (!CryptoManager::instance()->shorthash(
+    if (!crypto::shorthash(
             digest, reinterpret_cast<uint8_t*>(buf.data()), buf.size()))
       return false;
     // check bytes required

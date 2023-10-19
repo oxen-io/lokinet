@@ -97,7 +97,7 @@ namespace llarp
         for (const auto& entry : entries)
           entries.push_back(entry);
 
-        std::shuffle(entries.begin(), entries.end(), llarp::CSRNG{});
+        std::shuffle(entries.begin(), entries.end(), llarp::csrng);
 
         for (const auto entry : entries)
         {

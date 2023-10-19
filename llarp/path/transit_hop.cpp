@@ -77,7 +77,7 @@ namespace llarp::path
     {
       dlt = PAD_SIZE - dlt;
       // randomize padding
-      CryptoManager::instance()->randbytes(reinterpret_cast<uint8_t*>(payload.data()), dlt);
+      crypto::randbytes(reinterpret_cast<uint8_t*>(payload.data()), dlt);
     }
 
     // TODO: relay message along
@@ -107,7 +107,7 @@ namespace llarp::path
       msg.pathid = info.rxID;
       msg.nonce = ev.second ^ nonceXOR;
 
-      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+      crypto::xchacha20(buf, sz, pathKey, ev.second);
       std::memcpy(msg.enc.data(), buf, sz);
 
       llarp::LogDebug(
@@ -137,7 +137,7 @@ namespace llarp::path
       uint8_t* buf = ev.first.data();
       size_t sz = ev.first.size();
 
-      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+      crypto::xchacha20(buf, sz, pathKey, ev.second);
 
       msg.pathid = info.txID;
       msg.nonce = ev.second ^ nonceXOR;

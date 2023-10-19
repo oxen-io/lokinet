@@ -1162,8 +1162,8 @@ namespace llarp
     {
       // we are a client
       // regenerate keys and resign rc before everything else
-      CryptoManager::instance()->identity_keygen(_identity);
-      CryptoManager::instance()->encryption_keygen(_encryption);
+      crypto::identity_keygen(_identity);
+      crypto::encryption_keygen(_encryption);
       router_contact.pubkey = seckey_topublic(identity());
       router_contact.enckey = seckey_topublic(encryption());
       if (!router_contact.Sign(identity()))

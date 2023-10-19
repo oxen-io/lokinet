@@ -178,7 +178,7 @@ namespace llarp::service
       const SharedSecret& sharedkey, ProtocolMessage& msg) const
   {
     Encrypted<2048> tmp = enc;
-    CryptoManager::instance()->xchacha20(tmp.data(), tmp.size(), sharedkey, nonce);
+    crypto::xchacha20(tmp.data(), tmp.size(), sharedkey, nonce);
 
     return bencode_decode_dict(msg, tmp.Buffer());
   }
@@ -207,7 +207,7 @@ namespace llarp::service
     // encode message
     auto bte1 = msg.bt_encode();
     // encrypt
-    CryptoManager::instance()->xchacha20(
+    crypto::xchacha20(
         reinterpret_cast<uint8_t*>(bte1.data()), bte1.size(), sessionKey, nonce);
     // put encrypted buffer
     std::memcpy(enc.data(), bte1.data(), bte1.size());
@@ -252,12 +252,11 @@ namespace llarp::service
     static void
     Work(std::shared_ptr<AsyncFrameDecrypt> self)
     {
-      auto crypto = CryptoManager::instance();
       SharedSecret K;
       SharedSecret shared_key;
       // copy
       ProtocolFrameMessage frame(self->frame);
-      if (!crypto->pqe_decrypt(
+      if (!crypto::pqe_decrypt(
               self->frame.cipher, K, pq_keypair_to_secret(self->m_LocalIdentity.pq)))
       {
         LogError("pqke failed C=", self->frame.cipher);
@@ -268,7 +267,7 @@ namespace llarp::service
       // auto buf = frame.enc.Buffer();
       uint8_t* buf = frame.enc.data();
       size_t sz = frame.enc.size();
-      crypto->xchacha20(buf, sz, K, self->frame.nonce);
+      crypto::xchacha20(buf, sz, K, self->frame.nonce);
 
       auto bte = self->msg->bt_encode();
 
@@ -304,16 +303,8 @@ namespace llarp::service
 
       // PKE (A, B, N)
       SharedSecret shared_secret;
-      path_dh_func dh_server = [crypto = CryptoManager::instance()](
-                                   llarp::SharedSecret& shared,
-                                   const PubKey& pk,
-                                   const SecretKey& sk,
-                                   const TunnelNonce& n) -> bool {
-        return crypto->dh_server(shared, pk, sk, n);
-      };
-
       if (!self->m_LocalIdentity.KeyExchange(
-              dh_server, shared_secret, self->msg->sender, self->frame.nonce))
+              crypto::dh_server, shared_secret, self->msg->sender, self->frame.nonce))
       {
         LogError("x25519 key exchange failed");
         Dump<MAX_PROTOCOL_MESSAGE_SIZE>(self->frame);
@@ -326,7 +317,7 @@ namespace llarp::service
       // S = HS( K + PKE( A, B, N))
       std::memcpy(tmp.begin() + 32, shared_secret.begin(), shared_secret.size());
 
-      crypto->shorthash(shared_key, tmp.data(), tmp.size());
+      crypto::shorthash(shared_key, tmp.data(), tmp.size());
 
       std::shared_ptr<ProtocolMessage> msg = std::move(self->msg);
       path::Path_ptr path = std::move(self->path);

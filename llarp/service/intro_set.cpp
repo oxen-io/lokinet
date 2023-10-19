@@ -123,7 +123,7 @@ namespace llarp::service
     std::string payload{
         reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
 
-    CryptoManager::instance()->xchacha20(
+    crypto::xchacha20(
         reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
 
     return IntroSet{payload};
@@ -144,7 +144,7 @@ namespace llarp::service
     sig.Zero();
     auto bte = bt_encode();
 
-    if (not CryptoManager::instance()->sign(
+    if (not crypto::sign(
             sig, k, reinterpret_cast<uint8_t*>(bte.data()), bte.size()))
       return false;
     LogDebug("signed encrypted introset: ", *this);
@@ -161,20 +161,20 @@ namespace llarp::service
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    return CryptoManager::instance()->verify(
+    return crypto::verify(
         derivedSigningKey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
   EncryptedIntroSet::verify(uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig)
   {
-    return CryptoManager::instance()->verify(key, introset, introset_size, sig);
+    return crypto::verify(key, introset, introset_size, sig);
   }
 
   bool
   EncryptedIntroSet::verify(std::string introset, std::string key, std::string sig)
   {
-    return CryptoManager::instance()->verify(
+    return crypto::verify(
         reinterpret_cast<uint8_t*>(key.data()),
         reinterpret_cast<uint8_t*>(introset.data()),
         introset.size(),

@@ -489,8 +489,6 @@ extern "C"
     if (ctx == nullptr)
       return -3;
     auto lock = ctx->acquire();
-    // add a temp cryptography implementation here so rc.Verify works
-    llarp::CryptoManager instance{new llarp::Crypto{}};
     if (data[0] == 'l')
     {
       if (not ctx->config->bootstrap.routers.BDecode(&buf))

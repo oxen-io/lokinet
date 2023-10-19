@@ -1110,8 +1110,6 @@ namespace llarp
       ustring other_pubkey, outer_nonce, inner_nonce;
       uint64_t lifetime;
 
-      auto crypto = CryptoManager::instance();
-
       try
       {
         oxenc::bt_list_consumer btlc{payload};
@@ -1128,7 +1126,7 @@ namespace llarp
 
         SharedSecret shared;
         // derive shared secret using ephemeral pubkey and our secret key (and nonce)
-        if (!crypto->dh_server(
+        if (!crypto::dh_server(
                 shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
         {
           log::info(link_cat, "DH server initialization failed during path build");
@@ -1138,7 +1136,7 @@ namespace llarp
 
         // hash data and check against given hash
         ShortHash digest;
-        if (!crypto->hmac(
+        if (!crypto::hmac(
                 digest.data(),
                 reinterpret_cast<unsigned char*>(frame.data()),
                 frame.size(),
@@ -1157,7 +1155,7 @@ namespace llarp
         }
 
         // decrypt frame with our hop info
-        if (!crypto->xchacha20(
+        if (!crypto::xchacha20(
                 reinterpret_cast<unsigned char*>(hop_payload.data()),
                 hop_payload.size(),
                 shared.data(),
@@ -1224,7 +1222,7 @@ namespace llarp
         return;
       }
 
-      if (!crypto->dh_server(
+      if (!crypto::dh_server(
               hop->pathKey.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
       {
         log::warning(link_cat, "DH failed during path build.");
@@ -1232,7 +1230,7 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(hop->nonceXOR, hop->pathKey.data(), hop->pathKey.size());
+      crypto::shorthash(hop->nonceXOR, hop->pathKey.data(), hop->pathKey.size());
 
       // set and check path lifetime
       hop->lifetime = 1ms * lifetime;
@@ -1418,7 +1416,7 @@ namespace llarp
       const auto rx_id = transit_hop->info.rxID;
 
       auto success =
-          (CryptoManager::instance()->verify(pubkey, to_usv(dict_data), sig)
+          (crypto::verify(pubkey, to_usv(dict_data), sig)
            and _router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
 
       m.respond(
@@ -1460,7 +1458,7 @@ namespace llarp
       auto path_ptr = std::static_pointer_cast<path::Path>(
           _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
-      if (CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
+      if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
         path_ptr->enable_exit_traffic();
     }
     catch (const std::exception& e)
@@ -1492,7 +1490,7 @@ namespace llarp
       if (auto exit_ep =
               _router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
       {
-        if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
+        if (crypto::verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
               ? m.respond(UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
@@ -1537,7 +1535,7 @@ namespace llarp
       auto path_ptr = std::static_pointer_cast<path::Path>(
           _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
-      if (CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
+      if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
       {
         if (path_ptr->update_exit(std::stoul(tx_id)))
         {
@@ -1577,7 +1575,7 @@ namespace llarp
 
       if (auto exit_ep = router().exitContext().FindEndpointForPath(rx_id))
       {
-        if (CryptoManager::instance()->verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
+        if (crypto::verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
         {
           exit_ep->Close();
           m.respond(CloseExitMessage::sign_and_serialize_response(_router.identity(), tx_id));
@@ -1624,7 +1622,7 @@ namespace llarp
           _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
 
       if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
-          and CryptoManager::instance()->verify(_router.pubkey(), to_usv(dict_data), sig))
+          and crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
         path_ptr->mark_exit_closed();
     }
     catch (const std::exception& e)

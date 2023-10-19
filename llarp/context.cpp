@@ -67,9 +67,6 @@ namespace llarp
       loop = EventLoop::create(jobQueueSize);
     }
 
-    crypto = std::make_shared<Crypto>();
-    cryptoManager = std::make_shared<CryptoManager>(crypto.get());
-
     router = makeRouter(loop);
 
     nodedb = makeNodeDB();

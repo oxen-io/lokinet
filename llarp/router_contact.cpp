@@ -364,7 +364,7 @@ namespace llarp
 
     signed_bt_dict = bencode_signed_section();
 
-    return CryptoManager::instance()->sign(
+    return crypto::sign(
         signature,
         secretkey,
         reinterpret_cast<uint8_t*>(signed_bt_dict.data()),
@@ -409,7 +409,7 @@ namespace llarp
     copy.signature.Zero();
 
     auto bte = copy.bt_encode();
-    return CryptoManager::instance()->verify(
+    return crypto::verify(
         pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
   }
 

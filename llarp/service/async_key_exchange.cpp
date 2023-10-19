@@ -43,24 +43,21 @@ namespace llarp::service
   {
     // derive ntru session key component
     SharedSecret secret;
-    auto crypto = CryptoManager::instance();
-
-    crypto->pqe_encrypt(frame->cipher, secret, self->introPubKey);
+    crypto::pqe_encrypt(frame->cipher, secret, self->introPubKey);
+    // randomize Nonce
     frame->nonce.Randomize();
 
     // compute post handshake session key
     // PKE (A, B, N)
     SharedSecret sharedSecret;
-    path_dh_func dh_client = util::memFn(&Crypto::dh_client, crypto);
-
-    if (!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret, self->m_remote, frame->nonce))
+    if (!self->m_LocalIdentity.KeyExchange(crypto::dh_client, sharedSecret, self->m_remote, frame->nonce))
     {
       LogError("failed to derive x25519 shared key component");
     }
 
     auto buf = secret.bt_encode() + sharedSecret.bt_encode();
     // H (K + PKE(A, B, N))
-    crypto->shorthash(self->sharedKey, reinterpret_cast<uint8_t*>(buf.data()), buf.size());
+    crypto::shorthash(self->sharedKey, reinterpret_cast<uint8_t*>(buf.data()), buf.size());
 
     // set tag
     self->msg.tag = self->tag;

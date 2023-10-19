@@ -874,7 +874,7 @@ namespace llarp::service
     // pick up to max_unique_lns_endpoints random paths to do lookups from
     std::vector<path::Path_ptr> chosenpaths;
     chosenpaths.insert(chosenpaths.begin(), paths.begin(), paths.end());
-    std::shuffle(chosenpaths.begin(), chosenpaths.end(), CSRNG{});
+    std::shuffle(chosenpaths.begin(), chosenpaths.end(), llarp::csrng);
     chosenpaths.resize(std::min(paths.size(), MAX_ONS_LOOKUP_ENDPOINTS));
 
     for (const auto& path : chosenpaths)

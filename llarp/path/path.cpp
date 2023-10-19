@@ -110,7 +110,7 @@ namespace llarp::path
     for (const auto& hop : hops)
     {
       // do a round of chacha for each hop and mutate the nonce with that hop's nonce
-      CryptoManager::instance()->xchacha20(
+      crypto::xchacha20(
           reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce);
 
       nonce ^= hop.nonceXOR;
@@ -450,7 +450,7 @@ namespace llarp::path
 
       for (const auto& hop : hops)
       {
-        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, n);
+        crypto::xchacha20(buf, sz, hop.shared, n);
         n ^= hop.nonceXOR;
       }
       auto& msg = sendmsgs[idx];
@@ -528,7 +528,7 @@ namespace llarp::path
       for (const auto& hop : hops)
       {
         sendMsgs[idx].nonce ^= hop.nonceXOR;
-        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
+        crypto::xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
       }
 
       std::memcpy(sendMsgs[idx].enc.data(), buf, sz);
@@ -583,7 +583,7 @@ namespace llarp::path
     if (payload.size() < PAD_SIZE)
     {
       // randomize padding
-      CryptoManager::instance()->randbytes(
+      crypto::randbytes(
           reinterpret_cast<unsigned char*>(buf.data()) + payload.size(), PAD_SIZE - payload.size());
     }
     log::debug(path_cat, "Sending {}B routing message to {}", buf.size(), Endpoint());
