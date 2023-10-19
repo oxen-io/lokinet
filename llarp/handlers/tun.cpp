@@ -21,7 +21,6 @@
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/quic/tunnel.hpp>
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/logging/buffer.hpp>
@@ -391,8 +390,11 @@ namespace llarp::handlers
         if (not data.empty())
         {
           std::string_view bdata{data.data(), data.size()};
+
           LogDebug(Name(), " parsing address map data: ", bdata);
+
           const auto parsed = oxenc::bt_deserialize<oxenc::bt_dict>(bdata);
+
           for (const auto& [key, value] : parsed)
           {
             huint128_t ip{};
@@ -454,12 +456,13 @@ namespace llarp::handlers
       }
     }
 
-    if (auto* quic = GetQUICTunnel())
-    {
-      quic->listen([this](std::string_view, uint16_t port) {
-        return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
-      });
-    }
+    // if (auto* quic = GetQUICTunnel())
+    // {
+    // TODO:
+    // quic->listen([this](std::string_view, uint16_t port) {
+    //   return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
+    // });
+    // }
     return Endpoint::Configure(conf, dnsConf);
   }
 
@@ -467,19 +470,6 @@ namespace llarp::handlers
   TunEndpoint::HasLocalIP(const huint128_t& ip) const
   {
     return m_IPToAddr.find(ip) != m_IPToAddr.end();
-  }
-
-  void
-  TunEndpoint::Pump(llarp_time_t now)
-  {
-    // flush network to user
-    while (not m_NetworkToUserPktQueue.empty())
-    {
-      m_NetIf->WritePacket(m_NetworkToUserPktQueue.top().pkt);
-      m_NetworkToUserPktQueue.pop();
-    }
-
-    service::Endpoint::Pump(now);
   }
 
   static bool
@@ -1367,7 +1357,9 @@ namespace llarp::handlers
         return false;
       }
       LogInfo("tag active T=", tag);
-      quic->receive_packet(tag, buf);
+
+      // TODO:
+      // quic->receive_packet(tag, buf);
       return true;
     }
 
@@ -1473,7 +1465,10 @@ namespace llarp::handlers
     {
       pkt.UpdateIPv6Address(src, dst);
     }
-    m_NetworkToUserPktQueue.push(std::move(write));
+
+    // TODO: send this along but without a fucking huint182_t
+    // m_NetworkToUserPktQueue.push(std::move(write));
+
     // wake up so we ensure that all packets are written to user
     router()->TriggerPump();
     return true;

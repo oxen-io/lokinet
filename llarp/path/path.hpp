@@ -3,7 +3,6 @@
 #include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
-// #include "pathbuilder.hpp"
 
 #include <llarp/constants/path.hpp>
 #include <llarp/crypto/encrypted_frame.hpp>
@@ -27,7 +26,6 @@
 namespace llarp
 {
   struct Router;
-  struct LR_CommitMessage;
 
   namespace path
   {
@@ -219,7 +217,7 @@ namespace llarp
           std::function<void(oxen::quic::message m)> func = nullptr) override;
 
       bool
-      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
+      SendRoutingMessage(std::string payload, Router* r) override;
 
       bool
       IsReady() const;

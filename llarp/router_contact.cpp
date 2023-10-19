@@ -95,10 +95,12 @@ namespace llarp
 
       signature.from_string(btlc.consume_string());
       signed_bt_dict = btlc.consume_string();
+
+      // TODO: parse bt dict
     }
     catch (...)
     {
-      log::critical(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
+      log::warning(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
     }
   }
 
@@ -114,7 +116,7 @@ namespace llarp
     }
     catch (...)
     {
-      log::critical(llarp_cat, "Error: RouterContact failed to bt encode contents!");
+      log::warning(llarp_cat, "Error: RouterContact failed to bt encode contents!");
     }
 
     return std::move(btlp).str();
@@ -154,7 +156,7 @@ namespace llarp
     btdp.append("i", netID.ToView());
     btdp.append("k", pubkey.bt_encode());
     btdp.append("p", enckey.ToView());
-    btdp.append("r", routerVersion);
+    btdp.append("r", routerVersion->ToString());
 
     if (not srvRecords.empty())
     {
@@ -280,8 +282,10 @@ namespace llarp
   RouterContact::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (!BEncodeMaybeReadDictList("a", addr, read, key, buf))
-      return false;
+
+    // TOFIX: fuck everything about llarp_buffer_t
+    // if (!BEncodeMaybeReadDictEntry("a", addr, read, key, buf))
+    //   return false;
 
     if (!BEncodeMaybeReadDictEntry("i", netID, read, key, buf))
       return false;

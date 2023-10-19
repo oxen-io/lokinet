@@ -92,4 +92,7 @@ namespace llarp
 
   std::string
   lowercase_ascii_string(std::string src);
+
+  std::string_view
+  TrimWhitespace(std::string_view str);
 }  // namespace llarp

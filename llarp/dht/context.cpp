@@ -1,22 +1,15 @@
-#include "context.hpp"
 
 #include "explorenetworkjob.hpp"
 #include "localrouterlookup.hpp"
 #include "localserviceaddresslookup.hpp"
 #include "localtaglookup.hpp"
-#include <llarp/dht/messages/findrouter.hpp>
-#include <llarp/dht/messages/gotintro.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
-#include <llarp/dht/messages/pubintro.hpp>
 #include "node.hpp"
 #include "publishservicejob.hpp"
 #include "recursiverouterlookup.hpp"
 #include "serviceaddresslookup.hpp"
 #include "taglookup.hpp"
-#include <llarp/messages/dht_immediate.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/routing/path_dht_message.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>

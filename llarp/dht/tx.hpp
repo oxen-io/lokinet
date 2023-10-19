@@ -3,77 +3,77 @@
 
 #include "key.hpp"
 #include "txowner.hpp"
+
 #include <llarp/util/logging.hpp>
 #include <llarp/util/status.hpp>
 
 #include <set>
 #include <vector>
 
-namespace llarp::dht
+namespace llarp
 {
-  struct AbstractDHTMessageHandler;
+  struct Router;
 
-  template <typename K, typename V>
-  struct TX
+  namespace dht
   {
-    K target;
-    AbstractDHTMessageHandler* parent;
-    std::set<Key_t> peersAsked;
-    std::vector<V> valuesFound;
-    TXOwner whoasked;
-
-    TX(const TXOwner& asker, const K& k, AbstractDHTMessageHandler* p)
-        : target(k), parent(p), whoasked(asker)
-    {}
-
-    virtual ~TX() = default;
-
-    void
-    OnFound(const Key_t& askedPeer, const V& value);
-
-    util::StatusObject
-    ExtractStatus() const
+    template <typename K, typename V>
+    struct TX
     {
-      util::StatusObject obj{
-          {"whoasked", whoasked.ExtractStatus()}, {"target", target.ExtractStatus()}};
-      std::vector<util::StatusObject> foundObjs;
-      std::transform(
-          valuesFound.begin(),
-          valuesFound.end(),
-          std::back_inserter(foundObjs),
-          [](const auto& item) -> util::StatusObject { return item.ExtractStatus(); });
+      K target;
+      Router* router;
+      std::set<Key_t> peersAsked;
+      std::vector<V> valuesFound;
+      TXOwner whoasked;
 
-      obj["found"] = foundObjs;
-      std::vector<std::string> asked;
-      std::transform(
-          peersAsked.begin(),
-          peersAsked.end(),
-          std::back_inserter(asked),
-          [](const auto& item) -> std::string { return item.ToString(); });
-      obj["asked"] = asked;
-      return obj;
-    }
+      TX(const TXOwner& asker, const K& k, Router* r) : target(k), router{r}, whoasked(asker)
+      {}
 
-    virtual bool
-    Validate(const V& value) const = 0;
+      virtual ~TX() = default;
 
-    virtual void
-    Start(const TXOwner& peer) = 0;
+      void
+      OnFound(const Key_t& askedPeer, const V& value);
 
-    virtual void
-    SendReply() = 0;
-  };
+      util::StatusObject
+      ExtractStatus() const
+      {
+        util::StatusObject obj{
+            {"whoasked", whoasked.ExtractStatus()}, {"target", target.ExtractStatus()}};
+        std::vector<util::StatusObject> foundObjs;
+        std::transform(
+            valuesFound.begin(),
+            valuesFound.end(),
+            std::back_inserter(foundObjs),
+            [](const auto& item) -> util::StatusObject { return item.ExtractStatus(); });
 
-  template <typename K, typename V>
-  inline void
-  TX<K, V>::OnFound(const Key_t& askedPeer, const V& value)
-  {
-    peersAsked.insert(askedPeer);
-    if (Validate(value))
+        obj["found"] = foundObjs;
+        std::vector<std::string> asked;
+        std::transform(
+            peersAsked.begin(),
+            peersAsked.end(),
+            std::back_inserter(asked),
+            [](const auto& item) -> std::string { return item.ToString(); });
+        obj["asked"] = asked;
+        return obj;
+      }
+
+      virtual bool
+      Validate(const V& value) const = 0;
+
+      virtual void
+      Start(const TXOwner& peer) = 0;
+    };
+
+    template <typename K, typename V>
+    inline void
+    TX<K, V>::OnFound(const Key_t& askedPeer, const V& value)
     {
-      valuesFound.push_back(value);
+      peersAsked.insert(askedPeer);
+      if (Validate(value))
+      {
+        valuesFound.push_back(value);
+      }
     }
-  }
-}  // namespace llarp::dht
+  }  // namespace dht
+}  // namespace llarp
 
 #endif

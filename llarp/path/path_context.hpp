@@ -1,12 +1,12 @@
 #pragma once
 
-#include <llarp/crypto/encrypted_frame.hpp>
-#include <llarp/net/ip_address.hpp>
 #include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
 #include "transit_hop.hpp"
-#include <llarp/routing/handler.hpp>
+
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/net/ip_address.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
@@ -17,9 +17,6 @@
 namespace llarp
 {
   struct Router;
-  struct LR_CommitMessage;
-  struct RelayDownstreamMessage;
-  struct RelayUpstreamMessage;
   struct RouterID;
 
   namespace path
@@ -61,9 +58,6 @@ namespace llarp
       bool
       HasTransitHop(const TransitHopInfo& info);
 
-      bool
-      HandleRelayCommit(const LR_CommitMessage& msg);
-
       void
       PutTransitHop(std::shared_ptr<TransitHop> hop);
 
@@ -88,9 +82,6 @@ namespace llarp
       PathSet_ptr
       GetLocalPathSet(const PathID_t& id);
 
-      routing::MessageHandler_ptr
-      GetHandler(const PathID_t& id);
-
       using EndpointPathPtrSet = std::set<Path_ptr, ComparePtr<Path_ptr>>;
       /// get a set of all paths that we own who's endpoint is r
       EndpointPathPtrSet
@@ -98,12 +89,6 @@ namespace llarp
 
       bool
       HopIsUs(const RouterID& k) const;
-
-      bool
-      HandleLRUM(const RelayUpstreamMessage& msg);
-
-      bool
-      HandleLRDM(const RelayDownstreamMessage& msg);
 
       void
       AddOwnPath(PathSet_ptr set, Path_ptr p);

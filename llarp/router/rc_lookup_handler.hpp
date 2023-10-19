@@ -17,11 +17,6 @@ namespace llarp
   struct Router;
   class EventLoop;
 
-  namespace dht
-  {
-    struct AbstractDHTMessageHandler;
-  }  // namespace dht
-
   namespace service
   {
     struct Context;

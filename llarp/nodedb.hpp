@@ -93,7 +93,7 @@ namespace llarp
     std::optional<RouterContact>
     GetRandom(Filter visit) const
     {
-      return router.loop()->call_get([this, visit]() -> std::optional<RouterContact> {
+      return router.loop()->call_get([visit]() -> std::optional<RouterContact> {
         std::vector<const decltype(entries)::value_type*> entries;
         for (const auto& entry : entries)
           entries.push_back(entry);

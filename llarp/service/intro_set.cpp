@@ -334,7 +334,7 @@ namespace llarp::service
         auto sublist = btdc.consume_list_consumer();
         while (not sublist.is_finished())
         {
-          supported_protocols.emplace_back(sublist.consume_integer<uint64_t>());
+          supported_protocols.emplace_back(ProtocolType{sublist.consume_integer<uint64_t>()});
         }
       }
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <llarp/service/auth.hpp>
+#include <llarp/service/convotag.hpp>
+
 #include <oxenmq/oxenmq.h>
 
 namespace llarp::service
@@ -24,7 +26,8 @@ namespace llarp::rpc
         std::unordered_set<std::string> token_whitelist,
         LMQ_ptr lmq,
         Endpoint_ptr endpoint);
-    virtual ~EndpointAuthRPC() = default;
+
+    ~EndpointAuthRPC() override = default;
 
     void
     Start();

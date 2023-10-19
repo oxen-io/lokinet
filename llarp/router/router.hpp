@@ -18,13 +18,9 @@
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
-#include <llarp/tooling/router_event.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/routing/message_parser.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/rpc/rpc_server.hpp>
 #include <llarp/service/context.hpp>
-#include <stdexcept>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/mem.hpp>
@@ -33,6 +29,7 @@
 #include <llarp/util/time.hpp>
 #include <llarp/util/service_manager.hpp>
 
+#include <stdexcept>
 #include <functional>
 #include <list>
 #include <map>
@@ -109,7 +106,6 @@ namespace llarp
     exit::Context _exit_context;
     SecretKey _identity;
     SecretKey _encryption;
-    std::shared_ptr<dht::AbstractDHTMessageHandler> _dh_t;
     std::shared_ptr<Contacts> _contacts;
     std::shared_ptr<NodeDB> _node_db;
     llarp_time_t _started_at;
@@ -161,10 +157,6 @@ namespace llarp
 
     bool
     insufficient_peers() const;
-
-   protected:
-    void
-    handle_router_event(std::unique_ptr<tooling::RouterEvent> event) const;
 
    public:
     void
@@ -319,15 +311,6 @@ namespace llarp
         const std::vector<RouterID>& whitelist,
         const std::vector<RouterID>& greylist,
         const std::vector<RouterID>& unfunded);
-
-    template <class EventType, class... Params>
-    void
-    notify_router_event([[maybe_unused]] Params&&... args) const
-    {
-      // TODO: no-op when appropriate
-      auto event = std::make_unique<EventType>(args...);
-      handle_router_event(std::move(event));
-    }
 
     void
     queue_work(std::function<void(void)> func);
@@ -536,7 +519,7 @@ namespace llarp
     /// return false
     bool
     ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, routing::AbstractRoutingMessageHandler* h, const PathID_t& rxid);
+        const llarp_buffer_t& buf, path::AbstractHopHandler& p, const PathID_t& rxid);
 
     void
     ConnectToRandomRouters(int N);

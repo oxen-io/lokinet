@@ -5,12 +5,10 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
-#include <llarp/messages/relay_commit.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
-#include <llarp/tooling/path_event.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging.hpp>
 
@@ -420,7 +418,9 @@ namespace llarp
 
       std::string path_shortName = "[path " + router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
+
+      auto path =
+          std::make_shared<path::Path>(router, hops, GetWeak(), roles, std::move(path_shortName));
 
       log::info(
           path_cat, "{} building path -> {} : {}", Name(), path->ShortName(), path->HopsString());

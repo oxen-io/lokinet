@@ -1,17 +1,28 @@
 #pragma once
 
-#include <llarp/endpoint_base.hpp>
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/service/convotag.hpp>
 
+#include <chrono>
 #include <charconv>
 #include <cstdint>
+#include <queue>
+#include <unordered_set>
 #include <string>
 #include <string_view>
 
 #include <uvw/tcp.h>
 
+namespace llarp
+{
+  class EndpointBase;
+}
+
 namespace llarp::link
 {
   struct Endpoint;
+
+  using namespace std::chrono_literals;
 
   namespace tunnel
   {
@@ -176,7 +187,7 @@ namespace llarp::link
     // Server instance; this listens on pseudo-port 0 (if it listens).  This is automatically
     // instantiated the first time `listen()` is called; if not instantiated we simply drop any
     // inbound client-to-server quic packets.
-    std::unique_ptr<Server> server_;
+    // std::unique_ptr<Server> server_;
 
     void
     make_server();

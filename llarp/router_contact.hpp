@@ -131,8 +131,8 @@ namespace llarp
     operator==(const RouterContact& other) const
     {
       return addr == other.addr && enckey == other.enckey && pubkey == other.pubkey
-          && signature == other.signature
-          && last_updated == other.last_updated && netID == other.netID;
+          && signature == other.signature && last_updated == other.last_updated
+          && netID == other.netID;
     }
 
     bool

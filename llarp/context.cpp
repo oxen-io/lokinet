@@ -1,22 +1,21 @@
-#include <llarp.hpp>
-#include "constants/version.hpp"
-#include "constants/evloop.hpp"
-
-#include "config/config.hpp"
-#include "crypto/crypto.hpp"
-#include "ev/ev.hpp"
-#include <memory>
 #include "nodedb.hpp"
-#include "router/router.hpp"
-#include "service/context.hpp"
-#include "util/logging.hpp"
 
+#include <llarp.hpp>
+#include <llarp/constants/version.hpp>
+#include <llarp/constants/evloop.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/service_manager.hpp>
 
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
 
+#include <memory>
 #include <csignal>
 #include <stdexcept>
 
@@ -89,7 +88,9 @@ namespace llarp
   Context::makeNodeDB()
   {
     return std::make_shared<NodeDB>(
-        nodedb_dirname, [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); });
+        nodedb_dirname,
+        [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); },
+        router.get());
   }
 
   std::shared_ptr<Router>
