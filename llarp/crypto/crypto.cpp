@@ -3,7 +3,6 @@
 #include <sodium/core.h>
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
-#include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_scalarmult_ed25519.h>
 #include <sodium/crypto_stream_xchacha20.h>
 #include <sodium/crypto_core_ed25519.h>
@@ -11,15 +10,11 @@
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
 #include <oxenc/endian.h>
-#include <llarp/util/mem.hpp>
-#include <llarp/util/str.hpp>
 #include <cassert>
 #include <cstring>
 #ifdef HAVE_CRYPT
 #include <crypt.h>
 #endif
-
-#include <llarp/util/str.hpp>
 
 namespace llarp
 {

@@ -1,10 +1,5 @@
 #include "endpoint_state.hpp"
 
-#include <llarp/exit/session.hpp>
-#include "endpoint.hpp"
-#include "outbound_context.hpp"
-#include <llarp/util/str.hpp>
-
 namespace llarp::service
 {
   bool

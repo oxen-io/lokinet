@@ -1,17 +1,8 @@
 #include "endpoint.hpp"
-#include "endpoint_state.hpp"
-#include "endpoint_util.hpp"
-#include "auth.hpp"
-#include "outbound_context.hpp"
-#include "protocol.hpp"
-#include "info.hpp"
-#include "protocol_type.hpp"
 
 #include <llarp/dht/key.hpp>
 #include <llarp/link/contacts.hpp>
-#include <llarp/link/link_manager.hpp>
 #include <llarp/link/tunnel.hpp>
-#include <llarp/messages/dht.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/nodedb.hpp>
@@ -19,18 +10,20 @@
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/router/route_poker.hpp>
-
-#include <llarp/util/str.hpp>
-#include <llarp/util/buffer.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/priority_queue.hpp>
-
 #include <optional>
 #include <type_traits>
 #include <utility>
-#include <uvw.hpp>
 #include <variant>
+
+#include "endpoint_state.hpp"
+#include "endpoint_util.hpp"
+#include "auth.hpp"
+#include "outbound_context.hpp"
+#include "protocol.hpp"
+#include "info.hpp"
+#include "protocol_type.hpp"
 
 namespace llarp::service
 {
@@ -49,8 +42,8 @@ namespace llarp::service
     _state->name = "endpoint";
     _recv_event_queue.enable();
 
-    if (Loop()->MaybeGetUVWLoop())
-      _tunnel_manager = std::make_unique<link::TunnelManager>(*this);
+    // if (Loop()->MaybeGetUVWLoop())
+    //   _tunnel_manager = std::make_unique<link::TunnelManager>(*this);
   }
 
   bool

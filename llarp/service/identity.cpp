@@ -1,8 +1,6 @@
 #include "identity.hpp"
 
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/util/fs.hpp>
-#include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp::service
 {

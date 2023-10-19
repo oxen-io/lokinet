@@ -1,11 +1,7 @@
 #include "str.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstring>
-#include <cassert>
 #include <string>
-#include <set>
 
 #ifdef _WIN32
 #include <windows.h>

@@ -4,7 +4,6 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include <llarp/constants/path.hpp>
-
 #include <deque>
 #include <queue>
 

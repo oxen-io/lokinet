@@ -8,18 +8,17 @@
 #else
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
-#include "net.h"
-
+#include <llarp/util/formattable.hpp>
+#include <oxenc/variant.h>
 #include <cstdlib>  // for itoa
 #include <iostream>
 #include <vector>
 
-#include <llarp/util/formattable.hpp>
-#include <oxenc/variant.h>
-
+#include "net.h"
 #include "uint128.hpp"
 
 namespace llarp

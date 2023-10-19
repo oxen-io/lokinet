@@ -1,13 +1,7 @@
-#include "path.hpp"
-#include "path_context.hpp"
-#include "transit_hop.hpp"
-
-#include <llarp/exit/context.hpp>
-#include <llarp/link/link_manager.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
 
-#include <oxenc/endian.h>
+#include "transit_hop.hpp"
 
 namespace llarp::path
 {
@@ -27,6 +21,15 @@ namespace llarp::path
     m_DownstreamGather.enable();
     m_UpstreamWorkCounter = 0;
     m_DownstreamWorkCounter = 0;
+  }
+
+  bool
+  TransitHop::send_path_control_message(
+      std::string,
+      std::string,
+      std::function<void(oxen::quic::message m)>)
+  {
+    return true;
   }
 
   bool

@@ -4,20 +4,16 @@
 #include <llarp/net/net.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/util/str.hpp>
-#include <llarp/util/bits.hpp>
-
 #include <llarp/router/rc_lookup_handler.hpp>
-
-#include <cassert>
 #include <llarp/service/protocol_type.hpp>
+#include <cassert>
 
 namespace llarp::handlers
 {
   ExitEndpoint::ExitEndpoint(std::string name, Router* r)
       : router(r)
       , name(std::move(name))
-      , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
+      // , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
   {
     should_init_tun = true;
   }
@@ -784,7 +780,8 @@ namespace llarp::handlers
   link::TunnelManager*
   ExitEndpoint::GetQUICTunnel()
   {
-    return tunnel_manager.get();
+    return nullptr;
+    // return tunnel_manager.get();
   }
 
   bool

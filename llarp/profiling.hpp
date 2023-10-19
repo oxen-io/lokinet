@@ -1,12 +1,12 @@
 #pragma once
 
+#include <map>
+
 #include "path/path.hpp"
 #include "router_id.hpp"
 #include "util/bencode.hpp"
 #include "util/thread/threading.hpp"
-
 #include "util/thread/annotations.hpp"
-#include <map>
 
 namespace oxenc
 {

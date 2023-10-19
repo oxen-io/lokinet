@@ -1,4 +1,6 @@
 #pragma once
+
+#include "ip.hpp"
 #include "net_int.hpp"
 
 namespace llarp

@@ -1,7 +1,6 @@
 #include "intro_set.hpp"
-#include <llarp/crypto/crypto.hpp>
-#include <llarp/path/path.hpp>
 
+#include <llarp/crypto/crypto.hpp>
 #include <oxenc/bt_serialize.h>
 
 namespace llarp::service
@@ -186,33 +185,33 @@ namespace llarp::service
   IntroSet::ExtractStatus() const
   {
     util::StatusObject obj{{"published", to_json(time_signed)}};
-    std::vector<util::StatusObject> introsObjs;
-    std::transform(
-        intros.begin(),
-        intros.end(),
-        std::back_inserter(introsObjs),
-        [](const auto& intro) -> util::StatusObject { return intro.ExtractStatus(); });
-    obj["intros"] = introsObjs;
-    if (!topic.IsZero())
-      obj["topic"] = topic.ToString();
+    // std::vector<util::StatusObject> introsObjs;
+    // std::transform(
+    //     intros.begin(),
+    //     intros.end(),
+    //     std::back_inserter(introsObjs),
+    //     [](const auto& intro) -> util::StatusObject { return intro.ExtractStatus(); });
+    // obj["intros"] = introsObjs;
+    // if (!topic.IsZero())
+    //   obj["topic"] = topic.ToString();
 
-    std::vector<util::StatusObject> protocols;
-    std::transform(
-        supported_protocols.begin(),
-        supported_protocols.end(),
-        std::back_inserter(protocols),
-        [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
-    obj["protos"] = protocols;
-    std::vector<util::StatusObject> ranges;
-    std::transform(
-        owned_ranges.begin(),
-        owned_ranges.end(),
-        std::back_inserter(ranges),
-        [](const auto& range) -> util::StatusObject { return range.ToString(); });
+    // std::vector<util::StatusObject> protocols;
+    // std::transform(
+    //     supported_protocols.begin(),
+    //     supported_protocols.end(),
+    //     std::back_inserter(protocols),
+    //     [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
+    // obj["protos"] = protocols;
+    // std::vector<util::StatusObject> ranges;
+    // std::transform(
+    //     owned_ranges.begin(),
+    //     owned_ranges.end(),
+    //     std::back_inserter(ranges),
+    //     [](const auto& range) -> util::StatusObject { return range.ToString(); });
 
-    obj["advertisedRanges"] = ranges;
-    if (exit_policy)
-      obj["exitPolicy"] = exit_policy->ExtractStatus();
+    // obj["advertisedRanges"] = ranges;
+    // if (exit_policy)
+    //   obj["exitPolicy"] = exit_policy->ExtractStatus();
 
     return obj;
   }

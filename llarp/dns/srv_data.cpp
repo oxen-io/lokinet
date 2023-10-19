@@ -1,12 +1,10 @@
 #include "srv_data.hpp"
-#include <llarp/util/str.hpp>
-#include <llarp/util/logging.hpp>
-
-#include <limits>
 
 #include <oxenc/bt_serialize.h>
-#include "llarp/util/bencode.h"
-#include "llarp/util/types.hpp"
+
+#include <llarp/util/bencode.h>
+#include <llarp/util/types.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp::dns
 {

@@ -1,9 +1,9 @@
 #pragma once
-#include "policy.hpp"
 #include <llarp/handlers/exit.hpp>
-
 #include <string>
 #include <unordered_map>
+
+#include "policy.hpp"
 
 namespace llarp::exit
 {

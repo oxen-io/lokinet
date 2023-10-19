@@ -7,38 +7,128 @@ add_library(lokinet-cryptography
   crypto/types.cpp
 )
 
-add_library(lokinet-util
+# files only included by lokinet-core
+add_library(lokinet-core-internal
+  STATIC
+  router/rc_gossiper.cpp
+  service/info.cpp
+  service/lns_tracker.cpp
+  service/session.cpp
+)
+  
+# Functional objects use by lokinet-core and other libraries
+# needed by vpn/ router/ rpc/ handlers/ net/ link/
+add_library(lokinet-core-utils
+  STATIC
+  endpoint_base.cpp
+  exit/context.cpp
+  exit/endpoint.cpp # handlers/exit.hpp 
+  exit/policy.cpp   # net/
+  service/auth.cpp  # config/
+  service/context.cpp
+  service/identity.cpp
+  service/intro.cpp # path
+  service/name.cpp
+  service/tag.cpp
+)
+
+add_library(lokinet-core
+  STATIC
+  context.cpp
+  consensus/reachability_testing.cpp
+  exit/session.cpp
+  handlers/exit.cpp # link/ exit/
+  handlers/tun.cpp
+  link/link_manager.cpp
+  router/router.cpp
+  router/route_poker.cpp
+  service/async_key_exchange.cpp
+  service/endpoint_util.cpp
+  service/endpoint.cpp
+  service/endpoint_state.cpp
+  service/name.cpp
+  service/outbound_context.cpp
+  service/protocol.cpp
+  vpn/egres_packet_router.cpp
+)
+  
+# Files only included by lokinet-rpc
+# add_library(lokinet-rpc-internal
+#   STATIC
+# )
+  
+  add_library(lokinet-rpc
+  STATIC
+  rpc/json_binary_proxy.cpp
+  rpc/json_conversions.cpp
+  rpc/lokid_rpc_client.cpp
+  rpc/rpc_request_parser.cpp
+  rpc/rpc_server.cpp
+  rpc/endpoint_rpc.cpp
+)
+  
+# Files only included by lokinet-wire
+add_library(lokinet-wire-internal
+  STATIC
+  link/connection.cpp
+)
+  
+add_library(lokinet-wire
+  STATIC
+  link/contacts.cpp
+  link/link_manager.cpp
+  # link/tunnel.cpp
+)
+
+add_library(lokinet-utils-internal
+  STATIC
+  util/thread/queue_manager.cpp  
+)
+
+# config, crypto, timeplace, nodedb, bootstrap.cpp, net, router
+add_library(lokinet-utils
   STATIC
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
   util/file.cpp
-  util/json.cpp
-  util/logging/buffer.cpp
-  util/easter_eggs.cpp
   util/mem.cpp
   util/str.cpp
-  util/thread/queue_manager.cpp
   util/thread/threading.cpp
-  util/time.cpp)
+  util/time.cpp
+  util/logging/buffer.cpp
+)
+  
+add_dependencies(lokinet-utils genversion)
 
-add_dependencies(lokinet-util genversion)
-
-# lokinet-platform holds all platform specific code
-add_library(lokinet-platform
+# Addressing and event loop files used by lokinet-core and other libraries
+# needed by rpc/ link/ service/ config/ path/ dht/
+add_library(lokinet-time-place
   STATIC
-  # for networking
+  pow.cpp # only intro_set
+  router_contact.cpp
+  router_id.cpp
+  router_version.cpp  # to be deleted shortly
   ev/ev.cpp
   ev/libuv.cpp
-  net/interface_info.cpp
+  net/exit_info.cpp   # only router_contact
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
   net/ip_range.cpp
   net/net_int.cpp
   net/sock_addr.cpp
+  service/address.cpp
+  service/convotag.cpp
+  service/intro_set.cpp
+)
+
+# lokinet-platform holds all platform specific code
+add_library(lokinet-platform
+  STATIC
+  router/rc_lookup_handler.cpp
+  net/interface_info.cpp
   vpn/packet_router.cpp
-  vpn/egres_packet_router.cpp
   vpn/platform.cpp
 )
 
@@ -80,16 +170,21 @@ endif()
 # parse modify and reconstitute dns wire proto, dns queries and RR
 # should have no concept of dns caching, this is left as an implementation
 # detail of dns resolvers (LATER: make separate lib for dns resolvers)
-add_library(lokinet-dns
+add_library(lokinet-dns-internal
   STATIC
-  dns/message.cpp
-  dns/name.cpp
+  dns/name.cpp      # srv_data, question, rr
   dns/platform.cpp
-  dns/question.cpp
+  dns/question.cpp  # message
   dns/rr.cpp
   dns/serialize.cpp
-  dns/server.cpp
-  dns/srv_data.cpp)
+)
+
+add_library(lokinet-dns
+  STATIC
+  dns/message.cpp   # dns/server
+  dns/server.cpp    # handlers/exit+tun and service/endpoint
+  dns/srv_data.cpp  
+)
 
 # platform specific bits and bobs for setting dns
 add_library(lokinet-dns-platform INTERFACE)
@@ -102,15 +197,10 @@ endif()
 # nodedb data published to the network and versions of it stored locally
 add_library(lokinet-nodedb
   STATIC
-  bootstrap.cpp
-  net/exit_info.cpp
-  net/traffic_policy.cpp
+  bootstrap.cpp   # config, router.hpp
   nodedb.cpp
-  pow.cpp
-  profiling.cpp
-  router_contact.cpp
-  router_id.cpp
-  router_version.cpp
+  profiling.cpp # path, router, service::endpoint
+  net/traffic_policy.cpp  # config, intro_set
 )
 
 set(BOOTSTRAP_FALLBACKS)
@@ -141,15 +231,8 @@ add_library(lokinet-config
   config/key_manager.cpp
 )
 
-# lokinet-consensus is for deriving and tracking network consensus state for both service nodes and clients
-add_library(lokinet-consensus
-  STATIC
-  consensus/reachability_testing.cpp
-)
-
-# lokinet-layer-onion is the "dumb" onion routing layer with builds manages and does i/o
-# with onion paths. onion paths anonymize routing layer pdu.
-add_library(lokinet-layer-onion
+# All path objects; link directly to lokinet-core
+add_library(lokinet-path
   STATIC
   path/abstracthophandler.cpp
   path/path_context.cpp
@@ -160,262 +243,140 @@ add_library(lokinet-layer-onion
   messages/relay.cpp
 )
 
-# lokinet-layer-link is for our layer 2 analog which splits up layer 2 frames into
-# a series of layer 1 symbols which are then transmitted between lokinet instances
-add_library(lokinet-layer-link
-  STATIC
-  link/connection.cpp
-  link/contacts.cpp
-  link/link_manager.cpp
-  # link/tunnel.cpp
-)
+add_library(lokinet-amalgum INTERFACE)
 
-# lokinet-context holds the contextualized god objects for a lokinet instance
-# it is what any main function would link to in practice but it is hidden behind an interface library (lokinet-amalgum)
-add_library(lokinet-context
-  STATIC
-  context.cpp
-  link/link_manager.cpp
-  router/rc_lookup_handler.cpp
-  router/rc_gossiper.cpp
-  router/router.cpp
-  router/route_poker.cpp
-)
-
-# lokinet-rpc holds all rpc related compilation units
-add_library(lokinet-rpc
-  STATIC
-  rpc/json_binary_proxy.cpp
-  rpc/json_conversions.cpp
-  rpc/lokid_rpc_client.cpp
-  rpc/rpc_request_parser.cpp
-  rpc/rpc_server.cpp
-  rpc/endpoint_rpc.cpp
-)
-
-# optional peer stats library
-add_library(lokinet-peerstats
-  STATIC
-  peerstats/peer_db.cpp
-  peerstats/types.cpp
-)
-
-# kitchen sink to be removed after refactor
-add_library(lokinet-service-deprecated-kitchensink
-  STATIC
-  endpoint_base.cpp
-  exit/context.cpp
-  exit/endpoint.cpp
-  exit/policy.cpp
-  exit/session.cpp
-  handlers/exit.cpp
-  handlers/tun.cpp
-  service/name.cpp
-  service/address.cpp
-  service/async_key_exchange.cpp
-  service/auth.cpp
-  service/convotag.cpp
-  service/context.cpp
-  service/endpoint_state.cpp
-  service/endpoint_util.cpp
-  service/endpoint.cpp
-  service/identity.cpp
-  service/info.cpp
-  service/intro_set.cpp
-  service/intro.cpp
-  service/lns_tracker.cpp
-  service/name.cpp
-  service/outbound_context.cpp
-  service/protocol.cpp
-  service/session.cpp
-  service/tag.cpp
-)
-
-# interface library for setting commone includes, linkage and flags.
+# interface library for setting common includes, linkage and flags.
 add_library(lokinet-base INTERFACE)
 target_include_directories(lokinet-base
   INTERFACE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(lokinet-base INTERFACE quic)
 
-if(WITH_PEERSTATS)
-  target_compile_definitions(lokinet-base INTERFACE -DLOKINET_PEERSTATS_BACKEND)
-  target_link_libraries(lokinet-base INTERFACE sqlite_orm)
+# Link libraries to their internals
+target_link_libraries(lokinet-core-internal PUBLIC lokinet-utils lokinet-core-utils)
+target_link_libraries(lokinet-core PRIVATE lokinet-core-internal)
+# target_link_libraries(lokinet-rpc PRIVATE lokinet-rpc-internal)
+target_link_libraries(lokinet-wire PRIVATE lokinet-wire-internal)
+# target_link_libraries(lokinet-time-place PRIVATE lokinet-time-place-internal)
+target_link_libraries(lokinet-dns PRIVATE lokinet-dns-internal)
+target_link_libraries(lokinet-utils PRIVATE lokinet-utils-internal)
+
+# Link lokinet-dns to alternate libraries
+target_link_libraries(lokinet-dns PUBLIC lokinet-dns-platform)
+if (TARGET lokinet-dns-systemd)
+  target_link_libraries(lokinet-dns PUBLIC lokinet-dns-systemd)
 endif()
 
-# interface libraries for internal linkage
-add_library(lokinet-layers INTERFACE)
-add_library(lokinet-amalgum INTERFACE)
+# Link relevant to lokinet-base
+target_link_libraries(lokinet-core PUBLIC lokinet-base)
+target_link_libraries(lokinet-rpc PUBLIC lokinet-base)
+target_link_libraries(lokinet-nodedb PUBLIC lokinet-base)
+target_link_libraries(lokinet-wire PUBLIC lokinet-base)
+target_link_libraries(lokinet-time-place PUBLIC lokinet-base)
+target_link_libraries(lokinet-dns PUBLIC lokinet-base)
+target_link_libraries(lokinet-platform PUBLIC lokinet-base)
+target_link_libraries(lokinet-utils PUBLIC lokinet-base)
+target_link_libraries(lokinet-libntrup PUBLIC lokinet-base)
 
-# helper function to link a library to lokinet-base, enable lto, add to lokinet-amalgum and then link to other libs
-function(lokinet_link_lib libname)
-  # Absolutely fuck this line, it doesn't "create" the target, as the target already exists
-  # message(DEBUG "created target: ${libname}") 
-  enable_lto(${libname})
-  target_link_libraries(${libname} PUBLIC lokinet-base ${ARGN})
-  target_link_libraries(lokinet-amalgum INTERFACE ${libname})
-endfunction()
-
-# internal public linkages of components
-lokinet_link_lib(lokinet-util lokinet-libntrup)
-lokinet_link_lib(lokinet-cryptography lokinet-libcrypt lokinet-util)
-lokinet_link_lib(lokinet-peerstats lokinet-context)
-lokinet_link_lib(lokinet-consensus lokinet-context)
-lokinet_link_lib(lokinet-layer-link lokinet-cryptography lokinet-peerstats)
-
-if(TARGET lokinet-dns-systemd)
-  lokinet_link_lib(lokinet-dns-systemd
-    lokinet-dns
-    lokinet-platform
-  )
-endif()
-
-lokinet_link_lib(lokinet-platform lokinet-util)
-
-lokinet_link_lib(lokinet-config
-  lokinet-util
+# Link relevant to amalgum
+target_link_libraries(lokinet-amalgum 
+  INTERFACE
+  lokinet-core
+  lokinet-rpc
   lokinet-nodedb
+  lokinet-wire
+  lokinet-time-place
   lokinet-dns
   lokinet-platform
+  lokinet-utils
+  lokinet-cryptography
+  lokinet-path
+)
+#or just do this??
+# target_link_libraries(lokinet-amalgum INTERFACE lokinet-base)
+target_link_libraries(lokinet-wire-internal PUBLIC lokinet-time-place)
+target_link_libraries(lokinet-dns-internal PUBLIC lokinet-utils lokinet-config)
+target_link_libraries(lokinet-dns PUBLIC lokinet-cryptography)
+target_link_libraries(lokinet-nodedb PUBLIC lokinet-cryptography)
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography)
+target_link_libraries(lokinet-rpc PUBLIC lokinet-wire)
+target_link_libraries(lokinet-time-place PUBLIC lokinet-utils lokinet-cryptography)
+target_link_libraries(lokinet-wire PUBLIC lokinet-cryptography)
+target_link_libraries(lokinet-config PUBLIC lokinet-cryptography)
+
+target_link_libraries(lokinet-path
+  PUBLIC
+  lokinet-time-place
 )
 
-lokinet_link_lib(lokinet-context
+target_link_libraries(lokinet-core-utils 
+  PUBLIC 
+  lokinet-core 
+  lokinet-wire 
+  lokinet-rpc 
+  lokinet-platform
+)
+
+target_link_libraries(lokinet-cryptography
+  PUBLIC
+  lokinet-libcrypt
+  lokinet-libntrup
+)
+
+target_link_libraries(lokinet-utils
+  PUBLIC
+  lokinet-cryptography
+)
+
+# cross linkage
+target_link_libraries(lokinet-core 
+  PUBLIC 
+  lokinet-rpc 
+  lokinet-wire 
+  lokinet-nodedb 
   lokinet-config
-  lokinet-platform
-  lokinet-peerstats
-  lokinet-layers
-  lokinet-consensus
-  lokinet-rpc
-)
-
-lokinet_link_lib(
-  lokinet-platform
-  lokinet-config
-)
-
-lokinet_link_lib(lokinet-dns
-  lokinet-platform
-  lokinet-dns-platform
-  lokinet-config
-)
-
-lokinet_link_lib(lokinet-nodedb
-  lokinet-util
-  lokinet-platform
-)
-
-lokinet_link_lib(lokinet-util
-  lokinet-nodedb
-  lokinet-platform
-)
-
-lokinet_link_lib(lokinet-rpc
-  lokinet-context
-  lokinet-peerstats
-  lokinet-util
-)
-
-# inter lokinet-layer public/private linkage.
-# when linking each layer, we consider the layer directly below private linkage and the layer above public linkage.
-# this lets us hide functionality of layers below us when depended on by another component.
-#
-# from highest to lowest layer, the above layers are stacked as follows:
-#
-# platform (what lokinet snapps interact with, be it l3 os interaction or embedded lokinet)
-# flow     (how we want to route and stripe over our onion routing)
-# routing  (what we are onion routing)
-# onion    (how the onion routing happens)
-# link     (what we want to send over the wire and to where)
-# wire     (what is actually sent over the wire)
-#
-function(link_lokinet_layers)
-  set(lib ${ARGV0})
-  if(${ARGC} GREATER 1)
-    lokinet_link_lib(${ARGV1} ${lib})
-    list(REMOVE_AT ARGV 1)
-    target_link_libraries(${lib} PRIVATE ${ARGV1})
-    # recursion :D 
-    link_lokinet_layers(${ARGV})
-  else()
-    lokinet_link_lib(${lib})
-  endif()
-endfunction()
-
-link_lokinet_layers(
-  lokinet-layer-onion
-  lokinet-layer-link
-)
-
-# set me to OFF to disable old codepath
-set(use_old_impl ON)
-if(use_old_impl)
-  # flow layer deprecated-kitchensink (remove me after refactor)
-  lokinet_link_lib(lokinet-service-deprecated-kitchensink
-    lokinet-dns
-    lokinet-nodedb
-    lokinet-context
-    lokinet-layer-onion
-    lokinet-platform
-    lokinet-rpc
-  )
-  target_link_libraries(lokinet-layers INTERFACE lokinet-service-deprecated-kitchensink)
-endif()
-
-target_link_libraries(lokinet-layers INTERFACE
-  lokinet-layer-onion
-  lokinet-layer-link
+  lokinet-cryptography
 )
 
 
 # per component external deps
+# target_link_libraries(oxenmq::oxenmq
+#   PUBLIC
+#   lokinet-time-place
+#   lokinet-core
+#   lokinet-config
+#   lokinet-platform
+#   lokinet-dns
+#   lokinet-rpc
+# )
 
+target_link_libraries(lokinet-rpc PUBLIC oxenmq::oxenmq oxenc::oxenc)
+target_link_libraries(lokinet-core PUBLIC oxenmq::oxenmq CLI11 uvw)
 target_link_libraries(lokinet-config PUBLIC oxenmq::oxenmq)
-target_link_libraries(lokinet-platform PUBLIC oxenmq::oxenmq)
-target_link_libraries(lokinet-dns PUBLIC libunbound)
+target_link_libraries(lokinet-nodedb PUBLIC oxenmq::oxenmq uvw)
+target_link_libraries(lokinet-path PUBLIC oxenmq::oxenmq)
+target_link_libraries(lokinet-time-place PUBLIC uvw oxenc::oxenc)
+target_link_libraries(lokinet-platform PUBLIC oxenmq::oxenmq Threads::Threads base_libs uvw)
+target_link_libraries(lokinet-cryptography PUBLIC oxenc::oxenc sodium)
+target_link_libraries(lokinet-dns PUBLIC libunbound uvw)
+target_link_libraries(lokinet-utils PUBLIC nlohmann_json::nlohmann_json oxenc::oxenc)
+target_link_libraries(lokinet-wire PUBLIC oxenmq::oxenmq quic uvw)
 
-target_link_libraries(lokinet-cryptography PUBLIC
-  oxenc::oxenc
-  sodium
-)
+# if(WITH_EMBEDDED_LOKINET)
+#   include(GNUInstallDirs)
+#   add_library(lokinet-shared SHARED lokinet_shared.cpp)
+#   target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
+#   if(WIN32)
+#     set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
+#   endif()
+#   set_target_properties(lokinet-shared PROPERTIES OUTPUT_NAME lokinet)
+#   if(WIN32)
+#     target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
+#     install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
+#   elseif(NOT APPLE)
+#     install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
+#   endif()
+# endif()
 
-target_link_libraries(lokinet-context PUBLIC
-  CLI11
-  oxenmq::oxenmq
-  uvw
-)
-
-target_link_libraries(lokinet-platform PUBLIC
-  Threads::Threads
-  base_libs
-  uvw
-)
-
-target_link_libraries(lokinet-util PUBLIC
-  nlohmann_json::nlohmann_json
-#  filesystem
-  oxenc::oxenc
-)
-
-target_link_libraries(lokinet-layer-link PUBLIC
-  quic
-  uvw
-)
-
-if(WITH_EMBEDDED_LOKINET)
-  include(GNUInstallDirs)
-  add_library(lokinet-shared SHARED lokinet_shared.cpp)
-  target_link_libraries(lokinet-shared PUBLIC lokinet-amalgum)
-  if(WIN32)
-    set(CMAKE_SHARED_LIBRARY_PREFIX_CXX "")
-  endif()
-  set_target_properties(lokinet-shared PROPERTIES OUTPUT_NAME lokinet)
-  if(WIN32)
-    target_link_libraries(lokinet-shared PUBLIC ws2_32 iphlpapi -fstack-protector)
-    install(TARGETS lokinet-shared DESTINATION bin COMPONENT liblokinet)
-  elseif(NOT APPLE)
-    install(TARGETS lokinet-shared LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT liblokinet)
-  endif()
-endif()
-
-file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
-set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)
+# file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
+# set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)

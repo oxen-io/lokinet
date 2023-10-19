@@ -1,13 +1,15 @@
 #pragma once
 
-#include "constants.hpp"
+#include <sodium.h>
+
 #include <llarp/router_id.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/types.hpp>
 #include <llarp/util/fs.hpp>
-
 #include <algorithm>
 #include <iostream>
+
+#include "constants.hpp"
 
 namespace llarp
 {

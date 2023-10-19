@@ -5,7 +5,6 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <utility>
 
 namespace llarp::exit

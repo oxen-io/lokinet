@@ -2,7 +2,6 @@
 
 #include <llarp/router_id.hpp>
 #include <llarp/router_contact.hpp>
-
 #include <quic.hpp>
 
 namespace llarp::link

@@ -9,11 +9,12 @@
 #include <wspiapi.h>
 #endif
 
-#include <string_view>
-#include <string>
-#include "net_int.hpp"
 #include <oxenc/variant.h>
 #include <llarp/util/formattable.hpp>
+#include <string_view>
+#include <string>
+
+#include "net_int.hpp"
 
 namespace llarp
 {

@@ -5,14 +5,14 @@
 #include <mutex>
 #include <condition_variable>
 #include <optional>
-
-#include "annotations.hpp"
-
 #include <iostream>
 #include <thread>
 
+#include "annotations.hpp"
+
 #if defined(WIN32) && !defined(__GNUC__)
 #include <process.h>
+
 using pid_t = int;
 #else
 #include <sys/types.h>
@@ -21,6 +21,7 @@ using pid_t = int;
 
 #ifdef TRACY_ENABLE
 #include <Tracy.hpp>
+
 #define DECLARE_LOCK(type, var, ...) TracyLockable(type, var)
 #else
 #define DECLARE_LOCK(type, var, ...) type var __VA_ARGS__

@@ -20,7 +20,7 @@ namespace llarp
 
 namespace llarp::link
 {
-  struct Endpoint;
+  // struct Endpoint;
 
   using namespace std::chrono_literals;
 
@@ -153,7 +153,7 @@ namespace llarp::link
     struct ClientTunnel
     {
       // quic endpoint
-      std::unique_ptr<Endpoint> client;
+      // std::unique_ptr<Endpoint> client;
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
       // TCP listening socket
@@ -164,7 +164,28 @@ namespace llarp::link
       // because we are still handshaking, or we reached the stream limit).
       std::queue<std::weak_ptr<uvw::TCPHandle>> pending_incoming;
 
-      ~ClientTunnel();
+      ~ClientTunnel()
+      {
+        // if (tcp)
+        // {
+        //   tcp->close();
+        //   tcp->data(nullptr);
+        //   tcp.reset();
+        // }
+        // for (auto& conn : conns)
+        //   conn->close();
+        // conns.clear();
+
+        // while (not pending_incoming.empty())
+        // {
+        //   if (auto tcp = pending_incoming.front().lock())
+        //   {
+        //     tcp->clear();
+        //     tcp->close();
+        //   }
+        //   pending_incoming.pop();
+        // }
+      }
     };
 
     // pseudo-port -> Client instance (the "port" is used to route incoming quic packets to the

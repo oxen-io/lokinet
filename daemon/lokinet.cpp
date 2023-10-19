@@ -3,8 +3,7 @@
 #include <llarp.hpp>
 #include <llarp/util/lokinet_init.h>
 #include <llarp/util/exceptions.hpp>
-#include <llarp/util/fs.hpp>
-#include <llarp/util/str.hpp>
+#include <bits/chrono.h>
 
 #ifdef _WIN32
 #include <llarp/win32/service_manager.hpp>
@@ -13,16 +12,38 @@
 #include <llarp/util/service_manager.hpp>
 #endif
 
-#include <csignal>
+#include <CLI/CLI.hpp>
 
+#include <csignal>
 #include <string>
 #include <iostream>
 #include <thread>
 #include <future>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <initializer_list>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <utility>
 
-#include <CLI/App.hpp>
-#include <CLI/Formatter.hpp>
-#include <CLI/Config.hpp>
+#include "CLI/Error.hpp"
+#include "CLI/Option.hpp"
+#include "CLI/impl/App_inl.hpp"
+#include "CLI/impl/Option_inl.hpp"
+#include "fmt/core.h"
+#include "llarp/constants/files.hpp"
+#include "llarp/constants/platform.hpp"
+#include "llarp/ev/ev.hpp"
+#include "llarp/util/logging.hpp"
+#include "llarp/util/thread/threading.hpp"
+#include "oxen/log.hpp"
+#include "oxen/log/catlogger.hpp"
+#include "oxen/log/level.hpp"
+#include "oxen/log/ring_buffer_sink.hpp"
+#include "oxen/log/type.hpp"
+#include "spdlog/common.h"
 
 namespace
 {
@@ -350,8 +371,8 @@ namespace
   int
   lokinet_main(int argc, char** argv)
   {
-    if (auto result = Lokinet_INIT())
-      return result;
+    // if (auto result = Lokinet_INIT())
+    //   return result;
 
     llarp::RuntimeOptions opts;
     opts.showBanner = false;

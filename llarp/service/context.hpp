@@ -3,9 +3,9 @@
 #include <llarp/handlers/tun.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/config/config.hpp>
-#include "endpoint.hpp"
-
 #include <unordered_map>
+
+#include "endpoint.hpp"
 
 /*
   TODO:

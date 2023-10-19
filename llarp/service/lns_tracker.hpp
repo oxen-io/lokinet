@@ -1,5 +1,7 @@
 #pragma once
 
+#include <llarp/router_id.hpp>
+#include <oxenc/variant.h>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -7,8 +9,6 @@
 #include <string>
 
 #include "address.hpp"
-#include <llarp/router_id.hpp>
-#include <oxenc/variant.h>
 
 namespace llarp::service
 {

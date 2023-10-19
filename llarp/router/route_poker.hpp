@@ -1,11 +1,11 @@
 #pragma once
 
+#include <llarp/net/net_int.hpp>
+#include <external/oxen-libquic/include/quic.hpp>
 #include <unordered_map>
 #include <string>
 #include <memory>
 #include <optional>
-#include <llarp/net/net_int.hpp>
-#include <external/oxen-libquic/include/quic.hpp>
 
 namespace llarp
 {

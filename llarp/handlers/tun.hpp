@@ -11,7 +11,6 @@
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/vpn/packet_router.hpp>
 #include <llarp/vpn/platform.hpp>
-
 #include <future>
 #include <type_traits>
 #include <variant>

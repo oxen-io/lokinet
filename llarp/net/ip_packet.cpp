@@ -1,17 +1,16 @@
 #include "ip_packet.hpp"
-#include "ip.hpp"
+
 #include <llarp/constants/net.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
+
+#include "ip.hpp"
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
 
 #include <oxenc/endian.h>
-
 #include <algorithm>
-#include <map>
 
 namespace llarp::net
 {

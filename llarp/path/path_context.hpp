@@ -1,18 +1,17 @@
 #pragma once
 
-#include "abstracthophandler.hpp"
-#include "path_types.hpp"
-#include "pathset.hpp"
-#include "transit_hop.hpp"
-
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/net/ip_address.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
-
 #include <memory>
 #include <unordered_map>
+
+#include "abstracthophandler.hpp"
+#include "path_types.hpp"
+#include "pathset.hpp"
+#include "transit_hop.hpp"
 
 namespace llarp
 {

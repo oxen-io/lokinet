@@ -1,11 +1,11 @@
 #pragma once
 
-#include "name.hpp"
-#include "serialize.hpp"
-
 #include <tuple>
 #include <string_view>
 
+#include "dns.hpp"
+#include "name.hpp"
+#include "serialize.hpp"
 #include "llarp/util/status.hpp"
 
 namespace llarp::dns

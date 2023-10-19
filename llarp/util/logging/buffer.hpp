@@ -2,7 +2,6 @@
 
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/formattable.hpp>
-
 #include <string_view>
 #include <type_traits>
 #include <cstddef>

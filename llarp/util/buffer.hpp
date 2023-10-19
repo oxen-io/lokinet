@@ -1,13 +1,8 @@
 #pragma once
 
 #include <type_traits>
-#include "common.hpp"
-#include "mem.h"
-#include "types.hpp"
-
 #include <cassert>
 #include <iterator>
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -16,6 +11,10 @@
 #include <memory>
 #include <vector>
 #include <string_view>
+
+#include "common.hpp"
+#include "mem.h"
+#include "types.hpp"
 
 namespace llarp
 {

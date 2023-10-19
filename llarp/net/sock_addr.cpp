@@ -1,14 +1,13 @@
 #include "sock_addr.hpp"
+
+#include <llarp/util/str.hpp>
+#include <llarp/util/mem.hpp>
+#include <stdexcept>
+
 #include "ip_range.hpp"
 #include "ip.hpp"
 #include "net_bits.hpp"
 #include "net.hpp"
-#include <llarp/util/str.hpp>
-#include <llarp/util/logging.hpp>
-#include <llarp/util/mem.hpp>
-
-#include <charconv>
-#include <stdexcept>
 
 namespace llarp
 {

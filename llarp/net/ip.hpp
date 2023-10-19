@@ -1,5 +1,7 @@
 #pragma once
+
 #include "net_int.hpp"
+
 #include <cstdint>
 
 namespace llarp::net

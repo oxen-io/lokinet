@@ -2,7 +2,6 @@
 
 #include <llarp/service/auth.hpp>
 #include <llarp/service/convotag.hpp>
-
 #include <oxenmq/oxenmq.h>
 
 namespace llarp::service

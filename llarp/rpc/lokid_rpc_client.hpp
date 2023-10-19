@@ -1,7 +1,6 @@
 #pragma once
 
 #include <llarp/router_id.hpp>
-
 #include <oxenmq/oxenmq.h>
 #include <oxenmq/address.h>
 #include <llarp/crypto/types.hpp>
@@ -75,10 +74,6 @@ namespace llarp
       // "get_service_nodes" rpc request.
       void
       HandleNewServiceNodeList(const nlohmann::json& json);
-
-      // Handles request from lokid for peer stats on a specific peer
-      void
-      HandleGetPeerStats(oxenmq::Message& msg);
 
       // Handles notification of a new block
       void

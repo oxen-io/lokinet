@@ -1,8 +1,8 @@
 #include "encrypted_frame.hpp"
 
-#include "crypto.hpp"
 #include <llarp/util/logging.hpp>
-#include <llarp/util/mem.hpp>
+
+#include "crypto.hpp"
 
 namespace llarp
 {

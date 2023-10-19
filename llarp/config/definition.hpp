@@ -1,11 +1,10 @@
 #pragma once
 
 #include <fmt/core.h>
-#include <initializer_list>
-#include <type_traits>
 #include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
-
+#include <initializer_list>
+#include <type_traits>
 #include <iostream>
 #include <memory>
 #include <set>

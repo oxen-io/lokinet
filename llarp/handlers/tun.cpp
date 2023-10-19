@@ -1,11 +1,10 @@
 #include <algorithm>
 #include <iterator>
 #include <variant>
+
 #include "tun.hpp"
-#include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
-#include <netdb.h>
 #endif
 
 #include <llarp/dns/dns.hpp>
@@ -16,19 +15,12 @@
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
-#include <llarp/service/outbound_context.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/service/protocol_type.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/buffer.hpp>
-#include <llarp/dns/srv_data.hpp>
-#include <llarp/constants/net.hpp>
 #include <llarp/constants/platform.hpp>
-
-#include <oxenc/bt.h>
 
 namespace llarp::handlers
 {

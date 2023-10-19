@@ -2,10 +2,9 @@
 
 #include <llarp/handlers/null.hpp>
 #include <llarp/handlers/tun.hpp>
-#include <llarp/nodedb.hpp>
-#include <llarp/router/router.hpp>
-#include "endpoint.hpp"
 #include <stdexcept>
+
+#include "endpoint.hpp"
 
 namespace llarp
 {

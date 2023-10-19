@@ -1,8 +1,7 @@
 #include "rc_gossiper.hpp"
 
+#include <llarp/router_contact.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/constants/link_layer.hpp>
-#include <llarp/link/link_manager.hpp>
 
 namespace llarp
 {

@@ -2,7 +2,6 @@
 
 #include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
-
 #include <chrono>
 #include <unordered_map>
 #include <set>

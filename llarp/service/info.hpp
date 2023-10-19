@@ -1,13 +1,12 @@
 #pragma once
 
 #include <oxenc/bt.h>
-
 #include <llarp/crypto/types.hpp>
+#include <llarp/util/bencode.hpp>
+#include <optional>
+
 #include "address.hpp"
 #include "vanity.hpp"
-#include <llarp/util/bencode.hpp>
-
-#include <optional>
 
 namespace
 {

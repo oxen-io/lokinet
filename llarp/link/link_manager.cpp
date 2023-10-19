@@ -463,11 +463,6 @@ namespace llarp
       return;
   }
 
-  // TODO: do we still need this concept?
-  void
-  LinkManager::update_peer_db(std::shared_ptr<PeerDb>)
-  {}
-
   // TODO: this
   util::StatusObject
   LinkManager::extract_status() const
