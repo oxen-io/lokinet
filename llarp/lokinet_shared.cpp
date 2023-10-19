@@ -1,11 +1,11 @@
 #include <lokinet.h>
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
-#include <llarp/crypto/crypto_libsodium.hpp>
+#include <llarp/crypto/crypto.hpp>
 
 #include <llarp/router/router.hpp>
 #include <llarp/service/context.hpp>
-#include <llarp/quic/tunnel.hpp>
+#include <llarp/link/tunnel.hpp>
 #include <llarp/nodedb.hpp>
 
 #include <llarp/util/logging.hpp>
@@ -305,7 +305,7 @@ struct lokinet_context
   [[nodiscard]] auto
   endpoint(std::string name = "default") const
   {
-    return impl->router->hiddenServiceContext().GetEndpointByName(name);
+    return impl->router->hidden_service_context().GetEndpointByName(name);
   }
 
   std::unordered_map<int, bool> streams;
@@ -490,7 +490,7 @@ extern "C"
       return -3;
     auto lock = ctx->acquire();
     // add a temp cryptography implementation here so rc.Verify works
-    llarp::CryptoManager instance{new llarp::sodium::CryptoLibSodium{}};
+    llarp::CryptoManager instance{new llarp::Crypto{}};
     if (data[0] == 'l')
     {
       if (not ctx->config->bootstrap.routers.BDecode(&buf))
@@ -577,7 +577,7 @@ extern "C"
       return -3;
     if (not ctx->impl->LooksAlive())
       return -2;
-    return ctx->endpoint()->IsReady() ? 0 : -1;
+    return ctx->endpoint()->is_ready() ? 0 : -1;
   }
 
   int EXPORT
@@ -593,12 +593,12 @@ extern "C"
       ms = 10;
       iterations = 1;
     }
-    while (not ep->IsReady() and iterations > 0)
+    while (not ep->is_ready() and iterations > 0)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds{ms / 10});
       iterations--;
     }
-    return ep->IsReady() ? 0 : -1;
+    return ep->is_ready() ? 0 : -1;
   }
 
   void EXPORT
@@ -945,7 +945,7 @@ extern "C"
       else
         return EHOSTUNREACH;
     }
-    if (auto maybe = llarp::service::ParseAddress(std::string{remote->remote_host}))
+    if (auto maybe = llarp::service::parse_address(std::string{remote->remote_host}))
     {
       llarp::net::IPPacket pkt = llarp::net::IPPacket::UDP(
           llarp::nuint32_t{0},
@@ -957,10 +957,10 @@ extern "C"
       if (pkt.empty())
         return EINVAL;
       std::promise<int> ret;
-      ctx->impl->router->loop()->call([addr = *maybe, pkt = std::move(pkt), ep, &ret]() {
+      ctx->impl->router->loop()->call([addr = *maybe, pkt = pkt.to_string(), ep, &ret]() {
         if (auto tag = ep->GetBestConvoTagFor(addr))
         {
-          if (ep->SendToOrQueue(*tag, pkt.ConstBuffer(), llarp::service::ProtocolType::TrafficV4))
+          if (ep->send_to(*tag, pkt))
           {
             ret.set_value(0);
             return;
@@ -997,7 +997,7 @@ extern "C"
       else
         return EHOSTUNREACH;
     }
-    if (auto maybe = llarp::service::ParseAddress(std::string{remote->remote_host}))
+    if (auto maybe = llarp::service::parse_address(std::string{remote->remote_host}))
     {
       {
         // check for pre existing flow
@@ -1012,14 +1012,19 @@ extern "C"
           }
         }
       }
+
       std::promise<bool> gotten;
-      ctx->impl->router->loop()->call([addr = *maybe, ep, &gotten]() {
-        ep->MarkAddressOutbound(addr);
-        auto res = ep->EnsurePathTo(
-            addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
-        if (not res)
+
+      ctx->impl->router->loop()->call([maybe_addr = *maybe, ep, &gotten]() {
+        if (auto* addr = std::get_if<llarp::service::Address>(&maybe_addr))
         {
-          gotten.set_value(false);
+          ep->MarkAddressOutbound(*addr);
+          auto res = ep->EnsurePathTo(
+              *addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
+          if (not res)
+          {
+            gotten.set_value(false);
+          }
         }
       });
       if (gotten.get_future().get())

@@ -12,8 +12,6 @@
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/tooling/peer_stats_event.hpp>
-#include <llarp/tooling/router_event.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
@@ -506,8 +504,9 @@ namespace llarp
 
   bool
   Router::ParseRoutingMessageBuffer(
-      const llarp_buffer_t&, routing::AbstractRoutingMessageHandler*, const PathID_t&)
+      const llarp_buffer_t&, path::AbstractHopHandler&, const PathID_t&)
   {
+    // TODO: will go away with the removal of flush upstream/downstream
     return false;
   }
 
@@ -1537,12 +1536,6 @@ namespace llarp
   Router::net() const
   {
     return *llarp::net::Platform::Default_ptr();
-  }
-
-  void
-  Router::handle_router_event(std::unique_ptr<tooling::RouterEvent> event) const
-  {
-    LogDebug(event->ToString());
   }
 
 }  // namespace llarp

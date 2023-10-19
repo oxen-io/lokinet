@@ -275,7 +275,7 @@ namespace llarp::service
       if (bte.empty())
       {
         log::error(logcat, "Failed to decode inner protocol message");
-        DumpBuffer(*buf);
+        // DumpBuffer(*buf);
         self->msg.reset();
         return;
       }
@@ -304,8 +304,12 @@ namespace llarp::service
 
       // PKE (A, B, N)
       SharedSecret shared_secret;
-      path_dh_func dh_server = [crypto = CryptoManager::instance()](auto&& params...) -> bool {
-        return crypto->dh_server(std::forward<decltype(params)>(params));
+      path_dh_func dh_server = [crypto = CryptoManager::instance()](
+                                   llarp::SharedSecret& shared,
+                                   const PubKey& pk,
+                                   const SecretKey& sk,
+                                   const TunnelNonce& n) -> bool {
+        return crypto->dh_server(shared, pk, sk, n);
       };
 
       if (!self->m_LocalIdentity.KeyExchange(

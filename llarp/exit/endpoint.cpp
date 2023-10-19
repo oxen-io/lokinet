@@ -3,7 +3,6 @@
 #include <llarp/handlers/exit.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/quic/tunnel.hpp>
 
 namespace llarp::exit
 {
@@ -14,38 +13,38 @@ namespace llarp::exit
       huint128_t ip,
       llarp::handlers::ExitEndpoint* parent)
       : createdAt{parent->Now()}
-      , m_Parent{parent}
-      , m_remoteSignKey{remoteIdent}
-      , m_CurrentPath{beginPath}
-      , m_IP{ip}
-      , m_RewriteSource{rewriteIP}
+      , parent{parent}
+      , remote_signkey{remoteIdent}
+      , current_path{beginPath}
+      , IP{ip}
+      , rewrite_source{rewriteIP}
   {
-    m_LastActive = parent->Now();
+    last_active = parent->Now();
   }
 
   Endpoint::~Endpoint()
   {
-    if (m_CurrentPath)
-      m_Parent->DelEndpointInfo(m_CurrentPath->RXID());
+    if (current_path)
+      parent->DelEndpointInfo(current_path->RXID());
   }
 
   void
   Endpoint::Close()
   {
-    m_Parent->RemoveExit(this);
+    parent->RemoveExit(this);
   }
 
   util::StatusObject
   Endpoint::ExtractStatus() const
   {
-    auto now = m_Parent->Now();
+    auto now = parent->Now();
     util::StatusObject obj{
-        {"identity", m_remoteSignKey.ToString()},
-        {"ip", m_IP.ToString()},
-        {"txRate", m_TxRate},
-        {"rxRate", m_RxRate},
+        {"identity", remote_signkey.ToString()},
+        {"ip", IP.ToString()},
+        {"txRate", tx_rate},
+        {"rxRate", rx_rate},
         {"createdAt", to_json(createdAt)},
-        {"exiting", !m_RewriteSource},
+        {"exiting", !rewrite_source},
         {"looksDead", LooksDead(now)},
         {"expiresSoon", ExpiresSoon(now)},
         {"expired", IsExpired(now)}};
@@ -55,10 +54,10 @@ namespace llarp::exit
   bool
   Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
   {
-    if (!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
+    if (!parent->UpdateEndpointPath(remote_signkey, nextPath))
       return false;
-    const RouterID us{m_Parent->GetRouter()->pubkey()};
-    m_CurrentPath = m_Parent->GetRouter()->path_context().GetByUpstream(us, nextPath);
+    const RouterID us{parent->GetRouter()->pubkey()};
+    current_path = parent->GetRouter()->path_context().GetByUpstream(us, nextPath);
     return true;
   }
 
@@ -66,8 +65,8 @@ namespace llarp::exit
   Endpoint::Tick(llarp_time_t now)
   {
     (void)now;
-    m_RxRate = 0;
-    m_TxRate = 0;
+    rx_rate = 0;
+    tx_rate = 0;
   }
 
   bool
@@ -85,8 +84,8 @@ namespace llarp::exit
   bool
   Endpoint::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
-    if (m_CurrentPath)
-      return m_CurrentPath->ExpiresSoon(now, dlt);
+    if (current_path)
+      return current_path->ExpiresSoon(now, dlt);
     return true;
   }
 
@@ -100,138 +99,145 @@ namespace llarp::exit
       return true;
     auto lastPing = path->LastRemoteActivityAt();
     if (lastPing == 0s || (now > lastPing && now - lastPing > timeout))
-      return now > m_LastActive && now - m_LastActive > timeout;
+      return now > last_active && now - last_active > timeout;
     else if (lastPing > 0s)  // NOLINT
       return now > lastPing && now - lastPing > timeout;
     return lastPing > 0s;
   }
 
-  bool
-  Endpoint::QueueOutboundTraffic(
-      PathID_t path, std::vector<byte_t> buf, uint64_t counter, service::ProtocolType t)
-  {
-    const service::ConvoTag tag{path.as_array()};
-    if (t == service::ProtocolType::QUIC)
+  /*   bool
+    Endpoint::QueueOutboundTraffic(
+        PathID_t path, std::vector<byte_t> buf, uint64_t counter, service::ProtocolType t)
     {
-      auto quic = m_Parent->GetQUICTunnel();
-      if (not quic)
+      const service::ConvoTag tag{path.as_array()};
+
+      // current_path->send_path_control_message(std::string method, std::string body,
+    std::function<void (oxen::quic::message)> func)
+
+      if (t == service::ProtocolType::QUIC)
+      {
+        auto quic = parent->GetQUICTunnel();
+        if (not quic)
+          return false;
+        tx_rate += buf.size();
+        quic->receive_packet(tag, std::move(buf));
+        last_active = parent->Now();
+        return true;
+      }
+      // queue overflow
+      if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
-      m_TxRate += buf.size();
-      quic->receive_packet(tag, std::move(buf));
-      m_LastActive = m_Parent->Now();
-      return true;
-    }
-    // queue overflow
-    if (m_UpstreamQueue.size() > MaxUpstreamQueueSize)
-      return false;
 
-    llarp::net::IPPacket pkt{std::move(buf)};
-    if (pkt.empty())
-      return false;
-
-    if (pkt.IsV6() && m_Parent->SupportsV6())
-    {
-      huint128_t dst;
-      if (m_RewriteSource)
-        dst = m_Parent->GetIfAddr();
-      else
-        dst = pkt.dstv6();
-      pkt.UpdateIPv6Address(m_IP, dst);
-    }
-    else if (pkt.IsV4() && !m_Parent->SupportsV6())
-    {
-      huint32_t dst;
-      if (m_RewriteSource)
-        dst = net::TruncateV6(m_Parent->GetIfAddr());
-      else
-        dst = pkt.dstv4();
-      pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(m_IP)), xhtonl(dst));
-    }
-    else
-    {
-      return false;
-    }
-    m_TxRate += pkt.size();
-    m_UpstreamQueue.emplace(std::move(pkt), counter);
-    m_LastActive = m_Parent->Now();
-    return true;
-  }
-
-  bool
-  Endpoint::QueueInboundTraffic(std::vector<byte_t> buf, service::ProtocolType type)
-  {
-    if (type != service::ProtocolType::QUIC)
-    {
       llarp::net::IPPacket pkt{std::move(buf)};
       if (pkt.empty())
         return false;
 
-      huint128_t src;
-      if (m_RewriteSource)
-        src = m_Parent->GetIfAddr();
+      if (pkt.IsV6() && parent->SupportsV6())
+      {
+        huint128_t dst;
+        if (rewrite_source)
+          dst = parent->GetIfAddr();
+        else
+          dst = pkt.dstv6();
+        pkt.UpdateIPv6Address(IP, dst);
+      }
+      else if (pkt.IsV4() && !parent->SupportsV6())
+      {
+        huint32_t dst;
+        if (rewrite_source)
+          dst = net::TruncateV6(parent->GetIfAddr());
+        else
+          dst = pkt.dstv4();
+        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(IP)), xhtonl(dst));
+      }
       else
-        src = pkt.srcv6();
-      if (pkt.IsV6())
-        pkt.UpdateIPv6Address(src, m_IP);
-      else
-        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+      {
+        return false;
+      }
+      tx_rate += pkt.size();
+      m_UpstreamQueue.emplace(std::move(pkt), counter);
+      last_active = parent->Now();
+      return true;
+    } */
 
-      buf = pkt.steal();
-    }
+  bool
+  Endpoint::QueueInboundTraffic(std::vector<byte_t>, service::ProtocolType)
+  {
+    // TODO: this will go away with removing flush
 
-    const uint8_t queue_idx = buf.size() / llarp::routing::EXIT_PAD_SIZE;
-    if (m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
-      m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
-    auto& queue = m_DownstreamQueues.at(queue_idx);
-    if (queue.size() == 0)
-    {
-      queue.emplace_back();
-      queue.back().protocol = type;
-      return queue.back().PutBuffer(std::move(buf), m_Counter++);
-    }
-    auto& msg = queue.back();
-    if (msg.Size() + buf.size() > llarp::routing::EXIT_PAD_SIZE)
-    {
-      queue.emplace_back();
-      queue.back().protocol = type;
-      return queue.back().PutBuffer(std::move(buf), m_Counter++);
-    }
-    msg.protocol = type;
-    return msg.PutBuffer(std::move(buf), m_Counter++);
+    // if (type != service::ProtocolType::QUIC)
+    // {
+    //   llarp::net::IPPacket pkt{std::move(buf)};
+    //   if (pkt.empty())
+    //     return false;
+
+    //   huint128_t src;
+    //   if (m_RewriteSource)
+    //     src = m_Parent->GetIfAddr();
+    //   else
+    //     src = pkt.srcv6();
+    //   if (pkt.IsV6())
+    //     pkt.UpdateIPv6Address(src, m_IP);
+    //   else
+    //     pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
+
+    //   buf = pkt.steal();
+    // }
+
+    // const uint8_t queue_idx = buf.size() / llarp::routing::EXIT_PAD_SIZE;
+    // if (m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
+    //   m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
+    // auto& queue = m_DownstreamQueues.at(queue_idx);
+    // if (queue.size() == 0)
+    // {
+    //   queue.emplace_back();
+    //   queue.back().protocol = type;
+    //   return queue.back().PutBuffer(std::move(buf), m_Counter++);
+    // }
+    // auto& msg = queue.back();
+    // if (msg.Size() + buf.size() > llarp::routing::EXIT_PAD_SIZE)
+    // {
+    //   queue.emplace_back();
+    //   queue.back().protocol = type;
+    //   return queue.back().PutBuffer(std::move(buf), m_Counter++);
+    // }
+    // msg.protocol = type;
+    // return msg.PutBuffer(std::move(buf), m_Counter++);
+    return true;
   }
 
   bool
   Endpoint::Flush()
   {
     // flush upstream queue
-    while (m_UpstreamQueue.size())
-    {
-      m_Parent->QueueOutboundTraffic(const_cast<net::IPPacket&>(m_UpstreamQueue.top().pkt).steal());
-      m_UpstreamQueue.pop();
-    }
+    // while (m_UpstreamQueue.size())
+    // {
+    //   parent->QueueOutboundTraffic(const_cast<net::IPPacket&>(m_UpstreamQueue.top().pkt).steal());
+    //   m_UpstreamQueue.pop();
+    // }
     // flush downstream queue
     auto path = GetCurrentPath();
     bool sent = path != nullptr;
-    if (path)
-    {
-      for (auto& item : m_DownstreamQueues)
-      {
-        auto& queue = item.second;
-        while (queue.size())
-        {
-          auto& msg = queue.front();
-          msg.sequence_number = path->NextSeqNo();
-          if (path->SendRoutingMessage(msg, m_Parent->GetRouter()))
-          {
-            m_RxRate += msg.Size();
-            sent = true;
-          }
-          queue.pop_front();
-        }
-      }
-    }
-    for (auto& item : m_DownstreamQueues)
-      item.second.clear();
+    // if (path)
+    // {
+    //   for (auto& item : m_DownstreamQueues)
+    //   {
+    //     auto& queue = item.second;
+    //     while (queue.size())
+    //     {
+    //       auto& msg = queue.front();
+    //       msg.sequence_number = path->NextSeqNo();
+    //       if (path->SendRoutingMessage(msg, m_Parent->GetRouter()))
+    //       {
+    //         m_RxRate += msg.Size();
+    //         sent = true;
+    //       }
+    //       queue.pop_front();
+    //     }
+    //   }
+    // }
+    // for (auto& item : m_DownstreamQueues)
+    //   item.second.clear();
     return sent;
   }
 }  // namespace llarp::exit

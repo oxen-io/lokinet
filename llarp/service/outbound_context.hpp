@@ -58,6 +58,12 @@ namespace llarp::service
 
     ~OutboundContext() override;
 
+    ConvoTag
+    get_current_tag() const
+    {
+      return current_tag;
+    }
+
     void
     gen_intro_async(std::string payload);
 
@@ -111,7 +117,7 @@ namespace llarp::service
 
     /// shift the intro off the current router it is using
     void
-    ShiftIntroRouter(const RouterID remote);
+    ShiftIntroRouter(const RouterID remote = RouterID{});
 
     /// return true if we are ready to send
     bool
@@ -165,14 +171,6 @@ namespace llarp::service
 
     std::chrono::milliseconds
     RTT() const;
-
-    bool
-    OnIntroSetUpdate(
-        const Address& addr,
-        std::optional<IntroSet> i,
-        const RouterID& endpoint,
-        std::chrono::milliseconds,
-        uint64_t relayOrder);
 
    private:
     /// swap remoteIntro with next intro

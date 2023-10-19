@@ -10,6 +10,7 @@
 #include <llarp/dht/key.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/link/link_manager.hpp>
+#include <llarp/link/tunnel.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
@@ -19,7 +20,6 @@
 #include <llarp/router/router.hpp>
 #include <llarp/router/route_poker.hpp>
 
-#include <llarp/tooling/dht_event.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/meta/memfn.hpp>
@@ -50,7 +50,7 @@ namespace llarp::service
     _recv_event_queue.enable();
 
     if (Loop()->MaybeGetUVWLoop())
-      _tunnel_manager = std::make_unique<quic::TunnelManager>(*this);
+      _tunnel_manager = std::make_unique<link::TunnelManager>(*this);
   }
 
   bool
@@ -167,7 +167,7 @@ namespace llarp::service
 
               auto result = ptr->EnsurePathToService(
                   saddr,
-                  [ptr, name, ranges, result_handler, poker](auto addr, auto* ctx) {
+                  [ptr, name, ranges, result_handler, poker](auto addr, OutboundContext* ctx) {
                     if (ctx == nullptr)
                     {
                       result_handler(false, "could not establish flow to {}"_format(name));
@@ -175,24 +175,23 @@ namespace llarp::service
                     }
 
                     // make a lambda that sends the reply after doing auth
-                    auto apply_result =
-                        [ptr, poker, addr, result_handler, ranges](AuthResult result) {
-                          if (result.code != AuthResultCode::eAuthAccepted)
-                          {
-                            result_handler(false, result.reason);
-                            return;
-                          }
+                    auto apply_result = [ptr, poker, addr, result_handler, ranges](
+                                            std::string result, bool success) {
+                      if (success)
+                      {
+                        for (const auto& range : ranges)
+                          ptr->MapExitRange(range, addr);
 
-                          for (const auto& range : ranges)
-                            ptr->MapExitRange(range, addr);
+                        if (poker)
+                          poker->put_up();
 
-                          if (poker)
-                            poker->put_up();
+                        result_handler(true, result);
+                      }
 
-                          result_handler(true, result.reason);
-                        };
+                      result_handler(false, result);
+                    };
 
-                    ctx->AsyncSendAuth(apply_result);
+                    ctx->send_auth_async(apply_result);
                   },
                   ptr->PathAlignmentTimeout());
 
@@ -662,11 +661,12 @@ namespace llarp::service
       }
     }
     // add quic ethertype if we have listeners set up
-    if (auto* quic = GetQUICTunnel())
-    {
-      if (quic->hasListeners())
-        intro_set().supported_protocols.push_back(ProtocolType::QUIC);
-    }
+    // if (auto* quic = GetQUICTunnel())
+    // {
+    // TODO:
+    // if (quic->hasListeners())
+    //   intro_set().supported_protocols.push_back(ProtocolType::QUIC);
+    // }
 
     intro_set().intros.clear();
     for (auto& intro : intros)
@@ -730,7 +730,7 @@ namespace llarp::service
     return _state->remote_sessions.size() + _state->snode_sessions.size();
   }
 
-  constexpr auto PublishIntrosetTimeout = 20s;
+  [[maybe_unused]] constexpr auto PublishIntrosetTimeout = 20s;
 
   void
   Endpoint::ResetInternalState()
@@ -784,7 +784,7 @@ namespace llarp::service
   constexpr auto MaxOutboundContextPerRemote = 1;
 
   void
-  Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t left)
+  Endpoint::PutNewOutboundContext(const service::IntroSet& introset, llarp_time_t)
   {
     const Address addr{introset.address_keys.Addr()};
 
@@ -799,8 +799,9 @@ namespace llarp::service
     auto sessionRange = remoteSessions.equal_range(addr);
     for (auto itr = sessionRange.first; itr != sessionRange.second; ++itr)
     {
-      itr->second->AddReadyHook(
-          [addr, this](auto session) { InformPathToService(addr, session); }, left);
+      // TODO:
+      // itr->second->AddReadyHook(
+      //     [addr, this](auto session) { InformPathToService(addr, session); }, left);
     }
   }
 
@@ -1058,7 +1059,7 @@ namespace llarp::service
 
   void
   Endpoint::SendAuthResult(
-      path::Path_ptr path, PathID_t replyPath, ConvoTag tag, std::string result, bool success)
+      path::Path_ptr path, PathID_t /* replyPath */, ConvoTag tag, std::string result, bool success)
   {
     // not applicable because we are not an exit or don't have an endpoint auth policy
     if ((not _state->is_exit_enabled) or _auth_policy == nullptr)
@@ -1109,8 +1110,10 @@ namespace llarp::service
         return;
       }
     }
-    _send_queue.tryPushBack(
-        SendEvent{std::make_shared<routing::PathTransferMessage>(f, replyPath), path});
+
+    // TODO:
+    // _send_queue.tryPushBack(
+    //     SendEvent{std::make_shared<routing::PathTransferMessage>(f, replyPath), path});
   }
 
   void
@@ -1120,7 +1123,7 @@ namespace llarp::service
   }
 
   void
-  Endpoint::ResetConvoTag(ConvoTag tag, path::Path_ptr p, PathID_t from)
+  Endpoint::ResetConvoTag(ConvoTag tag, path::Path_ptr p, PathID_t /* from */)
   {
     // send reset convo tag message
     ProtocolFrameMessage f{};
@@ -1131,8 +1134,9 @@ namespace llarp::service
     {
       LogWarn("invalidating convotag T=", tag);
       RemoveConvoTag(tag);
-      _send_queue.tryPushBack(
-          SendEvent{std::make_shared<routing::PathTransferMessage>(f, from), p});
+      // TODO:
+      // _send_queue.tryPushBack(
+      //     SendEvent{std::make_shared<routing::PathTransferMessage>(f, from), p});
     }
   }
 
@@ -1235,12 +1239,12 @@ namespace llarp::service
           [hook](auto, auto* ctx) -> bool {
             if (ctx)
             {
-              hook(ctx->currentConvoTag);
+              hook(ctx->get_current_tag());
+              return true;
             }
-            else
-            {
-              hook(std::nullopt);
-            }
+
+            hook(std::nullopt);
+            return false;
           },
           timeout);
     }
@@ -1436,7 +1440,7 @@ namespace llarp::service
   }
 
   void
-  Endpoint::Pump(llarp_time_t now)
+  Endpoint::Pump(llarp_time_t)
   {
     FlushRecvData();
     // send downstream packets to user for snode
@@ -1462,39 +1466,38 @@ namespace llarp::service
           msg.tag,
           msg.payload.size());
 
-      if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
-      {
-        ConvoTagRX(msg.tag);
-      }
-      else
-      {
-        LogWarn("Failed to handle inbound message");
-      }
+      // if (HandleInboundPacket(msg.tag, msg.payload, msg.proto, msg.seqno))
+      // {
+      //   ConvoTagRX(msg.tag);
+      // }
+      // else
+      // {
+      //   LogWarn("Failed to handle inbound message");
+      // }
 
       queue.pop();
-      a
     }
 
     auto r = router();
 
     // TODO: locking on this container
-    for (const auto& [addr, outctx] : _state->remote_sessions)
-    {
-      outctx->FlushUpstream();
-      outctx->Pump(now);
-    }
-    // TODO: locking on this container
-    for (const auto& [r, session] : _state->snode_sessions)
-      session->FlushUpstream();
+    // for (const auto& [addr, outctx] : _state->remote_sessions)
+    // {
+    //   outctx->FlushUpstream();
+    //   outctx->Pump(now);
+    // }
+    // // TODO: locking on this container
+    // for (const auto& [r, session] : _state->snode_sessions)
+    //   session->FlushUpstream();
 
-    // send queue flush
-    while (not _send_queue.empty())
-    {
-      SendEvent item = _send_queue.popFront();
-      item.first->sequence_number = item.second->NextSeqNo();
-      if (item.second->SendRoutingMessage(*item.first, r))
-        ConvoTagTX(item.first->protocol_frame_msg.convo_tag);
-    }
+    // // send queue flush
+    // while (not _send_queue.empty())
+    // {
+    //   SendEvent item = _send_queue.popFront();
+    //   item.first->sequence_number = item.second->NextSeqNo();
+    //   if (item.second->SendRoutingMessage(*item.first, r))
+    //     ConvoTagTX(item.first->protocol_frame_msg.convo_tag);
+    // }
 
     UpstreamFlush(r);
   }
@@ -1544,14 +1547,15 @@ namespace llarp::service
             auto itr = range.first;
             while (itr != range.second)
             {
-              if (itr->second->ReadyToSend() and itr->second->estimatedRTT > 0s)
-              {
-                if (itr->second->estimatedRTT < rtt)
-                {
-                  ret = tag;
-                  rtt = itr->second->estimatedRTT;
-                }
-              }
+              // TODO:
+              // if (itr->second->ReadyToSend() and itr->second->estimatedRTT > 0s)
+              // {
+              //   if (itr->second->estimatedRTT < rtt)
+              //   {
+              //     ret = tag;
+              //     rtt = itr->second->estimatedRTT;
+              //   }
+              // }
               itr++;
             }
           }
@@ -1712,7 +1716,7 @@ namespace llarp::service
     return itr->second;
   }
 
-  quic::TunnelManager*
+  link::TunnelManager*
   Endpoint::GetQUICTunnel()
   {
     return _tunnel_manager.get();

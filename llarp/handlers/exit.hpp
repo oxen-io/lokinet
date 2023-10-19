@@ -162,7 +162,7 @@ namespace llarp
       void
       Flush();
 
-      quic::TunnelManager*
+      link::TunnelManager*
       GetQUICTunnel() override;
 
       huint128_t
@@ -226,7 +226,7 @@ namespace llarp
       SockAddr resolver_addr;
       std::vector<SockAddr> upstream_resolvers;
 
-      std::shared_ptr<quic::TunnelManager> tunnel_manager;
+      std::shared_ptr<link::TunnelManager> tunnel_manager;
 
       using PacketQueue_t = std::
           priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;

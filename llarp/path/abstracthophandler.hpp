@@ -49,7 +49,7 @@ namespace llarp
 
       /// send routing message and increment sequence number
       virtual bool
-      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) = 0;
+      SendRoutingMessage(std::string payload, Router* r) = 0;
 
       // handle data in upstream direction
       virtual bool

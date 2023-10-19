@@ -7,7 +7,6 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/bits.hpp>
 
-#include <llarp/quic/tunnel.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 
 #include <cassert>
@@ -18,10 +17,9 @@ namespace llarp::handlers
   ExitEndpoint::ExitEndpoint(std::string name, Router* r)
       : router(r)
       , name(std::move(name))
-      , tunnel_manager{std::make_shared<quic::TunnelManager>(*this)}
+      , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
   {
     should_init_tun = true;
-    tunnel_manager = std::make_shared<quic::TunnelManager>(*this);
   }
 
   ExitEndpoint::~ExitEndpoint() = default;
@@ -749,12 +747,12 @@ namespace llarp::handlers
       if_name = *maybe;
     }
     LogInfo(Name(), " set ifname to ", if_name);
-    if (auto* quic = GetQUICTunnel())
-    {
-      quic->listen([ifaddr = net::TruncateV6(if_addr)](std::string_view, uint16_t port) {
-        return llarp::SockAddr{ifaddr, huint16_t{port}};
-      });
-    }
+    // if (auto* quic = GetQUICTunnel())
+    // {
+    // quic->listen([ifaddr = net::TruncateV6(if_addr)](std::string_view, uint16_t port) {
+    //   return llarp::SockAddr{ifaddr, huint16_t{port}};
+    // });
+    // }
   }
 
   huint128_t
@@ -783,7 +781,7 @@ namespace llarp::handlers
     return ip;
   }
 
-  quic::TunnelManager*
+  link::TunnelManager*
   ExitEndpoint::GetQUICTunnel()
   {
     return tunnel_manager.get();

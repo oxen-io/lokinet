@@ -1,5 +1,7 @@
 #include "traffic_policy.hpp"
-#include "llarp/util/str.hpp"
+
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/str.hpp>
 
 namespace llarp::net
 {

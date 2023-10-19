@@ -68,9 +68,8 @@ namespace llarp
       std::shared_ptr<ProtocolMessage> msg;
     };
 
-    struct Endpoint : public path::Builder,
-                      public EndpointBase,
-                      public std::enable_shared_from_this<Endpoint>
+    struct Endpoint : public path::Builder, public EndpointBase
+    // public std::enable_shared_from_this<Endpoint>
     {
       Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
@@ -446,7 +445,7 @@ namespace llarp
 
       /// Returns a pointer to the quic::Tunnel object handling quic connections for this endpoint.
       /// Returns nullptr if quic is not supported.
-      quic::TunnelManager*
+      link::TunnelManager*
       GetQUICTunnel() override;
 
      protected:
@@ -500,7 +499,7 @@ namespace llarp
       std::unique_ptr<EndpointState> _state;
       std::shared_ptr<IAuthPolicy> _auth_policy;
       std::unordered_map<Address, AuthInfo> _remote_auth_infos;
-      std::unique_ptr<quic::TunnelManager> _tunnel_manager;
+      std::unique_ptr<link::TunnelManager> _tunnel_manager;
 
       /// (ons name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>

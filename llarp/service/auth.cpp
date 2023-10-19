@@ -1,10 +1,11 @@
 #include "auth.hpp"
-#include <unordered_map>
+#include "protocol.hpp"
 
 #include <llarp/router/router.hpp>
-#include "protocol.hpp"
 #include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
+
+#include <unordered_map>
 
 namespace llarp::service
 {

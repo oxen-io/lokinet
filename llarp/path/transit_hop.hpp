@@ -9,8 +9,6 @@
 
 namespace llarp
 {
-  struct LR_CommitRecord;
-
   namespace dht
   {
     struct GotIntroMessage;
@@ -21,7 +19,7 @@ namespace llarp
     struct TransitHopInfo
     {
       TransitHopInfo() = default;
-      TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
+      TransitHopInfo(const RouterID& down);
 
       PathID_t txID, rxID;
       RouterID upstream;
@@ -116,10 +114,7 @@ namespace llarp
 
       // send routing message when end of path
       bool
-      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) override;
-
-      bool
-      HandleDHTMessage(const dht::AbstractDHTMessage& msg, Router* r) override;
+      SendRoutingMessage(std::string payload, Router* r) override;
 
       void
       FlushUpstream(Router* r) override;

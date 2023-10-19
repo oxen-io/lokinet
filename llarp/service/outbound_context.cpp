@@ -85,47 +85,6 @@ namespace llarp::service
   }
 
   bool
-  OutboundContext::OnIntroSetUpdate(
-      const Address&,
-      std::optional<IntroSet> foundIntro,
-      const RouterID& endpoint,
-      std::chrono::milliseconds,
-      uint64_t relayOrder)
-  {
-    if (marked_bad)
-      return true;
-    updatingIntroSet = false;
-    if (foundIntro)
-    {
-      if (foundIntro->time_signed == 0s)
-      {
-        LogWarn(Name(), " got introset with zero timestamp: ", *foundIntro);
-        return true;
-      }
-      if (current_intro.time_signed > foundIntro->time_signed)
-      {
-        LogInfo("introset is old, dropping");
-        return true;
-      }
-
-      const std::chrono::milliseconds now = Now();
-      if (foundIntro->IsExpired(now))
-      {
-        LogError("got expired introset from lookup from ", endpoint);
-        return true;
-      }
-      current_intro = *foundIntro;
-      ShiftIntroRouter(RouterID{});
-    }
-    else if (relayOrder > 0)
-    {
-      ++lookup_fails;
-      LogWarn(Name(), " failed to look up introset, fails=", lookup_fails);
-    }
-    return true;
-  }
-
-  bool
   OutboundContext::ReadyToSend() const
   {
     if (marked_bad)
@@ -215,28 +174,58 @@ namespace llarp::service
     log::info(link_cat, "{} updating introset", Name());
     last_introset_update = now;
 
-    // we want to use the parent endpoint's paths because outbound context
-    // does not implement path::PathSet::HandleGotIntroMessage
     const auto paths = GetManyPathsWithUniqueEndpoints(&ep, 2, location);
-    [[maybe_unused]] uint64_t relayOrder = 0;
+    uint64_t relayOrder = 0;
 
-    for ([[maybe_unused]] const auto& path : paths)
+    for (const auto& path : paths)
     {
-      // TODO: implement this
+      path->find_intro(location, false, relayOrder, [this](oxen::quic::message m) mutable {
+        if (marked_bad)
+        {
+          log::info(link_cat, "Outbound context has been marked bad (whatever that means)");
+          return;
+        }
 
-      // HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-      //     m_Endpoint,
-      //     util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-      //     location,
-      //     PubKey{addr.as_array()},
-      //     path->Endpoint(),
-      //     relayOrder,
-      //     m_Endpoint->GenTXID(),
-      //     (IntrosetUpdateInterval / 2) + (2 * path->intro.latency) +
-      //     IntrosetLookupGraceInterval);
-      // relayOrder++;
-      // if (job->SendRequestViaPath(path, m_Endpoint->router()))
-      //   updatingIntroSet = true;
+        updatingIntroSet = false;
+
+        if (m)
+        {
+          std::string introset;
+
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            introset = btdc.require<std::string>("INTROSET");
+          }
+          catch (...)
+          {
+            log::warning(link_cat, "Failed to parse find name response!");
+            throw;
+          }
+
+          service::EncryptedIntroSet enc{introset};
+          const auto intro = enc.decrypt(PubKey{addr.as_array()});
+
+          if (intro.time_signed == 0s)
+          {
+            log::warning(link_cat, "{} recieved introset with zero timestamp");
+            return;
+          }
+          if (current_intro.time_signed > intro.time_signed)
+          {
+            log::info(link_cat, "{} received outdated introset; dropping", Name());
+            return;
+          }
+          if (intro.IsExpired(llarp::time_now_ms()))
+          {
+            log::warning(link_cat, "{} received expired introset", Name());
+            return;
+          }
+
+          current_intro = intro;
+          ShiftIntroRouter();
+        }
+      });
     }
   }
 
@@ -544,7 +533,7 @@ namespace llarp::service
         ep.GetIdentity(),
         current_intro.sntru_pubkey,
         remote_intro,
-        ep,
+        &ep,
         current_tag);
 
     if (const auto maybe = ep.MaybeGetAuthInfoForEndpoint(remote_identity.Addr()); not maybe)

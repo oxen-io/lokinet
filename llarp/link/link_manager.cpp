@@ -675,7 +675,8 @@ namespace llarp
         {
           m.respond(
               serialize_response(
-                  {{"STATUS", FindRouterMessage::RETRY_ITER}, {"TARGET", target_addr.data()}}),
+                  {{"STATUS", FindRouterMessage::RETRY_ITER},
+                   {"TARGET", reinterpret_cast<const char*>(target_addr.data())}}),
               true);
         }
       }
@@ -1640,6 +1641,24 @@ namespace llarp
 
   void
   LinkManager::handle_path_control(oxen::quic::message m)
+  {
+    if (m.timed_out)
+    {
+      log::info(link_cat, "Path control message timed out!");
+      return;
+    }
+
+    try
+    {}
+    catch (const std::exception& e)
+    {
+      log::warning(link_cat, "Exception: {}", e.what());
+      return;
+    }
+  }
+
+  void
+  LinkManager::handle_convo_intro(oxen::quic::message m)
   {
     if (m.timed_out)
     {

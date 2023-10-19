@@ -2,16 +2,13 @@
 #include "pathbuilder.hpp"
 #include "transit_hop.hpp"
 
-#include <llarp/exit/exit_messages.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/dht.hpp>
-#include <llarp/messages/discard.hpp>
 #include <llarp/messages/exit.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/tooling/path_event.hpp>
 
 #include <oxenc/endian.h>
 
@@ -552,7 +549,7 @@ namespace llarp::path
   }
 
   void
-  Path::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r)
+  Path::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* /* r */)
   {
     for (const auto& msg : msgs)
     {
@@ -582,34 +579,27 @@ namespace llarp::path
       std::move around.
   */
   bool
-  Path::SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r)
+  Path::SendRoutingMessage(std::string payload, Router*)
   {
-    std::array<byte_t, MAX_LINK_MSG_SIZE / 2> tmp;
-    llarp_buffer_t buf(tmp);
-
-    auto bte = msg.bt_encode();
-    buf.write(bte.begin(), bte.end());
+    std::string buf(MAX_LINK_MSG_SIZE / 2, '\0');
+    buf.insert(0, payload);
 
     // make nonce
     TunnelNonce N;
     N.Randomize();
-    buf.sz = buf.cur - buf.base;
+
     // pad smaller messages
-    if (buf.sz < PAD_SIZE)
+    if (payload.size() < PAD_SIZE)
     {
       // randomize padding
-      CryptoManager::instance()->randbytes(buf.cur, PAD_SIZE - buf.sz);
-      buf.sz = PAD_SIZE;
+      CryptoManager::instance()->randbytes(
+          reinterpret_cast<unsigned char*>(buf.data()) + payload.size(), PAD_SIZE - payload.size());
     }
-    buf.cur = buf.base;
-    LogDebug(
-        "send routing message ",
-        msg.sequence_number,
-        " with ",
-        buf.sz,
-        " bytes to endpoint ",
-        Endpoint());
-    return HandleUpstream(buf, N, r);
+    log::debug(path_cat, "Sending {}B routing message to {}", buf.size(), Endpoint());
+
+    // TODO: path relaying here
+
+    return true;
   }
 
   template <typename Samples_t>

@@ -7,6 +7,8 @@
 #include "llarp/ev/ev.hpp"
 #include "llarp/dns/srv_data.hpp"
 
+#include <llarp/link/tunnel.hpp>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -19,11 +21,6 @@
 
 namespace llarp
 {
-  namespace quic
-  {
-    class TunnelManager;
-  }
-
   namespace dns
   {
     class Server;
@@ -111,7 +108,7 @@ namespace llarp
     virtual AddressVariant_t
     LocalAddress() const = 0;
 
-    virtual quic::TunnelManager*
+    virtual link::TunnelManager*
     GetQUICTunnel() = 0;
 
     virtual std::optional<AddressVariant_t>

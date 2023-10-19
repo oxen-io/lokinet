@@ -12,7 +12,7 @@ namespace llarp
 {
   class EndpointBase;
 
-  namespace quic
+  namespace link
   {
     class TunnelManager;
   }
@@ -163,12 +163,12 @@ namespace llarp
         }
       };
 
-      uint64_t _counter;
+      [[maybe_unused]] uint64_t _counter;
       llarp_time_t _last_use;
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
-      const bool m_BundleRC;
-      EndpointBase* const m_Parent;
+      [[maybe_unused]] const bool m_BundleRC;
+      [[maybe_unused]] EndpointBase* const m_Parent;
 
       void
       CallPendingCallbacks(bool success);

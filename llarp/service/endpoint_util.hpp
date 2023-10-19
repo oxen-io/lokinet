@@ -10,9 +10,6 @@ namespace llarp::service
     ExpireSNodeSessions(llarp_time_t now, SNodeConnectionMap& sessions);
 
     static void
-    ExpirePendingTx(llarp_time_t now, PendingLookupsMap& lookups);
-
-    static void
     ExpirePendingRouterLookups(llarp_time_t now, PendingRoutersMap& routers);
 
     static void

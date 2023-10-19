@@ -12,7 +12,6 @@
 #include <nlohmann/json.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/quic/tunnel.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/outbound_context.hpp>
 #include <llarp/service/auth.hpp>
@@ -214,7 +213,8 @@ namespace llarp::rpc
 
     if (quicconnect.request.closeID)
     {
-      quic->forget(quicconnect.request.closeID);
+      // TODO:
+      // quic->forget(quicconnect.request.closeID);
       SetJSONResponse("OK", quicconnect.response);
       return;
     }
@@ -223,12 +223,13 @@ namespace llarp::rpc
 
     try
     {
-      auto [addr, id] = quic->open(
-          quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
+      // TODO:
+      // auto [addr, id] = quic->open(
+      //     quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
 
       util::StatusObject status;
-      status["addr"] = addr.ToString();
-      status["id"] = id;
+      // status["addr"] = addr.ToString();
+      // status["id"] = id;
 
       SetJSONResponse(status, quicconnect.response);
     }
@@ -269,7 +270,8 @@ namespace llarp::rpc
 
     if (quiclistener.request.closeID)
     {
-      quic->forget(quiclistener.request.closeID);
+      // TODO:
+      // quic->forget(quiclistener.request.closeID);
       SetJSONResponse("OK", quiclistener.response);
       return;
     }
@@ -280,7 +282,8 @@ namespace llarp::rpc
       try
       {
         SockAddr addr{quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
-        id = quic->listen(addr);
+        // TODO:
+        // id = quic->listen(addr);
       }
       catch (std::exception& e)
       {

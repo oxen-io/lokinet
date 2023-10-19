@@ -206,7 +206,6 @@ add_library(lokinet-service-deprecated-kitchensink
   endpoint_base.cpp
   exit/context.cpp
   exit/endpoint.cpp
-  exit/exit_messages.cpp
   exit/policy.cpp
   exit/session.cpp
   handlers/exit.cpp
@@ -228,23 +227,9 @@ add_library(lokinet-service-deprecated-kitchensink
   service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
-  service/sendcontext.cpp
   service/session.cpp
   service/tag.cpp
 )
-
-
-# interal tooling for pybind
-add_library(lokinet-tooling INTERFACE)
-if(WITH_HIVE)
-  add_library(lokinet-hive-tooling
-    STATIC
-    tooling/router_hive.cpp
-    tooling/hive_router.cpp
-    tooling/hive_context.cpp
-  )
-  target_link_libraries(lokinet-tooling INTERFACE lokinet-hive-tooling)
-endif()
 
 # interface library for setting commone includes, linkage and flags.
 add_library(lokinet-base INTERFACE)
@@ -264,7 +249,8 @@ add_library(lokinet-amalgum INTERFACE)
 
 # helper function to link a library to lokinet-base, enable lto, add to lokinet-amalgum and then link to other libs
 function(lokinet_link_lib libname)
-  message(DEBUG "created target: ${libname}")
+  # Absolutely fuck this line, it doesn't "create" the target, as the target already exists
+  # message(DEBUG "created target: ${libname}") 
   enable_lto(${libname})
   target_link_libraries(${libname} PUBLIC lokinet-base ${ARGN})
   target_link_libraries(lokinet-amalgum INTERFACE ${libname})
@@ -275,11 +261,7 @@ lokinet_link_lib(lokinet-util lokinet-libntrup)
 lokinet_link_lib(lokinet-cryptography lokinet-libcrypt lokinet-util)
 lokinet_link_lib(lokinet-peerstats lokinet-context)
 lokinet_link_lib(lokinet-consensus lokinet-context)
-lokinet_link_lib(lokinet-layer-link lokinet-peerstats)
-
-if(TARGET lokinet-hive-tooling)
-  lokinet_link_lib(lokinet-hive-tooling lokinet-context)
-endif()
+lokinet_link_lib(lokinet-layer-link lokinet-cryptography lokinet-peerstats)
 
 if(TARGET lokinet-dns-systemd)
   lokinet_link_lib(lokinet-dns-systemd

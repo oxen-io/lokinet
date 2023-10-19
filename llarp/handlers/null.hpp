@@ -50,11 +50,9 @@ namespace llarp::handlers
           m_PacketRouter->HandleIPPacketFrom(std::move(*from), std::move(pkt));
           return true;
         }
-        else
-        {
-          LogWarn("did not handle packet, no endpoint with convotag T=", tag);
-          return false;
-        }
+
+        LogWarn("did not handle packet, no endpoint with convotag T=", tag);
+        return false;
       }
       if (t != service::ProtocolType::QUIC)
         return false;
@@ -70,7 +68,8 @@ namespace llarp::handlers
         LogWarn("invalid incoming quic packet, dropping");
         return false;
       }
-      quic->receive_packet(tag, buf);
+      // TODO:
+      // quic->receive_packet(tag, buf);
       return true;
     }
 
