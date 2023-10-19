@@ -1,6 +1,5 @@
 #include "ip_address.hpp"
-
-#include "net.hpp"
+#include "ip_range.hpp"
 
 namespace llarp
 {

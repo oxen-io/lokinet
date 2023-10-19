@@ -1,21 +1,19 @@
 #include "server.hpp"
+
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/apple.hpp>
-#include "dns.hpp"
-#include <iterator>
-#include <llarp/crypto/crypto.hpp>
-#include <array>
+#include <llarp/ev/udp_handle.hpp>
+#include <unbound.h>
 #include <stdexcept>
 #include <utility>
-#include <llarp/ev/udp_handle.hpp>
 #include <optional>
 #include <memory>
-#include <unbound.h>
-#include <uvw.hpp>
 
 #include "oxen/log.hpp"
 #include "sd_platform.hpp"
 #include "nm_platform.hpp"
+
+#include <uvw.hpp>
 
 namespace llarp::dns
 {

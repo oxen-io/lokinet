@@ -1,11 +1,11 @@
 #pragma once
 
+#include <fmt/format.h>
 #include <string_view>
 #include <vector>
 #include <chrono>
 #include <iterator>
 #include <charconv>
-#include <fmt/format.h>
 
 namespace llarp
 {

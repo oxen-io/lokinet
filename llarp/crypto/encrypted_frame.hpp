@@ -1,10 +1,11 @@
 #pragma once
 
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/mem.h>
+#include <utility>
+
 #include "encrypted.hpp"
 #include "types.hpp"
-#include <llarp/util/buffer.hpp>
-#include <utility>
-#include <llarp/util/mem.h>
 
 namespace llarp
 {

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <llarp/exit/endpoint.hpp>
-#include "tun.hpp"
 #include <llarp/dns/server.hpp>
 #include <unordered_map>
+
+#include "tun.hpp"
 
 namespace llarp
 {
@@ -226,7 +227,7 @@ namespace llarp
       SockAddr resolver_addr;
       std::vector<SockAddr> upstream_resolvers;
 
-      std::shared_ptr<link::TunnelManager> tunnel_manager;
+      // std::shared_ptr<link::TunnelManager> tunnel_manager;
 
       using PacketQueue_t = std::
           priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;

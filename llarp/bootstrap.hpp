@@ -1,8 +1,9 @@
 #pragma once
 
-#include "router_contact.hpp"
 #include <set>
 #include <unordered_map>
+
+#include "router_contact.hpp"
 #include "llarp/util/fs.hpp"
 
 namespace llarp

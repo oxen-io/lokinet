@@ -1,19 +1,13 @@
 #include "nodedb.hpp"
 
-#include "router_contact.hpp"
-#include "crypto/crypto.hpp"
-#include "crypto/types.hpp"
-#include "util/buffer.hpp"
-#include "util/fs.hpp"
-#include "util/logging.hpp"
-#include "util/time.hpp"
-#include "util/mem.hpp"
-#include "util/str.hpp"
-#include "dht/kademlia.hpp"
-
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
+
+#include "router_contact.hpp"
+#include "crypto/types.hpp"
+#include "util/time.hpp"
+#include "dht/kademlia.hpp"
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";

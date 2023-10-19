@@ -3,15 +3,15 @@
 #include <llarp/crypto/encrypted.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/service/convotag.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/time.hpp>
+#include <llarp/path/pathset.hpp>
+#include <vector>
+
 #include "protocol_type.hpp"
 #include "identity.hpp"
 #include "info.hpp"
 #include "intro.hpp"
-#include <llarp/util/bencode.hpp>
-#include <llarp/util/time.hpp>
-#include <llarp/path/pathset.hpp>
-
-#include <vector>
 
 struct llarp_threadpool;
 

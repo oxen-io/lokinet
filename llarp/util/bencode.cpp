@@ -1,7 +1,7 @@
 #include "bencode.hpp"
+
 #include <cstdlib>
 #include <cinttypes>
-#include <cstdio>
 
 bool
 bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)

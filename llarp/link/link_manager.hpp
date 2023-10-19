@@ -1,23 +1,19 @@
 #pragma once
 
-#include "connection.hpp"
 #include <llarp/constants/path.hpp>
 #include <llarp/util/decaying_hashset.hpp>
-
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/peerstats/peer_db.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/compare_ptr.hpp>
-
 #include <quic.hpp>
-
+#include <llarp/util/logging.hpp>
+#include <llarp/util/priority_queue.hpp>
 #include <unordered_map>
 #include <set>
 #include <atomic>
 
-#include <llarp/util/logging.hpp>
-#include <llarp/util/priority_queue.hpp>
+#include "connection.hpp"
 
 namespace
 {
@@ -263,9 +259,6 @@ namespace llarp
 
     void
     check_persisting_conns(llarp_time_t now);
-
-    void
-    update_peer_db(std::shared_ptr<PeerDb> peerDb);
 
     util::StatusObject
     extract_status() const;

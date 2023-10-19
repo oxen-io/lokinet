@@ -1,14 +1,8 @@
+#include <stdexcept>
+
 #include "net.hpp"
 #include "net_if.hpp"
-#include <stdexcept>
-#include <llarp/constants/platform.hpp>
-
-#include <arpa/inet.h>
-
-#include "ip.hpp"
 #include "ip_range.hpp"
-#include <llarp/util/logging.hpp>
-#include <llarp/util/str.hpp>
 
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>
@@ -16,9 +10,7 @@
 #include <ifaddrs.h>
 #endif
 
-#include <cstdio>
 #include <list>
-#include <type_traits>
 
 namespace llarp::net
 {

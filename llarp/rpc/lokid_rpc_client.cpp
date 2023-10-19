@@ -1,14 +1,10 @@
 #include "lokid_rpc_client.hpp"
 
-#include <stdexcept>
 #include <llarp/util/logging.hpp>
-
 #include <llarp/router/router.hpp>
-
 #include <nlohmann/json.hpp>
-#include <oxenc/bt.h>
 #include <oxenc/hex.h>
-#include <llarp/util/time.hpp>
+#include <stdexcept>
 
 namespace llarp::rpc
 {
@@ -45,8 +41,6 @@ namespace llarp::rpc
 
     // TODO: proper auth here
     auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
-    lokidCategory.add_request_command(
-        "get_peer_stats", [this](oxenmq::Message& m) { HandleGetPeerStats(m); });
     m_UpdatingList = false;
   }
 
@@ -392,73 +386,4 @@ namespace llarp::rpc
         req.dump());
   }
 
-  void
-  LokidRpcClient::HandleGetPeerStats(oxenmq::Message& msg)
-  {
-    LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");
-    for (auto str : msg.data)
-    {
-      LogInfo("    :", str);
-    }
-
-    if (auto router = m_Router.lock())
-    {
-      if (not router->peer_db())
-      {
-        LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
-
-        // TODO: this can sometimes occur if lokid hits our API before we're done configuring
-        //       (mostly an issue in a loopback testnet)
-        msg.send_reply("EAGAIN");
-        return;
-      }
-
-      try
-      {
-        // msg.data[0] is expected to contain a bt list of router ids (in our preferred string
-        // format)
-        if (msg.data.empty())
-        {
-          LogWarn("lokid requested peer stats with no request body");
-          msg.send_reply("peer stats request requires list of router IDs");
-          return;
-        }
-
-        std::vector<std::string> routerIdStrings;
-        oxenc::bt_deserialize(msg.data[0], routerIdStrings);
-
-        std::vector<RouterID> routerIds;
-        routerIds.reserve(routerIdStrings.size());
-
-        for (const auto& routerIdString : routerIdStrings)
-        {
-          RouterID id;
-          if (not id.FromString(routerIdString))
-          {
-            LogWarn("lokid sent us an invalid router id: ", routerIdString);
-            msg.send_reply("Invalid router id");
-            return;
-          }
-
-          routerIds.push_back(std::move(id));
-        }
-
-        auto statsList = router->peer_db()->listPeerStats(routerIds);
-
-        int32_t bufSize =
-            256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
-        auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[bufSize]);
-        llarp_buffer_t llarpBuf(buf.get(), bufSize);
-
-        PeerStats::BEncodeList(statsList, &llarpBuf);
-
-        msg.send_reply(std::string_view((const char*)llarpBuf.base, llarpBuf.cur - llarpBuf.base));
-      }
-      catch (const std::exception& e)
-      {
-        LogError("Failed to handle get_peer_stats request: ", e.what());
-        msg.send_reply("server error");
-      }
-    }
-  }
 }  // namespace llarp::rpc

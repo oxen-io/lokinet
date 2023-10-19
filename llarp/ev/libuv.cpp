@@ -1,12 +1,12 @@
 #include "libuv.hpp"
+
+#include <llarp/util/exceptions.hpp>
+#include <llarp/vpn/platform.hpp>
+
 #include <memory>
 #include <thread>
 #include <type_traits>
 #include <cstring>
-
-#include <llarp/util/exceptions.hpp>
-#include <llarp/util/thread/queue.hpp>
-#include <llarp/vpn/platform.hpp>
 
 #include <uvw.hpp>
 

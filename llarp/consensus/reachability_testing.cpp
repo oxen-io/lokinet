@@ -1,6 +1,6 @@
 
 #include "reachability_testing.hpp"
-#include <chrono>
+
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/crypto/crypto.hpp>

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "abstracthophandler.hpp"
-#include "path_types.hpp"
-#include "pathset.hpp"
-
 #include <llarp/constants/path.hpp>
 #include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
@@ -14,7 +10,6 @@
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
-
 #include <algorithm>
 #include <functional>
 #include <list>
@@ -22,6 +17,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "abstracthophandler.hpp"
+#include "path_types.hpp"
+#include "pathset.hpp"
 
 namespace llarp
 {
@@ -36,6 +35,7 @@ namespace llarp
     using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
     struct Ptr_hash;
+
     struct Endpoint_Hash;
     struct endpoint_comparator;
 

@@ -3,23 +3,17 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
-#include <llarp/constants/files.hpp>
 #include <llarp/constants/time.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dht/node.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/messages/dht.hpp>
-#include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/util/buffer.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
-#include <llarp/util/str.hpp>
 #include <llarp/util/status.hpp>
-
 #include <memory>
-#include <fstream>
 #include <cstdlib>
 #include <iterator>
 #include <unordered_map>
@@ -34,7 +28,6 @@
 #endif
 
 #include <llarp/constants/platform.hpp>
-
 #include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;
@@ -1052,29 +1045,6 @@ namespace llarp
     }
 
     _node_db->Tick(now);
-
-    if (_peer_db)
-    {
-      // TODO: throttle this?
-      // TODO: need to capture session stats when session terminates / is removed from link
-      // manager
-      _link_manager.update_peer_db(_peer_db);
-
-      if (_peer_db->shouldFlush(now))
-      {
-        LogDebug("Queing database flush...");
-        queue_disk_io([this]() {
-          try
-          {
-            _peer_db->flushDatabase();
-          }
-          catch (std::exception& ex)
-          {
-            LogError("Could not flush peer stats database: ", ex.what());
-          }
-        });
-      }
-    }
 
     std::set<dht::Key_t> peer_keys;
 

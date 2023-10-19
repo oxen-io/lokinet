@@ -1,10 +1,10 @@
 #pragma once
 
 #include <llarp/crypto/types.hpp>
-#include "ip_address.hpp"
 #include <llarp/util/bencode.hpp>
-
 #include <iosfwd>
+
+#include "ip_address.hpp"
 
 /**
  * exit_info.h

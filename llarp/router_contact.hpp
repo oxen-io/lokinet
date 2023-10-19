@@ -1,5 +1,11 @@
 #pragma once
 
+#include <external/oxen-libquic/include/quic.hpp>
+#include <oxenc/bt_producer.h>
+#include <nlohmann/json.hpp>
+#include <functional>
+#include <vector>
+
 #include "llarp/constants/version.hpp"
 #include "llarp/crypto/types.hpp"
 #include "llarp/net/exit_info.hpp"
@@ -7,15 +13,7 @@
 #include "llarp/util/bencode.hpp"
 #include "llarp/util/status.hpp"
 #include "router_version.hpp"
-
 #include "llarp/dns/srv_data.hpp"
-
-#include <external/oxen-libquic/include/quic.hpp>
-
-#include <oxenc/bt_producer.h>
-#include <nlohmann/json.hpp>
-#include <functional>
-#include <vector>
 
 #define MAX_RC_SIZE (1024)
 

@@ -1,17 +1,16 @@
 #pragma once
-#include "ev.hpp"
-#include "udp_handle.hpp"
 #include <llarp/util/thread/queue.hpp>
 #include <llarp/util/meta/memfn.hpp>
-
 #include <uvw/loop.h>
 #include <uvw/async.h>
 #include <uvw/poll.h>
 #include <uvw/udp.h>
-
 #include <functional>
 #include <map>
 #include <vector>
+
+#include "ev.hpp"
+#include "udp_handle.hpp"
 
 namespace llarp::uv
 {

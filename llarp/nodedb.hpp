@@ -1,16 +1,6 @@
 #pragma once
 
-#include "router_contact.hpp"
-#include "router_id.hpp"
-
-#include "util/common.hpp"
-#include "util/fs.hpp"
-#include "dht/key.hpp"
-#include "crypto/crypto.hpp"
-#include "util/thread/threading.hpp"
-#include "util/thread/annotations.hpp"
 #include <llarp/router/router.hpp>
-
 #include <set>
 #include <optional>
 #include <unordered_set>
@@ -18,6 +8,15 @@
 #include <utility>
 #include <atomic>
 #include <algorithm>
+
+#include "router_contact.hpp"
+#include "router_id.hpp"
+#include "util/common.hpp"
+#include "util/fs.hpp"
+#include "dht/key.hpp"
+#include "crypto/crypto.hpp"
+#include "util/thread/threading.hpp"
+#include "util/thread/annotations.hpp"
 
 namespace llarp
 {

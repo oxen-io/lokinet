@@ -1,9 +1,5 @@
 #pragma once
 
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
-#include "route_poker.hpp"
-
 #include <llarp/bootstrap.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
@@ -14,7 +10,6 @@
 #include <llarp/handlers/tun.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/peerstats/peer_db.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/consensus/reachability_testing.hpp>
@@ -28,7 +23,7 @@
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
 #include <llarp/util/service_manager.hpp>
-
+#include <oxenmq/address.h>
 #include <stdexcept>
 #include <functional>
 #include <list>
@@ -38,7 +33,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include <oxenmq/address.h>
+#include "rc_gossiper.hpp"
+#include "rc_lookup_handler.hpp"
+#include "route_poker.hpp"
 
 /*
   TONUKE:
@@ -115,7 +112,6 @@ namespace llarp
     llarp_time_t _last_stats_report = 0s;
     llarp_time_t _next_decomm_warning = time_now_ms() + 15s;
     std::shared_ptr<llarp::KeyManager> _key_manager;
-    std::shared_ptr<PeerDb> _peer_db;
     std::shared_ptr<Config> _config;
     uint32_t _path_build_count = 0;
 
@@ -214,12 +210,6 @@ namespace llarp
     rc_lookup_handler()
     {
       return _rc_lookup_handler;
-    }
-
-    std::shared_ptr<PeerDb>
-    peer_db()
-    {
-      return _peer_db;
     }
 
     inline int

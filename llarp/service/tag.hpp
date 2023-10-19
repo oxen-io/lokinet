@@ -3,7 +3,6 @@
 #include <llarp/dht/key.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/status.hpp>
-
 #include <sodium/crypto_generichash.h>
 
 namespace llarp

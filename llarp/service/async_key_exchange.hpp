@@ -1,6 +1,7 @@
 #pragma once
 
 #include <llarp/crypto/types.hpp>
+
 #include "identity.hpp"
 #include "protocol.hpp"
 

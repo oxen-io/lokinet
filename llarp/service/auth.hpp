@@ -1,9 +1,10 @@
 #pragma once
+#include <llarp/crypto/types.hpp>
 #include <optional>
 #include <string>
 #include <functional>
+
 #include "address.hpp"
-#include <llarp/crypto/types.hpp>
 
 namespace llarp
 {

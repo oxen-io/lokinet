@@ -4,13 +4,13 @@
 #include <llarp/service/auth.hpp>
 #include <llarp/service/convotag.hpp>
 #include <llarp/util/status.hpp>
-
 #include <unordered_map>
 #include <unordered_set>
 
 namespace llarp::service
 {
   struct AsyncKeyExchange;
+
   struct Endpoint;
 
   /// context needed to initiate an outbound hidden service session

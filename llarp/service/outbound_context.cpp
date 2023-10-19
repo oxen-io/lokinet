@@ -1,16 +1,13 @@
 #include "outbound_context.hpp"
+
+#include <llarp/router/router.hpp>
+#include <random>
+#include <algorithm>
+
 #include "async_key_exchange.hpp"
 #include "endpoint.hpp"
 #include "endpoint_util.hpp"
 #include "protocol_type.hpp"
-
-#include <llarp/router/router.hpp>
-#include <llarp/nodedb.hpp>
-#include <llarp/profiling.hpp>
-#include <llarp/util/meta/memfn.hpp>
-
-#include <random>
-#include <algorithm>
 
 namespace llarp::service
 {

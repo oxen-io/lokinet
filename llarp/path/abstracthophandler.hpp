@@ -6,7 +6,6 @@
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/messages/relay.hpp>
 #include <vector>
-
 #include <memory>
 
 struct llarp_buffer_t;

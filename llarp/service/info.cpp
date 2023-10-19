@@ -1,13 +1,8 @@
 #include "info.hpp"
 
 #include <llarp/crypto/crypto.hpp>
+
 #include "address.hpp"
-#include <llarp/util/buffer.hpp>
-
-#include <cassert>
-
-#include <sodium/crypto_generichash.h>
-#include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp::service
 {

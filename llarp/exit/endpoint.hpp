@@ -5,7 +5,6 @@
 #include <llarp/path/abstracthophandler.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/time.hpp>
-
 #include <queue>
 
 namespace llarp

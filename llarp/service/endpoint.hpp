@@ -6,7 +6,6 @@
 #include <llarp/net/net.hpp>
 #include <llarp/path/pathbuilder.hpp>
 #include <llarp/util/compare_ptr.hpp>
-
 // --- begin kitchen sink headers ----
 #include <llarp/service/address.hpp>
 #include <llarp/service/identity.hpp>
@@ -19,13 +18,12 @@
 #include <llarp/service/auth.hpp>
 // ----- end kitchen sink headers -----
 
+#include <oxenc/variant.h>
+#include <llarp/vpn/egres_packet_router.hpp>
+#include <llarp/dns/server.hpp>
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenc/variant.h>
-
-#include <llarp/vpn/egres_packet_router.hpp>
-#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -42,6 +40,7 @@ namespace llarp
   namespace service
   {
     struct AsyncKeyExchange;
+
     struct Context;
     struct EndpointState;
     struct OutboundContext;

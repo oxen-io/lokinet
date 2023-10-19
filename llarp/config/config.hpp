@@ -1,11 +1,6 @@
 #pragma once
-#include "ini.hpp"
-#include "definition.hpp"
 #include <llarp/net/traffic_policy.hpp>
 #include <llarp/net/net.hpp>
-
-#include <chrono>
-
 #include <llarp/bootstrap.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/router_contact.hpp>
@@ -20,7 +15,8 @@
 #include <llarp/service/auth.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/router_contact.hpp>
-
+#include <oxenmq/address.h>
+#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <optional>
@@ -29,7 +25,8 @@
 #include <vector>
 #include <unordered_set>
 
-#include <oxenmq/address.h>
+#include "ini.hpp"
+#include "definition.hpp"
 
 namespace llarp
 {

@@ -1,10 +1,6 @@
 #include "path.hpp"
 #include "pathset.hpp"
 
-#include <llarp/router/router.hpp>
-
-#include <random>
-
 namespace llarp::path
 {
   PathSet::PathSet(size_t num) : numDesiredPaths(num)

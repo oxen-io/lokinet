@@ -1,19 +1,10 @@
 #include "path.hpp"
-#include "pathbuilder.hpp"
-#include "transit_hop.hpp"
 
-#include <llarp/link/link_manager.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/exit.hpp>
-#include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
-
-#include <oxenc/endian.h>
-
-#include <deque>
-#include <queue>
 
 namespace llarp::path
 {
