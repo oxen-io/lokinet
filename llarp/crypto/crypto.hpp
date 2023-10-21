@@ -27,6 +27,14 @@ namespace llarp
     bool
     xchacha20(uint8_t*, size_t size, const uint8_t*, const uint8_t*);
 
+    TunnelNonce
+    onion(
+        unsigned char* buf,
+        size_t size,
+        const SharedSecret& k,
+        const TunnelNonce& nonce,
+        const ShortHash& xor_factor);
+
     /// path dh creator's side
     bool
     dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);

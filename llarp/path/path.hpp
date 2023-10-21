@@ -186,36 +186,42 @@ namespace llarp
       Tick(llarp_time_t now, Router* r);
 
       bool
-      find_name(std::string name, std::function<void(oxen::quic::message m)> func = nullptr);
+      find_name(std::string name, std::function<void(std::string, bool)> func = nullptr);
 
       bool
-      find_router(std::string rid, std::function<void(oxen::quic::message m)> func = nullptr);
+      find_router(std::string rid, std::function<void(std::string, bool)> func = nullptr);
 
       bool
       find_intro(
           const dht::Key_t& location,
           bool is_relayed = false,
           uint64_t order = 0,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+          std::function<void(std::string, bool)> func = nullptr);
 
       bool
       close_exit(
-          SecretKey sk,
-          std::string tx_id,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+          SecretKey sk, std::string tx_id, std::function<void(std::string, bool)> func = nullptr);
 
       bool
       obtain_exit(
           SecretKey sk,
           uint64_t flag,
           std::string tx_id,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+          std::function<void(std::string, bool)> func = nullptr);
 
+      /// sends a control request along a path
+      ///
+      /// performs the necessary onion encryption before sending.
+      /// func will be called when a timeout occurs or a response is received.
+      /// if a response is received, onion decryption is performed before func is called.
+      ///
+      /// func is called with a bt-encoded response string (if applicable), and
+      /// a timeout flag (if set, response string will be empty)
       bool
       send_path_control_message(
           std::string method,
           std::string body,
-          std::function<void(oxen::quic::message m)> func = nullptr) override;
+          std::function<void(std::string, bool)> func = nullptr) override;
 
       bool
       SendRoutingMessage(std::string payload, Router* r) override;

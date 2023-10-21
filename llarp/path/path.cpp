@@ -8,6 +8,7 @@
 
 namespace llarp::path
 {
+
   Path::Path(
       Router* rtr,
       const std::vector<RemoteRC>& h,
@@ -48,10 +49,7 @@ namespace llarp::path
 
   bool
   Path::obtain_exit(
-      SecretKey sk,
-      uint64_t flag,
-      std::string tx_id,
-      std::function<void(oxen::quic::message m)> func)
+      SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string, bool)> func)
   {
     return send_path_control_message(
         "obtain_exit",
@@ -60,7 +58,7 @@ namespace llarp::path
   }
 
   bool
-  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(oxen::quic::message m)> func)
+  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string, bool)> func)
   {
     return send_path_control_message(
         "close_exit", CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)), std::move(func));
@@ -71,21 +69,21 @@ namespace llarp::path
       const dht::Key_t& location,
       bool is_relayed,
       uint64_t order,
-      std::function<void(oxen::quic::message m)> func)
+      std::function<void(std::string, bool)> func)
   {
     return send_path_control_message(
         "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
   }
 
   bool
-  Path::find_name(std::string name, std::function<void(oxen::quic::message m)> func)
+  Path::find_name(std::string name, std::function<void(std::string, bool)> func)
   {
     return send_path_control_message(
         "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
   }
 
   bool
-  Path::find_router(std::string rid, std::function<void(oxen::quic::message m)> func)
+  Path::find_router(std::string rid, std::function<void(std::string, bool)> func)
   {
     return send_path_control_message(
         "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
@@ -93,44 +91,71 @@ namespace llarp::path
 
   bool
   Path::send_path_control_message(
-      std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
+      std::string method, std::string body, std::function<void(std::string, bool)> func)
   {
-    std::string payload;
-
-    {
-      oxenc::bt_dict_producer btdp;
-      btdp.append("BODY", body);
-      btdp.append("METHOD", method);
-      payload = std::move(btdp).str();
-    }
+    oxenc::bt_dict_producer btdp;
+    btdp.append("BODY", body);
+    btdp.append("METHOD", method);
+    auto payload = std::move(btdp).str();
 
     // TODO: old impl padded messages if smaller than a certain size; do we still want to?
     TunnelNonce nonce;
     nonce.Randomize();
 
+    // chacha and mutate nonce for each hop
     for (const auto& hop : hops)
     {
-      // do a round of chacha for each hop and mutate the nonce with that hop's nonce
-      crypto::xchacha20(
-          reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce);
-
-      nonce ^= hop.nonceXOR;
+      nonce = crypto::onion(
+          reinterpret_cast<unsigned char*>(payload.data()),
+          payload.size(),
+          hop.shared,
+          nonce,
+          hop.nonceXOR);
     }
 
-    oxenc::bt_dict_producer outer_dict;
-    outer_dict.append("NONCE", nonce.ToView());
-    outer_dict.append("PATHID", TXID().ToView());
-    outer_dict.append("PAYLOAD", payload);
+    auto outer_payload = make_onion_payload(nonce, TXID(), payload);
 
     return router.send_control_message(
         upstream(),
         "path_control",
-        std::move(outer_dict).str(),
-        [response_cb = std::move(func)](oxen::quic::message m) {
-          if (m)
+        std::move(outer_payload),
+        [response_cb = std::move(func), weak = weak_from_this()](oxen::quic::message m) {
+          auto self = weak.lock();
+          if (not self)
+            return;
+          if (m.timed_out)
           {
-            // do path hop logic here
+            response_cb(""s, true);
+            return;
           }
+          TunnelNonce nonce{};
+          std::string payload;
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+
+            auto nonce = TunnelNonce{btdc.require<ustring_view>("NONCE").data()};
+            auto payload = btdc.require<std::string>("PAYLOAD");
+          }
+          catch (const std::exception& e)
+          {
+            log::warning(path_cat, "Error parsing onion response: {}", e.what());
+            return;
+          }
+          for (const auto& hop : self->hops)
+          {
+            nonce = crypto::onion(
+                reinterpret_cast<unsigned char*>(payload.data()),
+                payload.size(),
+                hop.shared,
+                nonce,
+                hop.nonceXOR);
+          }
+
+          // TODO: should we do anything (even really simple) here to check if the decrypted
+          //       response is sensible (e.g. is a bt dict)?  Parsing and handling of the
+          //       contents (errors or otherwise) is the currently responsibility of the callback.
+          response_cb(payload, false);
         });
   }
 

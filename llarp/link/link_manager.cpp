@@ -7,6 +7,7 @@
 #include <llarp/messages/exit.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/path.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 
@@ -137,19 +138,30 @@ namespace llarp
   {
     assert(ep.connid_map.count(s->conn_id()));
     RouterID rid = ep.connid_map[s->conn_id()];
-    for (const auto& [name, func] : rpc_commands)
-    {
-      s->register_command(name, [this, func=func](oxen::quic::message m) {
-        _router.loop()->call([this, func, msg = std::move(m)]() mutable {
-          std::invoke(func, this, std::move(msg));
-        });
-      });
-    }
 
     s->register_command("path_build"s, [this, rid](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
     });
+
+    s->register_command("path_control"s, [this, rid](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
+    });
+
+    for (auto& method : direct_requests)
+    {
+      s->register_command(
+          std::string{method.first}, [this, func = method.second](oxen::quic::message m) {
+            _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
+              auto body = msg.body_str();
+              auto respond = [m = std::move(msg)](std::string response) mutable {
+                m.respond(std::move(response));
+              };
+              std::invoke(func, this, body, std::move(respond));
+            });
+          });
+    }
   }
 
   std::shared_ptr<oxen::quic::Endpoint>
@@ -201,12 +213,7 @@ namespace llarp
       std::string body,
       std::function<void(oxen::quic::message m)> func)
   {
-    if (not func and rpc_responses.count(endpoint))
-    {
-      func = [&](oxen::quic::message m) {
-        std::invoke(rpc_responses[endpoint], this, std::move(m));
-      };
-    }
+    assert(func);  // makes no sense to send control message and ignore response
 
     if (func)
     {
@@ -423,8 +430,6 @@ namespace llarp
       return;
     }
 
-    util::Lock l(m);
-
     LogInfo("stopping links");
     is_stopping = true;
 
@@ -436,8 +441,6 @@ namespace llarp
   {
     if (is_stopping)
       return;
-
-    util::Lock l(m);
 
     persisting_conns[remote] = std::max(until, persisting_conns[remote]);
     if (have_client_connection_to(remote))
@@ -520,29 +523,30 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_find_name(oxen::quic::message m)
+  LinkManager::handle_find_name(std::string_view body, std::function<void(std::string)> respond)
   {
     std::string name_hash;
 
     try
     {
-      oxenc::bt_dict_consumer btdp{m.body()};
+      oxenc::bt_dict_consumer btdp{body};
 
       name_hash = btdp.require<std::string>("H");
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", FindNameMessage::EXCEPTION}}), true);
+      respond(serialize_response({{"STATUS", FindNameMessage::EXCEPTION}}));
     }
 
     _router.rpc_client()->lookup_ons_hash(
         name_hash,
-        [msg = std::move(m)]([[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
+        [respond = std::move(respond)](
+            [[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
           if (maybe)
-            msg.respond(serialize_response({{"NAME", maybe->ciphertext}}));
+            respond(serialize_response({{"NAME", maybe->ciphertext}}));
           else
-            msg.respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}), true);
+            respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}));
         });
   }
 
@@ -590,17 +594,15 @@ namespace llarp
     }
   }
 
-  // TODO: add callback to relayed messages (calls to send_control_message so the
-  // response finds its way back)
   void
-  LinkManager::handle_find_router(oxen::quic::message m)
+  LinkManager::handle_find_router(std::string_view body, std::function<void(std::string)> respond)
   {
     std::string target_key;
     bool is_exploratory, is_iterative;
 
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      oxenc::bt_dict_consumer btdc{body};
 
       is_exploratory = btdc.require<bool>("E");
       is_iterative = btdc.require<bool>("I");
@@ -609,8 +611,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(
-          serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"TARGET", ""}}), true);
+      respond(serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"TARGET", ""}}));
       return;
     }
 
@@ -640,9 +641,8 @@ namespace llarp
         neighbors += rid.bt_encode();
       }
 
-      m.respond(
-          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}),
-          true);
+      respond(
+          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
     }
     else
     {
@@ -658,13 +658,13 @@ namespace llarp
               target_rid,
               "find_router",
               FindRouterMessage::serialize(target_rid, false, false),
-              [original = std::move(m)](oxen::quic::message msg) mutable {
-                original.respond(msg.body_str(), not msg);
+              [respond = std::move(respond)](oxen::quic::message msg) mutable {
+                respond(msg.body_str());
               });
         }
         else
         {
-          m.respond(serialize_response({{"RC", closest_rc.view()}}));
+          respond(serialize_response({{"RC", closest_rc.view()}}));
         }
       }
       else if (not is_iterative)
@@ -675,26 +675,22 @@ namespace llarp
               closest_rid,
               "find_router",
               FindRouterMessage::serialize(closest_rid, false, false),
-              [original = std::move(m)](oxen::quic::message msg) mutable {
-                original.respond(msg.body_str(), not msg);
+              [respond = std::move(respond)](oxen::quic::message msg) mutable {
+                respond(msg.body_str());
               });
         }
         else
         {
-          m.respond(
-              serialize_response(
-                  {{"STATUS", FindRouterMessage::RETRY_ITER},
-                   {"TARGET", reinterpret_cast<const char*>(target_addr.data())}}),
-              true);
+          respond(serialize_response(
+              {{"STATUS", FindRouterMessage::RETRY_ITER},
+               {"TARGET", reinterpret_cast<const char*>(target_addr.data())}}));
         }
       }
       else
       {
-        m.respond(
-            serialize_response(
-                {{"STATUS", FindRouterMessage::RETRY_NEW},
-                 {"TARGET", reinterpret_cast<const char*>(closest_rid.data())}}),
-            true);
+        respond(serialize_response(
+            {{"STATUS", FindRouterMessage::RETRY_NEW},
+             {"TARGET", reinterpret_cast<const char*>(closest_rid.data())}}));
       }
     }
   }
@@ -818,7 +814,7 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_publish_intro(oxen::quic::message m)
+  LinkManager::handle_publish_intro(std::string_view body, std::function<void(std::string)> respond)
   {
     std::string introset, derived_signing_key, payload, sig, nonce;
     uint64_t is_relayed, relay_order;
@@ -826,7 +822,7 @@ namespace llarp
 
     try
     {
-      oxenc::bt_dict_consumer btdc_a{m.body()};
+      oxenc::bt_dict_consumer btdc_a{body};
 
       introset = btdc_a.require<std::string>("I");
       relay_order = btdc_a.require<uint64_t>("O");
@@ -843,7 +839,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", PublishIntroMessage::EXCEPTION}}), true);
+      respond(serialize_response({{"STATUS", PublishIntroMessage::EXCEPTION}}));
       return;
     }
 
@@ -854,14 +850,14 @@ namespace llarp
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
       log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
-      m.respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_INTROSET}}), true);
+      respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_INTROSET}}));
       return;
     }
 
     if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
     {
       log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
-      m.respond(serialize_response({{"STATUS", PublishIntroMessage::EXPIRED}}), true);
+      respond(serialize_response({{"STATUS", PublishIntroMessage::EXPIRED}}));
       return;
     }
 
@@ -871,7 +867,7 @@ namespace llarp
     {
       log::error(
           link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
-      m.respond(serialize_response({{"STATUS", PublishIntroMessage::INSUFFICIENT}}), true);
+      respond(serialize_response({{"STATUS", PublishIntroMessage::INSUFFICIENT}}));
       return;
     }
 
@@ -883,7 +879,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
-        m.respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_ORDER}}), true);
+        respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_ORDER}}));
         return;
       }
 
@@ -900,7 +896,7 @@ namespace llarp
             relay_order);
 
         _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-        m.respond(serialize_response({{"STATUS", ""}}));
+        respond(serialize_response({{"STATUS", ""}}));
       }
       else
       {
@@ -910,7 +906,12 @@ namespace llarp
         send_control_message(
             peer_key,
             "publish_intro",
-            PublishIntroMessage::serialize(introset, relay_order, is_relayed));
+            PublishIntroMessage::serialize(introset, relay_order, is_relayed),
+            [respond = std::move(respond)](oxen::quic::message m) {
+              if (m.timed_out)
+                return;  // drop if timed out; requester will have timed out as well
+              respond(m.body_str());
+            });
       }
 
       return;
@@ -933,7 +934,7 @@ namespace llarp
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
       _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-      m.respond(serialize_response());
+      respond(serialize_response({{"STATUS", ""}}));
     }
     else
       log::warning(
@@ -980,29 +981,25 @@ namespace llarp
       log::info(link_cat, "PublishIntroMessage failed with error code: {}", payload);
 
       if (payload == PublishIntroMessage::INVALID_INTROSET)
-      {
-      }
+      {}
       else if (payload == PublishIntroMessage::EXPIRED)
-      {
-      }
+      {}
       else if (payload == PublishIntroMessage::INSUFFICIENT)
-      {
-      }
+      {}
       else if (payload == PublishIntroMessage::INVALID_ORDER)
-      {
-      }
+      {}
     }
   }
 
   void
-  LinkManager::handle_find_intro(oxen::quic::message m)
+  LinkManager::handle_find_intro(std::string_view body, std::function<void(std::string)> respond)
   {
     ustring location;
     uint64_t relay_order, is_relayed;
 
     try
     {
-      oxenc::bt_dict_consumer btdc{m.body()};
+      oxenc::bt_dict_consumer btdc{body};
 
       relay_order = btdc.require<uint64_t>("O");
       is_relayed = btdc.require<uint64_t>("R");
@@ -1011,7 +1008,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", FindIntroMessage::EXCEPTION}}), true);
+      respond(serialize_response({{"STATUS", FindIntroMessage::EXCEPTION}}));
       return;
     }
 
@@ -1023,7 +1020,7 @@ namespace llarp
       {
         log::warning(
             link_cat, "Received FindIntroMessage with invalid relay order: {}", relay_order);
-        m.respond(serialize_response({{"STATUS", FindIntroMessage::INVALID_ORDER}}), true);
+        respond(serialize_response({{"STATUS", FindIntroMessage::INVALID_ORDER}}));
         return;
       }
 
@@ -1033,7 +1030,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received FindIntroMessage but only know {} nodes", closest_rcs.size());
-        m.respond(serialize_response({{"STATUS", FindIntroMessage::INSUFFICIENT_NODES}}), true);
+        respond(serialize_response({{"STATUS", FindIntroMessage::INSUFFICIENT_NODES}}));
         return;
       }
 
@@ -1046,7 +1043,7 @@ namespace llarp
           peer_key,
           "find_intro",
           FindIntroMessage::serialize(dht::Key_t{peer_key}, is_relayed, relay_order),
-          [original_msg = std::move(m)](oxen::quic::message relay_response) mutable {
+          [respond = std::move(respond)](oxen::quic::message relay_response) mutable {
             if (relay_response)
               log::info(
                   link_cat,
@@ -1059,19 +1056,19 @@ namespace llarp
               log::critical(
                   link_cat, "Relayed FindIntroMessage failed! Notifying initial requester");
 
-            original_msg.respond(relay_response.body_str(), not relay_response);
+            respond(relay_response.body_str());
           });
     }
     else
     {
       if (auto maybe_intro = _router.contacts()->get_introset_by_location(addr))
-        m.respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
+        respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
       else
       {
         log::warning(
             link_cat,
             "Received FindIntroMessage with relayed == false and no local introset entry");
-        m.respond(serialize_response({{"STATUS", FindIntroMessage::NOT_FOUND}}), true);
+        respond(serialize_response({{"STATUS", FindIntroMessage::NOT_FOUND}}));
       }
     }
   }
@@ -1223,11 +1220,6 @@ namespace llarp
 
       hop_info.upstream.from_string(upstream);
 
-      // TODO: the whole transit hop container is garbage.
-      //       namely the PathID uniqueness checking uses the PathIDs and upstream/downstream
-      //       but if someone made a path with txid, rxid, and downstream the same but
-      //       a different upstream, that would be "unique" but we wouldn't know where
-      //       to route messages.
       if (_router.path_context().HasTransitHop(hop_info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
@@ -1260,6 +1252,7 @@ namespace llarp
 
       if (hop_info.upstream == _router.pubkey())
       {
+        hop->terminal_hop = true;
         // we are terminal hop and everything is okay
         _router.path_context().PutTransitHop(hop);
         m.respond(serialize_response({{"STATUS", PathBuildMessage::OK}}), false);
@@ -1423,8 +1416,8 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
 
       RouterID target{pubkey.data()};
-      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          _router.path_context().GetByUpstream(target, PathID_t{to_usv(tx_id).data()}));
+      auto transit_hop =
+          _router.path_context().GetTransitHop(target, PathID_t{to_usv(tx_id).data()});
 
       const auto rx_id = transit_hop->info.rxID;
 
@@ -1468,8 +1461,7 @@ namespace llarp
       sig = to_usv(btlc.consume_string_view());
       tx_id = btdc.require<std::string_view>("T");
 
-      auto path_ptr = std::static_pointer_cast<path::Path>(
-          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+      auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
 
       if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
         path_ptr->enable_exit_traffic();
@@ -1497,8 +1489,8 @@ namespace llarp
       path_id = btdc.require<std::string_view>("P");
       tx_id = btdc.require<std::string_view>("T");
 
-      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          _router.path_context().GetByUpstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+      auto transit_hop =
+          _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
 
       if (auto exit_ep =
               _router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
@@ -1545,8 +1537,7 @@ namespace llarp
       sig = to_usv(btlc.consume_string_view());
       tx_id = btdc.require<std::string_view>("T");
 
-      auto path_ptr = std::static_pointer_cast<path::Path>(
-          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+      auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
 
       if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
       {
@@ -1556,8 +1547,7 @@ namespace llarp
           // see Path::HandleUpdateExitVerifyMessage
         }
         else
-        {
-        }
+        {}
       }
     }
     catch (const std::exception& e)
@@ -1582,8 +1572,8 @@ namespace llarp
       sig = to_usv(btlc.consume_string_view());
       tx_id = btdc.require<std::string_view>("T");
 
-      auto transit_hop = std::static_pointer_cast<path::TransitHop>(
-          _router.path_context().GetByUpstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+      auto transit_hop =
+          _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
 
       const auto rx_id = transit_hop->info.rxID;
 
@@ -1632,8 +1622,7 @@ namespace llarp
       tx_id = btdc.require<std::string_view>("T");
       nonce = btdc.require<std::string_view>("Y");
 
-      auto path_ptr = std::static_pointer_cast<path::Path>(
-          _router.path_context().GetByDownstream(_router.pubkey(), PathID_t{to_usv(tx_id).data()}));
+      auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
 
       if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
           and crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
@@ -1647,21 +1636,84 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_control(oxen::quic::message m)
+  LinkManager::handle_path_control(oxen::quic::message m, const RouterID& from)
   {
-    if (m.timed_out)
-    {
-      log::info(link_cat, "Path control message timed out!");
-      return;
-    }
-
     try
-    {}
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+      auto nonce = TunnelNonce{btdc.require<ustring_view>("NONCE").data()};
+      auto path_id_str = btdc.require<ustring_view>("PATHID");
+      auto payload = btdc.require<std::string>("PAYLOAD");
+      auto path_id = PathID_t{path_id_str.data()};
+      auto hop = _router.path_context().GetTransitHop(from, path_id);
+
+      // TODO: use "path_control" for both directions?  If not, drop message on
+      // floor if we don't have the path_id in question; if we decide to make this
+      // bidirectional, will need to check if we have a Path with path_id.
+      if (not hop)
+        return;
+
+      // if terminal hop, payload should contain a request (e.g. "find_router"); handle and respond.
+      if (hop->terminal_hop)
+      {
+        hop->onion(payload, nonce, false);
+        handle_inner_request(std::move(m), std::move(payload), std::move(hop));
+        return;
+      }
+
+      auto next_id = path_id == hop->info.rxID ? hop->info.txID : hop->info.rxID;
+      auto next_router = path_id == hop->info.rxID ? hop->info.upstream : hop->info.downstream;
+      auto new_payload = hop->onion_and_payload(payload, next_id, nonce);
+      send_control_message(
+          next_router,
+          "path_control"s,
+          std::move(new_payload),
+          [hop_weak = hop->weak_from_this(), path_id, prev_message = std::move(m)](
+              oxen::quic::message response) mutable {
+            auto hop = hop_weak.lock();
+            if (not hop)
+              return;
+
+            oxenc::bt_dict_consumer resp_btdc{response.body()};
+            auto nonce = TunnelNonce{resp_btdc.require<ustring_view>("NONCE").data()};
+            auto payload = resp_btdc.require<std::string>("PAYLOAD");
+            auto resp_payload = hop->onion_and_payload(payload, path_id, nonce);
+            prev_message.respond(std::move(resp_payload), false);
+          });
+    }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
       return;
     }
+  }
+
+  void
+  LinkManager::handle_inner_request(
+      oxen::quic::message m, std::string payload, std::shared_ptr<path::TransitHop> hop)
+  {
+    oxenc::bt_dict_consumer btdc{payload};
+    auto body = btdc.require<std::string_view>("BODY");
+    auto method = btdc.require<std::string_view>("METHOD");
+
+    // If a handler exists for "method", call it; else drop request on the floor.
+    auto itr = path_requests.find(method);
+    if (itr == path_requests.end())
+    {
+      log::info(link_cat, "Received path control request \"{}\", which has no handler.", method);
+      return;
+    }
+
+    auto respond = [m = std::move(m),
+                    hop_weak = hop->weak_from_this()](std::string response) mutable {
+      auto hop = hop_weak.lock();
+      if (not hop)
+        return;  // transit hop gone, drop response
+
+      m.respond(hop->onion_and_payload(response, hop->info.rxID), false);
+    };
+
+    std::invoke(itr->second, this, std::move(body), std::move(respond));
   }
 
   void
