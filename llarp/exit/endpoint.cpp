@@ -57,7 +57,8 @@ namespace llarp::exit
     if (!parent->UpdateEndpointPath(remote_signkey, nextPath))
       return false;
     const RouterID us{parent->GetRouter()->pubkey()};
-    current_path = parent->GetRouter()->path_context().GetByUpstream(us, nextPath);
+    // TODO: is this getting a Path or a TransitHop?
+    // current_path = parent->GetRouter()->path_context().GetByUpstream(us, nextPath);
     return true;
   }
 

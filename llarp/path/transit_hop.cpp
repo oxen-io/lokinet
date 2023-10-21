@@ -23,9 +23,37 @@ namespace llarp::path
     m_DownstreamWorkCounter = 0;
   }
 
+  void
+  TransitHop::onion(ustring& data, TunnelNonce& nonce, bool randomize) const
+  {
+    if (randomize)
+      nonce.Randomize();
+    nonce = crypto::onion(data.data(), data.size(), pathKey, nonce, nonceXOR);
+  }
+
+  void
+  TransitHop::onion(std::string& data, TunnelNonce& nonce, bool randomize) const
+  {
+    if (randomize)
+      nonce.Randomize();
+    nonce = crypto::onion(
+        reinterpret_cast<unsigned char*>(data.data()), data.size(), pathKey, nonce, nonceXOR);
+  }
+
+  std::string
+  TransitHop::onion_and_payload(
+      std::string& payload, PathID_t next_id, std::optional<TunnelNonce> nonce) const
+  {
+    TunnelNonce n;
+    auto& nref = nonce ? *nonce : n;
+    onion(payload, nref, not nonce);
+
+    return path::make_onion_payload(nref, next_id, payload);
+  }
+
   bool
   TransitHop::send_path_control_message(
-      std::string, std::string, std::function<void(oxen::quic::message m)>)
+      std::string, std::string, std::function<void(std::string, bool)>)
   {
     return true;
   }

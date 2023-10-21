@@ -54,7 +54,8 @@ namespace llarp
   bool
   RelayUpstreamMessage::handle_message(Router* r) const
   {
-    auto path = r->path_context().GetByDownstream(conn->remote_rc.router_id(), pathid);
+    path::HopHandler_ptr path = r->path_context().GetPath(pathid);
+    path = path ? path : r->path_context().GetTransitHop(conn->remote_rc.router_id(), pathid);
     if (path)
     {
       return path->HandleUpstream(llarp_buffer_t(enc), nonce, r);
@@ -110,7 +111,8 @@ namespace llarp
   bool
   RelayDownstreamMessage::handle_message(Router* r) const
   {
-    auto path = r->path_context().GetByUpstream(conn->remote_rc.router_id(), pathid);
+    path::HopHandler_ptr path = r->path_context().GetPath(pathid);
+    path = path ? path : r->path_context().GetTransitHop(conn->remote_rc.router_id(), pathid);
     if (path)
     {
       return path->HandleDownstream(llarp_buffer_t(enc), nonce, r);

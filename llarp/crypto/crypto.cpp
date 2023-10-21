@@ -154,6 +154,21 @@ namespace llarp
     return crypto_stream_xchacha20_xor(buf, buf, size, nonce, secret) == 0;
   }
 
+  // do a round of chacha for and return the nonce xor the given xor_factor
+  TunnelNonce
+  crypto::onion(
+      unsigned char* buf,
+      size_t size,
+      const SharedSecret& k,
+      const TunnelNonce& nonce,
+      const ShortHash& xor_factor)
+  {
+    if (!crypto::xchacha20(buf, size, k, nonce))
+      throw std::runtime_error{"chacha failed during onion step"};
+
+    return nonce ^ xor_factor;
+  }
+
   bool
   crypto::dh_client(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)

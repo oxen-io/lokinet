@@ -683,28 +683,17 @@ namespace llarp::handlers
       }
       else if (service::is_valid_name(ons_name))
       {
-        lookup_name(ons_name, [msg, ons_name, reply](oxen::quic::message m) mutable {
-          if (m)
-          {
-            std::string result;
-            try
-            {
-              oxenc::bt_dict_consumer btdc{m.body()};
-              result = btdc.require<std::string>("NAME");
-            }
-            catch (...)
-            {
-              log::warning(logcat, "Failed to parse find name response!");
-              throw;
-            }
+        lookup_name(
+            ons_name, [msg, ons_name, reply](std::string name_result, bool success) mutable {
+              if (success)
+              {
+                msg.AddMXReply(name_result, 1);
+              }
+              else
+                msg.AddNXReply();
 
-            msg.AddMXReply(result, 1);
-          }
-          else
-            msg.AddNXReply();
-
-          reply(msg);
-        });
+              reply(msg);
+            });
 
         return true;
       }
@@ -837,29 +826,15 @@ namespace llarp::handlers
              ons_name,
              isV6,
              reply,
-             ReplyToDNSWhenReady](oxen::quic::message m) mutable {
-              if (m)
-              {
-                std::string name;
-                try
-                {
-                  oxenc::bt_dict_consumer btdc{m.body()};
-                  name = btdc.require<std::string>("NAME");
-                }
-                catch (...)
-                {
-                  log::warning(logcat, "Failed to parse find name response!");
-                  throw;
-                }
-
-                ReplyToDNSWhenReady(name, msg, isV6);
-              }
-              else
+             ReplyToDNSWhenReady](std::string name_result, bool success) mutable {
+              if (not success)
               {
                 log::warning(logcat, "{} (ONS name: {}) not resolved", name, ons_name);
                 msg->AddNXReply();
                 reply(*msg);
               }
+
+              ReplyToDNSWhenReady(name_result, msg, isV6);
             });
         return true;
       }

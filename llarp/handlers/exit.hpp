@@ -49,7 +49,7 @@ namespace llarp
           llarp_time_t timeout) override;
 
       void
-      lookup_name(std::string name, std::function<void(oxen::quic::message)> func) override;
+      lookup_name(std::string name, std::function<void(std::string, bool)> func) override;
 
       const EventLoop_ptr&
       Loop() override;

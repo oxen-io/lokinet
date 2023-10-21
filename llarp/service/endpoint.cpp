@@ -139,63 +139,52 @@ namespace llarp::service
          auth = AuthInfo{token},
          ranges,
          result_handler,
-         poker = router()->route_poker()](oxen::quic::message m) mutable {
-          if (m)
-          {
-            std::string name;
-            try
-            {
-              oxenc::bt_dict_consumer btdc{m.body()};
-              name = btdc.require<std::string>("NAME");
-            }
-            catch (...)
-            {
-              log::warning(link_cat, "Failed to parse find name response!");
-              throw;
-            }
-
-            if (auto saddr = service::Address(); saddr.FromString(name))
-            {
-              ptr->SetAuthInfoForEndpoint(saddr, auth);
-              ptr->MarkAddressOutbound(saddr);
-
-              auto result = ptr->EnsurePathToService(
-                  saddr,
-                  [ptr, name, ranges, result_handler, poker](auto addr, OutboundContext* ctx) {
-                    if (ctx == nullptr)
-                    {
-                      result_handler(false, "could not establish flow to {}"_format(name));
-                      return;
-                    }
-
-                    // make a lambda that sends the reply after doing auth
-                    auto apply_result = [ptr, poker, addr, result_handler, ranges](
-                                            std::string result, bool success) {
-                      if (success)
-                      {
-                        for (const auto& range : ranges)
-                          ptr->MapExitRange(range, addr);
-
-                        if (poker)
-                          poker->put_up();
-
-                        result_handler(true, result);
-                      }
-
-                      result_handler(false, result);
-                    };
-
-                    ctx->send_auth_async(apply_result);
-                  },
-                  ptr->PathAlignmentTimeout());
-
-              if (not result)
-                result_handler(false, "Could not build path to {}"_format(name));
-            }
-          }
-          else
+         poker = router()->route_poker()](std::string name_result, bool success) mutable {
+          if (not success)
           {
             result_handler(false, "Exit {} not found!"_format(name));
+            return;
+          }
+
+          if (auto saddr = service::Address(); saddr.FromString(name_result))
+          {
+            ptr->SetAuthInfoForEndpoint(saddr, auth);
+            ptr->MarkAddressOutbound(saddr);
+
+            auto result = ptr->EnsurePathToService(
+                saddr,
+                [ptr, name, name_result, ranges, result_handler, poker](
+                    auto addr, OutboundContext* ctx) {
+                  if (ctx == nullptr)
+                  {
+                    result_handler(
+                        false, "could not establish flow to {} ({})"_format(name_result, name));
+                    return;
+                  }
+
+                  // make a lambda that sends the reply after doing auth
+                  auto apply_result = [ptr, poker, addr, result_handler, ranges](
+                                          std::string result, bool success) {
+                    if (success)
+                    {
+                      for (const auto& range : ranges)
+                        ptr->MapExitRange(range, addr);
+
+                      if (poker)
+                        poker->put_up();
+
+                      result_handler(true, result);
+                    }
+
+                    result_handler(false, result);
+                  };
+
+                  ctx->send_auth_async(apply_result);
+                },
+                ptr->PathAlignmentTimeout());
+
+            if (not result)
+              result_handler(false, "Could not build path to {} ({})"_format(name_result, name));
           }
         });
   }
@@ -316,35 +305,24 @@ namespace llarp::service
       {
         auto& name = item.first;
 
-        lookup_name(name, [this, name, info = item.second](oxen::quic::message m) mutable {
-          if (m)
-          {
-            std::string result;
-            try
-            {
-              oxenc::bt_dict_consumer btdc{m.body()};
-              result = btdc.require<std::string>("NAME");
-            }
-            catch (...)
-            {
-              log::warning(link_cat, "Failed to parse find name response!");
-              throw;
-            }
+        lookup_name(
+            name, [this, name, info = item.second](std::string name_result, bool success) mutable {
+              if (not success)
+                return;
 
-            const auto maybe_range = info.first;
-            const auto maybe_auth = info.second;
+              const auto maybe_range = info.first;
+              const auto maybe_auth = info.second;
 
-            _startup_ons_mappings.erase(name);
+              _startup_ons_mappings.erase(name);
 
-            if (auto saddr = service::Address(); saddr.FromString(result))
-            {
-              if (maybe_range.has_value())
-                _exit_map.Insert(*maybe_range, saddr);
-              if (maybe_auth.has_value())
-                SetAuthInfoForEndpoint(saddr, *maybe_auth);
-            }
-          }
-        });
+              if (auto saddr = service::Address(); saddr.FromString(name_result))
+              {
+                if (maybe_range.has_value())
+                  _exit_map.Insert(*maybe_range, saddr);
+                if (maybe_auth.has_value())
+                  SetAuthInfoForEndpoint(saddr, *maybe_auth);
+              }
+            });
       }
     }
   }
@@ -798,7 +776,7 @@ namespace llarp::service
   }
 
   void
-  Endpoint::lookup_name(std::string name, std::function<void(oxen::quic::message)> func)
+  Endpoint::lookup_name(std::string name, std::function<void(std::string, bool)> func)
   {
     // TODO: so fuck all this?
 
@@ -838,10 +816,29 @@ namespace llarp::service
     std::shuffle(chosenpaths.begin(), chosenpaths.end(), llarp::csrng);
     chosenpaths.resize(std::min(paths.size(), MAX_ONS_LOOKUP_ENDPOINTS));
 
+    auto response_cb = [func = std::move(func)](std::string resp, bool timeout) {
+      if (timeout)
+        func(""s, false);
+
+      std::string name{};
+      try
+      {
+        oxenc::bt_dict_consumer btdc{resp};
+        name = btdc.require<std::string>("NAME");
+      }
+      catch (...)
+      {
+        log::warning(link_cat, "Failed to parse find name response!");
+        func(""s, false);
+      }
+
+      func(name, true);
+    };
+
     for (const auto& path : chosenpaths)
     {
       log::info(link_cat, "{} lookup {} from {}", Name(), name, path->Endpoint());
-      path->find_name(name, func);
+      path->find_name(name, response_cb);
     }
   }
 
@@ -857,18 +854,35 @@ namespace llarp::service
   }
 
   bool
-  Endpoint::lookup_router(RouterID rid, std::function<void(oxen::quic::message)> func)
+  Endpoint::lookup_router(RouterID rid, std::function<void(RouterContact rc, bool success)> func)
   {
-    const auto& routers = _state->pending_routers;
+    auto path = GetEstablishedPathClosestTo(rid);
 
-    if (routers.find(rid) == routers.end())
-    {
-      auto path = GetEstablishedPathClosestTo(rid);
-      path->find_router("find_router", func);
-      return true;
-    }
+    auto response_cb = [func = std::move(func)](std::string resp, bool timeout) {
+      if (timeout)
+        func(RouterContact{}, false);
 
-    return false;
+      std::string payload;
+
+      try
+      {
+        oxenc::bt_dict_consumer btdc{resp};
+        payload = btdc.require<std::string>("RC");
+      }
+      catch (...)
+      {
+        log::warning(link_cat, "Failed to parse Find Router response!");
+        func(RouterContact{}, false);
+        return;
+      }
+
+      RouterContact result{std::move(payload)};
+
+      func(result, true);
+    };
+
+    path->find_router("find_router", std::move(response_cb));
+    return true;
   }
 
   void
@@ -1327,30 +1341,39 @@ namespace llarp::service
     // address once.
     bool hookAdded = false;
 
+    auto got_it = std::make_shared<bool>(false);
+
+    // TODO: if all requests fail, call callback with failure?
     for (const auto& path : paths)
     {
-      path->find_intro(location, false, 0, [this, hook](oxen::quic::message m) mutable {
-        if (m)
-        {
-          std::string introset;
+      path->find_intro(
+          location, false, 0, [this, hook, got_it](std::string resp, bool timeout) mutable {
+            // asking many, use only first successful
+            if (timeout or *got_it)
+              return;
 
-          try
-          {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            introset = btdc.require<std::string>("INTROSET");
-          }
-          catch (...)
-          {
-            log::warning(link_cat, "Failed to parse find name response!");
-            throw;
-          }
+            std::string introset;
 
-          service::EncryptedIntroSet enc{introset};
-          router()->contacts()->services()->PutNode(std::move(enc));
+            try
+            {
+              oxenc::bt_dict_consumer btdc{resp};
+              introset = btdc.require<std::string>("INTROSET");
+            }
+            catch (...)
+            {
+              log::warning(link_cat, "Failed to parse find name response!");
+              throw;
+            }
 
-          // TODO: finish this
-        }
-      });
+            service::EncryptedIntroSet enc{introset};
+            router()->contacts()->services()->PutNode(std::move(enc));
+
+            // TODO: finish this
+            /*
+            if (good)
+              *got_it = true;
+            */
+          });
     }
     return hookAdded;
   }

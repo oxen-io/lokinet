@@ -61,6 +61,23 @@ namespace llarp
       llarp_time_t lifetime = DEFAULT_LIFETIME;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
+      bool terminal_hop{false};
+
+      // If randomize is given, first randomizes `nonce`
+      //
+      // Does xchacha20 on `data` in-place with `nonce` and `pathKey`, then
+      // mutates `nonce` = `nonce` ^ `nonceXOR` in-place.
+      void
+      onion(ustring& data, TunnelNonce& nonce, bool randomize = false) const;
+
+      void
+      onion(std::string& data, TunnelNonce& nonce, bool randomize = false) const;
+
+      std::string
+      onion_and_payload(
+          std::string& payload,
+          PathID_t next_id,
+          std::optional<TunnelNonce> nonce = std::nullopt) const;
 
       PathID_t
       RXID() const override
@@ -106,11 +123,24 @@ namespace llarp
         return now >= ExpireTime() - dlt;
       }
 
+      // TODO: should this be a separate method indicating directionality?
+      //       Most control messages won't make sense to be sent to a client,
+      //       so perhaps control messages from a terminal relay to a client (rather than
+      //       the other way around) should be their own message type.
+      //
+      /// sends a control request along a path
+      ///
+      /// performs the necessary onion encryption before sending.
+      /// func will be called when a timeout occurs or a response is received.
+      /// if a response is received, onion decryption is performed before func is called.
+      ///
+      /// func is called with a bt-encoded response string (if applicable), and
+      /// a timeout flag (if set, response string will be empty)
       bool
       send_path_control_message(
           std::string method,
           std::string body,
-          std::function<void(oxen::quic::message m)> func) override;
+          std::function<void(std::string, bool)> func) override;
 
       // send routing message when end of path
       bool

@@ -75,8 +75,6 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() start");
     if (is_stopping.load())
       return;
-    paths.PumpDownstream();
-    paths.PumpUpstream();
     _hidden_service_context.Pump();
     llarp::LogTrace("Router::PumpLL() end");
   }
@@ -1291,7 +1289,6 @@ namespace llarp
     _exit_context.Stop();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final upstream pump");
-    paths.PumpUpstream();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final links pump");
     _loop->call_later(200ms, [this] { AfterStopIssued(); });

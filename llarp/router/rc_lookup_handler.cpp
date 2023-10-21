@@ -83,58 +83,27 @@ namespace llarp
       }
     }
 
-    auto lookup_cb = [this, callback, rid](oxen::quic::message m) mutable {
+    auto lookup_cb = [this, callback, rid](RemoteRC rc, bool success) mutable {
       auto& r = link_manager->router();
 
-      if (m)
-      {
-        std::string payload;
-
-        try
-        {
-          oxenc::bt_dict_consumer btdc{m.body()};
-          payload = btdc.require<std::string>("RC");
-        }
-        catch (...)
-        {
-          log::warning(link_cat, "Failed to parse Find Router response!");
-          throw;
-        }
-
-        RemoteRC result{std::move(payload)};
-
-        if (callback)
-          callback(result.router_id(), result, true);
-        else
-          r.node_db()->put_rc_if_newer(result);
-      }
-      else
+      if (not success)
       {
         if (callback)
           callback(rid, std::nullopt, false);
-        else
-          link_manager->handle_find_router_error(std::move(m));
+        return;
       }
+
+      r.node_db()->put_rc_if_newer(rc);
+      if (callback)
+        callback(rc.router_id(), rc, true);
     };
 
-    // if we are a client try using the hidden service endpoints
+    // TODO: RC fetching and gossiping in general is being refactored, and the old method
+    //       of look it up over a path or directly but using the same method but called
+    //       differently is going away.  It's a mess.  The below will do a lookup via a path,
+    //       relays will need a different implementation TBD.
     if (!isServiceNode)
-    {
-      bool sent = false;
-      LogInfo("Lookup ", rid, " anonymously");
-      hidden_service_context->ForEachService(
-          [&, cb = lookup_cb](
-              const std::string&, const std::shared_ptr<service::Endpoint>& ep) -> bool {
-            const bool success = ep->lookup_router(rid, cb);
-            sent = sent || success;
-            return !success;
-          });
-      if (sent)
-        return;
-      LogWarn("cannot lookup ", rid, " anonymously");
-    }
-
-    contacts->lookup_router(rid, lookup_cb);
+      hidden_service_context->GetDefault()->lookup_router(rid, std::move(lookup_cb));
   }
 
   bool

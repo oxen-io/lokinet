@@ -22,6 +22,14 @@ namespace llarp
 
   namespace path
   {
+
+    std::string
+    make_onion_payload(
+        const TunnelNonce& nonce, const PathID_t& path_id, const std::string_view& inner_payload);
+    std::string
+    make_onion_payload(
+        const TunnelNonce& nonce, const PathID_t& path_id, const ustring_view& inner_payload);
+
     struct AbstractHopHandler
     {
       using TrafficEvent_t = std::pair<std::vector<byte_t>, TunnelNonce>;
@@ -41,11 +49,17 @@ namespace llarp
       virtual bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
 
+      /// sends a control request along a path
+      ///
+      /// performs the necessary onion encryption before sending.
+      /// func will be called when a timeout occurs or a response is received.
+      /// if a response is received, onion decryption is performed before func is called.
+      ///
+      /// func is called with a bt-encoded response string (if applicable), and
+      /// a timeout flag (if set, response string will be empty)
       virtual bool
       send_path_control_message(
-          std::string method,
-          std::string body,
-          std::function<void(oxen::quic::message m)> func) = 0;
+          std::string method, std::string body, std::function<void(std::string, bool)> func) = 0;
 
       /// send routing message and increment sequence number
       virtual bool
