@@ -168,8 +168,7 @@ namespace llarp::service
     auto bte = i.bt_encode();
 
     const SharedSecret k{i.address_keys.Addr()};
-    crypto::xchacha20(
-        reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nounce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nounce);
 
     std::memcpy(encrypted.introsetPayload.data(), bte.data(), bte.size());
 

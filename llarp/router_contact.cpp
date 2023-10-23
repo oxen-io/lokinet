@@ -409,8 +409,7 @@ namespace llarp
     copy.signature.Zero();
 
     auto bte = copy.bt_encode();
-    return crypto::verify(
-        pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
+    return crypto::verify(pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
   }
 
   static constexpr std::array obsolete_bootstraps = {

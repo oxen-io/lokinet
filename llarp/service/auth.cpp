@@ -124,8 +124,7 @@ namespace llarp::service
         case AuthFileType::eAuthFilePlain:
           return hash == challenge;
         case AuthFileType::eAuthFileHashes:
-          return crypto::check_passwd_hash(
-              std::move(hash), std::move(challenge));
+          return crypto::check_passwd_hash(std::move(hash), std::move(challenge));
         default:
           return false;
       }

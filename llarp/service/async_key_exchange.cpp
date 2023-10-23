@@ -50,7 +50,8 @@ namespace llarp::service
     // compute post handshake session key
     // PKE (A, B, N)
     SharedSecret sharedSecret;
-    if (!self->m_LocalIdentity.KeyExchange(crypto::dh_client, sharedSecret, self->m_remote, frame->nonce))
+    if (!self->m_LocalIdentity.KeyExchange(
+            crypto::dh_client, sharedSecret, self->m_remote, frame->nonce))
     {
       LogError("failed to derive x25519 shared key component");
     }

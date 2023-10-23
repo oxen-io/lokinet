@@ -10,10 +10,8 @@
 
 namespace llarp::handlers
 {
-  ExitEndpoint::ExitEndpoint(std::string name, Router* r)
-      : router(r)
-      , name(std::move(name))
-      // , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
+  ExitEndpoint::ExitEndpoint(std::string name, Router* r) : router(r), name(std::move(name))
+  // , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
   {
     should_init_tun = true;
   }

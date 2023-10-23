@@ -31,8 +31,7 @@ namespace llarp
     auto buf = bt_encode();
 
     // hash
-    if (!crypto::shorthash(
-            digest, reinterpret_cast<uint8_t*>(buf.data()), buf.size()))
+    if (!crypto::shorthash(digest, reinterpret_cast<uint8_t*>(buf.data()), buf.size()))
       return false;
     // check bytes required
     uint32_t required = std::floor(std::log(extendedLifetime.count()));

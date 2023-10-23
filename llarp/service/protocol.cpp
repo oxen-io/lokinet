@@ -207,8 +207,7 @@ namespace llarp::service
     // encode message
     auto bte1 = msg.bt_encode();
     // encrypt
-    crypto::xchacha20(
-        reinterpret_cast<uint8_t*>(bte1.data()), bte1.size(), sessionKey, nonce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(bte1.data()), bte1.size(), sessionKey, nonce);
     // put encrypted buffer
     std::memcpy(enc.data(), bte1.data(), bte1.size());
     // zero out signature
