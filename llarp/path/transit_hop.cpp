@@ -25,9 +25,7 @@ namespace llarp::path
 
   bool
   TransitHop::send_path_control_message(
-      std::string,
-      std::string,
-      std::function<void(oxen::quic::message m)>)
+      std::string, std::string, std::function<void(oxen::quic::message m)>)
   {
     return true;
   }

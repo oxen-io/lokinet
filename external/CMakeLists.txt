@@ -147,7 +147,7 @@ option(WITH_LIBCRYPT "enable fast password hash with libcrypt" ${default_libcryp
 add_library(lokinet-libcrypt INTERFACE)
 if(WITH_LIBCRYPT)
   pkg_check_modules(LIBCRYPT libcrypt IMPORTED_TARGET REQUIRED)
-  add_definitions(-DHAVE_CRYPT)
+  target_compile_definitions(lokinet-libcrypt INTERFACE -DHAVE_CRYPT)
   target_link_libraries(lokinet-libcrypt INTERFACE PkgConfig::LIBCRYPT)
   message(STATUS "using libcrypt ${LIBCRYPT_VERSION}")
 else()

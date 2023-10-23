@@ -18,7 +18,7 @@ namespace llarp
     setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
       // generate key
-        crypto::encryption_keygen(hop.commkey);
+      crypto::encryption_keygen(hop.commkey);
 
       hop.nonce.Randomize();
       // do key exchange

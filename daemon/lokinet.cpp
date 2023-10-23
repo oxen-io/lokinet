@@ -371,9 +371,6 @@ namespace
   int
   lokinet_main(int argc, char** argv)
   {
-    // if (auto result = Lokinet_INIT())
-    //   return result;
-
     llarp::RuntimeOptions opts;
     opts.showBanner = false;
 

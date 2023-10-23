@@ -19,7 +19,7 @@ namespace llarp
   {
     /// decrypt cipherText given the key generated from name
     std::optional<AlignedBuffer<32>>
-    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name);
+    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
     /// xchacha symmetric cipher
     bool
@@ -117,7 +117,7 @@ namespace llarp
 
     bool
     check_passwd_hash(std::string pwhash, std::string challenge);
-  };
+  };  // namespace crypto
 
   /// return random 64bit unsigned interger
   uint64_t

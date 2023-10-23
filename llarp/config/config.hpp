@@ -184,6 +184,7 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
+  // TODO: remove oxenmq from this header
   struct ApiConfig
   {
     bool m_enableRPCServer = false;

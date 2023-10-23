@@ -109,7 +109,7 @@ namespace llarp
   }
 
   std::optional<AlignedBuffer<32>>
-  crypto::maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name)
+  crypto::maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name)
   {
     const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
     if (payloadsize != 32)
@@ -132,7 +132,7 @@ namespace llarp
             ciphertext.size(),
             nullptr,
             0,
-            nounce.data(),
+            nonce.data(),
             derivedKey.data())
         == -1)
     {

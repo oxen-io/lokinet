@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-#include <uvw/tcp.h>
+// #include <uvw/tcp.h>
 
 namespace llarp
 {
@@ -157,12 +157,12 @@ namespace llarp::link
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
       // TCP listening socket
-      std::shared_ptr<uvw::TCPHandle> tcp;
-      // Accepted TCP connections
-      std::unordered_set<std::shared_ptr<uvw::TCPHandle>> conns;
-      // Queue of incoming connections that are waiting for a stream to become available (either
-      // because we are still handshaking, or we reached the stream limit).
-      std::queue<std::weak_ptr<uvw::TCPHandle>> pending_incoming;
+      // std::shared_ptr<uvw::TCPHandle> tcp;
+      // // Accepted TCP connections
+      // std::unordered_set<std::shared_ptr<uvw::TCPHandle>> conns;
+      // // Queue of incoming connections that are waiting for a stream to become available (either
+      // // because we are still handshaking, or we reached the stream limit).
+      // std::queue<std::weak_ptr<uvw::TCPHandle>> pending_incoming;
 
       ~ClientTunnel()
       {
@@ -225,8 +225,8 @@ namespace llarp::link
     std::map<int, ListenHandler> incoming_handlers_;
     int next_handler_id_ = 1;
 
-    std::shared_ptr<uvw::Loop>
-    get_loop();
+    // std::shared_ptr<uvw::Loop>
+    // get_loop();
 
     // Cleanup member
     std::shared_ptr<int> timer_keepalive_ = std::make_shared<int>(0);

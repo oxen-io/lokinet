@@ -100,9 +100,7 @@ namespace llarp
     }
 
     // load encryption key
-    auto encryptionKeygen = [](llarp::SecretKey& key) {
-      llarp::crypto::encryption_keygen(key);
-    };
+    auto encryptionKeygen = [](llarp::SecretKey& key) { llarp::crypto::encryption_keygen(key); };
     if (not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
       return false;
 

@@ -123,8 +123,7 @@ namespace llarp::service
     std::string payload{
         reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
 
-    crypto::xchacha20(
-        reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
 
     return IntroSet{payload};
   }
@@ -144,8 +143,7 @@ namespace llarp::service
     sig.Zero();
     auto bte = bt_encode();
 
-    if (not crypto::sign(
-            sig, k, reinterpret_cast<uint8_t*>(bte.data()), bte.size()))
+    if (not crypto::sign(sig, k, reinterpret_cast<uint8_t*>(bte.data()), bte.size()))
       return false;
     LogDebug("signed encrypted introset: ", *this);
     return true;

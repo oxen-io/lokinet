@@ -6,7 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
-
+option(GRAPH_DEPENDENCIES "Produce graphviz representation of cmake dependencies" OFF)
 
 set(LANGS C CXX)
 if(APPLE AND BUILD_DAEMON)
@@ -257,23 +257,26 @@ pkg_check_modules(SD libsystemd IMPORTED_TARGET)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-# Base interface target where we set up global link libraries, definitions, includes, etc.
-add_library(base_libs INTERFACE)
+add_subdirectory(external)
+
+# interface library for setting common includes, linkage and flags
+add_library(lokinet-base INTERFACE)
+target_include_directories(lokinet-base INTERFACE . include)
+target_link_libraries(lokinet-base INTERFACE quic)
 
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
-  target_link_libraries(base_libs INTERFACE PkgConfig::SD)
-  target_compile_definitions(base_libs INTERFACE WITH_SYSTEMD)
+  target_link_libraries(lokinet-base INTERFACE PkgConfig::SD)
+  target_compile_definitions(lokinet-base INTERFACE WITH_SYSTEMD)
 endif()
 
-add_subdirectory(external)
 
 if(USE_JEMALLOC AND NOT STATIC_LINK)
   pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
   if(JEMALLOC_FOUND)
-    target_link_libraries(base_libs INTERFACE PkgConfig::JEMALLOC)
+    target_link_libraries(lokinet-base INTERFACE PkgConfig::JEMALLOC)
   else()
     message(STATUS "jemalloc not found, not linking to jemalloc")
   endif()
@@ -283,8 +286,8 @@ endif()
 
 
 if(ANDROID)
-  target_link_libraries(base_libs INTERFACE log)
-  target_compile_definitions(base_libs INTERFACE ANDROID)
+  target_link_libraries(lokinet-base INTERFACE log)
+  target_compile_definitions(lokinet-base INTERFACE ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif()
 

@@ -16,8 +16,8 @@ namespace llarp
 
     if (noDH)
     {
-        crypto::randbytes(nonce_ptr, TUNNONCESIZE);
-        crypto::randbytes(pubkey_ptr, PUBKEYSIZE);
+      crypto::randbytes(nonce_ptr, TUNNONCESIZE);
+      crypto::randbytes(pubkey_ptr, PUBKEYSIZE);
     }
 
     TunnelNonce nonce(nonce_ptr);
