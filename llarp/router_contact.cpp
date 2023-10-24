@@ -228,7 +228,10 @@ namespace llarp
         bool decode_result = DecodeVersion_1(btlist);
 
         // advance the llarp_buffer_t since lokimq serialization is unaware of it.
-        buf->cur += btlist.current_buffer().data() - buf_view.data() + 1;
+        // FIXME: this is broken (current_buffer got dropped), but the whole thing is getting
+        // replaced.
+        // buf->cur += btlist.
+        //    current_buffer().data() - buf_view.data() + 1;
 
         return decode_result;
       }

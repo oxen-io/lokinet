@@ -165,7 +165,7 @@ lokinet_add_library(lokinet-dns
 # platform specific bits and bobs for setting dns
 add_library(lokinet-dns-platform INTERFACE)
 if(WITH_SYSTEMD)
-  add_library(lokinet-dns-systemd STATIC dns/nm_platform.cpp dns/sd_platform.cpp)
+  lokinet_add_library(lokinet-dns-systemd dns/nm_platform.cpp dns/sd_platform.cpp)
   target_link_libraries(lokinet-dns-platform INTERFACE lokinet-dns-systemd)
 endif()
 
@@ -222,9 +222,6 @@ target_link_libraries(lokinet-core PUBLIC lokinet-core-utils)
 
 # Link lokinet-dns to alternate libraries
 target_link_libraries(lokinet-dns PUBLIC lokinet-dns-platform)
-if (TARGET lokinet-dns-systemd)
-  target_link_libraries(lokinet-dns PUBLIC lokinet-dns-systemd)
-endif()
 
 target_link_libraries(lokinet-wire PUBLIC lokinet-time-place)
 target_link_libraries(lokinet-dns PUBLIC lokinet-utils lokinet-cryptography lokinet-config)
