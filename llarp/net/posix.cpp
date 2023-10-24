@@ -1,8 +1,8 @@
-#include <stdexcept>
-
+#include "ip_range.hpp"
 #include "net.hpp"
 #include "net_if.hpp"
-#include "ip_range.hpp"
+
+#include <stdexcept>
 
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>

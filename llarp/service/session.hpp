@@ -1,12 +1,12 @@
 #pragma once
 
+#include "info.hpp"
+#include "intro.hpp"
+
 #include <llarp/crypto/types.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/types.hpp>
-
-#include "info.hpp"
-#include "intro.hpp"
 
 namespace llarp::service
 {

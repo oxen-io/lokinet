@@ -1,5 +1,6 @@
-#include "path.hpp"
 #include "pathset.hpp"
+
+#include "path.hpp"
 
 namespace llarp::path
 {

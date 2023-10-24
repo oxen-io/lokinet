@@ -2,11 +2,12 @@
 
 #include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
+
 #include <chrono>
-#include <unordered_map>
-#include <set>
-#include <unordered_set>
 #include <list>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 struct llarp_dht_context;
 

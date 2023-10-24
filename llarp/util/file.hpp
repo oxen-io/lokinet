@@ -1,10 +1,10 @@
 #pragma once
+#include "fs.hpp"
+
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
-
-#include "fs.hpp"
 
 #ifndef _MSC_VER
 #include <dirent.h>

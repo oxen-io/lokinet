@@ -1,6 +1,6 @@
 #pragma once
-#include <llarp/util/types.hpp>
 #include <llarp/util/time.hpp>
+#include <llarp/util/types.hpp>
 
 #include <cstdlib>
 

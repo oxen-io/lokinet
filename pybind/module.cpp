@@ -1,4 +1,5 @@
 #include "common.hpp"
+
 #include <llarp/util/logging.hpp>
 
 PYBIND11_MODULE(pyllarp, m)

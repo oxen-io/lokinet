@@ -3,12 +3,12 @@
 #include <llarp/util/exceptions.hpp>
 #include <llarp/vpn/platform.hpp>
 
+#include <uvw.hpp>
+
+#include <cstring>
 #include <memory>
 #include <thread>
 #include <type_traits>
-#include <cstring>
-
-#include <uvw.hpp>
 
 namespace llarp::uv
 {

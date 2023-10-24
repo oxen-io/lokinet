@@ -1,13 +1,15 @@
 #pragma once
 
-#include <llarp/router/router.hpp>
-#include <llarp.hpp>
-#include <llarp/win32/exec.hpp>
-#include <winsock2.h>
-#include <windows.h>
-#include <iphlpapi.h>
-
 #include "platform.hpp"
+
+#include <llarp.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/win32/exec.hpp>
+
+#include <winsock2.h>
+
+#include <iphlpapi.h>
+#include <windows.h>
 
 namespace llarp::win32
 {

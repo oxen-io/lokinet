@@ -6,8 +6,8 @@
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/mem.hpp>
 
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 namespace llarp
 {

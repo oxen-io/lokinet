@@ -2,9 +2,9 @@
 
 #include "common.hpp"
 
+#include <llarp/path/path_types.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/bencode.hpp>
-#include <llarp/path/path_types.hpp>
 
 #include <vector>
 
@@ -60,10 +60,4 @@ namespace llarp
           "Error: Link messages should not encode directly to a bt list producer!"};
     }
   };
-
-  struct AbstractDataMessage : public AbstractLinkMessage
-  {
-    using AbstractLinkMessage::AbstractLinkMessage;
-  };
-
 }  // namespace llarp

@@ -24,17 +24,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ifaddrs.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include <stddef.h>
 #include <errno.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netpacket/packet.h>
-#include <net/if_arp.h>
-#include <netinet/in.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <net/if_arp.h>
+#include <netinet/in.h>
+#include <netpacket/packet.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 typedef struct NetlinkList
 {

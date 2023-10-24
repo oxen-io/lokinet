@@ -1,15 +1,16 @@
 #pragma once
 
+#include "info.hpp"
+#include "intro_set.hpp"
+#include "vanity.hpp"
+
 #include <llarp/config/key_manager.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/util/buffer.hpp>
+
 #include <memory>
 #include <tuple>
-
-#include "info.hpp"
-#include "intro_set.hpp"
-#include "vanity.hpp"
 
 namespace llarp::service
 {

@@ -1,4 +1,5 @@
 #include "rpc_server.hpp"
+
 #include "rpc_request.hpp"
 
 #include <llarp/config/config.hpp>
@@ -7,8 +8,8 @@
 #include <llarp/dns/dns.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/rpc/rpc_request_definitions.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/rpc/rpc_request_definitions.hpp>
 #include <llarp/service/context.hpp>
 
 #include <nlohmann/json.hpp>

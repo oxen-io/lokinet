@@ -1,27 +1,26 @@
 #pragma once
 
+#include "common.hpp"
 #include "platform.hpp"
-#include <unistd.h>
+
+#include <llarp.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
+
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
+#include <oxenc/endian.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <fcntl.h>
-#include "common.hpp"
-#include <net/if.h>
-#include <linux/if_tun.h>
+#include <unistd.h>
 
 #include <cstring>
-#include <arpa/inet.h>
-#include <linux/rtnetlink.h>
-#include <llarp/net/net.hpp>
-#include <llarp/util/str.hpp>
 #include <exception>
-
-#include <oxenc/endian.h>
-
-#include <llarp/router/router.hpp>
-#include <llarp.hpp>
-
-#include <llarp/util/fs.hpp>
 
 namespace llarp::vpn
 {

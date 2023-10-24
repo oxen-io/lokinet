@@ -2,9 +2,10 @@
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
+#include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>
+
 #include <utility>
 
 namespace llarp::exit

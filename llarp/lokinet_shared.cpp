@@ -1,22 +1,20 @@
-#include <lokinet.h>
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/crypto/crypto.hpp>
-
-#include <llarp/router/router.hpp>
-#include <llarp/service/context.hpp>
 #include <llarp/link/tunnel.hpp>
 #include <llarp/nodedb.hpp>
-
+#include <llarp/router/router.hpp>
+#include <llarp/service/context.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/callback_sink.hpp>
 
+#include <lokinet.h>
 #include <oxenc/base32z.h>
 
-#include <mutex>
-#include <memory>
 #include <chrono>
+#include <memory>
+#include <mutex>
 #include <stdexcept>
 
 #ifdef _WIN32

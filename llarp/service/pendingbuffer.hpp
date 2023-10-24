@@ -1,7 +1,9 @@
 #pragma once
 
 #include "protocol.hpp"
+
 #include <llarp/util/buffer.hpp>
+
 #include <vector>
 
 namespace llarp::service

@@ -1,9 +1,10 @@
 #pragma once
 #include <llarp/net/sock_addr.hpp>
 #include <llarp/util/logging.hpp>
-#include <string>
+
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #ifndef _WIN32
 #include <net/if.h>

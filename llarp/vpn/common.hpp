@@ -1,9 +1,14 @@
 #pragma once
 
-#include <sys/types.h>
+#include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cerrno>
+#include <cstring>
+#include <stdexcept>
 
 namespace llarp::vpn
 {

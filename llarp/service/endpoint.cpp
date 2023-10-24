@@ -1,29 +1,30 @@
 #include "endpoint.hpp"
 
+#include "auth.hpp"
+#include "endpoint_state.hpp"
+#include "endpoint_util.hpp"
+#include "info.hpp"
+#include "outbound_context.hpp"
+#include "protocol.hpp"
+#include "protocol_type.hpp"
+
 #include <llarp/dht/key.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/link/tunnel.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/profiling.hpp>
 #include <llarp/path/path.hpp>
-#include <llarp/router/router.hpp>
+#include <llarp/profiling.hpp>
 #include <llarp/router/route_poker.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/priority_queue.hpp>
+
 #include <optional>
 #include <type_traits>
 #include <utility>
 #include <variant>
-
-#include "endpoint_state.hpp"
-#include "endpoint_util.hpp"
-#include "auth.hpp"
-#include "outbound_context.hpp"
-#include "protocol.hpp"
-#include "info.hpp"
-#include "protocol_type.hpp"
 
 namespace llarp::service
 {

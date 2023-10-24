@@ -1,12 +1,13 @@
 #pragma once
 
-#include <llarp/crypto/types.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/crypto/encrypted_frame.hpp>
-#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/crypto/types.hpp>
 #include <llarp/messages/relay.hpp>
-#include <vector>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/types.hpp>
+
 #include <memory>
+#include <vector>
 
 struct llarp_buffer_t;
 

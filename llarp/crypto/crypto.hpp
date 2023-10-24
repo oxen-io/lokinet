@@ -1,18 +1,18 @@
 #pragma once
 
-#include <llarp/util/buffer.hpp>
-#include <functional>
-#include <cstdint>
-
 #include "constants.hpp"
 #include "types.hpp"
+
+#include <llarp/util/buffer.hpp>
+
+#include <cstdint>
+#include <functional>
 
 namespace llarp
 {
   /*
       TODO:
         - make uint8_t pointers const where needed
-        -
   */
 
   namespace crypto

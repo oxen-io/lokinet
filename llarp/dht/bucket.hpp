@@ -2,6 +2,7 @@
 
 #include "kademlia.hpp"
 #include "key.hpp"
+
 #include <llarp/util/status.hpp>
 
 #include <map>

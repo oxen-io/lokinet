@@ -4,9 +4,10 @@
 #include <string>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <stringapiset.h>
 #include <llarp/win32/exception.hpp>
+
+#include <stringapiset.h>
+#include <windows.h>
 #endif
 
 namespace llarp

@@ -1,6 +1,7 @@
 #include "threading.hpp"
 
 #include <llarp/util/logging.hpp>
+
 #include <cstring>
 
 #ifdef POSIX

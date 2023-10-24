@@ -2,7 +2,10 @@
 
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/file.hpp>
+
 #include <oxenc/hex.h>
+#include <sodium/crypto_hash_sha512.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
 
 namespace llarp
 {

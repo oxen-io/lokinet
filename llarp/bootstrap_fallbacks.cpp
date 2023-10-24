@@ -1,5 +1,6 @@
+#include <llarp/bootstrap.hpp>
+
 #include <initializer_list>
-#include "llarp/bootstrap.hpp"
 
 namespace llarp
 {

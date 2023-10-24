@@ -3,18 +3,21 @@ extern "C"
 #include <wintun.h>
 }
 
-#include <iphlpapi.h>
-#include "wintun.hpp"
-#include "exception.hpp"
 #include "dll.hpp"
+#include "exception.hpp"
 #include "guid.hpp"
-#include <unordered_set>
-#include <map>
+#include "wintun.hpp"
+
 #include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/thread/queue.hpp>
-#include <llarp/util/logging.hpp>
 #include <llarp/vpn/platform.hpp>
+
+#include <iphlpapi.h>
+
+#include <map>
+#include <unordered_set>
 
 namespace llarp::win32
 {

@@ -1,4 +1,5 @@
 #include "buffer.hpp"
+
 #include <oxenc/endian.h>
 
 #include <cstdarg>

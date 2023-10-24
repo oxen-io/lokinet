@@ -1,8 +1,8 @@
 #include "question.hpp"
 
-#include <llarp/util/str.hpp>
-
 #include "dns.hpp"
+
+#include <llarp/util/str.hpp>
 
 namespace llarp::dns
 {

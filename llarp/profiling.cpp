@@ -1,9 +1,9 @@
 #include "profiling.hpp"
 
+#include "util/file.hpp"
+
 #include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
-
-#include "util/file.hpp"
 
 using oxenc::bt_dict_consumer;
 using oxenc::bt_dict_producer;

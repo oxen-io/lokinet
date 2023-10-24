@@ -1,10 +1,11 @@
 #pragma once
 
-#include <llarp/exit/endpoint.hpp>
-#include <llarp/dns/server.hpp>
-#include <unordered_map>
-
 #include "tun.hpp"
+
+#include <llarp/dns/server.hpp>
+#include <llarp/exit/endpoint.hpp>
+
+#include <unordered_map>
 
 namespace llarp
 {

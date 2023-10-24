@@ -1,7 +1,8 @@
 #pragma once
-#include <chrono>
 #include <llarp/util/service_manager.hpp>
 #include <llarp/util/types.hpp>
+
+#include <chrono>
 
 namespace llarp::sys
 {

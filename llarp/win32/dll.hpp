@@ -1,7 +1,9 @@
 #pragma once
-#include <windows.h>
 #include "exception.hpp"
+
 #include <llarp/util/str.hpp>
+
+#include <windows.h>
 
 namespace llarp::win32
 {

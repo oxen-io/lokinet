@@ -1,8 +1,10 @@
 #include "file.hpp"
+
 #include "formattable.hpp"
 #include "logging.hpp"
 
 #include <fcntl.h>
+
 #include <fstream>
 #include <ios>
 #include <stdexcept>

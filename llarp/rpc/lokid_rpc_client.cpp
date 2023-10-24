@@ -1,9 +1,11 @@
 #include "lokid_rpc_client.hpp"
 
-#include <llarp/util/logging.hpp>
 #include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
+
 #include <nlohmann/json.hpp>
 #include <oxenc/hex.h>
+
 #include <stdexcept>
 
 namespace llarp::rpc

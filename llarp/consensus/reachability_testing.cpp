@@ -1,9 +1,9 @@
 
 #include "reachability_testing.hpp"
 
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
-#include <llarp/crypto/crypto.hpp>
 
 using std::chrono::steady_clock;
 

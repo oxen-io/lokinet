@@ -1,7 +1,9 @@
 #include "route_manager.hpp"
+
+#include <llarp.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
-#include <llarp.hpp>
+
 #include <memory>
 
 namespace llarp::apple

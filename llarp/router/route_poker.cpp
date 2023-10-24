@@ -1,8 +1,8 @@
 #include "route_poker.hpp"
 
-#include <llarp/service/context.hpp>
-
 #include "router.hpp"
+
+#include <llarp/service/context.hpp>
 
 namespace llarp
 {

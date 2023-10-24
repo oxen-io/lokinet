@@ -1,8 +1,9 @@
 #pragma once
 
 #include "pathset.hpp"
-#include <llarp/util/status.hpp>
+
 #include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/status.hpp>
 
 #include <atomic>
 #include <set>

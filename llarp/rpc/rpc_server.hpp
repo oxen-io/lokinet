@@ -1,17 +1,18 @@
 #pragma once
 
+#include "json_bt.hpp"
+#include "rpc_request_definitions.hpp"
+
 #include <llarp/config/config.hpp>
 
 #include <nlohmann/json_fwd.hpp>
-#include <oxenmq/oxenmq.h>
-#include <oxenmq/message.h>
-#include <oxenmq/address.h>
 #include <oxen/log/omq_logger.hpp>
+#include <oxenmq/address.h>
+#include <oxenmq/message.h>
+#include <oxenmq/oxenmq.h>
+
 #include <stdexcept>
 #include <string_view>
-
-#include "rpc_request_definitions.hpp"
-#include "json_bt.hpp"
 
 namespace llarp
 {

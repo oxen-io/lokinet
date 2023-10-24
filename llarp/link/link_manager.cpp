@@ -1,13 +1,14 @@
 #include "link_manager.hpp"
+
 #include "connection.hpp"
 #include "contacts.hpp"
 
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/exit.hpp>
 #include <llarp/messages/path.hpp>
-#include <llarp/router/router.hpp>
-#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/router/rc_lookup_handler.hpp>
+#include <llarp/router/router.hpp>
 
 #include <algorithm>
 #include <set>

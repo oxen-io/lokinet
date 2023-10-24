@@ -33,10 +33,12 @@ BraceWrapping:
   SplitEmptyNamespace: false
 BreakBeforeTernaryOperators: 'true'
 BreakConstructorInitializersBeforeComma: 'true'
+ColumnLimit: 100
 Cpp11BracedListStyle: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 NamespaceIndentation: All
 PenaltyBreakString: '3'
+SortIncludes: CaseInsensitive
 SpaceBeforeParens: ControlStatements
 SpacesInAngles: 'false'
 SpacesInContainerLiterals: 'false'
@@ -44,8 +46,6 @@ SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 Standard: Cpp11
 UseTab: Never
-SortIncludes: false
-ColumnLimit: 100
 
 # treat pointers and reference declarations as if part of the type
 DerivePointerAlignment: false
@@ -55,7 +55,21 @@ PointerAlignment: Left
 BinPackParameters: 'false'
 BinPackArguments: 'false'
 
-# TODO: uncomment me when we are reading to rearrange the header includes
-# IncludeBlocks: Regroup
-# IncludeCategories: 'llarp/'
-
+# Include block sorting in the following order:
+#   - Main header for source file (clang-format default prioritizes this first)
+#   - Relative path includes in quotation marks
+#   - Absolute path includes in angle brackets
+#   - External dependencies
+#   - System dependencies
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '".+\.h'
+    Priority: 2
+  - Regex: '^<llarp'
+    Priority: 3
+  - Regex: '<winsock2\.h>'
+    Priority: 4
+  - Regex: '^<.*\.h(pp)?>$'
+    Priority: 5
+  - Regex: '(<)(.)+(>)'
+    Priority: 6

@@ -1,9 +1,10 @@
 #pragma once
 
-#include <llarp/service/protocol_type.hpp>
+#include <llarp/constants/path.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/constants/path.hpp>
+#include <llarp/service/protocol_type.hpp>
+
 #include <deque>
 #include <queue>
 

@@ -1,6 +1,8 @@
 #include "win32.hpp"
+
 #include <llarp/win32/windivert.hpp>
 #include <llarp/win32/wintun.hpp>
+
 #include <fmt/core.h>
 
 namespace llarp::win32

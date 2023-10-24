@@ -1,23 +1,24 @@
 #pragma once
 
+#include "info.hpp"
+#include "intro.hpp"
+#include "protocol_type.hpp"
+#include "tag.hpp"
+
 #include <llarp/crypto/types.hpp>
-#include <llarp/pow.hpp>
-#include <llarp/util/bencode.hpp>
-#include <llarp/util/time.hpp>
-#include <llarp/util/status.hpp>
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/traffic_policy.hpp>
-#include <optional>
+#include <llarp/pow.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/status.hpp>
+#include <llarp/util/time.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <vector>
-
-#include "info.hpp"
-#include "intro.hpp"
-#include "tag.hpp"
-#include "protocol_type.hpp"
 
 namespace llarp::service
 {

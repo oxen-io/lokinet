@@ -1,15 +1,17 @@
+#include "rc_lookup_handler.hpp"
+
+#include "router.hpp"
+
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/link/link_manager.hpp>
-#include <llarp/crypto/crypto.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/nodedb.hpp>
-#include <iterator>
-#include <functional>
+#include <llarp/router_contact.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/util/types.hpp>
 
-#include "rc_lookup_handler.hpp"
-#include "router.hpp"
+#include <functional>
+#include <iterator>
 
 namespace llarp
 {

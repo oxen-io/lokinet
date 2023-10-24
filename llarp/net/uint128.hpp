@@ -1,10 +1,10 @@
 #pragma once
+#include <oxenc/endian.h>
+
+#include <algorithm>
 #include <array>
 #include <cstdint>
-#include <algorithm>
 #include <functional>
-
-#include <oxenc/endian.h>
 
 namespace llarp
 {

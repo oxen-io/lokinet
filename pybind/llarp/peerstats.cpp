@@ -1,8 +1,8 @@
-#include <common.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/peerstats/peer_db.hpp>
 #include <llarp/peerstats/types.hpp>
 
+#include <common.hpp>
 #include <netinet/in.h>
 
 namespace llarp

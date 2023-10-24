@@ -1,26 +1,26 @@
+#include "tun.hpp"
+
 #include <algorithm>
 #include <iterator>
 #include <variant>
-
-#include "tun.hpp"
 #ifndef _WIN32
 #include <sys/socket.h>
 #endif
 
+#include <llarp/constants/platform.hpp>
 #include <llarp/dns/dns.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/router/router.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/router/route_poker.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/service/context.hpp>
-#include <llarp/service/outbound_context.hpp>
 #include <llarp/service/endpoint_state.hpp>
 #include <llarp/service/name.hpp>
+#include <llarp/service/outbound_context.hpp>
 #include <llarp/service/protocol_type.hpp>
-#include <llarp/nodedb.hpp>
-#include <llarp/rpc/endpoint_rpc.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/constants/platform.hpp>
 
 namespace llarp::handlers
 {

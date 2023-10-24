@@ -1,11 +1,13 @@
 #pragma once
 
-#include <oxenc/bt.h>
-#include <set>
-
-#include "ip_range.hpp"
 #include "ip_packet.hpp"
-#include "llarp/util/status.hpp"
+#include "ip_range.hpp"
+
+#include <llarp/util/status.hpp>
+
+#include <oxenc/bt.h>
+
+#include <set>
 
 namespace llarp::net
 {

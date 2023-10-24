@@ -1,12 +1,13 @@
 #pragma once
 
-#include <tuple>
-#include <string_view>
-
 #include "dns.hpp"
 #include "name.hpp"
 #include "serialize.hpp"
-#include "llarp/util/status.hpp"
+
+#include <llarp/util/status.hpp>
+
+#include <string_view>
+#include <tuple>
 
 namespace llarp::dns
 {

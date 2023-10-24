@@ -3,9 +3,10 @@
 #include <llarp/dns/dns.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/protocol_type.hpp>
+
 #include <cassert>
 
 namespace llarp::handlers

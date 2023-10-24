@@ -1,11 +1,11 @@
 #pragma once
+#include <llarp/util/fs.hpp>
+
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/functional.h>
 
 #include <unordered_map>
-
-#include <llarp/util/fs.hpp>
 
 namespace py = pybind11;
 

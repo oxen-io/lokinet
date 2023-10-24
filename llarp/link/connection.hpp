@@ -1,7 +1,8 @@
 #pragma once
 
-#include <llarp/router_id.hpp>
 #include <llarp/router_contact.hpp>
+#include <llarp/router_id.hpp>
+
 #include <quic.hpp>
 
 namespace llarp::link

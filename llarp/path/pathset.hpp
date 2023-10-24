@@ -1,19 +1,20 @@
 #pragma once
 
+#include "path_types.hpp"
+
 #include <llarp/router_contact.hpp>
-#include <llarp/service/protocol_type.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/service/intro_set.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
+
 #include <functional>
 #include <list>
 #include <map>
 #include <tuple>
 #include <unordered_set>
-
-#include "path_types.hpp"
 
 namespace std
 {

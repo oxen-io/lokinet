@@ -1,19 +1,21 @@
 #pragma once
 
+#include "connection.hpp"
+
 #include <llarp/constants/path.hpp>
-#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/crypto/crypto.hpp>
 #include <llarp/util/compare_ptr.hpp>
-#include <quic.hpp>
+#include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/priority_queue.hpp>
-#include <unordered_map>
-#include <set>
-#include <atomic>
 
-#include "connection.hpp"
+#include <quic.hpp>
+
+#include <atomic>
+#include <set>
+#include <unordered_map>
 
 namespace
 {

@@ -1,18 +1,20 @@
 #pragma once
 
-#include <oxen/log/catlogger.hpp>
+#include "ip.hpp"
+#include "net_bits.hpp"
+
 #include <llarp/util/bits.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/types.hpp>
+
+#include <oxen/log/catlogger.hpp>
 #include <oxenc/bt.h>
+
 #include <list>
 #include <optional>
 #include <stdexcept>
 #include <string>
-
-#include "ip.hpp"
-#include "net_bits.hpp"
 
 namespace
 {

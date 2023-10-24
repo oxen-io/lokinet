@@ -1,10 +1,11 @@
 #include "context.hpp"
 
+#include "endpoint.hpp"
+
 #include <llarp/handlers/null.hpp>
 #include <llarp/handlers/tun.hpp>
-#include <stdexcept>
 
-#include "endpoint.hpp"
+#include <stdexcept>
 
 namespace llarp::service
 {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <type_traits>
 
 // Formattable types can specialize this to true and will get automatic fmt formattering support via

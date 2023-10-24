@@ -1,11 +1,12 @@
 #include "protocol.hpp"
 
-#include <llarp/path/path.hpp>
-#include <llarp/util/buffer.hpp>
-#include <llarp/router/router.hpp>
-#include <utility>
-
 #include "endpoint.hpp"
+
+#include <llarp/path/path.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/buffer.hpp>
+
+#include <utility>
 
 namespace llarp::service
 {
