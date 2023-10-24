@@ -489,7 +489,7 @@ namespace llarp::service
   }
 
   void
-  OutboundContext::Tick(std::chrono::milliseconds now)
+  OutboundContext::Tick(llarp_time_t now)
   {
     path::Builder::Tick(now);
 

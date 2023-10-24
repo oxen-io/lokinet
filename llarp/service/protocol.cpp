@@ -39,8 +39,7 @@ namespace llarp::service
   ProtocolMessage::decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    // if (!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
-    //   return false;
+
     if (k.startswith("d"))
     {
       llarp_buffer_t strbuf;

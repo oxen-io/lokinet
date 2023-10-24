@@ -184,6 +184,7 @@ namespace llarp::service
   IntroSet::ExtractStatus() const
   {
     util::StatusObject obj{{"published", to_json(time_signed)}};
+    // TODO: this
     // std::vector<util::StatusObject> introsObjs;
     // std::transform(
     //     intros.begin(),

@@ -639,7 +639,7 @@ main(int argc, char* argv[])
       static const char* text = "Don't run lokinet in wine, aborting startup";
       static const char* title = "Lokinet Wine Error";
       MessageBoxA(NULL, text, title, MB_ICONHAND);
-      abort();
+      std::abort();
     }
   }
 

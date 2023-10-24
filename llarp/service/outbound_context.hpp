@@ -79,7 +79,7 @@ namespace llarp::service
     send_auth_async(std::function<void(std::string, bool)> resultHandler);
 
     void
-    Tick(std::chrono::milliseconds now) override;
+    Tick(llarp_time_t now) override;
 
     util::StatusObject
     ExtractStatus() const;

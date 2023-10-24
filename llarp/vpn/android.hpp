@@ -5,8 +5,9 @@
 
 #include <llarp.hpp>
 
-#include <stdio.h>
 #include <unistd.h>
+
+#include <cstdio>
 
 namespace llarp::vpn
 {
