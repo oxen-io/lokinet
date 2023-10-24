@@ -1,6 +1,5 @@
 #include "router.hpp"
 
-#include <llarp/nodedb.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
 #include <llarp/constants/time.hpp>
@@ -10,15 +9,17 @@
 #include <llarp/link/contacts.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/net/net.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/status.hpp>
-#include <memory>
+
 #include <cstdlib>
 #include <iterator>
+#include <memory>
+#include <stdexcept>
 #include <unordered_map>
 #include <utility>
-#include <stdexcept>
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
@@ -28,6 +29,7 @@
 #endif
 
 #include <llarp/constants/platform.hpp>
+
 #include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;

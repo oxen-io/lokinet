@@ -23,8 +23,7 @@
  *	BSDI ifaddrs.h,v 2.5 2000/02/23 14:51:59 dab Exp
  */
 
-#ifndef _IFADDRS_H_
-#define _IFADDRS_H_
+#pragma once
 
 struct ifaddrs
 {
@@ -53,5 +52,3 @@ getifaddrs(struct ifaddrs** ifap);
 extern void
 freeifaddrs(struct ifaddrs* ifa);
 __END_DECLS
-
-#endif

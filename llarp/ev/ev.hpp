@@ -1,14 +1,16 @@
 #pragma once
 
-#include <llarp/util/buffer.hpp>
-#include <llarp/util/time.hpp>
-#include <llarp/util/thread/threading.hpp>
-#include <llarp/constants/evloop.hpp>
 #include <llarp/net/interface_info.hpp>
+#include <llarp/util/buffer.hpp>
+#include <llarp/util/thread/threading.hpp>
+#include <llarp/util/time.hpp>
+
+#include <uvw.hpp>
+
 #include <algorithm>
 #include <deque>
-#include <list>
 #include <future>
+#include <list>
 #include <utility>
 
 using oxen::log::slns::source_location;
@@ -20,6 +22,8 @@ namespace uvw
 
 namespace llarp
 {
+  constexpr std::size_t event_loop_queue_size = 1024;
+
   struct SockAddr;
   struct UDPHandle;
 

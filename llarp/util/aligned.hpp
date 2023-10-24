@@ -1,11 +1,13 @@
 #pragma once
 
 #include "bencode.h"
-#include <llarp/util/logging.hpp>
+
 #include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <oxenc/hex.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <iomanip>
@@ -13,7 +15,6 @@
 #include <memory>
 #include <numeric>
 #include <type_traits>
-#include <algorithm>
 
 extern "C"
 {

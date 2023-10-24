@@ -1,11 +1,12 @@
 #pragma once
 
+#include "common.hpp"
+#include "platform.hpp"
+
+#include <llarp.hpp>
+
 #include <stdio.h>
 #include <unistd.h>
-
-#include "platform.hpp"
-#include "common.hpp"
-#include <llarp.hpp>
 
 namespace llarp::vpn
 {

@@ -262,7 +262,7 @@ add_subdirectory(external)
 # interface library for setting common includes, linkage and flags
 add_library(lokinet-base INTERFACE)
 target_include_directories(lokinet-base INTERFACE . include)
-target_link_libraries(lokinet-base INTERFACE quic)
+target_link_libraries(lokinet-base INTERFACE quic nlohmann_json::nlohmann_json)
 
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)

@@ -1,9 +1,10 @@
 #pragma once
-#include <common.hpp>
 #include <llarp.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
-#include <llarp/router/router.hpp>
+
+#include <common.hpp>
 
 namespace llarp
 {

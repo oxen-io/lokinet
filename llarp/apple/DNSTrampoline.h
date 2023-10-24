@@ -1,6 +1,6 @@
 #pragma once
-#include <uv.h>
 #include <NetworkExtension/NetworkExtension.h>
+#include <uv.h>
 
 extern NSString* error_domain;
 

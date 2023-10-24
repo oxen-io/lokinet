@@ -1,22 +1,23 @@
 #pragma once
 
-#include <llarp/router/router.hpp>
-#include <set>
-#include <optional>
-#include <unordered_set>
-#include <unordered_map>
-#include <utility>
-#include <atomic>
-#include <algorithm>
-
+#include "crypto/crypto.hpp"
+#include "dht/key.hpp"
 #include "router_contact.hpp"
 #include "router_id.hpp"
 #include "util/common.hpp"
 #include "util/fs.hpp"
-#include "dht/key.hpp"
-#include "crypto/crypto.hpp"
-#include "util/thread/threading.hpp"
 #include "util/thread/annotations.hpp"
+#include "util/thread/threading.hpp"
+
+#include <llarp/router/router.hpp>
+
+#include <algorithm>
+#include <atomic>
+#include <optional>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace llarp
 {

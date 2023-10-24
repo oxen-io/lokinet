@@ -1,7 +1,8 @@
 #pragma once
+#include <llarp/util/types.hpp>
+
 #include <functional>
 #include <vector>
-#include <llarp/util/types.hpp>
 
 namespace llarp::vpn
 {

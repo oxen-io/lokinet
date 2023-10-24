@@ -1,10 +1,12 @@
 #pragma once
 
-#include <oxenc/bt.h>
 #include <llarp/crypto/types.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
+
+#include <oxenc/bt.h>
+
 #include <iostream>
 
 namespace

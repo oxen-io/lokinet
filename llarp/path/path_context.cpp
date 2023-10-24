@@ -1,5 +1,6 @@
-#include "path.hpp"
 #include "path_context.hpp"
+
+#include "path.hpp"
 
 #include <llarp/router/router.hpp>
 

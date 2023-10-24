@@ -1,10 +1,11 @@
 #pragma once
 
+#include "config.hpp"
+
 #include <llarp/crypto/types.hpp>
 #include <llarp/router_contact.hpp>
-#include <atomic>
 
-#include "config.hpp"
+#include <atomic>
 
 namespace llarp
 {

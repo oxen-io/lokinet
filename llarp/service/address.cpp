@@ -1,6 +1,9 @@
 #include "address.hpp"
+
 #include <llarp/crypto/crypto.hpp>
+
 #include <oxenc/base32z.h>
+
 #include <algorithm>
 
 namespace llarp::service

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <llarp/util/time.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/util/time.hpp>
+
 #include <chrono>
 #include <queue>
 #include <random>

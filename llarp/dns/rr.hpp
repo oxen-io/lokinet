@@ -1,11 +1,12 @@
 #pragma once
 
-#include <llarp/net/net_int.hpp>
-#include <memory>
-#include <vector>
-
 #include "name.hpp"
 #include "serialize.hpp"
+
+#include <llarp/net/net_int.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace llarp::dns
 {

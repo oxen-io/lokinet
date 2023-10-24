@@ -1,14 +1,14 @@
 #include "router_contact.hpp"
 
-#include <oxenc/bt_serialize.h>
-
 #include "constants/version.hpp"
 #include "crypto/crypto.hpp"
 #include "net/net.hpp"
 #include "util/bencode.hpp"
 #include "util/buffer.hpp"
-#include "util/time.hpp"
 #include "util/file.hpp"
+#include "util/time.hpp"
+
+#include <oxenc/bt_serialize.h>
 
 namespace llarp
 {

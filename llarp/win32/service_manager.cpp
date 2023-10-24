@@ -1,10 +1,13 @@
-#include <windows.h>
-#include <chrono>
+#include "service_manager.hpp"
+
 #include <llarp.hpp>
 #include <llarp/util/logging.hpp>
-#include "service_manager.hpp"
+
 #include <dbghelp.h>
+#include <windows.h>
+
 #include <cassert>
+#include <chrono>
 #include <csignal>
 #include <optional>
 

@@ -1,9 +1,11 @@
 #include "async_key_exchange.hpp"
+
 #include "endpoint.hpp"
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/util/meta/memfn.hpp>
+
 #include <utility>
 
 namespace llarp::service

@@ -1,6 +1,6 @@
-#include <common.hpp>
 #include <llarp/config/config.hpp>
 
+#include <common.hpp>
 #include <netinet/in.h>
 
 namespace llarp

@@ -1,32 +1,33 @@
 #pragma once
-#include <llarp/net/traffic_policy.hpp>
-#include <llarp/net/net.hpp>
+#include "definition.hpp"
+#include "ini.hpp"
+
 #include <llarp/bootstrap.hpp>
-#include <llarp/crypto/types.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/util/fs.hpp>
-#include <llarp/util/str.hpp>
-#include <llarp/util/logging.hpp>
 #include <llarp/constants/files.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/dns/srv_data.hpp>
 #include <llarp/net/ip_address.hpp>
-#include <llarp/net/net_int.hpp>
 #include <llarp/net/ip_range_map.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/traffic_policy.hpp>
+#include <llarp/router_contact.hpp>
 #include <llarp/service/address.hpp>
 #include <llarp/service/auth.hpp>
-#include <llarp/dns/srv_data.hpp>
-#include <llarp/router_contact.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/str.hpp>
+
 #include <oxenmq/address.h>
+
 #include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include <unordered_set>
-
-#include "ini.hpp"
-#include "definition.hpp"
 
 namespace llarp
 {

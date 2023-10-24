@@ -1,7 +1,7 @@
+#include "transit_hop.hpp"
+
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
-
-#include "transit_hop.hpp"
 
 namespace llarp::path
 {

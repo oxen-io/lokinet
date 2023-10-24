@@ -1,4 +1,5 @@
 #include <llarp/crypto/types.hpp>
+
 #include <common.hpp>
 
 namespace llarp

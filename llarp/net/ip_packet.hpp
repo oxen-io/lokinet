@@ -1,14 +1,16 @@
 #pragma once
 
-#include <oxenc/endian.h>
-#include <llarp/ev/ev.hpp>
+#include "net.hpp"
+
+// #include <llarp/ev/ev.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/service/protocol_type.hpp>
+
+#include <oxenc/endian.h>
+
 #include <memory>
 #include <utility>
-
-#include "net.hpp"
 
 namespace llarp::net
 {

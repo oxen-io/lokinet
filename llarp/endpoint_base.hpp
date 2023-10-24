@@ -1,22 +1,24 @@
 #pragma once
 
+#include "router_id.hpp"
+
+#include <llarp/dns/srv_data.hpp>
+#include <llarp/ev/ev.hpp>
 #include <llarp/link/tunnel.hpp>
+#include <llarp/service/address.hpp>
+#include <llarp/service/convotag.hpp>
+#include <llarp/service/protocol_type.hpp>
+
+#include <oxenc/variant.h>
 #include <quic.hpp>
+
 #include <functional>
 #include <memory>
+#include <optional>
+#include <set>
 #include <string>
 #include <tuple>
-#include <optional>
 #include <unordered_set>
-#include <set>
-
-#include "llarp/service/address.hpp"
-#include "llarp/service/convotag.hpp"
-#include "llarp/service/protocol_type.hpp"
-#include "router_id.hpp"
-#include "llarp/ev/ev.hpp"
-#include "llarp/dns/srv_data.hpp"
-#include "oxenc/variant.h"
 
 namespace llarp
 {
@@ -24,6 +26,12 @@ namespace llarp
   {
     class Server;
   }
+
+  // TODO: add forward declaration of TunnelManager
+  //  namespace link
+  //  {
+  //    class TunneLManager;
+  //  }
 
   class EndpointBase
   {

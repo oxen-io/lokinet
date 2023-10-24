@@ -2,6 +2,7 @@
 
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/status.hpp>
+
 #include <vector>
 
 namespace llarp::dns

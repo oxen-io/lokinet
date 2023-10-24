@@ -6,8 +6,8 @@
 #include <stdlib.h>
 
 #ifndef _WIN32
-#include <unistd.h>
 #include <pwd.h>
+#include <unistd.h>
 #endif
 
 namespace llarp

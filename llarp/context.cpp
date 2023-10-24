@@ -1,17 +1,17 @@
+#include "nodedb.hpp"
+
 #include <llarp.hpp>
-#include <llarp/constants/version.hpp>
-#include <llarp/constants/evloop.hpp>
 #include <llarp/config/config.hpp>
+#include <llarp/constants/version.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/service_manager.hpp>
-#include <memory>
-#include <csignal>
-#include <stdexcept>
 
-#include "nodedb.hpp"
+#include <csignal>
+#include <memory>
+#include <stdexcept>
 
 #if (__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>

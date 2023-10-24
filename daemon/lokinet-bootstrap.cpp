@@ -1,8 +1,8 @@
-#include <cpr/cpr.h>
-
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/version.hpp>
 #include <llarp/util/fs.hpp>
+
+#include <cpr/cpr.h>
 
 #include <iostream>
 #include <unordered_map>
@@ -93,9 +93,9 @@ main(int argc, char* argv[])
   {
     return fail("failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
   }
-  std::stringstream ss;
-  ss << resp.text;
-  std::string data{ss.str()};
+
+  const auto& data = resp.text;
+
   if (data[0] == 'l' or data[0] == 'd')
   {
     try

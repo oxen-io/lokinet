@@ -3,6 +3,7 @@
 #include "pendingbuffer.hpp"
 #include "router_lookup_job.hpp"
 #include "session.hpp"
+
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/thread/queue.hpp>
 

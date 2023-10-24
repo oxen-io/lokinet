@@ -1,6 +1,7 @@
 #pragma once
 
 #include "key.hpp"
+
 #include <llarp/router_contact.hpp>
 
 namespace llarp::dht

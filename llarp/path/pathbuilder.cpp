@@ -1,16 +1,16 @@
 #include "pathbuilder.hpp"
 
+#include "path.hpp"
+#include "path_context.hpp"
+
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
-
-#include "path.hpp"
-#include "path_context.hpp"
 
 namespace llarp
 {

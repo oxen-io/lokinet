@@ -1,6 +1,8 @@
-#include <common.hpp>
-#include <memory>
 #include <llarp/util/logging.hpp>
+
+#include <common.hpp>
+
+#include <memory>
 
 namespace llarp
 {

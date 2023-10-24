@@ -1,21 +1,23 @@
 #pragma once
 
+#include "address.hpp"
+#include "endpoint_types.hpp"
+#include "lns_tracker.hpp"
+#include "pendingbuffer.hpp"
+#include "router_lookup_job.hpp"
+#include "session.hpp"
+
 #include <llarp/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashtable.hpp>
 #include <llarp/util/status.hpp>
+
 #include <oxenc/variant.h>
+
 #include <memory>
 #include <queue>
 #include <set>
 #include <unordered_map>
-
-#include "address.hpp"
-#include "pendingbuffer.hpp"
-#include "router_lookup_job.hpp"
-#include "session.hpp"
-#include "endpoint_types.hpp"
-#include "lns_tracker.hpp"
 
 namespace llarp::service
 {

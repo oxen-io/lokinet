@@ -1,6 +1,6 @@
 #include "endpoint_base.hpp"
 
-#include "llarp/util/algorithm.hpp"
+#include <llarp/util/algorithm.hpp>
 
 namespace llarp
 {

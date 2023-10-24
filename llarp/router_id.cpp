@@ -1,4 +1,5 @@
 #include "router_id.hpp"
+
 #include <oxenc/base32z.h>
 
 namespace llarp

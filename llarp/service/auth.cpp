@@ -1,9 +1,10 @@
 #include "auth.hpp"
+
 #include "protocol.hpp"
 
 #include <llarp/router/router.hpp>
-#include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
 
 #include <unordered_map>
 

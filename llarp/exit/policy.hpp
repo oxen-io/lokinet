@@ -1,7 +1,8 @@
 #pragma once
 
-#include <oxenc/bt.h>
 #include <llarp/util/bencode.hpp>
+
+#include <oxenc/bt.h>
 
 namespace
 {

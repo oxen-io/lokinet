@@ -1,19 +1,21 @@
 #pragma once
 
-#include <external/oxen-libquic/include/quic.hpp>
-#include <oxenc/bt_producer.h>
+#include "router_version.hpp"
+
+#include <llarp/constants/version.hpp>
+#include <llarp/crypto/types.hpp>
+#include <llarp/dns/srv_data.hpp>
+#include <llarp/net/exit_info.hpp>
+#include <llarp/util/aligned.hpp>
+#include <llarp/util/bencode.hpp>
+#include <llarp/util/status.hpp>
+
 #include <nlohmann/json.hpp>
+#include <oxenc/bt_producer.h>
+#include <quic.hpp>
+
 #include <functional>
 #include <vector>
-
-#include "llarp/constants/version.hpp"
-#include "llarp/crypto/types.hpp"
-#include "llarp/net/exit_info.hpp"
-#include "llarp/util/aligned.hpp"
-#include "llarp/util/bencode.hpp"
-#include "llarp/util/status.hpp"
-#include "router_version.hpp"
-#include "llarp/dns/srv_data.hpp"
 
 #define MAX_RC_SIZE (1024)
 

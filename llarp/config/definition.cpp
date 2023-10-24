@@ -1,9 +1,10 @@
 #include "definition.hpp"
+
 #include <llarp/util/logging.hpp>
 
+#include <cassert>
 #include <iterator>
 #include <stdexcept>
-#include <cassert>
 
 namespace llarp
 {

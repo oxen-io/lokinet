@@ -1,8 +1,8 @@
 #include "ip_range.hpp"
 
-#include "oxenc/bt_serialize.h"
+#include <llarp/util/bencode.h>
 
-#include "llarp/util/bencode.h"
+#include <oxenc/bt_serialize.h>
 
 namespace llarp
 {

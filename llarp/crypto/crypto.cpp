@@ -1,15 +1,16 @@
 #include "crypto.hpp"
 
-#include <sodium/core.h>
-#include <sodium/crypto_generichash.h>
-#include <sodium/crypto_sign.h>
-#include <sodium/crypto_scalarmult_ed25519.h>
-#include <sodium/crypto_stream_xchacha20.h>
-#include <sodium/crypto_core_ed25519.h>
-#include <sodium/crypto_aead_xchacha20poly1305.h>
-#include <sodium/randombytes.h>
-#include <sodium/utils.h>
 #include <oxenc/endian.h>
+#include <sodium/core.h>
+#include <sodium/crypto_aead_xchacha20poly1305.h>
+#include <sodium/crypto_core_ed25519.h>
+#include <sodium/crypto_generichash.h>
+#include <sodium/crypto_scalarmult_curve25519.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
+#include <sodium/crypto_sign.h>
+#include <sodium/crypto_stream_xchacha20.h>
+#include <sodium/utils.h>
+
 #include <cassert>
 #include <cstring>
 #ifdef HAVE_CRYPT

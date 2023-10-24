@@ -1,14 +1,13 @@
 #pragma once
 
-#include <thread>
-#include <shared_mutex>
-#include <mutex>
-#include <condition_variable>
-#include <optional>
-#include <iostream>
-#include <thread>
-
 #include "annotations.hpp"
+
+#include <condition_variable>
+#include <iostream>
+#include <mutex>
+#include <optional>
+#include <shared_mutex>
+#include <thread>
 
 #if defined(WIN32) && !defined(__GNUC__)
 #include <process.h>

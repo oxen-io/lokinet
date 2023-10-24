@@ -2,8 +2,9 @@
 
 #include <llarp/net/net_int.hpp>
 #include <llarp/util/buffer.hpp>
-#include <string>
+
 #include <optional>
+#include <string>
 
 namespace llarp::dns
 {

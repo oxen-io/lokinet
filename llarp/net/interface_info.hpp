@@ -1,11 +1,12 @@
 #pragma once
 
+#include "ip_range.hpp"
+
 #include <llarp/util/formattable.hpp>
+
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "ip_range.hpp"
 
 namespace llarp::net
 {

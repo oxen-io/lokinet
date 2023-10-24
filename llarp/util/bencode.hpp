@@ -1,15 +1,17 @@
 #pragma once
 
-#include <llarp/util/logging.hpp>
-#include <oxenc/bt.h>
-#include <type_traits>
-#include <set>
-#include <vector>
-
-#include "buffer.hpp"
 #include "bencode.h"
+#include "buffer.hpp"
 #include "file.hpp"
 #include "mem.hpp"
+
+#include <llarp/util/logging.hpp>
+
+#include <oxenc/bt.h>
+
+#include <set>
+#include <type_traits>
+#include <vector>
 
 namespace llarp
 {

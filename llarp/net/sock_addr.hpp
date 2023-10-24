@@ -1,20 +1,23 @@
 #pragma once
 
 #ifndef _WIN32
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #else
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 #endif
 
-#include <oxenc/variant.h>
-#include <llarp/util/formattable.hpp>
-#include <string_view>
-#include <string>
-
 #include "net_int.hpp"
+
+#include <llarp/util/formattable.hpp>
+
+#include <oxenc/variant.h>
+
+#include <string>
+#include <string_view>
 
 namespace llarp
 {

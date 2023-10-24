@@ -1,5 +1,6 @@
-#include "network_loki_lokinet_LokinetDaemon.h"
 #include "lokinet_jni_common.hpp"
+#include "network_loki_lokinet_LokinetDaemon.h"
+
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/router/router.hpp>

@@ -1,8 +1,9 @@
 #include "name.hpp"
 
 #include <llarp/net/ip.hpp>
-#include <llarp/util/str.hpp>
 #include <llarp/net/net_bits.hpp>
+#include <llarp/util/str.hpp>
+
 #include <oxenc/hex.h>
 
 namespace llarp::dns

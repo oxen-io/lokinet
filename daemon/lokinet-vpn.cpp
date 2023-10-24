@@ -1,18 +1,19 @@
-#include <future>
-#include <vector>
-#include <string_view>
-
-#include <fmt/core.h>
 #include <CLI/CLI.hpp>
+#include <fmt/core.h>
 #include <nlohmann/json.hpp>
 #include <oxenmq/oxenmq.h>
+
+#include <future>
+#include <string_view>
+#include <vector>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
 #include <winsock2.h>
-#include <ws2tcpip.h>
+
 #include <iphlpapi.h>
 #include <strsafe.h>
+#include <ws2tcpip.h>
 #else
 #endif
 

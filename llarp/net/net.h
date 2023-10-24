@@ -1,6 +1,7 @@
 #pragma once
 #if defined(_WIN32) || defined(__MINGW32__)
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 // because this shit is not defined for Windows NT reeeee

@@ -1,19 +1,18 @@
-#include "net.hpp"
-
-#include "net_if.hpp"
-#include <stdexcept>
-#include <llarp/constants/platform.hpp>
-
 #include "ip.hpp"
 #include "ip_range.hpp"
+#include "net.hpp"
+#include "net_if.hpp"
+
+#include <llarp/constants/platform.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/win32/exception.hpp>
 
 #include <iphlpapi.h>
-#include <llarp/win32/exception.hpp>
 
 #include <cstdio>
 #include <list>
+#include <stdexcept>
 #include <type_traits>
 
 namespace llarp::net

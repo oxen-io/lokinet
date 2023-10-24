@@ -1,26 +1,24 @@
 #pragma once
+#include <llarp/dns/server.hpp>
 #include <llarp/endpoint_base.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/session.hpp>
 #include <llarp/net/ip_range_map.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/util/compare_ptr.hpp>
-// --- begin kitchen sink headers ----
 #include <llarp/service/address.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/service/endpoint_types.hpp>
 #include <llarp/service/identity.hpp>
 #include <llarp/service/pendingbuffer.hpp>
 #include <llarp/service/protocol.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/service/session.hpp>
-#include <llarp/service/endpoint_types.hpp>
-#include <llarp/endpoint_base.hpp>
-#include <llarp/service/auth.hpp>
-// ----- end kitchen sink headers -----
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/vpn/egres_packet_router.hpp>
 
 #include <oxenc/variant.h>
-#include <llarp/vpn/egres_packet_router.hpp>
-#include <llarp/dns/server.hpp>
+
 #include <optional>
 #include <unordered_map>
 #include <variant>

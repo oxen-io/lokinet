@@ -1,9 +1,10 @@
 #include "ev.hpp"
 
-#include <llarp/net/net.hpp>
-#include <cstddef>
-
 #include "libuv.hpp"
+
+#include <llarp/net/net.hpp>
+
+#include <cstddef>
 
 namespace llarp
 {

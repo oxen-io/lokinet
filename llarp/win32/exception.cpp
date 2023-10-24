@@ -1,6 +1,9 @@
-#include "windows.h"
 #include "exception.hpp"
+
+#include "windows.h"
+
 #include <llarp/util/str.hpp>
+
 #include <array>
 
 namespace llarp::win32

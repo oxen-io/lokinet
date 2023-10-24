@@ -3,8 +3,8 @@
 #include "queue_manager.hpp"
 #include "threading.hpp"
 
-#include <optional>
 #include <atomic>
+#include <optional>
 #include <tuple>
 
 namespace llarp

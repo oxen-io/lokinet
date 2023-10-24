@@ -1,20 +1,20 @@
 #pragma once
 
-#include <type_traits>
-#include <cassert>
-#include <iterator>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <utility>
-#include <algorithm>
-#include <memory>
-#include <vector>
-#include <string_view>
-
 #include "common.hpp"
 #include "mem.h"
 #include "types.hpp"
+
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iterator>
+#include <memory>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace llarp
 {

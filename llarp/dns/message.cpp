@@ -1,12 +1,14 @@
 #include "message.hpp"
 
-#include <oxenc/endian.h>
-#include <llarp/util/buffer.hpp>
-#include <llarp/net/ip.hpp>
-#include <array>
-
 #include "dns.hpp"
 #include "srv_data.hpp"
+
+#include <llarp/net/ip.hpp>
+#include <llarp/util/buffer.hpp>
+
+#include <oxenc/endian.h>
+
+#include <array>
 
 namespace llarp::dns
 {

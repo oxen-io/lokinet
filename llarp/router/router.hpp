@@ -1,8 +1,13 @@
 #pragma once
 
+#include "rc_gossiper.hpp"
+#include "rc_lookup_handler.hpp"
+#include "route_poker.hpp"
+
 #include <llarp/bootstrap.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
+#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/ev/ev.hpp>
@@ -12,30 +17,27 @@
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/rpc/rpc_server.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/mem.hpp>
+#include <llarp/util/service_manager.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/util/service_manager.hpp>
+
 #include <oxenmq/address.h>
-#include <stdexcept>
+
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
-
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
-#include "route_poker.hpp"
 
 /*
   TONUKE:

@@ -1,8 +1,8 @@
 #include "pow.hpp"
 
-#include <cmath>
-
 #include "crypto/crypto.hpp"
+
+#include <cmath>
 
 namespace llarp
 {

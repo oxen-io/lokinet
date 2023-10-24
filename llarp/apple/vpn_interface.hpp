@@ -1,8 +1,9 @@
 #pragma once
 
 #include <llarp.hpp>
-#include <llarp/vpn/platform.hpp>
 #include <llarp/util/thread/queue.hpp>
+#include <llarp/vpn/platform.hpp>
+
 #include <memory>
 
 namespace llarp::apple

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <array>
-
-#include "util/bencode.hpp"
-#include "constants/version.hpp"
 #include "constants/proto.hpp"
+#include "constants/version.hpp"
+#include "util/bencode.hpp"
 #include "util/formattable.hpp"
+
+#include <array>
 
 namespace
 {

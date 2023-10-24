@@ -1,10 +1,10 @@
 #pragma once
 
+#include <llarp/ev/ev.hpp>
 #include <llarp/link/tunnel.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/protocol_type.hpp>
-#include <llarp/router/router.hpp>
-#include <llarp/ev/ev.hpp>
 #include <llarp/vpn/egres_packet_router.hpp>
 
 namespace llarp::handlers

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <llarp/util/aligned.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/util/aligned.hpp>
 #include <llarp/util/formattable.hpp>
 
 #include <array>

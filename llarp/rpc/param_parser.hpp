@@ -3,12 +3,14 @@
 #include "json_binary_proxy.hpp"
 #include "json_bt.hpp"
 #include "json_conversions.hpp"
-#include <oxenc/bt_serialize.h>
+
 #include <nlohmann/json.hpp>
+#include <oxenc/bt_serialize.h>
+
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <optional>
 
 namespace llarp::rpc
 {
