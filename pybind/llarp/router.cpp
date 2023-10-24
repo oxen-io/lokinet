@@ -1,7 +1,7 @@
+#include "common.hpp"
+
 #include <llarp/router/router.hpp>
 #include <llarp/tooling/hive_router.hpp>
-
-#include <common.hpp>
 
 namespace llarp
 {

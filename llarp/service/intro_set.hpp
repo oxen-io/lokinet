@@ -9,7 +9,6 @@
 #include <llarp/dns/srv_data.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/net/traffic_policy.hpp>
-#include <llarp/pow.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/time.hpp>

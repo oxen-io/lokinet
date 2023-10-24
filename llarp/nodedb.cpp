@@ -238,7 +238,7 @@ namespace llarp
   size_t
   NodeDB::num_loaded() const
   {
-    return router.loop()->call_get([this]() -> size_t { return entries.size(); });
+    return router.loop()->call_get([this]() { return entries.size(); });
   }
 
   void

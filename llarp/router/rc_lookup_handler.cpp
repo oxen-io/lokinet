@@ -106,10 +106,7 @@ namespace llarp
         if (callback)
           callback(result.router_id(), result, true);
         else
-        {
           r.node_db()->put_rc_if_newer(result);
-          // r.connect_to(result);
-        }
       }
       else
       {

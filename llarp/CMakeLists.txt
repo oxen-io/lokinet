@@ -98,7 +98,6 @@ lokinet_add_library(lokinet-time-place
   net/ip_range.cpp
   net/net_int.cpp
   net/sock_addr.cpp
-  pow.cpp # only intro_set
   router_contact.cpp
   router_id.cpp
   router_version.cpp  # to be deleted shortly
