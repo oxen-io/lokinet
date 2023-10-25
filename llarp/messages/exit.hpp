@@ -7,7 +7,7 @@ namespace llarp
   /*
       TODO:
         - change these parameters to ustringviews and ustrings where needed after bumping oxenc
-        - nuke seq_no's
+        - change std::string sig(64, '\0') --> std::array<unsigned char, 64> sig
   */
 
   namespace ObtainExitMessage
