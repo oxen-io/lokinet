@@ -74,10 +74,13 @@ endif()
 
 system_or_submodule(CLI11 CLI11 CLI11>=2.2.0 CLI11)
 
-if(NOT TARGET sqlite3)
-  add_library(sqlite3 INTERFACE)
-  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
-  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
+if(TARGET SQLite::SQLite3)
+  if(NOT TARGET sqlite3)
+    add_library(sqlite3 INTERFACE)
+    pkg_check_modules(SQLite3 REQUIRED IMPORTED_TARGET sqlite3)
+    target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLite3)
+  endif()
+  add_library(SQLite::SQLite3 ALIAS PkgConfig::SQLite3)
 endif()
 
 # Hack around SQLiteCpp's attempts to locate sqlite3 because we *don't* want to link against the
@@ -97,6 +100,7 @@ set(SQLITECPP_RUN_DOXYGEN OFF CACHE BOOL "" FORCE)
 set(SQLITECPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SQLITECPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(SQLiteCpp EXCLUDE_FROM_ALL)
+file(REMOVE "${CMAKE_CURRENT_BINARY_DIR}/ignored/sqlite3.h")
 
 if(WITH_PEERSTATS)
   add_library(sqlite_orm INTERFACE)

@@ -177,6 +177,12 @@ lokinet_add_library(lokinet-nodedb
   profiling.cpp # path, router, service::endpoint
 )
 
+# lokinet-db is the sqlite interface for managing lokinet persistent data (RCs, etc.)
+lokinet_add_library(lokinet-db
+  db.cpp
+)
+
+
 set(BOOTSTRAP_FALLBACKS)
 foreach(bs IN ITEMS MAINNET TESTNET)
   if(BOOTSTRAP_FALLBACK_${bs})
@@ -225,6 +231,7 @@ target_link_libraries(lokinet-dns PUBLIC lokinet-dns-platform)
 target_link_libraries(lokinet-wire PUBLIC lokinet-time-place)
 target_link_libraries(lokinet-dns PUBLIC lokinet-utils lokinet-cryptography lokinet-config)
 target_link_libraries(lokinet-nodedb PUBLIC lokinet-time-place lokinet-cryptography)
+target_link_libraries(lokinet-db PRIVATE lokinet-libntrup)
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography)
 target_link_libraries(lokinet-rpc PUBLIC lokinet-wire)
 target_link_libraries(lokinet-time-place PUBLIC lokinet-utils lokinet-cryptography)
@@ -283,6 +290,7 @@ target_link_libraries(lokinet-cryptography PUBLIC sodium)
 target_link_libraries(lokinet-dns PUBLIC libunbound)
 target_link_libraries(lokinet-utils PUBLIC nlohmann_json::nlohmann_json)
 target_link_libraries(lokinet-wire PUBLIC oxenmq::oxenmq quic)
+target_link_libraries(lokinet-db PRIVATE SQLiteCpp)
 
 if(WITH_EMBEDDED_LOKINET)
   include(GNUInstallDirs)

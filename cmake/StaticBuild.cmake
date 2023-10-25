@@ -25,11 +25,11 @@ set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
 set(UNBOUND_HASH SHA512=f6b9f279330fb19b5feca09524959940aad8c4e064528aa82b369c726d77e9e8e5ca23f366f6e9edcf2c061b96f482ed7a2c26ac70fc15ae5762b3d7e36a5284
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3400000 CACHE STRING "sqlite3 version")
-set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
+set(SQLITE3_VERSION 3430200 CACHE STRING "sqlite3 version")
+set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2023
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA3_256=7ee8f02b21edb4489df5082b5cf5b7ef47bcebcdb0e209bf14240db69633c878
+set(SQLITE3_HASH SHA3_256=a7463a45ed58849200858e514b79f7e5f5d69850047897c5b659a78a0bc75cc1
   CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
@@ -339,10 +339,8 @@ build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --
 add_static_target(sodium sodium_external libsodium.a)
 
 
-if(WITH_PEERSTATS_BACKEND)
-  build_external(sqlite3)
-  add_static_target(sqlite3 sqlite3_external libsqlite3.a)
-endif()
+build_external(sqlite3)
+add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
 if(ARCH_TRIPLET MATCHES mingw)
