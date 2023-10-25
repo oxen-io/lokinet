@@ -3,7 +3,6 @@
 #include "path/path.hpp"
 #include "router_id.hpp"
 #include "util/bencode.hpp"
-#include "util/thread/annotations.hpp"
 #include "util/thread/threading.hpp"
 
 #include <map>
@@ -68,46 +67,45 @@ namespace llarp
 
     /// generic variant
     bool
-    IsBad(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
+    IsBad(const RouterID& r, uint64_t chances = profiling_chances);
 
     /// check if this router should have paths built over it
     bool
-    IsBadForPath(const RouterID& r, uint64_t chances = profiling_chances) EXCLUDES(m_ProfilesMutex);
+    IsBadForPath(const RouterID& r, uint64_t chances = profiling_chances);
 
     /// check if this router should be connected directly to
     bool
-    IsBadForConnect(const RouterID& r, uint64_t chances = profiling_chances)
-        EXCLUDES(m_ProfilesMutex);
+    IsBadForConnect(const RouterID& r, uint64_t chances = profiling_chances);
 
     void
-    MarkConnectTimeout(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+    MarkConnectTimeout(const RouterID& r);
 
     void
-    MarkConnectSuccess(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+    MarkConnectSuccess(const RouterID& r);
 
     void
-    MarkPathTimeout(path::Path* p) EXCLUDES(m_ProfilesMutex);
+    MarkPathTimeout(path::Path* p);
 
     void
-    MarkPathFail(path::Path* p) EXCLUDES(m_ProfilesMutex);
+    MarkPathFail(path::Path* p);
 
     void
-    MarkPathSuccess(path::Path* p) EXCLUDES(m_ProfilesMutex);
+    MarkPathSuccess(path::Path* p);
 
     void
-    MarkHopFail(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+    MarkHopFail(const RouterID& r);
 
     void
-    ClearProfile(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+    ClearProfile(const RouterID& r);
 
     void
-    Tick() EXCLUDES(m_ProfilesMutex);
+    Tick();
 
     bool
-    Load(const fs::path fname) EXCLUDES(m_ProfilesMutex);
+    Load(const fs::path fname);
 
     bool
-    Save(const fs::path fname) EXCLUDES(m_ProfilesMutex);
+    Save(const fs::path fname);
 
     bool
     ShouldSave(llarp_time_t now) const;
@@ -126,7 +124,7 @@ namespace llarp
     BDecode(oxenc::bt_dict_consumer dict);
 
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
-    std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
+    std::map<RouterID, RouterProfile> m_Profiles;
     llarp_time_t m_LastSave = 0s;
     std::atomic<bool> m_DisableProfiling;
   };

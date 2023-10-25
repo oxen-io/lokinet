@@ -136,11 +136,11 @@ namespace llarp
     std::atomic<bool> isServiceNode = false;
 
     // whitelist = active routers
-    std::unordered_set<RouterID> router_whitelist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_whitelist;
     // greylist = fully funded, but decommissioned routers
-    std::unordered_set<RouterID> router_greylist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_greylist;
     // greenlist = registered but not fully-staked routers
-    std::unordered_set<RouterID> router_greenlist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_greenlist;
   };
 
 }  // namespace llarp

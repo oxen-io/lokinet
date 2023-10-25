@@ -174,7 +174,7 @@ namespace llarp
     mutable util::Mutex m;  // protects persisting_conns
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t> persisting_conns GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t> persisting_conns;
 
     // holds any messages we attempt to send while connections are establishing
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;

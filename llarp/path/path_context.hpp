@@ -105,13 +105,13 @@ namespace llarp
         using Lock_t = util::NullLock;
 
         Mutex_t first;  // protects second
-        TransitHopsMap_t second GUARDED_BY(first);
+        TransitHopsMap_t second;
 
         /// Invokes a callback for each transit path; visit must be invokable with a `const
         /// TransitHop_ptr&` argument.
         template <typename TransitHopVisitor>
         void
-        ForEach(TransitHopVisitor&& visit) EXCLUDES(first)
+        ForEach(TransitHopVisitor&& visit)
         {
           Lock_t lock(first);
           for (const auto& item : second)
@@ -125,7 +125,7 @@ namespace llarp
       struct SyncOwnedPathsMap_t
       {
         util::Mutex first;  // protects second
-        OwnedPathsMap_t second GUARDED_BY(first);
+        OwnedPathsMap_t second;
 
         /// Invokes a callback for each owned path; visit must be invokable with a `const Path_ptr&`
         /// argument.

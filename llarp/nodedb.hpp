@@ -6,7 +6,6 @@
 #include "router_id.hpp"
 #include "util/common.hpp"
 #include "util/fs.hpp"
-#include "util/thread/annotations.hpp"
 #include "util/thread/threading.hpp"
 
 #include <llarp/router/router.hpp>
