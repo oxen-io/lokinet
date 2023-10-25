@@ -499,13 +499,11 @@ namespace llarp
     crypto_kem_keypair(d + PQ_SECRETKEYSIZE, d);
   }
 
+#ifdef HAVE_CRYPT
   bool
   crypto::check_passwd_hash(std::string pwhash, std::string challenge)
   {
-    (void)pwhash;
-    (void)challenge;
     bool ret = false;
-#ifdef HAVE_CRYPT
     auto pos = pwhash.find_last_of('$');
     auto settings = pwhash.substr(0, pos);
     crypt_data data{};
@@ -514,9 +512,9 @@ namespace llarp
       ret = ptr == pwhash;
     }
     sodium_memzero(&data, sizeof(data));
-#endif
     return ret;
   }
+#endif
 
   const byte_t*
   seckey_topublic(const SecretKey& sec)
