@@ -25,8 +25,6 @@
 
 #ifdef _WIN32
 #include <llarp/win32/service_manager.hpp>
-
-#include <dbghelp.h>
 #else
 #include <llarp/util/service_manager.hpp>
 #endif

@@ -69,7 +69,9 @@ IncludeCategories:
     Priority: 3
   - Regex: '<winsock2\.h>'
     Priority: 4
-  - Regex: '^<.*\.h(pp)?>$'
+  - Regex: '<windows\.h>'
     Priority: 5
-  - Regex: '(<)(.)+(>)'
+  - Regex: '^<.*\.h(pp)?>$'
     Priority: 6
+  - Regex: '(<)(.)+(>)'
+    Priority: 7

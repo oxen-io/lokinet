@@ -8,8 +8,9 @@
 
 #include <winsock2.h>
 
-#include <iphlpapi.h>
 #include <windows.h>
+
+#include <iphlpapi.h>
 
 namespace llarp::win32
 {
