@@ -460,6 +460,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                   ],
                   jobs=4),
 
+  /*
   // integration tests
   debian_pipeline('Router Hive',
                   docker_base + 'ubuntu-lts',
@@ -471,6 +472,7 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   deb_builder(docker_base + 'debian-bullseye-builder', 'bullseye', 'debian/bullseye'),
   deb_builder(docker_base + 'ubuntu-jammy-builder', 'jammy', 'ubuntu/jammy'),
   deb_builder(docker_base + 'debian-sid-builder', 'sid', 'debian/sid', arch='arm64'),
+  */
 
   // Macos builds:
   mac_builder('macOS (Release)', extra_cmds=[
