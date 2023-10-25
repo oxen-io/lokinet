@@ -11,10 +11,11 @@
 // these need to be in a specific order
 #include <llarp/net/net.h>
 
+#include <windows.h>
+
 #include <assert.h>
 #include <iphlpapi.h>
 #include <stdbool.h>
-#include <windows.h>
 
 const char*
 inet_ntop(int af, const void* src, char* dst, size_t size)

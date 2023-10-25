@@ -3,9 +3,6 @@
 #include <llarp.hpp>
 #include <llarp/util/logging.hpp>
 
-#include <dbghelp.h>
-#include <windows.h>
-
 #include <cassert>
 #include <chrono>
 #include <csignal>
@@ -18,7 +15,6 @@ namespace llarp::sys
 
   namespace
   {
-
     std::optional<DWORD>
     to_win32_state(ServiceState st)
     {

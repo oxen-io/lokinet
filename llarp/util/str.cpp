@@ -6,8 +6,9 @@
 #ifdef _WIN32
 #include <llarp/win32/exception.hpp>
 
-#include <stringapiset.h>
 #include <windows.h>
+
+#include <stringapiset.h>
 #endif
 
 namespace llarp
