@@ -38,6 +38,12 @@ local kitware_repo(distro) = [
   'eatmydata ' + apt_get_quiet + ' update',
 ];
 
+local debian_backports(distro, pkgs) = [
+  'echo "deb http://deb.debian.org/debian ' + distro + '-backports main" >/etc/apt/sources.list.d/' + distro + '-backports.list',
+  'eatmydata ' + apt_get_quiet + ' update',
+  'eatmydata ' + apt_get_quiet + ' install -y ' + std.join(' ', std.map(function(x) x + '/' + distro + '-backports', pkgs)),
+];
+
 // Regular build on a debian-like system:
 local debian_pipeline(name,
                       image,
@@ -445,11 +451,11 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                     './contrib/ci/drone-static-upload.sh',
                   ]),
   // Static armhf build (gets uploaded)
-  debian_pipeline('Static (buster armhf)',
-                  docker_base + 'debian-buster/arm32v7',
+  debian_pipeline('Static (bullseye armhf)',
+                  docker_base + 'debian-bullseye/arm32v7',
                   arch='arm64',
                   deps=['g++', 'python3-dev', 'automake', 'libtool'],
-                  extra_setup=kitware_repo('bionic'),
+                  extra_setup=debian_backports('bullseye', ['cmake']),
                   cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
                               '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
                               '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
