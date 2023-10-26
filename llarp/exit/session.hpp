@@ -81,10 +81,6 @@ namespace llarp
       void
       HandlePathBuilt(llarp::path::Path_ptr p) override;
 
-      bool
-      QueueUpstreamTraffic(
-          llarp::net::IPPacket pkt, const size_t packSize, service::ProtocolType t);
-
       /// flush upstream to exit via paths
       bool
       FlushUpstream();
@@ -163,12 +159,12 @@ namespace llarp
         }
       };
 
-      [[maybe_unused]] uint64_t _counter;
+      // uint64_t _counter;
       llarp_time_t _last_use;
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
-      [[maybe_unused]] const bool m_BundleRC;
-      [[maybe_unused]] EndpointBase* const m_Parent;
+      // const bool _bundle_RC;
+      EndpointBase* const _parent;
 
       void
       CallPendingCallbacks(bool success);
