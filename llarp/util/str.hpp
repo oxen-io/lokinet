@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <iterator>
@@ -96,4 +97,9 @@ namespace llarp
 
   std::string_view
   TrimWhitespace(std::string_view str);
+
+  /// convert a "normal" string into a wide string
+  std::wstring
+  to_wide(std::string data);
+
 }  // namespace llarp
