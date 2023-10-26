@@ -15,12 +15,15 @@ namespace llarp::win32
   MakeDeterministicGUID(Data data)
   {
     ShortHash h{};
-    auto hash = [&h](auto data) { crypto::shorthash(h, data); };
+    auto hash = [&h](uint8_t* d, size_t size) { crypto::shorthash(h, d, size); };
 
     if constexpr (std::is_same_v<Data, std::string>)
-      hash(llarp_buffer_t{reinterpret_cast<const byte_t*>(data.data()), data.size()});
+      hash(reinterpret_cast<uint8_t*>(data.data()), data.size());
     else
-      hash(llarp_buffer_t{data});
+    {
+      auto dat = llarp_buffer_t{data};
+      hash(dat.base, dat.sz);
+    }
     GUID guid{};
     std::copy_n(
         h.begin(), std::min(sizeof(GUID), sizeof(ShortHash)), reinterpret_cast<uint8_t*>(&guid));

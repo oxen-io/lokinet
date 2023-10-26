@@ -275,7 +275,8 @@ namespace
         (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
     const std::string fname =
-        "C:\\ProgramData\\lokinet\\crash-{}.dump"_format(llarp::time_now_ms().count());
+        fmt::format("C:\\ProgramData\\lokinet\\crash-{}.dump", llarp::time_now_ms().count());
+
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;
     GetLocalTime(&stLocalTime);
