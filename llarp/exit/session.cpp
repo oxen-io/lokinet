@@ -20,11 +20,10 @@ namespace llarp::exit
       : llarp::path::Builder{r, numpaths, hoplen}
       , exit_router{routerId}
       , packet_write_func{std::move(writepkt)}
-      , _counter{0}
       , _last_use{r->now()}
-      , m_BundleRC{false}
-      , m_Parent{parent}
+      , _parent{parent}
   {
+    (void)_parent;
     crypto::identity_keygen(exit_key);
   }
 
@@ -216,34 +215,6 @@ namespace llarp::exit
   {
     llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
     p->EnterState(path::ePathIgnore, router->now());
-    return true;
-  }
-
-  bool
-  BaseSession::QueueUpstreamTraffic(llarp::net::IPPacket, const size_t, service::ProtocolType)
-  {
-    // auto& queue = m_Upstream[pkt.size() / N];
-    // queue overflow
-    // if (queue.size() >= MaxUpstreamQueueLength)
-    //   return false;
-    // if (queue.size() == 0)
-    // {
-    //   queue.emplace_back();
-    //   queue.back().protocol = t;
-    //   return queue.back().PutBuffer(llarp_buffer_t{pkt}, _counter++);
-    // }
-
-    // auto& back = queue.back();
-    // // pack to nearest N
-    // if (back.Size() + pkt.size() > N)
-    // {
-    //   queue.emplace_back();
-    //   queue.back().protocol = t;
-    //   return queue.back().PutBuffer(llarp_buffer_t{pkt}, _counter++);
-    // }
-    // back.protocol = t;
-    // return back.PutBuffer(llarp_buffer_t{pkt}, _counter++);
-
     return true;
   }
 
