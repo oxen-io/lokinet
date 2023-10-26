@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
+# Cmake 3.24+ breaks extraction timestamps by default, hurray, but the option to not break
+# timestamps fails in cmake <3.24, extra hurray!
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    cmake_policy(SET CMP0135 OLD)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Has to be set before `project()`, and ignored on non-macos:
