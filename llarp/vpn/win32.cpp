@@ -1,6 +1,8 @@
 #include "win32.hpp"
+
 #include <llarp/win32/windivert.hpp>
 #include <llarp/win32/wintun.hpp>
+
 #include <fmt/core.h>
 
 namespace llarp::win32
@@ -87,8 +89,10 @@ namespace llarp::win32
         if (not range.Contains(ifaddr))
           b = false;
       }
+      // TODO: FIXME
       if (b)
-        gateways.emplace(*iface.gateway);
+        throw std::runtime_error{"FIXME ALREADY"};
+      // gateways.emplace(*iface.gateway);
     }
     return {gateways.begin(), gateways.end()};
   }

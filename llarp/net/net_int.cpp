@@ -1,9 +1,11 @@
 #include "net_int.hpp"
+
 #include "ip.hpp"
-#include <string>
-#include <variant>
 
 #include <oxenc/endian.h>
+
+#include <string>
+#include <variant>
 
 namespace llarp
 {

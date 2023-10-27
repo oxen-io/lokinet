@@ -1,14 +1,11 @@
 #include "ini.hpp"
 
-#include <llarp/util/logging.hpp>
 #include <llarp/util/formattable.hpp>
-#include <llarp/util/str.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <cctype>
 #include <fstream>
 #include <list>
-#include <iostream>
-#include <cassert>
 #include <stdexcept>
 
 namespace llarp

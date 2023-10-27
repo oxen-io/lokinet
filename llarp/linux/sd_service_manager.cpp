@@ -1,10 +1,11 @@
-#include <llarp/util/service_manager.hpp>
-
-#include <systemd/sd-daemon.h>
-#include <cassert>
 #include <llarp.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
+#include <llarp/util/service_manager.hpp>
+
+#include <systemd/sd-daemon.h>
+
+#include <cassert>
 
 namespace llarp::sys
 {

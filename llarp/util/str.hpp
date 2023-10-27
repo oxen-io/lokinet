@@ -1,11 +1,13 @@
 #pragma once
 
-#include <string_view>
-#include <vector>
+#include <fmt/format.h>
+
+#include <algorithm>
+#include <charconv>
 #include <chrono>
 #include <iterator>
-#include <charconv>
-#include <fmt/format.h>
+#include <string_view>
+#include <vector>
 
 namespace llarp
 {
@@ -92,4 +94,12 @@ namespace llarp
 
   std::string
   lowercase_ascii_string(std::string src);
+
+  std::string_view
+  TrimWhitespace(std::string_view str);
+
+  /// convert a "normal" string into a wide string
+  std::wstring
+  to_wide(std::string data);
+
 }  // namespace llarp

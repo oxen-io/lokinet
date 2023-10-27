@@ -2,11 +2,10 @@
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/path/path_context.hpp>
 #include <llarp/path/path.hpp>
-#include <llarp/quic/tunnel.hpp>
+#include <llarp/path/path_context.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/util/meta/memfn.hpp>
+
 #include <utility>
 
 namespace llarp::exit
@@ -21,12 +20,11 @@ namespace llarp::exit
       : llarp::path::Builder{r, numpaths, hoplen}
       , exit_router{routerId}
       , packet_write_func{std::move(writepkt)}
-      , m_Counter{0}
-      , m_LastUse{r->now()}
-      , m_BundleRC{false}
-      , m_Parent{parent}
+      , _last_use{r->now()}
+      , _parent{parent}
   {
-    CryptoManager::instance()->identity_keygen(exit_key);
+    (void)_parent;
+    crypto::identity_keygen(exit_key);
   }
 
   BaseSession::~BaseSession() = default;
@@ -41,7 +39,7 @@ namespace llarp::exit
   BaseSession::ExtractStatus() const
   {
     auto obj = path::Builder::ExtractStatus();
-    obj["lastExitUse"] = to_json(m_LastUse);
+    obj["lastExitUse"] = to_json(_last_use);
     auto pub = exit_key.toPublic();
     obj["exitIdentity"] = pub.ToString();
     obj["endpoint"] = exit_router.ToString();
@@ -80,8 +78,8 @@ namespace llarp::exit
         return std::vector<RouterContact>{*maybe};
       return std::nullopt;
     }
-    else
-      return GetHopsAlignedToForBuild(exit_router);
+
+    return GetHopsAlignedToForBuild(exit_router);
   }
 
   bool
@@ -99,6 +97,7 @@ namespace llarp::exit
     // p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
     // p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
 
+    // TODO: add callback here
     if (p->obtain_exit(
             exit_key, std::is_same_v<decltype(p), ExitSession> ? 1 : 0, p->TXID().bt_encode()))
       log::info(link_cat, "Asking {} for exit", exit_router);
@@ -171,9 +170,12 @@ namespace llarp::exit
       if (p->SupportsAnyRoles(path::ePathRoleExit))
       {
         LogInfo(p->name(), " closing exit path");
-        routing::CloseExitMessage msg;
-        if (!(msg.Sign(exit_key) && p->SendExitClose(msg, router)))
-          LogWarn(p->name(), " failed to send exit close message");
+        // TODO: add callback here
+
+        if (p->close_exit(exit_key, p->TXID().bt_encode()))
+          log::info(link_cat, "");
+        else
+          log::warning(link_cat, "{} failed to send exit close message", p->name());
       }
     };
     ForEachPath(sendExitClose);
@@ -183,31 +185,28 @@ namespace llarp::exit
 
   bool
   BaseSession::HandleTraffic(
-      llarp::path::Path_ptr path,
-      const llarp_buffer_t& buf,
-      uint64_t counter,
-      service::ProtocolType t)
+      llarp::path::Path_ptr, const llarp_buffer_t&, uint64_t, service::ProtocolType)
   {
-    const service::ConvoTag tag{path->RXID().as_array()};
+    // const service::ConvoTag tag{path->RXID().as_array()};
 
-    if (t == service::ProtocolType::QUIC)
-    {
-      auto quic = m_Parent->GetQUICTunnel();
-      if (not quic)
-        return false;
-      quic->receive_packet(tag, buf);
-      return true;
-    }
+    // if (t == service::ProtocolType::QUIC)
+    // {
+    //   auto quic = m_Parent->GetQUICTunnel();
+    //   if (not quic)
+    //     return false;
+    //   quic->receive_packet(tag, buf);
+    //   return true;
+    // }
 
-    if (packet_write_func)
-    {
-      llarp::net::IPPacket pkt{buf.view_all()};
-      if (pkt.empty())
-        return false;
-      m_LastUse = router->now();
-      m_Downstream.emplace(counter, pkt);
-      return true;
-    }
+    // if (packet_write_func)
+    // {
+    //   llarp::net::IPPacket pkt{buf.view_all()};
+    //   if (pkt.empty())
+    //     return false;
+    //   _last_use = router->now();
+    //   m_Downstream.emplace(counter, pkt);
+    //   return true;
+    // }
     return false;
   }
 
@@ -217,32 +216,6 @@ namespace llarp::exit
     llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
     p->EnterState(path::ePathIgnore, router->now());
     return true;
-  }
-
-  bool
-  BaseSession::QueueUpstreamTraffic(
-      llarp::net::IPPacket pkt, const size_t N, service::ProtocolType t)
-  {
-    auto& queue = m_Upstream[pkt.size() / N];
-    // queue overflow
-    if (queue.size() >= MaxUpstreamQueueLength)
-      return false;
-    if (queue.size() == 0)
-    {
-      queue.emplace_back();
-      queue.back().protocol = t;
-      return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
-    }
-    auto& back = queue.back();
-    // pack to nearest N
-    if (back.Size() + pkt.size() > N)
-    {
-      queue.emplace_back();
-      queue.back().protocol = t;
-      return queue.back().PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
-    }
-    back.protocol = t;
-    return back.PutBuffer(llarp_buffer_t{pkt}, m_Counter++);
   }
 
   bool
@@ -257,7 +230,7 @@ namespace llarp::exit
   bool
   BaseSession::IsExpired(llarp_time_t now) const
   {
-    return now > m_LastUse && now - m_LastUse > LifeSpan;
+    return now > _last_use && now - _last_use > LifeSpan;
   }
 
   bool
@@ -277,25 +250,26 @@ namespace llarp::exit
     auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
     if (path)
     {
-      for (auto& [i, queue] : m_Upstream)
-      {
-        while (queue.size())
-        {
-          auto& msg = queue.front();
-          msg.sequence_number = path->NextSeqNo();
-          path->SendRoutingMessage(msg, router);
-          queue.pop_front();
-        }
-      }
+      // for (auto& [i, queue] : m_Upstream)
+      // {
+      //   while (queue.size())
+      //   {
+      //     auto& msg = queue.front();
+      //     msg.sequence_number = path->NextSeqNo();
+      //     path->SendRoutingMessage(msg, router);
+      //     queue.pop_front();
+      //   }
+      // }
     }
     else
     {
-      if (m_Upstream.size())
-        llarp::LogWarn("no path for exit session");
-      // discard upstream
-      for (auto& [i, queue] : m_Upstream)
-        queue.clear();
-      m_Upstream.clear();
+      // if (m_Upstream.size())
+      //   llarp::LogWarn("no path for exit session");
+      // // discard upstream
+      // for (auto& [i, queue] : m_Upstream)
+      //   queue.clear();
+      // m_Upstream.clear();
+
       if (numHops == 1)
       {
         auto r = router;
@@ -337,12 +311,12 @@ namespace llarp::exit
   void
   BaseSession::FlushDownstream()
   {
-    while (m_Downstream.size())
-    {
-      if (packet_write_func)
-        packet_write_func(const_cast<net::IPPacket&>(m_Downstream.top().second).steal());
-      m_Downstream.pop();
-    }
+    // while (m_Downstream.size())
+    // {
+    //   if (packet_write_func)
+    //     packet_write_func(const_cast<net::IPPacket&>(m_Downstream.top().second).steal());
+    //   m_Downstream.pop();
+    // }
   }
 
   SNodeSession::SNodeSession(
@@ -374,23 +348,28 @@ namespace llarp::exit
   }
 
   void
-  SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
+  ExitSession::send_packet_to_remote(std::string buf)
   {
-    net::IPPacket pkt{buf.view_all()};
-    if (pkt.empty())
+    if (buf.empty())
       return;
-    pkt.ZeroAddresses();
-    QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
+
+    if (auto path = PickEstablishedPath(llarp::path::ePathRoleExit))
+    {}
+    else
+    {}
   }
 
   void
-  ExitSession::SendPacketToRemote(const llarp_buffer_t& buf, service::ProtocolType t)
+  SNodeSession::send_packet_to_remote(std::string buf)
   {
-    net::IPPacket pkt{buf.view_all()};
-    if (pkt.empty())
+    if (buf.empty())
       return;
 
-    pkt.ZeroSourceAddress();
-    QueueUpstreamTraffic(std::move(pkt), llarp::routing::EXIT_PAD_SIZE, t);
+    if (auto path = PickEstablishedPath(llarp::path::ePathRoleExit))
+    {
+      //
+    }
+    else
+    {}
   }
 }  // namespace llarp::exit

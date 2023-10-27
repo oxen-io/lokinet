@@ -1,19 +1,17 @@
-#include <chrono>
 #include "rc_lookup_handler.hpp"
 
-#include <llarp/link/contacts.hpp>
-#include <llarp/link/link_manager.hpp>
-#include <llarp/crypto/crypto.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/util/types.hpp>
-#include <llarp/util/thread/threading.hpp>
-#include <llarp/nodedb.hpp>
 #include "router.hpp"
 
-#include <iterator>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/link/contacts.hpp>
+#include <llarp/link/link_manager.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/util/types.hpp>
+
 #include <functional>
-#include <random>
+#include <iterator>
 
 namespace llarp
 {
@@ -108,10 +106,7 @@ namespace llarp
         if (callback)
           callback(result.router_id(), result, true);
         else
-        {
           r.node_db()->put_rc_if_newer(result);
-          r.connect_to(result);
-        }
       }
       else
       {
@@ -306,7 +301,8 @@ namespace llarp
     {
       for (const auto& rc : bootstrap_rc_list)
       {
-        LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
+        log::info(link_cat, "Doing explore via bootstrap node: {}", RouterID(rc.pubkey));
+
         // TODO: replace this concept
         // dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
@@ -331,7 +327,7 @@ namespace llarp
 
       if (lookup_routers.size() > LookupPerTick)
       {
-        std::shuffle(lookup_routers.begin(), lookup_routers.end(), CSRNG{});
+        std::shuffle(lookup_routers.begin(), lookup_routers.end(), llarp::csrng);
         lookup_routers.resize(LookupPerTick);
       }
 

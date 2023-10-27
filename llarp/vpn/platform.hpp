@@ -1,11 +1,12 @@
 #pragma once
 
-#include <llarp/net/ip_range.hpp>
-#include <llarp/net/ip_packet.hpp>
-#include <oxenc/variant.h>
-#include <external/oxen-libquic/include/quic.hpp>
-
 #include "i_packet_io.hpp"
+
+#include <llarp/net/ip_packet.hpp>
+#include <llarp/net/ip_range.hpp>
+
+#include <oxenc/variant.h>
+#include <quic.hpp>
 
 #include <set>
 

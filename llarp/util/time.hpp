@@ -1,10 +1,12 @@
 #pragma once
 
 #include "types.hpp"
-#include <nlohmann/json.hpp>
-#include <iostream>
-#include <fmt/format.h>
+
 #include <fmt/chrono.h>
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
+
+#include <iostream>
 
 using namespace std::chrono_literals;
 

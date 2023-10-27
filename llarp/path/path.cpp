@@ -1,22 +1,10 @@
 #include "path.hpp"
-#include "pathbuilder.hpp"
-#include "transit_hop.hpp"
 
-#include <llarp/exit/exit_messages.hpp>
-#include <llarp/link/link_manager.hpp>
 #include <llarp/messages/dht.hpp>
-#include <llarp/messages/discard.hpp>
 #include <llarp/messages/exit.hpp>
-#include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
-#include <llarp/tooling/path_event.hpp>
-
-#include <oxenc/endian.h>
-
-#include <deque>
-#include <queue>
 
 namespace llarp::path
 {
@@ -107,8 +95,42 @@ namespace llarp::path
   Path::send_path_control_message(
       std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
   {
+    std::string payload;
+
+    {
+      oxenc::bt_dict_producer btdp;
+      btdp.append("BODY", body);
+      btdp.append("METHOD", method);
+      payload = std::move(btdp).str();
+    }
+
+    TunnelNonce nonce;
+    nonce.Randomize();
+
+    for (const auto& hop : hops)
+    {
+      // do a round of chacha for each hop and mutate the nonce with that hop's nonce
+      crypto::xchacha20(
+          reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce);
+
+      nonce ^= hop.nonceXOR;
+    }
+
+    oxenc::bt_dict_producer outer_dict;
+    outer_dict.append("NONCE", nonce.ToView());
+    outer_dict.append("PATHID", TXID().ToView());
+    outer_dict.append("PAYLOAD", payload);
+
     return router.send_control_message(
-        upstream(), std::move(method), std::move(body), std::move(func));
+        upstream(),
+        "path_control",
+        std::move(outer_dict).str(),
+        [response_cb = std::move(func)](oxen::quic::message m) {
+          if (m)
+          {
+            // do path hop logic here
+          }
+        });
   }
 
   bool
@@ -428,7 +450,7 @@ namespace llarp::path
 
       for (const auto& hop : hops)
       {
-        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, n);
+        crypto::xchacha20(buf, sz, hop.shared, n);
         n ^= hop.nonceXOR;
       }
       auto& msg = sendmsgs[idx];
@@ -506,7 +528,7 @@ namespace llarp::path
       for (const auto& hop : hops)
       {
         sendMsgs[idx].nonce ^= hop.nonceXOR;
-        CryptoManager::instance()->xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
+        crypto::xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
       }
 
       std::memcpy(sendMsgs[idx].enc.data(), buf, sz);
@@ -518,7 +540,7 @@ namespace llarp::path
   }
 
   void
-  Path::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r)
+  Path::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* /* r */)
   {
     for (const auto& msg : msgs)
     {
@@ -548,34 +570,27 @@ namespace llarp::path
       std::move around.
   */
   bool
-  Path::SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r)
+  Path::SendRoutingMessage(std::string payload, Router*)
   {
-    std::array<byte_t, MAX_LINK_MSG_SIZE / 2> tmp;
-    llarp_buffer_t buf(tmp);
-
-    auto bte = msg.bt_encode();
-    buf.write(bte.begin(), bte.end());
+    std::string buf(MAX_LINK_MSG_SIZE / 2, '\0');
+    buf.insert(0, payload);
 
     // make nonce
     TunnelNonce N;
     N.Randomize();
-    buf.sz = buf.cur - buf.base;
+
     // pad smaller messages
-    if (buf.sz < PAD_SIZE)
+    if (payload.size() < PAD_SIZE)
     {
       // randomize padding
-      CryptoManager::instance()->randbytes(buf.cur, PAD_SIZE - buf.sz);
-      buf.sz = PAD_SIZE;
+      crypto::randbytes(
+          reinterpret_cast<unsigned char*>(buf.data()) + payload.size(), PAD_SIZE - payload.size());
     }
-    buf.cur = buf.base;
-    LogDebug(
-        "send routing message ",
-        msg.sequence_number,
-        " with ",
-        buf.sz,
-        " bytes to endpoint ",
-        Endpoint());
-    return HandleUpstream(buf, N, r);
+    log::debug(path_cat, "Sending {}B routing message to {}", buf.size(), Endpoint());
+
+    // TODO: path relaying here
+
+    return true;
   }
 
   template <typename Samples_t>

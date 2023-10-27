@@ -1,21 +1,12 @@
-#include <cpr/cpr.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/version.hpp>
-#include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include <cpr/cpr.h>
 
+#include <iostream>
 #include <unordered_map>
 #include <unordered_set>
-
-#ifndef _WIN32
-#include <openssl/x509.h>
-#endif
-
-#include <sstream>
 
 #ifndef _WIN32
 #include <openssl/x509.h>
@@ -102,9 +93,9 @@ main(int argc, char* argv[])
   {
     return fail("failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
   }
-  std::stringstream ss;
-  ss << resp.text;
-  std::string data{ss.str()};
+
+  const auto& data = resp.text;
+
   if (data[0] == 'l' or data[0] == 'd')
   {
     try

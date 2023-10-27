@@ -1,21 +1,20 @@
 #pragma once
 
-#include <type_traits>
 #include "common.hpp"
 #include "mem.h"
 #include "types.hpp"
 
+#include <algorithm>
 #include <cassert>
-#include <iterator>
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <utility>
-#include <algorithm>
+#include <iterator>
 #include <memory>
-#include <vector>
 #include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace llarp
 {
@@ -181,6 +180,12 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
       typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
   explicit llarp_buffer_t(T&& t) : llarp_buffer_t{t.data(), t.size()}
   {}
+
+  std::string
+  to_string() const
+  {
+    return {reinterpret_cast<const char*>(base), sz};
+  }
 
   byte_t*
   begin()

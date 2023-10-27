@@ -1,7 +1,8 @@
 #pragma once
-#include <functional>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/util/types.hpp>
+
+#include <functional>
 
 namespace llarp::vpn
 {

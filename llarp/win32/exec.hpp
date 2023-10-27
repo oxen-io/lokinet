@@ -1,8 +1,10 @@
 #pragma once
 
-#include <windows.h>
-#include <string>
 #include <llarp/util/time.hpp>
+
+#include <windows.h>
+
+#include <string>
 
 namespace llarp::win32
 {

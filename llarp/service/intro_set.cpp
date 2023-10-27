@@ -1,6 +1,6 @@
 #include "intro_set.hpp"
+
 #include <llarp/crypto/crypto.hpp>
-#include <llarp/path/path.hpp>
 
 #include <oxenc/bt_serialize.h>
 
@@ -124,8 +124,7 @@ namespace llarp::service
     std::string payload{
         reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
 
-    CryptoManager::instance()->xchacha20(
-        reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
 
     return IntroSet{payload};
   }
@@ -145,8 +144,7 @@ namespace llarp::service
     sig.Zero();
     auto bte = bt_encode();
 
-    if (not CryptoManager::instance()->sign(
-            sig, k, reinterpret_cast<uint8_t*>(bte.data()), bte.size()))
+    if (not crypto::sign(sig, k, reinterpret_cast<uint8_t*>(bte.data()), bte.size()))
       return false;
     LogDebug("signed encrypted introset: ", *this);
     return true;
@@ -162,20 +160,20 @@ namespace llarp::service
     copy.sig.Zero();
 
     auto bte = copy.bt_encode();
-    return CryptoManager::instance()->verify(
+    return crypto::verify(
         derivedSigningKey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
   }
 
   bool
   EncryptedIntroSet::verify(uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig)
   {
-    return CryptoManager::instance()->verify(key, introset, introset_size, sig);
+    return crypto::verify(key, introset, introset_size, sig);
   }
 
   bool
   EncryptedIntroSet::verify(std::string introset, std::string key, std::string sig)
   {
-    return CryptoManager::instance()->verify(
+    return crypto::verify(
         reinterpret_cast<uint8_t*>(key.data()),
         reinterpret_cast<uint8_t*>(introset.data()),
         introset.size(),
@@ -186,33 +184,34 @@ namespace llarp::service
   IntroSet::ExtractStatus() const
   {
     util::StatusObject obj{{"published", to_json(time_signed)}};
-    std::vector<util::StatusObject> introsObjs;
-    std::transform(
-        intros.begin(),
-        intros.end(),
-        std::back_inserter(introsObjs),
-        [](const auto& intro) -> util::StatusObject { return intro.ExtractStatus(); });
-    obj["intros"] = introsObjs;
-    if (!topic.IsZero())
-      obj["topic"] = topic.ToString();
+    // TODO: this
+    // std::vector<util::StatusObject> introsObjs;
+    // std::transform(
+    //     intros.begin(),
+    //     intros.end(),
+    //     std::back_inserter(introsObjs),
+    //     [](const auto& intro) -> util::StatusObject { return intro.ExtractStatus(); });
+    // obj["intros"] = introsObjs;
+    // if (!topic.IsZero())
+    //   obj["topic"] = topic.ToString();
 
-    std::vector<util::StatusObject> protocols;
-    std::transform(
-        supported_protocols.begin(),
-        supported_protocols.end(),
-        std::back_inserter(protocols),
-        [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
-    obj["protos"] = protocols;
-    std::vector<util::StatusObject> ranges;
-    std::transform(
-        owned_ranges.begin(),
-        owned_ranges.end(),
-        std::back_inserter(ranges),
-        [](const auto& range) -> util::StatusObject { return range.ToString(); });
+    // std::vector<util::StatusObject> protocols;
+    // std::transform(
+    //     supported_protocols.begin(),
+    //     supported_protocols.end(),
+    //     std::back_inserter(protocols),
+    //     [](const auto& proto) -> util::StatusObject { return service::ToString(proto); });
+    // obj["protos"] = protocols;
+    // std::vector<util::StatusObject> ranges;
+    // std::transform(
+    //     owned_ranges.begin(),
+    //     owned_ranges.end(),
+    //     std::back_inserter(ranges),
+    //     [](const auto& range) -> util::StatusObject { return range.ToString(); });
 
-    obj["advertisedRanges"] = ranges;
-    if (exit_policy)
-      obj["exitPolicy"] = exit_policy->ExtractStatus();
+    // obj["advertisedRanges"] = ranges;
+    // if (exit_policy)
+    //   obj["exitPolicy"] = exit_policy->ExtractStatus();
 
     return obj;
   }
@@ -334,7 +333,7 @@ namespace llarp::service
         auto sublist = btdc.consume_list_consumer();
         while (not sublist.is_finished())
         {
-          supported_protocols.emplace_back(sublist.consume_integer<uint64_t>());
+          supported_protocols.emplace_back(ProtocolType{sublist.consume_integer<uint64_t>()});
         }
       }
 

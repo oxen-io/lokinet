@@ -1,11 +1,11 @@
 #pragma once
 
-#include <oxenc/bt.h>
-
 #include <llarp/crypto/types.hpp>
 #include <llarp/path/path_types.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
+
+#include <oxenc/bt.h>
 
 #include <iostream>
 
@@ -47,6 +47,8 @@ namespace llarp::service
 
     void
     bt_encode(oxenc::bt_list_producer& btlp) const;
+    void
+    bt_encode(oxenc::bt_dict_producer& subdict) const;
 
     bool
     BDecode(llarp_buffer_t* buf)

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <llarp/crypto/encrypted_frame.hpp>
-#include <llarp/net/ip_address.hpp>
 #include "abstracthophandler.hpp"
 #include "path_types.hpp"
 #include "pathset.hpp"
 #include "transit_hop.hpp"
-#include <llarp/routing/handler.hpp>
+
+#include <llarp/crypto/encrypted_frame.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/net/ip_address.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/types.hpp>
@@ -17,9 +18,6 @@
 namespace llarp
 {
   struct Router;
-  struct LR_CommitMessage;
-  struct RelayDownstreamMessage;
-  struct RelayUpstreamMessage;
   struct RouterID;
 
   namespace path
@@ -61,9 +59,6 @@ namespace llarp
       bool
       HasTransitHop(const TransitHopInfo& info);
 
-      bool
-      HandleRelayCommit(const LR_CommitMessage& msg);
-
       void
       PutTransitHop(std::shared_ptr<TransitHop> hop);
 
@@ -88,9 +83,6 @@ namespace llarp
       PathSet_ptr
       GetLocalPathSet(const PathID_t& id);
 
-      routing::MessageHandler_ptr
-      GetHandler(const PathID_t& id);
-
       using EndpointPathPtrSet = std::set<Path_ptr, ComparePtr<Path_ptr>>;
       /// get a set of all paths that we own who's endpoint is r
       EndpointPathPtrSet
@@ -98,12 +90,6 @@ namespace llarp
 
       bool
       HopIsUs(const RouterID& k) const;
-
-      bool
-      HandleLRUM(const RelayUpstreamMessage& msg);
-
-      bool
-      HandleLRDM(const RelayDownstreamMessage& msg);
 
       void
       AddOwnPath(PathSet_ptr set, Path_ptr p);
@@ -119,13 +105,13 @@ namespace llarp
         using Lock_t = util::NullLock;
 
         Mutex_t first;  // protects second
-        TransitHopsMap_t second GUARDED_BY(first);
+        TransitHopsMap_t second;
 
         /// Invokes a callback for each transit path; visit must be invokable with a `const
         /// TransitHop_ptr&` argument.
         template <typename TransitHopVisitor>
         void
-        ForEach(TransitHopVisitor&& visit) EXCLUDES(first)
+        ForEach(TransitHopVisitor&& visit)
         {
           Lock_t lock(first);
           for (const auto& item : second)
@@ -139,7 +125,7 @@ namespace llarp
       struct SyncOwnedPathsMap_t
       {
         util::Mutex first;  // protects second
-        OwnedPathsMap_t second GUARDED_BY(first);
+        OwnedPathsMap_t second;
 
         /// Invokes a callback for each owned path; visit must be invokable with a `const Path_ptr&`
         /// argument.

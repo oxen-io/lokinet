@@ -1,10 +1,12 @@
 #include "key_manager.hpp"
 
-#include <system_error>
-#include <llarp/util/logging.hpp>
 #include "config.hpp"
+
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/crypto/types.hpp>
+#include <llarp/util/logging.hpp>
+
+#include <system_error>
 
 namespace llarp
 {
@@ -19,9 +21,9 @@ namespace llarp
 
     if (not isSNode)
     {
-      CryptoManager::instance()->identity_keygen(identityKey);
-      CryptoManager::instance()->encryption_keygen(encryptionKey);
-      CryptoManager::instance()->encryption_keygen(transportKey);
+      crypto::identity_keygen(identityKey);
+      crypto::encryption_keygen(encryptionKey);
+      crypto::encryption_keygen(transportKey);
       return true;
     }
 
@@ -93,23 +95,21 @@ namespace llarp
       // load identity key or create if needed
       auto identityKeygen = [](llarp::SecretKey& key) {
         // TODO: handle generating from service node seed
-        llarp::CryptoManager::instance()->identity_keygen(key);
+        llarp::crypto::identity_keygen(key);
       };
       if (not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
         return false;
     }
 
     // load encryption key
-    auto encryptionKeygen = [](llarp::SecretKey& key) {
-      llarp::CryptoManager::instance()->encryption_keygen(key);
-    };
+    auto encryptionKeygen = [](llarp::SecretKey& key) { llarp::crypto::encryption_keygen(key); };
     if (not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
       return false;
 
     // TODO: transport key (currently done in LinkLayer)
     auto transportKeygen = [](llarp::SecretKey& key) {
       key.Zero();
-      CryptoManager::instance()->encryption_keygen(key);
+      crypto::encryption_keygen(key);
     };
     if (not loadOrCreateKey(m_transportKeyPath, transportKey, transportKeygen))
       return false;

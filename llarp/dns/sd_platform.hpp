@@ -2,6 +2,7 @@
 #include "platform.hpp"
 
 #include <llarp/constants/platform.hpp>
+
 #include <type_traits>
 
 namespace llarp::dns

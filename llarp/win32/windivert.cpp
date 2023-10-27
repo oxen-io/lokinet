@@ -1,11 +1,16 @@
-#include <winsock2.h>
-#include <windows.h>
 #include "windivert.hpp"
+
 #include "dll.hpp"
 #include "handle.hpp"
-#include <llarp/util/thread/queue.hpp>
+
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
+#include <llarp/util/thread/queue.hpp>
+
+#include <winsock2.h>
+
+#include <windows.h>
+
 #include <thread>
 extern "C"
 {

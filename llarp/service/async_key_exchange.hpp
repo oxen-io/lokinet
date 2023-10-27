@@ -1,8 +1,9 @@
 #pragma once
 
-#include <llarp/crypto/types.hpp>
 #include "identity.hpp"
 #include "protocol.hpp"
+
+#include <llarp/crypto/types.hpp>
 
 namespace llarp::service
 {
@@ -27,8 +28,7 @@ namespace llarp::service
         const PQPubKey& introsetPubKey,
         const Introduction& remote,
         Endpoint* h,
-        const ConvoTag& t,
-        ProtocolType proto);
+        const ConvoTag& t);
 
     static void
     Result(std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrameMessage> frame);

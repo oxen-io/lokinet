@@ -1,28 +1,33 @@
-#include <llarp/config/config.hpp>  // for ensure_config
-#include <llarp/constants/version.hpp>
 #include <llarp.hpp>
-#include <llarp/util/lokinet_init.h>
+#include <llarp/config/config.hpp>  // for ensure_config
+#include <llarp/constants/files.hpp>
+#include <llarp/constants/platform.hpp>
+#include <llarp/constants/version.hpp>
+#include <llarp/ev/ev.hpp>
 #include <llarp/util/exceptions.hpp>
-#include <llarp/util/fs.hpp>
-#include <llarp/util/str.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/lokinet_init.h>
+#include <llarp/util/thread/threading.hpp>
+
+#include <CLI/CLI.hpp>
+#include <fmt/core.h>
+#include <oxen/log.hpp>
+
+#include <csignal>
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <utility>
 
 #ifdef _WIN32
 #include <llarp/win32/service_manager.hpp>
-#include <dbghelp.h>
 #else
 #include <llarp/util/service_manager.hpp>
 #endif
-
-#include <csignal>
-
-#include <string>
-#include <iostream>
-#include <thread>
-#include <future>
-
-#include <CLI/App.hpp>
-#include <CLI/Formatter.hpp>
-#include <CLI/Config.hpp>
 
 namespace
 {
@@ -269,9 +274,9 @@ namespace
     const auto flags =
         (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
-    std::stringstream ss;
-    ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
-    const std::string fname = ss.str();
+    const std::string fname =
+        fmt::format("C:\\ProgramData\\lokinet\\crash-{}.dump", llarp::time_now_ms().count());
+
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;
     GetLocalTime(&stLocalTime);
@@ -350,9 +355,6 @@ namespace
   int
   lokinet_main(int argc, char** argv)
   {
-    if (auto result = Lokinet_INIT())
-      return result;
-
     llarp::RuntimeOptions opts;
     opts.showBanner = false;
 
@@ -507,30 +509,8 @@ namespace
       if (ctx and ctx->IsUp() and not ctx->LooksAlive())
       {
         auto deadlock_cat = llarp::log::Cat("deadlock");
-        for (const auto& wtf :
-             {"you have been visited by the mascot of the deadlocked router.",
-              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-              "file a bug report now or be cursed with this "
-              "annoying image in your syslog for all time."})
-        {
-          llarp::log::critical(deadlock_cat, wtf);
-          llarp::log::flush();
-        }
+        llarp::log::critical(deadlock_cat, "Router is deadlocked!");
+        llarp::log::flush();
         llarp::sys::service_manager->failed();
         std::abort();
       }
@@ -651,6 +631,17 @@ main(int argc, char* argv[])
 #ifndef _WIN32
   return lokinet_main(argc, argv);
 #else
+  if (auto hntdll = GetModuleHandle("ntdll.dll"))
+  {
+    if (GetProcAddress(hntdll, "wine_get_version"))
+    {
+      static const char* text = "Don't run lokinet in wine, aborting startup";
+      static const char* title = "Lokinet Wine Error";
+      MessageBoxA(NULL, text, title, MB_ICONHAND);
+      std::abort();
+    }
+  }
+
   SERVICE_TABLE_ENTRY DispatchTable[] = {
       {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
 

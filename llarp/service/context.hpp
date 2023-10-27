@@ -1,9 +1,10 @@
 #pragma once
 
+#include "endpoint.hpp"
+
+#include <llarp/config/config.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/config/config.hpp>
-#include "endpoint.hpp"
 
 #include <unordered_map>
 

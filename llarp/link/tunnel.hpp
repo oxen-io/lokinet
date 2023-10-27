@@ -1,17 +1,28 @@
 #pragma once
 
-#include <llarp/endpoint_base.hpp>
+#include <llarp/net/sock_addr.hpp>
+#include <llarp/service/convotag.hpp>
 
 #include <charconv>
+#include <chrono>
 #include <cstdint>
+#include <queue>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
-#include <uvw/tcp.h>
+// #include <uvw/tcp.h>
+
+namespace llarp
+{
+  class EndpointBase;
+}
 
 namespace llarp::link
 {
-  struct Endpoint;
+  // struct Endpoint;
+
+  using namespace std::chrono_literals;
 
   namespace tunnel
   {
@@ -142,18 +153,39 @@ namespace llarp::link
     struct ClientTunnel
     {
       // quic endpoint
-      std::unique_ptr<Endpoint> client;
+      // std::unique_ptr<Endpoint> client;
       // Callback to invoke on quic connection established (true argument) or failed (false arg)
       OpenCallback open_cb;
       // TCP listening socket
-      std::shared_ptr<uvw::TCPHandle> tcp;
-      // Accepted TCP connections
-      std::unordered_set<std::shared_ptr<uvw::TCPHandle>> conns;
-      // Queue of incoming connections that are waiting for a stream to become available (either
-      // because we are still handshaking, or we reached the stream limit).
-      std::queue<std::weak_ptr<uvw::TCPHandle>> pending_incoming;
+      // std::shared_ptr<uvw::TCPHandle> tcp;
+      // // Accepted TCP connections
+      // std::unordered_set<std::shared_ptr<uvw::TCPHandle>> conns;
+      // // Queue of incoming connections that are waiting for a stream to become available (either
+      // // because we are still handshaking, or we reached the stream limit).
+      // std::queue<std::weak_ptr<uvw::TCPHandle>> pending_incoming;
 
-      ~ClientTunnel();
+      ~ClientTunnel()
+      {
+        // if (tcp)
+        // {
+        //   tcp->close();
+        //   tcp->data(nullptr);
+        //   tcp.reset();
+        // }
+        // for (auto& conn : conns)
+        //   conn->close();
+        // conns.clear();
+
+        // while (not pending_incoming.empty())
+        // {
+        //   if (auto tcp = pending_incoming.front().lock())
+        //   {
+        //     tcp->clear();
+        //     tcp->close();
+        //   }
+        //   pending_incoming.pop();
+        // }
+      }
     };
 
     // pseudo-port -> Client instance (the "port" is used to route incoming quic packets to the
@@ -176,7 +208,7 @@ namespace llarp::link
     // Server instance; this listens on pseudo-port 0 (if it listens).  This is automatically
     // instantiated the first time `listen()` is called; if not instantiated we simply drop any
     // inbound client-to-server quic packets.
-    std::unique_ptr<Server> server_;
+    // std::unique_ptr<Server> server_;
 
     void
     make_server();
@@ -193,8 +225,8 @@ namespace llarp::link
     std::map<int, ListenHandler> incoming_handlers_;
     int next_handler_id_ = 1;
 
-    std::shared_ptr<uvw::Loop>
-    get_loop();
+    // std::shared_ptr<uvw::Loop>
+    // get_loop();
 
     // Cleanup member
     std::shared_ptr<int> timer_keepalive_ = std::make_shared<int>(0);

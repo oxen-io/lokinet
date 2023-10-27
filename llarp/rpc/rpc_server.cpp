@@ -1,26 +1,21 @@
 #include "rpc_server.hpp"
-#include "llarp/rpc/rpc_request_definitions.hpp"
+
 #include "rpc_request.hpp"
-#include "llarp/service/address.hpp"
-#include <cmath>
-#include <exception>
-#include <llarp/router/route_poker.hpp>
+
 #include <llarp/config/config.hpp>
 #include <llarp/config/ini.hpp>
-#include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
-#include <nlohmann/json.hpp>
+#include <llarp/dns/dns.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/quic/tunnel.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/service/outbound_context.hpp>
-#include <llarp/service/auth.hpp>
-#include <llarp/service/name.hpp>
 #include <llarp/router/router.hpp>
-#include <llarp/dns/dns.hpp>
+#include <llarp/rpc/rpc_request_definitions.hpp>
+#include <llarp/service/context.hpp>
+
+#include <nlohmann/json.hpp>
+
+#include <exception>
 #include <vector>
-#include <oxenmq/fmt.h>
 
 namespace llarp::rpc
 {
@@ -214,7 +209,8 @@ namespace llarp::rpc
 
     if (quicconnect.request.closeID)
     {
-      quic->forget(quicconnect.request.closeID);
+      // TODO:
+      // quic->forget(quicconnect.request.closeID);
       SetJSONResponse("OK", quicconnect.response);
       return;
     }
@@ -223,12 +219,13 @@ namespace llarp::rpc
 
     try
     {
-      auto [addr, id] = quic->open(
-          quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
+      // TODO:
+      // auto [addr, id] = quic->open(
+      //     quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
 
       util::StatusObject status;
-      status["addr"] = addr.ToString();
-      status["id"] = id;
+      // status["addr"] = addr.ToString();
+      // status["id"] = id;
 
       SetJSONResponse(status, quicconnect.response);
     }
@@ -269,7 +266,8 @@ namespace llarp::rpc
 
     if (quiclistener.request.closeID)
     {
-      quic->forget(quiclistener.request.closeID);
+      // TODO:
+      // quic->forget(quiclistener.request.closeID);
       SetJSONResponse("OK", quiclistener.response);
       return;
     }
@@ -280,7 +278,8 @@ namespace llarp::rpc
       try
       {
         SockAddr addr{quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
-        id = quic->listen(addr);
+        // TODO:
+        // id = quic->listen(addr);
       }
       catch (std::exception& e)
       {
@@ -596,7 +595,8 @@ namespace llarp::rpc
 
     if (endpoint == "unsubscribe")
     {
-      log::info(logcat, "New logs unsubscribe request from conn {}@{}", m.conn, m.remote);
+      log::info(
+          logcat, "New logs unsubscribe request from conn {}@{}", m.conn.to_string(), m.remote);
       log_subs.unsubscribe(m.conn);
       m.send_reply("OK");
       return;
@@ -606,13 +606,18 @@ namespace llarp::rpc
 
     if (is_new)
     {
-      log::info(logcat, "New logs subscription request from conn {}@{}", m.conn, m.remote);
+      log::info(
+          logcat, "New logs subscription request from conn {}@{}", m.conn.to_string(), m.remote);
       m.send_reply("OK");
       log_subs.send_all(m.conn, endpoint);
     }
     else
     {
-      log::debug(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn, m.remote);
+      log::debug(
+          logcat,
+          "Renewed logs subscription request from conn id {}@{}",
+          m.conn.to_string(),
+          m.remote);
       m.send_reply("ALREADY");
     }
   }

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "constants.hpp"
+
 #include <llarp/router_id.hpp>
 #include <llarp/util/aligned.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/util/fs.hpp>
+#include <llarp/util/types.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -218,15 +219,14 @@ namespace llarp
   using PQKeyPair = AlignedBuffer<PQ_KEYPAIRSIZE>;
 
   /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
+  using path_dh_func = bool (*)(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
 
   /// TKE(result, publickey, secretkey, nonce)
   using transport_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
+      bool (*)(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
 
   /// SH(result, body)
-  using shorthash_func = std::function<bool(ShortHash&, const llarp_buffer_t&)>;
+  using shorthash_func = bool (*)(ShortHash&, const llarp_buffer_t&);
 }  // namespace llarp
 
 namespace std

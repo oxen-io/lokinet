@@ -1,14 +1,16 @@
 #pragma once
 
+#include "address.hpp"
+
+#include <llarp/router_id.hpp>
+
+#include <oxenc/variant.h>
+
 #include <functional>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <string>
-
-#include "address.hpp"
-#include <llarp/router_id.hpp>
-#include <oxenc/variant.h>
 
 namespace llarp::service
 {

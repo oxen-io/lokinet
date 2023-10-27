@@ -1,6 +1,8 @@
 #pragma once
 
 #include <llarp/service/auth.hpp>
+#include <llarp/service/convotag.hpp>
+
 #include <oxenmq/oxenmq.h>
 
 namespace llarp::service
@@ -24,7 +26,8 @@ namespace llarp::rpc
         std::unordered_set<std::string> token_whitelist,
         LMQ_ptr lmq,
         Endpoint_ptr endpoint);
-    virtual ~EndpointAuthRPC() = default;
+
+    ~EndpointAuthRPC() override = default;
 
     void
     Start();
@@ -32,7 +35,7 @@ namespace llarp::rpc
     void
     AuthenticateAsync(
         std::shared_ptr<llarp::service::ProtocolMessage> msg,
-        std::function<void(service::AuthResult)> hook) override;
+        std::function<void(std::string, bool)> hook) override;
 
     bool
     AsyncAuthPending(service::ConvoTag tag) const override;

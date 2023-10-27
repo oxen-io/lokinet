@@ -1,35 +1,26 @@
+#include "tun.hpp"
+
 #include <algorithm>
 #include <iterator>
 #include <variant>
-#include "tun.hpp"
-#include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
-#include <netdb.h>
 #endif
 
+#include <llarp/constants/platform.hpp>
 #include <llarp/dns/dns.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/router/router.hpp>
-#include <llarp/router/route_poker.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/service/outbound_context.hpp>
-#include <llarp/service/endpoint_state.hpp>
-#include <llarp/service/outbound_context.hpp>
-#include <llarp/service/name.hpp>
-#include <llarp/service/protocol_type.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/quic/tunnel.hpp>
+#include <llarp/router/route_poker.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/rpc/endpoint_rpc.hpp>
+#include <llarp/service/context.hpp>
+#include <llarp/service/endpoint_state.hpp>
+#include <llarp/service/name.hpp>
+#include <llarp/service/outbound_context.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/str.hpp>
-#include <llarp/util/logging/buffer.hpp>
-#include <llarp/dns/srv_data.hpp>
-#include <llarp/constants/net.hpp>
-#include <llarp/constants/platform.hpp>
-
-#include <oxenc/bt.h>
 
 namespace llarp::handlers
 {
@@ -391,8 +382,11 @@ namespace llarp::handlers
         if (not data.empty())
         {
           std::string_view bdata{data.data(), data.size()};
+
           LogDebug(Name(), " parsing address map data: ", bdata);
+
           const auto parsed = oxenc::bt_deserialize<oxenc::bt_dict>(bdata);
+
           for (const auto& [key, value] : parsed)
           {
             huint128_t ip{};
@@ -454,12 +448,13 @@ namespace llarp::handlers
       }
     }
 
-    if (auto* quic = GetQUICTunnel())
-    {
-      quic->listen([this](std::string_view, uint16_t port) {
-        return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
-      });
-    }
+    // if (auto* quic = GetQUICTunnel())
+    // {
+    // TODO:
+    // quic->listen([this](std::string_view, uint16_t port) {
+    //   return llarp::SockAddr{net::TruncateV6(GetIfAddr()), huint16_t{port}};
+    // });
+    // }
     return Endpoint::Configure(conf, dnsConf);
   }
 
@@ -467,19 +462,6 @@ namespace llarp::handlers
   TunEndpoint::HasLocalIP(const huint128_t& ip) const
   {
     return m_IPToAddr.find(ip) != m_IPToAddr.end();
-  }
-
-  void
-  TunEndpoint::Pump(llarp_time_t now)
-  {
-    // flush network to user
-    while (not m_NetworkToUserPktQueue.empty())
-    {
-      m_NetIf->WritePacket(m_NetworkToUserPktQueue.top().pkt);
-      m_NetworkToUserPktQueue.pop();
-    }
-
-    service::Endpoint::Pump(now);
   }
 
   static bool
@@ -712,7 +694,7 @@ namespace llarp::handlers
             }
             catch (...)
             {
-              log::warning(log_cat, "Failed to parse find name response!");
+              log::warning(logcat, "Failed to parse find name response!");
               throw;
             }
 
@@ -790,8 +772,8 @@ namespace llarp::handlers
           msg.AddCNAMEReply(random.ToString(), 1);
           return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
         }
-        else
-          msg.AddNXReply();
+
+        msg.AddNXReply();
       }
       else if (is_localhost_loki(msg))
       {
@@ -866,7 +848,7 @@ namespace llarp::handlers
                 }
                 catch (...)
                 {
-                  log::warning(log_cat, "Failed to parse find name response!");
+                  log::warning(logcat, "Failed to parse find name response!");
                   throw;
                 }
 
@@ -874,7 +856,7 @@ namespace llarp::handlers
               }
               else
               {
-                log::warning(log_cat, "{} (ONS name: {}) not resolved", name, ons_name);
+                log::warning(logcat, "{} (ONS name: {}) not resolved", name, ons_name);
                 msg->AddNXReply();
                 reply(*msg);
               }
@@ -1254,12 +1236,12 @@ namespace llarp::handlers
 
       EnsurePathToService(
           addr,
-          [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) {
+          [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) mutable {
             if (ctx)
             {
               if (extra_cb)
                 extra_cb();
-              ctx->SendPacketToRemote(pkt.ConstBuffer(), service::ProtocolType::Exit);
+              ctx->send_packet_to_remote(pkt.to_string());
               router()->TriggerPump();
               return;
             }
@@ -1367,7 +1349,9 @@ namespace llarp::handlers
         return false;
       }
       LogInfo("tag active T=", tag);
-      quic->receive_packet(tag, buf);
+
+      // TODO:
+      // quic->receive_packet(tag, buf);
       return true;
     }
 
@@ -1473,7 +1457,10 @@ namespace llarp::handlers
     {
       pkt.UpdateIPv6Address(src, dst);
     }
-    m_NetworkToUserPktQueue.push(std::move(write));
+
+    // TODO: send this along but without a fucking huint182_t
+    // m_NetworkToUserPktQueue.push(std::move(write));
+
     // wake up so we ensure that all packets are written to user
     router()->TriggerPump();
     return true;

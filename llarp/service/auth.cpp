@@ -1,10 +1,12 @@
 #include "auth.hpp"
-#include <unordered_map>
+
+#include "protocol.hpp"
 
 #include <llarp/router/router.hpp>
-#include "protocol.hpp"
-#include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
+
+#include <unordered_map>
 
 namespace llarp::service
 {
@@ -123,8 +125,9 @@ namespace llarp::service
         case AuthFileType::eAuthFilePlain:
           return hash == challenge;
         case AuthFileType::eAuthFileHashes:
-          return CryptoManager::instance()->check_passwd_hash(
-              std::move(hash), std::move(challenge));
+#ifdef HAVE_CRYPT
+          return crypto::check_passwd_hash(std::move(hash), std::move(challenge));
+#endif
         default:
           return false;
       }
@@ -137,7 +140,7 @@ namespace llarp::service
 
     void
     AuthenticateAsync(
-        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) override
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) override
     {
       auto reply = m_Router->loop()->make_caller(
           [tag = msg->tag, hook, self = shared_from_this()](AuthResult result) {
@@ -145,7 +148,7 @@ namespace llarp::service
               util::Lock _lock{self->m_Access};
               self->m_Pending.erase(tag);
             }
-            hook(result);
+            hook(result.reason, result.code == AuthResultCode::eAuthAccepted);
           });
       {
         util::Lock _lock{m_Access};

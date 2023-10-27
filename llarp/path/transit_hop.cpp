@@ -1,15 +1,7 @@
-#include "path.hpp"
-#include "path_context.hpp"
 #include "transit_hop.hpp"
 
-#include <llarp/exit/context.hpp>
-#include <llarp/exit/exit_messages.hpp>
-#include <llarp/link/link_manager.hpp>
-#include <llarp/messages/discard.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/buffer.hpp>
-
-#include <oxenc/endian.h>
 
 namespace llarp::path
 {
@@ -32,6 +24,13 @@ namespace llarp::path
   }
 
   bool
+  TransitHop::send_path_control_message(
+      std::string, std::string, std::function<void(oxen::quic::message m)>)
+  {
+    return true;
+  }
+
+  bool
   TransitHop::Expired(llarp_time_t now) const
   {
     return destroy || (now >= ExpireTime());
@@ -43,8 +42,7 @@ namespace llarp::path
     return started + lifetime;
   }
 
-  TransitHopInfo::TransitHopInfo(const RouterID& down, const LR_CommitRecord& record)
-      : txID(record.txid), rxID(record.rxid), upstream(record.nextHop), downstream(down)
+  TransitHopInfo::TransitHopInfo(const RouterID& down) : downstream(down)
   {}
 
   /** Note: this is one of two places where AbstractRoutingMessage::bt_encode() is called, the
@@ -63,26 +61,26 @@ namespace llarp::path
       std::move around.
   */
   bool
-  TransitHop::SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r)
+  TransitHop::SendRoutingMessage(std::string payload, Router* r)
   {
     if (!IsEndpoint(r->pubkey()))
       return false;
 
-    auto buf = msg.bt_encode();
-
     TunnelNonce N;
     N.Randomize();
     // pad to nearest MESSAGE_PAD_SIZE bytes
-    auto dlt = buf.size() % PAD_SIZE;
+    auto dlt = payload.size() % PAD_SIZE;
 
     if (dlt)
     {
       dlt = PAD_SIZE - dlt;
       // randomize padding
-      CryptoManager::instance()->randbytes(reinterpret_cast<uint8_t*>(buf.data()), dlt);
+      crypto::randbytes(reinterpret_cast<uint8_t*>(payload.data()), dlt);
     }
 
-    return HandleDownstream(buf, N, r);
+    // TODO: relay message along
+
+    return true;
   }
 
   void
@@ -107,7 +105,7 @@ namespace llarp::path
       msg.pathid = info.rxID;
       msg.nonce = ev.second ^ nonceXOR;
 
-      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+      crypto::xchacha20(buf, sz, pathKey, ev.second);
       std::memcpy(msg.enc.data(), buf, sz);
 
       llarp::LogDebug(
@@ -137,7 +135,7 @@ namespace llarp::path
       uint8_t* buf = ev.first.data();
       size_t sz = ev.first.size();
 
-      CryptoManager::instance()->xchacha20(buf, sz, pathKey, ev.second);
+      crypto::xchacha20(buf, sz, pathKey, ev.second);
 
       msg.pathid = info.txID;
       msg.nonce = ev.second ^ nonceXOR;
@@ -166,7 +164,7 @@ namespace llarp::path
       for (const auto& msg : msgs)
       {
         const llarp_buffer_t buf(msg.enc);
-        if (!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
+        if (!r->ParseRoutingMessageBuffer(buf, *this, info.rxID))
         {
           LogWarn("invalid upstream data on endpoint ", info);
         }
@@ -190,7 +188,7 @@ namespace llarp::path
             info.downstream,
             " to ",
             info.upstream);
-        r->send_data_message(info.upstream, msg);
+        r->send_data_message(info.upstream, msg.bt_encode());
       }
     }
     r->TriggerPump();
@@ -207,6 +205,7 @@ namespace llarp::path
           msg.enc.size(),
           info.upstream,
           info.downstream);
+      // TODO: is this right?
       r->send_data_message(info.downstream, msg.bt_encode());
     }
 

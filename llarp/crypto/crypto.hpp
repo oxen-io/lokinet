@@ -5,27 +5,21 @@
 
 #include <llarp/util/buffer.hpp>
 
-#include <functional>
-
 #include <cstdint>
+#include <functional>
 
 namespace llarp
 {
   /*
       TODO:
         - make uint8_t pointers const where needed
-        -
   */
 
-  struct Crypto
+  namespace crypto
   {
-    Crypto();
-
-    ~Crypto() = default;
-
     /// decrypt cipherText given the key generated from name
     std::optional<AlignedBuffer<32>>
-    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name);
+    maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name);
 
     /// xchacha symmetric cipher
     bool
@@ -98,7 +92,7 @@ namespace llarp
     seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&);
     /// randomize buffer
     void
-    randomize(const llarp_buffer_t&);
+    randomize(uint8_t* buf, size_t len);
     /// randomizer memory
     void
     randbytes(byte_t*, size_t);
@@ -123,7 +117,7 @@ namespace llarp
 
     bool
     check_passwd_hash(std::string pwhash, std::string challenge);
-  };
+  };  // namespace crypto
 
   /// return random 64bit unsigned interger
   uint64_t
@@ -138,39 +132,6 @@ namespace llarp
   const byte_t*
   pq_keypair_to_secret(const PQKeyPair& keypair);
 
-  struct CryptoManager
-  {
-   private:
-    static Crypto* m_crypto;
-
-    Crypto* m_prevCrypto;
-
-   public:
-    explicit CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
-    {
-      m_crypto = crypto;
-    }
-
-    ~CryptoManager()
-    {
-      m_crypto = m_prevCrypto;
-    }
-
-    static Crypto*
-    instance()
-    {
-#ifdef NDEBUG
-      return m_crypto;
-#else
-      if (m_crypto)
-        return m_crypto;
-
-      assert(false && "Cryptomanager::instance() was undefined");
-      abort();
-#endif
-    }
-  };
-
   /// rng type that uses llarp::randint(), which is cryptographically secure
   struct CSRNG
   {
@@ -180,19 +141,21 @@ namespace llarp
     min()
     {
       return std::numeric_limits<uint64_t>::min();
-    };
+    }
 
     static constexpr uint64_t
     max()
     {
       return std::numeric_limits<uint64_t>::max();
-    };
+    }
 
     uint64_t
     operator()()
     {
       return llarp::randint();
-    };
+    }
   };
+
+  extern CSRNG csrng;
 
 }  // namespace llarp

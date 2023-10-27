@@ -1,26 +1,20 @@
 #include "config.hpp"
+
 #include "definition.hpp"
 #include "ini.hpp"
 
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
-#include <llarp/net/net.hpp>
 #include <llarp/net/ip.hpp>
+#include <llarp/net/net.hpp>
 #include <llarp/router_contact.hpp>
-#include <stdexcept>
+#include <llarp/service/name.hpp>
 #include <llarp/util/file.hpp>
-#include <llarp/util/formattable.hpp>
 #include <llarp/util/logging.hpp>
-#include <llarp/util/mem.hpp>
 #include <llarp/util/str.hpp>
 
-#include <llarp/service/name.hpp>
-
-#include <chrono>
-#include <cstdlib>
-#include <ios>
-#include <iostream>
+#include <stdexcept>
 
 namespace llarp
 {

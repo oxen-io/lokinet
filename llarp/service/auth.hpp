@@ -1,9 +1,11 @@
 #pragma once
+#include "address.hpp"
+
+#include <llarp/crypto/types.hpp>
+
+#include <functional>
 #include <optional>
 #include <string>
-#include <functional>
-#include "address.hpp"
-#include <llarp/crypto/types.hpp>
 
 namespace llarp
 {
@@ -57,7 +59,7 @@ namespace llarp::service
     /// result later
     virtual void
     AuthenticateAsync(
-        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) = 0;
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) = 0;
 
     /// return true if we are asynchronously processing authentication on this convotag
     virtual bool

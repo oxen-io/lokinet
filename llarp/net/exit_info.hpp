@@ -1,7 +1,8 @@
 #pragma once
 
-#include <llarp/crypto/types.hpp>
 #include "ip_address.hpp"
+
+#include <llarp/crypto/types.hpp>
 #include <llarp/util/bencode.hpp>
 
 #include <iosfwd>

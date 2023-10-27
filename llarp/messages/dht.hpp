@@ -18,8 +18,8 @@ namespace llarp
 
       try
       {
-        btdp.append("E", is_exploratory);
-        btdp.append("I", is_iterative);
+        btdp.append("E", is_exploratory ? 1 : 0);
+        btdp.append("I", is_iterative ? 1 : 0);
         btdp.append("K", rid.ToView());
       }
       catch (...)
@@ -37,8 +37,8 @@ namespace llarp
 
       try
       {
-        btdp.append("E", is_exploratory);
-        btdp.append("I", is_iterative);
+        btdp.append("E", is_exploratory ? 1 : 0);
+        btdp.append("I", is_iterative ? 1 : 0);
         btdp.append("K", std::move(rid));
       }
       catch (...)

@@ -1,21 +1,22 @@
 #pragma once
 
-#include <fmt/core.h>
-#include <initializer_list>
-#include <type_traits>
-#include <llarp/util/str.hpp>
 #include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
 
+#include <fmt/core.h>
+
+#include <cassert>
+#include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <functional>
-#include <optional>
-#include <cassert>
 
 namespace llarp
 {

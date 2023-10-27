@@ -1,22 +1,22 @@
 #pragma once
 
+#include "crypto/crypto.hpp"
+#include "dht/key.hpp"
 #include "router_contact.hpp"
 #include "router_id.hpp"
-#include "dht/key.hpp"
-#include "crypto/crypto.hpp"
 #include "util/common.hpp"
 #include "util/fs.hpp"
 #include "util/thread/threading.hpp"
-#include "util/thread/annotations.hpp"
+
 #include <llarp/router/router.hpp>
 
-#include <set>
-#include <optional>
-#include <unordered_set>
-#include <unordered_map>
-#include <utility>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
+#include <optional>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace llarp
 {
@@ -92,12 +92,12 @@ namespace llarp
     std::optional<RouterContact>
     GetRandom(Filter visit) const
     {
-      return router.loop()->call_get([this, visit]() -> std::optional<RouterContact> {
+      return router.loop()->call_get([visit]() -> std::optional<RouterContact> {
         std::vector<const decltype(entries)::value_type*> entries;
         for (const auto& entry : entries)
           entries.push_back(entry);
 
-        std::shuffle(entries.begin(), entries.end(), llarp::CSRNG{});
+        std::shuffle(entries.begin(), entries.end(), llarp::csrng);
 
         for (const auto entry : entries)
         {

@@ -1,25 +1,21 @@
 #include "crypto.hpp"
 
-#include <sodium/core.h>
-#include <sodium/crypto_generichash.h>
-#include <sodium/crypto_sign.h>
-#include <sodium/crypto_scalarmult.h>
-#include <sodium/crypto_scalarmult_ed25519.h>
-#include <sodium/crypto_stream_xchacha20.h>
-#include <sodium/crypto_core_ed25519.h>
-#include <sodium/crypto_aead_xchacha20poly1305.h>
-#include <sodium/randombytes.h>
-#include <sodium/utils.h>
 #include <oxenc/endian.h>
-#include <llarp/util/mem.hpp>
-#include <llarp/util/str.hpp>
+#include <sodium/core.h>
+#include <sodium/crypto_aead_xchacha20poly1305.h>
+#include <sodium/crypto_core_ed25519.h>
+#include <sodium/crypto_generichash.h>
+#include <sodium/crypto_scalarmult_curve25519.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
+#include <sodium/crypto_sign.h>
+#include <sodium/crypto_stream_xchacha20.h>
+#include <sodium/utils.h>
+
 #include <cassert>
 #include <cstring>
 #ifdef HAVE_CRYPT
 #include <crypt.h>
 #endif
-
-#include <llarp/util/str.hpp>
 
 namespace llarp
 {
@@ -113,28 +109,8 @@ namespace llarp
     return false;
   }
 
-  Crypto::Crypto()
-  {
-    if (sodium_init() == -1)
-    {
-      throw std::runtime_error("sodium_init() returned -1");
-    }
-    char* avx2 = std::getenv("AVX2_FORCE_DISABLE");
-    if (avx2 && std::string(avx2) == "1")
-    {
-      ntru_init(1);
-    }
-    else
-    {
-      ntru_init(0);
-    }
-    int seed = 0;
-    randombytes(reinterpret_cast<unsigned char*>(&seed), sizeof(seed));
-    srand(seed);
-  }
-
   std::optional<AlignedBuffer<32>>
-  Crypto::maybe_decrypt_name(std::string_view ciphertext, SymmNonce nounce, std::string_view name)
+  crypto::maybe_decrypt_name(std::string_view ciphertext, SymmNonce nonce, std::string_view name)
   {
     const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
     if (payloadsize != 32)
@@ -157,7 +133,7 @@ namespace llarp
             ciphertext.size(),
             nullptr,
             0,
-            nounce.data(),
+            nonce.data(),
             derivedKey.data())
         == -1)
     {
@@ -167,32 +143,33 @@ namespace llarp
   }
 
   bool
-  Crypto::xchacha20(uint8_t* buf, size_t size, const SharedSecret& k, const TunnelNonce& n)
+  crypto::xchacha20(uint8_t* buf, size_t size, const SharedSecret& k, const TunnelNonce& n)
   {
-    return crypto_stream_xchacha20_xor(buf, buf, size, n.data(), k.data()) == 0;
+    return xchacha20(buf, size, n.data(), k.data());
   }
 
   bool
-  Crypto::xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce)
+  crypto::xchacha20(uint8_t* buf, size_t size, const uint8_t* secret, const uint8_t* nonce)
   {
     return crypto_stream_xchacha20_xor(buf, buf, size, nonce, secret) == 0;
   }
 
   bool
-  Crypto::dh_client(
+  crypto::dh_client(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     return dh_client_priv(shared, pk, sk, n);
   }
   /// path dh relay side
   bool
-  Crypto::dh_server(
+  crypto::dh_server(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     return dh_server_priv(shared, pk, sk, n);
   }
+
   bool
-  Crypto::dh_server(
+  crypto::dh_server(
       uint8_t* shared_secret,
       const uint8_t* other_pk,
       const uint8_t* local_pk,
@@ -202,27 +179,27 @@ namespace llarp
   }
   /// transport dh client side
   bool
-  Crypto::transport_dh_client(
+  crypto::transport_dh_client(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     return dh_client_priv(shared, pk, sk, n);
   }
   /// transport dh server side
   bool
-  Crypto::transport_dh_server(
+  crypto::transport_dh_server(
       llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
   {
     return dh_server_priv(shared, pk, sk, n);
   }
 
   bool
-  Crypto::shorthash(ShortHash& result, uint8_t* buf, size_t size)
+  crypto::shorthash(ShortHash& result, uint8_t* buf, size_t size)
   {
     return crypto_generichash_blake2b(result.data(), ShortHash::SIZE, buf, size, nullptr, 0) != -1;
   }
 
   bool
-  Crypto::hmac(uint8_t* result, uint8_t* buf, size_t size, const SharedSecret& secret)
+  crypto::hmac(uint8_t* result, uint8_t* buf, size_t size, const SharedSecret& secret)
   {
     return crypto_generichash_blake2b(result, HMACSIZE, buf, size, secret.data(), HMACSECSIZE)
         != -1;
@@ -235,25 +212,25 @@ namespace llarp
   }
 
   bool
-  Crypto::sign(Signature& sig, const SecretKey& secret, uint8_t* buf, size_t size)
+  crypto::sign(Signature& sig, const SecretKey& secret, uint8_t* buf, size_t size)
   {
     return crypto_sign_detached(sig.data(), nullptr, buf, size, secret.data()) != -1;
   }
 
   bool
-  Crypto::sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
+  crypto::sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size)
   {
     return crypto_sign_detached(sig, nullptr, buf, size, sk) != -1;
   }
 
   bool
-  Crypto::sign(uint8_t* sig, const SecretKey& sk, ustring_view buf)
+  crypto::sign(uint8_t* sig, const SecretKey& sk, ustring_view buf)
   {
     return crypto_sign_detached(sig, nullptr, buf.data(), buf.size(), sk.data()) != -1;
   }
 
   bool
-  Crypto::sign(Signature& sig, const PrivateKey& privkey, uint8_t* buf, size_t size)
+  crypto::sign(Signature& sig, const PrivateKey& privkey, uint8_t* buf, size_t size)
   {
     PubKey pubkey;
 
@@ -297,13 +274,13 @@ namespace llarp
   }
 
   bool
-  Crypto::verify(const PubKey& pub, uint8_t* buf, size_t size, const Signature& sig)
+  crypto::verify(const PubKey& pub, uint8_t* buf, size_t size, const Signature& sig)
   {
     return crypto_sign_verify_detached(sig.data(), buf, size, pub.data()) != -1;
   }
 
   bool
-  Crypto::verify(ustring_view pub, ustring_view buf, ustring_view sig)
+  crypto::verify(ustring_view pub, ustring_view buf, ustring_view sig)
   {
     return (pub.size() == 32 && sig.size() == 64)
         ? crypto_sign_verify_detached(sig.data(), buf.data(), buf.size(), pub.data()) != -1
@@ -311,7 +288,7 @@ namespace llarp
   }
 
   bool
-  Crypto::verify(uint8_t* pub, uint8_t* buf, size_t size, uint8_t* sig)
+  crypto::verify(uint8_t* pub, uint8_t* buf, size_t size, uint8_t* sig)
   {
     return crypto_sign_verify_detached(sig, buf, size, pub) != -1;
   }
@@ -368,7 +345,7 @@ namespace llarp
   static AlignedBuffer<32> zero;
 
   bool
-  Crypto::derive_subkey(
+  crypto::derive_subkey(
       PubKey& out_pubkey, const PubKey& root_pubkey, uint64_t key_n, const AlignedBuffer<32>* hash)
   {
     // scalar h = H( BLIND-STRING || root_pubkey || key_n )
@@ -385,7 +362,7 @@ namespace llarp
   }
 
   bool
-  Crypto::derive_subkey_private(
+  crypto::derive_subkey_private(
       PrivateKey& out_key, const SecretKey& root_key, uint64_t key_n, const AlignedBuffer<32>* hash)
   {
     // Derives a private subkey from a root key.
@@ -452,24 +429,24 @@ namespace llarp
   }
 
   bool
-  Crypto::seed_to_secretkey(llarp::SecretKey& secret, const llarp::IdentitySecret& seed)
+  crypto::seed_to_secretkey(llarp::SecretKey& secret, const llarp::IdentitySecret& seed)
   {
     return crypto_sign_ed25519_seed_keypair(secret.data() + 32, secret.data(), seed.data()) != -1;
   }
   void
-  Crypto::randomize(const llarp_buffer_t& buff)
+  crypto::randomize(uint8_t* buf, size_t len)
   {
-    randombytes((unsigned char*)buff.base, buff.sz);
+    randombytes(buf, len);
   }
 
   void
-  Crypto::randbytes(byte_t* ptr, size_t sz)
+  crypto::randbytes(byte_t* ptr, size_t sz)
   {
     randombytes((unsigned char*)ptr, sz);
   }
 
   void
-  Crypto::identity_keygen(llarp::SecretKey& keys)
+  crypto::identity_keygen(llarp::SecretKey& keys)
   {
     PubKey pk;
     int result = crypto_sign_keypair(pk.data(), keys.data());
@@ -483,7 +460,7 @@ namespace llarp
   }
 
   bool
-  Crypto::check_identity_privkey(const llarp::SecretKey& keys)
+  crypto::check_identity_privkey(const llarp::SecretKey& keys)
   {
     AlignedBuffer<crypto_sign_SEEDBYTES> seed;
     llarp::PubKey pk;
@@ -496,7 +473,7 @@ namespace llarp
   }
 
   void
-  Crypto::encryption_keygen(llarp::SecretKey& keys)
+  crypto::encryption_keygen(llarp::SecretKey& keys)
   {
     auto d = keys.data();
     randbytes(d, 32);
@@ -504,31 +481,29 @@ namespace llarp
   }
 
   bool
-  Crypto::pqe_encrypt(PQCipherBlock& ciphertext, SharedSecret& sharedkey, const PQPubKey& pubkey)
+  crypto::pqe_encrypt(PQCipherBlock& ciphertext, SharedSecret& sharedkey, const PQPubKey& pubkey)
   {
     return crypto_kem_enc(ciphertext.data(), sharedkey.data(), pubkey.data()) != -1;
   }
   bool
-  Crypto::pqe_decrypt(
+  crypto::pqe_decrypt(
       const PQCipherBlock& ciphertext, SharedSecret& sharedkey, const byte_t* secretkey)
   {
     return crypto_kem_dec(sharedkey.data(), ciphertext.data(), secretkey) != -1;
   }
 
   void
-  Crypto::pqe_keygen(PQKeyPair& keypair)
+  crypto::pqe_keygen(PQKeyPair& keypair)
   {
     auto d = keypair.data();
     crypto_kem_keypair(d + PQ_SECRETKEYSIZE, d);
   }
 
-  bool
-  Crypto::check_passwd_hash(std::string pwhash, std::string challenge)
-  {
-    (void)pwhash;
-    (void)challenge;
-    bool ret = false;
 #ifdef HAVE_CRYPT
+  bool
+  crypto::check_passwd_hash(std::string pwhash, std::string challenge)
+  {
+    bool ret = false;
     auto pos = pwhash.find_last_of('$');
     auto settings = pwhash.substr(0, pos);
     crypt_data data{};
@@ -537,9 +512,9 @@ namespace llarp
       ret = ptr == pwhash;
     }
     sodium_memzero(&data, sizeof(data));
-#endif
     return ret;
   }
+#endif
 
   const byte_t*
   seckey_topublic(const SecretKey& sec)
@@ -566,4 +541,23 @@ namespace llarp
     randombytes((byte_t*)&i, sizeof(i));
     return i;
   }
+
+  // Called during static initialization to initialize libsodium and ntru.  (The CSRNG return is not
+  // useful, but just here to get this called during static initialization of `llarp::csrng`).
+  static CSRNG
+  _initialize_crypto()
+  {
+    if (sodium_init() == -1)
+    {
+      log::critical(log::Cat("initialization"), "sodium_init() failed, unable to continue!");
+      std::abort();
+    }
+    char* avx2 = std::getenv("AVX2_FORCE_DISABLE");
+    ntru_init(avx2 && avx2 == "1"sv);
+
+    return CSRNG{};
+  }
+
+  CSRNG csrng = _initialize_crypto();
+
 }  // namespace llarp

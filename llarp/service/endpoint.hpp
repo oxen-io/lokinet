@@ -1,32 +1,27 @@
 #pragma once
+#include <llarp/dns/server.hpp>
 #include <llarp/endpoint_base.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/session.hpp>
 #include <llarp/net/ip_range_map.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/util/compare_ptr.hpp>
-
-// --- begin kitchen sink headers ----
 #include <llarp/service/address.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/service/endpoint_types.hpp>
 #include <llarp/service/identity.hpp>
 #include <llarp/service/pendingbuffer.hpp>
 #include <llarp/service/protocol.hpp>
-#include <llarp/service/sendcontext.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/service/session.hpp>
-#include <llarp/service/endpoint_types.hpp>
-#include <llarp/endpoint_base.hpp>
-#include <llarp/service/auth.hpp>
-// ----- end kitchen sink headers -----
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/vpn/egres_packet_router.hpp>
+
+#include <oxenc/variant.h>
 
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenc/variant.h>
-
-#include <llarp/vpn/egres_packet_router.hpp>
-#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -43,6 +38,7 @@ namespace llarp
   namespace service
   {
     struct AsyncKeyExchange;
+
     struct Context;
     struct EndpointState;
     struct OutboundContext;
@@ -69,9 +65,8 @@ namespace llarp
       std::shared_ptr<ProtocolMessage> msg;
     };
 
-    struct Endpoint : public path::Builder,
-                      public EndpointBase,
-                      public std::enable_shared_from_this<Endpoint>
+    struct Endpoint : public path::Builder, public EndpointBase
+    // public std::enable_shared_from_this<Endpoint>
     {
       Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
@@ -304,12 +299,6 @@ namespace llarp
       /// this MUST be called if you want to call EnsurePathTo on the given address
       void MarkAddressOutbound(service::Address) override;
 
-      bool
-      ShouldBundleRC() const override
-      {
-        return false;
-      }
-
       void
       BlacklistSNode(const RouterID snode) override;
 
@@ -427,14 +416,12 @@ namespace llarp
       GetHopsForBuildWithEndpoint(RouterID endpoint);
 
       void
-      PathBuildStarted(path::Path_ptr path) override;
-
-      void
       AsyncProcessAuthMessage(
-          std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
+          std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook);
 
       void
-      SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+      SendAuthResult(
+          path::Path_ptr path, PathID_t replyPath, ConvoTag tag, std::string result, bool success);
 
       uint64_t
       GenTXID();
@@ -455,7 +442,7 @@ namespace llarp
 
       /// Returns a pointer to the quic::Tunnel object handling quic connections for this endpoint.
       /// Returns nullptr if quic is not supported.
-      quic::TunnelManager*
+      link::TunnelManager*
       GetQUICTunnel() override;
 
      protected:
@@ -509,7 +496,7 @@ namespace llarp
       std::unique_ptr<EndpointState> _state;
       std::shared_ptr<IAuthPolicy> _auth_policy;
       std::unordered_map<Address, AuthInfo> _remote_auth_infos;
-      std::unique_ptr<quic::TunnelManager> _tunnel_manager;
+      std::unique_ptr<link::TunnelManager> _tunnel_manager;
 
       /// (ons name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>

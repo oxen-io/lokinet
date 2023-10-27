@@ -1,8 +1,9 @@
 #pragma once
 
 #include "pathset.hpp"
-#include <llarp/util/status.hpp>
+
 #include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/status.hpp>
 
 #include <atomic>
 #include <set>
@@ -72,10 +73,6 @@ namespace llarp::path
 
     bool
     ShouldBuildMore(llarp_time_t now) const override;
-
-    /// should we bundle RCs in builds?
-    virtual bool
-    ShouldBundleRC() const = 0;
 
     void
     ResetInternalState() override;

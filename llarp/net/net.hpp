@@ -1,26 +1,27 @@
 #pragma once
 
-#include "uint128.hpp"
-#include "ip_address.hpp"
-#include "net_int.hpp"
-#include "net.h"
-#include "ip_range.hpp"
-#include <llarp/util/mem.hpp>
-#include <llarp/util/bits.hpp>
-
 #include "interface_info.hpp"
+#include "ip_address.hpp"
+#include "ip_range.hpp"
+#include "net.h"
+#include "net_int.hpp"
+#include "uint128.hpp"
 
-#include <functional>
+#include <llarp/util/bits.hpp>
+#include <llarp/util/mem.hpp>
+
 #include <cstdlib>  // for itoa
+#include <functional>
 #include <vector>
 
 // for addrinfo
 #ifndef _WIN32
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #else
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 #endif

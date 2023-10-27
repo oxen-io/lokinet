@@ -1,23 +1,21 @@
 #pragma once
 
 #include "connection.hpp"
-#include <llarp/constants/path.hpp>
-#include <llarp/util/decaying_hashset.hpp>
 
+#include <llarp/constants/path.hpp>
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/peerstats/peer_db.hpp>
-#include <llarp/crypto/crypto.hpp>
 #include <llarp/util/compare_ptr.hpp>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/priority_queue.hpp>
 
 #include <quic.hpp>
 
-#include <unordered_map>
-#include <set>
 #include <atomic>
-
-#include <llarp/util/logging.hpp>
-#include <llarp/util/priority_queue.hpp>
+#include <set>
+#include <unordered_map>
 
 namespace
 {
@@ -27,6 +25,12 @@ namespace
 namespace llarp
 {
   struct LinkManager;
+
+  inline std::string
+  serialize_response(oxenc::bt_dict supplement = {})
+  {
+    return oxenc::bt_serialize(supplement);
+  }
 
   namespace link
   {
@@ -170,7 +174,7 @@ namespace llarp
     mutable util::Mutex m;  // protects persisting_conns
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map<RouterID, llarp_time_t> persisting_conns GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t> persisting_conns;
 
     // holds any messages we attempt to send while connections are establishing
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
@@ -258,9 +262,6 @@ namespace llarp
     void
     check_persisting_conns(llarp_time_t now);
 
-    void
-    update_peer_db(std::shared_ptr<PeerDb> peerDb);
-
     util::StatusObject
     extract_status() const;
 
@@ -304,6 +305,9 @@ namespace llarp
     void handle_update_exit(oxen::quic::message);  // relay
     void handle_close_exit(oxen::quic::message);   // relay
 
+    // Misc
+    void handle_convo_intro(oxen::quic::message);
+
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
         {"find_name", &LinkManager::handle_find_name},
         {"find_router", &LinkManager::handle_find_router},
@@ -314,7 +318,11 @@ namespace llarp
         {"path_latency", &LinkManager::handle_path_latency},
         {"update_exit", &LinkManager::handle_update_exit},
         {"obtain_exit", &LinkManager::handle_obtain_exit},
-        {"close_exit", &LinkManager::handle_close_exit}};
+        {"close_exit", &LinkManager::handle_close_exit},
+        {"convo_intro", &LinkManager::handle_convo_intro}};
+
+    // Path relaying
+    void handle_path_control(oxen::quic::message);
 
     // DHT responses
     void handle_find_name_response(oxen::quic::message);
@@ -343,9 +351,6 @@ namespace llarp
         {"update_exit", &LinkManager::handle_update_exit_response},
         {"obtain_exit", &LinkManager::handle_obtain_exit_response},
         {"close_exit", &LinkManager::handle_close_exit_response}};
-
-    std::string
-    serialize_response(oxenc::bt_dict supplement = {});
 
    public:
     // Public response functions and error handling functions invoked elsehwere. These take

@@ -72,8 +72,7 @@ namespace llarp::handlers
     bool
     Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 
-    void
-    SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
+    void send_packet_to_remote(std::string) override{};
 
     std::string
     GetIfName() const override;

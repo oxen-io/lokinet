@@ -12,8 +12,6 @@
 #endif
 #endif
 
-#include <exception>
-
 namespace llarp::vpn
 {
   const llarp::net::Platform*

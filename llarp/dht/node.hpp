@@ -1,8 +1,10 @@
 #pragma once
 
 #include "key.hpp"
+
 #include <llarp/router_contact.hpp>
 #include <llarp/service/intro_set.hpp>
+
 #include <utility>
 
 namespace llarp::dht

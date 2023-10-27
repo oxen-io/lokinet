@@ -1,7 +1,7 @@
-#include "path.hpp"
 #include "path_context.hpp"
 
-#include <llarp/messages/relay_commit.hpp>
+#include "path.hpp"
+
 #include <llarp/router/router.hpp>
 
 namespace llarp::path
@@ -373,31 +373,6 @@ namespace llarp::path
         }
       }
     }
-  }
-
-  routing::MessageHandler_ptr
-  PathContext::GetHandler(const PathID_t& id)
-  {
-    routing::MessageHandler_ptr h = nullptr;
-    auto pathset = GetLocalPathSet(id);
-    if (pathset)
-    {
-      h = pathset->GetPathByID(id);
-    }
-    if (h)
-      return h;
-    const RouterID us(OurRouterID());
-    auto& map = m_TransitPaths;
-    {
-      SyncTransitMap_t::Lock_t lock(map.first);
-      auto range = map.second.equal_range(id);
-      for (auto i = range.first; i != range.second; ++i)
-      {
-        if (i->second->info.upstream == us)
-          return i->second;
-      }
-    }
-    return nullptr;
   }
 
   void

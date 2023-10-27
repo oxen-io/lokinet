@@ -1,10 +1,7 @@
 #include "rc_gossiper.hpp"
-#include <llarp/messages/dht_immediate.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
+
+#include <llarp/router_contact.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/constants/link_layer.hpp>
-#include <llarp/tooling/rc_event.hpp>
-#include <llarp/link/link_manager.hpp>
 
 namespace llarp
 {
@@ -95,10 +92,10 @@ namespace llarp
     }
 
     // send a GRCM as gossip method
-    DHTImmediateMessage gossip;
-    gossip.msgs.emplace_back(new dht::GotRouterMessage(dht::Key_t{}, 0, {rc}, false));
+    // DHTImmediateMessage gossip;
+    // gossip.msgs.emplace_back(new dht::GotRouterMessage(dht::Key_t{}, 0, {rc}, false));
 
-    std::vector<RouterID> gossipTo;
+    // std::vector<RouterID> gossipTo;
 
     /*
      * TODO: gossip RC via libquic
@@ -120,7 +117,8 @@ namespace llarp
     std::unordered_set<RouterID> keys;
     // grab the keys we want to use
     std::sample(
-        gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers, CSRNG{});
+        gossipTo.begin(), gossipTo.end(), std::inserter(keys, keys.end()), MaxGossipPeers,
+    llarp::csrng);
 
     m_LinkManager->ForEachPeer([&](AbstractLinkSession* peerSession) {
       if (not(peerSession && peerSession->IsEstablished()))

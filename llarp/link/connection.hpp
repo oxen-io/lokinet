@@ -1,7 +1,7 @@
 #pragma once
 
-#include <llarp/router_id.hpp>
 #include <llarp/router_contact.hpp>
+#include <llarp/router_id.hpp>
 
 #include <quic.hpp>
 
@@ -20,7 +20,7 @@ namespace llarp::link
     Connection(
         std::shared_ptr<oxen::quic::connection_interface>& c,
         std::shared_ptr<oxen::quic::BTRequestStream>& s,
-        RouterContact& rc);
+        const RouterContact& rc);
   };
 }  // namespace llarp::link
 

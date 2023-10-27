@@ -1,8 +1,9 @@
 #pragma once
 
-#include <llarp/vpn/platform.hpp>
-#include "vpn_interface.hpp"
 #include "route_manager.hpp"
+#include "vpn_interface.hpp"
+
+#include <llarp/vpn/platform.hpp>
 
 namespace llarp::apple
 {

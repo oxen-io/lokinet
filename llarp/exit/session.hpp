@@ -1,9 +1,9 @@
 #pragma once
 
-#include <llarp/service/protocol_type.hpp>
+#include <llarp/constants/path.hpp>
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/constants/path.hpp>
+#include <llarp/service/protocol_type.hpp>
 
 #include <deque>
 #include <queue>
@@ -12,7 +12,7 @@ namespace llarp
 {
   class EndpointBase;
 
-  namespace quic
+  namespace link
   {
     class TunnelManager;
   }
@@ -61,12 +61,6 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
-      bool
-      ShouldBundleRC() const override
-      {
-        return m_BundleRC;
-      }
-
       void
       ResetInternalState() override;
 
@@ -86,10 +80,6 @@ namespace llarp
 
       void
       HandlePathBuilt(llarp::path::Path_ptr p) override;
-
-      bool
-      QueueUpstreamTraffic(
-          llarp::net::IPPacket pkt, const size_t packSize, service::ProtocolType t);
 
       /// flush upstream to exit via paths
       bool
@@ -140,9 +130,6 @@ namespace llarp
       llarp::SecretKey exit_key;
       std::function<bool(const llarp_buffer_t&)> packet_write_func;
 
-      virtual void
-      PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
-
       bool
       HandleTrafficDrop(llarp::path::Path_ptr p, const llarp::PathID_t& path, uint64_t s);
 
@@ -159,8 +146,6 @@ namespace llarp
      private:
       std::set<RouterID> snode_blacklist;
 
-      std::map<uint8_t, std::deque<routing::TransferTrafficMessage>> m_Upstream;
-
       PathID_t m_CurrentPath;
 
       using DownstreamPkt = std::pair<uint64_t, llarp::net::IPPacket>;
@@ -174,16 +159,12 @@ namespace llarp
         }
       };
 
-      using DownstreamTrafficQueue_t =
-          std::priority_queue<DownstreamPkt, std::vector<DownstreamPkt>, DownstreamPktSorter>;
-      DownstreamTrafficQueue_t m_Downstream;
-
-      uint64_t m_Counter;
-      llarp_time_t m_LastUse;
+      // uint64_t _counter;
+      llarp_time_t _last_use;
 
       std::vector<SessionReadyFunc> m_PendingCallbacks;
-      const bool m_BundleRC;
-      EndpointBase* const m_Parent;
+      // const bool _bundle_RC;
+      EndpointBase* const _parent;
 
       void
       CallPendingCallbacks(bool success);
@@ -207,16 +188,7 @@ namespace llarp
       Name() const override;
 
       void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
-
-     protected:
-      void
-      PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
-      {
-        // TODO: set expiration time
-        // msg.address_lifetime = 0;
-        msg.flag = 1;
-      }
+      send_packet_to_remote(std::string buf) override;
     };
 
     struct SNodeSession final : public BaseSession
@@ -236,16 +208,7 @@ namespace llarp
       Name() const override;
 
       void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) override;
-
-     protected:
-      void
-      PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
-      {
-        // TODO: set expiration time
-        // msg.address_lifetime = 0;
-        msg.flag = 0;
-      }
+      send_packet_to_remote(std::string buf) override;
     };
 
   }  // namespace exit

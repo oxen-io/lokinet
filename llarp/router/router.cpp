@@ -1,32 +1,25 @@
 #include "router.hpp"
 
-#include <llarp/nodedb.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/constants/proto.hpp>
-#include <llarp/constants/files.hpp>
 #include <llarp/constants/time.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/dht/node.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/messages/dht.hpp>
-#include <llarp/messages/link_message.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/tooling/peer_stats_event.hpp>
-#include <llarp/tooling/router_event.hpp>
-#include <llarp/util/buffer.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/meta/memfn.hpp>
-#include <llarp/util/str.hpp>
 #include <llarp/util/status.hpp>
 
-#include <memory>
-#include <fstream>
 #include <cstdlib>
 #include <iterator>
+#include <memory>
+#include <stdexcept>
 #include <unordered_map>
 #include <utility>
-#include <stdexcept>
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
@@ -506,8 +499,9 @@ namespace llarp
 
   bool
   Router::ParseRoutingMessageBuffer(
-      const llarp_buffer_t&, routing::AbstractRoutingMessageHandler*, const PathID_t&)
+      const llarp_buffer_t&, path::AbstractHopHandler&, const PathID_t&)
   {
+    // TODO: will go away with the removal of flush upstream/downstream
     return false;
   }
 
@@ -1054,29 +1048,6 @@ namespace llarp
 
     _node_db->Tick(now);
 
-    if (_peer_db)
-    {
-      // TODO: throttle this?
-      // TODO: need to capture session stats when session terminates / is removed from link
-      // manager
-      _link_manager.update_peer_db(_peer_db);
-
-      if (_peer_db->shouldFlush(now))
-      {
-        LogDebug("Queing database flush...");
-        queue_disk_io([this]() {
-          try
-          {
-            _peer_db->flushDatabase();
-          }
-          catch (std::exception& ex)
-          {
-            LogError("Could not flush peer stats database: ", ex.what());
-          }
-        });
-      }
-    }
-
     std::set<dht::Key_t> peer_keys;
 
     for_each_connection(
@@ -1193,8 +1164,8 @@ namespace llarp
     {
       // we are a client
       // regenerate keys and resign rc before everything else
-      CryptoManager::instance()->identity_keygen(_identity);
-      CryptoManager::instance()->encryption_keygen(_encryption);
+      crypto::identity_keygen(_identity);
+      crypto::encryption_keygen(_encryption);
       router_contact.pubkey = seckey_topublic(identity());
       router_contact.enckey = seckey_topublic(encryption());
       if (!router_contact.Sign(identity()))
@@ -1537,12 +1508,6 @@ namespace llarp
   Router::net() const
   {
     return *llarp::net::Platform::Default_ptr();
-  }
-
-  void
-  Router::handle_router_event(std::unique_ptr<tooling::RouterEvent> event) const
-  {
-    LogDebug(event->ToString());
   }
 
 }  // namespace llarp

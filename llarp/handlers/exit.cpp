@@ -3,25 +3,18 @@
 #include <llarp/dns/dns.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/router.hpp>
-#include <llarp/util/str.hpp>
-#include <llarp/util/bits.hpp>
-
-#include <llarp/quic/tunnel.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/service/protocol_type.hpp>
 
 #include <cassert>
-#include <llarp/service/protocol_type.hpp>
 
 namespace llarp::handlers
 {
-  ExitEndpoint::ExitEndpoint(std::string name, Router* r)
-      : router(r)
-      , name(std::move(name))
-      , tunnel_manager{std::make_shared<quic::TunnelManager>(*this)}
+  ExitEndpoint::ExitEndpoint(std::string name, Router* r) : router(r), name(std::move(name))
+  // , tunnel_manager{std::make_shared<link::TunnelManager>(*this)}
   {
     should_init_tun = true;
-    tunnel_manager = std::make_shared<quic::TunnelManager>(*this);
   }
 
   ExitEndpoint::~ExitEndpoint() = default;
@@ -106,20 +99,21 @@ namespace llarp::handlers
         {
           if (not itr->second->LooksDead(Now()))
           {
-            if (itr->second->QueueInboundTraffic(payload.copy(), type))
-              return true;
+            return router->send_data_message(itr->second->PubKey(), std::move(payload));
           }
         }
 
         if (not router->PathToRouterAllowed(*rid))
           return false;
 
-        ObtainSNodeSession(*rid, [pkt = payload.copy(), type](auto session) mutable {
-          if (session and session->IsReady())
-          {
-            session->SendPacketToRemote(std::move(pkt), type);
-          }
-        });
+        ObtainSNodeSession(
+            *rid,
+            [pkt = std::move(payload)](std::shared_ptr<llarp::exit::BaseSession> session) mutable {
+              if (session and session->IsReady())
+              {
+                session->send_packet_to_remote(std::move(pkt));
+              }
+            });
       }
       return true;
     }
@@ -381,7 +375,7 @@ namespace llarp::handlers
           maybe_pk = itr->second;
       }
 
-      auto buf = const_cast<net::IPPacket&>(top).steal();
+      auto buf = const_cast<net::IPPacket&>(top);
       inet_to_network.pop();
       // we have no session for public key so drop
       if (not maybe_pk)
@@ -398,13 +392,13 @@ namespace llarp::handlers
         auto itr = snode_sessions.find(pk);
         if (itr != snode_sessions.end())
         {
-          itr->second->SendPacketToRemote(std::move(buf), service::ProtocolType::TrafficV4);
+          itr->second->send_packet_to_remote(buf.to_string());
           // we are in a while loop
           continue;
         }
       }
       auto tryFlushingTraffic = [this, buf = std::move(buf), pk](exit::Endpoint* const ep) -> bool {
-        if (!ep->QueueInboundTraffic(buf, service::ProtocolType::TrafficV4))
+        if (!ep->QueueInboundTraffic(buf._buf, service::ProtocolType::TrafficV4))
         {
           LogWarn(
               Name(),
@@ -748,12 +742,12 @@ namespace llarp::handlers
       if_name = *maybe;
     }
     LogInfo(Name(), " set ifname to ", if_name);
-    if (auto* quic = GetQUICTunnel())
-    {
-      quic->listen([ifaddr = net::TruncateV6(if_addr)](std::string_view, uint16_t port) {
-        return llarp::SockAddr{ifaddr, huint16_t{port}};
-      });
-    }
+    // if (auto* quic = GetQUICTunnel())
+    // {
+    // quic->listen([ifaddr = net::TruncateV6(if_addr)](std::string_view, uint16_t port) {
+    //   return llarp::SockAddr{ifaddr, huint16_t{port}};
+    // });
+    // }
   }
 
   huint128_t
@@ -782,10 +776,11 @@ namespace llarp::handlers
     return ip;
   }
 
-  quic::TunnelManager*
+  link::TunnelManager*
   ExitEndpoint::GetQUICTunnel()
   {
-    return tunnel_manager.get();
+    return nullptr;
+    // return tunnel_manager.get();
   }
 
   bool

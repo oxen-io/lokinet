@@ -1,9 +1,10 @@
-#include <common.hpp>
 #include <llarp.hpp>
-#include <llarp/tooling/hive_context.hpp>
-#include <llarp/router/router.hpp>
 #include <llarp/handlers/pyhandler.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/protocol_type.hpp>
+#include <llarp/tooling/hive_context.hpp>
+
+#include <common.hpp>
 
 namespace llarp
 {

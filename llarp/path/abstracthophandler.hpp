@@ -1,13 +1,13 @@
 #pragma once
 
-#include <llarp/crypto/types.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/crypto/encrypted_frame.hpp>
-#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/crypto/types.hpp>
 #include <llarp/messages/relay.hpp>
-#include <vector>
+#include <llarp/util/decaying_hashset.hpp>
+#include <llarp/util/types.hpp>
 
 #include <memory>
+#include <vector>
 
 struct llarp_buffer_t;
 
@@ -49,7 +49,7 @@ namespace llarp
 
       /// send routing message and increment sequence number
       virtual bool
-      SendRoutingMessage(const routing::AbstractRoutingMessage& msg, Router* r) = 0;
+      SendRoutingMessage(std::string payload, Router* r) = 0;
 
       // handle data in upstream direction
       virtual bool

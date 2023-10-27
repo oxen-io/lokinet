@@ -4,10 +4,10 @@
 #include <llarp/util/thread/threading.hpp>
 
 #include <chrono>
-#include <unordered_map>
-#include <set>
-#include <unordered_set>
 #include <list>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 struct llarp_dht_context;
 
@@ -16,11 +16,6 @@ namespace llarp
   class NodeDB;
   struct Router;
   class EventLoop;
-
-  namespace dht
-  {
-    struct AbstractDHTMessageHandler;
-  }  // namespace dht
 
   namespace service
   {
@@ -141,11 +136,11 @@ namespace llarp
     std::atomic<bool> isServiceNode = false;
 
     // whitelist = active routers
-    std::unordered_set<RouterID> router_whitelist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_whitelist;
     // greylist = fully funded, but decommissioned routers
-    std::unordered_set<RouterID> router_greylist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_greylist;
     // greenlist = registered but not fully-staked routers
-    std::unordered_set<RouterID> router_greenlist GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> router_greenlist;
   };
 
 }  // namespace llarp

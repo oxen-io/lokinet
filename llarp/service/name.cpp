@@ -1,4 +1,5 @@
 #include "name.hpp"
+
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/util/str.hpp>
 
@@ -9,8 +10,7 @@ namespace llarp::service
   {
     if (ciphertext.empty())
       return std::nullopt;
-    const auto crypto = CryptoManager::instance();
-    const auto maybe = crypto->maybe_decrypt_name(ciphertext, nonce, name);
+    const auto maybe = crypto::maybe_decrypt_name(ciphertext, nonce, name);
     if (maybe.has_value())
       return Address{*maybe};
     return std::nullopt;

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "path_types.hpp"
+
 #include <llarp/router_contact.hpp>
-#include <llarp/service/protocol_type.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/service/intro_set.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
@@ -140,7 +141,7 @@ namespace llarp
       virtual void
       HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
-      virtual void
+      void
       PathBuildStarted(Path_ptr path);
 
       /// a path died now what?
@@ -249,7 +250,7 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) = 0;
+      send_packet_to_remote(std::string buf) = 0;
 
       virtual std::optional<std::vector<RouterContact>>
       GetHopsForBuild() = 0;

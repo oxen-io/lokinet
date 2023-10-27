@@ -1,14 +1,14 @@
 #pragma once
 
+#include <llarp/router_id.hpp>
+#include <llarp/util/time.hpp>
+
 #include <chrono>
 #include <queue>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <llarp/util/time.hpp>
-#include <llarp/router_id.hpp>
 
 namespace llarp
 {

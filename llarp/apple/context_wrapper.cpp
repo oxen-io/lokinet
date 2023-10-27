@@ -1,17 +1,22 @@
-#include <cstdint>
-#include <cstring>
-#include <cassert>
-#include <llarp/net/ip_packet.hpp>
+#include "context_wrapper.h"
+
+#include "context.hpp"
+#include "vpn_interface.hpp"
+
 #include <llarp/config/config.hpp>
 #include <llarp/constants/apple.hpp>
+#include <llarp/ev/libuv.hpp>
+#include <llarp/net/ip_packet.hpp>
 #include <llarp/util/fs.hpp>
-#include <uvw/loop.h>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/callback_sink.hpp>
-#include "vpn_interface.hpp"
-#include "context_wrapper.h"
-#include "context.hpp"
+
+// #include <uvw/loop.h>
+
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 
 namespace
 {

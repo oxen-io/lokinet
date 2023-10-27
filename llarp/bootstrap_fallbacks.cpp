@@ -1,5 +1,6 @@
-#include <initializer_list>
 #include <llarp/bootstrap.hpp>
+
+#include <initializer_list>
 
 namespace llarp
 {
@@ -12,7 +13,7 @@ namespace llarp
     using init_list = std::initializer_list<std::pair<std::string, std::string_view>>;
     // clang-format off
     for (const auto& [network, bootstrap] : init_list{
-@BOOTSTRAP_FALLBACKS@
+      //
     })
     // clang-format on
     {

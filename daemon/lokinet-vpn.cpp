@@ -1,25 +1,20 @@
-#include <oxenmq/oxenmq.h>
-#include <nlohmann/json.hpp>
+#include <CLI/CLI.hpp>
 #include <fmt/core.h>
-#include <future>
-#include <vector>
-#include <array>
-#include <llarp/net/net.hpp>
-#include <string_view>
+#include <nlohmann/json.hpp>
+#include <oxenmq/oxenmq.h>
 
-#include <CLI/App.hpp>
-#include <CLI/Formatter.hpp>
-#include <CLI/Config.hpp>
-#include "oxenmq/address.h"
+#include <future>
+#include <string_view>
+#include <vector>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
 #include <winsock2.h>
-#include <ws2tcpip.h>
+
 #include <iphlpapi.h>
 #include <strsafe.h>
+#include <ws2tcpip.h>
 #else
-#include <sys/wait.h>
 #endif
 
 /// do a oxenmq request on an omq instance blocking style

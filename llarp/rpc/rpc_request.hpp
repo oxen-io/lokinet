@@ -1,16 +1,19 @@
 #pragma once
 
-#include "rpc_server.hpp"
-#include "rpc_request_parser.hpp"
+#include "json_bt.hpp"
 #include "rpc_request_decorators.hpp"
 #include "rpc_request_definitions.hpp"
-#include "json_bt.hpp"
-#include <string_view>
+#include "rpc_request_parser.hpp"
+#include "rpc_server.hpp"
+
 #include <llarp/config/config.hpp>
 #include <llarp/router/router.hpp>
-#include <oxenmq/oxenmq.h>
-#include <oxenmq/address.h>
+
 #include <oxen/log/omq_logger.hpp>
+#include <oxenmq/address.h>
+#include <oxenmq/oxenmq.h>
+
+#include <string_view>
 
 namespace llarp::rpc
 {

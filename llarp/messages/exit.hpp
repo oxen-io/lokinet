@@ -7,7 +7,7 @@ namespace llarp
   /*
       TODO:
         - change these parameters to ustringviews and ustrings where needed after bumping oxenc
-        - nuke seq_no's
+        - change std::string sig(64, '\0') --> std::array<unsigned char, 64> sig
   */
 
   namespace ObtainExitMessage
@@ -27,8 +27,7 @@ namespace llarp
         btdp.append("E", flag);
         btdp.append("T", tx_id);
 
-        if (not CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: ObtainExitMessage failed to sign and serialize contents!"};
       }
@@ -51,8 +50,7 @@ namespace llarp
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
-        if (CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: ObtainExitMessage response failed to sign and serialize contents!"};
       }
@@ -80,8 +78,7 @@ namespace llarp
         btdp.append("P", path_id);
         btdp.append("T", tx_id);
 
-        if (not CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: UpdateExitMessage failed to sign and serialize contents!"};
       }
@@ -104,8 +101,7 @@ namespace llarp
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
-        if (CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: UpdateExitMessage response failed to sign and serialize contents!"};
       }
@@ -134,8 +130,7 @@ namespace llarp
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
-        if (not CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: CloseExitMessage failed to sign and serialize contents!"};
       }
@@ -158,8 +153,7 @@ namespace llarp
         btdp.append("T", tx_id);
         btdp.append("Y", nonce);
 
-        if (CryptoManager::instance()->sign(
-                reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+        if (crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
           throw std::runtime_error{
               "Error: CloseExitMessage response failed to sign and serialize contents!"};
       }

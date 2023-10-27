@@ -1,9 +1,9 @@
 #ifndef LLARP_UTIL_MEMFN
 #define LLARP_UTIL_MEMFN
 
+#include <memory>
 #include <type_traits>
 #include <utility>
-#include <memory>
 
 namespace llarp::util
 {

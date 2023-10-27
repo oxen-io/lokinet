@@ -1,15 +1,9 @@
 #include "nodedb.hpp"
 
-#include "router_contact.hpp"
-#include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
-#include "util/buffer.hpp"
-#include "util/fs.hpp"
-#include "util/logging.hpp"
-#include "util/time.hpp"
-#include "util/mem.hpp"
-#include "util/str.hpp"
 #include "dht/kademlia.hpp"
+#include "router_contact.hpp"
+#include "util/time.hpp"
 
 #include <algorithm>
 #include <unordered_map>
@@ -185,7 +179,8 @@ namespace llarp
   bool
   NodeDB::has_router(RouterID pk) const
   {
-    return router.loop()->call_get([this, pk]() { return entries.find(pk) != entries.end(); });
+    return router.loop()->call_get(
+        [this, pk]() -> bool { return entries.find(pk) != entries.end(); });
   }
 
   std::optional<RouterContact>

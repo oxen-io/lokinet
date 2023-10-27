@@ -1,10 +1,10 @@
-#include <windows.h>
-#include <chrono>
+#include "service_manager.hpp"
+
 #include <llarp.hpp>
 #include <llarp/util/logging.hpp>
-#include "service_manager.hpp"
-#include <dbghelp.h>
+
 #include <cassert>
+#include <chrono>
 #include <csignal>
 #include <optional>
 
@@ -15,7 +15,6 @@ namespace llarp::sys
 
   namespace
   {
-
     std::optional<DWORD>
     to_win32_state(ServiceState st)
     {

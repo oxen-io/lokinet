@@ -5,13 +5,10 @@
 #include "net/net.hpp"
 #include "util/bencode.hpp"
 #include "util/buffer.hpp"
-#include "util/logging.hpp"
-#include "util/mem.hpp"
+#include "util/file.hpp"
 #include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
-
-#include "util/file.hpp"
 
 namespace llarp
 {
@@ -95,10 +92,12 @@ namespace llarp
 
       signature.from_string(btlc.consume_string());
       signed_bt_dict = btlc.consume_string();
+
+      // TODO: parse bt dict
     }
     catch (...)
     {
-      log::critical(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
+      log::warning(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
     }
   }
 
@@ -114,7 +113,7 @@ namespace llarp
     }
     catch (...)
     {
-      log::critical(llarp_cat, "Error: RouterContact failed to bt encode contents!");
+      log::warning(llarp_cat, "Error: RouterContact failed to bt encode contents!");
     }
 
     return std::move(btlp).str();
@@ -154,7 +153,7 @@ namespace llarp
     btdp.append("i", netID.ToView());
     btdp.append("k", pubkey.bt_encode());
     btdp.append("p", enckey.ToView());
-    btdp.append("r", routerVersion);
+    btdp.append("r", routerVersion->ToString());
 
     if (not srvRecords.empty())
     {
@@ -229,7 +228,10 @@ namespace llarp
         bool decode_result = DecodeVersion_1(btlist);
 
         // advance the llarp_buffer_t since lokimq serialization is unaware of it.
-        buf->cur += btlist.current_buffer().data() - buf_view.data() + 1;
+        // FIXME: this is broken (current_buffer got dropped), but the whole thing is getting
+        // replaced.
+        // buf->cur += btlist.
+        //    current_buffer().data() - buf_view.data() + 1;
 
         return decode_result;
       }
@@ -280,8 +282,10 @@ namespace llarp
   RouterContact::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if (!BEncodeMaybeReadDictList("a", addr, read, key, buf))
-      return false;
+
+    // TOFIX: fuck everything about llarp_buffer_t
+    // if (!BEncodeMaybeReadDictEntry("a", addr, read, key, buf))
+    //   return false;
 
     if (!BEncodeMaybeReadDictEntry("i", netID, read, key, buf))
       return false;
@@ -363,7 +367,7 @@ namespace llarp
 
     signed_bt_dict = bencode_signed_section();
 
-    return CryptoManager::instance()->sign(
+    return crypto::sign(
         signature,
         secretkey,
         reinterpret_cast<uint8_t*>(signed_bt_dict.data()),
@@ -408,8 +412,7 @@ namespace llarp
     copy.signature.Zero();
 
     auto bte = copy.bt_encode();
-    return CryptoManager::instance()->verify(
-        pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
+    return crypto::verify(pubkey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), signature);
   }
 
   static constexpr std::array obsolete_bootstraps = {

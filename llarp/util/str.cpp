@@ -1,16 +1,14 @@
 #include "str.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstring>
-#include <cassert>
 #include <string>
-#include <set>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <stringapiset.h>
 #include <llarp/win32/exception.hpp>
+
+#include <windows.h>
+
+#include <stringapiset.h>
 #endif
 
 namespace llarp
@@ -96,5 +94,23 @@ namespace llarp
       if (ch >= 'A' && ch <= 'Z')
         ch = ch + ('a' - 'A');
     return src;
+  }
+
+  std::wstring
+  to_wide(std::string data)
+  {
+    std::wstring buf;
+    buf.resize(data.size());
+#ifdef _WIN32
+    // win32 specific codepath because balmer made windows so that man may suffer
+    if (MultiByteToWideChar(CP_UTF8, 0, data.c_str(), data.size(), buf.data(), buf.size()) == 0)
+      throw win32::error{GetLastError(), "failed to convert string to wide string"};
+
+#else
+    // this dumb but probably works (i guess?)
+    std::transform(
+        data.begin(), data.end(), buf.begin(), [](const auto& ch) -> wchar_t { return ch; });
+#endif
+    return buf;
   }
 }  // namespace llarp

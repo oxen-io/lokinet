@@ -1,10 +1,10 @@
-#include <common.hpp>
-#include <pybind11/stl.h>
-#include <pybind11/iostream.h>
-
-#include <llarp/tooling/router_hive.hpp>
-#include <llarp/router/router.hpp>
 #include <llarp.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/tooling/router_hive.hpp>
+
+#include <common.hpp>
+#include <pybind11/iostream.h>
+#include <pybind11/stl.h>
 
 namespace tooling
 {

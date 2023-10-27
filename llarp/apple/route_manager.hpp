@@ -1,8 +1,9 @@
 #pragma once
 
+#include "context_wrapper.h"
+
 #include <llarp/router/router.hpp>
 #include <llarp/vpn/platform.hpp>
-#include "context_wrapper.h"
 
 namespace llarp::apple
 {

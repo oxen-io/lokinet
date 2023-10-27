@@ -1,8 +1,10 @@
 #pragma once
+#include <llarp/vpn/i_packet_io.hpp>
+
+#include <windows.h>
+
 #include <memory>
 #include <string>
-#include <windows.h>
-#include <llarp/vpn/i_packet_io.hpp>
 
 namespace llarp::win32::WinDivert
 {

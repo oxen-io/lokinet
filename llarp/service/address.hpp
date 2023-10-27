@@ -6,10 +6,10 @@
 
 #include <functional>
 #include <numeric>
+#include <set>
 #include <string>
 #include <string_view>
 #include <variant>
-#include <set>
 
 namespace llarp
 {

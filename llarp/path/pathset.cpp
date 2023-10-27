@@ -1,9 +1,6 @@
-#include "path.hpp"
 #include "pathset.hpp"
 
-#include <llarp/router/router.hpp>
-
-#include <random>
+#include "path.hpp"
 
 namespace llarp::path
 {
@@ -215,12 +212,7 @@ namespace llarp::path
     }
     if (chosen.empty())
       return nullptr;
-    size_t idx = 0;
-    if (chosen.size() >= 2)
-    {
-      idx = rand() % chosen.size();
-    }
-    return chosen[idx];
+    return chosen[std::uniform_int_distribution<size_t>{0, chosen.size() - 1}(llarp::csrng)];
   }
 
   Path_ptr

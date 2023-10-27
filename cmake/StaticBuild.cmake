@@ -41,11 +41,11 @@ set(SODIUM_SOURCE libsodium-${SODIUM_VERSION}.tar.gz)
 set(SODIUM_HASH SHA512=17e8638e46d8f6f7d024fe5559eccf2b8baf23e143fadd472a7d29d228b186d86686a5e6920385fe2020729119a5f12f989c3a782afbd05a8db4819bb18666ef
   CACHE STRING "libsodium source hash")
 
-set(ZMQ_VERSION 4.3.4 CACHE STRING "libzmq version")
+set(ZMQ_VERSION 4.3.5 CACHE STRING "libzmq version")
 set(ZMQ_MIRROR ${LOCAL_MIRROR} https://github.com/zeromq/libzmq/releases/download/v${ZMQ_VERSION}
     CACHE STRING "libzmq mirror(s)")
 set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
-set(ZMQ_HASH SHA512=e198ef9f82d392754caadd547537666d4fba0afd7d027749b3adae450516bcf284d241d4616cad3cb4ad9af8c10373d456de92dc6d115b037941659f141e7c0e
+set(ZMQ_HASH SHA512=a71d48aa977ad8941c1609947d8db2679fc7a951e4cd0c3a1127ae026d883c11bd4203cf315de87f95f5031aec459a731aec34e5ce5b667b8d0559b157952541
     CACHE STRING "libzmq source hash")
 
 set(LIBUV_VERSION 1.44.2 CACHE STRING "libuv version")
@@ -352,16 +352,9 @@ if(ARCH_TRIPLET MATCHES mingw)
   endif()
 endif()
 
-if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
-  set(zmq_patch
-    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh
-        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch
-        ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-unistd.patch)
-endif()
 
 build_external(zmq
   DEPENDS sodium_external
-  ${zmq_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
     --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror --disable-libbsd ${zmq_extra}
@@ -369,6 +362,7 @@ build_external(zmq
     "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
 )
 add_static_target(libzmq zmq_external libzmq.a)
+
 
 set(libzmq_link_libs "sodium")
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)

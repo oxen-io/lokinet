@@ -1,26 +1,22 @@
 #include "pathbuilder.hpp"
+
 #include "path.hpp"
 #include "path_context.hpp"
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
-#include <llarp/messages/relay_commit.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/router/router.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
-#include <llarp/tooling/path_event.hpp>
-#include <llarp/util/buffer.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
-
-#include <functional>
 
 namespace llarp
 {
   namespace
   {
-    auto log_path = log::Cat("path");
+    auto path_cat = log::Cat("path");
   }
 
   namespace path
@@ -82,21 +78,19 @@ namespace llarp
     void
     Builder::setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
-      auto crypto = CryptoManager::instance();
-
       // generate key
-      crypto->encryption_keygen(hop.commkey);
+      crypto::encryption_keygen(hop.commkey);
 
       hop.nonce.Randomize();
       // do key exchange
-      if (!crypto->dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      if (!crypto::dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
       {
         auto err = fmt::format("{} failed to generate shared key for path build!", Name());
         log::error(path_cat, err);
         throw std::runtime_error{std::move(err)};
       }
       // generate nonceXOR value self->hop->pathKey
-      crypto->shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
+      crypto::shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
 
       hop.upstream = nextHop;
     }
@@ -104,8 +98,6 @@ namespace llarp
     std::string
     Builder::create_hop_info_frame(const path::PathHopConfig& hop)
     {
-      auto crypto = CryptoManager::instance();
-
       std::string hop_info;
 
       {
@@ -122,21 +114,21 @@ namespace llarp
       }
 
       SecretKey framekey;
-      crypto->encryption_keygen(framekey);
+      crypto::encryption_keygen(framekey);
 
       SharedSecret shared;
       TunnelNonce outer_nonce;
       outer_nonce.Randomize();
 
       // derive (outer) shared key
-      if (!crypto->dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      if (!crypto::dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
       {
         log::error(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};
       }
 
       // encrypt hop_info (mutates in-place)
-      if (!crypto->xchacha20(
+      if (!crypto::xchacha20(
               reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
       {
         log::error(path_cat, "Hop info encryption failed!");
@@ -158,7 +150,7 @@ namespace llarp
       std::string hash;
       hash.reserve(SHORTHASHSIZE);
 
-      if (!crypto->hmac(
+      if (!crypto::hmac(
               reinterpret_cast<uint8_t*>(hash.data()),
               reinterpret_cast<uint8_t*>(hashed_data.data()),
               hashed_data.size(),
@@ -326,7 +318,7 @@ namespace llarp
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
         {
-          log::warning(log_path, "{} has no first hop candidate", Name());
+          log::warning(path_cat, "{} has no first hop candidate", Name());
           return std::nullopt;
         }
         hops.emplace_back(*maybe);
@@ -420,7 +412,9 @@ namespace llarp
 
       std::string path_shortName = "[path " + router->ShortName() + "-";
       path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
-      auto path = std::make_shared<path::Path>(hops, GetWeak(), roles, std::move(path_shortName));
+
+      auto path =
+          std::make_shared<path::Path>(router, hops, GetWeak(), roles, std::move(path_shortName));
 
       log::info(
           path_cat, "{} building path -> {} : {}", Name(), path->ShortName(), path->HopsString());
@@ -465,22 +459,44 @@ namespace llarp
       router->path_context().AddOwnPath(self, path);
       PathBuildStarted(path);
 
-      auto response_cb = [self](oxen::quic::message) {
-        // TODO: this (replaces handling LRSM, which also needs replacing)
+      // TODO:
+      // Path build fail and success are handled poorly at best and changing how we
+      // handle these responses as well as how we store and use Paths as a whole might
+      // be worth doing sooner rather than later.  Leaving some TODOs below where fail
+      // and success live.
+      auto response_cb = [self](oxen::quic::message m) {
+        if (m)
+        {
+          std::string status;
 
-        // TODO: Talk to Tom about why are we using it as a response callback?
-        // Do you mean TransitHop::HandleLRSM?
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            status = btdc.require<std::string>("STATUS");
+          }
+          catch (...)
+          {
+            log::warning(path_cat, "Error: Failed to parse path build response!", status);
+            m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+            throw;
+          }
+
+          // TODO: success logic
+        }
+        else
+        {
+          log::warning(path_cat, "Path build request returned failure {}");
+          // TODO: failure logic
+        }
       };
 
       if (not router->send_control_message(
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
-        log::warning(log_path, "Error sending path_build control message");
+        log::warning(path_cat, "Error sending path_build control message");
+        // TODO: inform failure (what this means needs revisiting, badly)
         path->EnterState(path::ePathFailed, router->now());
       }
-
-      // TODO: we don't use this concept anymore?
-      router->persist_connection_until(path->upstream(), path->ExpireTime());
     }
 
     void

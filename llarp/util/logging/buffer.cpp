@@ -1,6 +1,4 @@
 #include "buffer.hpp"
-#include <iomanip>
-#include <iostream>
 
 namespace llarp
 {

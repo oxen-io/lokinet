@@ -1,12 +1,13 @@
 #pragma once
 
+#include <llarp/net/net_int.hpp>
+#include <llarp/net/uint128.hpp>
+
 #include <bitset>
 #include <cstddef>
+#include <limits>
 #include <numeric>
 #include <type_traits>
-#include <limits>
-#include <llarp/net/uint128.hpp>
-#include <llarp/net/net_int.hpp>
 
 namespace llarp
 {

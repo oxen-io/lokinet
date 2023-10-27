@@ -1,12 +1,12 @@
 #pragma once
 
-#include <llarp/constants/proto.hpp>
 #include "buffer.hpp"
 #include "common.hpp"
 
-#include <functional>
+#include <llarp/constants/proto.hpp>
 
 #include <cstdint>
+#include <functional>
 
 /**
  * bencode.h
