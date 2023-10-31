@@ -22,7 +22,7 @@ namespace llarp
 
       hop.nonce.Randomize();
       // do key exchange
-      if (!crypto::dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      if (!crypto::dh_client(hop.shared, hop.rc._pubkey, hop.commkey, hop.nonce))
       {
         auto err = fmt::format("Failed to generate shared key for path build!");
         log::warning(path_cat, err);
@@ -60,7 +60,7 @@ namespace llarp
       outer_nonce.Randomize();
 
       // derive (outer) shared key
-      if (!crypto::dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      if (!crypto::dh_client(shared, hop.rc._pubkey, framekey, outer_nonce))
       {
         log::warning(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};

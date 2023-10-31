@@ -44,7 +44,7 @@ namespace llarp::service
   {
     crypto::identity_keygen(signkey);
     crypto::encryption_keygen(enckey);
-    pub.Update(seckey_topublic(signkey), seckey_topublic(enckey));
+    pub.Update(seckey_to_pubkey(signkey), seckey_to_pubkey(enckey));
     crypto::pqe_keygen(pq);
     if (not crypto::derive_subkey_private(derivedSignKey, signkey, 1))
     {
@@ -114,7 +114,7 @@ namespace llarp::service
     // read file
     try
     {
-      util::slurp_file(fname, tmp.data(), tmp.size());
+      util::file_to_buffer(fname, tmp.data(), tmp.size());
     }
     catch (const std::length_error&)
     {
@@ -139,7 +139,7 @@ namespace llarp::service
     if (!vanity.IsZero())
       van = vanity;
     // update pubkeys
-    pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
+    pub.Update(seckey_to_pubkey(signkey), seckey_to_pubkey(enckey), van);
     if (not crypto::derive_subkey_private(derivedSignKey, signkey, 1))
     {
       throw std::runtime_error("failed to derive subkey");
@@ -163,7 +163,7 @@ namespace llarp::service
     // set service info
     i.address_keys = pub;
     // set public encryption key
-    i.sntru_pubkey = pq_keypair_to_public(pq);
+    i.sntru_pubkey = pq_keypair_to_pubkey(pq);
 
     auto bte = i.bt_encode();
 

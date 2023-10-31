@@ -19,7 +19,7 @@
 namespace llarp::util
 {
   static std::streampos
-  slurp_file_open(const fs::path& filename, fs::ifstream& in)
+  file_reader_impl(const fs::path& filename, fs::ifstream& in)
   {
     in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     in.open(filename, std::ios::binary | std::ios::in);
@@ -30,21 +30,21 @@ namespace llarp::util
   }
 
   std::string
-  slurp_file(const fs::path& filename)
+  file_to_string(const fs::path& filename)
   {
     fs::ifstream in;
     std::string contents;
-    auto size = slurp_file_open(filename, in);
+    auto size = file_reader_impl(filename, in);
     contents.resize(size);
     in.read(contents.data(), size);
     return contents;
   }
 
   size_t
-  slurp_file(const fs::path& filename, char* buffer, size_t buffer_size)
+  file_to_buffer(const fs::path& filename, char* buffer, size_t buffer_size)
   {
     fs::ifstream in;
-    auto size = slurp_file_open(filename, in);
+    auto size = file_reader_impl(filename, in);
     if (static_cast<size_t>(size) > buffer_size)
       throw std::length_error{"file is too large for buffer"};
     in.read(buffer, size);

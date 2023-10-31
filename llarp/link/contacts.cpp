@@ -39,7 +39,7 @@ namespace llarp
 
       while (itr != nodes.end())
       {
-        if (itr->second.rc.IsExpired(now))
+        if (itr->second.rc.is_expired(now))
           itr = nodes.erase(itr);
         else
           ++itr;

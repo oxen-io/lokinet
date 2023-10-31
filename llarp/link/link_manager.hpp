@@ -372,8 +372,8 @@ namespace llarp
             endpoint->connect(remote, link_manager.tls_creds, std::forward<Opt>(opts)...);
 
         // emplace immediately for connection open callback to find scid
-        connid_map.emplace(conn_interface->scid(), rc.pubkey);
-        auto [itr, b] = conns.emplace(rc.pubkey, nullptr);
+        connid_map.emplace(conn_interface->scid(), rc.router_id());
+        auto [itr, b] = conns.emplace(rc.router_id(), nullptr);
 
         auto control_stream =
             conn_interface->template get_new_stream<oxen::quic::BTRequestStream>();

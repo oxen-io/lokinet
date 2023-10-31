@@ -10,8 +10,6 @@ using oxenc::bt_dict_producer;
 
 namespace llarp
 {
-  static auto logcat = log::Cat("profiling");
-
   RouterProfile::RouterProfile(bt_dict_consumer dict)
   {
     BDecode(std::move(dict));
@@ -204,7 +202,7 @@ namespace llarp
         first = false;
       else
       {
-        auto& profile = m_Profiles[hop.rc.pubkey];
+        auto& profile = m_Profiles[hop.rc.router_id()];
         profile.pathFailCount += 1;
         profile.lastUpdated = llarp::time_now_ms();
       }
@@ -217,7 +215,7 @@ namespace llarp
     util::Lock lock{m_ProfilesMutex};
     for (const auto& hop : p->hops)
     {
-      auto& profile = m_Profiles[hop.rc.pubkey];
+      auto& profile = m_Profiles[hop.rc.router_id()];
       profile.pathTimeoutCount += 1;
       profile.lastUpdated = llarp::time_now_ms();
     }
@@ -230,7 +228,7 @@ namespace llarp
     const auto sz = p->hops.size();
     for (const auto& hop : p->hops)
     {
-      auto& profile = m_Profiles[hop.rc.pubkey];
+      auto& profile = m_Profiles[hop.rc.router_id()];
       // redeem previous fails by halfing the fail count and setting timeout to zero
       profile.pathFailCount /= 2;
       profile.pathTimeoutCount = 0;
@@ -299,7 +297,7 @@ namespace llarp
   {
     try
     {
-      std::string data = util::slurp_file(fname);
+      std::string data = util::file_to_string(fname);
       util::Lock lock{m_ProfilesMutex};
       BDecode(bt_dict_consumer{data});
     }

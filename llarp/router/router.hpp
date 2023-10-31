@@ -465,7 +465,7 @@ namespace llarp
     const byte_t*
     pubkey() const
     {
-      return seckey_topublic(_identity);
+      return seckey_to_pubkey(_identity);
     }
 
     /// send to remote router or queue for sending

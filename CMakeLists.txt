@@ -41,7 +41,7 @@ if(APPLE)
     set(LOKINET_APPLE_BUILD 5)
 endif()
 
-set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
+set(LOKINET_RELEASE_MOTTO "Anonymous, decentralized, IP-based overlay network" CACHE STRING "Release motto")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 

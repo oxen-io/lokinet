@@ -60,7 +60,7 @@ namespace llarp
     else
     {
       RouterContact rc;
-      if (not rc.Read(fpath))
+      if (not rc.read(fpath))
       {
         throw std::runtime_error{
             fmt::format("failed to decode bootstrap RC, file='{}', rc={}", fpath, rc)};

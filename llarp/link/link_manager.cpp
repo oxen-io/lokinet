@@ -20,7 +20,7 @@ namespace llarp
     std::shared_ptr<link::Connection>
     Endpoint::get_conn(const RouterContact& rc) const
     {
-      if (auto itr = conns.find(rc.pubkey); itr != conns.end())
+      if (auto itr = conns.find(rc.router_id()); itr != conns.end())
         return itr->second;
 
       return nullptr;
@@ -303,14 +303,14 @@ namespace llarp
   void
   LinkManager::connect_to(const RouterContact& rc)
   {
-    if (auto conn = ep.get_conn(rc.pubkey); conn)
+    if (auto conn = ep.get_conn(rc.router_id()); conn)
     {
       // TODO: should implement some connection failed logic, but not the same logic that
       // would be executed for another failure case
       return;
     }
 
-    auto& remote_addr = rc.addr;
+    const auto& remote_addr = rc.addr();
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
@@ -491,9 +491,9 @@ namespace llarp
 
       if (auto maybe_other = node_db->GetRandom(filter))
       {
-        exclude.insert(maybe_other->pubkey);
+        exclude.insert(maybe_other->router_id());
 
-        if (not rc_lookup->is_session_allowed(maybe_other->pubkey))
+        if (not rc_lookup->is_session_allowed(maybe_other->router_id()))
           continue;
 
         connect_to(*maybe_other);
@@ -609,23 +609,25 @@ namespace llarp
     target_rid.FromString(target_key);
 
     const auto target_addr = dht::Key_t{reinterpret_cast<uint8_t*>(target_key.data())};
-    const auto& local_rid = _router.rc().pubkey;
+    const auto& local_rid = _router.rc().router_id();
     const auto local_key = dht::Key_t{local_rid};
 
     if (is_exploratory)
     {
       std::string neighbors{};
+
       const auto closest_rcs =
           _router.node_db()->find_many_closest_to(target_addr, RC_LOOKUP_STORAGE_REDUNDANCY);
 
       for (const auto& rc : closest_rcs)
       {
-        const auto& rid = rc.pubkey;
+        const auto& rid = rc.router_id();
         if (_router.router_profiling().IsBadForConnect(rid) || target_rid == rid
             || local_rid == rid)
           continue;
 
-        neighbors += rid.bt_encode();
+        neighbors +=
+            rid.bt_encode();  // TODO: refactor to use reference to bt_dict_producer subdict
       }
 
       m.respond(
@@ -635,12 +637,12 @@ namespace llarp
     else
     {
       const auto closest_rc = _router.node_db()->find_closest_to(target_addr);
-      const auto& closest_rid = closest_rc.pubkey;
+      const auto& closest_rid = closest_rc.router_id();
       const auto closest_key = dht::Key_t{closest_rid};
 
       if (target_addr == closest_key)
       {
-        if (closest_rc.ExpiresSoon(llarp::time_now_ms()))
+        if (closest_rc.expires_within_delta(llarp::time_now_ms()))
         {
           send_control_message(
               target_rid,
@@ -837,7 +839,7 @@ namespace llarp
 
     const auto now = _router.now();
     const auto addr = dht::Key_t{reinterpret_cast<uint8_t*>(derived_signing_key.data())};
-    const auto local_key = _router.rc().pubkey;
+    const auto local_key = _router.rc().router_id();
 
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
@@ -878,7 +880,7 @@ namespace llarp
       log::info(link_cat, "Relaying PublishIntroMessage for {}", addr);
 
       const auto& peer_rc = closest_rcs[relay_order];
-      const auto& peer_key = peer_rc.pubkey;
+      const auto& peer_key = peer_rc.router_id();
 
       if (peer_key == local_key)
       {
@@ -908,7 +910,7 @@ namespace llarp
 
     for (const auto& rc : closest_rcs)
     {
-      if (rc.pubkey == local_key)
+      if (rc.router_id() == local_key)
       {
         rc_index = index;
         break;
@@ -1024,7 +1026,7 @@ namespace llarp
       log::info(link_cat, "Relaying FindIntroMessage for {}", addr);
 
       const auto& peer_rc = closest_rcs[relay_order];
-      const auto& peer_key = peer_rc.pubkey;
+      const auto& peer_key = peer_rc.router_id();
 
       send_control_message(
           peer_key,

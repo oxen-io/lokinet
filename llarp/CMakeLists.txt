@@ -99,6 +99,8 @@ lokinet_add_library(lokinet-time-place
   net/net_int.cpp
   net/sock_addr.cpp
   router_contact.cpp
+  router_contact_local.cpp
+  router_contact_remote.cpp
   router_id.cpp
   router_version.cpp  # to be deleted shortly
   service/address.cpp

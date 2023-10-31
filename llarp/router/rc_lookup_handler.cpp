@@ -101,6 +101,7 @@ namespace llarp
           throw;
         }
 
+        // TODO: replace this with construction of RemoteRC
         RouterContact result{std::move(payload)};
 
         if (callback)
@@ -204,22 +205,22 @@ namespace llarp
   bool
   RCLookupHandler::check_rc(const RouterContact& rc) const
   {
-    if (not is_session_allowed(rc.pubkey))
+    if (not is_session_allowed(rc.router_id()))
     {
-      contacts->delete_rc_node_async(dht::Key_t{rc.pubkey});
+      contacts->delete_rc_node_async(dht::Key_t{rc.router_id()});
       return false;
     }
 
-    if (not rc.Verify(llarp::time_now_ms()))
+    if (not rc.verify(llarp::time_now_ms()))  // TODO: fix this call after RouterContact -> RemoteRC
     {
-      LogWarn("RC for ", RouterID(rc.pubkey), " is invalid");
+      LogWarn("RC for ", RouterID(rc.router_id()), " is invalid");
       return false;
     }
 
     // update nodedb if required
-    if (rc.IsPublicRouter())
+    if (rc.is_public_router())
     {
-      LogDebug("Adding or updating RC for ", RouterID(rc.pubkey), " to nodedb and dht.");
+      LogDebug("Adding or updating RC for ", RouterID(rc.router_id()), " to nodedb and dht.");
       node_db->put_rc_if_newer(rc);
       contacts->put_rc_node_async(rc);
     }
@@ -252,17 +253,17 @@ namespace llarp
   RCLookupHandler::check_renegotiate_valid(RouterContact newrc, RouterContact oldrc)
   {
     // mismatch of identity ?
-    if (newrc.pubkey != oldrc.pubkey)
+    if (newrc.router_id() != oldrc.router_id())
       return false;
 
-    if (!is_session_allowed(newrc.pubkey))
+    if (!is_session_allowed(newrc.router_id()))
       return false;
 
     auto func = [this, newrc] { check_rc(newrc); };
     work_func(func);
 
     // update dht if required
-    if (contacts->rc_nodes()->HasNode(dht::Key_t{newrc.pubkey}))
+    if (contacts->rc_nodes()->HasNode(dht::Key_t{newrc.router_id()}))
     {
       contacts->rc_nodes()->PutNode(newrc);
     }
@@ -278,15 +279,15 @@ namespace llarp
     std::unordered_set<RouterID> routersToLookUp;
 
     node_db->VisitInsertedBefore(
-        [&](const RouterContact& rc) { routersToLookUp.insert(rc.pubkey); },
-        now - RouterContact::UpdateInterval);
+        [&](const RouterContact& rc) { routersToLookUp.insert(rc.router_id()); },
+        now - RouterContact::REPUBLISH);
 
     for (const auto& router : routersToLookUp)
     {
       get_rc(router, nullptr, true);
     }
 
-    node_db->remove_stale_rcs(boostrap_rid_list, now - RouterContact::StaleInsertionAge);
+    node_db->remove_stale_rcs(boostrap_rid_list, now - RouterContact::STALE);
   }
 
   void
@@ -301,7 +302,7 @@ namespace llarp
     {
       for (const auto& rc : bootstrap_rc_list)
       {
-        log::info(link_cat, "Doing explore via bootstrap node: {}", RouterID(rc.pubkey));
+        log::info(link_cat, "Doing explore via bootstrap node: {}", RouterID(rc.router_id()));
 
         // TODO: replace this concept
         // dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
@@ -383,7 +384,7 @@ namespace llarp
 
     for (const auto& rc : bootstrap_rc_list)
     {
-      boostrap_rid_list.insert(rc.pubkey);
+      boostrap_rid_list.insert(rc.router_id());
     }
   }
 
@@ -392,7 +393,7 @@ namespace llarp
   {
     for (const auto& rc : bootstrap_rc_list)
     {
-      if (rc.pubkey == remote)
+      if (rc.router_id() == remote)
       {
         return true;
       }

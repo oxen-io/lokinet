@@ -83,7 +83,7 @@ namespace llarp
 
       hop.nonce.Randomize();
       // do key exchange
-      if (!crypto::dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      if (!crypto::dh_client(hop.shared, hop.rc._pubkey, hop.commkey, hop.nonce))
       {
         auto err = fmt::format("{} failed to generate shared key for path build!", Name());
         log::error(path_cat, err);
@@ -121,7 +121,7 @@ namespace llarp
       outer_nonce.Randomize();
 
       // derive (outer) shared key
-      if (!crypto::dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      if (!crypto::dh_client(shared, hop.rc._pubkey, framekey, outer_nonce))
       {
         log::error(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};
@@ -218,16 +218,16 @@ namespace llarp
       router->for_each_connection([&](link::Connection& conn) {
         const auto& rc = conn.remote_rc;
 #ifndef TESTNET
-        if (router->IsBootstrapNode(rc.pubkey))
+        if (router->IsBootstrapNode(rc._pubkey))
           return;
 #endif
-        if (exclude.count(rc.pubkey))
+        if (exclude.count(rc._pubkey))
           return;
 
-        if (BuildCooldownHit(rc.pubkey))
+        if (BuildCooldownHit(rc._pubkey))
           return;
 
-        if (router->router_profiling().IsBadForPath(rc.pubkey))
+        if (router->router_profiling().IsBadForPath(rc._pubkey))
           return;
 
         found = rc;
@@ -243,7 +243,7 @@ namespace llarp
       };
       if (const auto maybe = router->node_db()->GetRandom(filter))
       {
-        return GetHopsAlignedToForBuild(maybe->pubkey);
+        return GetHopsAlignedToForBuild(maybe->_pubkey);
       }
       return std::nullopt;
     }
@@ -353,7 +353,7 @@ namespace llarp
               return false;
             for (const auto& hop : hopsSet)
             {
-              if (hop.pubkey == rc.pubkey)
+              if (hop._pubkey == rc.pubkey)
                 return false;
             }
 
@@ -362,7 +362,7 @@ namespace llarp
             if (not pathConfig.Acceptable(hopsSet))
               return false;
 #endif
-            return rc.pubkey != endpointRC.pubkey;
+            return rc.pubkey != endpointRC._pubkey;
           };
 
           if (const auto maybe = router->node_db()->GetRandom(filter))
@@ -402,7 +402,7 @@ namespace llarp
       }
 
       lastBuild = llarp::time_now_ms();
-      const RouterID edge{hops[0].pubkey};
+      const RouterID edge{hops[0]._pubkey};
 
       if (not router->pathbuild_limiter().Attempt(edge))
       {
@@ -429,7 +429,7 @@ namespace llarp
       {
         bool lastHop = (i == (n_hops - 1));
 
-        const auto& nextHop = lastHop ? path_hops[i].rc.pubkey : path_hops[i + 1].rc.pubkey;
+        const auto& nextHop = lastHop ? path_hops[i].rc._pubkey : path_hops[i + 1].rc._pubkey;
 
         PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
         auto frame_str = PathBuildMessage::serialize(path_hops[i]);
@@ -533,7 +533,7 @@ namespace llarp
       DoPathBuildBackoff();
       for (const auto& hop : p->hops)
       {
-        const RouterID target{hop.rc.pubkey};
+        const RouterID target{hop.rc._pubkey};
         // look up router and see if it's still on the network
         log::info(path_cat, "Looking up RouterID {} due to path build timeout", target);
 
