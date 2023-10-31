@@ -580,25 +580,29 @@ namespace llarp::handlers
   {
     router->modify_rc(
         [srvRecords = SRVRecords()](RouterContact rc) -> std::optional<RouterContact> {
+          // TODO: update this RouterContact handling
+
           // check if there are any new srv records
-          bool shouldUpdate = false;
+          // bool shouldUpdate = false;
 
-          for (const auto& rcSrv : rc.srvRecords)
-          {
-            if (srvRecords.count(rcSrv) == 0)
-              shouldUpdate = true;
-          }
+          // for (const auto& rcSrv : rc.srvRecords)
+          // {
+          //   if (srvRecords.count(rcSrv) == 0)
+          //     shouldUpdate = true;
+          // }
 
-          // no new records so don't modify
-          if (not shouldUpdate)
-            return std::nullopt;
+          // // no new records so don't modify
+          // if (not shouldUpdate)
+          //   return std::nullopt;
 
-          // we got new entries so we clear the whole vector on the rc and recreate it
-          rc.srvRecords.clear();
-          for (auto& record : srvRecords)
-            rc.srvRecords.emplace_back(record);
-          // set the verssion to 1 because we have srv records
-          rc.version = 1;
+          // // we got new entries so we clear the whole vector on the rc and recreate it
+          // rc.srvRecords.clear();
+
+          // for (auto& record : srvRecords)
+          //   rc.srvRecords.emplace_back(record);
+
+          // // set the verssion to 1 because we have srv records
+          // rc.version = 1;
           return rc;
         });
   }

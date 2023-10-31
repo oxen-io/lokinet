@@ -365,7 +365,7 @@ namespace llarp
     std::string content;
     try
     {
-      content = util::slurp_file(fpath);
+      content = util::file_to_string(fpath);
     }
     catch (const std::exception&)
     {

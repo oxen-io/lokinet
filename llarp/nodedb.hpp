@@ -150,7 +150,7 @@ namespace llarp
         {
           if (visit(itr->second.rc))
           {
-            removed.insert(itr->second.rc.pubkey);
+            removed.insert(itr->second.rc.router_id());
             itr = entries.erase(itr);
           }
           else

@@ -64,8 +64,11 @@ namespace llarp
     sign(Signature&, const PrivateKey&, uint8_t* buf, size_t size);
     /// ed25519 verify
     bool
+    verify(const PubKey&, ustring_view, ustring_view);
+    bool
     verify(const PubKey&, uint8_t*, size_t, const Signature&);
-    bool verify(ustring_view, ustring_view, ustring_view);
+    bool 
+    verify(ustring_view, ustring_view, ustring_view);
     bool
     verify(uint8_t*, uint8_t*, size_t, uint8_t*);
 
@@ -87,9 +90,6 @@ namespace llarp
         uint64_t key_n,
         const AlignedBuffer<32>* hash = nullptr);
 
-    /// seed to secretkey
-    bool
-    seed_to_secretkey(llarp::SecretKey&, const llarp::IdentitySecret&);
     /// randomize buffer
     void
     randomize(uint8_t* buf, size_t len);
@@ -124,13 +124,13 @@ namespace llarp
   randint();
 
   const byte_t*
-  seckey_topublic(const SecretKey& secret);
+  seckey_to_pubkey(const SecretKey& secret);
 
   const byte_t*
-  pq_keypair_to_public(const PQKeyPair& keypair);
+  pq_keypair_to_pubkey(const PQKeyPair& keypair);
 
   const byte_t*
-  pq_keypair_to_secret(const PQKeyPair& keypair);
+  pq_keypair_to_seckey(const PQKeyPair& keypair);
 
   /// rng type that uses llarp::randint(), which is cryptographically secure
   struct CSRNG

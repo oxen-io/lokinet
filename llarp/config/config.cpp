@@ -58,9 +58,10 @@ namespace llarp
     conf.defineOption<std::string>(
         "router",
         "netid",
-        Default{llarp::DEFAULT_NETID},
+        Default{llarp::LOKINET_DEFAULT_NETID},
         Comment{
-            "Network ID; this is '"s + llarp::DEFAULT_NETID + "' for mainnet, 'gamma' for testnet.",
+            "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID
+                + "' for mainnet, 'gamma' for testnet.",
         },
         [this](std::string arg) {
           if (arg.size() > NetID::size())
@@ -1329,7 +1330,7 @@ namespace llarp
     std::set<IPRange> seenRanges;
     for (const auto& hop : rcs)
     {
-      const auto network_addr = net::In6ToHUInt(hop.addr.in6().sin6_addr) & netmask;
+      const auto network_addr = net::In6ToHUInt(hop.addr6()->in6().sin6_addr) & netmask;
       if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
       {
         return false;
@@ -1444,7 +1445,7 @@ namespace llarp
     {
       try
       {
-        ini = util::slurp_file(*fname);
+        ini = util::file_to_string(*fname);
       }
       catch (const std::exception&)
       {

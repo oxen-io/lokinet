@@ -15,7 +15,7 @@ namespace llarp
   {
     try
     {
-      m_Data = util::slurp_file(fname);
+      m_Data = util::file_to_string(fname);
     }
     catch (const std::exception& e)
     {

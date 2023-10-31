@@ -274,6 +274,14 @@ namespace llarp
   }
 
   bool
+  crypto::verify(const PubKey& pub, ustring_view data, ustring_view sig)
+  {
+    return (pub.size() == 32 && sig.size() == 64)
+        ? crypto_sign_verify_detached(sig.data(), data.data(), data.size(), pub.data()) != -1
+        : false;
+  }
+
+  bool
   crypto::verify(const PubKey& pub, uint8_t* buf, size_t size, const Signature& sig)
   {
     return crypto_sign_verify_detached(sig.data(), buf, size, pub.data()) != -1;
@@ -428,11 +436,6 @@ namespace llarp
     return true;
   }
 
-  bool
-  crypto::seed_to_secretkey(llarp::SecretKey& secret, const llarp::IdentitySecret& seed)
-  {
-    return crypto_sign_ed25519_seed_keypair(secret.data() + 32, secret.data(), seed.data()) != -1;
-  }
   void
   crypto::randomize(uint8_t* buf, size_t len)
   {
@@ -517,19 +520,19 @@ namespace llarp
 #endif
 
   const byte_t*
-  seckey_topublic(const SecretKey& sec)
+  seckey_to_pubkey(const SecretKey& sec)
   {
     return sec.data() + 32;
   }
 
   const byte_t*
-  pq_keypair_to_public(const PQKeyPair& k)
+  pq_keypair_to_pubkey(const PQKeyPair& k)
   {
     return k.data() + PQ_SECRETKEYSIZE;
   }
 
   const byte_t*
-  pq_keypair_to_secret(const PQKeyPair& k)
+  pq_keypair_to_seckey(const PQKeyPair& k)
   {
     return k.data();
   }

@@ -403,7 +403,7 @@ namespace
     {
       if (options.version)
       {
-        std::cout << llarp::VERSION_FULL << std::endl;
+        std::cout << llarp::LOKINET_VERSION_FULL << std::endl;
         return 0;
       }
 
@@ -548,7 +548,8 @@ namespace
   static void
   run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
   {
-    llarp::LogInfo(fmt::format("starting up {} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
+    llarp::LogInfo(fmt::format(
+        "starting up {} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO));
     try
     {
       std::shared_ptr<llarp::Config> conf;

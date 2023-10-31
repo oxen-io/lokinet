@@ -3,9 +3,11 @@
 #include "util/aligned.hpp"
 #include "util/status.hpp"
 
+#include <llarp/crypto/types.hpp>
+
 namespace llarp
 {
-  struct RouterID : public AlignedBuffer<32>
+  struct RouterID : public PubKey
   {
     static constexpr size_t SIZE = 32;
 
@@ -13,10 +15,10 @@ namespace llarp
 
     RouterID() = default;
 
-    RouterID(const byte_t* buf) : AlignedBuffer<SIZE>(buf)
+    RouterID(const byte_t* buf) : PubKey(buf)
     {}
 
-    RouterID(const Data& data) : AlignedBuffer<SIZE>(data)
+    RouterID(const Data& data) : PubKey(data)
     {}
 
     util::StatusObject

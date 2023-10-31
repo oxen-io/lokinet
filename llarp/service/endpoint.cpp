@@ -223,10 +223,12 @@ namespace llarp::service
     // handles when we resolved a .snode
     auto handleResolvedSNodeName = [resultHandler, nodedb = router()->node_db()](auto router_id) {
       std::vector<dns::SRVData> result{};
+
       if (auto maybe_rc = nodedb->get_rc(router_id))
       {
-        result = maybe_rc->srvRecords;
+        result = maybe_rc->srvRecords;  // TODO: RouterContact has no SRV records
       }
+      
       resultHandler(std::move(result));
     };
 
@@ -766,7 +768,7 @@ namespace llarp::service
         });
     if (not maybe.has_value())
       return std::nullopt;
-    return GetHopsForBuildWithEndpoint(maybe->pubkey);
+    return GetHopsForBuildWithEndpoint(maybe->router_id());
   }
 
   std::optional<std::vector<RouterContact>>

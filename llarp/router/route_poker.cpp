@@ -6,8 +6,6 @@
 
 namespace llarp
 {
-  static auto logcat = log::Cat("route-poker");
-
   void
   RoutePoker::add_route(oxen::quic::Address ip)
   {
@@ -221,7 +219,7 @@ namespace llarp
 
         // explicit route pokes for first hops
         router.for_each_connection(
-            [this](link::Connection conn) { add_route(conn.remote_rc.addr); });
+            [this](link::Connection conn) { add_route(conn.remote_rc.addr()); });
 
         add_route(router.link_manager().local());
         // add default route
@@ -240,7 +238,7 @@ namespace llarp
   {
     // unpoke routes for first hops
     router.for_each_connection(
-        [this](link::Connection conn) { delete_route(conn.remote_rc.addr); });
+        [this](link::Connection conn) { delete_route(conn.remote_rc.addr()); });
     if (is_enabled() and is_up)
     {
       vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();

@@ -40,7 +40,7 @@ namespace llarp::path
       hops[idx].txID = hops[idx + 1].rxID;
     }
     // initialize parts of the introduction
-    intro.router = hops[hsz - 1].rc.pubkey;
+    intro.router = hops[hsz - 1].rc._router_id;
     intro.path_id = hops[hsz - 1].txID;
     if (auto parent = m_PathSet.lock())
       EnterState(ePathBuilding, parent->Now());
@@ -152,13 +152,13 @@ namespace llarp::path
   RouterID
   Path::Endpoint() const
   {
-    return hops[hops.size() - 1].rc.pubkey;
+    return hops[hops.size() - 1].rc._router_id;
   }
 
   PubKey
   Path::EndpointPubKey() const
   {
-    return hops[hops.size() - 1].rc.pubkey;
+    return hops[hops.size() - 1].rc._router_id;
   }
 
   PathID_t
@@ -184,13 +184,13 @@ namespace llarp::path
   bool
   Path::is_endpoint(const RouterID& r, const PathID_t& id) const
   {
-    return hops[hops.size() - 1].rc.pubkey == r && hops[hops.size() - 1].txID == id;
+    return hops[hops.size() - 1].rc._router_id == r && hops[hops.size() - 1].txID == id;
   }
 
   RouterID
   Path::upstream() const
   {
-    return hops[0].rc.pubkey;
+    return hops[0].rc._router_id;
   }
 
   const std::string&
@@ -208,7 +208,7 @@ namespace llarp::path
     {
       if (!hops.empty())
         hops_str += " -> ";
-      hops_str += RouterID(hop.rc.pubkey).ToString();
+      hops_str += RouterID(hop.rc._router_id).ToString();
     }
     return hops_str;
   }
@@ -262,9 +262,9 @@ namespace llarp::path
   PathHopConfig::ExtractStatus() const
   {
     util::StatusObject obj{
-        {"ip", rc.addr.to_string()},
+        {"ip", rc._addr.to_string()},
         {"lifetime", to_json(lifetime)},
-        {"router", rc.pubkey.ToHex()},
+        {"router", rc._router_id.ToHex()},
         {"txid", txID.ToHex()},
         {"rxid", rxID.ToHex()}};
     return obj;

@@ -36,8 +36,6 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 250ms;
 
 namespace llarp
 {
-  static auto logcat = log::Cat("router");
-
   Router::Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform)
       : _route_poker{std::make_shared<RoutePoker>(*this)}
       , _lmq{std::make_shared<oxenmq::OxenMQ>()}
@@ -178,7 +176,7 @@ namespace llarp
 
     util::StatusObject stats{
         {"running", true},
-        {"version", llarp::VERSION_FULL},
+        {"version", llarp::LOKINET_VERSION_FULL},
         {"uptime", to_json(Uptime())},
         {"numPathsBuilt", pathsCount},
         {"numPeersConnected", peers},
@@ -216,8 +214,9 @@ namespace llarp
 
     std::unordered_set<RouterID> peer_pubkeys;
 
-    for_each_connection(
-        [&peer_pubkeys](link::Connection& conn) { peer_pubkeys.emplace(conn.remote_rc.pubkey); });
+    for_each_connection([&peer_pubkeys](link::Connection& conn) {
+      peer_pubkeys.emplace(conn.remote_rc.router_id());
+    });
 
     loop()->call([this, &peer_pubkeys]() {
       for (auto& pk : peer_pubkeys)
@@ -253,7 +252,7 @@ namespace llarp
 
     if (auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
     {
-      router = maybe->pubkey;
+      router = maybe->router_id();
       return true;
     }
     return false;
@@ -444,16 +443,16 @@ namespace llarp
   Router::HandleSaveRC() const
   {
     std::string fname = our_rc_file.string();
-    router_contact.Write(fname.c_str());
+    router_contact.write(fname.c_str());
   }
 
   bool
   Router::SaveRC()
   {
     LogDebug("verify RC signature");
-    if (!router_contact.Verify(now()))
+    if (!router_contact.verify(now()))  // TODO: RouterContact -> RemoteRC
     {
-      Dump<MAX_RC_SIZE>(rc());
+      Dump<RouterContact::MAX_RC_SIZE>(rc());
       LogError("RC is invalid, not saving");
       return false;
     }
@@ -569,9 +568,7 @@ namespace llarp
   {
     SecretKey nextOnionKey;
     RouterContact nextRC = router_contact;
-    if (!nextRC.Sign(identity()))
-      return false;
-    if (!nextRC.Verify(time_now_ms(), false))
+    if (!nextRC.sign(identity())) // TODO: RouterContact -> LocalRC
       return false;
     router_contact = std::move(nextRC);
     if (IsServiceNode())
@@ -585,20 +582,17 @@ namespace llarp
     // Set netid before anything else
     log::debug(logcat, "Network ID set to {}", conf.router.m_netId);
     if (!conf.router.m_netId.empty()
-        && strcmp(conf.router.m_netId.c_str(), llarp::DEFAULT_NETID) != 0)
+        && strcmp(conf.router.m_netId.c_str(), llarp::LOKINET_DEFAULT_NETID) != 0)
     {
       const auto& netid = conf.router.m_netId;
       llarp::LogWarn(
           "!!!! you have manually set netid to be '",
           netid,
           "' which does not equal '",
-          llarp::DEFAULT_NETID,
+          llarp::LOKINET_DEFAULT_NETID,
           "' you will run as a different network, good luck "
           "and don't forget: something something MUH traffic "
           "shape correlation !!!!");
-      NetID::DefaultValue() = NetID(reinterpret_cast<const byte_t*>(netid.c_str()));
-      // reset netid in our rc
-      router_contact.netID = llarp::NetID();
     }
 
     // Router config
@@ -628,7 +622,7 @@ namespace llarp
     else
       log::debug(logcat, "No explicit public address given; will auto-detect during link setup");
 
-    RouterContact::BlockBogons = conf.router.m_blockBogons;
+    RouterContact::BLOCK_BOGONS = conf.router.m_blockBogons;
 
     auto& networkConfig = conf.network;
 
@@ -679,10 +673,10 @@ namespace llarp
     auto clearBadRCs = [this]() {
       for (auto it = bootstrap_rc_list.begin(); it != bootstrap_rc_list.end();)
       {
-        if (it->IsObsoleteBootstrap())
-          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID{it->pubkey});
-        else if (not it->Verify(now()))
-          log::warning(logcat, "ignoring invalid bootstrap RC: {}", RouterID{it->pubkey});
+        if (it->is_obsolete_bootstrap())
+          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID{it->router_id()});
+        else if (not it->verify(now())) // TODO: RouterContact -> RemoteRC
+          log::warning(logcat, "ignoring invalid bootstrap RC: {}", RouterID{it->router_id()});
         else
         {
           ++it;
@@ -785,7 +779,7 @@ namespace llarp
     return std::count_if(
                bootstrap_rc_list.begin(),
                bootstrap_rc_list.end(),
-               [r](const RouterContact& rc) -> bool { return rc.pubkey == r; })
+               [r](const RouterContact& rc) -> bool { return rc.router_id() == r; })
         > 0;
   }
 
@@ -806,8 +800,8 @@ namespace llarp
     if (IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(ToString(router_contact.Age(now)), " since we last updated our RC");
-      LogInfo(ToString(router_contact.TimeUntilExpires(now)), " until our RC expires");
+      LogInfo(ToString(router_contact.age(now)), " since we last updated our RC");
+      LogInfo(ToString(router_contact.time_to_expiry(now)), " until our RC expires");
     }
     if (_last_stats_report > 0s)
       LogInfo(ToString(now - _last_stats_report), " last reported stats");
@@ -819,7 +813,7 @@ namespace llarp
   {
     std::string status;
     auto out = std::back_inserter(status);
-    fmt::format_to(out, "v{}", fmt::join(llarp::VERSION, "."));
+    fmt::format_to(out, "v{}", fmt::join(llarp::LOKINET_VERSION, "."));
     if (IsServiceNode())
     {
       fmt::format_to(
@@ -901,7 +895,8 @@ namespace llarp
     bool should_gossip = appears_funded();
 
     if (is_snode
-        and (router_contact.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000)) or (now - router_contact.last_updated) > rc_regen_interval))
+        and (router_contact.expires_within_delta(now, std::chrono::milliseconds(randint() % 10000)) 
+            or (now - router_contact.timestamp().time_since_epoch()) > rc_regen_interval))
     {
       LogInfo("regenerating RC");
       if (update_rc())
@@ -923,22 +918,22 @@ namespace llarp
     // remove RCs for nodes that are no longer allowed by network policy
     node_db()->RemoveIf([&](const RouterContact& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
-      if (IsBootstrapNode(rc.pubkey))
+      if (IsBootstrapNode(rc.router_id()))
       {
-        log::trace(logcat, "Not removing {}: is bootstrap node", rc.pubkey);
+        log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
         return false;
       }
       // if for some reason we stored an RC that isn't a valid router
       // purge this entry
-      if (not rc.IsPublicRouter())
+      if (not rc.is_public_router())
       {
-        log::debug(logcat, "Removing {}: not a valid router", rc.pubkey);
+        log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
       }
       /// clear out a fully expired RC
-      if (rc.IsExpired(now))
+      if (rc.is_expired(now))
       {
-        log::debug(logcat, "Removing {}: RC is expired", rc.pubkey);
+        log::debug(logcat, "Removing {}: RC is expired", rc.router_id());
         return true;
       }
       // clients have no notion of a whilelist
@@ -946,23 +941,23 @@ namespace llarp
       // routers that are not whitelisted for first hops
       if (not is_snode)
       {
-        log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.pubkey);
+        log::trace(logcat, "Not removing {}: we are a client and it looks fine", rc.router_id());
         return false;
       }
 
       // if we don't have the whitelist yet don't remove the entry
       if (not has_whitelist)
       {
-        log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.pubkey);
+        log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.router_id());
         return false;
       }
       // if we have no whitelist enabled or we have
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      if (has_whitelist and not _rc_lookup_handler.is_session_allowed(rc.pubkey))
+      if (has_whitelist and not _rc_lookup_handler.is_session_allowed(rc.router_id()))
       {
-        log::debug(logcat, "Removing {}: not a valid router", rc.pubkey);
+        log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
       }
       return false;
@@ -971,10 +966,10 @@ namespace llarp
     if (not is_snode or not has_whitelist)
     {
       // find all deregistered relays
-      std::unordered_set<PubKey> close_peers;
+      std::unordered_set<RouterID> close_peers;
 
       for_each_connection([this, &close_peers](link::Connection& conn) {
-        const auto& pk = conn.remote_rc.pubkey;
+        const auto& pk = conn.remote_rc.router_id();
 
         if (conn.remote_is_relay and not _rc_lookup_handler.is_session_allowed(pk))
           close_peers.insert(pk);
@@ -1051,7 +1046,7 @@ namespace llarp
     std::set<dht::Key_t> peer_keys;
 
     for_each_connection(
-        [&peer_keys](link::Connection& conn) { peer_keys.emplace(conn.remote_rc.pubkey); });
+        [&peer_keys](link::Connection& conn) { peer_keys.emplace(conn.remote_rc.router_id()); });
 
     _contacts->rc_nodes()->RemoveIf(
         [&peer_keys](const dht::Key_t& k) -> bool { return peer_keys.count(k) == 0; });
@@ -1112,15 +1107,18 @@ namespace llarp
     if (is_running || is_stopping)
       return false;
 
-    // set public signing key
-    router_contact.pubkey = seckey_topublic(identity());
+    // TODO: replace all this logic with construction of LocalRC
+
+    /* // set public signing key
+    router_contact._router_id = seckey_topublic(identity());
     // set router version if service node
     if (IsServiceNode())
     {
-      router_contact.routerVersion = RouterVersion(llarp::VERSION, llarp::constants::proto_version);
+      router_contact.routerVersion =
+          RouterVersion(llarp::LOKINET_VERSION, llarp::constants::proto_version);
     }
 
-    if (IsServiceNode() and not router_contact.IsPublicRouter())
+    if (IsServiceNode() and not router_contact.is_public_router())
     {
       LogError("we are configured as relay but have no reachable addresses");
       return false;
@@ -1130,7 +1128,7 @@ namespace llarp
     router_contact.enckey = seckey_topublic(encryption());
 
     LogInfo("Signing rc...");
-    if (!router_contact.Sign(identity()))
+    if (!router_contact.sign(identity()))
     {
       LogError("failed to sign rc");
       return false;
@@ -1166,14 +1164,14 @@ namespace llarp
       // regenerate keys and resign rc before everything else
       crypto::identity_keygen(_identity);
       crypto::encryption_keygen(_encryption);
-      router_contact.pubkey = seckey_topublic(identity());
+      router_contact._router_id = seckey_topublic(identity());
       router_contact.enckey = seckey_topublic(encryption());
-      if (!router_contact.Sign(identity()))
+      if (!router_contact.sign(identity()))
       {
         LogError("failed to regenerate keys and sign RC");
         return false;
       }
-    }
+    } */
 
     LogInfo("starting hidden service context...");
     if (!hidden_service_context().StartAll())
@@ -1193,7 +1191,7 @@ namespace llarp
     {
       node_db()->put_rc(rc);
       _contacts->rc_nodes()->PutNode(rc);
-      LogInfo("added bootstrap node ", RouterID{rc.pubkey});
+      LogInfo("added bootstrap node ", RouterID{rc.router_id()});
     }
 
     LogInfo("have ", _node_db->num_loaded(), " routers");

@@ -14,21 +14,21 @@ namespace llarp::util
 {
   /// Reads a binary file from disk into a string.  Throws on error.
   std::string
-  slurp_file(const fs::path& filename);
+  file_to_string(const fs::path& filename);
 
   /// Reads a binary file from disk directly into a buffer.  Throws a std::length_error if the
   /// file is bigger than the buffer.  Returns the bytes copied on success.
   size_t
-  slurp_file(const fs::path& filename, char* buffer, size_t buffer_size);
+  file_to_buffer(const fs::path& filename, char* buffer, size_t buffer_size);
 
   /// Same, but for some non-char but single-byte char type (e.g. byte_t, std::byte, unsigned char).
   template <
       typename Char,
       std::enable_if_t<sizeof(Char) == 1 and not std::is_same_v<Char, char>, int> = 1>
   inline size_t
-  slurp_file(const fs::path& filename, Char* buffer, size_t buffer_size)
+  file_to_buffer(const fs::path& filename, Char* buffer, size_t buffer_size)
   {
-    return slurp_file(filename, reinterpret_cast<char*>(buffer), buffer_size);
+    return file_to_buffer(filename, reinterpret_cast<char*>(buffer), buffer_size);
   }
 
   /// Dumps binary string contents to disk. The file is overwritten if it already exists.  Throws

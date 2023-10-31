@@ -14,8 +14,6 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
-  static auto logcat = log::Cat("nodedb");
-
   NodeDB::Entry::Entry(RouterContact value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
   {}
 
@@ -79,7 +77,7 @@ namespace llarp
         // TODO: split this up? idk maybe some day...
         disk([this, data = std::move(copy)]() {
           for (const auto& rc : data)
-            rc.Write(get_path_by_pubkey(rc.pubkey));
+            rc.write(get_path_by_pubkey(rc.router_id()));
         });
       });
     }
@@ -123,20 +121,14 @@ namespace llarp
 
           RouterContact rc{};
 
-          if (not rc.Read(f))
+          if (not rc.read(f))
           {
             // try loading it, purge it if it is junk
             purge.emplace(f);
             return true;
           }
 
-          if (not rc.FromOurNetwork())
-          {
-            // skip entries that are not from our network
-            return true;
-          }
-
-          if (rc.IsExpired(time_now_ms()))
+          if (rc.is_expired(time_now_ms()))
           {
             // rc expired dont load it and purge it later
             purge.emplace(f);
@@ -145,8 +137,8 @@ namespace llarp
 
           // validate signature and purge entries with invalid signatures
           // load ones with valid signatures
-          if (rc.VerifySignature())
-            entries.emplace(rc.pubkey, rc);
+          if (rc.verify_signature())  // TODO: fix this after RouterContact -> RemoteRC
+            entries.emplace(rc.router_id(), rc);
           else
             purge.emplace(f);
 
@@ -172,7 +164,7 @@ namespace llarp
 
     router.loop()->call([this]() {
       for (const auto& item : entries)
-        item.second.rc.Write(get_path_by_pubkey(item.first));
+        item.second.rc.write(get_path_by_pubkey(item.first));
     });
   }
 
@@ -213,9 +205,9 @@ namespace llarp
       auto itr = entries.begin();
       while (itr != entries.end())
       {
-        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.pubkey) == 0)
+        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.router_id()) == 0)
         {
-          removed.insert(itr->second.rc.pubkey);
+          removed.insert(itr->second.rc.router_id());
           itr = entries.erase(itr);
         }
         else
@@ -230,8 +222,8 @@ namespace llarp
   NodeDB::put_rc(RouterContact rc)
   {
     router.loop()->call([this, rc]() {
-      entries.erase(rc.pubkey);
-      entries.emplace(rc.pubkey, rc);
+      entries.erase(rc.router_id());
+      entries.emplace(rc.router_id(), rc);
     });
   }
 
@@ -245,14 +237,14 @@ namespace llarp
   NodeDB::put_rc_if_newer(RouterContact rc)
   {
     router.loop()->call([this, rc]() {
-      auto itr = entries.find(rc.pubkey);
-      if (itr == entries.end() or itr->second.rc.OtherIsNewer(rc))
+      auto itr = entries.find(rc.router_id());
+      if (itr == entries.end() or itr->second.rc.other_is_newer(rc))
       {
         // delete if existing
         if (itr != entries.end())
           entries.erase(itr);
         // add new entry
-        entries.emplace(rc.pubkey, rc);
+        entries.emplace(rc.router_id(), rc);
       }
     });
   }
@@ -282,14 +274,14 @@ namespace llarp
       llarp::RouterContact rc;
       const llarp::dht::XorMetric compare(location);
       VisitAll([&rc, compare](const auto& otherRC) {
-        if (rc.pubkey.IsZero())
+        if (rc.router_id().IsZero())
         {
           rc = otherRC;
           return;
         }
         if (compare(
                 llarp::dht::Key_t{otherRC.pubkey.as_array()},
-                llarp::dht::Key_t{rc.pubkey.as_array()}))
+                llarp::dht::Key_t{rc.router_id().as_array()}))
           rc = otherRC;
       });
       return rc;

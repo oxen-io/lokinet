@@ -154,7 +154,7 @@ namespace llarp::rpc
   RPCServer::invoke(Version& version)
   {
     util::StatusObject result{
-        {"version", llarp::VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
+        {"version", llarp::LOKINET_VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
 
     SetJSONResponse(result, version.response);
   }

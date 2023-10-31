@@ -256,7 +256,7 @@ namespace llarp::service
       // copy
       ProtocolFrameMessage frame(self->frame);
       if (!crypto::pqe_decrypt(
-              self->frame.cipher, K, pq_keypair_to_secret(self->m_LocalIdentity.pq)))
+              self->frame.cipher, K, pq_keypair_to_seckey(self->m_LocalIdentity.pq)))
       {
         LogError("pqke failed C=", self->frame.cipher);
         self->msg.reset();
