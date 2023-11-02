@@ -539,15 +539,19 @@ namespace llarp
     return _link_manager.get_num_connected_clients();
   }
 
+  void
+  Router::save_rc()
+  {
+    _node_db->put_rc(router_contact.view());
+    queue_disk_io([&]() { router_contact.write(our_rc_file); });
+  }
+
   bool
   Router::update_rc()
   {
     router_contact.resign();
     if (is_service_node())
-    {
-      _node_db->put_rc(router_contact.view());
-      queue_disk_io([&]() { router_contact.write(our_rc_file); });
-    }
+      save_rc();
 
     return true;
   }
@@ -756,17 +760,24 @@ namespace llarp
   Router::report_stats()
   {
     const auto now = llarp::time_now_ms();
-    LogInfo(node_db()->num_loaded(), " RCs loaded");
-    LogInfo(bootstrap_rc_list.size(), " bootstrap peers");
-    LogInfo(NumberOfConnectedRouters(), " router connections");
+    log::info(
+        logcat,
+        "{} RCs loaded with {} bootstrap peers and {} router connections!",
+        node_db()->num_loaded(),
+        bootstrap_rc_list.size(),
+        NumberOfConnectedRouters());
+
     if (is_service_node())
     {
-      LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(ToString(router_contact.age(now)), " since we last updated our RC");
-      LogInfo(ToString(router_contact.time_to_expiry(now)), " until our RC expires");
+      log::info(
+          logcat,
+          "Local service node has {} client connections since last RC update ({} to expiry)",
+          NumberOfConnectedClients(),
+          router_contact.age(now),
+          router_contact.time_to_expiry(now));
     }
     if (_last_stats_report > 0s)
-      LogInfo(ToString(now - _last_stats_report), " last reported stats");
+      log::info(logcat, "Last reported stats time {}", now - _last_stats_report);
     _last_stats_report = now;
   }
 
@@ -939,7 +950,7 @@ namespace llarp
 
       // mark peers as de-registered
       for (auto& peer : close_peers)
-        _link_manager.deregister_peer(std::move(peer));
+        _link_manager.deregister_peer(peer);
     }
 
     _link_manager.check_persisting_conns(now);
@@ -1049,83 +1060,48 @@ namespace llarp
     if (is_running || is_stopping)
       return false;
 
-    // TODO: replace all this logic with construction of LocalRC
+    router_contact = LocalRC::make(identity(), public_ip());
 
-    /* // set public signing key
-    router_contact._router_id = seckey_topublic(identity());
-    // set router version if service node
-    if (IsServiceNode())
+    if (is_service_node() and not router_contact.is_public_router())
     {
-      router_contact.routerVersion =
-          RouterVersion(llarp::LOKINET_VERSION, llarp::constants::proto_version);
-    }
-
-    if (IsServiceNode() and not router_contact.is_public_router())
-    {
-      LogError("we are configured as relay but have no reachable addresses");
-      return false;
-    }
-
-    // set public encryption key
-    router_contact.enckey = seckey_topublic(encryption());
-
-    LogInfo("Signing rc...");
-    if (!router_contact.sign(identity()))
-    {
-      LogError("failed to sign rc");
-      return false;
-    }
-
-    if (IsServiceNode())
-    {
-      if (!SaveRC())
+      if (not router_contact.is_public_router())
       {
-        LogError("failed to save RC");
+        log::error(logcat, "Router is configured as relay but has no reachable addresses!");
         return false;
       }
-    }
 
-    if (IsServiceNode())
-    {
-      // initialize as service node
-      if (!InitServiceNode())
+      save_rc();
+
+      if (not init_service_node())
       {
-        LogError("Failed to initialize service node");
+        log::error(logcat, "Router failed to initialize service node!");
         return false;
       }
+
+      log::info(logcat, "Router initialized as service node!");
       const RouterID us = pubkey();
-      LogInfo("initalized service node: ", us);
-      // init gossiper here
       _rcGossiper.Init(&_link_manager, us, this);
       // relays do not use profiling
       router_profiling().Disable();
     }
     else
     {
-      // we are a client
-      // regenerate keys and resign rc before everything else
+      // we are a client, regenerate keys and resign rc before everything else
       crypto::identity_keygen(_identity);
       crypto::encryption_keygen(_encryption);
-      router_contact._router_id = seckey_topublic(identity());
-      router_contact.enckey = seckey_topublic(encryption());
-      if (!router_contact.sign(identity()))
-      {
-        LogError("failed to regenerate keys and sign RC");
-        return false;
-      }
-    } */
+      router_contact.set_router_id(seckey_to_pubkey(identity()));  // resigns RC
+    }
 
-    LogInfo("starting hidden service context...");
+    log::info(logcat, "Starting hidden service context...");
+
     if (!hidden_service_context().StartAll())
     {
-      LogError("Failed to start hidden service context");
+      log::error(logcat, "Failed to start hidden service context!");
       return false;
     }
 
-    {
-      LogInfo("Loading nodedb from disk...");
-      _node_db->load_from_disk();
-    }
+    log::info(logcat, "Loading NodeDB from disk...");
+    _node_db->load_from_disk();
 
     _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
 
@@ -1133,15 +1109,16 @@ namespace llarp
     {
       node_db()->put_rc(rc);
       _contacts->rc_nodes()->PutNode(rc);
-      LogInfo("added bootstrap node ", RouterID{rc.router_id()});
+      log::info(logcat, "Added bootstrap node (rid: {})", rc.router_id());
     }
 
-    LogInfo("have ", _node_db->num_loaded(), " routers");
+    log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_loaded());
 
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
     _route_poker->start();
     is_running.store(true);
     _started_at = now();
+
     if (is_service_node())
     {
       // do service node testing if we are in service node whitelist mode
@@ -1163,13 +1140,16 @@ namespace llarp
         {
           if (not SessionToRouterAllowed(router))
           {
-            LogDebug(
-                router,
-                " is no longer a registered service node so we remove it from the testing list");
+            log::debug(
+                logcat,
+                "{} is no longer a registered service node; dropping from test list",
+                router);
             router_testing.remove_node_from_failing(router);
             continue;
           }
-          LogDebug("Establishing session to ", router, " for SN testing");
+
+          log::debug(logcat, "Establishing session to {} for service node testing", router);
+
           // try to make a session to this random router
           // this will do a dht lookup if needed
           _link_manager.connect_to(router);
@@ -1346,7 +1326,7 @@ namespace llarp
   }
 
   bool
-  Router::InitServiceNode()
+  Router::init_service_node()
   {
     LogInfo("accepting transit traffic");
     paths.AllowTransit();

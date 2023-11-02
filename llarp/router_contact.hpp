@@ -6,7 +6,6 @@
 #include <llarp/constants/version.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/dns/srv_data.hpp>
-#include <llarp/net/exit_info.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
@@ -18,24 +17,6 @@
 #include <functional>
 #include <vector>
 
-// namespace oxenc
-// {
-//   class bt_list_consumer;
-// }  // namespace oxenc
-
-/*
-  - figure out where we do bt_encoding of RC's
-    - maybe dump secret key from bt_encode
-      - it's weird to pass the secret key contextually
-    - suspicion we will need optional signature as an optional(?) string with serialized data
-      - resetting signature would be string::clear() instead
-      - ::sign() will cache serialized value
-  - do timestamp stuff
-  - bt_encode that takes bt_dict_producer requires reference to subdict
-    - presumably to be done in endpoints
-    - will be used for get_multi_rc endpoint
-*/
-
 namespace llarp
 {
   static auto logcat = log::Cat("RC");
@@ -44,24 +25,27 @@ namespace llarp
 
   static inline constexpr size_t NETID_SIZE{8};
 
+  /// On the wire we encode the data as a dict containing:
+  /// ""  -- the RC format version, which must be == RouterContact::Version for us to attempt to
+  ///        parse the reset of the fields.  (Future versions might have backwards-compat support
+  ///        for lower versions).
+  /// "4" -- 6 byte packed IPv4 address & port: 4 bytes of IPv4 address followed by 2 bytes of
+  ///        port, both encoded in network (i.e. big-endian) order.
+  /// "6" -- optional 18 byte IPv6 address & port: 16 byte raw IPv6 address followed by 2 bytes
+  ///        of port in network order.
+  /// "i" -- optional network ID string of up to 8 bytes; this is omitted for the default network
+  ///        ID ("lokinet") but included for others (such as "gamma" for testnet).
+  /// "p" -- 32-byte router pubkey
+  /// "t" -- timestamp when this RC record was created (which also implicitly determines when it
+  ///        goes stale and when it expires).
+  /// "v" -- lokinet version of the router; this is a three-byte packed value of
+  ///        MAJOR, MINOR, PATCH, e.g. \x00\x0a\x03 for 0.10.3.
+  /// "~" -- signature of all of the previous serialized data, signed by "p"
+
   /// RouterContact
   struct RouterContact
   {
     static constexpr uint8_t RC_VERSION = 0;
-
-    /// Constructs an empty RC
-    // RouterContact() = default;
-
-    // RouterContact(std::string)
-    // {
-    //   log::error(logcat, "ERROR: SUPPLANT THIS CONSTRUCTOR");
-    // }
-
-    // RouterContact(std::string buf);
-
-    /// RC version that we support; we fail to load RCs that don't have the same version as that
-    /// means they are incompatible with us.
-    // static constexpr uint8_t VERSION = 0;
 
     /// Unit tests disable this to allow private IP ranges in RCs, which normally get rejected.
     static inline bool BLOCK_BOGONS = true;
@@ -84,6 +68,12 @@ namespace llarp
     /// re-publish more frequently than this if needed; this is meant to apply only if there are no
     /// changes i.e. just to push out a new confirmation of the details).
     static constexpr auto REPUBLISH = STALE / 2 - 5min;
+
+    ustring_view
+    view() const
+    {
+      return _payload;
+    }
 
     /// Getters for private attributes
     const oxen::quic::Address&
@@ -158,29 +148,6 @@ namespace llarp
     bool
     write(const fs::path& fname) const;
 
-    /// On the wire we encode the data as a dict containing:
-    /// ""  -- the RC format version, which must be == RouterContact::Version for us to attempt to
-    ///        parse the reset of the fields.  (Future versions might have backwards-compat support
-    ///        for lower versions).
-    /// "4" -- 6 byte packed IPv4 address & port: 4 bytes of IPv4 address followed by 2 bytes of
-    ///        port, both encoded in network (i.e. big-endian) order.
-    /// "6" -- optional 18 byte IPv6 address & port: 16 byte raw IPv6 address followed by 2 bytes
-    ///        of port in network order.
-    /// "i" -- optional network ID string of up to 8 bytes; this is omitted for the default network
-    ///        ID ("lokinet") but included for others (such as "gamma" for testnet).
-    /// "p" -- 32-byte router pubkey
-    /// "t" -- timestamp when this RC record was created (which also implicitly determines when it
-    ///        goes stale and when it expires).
-    /// "v" -- lokinet version of the router; this is a three-byte packed value of
-    ///        MAJOR, MINOR, PATCH, e.g. \x00\x0a\x03 for 0.10.3.
-    /// "~" -- signature of all of the previous serialized data, signed by "p"
-    virtual ustring_view
-    bt_encode() const
-    {
-      log::warning(logcat, "ERROR: SUPPLANT THIS METHOD");
-      return {};
-    }
-
     bool
     operator==(const RouterContact& other) const
     {
@@ -251,16 +218,20 @@ namespace llarp
   /// parameters and outputs a bt-serialized string
   struct LocalRC final : public RouterContact
   {
+    static LocalRC
+    make(const SecretKey secret, oxen::quic::Address local);
+
    private:
     ustring _signature;
-    const SecretKey _secret_key;
+    SecretKey _secret_key;
 
-    // TODO: fix these parameters
     void
     bt_sign(oxenc::bt_dict_producer& btdp);
 
     void
-    bt_encode(oxenc::bt_dict_producer& btdp) const;
+    bt_encode(oxenc::bt_dict_producer& btdp);
+
+    LocalRC(const SecretKey secret, oxen::quic::Address local);
 
    public:
     LocalRC() = default;
@@ -269,15 +240,6 @@ namespace llarp
 
     void
     resign();
-
-    ustring_view
-    bt_encode() const override;
-
-    ustring_view
-    view() const
-    {
-      return _payload;
-    }
 
     void
     clear() override
@@ -347,7 +309,6 @@ namespace llarp
   struct RemoteRC final : public RouterContact
   {
    private:
-    // TODO: fix these parameters
     void
     bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
 
@@ -361,12 +322,6 @@ namespace llarp
     }
     explicit RemoteRC(oxenc::bt_dict_consumer btdc);
     ~RemoteRC() = default;
-
-    ustring_view
-    bt_encode() const override
-    {
-      return _payload;
-    }
 
     std::string_view
     view() const

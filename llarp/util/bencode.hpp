@@ -17,15 +17,16 @@ namespace llarp
 {
   static auto ben_cat = log::Cat("stupid.bencode");
 
+  template <typename T>
+  T
+  decode_key(oxenc::bt_dict_consumer& btdp, const char* key)
+  {
+    return btdp.require<T>(key);
+  }
+
   template <typename List_t>
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf);
-
-  inline bool
-  BEncodeWriteDictMsgType(llarp_buffer_t* buf, const char* k, const char* t)
-  {
-    return bencode_write_bytestring(buf, k, 1) && bencode_write_bytestring(buf, t, 1);
-  }
 
   template <typename Obj_t>
   bool
@@ -318,23 +319,6 @@ namespace llarp
           return true;
         },
         buffer);
-  }
-
-  /// write an iterable container as a list
-  template <typename Set_t>
-  bool
-  BEncodeWriteSet(const Set_t& set, llarp_buffer_t* buffer)
-  {
-    if (not bencode_start_list(buffer))
-      return false;
-
-    for (const auto& item : set)
-    {
-      if (not item.bt_encode(buffer))
-        return false;
-    }
-
-    return bencode_end(buffer);
   }
 
   template <typename List_t>

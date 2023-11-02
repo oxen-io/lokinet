@@ -31,7 +31,7 @@ namespace llarp
     oxenc::bt_list_producer btlp{};
 
     for (const auto& it : *this)
-      btlp.append(it.bt_encode());
+      btlp.append(it.view());
 
     return btlp.view();
   }

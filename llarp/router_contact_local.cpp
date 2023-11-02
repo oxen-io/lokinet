@@ -11,6 +11,21 @@
 
 namespace llarp
 {
+  LocalRC
+  LocalRC::make(const SecretKey secret, oxen::quic::Address local)
+  {
+    return *new LocalRC{secret, local};
+  }
+
+  LocalRC::LocalRC(const SecretKey secret, oxen::quic::Address local)
+      : _secret_key{std::move(secret)}
+  {
+    _router_id = llarp::seckey_to_pubkey(_secret_key);
+    _addr = std::move(local);
+    _addr6.emplace(&_addr.in6());
+    resign();
+  }
+
   LocalRC::LocalRC(std::string payload, const SecretKey sk) : _secret_key{std::move(sk)}
   {
     _router_id = llarp::seckey_to_pubkey(_secret_key);
@@ -66,16 +81,8 @@ namespace llarp
     _payload = btdp.view<unsigned char>();
   }
 
-  ustring_view
-  LocalRC::bt_encode() const
-  {
-    oxenc::bt_dict_producer btdp;
-    bt_encode(btdp);
-    return btdp.view<unsigned char>();
-  }
-
   void
-  LocalRC::bt_encode(oxenc::bt_dict_producer& btdp) const
+  LocalRC::bt_encode(oxenc::bt_dict_producer& btdp)
   {
     btdp.append("", RC_VERSION);
 
@@ -117,14 +124,7 @@ namespace llarp
     btdp.append(
         "v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
 
-    btdp.append_signature("~", [this](ustring_view to_sign) {
-      std::array<unsigned char, 64> sig;
-
-      if (!crypto::sign(sig.data(), _secret_key, to_sign))
-        throw std::runtime_error{"Failed to sign LocalRC"};
-
-      return sig;
-    });
+    bt_sign(btdp);
   }
 
   void
