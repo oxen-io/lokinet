@@ -4,16 +4,32 @@
 
 namespace llarp::service
 {
-  bool
-  Identity::BEncode(llarp_buffer_t* buf) const
+  std::string
+  Identity::bt_encode() const
   {
-    if (!bencode_start_dict(buf))
-      return false;
-    if (!BEncodeWriteDictEntry("s", signkey, buf))
-      return false;
-    if (!BEncodeWriteDictInt("v", version, buf))
-      return false;
-    return bencode_end(buf);
+    oxenc::bt_dict_producer btdp;
+
+    btdp.append("s", signkey.ToView());
+    btdp.append("v", version);
+
+    return std::move(btdp).str();
+  }
+
+  void
+  Identity::bt_decode(std::string buf)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{buf};
+
+      signkey.from_string(btdc.require<std::string>("s"));
+      version = btdc.require<uint64_t>("v");
+    }
+    catch (...)
+    {
+      log::warning(logcat, "Identity failed to parse bt-encoded contents!");
+      throw;
+    }
   }
 
   bool
@@ -74,7 +90,7 @@ namespace llarp::service
     // make sure we are empty
     Clear();
 
-    std::array<byte_t, 4096> tmp;
+    std::string buf;
 
     // this can throw
     bool exists = fs::exists(fname);
@@ -88,16 +104,15 @@ namespace llarp::service
     // check for file
     if (!exists)
     {
-      llarp_buffer_t buf{tmp};
       // regen and encode
       RegenerateKeys();
-      if (!BEncode(&buf))
-        throw std::length_error("failed to encode new identity");
-      const auto sz = buf.cur - buf.base;
+
+      buf = bt_encode();
+
       // write
       try
       {
-        util::buffer_to_file(fname, tmp.data(), sz);
+        util::buffer_to_file(fname, buf.data(), buf.size());
       }
       catch (const std::exception& e)
       {
@@ -114,18 +129,15 @@ namespace llarp::service
     // read file
     try
     {
-      util::file_to_buffer(fname, tmp.data(), tmp.size());
+      util::file_to_buffer(fname, buf.data(), buf.size());
     }
     catch (const std::length_error&)
     {
       throw std::length_error{"service identity too big"};
     }
+
     // (don't catch io error exceptions)
-    {
-      llarp_buffer_t buf{tmp};
-      if (!bencode_decode_dict(*this, &buf))
-        throw std::length_error{"could not decode service identity"};
-    }
+    bt_decode(buf);
 
     // ensure that the encryption key is set
     if (enckey.IsZero())

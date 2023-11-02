@@ -110,7 +110,7 @@ namespace llarp
   bool
   RouterContact::write(const fs::path& fname) const
   {
-    auto bte = bt_encode();
+    auto bte = view();
 
     try
     {
@@ -123,26 +123,6 @@ namespace llarp
     }
     return true;
   }
-
-  // std::string
-  // RouterContact::bencode_signed_section() const
-  // {
-  //   oxenc::bt_dict_producer btdp;
-
-  //   btdp.append("4", _addr.to_string());
-
-  //   if (_addr6)
-  //     btdp.append("6", _addr6->to_string());
-
-  //   if (ACTIVE_NETID != llarp::LOKINET_DEFAULT_NETID)
-  //     btdp.append("i", ACTIVE_NETID);
-
-  //   btdp.append("p", _router_id.bt_encode());
-  //   btdp.append("t", _timestamp.time_since_epoch().count());
-  //   btdp.append("v", _router_version.data());
-
-  //   return std::move(btdp).str();
-  // }
 
   util::StatusObject
   RouterContact::extract_status() const

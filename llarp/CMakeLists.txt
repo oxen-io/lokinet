@@ -91,7 +91,6 @@ add_dependencies(lokinet-utils genversion)
 lokinet_add_library(lokinet-time-place
   ev/ev.cpp
   ev/libuv.cpp
-  net/exit_info.cpp   # only router_contact
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp

@@ -147,6 +147,9 @@ namespace llarp
     void
     report_stats();
 
+    void
+    save_rc();
+
     bool
     update_rc();
 
@@ -392,7 +395,7 @@ namespace llarp
     /// initialize us as a service node
     /// return true on success
     bool
-    InitServiceNode();
+    init_service_node();
 
     bool
     IsRunning() const;

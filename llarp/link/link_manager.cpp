@@ -628,8 +628,7 @@ namespace llarp
             || local_rid == rid)
           continue;
 
-        neighbors +=
-            rid.bt_encode();  // TODO: refactor to use reference to bt_dict_producer subdict
+        neighbors += rid.bt_encode();
       }
 
       m.respond(

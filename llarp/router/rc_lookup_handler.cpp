@@ -278,7 +278,8 @@ namespace llarp
     {
       for (const auto& rc : bootstrap_rc_list)
       {
-        log::info(link_cat, "Doing explore via bootstrap node: {}", RouterID(rc.router_id()));
+        const auto& rid = rc.router_id();
+        log::info(link_cat, "Doing explore via bootstrap node: {}", rid);
 
         // TODO: replace this concept
         // dht->ExploreNetworkVia(dht::Key_t{rc.pubkey});
