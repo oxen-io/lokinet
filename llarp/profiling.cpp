@@ -260,7 +260,7 @@ namespace llarp
 
     try
     {
-      util::dump_file(fpath, buf);
+      util::buffer_to_file(fpath, buf);
     }
     catch (const std::exception& e)
     {

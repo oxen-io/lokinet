@@ -122,7 +122,7 @@ namespace llarp
 
       /// manual build on these hops
       virtual void
-      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) = 0;
+      Build(std::vector<RemoteRC> hops, PathRole roles = ePathRoleAny) = 0;
 
       /// tick owned paths
       virtual void
@@ -252,7 +252,7 @@ namespace llarp
       virtual void
       send_packet_to_remote(std::string buf) = 0;
 
-      virtual std::optional<std::vector<RouterContact>>
+      virtual std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() = 0;
 
       void

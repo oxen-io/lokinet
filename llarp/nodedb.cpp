@@ -14,7 +14,7 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
-  NodeDB::Entry::Entry(RouterContact value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
+  NodeDB::Entry::Entry(RemoteRC value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
   {}
 
   static void
@@ -70,9 +70,11 @@ namespace llarp
       router.loop()->call([this]() {
         m_NextFlushAt += FlushInterval;
         // make copy of all rcs
-        std::vector<RouterContact> copy;
+        std::vector<RemoteRC> copy;
+
         for (const auto& item : entries)
           copy.push_back(item.second.rc);
+
         // flush them to disk in one big job
         // TODO: split this up? idk maybe some day...
         disk([this, data = std::move(copy)]() {
@@ -119,7 +121,7 @@ namespace llarp
           if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
             return true;
 
-          RouterContact rc{};
+          RemoteRC rc{};
 
           if (not rc.read(f))
           {
@@ -137,7 +139,7 @@ namespace llarp
 
           // validate signature and purge entries with invalid signatures
           // load ones with valid signatures
-          if (rc.verify_signature())  // TODO: fix this after RouterContact -> RemoteRC
+          if (rc.verify())
             entries.emplace(rc.router_id(), rc);
           else
             purge.emplace(f);
@@ -175,10 +177,10 @@ namespace llarp
         [this, pk]() -> bool { return entries.find(pk) != entries.end(); });
   }
 
-  std::optional<RouterContact>
+  std::optional<RemoteRC>
   NodeDB::get_rc(RouterID pk) const
   {
-    return router.loop()->call_get([this, pk]() -> std::optional<RouterContact> {
+    return router.loop()->call_get([this, pk]() -> std::optional<RemoteRC> {
       const auto itr = entries.find(pk);
 
       if (itr == entries.end())
@@ -219,11 +221,12 @@ namespace llarp
   }
 
   void
-  NodeDB::put_rc(RouterContact rc)
+  NodeDB::put_rc(RemoteRC rc)
   {
     router.loop()->call([this, rc]() {
-      entries.erase(rc.router_id());
-      entries.emplace(rc.router_id(), rc);
+      const auto& rid = rc.router_id();
+      entries.erase(rid);
+      entries.emplace(rid, rc);
     });
   }
 
@@ -234,7 +237,7 @@ namespace llarp
   }
 
   void
-  NodeDB::put_rc_if_newer(RouterContact rc)
+  NodeDB::put_rc_if_newer(RemoteRC rc)
   {
     router.loop()->call([this, rc]() {
       auto itr = entries.find(rc.router_id());
@@ -267,32 +270,31 @@ namespace llarp
     });
   }
 
-  llarp::RouterContact
+  RemoteRC
   NodeDB::find_closest_to(llarp::dht::Key_t location) const
   {
-    return router.loop()->call_get([this, location]() {
-      llarp::RouterContact rc;
+    return router.loop()->call_get([this, location]() -> RemoteRC {
+      RemoteRC rc;
       const llarp::dht::XorMetric compare(location);
+
       VisitAll([&rc, compare](const auto& otherRC) {
-        if (rc.router_id().IsZero())
+        const auto& rid = rc.router_id();
+
+        if (rid.IsZero() || compare(dht::Key_t{otherRC.router_id()}, dht::Key_t{rid}))
         {
           rc = otherRC;
           return;
         }
-        if (compare(
-                llarp::dht::Key_t{otherRC.pubkey.as_array()},
-                llarp::dht::Key_t{rc.router_id().as_array()}))
-          rc = otherRC;
       });
       return rc;
     });
   }
 
-  std::vector<RouterContact>
+  std::vector<RemoteRC>
   NodeDB::find_many_closest_to(llarp::dht::Key_t location, uint32_t numRouters) const
   {
-    return router.loop()->call_get([this, location, numRouters]() {
-      std::vector<const RouterContact*> all;
+    return router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
+      std::vector<const RemoteRC*> all;
 
       all.reserve(entries.size());
       for (auto& entry : entries)
@@ -306,7 +308,7 @@ namespace llarp
             return compare(*a, *b);
           });
 
-      std::vector<RouterContact> closest;
+      std::vector<RemoteRC> closest;
       closest.reserve(numRouters);
       for (auto it = all.begin(); it != it_mid; ++it)
         closest.push_back(**it);

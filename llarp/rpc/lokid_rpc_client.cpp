@@ -51,7 +51,7 @@ namespace llarp::rpc
   {
     if (auto router = m_Router.lock())
     {
-      if (not router->IsServiceNode())
+      if (not router->is_service_node())
       {
         throw std::runtime_error("we cannot talk to lokid while not a service node");
       }

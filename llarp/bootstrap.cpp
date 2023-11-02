@@ -6,66 +6,65 @@
 
 namespace llarp
 {
-  void
-  BootstrapList::Clear()
+  bool
+  BootstrapList::bt_decode(std::string_view buf)
   {
-    clear();
+    try
+    {
+      oxenc::bt_list_consumer btlc{buf};
+
+      while (not btlc.is_finished())
+        emplace(btlc.consume_dict_consumer());
+    }
+    catch (...)
+    {
+      log::warning(logcat, "Unable to decode bootstrap RemoteRC");
+      return false;
+    }
+
+    return true;
   }
 
-  bool
-  BootstrapList::BDecode(llarp_buffer_t* buf)
+  std::string_view
+  BootstrapList::bt_encode() const
   {
-    return bencode_read_list(
-        [&](llarp_buffer_t* b, bool more) -> bool {
-          if (more)
-          {
-            RouterContact rc{};
-            if (not rc.BDecode(b))
-            {
-              LogError("invalid rc in bootstrap list: ", llarp::buffer_printer{*b});
-              return false;
-            }
-            emplace(std::move(rc));
-          }
-          return true;
-        },
-        buf);
-  }
+    oxenc::bt_list_producer btlp{};
 
-  bool
-  BootstrapList::BEncode(llarp_buffer_t* buf) const
-  {
-    return BEncodeWriteList(begin(), end(), buf);
+    for (const auto& it : *this)
+      btlp.append(it.bt_encode());
+
+    return btlp.view();
   }
 
   void
-  BootstrapList::AddFromFile(fs::path fpath)
+  BootstrapList::read_from_file(const fs::path& fpath)
   {
     bool isListFile = false;
+
+    if (std::ifstream inf(fpath.c_str(), std::ios::binary); inf.is_open())
     {
-      std::ifstream inf(fpath.c_str(), std::ios::binary);
-      if (inf.is_open())
-      {
-        const char ch = inf.get();
-        isListFile = ch == 'l';
-      }
+      const char ch = inf.get();
+      isListFile = ch == 'l';
     }
+
     if (isListFile)
     {
-      if (not BDecodeReadFile(fpath, *this))
+      auto content = util::file_to_string(fpath);
+
+      if (not bt_decode(content))
       {
         throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", fpath)};
       }
     }
     else
     {
-      RouterContact rc;
+      RemoteRC rc;
       if (not rc.read(fpath))
       {
         throw std::runtime_error{
-            fmt::format("failed to decode bootstrap RC, file='{}', rc={}", fpath, rc)};
+            fmt::format("failed to decode bootstrap RC, file='{}', rc={}", fpath, rc.to_string())};
       }
-      this->insert(rc);
+      insert(rc);
     }
   }
 }  // namespace llarp

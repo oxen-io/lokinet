@@ -34,14 +34,14 @@ namespace llarp::util
   /// Dumps binary string contents to disk. The file is overwritten if it already exists.  Throws
   /// on error.
   void
-  dump_file(const fs::path& filename, std::string_view contents);
+  buffer_to_file(const fs::path& filename, std::string_view contents);
 
   /// Same as above, but works via char-like buffer
   template <typename Char, std::enable_if_t<sizeof(Char) == 1, int> = 0>
   inline void
-  dump_file(const fs::path& filename, const Char* buffer, size_t buffer_size)
+  buffer_to_file(const fs::path& filename, const Char* buffer, size_t buffer_size)
   {
-    return dump_file(
+    return buffer_to_file(
         filename, std::string_view{reinterpret_cast<const char*>(buffer), buffer_size});
   }
 

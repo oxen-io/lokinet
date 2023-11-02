@@ -51,7 +51,7 @@ namespace llarp
     m_encKeyPath = deriveFile(our_enc_key_filename, config.router.m_encryptionKeyFile);
     m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.m_transportKeyFile);
 
-    RouterContact rc;
+    RemoteRC rc;
     bool exists = rc.read(m_rcPath);
     if (not exists and not genIfAbsent)
     {
@@ -61,7 +61,7 @@ namespace llarp
 
     // we need to back up keys if our self.signed doesn't appear to have a
     // valid signature
-    m_needBackup = (isSNode and not rc.verify_signature());
+    m_needBackup = (isSNode and not rc.verify());
 
     // if our RC file can't be verified, assume it is out of date (e.g. uses
     // older encryption) and needs to be regenerated. before doing so, backup

@@ -18,10 +18,10 @@
 #include <functional>
 #include <vector>
 
-namespace oxenc
-{
-  class bt_list_consumer;
-}  // namespace oxenc
+// namespace oxenc
+// {
+//   class bt_list_consumer;
+// }  // namespace oxenc
 
 /*
   - figure out where we do bt_encoding of RC's
@@ -42,17 +42,20 @@ namespace llarp
 
   using rc_time = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
 
+  static inline constexpr size_t NETID_SIZE{8};
+
   /// RouterContact
   struct RouterContact
   {
     static constexpr uint8_t RC_VERSION = 0;
 
     /// Constructs an empty RC
-    RouterContact() = default;
-    RouterContact(std::string)
-    {
-      log::error(logcat, "ERROR: SUPPLANT THIS CONSTRUCTOR");
-    }
+    // RouterContact() = default;
+
+    // RouterContact(std::string)
+    // {
+    //   log::error(logcat, "ERROR: SUPPLANT THIS CONSTRUCTOR");
+    // }
 
     // RouterContact(std::string buf);
 
@@ -119,11 +122,18 @@ namespace llarp
     // Lokinet version at the time the RC was produced
     std::array<uint8_t, 3> _router_version;
 
+    // In both Remote and Local RC's, the entire bt-encoded payload given at construction is
+    // emplaced here.
+    //
+    //   In a RemoteRC, this value will be held for the lifetime of the object
+    // s.t. it can be returned upon calls to ::bt_encode.
+    //   In a LocalRC, this value will be supplanted any time a mutator is invoked, requiring
+    // the re-signing of the payload.
+    ustring _payload;
+
    public:
     /// should we serialize the exit info?
     const static bool serializeExit = true;
-
-    ustring _signed_payload;
 
     util::StatusObject
     extract_status() const;
@@ -138,12 +148,15 @@ namespace llarp
     to_string() const
     {
       return fmt::format(
-        "[RC k={} updated={} v={} addr={}]",
-        _router_id,
-        _timestamp,
-        RC_VERSION,
-        _addr.to_string());
+          "[RC k={} updated={} v={} addr={}]",
+          _router_id.ToView(),
+          _timestamp.time_since_epoch().count(),
+          RC_VERSION,
+          _addr.to_string());
     }
+
+    bool
+    write(const fs::path& fname) const;
 
     /// On the wire we encode the data as a dict containing:
     /// ""  -- the RC format version, which must be == RouterContact::Version for us to attempt to
@@ -161,13 +174,11 @@ namespace llarp
     /// "v" -- lokinet version of the router; this is a three-byte packed value of
     ///        MAJOR, MINOR, PATCH, e.g. \x00\x0a\x03 for 0.10.3.
     /// "~" -- signature of all of the previous serialized data, signed by "p"
-    std::string
-    bt_encode() const;
-
-    virtual void
-    bt_encode(oxenc::bt_dict_producer& btdp) const
+    virtual ustring_view
+    bt_encode() const
     {
-      (void)btdp;
+      log::warning(logcat, "ERROR: SUPPLANT THIS METHOD");
+      return {};
     }
 
     bool
@@ -190,7 +201,7 @@ namespace llarp
     }
 
     virtual void
-    clear() 
+    clear()
     {}
 
     bool
@@ -225,19 +236,11 @@ namespace llarp
     }
 
     bool
-    read(const fs::path& fname);
-
-    bool
-    write(const fs::path& fname) const;
-
-    bool
     is_obsolete_bootstrap() const;
 
     void
     bt_load(oxenc::bt_dict_consumer& data);
-
   };
-
 
   /// Extension of RouterContact used to store a local "RC," and inserts a RouterContact by
   /// re-parsing and sending it out. This sub-class contains a pubkey and all the other attributes
@@ -246,24 +249,35 @@ namespace llarp
   /// Note: this class may be entirely superfluous, so it is used here as a placeholder until its
   /// marginal utility is determined. It may end up as a free-floating method that reads in
   /// parameters and outputs a bt-serialized string
-  struct LocalRC : public RouterContact
+  struct LocalRC final : public RouterContact
   {
    private:
     ustring _signature;
-
     const SecretKey _secret_key;
 
+    // TODO: fix these parameters
     void
-    bt_sign(oxenc::bt_dict_consumer& btdc);
-    
+    bt_sign(oxenc::bt_dict_producer& btdp);
+
+    void
+    bt_encode(oxenc::bt_dict_producer& btdp) const;
+
+   public:
+    LocalRC() = default;
+    explicit LocalRC(std::string payload, const SecretKey sk);
+    ~LocalRC() = default;
+
     void
     resign();
 
-   public:
-    LocalRC(std::string payload, const SecretKey sk);
+    ustring_view
+    bt_encode() const override;
 
-    void
-    bt_encode(oxenc::bt_dict_producer& btdp) const override;
+    ustring_view
+    view() const
+    {
+      return _payload;
+    }
 
     void
     clear() override
@@ -289,22 +303,22 @@ namespace llarp
     void
     set_addr(oxen::quic::Address new_addr)
     {
-      resign();
       _addr = std::move(new_addr);
+      resign();
     }
 
     void
     set_addr6(oxen::quic::Address new_addr)
     {
-      resign();
       _addr6 = std::move(new_addr);
+      resign();
     }
 
     void
     set_router_id(RouterID rid)
     {
-      resign();
       _router_id = std::move(rid);
+      resign();
     }
 
     void
@@ -328,24 +342,44 @@ namespace llarp
     }
   };
 
-
   /// Extension of RouterContact used in a "read-only" fashion. Parses the incoming RC to query
   /// the data in the constructor, eliminating the need for a ::verify method/
-  struct RemoteRC : public RouterContact
+  struct RemoteRC final : public RouterContact
   {
    private:
-    //
-
+    // TODO: fix these parameters
     void
-    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false);
+    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
 
-   public: 
-    RemoteRC(std::string payload);
+   public:
+    RemoteRC() = default;
+    RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
+    {}
+    RemoteRC(ustring_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
+    {
+      _payload = data;
+    }
+    explicit RemoteRC(oxenc::bt_dict_consumer btdc);
+    ~RemoteRC() = default;
 
-    // TODO: this method could use oxenc's append_encoded
-    void
-    bt_encode(oxenc::bt_dict_producer& btdp) const override;
-    
+    ustring_view
+    bt_encode() const override
+    {
+      return _payload;
+    }
+
+    std::string_view
+    view() const
+    {
+      return {reinterpret_cast<const char*>(_payload.data()), _payload.size()};
+    }
+
+    bool
+    verify() const;
+
+    bool
+    read(const fs::path& fname);
+
     void
     clear() override
     {
@@ -355,7 +389,6 @@ namespace llarp
       _timestamp = {};
       _router_version.fill(0);
     }
-
   };
 
   template <>
@@ -365,7 +398,7 @@ namespace llarp
   template <>
   constexpr inline bool IsToStringFormattable<LocalRC> = true;
 
-  using RouterLookupHandler = std::function<void(const std::vector<RouterContact>&)>;
+  using RouterLookupHandler = std::function<void(const std::vector<RemoteRC>&)>;
 }  // namespace llarp
 
 namespace std

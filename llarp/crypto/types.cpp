@@ -58,12 +58,6 @@ namespace llarp
   }
 
   bool
-  operator==(const RouterID& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
-
-  bool
   SecretKey::LoadFromFile(const fs::path& fname)
   {
     size_t sz;
@@ -124,17 +118,13 @@ namespace llarp
   bool
   SecretKey::SaveToFile(const fs::path& fname) const
   {
-    std::string tmp(128, 0);
-    llarp_buffer_t buf(tmp);
-    if (!bt_encode(&buf))
-      return false;
+    auto bte = bt_encode();
 
-    tmp.resize(buf.cur - buf.base);
     try
     {
-      util::dump_file(fname, tmp);
+      util::buffer_to_file(fname, bte);
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
       return false;
     }

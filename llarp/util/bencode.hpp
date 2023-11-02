@@ -389,7 +389,7 @@ namespace llarp
     tmp.resize(buf.cur - buf.base);
     try
     {
-      util::dump_file(fpath, tmp);
+      util::buffer_to_file(fpath, tmp);
     }
     catch (const std::exception& e)
     {

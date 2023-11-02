@@ -200,6 +200,7 @@ namespace llarp::service
         });
   }
 
+  // TODO: revisit once SRVRecords are straightened out
   void
   Endpoint::LookupServiceAsync(
       std::string name,
@@ -226,9 +227,9 @@ namespace llarp::service
 
       if (auto maybe_rc = nodedb->get_rc(router_id))
       {
-        result = maybe_rc->srvRecords;  // TODO: RouterContact has no SRV records
+        // result = maybe_rc->srvRecords;  // TODO: RouterContact has no SRV records
       }
-      
+
       resultHandler(std::move(result));
     };
 
@@ -756,22 +757,22 @@ namespace llarp::service
     return now >= next_pub;
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   Endpoint::GetHopsForBuild()
   {
     std::unordered_set<RouterID> exclude;
     ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
     const auto maybe =
-        router()->node_db()->GetRandom([exclude, r = router()](const auto& rc) -> bool {
-          return exclude.count(rc.pubkey) == 0
-              and not r->router_profiling().IsBadForPath(rc.pubkey);
+        router()->node_db()->GetRandom([exclude, r = router()](const RemoteRC& rc) -> bool {
+          const auto& rid = rc.router_id();
+          return exclude.count(rid) == 0 and not r->router_profiling().IsBadForPath(rid);
         });
     if (not maybe.has_value())
       return std::nullopt;
     return GetHopsForBuildWithEndpoint(maybe->router_id());
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   Endpoint::GetHopsForBuildWithEndpoint(RouterID endpoint)
   {
     return path::Builder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());

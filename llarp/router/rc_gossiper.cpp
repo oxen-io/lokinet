@@ -28,7 +28,7 @@ namespace llarp
   }
 
   bool
-  RCGossiper::IsOurRC(const RouterContact& rc) const
+  RCGossiper::IsOurRC(const LocalRC& rc) const
   {
     return rc.router_id() == rid;
   }
@@ -64,7 +64,7 @@ namespace llarp
   }
 
   bool
-  RCGossiper::GossipRC(const RouterContact& rc)
+  RCGossiper::GossipRC(const LocalRC& rc)
   {
     // only distribute public routers
     if (not rc.is_public_router())

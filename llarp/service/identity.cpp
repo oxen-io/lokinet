@@ -97,7 +97,7 @@ namespace llarp::service
       // write
       try
       {
-        util::dump_file(fname, tmp.data(), sz);
+        util::buffer_to_file(fname, tmp.data(), sz);
       }
       catch (const std::exception& e)
       {

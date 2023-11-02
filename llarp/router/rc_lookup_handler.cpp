@@ -66,7 +66,7 @@ namespace llarp
   void
   RCLookupHandler::get_rc(const RouterID& rid, RCRequestCallback callback, bool forceLookup)
   {
-    RouterContact remoteRC;
+    RemoteRC remoteRC;
 
     if (not forceLookup)
     {
@@ -101,8 +101,7 @@ namespace llarp
           throw;
         }
 
-        // TODO: replace this with construction of RemoteRC
-        RouterContact result{std::move(payload)};
+        RemoteRC result{std::move(payload)};
 
         if (callback)
           callback(result.router_id(), result, true);
@@ -203,7 +202,7 @@ namespace llarp
   }
 
   bool
-  RCLookupHandler::check_rc(const RouterContact& rc) const
+  RCLookupHandler::check_rc(const RemoteRC& rc) const
   {
     if (not is_session_allowed(rc.router_id()))
     {
@@ -211,16 +210,16 @@ namespace llarp
       return false;
     }
 
-    if (not rc.verify(llarp::time_now_ms()))  // TODO: fix this call after RouterContact -> RemoteRC
+    if (not rc.verify())
     {
-      LogWarn("RC for ", RouterID(rc.router_id()), " is invalid");
+      log::info(link_cat, "Invalid RC (rid: {})", rc.router_id());
       return false;
     }
 
     // update nodedb if required
     if (rc.is_public_router())
     {
-      LogDebug("Adding or updating RC for ", RouterID(rc.router_id()), " to nodedb and dht.");
+      log::info(link_cat, "Adding or updating RC (rid: {}) to nodeDB and DHT", rc.router_id());
       node_db->put_rc_if_newer(rc);
       contacts->put_rc_node_async(rc);
     }
@@ -247,29 +246,6 @@ namespace llarp
       rid = *itr;
       return true;
     });
-  }
-
-  bool
-  RCLookupHandler::check_renegotiate_valid(RouterContact newrc, RouterContact oldrc)
-  {
-    // mismatch of identity ?
-    if (newrc.router_id() != oldrc.router_id())
-      return false;
-
-    if (!is_session_allowed(newrc.router_id()))
-      return false;
-
-    auto func = [this, newrc] { check_rc(newrc); };
-    work_func(func);
-
-    // update dht if required
-    if (contacts->rc_nodes()->HasNode(dht::Key_t{newrc.router_id()}))
-    {
-      contacts->rc_nodes()->PutNode(newrc);
-    }
-
-    // TODO: check for other places that need updating the RC
-    return true;
   }
 
   void
@@ -337,7 +313,7 @@ namespace llarp
       return;
     }
     // service nodes gossip, not explore
-    if (contacts->router()->IsServiceNode())
+    if (contacts->router()->is_service_node())
       return;
 
     // explore via every connected peer
@@ -368,7 +344,7 @@ namespace llarp
       LinkManager* linkManager,
       service::Context* hiddenServiceContext,
       const std::unordered_set<RouterID>& strictConnectPubkeys,
-      const std::set<RouterContact>& bootstrapRCList,
+      const std::set<RemoteRC>& bootstrapRCList,
       bool isServiceNode_arg)
   {
     contacts = c;

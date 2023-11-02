@@ -409,10 +409,10 @@ namespace llarp
       bool
       HasExit() const;
 
-      std::optional<std::vector<RouterContact>>
+      std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() override;
 
-      std::optional<std::vector<RouterContact>>
+      std::optional<std::vector<RemoteRC>>
       GetHopsForBuildWithEndpoint(RouterID endpoint);
 
       void

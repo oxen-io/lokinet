@@ -69,13 +69,13 @@ namespace llarp::exit
     snode_blacklist.insert(std::move(snode));
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   BaseSession::GetHopsForBuild()
   {
     if (numHops == 1)
     {
       if (auto maybe = router->node_db()->get_rc(exit_router))
-        return std::vector<RouterContact>{*maybe};
+        return std::vector<RemoteRC>{*maybe};
       return std::nullopt;
     }
 
@@ -292,7 +292,7 @@ namespace llarp::exit
                 throw;
               }
 
-              RouterContact result{std::move(payload)};
+              RemoteRC result{std::move(payload)};
               r->node_db()->put_rc_if_newer(result);
               r->connect_to(result);
             }

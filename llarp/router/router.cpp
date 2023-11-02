@@ -199,7 +199,7 @@ namespace llarp
   void
   Router::Freeze()
   {
-    if (IsServiceNode())
+    if (is_service_node())
       return;
 
     for_each_connection(
@@ -209,7 +209,7 @@ namespace llarp
   void
   Router::Thaw()
   {
-    if (IsServiceNode())
+    if (is_service_node())
       return;
 
     std::unordered_set<RouterID> peer_pubkeys;
@@ -231,10 +231,10 @@ namespace llarp
   }
 
   void
-  Router::GossipRCIfNeeded(const RouterContact rc)
+  Router::GossipRCIfNeeded(const LocalRC rc)
   {
     /// if we are not a service node forget about gossip
-    if (not IsServiceNode())
+    if (not is_service_node())
       return;
     /// wait for random uptime
     if (std::chrono::milliseconds{Uptime()} < _randomStartDelay)
@@ -245,7 +245,7 @@ namespace llarp
   bool
   Router::GetRandomGoodRouter(RouterID& router)
   {
-    if (IsServiceNode())
+    if (is_service_node())
     {
       return _rc_lookup_handler.get_random_whitelist_router(router);
     }
@@ -271,7 +271,7 @@ namespace llarp
   }
 
   void
-  Router::connect_to(const RouterContact& rc)
+  Router::connect_to(const RemoteRC& rc)
   {
     _link_manager.connect_to(rc);
   }
@@ -314,7 +314,7 @@ namespace llarp
   {
     _encryption = _key_manager->encryptionKey;
 
-    if (IsServiceNode())
+    if (is_service_node())
     {
 #if defined(ANDROID) || defined(IOS)
       LogError("running a service node on mobile device is not possible.");
@@ -396,9 +396,9 @@ namespace llarp
 
     log::debug(logcat, "Configuring router");
 
-    is_service_node = conf.router.m_isRelay;
+    _is_service_node = conf.router.m_isRelay;
 
-    if (is_service_node)
+    if (_is_service_node)
     {
       rpc_addr = oxenmq::address(conf.lokid.lokidRPCAddr);
       _rpc_client = std::make_shared<rpc::LokidRpcClient>(_lmq, weak_from_this());
@@ -417,9 +417,9 @@ namespace llarp
     _node_db = std::move(nodedb);
 
     log::debug(
-        logcat, is_service_node ? "Running as a relay (service node)" : "Running as a client");
+        logcat, _is_service_node ? "Running as a relay (service node)" : "Running as a client");
 
-    if (is_service_node)
+    if (_is_service_node)
     {
       _rpc_client->ConnectAsync(rpc_addr);
     }
@@ -438,34 +438,10 @@ namespace llarp
     return true;
   }
 
-  /// called in disk worker thread
-  void
-  Router::HandleSaveRC() const
-  {
-    std::string fname = our_rc_file.string();
-    router_contact.write(fname.c_str());
-  }
-
   bool
-  Router::SaveRC()
+  Router::is_service_node() const
   {
-    LogDebug("verify RC signature");
-    if (!router_contact.verify(now()))  // TODO: RouterContact -> RemoteRC
-    {
-      Dump<RouterContact::MAX_RC_SIZE>(rc());
-      LogError("RC is invalid, not saving");
-      return false;
-    }
-    if (is_service_node)
-      _node_db->put_rc(router_contact);
-    queue_disk_io([&]() { HandleSaveRC(); });
-    return true;
-  }
-
-  bool
-  Router::IsServiceNode() const
-  {
-    return is_service_node;
+    return _is_service_node;
   }
 
   bool
@@ -507,7 +483,7 @@ namespace llarp
   bool
   Router::have_snode_whitelist() const
   {
-    return IsServiceNode() and _rc_lookup_handler.has_received_whitelist();
+    return is_service_node() and _rc_lookup_handler.has_received_whitelist();
   }
 
   bool
@@ -566,13 +542,13 @@ namespace llarp
   bool
   Router::update_rc()
   {
-    SecretKey nextOnionKey;
-    RouterContact nextRC = router_contact;
-    if (!nextRC.sign(identity())) // TODO: RouterContact -> LocalRC
-      return false;
-    router_contact = std::move(nextRC);
-    if (IsServiceNode())
-      return SaveRC();
+    router_contact.resign();
+    if (is_service_node())
+    {
+      _node_db->put_rc(router_contact.view());
+      queue_disk_io([&]() { router_contact.write(our_rc_file); });
+    }
+
     return true;
   }
 
@@ -626,12 +602,13 @@ namespace llarp
 
     auto& networkConfig = conf.network;
 
-    /// build a set of  strictConnectPubkeys (
+    /// build a set of  strictConnectPubkeys
     std::unordered_set<RouterID> strictConnectPubkeys;
+
     if (not networkConfig.m_strictConnect.empty())
     {
       const auto& val = networkConfig.m_strictConnect;
-      if (IsServiceNode())
+      if (is_service_node())
         throw std::runtime_error("cannot use strict-connect option as service node");
       if (val.size() < 2)
         throw std::runtime_error(
@@ -660,7 +637,7 @@ namespace llarp
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
-      bootstrap_rc_list.AddFromFile(router);
+      bootstrap_rc_list.read_from_file(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
@@ -668,37 +645,10 @@ namespace llarp
       bootstrap_rc_list.emplace(rc);
     }
 
-    // in case someone has an old bootstrap file and is trying to use a bootstrap
-    // that no longer exists
-    auto clearBadRCs = [this]() {
-      for (auto it = bootstrap_rc_list.begin(); it != bootstrap_rc_list.end();)
-      {
-        if (it->is_obsolete_bootstrap())
-          log::warning(logcat, "ignoring obsolete boostrap RC: {}", RouterID{it->router_id()});
-        else if (not it->verify(now())) // TODO: RouterContact -> RemoteRC
-          log::warning(logcat, "ignoring invalid bootstrap RC: {}", RouterID{it->router_id()});
-        else
-        {
-          ++it;
-          continue;
-        }
-        // we are in one of the above error cases that we warned about:
-        it = bootstrap_rc_list.erase(it);
-      }
-    };
-
-    clearBadRCs();
-
     if (bootstrap_rc_list.empty() and not conf.bootstrap.seednode)
     {
       auto fallbacks = llarp::load_bootstrap_fallbacks();
-      if (auto itr = fallbacks.find(router_contact.netID.ToString()); itr != fallbacks.end())
-      {
-        bootstrap_rc_list = itr->second;
-        log::debug(
-            logcat, "loaded {} default fallback bootstrap routers", bootstrap_rc_list.size());
-        clearBadRCs();
-      }
+
       if (bootstrap_rc_list.empty() and not conf.bootstrap.seednode)
       {
         // empty after trying fallback, if set
@@ -709,6 +659,24 @@ namespace llarp
             defaultBootstrapFile);
         throw std::runtime_error("No bootstrap nodes available.");
       }
+    }
+
+    // in case someone has an old bootstrap file and is trying to use a bootstrap
+    // that no longer exists
+    for (auto it = bootstrap_rc_list.begin(); it != bootstrap_rc_list.end();)
+    {
+      if (it->is_obsolete_bootstrap())
+        log::warning(logcat, "ignoring obsolete boostrap RC: {}", it->router_id());
+      else if (not it->verify())
+        log::warning(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
+      else
+      {
+        ++it;
+        continue;
+      }
+
+      // we are in one of the above error cases that we warned about:
+      it = bootstrap_rc_list.erase(it);
     }
 
     if (conf.bootstrap.seednode)
@@ -727,10 +695,10 @@ namespace llarp
         &_hidden_service_context,
         strictConnectPubkeys,
         bootstrap_rc_list,
-        is_service_node);
+        _is_service_node);
 
     // FIXME: kludge for now, will be part of larger cleanup effort.
-    if (is_service_node)
+    if (_is_service_node)
       InitInboundLinks();
     else
       InitOutboundLinks();
@@ -759,7 +727,7 @@ namespace llarp
     }
 
     // API config
-    if (not IsServiceNode())
+    if (not is_service_node())
     {
       hidden_service_context().AddEndpoint(conf);
     }
@@ -768,18 +736,12 @@ namespace llarp
   }
 
   bool
-  Router::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
-  {
-    return _rc_lookup_handler.check_renegotiate_valid(newrc, oldrc);
-  }
-
-  bool
   Router::IsBootstrapNode(const RouterID r) const
   {
     return std::count_if(
                bootstrap_rc_list.begin(),
                bootstrap_rc_list.end(),
-               [r](const RouterContact& rc) -> bool { return rc.router_id() == r; })
+               [r](const RemoteRC& rc) -> bool { return rc.router_id() == r; })
         > 0;
   }
 
@@ -797,7 +759,7 @@ namespace llarp
     LogInfo(node_db()->num_loaded(), " RCs loaded");
     LogInfo(bootstrap_rc_list.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
-    if (IsServiceNode())
+    if (is_service_node())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
       LogInfo(ToString(router_contact.age(now)), " since we last updated our RC");
@@ -814,7 +776,7 @@ namespace llarp
     std::string status;
     auto out = std::back_inserter(status);
     fmt::format_to(out, "v{}", fmt::join(llarp::LOKINET_VERSION, "."));
-    if (IsServiceNode())
+    if (is_service_node())
     {
       fmt::format_to(
           out,
@@ -890,7 +852,7 @@ namespace llarp
     _rc_lookup_handler.periodic_update(now);
 
     const bool has_whitelist = _rc_lookup_handler.has_received_whitelist();
-    const bool is_snode = IsServiceNode();
+    const bool is_snode = is_service_node();
     const bool is_decommed = appears_decommed();
     bool should_gossip = appears_funded();
 
@@ -916,7 +878,7 @@ namespace llarp
       GossipRCIfNeeded(router_contact);
     }
     // remove RCs for nodes that are no longer allowed by network policy
-    node_db()->RemoveIf([&](const RouterContact& rc) -> bool {
+    node_db()->RemoveIf([&](const RemoteRC& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
       if (IsBootstrapNode(rc.router_id()))
       {
@@ -1057,30 +1019,10 @@ namespace llarp
     _last_tick = llarp::time_now_ms();
   }
 
-  void
-  Router::modify_rc(std::function<std::optional<RouterContact>(RouterContact)> modify)
-  {
-    if (auto maybe = modify(rc()))
-    {
-      router_contact = *maybe;
-      update_rc();
-      _rcGossiper.GossipRC(rc());
-    }
-  }
-
   bool
-  Router::GetRandomConnectedRouter(RouterContact& result) const
+  Router::GetRandomConnectedRouter(RemoteRC& result) const
   {
     return _link_manager.get_random_connected(result);
-  }
-
-  void
-  Router::HandleDHTLookupForExplore(RouterID /*remote*/, const std::vector<RouterContact>& results)
-  {
-    for (const auto& rc : results)
-    {
-      _rc_lookup_handler.check_rc(rc);
-    }
   }
 
   void
@@ -1200,7 +1142,7 @@ namespace llarp
     _route_poker->start();
     is_running.store(true);
     _started_at = now();
-    if (IsServiceNode())
+    if (is_service_node())
     {
       // do service node testing if we are in service node whitelist mode
       _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
@@ -1428,7 +1370,7 @@ namespace llarp
   bool
   Router::HasClientExit() const
   {
-    if (IsServiceNode())
+    if (is_service_node())
       return false;
     const auto& ep = hidden_service_context().GetDefault();
     return ep and ep->HasExit();

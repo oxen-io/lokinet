@@ -30,13 +30,13 @@ namespace llarp
   //   }
   // }
 
-  std::string
-  RouterContact::bt_encode() const
-  {
-    oxenc::bt_dict_producer btdp;
-    bt_encode(btdp);
-    return std::move(btdp).str();
-  }
+  // std::string
+  // RouterContact::bt_encode() const
+  // {
+  //   oxenc::bt_dict_producer btdp;
+  //   bt_encode(btdp);
+  //   return std::move(btdp).str();
+  // }
 
   void
   RouterContact::bt_load(oxenc::bt_dict_consumer& data)
@@ -105,6 +105,23 @@ namespace llarp
 
     for (int i = 0; i < 3; i++)
       _router_version[i] = ver[i];
+  }
+
+  bool
+  RouterContact::write(const fs::path& fname) const
+  {
+    auto bte = bt_encode();
+
+    try
+    {
+      util::buffer_to_file(fname, bte.data(), bte.size());
+    }
+    catch (const std::exception& e)
+    {
+      log::error(logcat, "Failed to write RC to {}: {}", fname, e.what());
+      return false;
+    }
+    return true;
   }
 
   // std::string
@@ -208,7 +225,7 @@ namespace llarp
     (void)key;
 
     // TOFIX: fuck everything about llarp_buffer_t
-    
+
     // if (!BEncodeMaybeReadDictEntry("a", addr, read, key, buf))
     //   return false;
 
@@ -298,43 +315,5 @@ namespace llarp
         return true;
     }
     return false;
-  }
-
-  bool
-  RouterContact::write(const fs::path& fname) const
-  {
-    std::array<byte_t, MAX_RC_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
-
-    auto bte = bt_encode();
-    buf.write(bte.begin(), bte.end());
-
-    try
-    {
-      util::dump_file(fname, tmp.data(), buf.cur - buf.base);
-    }
-    catch (const std::exception& e)
-    {
-      log::error(logcat, "Failed to write RC to {}: {}", fname, e.what());
-      return false;
-    }
-    return true;
-  }
-
-  bool
-  RouterContact::read(const fs::path& fname)
-  {
-    std::array<byte_t, MAX_RC_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
-    try
-    {
-      util::file_to_buffer(fname, tmp.data(), tmp.size());
-    }
-    catch (const std::exception& e)
-    {
-      log::error(logcat, "Failed to read RC from {}: {}", fname, e.what());
-      return false;
-    }
-    return BDecode(&buf);
   }
 }  // namespace llarp

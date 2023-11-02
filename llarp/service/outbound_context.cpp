@@ -350,7 +350,7 @@ namespace llarp::service
     return false;
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   OutboundContext::GetHopsForBuild()
   {
     if (next_intro.router.IsZero())

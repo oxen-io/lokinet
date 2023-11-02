@@ -52,7 +52,7 @@ namespace llarp::util
   }
 
   void
-  dump_file(const fs::path& filename, std::string_view contents)
+  buffer_to_file(const fs::path& filename, std::string_view contents)
   {
     fs::ofstream out;
     out.exceptions(std::ifstream::failbit | std::ifstream::badbit);

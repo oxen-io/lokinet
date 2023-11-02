@@ -10,17 +10,19 @@ namespace llarp
   load_bootstrap_fallbacks()
   {
     std::unordered_map<std::string, BootstrapList> fallbacks;
-    using init_list = std::initializer_list<std::pair<std::string, std::string_view>>;
-    // clang-format off
-    for (const auto& [network, bootstrap] : init_list{
-      //
-    })
-    // clang-format on
+
+    for (const auto& [network, bootstrap] :
+         std::initializer_list<std::pair<std::string, std::string_view>>{
+             //
+         })
     {
-      llarp_buffer_t buf{bootstrap.data(), bootstrap.size()};
+      if (network != RouterContact::ACTIVE_NETID)
+        continue;
+
       auto& bsl = fallbacks[network];
-      bsl.BDecode(&buf);
+      bsl.bt_decode(bootstrap);
     }
+
     return fallbacks;
   }
 }  // namespace llarp
