@@ -67,8 +67,7 @@ namespace llarp
     verify(const PubKey&, ustring_view, ustring_view);
     bool
     verify(const PubKey&, uint8_t*, size_t, const Signature&);
-    bool 
-    verify(ustring_view, ustring_view, ustring_view);
+    bool verify(ustring_view, ustring_view, ustring_view);
     bool
     verify(uint8_t*, uint8_t*, size_t, uint8_t*);
 

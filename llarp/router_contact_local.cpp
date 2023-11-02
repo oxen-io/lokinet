@@ -11,8 +11,7 @@
 
 namespace llarp
 {
-  LocalRC::LocalRC(std::string payload, const SecretKey sk) : 
-      _secret_key{std::move(sk)}
+  LocalRC::LocalRC(std::string payload, const SecretKey sk) : _secret_key{std::move(sk)}
   {
     _router_id = llarp::seckey_to_pubkey(_secret_key);
 
@@ -20,7 +19,27 @@ namespace llarp
     {
       oxenc::bt_dict_consumer btdc{payload};
       bt_load(btdc);
-      bt_sign(btdc);
+
+      btdc.require_signature("~", [this](ustring_view msg, ustring_view sig) {
+        if (sig.size() != 64)
+          throw std::runtime_error{"Invalid signature: not 64 bytes"};
+
+        if (is_expired(time_now_ms()))
+          throw std::runtime_error{"Unable to verify expired RemoteRC!"};
+
+        // TODO: revisit if this is needed; detail from previous implementation
+        const auto* net = net::Platform::Default_ptr();
+
+        if (net->IsBogon(addr().in4()) and BLOCK_BOGONS)
+        {
+          auto err = "Unable to verify expired RemoteRC!";
+          log::info(logcat, err);
+          throw std::runtime_error{err};
+        }
+
+        if (not crypto::verify(router_id(), msg, sig))
+          throw std::runtime_error{"Failed to verify RemoteRC"};
+      });
     }
     catch (const std::exception& e)
     {
@@ -30,17 +49,29 @@ namespace llarp
   }
 
   void
-  LocalRC::bt_sign(oxenc::bt_dict_consumer& btdc)
+  LocalRC::bt_sign(oxenc::bt_dict_producer& btdp)
   {
     _signature.clear();
 
-    btdc.require_signature("~", [&](ustring_view msg, ustring_view s) {
-      if (!crypto::sign(const_cast<unsigned char*>(s.data()), _secret_key, msg))
+    btdp.append_signature("~", [this](ustring_view to_sign) {
+      std::array<unsigned char, 64> sig;
+
+      if (!crypto::sign(const_cast<unsigned char*>(sig.data()), _secret_key, to_sign))
         throw std::runtime_error{"Failed to sign RC"};
 
-      _signature = s;
-      _signed_payload = msg;
+      _signature = {sig.data(), sig.size()};
+      return sig;
     });
+
+    _payload = btdp.view<unsigned char>();
+  }
+
+  ustring_view
+  LocalRC::bt_encode() const
+  {
+    oxenc::bt_dict_producer btdp;
+    bt_encode(btdp);
+    return btdp.view<unsigned char>();
   }
 
   void
@@ -86,12 +117,12 @@ namespace llarp
     btdp.append(
         "v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
 
-    btdp.append_signature("~", [&](ustring_view to_sign) {
+    btdp.append_signature("~", [this](ustring_view to_sign) {
       std::array<unsigned char, 64> sig;
 
       if (!crypto::sign(sig.data(), _secret_key, to_sign))
         throw std::runtime_error{"Failed to sign LocalRC"};
-      
+
       return sig;
     });
   }
@@ -99,10 +130,9 @@ namespace llarp
   void
   LocalRC::resign()
   {
-    oxenc::bt_dict_consumer btdc{_signed_payload};
-    bt_sign(btdc);
-
-    // DISCUSS: should we also update the timestamp when we re-sign?
-    //  -> Is the timestamp referring to signing time or time the RC was originally created?
+    set_systime_timestamp();
+    oxenc::bt_dict_producer btdp;
+    bt_encode(btdp);
+    bt_sign(btdp);
   }
 }  // namespace llarp

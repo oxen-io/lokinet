@@ -64,9 +64,9 @@ namespace llarp
                 + "' for mainnet, 'gamma' for testnet.",
         },
         [this](std::string arg) {
-          if (arg.size() > NetID::size())
+          if (arg.size() > NETID_SIZE)
             throw std::invalid_argument{
-                fmt::format("netid is too long, max length is {}", NetID::size())};
+                fmt::format("netid is too long, max length is {}", NETID_SIZE)};
 
           m_netId = std::move(arg);
         });
@@ -1322,7 +1322,7 @@ namespace llarp
   }
 
   bool
-  PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
+  PeerSelectionConfig::Acceptable(const std::set<RemoteRC>& rcs) const
   {
     if (m_UniqueHopsNetmaskSize == 0)
       return true;
@@ -1530,7 +1530,7 @@ namespace llarp
     // open a filestream
     try
     {
-      util::dump_file(confFile, confStr);
+      util::buffer_to_file(confFile, confStr);
     }
     catch (const std::exception& e)
     {

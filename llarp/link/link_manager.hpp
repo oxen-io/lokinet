@@ -52,7 +52,8 @@ namespace llarp
 
       // TODO: see which of these is actually useful and delete the other
       std::shared_ptr<link::Connection>
-      get_conn(const RouterContact&) const;
+      get_conn(const RemoteRC&) const;
+
       std::shared_ptr<link::Connection>
       get_conn(const RouterID&) const;
 
@@ -66,12 +67,11 @@ namespace llarp
       num_connected(bool clients_only) const;
 
       bool
-      get_random_connection(RouterContact& router) const;
+      get_random_connection(RemoteRC& router) const;
 
       template <typename... Opt>
       bool
-      establish_connection(
-          const oxen::quic::Address& remote, const RouterContact& rc, Opt&&... opts);
+      establish_connection(const oxen::quic::Address& remote, const RemoteRC& rc, Opt&&... opts);
 
       void
       for_each_connection(std::function<void(link::Connection&)> func);
@@ -239,7 +239,7 @@ namespace llarp
     connect_to(const RouterID& router);
 
     void
-    connect_to(const RouterContact& rc);
+    connect_to(const RemoteRC& rc);
 
     void
     close_connection(RouterID rid);
@@ -257,7 +257,7 @@ namespace llarp
     get_num_connected_clients() const;
 
     bool
-    get_random_connected(RouterContact& router) const;
+    get_random_connected(RemoteRC& router) const;
 
     void
     check_persisting_conns(llarp_time_t now);
@@ -364,7 +364,7 @@ namespace llarp
     template <typename... Opt>
     bool
     Endpoint::establish_connection(
-        const oxen::quic::Address& remote, const RouterContact& rc, Opt&&... opts)
+        const oxen::quic::Address& remote, const RemoteRC& rc, Opt&&... opts)
     {
       try
       {

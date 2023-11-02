@@ -117,7 +117,7 @@ namespace llarp
   bool
   RoutePoker::is_enabled() const
   {
-    if (router.IsServiceNode())
+    if (router.is_service_node())
       return false;
     if (const auto& conf = router.config())
       return conf->network.m_EnableRoutePoker;

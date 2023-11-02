@@ -18,7 +18,7 @@ namespace llarp
   namespace link
   {
     std::shared_ptr<link::Connection>
-    Endpoint::get_conn(const RouterContact& rc) const
+    Endpoint::get_conn(const RemoteRC& rc) const
     {
       if (auto itr = conns.find(rc.router_id()); itr != conns.end())
         return itr->second;
@@ -83,7 +83,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::get_random_connection(RouterContact& router) const
+    Endpoint::get_random_connection(RemoteRC& router) const
     {
       if (const auto size = conns.size(); size)
       {
@@ -301,7 +301,7 @@ namespace llarp
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
   void
-  LinkManager::connect_to(const RouterContact& rc)
+  LinkManager::connect_to(const RemoteRC& rc)
   {
     if (auto conn = ep.get_conn(rc.router_id()); conn)
     {
@@ -451,7 +451,7 @@ namespace llarp
   }
 
   bool
-  LinkManager::get_random_connected(RouterContact& router) const
+  LinkManager::get_random_connected(RemoteRC& router) const
   {
     return ep.get_random_connection(router);
   }
@@ -487,7 +487,9 @@ namespace llarp
 
     do
     {
-      auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
+      auto filter = [exclude](const auto& rc) -> bool {
+        return exclude.count(rc.router_id()) == 0;
+      };
 
       if (auto maybe_other = node_db->GetRandom(filter))
       {
@@ -654,7 +656,7 @@ namespace llarp
         }
         else
         {
-          m.respond(serialize_response({{"RC", closest_rc.bt_encode()}}));
+          m.respond(serialize_response({{"RC", closest_rc.view()}}));
         }
       }
       else if (not is_iterative)
@@ -720,7 +722,7 @@ namespace llarp
 
     if (m)
     {
-      _router.node_db()->put_rc_if_newer(RouterContact{payload});
+      _router.node_db()->put_rc_if_newer(RemoteRC{payload});
     }
     else
     {

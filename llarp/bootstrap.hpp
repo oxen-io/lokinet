@@ -9,19 +9,22 @@
 
 namespace llarp
 {
-  struct BootstrapList final : public std::set<RouterContact>
+  struct BootstrapList final : public std::set<RemoteRC>
   {
     bool
-    BDecode(llarp_buffer_t* buf);
+    bt_decode(std::string_view buf);
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
-
-    void
-    AddFromFile(fs::path fpath);
+    std::string_view
+    bt_encode() const;
 
     void
-    Clear();
+    read_from_file(const fs::path& fpath);
+
+    void
+    clear_list()
+    {
+      clear();
+    }
   };
 
   std::unordered_map<std::string, BootstrapList>

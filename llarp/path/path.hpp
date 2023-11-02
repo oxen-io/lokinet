@@ -69,7 +69,7 @@ namespace llarp
 
       Path(
           Router* rtr,
-          const std::vector<RouterContact>& routers,
+          const std::vector<RemoteRC>& routers,
           std::weak_ptr<PathSet> parent,
           PathRole startingRoles,
           std::string shortName);

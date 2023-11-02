@@ -50,9 +50,6 @@ namespace llarp
   bool
   operator==(const PubKey& lhs, const RouterID& rhs);
 
-  bool
-  operator==(const RouterID& lhs, const PubKey& rhs);
-
   struct PrivateKey;
 
   /// Stores a sodium "secret key" value, which is actually the seed

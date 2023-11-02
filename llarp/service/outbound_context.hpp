@@ -152,7 +152,7 @@ namespace llarp::service
     void
     HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
 
-    std::optional<std::vector<RouterContact>>
+    std::optional<std::vector<RemoteRC>>
     GetHopsForBuild() override;
 
     std::string

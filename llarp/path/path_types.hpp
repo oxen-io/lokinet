@@ -26,7 +26,7 @@ namespace llarp
       /// path id
       PathID_t txID, rxID;
       // router contact of router
-      RouterContact rc;
+      RemoteRC rc;
       // temp public encryption key
       SecretKey commkey;
       /// shared secret at this hop

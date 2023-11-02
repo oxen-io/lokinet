@@ -19,8 +19,6 @@
 
 namespace llarp
 {
-  static auto logcat = llarp::log::Cat("llarp-context");
-
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
@@ -163,7 +161,7 @@ namespace llarp
 #ifndef _WIN32
     if (sig == SIGUSR1)
     {
-      if (router and not router->IsServiceNode())
+      if (router and not router->is_service_node())
       {
         LogInfo("SIGUSR1: resetting network state");
         router->Thaw();
