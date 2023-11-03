@@ -92,7 +92,7 @@ namespace llarp::handlers
         // tunnel.
         return to.getIP() != m_OurIP;
       }
-      else if (auto maybe_addr = m_Config.m_QueryBind)
+      else if (auto maybe_addr = m_Config.query_bind)
       {
         const auto& addr = *maybe_addr;
         // omit traffic to and from our dns socket
@@ -116,7 +116,7 @@ namespace llarp::handlers
     explicit TunDNS(TunEndpoint* ep, const llarp::DnsConfig& conf)
         : dns::Server{ep->router()->loop(), conf, 0}
         , m_Endpoint{ep}
-        , m_QueryBind{conf.m_QueryBind}
+        , m_QueryBind{conf.query_bind}
         , m_OurIP{ToNet(ep->GetIfAddr())}
     {}
 
@@ -144,7 +144,7 @@ namespace llarp::handlers
   TunEndpoint::SetupDNS()
   {
     const auto& info = GetVPNInterface()->Info();
-    if (m_DnsConfig.m_raw_dns)
+    if (m_DnsConfig.raw)
     {
       auto dns = std::make_shared<TunDNS>(this, m_DnsConfig);
       m_DNS = dns;
@@ -166,7 +166,7 @@ namespace llarp::handlers
     m_DNS->AddResolver(weak_from_this());
     m_DNS->Start();
 
-    if (m_DnsConfig.m_raw_dns)
+    if (m_DnsConfig.raw)
     {
       if (auto vpn = router()->vpn_platform())
       {
@@ -209,17 +209,17 @@ namespace llarp::handlers
     obj["ifname"] = m_IfName;
 
     std::vector<std::string> upstreamRes;
-    for (const auto& ent : m_DnsConfig.m_upstreamDNS)
+    for (const auto& ent : m_DnsConfig.upstream_dns)
       upstreamRes.emplace_back(ent.ToString());
     obj["ustreamResolvers"] = upstreamRes;
 
     std::vector<std::string> localRes;
-    for (const auto& ent : m_DnsConfig.m_bind)
+    for (const auto& ent : m_DnsConfig.bind_addr)
       localRes.emplace_back(ent.ToString());
     obj["localResolvers"] = localRes;
 
     // for backwards compat
-    if (not m_DnsConfig.m_bind.empty())
+    if (not m_DnsConfig.bind_addr.empty())
       obj["localResolver"] = localRes[0];
 
     util::StatusObject ips{};
@@ -266,7 +266,7 @@ namespace llarp::handlers
   bool
   TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
   {
-    if (conf.m_reachable)
+    if (conf.is_reachable)
     {
       _publish_introset = true;
       log::info(link_cat, "TunEndpoint setting to be reachable by default");
@@ -277,23 +277,23 @@ namespace llarp::handlers
       log::info(link_cat, "TunEndpoint setting to be not reachable by default");
     }
 
-    if (conf.m_AuthType == service::AuthType::eAuthTypeFile)
+    if (conf.auth_type == service::AuthType::FILE)
     {
-      _auth_policy = service::MakeFileAuthPolicy(router(), conf.m_AuthFiles, conf.m_AuthFileType);
+      _auth_policy = service::make_file_auth_policy(router(), conf.auth_files, conf.auth_file_type);
     }
-    else if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
+    else if (conf.auth_type != service::AuthType::NONE)
     {
       std::string url, method;
-      if (conf.m_AuthUrl.has_value() and conf.m_AuthMethod.has_value())
+      if (conf.auth_url.has_value() and conf.auth_method.has_value())
       {
-        url = *conf.m_AuthUrl;
-        method = *conf.m_AuthMethod;
+        url = *conf.auth_url;
+        method = *conf.auth_method;
       }
       auto auth = std::make_shared<rpc::EndpointAuthRPC>(
           url,
           method,
-          conf.m_AuthWhitelist,
-          conf.m_AuthStaticTokens,
+          conf.auth_whitelist,
+          conf.auth_static_tokens,
           router()->lmq(),
           shared_from_this());
       auth->Start();
@@ -301,25 +301,25 @@ namespace llarp::handlers
     }
 
     m_DnsConfig = dnsConf;
-    m_TrafficPolicy = conf.m_TrafficPolicy;
-    m_OwnedRanges = conf.m_OwnedRanges;
+    m_TrafficPolicy = conf.traffic_policy;
+    m_OwnedRanges = conf.owned_ranges;
 
-    m_BaseV6Address = conf.m_baseV6Address;
+    m_BaseV6Address = conf.base_ipv6_addr;
 
-    if (conf.m_PathAlignmentTimeout)
+    if (conf.path_alignment_timeout)
     {
-      m_PathAlignmentTimeout = *conf.m_PathAlignmentTimeout;
+      m_PathAlignmentTimeout = *conf.path_alignment_timeout;
     }
     else
       m_PathAlignmentTimeout = service::Endpoint::PathAlignmentTimeout();
 
-    for (const auto& item : conf.m_mapAddrs)
+    for (const auto& item : conf.map_addrs)
     {
       if (not MapAddress(item.second, item.first, false))
         return false;
     }
 
-    m_IfName = conf.m_ifname;
+    m_IfName = conf.if_name;
     if (m_IfName.empty())
     {
       const auto maybe = router()->net().FindFreeTun();
@@ -328,7 +328,7 @@ namespace llarp::handlers
       m_IfName = *maybe;
     }
 
-    m_OurRange = conf.m_ifaddr;
+    m_OurRange = conf.if_addr;
     if (!m_OurRange.addr.h)
     {
       const auto maybe = router()->net().FindFreeRange();
@@ -342,7 +342,7 @@ namespace llarp::handlers
     m_OurIP = m_OurRange.addr;
     m_UseV6 = false;
 
-    m_PersistAddrMapFile = conf.m_AddrMapPersistFile;
+    m_PersistAddrMapFile = conf.addr_map_persist_file;
     if (m_PersistAddrMapFile)
     {
       const auto& file = *m_PersistAddrMapFile;

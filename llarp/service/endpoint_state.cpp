@@ -5,12 +5,12 @@ namespace llarp::service
   bool
   EndpointState::Configure(const NetworkConfig& conf)
   {
-    if (conf.m_keyfile.has_value())
-      key_file = conf.m_keyfile->string();
-    snode_blacklist = conf.m_snodeBlacklist;
-    is_exit_enabled = conf.m_AllowExit;
+    if (conf.keyfile.has_value())
+      key_file = conf.keyfile->string();
+    snode_blacklist = conf.snode_blacklist;
+    is_exit_enabled = conf.allow_exit;
 
-    for (const auto& record : conf.m_SRVRecords)
+    for (const auto& record : conf.srv_records)
     {
       local_introset.SRVs.push_back(record.toTuple());
     }

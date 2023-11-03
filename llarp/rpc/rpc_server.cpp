@@ -98,7 +98,7 @@ namespace llarp::rpc
       : m_LMQ{std::move(lmq)}, m_Router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
   {
     // copied logic loop as placeholder
-    for (const auto& addr : r.config()->api.m_rpcBindAddresses)
+    for (const auto& addr : r.config()->api.rpc_bind_addrs)
     {
       m_LMQ->listen_plain(addr.zmq_address());
       LogInfo("Bound RPC server to ", addr.full_address());
@@ -566,10 +566,10 @@ namespace llarp::rpc
 
         auto parser = ConfigParser();
 
-        if (parser.LoadNewFromStr(config.request.ini))
+        if (parser.load_new_from_str(config.request.ini))
         {
-          parser.Filename(conf_d / (config.request.filename));
-          parser.SaveNew();
+          parser.set_filename(conf_d / (config.request.filename));
+          parser.save_new();
         }
       }
       catch (std::exception& e)

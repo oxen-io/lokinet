@@ -11,45 +11,45 @@
 namespace llarp
 {
   bool
-  ConfigParser::LoadFile(const fs::path& fname)
+  ConfigParser::load_file(const fs::path& fname)
   {
     try
     {
-      m_Data = util::file_to_string(fname);
+      _data = util::file_to_string(fname);
     }
     catch (const std::exception& e)
     {
       return false;
     }
-    if (m_Data.empty())
+    if (_data.empty())
       return false;
 
-    m_FileName = fname;
-    return Parse();
+    _filename = fname;
+    return parse();
   }
 
   bool
-  ConfigParser::LoadNewFromStr(std::string_view str)
+  ConfigParser::load_new_from_str(std::string_view str)
   {
-    m_Data.resize(str.size());
-    std::copy(str.begin(), str.end(), m_Data.begin());
-    return ParseAll();
+    _data.resize(str.size());
+    std::copy(str.begin(), str.end(), _data.begin());
+    return parse_all();
   }
 
   bool
-  ConfigParser::LoadFromStr(std::string_view str)
+  ConfigParser::load_from_str(std::string_view str)
   {
-    m_Data.resize(str.size());
-    std::copy(str.begin(), str.end(), m_Data.begin());
-    return Parse();
+    _data.resize(str.size());
+    std::copy(str.begin(), str.end(), _data.begin());
+    return parse();
   }
 
   void
-  ConfigParser::Clear()
+  ConfigParser::clear()
   {
-    m_Overrides.clear();
-    m_Config.clear();
-    m_Data.clear();
+    _overrides.clear();
+    _config.clear();
+    _data.clear();
   }
 
   static bool
@@ -62,19 +62,19 @@ namespace llarp
   /// ParseAll() is only used by RPC endpoint 'config' for
   /// reading new .ini files from string and writing them
   bool
-  ConfigParser::ParseAll()
+  ConfigParser::parse_all()
   {
     std::list<std::string_view> lines;
     {
-      auto itr = m_Data.begin();
+      auto itr = _data.begin();
       // split into lines
-      while (itr != m_Data.end())
+      while (itr != _data.end())
       {
         auto beg = itr;
-        while (itr != m_Data.end() && *itr != '\n' && *itr != '\r')
+        while (itr != _data.end() && *itr != '\n' && *itr != '\r')
           ++itr;
         lines.emplace_back(std::addressof(*beg), std::distance(beg, itr));
-        if (itr == m_Data.end())
+        if (itr == _data.end())
           break;
         ++itr;
       }
@@ -116,34 +116,34 @@ namespace llarp
         if (k.empty())
         {
           throw std::runtime_error(
-              fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+              fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
         }
-        LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
-        m_Config[std::string{sectName}].emplace(k, v);
+        LogDebug(_filename, ": [", sectName, "]:", k, "=", v);
+        _config[std::string{sectName}].emplace(k, v);
       }
       else  // malformed?
       {
         throw std::runtime_error(
-            fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+            fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
       }
     }
     return true;
   }
 
   bool
-  ConfigParser::Parse()
+  ConfigParser::parse()
   {
     std::list<std::string_view> lines;
     {
-      auto itr = m_Data.begin();
+      auto itr = _data.begin();
       // split into lines
-      while (itr != m_Data.end())
+      while (itr != _data.end())
       {
         auto beg = itr;
-        while (itr != m_Data.end() && *itr != '\n' && *itr != '\r')
+        while (itr != _data.end() && *itr != '\n' && *itr != '\r')
           ++itr;
         lines.emplace_back(std::addressof(*beg), std::distance(beg, itr));
-        if (itr == m_Data.end())
+        if (itr == _data.end())
           break;
         ++itr;
       }
@@ -185,53 +185,54 @@ namespace llarp
         if (k.empty())
         {
           throw std::runtime_error(
-              fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+              fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
         }
-        LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
-        m_Config[std::string{sectName}].emplace(k, v);
+        LogDebug(_filename, ": [", sectName, "]:", k, "=", v);
+        _config[std::string{sectName}].emplace(k, v);
       }
       else  // malformed?
       {
         throw std::runtime_error(
-            fmt::format("{} invalid line ({}): '{}'", m_FileName, lineno, line));
+            fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
       }
     }
     return true;
   }
 
   void
-  ConfigParser::IterAll(std::function<void(std::string_view, const SectionValues_t&)> visit)
+  ConfigParser::iter_all_sections(std::function<void(std::string_view, const SectionValues&)> visit)
   {
-    for (const auto& item : m_Config)
+    for (const auto& item : _config)
       visit(item.first, item.second);
   }
 
   bool
-  ConfigParser::VisitSection(
-      const char* name, std::function<bool(const SectionValues_t& sect)> visit) const
+  ConfigParser::visit_section(
+      const char* name, std::function<bool(const SectionValues& sect)> visit) const
   {
     // m_Config is effectively:
     // unordered_map< string, unordered_multimap< string, string  >>
     // in human terms: a map of of sections
     //                 where a section is a multimap of k:v pairs
-    auto itr = m_Config.find(name);
-    if (itr == m_Config.end())
+    auto itr = _config.find(name);
+    if (itr == _config.end())
       return false;
     return visit(itr->second);
   }
 
   void
-  ConfigParser::AddOverride(fs::path fpath, std::string section, std::string key, std::string value)
+  ConfigParser::add_override(
+      fs::path fpath, std::string section, std::string key, std::string value)
   {
-    auto& data = m_Overrides[fpath];
+    auto& data = _overrides[fpath];
     data[section].emplace(key, value);
   }
 
   void
-  ConfigParser::Save()
+  ConfigParser::save()
   {
     // write overrides
-    for (const auto& [fname, overrides] : m_Overrides)
+    for (const auto& [fname, overrides] : _overrides)
     {
       std::ofstream ofs(fname);
       for (const auto& [section, values] : overrides)
@@ -243,27 +244,27 @@ namespace llarp
         }
       }
     }
-    m_Overrides.clear();
+    _overrides.clear();
   }
 
   void
-  ConfigParser::SaveNew() const
+  ConfigParser::save_new() const
   {
-    if (not m_Overrides.empty())
+    if (not _overrides.empty())
     {
       throw std::invalid_argument("Override specified when attempting new .ini save");
     }
-    if (m_Config.empty())
+    if (_config.empty())
     {
       throw std::invalid_argument("New config not loaded when attempting new .ini save");
     }
-    if (m_FileName.empty())
+    if (_filename.empty())
     {
       throw std::invalid_argument("New config cannot be saved with filepath specified");
     }
 
-    std::ofstream ofs(m_FileName);
-    for (const auto& [section, values] : m_Config)
+    std::ofstream ofs(_filename);
+    for (const auto& [section, values] : _config)
     {
       ofs << std::endl << "[" << section << "]" << std::endl;
       for (const auto& [key, value] : values)

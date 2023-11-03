@@ -33,12 +33,12 @@ namespace llarp::rpc
     Start();
 
     void
-    AuthenticateAsync(
+    authenticate_async(
         std::shared_ptr<llarp::service::ProtocolMessage> msg,
         std::function<void(std::string, bool)> hook) override;
 
     bool
-    AsyncAuthPending(service::ConvoTag tag) const override;
+    auth_async_pending(service::ConvoTag tag) const override;
 
    private:
     const std::string m_AuthURL;

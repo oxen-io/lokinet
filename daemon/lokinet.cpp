@@ -450,7 +450,7 @@ namespace
       {
         try
         {
-          llarp::ensureConfig(basedir, *configFile, options.overwrite, opts.isSNode);
+          llarp::ensure_config(basedir, *configFile, options.overwrite, opts.isSNode);
         }
         catch (std::exception& ex)
         {
@@ -479,7 +479,7 @@ namespace
     {
       try
       {
-        llarp::ensureConfig(
+        llarp::ensure_config(
             llarp::GetDefaultDataDir(),
             llarp::GetDefaultConfigPath(),
             options.overwrite,
@@ -562,7 +562,7 @@ namespace
       {
         conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
       }
-      if (not conf->Load(confFile, opts.isSNode))
+      if (not conf->load(confFile, opts.isSNode))
       {
         llarp::LogError("failed to parse configuration");
         exit_code.set_value(1);
@@ -570,7 +570,7 @@ namespace
       }
 
       // change cwd to dataDir to support relative paths in config
-      fs::current_path(conf->router.m_dataDir);
+      fs::current_path(conf->router.data_dir);
 
       ctx = std::make_shared<llarp::Context>();
       ctx->Configure(std::move(conf));

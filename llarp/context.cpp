@@ -62,7 +62,7 @@ namespace llarp
 
     if (!loop)
     {
-      auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
+      auto jobQueueSize = std::max(event_loop_queue_size, config->router.job_que_size);
       loop = EventLoop::create(jobQueueSize);
     }
 
