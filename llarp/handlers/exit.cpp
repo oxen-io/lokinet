@@ -691,12 +691,12 @@ namespace llarp::handlers
 
     dns_conf = dnsConfig;
 
-    if (networkConfig.m_endpointType == "null")
+    if (networkConfig.endpoint_type == "null")
     {
       should_init_tun = false;
     }
 
-    ip_range = networkConfig.m_ifaddr;
+    ip_range = networkConfig.if_addr;
     if (!ip_range.addr.h)
     {
       const auto maybe = router->net().FindFreeRange();
@@ -711,7 +711,7 @@ namespace llarp::handlers
     highest_addr = ip_range.HighestAddr();
     use_ipv6 = not ip_range.IsV4();
 
-    if_name = networkConfig.m_ifname;
+    if_name = networkConfig.if_name;
     if (if_name.empty())
     {
       const auto maybe = router->net().FindFreeTun();

@@ -377,30 +377,29 @@ namespace llarp
     // Do logging config as early as possible to get the configured log level applied
 
     // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
-    auto log_type = conf.logging.m_logType;
+    auto log_type = conf.logging.type;
     if (log_type == log::Type::File
-        && (conf.logging.m_logFile == "stdout" || conf.logging.m_logFile == "-"
-            || conf.logging.m_logFile.empty()))
+        && (conf.logging.file == "stdout" || conf.logging.file == "-" || conf.logging.file.empty()))
       log_type = log::Type::Print;
 
     if (log::get_level_default() != log::Level::off)
-      log::reset_level(conf.logging.m_logLevel);
+      log::reset_level(conf.logging.level);
     log::clear_sinks();
-    log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.m_logFile);
+    log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.file);
 
     // re-add rpc log sink if rpc enabled, else free it
-    if (_config->api.m_enableRPCServer and llarp::logRingBuffer)
+    if (_config->api.enable_rpc_server and llarp::logRingBuffer)
       log::add_sink(llarp::logRingBuffer, llarp::log::DEFAULT_PATTERN_MONO);
     else
       llarp::logRingBuffer = nullptr;
 
     log::debug(logcat, "Configuring router");
 
-    _is_service_node = conf.router.m_isRelay;
+    _is_service_node = conf.router.is_relay;
 
     if (_is_service_node)
     {
-      rpc_addr = oxenmq::address(conf.lokid.lokidRPCAddr);
+      rpc_addr = oxenmq::address(conf.lokid.rpc_addr);
       _rpc_client = std::make_shared<rpc::LokidRpcClient>(_lmq, weak_from_this());
     }
 
@@ -408,8 +407,8 @@ namespace llarp
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
-    if (conf.router.m_workerThreads > 0)
-      _lmq->set_general_threads(conf.router.m_workerThreads);
+    if (conf.router.worker_threads > 0)
+      _lmq->set_general_threads(conf.router.worker_threads);
 
     log::debug(logcat, "Starting OMQ server");
     _lmq->start();
@@ -560,11 +559,11 @@ namespace llarp
   Router::from_config(const Config& conf)
   {
     // Set netid before anything else
-    log::debug(logcat, "Network ID set to {}", conf.router.m_netId);
-    if (!conf.router.m_netId.empty()
-        && strcmp(conf.router.m_netId.c_str(), llarp::LOKINET_DEFAULT_NETID) != 0)
+    log::debug(logcat, "Network ID set to {}", conf.router.net_id);
+    if (!conf.router.net_id.empty()
+        && strcmp(conf.router.net_id.c_str(), llarp::LOKINET_DEFAULT_NETID) != 0)
     {
-      const auto& netid = conf.router.m_netId;
+      const auto& netid = conf.router.net_id;
       llarp::LogWarn(
           "!!!! you have manually set netid to be '",
           netid,
@@ -576,24 +575,24 @@ namespace llarp
     }
 
     // Router config
-    _link_manager.max_connected_routers = conf.router.m_maxConnectedRouters;
-    _link_manager.min_connected_routers = conf.router.m_minConnectedRouters;
+    _link_manager.max_connected_routers = conf.router.max_connected_routers;
+    _link_manager.min_connected_routers = conf.router.min_connected_routers;
 
     encryption_keyfile = _key_manager->m_encKeyPath;
     our_rc_file = _key_manager->m_rcPath;
     transport_keyfile = _key_manager->m_transportKeyPath;
     identity_keyfile = _key_manager->m_idKeyPath;
 
-    if (auto maybe_ip = conf.links.PublicAddress)
+    if (auto maybe_ip = conf.links.public_addr)
       _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
-    else if (auto maybe_ip = conf.router.PublicIP)
+    else if (auto maybe_ip = conf.router.public_ip)
       _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
 
     if (_ourAddress)
     {
-      if (auto maybe_port = conf.links.PublicPort)
+      if (auto maybe_port = conf.links.public_port)
         _ourAddress->setPort(*maybe_port);
-      else if (auto maybe_port = conf.router.PublicPort)
+      else if (auto maybe_port = conf.router.public_port)
         _ourAddress->setPort(*maybe_port);
       else
         throw std::runtime_error{"public ip provided without public port"};
@@ -602,16 +601,16 @@ namespace llarp
     else
       log::debug(logcat, "No explicit public address given; will auto-detect during link setup");
 
-    RouterContact::BLOCK_BOGONS = conf.router.m_blockBogons;
+    RouterContact::BLOCK_BOGONS = conf.router.block_bogons;
 
     auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys
     std::unordered_set<RouterID> strictConnectPubkeys;
 
-    if (not networkConfig.m_strictConnect.empty())
+    if (not networkConfig.strict_connect.empty())
     {
-      const auto& val = networkConfig.m_strictConnect;
+      const auto& val = networkConfig.strict_connect;
       if (is_service_node())
         throw std::runtime_error("cannot use strict-connect option as service node");
       if (val.size() < 2)
@@ -628,7 +627,7 @@ namespace llarp
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
     // TODO: use constant
-    fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
+    fs::path defaultBootstrapFile = conf.router.data_dir / "bootstrap.signed";
     if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       if (fs::exists(defaultBootstrapFile))
@@ -708,10 +707,10 @@ namespace llarp
       InitOutboundLinks();
 
     // profiling
-    _profile_file = conf.router.m_dataDir / "profiles.dat";
+    _profile_file = conf.router.data_dir / "profiles.dat";
 
     // Network config
-    if (conf.network.m_enableProfiling.value_or(false))
+    if (conf.network.enable_profiling.value_or(false))
     {
       LogInfo("router profiling enabled");
       if (not fs::exists(_profile_file))
@@ -1009,7 +1008,7 @@ namespace llarp
     _exit_context.Tick(now);
 
     // save profiles
-    if (router_profiling().ShouldSave(now) and _config->network.m_saveProfiles)
+    if (router_profiling().ShouldSave(now) and _config->network.save_profiles)
     {
       queue_disk_io([&]() { router_profiling().Save(_profile_file); });
     }
@@ -1048,7 +1047,7 @@ namespace llarp
   bool
   Router::StartRpcServer()
   {
-    if (_config->api.m_enableRPCServer)
+    if (_config->api.enable_rpc_server)
       _rpc_server = std::make_unique<rpc::RPCServer>(_lmq, *this);
 
     return true;

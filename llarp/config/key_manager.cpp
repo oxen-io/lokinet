@@ -27,7 +27,7 @@ namespace llarp
       return true;
     }
 
-    const fs::path root = config.router.m_dataDir;
+    const fs::path root = config.router.data_dir;
 
     // utility function to assign a path, using the specified config parameter if present and
     // falling back to root / defaultName if not
@@ -46,10 +46,10 @@ namespace llarp
       }
     };
 
-    m_rcPath = deriveFile(our_rc_filename, config.router.m_routerContactFile);
-    m_idKeyPath = deriveFile(our_identity_filename, config.router.m_identityKeyFile);
-    m_encKeyPath = deriveFile(our_enc_key_filename, config.router.m_encryptionKeyFile);
-    m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.m_transportKeyFile);
+    m_rcPath = deriveFile(our_rc_filename, config.router.rc_file);
+    m_idKeyPath = deriveFile(our_identity_filename, config.router.idkey_file);
+    m_encKeyPath = deriveFile(our_enc_key_filename, config.router.enckey_file);
+    m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.transkey_file);
 
     RemoteRC rc;
     bool exists = rc.read(m_rcPath);
@@ -90,7 +90,7 @@ namespace llarp
       }
     }
 
-    if (not config.router.m_isRelay)
+    if (not config.router.is_relay)
     {
       // load identity key or create if needed
       auto identityKeygen = [](llarp::SecretKey& key) {
