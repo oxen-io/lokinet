@@ -66,6 +66,12 @@ namespace llarp
   void
   RCLookupHandler::get_rc(const RouterID& rid, RCRequestCallback callback, bool forceLookup)
   {
+    (void)rid;
+    (void)callback;
+    (void)forceLookup;
+    /* RC refactor pending, this will likely go away entirely
+     *
+     *
     RemoteRC remoteRC;
 
     if (not forceLookup)
@@ -104,6 +110,7 @@ namespace llarp
     //       relays will need a different implementation TBD.
     if (!isServiceNode)
       hidden_service_context->GetDefault()->lookup_router(rid, std::move(lookup_cb));
+    */
   }
 
   bool
