@@ -856,6 +856,12 @@ namespace llarp::service
   bool
   Endpoint::lookup_router(RouterID rid, std::function<void(RouterContact rc, bool success)> func)
   {
+    (void)rid;
+    (void)func;
+    return false;
+    /*  RC refactor pending, this will likely go away entirely
+     *
+     *
     auto path = GetEstablishedPathClosestTo(rid);
 
     auto response_cb = [func = std::move(func)](std::string resp, bool timeout) {
@@ -883,6 +889,7 @@ namespace llarp::service
 
     path->find_router("find_router", std::move(response_cb));
     return true;
+    */
   }
 
   void
