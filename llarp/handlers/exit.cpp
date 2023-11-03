@@ -99,7 +99,7 @@ namespace llarp::handlers
         {
           if (not itr->second->LooksDead(Now()))
           {
-            return router->send_data_message(itr->second->PubKey(), std::move(payload));
+            return router->send_data_message(itr->second->router_id(), std::move(payload));
           }
         }
 
@@ -232,7 +232,7 @@ namespace llarp::handlers
         auto itr = ip_to_key.find(*ip);
         if (itr != ip_to_key.end() && snode_keys.find(itr->second) != snode_keys.end())
         {
-          RouterID them = itr->second;
+          RouterID them{itr->second.data()};
           msg.AddAReply(them.ToString());
         }
         else
@@ -389,7 +389,7 @@ namespace llarp::handlers
         // check if it's a service node session we made and queue it via our
         // snode session that we made otherwise use an inbound session that
         // was made by the other service node
-        auto itr = snode_sessions.find(pk);
+        auto itr = snode_sessions.find(RouterID{pk.data()});
         if (itr != snode_sessions.end())
         {
           itr->second->send_packet_to_remote(buf.to_string());
@@ -594,7 +594,7 @@ namespace llarp::handlers
     std::unordered_set<AddressVariant_t> remote;
     for (const auto& [path, pubkey] : paths)
     {
-      remote.insert(RouterID{pubkey});
+      remote.insert(RouterID{pubkey.data()});
     }
     return remote;
   }

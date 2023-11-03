@@ -38,17 +38,12 @@ namespace llarp
     static PubKey
     from_string(const std::string& s);
 
-    operator RouterID() const;
-
     PubKey&
     operator=(const byte_t* ptr);
   };
 
   bool
   operator==(const PubKey& lhs, const PubKey& rhs);
-
-  bool
-  operator==(const PubKey& lhs, const RouterID& rhs);
 
   struct PrivateKey;
 
