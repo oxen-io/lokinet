@@ -909,9 +909,6 @@ namespace llarp
 
     const auto* net_ptr = params.Net_ptr();
 
-    static constexpr Default DefaultInboundPort{uint16_t{1090}};
-    static constexpr Default DefaultOutboundPort{uint16_t{0}};
-
     conf.define_option<std::string>(
         "bind",
         "public-ip",
@@ -936,41 +933,83 @@ namespace llarp
         },
         [this](uint16_t arg) { public_port = net::port_t::from_host(arg); });
 
-    auto parse_addr_for_link = [net_ptr](
-                                   const std::string& arg, net::port_t default_port, bool inbound) {
-      std::optional<SockAddr> addr = std::nullopt;
+    // DISCUSS: does this need to be an optional?
+    auto parse_addr_for_link = [net_ptr](const std::string& arg) {
+      std::optional<oxen::quic::Address> maybe = std::nullopt;
+      std::string_view arg_v;
+
       // explicitly provided value
       if (not arg.empty())
       {
-        if (arg[0] == ':')
-        {
-          // port only case
-          default_port = net::port_t::from_string(arg.substr(1));
-          if (!inbound)
-            addr = net_ptr->WildcardWithPort(default_port);
-        }
-        else
-        {
-          addr = SockAddr{arg};
-          if (net_ptr->IsLoopbackAddress(addr->getIP()))
-            throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
-        }
+        arg_v = std::string_view{arg};
       }
-      if (not addr)
+
+      if (arg_v[0] == ':')
+      {
+        uint16_t res = std::atoi(arg_v.substr(1).data());
+
+        maybe = oxen::quic::Address{""s, res ? res : DEFAULT_LISTEN_PORT};
+      }
+      else if (auto pos = arg_v.find(':'); pos != arg_v.npos)
+      {
+        auto h = arg_v.substr(0, pos);
+        uint16_t p = std::atoi(arg_v.substr(pos + 1).data());
+
+        maybe = oxen::quic::Address{std::string{h}, p};
+
+        // TODO: unfuck llarp/net
+        // if (net_ptr->IsLoopbackAddress(addr->port()))
+        //   throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
+      }
+      if (not maybe)
       {
         // infer public address
         if (auto maybe_ifname = net_ptr->GetBestNetIF())
-          addr = net_ptr->GetInterfaceAddr(*maybe_ifname);
+          maybe = oxen::quic::Address{*maybe_ifname};
       }
 
-      if (addr)
-      {
-        // set port if not explicitly provided
-        if (addr->getPort() == 0)
-          addr->setPort(default_port);
-      }
-      return addr;
+      if (maybe->port() == 0)
+        maybe = oxen::quic::Address{maybe->host(), DEFAULT_LISTEN_PORT};
+
+      return maybe;
     };
+
+    conf.define_option<std::string>(
+        "bind",
+        "listen",
+        Required,
+        Comment{
+            "********** NEW API OPTION (see note) **********",
+            "",
+            "IP and/or port for lokinet to bind to for inbound/outbound connections.",
+            "",
+            "If IP is omitted then lokinet will search for a local network interface with a",
+            "public IP address and use that IP (and will exit with an error if no such IP is found",
+            "on the system).  If port is omitted then lokinet defaults to 1090.",
+            "",
+            "Note: only one address will be accepted. If this option is not specified, it will "
+            "default",
+            "to the inbound or outbound value. Conversely, specifying this option will supercede "
+            "the",
+            "deprecated inbound/outbound opts.",
+            "",
+            "Examples:",
+            "    listen=15.5.29.5:443",
+            "    listen=10.0.2.2",
+            "    listen=:1234",
+            "",
+            "Using a private range IP address (like the second example entry) will require using",
+            "the public-ip= and public-port= to specify the public IP address at which this",
+            "router can be reached.",
+        },
+        [this, parse_addr_for_link](const std::string& arg) {
+          if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
+            addr = a;
+          else
+            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
+
+          using_new_api = true;
+        });
 
     conf.define_option<std::string>(
         "bind",
@@ -978,6 +1017,11 @@ namespace llarp
         RelayOnly,
         MultiValue,
         Comment{
+            "********** DEPRECATED **********",
+            "Note: the new API dictates the lokinet bind address through the 'listen' config",
+            "parameter. Only ONE address will be read (no more lists of inbounds). Any address",
+            "passed to `listen` will supersede the",
+            "",
             "IP and/or port to listen on for incoming connections.",
             "",
             "If IP is omitted then lokinet will search for a local network interface with a",
@@ -994,9 +1038,13 @@ namespace llarp
             "router can be reached.",
         },
         [this, parse_addr_for_link](const std::string& arg) {
-          auto default_port = net::port_t::from_host(DefaultInboundPort.val);
-          if (auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/true))
-            inbound_listen_addrs.emplace_back(std::move(*addr));
+          if (using_new_api)
+            throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
+
+          if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
+            addr = a;
+          else
+            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
 
     conf.define_option<std::string>(
@@ -1004,6 +1052,8 @@ namespace llarp
         "outbound",
         MultiValue,
         params.is_relay ? Comment{
+            "********** THIS PARAMETER IS DEPRECATED -- USE 'LISTEN' INSTEAD **********",
+            "",
             "IP and/or port to use for outbound socket connections to other lokinet routers.",
             "",
             "If no outbound bind IP is configured, or the 0.0.0.0 wildcard IP is given, then",
@@ -1021,6 +1071,8 @@ namespace llarp
             "The second example binds on the default incoming IP using port 9000; the third",
             "example binds on the given IP address using a random high port.",
         } : Comment{
+            "********** DEPRECATED **********",
+            "",
             "IP and/or port to use for outbound socket connections to lokinet routers.",
             "",
             "If no outbound bind IP is configured then lokinet will use a wildcard IP address",
@@ -1035,57 +1087,60 @@ namespace llarp
             "The second example binds on the wildcard address using port 9000; the third example",
             "binds on the given IP address using a random high port.",
         },
-        [this, net_ptr, parse_addr_for_link](const std::string& arg) {
-          auto default_port = net::port_t::from_host(DefaultOutboundPort.val);
-          auto addr = parse_addr_for_link(arg, default_port, /*inbound=*/false);
-          if (not addr)
-            addr = net_ptr->WildcardWithPort(default_port);
-          outbound_links.emplace_back(std::move(*addr));
-        });
+        [this, parse_addr_for_link](const std::string& arg) {
+          if (using_new_api)
+            throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
-    conf.add_undeclared_handler(
-        "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
-          LogWarn(
-              "using the [bind] section with *=/IP=/INTERFACE= is deprecated; use the inbound= "
-              "and/or outbound= settings instead");
-          std::optional<SockAddr> addr;
-          // special case: wildcard for outbound
-          if (key == "*")
-          {
-            addr = net_ptr->Wildcard();
-            // set port, zero is acceptable here.
-            if (auto port = std::stoi(std::string{val});
-                port < std::numeric_limits<uint16_t>::max())
-            {
-              addr->setPort(port);
-            }
-            else
-              throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
-            outbound_links.emplace_back(std::move(*addr));
-            return;
-          }
-          // try as interface name first
-          addr = net_ptr->GetInterfaceAddr(key, AF_INET);
-          if (addr and net_ptr->IsLoopbackAddress(addr->getIP()))
-            throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
-          // try as ip address next, throws if unable to parse
-          if (not addr)
-          {
-            addr = SockAddr{key, huint16_t{0}};
-            if (net_ptr->IsLoopbackAddress(addr->getIP()))
-              throw std::invalid_argument{fmt::format("{} is a loopback address", key)};
-          }
-          // parse port and set if acceptable non zero value
-          if (auto port = std::stoi(std::string{val});
-              port and port < std::numeric_limits<uint16_t>::max())
-          {
-            addr->setPort(port);
-          }
+          if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
+            addr = a;
           else
-            throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
-
-          inbound_listen_addrs.emplace_back(std::move(*addr));
+            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
+
+    // DISCUSS: drop this shit?
+    // conf.add_undeclared_handler(
+    //     "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
+    //       LogWarn(
+    //           "using the [bind] section with *=/IP=/INTERFACE= is deprecated; use the inbound= "
+    //           "and/or outbound= settings instead");
+    //       std::optional<SockAddr> addr;
+    //       // special case: wildcard for outbound
+    //       if (key == "*")
+    //       {
+    //         addr = net_ptr->Wildcard();
+    //         // set port, zero is acceptable here.
+    //         if (auto port = std::stoi(std::string{val});
+    //             port < std::numeric_limits<uint16_t>::max())
+    //         {
+    //           addr->setPort(port);
+    //         }
+    //         else
+    //           throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
+    //         outbound_links.emplace_back(std::move(*addr));
+    //         return;
+    //       }
+    //       // try as interface name first
+    //       addr = net_ptr->GetInterfaceAddr(key, AF_INET);
+    //       if (addr and net_ptr->IsLoopbackAddress(addr->getIP()))
+    //         throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
+    //       // try as ip address next, throws if unable to parse
+    //       if (not addr)
+    //       {
+    //         addr = SockAddr{key, huint16_t{0}};
+    //         if (net_ptr->IsLoopbackAddress(addr->getIP()))
+    //           throw std::invalid_argument{fmt::format("{} is a loopback address", key)};
+    //       }
+    //       // parse port and set if acceptable non zero value
+    //       if (auto port = std::stoi(std::string{val});
+    //           port and port < std::numeric_limits<uint16_t>::max())
+    //       {
+    //         addr->setPort(port);
+    //       }
+    //       else
+    //         throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
+
+    //       inbound_listen_addrs.emplace_back(std::move(*addr));
+    //     });
   }
 
   void

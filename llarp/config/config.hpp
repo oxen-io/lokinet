@@ -34,6 +34,8 @@ namespace llarp
   using SectionValues = llarp::ConfigParser::SectionValues;
   using ConfigMap = llarp::ConfigParser::ConfigMap;
 
+  inline static constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
+
   // TODO: don't use these maps. they're sloppy and difficult to follow
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
@@ -170,8 +172,9 @@ namespace llarp
   {
     std::optional<net::ipaddr_t> public_addr;
     std::optional<net::port_t> public_port;
-    std::vector<SockAddr> outbound_links;
-    std::vector<SockAddr> inbound_listen_addrs;
+
+    std::optional<oxen::quic::Address> addr;
+    bool using_new_api = false;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);

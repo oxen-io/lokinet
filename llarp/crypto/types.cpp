@@ -33,11 +33,6 @@ namespace llarp
     return oxenc::to_hex(begin(), end());
   }
 
-  PubKey::operator RouterID() const
-  {
-    return {as_array()};
-  }
-
   PubKey&
   PubKey::operator=(const byte_t* ptr)
   {
@@ -47,12 +42,6 @@ namespace llarp
 
   bool
   operator==(const PubKey& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
-
-  bool
-  operator==(const PubKey& lhs, const RouterID& rhs)
   {
     return lhs.as_array() == rhs.as_array();
   }
