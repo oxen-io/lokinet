@@ -12,10 +12,8 @@ namespace llarp::path
         "[TransitHopInfo tx={} rx={} upstream={} downstream={}]", txID, rxID, upstream, downstream);
   }
 
-  TransitHop::TransitHop()
-      : AbstractHopHandler{}
-  {
-  }
+  TransitHop::TransitHop() : AbstractHopHandler{}
+  {}
 
   void
   TransitHop::onion(ustring& data, SymmNonce& nonce, bool randomize) const
@@ -46,9 +44,11 @@ namespace llarp::path
   }
 
   bool
-  TransitHop::send_path_control_message(
-      std::string, std::string, std::function<void(std::string)>)
+  TransitHop::send_path_control_message(std::string, std::string, std::function<void(std::string)>)
   {
+    // TODO: if we want terminal/pivot hops to be able to *initiate* a request rather than
+    //       simply responding/reacting to the client end's requests, this will need
+    //       an implementation.
     return true;
   }
 

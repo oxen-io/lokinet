@@ -31,8 +31,6 @@ namespace llarp
     struct TransitHopInfo;
     struct PathHopConfig;
 
-    using TransitHop_ptr = std::shared_ptr<TransitHop>;
-
     struct Ptr_hash;
 
     struct Endpoint_Hash;
@@ -189,8 +187,7 @@ namespace llarp
           std::function<void(std::string)> func = nullptr);
 
       bool
-      close_exit(
-          SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
+      close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
 
       bool
       obtain_exit(

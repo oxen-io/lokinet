@@ -138,9 +138,7 @@ namespace llarp
       /// a timeout flag (if set, response string will be empty)
       bool
       send_path_control_message(
-          std::string method,
-          std::string body,
-          std::function<void(std::string)> func) override;
+          std::string method, std::string body, std::function<void(std::string)> func) override;
 
       void
       QueueDestroySelf(Router* r);

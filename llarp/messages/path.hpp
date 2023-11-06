@@ -31,7 +31,7 @@ namespace llarp
       // generate nonceXOR value self->hop->pathKey
       ShortHash hash;
       crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
-      hop.nonceXOR = hash.data(); // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+      hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       hop.upstream = nextHop;
     }

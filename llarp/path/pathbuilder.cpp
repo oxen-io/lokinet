@@ -1,6 +1,5 @@
 #include "pathbuilder.hpp"
 
-#include "llarp/path/pathset.hpp"
 #include "path.hpp"
 #include "path_context.hpp"
 
@@ -8,6 +7,7 @@
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/pathset.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
@@ -95,7 +95,7 @@ namespace llarp
       // generate nonceXOR value self->hop->pathKey
       ShortHash hash;
       crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
-      hop.nonceXOR = hash.data(); // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+      hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       hop.upstream = nextHop;
     }

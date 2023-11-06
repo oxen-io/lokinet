@@ -139,7 +139,7 @@ namespace llarp
   LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
   {
     assert(ep.connid_map.count(s->conn_id()));
-    RouterID rid = ep.connid_map[s->conn_id()];
+    const RouterID& rid = ep.connid_map[s->conn_id()];
 
     s->register_command("path_build"s, [this, rid](oxen::quic::message m) {
       _router.loop()->call(
@@ -611,7 +611,8 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      respond(serialize_response({{messages::STATUS_KEY, FindRouterMessage::EXCEPTION}, {"TARGET", ""}}));
+      respond(serialize_response(
+          {{messages::STATUS_KEY, FindRouterMessage::EXCEPTION}, {"TARGET", ""}}));
       return;
     }
 
@@ -641,8 +642,8 @@ namespace llarp
         neighbors += rid.bt_encode();
       }
 
-      respond(
-          serialize_response({{messages::STATUS_KEY, FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
+      respond(serialize_response(
+          {{messages::STATUS_KEY, FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
     }
     else
     {
@@ -1144,7 +1145,8 @@ namespace llarp
                 shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
         {
           log::info(link_cat, "DH server initialization failed during path build");
-          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(
+              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1157,14 +1159,16 @@ namespace llarp
                 shared))
         {
           log::error(link_cat, "HMAC failed on path build request");
-          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(
+              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
         if (!std::equal(
                 digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
         {
           log::info(link_cat, "HMAC mismatch on path build request");
-          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(
+              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1176,7 +1180,8 @@ namespace llarp
                 outer_nonce.data()))
         {
           log::info(link_cat, "Decrypt failed on path build request");
-          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(
+              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1237,7 +1242,7 @@ namespace llarp
       // generate hash of hop key for nonce mutation
       ShortHash xor_hash;
       crypto::shorthash(xor_hash, hop->pathKey.data(), hop->pathKey.size());
-      hop->nonceXOR = xor_hash.data(); // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+      hop->nonceXOR = xor_hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       // set and check path lifetime
       hop->lifetime = 1ms * lifetime;
@@ -1245,7 +1250,8 @@ namespace llarp
       if (hop->lifetime >= path::DEFAULT_LIFETIME)
       {
         log::warning(link_cat, "Path build attempt with too long of a lifetime.");
-        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_LIFETIME}}), true);
+        m.respond(
+            serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_LIFETIME}}), true);
         return;
       }
 
@@ -1501,7 +1507,9 @@ namespace llarp
         {
           (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
               ? m.respond(UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
-              : m.respond(serialize_response({{messages::STATUS_KEY, UpdateExitMessage::UPDATE_FAILED}}), true);
+              : m.respond(
+                  serialize_response({{messages::STATUS_KEY, UpdateExitMessage::UPDATE_FAILED}}),
+                  true);
         }
         // If we fail to verify the message, no-op
       }
@@ -1588,7 +1596,8 @@ namespace llarp
         }
       }
 
-      m.respond(serialize_response({{messages::STATUS_KEY, CloseExitMessage::UPDATE_FAILED}}), true);
+      m.respond(
+          serialize_response({{messages::STATUS_KEY, CloseExitMessage::UPDATE_FAILED}}), true);
     }
     catch (const std::exception& e)
     {
