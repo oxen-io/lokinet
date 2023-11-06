@@ -23,36 +23,30 @@ namespace llarp
 
     /// xchacha symmetric cipher
     bool
-    xchacha20(uint8_t*, size_t size, const SharedSecret&, const TunnelNonce&);
+    xchacha20(uint8_t*, size_t size, const SharedSecret&, const SymmNonce&);
     bool
     xchacha20(uint8_t*, size_t size, const uint8_t*, const uint8_t*);
 
-    TunnelNonce
+    SymmNonce
     onion(
         unsigned char* buf,
         size_t size,
         const SharedSecret& k,
-        const TunnelNonce& nonce,
-        const ShortHash& xor_factor);
+        const SymmNonce& nonce,
+        const SymmNonce& xor_factor);
 
     /// path dh creator's side
     bool
-    dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
+    dh_client(SharedSecret&, const PubKey&, const SecretKey&, const SymmNonce&);
     /// path dh relay side
     bool
-    dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
+    dh_server(SharedSecret&, const PubKey&, const SecretKey&, const SymmNonce&);
     bool
     dh_server(
         uint8_t* shared_secret,
         const uint8_t* other_pk,
         const uint8_t* local_pk,
         const uint8_t* nonce);
-    /// transport dh client side
-    bool
-    transport_dh_client(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
-    /// transport dh server side
-    bool
-    transport_dh_server(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
     /// blake2b 256 bit
     bool
     shorthash(ShortHash&, uint8_t*, size_t size);

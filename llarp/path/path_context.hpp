@@ -5,7 +5,6 @@
 #include "pathset.hpp"
 #include "transit_hop.hpp"
 
-#include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/net/ip_address.hpp>
 #include <llarp/util/compare_ptr.hpp>

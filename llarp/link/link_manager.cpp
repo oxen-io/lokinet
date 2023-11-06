@@ -1237,7 +1237,9 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto::shorthash(hop->nonceXOR, hop->pathKey.data(), hop->pathKey.size());
+      ShortHash xor_hash;
+      crypto::shorthash(xor_hash, hop->pathKey.data(), hop->pathKey.size());
+      hop->nonceXOR = xor_hash.data(); // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       // set and check path lifetime
       hop->lifetime = 1ms * lifetime;
@@ -1643,7 +1645,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      auto nonce = TunnelNonce{btdc.require<ustring_view>("NONCE").data()};
+      auto nonce = SymmNonce{btdc.require<ustring_view>("NONCE").data()};
       auto path_id_str = btdc.require<ustring_view>("PATHID");
       auto payload = btdc.require<std::string>("PAYLOAD");
       auto path_id = PathID_t{path_id_str.data()};
@@ -1677,7 +1679,7 @@ namespace llarp
               return;
 
             oxenc::bt_dict_consumer resp_btdc{response.body()};
-            auto nonce = TunnelNonce{resp_btdc.require<ustring_view>("NONCE").data()};
+            auto nonce = SymmNonce{resp_btdc.require<ustring_view>("NONCE").data()};
             auto payload = resp_btdc.require<std::string>("PAYLOAD");
             auto resp_payload = hop->onion_and_payload(payload, path_id, nonce);
             prev_message.respond(std::move(resp_payload), false);

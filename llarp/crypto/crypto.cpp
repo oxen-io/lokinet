@@ -65,7 +65,7 @@ namespace llarp
 
   static bool
   dh_client_priv(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
+      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
   {
     llarp::SharedSecret dh_result;
 
@@ -81,13 +81,13 @@ namespace llarp
 
   static bool
   dh_server_priv(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
+      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
   {
     llarp::SharedSecret dh_result;
 
     if (dh(dh_result, pk, sk.toPublic(), pk.data(), sk))
     {
-      return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32, dh_result.data(), 32)
+      return crypto_generichash_blake2b(shared.data(), 32, n.data(), n.size(), dh_result.data(), 32)
           != -1;
     }
 
@@ -102,7 +102,7 @@ namespace llarp
 
     if (dh(dh_result.data(), pk, sk, pk, sk))
     {
-      return crypto_generichash_blake2b(shared, 32, nonce, 32, dh_result.data(), 32) != -1;
+      return crypto_generichash_blake2b(shared, 32, nonce, 24, dh_result.data(), 32) != -1;
     }
 
     llarp::LogWarn("crypto::dh_server - dh failed");
@@ -143,7 +143,7 @@ namespace llarp
   }
 
   bool
-  crypto::xchacha20(uint8_t* buf, size_t size, const SharedSecret& k, const TunnelNonce& n)
+  crypto::xchacha20(uint8_t* buf, size_t size, const SharedSecret& k, const SymmNonce& n)
   {
     return xchacha20(buf, size, n.data(), k.data());
   }
@@ -155,13 +155,13 @@ namespace llarp
   }
 
   // do a round of chacha for and return the nonce xor the given xor_factor
-  TunnelNonce
+  SymmNonce
   crypto::onion(
       unsigned char* buf,
       size_t size,
       const SharedSecret& k,
-      const TunnelNonce& nonce,
-      const ShortHash& xor_factor)
+      const SymmNonce& nonce,
+      const SymmNonce& xor_factor)
   {
     if (!crypto::xchacha20(buf, size, k, nonce))
       throw std::runtime_error{"chacha failed during onion step"};
@@ -171,14 +171,14 @@ namespace llarp
 
   bool
   crypto::dh_client(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
+      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
   {
     return dh_client_priv(shared, pk, sk, n);
   }
   /// path dh relay side
   bool
   crypto::dh_server(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
+      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
   {
     return dh_server_priv(shared, pk, sk, n);
   }
@@ -191,20 +191,6 @@ namespace llarp
       const uint8_t* nonce)
   {
     return dh_server_priv(shared_secret, other_pk, local_pk, nonce);
-  }
-  /// transport dh client side
-  bool
-  crypto::transport_dh_client(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
-  {
-    return dh_client_priv(shared, pk, sk, n);
-  }
-  /// transport dh server side
-  bool
-  crypto::transport_dh_server(
-      llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const TunnelNonce& n)
-  {
-    return dh_server_priv(shared, pk, sk, n);
   }
 
   bool

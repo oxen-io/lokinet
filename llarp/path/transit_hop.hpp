@@ -55,7 +55,7 @@ namespace llarp
 
       TransitHopInfo info;
       SharedSecret pathKey;
-      ShortHash nonceXOR;
+      SymmNonce nonceXOR;
       llarp_time_t started = 0s;
       // 10 minutes default
       llarp_time_t lifetime = DEFAULT_LIFETIME;
@@ -68,16 +68,16 @@ namespace llarp
       // Does xchacha20 on `data` in-place with `nonce` and `pathKey`, then
       // mutates `nonce` = `nonce` ^ `nonceXOR` in-place.
       void
-      onion(ustring& data, TunnelNonce& nonce, bool randomize = false) const;
+      onion(ustring& data, SymmNonce& nonce, bool randomize = false) const;
 
       void
-      onion(std::string& data, TunnelNonce& nonce, bool randomize = false) const;
+      onion(std::string& data, SymmNonce& nonce, bool randomize = false) const;
 
       std::string
       onion_and_payload(
           std::string& payload,
           PathID_t next_id,
-          std::optional<TunnelNonce> nonce = std::nullopt) const;
+          std::optional<SymmNonce> nonce = std::nullopt) const;
 
       PathID_t
       RXID() const override
@@ -142,41 +142,12 @@ namespace llarp
           std::string body,
           std::function<void(std::string)> func) override;
 
-      // send routing message when end of path
-      bool
-      SendRoutingMessage(std::string payload, Router* r) override;
-
-      void
-      FlushUpstream(Router* r) override;
-
-      void
-      FlushDownstream(Router* r) override;
-
       void
       QueueDestroySelf(Router* r);
-
-     protected:
-      void
-      UpstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      DownstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r) override;
-
-      void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) override;
 
      private:
       void
       SetSelfDestruct();
-
-      std::set<std::shared_ptr<TransitHop>, ComparePtr<std::shared_ptr<TransitHop>>> m_FlushOthers;
-      thread::Queue<RelayUpstreamMessage> m_UpstreamGather;
-      thread::Queue<RelayDownstreamMessage> m_DownstreamGather;
-      std::atomic<uint32_t> m_UpstreamWorkCounter;
-      std::atomic<uint32_t> m_DownstreamWorkCounter;
     };
   }  // namespace path
 

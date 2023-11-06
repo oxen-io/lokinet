@@ -5,9 +5,7 @@
 #include "pathset.hpp"
 
 #include <llarp/constants/path.hpp>
-#include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/messages/relay.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/service/intro.hpp>
 #include <llarp/util/aligned.hpp>
@@ -122,14 +120,6 @@ namespace llarp
         return _status;
       }
 
-      // handle data in upstream direction
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
-      // handle data in downstream direction
-
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
-
       const std::string&
       ShortName() const;
 
@@ -224,9 +214,6 @@ namespace llarp
           std::function<void(std::string)> func = nullptr) override;
 
       bool
-      SendRoutingMessage(std::string payload, Router* r) override;
-
-      bool
       IsReady() const;
 
       // Is this deprecated?
@@ -251,25 +238,6 @@ namespace llarp
 
       std::string
       name() const;
-
-      void
-      FlushUpstream(Router* r) override;
-
-      void
-      FlushDownstream(Router* r) override;
-
-     protected:
-      void
-      UpstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      DownstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r) override;
-
-      void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) override;
 
      private:
       bool

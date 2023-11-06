@@ -1472,7 +1472,7 @@ namespace llarp::service
       queue.pop();
     }
 
-    auto r = router();
+    // auto r = router();
 
     // TODO: locking on this container
     // for (const auto& [addr, outctx] : _state->remote_sessions)
@@ -1492,8 +1492,6 @@ namespace llarp::service
     //   if (item.second->SendRoutingMessage(*item.first, r))
     //     ConvoTagTX(item.first->protocol_frame_msg.convo_tag);
     // }
-
-    UpstreamFlush(r);
   }
 
   std::optional<ConvoTag>

@@ -167,7 +167,7 @@ namespace llarp::service
       return std::nullopt;
 
     IntroSet i{other_i};
-    encrypted.nounce.Randomize();
+    encrypted.nonce.Randomize();
     // set timestamp
     // TODO: round to nearest 1000 ms
     i.time_signed = now;
@@ -180,7 +180,7 @@ namespace llarp::service
     auto bte = i.bt_encode();
 
     const SharedSecret k{i.address_keys.Addr()};
-    crypto::xchacha20(reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nounce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(bte.data()), bte.size(), k, encrypted.nonce);
 
     std::memcpy(encrypted.introsetPayload.data(), bte.data(), bte.size());
 
