@@ -43,6 +43,9 @@ namespace llarp::service
   AsyncKeyExchange::Encrypt(
       std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
   {
+    (void)self;
+    (void)frame;
+    /* TODO: client<->client session ("conversation"/"convo") key exchange
     // derive ntru session key component
     SharedSecret secret;
     crypto::pqe_encrypt(frame->cipher, secret, self->introPubKey);
@@ -73,5 +76,6 @@ namespace llarp::service
     {
       LogError("failed to encrypt and sign");
     }
+    */
   }
 }  // namespace llarp::service

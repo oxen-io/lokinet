@@ -75,7 +75,7 @@ namespace llarp
       PQCipherBlock cipher;
       Encrypted<2048> enc;
       uint64_t flag;  // set to indicate in plaintext a nack, aka "dont try again"
-      KeyExchangeNonce nonce;
+      SymmNonce nonce;
       Signature sig;
       PathID_t path_id;
       service::ConvoTag convo_tag;

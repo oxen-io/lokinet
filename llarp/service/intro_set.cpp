@@ -14,7 +14,7 @@ namespace llarp::service
       std::string s)
       : signedAt{signed_at}
       , introsetPayload{reinterpret_cast<uint8_t*>(enc_payload.data()), enc_payload.size()}
-      , nounce{reinterpret_cast<uint8_t*>(nonce.data())}
+      , nonce{reinterpret_cast<uint8_t*>(nonce.data())}
   {
     derivedSigningKey = PubKey::from_string(signing_key);
     sig.from_string(std::move(s));
@@ -27,7 +27,7 @@ namespace llarp::service
       oxenc::bt_dict_consumer btdc{bt_payload};
 
       derivedSigningKey = PubKey::from_string(btdc.require<std::string>("d"));
-      nounce.from_string(btdc.require<std::string>("n"));
+      nonce.from_string(btdc.require<std::string>("n"));
       signedAt = std::chrono::milliseconds{btdc.require<uint64_t>("s")};
       introsetPayload = btdc.require<ustring>("x");
       sig.from_string(btdc.require<std::string>("z"));
@@ -54,7 +54,7 @@ namespace llarp::service
     try
     {
       btdp.append("d", derivedSigningKey.ToView());
-      btdp.append("n", nounce.ToView());
+      btdp.append("n", nonce.ToView());
       btdp.append("s", signedAt.count());
       btdp.append(
           "x",
@@ -88,7 +88,7 @@ namespace llarp::service
     if (not BEncodeMaybeReadDictEntry("d", derivedSigningKey, read, key, buf))
       return false;
 
-    if (not BEncodeMaybeReadDictEntry("n", nounce, read, key, buf))
+    if (not BEncodeMaybeReadDictEntry("n", nonce, read, key, buf))
       return false;
 
     if (not BEncodeMaybeReadDictInt("s", signedAt, read, key, buf))
@@ -111,7 +111,7 @@ namespace llarp::service
     return fmt::format(
         "[EncIntroSet d={} n={} s={} x=[{} bytes] z={}]",
         derivedSigningKey,
-        nounce,
+        nonce,
         signedAt.count(),
         introsetPayload.size(),
         sig);
@@ -124,7 +124,7 @@ namespace llarp::service
     std::string payload{
         reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
 
-    crypto::xchacha20(reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nounce);
+    crypto::xchacha20(reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nonce);
 
     return IntroSet{payload};
   }

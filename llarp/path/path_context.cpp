@@ -203,7 +203,6 @@ namespace llarp::path
         }
         else
         {
-          itr->second->DecayFilters(now);
           ++itr;
         }
       }
@@ -217,7 +216,6 @@ namespace llarp::path
         }
         else
         {
-          itr->second->DecayFilters(now);
           ++itr;
         }
       }
