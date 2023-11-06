@@ -49,7 +49,7 @@ namespace llarp::path
 
   bool
   Path::obtain_exit(
-      SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string, bool)> func)
+      SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "obtain_exit",
@@ -58,7 +58,7 @@ namespace llarp::path
   }
 
   bool
-  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string, bool)> func)
+  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "close_exit", CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)), std::move(func));
@@ -69,21 +69,21 @@ namespace llarp::path
       const dht::Key_t& location,
       bool is_relayed,
       uint64_t order,
-      std::function<void(std::string, bool)> func)
+      std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
   }
 
   bool
-  Path::find_name(std::string name, std::function<void(std::string, bool)> func)
+  Path::find_name(std::string name, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
   }
 
   bool
-  Path::find_router(std::string rid, std::function<void(std::string, bool)> func)
+  Path::find_router(std::string rid, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
@@ -91,7 +91,7 @@ namespace llarp::path
 
   bool
   Path::send_path_control_message(
-      std::string method, std::string body, std::function<void(std::string, bool)> func)
+      std::string method, std::string body, std::function<void(std::string)> func)
   {
     oxenc::bt_dict_producer btdp;
     btdp.append("BODY", body);
@@ -121,13 +121,16 @@ namespace llarp::path
         std::move(outer_payload),
         [response_cb = std::move(func), weak = weak_from_this()](oxen::quic::message m) {
           auto self = weak.lock();
-          if (not self)
+          // TODO: do we want to allow empty callback here?
+          if ((not self) or (not response_cb))
             return;
+
           if (m.timed_out)
           {
-            response_cb(""s, true);
+            response_cb(messages::TIMEOUT_BT_DICT);
             return;
           }
+
           TunnelNonce nonce{};
           std::string payload;
           try
@@ -139,9 +142,11 @@ namespace llarp::path
           }
           catch (const std::exception& e)
           {
-            log::warning(path_cat, "Error parsing onion response: {}", e.what());
+            log::warning(path_cat, "Error parsing path control message response: {}", e.what());
+            response_cb(messages::ERROR_BT_DICT);
             return;
           }
+
           for (const auto& hop : self->hops)
           {
             nonce = crypto::onion(
@@ -155,7 +160,7 @@ namespace llarp::path
           // TODO: should we do anything (even really simple) here to check if the decrypted
           //       response is sensible (e.g. is a bt dict)?  Parsing and handling of the
           //       contents (errors or otherwise) is the currently responsibility of the callback.
-          response_cb(payload, false);
+          response_cb(payload);
         });
   }
 
@@ -242,6 +247,8 @@ namespace llarp::path
   void
   Path::EnterState(PathStatus st, llarp_time_t now)
   {
+    if (now == 0s) now = router.now();
+
     if (st == ePathFailed)
     {
       _status = st;

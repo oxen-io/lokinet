@@ -1,5 +1,6 @@
 #include "pathbuilder.hpp"
 
+#include "llarp/path/pathset.hpp"
 #include "path.hpp"
 #include "path_context.hpp"
 
@@ -462,8 +463,7 @@ namespace llarp
         frames.append(dummy);
       }
 
-      auto self = GetSelf();
-      router->path_context().AddOwnPath(self, path);
+      router->path_context().AddOwnPath(GetSelf(), path);
       PathBuildStarted(path);
 
       // TODO:
@@ -471,32 +471,33 @@ namespace llarp
       // handle these responses as well as how we store and use Paths as a whole might
       // be worth doing sooner rather than later.  Leaving some TODOs below where fail
       // and success live.
-      auto response_cb = [self](oxen::quic::message m) {
+      auto response_cb = [path](oxen::quic::message m) {
         try
         {
-          if (not m)
+          if (m)
           {
-            if (m.timed_out)
-            {
-              log::warning(path_cat, "Path build timed out");
-            }
-            else
-            {
-              oxenc::bt_dict_consumer d{m.body()};
-              auto status = d.require<std::string_view>("STATUS");
-              log::warning(path_cat, "Path build returned failure status: {}", status);
-            }
-            // TODO: inform failure (what this means needs revisiting, badly)
+            // TODO: inform success (what this means needs revisiting, badly)
+            path->EnterState(path::ePathEstablished);
             return;
           }
-
-          // TODO: inform success (what this means needs revisiting, badly)
+          if (m.timed_out)
+          {
+            log::warning(path_cat, "Path build timed out");
+          }
+          else
+          {
+            oxenc::bt_dict_consumer d{m.body()};
+            auto status = d.require<std::string_view>(messages::STATUS_KEY);
+            log::warning(path_cat, "Path build returned failure status: {}", status);
+          }
         }
         catch (const std::exception& e)
         {
           log::warning(path_cat, "Failed parsing path build response.");
-          // TODO: inform failure (what this means needs revisiting, badly)
         }
+
+        // TODO: inform failure (what this means needs revisiting, badly)
+        path->EnterState(path::ePathFailed);
       };
 
       if (not router->send_control_message(

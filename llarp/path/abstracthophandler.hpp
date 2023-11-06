@@ -59,7 +59,7 @@ namespace llarp
       /// a timeout flag (if set, response string will be empty)
       virtual bool
       send_path_control_message(
-          std::string method, std::string body, std::function<void(std::string, bool)> func) = 0;
+          std::string method, std::string body, std::function<void(std::string)> func) = 0;
 
       /// send routing message and increment sequence number
       virtual bool

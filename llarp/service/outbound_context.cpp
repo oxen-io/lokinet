@@ -157,6 +157,7 @@ namespace llarp::service
     return "OBContext:" + current_intro.address_keys.Addr().ToString();
   }
 
+  // TODO: it seems a lot of this logic is duplicated in service/endpoint
   void
   OutboundContext::UpdateIntroSet()
   {
@@ -173,7 +174,7 @@ namespace llarp::service
 
     for (const auto& path : paths)
     {
-      path->find_intro(location, false, relayOrder, [this](std::string resp, bool timeout) mutable {
+      path->find_intro(location, false, relayOrder, [this](std::string resp) mutable {
         if (marked_bad)
         {
           log::info(link_cat, "Outbound context has been marked bad (whatever that means)");
@@ -182,14 +183,17 @@ namespace llarp::service
 
         updatingIntroSet = false;
 
-        if (timeout)
-          return;
-
         // TODO: this parsing is probably elsewhere, may need DRYed
         std::string introset;
         try
         {
           oxenc::bt_dict_consumer btdc{resp};
+          auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
+          if (status != messages::STATUS_OK)
+          {
+            log::info(link_cat, "Error in find intro set response: {}", status);
+            return;
+          }
           introset = btdc.require<std::string>("INTROSET");
         }
         catch (...)
@@ -539,10 +543,9 @@ namespace llarp::service
       ex->msg.proto = ProtocolType::Auth;
 
     ex->hook = [this, path, cb = std::move(func)](auto frame) mutable {
-      auto hook = [&, frame, path](std::string resp, bool timeout) {
+      auto hook = [&, frame, path](std::string resp) {
         // TODO: revisit this
         (void)resp;
-        (void)timeout;
         ep.HandleHiddenServiceFrame(path, *frame.get());
       };
 
