@@ -231,7 +231,8 @@ namespace llarp::path
   void
   Path::EnterState(PathStatus st, llarp_time_t now)
   {
-    if (now == 0s) now = router.now();
+    if (now == 0s)
+      now = router.now();
 
     if (st == ePathFailed)
     {

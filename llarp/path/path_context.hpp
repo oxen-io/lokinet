@@ -40,12 +40,6 @@ namespace llarp
 
 namespace std
 {
-  inline bool
-  operator==(const llarp::path::TransitHopID& lhs, const llarp::path::TransitHopID& rhs)
-  {
-    return lhs.operator==(rhs);
-  }
-
   template <>
   struct hash<llarp::path::TransitHopID>
   {
@@ -59,8 +53,6 @@ namespace std
 
 namespace llarp::path
 {
-  using TransitHop_ptr = std::shared_ptr<TransitHop>;
-
   struct PathContext
   {
     explicit PathContext(Router* router);
@@ -96,7 +88,7 @@ namespace llarp::path
     bool
     TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
 
-    TransitHop_ptr
+    std::shared_ptr<TransitHop>
     GetPathForTransfer(const PathID_t& topath);
 
     std::shared_ptr<TransitHop>
@@ -105,9 +97,8 @@ namespace llarp::path
     PathSet_ptr
     GetLocalPathSet(const PathID_t& id);
 
-    using EndpointPathPtrSet = std::set<Path_ptr, ComparePtr<Path_ptr>>;
     /// get a set of all paths that we own who's endpoint is r
-    EndpointPathPtrSet
+    std::vector<std::shared_ptr<Path>>
     FindOwnedPathsWithEndpoint(const RouterID& r);
 
     bool
@@ -145,7 +136,7 @@ namespace llarp::path
    private:
     Router* _router;
 
-    std::unordered_map<TransitHopID, TransitHop_ptr> transit_hops;
+    std::unordered_map<TransitHopID, std::shared_ptr<TransitHop>> transit_hops;
     std::unordered_map<PathID_t, Path_ptr> own_paths;
     bool m_AllowTransit;
     util::DecayingHashSet<IpAddress> path_limits;

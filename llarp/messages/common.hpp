@@ -28,13 +28,10 @@ namespace llarp
     }
 
     // ideally STATUS is the first key in a bt-dict, so use a single, early ascii char
-    inline auto STATUS_KEY = "!"s;
-    inline auto STATUS_OK = "OK"sv;
-    inline auto STATUS_TIMEOUT = "TIMEOUT"sv;
-    inline auto STATUS_ERROR = "ERROR"sv; // generic, unknown error (e.g. onion decrypt throw)
-    inline auto TIMEOUT_BT_DICT = serialize_response({{STATUS_KEY, STATUS_TIMEOUT}});
-    inline auto ERROR_BT_DICT = serialize_response({{STATUS_KEY, STATUS_ERROR}});
-  }  // namespace llarp::messages
+    inline const auto STATUS_KEY = "!"s;
+    inline const auto TIMEOUT_BT_DICT = serialize_response({{STATUS_KEY, "TIMEOUT"}});
+    inline const auto ERROR_BT_DICT = serialize_response({{STATUS_KEY, "ERROR"}});
+  }  // namespace messages
 
   /// abstract base class for serialized messages
   struct AbstractSerializable

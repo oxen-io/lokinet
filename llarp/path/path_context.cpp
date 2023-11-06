@@ -72,14 +72,23 @@ namespace llarp::path
     return _router->pubkey() == k;
   }
 
-  PathContext::EndpointPathPtrSet
+  std::vector<std::shared_ptr<Path>>
   PathContext::FindOwnedPathsWithEndpoint(const RouterID& r)
   {
-    EndpointPathPtrSet found;
+    std::vector<std::shared_ptr<Path>> found;
     for (const auto& [pathid, path] : own_paths)
     {
+      // each path is stored in this map twice, once for each pathid at the first hop
+      // This will make the output deduplicated without needing a std::set
+      // TODO: we should only need to map one pathid; as the path owner we only send/receive
+      //       packets with the first hop's RXID; its TXID is for packets between it and hop 2.
+      // TODO: Also, perhaps we want a bit of data duplication here, e.g. a map from
+      //       RouterID (terminal hop) to shared_ptr<Path>.
+      if (path->TXID() == pathid)
+        continue;
+
       if (path->Endpoint() == r && path->IsReady())
-        found.insert(path);
+        found.push_back(path);
     }
     return found;
   }
@@ -147,7 +156,7 @@ namespace llarp::path
     return _router->pubkey();
   }
 
-  TransitHop_ptr
+  std::shared_ptr<TransitHop>
   PathContext::GetPathForTransfer(const PathID_t& id)
   {
     if (auto itr = transit_hops.find({OurRouterID(), id}); itr != transit_hops.end())

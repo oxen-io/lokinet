@@ -172,11 +172,9 @@ namespace llarp::service
 
                       if (poker)
                         poker->put_up();
-
-                      result_handler(true, result);
                     }
 
-                    result_handler(false, result);
+                    result_handler(success, result);
                   };
 
                   ctx->send_auth_async(apply_result);
@@ -202,7 +200,9 @@ namespace llarp::service
     // If we fail along the way (e.g. it's a .snode, we can't build a path, or whatever else) then
     // we invoke the resultHandler with an empty vector.
     lookup_name(
-        name, [this, resultHandler, service = std::move(service)](std::string name_result, bool success) mutable {
+        name,
+        [this, resultHandler, service = std::move(service)](
+            std::string name_result, bool success) mutable {
           if (!success)
             return resultHandler({});
 
@@ -823,20 +823,20 @@ namespace llarp::service
       {
         oxenc::bt_dict_consumer btdc{resp};
         auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
-        if (status != messages::STATUS_OK)
+        if (status != "OK"sv)
         {
           log::info(link_cat, "Error on ONS lookup: {}", status);
-          func(""s, false);
+          func(std::string{status}, false);
         }
         name = btdc.require<std::string>("NAME");
       }
       catch (...)
       {
         log::warning(link_cat, "Failed to parse find name response!");
-        func(""s, false);
+        func("ERROR"s, false);
       }
 
-      func(name, true);
+      func(std::move(name), true);
     };
 
     for (const auto& path : chosenpaths)
@@ -1357,40 +1357,39 @@ namespace llarp::service
     // TODO: if all requests fail, call callback with failure?
     for (const auto& path : paths)
     {
-      path->find_intro(
-          location, false, 0, [this, hook, got_it](std::string resp) mutable {
-            // asking many, use only first successful
-            if (*got_it)
-              return;
+      path->find_intro(location, false, 0, [this, hook, got_it](std::string resp) mutable {
+        // asking many, use only first successful
+        if (*got_it)
+          return;
 
-            std::string introset;
+        std::string introset;
 
-            try
-            {
-              oxenc::bt_dict_consumer btdc{resp};
-              auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
-              if (status != messages::STATUS_OK)
-              {
-                log::info(link_cat, "Error in find intro set response: {}", status);
-                return;
-              }
-              introset = btdc.require<std::string>("INTROSET");
-            }
-            catch (...)
-            {
-              log::warning(link_cat, "Failed to parse find name response!");
-              throw;
-            }
+        try
+        {
+          oxenc::bt_dict_consumer btdc{resp};
+          auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
+          if (status != "OK"sv)
+          {
+            log::info(link_cat, "Error in find intro set response: {}", status);
+            return;
+          }
+          introset = btdc.require<std::string>("INTROSET");
+        }
+        catch (...)
+        {
+          log::warning(link_cat, "Failed to parse find name response!");
+          throw;
+        }
 
-            service::EncryptedIntroSet enc{introset};
-            router()->contacts()->services()->PutNode(std::move(enc));
+        service::EncryptedIntroSet enc{introset};
+        router()->contacts()->services()->PutNode(std::move(enc));
 
-            // TODO: finish this
-            /*
-            if (good)
-              *got_it = true;
-            */
-          });
+        // TODO: finish this
+        /*
+        if (good)
+          *got_it = true;
+        */
+      });
     }
     return hookAdded;
   }

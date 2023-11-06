@@ -189,7 +189,7 @@ namespace llarp::service
         {
           oxenc::bt_dict_consumer btdc{resp};
           auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
-          if (status != messages::STATUS_OK)
+          if (status != "OK"sv)
           {
             log::info(link_cat, "Error in find intro set response: {}", status);
             return;

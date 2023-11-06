@@ -302,7 +302,11 @@ namespace llarp::service
 
       // PKE (A, B, N)
       SharedSecret shared_secret;
-      if (!crypto::dh_server(shared_secret, self->msg->sender.EncryptionPublicKey(), self->m_LocalIdentity.enckey, self->frame.nonce))
+      if (!crypto::dh_server(
+              shared_secret,
+              self->msg->sender.EncryptionPublicKey(),
+              self->m_LocalIdentity.enckey,
+              self->frame.nonce))
       {
         LogError("x25519 key exchange failed");
         Dump<MAX_PROTOCOL_MESSAGE_SIZE>(self->frame);
