@@ -130,12 +130,6 @@ namespace llarp
       std::string
       bt_encode() const;
 
-      bool
-      BDecode(llarp_buffer_t* buf)
-      {
-        return bencode_decode_dict(*this, buf);
-      }
-
       void
       clear()
       {

@@ -28,9 +28,9 @@ namespace llarp
   }
 
   bool
-  RCGossiper::IsOurRC(const RouterContact& rc) const
+  RCGossiper::IsOurRC(const LocalRC& rc) const
   {
-    return rc.pubkey == rid;
+    return rc.router_id() == rid;
   }
 
   void
@@ -64,14 +64,14 @@ namespace llarp
   }
 
   bool
-  RCGossiper::GossipRC(const RouterContact& rc)
+  RCGossiper::GossipRC(const LocalRC& rc)
   {
     // only distribute public routers
-    if (not rc.IsPublicRouter())
+    if (not rc.is_public_router())
       return false;
     if (link_manager == nullptr)
       return false;
-    const RouterID pubkey(rc.pubkey);
+    const RouterID pubkey(rc.router_id());
     // filter check
     if (filter.Contains(pubkey))
       return false;

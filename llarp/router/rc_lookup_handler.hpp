@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/thread/threading.hpp>
 
@@ -24,7 +25,6 @@ namespace llarp
 
   struct Contacts;
   struct LinkManager;
-  struct RouterContact;
 
   enum class RCRequestResult
   {
@@ -35,7 +35,7 @@ namespace llarp
   };
 
   using RCRequestCallback =
-      std::function<void(const RouterID&, std::optional<RouterContact>, bool success)>;
+      std::function<void(const RouterID&, std::optional<RemoteRC>, bool success)>;
 
   struct RCLookupHandler
   {
@@ -80,13 +80,10 @@ namespace llarp
     is_registered(const RouterID& remote) const;
 
     bool
-    check_rc(const RouterContact& rc) const;
+    check_rc(const RemoteRC& rc) const;
 
     bool
     get_random_whitelist_router(RouterID& router) const;
-
-    bool
-    check_renegotiate_valid(RouterContact newrc, RouterContact oldrc);
 
     void
     periodic_update(llarp_time_t now);
@@ -106,7 +103,7 @@ namespace llarp
         LinkManager* linkManager,
         service::Context* hiddenServiceContext,
         const std::unordered_set<RouterID>& strictConnectPubkeys,
-        const std::set<RouterContact>& bootstrapRCList,
+        const std::set<RemoteRC>& bootstrapRCList,
         bool isServiceNode_arg);
 
     std::unordered_set<RouterID>
@@ -128,7 +125,7 @@ namespace llarp
     /// service nodes)
     std::unordered_set<RouterID> strict_connect_pubkeys;
 
-    std::set<RouterContact> bootstrap_rc_list;
+    std::set<RemoteRC> bootstrap_rc_list;
     std::unordered_set<RouterID> boostrap_rid_list;
 
     // Now that all calls are made through the event loop, any access to these

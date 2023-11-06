@@ -85,7 +85,7 @@ namespace llarp
     // use file based logging?
     bool use_file_logging = false;
     // our router contact
-    RouterContact router_contact;
+    LocalRC router_contact;
     std::shared_ptr<oxenmq::OxenMQ> _lmq;
     path::BuildLimiter _pathbuild_limiter;
     std::shared_ptr<EventLoopWakeup> loop_wakeup;
@@ -94,7 +94,7 @@ namespace llarp
     std::atomic<bool> is_running;
 
     int _outbound_udp_socket = -1;
-    bool is_service_node = false;
+    bool _is_service_node = false;
 
     std::optional<SockAddr> _ourAddress;
     oxen::quic::Address _local_addr;
@@ -147,6 +147,9 @@ namespace llarp
     void
     report_stats();
 
+    void
+    save_rc();
+
     bool
     update_rc();
 
@@ -167,7 +170,7 @@ namespace llarp
     connect_to(const RouterID& rid);
 
     void
-    connect_to(const RouterContact& rc);
+    connect_to(const RemoteRC& rc);
 
     Contacts*
     contacts() const
@@ -274,7 +277,7 @@ namespace llarp
       return paths;
     }
 
-    const RouterContact&
+    const LocalRC&
     rc() const
     {
       return router_contact;
@@ -294,9 +297,6 @@ namespace llarp
     {
       return _rc_lookup_handler.whitelist();
     }
-
-    void
-    modify_rc(std::function<std::optional<RouterContact>(RouterContact)> modify);
 
     void
     set_router_whitelist(
@@ -381,7 +381,7 @@ namespace llarp
     status_line();
 
     void
-    GossipRCIfNeeded(const RouterContact rc);
+    GossipRCIfNeeded(const LocalRC rc);
 
     void
     InitInboundLinks();
@@ -395,14 +395,14 @@ namespace llarp
     /// initialize us as a service node
     /// return true on success
     bool
-    InitServiceNode();
+    init_service_node();
 
     bool
     IsRunning() const;
 
     /// return true if we are running in service node mode
     bool
-    IsServiceNode() const;
+    is_service_node() const;
 
     std::optional<std::string>
     OxendErrorState() const;
@@ -452,12 +452,6 @@ namespace llarp
     bool
     PathToRouterAllowed(const RouterID& router) const;
 
-    void
-    HandleSaveRC() const;
-
-    bool
-    SaveRC();
-
     /// return true if we are a client with an exit configured
     bool
     HasClientExit() const;
@@ -465,7 +459,7 @@ namespace llarp
     const byte_t*
     pubkey() const
     {
-      return seckey_topublic(_identity);
+      return seckey_to_pubkey(_identity);
     }
 
     /// send to remote router or queue for sending
@@ -488,13 +482,6 @@ namespace llarp
         std::function<void(oxen::quic::message m)> func = nullptr);
 
     bool IsBootstrapNode(RouterID) const;
-
-    /// check if newRc matches oldRC and update local rc for this remote contact
-    /// if valid
-    /// returns true on valid and updated
-    /// returns false otherwise
-    bool
-    CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC);
 
     /// call internal router ticker
     void
@@ -525,10 +512,7 @@ namespace llarp
     NumberOfConnectedClients() const;
 
     bool
-    GetRandomConnectedRouter(RouterContact& result) const;
-
-    void
-    HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results);
+    GetRandomConnectedRouter(RemoteRC& result) const;
 
     bool
     HasSessionTo(const RouterID& remote) const;

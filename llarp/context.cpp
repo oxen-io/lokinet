@@ -19,8 +19,6 @@
 
 namespace llarp
 {
-  static auto logcat = llarp::log::Cat("llarp-context");
-
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
@@ -59,7 +57,8 @@ namespace llarp
       throw std::runtime_error("Cannot call Setup() on context without a Config");
 
     if (opts.showBanner)
-      llarp::LogInfo(fmt::format("{} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
+      llarp::LogInfo(
+          fmt::format("{} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO));
 
     if (!loop)
     {
@@ -162,7 +161,7 @@ namespace llarp
 #ifndef _WIN32
     if (sig == SIGUSR1)
     {
-      if (router and not router->IsServiceNode())
+      if (router and not router->is_service_node())
       {
         LogInfo("SIGUSR1: resetting network state");
         router->Thaw();

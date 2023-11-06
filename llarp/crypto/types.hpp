@@ -2,7 +2,6 @@
 
 #include "constants.hpp"
 
-#include <llarp/router_id.hpp>
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/types.hpp>
@@ -15,7 +14,9 @@ namespace llarp
   using SharedSecret = AlignedBuffer<SHAREDKEYSIZE>;
   using KeyExchangeNonce = AlignedBuffer<32>;
 
-  struct PubKey final : public AlignedBuffer<PUBKEYSIZE>
+  struct RouterID;
+
+  struct PubKey : public AlignedBuffer<PUBKEYSIZE>
   {
     PubKey() = default;
 
@@ -37,36 +38,17 @@ namespace llarp
     static PubKey
     from_string(const std::string& s);
 
-    operator RouterID() const
-    {
-      return {as_array()};
-    }
+    operator RouterID() const;
 
     PubKey&
-    operator=(const byte_t* ptr)
-    {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
+    operator=(const byte_t* ptr);
   };
 
-  inline bool
-  operator==(const PubKey& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+  bool
+  operator==(const PubKey& lhs, const PubKey& rhs);
 
-  inline bool
-  operator==(const PubKey& lhs, const RouterID& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
-
-  inline bool
-  operator==(const RouterID& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+  bool
+  operator==(const PubKey& lhs, const RouterID& rhs);
 
   struct PrivateKey;
 
@@ -161,58 +143,24 @@ namespace llarp
     toPublic(PubKey& pubkey) const;
   };
 
-  /// IdentitySecret is a secret key from a service node secret seed
-  struct IdentitySecret final : public AlignedBuffer<32>
-  {
-    IdentitySecret() : AlignedBuffer<32>()
-    {}
-
-    /// no copy constructor
-    explicit IdentitySecret(const IdentitySecret&) = delete;
-    // no byte data constructor
-    explicit IdentitySecret(const byte_t*) = delete;
-
-    /// load service node seed from file
-    bool
-    LoadFromFile(const fs::path& fname);
-
-    std::string_view
-    ToString() const
-    {
-      return "[IdentitySecret]";
-    }
-  };
-
   template <>
   constexpr inline bool IsToStringFormattable<PubKey> = true;
   template <>
   constexpr inline bool IsToStringFormattable<SecretKey> = true;
   template <>
   constexpr inline bool IsToStringFormattable<PrivateKey> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<IdentitySecret> = true;
 
   using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
   using LongHash = AlignedBuffer<HASHSIZE>;
 
   struct Signature final : public AlignedBuffer<SIGSIZE>
   {
-    byte_t*
-    Hi();
-
-    const byte_t*
-    Hi() const;
-
-    byte_t*
-    Lo();
-
-    const byte_t*
-    Lo() const;
+    //
   };
 
   using TunnelNonce = AlignedBuffer<TUNNONCESIZE>;
   using SymmNonce = AlignedBuffer<NONCESIZE>;
-  using SymmKey = AlignedBuffer<32>;
+  using SymmKey = AlignedBuffer<32>;  // not used
 
   using PQCipherBlock = AlignedBuffer<PQ_CIPHERTEXTSIZE + 1>;
   using PQPubKey = AlignedBuffer<PQ_PUBKEYSIZE>;

@@ -1,5 +1,6 @@
 #include "types.hpp"
 
+#include <llarp/router_id.hpp>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/file.hpp>
 
@@ -32,6 +33,30 @@ namespace llarp
     return oxenc::to_hex(begin(), end());
   }
 
+  PubKey::operator RouterID() const
+  {
+    return {as_array()};
+  }
+
+  PubKey&
+  PubKey::operator=(const byte_t* ptr)
+  {
+    std::copy(ptr, ptr + SIZE, begin());
+    return *this;
+  }
+
+  bool
+  operator==(const PubKey& lhs, const PubKey& rhs)
+  {
+    return lhs.as_array() == rhs.as_array();
+  }
+
+  bool
+  operator==(const PubKey& lhs, const RouterID& rhs)
+  {
+    return lhs.as_array() == rhs.as_array();
+  }
+
   bool
   SecretKey::LoadFromFile(const fs::path& fname)
   {
@@ -39,7 +64,7 @@ namespace llarp
     std::array<byte_t, 128> tmp;
     try
     {
-      sz = util::slurp_file(fname, tmp.data(), tmp.size());
+      sz = util::file_to_buffer(fname, tmp.data(), tmp.size());
     }
     catch (const std::exception&)
     {
@@ -93,67 +118,17 @@ namespace llarp
   bool
   SecretKey::SaveToFile(const fs::path& fname) const
   {
-    std::string tmp(128, 0);
-    llarp_buffer_t buf(tmp);
-    if (!bt_encode(&buf))
-      return false;
+    auto bte = bt_encode();
 
-    tmp.resize(buf.cur - buf.base);
     try
     {
-      util::dump_file(fname, tmp);
-    }
-    catch (const std::exception&)
-    {
-      return false;
-    }
-    return true;
-  }
-
-  bool
-  IdentitySecret::LoadFromFile(const fs::path& fname)
-  {
-    std::array<byte_t, SIZE> buf;
-    size_t sz;
-    try
-    {
-      sz = util::slurp_file(fname, buf.data(), buf.size());
+      util::buffer_to_file(fname, bte);
     }
     catch (const std::exception& e)
     {
-      llarp::LogError("failed to load service node seed: ", e.what());
       return false;
     }
-    if (sz != SIZE)
-    {
-      llarp::LogError("service node seed size invalid: ", sz, " != ", SIZE);
-      return false;
-    }
-    std::copy(buf.begin(), buf.end(), begin());
+
     return true;
-  }
-
-  byte_t*
-  Signature::Lo()
-  {
-    return data();
-  }
-
-  const byte_t*
-  Signature::Lo() const
-  {
-    return data();
-  }
-
-  byte_t*
-  Signature::Hi()
-  {
-    return data() + 32;
-  }
-
-  const byte_t*
-  Signature::Hi() const
-  {
-    return data() + 32;
   }
 }  // namespace llarp

@@ -83,7 +83,7 @@ namespace llarp
 
       hop.nonce.Randomize();
       // do key exchange
-      if (!crypto::dh_client(hop.shared, hop.rc.pubkey, hop.commkey, hop.nonce))
+      if (!crypto::dh_client(hop.shared, hop.rc.router_id(), hop.commkey, hop.nonce))
       {
         auto err = fmt::format("{} failed to generate shared key for path build!", Name());
         log::error(path_cat, err);
@@ -121,7 +121,7 @@ namespace llarp
       outer_nonce.Randomize();
 
       // derive (outer) shared key
-      if (!crypto::dh_client(shared, hop.rc.pubkey, framekey, outer_nonce))
+      if (!crypto::dh_client(shared, hop.rc.router_id(), framekey, outer_nonce))
       {
         log::error(path_cat, "DH client failed during hop info encryption!");
         throw std::runtime_error{"DH failed during hop info encryption"};
@@ -211,23 +211,25 @@ namespace llarp
       return obj;
     }
 
-    std::optional<RouterContact>
+    std::optional<RemoteRC>
     Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
-      std::optional<RouterContact> found = std::nullopt;
+      std::optional<RemoteRC> found = std::nullopt;
       router->for_each_connection([&](link::Connection& conn) {
         const auto& rc = conn.remote_rc;
+        const auto& rid = rc.router_id();
+
 #ifndef TESTNET
-        if (router->IsBootstrapNode(rc.pubkey))
+        if (router->IsBootstrapNode(rid))
           return;
 #endif
-        if (exclude.count(rc.pubkey))
+        if (exclude.count(rid))
           return;
 
-        if (BuildCooldownHit(rc.pubkey))
+        if (BuildCooldownHit(rid))
           return;
 
-        if (router->router_profiling().IsBadForPath(rc.pubkey))
+        if (router->router_profiling().IsBadForPath(rid))
           return;
 
         found = rc;
@@ -235,15 +237,15 @@ namespace llarp
       return found;
     }
 
-    std::optional<std::vector<RouterContact>>
+    std::optional<std::vector<RemoteRC>>
     Builder::GetHopsForBuild()
     {
       auto filter = [r = router](const auto& rc) -> bool {
-        return not r->router_profiling().IsBadForPath(rc.pubkey, 1);
+        return not r->router_profiling().IsBadForPath(rc.router_id(), 1);
       };
       if (const auto maybe = router->node_db()->GetRandom(filter))
       {
-        return GetHopsAlignedToForBuild(maybe->pubkey);
+        return GetHopsAlignedToForBuild(maybe->router_id());
       }
       return std::nullopt;
     }
@@ -308,12 +310,12 @@ namespace llarp
       return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
     }
 
-    std::optional<std::vector<RouterContact>>
+    std::optional<std::vector<RemoteRC>>
     Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
       const auto pathConfig = router->config()->paths;
 
-      std::vector<RouterContact> hops;
+      std::vector<RemoteRC> hops;
       {
         const auto maybe = SelectFirstHop(exclude);
         if (not maybe.has_value())
@@ -324,7 +326,7 @@ namespace llarp
         hops.emplace_back(*maybe);
       };
 
-      RouterContact endpointRC;
+      RemoteRC endpointRC;
       if (const auto maybe = router->node_db()->get_rc(endpoint))
       {
         endpointRC = *maybe;
@@ -341,19 +343,21 @@ namespace llarp
         else
         {
           auto filter =
-              [&hops, r = router, endpointRC, pathConfig, exclude](const auto& rc) -> bool {
-            if (exclude.count(rc.pubkey))
+              [&hops, r = router, endpointRC, pathConfig, exclude](const RemoteRC& rc) -> bool {
+            const auto& rid = rc.router_id();
+
+            if (exclude.count(rid))
               return false;
 
-            std::set<RouterContact> hopsSet;
+            std::set<RemoteRC> hopsSet;
             hopsSet.insert(endpointRC);
             hopsSet.insert(hops.begin(), hops.end());
 
-            if (r->router_profiling().IsBadForPath(rc.pubkey, 1))
+            if (r->router_profiling().IsBadForPath(rid, 1))
               return false;
             for (const auto& hop : hopsSet)
             {
-              if (hop.pubkey == rc.pubkey)
+              if (hop.router_id() == rid)
                 return false;
             }
 
@@ -362,7 +366,7 @@ namespace llarp
             if (not pathConfig.Acceptable(hopsSet))
               return false;
 #endif
-            return rc.pubkey != endpointRC.pubkey;
+            return rc.router_id() != endpointRC.router_id();
           };
 
           if (const auto maybe = router->node_db()->GetRandom(filter))
@@ -393,7 +397,7 @@ namespace llarp
     }
 
     void
-    Builder::Build(std::vector<RouterContact> hops, PathRole roles)
+    Builder::Build(std::vector<RemoteRC> hops, PathRole roles)
     {
       if (IsStopped())
       {
@@ -402,7 +406,7 @@ namespace llarp
       }
 
       lastBuild = llarp::time_now_ms();
-      const RouterID edge{hops[0].pubkey};
+      const auto& edge = hops[0].router_id();
 
       if (not router->pathbuild_limiter().Attempt(edge))
       {
@@ -429,7 +433,8 @@ namespace llarp
       {
         bool lastHop = (i == (n_hops - 1));
 
-        const auto& nextHop = lastHop ? path_hops[i].rc.pubkey : path_hops[i + 1].rc.pubkey;
+        const auto& nextHop =
+            lastHop ? path_hops[i].rc.router_id() : path_hops[i + 1].rc.router_id();
 
         PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
         auto frame_str = PathBuildMessage::serialize(path_hops[i]);
@@ -533,7 +538,7 @@ namespace llarp
       DoPathBuildBackoff();
       for (const auto& hop : p->hops)
       {
-        const RouterID target{hop.rc.pubkey};
+        const auto& target = hop.rc.router_id();
         // look up router and see if it's still on the network
         log::info(path_cat, "Looking up RouterID {} due to path build timeout", target);
 

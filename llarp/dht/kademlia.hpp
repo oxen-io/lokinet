@@ -22,7 +22,7 @@ namespace llarp::dht
     bool
     operator()(const RouterContact& left, const RouterContact& right) const
     {
-      return (left.pubkey ^ us) < (right.pubkey ^ us);
+      return (left.router_id() ^ us) < (right.router_id() ^ us);
     }
   };
 }  // namespace llarp::dht

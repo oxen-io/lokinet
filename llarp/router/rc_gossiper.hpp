@@ -12,7 +12,7 @@ namespace llarp
   /// The maximum number of peers we will flood a gossiped RC to when propagating an RC
   constexpr size_t MaxGossipPeers = 20;
   struct LinkManager;
-  struct RouterContact;
+  struct LocalRC;
 
   struct RCGossiper
   {
@@ -23,7 +23,7 @@ namespace llarp
     ~RCGossiper() = default;
 
     bool
-    GossipRC(const RouterContact& rc);
+    GossipRC(const LocalRC& rc);
 
     void
     Decay(Time_t now);
@@ -32,7 +32,7 @@ namespace llarp
     ShouldGossipOurRC(Time_t now) const;
 
     bool
-    IsOurRC(const RouterContact& rc) const;
+    IsOurRC(const LocalRC& rc) const;
 
     void
     Init(LinkManager*, const RouterID&, Router*);

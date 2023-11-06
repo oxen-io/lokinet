@@ -19,19 +19,19 @@ namespace llarp::dht
       ID.Zero();
     }
 
-    RCNode(const RouterContact& other) : rc(other), ID(other.pubkey)
+    RCNode(const RouterContact& other) : rc(other), ID(other.router_id())
     {}
 
     util::StatusObject
     ExtractStatus() const
     {
-      return rc.ExtractStatus();
+      return rc.extract_status();
     }
 
     bool
     operator<(const RCNode& other) const
     {
-      return rc.last_updated < other.rc.last_updated;
+      return rc.timestamp() < other.rc.timestamp();
     }
   };
 

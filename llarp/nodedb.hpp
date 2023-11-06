@@ -26,9 +26,9 @@ namespace llarp
   {
     struct Entry
     {
-      const RouterContact rc;
+      const RemoteRC rc;
       llarp_time_t insertedAt;
-      explicit Entry(RouterContact rc);
+      explicit Entry(RemoteRC rc);
     };
 
     using NodeMap = std::unordered_map<RouterID, Entry>;
@@ -73,11 +73,11 @@ namespace llarp
     Tick(llarp_time_t now);
 
     /// find the absolute closets router to a dht location
-    RouterContact
+    RemoteRC
     find_closest_to(dht::Key_t location) const;
 
     /// find many routers closest to dht key
-    std::vector<RouterContact>
+    std::vector<RemoteRC>
     find_many_closest_to(dht::Key_t location, uint32_t numRouters) const;
 
     /// return true if we have an rc by its ident pubkey
@@ -85,14 +85,14 @@ namespace llarp
     has_router(RouterID pk) const;
 
     /// maybe get an rc by its ident pubkey
-    std::optional<RouterContact>
+    std::optional<RemoteRC>
     get_rc(RouterID pk) const;
 
     template <typename Filter>
-    std::optional<RouterContact>
+    std::optional<RemoteRC>
     GetRandom(Filter visit) const
     {
-      return router.loop()->call_get([visit]() -> std::optional<RouterContact> {
+      return router.loop()->call_get([visit]() -> std::optional<RemoteRC> {
         std::vector<const decltype(entries)::value_type*> entries;
         for (const auto& entry : entries)
           entries.push_back(entry);
@@ -150,7 +150,7 @@ namespace llarp
         {
           if (visit(itr->second.rc))
           {
-            removed.insert(itr->second.rc.pubkey);
+            removed.insert(itr->second.rc.router_id());
             itr = entries.erase(itr);
           }
           else
@@ -167,10 +167,10 @@ namespace llarp
 
     /// put this rc into the cache if it is not there or newer than the one there already
     void
-    put_rc_if_newer(RouterContact rc);
+    put_rc_if_newer(RemoteRC rc);
 
     /// unconditional put of rc into cache
     void
-    put_rc(RouterContact rc);
+    put_rc(RemoteRC rc);
   };
 }  // namespace llarp

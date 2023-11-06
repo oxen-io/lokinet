@@ -623,7 +623,7 @@ namespace llarp::handlers
                   throw;
                 }
 
-                r->node_db()->put_rc_if_newer(RouterContact{payload});
+                r->node_db()->put_rc_if_newer(RemoteRC{payload});
                 msg.AddTXTReply(payload);
               }
               else
@@ -658,7 +658,7 @@ namespace llarp::handlers
         }
         else if (subdomain == "netid")
         {
-          msg.AddTXTReply(fmt::format("netid={};", router()->rc().netID));
+          msg.AddTXTReply(fmt::format("netid={};", RouterContact::ACTIVE_NETID));
         }
         else
         {

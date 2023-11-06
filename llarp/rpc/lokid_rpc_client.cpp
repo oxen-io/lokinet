@@ -51,7 +51,7 @@ namespace llarp::rpc
   {
     if (auto router = m_Router.lock())
     {
-      if (not router->IsServiceNode())
+      if (not router->is_service_node())
       {
         throw std::runtime_error("we cannot talk to lokid while not a service node");
       }
@@ -181,7 +181,7 @@ namespace llarp::rpc
 
       nlohmann::json payload = {
           {"pubkey_ed25519", oxenc::to_hex(pk.begin(), pk.end())},
-          {"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+          {"version", {LOKINET_VERSION[0], LOKINET_VERSION[1], LOKINET_VERSION[2]}}};
 
       if (auto err = r->OxendErrorState())
         payload["error"] = *err;

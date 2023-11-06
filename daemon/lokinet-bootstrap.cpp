@@ -86,7 +86,7 @@ main(int argc, char* argv[])
 #else
       cpr::Get(
           cpr::Url{bootstrap_url},
-          cpr::Header{{"User-Agent", std::string{llarp::VERSION_FULL}}},
+          cpr::Header{{"User-Agent", std::string{llarp::LOKINET_VERSION_FULL}}},
           cpr::Ssl(cpr::ssl::CaPath{X509_get_default_cert_dir()}));
 #endif
   if (resp.status_code != 200)

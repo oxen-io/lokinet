@@ -74,7 +74,7 @@ namespace llarp::rpc
   std::shared_ptr<EndpointBase>
   GetEndpointByName(Router& r, std::string name)
   {
-    if (r.IsServiceNode())
+    if (r.is_service_node())
     {
       return r.exitContext().GetExitEndpoint(name);
     }
@@ -154,7 +154,7 @@ namespace llarp::rpc
   RPCServer::invoke(Version& version)
   {
     util::StatusObject result{
-        {"version", llarp::VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
+        {"version", llarp::LOKINET_VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
 
     SetJSONResponse(result, version.response);
   }
@@ -309,7 +309,7 @@ namespace llarp::rpc
   void
   RPCServer::invoke(LookupSnode& lookupsnode)
   {
-    if (not m_Router.IsServiceNode())
+    if (not m_Router.is_service_node())
     {
       SetJSONError("Not supported", lookupsnode.response);
       return;

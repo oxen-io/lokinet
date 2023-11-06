@@ -115,17 +115,17 @@ namespace llarp::path
     bool
     BuildOneAlignedTo(const RouterID endpoint) override;
 
-    std::optional<std::vector<RouterContact>>
+    std::optional<std::vector<RemoteRC>>
     GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude = {});
 
     void
-    Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) override;
+    Build(std::vector<RemoteRC> hops, PathRole roles = ePathRoleAny) override;
 
     /// pick a first hop
-    std::optional<RouterContact>
+    std::optional<RemoteRC>
     SelectFirstHop(const std::set<RouterID>& exclude = {}) const;
 
-    std::optional<std::vector<RouterContact>>
+    std::optional<std::vector<RemoteRC>>
     GetHopsForBuild() override;
 
     void

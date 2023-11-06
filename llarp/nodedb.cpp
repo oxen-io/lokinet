@@ -14,9 +14,7 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
-  static auto logcat = log::Cat("nodedb");
-
-  NodeDB::Entry::Entry(RouterContact value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
+  NodeDB::Entry::Entry(RemoteRC value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
   {}
 
   static void
@@ -72,14 +70,16 @@ namespace llarp
       router.loop()->call([this]() {
         m_NextFlushAt += FlushInterval;
         // make copy of all rcs
-        std::vector<RouterContact> copy;
+        std::vector<RemoteRC> copy;
+
         for (const auto& item : entries)
           copy.push_back(item.second.rc);
+
         // flush them to disk in one big job
         // TODO: split this up? idk maybe some day...
         disk([this, data = std::move(copy)]() {
           for (const auto& rc : data)
-            rc.Write(get_path_by_pubkey(rc.pubkey));
+            rc.write(get_path_by_pubkey(rc.router_id()));
         });
       });
     }
@@ -121,22 +121,16 @@ namespace llarp
           if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
             return true;
 
-          RouterContact rc{};
+          RemoteRC rc{};
 
-          if (not rc.Read(f))
+          if (not rc.read(f))
           {
             // try loading it, purge it if it is junk
             purge.emplace(f);
             return true;
           }
 
-          if (not rc.FromOurNetwork())
-          {
-            // skip entries that are not from our network
-            return true;
-          }
-
-          if (rc.IsExpired(time_now_ms()))
+          if (rc.is_expired(time_now_ms()))
           {
             // rc expired dont load it and purge it later
             purge.emplace(f);
@@ -145,8 +139,8 @@ namespace llarp
 
           // validate signature and purge entries with invalid signatures
           // load ones with valid signatures
-          if (rc.VerifySignature())
-            entries.emplace(rc.pubkey, rc);
+          if (rc.verify())
+            entries.emplace(rc.router_id(), rc);
           else
             purge.emplace(f);
 
@@ -172,7 +166,7 @@ namespace llarp
 
     router.loop()->call([this]() {
       for (const auto& item : entries)
-        item.second.rc.Write(get_path_by_pubkey(item.first));
+        item.second.rc.write(get_path_by_pubkey(item.first));
     });
   }
 
@@ -183,10 +177,10 @@ namespace llarp
         [this, pk]() -> bool { return entries.find(pk) != entries.end(); });
   }
 
-  std::optional<RouterContact>
+  std::optional<RemoteRC>
   NodeDB::get_rc(RouterID pk) const
   {
-    return router.loop()->call_get([this, pk]() -> std::optional<RouterContact> {
+    return router.loop()->call_get([this, pk]() -> std::optional<RemoteRC> {
       const auto itr = entries.find(pk);
 
       if (itr == entries.end())
@@ -213,9 +207,9 @@ namespace llarp
       auto itr = entries.begin();
       while (itr != entries.end())
       {
-        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.pubkey) == 0)
+        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.router_id()) == 0)
         {
-          removed.insert(itr->second.rc.pubkey);
+          removed.insert(itr->second.rc.router_id());
           itr = entries.erase(itr);
         }
         else
@@ -227,11 +221,12 @@ namespace llarp
   }
 
   void
-  NodeDB::put_rc(RouterContact rc)
+  NodeDB::put_rc(RemoteRC rc)
   {
     router.loop()->call([this, rc]() {
-      entries.erase(rc.pubkey);
-      entries.emplace(rc.pubkey, rc);
+      const auto& rid = rc.router_id();
+      entries.erase(rid);
+      entries.emplace(rid, rc);
     });
   }
 
@@ -242,17 +237,17 @@ namespace llarp
   }
 
   void
-  NodeDB::put_rc_if_newer(RouterContact rc)
+  NodeDB::put_rc_if_newer(RemoteRC rc)
   {
     router.loop()->call([this, rc]() {
-      auto itr = entries.find(rc.pubkey);
-      if (itr == entries.end() or itr->second.rc.OtherIsNewer(rc))
+      auto itr = entries.find(rc.router_id());
+      if (itr == entries.end() or itr->second.rc.other_is_newer(rc))
       {
         // delete if existing
         if (itr != entries.end())
           entries.erase(itr);
         // add new entry
-        entries.emplace(rc.pubkey, rc);
+        entries.emplace(rc.router_id(), rc);
       }
     });
   }
@@ -275,32 +270,31 @@ namespace llarp
     });
   }
 
-  llarp::RouterContact
+  RemoteRC
   NodeDB::find_closest_to(llarp::dht::Key_t location) const
   {
-    return router.loop()->call_get([this, location]() {
-      llarp::RouterContact rc;
+    return router.loop()->call_get([this, location]() -> RemoteRC {
+      RemoteRC rc;
       const llarp::dht::XorMetric compare(location);
+
       VisitAll([&rc, compare](const auto& otherRC) {
-        if (rc.pubkey.IsZero())
+        const auto& rid = rc.router_id();
+
+        if (rid.IsZero() || compare(dht::Key_t{otherRC.router_id()}, dht::Key_t{rid}))
         {
           rc = otherRC;
           return;
         }
-        if (compare(
-                llarp::dht::Key_t{otherRC.pubkey.as_array()},
-                llarp::dht::Key_t{rc.pubkey.as_array()}))
-          rc = otherRC;
       });
       return rc;
     });
   }
 
-  std::vector<RouterContact>
+  std::vector<RemoteRC>
   NodeDB::find_many_closest_to(llarp::dht::Key_t location, uint32_t numRouters) const
   {
-    return router.loop()->call_get([this, location, numRouters]() {
-      std::vector<const RouterContact*> all;
+    return router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
+      std::vector<const RemoteRC*> all;
 
       all.reserve(entries.size());
       for (auto& entry : entries)
@@ -314,7 +308,7 @@ namespace llarp
             return compare(*a, *b);
           });
 
-      std::vector<RouterContact> closest;
+      std::vector<RemoteRC> closest;
       closest.reserve(numRouters);
       for (auto it = all.begin(); it != it_mid; ++it)
         closest.push_back(**it);

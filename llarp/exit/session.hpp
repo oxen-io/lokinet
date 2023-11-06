@@ -72,7 +72,7 @@ namespace llarp
       bool
       CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
-      std::optional<std::vector<RouterContact>>
+      std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() override;
 
       bool

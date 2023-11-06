@@ -31,8 +31,10 @@ namespace llarp::service
     void
     RegenerateKeys();
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
+
+    void bt_decode(std::string);
 
     /// @param needBackup determines whether existing keys will be cycled
     void

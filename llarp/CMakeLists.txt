@@ -91,7 +91,6 @@ add_dependencies(lokinet-utils genversion)
 lokinet_add_library(lokinet-time-place
   ev/ev.cpp
   ev/libuv.cpp
-  net/exit_info.cpp   # only router_contact
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
@@ -99,6 +98,8 @@ lokinet_add_library(lokinet-time-place
   net/net_int.cpp
   net/sock_addr.cpp
   router_contact.cpp
+  router_contact_local.cpp
+  router_contact_remote.cpp
   router_id.cpp
   router_version.cpp  # to be deleted shortly
   service/address.cpp

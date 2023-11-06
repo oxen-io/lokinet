@@ -206,97 +206,57 @@ namespace llarp::service
       std::string service,
       std::function<void(std::vector<dns::SRVData>)> resultHandler)
   {
-    // handles when we aligned to a loki address
-    auto handleGotPathToService = [resultHandler, service, this](auto addr) {
-      // we can probably get this info before we have a path to them but we do this after we
-      // have a path so when we send the response back they can send shit to them immediately
-      const auto& container = _state->remote_sessions;
-      if (auto itr = container.find(addr); itr != container.end())
-      {
-        // parse the stuff we need from this guy
-        resultHandler(itr->second->GetCurrentIntroSet().GetMatchingSRVRecords(service));
-        return;
-      }
-      resultHandler({});
-    };
+    // A lookup goes through a chain of events:
+    // - see if the name is ONS, and if so resolve it to a ADDR.loki
+    // - once we've resolved to ADDR.loki then initiate a path to it
+    // - once we have a path, consult the remote's introset to pull out the SRV records
+    // If we fail along the way (e.g. it's a .snode, we can't build a path, or whatever else) then
+    // we invoke the resultHandler with an empty vector.
+    lookup_name(
+        name, [this, resultHandler, service = std::move(service)](oxen::quic::message m) mutable {
+          if (!m)
+            return resultHandler({});
 
-    // handles when we resolved a .snode
-    auto handleResolvedSNodeName = [resultHandler, nodedb = router()->node_db()](auto router_id) {
-      std::vector<dns::SRVData> result{};
-      if (auto maybe_rc = nodedb->get_rc(router_id))
-      {
-        result = maybe_rc->srvRecords;
-      }
-      resultHandler(std::move(result));
-    };
+          std::string name;
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            name = btdc.require<std::string>("NAME");
+          }
+          catch (...)
+          {
+            log::warning(link_cat, "Failed to parse find name response!");
+            throw;
+          }
 
-    // handles when we got a path to a remote thing
-    auto handleGotPathTo = [handleGotPathToService, handleResolvedSNodeName, resultHandler](
-                               auto maybe_tag, auto address) {
-      if (not maybe_tag)
-      {
-        resultHandler({});
-        return;
-      }
+          auto saddr = service::Address();
+          if (!saddr.FromString(name))
+            return resultHandler({});  // Not a regular ADDR.loki so doesn't support SRV
 
-      if (auto* addr = std::get_if<Address>(&address))
-      {
-        // .loki case
-        handleGotPathToService(*addr);
-      }
-      else if (auto* router_id = std::get_if<RouterID>(&address))
-      {
-        // .snode case
-        handleResolvedSNodeName(*router_id);
-      }
-      else
-      {
-        // fallback case
-        // XXX: never should happen but we'll handle it anyways
-        resultHandler({});
-      }
-    };
+          // initiate path build
+          const auto build_started = EnsurePathTo(
+              saddr,
+              [this, address = std::move(saddr), resultHandler, service = std::move(service)](
+                  auto maybe_tag) {
+                if (not maybe_tag)
+                  return resultHandler({});
 
-    // handles when we know a long address of a remote resource
-    auto handleGotAddress = [resultHandler, handleGotPathTo, this](AddressVariant_t address) {
-      // we will attempt a build to whatever we looked up
-      const auto result = EnsurePathTo(
-          address,
-          [address, handleGotPathTo](auto maybe_tag) { handleGotPathTo(maybe_tag, address); },
-          PathAlignmentTimeout());
+                // we can probably get this info before we have a path to them but we do this after
+                // we have a path so when we send the DNS response back they can talk to them
+                // immediately
+                const auto& container = _state->remote_sessions;
+                if (auto itr = container.find(address); itr != container.end())
+                  // parse the stuff we need from this guy
+                  resultHandler(itr->second->GetCurrentIntroSet().GetMatchingSRVRecords(service));
+                else
+                  resultHandler({});
+              },
+              PathAlignmentTimeout());
 
-      // on path build start fail short circuit
-      if (not result)
-        resultHandler({});
-    };
-
-    // look up this name async and start the entire chain of events
-    lookup_name(name, [handleGotAddress, resultHandler](oxen::quic::message m) mutable {
-      if (m)
-      {
-        std::string name;
-        try
-        {
-          oxenc::bt_dict_consumer btdc{m.body()};
-          name = btdc.require<std::string>("NAME");
-        }
-        catch (...)
-        {
-          log::warning(link_cat, "Failed to parse find name response!");
-          throw;
-        }
-
-        if (auto saddr = service::Address(); saddr.FromString(name))
-          handleGotAddress(saddr);
-
-        if (auto rid = RouterID(); rid.FromString(name))
-          handleGotAddress(rid);
-      }
-      else
-      {
-        resultHandler({});
-      }
-    });
+          // on path build start fail short circuit
+          if (not build_started)
+            resultHandler({});
+        });
   }
 
   bool
@@ -754,22 +714,22 @@ namespace llarp::service
     return now >= next_pub;
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   Endpoint::GetHopsForBuild()
   {
     std::unordered_set<RouterID> exclude;
     ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
     const auto maybe =
-        router()->node_db()->GetRandom([exclude, r = router()](const auto& rc) -> bool {
-          return exclude.count(rc.pubkey) == 0
-              and not r->router_profiling().IsBadForPath(rc.pubkey);
+        router()->node_db()->GetRandom([exclude, r = router()](const RemoteRC& rc) -> bool {
+          const auto& rid = rc.router_id();
+          return exclude.count(rid) == 0 and not r->router_profiling().IsBadForPath(rid);
         });
     if (not maybe.has_value())
       return std::nullopt;
-    return GetHopsForBuildWithEndpoint(maybe->pubkey);
+    return GetHopsForBuildWithEndpoint(maybe->router_id());
   }
 
-  std::optional<std::vector<RouterContact>>
+  std::optional<std::vector<RemoteRC>>
   Endpoint::GetHopsForBuildWithEndpoint(RouterID endpoint)
   {
     return path::Builder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());
