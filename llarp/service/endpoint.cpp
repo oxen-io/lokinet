@@ -202,20 +202,20 @@ namespace llarp::service
     // If we fail along the way (e.g. it's a .snode, we can't build a path, or whatever else) then
     // we invoke the resultHandler with an empty vector.
     lookup_name(
-        name, [this, resultHandler, service = std::move(service)](oxen::quic::message m) mutable {
-          if (!m)
+        name, [this, resultHandler, service = std::move(service)](std::string name_result, bool success) mutable {
+          if (!success)
             return resultHandler({});
 
           std::string name;
           try
           {
-            oxenc::bt_dict_consumer btdc{m.body()};
+            oxenc::bt_dict_consumer btdc{name_result};
             name = btdc.require<std::string>("NAME");
           }
           catch (...)
           {
             log::warning(link_cat, "Failed to parse find name response!");
-            throw;
+            return resultHandler({});
           }
 
           auto saddr = service::Address();
@@ -816,14 +816,18 @@ namespace llarp::service
     std::shuffle(chosenpaths.begin(), chosenpaths.end(), llarp::csrng);
     chosenpaths.resize(std::min(paths.size(), MAX_ONS_LOOKUP_ENDPOINTS));
 
-    auto response_cb = [func = std::move(func)](std::string resp, bool timeout) {
-      if (timeout)
-        func(""s, false);
-
+    // TODO: only want one successful response to call the callback, or failed if all fail
+    auto response_cb = [func = std::move(func)](std::string resp) {
       std::string name{};
       try
       {
         oxenc::bt_dict_consumer btdc{resp};
+        auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
+        if (status != messages::STATUS_OK)
+        {
+          log::info(link_cat, "Error on ONS lookup: {}", status);
+          func(""s, false);
+        }
         name = btdc.require<std::string>("NAME");
       }
       catch (...)
@@ -1354,9 +1358,9 @@ namespace llarp::service
     for (const auto& path : paths)
     {
       path->find_intro(
-          location, false, 0, [this, hook, got_it](std::string resp, bool timeout) mutable {
+          location, false, 0, [this, hook, got_it](std::string resp) mutable {
             // asking many, use only first successful
-            if (timeout or *got_it)
+            if (*got_it)
               return;
 
             std::string introset;
@@ -1364,6 +1368,12 @@ namespace llarp::service
             try
             {
               oxenc::bt_dict_consumer btdc{resp};
+              auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
+              if (status != messages::STATUS_OK)
+              {
+                log::info(link_cat, "Error in find intro set response: {}", status);
+                return;
+              }
               introset = btdc.require<std::string>("INTROSET");
             }
             catch (...)

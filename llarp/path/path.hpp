@@ -143,7 +143,7 @@ namespace llarp
       }
 
       void
-      EnterState(PathStatus st, llarp_time_t now);
+      EnterState(PathStatus st, llarp_time_t now = 0s);
 
       llarp_time_t
       ExpireTime() const
@@ -186,28 +186,28 @@ namespace llarp
       Tick(llarp_time_t now, Router* r);
 
       bool
-      find_name(std::string name, std::function<void(std::string, bool)> func = nullptr);
+      find_name(std::string name, std::function<void(std::string)> func = nullptr);
 
       bool
-      find_router(std::string rid, std::function<void(std::string, bool)> func = nullptr);
+      find_router(std::string rid, std::function<void(std::string)> func = nullptr);
 
       bool
       find_intro(
           const dht::Key_t& location,
           bool is_relayed = false,
           uint64_t order = 0,
-          std::function<void(std::string, bool)> func = nullptr);
+          std::function<void(std::string)> func = nullptr);
 
       bool
       close_exit(
-          SecretKey sk, std::string tx_id, std::function<void(std::string, bool)> func = nullptr);
+          SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
 
       bool
       obtain_exit(
           SecretKey sk,
           uint64_t flag,
           std::string tx_id,
-          std::function<void(std::string, bool)> func = nullptr);
+          std::function<void(std::string)> func = nullptr);
 
       /// sends a control request along a path
       ///
@@ -221,7 +221,7 @@ namespace llarp
       send_path_control_message(
           std::string method,
           std::string body,
-          std::function<void(std::string, bool)> func = nullptr) override;
+          std::function<void(std::string)> func = nullptr) override;
 
       bool
       SendRoutingMessage(std::string payload, Router* r) override;

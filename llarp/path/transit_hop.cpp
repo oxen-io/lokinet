@@ -53,7 +53,7 @@ namespace llarp::path
 
   bool
   TransitHop::send_path_control_message(
-      std::string, std::string, std::function<void(std::string, bool)>)
+      std::string, std::string, std::function<void(std::string)>)
   {
     return true;
   }

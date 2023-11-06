@@ -124,6 +124,8 @@ namespace llarp
 
   }  // namespace link
 
+  using messages::serialize_response;
+
   void
   LinkManager::for_each_connection(std::function<void(link::Connection&)> func)
   {
@@ -536,7 +538,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      respond(serialize_response({{"STATUS", FindNameMessage::EXCEPTION}}));
+      respond(serialize_response({{messages::STATUS_KEY, FindNameMessage::EXCEPTION}}));
     }
 
     _router.rpc_client()->lookup_ons_hash(
@@ -546,7 +548,7 @@ namespace llarp
           if (maybe)
             respond(serialize_response({{"NAME", maybe->ciphertext}}));
           else
-            respond(serialize_response({{"STATUS", FindNameMessage::NOT_FOUND}}));
+            respond(serialize_response({{messages::STATUS_KEY, FindNameMessage::NOT_FOUND}}));
         });
   }
 
@@ -564,7 +566,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      payload = btdc.require<std::string>(m ? "NAME" : "STATUS");
+      payload = btdc.require<std::string>(m ? "NAME" : messages::STATUS_KEY);
     }
     catch (const std::exception& e)
     {
@@ -611,7 +613,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      respond(serialize_response({{"STATUS", FindRouterMessage::EXCEPTION}, {"TARGET", ""}}));
+      respond(serialize_response({{messages::STATUS_KEY, FindRouterMessage::EXCEPTION}, {"TARGET", ""}}));
       return;
     }
 
@@ -642,7 +644,7 @@ namespace llarp
       }
 
       respond(
-          serialize_response({{"STATUS", FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
+          serialize_response({{messages::STATUS_KEY, FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
     }
     else
     {
@@ -682,14 +684,14 @@ namespace llarp
         else
         {
           respond(serialize_response(
-              {{"STATUS", FindRouterMessage::RETRY_ITER},
+              {{messages::STATUS_KEY, FindRouterMessage::RETRY_ITER},
                {"TARGET", reinterpret_cast<const char*>(target_addr.data())}}));
         }
       }
       else
       {
         respond(serialize_response(
-            {{"STATUS", FindRouterMessage::RETRY_NEW},
+            {{messages::STATUS_KEY, FindRouterMessage::RETRY_NEW},
              {"TARGET", reinterpret_cast<const char*>(closest_rid.data())}}));
       }
     }
@@ -839,7 +841,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      respond(serialize_response({{"STATUS", PublishIntroMessage::EXCEPTION}}));
+      respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::EXCEPTION}}));
       return;
     }
 
@@ -850,14 +852,14 @@ namespace llarp
     if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
     {
       log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
-      respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_INTROSET}}));
+      respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INVALID_INTROSET}}));
       return;
     }
 
     if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
     {
       log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
-      respond(serialize_response({{"STATUS", PublishIntroMessage::EXPIRED}}));
+      respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::EXPIRED}}));
       return;
     }
 
@@ -867,7 +869,7 @@ namespace llarp
     {
       log::error(
           link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
-      respond(serialize_response({{"STATUS", PublishIntroMessage::INSUFFICIENT}}));
+      respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INSUFFICIENT}}));
       return;
     }
 
@@ -879,7 +881,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
-        respond(serialize_response({{"STATUS", PublishIntroMessage::INVALID_ORDER}}));
+        respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INVALID_ORDER}}));
         return;
       }
 
@@ -896,7 +898,7 @@ namespace llarp
             relay_order);
 
         _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-        respond(serialize_response({{"STATUS", ""}}));
+        respond(serialize_response({{messages::STATUS_KEY, ""}}));
       }
       else
       {
@@ -934,7 +936,7 @@ namespace llarp
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
       _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
-      respond(serialize_response({{"STATUS", ""}}));
+      respond(serialize_response({{messages::STATUS_KEY, ""}}));
     }
     else
       log::warning(
@@ -957,7 +959,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      payload = btdc.require<std::string>("STATUS");
+      payload = btdc.require<std::string>(messages::STATUS_KEY);
     }
     catch (const std::exception& e)
     {
@@ -1008,7 +1010,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      respond(serialize_response({{"STATUS", FindIntroMessage::EXCEPTION}}));
+      respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::EXCEPTION}}));
       return;
     }
 
@@ -1020,7 +1022,7 @@ namespace llarp
       {
         log::warning(
             link_cat, "Received FindIntroMessage with invalid relay order: {}", relay_order);
-        respond(serialize_response({{"STATUS", FindIntroMessage::INVALID_ORDER}}));
+        respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::INVALID_ORDER}}));
         return;
       }
 
@@ -1030,7 +1032,7 @@ namespace llarp
       {
         log::error(
             link_cat, "Received FindIntroMessage but only know {} nodes", closest_rcs.size());
-        respond(serialize_response({{"STATUS", FindIntroMessage::INSUFFICIENT_NODES}}));
+        respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::INSUFFICIENT_NODES}}));
         return;
       }
 
@@ -1068,7 +1070,7 @@ namespace llarp
         log::warning(
             link_cat,
             "Received FindIntroMessage with relayed == false and no local introset entry");
-        respond(serialize_response({{"STATUS", FindIntroMessage::NOT_FOUND}}));
+        respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::NOT_FOUND}}));
       }
     }
   }
@@ -1087,7 +1089,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      payload = btdc.require<std::string>((m) ? "INTROSET" : "STATUS");
+      payload = btdc.require<std::string>((m) ? "INTROSET" : messages::STATUS_KEY);
     }
     catch (const std::exception& e)
     {
@@ -1114,7 +1116,7 @@ namespace llarp
     if (!_router.path_context().AllowingTransit())
     {
       log::warning(link_cat, "got path build request when not permitting transit");
-      m.respond(serialize_response({{"STATUS", PathBuildMessage::NO_TRANSIT}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::NO_TRANSIT}}), true);
       return;
     }
     try
@@ -1144,7 +1146,7 @@ namespace llarp
                 shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
         {
           log::info(link_cat, "DH server initialization failed during path build");
-          m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1157,14 +1159,14 @@ namespace llarp
                 shared))
         {
           log::error(link_cat, "HMAC failed on path build request");
-          m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
         if (!std::equal(
                 digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
         {
           log::info(link_cat, "HMAC mismatch on path build request");
-          m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1176,7 +1178,7 @@ namespace llarp
                 outer_nonce.data()))
         {
           log::info(link_cat, "Decrypt failed on path build request");
-          m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+          m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
           return;
         }
 
@@ -1197,7 +1199,7 @@ namespace llarp
       if (frame.empty())
       {
         log::info(link_cat, "Path build request received invalid frame");
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_FRAMES}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_FRAMES}}), true);
         return;
       }
 
@@ -1214,7 +1216,7 @@ namespace llarp
       if (hop_info.txID.IsZero() || hop_info.rxID.IsZero())
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be non-zero");
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_PATHID}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
         return;
       }
 
@@ -1223,7 +1225,7 @@ namespace llarp
       if (_router.path_context().HasTransitHop(hop_info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_PATHID}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
         return;
       }
 
@@ -1231,7 +1233,7 @@ namespace llarp
               hop->pathKey.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
       {
         log::warning(link_cat, "DH failed during path build.");
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_CRYPTO}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
         return;
       }
       // generate hash of hop key for nonce mutation
@@ -1243,7 +1245,7 @@ namespace llarp
       if (hop->lifetime >= path::DEFAULT_LIFETIME)
       {
         log::warning(link_cat, "Path build attempt with too long of a lifetime.");
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::BAD_LIFETIME}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_LIFETIME}}), true);
         return;
       }
 
@@ -1255,7 +1257,7 @@ namespace llarp
         hop->terminal_hop = true;
         // we are terminal hop and everything is okay
         _router.path_context().PutTransitHop(hop);
-        m.respond(serialize_response({{"STATUS", PathBuildMessage::OK}}), false);
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::OK}}), false);
         return;
       }
 
@@ -1287,7 +1289,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", PathBuildMessage::EXCEPTION}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::EXCEPTION}}), true);
       return;
     }
   }
@@ -1302,7 +1304,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      // m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1317,7 +1319,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1332,7 +1334,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      // m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1347,7 +1349,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1362,7 +1364,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      // m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      // m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1377,7 +1379,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1392,7 +1394,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
       return;
     }
   }
@@ -1431,7 +1433,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", ObtainExitMessage::EXCEPTION}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, ObtainExitMessage::EXCEPTION}}), true);
       throw;
     }
   }
@@ -1499,7 +1501,7 @@ namespace llarp
         {
           (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
               ? m.respond(UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
-              : m.respond(serialize_response({{"STATUS", UpdateExitMessage::UPDATE_FAILED}}), true);
+              : m.respond(serialize_response({{messages::STATUS_KEY, UpdateExitMessage::UPDATE_FAILED}}), true);
         }
         // If we fail to verify the message, no-op
       }
@@ -1507,7 +1509,7 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", UpdateExitMessage::EXCEPTION}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, UpdateExitMessage::EXCEPTION}}), true);
       return;
     }
   }
@@ -1586,12 +1588,12 @@ namespace llarp
         }
       }
 
-      m.respond(serialize_response({{"STATUS", CloseExitMessage::UPDATE_FAILED}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, CloseExitMessage::UPDATE_FAILED}}), true);
     }
     catch (const std::exception& e)
     {
       log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(serialize_response({{"STATUS", CloseExitMessage::EXCEPTION}}), true);
+      m.respond(serialize_response({{messages::STATUS_KEY, CloseExitMessage::EXCEPTION}}), true);
       return;
     }
   }

@@ -4,6 +4,7 @@
 
 #include <llarp/constants/path.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/messages/common.hpp>
 #include <llarp/path/transit_hop.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
@@ -26,12 +27,6 @@ namespace
 namespace llarp
 {
   struct LinkManager;
-
-  inline std::string
-  serialize_response(oxenc::bt_dict supplement = {})
-  {
-    return oxenc::bt_serialize(supplement);
-  }
 
   namespace link
   {

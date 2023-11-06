@@ -140,7 +140,7 @@ namespace llarp
       send_path_control_message(
           std::string method,
           std::string body,
-          std::function<void(std::string, bool)> func) override;
+          std::function<void(std::string)> func) override;
 
       // send routing message when end of path
       bool
