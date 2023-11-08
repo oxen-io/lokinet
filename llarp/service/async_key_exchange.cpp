@@ -4,7 +4,6 @@
 
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/util/meta/memfn.hpp>
 
 #include <utility>
 

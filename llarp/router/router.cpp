@@ -11,7 +11,6 @@
 #include <llarp/net/net.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/util/logging.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/status.hpp>
 
 #include <cstdlib>
@@ -691,7 +690,7 @@ namespace llarp
         _contacts,
         _node_db,
         _loop,
-        util::memFn(&Router::queue_work, this),
+        [this](std::function<void(void)> work) { queue_work(std::move(work)); },
         &_link_manager,
         &_hidden_service_context,
         strictConnectPubkeys,
