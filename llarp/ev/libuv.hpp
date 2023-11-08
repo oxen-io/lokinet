@@ -2,7 +2,6 @@
 #include "ev.hpp"
 #include "udp_handle.hpp"
 
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/thread/queue.hpp>
 
 // #include <uvw.hpp>
