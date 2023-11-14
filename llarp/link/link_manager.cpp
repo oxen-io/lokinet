@@ -1119,93 +1119,77 @@ namespace llarp
       m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::NO_TRANSIT}}), true);
       return;
     }
+
     try
     {
-      std::string payload{m.body()}, frame_payload;
+      std::string frame_payload;
       std::string frame, hash, hop_payload, commkey, rx_id, tx_id, upstream;
       ustring other_pubkey, outer_nonce, inner_nonce;
       uint64_t lifetime;
 
-      try
+      auto payload_list = oxenc::bt_deserialize<std::deque<std::string>>(m.body());
+      if (payload_list.size() != path::MAX_LEN)
       {
-        oxenc::bt_list_consumer btlc{payload};
-        frame_payload = btlc.consume_string();
-
-        oxenc::bt_dict_consumer frame_info{frame_payload};
-        hash = frame_info.require<std::string>("HASH");
-        frame = frame_info.require<std::string>("FRAME");
-
-        oxenc::bt_dict_consumer hop_dict{frame};
-        hop_payload = frame_info.require<std::string>("ENCRYPTED");
-        outer_nonce = frame_info.require<ustring>("NONCE");
-        other_pubkey = frame_info.require<ustring>("PUBKEY");
-
-        SharedSecret shared;
-        // derive shared secret using ephemeral pubkey and our secret key (and nonce)
-        if (!crypto::dh_server(
-                shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
-        {
-          log::info(link_cat, "DH server initialization failed during path build");
-          m.respond(
-              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
-          return;
-        }
-
-        // hash data and check against given hash
-        ShortHash digest;
-        if (!crypto::hmac(
-                digest.data(),
-                reinterpret_cast<unsigned char*>(frame.data()),
-                frame.size(),
-                shared))
-        {
-          log::error(link_cat, "HMAC failed on path build request");
-          m.respond(
-              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
-          return;
-        }
-        if (!std::equal(
-                digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
-        {
-          log::info(link_cat, "HMAC mismatch on path build request");
-          m.respond(
-              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
-          return;
-        }
-
-        // decrypt frame with our hop info
-        if (!crypto::xchacha20(
-                reinterpret_cast<unsigned char*>(hop_payload.data()),
-                hop_payload.size(),
-                shared.data(),
-                outer_nonce.data()))
-        {
-          log::info(link_cat, "Decrypt failed on path build request");
-          m.respond(
-              serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
-          return;
-        }
-
-        oxenc::bt_dict_consumer hop_info{hop_payload};
-        commkey = hop_info.require<std::string>("COMMKEY");
-        lifetime = hop_info.require<uint64_t>("LIFETIME");
-        inner_nonce = hop_info.require<ustring>("NONCE");
-        rx_id = hop_info.require<std::string>("RX");
-        tx_id = hop_info.require<std::string>("TX");
-        upstream = hop_info.require<std::string>("UPSTREAM");
-      }
-      catch (...)
-      {
-        log::warning(link_cat, "Error: failed to deserialize path build message");
-        throw;
-      }
-
-      if (frame.empty())
-      {
-        log::info(link_cat, "Path build request received invalid frame");
+        log::info(link_cat, "Path build message with wrong number of frames");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_FRAMES}}), true);
         return;
       }
+
+      oxenc::bt_dict_consumer frame_info{payload_list.front()};
+      hash = frame_info.require<std::string>("HASH");
+      frame = frame_info.require<std::string>("FRAME");
+
+      oxenc::bt_dict_consumer hop_dict{frame};
+      hop_payload = frame_info.require<std::string>("ENCRYPTED");
+      outer_nonce = frame_info.require<ustring>("NONCE");
+      other_pubkey = frame_info.require<ustring>("PUBKEY");
+
+      SharedSecret shared;
+      // derive shared secret using ephemeral pubkey and our secret key (and nonce)
+      if (!crypto::dh_server(
+              shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
+      {
+        log::info(link_cat, "DH server initialization failed during path build");
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      // hash data and check against given hash
+      ShortHash digest;
+      if (!crypto::hmac(
+              digest.data(), reinterpret_cast<unsigned char*>(frame.data()), frame.size(), shared))
+      {
+        log::error(link_cat, "HMAC failed on path build request");
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+      if (!std::equal(
+              digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
+      {
+        log::info(link_cat, "HMAC mismatch on path build request");
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      // decrypt frame with our hop info
+      if (!crypto::xchacha20(
+              reinterpret_cast<unsigned char*>(hop_payload.data()),
+              hop_payload.size(),
+              shared.data(),
+              outer_nonce.data()))
+      {
+        log::info(link_cat, "Decrypt failed on path build request");
+        m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
+        return;
+      }
+
+      oxenc::bt_dict_consumer hop_info{hop_payload};
+      commkey = hop_info.require<std::string>("COMMKEY");
+      lifetime = hop_info.require<uint64_t>("LIFETIME");
+      inner_nonce = hop_info.require<ustring>("NONCE");
+      rx_id = hop_info.require<std::string>("RX");
+      tx_id = hop_info.require<std::string>("TX");
+      upstream = hop_info.require<std::string>("UPSTREAM");
 
       // populate transit hop object with hop info
       // TODO: IP / path build limiting clients
@@ -1213,20 +1197,19 @@ namespace llarp
       hop->info.downstream = from;
 
       // extract pathIDs and check if zero or used
-      auto& hop_info = hop->info;
-      hop_info.txID.from_string(tx_id);
-      hop_info.rxID.from_string(rx_id);
+      hop->info.txID.from_string(tx_id);
+      hop->info.rxID.from_string(rx_id);
 
-      if (hop_info.txID.IsZero() || hop_info.rxID.IsZero())
+      if (hop->info.txID.IsZero() || hop->info.rxID.IsZero())
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be non-zero");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
         return;
       }
 
-      hop_info.upstream.from_string(upstream);
+      hop->info.upstream.from_string(upstream);
 
-      if (_router.path_context().HasTransitHop(hop_info))
+      if (_router.path_context().HasTransitHop(hop->info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
@@ -1257,9 +1240,9 @@ namespace llarp
       }
 
       hop->started = _router.now();
-      _router.persist_connection_until(hop_info.downstream, hop->ExpireTime() + 10s);
+      _router.persist_connection_until(hop->info.downstream, hop->ExpireTime() + 10s);
 
-      if (hop_info.upstream == _router.pubkey())
+      if (hop->info.upstream == _router.pubkey())
       {
         hop->terminal_hop = true;
         // we are terminal hop and everything is okay
@@ -1268,14 +1251,32 @@ namespace llarp
         return;
       }
 
-      // rotate our frame to the end of the list and forward upstream
-      auto payload_list = oxenc::bt_deserialize<oxenc::bt_list>(payload);
-      payload_list.splice(payload_list.end(), payload_list, payload_list.begin());
+      // pop our frame, to be randomized after onion step and appended
+      auto end_frame = std::move(payload_list.front());
+      payload_list.pop_front();
+      auto onion_nonce = SymmNonce{inner_nonce.data()} ^ hop->nonceXOR;
+      // (de-)onion each further frame using the established shared secret and
+      // onion_nonce = inner_nonce ^ nonceXOR
+      // Note: final value passed to crypto::onion is xor factor, but that's for *after* the
+      // onion round to compute the return value, so we don't care about it.
+      for (auto& element : payload_list)
+      {
+        crypto::onion(
+            reinterpret_cast<unsigned char*>(element.data()),
+            element.size(),
+            hop->pathKey,
+            onion_nonce,
+            onion_nonce);
+      }
+      // randomize final frame.  could probably paste our frame on the end and onion it with the
+      // rest, but it gains nothing over random.
+      randombytes(reinterpret_cast<uint8_t*>(end_frame.data()), end_frame.size());
+      payload_list.push_back(std::move(end_frame));
 
       send_control_message(
           hop->info.upstream,
           "path_build",
-          bt_serialize(payload_list),
+          oxenc::bt_serialize(payload_list),
           [hop, this, prev_message = std::move(m)](oxen::quic::message m) {
             if (m)
             {
