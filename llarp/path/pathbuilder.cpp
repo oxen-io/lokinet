@@ -429,40 +429,72 @@ namespace llarp
           path_cat, "{} building path -> {} : {}", Name(), path->ShortName(), path->HopsString());
 
       oxenc::bt_list_producer frames;
-
+      std::vector<std::string> frame_str(path::MAX_LEN);
       auto& path_hops = path->hops;
       size_t n_hops = path_hops.size();
       size_t last_len{0};
 
-      for (size_t i = 0; i < n_hops; i++)
+      // each hop will be able to read the outer part of its frame and decrypt
+      // the inner part with that information.  It will then do an onion step on the
+      // remaining frames so the next hop can read the outer part of its frame,
+      // and so on.  As this de-onion happens from hop 1 to n, we create and onion
+      // the frames from hop n downto 1 (i.e. reverse order).  The first frame is
+      // not onioned.
+      //
+      // Onion-ing the frames in this way will prevent relays controlled by
+      // the same entity from knowing they are part of the same path
+      // (unless they're adjacent in the path; nothing we can do about that obviously).
+
+      // i from n_hops downto 0
+      size_t i = n_hops;
+      while (i > 0)
       {
+        i--;
         bool lastHop = (i == (n_hops - 1));
 
         const auto& nextHop =
             lastHop ? path_hops[i].rc.router_id() : path_hops[i + 1].rc.router_id();
 
         PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
-        auto frame_str = PathBuildMessage::serialize(path_hops[i]);
+        frame_str[i] = PathBuildMessage::serialize(path_hops[i]);
 
         // all frames should be the same length...not sure what that is yet
+        // it may vary if path lifetime is non-default, as that is encoded as an
+        // integer in decimal, but it should be constant for a given path
         if (last_len != 0)
-          assert(frame_str.size() == last_len);
+          assert(frame_str[i].size() == last_len);
 
-        last_len = frame_str.size();
-        frames.append(std::move(frame_str));
+        last_len = frame_str[i].size();
+
+        // onion each previously-created frame using the established shared secret and
+        // onion_nonce = path_hops[i].nonce ^ path_hops[i].nonceXOR, which the transit hop
+        // will have recovered after decrypting its frame.
+        // Note: final value passed to crypto::onion is xor factor, but that's for *after* the
+        // onion round to compute the return value, so we don't care about it.
+        for (size_t j = n_hops - 1; j > i; j--)
+        {
+          auto onion_nonce = path_hops[i].nonce ^ path_hops[i].nonceXOR;
+          crypto::onion(
+              reinterpret_cast<unsigned char*>(frame_str[j].data()),
+              frame_str[j].size(),
+              path_hops[i].shared,
+              onion_nonce,
+              onion_nonce);
+        }
       }
 
       std::string dummy;
       dummy.reserve(last_len);
-
       // append dummy frames; path build request must always have MAX_LEN frames
-      // TODO: with the data structured as it is now (bt-encoded dict as each frame)
-      //       the dummy frames can't be completely random; they need to look like
-      //       normal frames
-      for (size_t i = 0; i < path::MAX_LEN - n_hops; i++)
+      for (i = n_hops; i < path::MAX_LEN; i++)
       {
-        randombytes(reinterpret_cast<uint8_t*>(dummy.data()), dummy.size());
-        frames.append(dummy);
+        frame_str[i].resize(last_len);
+        randombytes(reinterpret_cast<uint8_t*>(frame_str[i].data()), frame_str[i].size());
+      }
+
+      for (auto& str : frame_str)  // NOLINT
+      {
+        frames.append(std::move(str));
       }
 
       router->path_context().AddOwnPath(GetSelf(), path);
