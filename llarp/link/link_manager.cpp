@@ -8,7 +8,6 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
-#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 
 #include <algorithm>
@@ -243,21 +242,17 @@ namespace llarp
       return true;
     }
 
-    _router.loop()->call([this, remote, endpoint, body, f = std::move(func)]() {
-      auto pending = PendingControlMessage(body, endpoint, f);
+    _router.loop()->call([this,
+                          remote,
+                          endpoint = std::move(endpoint),
+                          body = std::move(body),
+                          f = std::move(func)]() {
+      auto pending = PendingControlMessage(std::move(body), std::move(endpoint), f);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-        if (success)
-        {
-          _router.node_db()->put_rc_if_newer(*rc);
-          connect_to(*rc);
-        }
-        else
-          log::warning(quic_cat, "Do something intelligent here for error handling");
-      });
+      connect_to(remote);
     });
 
     return false;
@@ -275,21 +270,13 @@ namespace llarp
       return true;
     }
 
-    _router.loop()->call([&]() {
+    _router.loop()->call([this, body = std::move(body), remote]() {
       auto pending = PendingDataMessage(body);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-        if (success)
-        {
-          _router.node_db()->put_rc_if_newer(*rc);
-          connect_to(*rc);
-        }
-        else
-          log::warning(quic_cat, "Do something intelligent here for error handling");
-      });
+      connect_to(remote);
     });
 
     return false;
@@ -304,15 +291,13 @@ namespace llarp
   void
   LinkManager::connect_to(const RouterID& rid)
   {
-    rc_lookup->get_rc(rid, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-      if (success)
-      {
-        _router.node_db()->put_rc_if_newer(*rc);
-        connect_to(*rc);
-      }
-      else
-        log::warning(quic_cat, "Do something intelligent here for error handling");
-    });
+    auto rc = node_db->get_rc(rid);
+    if (rc)
+    {
+      connect_to(*rc);
+    }
+    else
+      log::warning(quic_cat, "Do something intelligent here for error handling");
   }
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
@@ -398,6 +383,27 @@ namespace llarp
         log::debug(quic_cat, "Quic connection CID:{} purged successfully", scid);
       }
     });
+  }
+
+  void
+  LinkManager::gossip_rc(const RemoteRC& rc)
+  {
+    for (auto& [rid, conn] : ep.conns)
+      send_control_message(rid, "gossip_rc", std::string{rc.view()}, nullptr);
+  }
+
+  void
+  LinkManager::handle_gossip_rc(oxen::quic::message m)
+  {
+    try
+    {
+      RemoteRC rc{m.body()};
+    }
+    catch (const std::exception& e)
+    {
+      log::info(link_cat, "Recieved invalid RC, dropping on the floor.");
+      return;
+    }
   }
 
   bool
@@ -486,10 +492,9 @@ namespace llarp
   }
 
   void
-  LinkManager::init(RCLookupHandler* rcLookup)
+  LinkManager::init()
   {
     is_stopping = false;
-    rc_lookup = rcLookup;
     node_db = _router.node_db();
   }
 
@@ -509,7 +514,7 @@ namespace llarp
       {
         exclude.insert(maybe_other->router_id());
 
-        if (not rc_lookup->is_session_allowed(maybe_other->router_id()))
+        if (not node_db->is_connection_allowed(maybe_other->router_id()))
           continue;
 
         connect_to(*maybe_other);
@@ -630,8 +635,9 @@ namespace llarp
     {
       std::string neighbors{};
 
-      const auto closest_rcs =
-          _router.node_db()->find_many_closest_to(target_addr, RC_LOOKUP_STORAGE_REDUNDANCY);
+      // TODO: constant replaced with 4 (what the constant it referred to was) for compilation,
+      // pending removal
+      const auto closest_rcs = _router.node_db()->find_many_closest_to(target_addr, 4);
 
       for (const auto& rc : closest_rcs)
       {

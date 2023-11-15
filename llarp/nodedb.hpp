@@ -49,7 +49,85 @@ namespace llarp
     fs::path
     get_path_by_pubkey(RouterID pk) const;
 
+    std::unordered_map<RouterID, RemoteRC> bootstraps;
+
+    // whitelist = active routers
+    std::unordered_set<RouterID> router_whitelist;
+    // greylist = fully funded, but decommissioned routers
+    std::unordered_set<RouterID> router_greylist;
+    // greenlist = registered but not fully-staked routers
+    std::unordered_set<RouterID> router_greenlist;
+
+    // all registered relays (snodes)
+    std::unordered_set<RouterID> registered_routers;
+
+    // only ever use to specific edges as path first-hops
+    std::unordered_set<RouterID> pinned_edges;
+
    public:
+    void
+    set_bootstrap_routers(const std::set<RemoteRC>& rcs);
+
+    const std::unordered_set<RouterID>&
+    whitelist() const
+    {
+      return router_whitelist;
+    }
+
+    const std::unordered_set<RouterID>&
+    greylist() const
+    {
+      return router_greylist;
+    }
+
+    const std::unordered_set<RouterID>&
+    get_registered_routers() const
+    {
+      return registered_routers;
+    }
+
+    void
+    set_router_whitelist(
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& greenlist);
+
+    std::optional<RouterID>
+    get_random_whitelist_router() const;
+
+    // client:
+    //   if pinned edges were specified, connections are allowed only to those and
+    //   to the configured bootstrap nodes.  otherwise, always allow.
+    //
+    // relay:
+    //   outgoing connections are allowed only to other registered, funded relays
+    //   (whitelist and greylist, respectively).
+    bool
+    is_connection_allowed(const RouterID& remote) const;
+
+    // client:
+    //   same as is_connection_allowed
+    //
+    // server:
+    //   we only build new paths through registered, not decommissioned relays
+    //   (i.e. whitelist)
+    bool
+    is_path_allowed(const RouterID& remote) const
+    {
+      return router_whitelist.count(remote);
+    }
+
+    // if pinned edges were specified, the remote must be in that set, else any remote
+    // is allowed as first hop.
+    bool
+    is_first_hop_allowed(const RouterID& remote) const;
+
+    const std::unordered_set<RouterID>&
+    get_pinned_edges() const
+    {
+      return pinned_edges;
+    }
+
     explicit NodeDB(
         fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
 

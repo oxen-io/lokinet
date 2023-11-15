@@ -109,7 +109,6 @@ lokinet_add_library(lokinet-time-place
 # lokinet-platform holds all platform specific code
 lokinet_add_library(lokinet-platform
   net/interface_info.cpp
-  router/rc_lookup_handler.cpp
   vpn/packet_router.cpp
   vpn/platform.cpp
 )

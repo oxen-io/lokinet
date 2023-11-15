@@ -100,6 +100,73 @@ namespace llarp
   }
 
   void
+  NodeDB::set_bootstrap_routers(const std::set<RemoteRC>& rcs)
+  {
+    bootstraps.clear();  // this function really shouldn't be called more than once, but...
+    for (const auto& rc : rcs)
+      bootstraps.emplace(rc.router_id(), rc);
+  }
+
+  void
+  NodeDB::set_router_whitelist(
+      const std::vector<RouterID>& whitelist,
+      const std::vector<RouterID>& greylist,
+      const std::vector<RouterID>& greenlist)
+  {
+    if (whitelist.empty())
+      return;
+
+    registered_routers.clear();
+    registered_routers.insert(whitelist.begin(), whitelist.end());
+    registered_routers.insert(greylist.begin(), greylist.end());
+    registered_routers.insert(greenlist.begin(), greenlist.end());
+
+    router_whitelist.clear();
+    router_whitelist.insert(whitelist.begin(), whitelist.end());
+    router_greylist.clear();
+    router_greylist.insert(greylist.begin(), greylist.end());
+    router_greenlist.clear();
+    router_greenlist.insert(greenlist.begin(), greenlist.end());
+
+    log::info(
+        logcat, "lokinet service node list now has ", router_whitelist.size(), " active routers");
+  }
+
+  std::optional<RouterID>
+  NodeDB::get_random_whitelist_router() const
+  {
+    const auto sz = router_whitelist.size();
+    if (sz == 0)
+      return std::nullopt;
+    auto itr = router_whitelist.begin();
+    if (sz > 1)
+      std::advance(itr, randint() % sz);
+    return *itr;
+  }
+
+  bool
+  NodeDB::is_connection_allowed(const RouterID& remote) const
+  {
+    if (pinned_edges.size() && pinned_edges.count(remote) == 0 && !bootstraps.count(remote))
+    {
+      return false;
+    }
+
+    if (not router.is_service_node())
+      return true;
+
+    return router_whitelist.count(remote) or router_greylist.count(remote);
+  }
+
+  bool
+  NodeDB::is_first_hop_allowed(const RouterID& remote) const
+  {
+    if (pinned_edges.size() && pinned_edges.count(remote) == 0)
+      return false;
+    return true;
+  }
+
+  void
   NodeDB::load_from_disk()
   {
     if (m_Root.empty())
@@ -180,14 +247,12 @@ namespace llarp
   std::optional<RemoteRC>
   NodeDB::get_rc(RouterID pk) const
   {
-    return router.loop()->call_get([this, pk]() -> std::optional<RemoteRC> {
-      const auto itr = entries.find(pk);
+    const auto itr = entries.find(pk);
 
-      if (itr == entries.end())
-        return std::nullopt;
+    if (itr == entries.end())
+      return std::nullopt;
 
-      return itr->second.rc;
-    });
+    return itr->second.rc;
   }
 
   void

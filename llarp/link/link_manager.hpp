@@ -6,7 +6,6 @@
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/messages/common.hpp>
 #include <llarp/path/transit_hop.hpp>
-#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/decaying_hashset.hpp>
@@ -27,6 +26,7 @@ namespace
 namespace llarp
 {
   struct LinkManager;
+  struct NodeDB;
 
   namespace link
   {
@@ -176,7 +176,6 @@ namespace llarp
 
     util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
 
-    RCLookupHandler* rc_lookup;
     std::shared_ptr<NodeDB> node_db;
 
     oxen::quic::Address addr;
@@ -221,6 +220,12 @@ namespace llarp
       return addr;
     }
 
+    void
+    gossip_rc(const RemoteRC& rc);
+
+    void
+    handle_gossip_rc(oxen::quic::message m);
+
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
 
@@ -261,7 +266,7 @@ namespace llarp
     extract_status() const;
 
     void
-    init(RCLookupHandler* rcLookup);
+    init();
 
     void
     for_each_connection(std::function<void(link::Connection&)> func);

@@ -2,8 +2,8 @@
 
 #include <llarp/dns/dns.hpp>
 #include <llarp/net/net.hpp>
+#include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/service/protocol_type.hpp>
 
@@ -243,9 +243,8 @@ namespace llarp::handlers
     {
       if (msg.questions[0].IsName("random.snode"))
       {
-        RouterID random;
-        if (GetRouter()->GetRandomGoodRouter(random))
-          msg.AddCNAMEReply(random.ToString(), 1);
+        if (auto random = GetRouter()->GetRandomGoodRouter())
+          msg.AddCNAMEReply(random->ToString(), 1);
         else
           msg.AddNXReply();
       }
@@ -263,11 +262,10 @@ namespace llarp::handlers
       const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
       if (msg.questions[0].IsName("random.snode"))
       {
-        RouterID random;
-        if (GetRouter()->GetRandomGoodRouter(random))
+        if (auto random = GetRouter()->GetRandomGoodRouter())
         {
-          msg.AddCNAMEReply(random.ToString(), 1);
-          auto ip = ObtainServiceNodeIP(random);
+          msg.AddCNAMEReply(random->ToString(), 1);
+          auto ip = ObtainServiceNodeIP(*random);
           msg.AddINReply(ip, false);
         }
         else
@@ -333,7 +331,7 @@ namespace llarp::handlers
   void
   ExitEndpoint::ObtainSNodeSession(const RouterID& rid, exit::SessionReadyFunc obtain_cb)
   {
-    if (not router->rc_lookup_handler().is_session_allowed(rid))
+    if (not router->node_db()->is_connection_allowed(rid))
     {
       obtain_cb(nullptr);
       return;
