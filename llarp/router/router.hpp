@@ -161,9 +161,6 @@ namespace llarp
     for_each_connection(std::function<void(link::Connection&)> func);
 
     void
-    lookup_router(RouterID rid, std::function<void(oxen::quic::message)> = nullptr);
-
-    void
     connect_to(const RouterID& rid);
 
     void

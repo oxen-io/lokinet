@@ -83,13 +83,6 @@ namespace llarp::path
   }
 
   bool
-  Path::find_router(std::string rid, std::function<void(std::string)> func)
-  {
-    return send_path_control_message(
-        "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
-  }
-
-  bool
   Path::send_path_control_message(
       std::string method, std::string body, std::function<void(std::string)> func)
   {

@@ -272,35 +272,8 @@ namespace llarp::exit
 
       if (numHops == 1)
       {
-        auto r = router;
-        if (const auto maybe = r->node_db()->get_rc(exit_router); maybe.has_value())
-          r->connect_to(*maybe);
-        else
-          r->lookup_router(exit_router, [r](oxen::quic::message m) mutable {
-            if (m)
-            {
-              std::string payload;
-
-              try
-              {
-                oxenc::bt_dict_consumer btdc{m.body()};
-                payload = btdc.require<std::string>("RC");
-              }
-              catch (...)
-              {
-                log::warning(link_cat, "Failed to parse Find Router response!");
-                throw;
-              }
-
-              RemoteRC result{std::move(payload)};
-              r->node_db()->put_rc_if_newer(result);
-              r->connect_to(result);
-            }
-            else
-            {
-              r->link_manager().handle_find_router_error(std::move(m));
-            }
-          });
+        if (const auto maybe = router->node_db()->get_rc(exit_router); maybe.has_value())
+          router->connect_to(*maybe);
       }
       else if (UrgentBuild(now))
         BuildOneAlignedTo(exit_router);
