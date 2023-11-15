@@ -45,9 +45,6 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const;
 
-    bool
-    lookup_router(const RouterID&, std::function<void(oxen::quic::message)> = nullptr);
-
     void
     put_rc_node_async(const dht::RCNode& val);
 

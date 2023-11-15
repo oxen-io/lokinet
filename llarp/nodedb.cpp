@@ -240,8 +240,7 @@ namespace llarp
   bool
   NodeDB::has_router(RouterID pk) const
   {
-    return router.loop()->call_get(
-        [this, pk]() -> bool { return entries.find(pk) != entries.end(); });
+    return entries.count(pk);
   }
 
   std::optional<RemoteRC>

@@ -229,14 +229,6 @@ namespace llarp
       bool
       ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg);
 
-      /// ensure that we know a router, looks up if it doesn't
-      void
-      EnsureRouterIsKnown(const RouterID& router);
-
-      // "find router" via closest path
-      bool
-      lookup_router(RouterID router, std::function<void(RouterContact, bool)> func = nullptr);
-
       // "find name"
       void
       lookup_name(std::string name, std::function<void(std::string, bool)> func = nullptr) override;

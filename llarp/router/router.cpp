@@ -272,16 +272,6 @@ namespace llarp
     _link_manager.connect_to(rc);
   }
 
-  void
-  Router::lookup_router(RouterID rid, std::function<void(oxen::quic::message)> func)
-  {
-    _link_manager.send_control_message(
-        rid,
-        "find_router",
-        FindRouterMessage::serialize(std::move(rid), false, false),
-        std::move(func));
-  }
-
   bool
   Router::send_data_message(const RouterID& remote, std::string payload)
   {
@@ -996,14 +986,6 @@ namespace llarp
     }
 
     _node_db->Tick(now);
-
-    std::set<dht::Key_t> peer_keys;
-
-    for_each_connection(
-        [&peer_keys](link::Connection& conn) { peer_keys.emplace(conn.remote_rc.router_id()); });
-
-    _contacts->rc_nodes()->RemoveIf(
-        [&peer_keys](const dht::Key_t& k) -> bool { return peer_keys.count(k) == 0; });
 
     paths.ExpirePaths(now);
 

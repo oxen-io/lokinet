@@ -71,13 +71,6 @@ namespace llarp
     return obj;
   }
 
-  bool
-  Contacts::lookup_router(const RouterID& rid, std::function<void(oxen::quic::message)> func)
-  {
-    return _router.send_control_message(
-        rid, "find_router", FindRouterMessage::serialize(rid, false, false), std::move(func));
-  }
-
   void
   Contacts::put_rc_node_async(const dht::RCNode& val)
   {

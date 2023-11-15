@@ -293,9 +293,6 @@ namespace llarp
     handle_find_intro(std::string_view body, std::function<void(std::string)> respond);  // relay
     void
     handle_publish_intro(std::string_view body, std::function<void(std::string)> respond);  // relay
-    void
-    handle_find_router(
-        std::string_view body, std::function<void(std::string)> respond);  // relay + path
 
     // Path messages
     void
@@ -319,7 +316,6 @@ namespace llarp
         void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
         path_requests = {
             {"find_name"sv, &LinkManager::handle_find_name},
-            {"find_router"sv, &LinkManager::handle_find_router},
             {"publish_intro"sv, &LinkManager::handle_publish_intro},
             {"find_intro"sv, &LinkManager::handle_find_intro}};
     /*
@@ -332,14 +328,12 @@ namespace llarp
     */
 
     // these requests are direct, i.e. not over a path;
-    // only "find_router" makes sense client->relay,
     // the rest are relay->relay
     // TODO: new RC fetch endpoint (which will be both client->relay and relay->relay)
     std::unordered_map<
         std::string_view,
         void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
         direct_requests = {
-            {"find_router"sv, &LinkManager::handle_find_router},
             {"publish_intro"sv, &LinkManager::handle_publish_intro},
             {"find_intro"sv, &LinkManager::handle_find_intro}};
 
@@ -355,7 +349,6 @@ namespace llarp
     void handle_find_name_response(oxen::quic::message);
     void handle_find_intro_response(oxen::quic::message);
     void handle_publish_intro_response(oxen::quic::message);
-    void handle_find_router_response(oxen::quic::message);
 
     // Path responses
     void handle_path_latency_response(oxen::quic::message);
@@ -368,18 +361,11 @@ namespace llarp
 
     std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_responses = {
         {"find_name", &LinkManager::handle_find_name_response},
-        {"find_router", &LinkManager::handle_find_router_response},
         {"publish_intro", &LinkManager::handle_publish_intro_response},
         {"find_intro", &LinkManager::handle_find_intro_response},
         {"update_exit", &LinkManager::handle_update_exit_response},
         {"obtain_exit", &LinkManager::handle_obtain_exit_response},
         {"close_exit", &LinkManager::handle_close_exit_response}};
-
-   public:
-    // Public response functions and error handling functions invoked elsehwere. These take
-    // r-value references s.t. that message is taken out of calling scope
-    void
-    handle_find_router_error(oxen::quic::message&& m);
   };
 
   namespace link
@@ -443,7 +429,6 @@ namespace llarp
 std::unordered_map<std::string, void (llarp::link::LinkManager::*)(oxen::quic::message)>
 rpc_commands = {
     {"find_name", &handle_find_name},
-    {"find_router", &handle_find_router},
     // ...
 };
 
