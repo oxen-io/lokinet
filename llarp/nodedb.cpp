@@ -14,9 +14,6 @@ static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
 {
-  NodeDB::Entry::Entry(RemoteRC value) : rc(std::move(value)), insertedAt(llarp::time_now_ms())
-  {}
-
   static void
   EnsureSkiplist(fs::path nodedbDir)
   {
@@ -72,8 +69,8 @@ namespace llarp
         // make copy of all rcs
         std::vector<RemoteRC> copy;
 
-        for (const auto& item : entries)
-          copy.push_back(item.second.rc);
+        for (const auto& item : known_rcs)
+          copy.push_back(item.second);
 
         // flush them to disk in one big job
         // TODO: split this up? idk maybe some day...
@@ -212,10 +209,10 @@ namespace llarp
             return true;
           }
 
-          // validate signature and purge entries with invalid signatures
+          // validate signature and purge known_rcs with invalid signatures
           // load ones with valid signatures
           if (rc.verify())
-            entries.emplace(rc.router_id(), rc);
+            known_rcs.emplace(rc.router_id(), rc);
           else
             purge.emplace(f);
 
@@ -240,33 +237,33 @@ namespace llarp
       return;
 
     router.loop()->call([this]() {
-      for (const auto& item : entries)
-        item.second.rc.write(get_path_by_pubkey(item.first));
+      for (const auto& item : known_rcs)
+        item.second.write(get_path_by_pubkey(item.first));
     });
   }
 
   bool
   NodeDB::has_router(RouterID pk) const
   {
-    return entries.count(pk);
+    return known_rcs.count(pk);
   }
 
   std::optional<RemoteRC>
   NodeDB::get_rc(RouterID pk) const
   {
-    const auto itr = entries.find(pk);
+    const auto itr = known_rcs.find(pk);
 
-    if (itr == entries.end())
+    if (itr == known_rcs.end())
       return std::nullopt;
 
-    return itr->second.rc;
+    return itr->second;
   }
 
   void
   NodeDB::remove_router(RouterID pk)
   {
     router.loop()->call([this, pk]() {
-      entries.erase(pk);
+      known_rcs.erase(pk);
       remove_many_from_disk_async({pk});
     });
   }
@@ -274,22 +271,9 @@ namespace llarp
   void
   NodeDB::remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff)
   {
-    router.loop()->call([this, keep, cutoff]() {
-      std::unordered_set<RouterID> removed;
-      auto itr = entries.begin();
-      while (itr != entries.end())
-      {
-        if (itr->second.insertedAt < cutoff and keep.count(itr->second.rc.router_id()) == 0)
-        {
-          removed.insert(itr->second.rc.router_id());
-          itr = entries.erase(itr);
-        }
-        else
-          ++itr;
-      }
-      if (not removed.empty())
-        remove_many_from_disk_async(std::move(removed));
-    });
+    (void)keep;
+    (void)cutoff;
+    // TODO: handling of "stale" is pending change, removing here for now.
   }
 
   bool
@@ -298,22 +282,22 @@ namespace llarp
     const auto& rid = rc.router_id();
     if (not want_rc(rid))
       return false;
-    entries.erase(rid);
-    entries.emplace(rid, rc);
+    known_rcs.erase(rid);
+    known_rcs.emplace(rid, std::move(rc));
     return true;
   }
 
   size_t
   NodeDB::num_loaded() const
   {
-    return router.loop()->call_get([this]() { return entries.size(); });
+    return router.loop()->call_get([this]() { return known_rcs.size(); });
   }
 
   bool
   NodeDB::put_rc_if_newer(RemoteRC rc)
   {
-    auto itr = entries.find(rc.router_id());
-    if (itr == entries.end() or itr->second.rc.other_is_newer(rc))
+    auto itr = known_rcs.find(rc.router_id());
+    if (itr == known_rcs.end() or itr->second.other_is_newer(rc))
     {
       return put_rc(std::move(rc));
     }
@@ -364,10 +348,10 @@ namespace llarp
     return router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
       std::vector<const RemoteRC*> all;
 
-      all.reserve(entries.size());
-      for (auto& entry : entries)
+      all.reserve(known_rcs.size());
+      for (auto& entry : known_rcs)
       {
-        all.push_back(&entry.second.rc);
+        all.push_back(&entry.second);
       }
 
       auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();

@@ -26,7 +26,7 @@ namespace
 namespace llarp
 {
   struct LinkManager;
-  struct NodeDB;
+  class NodeDB;
 
   namespace link
   {
