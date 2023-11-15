@@ -239,20 +239,19 @@ namespace llarp
     _rcGossiper.GossipRC(rc);
   }
 
-  bool
-  Router::GetRandomGoodRouter(RouterID& router)
+  std::optional<RouterID>
+  Router::GetRandomGoodRouter()
   {
     if (is_service_node())
     {
-      return _rc_lookup_handler.get_random_whitelist_router(router);
+      return node_db()->get_random_whitelist_router();
     }
 
     if (auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
     {
-      router = maybe->router_id();
-      return true;
+      return maybe->router_id();
     }
-    return false;
+    return std::nullopt;
   }
 
   void
@@ -479,25 +478,25 @@ namespace llarp
   bool
   Router::have_snode_whitelist() const
   {
-    return is_service_node() and _rc_lookup_handler.has_received_whitelist();
+    return whitelist_received;
   }
 
   bool
   Router::appears_decommed() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_grey_listed(pubkey());
+    return have_snode_whitelist() and node_db()->greylist().count(pubkey());
   }
 
   bool
   Router::appears_funded() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_session_allowed(pubkey());
+    return have_snode_whitelist() and node_db()->is_connection_allowed(pubkey());
   }
 
   bool
   Router::appears_registered() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_registered(pubkey());
+    return have_snode_whitelist() and node_db()->get_registered_routers().count(pubkey());
   }
 
   bool
@@ -509,7 +508,7 @@ namespace llarp
   bool
   Router::SessionToRouterAllowed(const RouterID& router) const
   {
-    return _rc_lookup_handler.is_session_allowed(router);
+    return node_db()->is_connection_allowed(router);
   }
 
   bool
@@ -520,7 +519,7 @@ namespace llarp
       // we are decom'd don't allow any paths outbound at all
       return false;
     }
-    return _rc_lookup_handler.is_path_allowed(router);
+    return node_db()->is_path_allowed(router);
   }
 
   size_t
@@ -679,23 +678,15 @@ namespace llarp
       it = bootstrap_rc_list.erase(it);
     }
 
+    node_db()->set_bootstrap_routers(bootstrap_rc_list);
+
     if (conf.bootstrap.seednode)
       LogInfo("we are a seed node");
     else
       LogInfo("Loaded ", bootstrap_rc_list.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _link_manager.init(&_rc_lookup_handler);
-    _rc_lookup_handler.init(
-        _contacts,
-        _node_db,
-        _loop,
-        [this](std::function<void(void)> work) { queue_work(std::move(work)); },
-        &_link_manager,
-        &_hidden_service_context,
-        strictConnectPubkeys,
-        bootstrap_rc_list,
-        _is_service_node);
+    _link_manager.init();
 
     // FIXME: kludge for now, will be part of larger cleanup effort.
     if (_is_service_node)
@@ -856,9 +847,6 @@ namespace llarp
 
     _rcGossiper.Decay(now);
 
-    _rc_lookup_handler.periodic_update(now);
-
-    const bool has_whitelist = _rc_lookup_handler.has_received_whitelist();
     const bool is_snode = is_service_node();
     const bool is_decommed = appears_decommed();
     bool should_gossip = appears_funded();
@@ -915,7 +903,7 @@ namespace llarp
       }
 
       // if we don't have the whitelist yet don't remove the entry
-      if (not has_whitelist)
+      if (not whitelist_received)
       {
         log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.router_id());
         return false;
@@ -924,7 +912,7 @@ namespace llarp
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      if (has_whitelist and not _rc_lookup_handler.is_session_allowed(rc.router_id()))
+      if (not node_db()->is_connection_allowed(rc.router_id()))
       {
         log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
@@ -932,7 +920,9 @@ namespace llarp
       return false;
     });
 
-    if (not is_snode or not has_whitelist)
+    /* TODO: this behavior seems incorrect, but fixing it will require discussion
+     *
+    if (not is_snode or not whitelist_received)
     {
       // find all deregistered relays
       std::unordered_set<RouterID> close_peers;
@@ -948,23 +938,18 @@ namespace llarp
       for (auto& peer : close_peers)
         _link_manager.deregister_peer(peer);
     }
+    */
 
     _link_manager.check_persisting_conns(now);
 
     size_t connected = NumberOfConnectedRouters();
 
-    const int interval = is_snode ? 5 : 2;
-    const auto timepoint_now = std::chrono::steady_clock::now();
-    if (timepoint_now >= _next_explore_at and not is_decommed)
-    {
-      _rc_lookup_handler.explore_network();
-      _next_explore_at = timepoint_now + std::chrono::seconds(interval);
-    }
     size_t connectToNum = _link_manager.min_connected_routers;
-    const auto strictConnect = _rc_lookup_handler.num_strict_connect_routers();
-    if (strictConnect > 0 && connectToNum > strictConnect)
+    const auto& pinned_edges = _node_db->get_pinned_edges();
+    const auto pinned_count = pinned_edges.size();
+    if (pinned_count > 0 && connectToNum > pinned_count)
     {
-      connectToNum = strictConnect;
+      connectToNum = pinned_count;
     }
 
     if (is_snode and now >= _next_decomm_warning)
@@ -1032,13 +1017,20 @@ namespace llarp
     return _link_manager.get_random_connected(result);
   }
 
+  std::unordered_set<RouterID>
+  Router::router_whitelist() const
+  {
+    return _node_db->whitelist();
+  }
+
   void
   Router::set_router_whitelist(
       const std::vector<RouterID>& whitelist,
       const std::vector<RouterID>& greylist,
       const std::vector<RouterID>& unfundedlist)
   {
-    _rc_lookup_handler.set_router_whitelist(whitelist, greylist, unfundedlist);
+    node_db()->set_router_whitelist(whitelist, greylist, unfundedlist);
+    whitelist_received = true;
   }
 
   bool

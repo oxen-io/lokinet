@@ -705,10 +705,9 @@ namespace llarp::handlers
     {
       if (is_random_snode(msg))
       {
-        RouterID random;
-        if (router()->GetRandomGoodRouter(random))
+        if (auto random = router()->GetRandomGoodRouter())
         {
-          msg.AddCNAMEReply(random.ToString(), 1);
+          msg.AddCNAMEReply(random->ToString(), 1);
         }
         else
           msg.AddNXReply();
@@ -755,11 +754,10 @@ namespace llarp::handlers
       // on MacOS this is a typeA query
       else if (is_random_snode(msg))
       {
-        RouterID random;
-        if (router()->GetRandomGoodRouter(random))
+        if (auto random = router()->GetRandomGoodRouter())
         {
-          msg.AddCNAMEReply(random.ToString(), 1);
-          return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
+          msg.AddCNAMEReply(random->ToString(), 1);
+          return ReplyToSNodeDNSWhenReady(*random, std::make_shared<dns::Message>(msg), isV6);
         }
 
         msg.AddNXReply();

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
 #include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
@@ -58,8 +57,6 @@ namespace llarp
 
   static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
-
-  static constexpr size_t RC_LOOKUP_STORAGE_REDUNDANCY{4};
 
   struct Contacts;
 
@@ -122,12 +119,12 @@ namespace llarp
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> _rpc_client;
+    bool whitelist_received{false};
 
     oxenmq::address rpc_addr;
     Profiling _router_profiling;
     fs::path _profile_file;
     LinkManager _link_manager{*this};
-    RCLookupHandler _rc_lookup_handler;
     RCGossiper _rcGossiper;
 
     /// how often do we resign our RC? milliseconds.
@@ -211,12 +208,6 @@ namespace llarp
       return _link_manager;
     }
 
-    RCLookupHandler&
-    rc_lookup_handler()
-    {
-      return _rc_lookup_handler;
-    }
-
     inline int
     outbound_udp_socket() const
     {
@@ -293,10 +284,7 @@ namespace llarp
     ExtractSummaryStatus() const;
 
     std::unordered_set<RouterID>
-    router_whitelist() const
-    {
-      return _rc_lookup_handler.whitelist();
-    }
+    router_whitelist() const;
 
     void
     set_router_whitelist(
@@ -389,8 +377,8 @@ namespace llarp
     void
     InitOutboundLinks();
 
-    bool
-    GetRandomGoodRouter(RouterID& r);
+    std::optional<RouterID>
+    GetRandomGoodRouter();
 
     /// initialize us as a service node
     /// return true on success
