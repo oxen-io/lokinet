@@ -236,7 +236,9 @@ namespace llarp
     /// wait for random uptime
     if (std::chrono::milliseconds{Uptime()} < _randomStartDelay)
       return;
-    _rcGossiper.GossipRC(rc);
+    auto view = rc.view();
+    _link_manager.gossip_rc(
+        pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
   }
 
   std::optional<RouterID>

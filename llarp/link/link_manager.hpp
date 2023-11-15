@@ -221,7 +221,7 @@ namespace llarp
     }
 
     void
-    gossip_rc(const RemoteRC& rc);
+    gossip_rc(const RouterID& rc_rid, std::string serialized_rc);
 
     void
     handle_gossip_rc(oxen::quic::message m);

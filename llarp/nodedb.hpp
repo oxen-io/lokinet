@@ -64,6 +64,9 @@ namespace llarp
     // only ever use to specific edges as path first-hops
     std::unordered_set<RouterID> pinned_edges;
 
+    bool
+    want_rc(const RouterID& rid) const;
+
    public:
     void
     set_bootstrap_routers(const std::set<RemoteRC>& rcs);
@@ -243,12 +246,14 @@ namespace llarp
     void
     remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
 
-    /// put this rc into the cache if it is not there or newer than the one there already
-    void
+    /// if we consider it valid (want_rc),
+    /// put this rc into the cache if it is not there or is newer than the one there already
+    /// returns true if the rc was inserted
+    bool
     put_rc_if_newer(RemoteRC rc);
 
-    /// unconditional put of rc into cache
-    void
+    /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
+    bool
     put_rc(RemoteRC rc);
   };
 }  // namespace llarp

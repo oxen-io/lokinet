@@ -150,6 +150,11 @@ namespace llarp
           [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
     });
 
+    s->register_command("gossip_rc"s, [this, rid](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
+    });
+
     for (auto& method : direct_requests)
     {
       s->register_command(
@@ -386,10 +391,19 @@ namespace llarp
   }
 
   void
-  LinkManager::gossip_rc(const RemoteRC& rc)
+  LinkManager::gossip_rc(const RouterID& rc_rid, std::string serialized_rc)
   {
     for (auto& [rid, conn] : ep.conns)
-      send_control_message(rid, "gossip_rc", std::string{rc.view()}, nullptr);
+    {
+      // don't send back to the owner...
+      if (rid == rc_rid)
+        continue;
+      // don't gossip RCs to clients
+      if (not conn->remote_is_relay)
+        continue;
+
+      send_control_message(rid, "gossip_rc", serialized_rc, nullptr);
+    }
   }
 
   void
@@ -398,11 +412,18 @@ namespace llarp
     try
     {
       RemoteRC rc{m.body()};
+
+      if (node_db->put_rc_if_newer(rc))
+      {
+        log::info(link_cat, "Received updated RC, forwarding to relay peers.");
+        gossip_rc(rc.router_id(), m.body_str());
+      }
+      else
+        log::debug(link_cat, "Received known or old RC, not storing or forwarding.");
     }
     catch (const std::exception& e)
     {
       log::info(link_cat, "Recieved invalid RC, dropping on the floor.");
-      return;
     }
   }
 

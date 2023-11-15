@@ -99,6 +99,14 @@ namespace llarp
     return m_Root / skiplistDir / fname;
   }
 
+  bool
+  NodeDB::want_rc(const RouterID& rid) const
+  {
+    if (not router.is_service_node())
+      return true;
+    return registered_routers.count(rid);
+  }
+
   void
   NodeDB::set_bootstrap_routers(const std::set<RemoteRC>& rcs)
   {
@@ -284,14 +292,15 @@ namespace llarp
     });
   }
 
-  void
+  bool
   NodeDB::put_rc(RemoteRC rc)
   {
-    router.loop()->call([this, rc]() {
-      const auto& rid = rc.router_id();
-      entries.erase(rid);
-      entries.emplace(rid, rc);
-    });
+    const auto& rid = rc.router_id();
+    if (not want_rc(rid))
+      return false;
+    entries.erase(rid);
+    entries.emplace(rid, rc);
+    return true;
   }
 
   size_t
@@ -300,20 +309,15 @@ namespace llarp
     return router.loop()->call_get([this]() { return entries.size(); });
   }
 
-  void
+  bool
   NodeDB::put_rc_if_newer(RemoteRC rc)
   {
-    router.loop()->call([this, rc]() {
-      auto itr = entries.find(rc.router_id());
-      if (itr == entries.end() or itr->second.rc.other_is_newer(rc))
-      {
-        // delete if existing
-        if (itr != entries.end())
-          entries.erase(itr);
-        // add new entry
-        entries.emplace(rc.router_id(), rc);
-      }
-    });
+    auto itr = entries.find(rc.router_id());
+    if (itr == entries.end() or itr->second.rc.other_is_newer(rc))
+    {
+      return put_rc(std::move(rc));
+    }
+    return false;
   }
 
   void
