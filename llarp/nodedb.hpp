@@ -24,16 +24,7 @@ namespace llarp
 
   class NodeDB
   {
-    struct Entry
-    {
-      const RemoteRC rc;
-      llarp_time_t insertedAt;
-      explicit Entry(RemoteRC rc);
-    };
-
-    using NodeMap = std::unordered_map<RouterID, Entry>;
-
-    NodeMap entries;
+    std::unordered_map<RouterID, RemoteRC> known_rcs;
 
     const Router& router;
     const fs::path m_Root;
@@ -137,7 +128,7 @@ namespace llarp
     /// in memory nodedb
     NodeDB();
 
-    /// load all entries from disk syncrhonously
+    /// load all known_rcs from disk syncrhonously
     void
     load_from_disk();
 
@@ -174,44 +165,30 @@ namespace llarp
     GetRandom(Filter visit) const
     {
       return router.loop()->call_get([visit]() -> std::optional<RemoteRC> {
-        std::vector<const decltype(entries)::value_type*> entries;
-        for (const auto& entry : entries)
-          entries.push_back(entry);
+        std::vector<const decltype(known_rcs)::value_type*> known_rcs;
+        for (const auto& entry : known_rcs)
+          known_rcs.push_back(entry);
 
-        std::shuffle(entries.begin(), entries.end(), llarp::csrng);
+        std::shuffle(known_rcs.begin(), known_rcs.end(), llarp::csrng);
 
-        for (const auto entry : entries)
+        for (const auto entry : known_rcs)
         {
-          if (visit(entry->second.rc))
-            return entry->second.rc;
+          if (visit(entry->second))
+            return entry->second;
         }
 
         return std::nullopt;
       });
     }
 
-    /// visit all entries
+    /// visit all known_rcs
     template <typename Visit>
     void
     VisitAll(Visit visit) const
     {
       router.loop()->call([this, visit]() {
-        for (const auto& item : entries)
-          visit(item.second.rc);
-      });
-    }
-
-    /// visit all entries inserted before a timestamp
-    template <typename Visit>
-    void
-    VisitInsertedBefore(Visit visit, llarp_time_t insertedBefore)
-    {
-      router.loop()->call([this, visit, insertedBefore]() {
-        for (const auto& item : entries)
-        {
-          if (item.second.insertedAt < insertedBefore)
-            visit(item.second.rc);
-        }
+        for (const auto& item : known_rcs)
+          visit(item.second);
       });
     }
 
@@ -226,13 +203,13 @@ namespace llarp
     {
       router.loop()->call([this, visit]() {
         std::unordered_set<RouterID> removed;
-        auto itr = entries.begin();
-        while (itr != entries.end())
+        auto itr = known_rcs.begin();
+        while (itr != known_rcs.end())
         {
-          if (visit(itr->second.rc))
+          if (visit(itr->second))
           {
-            removed.insert(itr->second.rc.router_id());
-            itr = entries.erase(itr);
+            removed.insert(itr->second.router_id());
+            itr = known_rcs.erase(itr);
           }
           else
             ++itr;
@@ -246,14 +223,14 @@ namespace llarp
     void
     remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
 
+    /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
+    bool
+    put_rc(RemoteRC rc);
+
     /// if we consider it valid (want_rc),
     /// put this rc into the cache if it is not there or is newer than the one there already
     /// returns true if the rc was inserted
     bool
     put_rc_if_newer(RemoteRC rc);
-
-    /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
-    bool
-    put_rc(RemoteRC rc);
   };
 }  // namespace llarp
