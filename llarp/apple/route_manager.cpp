@@ -35,7 +35,7 @@ namespace llarp::apple
     if (enable)
       tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, {dns_trampoline_port}}});
     else
-      tun->ReconfigureDNS(router->config()->dns.m_upstreamDNS);
+      tun->ReconfigureDNS(router->config()->dns.upstream_dns);
 
     trampoline_active = enable;
   }

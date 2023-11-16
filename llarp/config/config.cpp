@@ -8,6 +8,7 @@
 #include <llarp/constants/version.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/net.hpp>
+#include <llarp/net/sock_addr.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/util/file.hpp>
@@ -33,7 +34,7 @@ namespace llarp
     struct ConfigGenParameters_impl : public ConfigGenParameters
     {
       const llarp::net::Platform*
-      Net_ptr() const
+      Net_ptr() const override
       {
         return llarp::net::Platform::Default_ptr();
       }
@@ -933,7 +934,6 @@ namespace llarp
         },
         [this](uint16_t arg) { public_port = net::port_t::from_host(arg); });
 
-    // DISCUSS: does this need to be an optional?
     auto parse_addr_for_link = [net_ptr](const std::string& arg) {
       std::optional<oxen::quic::Address> maybe = std::nullopt;
       std::string_view arg_v;
@@ -946,14 +946,18 @@ namespace llarp
 
       if (arg_v[0] == ':')
       {
-        uint16_t res = std::atoi(arg_v.substr(1).data());
+        uint16_t res;
+        if (auto rv = llarp::parse_int<uint16_t>(arg_v.substr(1), res); not rv)
+          res = DEFAULT_LISTEN_PORT;
 
-        maybe = oxen::quic::Address{""s, res ? res : DEFAULT_LISTEN_PORT};
+        maybe = oxen::quic::Address{""s, res};
       }
       else if (auto pos = arg_v.find(':'); pos != arg_v.npos)
       {
         auto h = arg_v.substr(0, pos);
-        uint16_t p = std::atoi(arg_v.substr(pos + 1).data());
+        uint16_t p;
+        if (auto rv = llarp::parse_int<uint16_t>(arg_v.substr(pos + 1), p); not rv)
+          p = DEFAULT_LISTEN_PORT;
 
         maybe = oxen::quic::Address{std::string{h}, p};
 
@@ -968,7 +972,7 @@ namespace llarp
           maybe = oxen::quic::Address{*maybe_ifname};
       }
 
-      if (maybe->port() == 0)
+      if (maybe && maybe->port() == 0)
         maybe = oxen::quic::Address{maybe->host(), DEFAULT_LISTEN_PORT};
 
       return maybe;
@@ -987,9 +991,9 @@ namespace llarp
             "public IP address and use that IP (and will exit with an error if no such IP is found",
             "on the system).  If port is omitted then lokinet defaults to 1090.",
             "",
-            "Note: only one address will be accepted. If this option is not specified, it will "
+            "Note: only one address will be accepted. If this option is not specified, it will ",
             "default",
-            "to the inbound or outbound value. Conversely, specifying this option will supercede "
+            "to the inbound or outbound value. Conversely, specifying this option will supercede ",
             "the",
             "deprecated inbound/outbound opts.",
             "",
@@ -1016,6 +1020,7 @@ namespace llarp
         "inbound",
         RelayOnly,
         MultiValue,
+        Hidden,
         Comment{
             "********** DEPRECATED **********",
             "Note: the new API dictates the lokinet bind address through the 'listen' config",
@@ -1097,50 +1102,47 @@ namespace llarp
             addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
 
-    // DISCUSS: drop this shit?
-    // conf.add_undeclared_handler(
-    //     "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
-    //       LogWarn(
-    //           "using the [bind] section with *=/IP=/INTERFACE= is deprecated; use the inbound= "
-    //           "and/or outbound= settings instead");
-    //       std::optional<SockAddr> addr;
-    //       // special case: wildcard for outbound
-    //       if (key == "*")
-    //       {
-    //         addr = net_ptr->Wildcard();
-    //         // set port, zero is acceptable here.
-    //         if (auto port = std::stoi(std::string{val});
-    //             port < std::numeric_limits<uint16_t>::max())
-    //         {
-    //           addr->setPort(port);
-    //         }
-    //         else
-    //           throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
-    //         outbound_links.emplace_back(std::move(*addr));
-    //         return;
-    //       }
-    //       // try as interface name first
-    //       addr = net_ptr->GetInterfaceAddr(key, AF_INET);
-    //       if (addr and net_ptr->IsLoopbackAddress(addr->getIP()))
-    //         throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
-    //       // try as ip address next, throws if unable to parse
-    //       if (not addr)
-    //       {
-    //         addr = SockAddr{key, huint16_t{0}};
-    //         if (net_ptr->IsLoopbackAddress(addr->getIP()))
-    //           throw std::invalid_argument{fmt::format("{} is a loopback address", key)};
-    //       }
-    //       // parse port and set if acceptable non zero value
-    //       if (auto port = std::stoi(std::string{val});
-    //           port and port < std::numeric_limits<uint16_t>::max())
-    //       {
-    //         addr->setPort(port);
-    //       }
-    //       else
-    //         throw std::invalid_argument{fmt::format("invalid port value: '{}'", val)};
+    conf.add_undeclared_handler(
+        "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
+          if (using_new_api)
+            throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
-    //       inbound_listen_addrs.emplace_back(std::move(*addr));
-    //     });
+          log::warning(
+              logcat, "Using the [bind] section is beyond deprecated; use [listen] instead");
+
+          // special case: wildcard for outbound
+          if (key == "*")
+          {
+            uint16_t port{0};
+
+            if (auto rv = llarp::parse_int<uint16_t>(val, port); not rv)
+              log::warning(
+                  logcat, "Could not parse port; stop using this deprecated handler you nonce");
+
+            addr = oxen::quic::Address{"", port};  // TODO: drop the "" after bumping libquic
+            return;
+          }
+
+          oxen::quic::Address temp;
+          // try as interface name first
+          auto saddr = net_ptr->GetInterfaceAddr(key, AF_INET);
+
+          if (saddr and net_ptr->IsLoopbackAddress(saddr->getIP()))
+            throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
+
+          temp = oxen::quic::Address{saddr->in()};
+
+          if (temp.is_addressable())
+          {
+            addr = std::move(temp);
+            return;
+          }
+
+          log::warning(
+              logcat,
+              "Could not parse address values; stop using this deprecated handler you nonce");
+          addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
+        });
   }
 
   void
