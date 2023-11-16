@@ -489,7 +489,7 @@ namespace llarp
           else
           {
             oxenc::bt_dict_consumer d{m.body()};
-            auto status = d.require<std::string_view>(messages::STATUS_KEY);
+            auto status = d.require<std::string_view>(messages::status::STATUS_KEY);
             log::warning(path_cat, "Path build returned failure status: {}", status);
           }
         }
