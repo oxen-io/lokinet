@@ -127,7 +127,7 @@ namespace llarp::path
 
           if (m.timed_out)
           {
-            response_cb(messages::TIMEOUT_BT_DICT);
+            response_cb(messages::status::TIMEOUT_RESPONSE);
             return;
           }
 
@@ -143,7 +143,7 @@ namespace llarp::path
           catch (const std::exception& e)
           {
             log::warning(path_cat, "Error parsing path control message response: {}", e.what());
-            response_cb(messages::ERROR_BT_DICT);
+            response_cb(messages::status::ERROR_RESPONSE);
             return;
           }
 

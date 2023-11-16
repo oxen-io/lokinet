@@ -6,7 +6,6 @@ namespace llarp
 {
   namespace FindRouterMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto RETRY_EXP = "RETRY AS EXPLORATORY"sv;
     inline auto RETRY_ITER = "RETRY AS ITERATIVE"sv;
     inline auto RETRY_NEW = "RETRY WITH NEW RECIPIENT"sv;
@@ -52,9 +51,7 @@ namespace llarp
 
   namespace FindIntroMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto NOT_FOUND = "NOT FOUND"sv;
-    inline auto TIMED_OUT = "TIMED OUT"sv;
     inline auto INVALID_ORDER = "INVALID ORDER"sv;
     inline auto INSUFFICIENT_NODES = "INSUFFICIENT NODES"sv;
 
@@ -80,7 +77,6 @@ namespace llarp
 
   namespace FindNameMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto NOT_FOUND = "NOT FOUND"sv;
 
     inline static std::string
@@ -120,7 +116,6 @@ namespace llarp
 
   namespace PublishIntroMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto INVALID_INTROSET = "INVALID INTROSET"sv;
     inline auto EXPIRED = "EXPIRED INTROSET"sv;
     inline auto INSUFFICIENT = "INSUFFICIENT NODES"sv;

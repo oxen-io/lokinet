@@ -6,8 +6,6 @@ namespace llarp
 {
   namespace PathBuildMessage
   {
-    inline auto OK = "OK"sv;
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto BAD_FRAMES = "BAD_FRAMES"sv;
     inline auto BAD_CRYPTO = "BAD_CRYPTO"sv;
     inline auto NO_TRANSIT = "NOT ALLOWING TRANSIT"sv;
