@@ -1120,12 +1120,7 @@ namespace llarp
 
     try
     {
-      std::string frame_payload;
-      std::string frame, hash, hop_payload, commkey, rx_id, tx_id, upstream;
-      ustring other_pubkey, outer_nonce, inner_nonce;
-      uint64_t lifetime;
-
-      auto payload_list = oxenc::bt_deserialize<std::deque<std::string>>(m.body());
+      auto payload_list = oxenc::bt_deserialize<std::deque<ustring>>(m.body());
       if (payload_list.size() != path::MAX_LEN)
       {
         log::info(link_cat, "Path build message with wrong number of frames");
@@ -1134,18 +1129,18 @@ namespace llarp
       }
 
       oxenc::bt_dict_consumer frame_info{payload_list.front()};
-      hash = frame_info.require<std::string>("HASH");
-      frame = frame_info.require<std::string>("FRAME");
+      auto hash = frame_info.require<ustring>("HASH");
+      auto frame = frame_info.require<ustring>("FRAME");
 
       oxenc::bt_dict_consumer hop_dict{frame};
-      hop_payload = frame_info.require<std::string>("ENCRYPTED");
-      outer_nonce = frame_info.require<ustring>("NONCE");
-      other_pubkey = frame_info.require<ustring>("PUBKEY");
+      auto hop_payload = hop_dict.require<ustring>("ENCRYPTED");
+      auto outer_nonce = hop_dict.require<ustring>("NONCE");
+      auto other_pubkey = hop_dict.require<ustring>("PUBKEY");
 
       SharedSecret shared;
       // derive shared secret using ephemeral pubkey and our secret key (and nonce)
       if (!crypto::dh_server(
-              shared.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
+              shared.data(), other_pubkey.data(), _router.pubkey(), outer_nonce.data()))
       {
         log::info(link_cat, "DH server initialization failed during path build");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
@@ -1154,15 +1149,13 @@ namespace llarp
 
       // hash data and check against given hash
       ShortHash digest;
-      if (!crypto::hmac(
-              digest.data(), reinterpret_cast<unsigned char*>(frame.data()), frame.size(), shared))
+      if (!crypto::hmac(digest.data(), frame.data(), frame.size(), shared))
       {
         log::error(link_cat, "HMAC failed on path build request");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
         return;
       }
-      if (!std::equal(
-              digest.begin(), digest.end(), reinterpret_cast<const unsigned char*>(hash.data())))
+      if (!std::equal(digest.begin(), digest.end(), hash.data()))
       {
         log::info(link_cat, "HMAC mismatch on path build request");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
@@ -1171,10 +1164,7 @@ namespace llarp
 
       // decrypt frame with our hop info
       if (!crypto::xchacha20(
-              reinterpret_cast<unsigned char*>(hop_payload.data()),
-              hop_payload.size(),
-              shared.data(),
-              outer_nonce.data()))
+              hop_payload.data(), hop_payload.size(), shared.data(), outer_nonce.data()))
       {
         log::info(link_cat, "Decrypt failed on path build request");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
@@ -1182,12 +1172,12 @@ namespace llarp
       }
 
       oxenc::bt_dict_consumer hop_info{hop_payload};
-      commkey = hop_info.require<std::string>("COMMKEY");
-      lifetime = hop_info.require<uint64_t>("LIFETIME");
-      inner_nonce = hop_info.require<ustring>("NONCE");
-      rx_id = hop_info.require<std::string>("RX");
-      tx_id = hop_info.require<std::string>("TX");
-      upstream = hop_info.require<std::string>("UPSTREAM");
+      auto commkey = hop_info.require<std::string>("COMMKEY");
+      auto lifetime = hop_info.require<uint64_t>("LIFETIME");
+      auto inner_nonce = hop_info.require<ustring>("NONCE");
+      auto rx_id = hop_info.require<std::string>("RX");
+      auto tx_id = hop_info.require<std::string>("TX");
+      auto upstream = hop_info.require<std::string>("UPSTREAM");
 
       // populate transit hop object with hop info
       // TODO: IP / path build limiting clients
@@ -1259,16 +1249,11 @@ namespace llarp
       // onion round to compute the return value, so we don't care about it.
       for (auto& element : payload_list)
       {
-        crypto::onion(
-            reinterpret_cast<unsigned char*>(element.data()),
-            element.size(),
-            hop->pathKey,
-            onion_nonce,
-            onion_nonce);
+        crypto::onion(element.data(), element.size(), hop->pathKey, onion_nonce, onion_nonce);
       }
       // randomize final frame.  could probably paste our frame on the end and onion it with the
       // rest, but it gains nothing over random.
-      randombytes(reinterpret_cast<uint8_t*>(end_frame.data()), end_frame.size());
+      randombytes(end_frame.data(), end_frame.size());
       payload_list.push_back(std::move(end_frame));
 
       send_control_message(
