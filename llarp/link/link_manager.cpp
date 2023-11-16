@@ -1322,51 +1322,6 @@ namespace llarp
   }
 
   void
-  LinkManager::handle_path_build_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      // m.respond(serialize_response({{messages::status::STATUS_KEY, "EXCEPTION"}}), true);
-      return;
-    }
-  }
-
-  void
-  LinkManager::handle_path_confirm(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      m.respond(messages::status::ERROR_RESPONSE, true);
-      return;
-    }
-  }
-
-  void
-  LinkManager::handle_path_confirm_response(oxen::quic::message m)
-  {
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      // m.respond(serialize_response({{messages::status::STATUS_KEY, "EXCEPTION"}}), true);
-      return;
-    }
-  }
-
-  void
   LinkManager::handle_path_latency(oxen::quic::message m)
   {
     try
