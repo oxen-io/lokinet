@@ -50,24 +50,24 @@ namespace llarp::service
   bool
   Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
   {
-    if (conf.m_Paths.has_value())
-      numDesiredPaths = *conf.m_Paths;
+    if (conf.paths.has_value())
+      numDesiredPaths = *conf.paths;
 
-    if (conf.m_Hops.has_value())
-      numHops = *conf.m_Hops;
+    if (conf.hops.has_value())
+      numHops = *conf.hops;
 
-    conf.m_ExitMap.ForEachEntry(
+    conf.exit_map.ForEachEntry(
         [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
 
-    for (auto [exit, auth] : conf.m_ExitAuths)
+    for (auto [exit, auth] : conf.exit_auths)
     {
       SetAuthInfoForEndpoint(exit, auth);
     }
 
-    conf.m_LNSExitMap.ForEachEntry([&](const IPRange& range, const std::string& name) {
+    conf.ons_exit_map.ForEachEntry([&](const IPRange& range, const std::string& name) {
       std::optional<AuthInfo> auth;
-      const auto itr = conf.m_LNSExitAuths.find(name);
-      if (itr != conf.m_LNSExitAuths.end())
+      const auto itr = conf.ons_exit_auths.find(name);
+      if (itr != conf.ons_exit_auths.end())
         auth = itr->second;
       _startup_ons_mappings[name] = std::make_pair(range, auth);
     });
@@ -999,10 +999,10 @@ namespace llarp::service
   {
     if (_auth_policy)
     {
-      if (not _auth_policy->AsyncAuthPending(msg->tag))
+      if (not _auth_policy->auth_async_pending(msg->tag))
       {
         // do 1 authentication attempt and drop everything else
-        _auth_policy->AuthenticateAsync(std::move(msg), std::move(hook));
+        _auth_policy->authenticate_async(std::move(msg), std::move(hook));
       }
     }
     else

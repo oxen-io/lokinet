@@ -129,7 +129,7 @@ namespace llarp::net
       return "lokitun0";
     }
 
-    std::optional<std::string>
+    std::optional<sockaddr*>
     GetBestNetIF(int) const override
     {
       // TODO: implement me ?

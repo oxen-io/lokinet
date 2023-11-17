@@ -31,8 +31,10 @@
 
 namespace llarp
 {
-  using SectionValues_t = llarp::ConfigParser::SectionValues_t;
-  using Config_impl_t = llarp::ConfigParser::Config_impl_t;
+  using SectionValues = llarp::ConfigParser::SectionValues;
+  using ConfigMap = llarp::ConfigParser::ConfigMap;
+
+  inline static constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
   /// Small struct to gather all parameters needed for config generation to reduce the number of
@@ -45,8 +47,8 @@ namespace llarp
     ConfigGenParameters(const ConfigGenParameters&) = delete;
     ConfigGenParameters(ConfigGenParameters&&) = delete;
 
-    bool isRelay = false;
-    fs::path defaultDataDir;
+    bool is_relay = false;
+    fs::path default_data_dir;
 
     /// get network platform (virtual for unit test mocks)
     virtual const llarp::net::Platform*
@@ -55,33 +57,33 @@ namespace llarp
 
   struct RouterConfig
   {
-    size_t m_minConnectedRouters = 0;
-    size_t m_maxConnectedRouters = 0;
+    size_t min_connected_routers = 0;
+    size_t max_connected_routers = 0;
 
-    std::string m_netId;
+    std::string net_id;
 
-    fs::path m_dataDir;
+    fs::path data_dir;
 
-    bool m_blockBogons = false;
+    bool block_bogons = false;
 
-    int m_workerThreads = -1;
-    int m_numNetThreads = -1;
+    int worker_threads = -1;
+    int net_threads = -1;
 
-    size_t m_JobQueueSize = 0;
+    size_t job_que_size = 0;
 
-    std::string m_routerContactFile;
-    std::string m_encryptionKeyFile;
-    std::string m_identityKeyFile;
-    std::string m_transportKeyFile;
+    std::string rc_file;
+    std::string enckey_file;
+    std::string idkey_file;
+    std::string transkey_file;
 
-    bool m_isRelay = false;
+    bool is_relay = false;
     /// deprecated
-    std::optional<net::ipaddr_t> PublicIP;
+    std::optional<net::ipaddr_t> public_ip;
     /// deprecated
-    std::optional<net::port_t> PublicPort;
+    std::optional<net::port_t> public_port;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   /// config for path hop selection
@@ -90,91 +92,92 @@ namespace llarp
     /// in our hops what netmask will we use for unique ips for hops
     /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
     ///
-    int m_UniqueHopsNetmaskSize;
+    int unique_hop_netmask;
 
     /// set of countrys to exclude from path building (2 char country code)
-    std::unordered_set<std::string> m_ExcludeCountries;
+    std::unordered_set<std::string> exclude_countries;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
 
     /// return true if this set of router contacts is acceptable against this config
     bool
-    Acceptable(const std::set<RemoteRC>& hops) const;
+    check_rcs(const std::set<RemoteRC>& hops) const;
   };
 
   struct NetworkConfig
   {
-    std::optional<bool> m_enableProfiling;
-    bool m_saveProfiles;
-    std::set<RouterID> m_strictConnect;
-    std::string m_ifname;
-    IPRange m_ifaddr;
+    std::optional<bool> enable_profiling;
+    bool save_profiles;
+    std::set<RouterID> strict_connect;
+    std::string if_name;
+    IPRange if_addr;
 
-    std::optional<fs::path> m_keyfile;
-    std::string m_endpointType;
-    bool m_reachable = false;
-    std::optional<int> m_Hops;
-    std::optional<int> m_Paths;
-    bool m_AllowExit = false;
-    std::set<RouterID> m_snodeBlacklist;
-    net::IPRangeMap<service::Address> m_ExitMap;
-    net::IPRangeMap<std::string> m_LNSExitMap;
+    std::optional<fs::path> keyfile;
+    std::string endpoint_type;
+    bool is_reachable = false;
+    std::optional<int> hops;
+    std::optional<int> paths;
+    bool allow_exit = false;
+    std::set<RouterID> snode_blacklist;
+    net::IPRangeMap<service::Address> exit_map;
+    net::IPRangeMap<std::string> ons_exit_map;
 
-    std::unordered_map<service::Address, service::AuthInfo> m_ExitAuths;
-    std::unordered_map<std::string, service::AuthInfo> m_LNSExitAuths;
+    std::unordered_map<service::Address, service::AuthInfo> exit_auths;
+    std::unordered_map<std::string, service::AuthInfo> ons_exit_auths;
 
-    std::unordered_map<huint128_t, service::Address> m_mapAddrs;
+    std::unordered_map<huint128_t, service::Address> map_addrs;
 
-    service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
-    service::AuthFileType m_AuthFileType = service::AuthFileType::eAuthFileHashes;
-    std::optional<std::string> m_AuthUrl;
-    std::optional<std::string> m_AuthMethod;
-    std::unordered_set<service::Address> m_AuthWhitelist;
-    std::unordered_set<std::string> m_AuthStaticTokens;
-    std::set<fs::path> m_AuthFiles;
+    service::AuthType auth_type = service::AuthType::NONE;
+    service::AuthFileType auth_file_type = service::AuthFileType::HASHES;
+    std::optional<std::string> auth_url;
+    std::optional<std::string> auth_method;
+    std::unordered_set<service::Address> auth_whitelist;
+    std::unordered_set<std::string> auth_static_tokens;
+    std::set<fs::path> auth_files;
 
-    std::vector<llarp::dns::SRVData> m_SRVRecords;
+    std::vector<llarp::dns::SRVData> srv_records;
 
-    std::optional<huint128_t> m_baseV6Address;
+    std::optional<huint128_t> base_ipv6_addr;
 
-    std::set<IPRange> m_OwnedRanges;
-    std::optional<net::TrafficPolicy> m_TrafficPolicy;
+    std::set<IPRange> owned_ranges;
+    std::optional<net::TrafficPolicy> traffic_policy;
 
-    std::optional<llarp_time_t> m_PathAlignmentTimeout;
+    std::optional<llarp_time_t> path_alignment_timeout;
 
-    std::optional<fs::path> m_AddrMapPersistFile;
+    std::optional<fs::path> addr_map_persist_file;
 
-    bool m_EnableRoutePoker;
-    bool m_BlackholeRoutes;
+    bool enable_route_poker;
+    bool blackhole_routes;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct DnsConfig
   {
-    bool m_raw_dns;
-    std::vector<SockAddr> m_bind;
-    std::vector<SockAddr> m_upstreamDNS;
-    std::vector<fs::path> m_hostfiles;
-    std::optional<SockAddr> m_QueryBind;
+    bool raw;
+    std::vector<SockAddr> bind_addr;
+    std::vector<SockAddr> upstream_dns;
+    std::vector<fs::path> hostfiles;
+    std::optional<SockAddr> query_bind;
 
-    std::unordered_multimap<std::string, std::string> m_ExtraOpts;
+    std::unordered_multimap<std::string, std::string> extra_opts;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LinksConfig
   {
-    std::optional<net::ipaddr_t> PublicAddress;
-    std::optional<net::port_t> PublicPort;
-    std::vector<SockAddr> OutboundLinks;
-    std::vector<SockAddr> InboundListenAddrs;
+    std::optional<net::ipaddr_t> public_addr;
+    std::optional<net::port_t> public_port;
+
+    std::optional<oxen::quic::Address> addr;
+    bool using_new_api = false;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ConnectConfig
@@ -182,26 +185,26 @@ namespace llarp
     std::vector<fs::path> routers;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   // TODO: remove oxenmq from this header
   struct ApiConfig
   {
-    bool m_enableRPCServer = false;
-    std::vector<oxenmq::address> m_rpcBindAddresses;
+    bool enable_rpc_server = false;
+    std::vector<oxenmq::address> rpc_bind_addrs;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LokidConfig
   {
-    fs::path ident_keyfile;
-    oxenmq::address lokidRPCAddr;
+    fs::path id_keyfile;
+    oxenmq::address rpc_addr;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct BootstrapConfig
@@ -209,18 +212,19 @@ namespace llarp
     std::vector<fs::path> files;
     BootstrapList routers;
     bool seednode;
+
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LoggingConfig
   {
-    log::Type m_logType = log::Type::Print;
-    log::Level m_logLevel = log::Level::off;
-    std::string m_logFile;
+    log::Type type = log::Type::Print;
+    log::Level level = log::Level::off;
+    std::string file;
 
     void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct Config
@@ -231,7 +235,7 @@ namespace llarp
 
     /// create generation params (virtual for unit test mock)
     virtual std::unique_ptr<ConfigGenParameters>
-    MakeGenParams() const;
+    make_gen_params() const;
 
     RouterConfig router;
     NetworkConfig network;
@@ -246,41 +250,41 @@ namespace llarp
 
     // Initialize config definition
     void
-    initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params);
+    init_config(ConfigDefinition& conf, const ConfigGenParameters& params);
 
     /// Insert config entries for backwards-compatibility (e.g. so that the config system will
     /// tolerate old values that are no longer accepted)
     ///
     /// @param conf is the config to modify
     void
-    addBackwardsCompatibleConfigOptions(ConfigDefinition& conf);
+    add_backcompat_opts(ConfigDefinition& conf);
 
     // Load a config from the given file if the config file is not provided LoadDefault is called
     bool
-    Load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
+    load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
 
     // Load a config from a string of ini, same effects as Config::Load
     bool
-    LoadString(std::string_view ini, bool isRelay = false);
+    load_string(std::string_view ini, bool isRelay = false);
 
     std::string
-    generateBaseClientConfig();
+    generate_client_config_base();
 
     std::string
-    generateBaseRouterConfig();
+    generate_router_config_base();
 
     void
-    Save();
+    save();
 
     void
-    Override(std::string section, std::string key, std::string value);
+    override(std::string section, std::string key, std::string value);
 
     void
-    AddDefault(std::string section, std::string key, std::string value);
+    add_default(std::string section, std::string key, std::string value);
 
     /// create a config with the default parameters for an embedded lokinet
     static std::shared_ptr<Config>
-    EmbeddedConfig();
+    make_embedded_config();
 
    private:
     /// Load (initialize) a default config.
@@ -295,21 +299,21 @@ namespace llarp
     /// @param dataDir is a path representing a directory to be used as the data dir
     /// @return true on success, false otherwise
     bool
-    LoadDefault(bool isRelay);
+    load_default_config(bool isRelay);
 
     bool
-    LoadConfigData(
+    load_config_data(
         std::string_view ini, std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
 
     void
-    LoadOverrides(ConfigDefinition& conf) const;
+    load_overrides(ConfigDefinition& conf) const;
 
-    std::vector<std::array<std::string, 3>> m_Additional;
-    ConfigParser m_Parser;
-    const fs::path m_DataDir;
+    std::vector<std::array<std::string, 3>> additional;
+    ConfigParser parser;
+    const fs::path data_dir;
   };
 
   void
-  ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
+  ensure_config(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp

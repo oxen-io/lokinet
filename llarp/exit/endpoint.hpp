@@ -86,6 +86,12 @@ namespace llarp
         return remote_signkey;
       }
 
+      RouterID
+      router_id() const
+      {
+        return remote_signkey.data();
+      }
+
       uint64_t
       TxRate() const
       {

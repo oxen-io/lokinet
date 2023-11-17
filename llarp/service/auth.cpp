@@ -11,14 +11,14 @@
 namespace llarp::service
 {
   /// maybe get auth result from string
-  std::optional<AuthResultCode>
-  ParseAuthResultCode(std::string data)
+  std::optional<AuthCode>
+  parse_auth_code(std::string data)
   {
-    std::unordered_map<std::string, AuthResultCode> values = {
-        {"OKAY", AuthResultCode::eAuthAccepted},
-        {"REJECT", AuthResultCode::eAuthRejected},
-        {"PAYME", AuthResultCode::eAuthPaymentRequired},
-        {"LIMITED", AuthResultCode::eAuthRateLimit}};
+    std::unordered_map<std::string, AuthCode> values = {
+        {"OKAY", AuthCode::ACCEPTED},
+        {"REJECT", AuthCode::REJECTED},
+        {"PAYME", AuthCode::PAYMENT_REQUIRED},
+        {"LIMITED", AuthCode::RATE_LIMIT}};
     auto itr = values.find(data);
     if (itr == values.end())
       return std::nullopt;
@@ -26,13 +26,13 @@ namespace llarp::service
   }
 
   AuthType
-  ParseAuthType(std::string data)
+  parse_auth_type(std::string data)
   {
     std::unordered_map<std::string, AuthType> values = {
-        {"file", AuthType::eAuthTypeFile},
-        {"lmq", AuthType::eAuthTypeLMQ},
-        {"whitelist", AuthType::eAuthTypeWhitelist},
-        {"none", AuthType::eAuthTypeNone}};
+        {"file", AuthType::FILE},
+        {"lmq", AuthType::OMQ},
+        {"whitelist", AuthType::WHITELIST},
+        {"none", AuthType::NONE}};
     const auto itr = values.find(data);
     if (itr == values.end())
       throw std::invalid_argument("no such auth type: " + data);
@@ -40,19 +40,19 @@ namespace llarp::service
   }
 
   AuthFileType
-  ParseAuthFileType(std::string data)
+  parse_auth_file_type(std::string data)
   {
     std::unordered_map<std::string, AuthFileType> values = {
-        {"plain", AuthFileType::eAuthFilePlain},
-        {"plaintext", AuthFileType::eAuthFilePlain},
-        {"hashed", AuthFileType::eAuthFileHashes},
-        {"hashes", AuthFileType::eAuthFileHashes},
-        {"hash", AuthFileType::eAuthFileHashes}};
+        {"plain", AuthFileType::PLAIN},
+        {"plaintext", AuthFileType::PLAIN},
+        {"hashed", AuthFileType::HASHES},
+        {"hashes", AuthFileType::HASHES},
+        {"hash", AuthFileType::HASHES}};
     const auto itr = values.find(data);
     if (itr == values.end())
       throw std::invalid_argument("no such auth file type: " + data);
 #ifndef HAVE_CRYPT
-    if (itr->second == AuthFileType::eAuthFileHashes)
+    if (itr->second == AuthFileType::HASHES)
       throw std::invalid_argument("unsupported auth file type: " + data);
 #endif
     return itr->second;
@@ -60,26 +60,26 @@ namespace llarp::service
 
   /// turn an auth result code into an int
   uint64_t
-  AuthResultCodeAsInt(AuthResultCode code)
+  auth_code_to_int(AuthCode code)
   {
-    return static_cast<std::underlying_type_t<AuthResultCode>>(code);
+    return static_cast<std::underlying_type_t<AuthCode>>(code);
   }
   /// may turn an int into an auth result code
-  std::optional<AuthResultCode>
-  AuthResultCodeFromInt(uint64_t code)
+  std::optional<AuthCode>
+  int_to_auth_code(uint64_t code)
   {
     switch (code)
     {
       case 0:
-        return AuthResultCode::eAuthAccepted;
+        return AuthCode::ACCEPTED;
       case 1:
-        return AuthResultCode::eAuthRejected;
+        return AuthCode::REJECTED;
       case 2:
-        return AuthResultCode::eAuthFailed;
+        return AuthCode::FAILED;
       case 3:
-        return AuthResultCode::eAuthRateLimit;
+        return AuthCode::RATE_LIMIT;
       case 4:
-        return AuthResultCode::eAuthPaymentRequired;
+        return AuthCode::PAYMENT_REQUIRED;
       default:
         return std::nullopt;
     }
@@ -96,7 +96,7 @@ namespace llarp::service
     /// matching it
     /// this is expected to be done in the IO thread
     AuthResult
-    CheckFiles(const AuthInfo& info) const
+    check_files(const AuthInfo& info) const
     {
       for (const auto& f : m_Files)
       {
@@ -109,22 +109,22 @@ namespace llarp::service
           if (auto part = parts[0]; not parts.empty() and not parts[0].empty())
           {
             // split off whitespaces and check password
-            if (CheckPasswd(std::string{TrimWhitespace(part)}, info.token))
-              return AuthResult{AuthResultCode::eAuthAccepted, "accepted by whitelist"};
+            if (check_passwd(std::string{TrimWhitespace(part)}, info.token))
+              return AuthResult{AuthCode::ACCEPTED, "accepted by whitelist"};
           }
         }
       }
-      return AuthResult{AuthResultCode::eAuthRejected, "rejected by whitelist"};
+      return AuthResult{AuthCode::REJECTED, "rejected by whitelist"};
     }
 
     bool
-    CheckPasswd(std::string hash, std::string challenge) const
+    check_passwd(std::string hash, std::string challenge) const
     {
       switch (m_Type)
       {
-        case AuthFileType::eAuthFilePlain:
+        case AuthFileType::PLAIN:
           return hash == challenge;
-        case AuthFileType::eAuthFileHashes:
+        case AuthFileType::HASHES:
 #ifdef HAVE_CRYPT
           return crypto::check_passwd_hash(std::move(hash), std::move(challenge));
 #endif
@@ -139,7 +139,7 @@ namespace llarp::service
     {}
 
     void
-    AuthenticateAsync(
+    authenticate_async(
         std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) override
     {
       auto reply = m_Router->loop()->make_caller(
@@ -148,7 +148,7 @@ namespace llarp::service
               util::Lock _lock{self->m_Access};
               self->m_Pending.erase(tag);
             }
-            hook(result.reason, result.code == AuthResultCode::eAuthAccepted);
+            hook(result.reason, result.code == AuthCode::ACCEPTED);
           });
       {
         util::Lock _lock{m_Access};
@@ -163,19 +163,19 @@ namespace llarp::service
              reply]() {
               try
               {
-                reply(self->CheckFiles(auth));
+                reply(self->check_files(auth));
               }
               catch (std::exception& ex)
               {
-                reply(AuthResult{AuthResultCode::eAuthFailed, ex.what()});
+                reply(AuthResult{AuthCode::FAILED, ex.what()});
               }
             });
       }
       else
-        reply(AuthResult{AuthResultCode::eAuthRejected, "protocol error"});
+        reply(AuthResult{AuthCode::REJECTED, "protocol error"});
     }
     bool
-    AsyncAuthPending(ConvoTag tag) const override
+    auth_async_pending(ConvoTag tag) const override
     {
       util::Lock _lock{m_Access};
       return m_Pending.count(tag);
@@ -183,7 +183,7 @@ namespace llarp::service
   };
 
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(Router* r, std::set<fs::path> files, AuthFileType filetype)
+  make_file_auth_policy(Router* r, std::set<fs::path> files, AuthFileType filetype)
   {
     return std::make_shared<FileAuthPolicy>(r, std::move(files), filetype);
   }

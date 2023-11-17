@@ -314,7 +314,9 @@ namespace llarp
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
-    if (auto rv = ep.establish_connection(remote_addr, rc); rv)
+    if (auto rv = ep.establish_connection(
+            oxen::quic::RemoteAddress{rc.router_id().ToView(), remote_addr}, rc);
+        rv)
     {
       log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
       return;

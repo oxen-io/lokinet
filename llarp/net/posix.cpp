@@ -50,10 +50,11 @@ namespace llarp::net
       return ifname;
     }
 
-    std::optional<std::string>
+    std::optional<sockaddr*>
     GetBestNetIF(int af) const override
     {
-      std::optional<std::string> found;
+      std::optional<sockaddr*> found;
+
       iter_all([this, &found, af](auto i) {
         if (found)
           return;
@@ -61,7 +62,7 @@ namespace llarp::net
         {
           if (not IsBogon(*i->ifa_addr))
           {
-            found = i->ifa_name;
+            found = i->ifa_addr;
           }
         }
       });

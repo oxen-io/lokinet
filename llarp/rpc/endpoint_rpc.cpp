@@ -37,13 +37,13 @@ namespace llarp::rpc
   }
 
   bool
-  EndpointAuthRPC::AsyncAuthPending(service::ConvoTag tag) const
+  EndpointAuthRPC::auth_async_pending(service::ConvoTag tag) const
   {
     return m_PendingAuths.count(tag) > 0;
   }
 
   void
-  EndpointAuthRPC::AuthenticateAsync(
+  EndpointAuthRPC::authenticate_async(
       std::shared_ptr<llarp::service::ProtocolMessage> msg,
       std::function<void(std::string, bool)> hook)
   {
@@ -99,15 +99,15 @@ namespace llarp::rpc
         m_AuthMethod,
         [self = shared_from_this(), reply = std::move(reply)](
             bool success, std::vector<std::string> data) {
-          service::AuthResult result{service::AuthResultCode::eAuthFailed, "no reason given"};
+          service::AuthResult result{service::AuthCode::FAILED, "no reason given"};
 
           if (success and not data.empty())
           {
-            if (const auto maybe = service::ParseAuthResultCode(data[0]))
+            if (const auto maybe = service::parse_auth_code(data[0]))
             {
               result.code = *maybe;
             }
-            if (result.code == service::AuthResultCode::eAuthAccepted)
+            if (result.code == service::AuthCode::ACCEPTED)
             {
               result.reason = "OK";
             }

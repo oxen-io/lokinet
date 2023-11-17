@@ -363,7 +363,7 @@ namespace llarp
 
             hopsSet.insert(rc);
 #ifndef TESTNET
-            if (not pathConfig.Acceptable(hopsSet))
+            if (not pathConfig.check_rcs(hopsSet))
               return false;
 #endif
             return rc.router_id() != endpointRC.router_id();

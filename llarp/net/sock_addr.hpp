@@ -177,10 +177,21 @@ namespace llarp
     huint32_t
     asIPv4() const;
 
+    const sockaddr_in*
+    in()
+    {
+      return &addr4;
+    }
+    const sockaddr_in6*
+    in6()
+    {
+      return &addr6;
+    }
+
    private:
     bool m_empty = true;
-    sockaddr_in6 m_addr;
-    sockaddr_in m_addr4;
+    sockaddr_in6 addr6;
+    sockaddr_in addr4;
 
     void
     init();

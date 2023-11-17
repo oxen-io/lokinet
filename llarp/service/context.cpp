@@ -186,7 +186,7 @@ namespace llarp::service
     if (m_Endpoints.find(endpointName) != m_Endpoints.end())
       throw std::invalid_argument("service::Context only supports one endpoint now");
 
-    const auto& endpointType = conf.network.m_endpointType;
+    const auto& endpointType = conf.network.endpoint_type;
     // use factory to create endpoint
     const auto itr = endpointConstructors.find(endpointType);
     if (itr == endpointConstructors.end())

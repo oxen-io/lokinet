@@ -120,7 +120,7 @@ namespace llarp
     if (router.is_service_node())
       return false;
     if (const auto& conf = router.config())
-      return conf->network.m_EnableRoutePoker;
+      return conf->network.enable_route_poker;
 
     throw std::runtime_error{"Attempting to use RoutePoker with router with no config set"};
   }
@@ -214,7 +214,7 @@ namespace llarp
         vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();
 
         // black hole all routes if enabled
-        if (router.config()->network.m_BlackholeRoutes)
+        if (router.config()->network.blackhole_routes)
           route.add_blackhole();
 
         // explicit route pokes for first hops

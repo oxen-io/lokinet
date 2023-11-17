@@ -121,20 +121,8 @@ namespace llarp
         return var::visit([](auto&& ip) { return not ip.n; }, ip);
       }
 
-      virtual std::optional<std::string>
+      virtual std::optional<sockaddr*>
       GetBestNetIF(int af = AF_INET) const = 0;
-
-      inline std::optional<SockAddr>
-      MaybeInferPublicAddr(port_t default_port, int af = AF_INET) const
-      {
-        std::optional<SockAddr> maybe_addr;
-        if (auto maybe_ifname = GetBestNetIF(af))
-          maybe_addr = GetInterfaceAddr(*maybe_ifname, af);
-
-        if (maybe_addr)
-          maybe_addr->setPort(default_port);
-        return maybe_addr;
-      }
 
       virtual std::optional<IPRange>
       FindFreeRange() const = 0;
