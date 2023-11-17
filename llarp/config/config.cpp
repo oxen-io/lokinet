@@ -961,9 +961,8 @@ namespace llarp
 
         maybe = oxen::quic::Address{std::string{h}, p};
 
-        // TODO: unfuck llarp/net
-        // if (net_ptr->IsLoopbackAddress(addr->port()))
-        //   throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
+        if (maybe->is_loopback())
+          throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
       }
       if (not maybe)
       {
@@ -1103,34 +1102,40 @@ namespace llarp
         });
 
     conf.add_undeclared_handler(
-        "bind", [this, net_ptr](std::string_view, std::string_view key, std::string_view val) {
+        "bind", [this](std::string_view, std::string_view key, std::string_view val) {
           if (using_new_api)
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
-          log::warning(
-              logcat, "Using the [bind] section is beyond deprecated; use [listen] instead");
+          log::warning(logcat, "Please update your config to use [bind]:listen instead");
+
+          uint16_t port{0};
+
+          if (auto rv = llarp::parse_int<uint16_t>(val, port); not rv)
+            throw std::runtime_error{"Could not parse port; stop using this deprecated handler"};
+
+          port = port == 0 ? DEFAULT_LISTEN_PORT : port;
 
           // special case: wildcard for outbound
           if (key == "*")
           {
-            uint16_t port{0};
-
-            if (auto rv = llarp::parse_int<uint16_t>(val, port); not rv)
-              log::warning(
-                  logcat, "Could not parse port; stop using this deprecated handler you nonce");
-
-            addr = oxen::quic::Address{"", port};  // TODO: drop the "" after bumping libquic
+            addr = oxen::quic::Address{port};
             return;
           }
 
           oxen::quic::Address temp;
-          // try as interface name first
-          auto saddr = net_ptr->GetInterfaceAddr(key, AF_INET);
 
-          if (saddr and net_ptr->IsLoopbackAddress(saddr->getIP()))
-            throw std::invalid_argument{fmt::format("{} is a loopback interface", key)};
-
-          temp = oxen::quic::Address{saddr->in()};
+          try
+          {
+            temp = oxen::quic::Address{std::string{key}, port};
+          }
+          catch (const std::exception& e)
+          {
+            throw std::runtime_error{fmt::format(
+                "Could not parse address {}; please update your config to use [bind]:listen "
+                "instead: {}",
+                key,
+                e.what())};
+          }
 
           if (temp.is_addressable())
           {
@@ -1138,10 +1143,10 @@ namespace llarp
             return;
           }
 
-          log::warning(
-              logcat,
-              "Could not parse address values; stop using this deprecated handler you nonce");
-          addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
+          throw std::runtime_error{fmt::format(
+              "Invalid address: {}; stop using this deprecated handler, update your config to use "
+              "[bind]:listen instead PLEASE",
+              temp)};
         });
   }
 

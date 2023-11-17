@@ -71,7 +71,8 @@ namespace llarp
 
       template <typename... Opt>
       bool
-      establish_connection(const oxen::quic::Address& remote, const RemoteRC& rc, Opt&&... opts);
+      establish_connection(
+          const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts);
 
       void
       for_each_connection(std::function<void(link::Connection&)> func);
@@ -364,7 +365,7 @@ namespace llarp
     template <typename... Opt>
     bool
     Endpoint::establish_connection(
-        const oxen::quic::Address& remote, const RemoteRC& rc, Opt&&... opts)
+        const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts)
     {
       try
       {

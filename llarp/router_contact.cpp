@@ -12,32 +12,6 @@
 
 namespace llarp
 {
-
-  // RouterContact::RouterContact(std::string buf)
-  // {
-  //   try
-  //   {
-  //     oxenc::bt_list_consumer btlc{buf};
-
-  //     // signature.from_string(btlc.consume_string());
-  //     signed_bt_dict = btlc.consume_string();
-
-  //     // TODO: parse bt dict
-  //   }
-  //   catch (...)
-  //   {
-  //     log::warning(llarp_cat, "Error: RouterContact failed to populate bt encoded contents!");
-  //   }
-  // }
-
-  // std::string
-  // RouterContact::bt_encode() const
-  // {
-  //   oxenc::bt_dict_producer btdp;
-  //   bt_encode(btdp);
-  //   return std::move(btdp).str();
-  // }
-
   void
   RouterContact::bt_load(oxenc::bt_dict_consumer& data)
   {
