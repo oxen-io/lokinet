@@ -244,7 +244,7 @@ namespace llarp
     void
     clear() override
     {
-      _addr = {};
+      _addr = oxen::quic::Address{};
       _addr6.reset();
       _router_id.Zero();
       _timestamp = {};
@@ -338,7 +338,7 @@ namespace llarp
     void
     clear() override
     {
-      _addr = {};
+      _addr = oxen::quic::Address{};
       _addr6.reset();
       _router_id.Zero();
       _timestamp = {};
