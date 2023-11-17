@@ -6,9 +6,12 @@
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/exit.hpp>
 #include <llarp/messages/path.hpp>
+#include <llarp/messages/rc.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
+
+#include <oxenc/bt_producer.h>
 
 #include <algorithm>
 #include <set>
@@ -424,6 +427,120 @@ namespace llarp
     catch (const std::exception& e)
     {
       log::info(link_cat, "Recieved invalid RC, dropping on the floor.");
+    }
+  }
+
+  void
+  LinkManager::fetch_rcs(
+      const RouterID& source, rc_time since, const std::vector<RouterID>& explicit_ids)
+  {
+    send_control_message(
+        source,
+        "fetch_rcs",
+        RCFetchMessage::serialize(since, explicit_ids),
+        [this, source = source](oxen::quic::message m) {
+          if (m.timed_out)
+          {
+            // TODO: keep track of this failure for relay quality metrics?
+            log::info(link_cat, "RC Fetch to {} timed out", source);
+            return;
+          }
+          if (not m)
+          {
+            log::info(link_cat, "RC Fetch to {} returned error.", source);
+            return;
+          }
+
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            btdc.required("rcs");
+            auto btlc = btdc.consume_list_consumer();
+            auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time")}};
+
+            std::vector<RemoteRC> rcs;
+            while (not btlc.is_finished())
+            {
+              // TODO: maybe make RemoteRC constructor throw a bespoke exception type
+              //       and catch it below so we know what about parsing failed?
+              rcs.emplace_back(btlc.consume_dict_consumer());
+            }
+
+            node_db->ingest_rcs(source, std::move(rcs), timestamp);
+          }
+          catch (const std::exception& e)
+          {
+            // TODO: Inform NodeDB of failure (perhaps just a call to rotate_rc_source())
+            log::info(link_cat, "Failed to parse RC Fetch response from {}", source);
+            return;
+          }
+        });
+  }
+
+  void
+  LinkManager::handle_fetch_rcs(oxen::quic::message m)
+  {
+    // this handler should not be registered for clients
+    assert(_router.is_service_node());
+
+    const auto& rcs = node_db->get_rcs();
+    const auto now =
+        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      btdc.required("explicit_ids");
+      auto explicit_ids = btdc.consume_list<std::vector<std::string>>();
+      auto since_time = rc_time{std::chrono::seconds{btdc.require<int64_t>("since")}};
+
+      if (explicit_ids.size() > (rcs.size() / 4))
+      {
+        log::info(
+            link_cat, "Remote requested too many relay IDs (greater than 1/4 of what we have).");
+        m.respond(
+            serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+        return;
+      }
+
+      std::unordered_set<RouterID> explicit_relays;
+      for (auto& sv : explicit_ids)
+      {
+        if (sv.size() != RouterID::SIZE)
+        {
+          m.respond(serialize_response(
+              {{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+          return;
+        }
+        explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
+      }
+
+      oxenc::bt_dict_producer resp;
+
+      {
+        auto btlp = resp.append_list("rcs");
+
+        const auto& last_time = node_db->get_last_rc_update_times();
+
+        // if since_time isn't epoch start, subtract a bit for buffer
+        if (since_time != decltype(since_time)::min())
+          since_time -= 5s;
+
+        for (const auto& [_, rc] : rcs)
+        {
+          if (last_time.at(rc.router_id()) > since_time or explicit_relays.count(rc.router_id()))
+            btlp.append_encoded(rc.view());
+        }
+      }
+
+      resp.append("time", now.time_since_epoch().count());
+
+      m.respond(std::move(resp).str(), false);
+    }
+    catch (const std::exception& e)
+    {
+      log::info(link_cat, "Exception handling RC Fetch request: {}", e.what());
+      m.respond(messages::ERROR_RESPONSE);
     }
   }
 
