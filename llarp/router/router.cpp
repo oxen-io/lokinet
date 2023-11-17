@@ -227,20 +227,6 @@ namespace llarp
     _link_manager.set_conn_persist(remote, until);
   }
 
-  void
-  Router::GossipRCIfNeeded(const LocalRC rc)
-  {
-    /// if we are not a service node forget about gossip
-    if (not is_service_node())
-      return;
-    /// wait for random uptime
-    if (std::chrono::milliseconds{Uptime()} < _randomStartDelay)
-      return;
-    auto view = rc.view();
-    _link_manager.gossip_rc(
-        pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
-  }
-
   std::optional<RouterID>
   Router::GetRandomGoodRouter()
   {
@@ -534,16 +520,6 @@ namespace llarp
   }
 
   bool
-  Router::update_rc()
-  {
-    router_contact.resign();
-    if (is_service_node())
-      save_rc();
-
-    return true;
-  }
-
-  bool
   Router::from_config(const Config& conf)
   {
     // Set netid before anything else
@@ -779,12 +755,12 @@ namespace llarp
           " | {} active paths | block {} ",
           path_context().CurrentTransitPaths(),
           (_rpc_client ? _rpc_client->BlockHeight() : 0));
-      auto maybe_last = _rcGossiper.LastGossipAt();
+      bool have_gossiped = last_rc_gossip == std::chrono::system_clock::time_point::min();
       fmt::format_to(
           out,
           " | gossip: (next/last) {} / {}",
-          short_time_from_now(_rcGossiper.NextGossipAt()),
-          maybe_last ? short_time_from_now(*maybe_last) : "never");
+          short_time_from_now(next_rc_gossip),
+          have_gossiped ? short_time_from_now(last_rc_gossip) : "never");
     }
     else
     {
@@ -837,33 +813,28 @@ namespace llarp
       report_stats();
     }
 
-    _rcGossiper.Decay(now);
-
     const bool is_snode = is_service_node();
     const bool is_decommed = appears_decommed();
-    bool should_gossip = appears_funded();
 
-    if (is_snode
-        and (router_contact.expires_within_delta(now, std::chrono::milliseconds(randint() % 10000)) 
-            or (now - router_contact.timestamp().time_since_epoch()) > rc_regen_interval))
+    // (relay-only) if we have fetched the relay list from oxend and
+    // we are registered and funded, we want to gossip our RC periodically
+    auto now_timepoint = std::chrono::system_clock::time_point(now);
+    if (is_snode and appears_funded() and (now_timepoint > next_rc_gossip))
     {
-      LogInfo("regenerating RC");
-      if (update_rc())
-      {
-        // our rc changed so we should gossip it
-        should_gossip = true;
-        // remove our replay entry so it goes out
-        _rcGossiper.Forget(pubkey());
-      }
-      else
-        LogError("failed to update our RC");
+      log::info(logcat, "regenerating and gossiping RC");
+      router_contact.resign();
+      save_rc();
+      auto view = router_contact.view();
+      _link_manager.gossip_rc(
+          pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
+      last_rc_gossip = now_timepoint;
+
+      // 1min to 5min before "stale time" is next gossip time
+      auto random_delta =
+          std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
+      next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
     }
-    if (should_gossip)
-    {
-      // if we have the whitelist enabled, we have fetched the list and we are in either
-      // the white or grey list, we want to gossip our RC
-      GossipRCIfNeeded(router_contact);
-    }
+
     // remove RCs for nodes that are no longer allowed by network policy
     node_db()->RemoveIf([&](const RemoteRC& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
@@ -1052,7 +1023,6 @@ namespace llarp
 
       log::info(logcat, "Router initialized as service node!");
       const RouterID us = pubkey();
-      _rcGossiper.Init(&_link_manager, us, this);
       // relays do not use profiling
       router_profiling().Disable();
     }
