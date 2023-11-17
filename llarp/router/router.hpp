@@ -1,6 +1,5 @@
 #pragma once
 
-#include "rc_gossiper.hpp"
 #include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
@@ -125,11 +124,10 @@ namespace llarp
     Profiling _router_profiling;
     fs::path _profile_file;
     LinkManager _link_manager{*this};
-    RCGossiper _rcGossiper;
-
-    /// how often do we resign our RC? milliseconds.
-    // TODO: make configurable
-    llarp_time_t rc_regen_interval = 1h;
+    std::chrono::system_clock::time_point last_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
 
     // should we be sending padded messages every interval?
     bool send_padding = false;
@@ -146,9 +144,6 @@ namespace llarp
 
     void
     save_rc();
-
-    bool
-    update_rc();
 
     bool
     from_config(const Config& conf);
@@ -364,9 +359,6 @@ namespace llarp
 
     std::string
     status_line();
-
-    void
-    GossipRCIfNeeded(const LocalRC rc);
 
     void
     InitInboundLinks();
