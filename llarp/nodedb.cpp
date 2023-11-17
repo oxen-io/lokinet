@@ -113,6 +113,60 @@ namespace llarp
   }
 
   void
+  NodeDB::rotate_rc_source()
+  {}
+
+  // TODO: trust model
+  void
+  NodeDB::ingest_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp)
+  {
+    (void)source;
+
+    // TODO: if we don't currently have a "trusted" relay we've been fetching from,
+    // this will be a full list of RCs.  We need to first check if it aligns closely
+    // with our trusted RouterID list, then replace our RCs with the incoming set.
+
+    for (auto& rc : rcs)
+      put_rc_if_newer(std::move(rc), timestamp);
+
+    // TODO: if we have a "trusted" relay we've been fetching from, this will be
+    // an incremental update to the RC list, so *after* insertion we check if the
+    // RCs' RouterIDs closely match our trusted RouterID list.
+
+    last_rc_update_relay_timestamp = timestamp;
+  }
+
+  // TODO: trust model
+  void
+  NodeDB::ingest_router_ids(RouterID source, std::vector<RouterID> ids)
+  {
+    router_id_fetch_responses[source] = std::move(ids);
+
+    router_id_response_count++;
+    if (router_id_response_count == router_id_fetch_sources.size())
+    {
+      // TODO: reconcile all the responses
+    }
+  }
+
+  void
+  NodeDB::update_rcs()
+  {
+    std::vector<RouterID> needed;
+
+    const auto now =
+        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    for (const auto& [rid, rc] : known_rcs)
+    {
+      if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
+        needed.push_back(rid);
+    }
+
+    router.link_manager().fetch_rcs(
+        rc_fetch_source, last_rc_update_relay_timestamp, std::move(needed));
+  }
+
+  void
   NodeDB::set_router_whitelist(
       const std::vector<RouterID>& whitelist,
       const std::vector<RouterID>& greylist,
@@ -277,13 +331,14 @@ namespace llarp
   }
 
   bool
-  NodeDB::put_rc(RemoteRC rc)
+  NodeDB::put_rc(RemoteRC rc, rc_time now)
   {
     const auto& rid = rc.router_id();
     if (not want_rc(rid))
       return false;
     known_rcs.erase(rid);
     known_rcs.emplace(rid, std::move(rc));
+    last_rc_update_times[rid] = now;
     return true;
   }
 
@@ -294,12 +349,12 @@ namespace llarp
   }
 
   bool
-  NodeDB::put_rc_if_newer(RemoteRC rc)
+  NodeDB::put_rc_if_newer(RemoteRC rc, rc_time now)
   {
     auto itr = known_rcs.find(rc.router_id());
     if (itr == known_rcs.end() or itr->second.other_is_newer(rc))
     {
-      return put_rc(std::move(rc));
+      return put_rc(std::move(rc), now);
     }
     return false;
   }

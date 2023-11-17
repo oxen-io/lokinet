@@ -226,6 +226,12 @@ namespace llarp
     void
     handle_gossip_rc(oxen::quic::message m);
 
+    void
+    fetch_rcs(const RouterID& source, rc_time since, const std::vector<RouterID>& explicit_ids);
+
+    void
+    handle_fetch_rcs(oxen::quic::message m);
+
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
 
