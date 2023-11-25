@@ -54,7 +54,7 @@ namespace llarp
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
 
     // Router list for clients
-    std::unordered_set<RouterID> client_known_rcs;
+    std::unordered_set<RouterID> client_known_routers;
 
     // only ever use to specific edges as path first-hops
     std::unordered_set<RouterID> pinned_edges;
@@ -62,10 +62,12 @@ namespace llarp
     // rc update info
     RouterID rc_fetch_source;
     rc_time last_rc_update_relay_timestamp;
+    static constexpr auto ROUTER_ID_SOURCE_COUNT = 12;
     std::unordered_set<RouterID> router_id_fetch_sources;
     std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
     // process responses once all are received (or failed/timed out)
     size_t router_id_response_count{0};
+    bool router_id_fetch_in_progress{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -104,7 +106,7 @@ namespace llarp
       return last_rc_update_times;
     }
 
-    // If we receive a set of RCs from our current RC source relay, we consider
+    // If we receive a bad set of RCs from our current RC source relay, we consider
     // that relay to be a bad source of RCs and we randomly choose a new one.
     //
     // When using a new RC fetch relay, we first re-fetch the full RC list and, if
@@ -123,6 +125,12 @@ namespace llarp
 
     void
     update_rcs();
+
+    void
+    fetch_router_ids();
+
+    void
+    select_router_id_sources(std::unordered_set<RouterID> excluded);
 
     void
     set_router_whitelist(

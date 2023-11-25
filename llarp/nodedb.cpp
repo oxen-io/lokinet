@@ -114,7 +114,27 @@ namespace llarp
 
   void
   NodeDB::rotate_rc_source()
-  {}
+  {
+    auto conn_count = router.link_manager().get_num_connected();
+    if (conn_count == 0)
+    {
+      // not connected to any nodes yet, so no sensible source
+      return;
+    }
+    RemoteRC new_source{};
+    router.link_manager().get_random_connected(new_source);
+    if (conn_count == 1)
+    {
+      // only one connection, use it
+      rc_fetch_source = new_source.router_id();
+    }
+
+    while (new_source.router_id() == rc_fetch_source)
+    {
+      router.link_manager().get_random_connected(new_source);
+    }
+    rc_fetch_source = new_source.router_id();
+  }
 
   // TODO: trust model
   void
@@ -145,7 +165,16 @@ namespace llarp
     router_id_response_count++;
     if (router_id_response_count == router_id_fetch_sources.size())
     {
-      // TODO: reconcile all the responses
+      // TODO: reconcile all the responses, for now just insert all
+      for (const auto& [rid, responses] : router_id_fetch_responses)
+      {
+        // TODO: empty == failure, handle that case
+        for (const auto& response : responses)
+        {
+          client_known_routers.insert(std::move(response));
+        }
+      }
+      router_id_fetch_in_progress = false;
     }
   }
 
@@ -164,6 +193,61 @@ namespace llarp
 
     router.link_manager().fetch_rcs(
         rc_fetch_source, last_rc_update_relay_timestamp, std::move(needed));
+  }
+
+  void
+  NodeDB::fetch_router_ids()
+  {
+    if (router_id_fetch_in_progress)
+      return;
+    if (router_id_fetch_sources.empty())
+      select_router_id_sources({});
+
+    // if we *still* don't have fetch sources, we can't exactly fetch...
+    if (router_id_fetch_sources.empty())
+    {
+      log::info(logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
+      return;
+    }
+
+    router_id_fetch_in_progress = true;
+    router_id_response_count = 0;
+    router_id_fetch_responses.clear();
+    for (const auto& rid : router_id_fetch_sources)
+      router.link_manager().fetch_router_ids(rid);
+  }
+
+  void
+  NodeDB::select_router_id_sources(std::unordered_set<RouterID> excluded)
+  {
+    // TODO: bootstrapping should be finished before this is called, so this
+    //       shouldn't happen; need to make sure that's the case.
+    if (client_known_routers.empty())
+      return;
+
+    // keep using any we've been using, but remove `excluded` ones
+    for (const auto& r : excluded)
+      router_id_fetch_sources.erase(r);
+
+    // only know so many routers, so no need to randomize
+    if (client_known_routers.size() <= (ROUTER_ID_SOURCE_COUNT + excluded.size()))
+    {
+      for (const auto& r : client_known_routers)
+      {
+        if (excluded.count(r))
+          continue;
+        router_id_fetch_sources.insert(r);
+      }
+    }
+
+    // select at random until we have chosen enough
+    while (router_id_fetch_sources.size() < ROUTER_ID_SOURCE_COUNT)
+    {
+      RouterID r;
+      std::sample(client_known_routers.begin(), client_known_routers.end(), &r, 1, csrng);
+      if (excluded.count(r) == 0)
+        router_id_fetch_sources.insert(r);
+    }
   }
 
   void
