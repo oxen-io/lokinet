@@ -7,6 +7,7 @@
 #include <llarp/messages/exit.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/messages/rc.hpp>
+#include <llarp/messages/router_id.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
 #include <llarp/router/router.hpp>
@@ -14,6 +15,7 @@
 #include <oxenc/bt_producer.h>
 
 #include <algorithm>
+#include <exception>
 #include <set>
 
 namespace llarp
@@ -541,6 +543,120 @@ namespace llarp
     {
       log::info(link_cat, "Exception handling RC Fetch request: {}", e.what());
       m.respond(messages::ERROR_RESPONSE);
+    }
+  }
+
+  void
+  LinkManager::fetch_router_ids(const RouterID& source)
+  {
+    if (ep.conns.empty())
+    {
+      log::debug(link_cat, "Not attempting to fetch Router IDs: not connected to any relays.");
+      return;
+    }
+    // TODO: randomize?  Also, keep track of successful responses and drop this edge
+    //       if not many come back successfully.
+    RouterID edge = ep.conns.begin()->first;
+    send_control_message(
+        edge,
+        "fetch_router_ids"s,
+        RouterIDFetch::serialize(source),
+        [this, source = source, edge = std::move(edge)](oxen::quic::message m) {
+          if (not m)
+          {
+            log::info(
+                link_cat,
+                "Error fetching RouterIDs from source \"{}\" via edge \"{}\"",
+                source,
+                edge);
+            node_db->ingest_router_ids(edge, {});  // empty response == failure
+            return;
+          }
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            btdc.required("routers");
+            auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
+            btdc.require_signature("signature", [&edge](ustring_view msg, ustring_view sig) {
+              if (sig.size() != 64)
+                throw std::runtime_error{"Invalid signature: not 64 bytes"};
+              if (not crypto::verify(edge, msg, sig))
+                throw std::runtime_error{
+                    "Failed to verify signature for fetch RouterIDs response."};
+            });
+            std::vector<RouterID> router_ids;
+            for (const auto& s : router_id_strings)
+            {
+              if (s.size() != RouterID::SIZE)
+              {
+                log::warning(link_cat, "Got bad RouterID from edge \"{}\".", edge);
+                return;
+              }
+              router_ids.emplace_back(s.data());
+            }
+            node_db->ingest_router_ids(edge, std::move(router_ids));
+            return;
+          }
+          catch (const std::exception& e)
+          {
+            log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
+          }
+          node_db->ingest_router_ids(edge, {});  // empty response == failure
+        });
+  }
+
+  void
+  LinkManager::handle_fetch_router_ids(oxen::quic::message m)
+  {
+    try
+    {
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      auto source = btdc.require<std::string_view>("source");
+
+      // if bad request, silently fail
+      if (source.size() != RouterID::SIZE)
+        return;
+
+      const auto source_rid = RouterID{reinterpret_cast<const byte_t*>(source.data())};
+      const auto our_rid = RouterID{router().pubkey()};
+
+      if (source_rid == our_rid)
+      {
+        oxenc::bt_dict_producer btdp;
+        {
+          auto btlp = btdp.append_list("routers");
+          for (const auto& relay : node_db->whitelist())
+          {
+            btlp.append(relay.ToView());
+          }
+        }
+        btdp.append_signature("signature", [this](ustring_view to_sign) {
+          std::array<unsigned char, 64> sig;
+
+          if (!crypto::sign(const_cast<unsigned char*>(sig.data()), _router.identity(), to_sign))
+            throw std::runtime_error{"Failed to sign fetch RouterIDs response"};
+
+          return sig;
+        });
+        m.respond(std::move(btdp).str());
+        return;
+      }
+
+      send_control_message(
+          source_rid,
+          "fetch_router_ids"s,
+          m.body_str(),
+          [source_rid = std::move(source_rid),
+           orig_mess = std::move(m)](oxen::quic::message m) mutable {
+            if (not m.timed_out)
+              orig_mess.respond(m.body_str());
+            // on timeout, just silently drop (as original requester will just time out anyway)
+          });
+    }
+    catch (const std::exception& e)
+    {
+      log::info(link_cat, "Error fulfilling fetch RouterIDs request: {}", e.what());
     }
   }
 

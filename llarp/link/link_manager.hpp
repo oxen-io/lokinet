@@ -232,6 +232,12 @@ namespace llarp
     void
     handle_fetch_rcs(oxen::quic::message m);
 
+    void
+    fetch_router_ids(const RouterID& source);
+
+    void
+    handle_fetch_router_ids(oxen::quic::message m);
+
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
 
