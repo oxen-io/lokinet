@@ -822,7 +822,7 @@ namespace llarp::service
       try
       {
         oxenc::bt_dict_consumer btdc{resp};
-        auto status = btdc.require<std::string_view>(messages::status::STATUS_KEY);
+        auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
         if (status != "OK"sv)
         {
           log::info(link_cat, "Error on ONS lookup: {}", status);
@@ -1367,7 +1367,7 @@ namespace llarp::service
         try
         {
           oxenc::bt_dict_consumer btdc{resp};
-          auto status = btdc.require<std::string_view>(messages::status::STATUS_KEY);
+          auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
           if (status != "OK"sv)
           {
             log::info(link_cat, "Error in find intro set response: {}", status);
