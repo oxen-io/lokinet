@@ -402,7 +402,7 @@ namespace llarp
       if (not conn->remote_is_relay)
         continue;
 
-      send_control_message(rid, "gossip_rc", serialized_rc, nullptr);
+      send_control_message(rid, "gossip_rc", serialized_rc);
     }
   }
 
