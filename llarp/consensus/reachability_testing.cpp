@@ -104,7 +104,7 @@ namespace llarp::consensus
     // We exhausted the queue so repopulate it and try again
 
     testing_queue.clear();
-    const auto all = router->router_whitelist();
+    const auto all = router->get_whitelist();
     testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
 
     std::shuffle(testing_queue.begin(), testing_queue.end(), llarp::csrng);

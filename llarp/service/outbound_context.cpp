@@ -409,7 +409,7 @@ namespace llarp::service
     auto itr = intros.begin();
     while (itr != intros.end())
     {
-      if (not ep.router()->node_db()->has_router(itr->router))
+      if (not ep.router()->node_db()->has_rc(itr->router))
       {
         itr = intros.erase(itr);
         continue;

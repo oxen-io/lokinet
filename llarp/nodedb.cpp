@@ -152,7 +152,7 @@ namespace llarp
   bool
   NodeDB::is_connection_allowed(const RouterID& remote) const
   {
-    if (pinned_edges.size() && pinned_edges.count(remote) == 0 && !bootstraps.count(remote))
+    if (pinned_edges.size() && pinned_edges.count(remote) == 0 && bootstraps.count(remote) == 0)
     {
       return false;
     }
@@ -243,7 +243,7 @@ namespace llarp
   }
 
   bool
-  NodeDB::has_router(RouterID pk) const
+  NodeDB::has_rc(RouterID pk) const
   {
     return known_rcs.count(pk);
   }
