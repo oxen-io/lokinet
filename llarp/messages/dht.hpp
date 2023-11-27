@@ -4,51 +4,6 @@
 
 namespace llarp
 {
-  namespace FindRouterMessage
-  {
-    inline auto RETRY_EXP = "RETRY AS EXPLORATORY"sv;
-    inline auto RETRY_ITER = "RETRY AS ITERATIVE"sv;
-    inline auto RETRY_NEW = "RETRY WITH NEW RECIPIENT"sv;
-
-    inline static std::string
-    serialize(const RouterID& rid, bool is_iterative, bool is_exploratory)
-    {
-      oxenc::bt_dict_producer btdp;
-
-      try
-      {
-        btdp.append("E", is_exploratory ? 1 : 0);
-        btdp.append("I", is_iterative ? 1 : 0);
-        btdp.append("K", rid.ToView());
-      }
-      catch (...)
-      {
-        log::error(link_cat, "Error: FindRouterMessage failed to bt encode contents!");
-      }
-
-      return std::move(btdp).str();
-    }
-
-    inline static std::string
-    serialize(const std::string& rid, bool is_iterative, bool is_exploratory)
-    {
-      oxenc::bt_dict_producer btdp;
-
-      try
-      {
-        btdp.append("E", is_exploratory ? 1 : 0);
-        btdp.append("I", is_iterative ? 1 : 0);
-        btdp.append("K", std::move(rid));
-      }
-      catch (...)
-      {
-        log::error(link_cat, "Error: FindRouterMessage failed to bt encode contents!");
-      }
-
-      return std::move(btdp).str();
-    }
-  }  // namespace FindRouterMessage
-
   namespace FindIntroMessage
   {
     inline auto NOT_FOUND = "NOT FOUND"sv;
