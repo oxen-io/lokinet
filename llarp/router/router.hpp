@@ -58,6 +58,7 @@ namespace llarp
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
 
   static const std::chrono::seconds RC_UPDATE_INTERVAL = 5min;
+  static const std::chrono::seconds ROUTERID_UPDATE_INTERVAL = 1h;
 
   struct Contacts;
 
@@ -132,6 +133,8 @@ namespace llarp
         std::chrono::system_clock::time_point::min()};
 
     std::chrono::system_clock::time_point last_rc_fetch{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point last_routerid_fetch{
         std::chrono::system_clock::time_point::min()};
 
     // should we be sending padded messages every interval?
