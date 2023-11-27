@@ -271,9 +271,12 @@ namespace llarp
       });
     }
 
-    /// remove rcs that are not in keep and have been inserted before cutoff
+    /// remove rcs that are older than we want to keep.  For relays, this is when
+    /// they  become "outdated" (i.e. 12hrs).  Clients will hang on to them until
+    /// they are fully "expired" (i.e. 30 days), as the client may go offline for
+    /// some time and can still try to use those RCs to re-learn the network.
     void
-    remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
+    remove_stale_rcs();
 
     /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
     bool
