@@ -130,7 +130,7 @@ namespace llarp
     fetch_router_ids();
 
     void
-    select_router_id_sources(std::unordered_set<RouterID> excluded);
+    select_router_id_sources(std::unordered_set<RouterID> excluded = {});
 
     void
     set_router_whitelist(

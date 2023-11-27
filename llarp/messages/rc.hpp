@@ -14,9 +14,11 @@ namespace llarp::RCFetchMessage
     try
     {
       btdp.append("since", since.time_since_epoch() / 1s);
-      auto id_list = btdp.append_list("explicit_ids");
-      for (const auto& rid : explicit_ids)
-        id_list.append(rid.ToView());
+      {
+        auto id_list = btdp.append_list("explicit_ids");
+        for (const auto& rid : explicit_ids)
+          id_list.append(rid.ToView());
+      }
     }
     catch (...)
     {

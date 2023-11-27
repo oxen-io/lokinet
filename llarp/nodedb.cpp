@@ -203,7 +203,7 @@ namespace llarp
     if (router_id_fetch_in_progress)
       return;
     if (router_id_fetch_sources.empty())
-      select_router_id_sources({});
+      select_router_id_sources();
 
     // if we *still* don't have fetch sources, we can't exactly fetch...
     if (router_id_fetch_sources.empty())
