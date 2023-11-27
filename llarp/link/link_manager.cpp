@@ -500,8 +500,7 @@ namespace llarp
       {
         log::info(
             link_cat, "Remote requested too many relay IDs (greater than 1/4 of what we have).");
-        m.respond(
-            serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+        m.respond(serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
         return;
       }
 
@@ -510,8 +509,7 @@ namespace llarp
       {
         if (sv.size() != RouterID::SIZE)
         {
-          m.respond(serialize_response(
-              {{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+          m.respond(serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
           return;
         }
         explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
