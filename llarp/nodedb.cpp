@@ -109,7 +109,9 @@ namespace llarp
   {
     bootstraps.clear();  // this function really shouldn't be called more than once, but...
     for (const auto& rc : rcs)
+    {
       bootstraps.emplace(rc.router_id(), rc);
+    }
   }
 
   void
@@ -315,57 +317,56 @@ namespace llarp
     if (m_Root.empty())
       return;
 
-    router.loop()->call([this]() {
-      std::set<fs::path> purge;
+    std::set<fs::path> purge;
 
-      for (const char& ch : skiplist_subdirs)
-      {
-        if (!ch)
-          continue;
-        std::string p;
-        p += ch;
-        fs::path sub = m_Root / p;
+    const auto now = time_now_ms();
 
-        llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-          // skip files that are not suffixed with .signed
-          if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
-            return true;
+    for (const char& ch : skiplist_subdirs)
+    {
+      if (!ch)
+        continue;
+      std::string p;
+      p += ch;
+      fs::path sub = m_Root / p;
 
-          RemoteRC rc{};
-
-          if (not rc.read(f))
-          {
-            // try loading it, purge it if it is junk
-            purge.emplace(f);
-            return true;
-          }
-
-          if (rc.is_expired(time_now_ms()))
-          {
-            // rc expired dont load it and purge it later
-            purge.emplace(f);
-            return true;
-          }
-
-          // validate signature and purge known_rcs with invalid signatures
-          // load ones with valid signatures
-          if (rc.verify())
-            known_rcs.emplace(rc.router_id(), rc);
-          else
-            purge.emplace(f);
-
+      llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
+        // skip files that are not suffixed with .signed
+        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
           return true;
-        });
-      }
 
-      if (not purge.empty())
-      {
-        log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+        RemoteRC rc{};
 
-        for (const auto& fpath : purge)
-          fs::remove(fpath);
-      }
-    });
+        if (not rc.read(f))
+        {
+          // try loading it, purge it if it is junk
+          purge.emplace(f);
+          return true;
+        }
+
+        if (rc.is_expired(now))
+        {
+          // rc expired dont load it and purge it later
+          purge.emplace(f);
+          return true;
+        }
+
+        known_rcs.emplace(rc.router_id(), rc);
+        // TODO: the list of relays should be maintained and stored separately from
+        // the RCs, as we keep older RCs around in case we go offline and need to
+        // bootstrap, but they shouldn't be in the "good relays" list.
+        client_known_routers.insert(rc.router_id());
+
+        return true;
+      });
+    }
+
+    if (not purge.empty())
+    {
+      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+
+      for (const auto& fpath : purge)
+        fs::remove(fpath);
+    }
   }
 
   void
@@ -407,11 +408,21 @@ namespace llarp
   }
 
   void
-  NodeDB::remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff)
+  NodeDB::remove_stale_rcs()
   {
-    (void)keep;
-    (void)cutoff;
-    // TODO: handling of "stale" is pending change, removing here for now.
+    auto cutoff_time =
+        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    cutoff_time -= router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
+    for (auto itr = known_rcs.begin(); itr != known_rcs.end();)
+    {
+      if (cutoff_time > itr->second.timestamp())
+      {
+        log::info(logcat, "Pruning RC for {}, as it is too old to keep.", itr->first);
+        known_rcs.erase(itr);
+        continue;
+      }
+      itr++;
+    }
   }
 
   bool
