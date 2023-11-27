@@ -275,8 +275,8 @@ namespace llarp
     util::StatusObject
     ExtractSummaryStatus() const;
 
-    std::unordered_set<RouterID>
-    router_whitelist() const;
+    const std::unordered_set<RouterID>&
+    get_whitelist() const;
 
     void
     set_router_whitelist(

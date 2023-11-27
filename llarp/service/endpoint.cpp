@@ -1229,7 +1229,7 @@ namespace llarp::service
           this);
       _state->snode_sessions[snode] = session;
     }
-    if (not router()->node_db()->has_router(snode))
+    if (not router()->node_db()->has_rc(snode))
       return false;
     auto range = nodeSessions.equal_range(snode);
     auto itr = range.first;

@@ -154,7 +154,7 @@ namespace llarp
 
     /// return true if we have an rc by its ident pubkey
     bool
-    has_router(RouterID pk) const;
+    has_rc(RouterID pk) const;
 
     /// maybe get an rc by its ident pubkey
     std::optional<RemoteRC>
