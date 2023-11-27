@@ -447,18 +447,18 @@ namespace llarp
             log::info(link_cat, "RC Fetch to {} timed out", source);
             return;
           }
-          if (not m)
-          {
-            log::info(link_cat, "RC Fetch to {} returned error.", source);
-            return;
-          }
-
           try
           {
             oxenc::bt_dict_consumer btdc{m.body()};
-            btdc.required("rcs");
-            auto btlc = btdc.consume_list_consumer();
-            auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time")}};
+            if (not m)
+            {
+              auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
+              log::info(link_cat, "RC Fetch to {} returned error: {}", source, reason);
+              return;
+            }
+
+            auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
+            auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
 
             std::vector<RemoteRC> rcs;
             while (not btlc.is_finished())
@@ -473,7 +473,7 @@ namespace llarp
           catch (const std::exception& e)
           {
             // TODO: Inform NodeDB of failure (perhaps just a call to rotate_rc_source())
-            log::info(link_cat, "Failed to parse RC Fetch response from {}", source);
+            log::info(link_cat, "Failed to parse RC Fetch response from {}: {}", source, e.what());
             return;
           }
         });
@@ -518,7 +518,7 @@ namespace llarp
       oxenc::bt_dict_producer resp;
 
       {
-        auto btlp = resp.append_list("rcs");
+        auto rc_bt_list = resp.append_list("rcs");
 
         const auto& last_time = node_db->get_last_rc_update_times();
 
@@ -529,7 +529,7 @@ namespace llarp
         for (const auto& [_, rc] : rcs)
         {
           if (last_time.at(rc.router_id()) > since_time or explicit_relays.count(rc.router_id()))
-            btlp.append_encoded(rc.view());
+            rc_bt_list.append_encoded(rc.view());
         }
       }
 
