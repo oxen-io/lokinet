@@ -2,6 +2,8 @@
 
 #include "path.hpp"
 
+#include <llarp/crypto/crypto.hpp>
+
 namespace llarp::path
 {
   PathSet::PathSet(size_t num) : numDesiredPaths(num)
@@ -439,18 +441,6 @@ namespace llarp::path
       }
     }
     return chosen;
-  }
-
-  void
-  PathSet::UpstreamFlush(Router* r)
-  {
-    ForEachPath([r](const Path_ptr& p) { p->FlushUpstream(r); });
-  }
-
-  void
-  PathSet::DownstreamFlush(Router* r)
-  {
-    ForEachPath([r](const Path_ptr& p) { p->FlushDownstream(r); });
   }
 
 }  // namespace llarp::path

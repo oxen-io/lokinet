@@ -12,7 +12,6 @@ namespace llarp
 
   namespace ObtainExitMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
 
     // flag: 0 = Exit, 1 = Snode
     inline std::string
@@ -63,7 +62,6 @@ namespace llarp
 
   namespace UpdateExitMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto UPDATE_FAILED = "EXIT UPDATE FAILED"sv;
 
     inline std::string
@@ -113,7 +111,6 @@ namespace llarp
 
   namespace CloseExitMessage
   {
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto UPDATE_FAILED = "CLOSE EXIT FAILED"sv;
 
     inline std::string

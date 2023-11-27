@@ -157,6 +157,7 @@ namespace llarp::service
     return "OBContext:" + current_intro.address_keys.Addr().ToString();
   }
 
+  // TODO: it seems a lot of this logic is duplicated in service/endpoint
   void
   OutboundContext::UpdateIntroSet()
   {
@@ -173,7 +174,7 @@ namespace llarp::service
 
     for (const auto& path : paths)
     {
-      path->find_intro(location, false, relayOrder, [this](oxen::quic::message m) mutable {
+      path->find_intro(location, false, relayOrder, [this](std::string resp) mutable {
         if (marked_bad)
         {
           log::info(link_cat, "Outbound context has been marked bad (whatever that means)");
@@ -182,43 +183,51 @@ namespace llarp::service
 
         updatingIntroSet = false;
 
-        if (m)
+        // TODO: this parsing is probably elsewhere, may need DRYed
+        std::string introset;
+        try
         {
-          std::string introset;
-
-          try
+          oxenc::bt_dict_consumer btdc{resp};
+          auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
+          if (status != "OK"sv)
           {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            introset = btdc.require<std::string>("INTROSET");
-          }
-          catch (...)
-          {
-            log::warning(link_cat, "Failed to parse find name response!");
-            throw;
-          }
-
-          service::EncryptedIntroSet enc{introset};
-          const auto intro = enc.decrypt(PubKey{addr.as_array()});
-
-          if (intro.time_signed == 0s)
-          {
-            log::warning(link_cat, "{} recieved introset with zero timestamp");
+            log::info(link_cat, "Error in find intro set response: {}", status);
             return;
           }
-          if (current_intro.time_signed > intro.time_signed)
-          {
-            log::info(link_cat, "{} received outdated introset; dropping", Name());
-            return;
-          }
-          if (intro.IsExpired(llarp::time_now_ms()))
-          {
-            log::warning(link_cat, "{} received expired introset", Name());
-            return;
-          }
-
-          current_intro = intro;
-          ShiftIntroRouter();
+          introset = btdc.require<std::string>("INTROSET");
         }
+        catch (...)
+        {
+          log::warning(link_cat, "Failed to parse find name response!");
+          throw;
+        }
+
+        service::EncryptedIntroSet enc{introset};
+        const auto intro = enc.decrypt(PubKey{addr.as_array()});
+
+        if (intro.time_signed == 0s)
+        {
+          log::warning(link_cat, "{} recieved introset with zero timestamp");
+          return;
+        }
+        if (current_intro.time_signed > intro.time_signed)
+        {
+          log::info(link_cat, "{} received outdated introset; dropping", Name());
+          return;
+        }
+
+        // don't "shift" to the same intro we're already using...
+        if (current_intro == intro)
+          return;
+
+        if (intro.IsExpired(llarp::time_now_ms()))
+        {
+          log::warning(link_cat, "{} received expired introset", Name());
+          return;
+        }
+
+        current_intro = intro;
+        ShiftIntroRouter();
       });
     }
   }
@@ -534,8 +543,9 @@ namespace llarp::service
       ex->msg.proto = ProtocolType::Auth;
 
     ex->hook = [this, path, cb = std::move(func)](auto frame) mutable {
-      auto hook = [&, frame, path](oxen::quic::message) {
+      auto hook = [&, frame, path](std::string resp) {
         // TODO: revisit this
+        (void)resp;
         ep.HandleHiddenServiceFrame(path, *frame.get());
       };
 

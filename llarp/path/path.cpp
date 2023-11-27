@@ -8,6 +8,7 @@
 
 namespace llarp::path
 {
+
   Path::Path(
       Router* rtr,
       const std::vector<RemoteRC>& h,
@@ -48,10 +49,7 @@ namespace llarp::path
 
   bool
   Path::obtain_exit(
-      SecretKey sk,
-      uint64_t flag,
-      std::string tx_id,
-      std::function<void(oxen::quic::message m)> func)
+      SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "obtain_exit",
@@ -60,7 +58,7 @@ namespace llarp::path
   }
 
   bool
-  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(oxen::quic::message m)> func)
+  Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "close_exit", CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)), std::move(func));
@@ -71,21 +69,21 @@ namespace llarp::path
       const dht::Key_t& location,
       bool is_relayed,
       uint64_t order,
-      std::function<void(oxen::quic::message m)> func)
+      std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
   }
 
   bool
-  Path::find_name(std::string name, std::function<void(oxen::quic::message m)> func)
+  Path::find_name(std::string name, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
   }
 
   bool
-  Path::find_router(std::string rid, std::function<void(oxen::quic::message m)> func)
+  Path::find_router(std::string rid, std::function<void(std::string)> func)
   {
     return send_path_control_message(
         "find_router", FindRouterMessage::serialize(std::move(rid), false, false), std::move(func));
@@ -93,60 +91,77 @@ namespace llarp::path
 
   bool
   Path::send_path_control_message(
-      std::string method, std::string body, std::function<void(oxen::quic::message m)> func)
+      std::string method, std::string body, std::function<void(std::string)> func)
   {
-    std::string payload;
+    oxenc::bt_dict_producer btdp;
+    btdp.append("BODY", body);
+    btdp.append("METHOD", method);
+    auto payload = std::move(btdp).str();
 
-    {
-      oxenc::bt_dict_producer btdp;
-      btdp.append("BODY", body);
-      btdp.append("METHOD", method);
-      payload = std::move(btdp).str();
-    }
-
-    TunnelNonce nonce;
+    // TODO: old impl padded messages if smaller than a certain size; do we still want to?
+    SymmNonce nonce;
     nonce.Randomize();
 
+    // chacha and mutate nonce for each hop
     for (const auto& hop : hops)
     {
-      // do a round of chacha for each hop and mutate the nonce with that hop's nonce
-      crypto::xchacha20(
-          reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce);
-
-      nonce ^= hop.nonceXOR;
+      nonce = crypto::onion(
+          reinterpret_cast<unsigned char*>(payload.data()),
+          payload.size(),
+          hop.shared,
+          nonce,
+          hop.nonceXOR);
     }
 
-    oxenc::bt_dict_producer outer_dict;
-    outer_dict.append("NONCE", nonce.ToView());
-    outer_dict.append("PATHID", TXID().ToView());
-    outer_dict.append("PAYLOAD", payload);
+    auto outer_payload = make_onion_payload(nonce, TXID(), payload);
 
     return router.send_control_message(
         upstream(),
         "path_control",
-        std::move(outer_dict).str(),
-        [response_cb = std::move(func)](oxen::quic::message m) {
-          if (m)
+        std::move(outer_payload),
+        [response_cb = std::move(func), weak = weak_from_this()](oxen::quic::message m) {
+          auto self = weak.lock();
+          // TODO: do we want to allow empty callback here?
+          if ((not self) or (not response_cb))
+            return;
+
+          if (m.timed_out)
           {
-            // do path hop logic here
+            response_cb(messages::TIMEOUT_RESPONSE);
+            return;
           }
+
+          SymmNonce nonce{};
+          std::string payload;
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+
+            auto nonce = SymmNonce{btdc.require<ustring_view>("NONCE").data()};
+            auto payload = btdc.require<std::string>("PAYLOAD");
+          }
+          catch (const std::exception& e)
+          {
+            log::warning(path_cat, "Error parsing path control message response: {}", e.what());
+            response_cb(messages::ERROR_RESPONSE);
+            return;
+          }
+
+          for (const auto& hop : self->hops)
+          {
+            nonce = crypto::onion(
+                reinterpret_cast<unsigned char*>(payload.data()),
+                payload.size(),
+                hop.shared,
+                nonce,
+                hop.nonceXOR);
+          }
+
+          // TODO: should we do anything (even really simple) here to check if the decrypted
+          //       response is sensible (e.g. is a bt dict)?  Parsing and handling of the
+          //       contents (errors or otherwise) is the currently responsibility of the callback.
+          response_cb(payload);
         });
-  }
-
-  bool
-  Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router* r)
-  {
-    if (not m_UpstreamReplayFilter.Insert(Y))
-      return false;
-    return AbstractHopHandler::HandleUpstream(X, Y, r);
-  }
-
-  bool
-  Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router* r)
-  {
-    if (not m_DownstreamReplayFilter.Insert(Y))
-      return false;
-    return AbstractHopHandler::HandleDownstream(X, Y, r);
   }
 
   RouterID
@@ -216,6 +231,9 @@ namespace llarp::path
   void
   Path::EnterState(PathStatus st, llarp_time_t now)
   {
+    if (now == 0s)
+      now = router.now();
+
     if (st == ePathFailed)
     {
       _status = st;
@@ -286,8 +304,6 @@ namespace llarp::path
         {"ready", IsReady()},
         {"txRateCurrent", m_LastTXRate},
         {"rxRateCurrent", m_LastRXRate},
-        {"replayTX", m_UpstreamReplayFilter.Size()},
-        {"replayRX", m_DownstreamReplayFilter.Size()},
         {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
     std::vector<util::StatusObject> hopsObj;
@@ -421,73 +437,6 @@ namespace llarp::path
     }
   }
 
-  void
-  Path::HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r)
-  {
-    for (const auto& msg : msgs)
-    {
-      if (r->send_data_message(upstream(), msg.bt_encode()))
-      {
-        m_TXRate += msg.enc.size();
-      }
-      else
-      {
-        LogDebug("failed to send upstream to ", upstream());
-      }
-    }
-    r->TriggerPump();
-  }
-
-  void
-  Path::UpstreamWork(TrafficQueue_t msgs, Router* r)
-  {
-    std::vector<RelayUpstreamMessage> sendmsgs(msgs.size());
-    size_t idx = 0;
-    for (auto& ev : msgs)
-    {
-      TunnelNonce n = ev.second;
-
-      uint8_t* buf = ev.first.data();
-      size_t sz = ev.first.size();
-
-      for (const auto& hop : hops)
-      {
-        crypto::xchacha20(buf, sz, hop.shared, n);
-        n ^= hop.nonceXOR;
-      }
-      auto& msg = sendmsgs[idx];
-      std::memcpy(msg.enc.data(), buf, sz);
-      msg.nonce = ev.second;
-      msg.pathid = TXID();
-      ++idx;
-    }
-    r->loop()->call([self = shared_from_this(), data = std::move(sendmsgs), r]() mutable {
-      self->HandleAllUpstream(std::move(data), r);
-    });
-  }
-
-  void
-  Path::FlushUpstream(Router* r)
-  {
-    if (not m_UpstreamQueue.empty())
-    {
-      r->queue_work([self = shared_from_this(),
-                     data = std::exchange(m_UpstreamQueue, {}),
-                     r]() mutable { self->UpstreamWork(std::move(data), r); });
-    }
-  }
-
-  void
-  Path::FlushDownstream(Router* r)
-  {
-    if (not m_DownstreamQueue.empty())
-    {
-      r->queue_work([self = shared_from_this(),
-                     data = std::exchange(m_DownstreamQueue, {}),
-                     r]() mutable { self->DownstreamWork(std::move(data), r); });
-    }
-  }
-
   /// how long we wait for a path to become active again after it times out
   constexpr auto PathReanimationTimeout = 45s;
 
@@ -515,47 +464,6 @@ namespace llarp::path
     return fmt::format("TX={} RX={}", TXID(), RXID());
   }
 
-  void
-  Path::DownstreamWork(TrafficQueue_t msgs, Router* r)
-  {
-    std::vector<RelayDownstreamMessage> sendMsgs(msgs.size());
-    size_t idx = 0;
-    for (auto& ev : msgs)
-    {
-      sendMsgs[idx].nonce = ev.second;
-
-      uint8_t* buf = ev.first.data();
-      size_t sz = ev.first.size();
-
-      for (const auto& hop : hops)
-      {
-        sendMsgs[idx].nonce ^= hop.nonceXOR;
-        crypto::xchacha20(buf, sz, hop.shared, sendMsgs[idx].nonce);
-      }
-
-      std::memcpy(sendMsgs[idx].enc.data(), buf, sz);
-      ++idx;
-    }
-    r->loop()->call([self = shared_from_this(), msgs = std::move(sendMsgs), r]() mutable {
-      self->HandleAllDownstream(std::move(msgs), r);
-    });
-  }
-
-  void
-  Path::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* /* r */)
-  {
-    for (const auto& msg : msgs)
-    {
-      const llarp_buffer_t buf{msg.enc};
-      m_RXRate += buf.sz;
-      // if (HandleRoutingMessage(buf, r))
-      // {
-      //   r->TriggerPump();
-      //   m_LastRecvMessage = r->now();
-      // }
-    }
-  }
-
   /** Note: this is one of two places where AbstractRoutingMessage::bt_encode() is called, the
       other of which is llarp/path/transit_hop.cpp in TransitHop::SendRoutingMessage(). For now,
       we will default to the override of ::bt_encode() that returns an std::string. The role that
@@ -571,6 +479,7 @@ namespace llarp::path
       functions it calls and so on) will need to be modified to take an std::string that we can
       std::move around.
   */
+  /* TODO: replace this with sending an onion-ed data message
   bool
   Path::SendRoutingMessage(std::string payload, Router*)
   {
@@ -594,6 +503,7 @@ namespace llarp::path
 
     return true;
   }
+  */
 
   template <typename Samples_t>
   static llarp_time_t

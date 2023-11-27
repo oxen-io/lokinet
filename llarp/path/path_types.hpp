@@ -32,11 +32,11 @@ namespace llarp
       /// shared secret at this hop
       SharedSecret shared;
       /// hash of shared secret used for nonce mutation
-      ShortHash nonceXOR;
+      SymmNonce nonceXOR;
       /// next hop's router id
       RouterID upstream;
       /// nonce for key exchange
-      TunnelNonce nonce;
+      SymmNonce nonce;
       // lifetime
       llarp_time_t lifetime = DEFAULT_LIFETIME;
 

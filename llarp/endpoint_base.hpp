@@ -131,7 +131,7 @@ namespace llarp
         llarp_time_t timeout) = 0;
 
     virtual void
-    lookup_name(std::string name, std::function<void(oxen::quic::message)> func) = 0;
+    lookup_name(std::string name, std::function<void(std::string, bool)> func) = 0;
 
     virtual const EventLoop_ptr&
     Loop() = 0;

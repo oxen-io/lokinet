@@ -12,7 +12,6 @@ endfunction()
 
 lokinet_add_library(lokinet-cryptography
   crypto/crypto.cpp
-  crypto/encrypted_frame.cpp
   crypto/types.cpp
 )
 
@@ -207,7 +206,6 @@ lokinet_add_library(lokinet-config
 
 # All path objects; link directly to lokinet-core
 lokinet_add_library(lokinet-path
-  messages/relay.cpp
   path/abstracthophandler.cpp
   path/path.cpp
   path/path_context.cpp

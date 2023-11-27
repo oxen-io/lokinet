@@ -6,8 +6,6 @@ namespace llarp
 {
   namespace PathBuildMessage
   {
-    inline auto OK = "OK"sv;
-    inline auto EXCEPTION = "EXCEPTION"sv;
     inline auto BAD_FRAMES = "BAD_FRAMES"sv;
     inline auto BAD_CRYPTO = "BAD_CRYPTO"sv;
     inline auto NO_TRANSIT = "NOT ALLOWING TRANSIT"sv;
@@ -29,7 +27,9 @@ namespace llarp
         throw std::runtime_error{std::move(err)};
       }
       // generate nonceXOR value self->hop->pathKey
-      crypto::shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
+      ShortHash hash;
+      crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
+      hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       hop.upstream = nextHop;
     }
@@ -56,7 +56,7 @@ namespace llarp
       crypto::encryption_keygen(framekey);
 
       SharedSecret shared;
-      TunnelNonce outer_nonce;
+      SymmNonce outer_nonce;
       outer_nonce.Randomize();
 
       // derive (outer) shared key

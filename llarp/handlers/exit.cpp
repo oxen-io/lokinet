@@ -20,9 +20,9 @@ namespace llarp::handlers
   ExitEndpoint::~ExitEndpoint() = default;
 
   void
-  ExitEndpoint::lookup_name(std::string, std::function<void(oxen::quic::message)>)
+  ExitEndpoint::lookup_name(std::string, std::function<void(std::string, bool)>)
   {
-    // TODO: implement me
+    // TODO: implement me (or does EndpointBase having this method as virtual even make sense?)
   }
 
   void
@@ -766,7 +766,9 @@ namespace llarp::handlers
   {
     if (wantInternet && !permit_exit)
       return false;
-    path::HopHandler_ptr handler = router->path_context().GetByUpstream(router->pubkey(), path);
+    // TODO: is this getting a path or a transit hop or...somehow possibly either?
+    // path::HopHandler_ptr handler = router->path_context().GetByUpstream(router->pubkey(), path);
+    path::HopHandler_ptr handler{};
     if (handler == nullptr)
       return false;
     auto ip = GetIPForIdent(pk);

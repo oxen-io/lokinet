@@ -5,9 +5,7 @@
 #include "pathset.hpp"
 
 #include <llarp/constants/path.hpp>
-#include <llarp/crypto/encrypted_frame.hpp>
 #include <llarp/crypto/types.hpp>
-#include <llarp/messages/relay.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/service/intro.hpp>
 #include <llarp/util/aligned.hpp>
@@ -32,8 +30,6 @@ namespace llarp
     struct TransitHop;
     struct TransitHopInfo;
     struct PathHopConfig;
-
-    using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
     struct Ptr_hash;
 
@@ -122,14 +118,6 @@ namespace llarp
         return _status;
       }
 
-      // handle data in upstream direction
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
-      // handle data in downstream direction
-
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, Router*) override;
-
       const std::string&
       ShortName() const;
 
@@ -143,7 +131,7 @@ namespace llarp
       }
 
       void
-      EnterState(PathStatus st, llarp_time_t now);
+      EnterState(PathStatus st, llarp_time_t now = 0s);
 
       llarp_time_t
       ExpireTime() const
@@ -186,39 +174,41 @@ namespace llarp
       Tick(llarp_time_t now, Router* r);
 
       bool
-      find_name(std::string name, std::function<void(oxen::quic::message m)> func = nullptr);
+      find_name(std::string name, std::function<void(std::string)> func = nullptr);
 
       bool
-      find_router(std::string rid, std::function<void(oxen::quic::message m)> func = nullptr);
+      find_router(std::string rid, std::function<void(std::string)> func = nullptr);
 
       bool
       find_intro(
           const dht::Key_t& location,
           bool is_relayed = false,
           uint64_t order = 0,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+          std::function<void(std::string)> func = nullptr);
 
       bool
-      close_exit(
-          SecretKey sk,
-          std::string tx_id,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+      close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
 
       bool
       obtain_exit(
           SecretKey sk,
           uint64_t flag,
           std::string tx_id,
-          std::function<void(oxen::quic::message m)> func = nullptr);
+          std::function<void(std::string)> func = nullptr);
 
+      /// sends a control request along a path
+      ///
+      /// performs the necessary onion encryption before sending.
+      /// func will be called when a timeout occurs or a response is received.
+      /// if a response is received, onion decryption is performed before func is called.
+      ///
+      /// func is called with a bt-encoded response string (if applicable), and
+      /// a timeout flag (if set, response string will be empty)
       bool
       send_path_control_message(
           std::string method,
           std::string body,
-          std::function<void(oxen::quic::message m)> func = nullptr) override;
-
-      bool
-      SendRoutingMessage(std::string payload, Router* r) override;
+          std::function<void(std::string)> func = nullptr) override;
 
       bool
       IsReady() const;
@@ -245,25 +235,6 @@ namespace llarp
 
       std::string
       name() const;
-
-      void
-      FlushUpstream(Router* r) override;
-
-      void
-      FlushDownstream(Router* r) override;
-
-     protected:
-      void
-      UpstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      DownstreamWork(TrafficQueue_t queue, Router* r) override;
-
-      void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, Router* r) override;
-
-      void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, Router* r) override;
 
      private:
       bool

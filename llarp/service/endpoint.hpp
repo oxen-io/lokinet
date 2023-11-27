@@ -235,12 +235,11 @@ namespace llarp
 
       // "find router" via closest path
       bool
-      lookup_router(RouterID router, std::function<void(oxen::quic::message)> func = nullptr);
+      lookup_router(RouterID router, std::function<void(RouterContact, bool)> func = nullptr);
 
       // "find name"
       void
-      lookup_name(
-          std::string name, std::function<void(oxen::quic::message)> func = nullptr) override;
+      lookup_name(std::string name, std::function<void(std::string, bool)> func = nullptr) override;
 
       // "find introset?"
       void

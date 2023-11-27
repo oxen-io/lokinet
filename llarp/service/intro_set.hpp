@@ -138,7 +138,7 @@ namespace llarp::service
     PubKey derivedSigningKey;
     llarp_time_t signedAt = 0s;
     ustring introsetPayload;
-    TunnelNonce nounce;
+    SymmNonce nonce;
     std::optional<Tag> topic;
     Signature sig;
 
@@ -203,8 +203,8 @@ namespace llarp::service
   inline bool
   operator==(const EncryptedIntroSet& lhs, const EncryptedIntroSet& rhs)
   {
-    return std::tie(lhs.signedAt, lhs.derivedSigningKey, lhs.nounce, lhs.sig)
-        == std::tie(rhs.signedAt, rhs.derivedSigningKey, rhs.nounce, rhs.sig);
+    return std::tie(lhs.signedAt, lhs.derivedSigningKey, lhs.nonce, lhs.sig)
+        == std::tie(rhs.signedAt, rhs.derivedSigningKey, rhs.nonce, rhs.sig);
   }
 
   inline bool

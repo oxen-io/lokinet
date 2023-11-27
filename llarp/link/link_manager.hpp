@@ -4,6 +4,8 @@
 
 #include <llarp/constants/path.hpp>
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/messages/common.hpp>
+#include <llarp/path/transit_hop.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/util/compare_ptr.hpp>
@@ -25,12 +27,6 @@ namespace
 namespace llarp
 {
   struct LinkManager;
-
-  inline std::string
-  serialize_response(oxenc::bt_dict supplement = {})
-  {
-    return oxenc::bt_serialize(supplement);
-  }
 
   namespace link
   {
@@ -171,8 +167,6 @@ namespace llarp
     friend struct link::Endpoint;
 
     std::atomic<bool> is_stopping;
-    // DISCUSS: is this necessary? can we reduce the amount of locking and nuke this
-    mutable util::Mutex m;  // protects persisting_conns
 
     // sessions to persist -> timestamp to end persist at
     std::unordered_map<RouterID, llarp_time_t> persisting_conns;
@@ -288,18 +282,21 @@ namespace llarp
 
    private:
     // DHT messages
-    void handle_find_name(oxen::quic::message);      // relay
-    void handle_find_intro(oxen::quic::message);     // relay
-    void handle_publish_intro(oxen::quic::message);  // relay
-    void handle_find_router(oxen::quic::message);    // relay + path
+    void
+    handle_find_name(std::string_view body, std::function<void(std::string)> respond);  // relay
+    void
+    handle_find_intro(std::string_view body, std::function<void(std::string)> respond);  // relay
+    void
+    handle_publish_intro(std::string_view body, std::function<void(std::string)> respond);  // relay
+    void
+    handle_find_router(
+        std::string_view body, std::function<void(std::string)> respond);  // relay + path
 
     // Path messages
-    void handle_path_build(oxen::quic::message);     // relay
-    void handle_path_confirm(oxen::quic::message);   // relay
-    void handle_path_latency(oxen::quic::message);   // relay
-    void handle_path_transfer(oxen::quic::message);  // relay
-    void handle_relay_commit(oxen::quic::message);   // relay
-    void handle_relay_status(oxen::quic::message);   // relay
+    void
+    handle_path_build(oxen::quic::message, const RouterID& from);  // relay
+    void handle_path_latency(oxen::quic::message);                 // relay
+    void handle_path_transfer(oxen::quic::message);                // relay
 
     // Exit messages
     void handle_obtain_exit(oxen::quic::message);  // relay
@@ -309,21 +306,45 @@ namespace llarp
     // Misc
     void handle_convo_intro(oxen::quic::message);
 
-    std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_commands = {
-        {"find_name", &LinkManager::handle_find_name},
-        {"find_router", &LinkManager::handle_find_router},
-        {"publish_intro", &LinkManager::handle_publish_intro},
-        {"find_intro", &LinkManager::handle_find_intro},
-        {"path_build", &LinkManager::handle_path_build},
-        {"path_confirm", &LinkManager::handle_path_confirm},
-        {"path_latency", &LinkManager::handle_path_latency},
-        {"update_exit", &LinkManager::handle_update_exit},
-        {"obtain_exit", &LinkManager::handle_obtain_exit},
-        {"close_exit", &LinkManager::handle_close_exit},
-        {"convo_intro", &LinkManager::handle_convo_intro}};
+    // These requests come over a path (as a "path_control" request),
+    // may or may not need to make a request to another relay,
+    // then respond (onioned) back along the path.
+    std::unordered_map<
+        std::string_view,
+        void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
+        path_requests = {
+            {"find_name"sv, &LinkManager::handle_find_name},
+            {"find_router"sv, &LinkManager::handle_find_router},
+            {"publish_intro"sv, &LinkManager::handle_publish_intro},
+            {"find_intro"sv, &LinkManager::handle_find_intro}};
+    /*
+    {"path_confirm", &LinkManager::handle_path_confirm},
+    {"path_latency", &LinkManager::handle_path_latency},
+    {"update_exit", &LinkManager::handle_update_exit},
+    {"obtain_exit", &LinkManager::handle_obtain_exit},
+    {"close_exit", &LinkManager::handle_close_exit},
+    {"convo_intro", &LinkManager::handle_convo_intro}};
+    */
+
+    // these requests are direct, i.e. not over a path;
+    // only "find_router" makes sense client->relay,
+    // the rest are relay->relay
+    // TODO: new RC fetch endpoint (which will be both client->relay and relay->relay)
+    std::unordered_map<
+        std::string_view,
+        void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
+        direct_requests = {
+            {"find_router"sv, &LinkManager::handle_find_router},
+            {"publish_intro"sv, &LinkManager::handle_publish_intro},
+            {"find_intro"sv, &LinkManager::handle_find_intro}};
 
     // Path relaying
-    void handle_path_control(oxen::quic::message);
+    void
+    handle_path_control(oxen::quic::message, const RouterID& from);
+
+    void
+    handle_inner_request(
+        oxen::quic::message m, std::string payload, std::shared_ptr<path::TransitHop> hop);
 
     // DHT responses
     void handle_find_name_response(oxen::quic::message);
@@ -332,10 +353,6 @@ namespace llarp
     void handle_find_router_response(oxen::quic::message);
 
     // Path responses
-    void handle_path_build_response(oxen::quic::message);
-    void handle_relay_commit_response(oxen::quic::message);
-    void handle_relay_status_response(oxen::quic::message);
-    void handle_path_confirm_response(oxen::quic::message);
     void handle_path_latency_response(oxen::quic::message);
     void handle_path_transfer_response(oxen::quic::message);
 

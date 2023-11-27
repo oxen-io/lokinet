@@ -11,7 +11,6 @@
 #include <llarp/net/net.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/util/logging.hpp>
-#include <llarp/util/meta/memfn.hpp>
 #include <llarp/util/status.hpp>
 
 #include <cstdlib>
@@ -75,8 +74,6 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() start");
     if (is_stopping.load())
       return;
-    paths.PumpDownstream();
-    paths.PumpUpstream();
     _hidden_service_context.Pump();
     llarp::LogTrace("Router::PumpLL() end");
   }
@@ -693,7 +690,7 @@ namespace llarp
         _contacts,
         _node_db,
         _loop,
-        util::memFn(&Router::queue_work, this),
+        [this](std::function<void(void)> work) { queue_work(std::move(work)); },
         &_link_manager,
         &_hidden_service_context,
         strictConnectPubkeys,
@@ -1290,7 +1287,6 @@ namespace llarp
     _exit_context.Stop();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final upstream pump");
-    paths.PumpUpstream();
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "final links pump");
     _loop->call_later(200ms, [this] { AfterStopIssued(); });

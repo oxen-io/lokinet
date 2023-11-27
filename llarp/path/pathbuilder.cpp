@@ -7,10 +7,13 @@
 #include <llarp/link/link_manager.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
+#include <llarp/path/pathset.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
+
+#include <functional>
 
 namespace llarp
 {
@@ -90,7 +93,9 @@ namespace llarp
         throw std::runtime_error{std::move(err)};
       }
       // generate nonceXOR value self->hop->pathKey
-      crypto::shorthash(hop.nonceXOR, hop.shared.data(), hop.shared.size());
+      ShortHash hash;
+      crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
+      hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
       hop.upstream = nextHop;
     }
@@ -117,7 +122,7 @@ namespace llarp
       crypto::encryption_keygen(framekey);
 
       SharedSecret shared;
-      TunnelNonce outer_nonce;
+      SymmNonce outer_nonce;
       outer_nonce.Randomize();
 
       // derive (outer) shared key
@@ -460,8 +465,7 @@ namespace llarp
         frames.append(dummy);
       }
 
-      auto self = GetSelf();
-      router->path_context().AddOwnPath(self, path);
+      router->path_context().AddOwnPath(GetSelf(), path);
       PathBuildStarted(path);
 
       // TODO:
@@ -469,30 +473,33 @@ namespace llarp
       // handle these responses as well as how we store and use Paths as a whole might
       // be worth doing sooner rather than later.  Leaving some TODOs below where fail
       // and success live.
-      auto response_cb = [self](oxen::quic::message m) {
-        if (m)
+      auto response_cb = [path](oxen::quic::message m) {
+        try
         {
-          std::string status;
-
-          try
+          if (m)
           {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            status = btdc.require<std::string>("STATUS");
+            // TODO: inform success (what this means needs revisiting, badly)
+            path->EnterState(path::ePathEstablished);
+            return;
           }
-          catch (...)
+          if (m.timed_out)
           {
-            log::warning(path_cat, "Error: Failed to parse path build response!", status);
-            m.respond(serialize_response({{"STATUS", "EXCEPTION"}}), true);
-            throw;
+            log::warning(path_cat, "Path build timed out");
           }
-
-          // TODO: success logic
+          else
+          {
+            oxenc::bt_dict_consumer d{m.body()};
+            auto status = d.require<std::string_view>(messages::STATUS_KEY);
+            log::warning(path_cat, "Path build returned failure status: {}", status);
+          }
         }
-        else
+        catch (const std::exception& e)
         {
-          log::warning(path_cat, "Path build request returned failure {}");
-          // TODO: failure logic
+          log::warning(path_cat, "Failed parsing path build response.");
         }
+
+        // TODO: inform failure (what this means needs revisiting, badly)
+        path->EnterState(path::ePathFailed);
       };
 
       if (not router->send_control_message(
