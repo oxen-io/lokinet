@@ -227,32 +227,19 @@ namespace llarp
     _link_manager.set_conn_persist(remote, until);
   }
 
-  void
-  Router::GossipRCIfNeeded(const LocalRC rc)
-  {
-    /// if we are not a service node forget about gossip
-    if (not is_service_node())
-      return;
-    /// wait for random uptime
-    if (std::chrono::milliseconds{Uptime()} < _randomStartDelay)
-      return;
-    _rcGossiper.GossipRC(rc);
-  }
-
-  bool
-  Router::GetRandomGoodRouter(RouterID& router)
+  std::optional<RouterID>
+  Router::GetRandomGoodRouter()
   {
     if (is_service_node())
     {
-      return _rc_lookup_handler.get_random_whitelist_router(router);
+      return node_db()->get_random_whitelist_router();
     }
 
     if (auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
     {
-      router = maybe->router_id();
-      return true;
+      return maybe->router_id();
     }
-    return false;
+    return std::nullopt;
   }
 
   void
@@ -271,16 +258,6 @@ namespace llarp
   Router::connect_to(const RemoteRC& rc)
   {
     _link_manager.connect_to(rc);
-  }
-
-  void
-  Router::lookup_router(RouterID rid, std::function<void(oxen::quic::message)> func)
-  {
-    _link_manager.send_control_message(
-        rid,
-        "find_router",
-        FindRouterMessage::serialize(std::move(rid), false, false),
-        std::move(func));
   }
 
   bool
@@ -479,25 +456,25 @@ namespace llarp
   bool
   Router::have_snode_whitelist() const
   {
-    return is_service_node() and _rc_lookup_handler.has_received_whitelist();
+    return whitelist_received;
   }
 
   bool
   Router::appears_decommed() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_grey_listed(pubkey());
+    return have_snode_whitelist() and node_db()->greylist().count(pubkey());
   }
 
   bool
   Router::appears_funded() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_session_allowed(pubkey());
+    return have_snode_whitelist() and node_db()->is_connection_allowed(pubkey());
   }
 
   bool
   Router::appears_registered() const
   {
-    return have_snode_whitelist() and _rc_lookup_handler.is_registered(pubkey());
+    return have_snode_whitelist() and node_db()->get_registered_routers().count(pubkey());
   }
 
   bool
@@ -509,7 +486,7 @@ namespace llarp
   bool
   Router::SessionToRouterAllowed(const RouterID& router) const
   {
-    return _rc_lookup_handler.is_session_allowed(router);
+    return node_db()->is_connection_allowed(router);
   }
 
   bool
@@ -520,7 +497,7 @@ namespace llarp
       // we are decom'd don't allow any paths outbound at all
       return false;
     }
-    return _rc_lookup_handler.is_path_allowed(router);
+    return node_db()->is_path_allowed(router);
   }
 
   size_t
@@ -540,16 +517,6 @@ namespace llarp
   {
     _node_db->put_rc(router_contact.view());
     queue_disk_io([&]() { router_contact.write(our_rc_file); });
-  }
-
-  bool
-  Router::update_rc()
-  {
-    router_contact.resign();
-    if (is_service_node())
-      save_rc();
-
-    return true;
   }
 
   bool
@@ -679,23 +646,15 @@ namespace llarp
       it = bootstrap_rc_list.erase(it);
     }
 
+    node_db()->set_bootstrap_routers(bootstrap_rc_list);
+
     if (conf.bootstrap.seednode)
       LogInfo("we are a seed node");
     else
       LogInfo("Loaded ", bootstrap_rc_list.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _link_manager.init(&_rc_lookup_handler);
-    _rc_lookup_handler.init(
-        _contacts,
-        _node_db,
-        _loop,
-        [this](std::function<void(void)> work) { queue_work(std::move(work)); },
-        &_link_manager,
-        &_hidden_service_context,
-        strictConnectPubkeys,
-        bootstrap_rc_list,
-        _is_service_node);
+    _link_manager.init();
 
     // FIXME: kludge for now, will be part of larger cleanup effort.
     if (_is_service_node)
@@ -796,12 +755,12 @@ namespace llarp
           " | {} active paths | block {} ",
           path_context().CurrentTransitPaths(),
           (_rpc_client ? _rpc_client->BlockHeight() : 0));
-      auto maybe_last = _rcGossiper.LastGossipAt();
+      bool have_gossiped = last_rc_gossip == std::chrono::system_clock::time_point::min();
       fmt::format_to(
           out,
           " | gossip: (next/last) {} / {}",
-          short_time_from_now(_rcGossiper.NextGossipAt()),
-          maybe_last ? short_time_from_now(*maybe_last) : "never");
+          short_time_from_now(next_rc_gossip),
+          have_gossiped ? short_time_from_now(last_rc_gossip) : "never");
     }
     else
     {
@@ -854,36 +813,28 @@ namespace llarp
       report_stats();
     }
 
-    _rcGossiper.Decay(now);
-
-    _rc_lookup_handler.periodic_update(now);
-
-    const bool has_whitelist = _rc_lookup_handler.has_received_whitelist();
     const bool is_snode = is_service_node();
     const bool is_decommed = appears_decommed();
-    bool should_gossip = appears_funded();
 
-    if (is_snode
-        and (router_contact.expires_within_delta(now, std::chrono::milliseconds(randint() % 10000)) 
-            or (now - router_contact.timestamp().time_since_epoch()) > rc_regen_interval))
+    // (relay-only) if we have fetched the relay list from oxend and
+    // we are registered and funded, we want to gossip our RC periodically
+    auto now_timepoint = std::chrono::system_clock::time_point(now);
+    if (is_snode and appears_funded() and (now_timepoint > next_rc_gossip))
     {
-      LogInfo("regenerating RC");
-      if (update_rc())
-      {
-        // our rc changed so we should gossip it
-        should_gossip = true;
-        // remove our replay entry so it goes out
-        _rcGossiper.Forget(pubkey());
-      }
-      else
-        LogError("failed to update our RC");
+      log::info(logcat, "regenerating and gossiping RC");
+      router_contact.resign();
+      save_rc();
+      auto view = router_contact.view();
+      _link_manager.gossip_rc(
+          pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
+      last_rc_gossip = now_timepoint;
+
+      // 1min to 5min before "stale time" is next gossip time
+      auto random_delta =
+          std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
+      next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
     }
-    if (should_gossip)
-    {
-      // if we have the whitelist enabled, we have fetched the list and we are in either
-      // the white or grey list, we want to gossip our RC
-      GossipRCIfNeeded(router_contact);
-    }
+
     // remove RCs for nodes that are no longer allowed by network policy
     node_db()->RemoveIf([&](const RemoteRC& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
@@ -915,7 +866,7 @@ namespace llarp
       }
 
       // if we don't have the whitelist yet don't remove the entry
-      if (not has_whitelist)
+      if (not whitelist_received)
       {
         log::debug(logcat, "Skipping check on {}: don't have whitelist yet", rc.router_id());
         return false;
@@ -924,7 +875,7 @@ namespace llarp
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
       // in the whitelist OR if there is no whitelist don't remove
-      if (has_whitelist and not _rc_lookup_handler.is_session_allowed(rc.router_id()))
+      if (not node_db()->is_connection_allowed(rc.router_id()))
       {
         log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
@@ -932,7 +883,9 @@ namespace llarp
       return false;
     });
 
-    if (not is_snode or not has_whitelist)
+    /* TODO: this behavior seems incorrect, but fixing it will require discussion
+     *
+    if (not is_snode or not whitelist_received)
     {
       // find all deregistered relays
       std::unordered_set<RouterID> close_peers;
@@ -948,23 +901,18 @@ namespace llarp
       for (auto& peer : close_peers)
         _link_manager.deregister_peer(peer);
     }
+    */
 
     _link_manager.check_persisting_conns(now);
 
     size_t connected = NumberOfConnectedRouters();
 
-    const int interval = is_snode ? 5 : 2;
-    const auto timepoint_now = std::chrono::steady_clock::now();
-    if (timepoint_now >= _next_explore_at and not is_decommed)
-    {
-      _rc_lookup_handler.explore_network();
-      _next_explore_at = timepoint_now + std::chrono::seconds(interval);
-    }
     size_t connectToNum = _link_manager.min_connected_routers;
-    const auto strictConnect = _rc_lookup_handler.num_strict_connect_routers();
-    if (strictConnect > 0 && connectToNum > strictConnect)
+    const auto& pinned_edges = _node_db->get_pinned_edges();
+    const auto pinned_count = pinned_edges.size();
+    if (pinned_count > 0 && connectToNum > pinned_count)
     {
-      connectToNum = strictConnect;
+      connectToNum = pinned_count;
     }
 
     if (is_snode and now >= _next_decomm_warning)
@@ -1012,14 +960,6 @@ namespace llarp
 
     _node_db->Tick(now);
 
-    std::set<dht::Key_t> peer_keys;
-
-    for_each_connection(
-        [&peer_keys](link::Connection& conn) { peer_keys.emplace(conn.remote_rc.router_id()); });
-
-    _contacts->rc_nodes()->RemoveIf(
-        [&peer_keys](const dht::Key_t& k) -> bool { return peer_keys.count(k) == 0; });
-
     paths.ExpirePaths(now);
 
     // update tick timestamp
@@ -1032,13 +972,20 @@ namespace llarp
     return _link_manager.get_random_connected(result);
   }
 
+  const std::unordered_set<RouterID>&
+  Router::get_whitelist() const
+  {
+    return _node_db->whitelist();
+  }
+
   void
   Router::set_router_whitelist(
       const std::vector<RouterID>& whitelist,
       const std::vector<RouterID>& greylist,
       const std::vector<RouterID>& unfundedlist)
   {
-    _rc_lookup_handler.set_router_whitelist(whitelist, greylist, unfundedlist);
+    node_db()->set_router_whitelist(whitelist, greylist, unfundedlist);
+    whitelist_received = true;
   }
 
   bool
@@ -1076,7 +1023,6 @@ namespace llarp
 
       log::info(logcat, "Router initialized as service node!");
       const RouterID us = pubkey();
-      _rcGossiper.Init(&_link_manager, us, this);
       // relays do not use profiling
       router_profiling().Disable();
     }

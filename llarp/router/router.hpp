@@ -1,7 +1,5 @@
 #pragma once
 
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
 #include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
@@ -58,8 +56,6 @@ namespace llarp
 
   static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
-
-  static constexpr size_t RC_LOOKUP_STORAGE_REDUNDANCY{4};
 
   struct Contacts;
 
@@ -122,17 +118,16 @@ namespace llarp
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> _rpc_client;
+    bool whitelist_received{false};
 
     oxenmq::address rpc_addr;
     Profiling _router_profiling;
     fs::path _profile_file;
     LinkManager _link_manager{*this};
-    RCLookupHandler _rc_lookup_handler;
-    RCGossiper _rcGossiper;
-
-    /// how often do we resign our RC? milliseconds.
-    // TODO: make configurable
-    llarp_time_t rc_regen_interval = 1h;
+    std::chrono::system_clock::time_point last_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
 
     // should we be sending padded messages every interval?
     bool send_padding = false;
@@ -151,9 +146,6 @@ namespace llarp
     save_rc();
 
     bool
-    update_rc();
-
-    bool
     from_config(const Config& conf);
 
     bool
@@ -162,9 +154,6 @@ namespace llarp
    public:
     void
     for_each_connection(std::function<void(link::Connection&)> func);
-
-    void
-    lookup_router(RouterID rid, std::function<void(oxen::quic::message)> = nullptr);
 
     void
     connect_to(const RouterID& rid);
@@ -209,12 +198,6 @@ namespace llarp
     link_manager()
     {
       return _link_manager;
-    }
-
-    RCLookupHandler&
-    rc_lookup_handler()
-    {
-      return _rc_lookup_handler;
     }
 
     inline int
@@ -292,11 +275,8 @@ namespace llarp
     util::StatusObject
     ExtractSummaryStatus() const;
 
-    std::unordered_set<RouterID>
-    router_whitelist() const
-    {
-      return _rc_lookup_handler.whitelist();
-    }
+    const std::unordered_set<RouterID>&
+    get_whitelist() const;
 
     void
     set_router_whitelist(
@@ -381,16 +361,13 @@ namespace llarp
     status_line();
 
     void
-    GossipRCIfNeeded(const LocalRC rc);
-
-    void
     InitInboundLinks();
 
     void
     InitOutboundLinks();
 
-    bool
-    GetRandomGoodRouter(RouterID& r);
+    std::optional<RouterID>
+    GetRandomGoodRouter();
 
     /// initialize us as a service node
     /// return true on success

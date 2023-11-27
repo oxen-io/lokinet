@@ -5,6 +5,7 @@
 #include "endpoint_util.hpp"
 #include "protocol_type.hpp"
 
+#include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 
 #include <algorithm>
@@ -316,9 +317,6 @@ namespace llarp::service
         }
       }
     }
-    // lookup router in intro if set and unknown
-    if (not next_intro.router.IsZero())
-      ep.EnsureRouterIsKnown(next_intro.router);
 
     if (ReadyToSend())
     {
@@ -407,6 +405,18 @@ namespace llarp::service
 
     std::vector<Introduction> intros = current_intro.intros;
 
+    // don't consider intros for which we don't have the RC for the pivot
+    auto itr = intros.begin();
+    while (itr != intros.end())
+    {
+      if (not ep.router()->node_db()->has_rc(itr->router))
+      {
+        itr = intros.erase(itr);
+        continue;
+      }
+      itr++;
+    }
+
     if (intros.size() > 1)
     {
       std::shuffle(intros.begin(), intros.end(), llarp::csrng);
@@ -435,7 +445,6 @@ namespace llarp::service
       {
         if (ep.SnodeBlacklist().count(intro.router))
           continue;
-        ep.EnsureRouterIsKnown(intro.router);
         if (intro.ExpiresSoon(now))
           continue;
         if (next_intro != intro)

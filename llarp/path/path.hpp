@@ -177,9 +177,6 @@ namespace llarp
       find_name(std::string name, std::function<void(std::string)> func = nullptr);
 
       bool
-      find_router(std::string rid, std::function<void(std::string)> func = nullptr);
-
-      bool
       find_intro(
           const dht::Key_t& location,
           bool is_relayed = false,

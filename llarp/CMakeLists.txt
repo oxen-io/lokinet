@@ -24,7 +24,6 @@ lokinet_add_library(lokinet-core-utils
   exit/policy.cpp   # net/
   handlers/exit.cpp # link/ exit/
   handlers/tun.cpp
-  router/rc_gossiper.cpp
   service/auth.cpp  # config/
   service/context.cpp
   service/identity.cpp
@@ -109,7 +108,6 @@ lokinet_add_library(lokinet-time-place
 # lokinet-platform holds all platform specific code
 lokinet_add_library(lokinet-platform
   net/interface_info.cpp
-  router/rc_lookup_handler.cpp
   vpn/packet_router.cpp
   vpn/platform.cpp
 )

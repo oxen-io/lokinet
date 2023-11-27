@@ -606,34 +606,11 @@ namespace llarp::handlers
       RouterID snode;
       if (snode.FromString(qname))
       {
-        router()->lookup_router(
-            snode, [r = router(), msg = std::move(msg), reply](oxen::quic::message m) mutable {
-              if (m)
-              {
-                std::string payload;
-
-                try
-                {
-                  oxenc::bt_dict_consumer btdc{m.body()};
-                  payload = btdc.require<std::string>("RC");
-                }
-                catch (...)
-                {
-                  log::warning(link_cat, "Failed to parse Find Router response!");
-                  throw;
-                }
-
-                r->node_db()->put_rc_if_newer(RemoteRC{payload});
-                msg.AddTXTReply(payload);
-              }
-              else
-              {
-                msg.AddNXReply();
-                r->link_manager().handle_find_router_error(std::move(m));
-              }
-
-              reply(msg);
-            });
+        if (auto rc = router()->node_db()->get_rc(snode))
+          msg.AddTXTReply(std::string{rc->view()});
+        else
+          msg.AddNXReply();
+        reply(msg);
 
         return true;
       }
@@ -705,10 +682,9 @@ namespace llarp::handlers
     {
       if (is_random_snode(msg))
       {
-        RouterID random;
-        if (router()->GetRandomGoodRouter(random))
+        if (auto random = router()->GetRandomGoodRouter())
         {
-          msg.AddCNAMEReply(random.ToString(), 1);
+          msg.AddCNAMEReply(random->ToString(), 1);
         }
         else
           msg.AddNXReply();
@@ -755,11 +731,10 @@ namespace llarp::handlers
       // on MacOS this is a typeA query
       else if (is_random_snode(msg))
       {
-        RouterID random;
-        if (router()->GetRandomGoodRouter(random))
+        if (auto random = router()->GetRandomGoodRouter())
         {
-          msg.AddCNAMEReply(random.ToString(), 1);
-          return ReplyToSNodeDNSWhenReady(random, std::make_shared<dns::Message>(msg), isV6);
+          msg.AddCNAMEReply(random->ToString(), 1);
+          return ReplyToSNodeDNSWhenReady(*random, std::make_shared<dns::Message>(msg), isV6);
         }
 
         msg.AddNXReply();

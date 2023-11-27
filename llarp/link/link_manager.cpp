@@ -8,7 +8,6 @@
 #include <llarp/messages/path.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path/path.hpp>
-#include <llarp/router/rc_lookup_handler.hpp>
 #include <llarp/router/router.hpp>
 
 #include <algorithm>
@@ -151,6 +150,11 @@ namespace llarp
           [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
     });
 
+    s->register_command("gossip_rc"s, [this, rid](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
+    });
+
     for (auto& method : direct_requests)
     {
       s->register_command(
@@ -243,21 +247,17 @@ namespace llarp
       return true;
     }
 
-    _router.loop()->call([this, remote, endpoint, body, f = std::move(func)]() {
-      auto pending = PendingControlMessage(body, endpoint, f);
+    _router.loop()->call([this,
+                          remote,
+                          endpoint = std::move(endpoint),
+                          body = std::move(body),
+                          f = std::move(func)]() {
+      auto pending = PendingControlMessage(std::move(body), std::move(endpoint), f);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-        if (success)
-        {
-          _router.node_db()->put_rc_if_newer(*rc);
-          connect_to(*rc);
-        }
-        else
-          log::warning(quic_cat, "Do something intelligent here for error handling");
-      });
+      connect_to(remote);
     });
 
     return false;
@@ -275,21 +275,13 @@ namespace llarp
       return true;
     }
 
-    _router.loop()->call([&]() {
+    _router.loop()->call([this, body = std::move(body), remote]() {
       auto pending = PendingDataMessage(body);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
 
-      rc_lookup->get_rc(remote, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-        if (success)
-        {
-          _router.node_db()->put_rc_if_newer(*rc);
-          connect_to(*rc);
-        }
-        else
-          log::warning(quic_cat, "Do something intelligent here for error handling");
-      });
+      connect_to(remote);
     });
 
     return false;
@@ -304,15 +296,13 @@ namespace llarp
   void
   LinkManager::connect_to(const RouterID& rid)
   {
-    rc_lookup->get_rc(rid, [this]([[maybe_unused]] auto rid, auto rc, auto success) {
-      if (success)
-      {
-        _router.node_db()->put_rc_if_newer(*rc);
-        connect_to(*rc);
-      }
-      else
-        log::warning(quic_cat, "Do something intelligent here for error handling");
-    });
+    auto rc = node_db->get_rc(rid);
+    if (rc)
+    {
+      connect_to(*rc);
+    }
+    else
+      log::warning(quic_cat, "Do something intelligent here for error handling");
   }
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
@@ -398,6 +388,43 @@ namespace llarp
         log::debug(quic_cat, "Quic connection CID:{} purged successfully", scid);
       }
     });
+  }
+
+  void
+  LinkManager::gossip_rc(const RouterID& rc_rid, std::string serialized_rc)
+  {
+    for (auto& [rid, conn] : ep.conns)
+    {
+      // don't send back to the owner...
+      if (rid == rc_rid)
+        continue;
+      // don't gossip RCs to clients
+      if (not conn->remote_is_relay)
+        continue;
+
+      send_control_message(rid, "gossip_rc", serialized_rc);
+    }
+  }
+
+  void
+  LinkManager::handle_gossip_rc(oxen::quic::message m)
+  {
+    try
+    {
+      RemoteRC rc{m.body()};
+
+      if (node_db->put_rc_if_newer(rc))
+      {
+        log::info(link_cat, "Received updated RC, forwarding to relay peers.");
+        gossip_rc(rc.router_id(), m.body_str());
+      }
+      else
+        log::debug(link_cat, "Received known or old RC, not storing or forwarding.");
+    }
+    catch (const std::exception& e)
+    {
+      log::info(link_cat, "Recieved invalid RC, dropping on the floor.");
+    }
   }
 
   bool
@@ -486,10 +513,9 @@ namespace llarp
   }
 
   void
-  LinkManager::init(RCLookupHandler* rcLookup)
+  LinkManager::init()
   {
     is_stopping = false;
-    rc_lookup = rcLookup;
     node_db = _router.node_db();
   }
 
@@ -509,7 +535,7 @@ namespace llarp
       {
         exclude.insert(maybe_other->router_id());
 
-        if (not rc_lookup->is_session_allowed(maybe_other->router_id()))
+        if (not node_db->is_connection_allowed(maybe_other->router_id()))
           continue;
 
         connect_to(*maybe_other);
@@ -593,225 +619,6 @@ namespace llarp
       }
       else
         log::info(link_cat, "FindNameMessage failed with unkown error!");
-    }
-  }
-
-  void
-  LinkManager::handle_find_router(std::string_view body, std::function<void(std::string)> respond)
-  {
-    std::string target_key;
-    bool is_exploratory, is_iterative;
-
-    try
-    {
-      oxenc::bt_dict_consumer btdc{body};
-
-      is_exploratory = btdc.require<bool>("E");
-      is_iterative = btdc.require<bool>("I");
-      target_key = btdc.require<std::string>("K");
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      respond(messages::ERROR_RESPONSE);
-      return;
-    }
-
-    // TODO: do we need a replacement for dht.AllowTransit() etc here?
-
-    RouterID target_rid;
-    target_rid.FromString(target_key);
-
-    const auto target_addr = dht::Key_t{reinterpret_cast<uint8_t*>(target_key.data())};
-    const auto& local_rid = _router.rc().router_id();
-    const auto local_key = dht::Key_t{local_rid};
-
-    if (is_exploratory)
-    {
-      std::string neighbors{};
-
-      const auto closest_rcs =
-          _router.node_db()->find_many_closest_to(target_addr, RC_LOOKUP_STORAGE_REDUNDANCY);
-
-      for (const auto& rc : closest_rcs)
-      {
-        const auto& rid = rc.router_id();
-        if (_router.router_profiling().IsBadForConnect(rid) || target_rid == rid
-            || local_rid == rid)
-          continue;
-
-        neighbors += rid.bt_encode();
-      }
-
-      respond(serialize_response(
-          {{messages::STATUS_KEY, FindRouterMessage::RETRY_EXP}, {"TARGET", neighbors}}));
-    }
-    else
-    {
-      const auto closest_rc = _router.node_db()->find_closest_to(target_addr);
-      const auto& closest_rid = closest_rc.router_id();
-      const auto closest_key = dht::Key_t{closest_rid};
-
-      if (target_addr == closest_key)
-      {
-        if (closest_rc.expires_within_delta(llarp::time_now_ms()))
-        {
-          send_control_message(
-              target_rid,
-              "find_router",
-              FindRouterMessage::serialize(target_rid, false, false),
-              [respond = std::move(respond)](oxen::quic::message msg) mutable {
-                respond(msg.body_str());
-              });
-        }
-        else
-        {
-          respond(serialize_response({{"RC", closest_rc.view()}}));
-        }
-      }
-      else if (not is_iterative)
-      {
-        if ((closest_key ^ target_addr) < (local_key ^ target_addr))
-        {
-          send_control_message(
-              closest_rid,
-              "find_router",
-              FindRouterMessage::serialize(closest_rid, false, false),
-              [respond = std::move(respond)](oxen::quic::message msg) mutable {
-                respond(msg.body_str());
-              });
-        }
-        else
-        {
-          respond(serialize_response(
-              {{messages::STATUS_KEY, FindRouterMessage::RETRY_ITER},
-               {"TARGET", reinterpret_cast<const char*>(target_addr.data())}}));
-        }
-      }
-      else
-      {
-        respond(serialize_response(
-            {{messages::STATUS_KEY, FindRouterMessage::RETRY_NEW},
-             {"TARGET", reinterpret_cast<const char*>(closest_rid.data())}}));
-      }
-    }
-  }
-
-  void
-  LinkManager::handle_find_router_response(oxen::quic::message m)
-  {
-    if (m.timed_out)
-    {
-      log::info(link_cat, "FindRouterMessage timed out!");
-      return;
-    }
-
-    std::string status, payload;
-
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-
-      if (m)
-        payload = btdc.require<std::string>("RC");
-      else
-      {
-        payload = btdc.require<std::string>("RECIPIENT");
-        status = btdc.require<std::string>("TARGET");
-      }
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      return;
-    }
-
-    if (m)
-    {
-      _router.node_db()->put_rc_if_newer(RemoteRC{payload});
-    }
-    else
-    {
-      if (status == "ERROR")
-      {
-        log::info(link_cat, "FindRouterMessage failed with remote exception!");
-        // Do something smart here probably
-        return;
-      }
-
-      RouterID target{reinterpret_cast<uint8_t*>(payload.data())};
-
-      if (status == FindRouterMessage::RETRY_EXP)
-      {
-        log::info(link_cat, "FindRouterMessage failed, retrying as exploratory!");
-        send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, false, true));
-      }
-      else if (status == FindRouterMessage::RETRY_ITER)
-      {
-        log::info(link_cat, "FindRouterMessage failed, retrying as iterative!");
-        send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, true, false));
-      }
-      else if (status == FindRouterMessage::RETRY_NEW)
-      {
-        log::info(link_cat, "FindRouterMessage failed, retrying with new recipient!");
-        send_control_message(
-            target, "find_router", FindRouterMessage::serialize(target, false, false));
-      }
-    }
-  }
-
-  void
-  LinkManager::handle_find_router_error(oxen::quic::message&& m)
-  {
-    if (m.timed_out)
-    {
-      log::info(link_cat, "FindRouterMessage timed out!");
-      return;
-    }
-
-    std::string status, payload;
-
-    try
-    {
-      oxenc::bt_dict_consumer btdc{m.body()};
-
-      payload = btdc.require<std::string>("RECIPIENT");
-      status = btdc.require<std::string>("TARGET");
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(link_cat, "Exception: {}", e.what());
-      return;
-    }
-
-    if (status == "ERROR")
-    {
-      log::info(link_cat, "FindRouterMessage failed with remote exception!");
-      // Do something smart here probably
-      return;
-    }
-
-    RouterID target{reinterpret_cast<uint8_t*>(payload.data())};
-
-    if (status == FindRouterMessage::RETRY_EXP)
-    {
-      log::info(link_cat, "FindRouterMessage failed, retrying as exploratory!");
-      send_control_message(
-          target, "find_router", FindRouterMessage::serialize(target, false, true));
-    }
-    else if (status == FindRouterMessage::RETRY_ITER)
-    {
-      log::info(link_cat, "FindRouterMessage failed, retrying as iterative!");
-      send_control_message(
-          target, "find_router", FindRouterMessage::serialize(target, true, false));
-    }
-    else if (status == FindRouterMessage::RETRY_NEW)
-    {
-      log::info(link_cat, "FindRouterMessage failed, retrying with new recipient!");
-      send_control_message(
-          target, "find_router", FindRouterMessage::serialize(target, false, false));
     }
   }
 
@@ -1606,7 +1413,7 @@ namespace llarp
       if (not hop)
         return;
 
-      // if terminal hop, payload should contain a request (e.g. "find_router"); handle and respond.
+      // if terminal hop, payload should contain a request (e.g. "find_name"); handle and respond.
       if (hop->terminal_hop)
       {
         hop->onion(payload, nonce, false);

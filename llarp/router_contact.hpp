@@ -56,18 +56,17 @@ namespace llarp
 
     /// Timespans for RCs:
 
-    /// How long (relative to its timestamp) before an RC becomes stale.  Stale records are used
-    /// (e.g. for path building) only if there are no non-stale records available, such as might be
+    /// How long (from its signing time) before an RC is considered "stale".  Relays republish
+    /// their RCs slightly more frequently than this so that ideally this won't happen.
+    static constexpr auto STALE_AGE = 6h;
+
+    /// How long (from its signing time) before an RC becomes "outdated".  Outdated records are used
+    /// (e.g. for path building) only if there are no newer records available, such as might be
     /// the case when a client has been turned off for a while.
-    static constexpr auto STALE = 12h;
+    static constexpr auto OUTDATED_AGE = 12h;
 
     /// How long before an RC becomes invalid (and thus deleted).
     static constexpr auto LIFETIME = 30 * 24h;
-
-    /// How long before a relay updates and re-publish its RC to the network.  (Relays can
-    /// re-publish more frequently than this if needed; this is meant to apply only if there are no
-    /// changes i.e. just to push out a new confirmation of the details).
-    static constexpr auto REPUBLISH = STALE / 2 - 5min;
 
     ustring_view
     view() const

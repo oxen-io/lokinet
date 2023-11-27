@@ -847,56 +847,6 @@ namespace llarp::service
   }
 
   void
-  Endpoint::EnsureRouterIsKnown(const RouterID& rid)
-  {
-    if (rid.IsZero())
-      return;
-    if (!router()->node_db()->has_router(rid))
-    {
-      lookup_router(rid);
-    }
-  }
-
-  bool
-  Endpoint::lookup_router(RouterID rid, std::function<void(RouterContact rc, bool success)> func)
-  {
-    (void)rid;
-    (void)func;
-    return false;
-    /*  RC refactor pending, this will likely go away entirely
-     *
-     *
-    auto path = GetEstablishedPathClosestTo(rid);
-
-    auto response_cb = [func = std::move(func)](std::string resp, bool timeout) {
-      if (timeout)
-        func(RouterContact{}, false);
-
-      std::string payload;
-
-      try
-      {
-        oxenc::bt_dict_consumer btdc{resp};
-        payload = btdc.require<std::string>("RC");
-      }
-      catch (...)
-      {
-        log::warning(link_cat, "Failed to parse Find Router response!");
-        func(RouterContact{}, false);
-        return;
-      }
-
-      RouterContact result{std::move(payload)};
-
-      func(result, true);
-    };
-
-    path->find_router("find_router", std::move(response_cb));
-    return true;
-    */
-  }
-
-  void
   Endpoint::HandlePathBuilt(path::Path_ptr p)
   {
     // p->SetDataHandler(util::memFn(&Endpoint::HandleHiddenServiceFrame, this));
@@ -1279,7 +1229,8 @@ namespace llarp::service
           this);
       _state->snode_sessions[snode] = session;
     }
-    EnsureRouterIsKnown(snode);
+    if (not router()->node_db()->has_rc(snode))
+      return false;
     auto range = nodeSessions.equal_range(snode);
     auto itr = range.first;
     while (itr != range.second)
