@@ -124,7 +124,7 @@ namespace llarp
     ingest_router_ids(RouterID source, std::vector<RouterID> ids);
 
     void
-    update_rcs();
+    fetch_rcs();
 
     void
     fetch_router_ids();

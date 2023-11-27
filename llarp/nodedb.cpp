@@ -181,7 +181,7 @@ namespace llarp
   }
 
   void
-  NodeDB::update_rcs()
+  NodeDB::fetch_rcs()
   {
     std::vector<RouterID> needed;
 
