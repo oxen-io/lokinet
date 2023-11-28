@@ -167,7 +167,7 @@ namespace llarp
             _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
               auto body = msg.body_str();
               auto respond = [m = std::move(msg)](std::string response) mutable {
-                m.respond(std::move(response));
+                m.respond(std::move(response), not m);
               };
               std::invoke(func, this, body, std::move(respond));
             });
@@ -517,12 +517,6 @@ namespace llarp
   LinkManager::fetch_router_ids(
       const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
-    if (ep.conns.empty())
-    {
-      log::debug(link_cat, "Not attempting to fetch Router IDs: not connected to any relays.");
-      return;
-    }
-
     send_control_message(via, "fetch_router_ids"s, std::move(payload), std::move(func));
   }
 
@@ -571,7 +565,7 @@ namespace llarp
           [source_rid = std::move(source_rid),
            orig_mess = std::move(m)](oxen::quic::message m) mutable {
             if (not m.timed_out)
-              orig_mess.respond(m.body_str());
+              orig_mess.respond(m.body_str(), not m);
             // on timeout, just silently drop (as original requester will just time out anyway)
           });
     }
