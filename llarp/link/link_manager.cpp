@@ -434,48 +434,9 @@ namespace llarp
 
   void
   LinkManager::fetch_rcs(
-      const RouterID& source, rc_time since, const std::vector<RouterID>& explicit_ids)
+      const RouterID& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
-    send_control_message(
-        source,
-        "fetch_rcs",
-        RCFetchMessage::serialize(since, explicit_ids),
-        [this, source = source](oxen::quic::message m) {
-          if (m.timed_out)
-          {
-            // TODO: keep track of this failure for relay quality metrics?
-            log::info(link_cat, "RC Fetch to {} timed out", source);
-            return;
-          }
-          try
-          {
-            oxenc::bt_dict_consumer btdc{m.body()};
-            if (not m)
-            {
-              auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
-              log::info(link_cat, "RC Fetch to {} returned error: {}", source, reason);
-              return;
-            }
-
-            auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
-            auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
-
-            std::vector<RemoteRC> rcs;
-
-            while (not btlc.is_finished())
-            {
-              rcs.emplace_back(btlc.consume_dict_consumer());
-            }
-
-            node_db->ingest_rcs(source, std::move(rcs), timestamp);
-          }
-          catch (const std::exception& e)
-          {
-            // TODO: Inform NodeDB of failure (perhaps just a call to rotate_rc_source())
-            log::info(link_cat, "Failed to parse RC Fetch response from {}: {}", source, e.what());
-            return;
-          }
-        });
+    send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
   }
 
   void
@@ -547,69 +508,16 @@ namespace llarp
   }
 
   void
-  LinkManager::fetch_router_ids(const RouterID& source, std::function<void(oxen::quic::message m)> func)
+  LinkManager::fetch_router_ids(
+      const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
     if (ep.conns.empty())
     {
       log::debug(link_cat, "Not attempting to fetch Router IDs: not connected to any relays.");
       return;
     }
-    // TODO: randomize?  Also, keep track of successful responses and drop this edge
-    //       if not many come back successfully.
-    RouterID edge = ep.conns.begin()->first;
-    send_control_message(
-        edge,
-        "fetch_router_ids"s,
-        RouterIDFetch::serialize(source),
-        (func) ? std::move(func) :
-        [this, source = source, edge = std::move(edge)](oxen::quic::message m) {
-          if (not m)
-          {
-            log::info(
-                link_cat,
-                "Error fetching RouterIDs from source \"{}\" via edge \"{}\"",
-                source,
-                edge);
-            node_db->ingest_router_ids(edge);  // empty response == failure
-            return;
-          }
 
-          try
-          {
-            oxenc::bt_dict_consumer btdc{m.body()};
-
-            btdc.required("routers");
-            auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
-
-            btdc.require_signature("signature", [&edge](ustring_view msg, ustring_view sig) {
-              if (sig.size() != 64)
-                throw std::runtime_error{"Invalid signature: not 64 bytes"};
-              if (not crypto::verify(edge, msg, sig))
-                throw std::runtime_error{
-                    "Failed to verify signature for fetch RouterIDs response."};
-            });
-
-            std::vector<RouterID> router_ids;
-
-            for (const auto& s : router_id_strings)
-            {
-              if (s.size() != RouterID::SIZE)
-              {
-                log::warning(link_cat, "Got bad RouterID from edge \"{}\".", edge);
-                return;
-              }
-              router_ids.emplace_back(s.data());
-            }
-
-            node_db->ingest_router_ids(edge, std::move(router_ids));
-            return;
-          }
-          catch (const std::exception& e)
-          {
-            log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
-          }
-          node_db->ingest_router_ids(edge);  // empty response == failure
-        });
+    send_control_message(via, "fetch_router_ids"s, std::move(payload), std::move(func));
   }
 
   void

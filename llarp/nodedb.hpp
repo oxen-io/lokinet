@@ -22,7 +22,10 @@ namespace llarp
 {
   struct Router;
 
+  inline constexpr size_t ROUTER_ID_SOURCE_COUNT{12};
+  inline constexpr size_t MIN_RID_FETCHES{8};
   inline constexpr size_t MIN_ACTIVE_RIDS{24};
+  inline constexpr size_t MAX_RID_ERRORS{ROUTER_ID_SOURCE_COUNT - MIN_RID_FETCHES};
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
 
   class NodeDB
@@ -57,23 +60,20 @@ namespace llarp
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
 
     // Client list of active RouterID's
-    std::unordered_set<RouterID> client_known_routers;
+    std::unordered_set<RouterID> active_client_routers;
 
     // only ever use to specific edges as path first-hops
     std::unordered_set<RouterID> pinned_edges;
 
-    // rc update info
+    // rc update info: we only set this upon a SUCCESSFUL fetching
     RouterID rc_fetch_source;
 
     rc_time last_rc_update_relay_timestamp;
 
-    static constexpr auto ROUTER_ID_SOURCE_COUNT = 12;
-
     std::unordered_set<RouterID> router_id_fetch_sources;
 
-    std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
     // process responses once all are received (or failed/timed out)
-    size_t router_id_response_count{0};
+    std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
     bool router_id_fetch_in_progress{false};
 
     bool
@@ -136,22 +136,22 @@ namespace llarp
     rotate_startup_rc_source();
 
     void
-    ingest_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
+    store_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
 
     void
-    ingest_router_ids(RouterID source, std::vector<RouterID> ids = {});
+    ingest_rid_fetch_responses(const RemoteRC& source, std::vector<RouterID> ids = {});
 
-    void
-    fetch_initial();
+    bool
+    process_fetched_rids();
 
     bool
     fetch_initial_rcs(const RouterID& src);
 
     void
-    fetch_rcs();
+    fetch_rcs(int n_fails = 0, bool initial = false);
 
     void
-    fetch_router_ids();
+    fetch_router_ids(int n_fails = 0, bool initial = false);
 
     void
     select_router_id_sources(std::unordered_set<RouterID> excluded = {});

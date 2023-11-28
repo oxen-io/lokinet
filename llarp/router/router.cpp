@@ -851,23 +851,28 @@ namespace llarp
     }
     else
     {
+      int num_failures = 0;
+
       if (needs_initial_fetch)
       {
-        node_db()->fetch_initial();
+        node_db()->fetch_rcs(num_failures, true);
+        last_rc_fetch = now_timepoint;
+        node_db()->fetch_router_ids(num_failures, true);
+        last_routerid_fetch = now_timepoint;
       }
       else
       {
         // (client-only) periodically fetch updated RCs
         if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
         {
-          node_db()->fetch_rcs();
+          node_db()->fetch_rcs(num_failures);
           last_rc_fetch = now_timepoint;
         }
 
         // (client-only) periodically fetch updated RouterID list
         if (now_timepoint - last_routerid_fetch > ROUTERID_UPDATE_INTERVAL)
         {
-          node_db()->fetch_router_ids();
+          node_db()->fetch_router_ids(num_failures);
           last_routerid_fetch = now_timepoint;
         }
       }
