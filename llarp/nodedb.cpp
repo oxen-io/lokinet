@@ -796,6 +796,16 @@ namespace llarp
 
     log::info(
         logcat, "lokinet service node list now has ", router_whitelist.size(), " active routers");
+
+    for (auto itr = known_rcs.begin(); itr != known_rcs.end();)
+    {
+      if (registered_routers.count(itr->first) == 0)
+      {
+        log::debug(logcat, "Removing no-longer-registered RC with RouterID {}", itr->first);
+        known_rcs.erase(itr);
+      }
+      itr++;
+    }
   }
 
   std::optional<RouterID>
