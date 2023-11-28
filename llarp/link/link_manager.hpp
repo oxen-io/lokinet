@@ -233,7 +233,7 @@ namespace llarp
     handle_fetch_rcs(oxen::quic::message m);
 
     void
-    fetch_router_ids(const RouterID& source);
+    fetch_router_ids(const RouterID& source, std::function<void(oxen::quic::message m)> func = nullptr);
 
     void
     handle_fetch_router_ids(oxen::quic::message m);

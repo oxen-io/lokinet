@@ -6,7 +6,6 @@
 #include "util/bencode.hpp"
 #include "util/buffer.hpp"
 #include "util/file.hpp"
-#include "util/time.hpp"
 
 #include <oxenc/bt_serialize.h>
 

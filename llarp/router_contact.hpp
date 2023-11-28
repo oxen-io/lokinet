@@ -9,6 +9,7 @@
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
+#include <llarp/util/time.hpp>
 
 #include <nlohmann/json.hpp>
 #include <oxenc/bt_producer.h>
@@ -20,8 +21,6 @@
 namespace llarp
 {
   static auto logcat = log::Cat("RC");
-
-  using rc_time = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
 
   static inline constexpr size_t NETID_SIZE{8};
 
@@ -298,8 +297,7 @@ namespace llarp
     void
     set_systime_timestamp()
     {
-      set_timestamp(
-          std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
+      set_timestamp(time_point_now());
     }
   };
 

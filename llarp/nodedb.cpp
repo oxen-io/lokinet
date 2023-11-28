@@ -48,24 +48,24 @@ namespace llarp
   constexpr auto FlushInterval = 5min;
 
   NodeDB::NodeDB(fs::path root, std::function<void(std::function<void()>)> diskCaller, Router* r)
-      : router{*r}
-      , m_Root{std::move(root)}
-      , disk(std::move(diskCaller))
-      , m_NextFlushAt{time_now_ms() + FlushInterval}
+      : _router{*r}
+      , _root{std::move(root)}
+      , _disk(std::move(diskCaller))
+      , _next_flush_time{time_now_ms() + FlushInterval}
   {
-    EnsureSkiplist(m_Root);
+    EnsureSkiplist(_root);
   }
 
   void
   NodeDB::Tick(llarp_time_t now)
   {
-    if (m_NextFlushAt == 0s)
+    if (_next_flush_time == 0s)
       return;
 
-    if (now > m_NextFlushAt)
+    if (now > _next_flush_time)
     {
-      router.loop()->call([this]() {
-        m_NextFlushAt += FlushInterval;
+      _router.loop()->call([this]() {
+        _next_flush_time += FlushInterval;
         // make copy of all rcs
         std::vector<RemoteRC> copy;
 
@@ -74,7 +74,7 @@ namespace llarp
 
         // flush them to disk in one big job
         // TODO: split this up? idk maybe some day...
-        disk([this, data = std::move(copy)]() {
+        _disk([this, data = std::move(copy)]() {
           for (const auto& rc : data)
             rc.write(get_path_by_pubkey(rc.router_id()));
         });
@@ -93,13 +93,13 @@ namespace llarp
 
     skiplistDir += hexString[0];
     fname += RC_FILE_EXT;
-    return m_Root / skiplistDir / fname;
+    return _root / skiplistDir / fname;
   }
 
   bool
   NodeDB::want_rc(const RouterID& rid) const
   {
-    if (not router.is_service_node())
+    if (not _router.is_service_node())
       return true;
     return registered_routers.count(rid);
   }
@@ -114,13 +114,31 @@ namespace llarp
     }
   }
 
+  bool
+  NodeDB::rotate_startup_rc_source()
+  {
+    if (client_known_routers.size() < 13)
+    {
+      // do something here
+      return false;
+    }
+
+    RouterID temp = rc_fetch_source;
+
+    while (temp == rc_fetch_source)
+      std::sample(client_known_routers.begin(), client_known_routers.end(), &temp, 1, csrng);
+
+    rc_fetch_source = std::move(temp);
+    return true;
+  }
+
   /// Called in normal operation when the relay we fetched RCs from gives either a "bad"
   /// response or a timeout.  Attempts to switch to a new relay as our RC source, using
   /// existing connections if possible, and respecting pinned edges.
   void
   NodeDB::rotate_rc_source()
   {
-    auto conn_count = router.link_manager().get_num_connected();
+    auto conn_count = _router.link_manager().get_num_connected();
 
     // This function makes no sense to be called if we have no connections...
     if (conn_count == 0)
@@ -131,7 +149,7 @@ namespace llarp
       throw std::runtime_error{"Cannot rotate RC source without RC source(s) to rotate to!"};
 
     RemoteRC new_source{};
-    router.link_manager().get_random_connected(new_source);
+    _router.link_manager().get_random_connected(new_source);
     if (conn_count == 1)
     {
       // if we only have one connection, it must be current rc fetch source
@@ -149,8 +167,8 @@ namespace llarp
       }
 
       // only one connection, choose a new relay to connect to for rc fetching
-
       RouterID r = rc_fetch_source;
+
       while (r == rc_fetch_source)
       {
         std::sample(client_known_routers.begin(), client_known_routers.end(), &r, 1, csrng);
@@ -162,7 +180,7 @@ namespace llarp
     // choose one of our other existing connections to use as the RC fetch source
     while (new_source.router_id() == rc_fetch_source)
     {
-      router.link_manager().get_random_connected(new_source);
+      _router.link_manager().get_random_connected(new_source);
     }
     rc_fetch_source = new_source.router_id();
   }
@@ -210,19 +228,71 @@ namespace llarp
   }
 
   void
+  NodeDB::fetch_initial()
+  {
+    int num_failures = 0;
+
+    [[maybe_unused]]
+    bool use_bootstrap = false;
+    
+    RouterID fetch_src;
+
+    // NodeDB::load_from_disk is called in Router::Run before any calls to Router::Tick are
+    // made, which trigger this function call. As a result, client_known_routers should be
+    // populated (if there was anything to populate it with)
+    auto num_known = client_known_routers.size();
+
+    if (num_known >= MIN_ACTIVE_RIDS)
+    {
+      std::sample(client_known_routers.begin(), client_known_routers.end(), &fetch_src, 1, csrng);
+    }
+    else
+    {
+      // DEFAULT TO BOOTSTRAP ROUTERS HERE
+      use_bootstrap = true;
+      log::debug(
+          logcat,
+          "Insufficient known active RID's to fetch ({}/{}); defaulting to bootstrap",
+          num_known,
+          MIN_ACTIVE_RIDS);
+      
+      assert(not bootstraps.empty());
+      fetch_src = bootstraps.begin()->first;
+    }
+
+    while (num_failures < MAX_FETCH_ATTEMPTS)
+    {
+      
+
+
+    }
+
+    router_id_fetch_in_progress = true;
+    router_id_response_count = 0;
+    router_id_fetch_responses.clear();
+  }
+
+  bool
+  NodeDB::fetch_initial_rcs(const RouterID& src)
+  {
+    (void)src;
+    return true;
+  }
+
+  void
   NodeDB::fetch_rcs()
   {
     std::vector<RouterID> needed;
 
-    const auto now =
-        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    const auto now = time_point_now();
+
     for (const auto& [rid, rc] : known_rcs)
     {
       if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
         needed.push_back(rid);
     }
 
-    router.link_manager().fetch_rcs(
+    _router.link_manager().fetch_rcs(
         rc_fetch_source, last_rc_update_relay_timestamp, std::move(needed));
   }
 
@@ -231,6 +301,7 @@ namespace llarp
   {
     if (router_id_fetch_in_progress)
       return;
+
     if (router_id_fetch_sources.empty())
       select_router_id_sources();
 
@@ -244,8 +315,9 @@ namespace llarp
     router_id_fetch_in_progress = true;
     router_id_response_count = 0;
     router_id_fetch_responses.clear();
+
     for (const auto& rid : router_id_fetch_sources)
-      router.link_manager().fetch_router_ids(rid);
+      _router.link_manager().fetch_router_ids(rid);
   }
 
   void
@@ -326,7 +398,7 @@ namespace llarp
       return false;
     }
 
-    if (not router.is_service_node())
+    if (not _router.is_service_node())
       return true;
 
     return router_whitelist.count(remote) or router_greylist.count(remote);
@@ -343,7 +415,7 @@ namespace llarp
   void
   NodeDB::load_from_disk()
   {
-    if (m_Root.empty())
+    if (_root.empty())
       return;
 
     std::set<fs::path> purge;
@@ -356,7 +428,7 @@ namespace llarp
         continue;
       std::string p;
       p += ch;
-      fs::path sub = m_Root / p;
+      fs::path sub = _root / p;
 
       llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
         // skip files that are not suffixed with .signed
@@ -379,11 +451,13 @@ namespace llarp
           return true;
         }
 
-        known_rcs.emplace(rc.router_id(), rc);
+        const auto& rid = rc.router_id();
+
+        known_rcs.emplace(rid, rc);
         // TODO: the list of relays should be maintained and stored separately from
         // the RCs, as we keep older RCs around in case we go offline and need to
         // bootstrap, but they shouldn't be in the "good relays" list.
-        client_known_routers.insert(rc.router_id());
+        client_known_routers.insert(rid);
 
         return true;
       });
@@ -401,10 +475,10 @@ namespace llarp
   void
   NodeDB::save_to_disk() const
   {
-    if (m_Root.empty())
+    if (_root.empty())
       return;
 
-    router.loop()->call([this]() {
+    _router.loop()->call([this]() {
       for (const auto& item : known_rcs)
         item.second.write(get_path_by_pubkey(item.first));
     });
@@ -430,7 +504,7 @@ namespace llarp
   void
   NodeDB::remove_router(RouterID pk)
   {
-    router.loop()->call([this, pk]() {
+    _router.loop()->call([this, pk]() {
       known_rcs.erase(pk);
       remove_many_from_disk_async({pk});
     });
@@ -439,9 +513,10 @@ namespace llarp
   void
   NodeDB::remove_stale_rcs()
   {
-    auto cutoff_time =
-        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-    cutoff_time -= router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
+    auto cutoff_time = time_point_now();
+
+    cutoff_time -=
+        _router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
     for (auto itr = known_rcs.begin(); itr != known_rcs.end();)
     {
       if (cutoff_time > itr->second.timestamp())
@@ -469,7 +544,7 @@ namespace llarp
   size_t
   NodeDB::num_loaded() const
   {
-    return router.loop()->call_get([this]() { return known_rcs.size(); });
+    return _router.loop()->call_get([this]() { return known_rcs.size(); });
   }
 
   bool
@@ -486,7 +561,7 @@ namespace llarp
   void
   NodeDB::remove_many_from_disk_async(std::unordered_set<RouterID> remove) const
   {
-    if (m_Root.empty())
+    if (_root.empty())
       return;
     // build file list
     std::set<fs::path> files;
@@ -495,7 +570,7 @@ namespace llarp
       files.emplace(get_path_by_pubkey(std::move(id)));
     }
     // remove them from the disk via the diskio thread
-    disk([files]() {
+    _disk([files]() {
       for (auto fpath : files)
         fs::remove(fpath);
     });
@@ -504,7 +579,7 @@ namespace llarp
   RemoteRC
   NodeDB::find_closest_to(llarp::dht::Key_t location) const
   {
-    return router.loop()->call_get([this, location]() -> RemoteRC {
+    return _router.loop()->call_get([this, location]() -> RemoteRC {
       RemoteRC rc;
       const llarp::dht::XorMetric compare(location);
 
@@ -524,7 +599,7 @@ namespace llarp
   std::vector<RemoteRC>
   NodeDB::find_many_closest_to(llarp::dht::Key_t location, uint32_t numRouters) const
   {
-    return router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
+    return _router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
       std::vector<const RemoteRC*> all;
 
       all.reserve(known_rcs.size());

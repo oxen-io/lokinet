@@ -40,8 +40,9 @@ namespace llarp
     }
     catch (const std::exception& e)
     {
-      log::warning(logcat, "Failed to parse RemoteRC: {}", e.what());
-      throw;
+      auto err = "Exception caught parsing RemoteRC: {}"_format(e.what());
+      log::warning(logcat, err);
+      throw std::runtime_error{err};
     }
   }
 
