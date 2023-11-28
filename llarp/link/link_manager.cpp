@@ -461,10 +461,9 @@ namespace llarp
             auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
 
             std::vector<RemoteRC> rcs;
+
             while (not btlc.is_finished())
             {
-              // TODO: maybe make RemoteRC constructor throw a bespoke exception type
-              //       and catch it below so we know what about parsing failed?
               rcs.emplace_back(btlc.consume_dict_consumer());
             }
 
@@ -486,32 +485,35 @@ namespace llarp
     assert(_router.is_service_node());
 
     const auto& rcs = node_db->get_rcs();
-    const auto now =
-        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    const auto now = time_point_now();
+
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
 
       btdc.required("explicit_ids");
       auto explicit_ids = btdc.consume_list<std::vector<std::string>>();
+
       auto since_time = rc_time{std::chrono::seconds{btdc.require<int64_t>("since")}};
 
       if (explicit_ids.size() > (rcs.size() / 4))
       {
         log::info(
             link_cat, "Remote requested too many relay IDs (greater than 1/4 of what we have).");
-        m.respond(serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+        m.respond(RCFetchMessage::INVALID_REQUEST, true);
         return;
       }
 
       std::unordered_set<RouterID> explicit_relays;
+
       for (auto& sv : explicit_ids)
       {
         if (sv.size() != RouterID::SIZE)
         {
-          m.respond(serialize_response({{messages::STATUS_KEY, RCFetchMessage::INVALID_REQUEST}}));
+          m.respond(RCFetchMessage::INVALID_REQUEST, true);
           return;
         }
+
         explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
       }
 
@@ -535,17 +537,17 @@ namespace llarp
 
       resp.append("time", now.time_since_epoch().count());
 
-      m.respond(std::move(resp).str(), false);
+      m.respond(std::move(resp).str());
     }
     catch (const std::exception& e)
     {
       log::info(link_cat, "Exception handling RC Fetch request: {}", e.what());
-      m.respond(messages::ERROR_RESPONSE);
+      m.respond(messages::ERROR_RESPONSE, true);
     }
   }
 
   void
-  LinkManager::fetch_router_ids(const RouterID& source)
+  LinkManager::fetch_router_ids(const RouterID& source, std::function<void(oxen::quic::message m)> func)
   {
     if (ep.conns.empty())
     {
@@ -559,6 +561,7 @@ namespace llarp
         edge,
         "fetch_router_ids"s,
         RouterIDFetch::serialize(source),
+        (func) ? std::move(func) :
         [this, source = source, edge = std::move(edge)](oxen::quic::message m) {
           if (not m)
           {
@@ -567,14 +570,17 @@ namespace llarp
                 "Error fetching RouterIDs from source \"{}\" via edge \"{}\"",
                 source,
                 edge);
-            node_db->ingest_router_ids(edge, {});  // empty response == failure
+            node_db->ingest_router_ids(edge);  // empty response == failure
             return;
           }
+
           try
           {
             oxenc::bt_dict_consumer btdc{m.body()};
+
             btdc.required("routers");
             auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
+
             btdc.require_signature("signature", [&edge](ustring_view msg, ustring_view sig) {
               if (sig.size() != 64)
                 throw std::runtime_error{"Invalid signature: not 64 bytes"};
@@ -582,7 +588,9 @@ namespace llarp
                 throw std::runtime_error{
                     "Failed to verify signature for fetch RouterIDs response."};
             });
+
             std::vector<RouterID> router_ids;
+
             for (const auto& s : router_id_strings)
             {
               if (s.size() != RouterID::SIZE)
@@ -592,6 +600,7 @@ namespace llarp
               }
               router_ids.emplace_back(s.data());
             }
+
             node_db->ingest_router_ids(edge, std::move(router_ids));
             return;
           }
@@ -599,7 +608,7 @@ namespace llarp
           {
             log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
           }
-          node_db->ingest_router_ids(edge, {});  // empty response == failure
+          node_db->ingest_router_ids(edge);  // empty response == failure
         });
   }
 

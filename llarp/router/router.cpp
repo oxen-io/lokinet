@@ -352,12 +352,14 @@ namespace llarp
 
     // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
     auto log_type = conf.logging.type;
+
     if (log_type == log::Type::File
         && (conf.logging.file == "stdout" || conf.logging.file == "-" || conf.logging.file.empty()))
       log_type = log::Type::Print;
 
     if (log::get_level_default() != log::Level::off)
       log::reset_level(conf.logging.level);
+
     log::clear_sinks();
     log::add_sink(log_type, log_type == log::Type::System ? "lokinet" : conf.logging.file);
 
@@ -524,6 +526,7 @@ namespace llarp
   {
     // Set netid before anything else
     log::debug(logcat, "Network ID set to {}", conf.router.net_id);
+
     if (!conf.router.net_id.empty()
         && strcmp(conf.router.net_id.c_str(), llarp::LOKINET_DEFAULT_NETID) != 0)
     {
@@ -534,8 +537,8 @@ namespace llarp
           "' which does not equal '",
           llarp::LOKINET_DEFAULT_NETID,
           "' you will run as a different network, good luck "
-          "and don't forget: something something MUH traffic "
-          "shape correlation !!!!");
+          "and don't forget: something something traffic shape "
+          "correlation!!");
     }
 
     // Router config
@@ -575,16 +578,20 @@ namespace llarp
     if (not networkConfig.strict_connect.empty())
     {
       const auto& val = networkConfig.strict_connect;
+
       if (is_service_node())
         throw std::runtime_error("cannot use strict-connect option as service node");
+
       if (val.size() < 2)
         throw std::runtime_error(
             "Must specify more than one strict-connect router if using strict-connect");
+
       strictConnectPubkeys.insert(val.begin(), val.end());
       log::debug(logcat, "{} strict-connect routers configured", val.size());
     }
 
     std::vector<fs::path> configRouters = conf.connect.routers;
+
     configRouters.insert(
         configRouters.end(), conf.bootstrap.files.begin(), conf.bootstrap.files.end());
 
@@ -595,9 +602,7 @@ namespace llarp
     if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       if (fs::exists(defaultBootstrapFile))
-      {
         configRouters.push_back(defaultBootstrapFile);
-      }
     }
 
     bootstrap_rc_list.clear();
@@ -624,6 +629,7 @@ namespace llarp
             "No bootstrap routers were loaded.  The default bootstrap file {} does not exist, and "
             "loading fallback bootstrap RCs failed.",
             defaultBootstrapFile);
+
         throw std::runtime_error("No bootstrap nodes available.");
       }
     }
@@ -656,11 +662,11 @@ namespace llarp
     // Init components after relevant config settings loaded
     _link_manager.init();
 
-    // FIXME: kludge for now, will be part of larger cleanup effort.
+    // TODO: RC refactor here
     if (_is_service_node)
-      InitInboundLinks();
+      init_inbounds();
     else
-      InitOutboundLinks();
+      init_outbounds();
 
     // profiling
     _profile_file = conf.router.data_dir / "profiles.dat";
@@ -819,36 +825,51 @@ namespace llarp
     // (relay-only) if we have fetched the relay list from oxend and
     // we are registered and funded, we want to gossip our RC periodically
     auto now_timepoint = std::chrono::system_clock::time_point(now);
-    if (is_snode and appears_funded() and (now_timepoint > next_rc_gossip))
-    {
-      log::info(logcat, "regenerating and gossiping RC");
-      router_contact.resign();
-      save_rc();
-      auto view = router_contact.view();
-      _link_manager.gossip_rc(
-          pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
-      last_rc_gossip = now_timepoint;
 
-      // 1min to 5min before "stale time" is next gossip time
-      auto random_delta =
-          std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
-      next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
-    }
-
-    if (not is_snode)
+    if (is_snode)
     {
-      // (client-only) periodically fetch updated RCs
-      if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
+      if (appears_funded() and now_timepoint > next_rc_gossip)
       {
-        node_db()->fetch_rcs();
-        last_rc_fetch = now_timepoint;
+        log::info(logcat, "regenerating and gossiping RC");
+
+        router_contact.resign();
+        save_rc();
+
+        auto view = router_contact.view();
+
+        _link_manager.gossip_rc(
+            pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
+
+        last_rc_gossip = now_timepoint;
+
+        // 1min to 5min before "stale time" is next gossip time
+        auto random_delta =
+            std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
+
+        next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
-
-      // (client-only) periodically fetch updated RouterID list
-      if (now_timepoint - last_routerid_fetch > ROUTERID_UPDATE_INTERVAL)
+    }
+    else
+    {
+      if (needs_initial_fetch)
       {
-        node_db()->fetch_router_ids();
-        last_routerid_fetch = now_timepoint;
+        node_db()->fetch_initial();
+      }
+      else
+      {
+        // (client-only) periodically fetch updated RCs
+        if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
+        {
+          node_db()->fetch_rcs();
+          last_rc_fetch = now_timepoint;
+        }
+
+        // (client-only) periodically fetch updated RouterID list
+        if (now_timepoint - last_routerid_fetch > ROUTERID_UPDATE_INTERVAL)
+        {
+          node_db()->fetch_router_ids();
+          last_routerid_fetch = now_timepoint;
+        }
       }
     }
 
@@ -1074,8 +1095,11 @@ namespace llarp
     log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_loaded());
 
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
+
     _route_poker->start();
+
     is_running.store(true);
+
     _started_at = now();
 
     if (is_service_node())
@@ -1321,7 +1345,7 @@ namespace llarp
   }
 
   void
-  Router::InitInboundLinks()
+  Router::init_inbounds()
   {
     // auto addrs = _config->links.InboundListenAddrs;
     // if (is_service_node and addrs.empty())
@@ -1370,7 +1394,7 @@ namespace llarp
   }
 
   void
-  Router::InitOutboundLinks()
+  Router::init_outbounds()
   {
     // auto addrs = config()->links.OutboundLinks;
     // if (addrs.empty())

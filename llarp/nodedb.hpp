@@ -22,15 +22,18 @@ namespace llarp
 {
   struct Router;
 
+  inline constexpr size_t MIN_ACTIVE_RIDS{24};
+  inline constexpr int MAX_FETCH_ATTEMPTS{10};
+
   class NodeDB
   {
     std::unordered_map<RouterID, RemoteRC> known_rcs;
 
-    Router& router;
-    const fs::path m_Root;
-    const std::function<void(std::function<void()>)> disk;
+    Router& _router;
+    const fs::path _root;
+    const std::function<void(std::function<void()>)> _disk;
 
-    llarp_time_t m_NextFlushAt;
+    llarp_time_t _next_flush_time;
 
     /// asynchronously remove the files for a set of rcs on disk given their public ident key
     void
@@ -53,7 +56,7 @@ namespace llarp
     std::unordered_set<RouterID> registered_routers;
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
 
-    // Router list for clients
+    // Client list of active RouterID's
     std::unordered_set<RouterID> client_known_routers;
 
     // only ever use to specific edges as path first-hops
@@ -61,9 +64,13 @@ namespace llarp
 
     // rc update info
     RouterID rc_fetch_source;
+
     rc_time last_rc_update_relay_timestamp;
+
     static constexpr auto ROUTER_ID_SOURCE_COUNT = 12;
+
     std::unordered_set<RouterID> router_id_fetch_sources;
+
     std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
     // process responses once all are received (or failed/timed out)
     size_t router_id_response_count{0};
@@ -106,22 +113,39 @@ namespace llarp
       return last_rc_update_times;
     }
 
-    // If we receive a bad set of RCs from our current RC source relay, we consider
-    // that relay to be a bad source of RCs and we randomly choose a new one.
-    //
-    // When using a new RC fetch relay, we first re-fetch the full RC list and, if
-    // that aligns with our RouterID list, we go back to periodic updates from that relay.
-    //
-    // This will respect edge-pinning and attempt to use a relay we already have
-    // a connection with.
+    /// If we receive a bad set of RCs from our current RC source relay, we consider
+    /// that relay to be a bad source of RCs and we randomly choose a new one.
+    ///
+    /// When using a new RC fetch relay, we first re-fetch the full RC list and, if
+    /// that aligns with our RouterID list, we go back to periodic updates from that relay.
+    ///
+    /// This will respect edge-pinning and attempt to use a relay we already have
+    /// a connection with.
     void
     rotate_rc_source();
+
+    /// This function is called during startup and initial fetching. When a lokinet client
+    /// instance performs its initial RC/RID fetching, it may need to randomly select a
+    /// node from its list of stale RC's to relay its requests. If there is a failure in
+    /// mediating these request, the client will randomly select another RC source
+    ///
+    /// Returns:
+    ///   true - a new startup RC source was selected
+    ///   false - a new startup RC source was NOT selected
+    bool
+    rotate_startup_rc_source();
 
     void
     ingest_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
 
     void
-    ingest_router_ids(RouterID source, std::vector<RouterID> ids);
+    ingest_router_ids(RouterID source, std::vector<RouterID> ids = {});
+
+    void
+    fetch_initial();
+
+    bool
+    fetch_initial_rcs(const RouterID& src);
 
     void
     fetch_rcs();
@@ -216,7 +240,7 @@ namespace llarp
     std::optional<RemoteRC>
     GetRandom(Filter visit) const
     {
-      return router.loop()->call_get([visit]() -> std::optional<RemoteRC> {
+      return _router.loop()->call_get([visit]() -> std::optional<RemoteRC> {
         std::vector<const decltype(known_rcs)::value_type*> known_rcs;
         for (const auto& entry : known_rcs)
           known_rcs.push_back(entry);
@@ -238,7 +262,7 @@ namespace llarp
     void
     VisitAll(Visit visit) const
     {
-      router.loop()->call([this, visit]() {
+      _router.loop()->call([this, visit]() {
         for (const auto& item : known_rcs)
           visit(item.second);
       });
@@ -253,7 +277,7 @@ namespace llarp
     void
     RemoveIf(Filter visit)
     {
-      router.loop()->call([this, visit]() {
+      _router.loop()->call([this, visit]() {
         std::unordered_set<RouterID> removed;
         auto itr = known_rcs.begin();
         while (itr != known_rcs.end())
@@ -280,18 +304,12 @@ namespace llarp
 
     /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
     bool
-    put_rc(
-        RemoteRC rc,
-        rc_time now =
-            std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
+    put_rc(RemoteRC rc, rc_time now = time_point_now());
 
     /// if we consider it valid (want_rc),
     /// put this rc into the cache if it is not there or is newer than the one there already
     /// returns true if the rc was inserted
     bool
-    put_rc_if_newer(
-        RemoteRC rc,
-        rc_time now =
-            std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
+    put_rc_if_newer(RemoteRC rc, rc_time now = time_point_now());
   };
 }  // namespace llarp

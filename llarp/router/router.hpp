@@ -37,15 +37,6 @@
 #include <unordered_map>
 #include <vector>
 
-/*
-  TONUKE:
-    - hidden_service_context
-
-  TODO:
-    - router should hold DHT nodes container? in either a class or a map
-    -
-*/
-
 namespace llarp
 {
   /// number of routers to publish to
@@ -127,15 +118,14 @@ namespace llarp
     Profiling _router_profiling;
     fs::path _profile_file;
     LinkManager _link_manager{*this};
+
+    bool needs_initial_fetch{true};
+
     std::chrono::system_clock::time_point last_rc_gossip{
         std::chrono::system_clock::time_point::min()};
-    std::chrono::system_clock::time_point next_rc_gossip{
-        std::chrono::system_clock::time_point::min()};
-
-    std::chrono::system_clock::time_point last_rc_fetch{
-        std::chrono::system_clock::time_point::min()};
-    std::chrono::system_clock::time_point last_routerid_fetch{
-        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point last_routerid_fetch{last_rc_gossip};
 
     // should we be sending padded messages every interval?
     bool send_padding = false;
@@ -369,10 +359,10 @@ namespace llarp
     status_line();
 
     void
-    InitInboundLinks();
+    init_inbounds();
 
     void
-    InitOutboundLinks();
+    init_outbounds();
 
     std::optional<RouterID>
     GetRandomGoodRouter();
