@@ -143,7 +143,7 @@ namespace llarp
     process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
 
     void
-    ingest_rid_fetch_responses(const RemoteRC& source, std::vector<RouterID> ids = {});
+    ingest_rid_fetch_responses(const RouterID& source, std::vector<RouterID> ids = {});
 
     bool
     process_fetched_rids();
@@ -173,7 +173,7 @@ namespace llarp
     post_fetch_rids();
 
     void
-    fetch_rids_result(const RouterID& target, bool error = false);
+    fetch_rids_result();
 
     void
     select_router_id_sources(std::unordered_set<RouterID> excluded = {});
