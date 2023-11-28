@@ -109,7 +109,176 @@ namespace llarp
   {
     bootstraps.clear();  // this function really shouldn't be called more than once, but...
     for (const auto& rc : rcs)
+    {
       bootstraps.emplace(rc.router_id(), rc);
+    }
+  }
+
+  /// Called in normal operation when the relay we fetched RCs from gives either a "bad"
+  /// response or a timeout.  Attempts to switch to a new relay as our RC source, using
+  /// existing connections if possible, and respecting pinned edges.
+  void
+  NodeDB::rotate_rc_source()
+  {
+    auto conn_count = router.link_manager().get_num_connected();
+
+    // This function makes no sense to be called if we have no connections...
+    if (conn_count == 0)
+      throw std::runtime_error{"Called rotate_rc_source with no connections, does not make sense!"};
+
+    // We should not be in this function if client_known_routers isn't populated
+    if (client_known_routers.size() <= 1)
+      throw std::runtime_error{"Cannot rotate RC source without RC source(s) to rotate to!"};
+
+    RemoteRC new_source{};
+    router.link_manager().get_random_connected(new_source);
+    if (conn_count == 1)
+    {
+      // if we only have one connection, it must be current rc fetch source
+      assert(new_source.router_id() == rc_fetch_source);
+
+      if (pinned_edges.size() == 1)
+      {
+        // only one pinned edge set, use it even though it gave unsatisfactory RCs
+        assert(rc_fetch_source == *(pinned_edges.begin()));
+        log::warning(
+            logcat,
+            "Single pinned edge {} gave bad RC response; still using it despite this.",
+            rc_fetch_source);
+        return;
+      }
+
+      // only one connection, choose a new relay to connect to for rc fetching
+
+      RouterID r = rc_fetch_source;
+      while (r == rc_fetch_source)
+      {
+        std::sample(client_known_routers.begin(), client_known_routers.end(), &r, 1, csrng);
+      }
+      rc_fetch_source = std::move(r);
+      return;
+    }
+
+    // choose one of our other existing connections to use as the RC fetch source
+    while (new_source.router_id() == rc_fetch_source)
+    {
+      router.link_manager().get_random_connected(new_source);
+    }
+    rc_fetch_source = new_source.router_id();
+  }
+
+  // TODO: trust model
+  void
+  NodeDB::ingest_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp)
+  {
+    (void)source;
+
+    // TODO: if we don't currently have a "trusted" relay we've been fetching from,
+    // this will be a full list of RCs.  We need to first check if it aligns closely
+    // with our trusted RouterID list, then replace our RCs with the incoming set.
+
+    for (auto& rc : rcs)
+      put_rc_if_newer(std::move(rc), timestamp);
+
+    // TODO: if we have a "trusted" relay we've been fetching from, this will be
+    // an incremental update to the RC list, so *after* insertion we check if the
+    // RCs' RouterIDs closely match our trusted RouterID list.
+
+    last_rc_update_relay_timestamp = timestamp;
+  }
+
+  // TODO: trust model
+  void
+  NodeDB::ingest_router_ids(RouterID source, std::vector<RouterID> ids)
+  {
+    router_id_fetch_responses[source] = std::move(ids);
+
+    router_id_response_count++;
+    if (router_id_response_count == router_id_fetch_sources.size())
+    {
+      // TODO: reconcile all the responses, for now just insert all
+      for (const auto& [rid, responses] : router_id_fetch_responses)
+      {
+        // TODO: empty == failure, handle that case
+        for (const auto& response : responses)
+        {
+          client_known_routers.insert(std::move(response));
+        }
+      }
+      router_id_fetch_in_progress = false;
+    }
+  }
+
+  void
+  NodeDB::fetch_rcs()
+  {
+    std::vector<RouterID> needed;
+
+    const auto now =
+        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    for (const auto& [rid, rc] : known_rcs)
+    {
+      if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
+        needed.push_back(rid);
+    }
+
+    router.link_manager().fetch_rcs(
+        rc_fetch_source, last_rc_update_relay_timestamp, std::move(needed));
+  }
+
+  void
+  NodeDB::fetch_router_ids()
+  {
+    if (router_id_fetch_in_progress)
+      return;
+    if (router_id_fetch_sources.empty())
+      select_router_id_sources();
+
+    // if we *still* don't have fetch sources, we can't exactly fetch...
+    if (router_id_fetch_sources.empty())
+    {
+      log::info(logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
+      return;
+    }
+
+    router_id_fetch_in_progress = true;
+    router_id_response_count = 0;
+    router_id_fetch_responses.clear();
+    for (const auto& rid : router_id_fetch_sources)
+      router.link_manager().fetch_router_ids(rid);
+  }
+
+  void
+  NodeDB::select_router_id_sources(std::unordered_set<RouterID> excluded)
+  {
+    // TODO: bootstrapping should be finished before this is called, so this
+    //       shouldn't happen; need to make sure that's the case.
+    if (client_known_routers.empty())
+      return;
+
+    // keep using any we've been using, but remove `excluded` ones
+    for (const auto& r : excluded)
+      router_id_fetch_sources.erase(r);
+
+    // only know so many routers, so no need to randomize
+    if (client_known_routers.size() <= (ROUTER_ID_SOURCE_COUNT + excluded.size()))
+    {
+      for (const auto& r : client_known_routers)
+      {
+        if (excluded.count(r))
+          continue;
+        router_id_fetch_sources.insert(r);
+      }
+    }
+
+    // select at random until we have chosen enough
+    while (router_id_fetch_sources.size() < ROUTER_ID_SOURCE_COUNT)
+    {
+      RouterID r;
+      std::sample(client_known_routers.begin(), client_known_routers.end(), &r, 1, csrng);
+      if (excluded.count(r) == 0)
+        router_id_fetch_sources.insert(r);
+    }
   }
 
   void
@@ -177,57 +346,56 @@ namespace llarp
     if (m_Root.empty())
       return;
 
-    router.loop()->call([this]() {
-      std::set<fs::path> purge;
+    std::set<fs::path> purge;
 
-      for (const char& ch : skiplist_subdirs)
-      {
-        if (!ch)
-          continue;
-        std::string p;
-        p += ch;
-        fs::path sub = m_Root / p;
+    const auto now = time_now_ms();
 
-        llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-          // skip files that are not suffixed with .signed
-          if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
-            return true;
+    for (const char& ch : skiplist_subdirs)
+    {
+      if (!ch)
+        continue;
+      std::string p;
+      p += ch;
+      fs::path sub = m_Root / p;
 
-          RemoteRC rc{};
-
-          if (not rc.read(f))
-          {
-            // try loading it, purge it if it is junk
-            purge.emplace(f);
-            return true;
-          }
-
-          if (rc.is_expired(time_now_ms()))
-          {
-            // rc expired dont load it and purge it later
-            purge.emplace(f);
-            return true;
-          }
-
-          // validate signature and purge known_rcs with invalid signatures
-          // load ones with valid signatures
-          if (rc.verify())
-            known_rcs.emplace(rc.router_id(), rc);
-          else
-            purge.emplace(f);
-
+      llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
+        // skip files that are not suffixed with .signed
+        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
           return true;
-        });
-      }
 
-      if (not purge.empty())
-      {
-        log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+        RemoteRC rc{};
 
-        for (const auto& fpath : purge)
-          fs::remove(fpath);
-      }
-    });
+        if (not rc.read(f))
+        {
+          // try loading it, purge it if it is junk
+          purge.emplace(f);
+          return true;
+        }
+
+        if (rc.is_expired(now))
+        {
+          // rc expired dont load it and purge it later
+          purge.emplace(f);
+          return true;
+        }
+
+        known_rcs.emplace(rc.router_id(), rc);
+        // TODO: the list of relays should be maintained and stored separately from
+        // the RCs, as we keep older RCs around in case we go offline and need to
+        // bootstrap, but they shouldn't be in the "good relays" list.
+        client_known_routers.insert(rc.router_id());
+
+        return true;
+      });
+    }
+
+    if (not purge.empty())
+    {
+      log::warning(logcat, "removing {} invalid RCs from disk", purge.size());
+
+      for (const auto& fpath : purge)
+        fs::remove(fpath);
+    }
   }
 
   void
@@ -269,21 +437,32 @@ namespace llarp
   }
 
   void
-  NodeDB::remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff)
+  NodeDB::remove_stale_rcs()
   {
-    (void)keep;
-    (void)cutoff;
-    // TODO: handling of "stale" is pending change, removing here for now.
+    auto cutoff_time =
+        std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+    cutoff_time -= router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
+    for (auto itr = known_rcs.begin(); itr != known_rcs.end();)
+    {
+      if (cutoff_time > itr->second.timestamp())
+      {
+        log::info(logcat, "Pruning RC for {}, as it is too old to keep.", itr->first);
+        known_rcs.erase(itr);
+        continue;
+      }
+      itr++;
+    }
   }
 
   bool
-  NodeDB::put_rc(RemoteRC rc)
+  NodeDB::put_rc(RemoteRC rc, rc_time now)
   {
     const auto& rid = rc.router_id();
     if (not want_rc(rid))
       return false;
     known_rcs.erase(rid);
     known_rcs.emplace(rid, std::move(rc));
+    last_rc_update_times[rid] = now;
     return true;
   }
 
@@ -294,12 +473,12 @@ namespace llarp
   }
 
   bool
-  NodeDB::put_rc_if_newer(RemoteRC rc)
+  NodeDB::put_rc_if_newer(RemoteRC rc, rc_time now)
   {
     auto itr = known_rcs.find(rc.router_id());
     if (itr == known_rcs.end() or itr->second.other_is_newer(rc))
     {
-      return put_rc(std::move(rc));
+      return put_rc(std::move(rc), now);
     }
     return false;
   }

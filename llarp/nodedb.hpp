@@ -26,7 +26,7 @@ namespace llarp
   {
     std::unordered_map<RouterID, RemoteRC> known_rcs;
 
-    const Router& router;
+    Router& router;
     const fs::path m_Root;
     const std::function<void(std::function<void()>)> disk;
 
@@ -42,18 +42,32 @@ namespace llarp
 
     std::unordered_map<RouterID, RemoteRC> bootstraps;
 
+    // Router lists for snodes
     // whitelist = active routers
     std::unordered_set<RouterID> router_whitelist;
     // greylist = fully funded, but decommissioned routers
     std::unordered_set<RouterID> router_greylist;
     // greenlist = registered but not fully-staked routers
     std::unordered_set<RouterID> router_greenlist;
-
     // all registered relays (snodes)
     std::unordered_set<RouterID> registered_routers;
+    std::unordered_map<RouterID, rc_time> last_rc_update_times;
+
+    // Router list for clients
+    std::unordered_set<RouterID> client_known_routers;
 
     // only ever use to specific edges as path first-hops
     std::unordered_set<RouterID> pinned_edges;
+
+    // rc update info
+    RouterID rc_fetch_source;
+    rc_time last_rc_update_relay_timestamp;
+    static constexpr auto ROUTER_ID_SOURCE_COUNT = 12;
+    std::unordered_set<RouterID> router_id_fetch_sources;
+    std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
+    // process responses once all are received (or failed/timed out)
+    size_t router_id_response_count{0};
+    bool router_id_fetch_in_progress{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -79,6 +93,44 @@ namespace llarp
     {
       return registered_routers;
     }
+
+    const std::unordered_map<RouterID, RemoteRC>&
+    get_rcs() const
+    {
+      return known_rcs;
+    }
+
+    const std::unordered_map<RouterID, rc_time>&
+    get_last_rc_update_times() const
+    {
+      return last_rc_update_times;
+    }
+
+    // If we receive a bad set of RCs from our current RC source relay, we consider
+    // that relay to be a bad source of RCs and we randomly choose a new one.
+    //
+    // When using a new RC fetch relay, we first re-fetch the full RC list and, if
+    // that aligns with our RouterID list, we go back to periodic updates from that relay.
+    //
+    // This will respect edge-pinning and attempt to use a relay we already have
+    // a connection with.
+    void
+    rotate_rc_source();
+
+    void
+    ingest_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
+
+    void
+    ingest_router_ids(RouterID source, std::vector<RouterID> ids);
+
+    void
+    fetch_rcs();
+
+    void
+    fetch_router_ids();
+
+    void
+    select_router_id_sources(std::unordered_set<RouterID> excluded = {});
 
     void
     set_router_whitelist(
@@ -219,18 +271,27 @@ namespace llarp
       });
     }
 
-    /// remove rcs that are not in keep and have been inserted before cutoff
+    /// remove rcs that are older than we want to keep.  For relays, this is when
+    /// they  become "outdated" (i.e. 12hrs).  Clients will hang on to them until
+    /// they are fully "expired" (i.e. 30 days), as the client may go offline for
+    /// some time and can still try to use those RCs to re-learn the network.
     void
-    remove_stale_rcs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
+    remove_stale_rcs();
 
     /// put (or replace) the RC if we consider it valid (want_rc).  returns true if put.
     bool
-    put_rc(RemoteRC rc);
+    put_rc(
+        RemoteRC rc,
+        rc_time now =
+            std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
 
     /// if we consider it valid (want_rc),
     /// put this rc into the cache if it is not there or is newer than the one there already
     /// returns true if the rc was inserted
     bool
-    put_rc_if_newer(RemoteRC rc);
+    put_rc_if_newer(
+        RemoteRC rc,
+        rc_time now =
+            std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
   };
 }  // namespace llarp
