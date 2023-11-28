@@ -457,6 +457,14 @@ namespace llarp
 
       auto since_time = rc_time{std::chrono::seconds{btdc.require<int64_t>("since")}};
 
+      std::unordered_set<RouterID> explicit_relays;
+
+      // Initial fetch: give me all the RC's
+      if (explicit_ids.empty())
+      {
+        // TODO: this
+      }
+
       if (explicit_ids.size() > (rcs.size() / 4))
       {
         log::info(
@@ -464,8 +472,6 @@ namespace llarp
         m.respond(RCFetchMessage::INVALID_REQUEST, true);
         return;
       }
-
-      std::unordered_set<RouterID> explicit_relays;
 
       for (auto& sv : explicit_ids)
       {
@@ -478,10 +484,10 @@ namespace llarp
         explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
       }
 
-      oxenc::bt_dict_producer resp;
+      oxenc::bt_dict_producer btdp;
 
       {
-        auto rc_bt_list = resp.append_list("rcs");
+        auto rc_sublist = btdp.append_list("rcs");
 
         const auto& last_time = node_db->get_last_rc_update_times();
 
@@ -492,13 +498,13 @@ namespace llarp
         for (const auto& [_, rc] : rcs)
         {
           if (last_time.at(rc.router_id()) > since_time or explicit_relays.count(rc.router_id()))
-            rc_bt_list.append_encoded(rc.view());
+            rc_sublist.append_encoded(rc.view());
         }
       }
 
-      resp.append("time", now.time_since_epoch().count());
+      btdp.append("time", now.time_since_epoch().count());
 
-      m.respond(std::move(resp).str());
+      m.respond(std::move(btdp).str());
     }
     catch (const std::exception& e)
     {
