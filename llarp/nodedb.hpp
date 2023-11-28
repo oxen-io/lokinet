@@ -66,15 +66,19 @@ namespace llarp
     std::unordered_set<RouterID> pinned_edges;
 
     // rc update info: we only set this upon a SUCCESSFUL fetching
-    RouterID rc_fetch_source;
+    RouterID fetch_source;
 
     rc_time last_rc_update_relay_timestamp;
 
-    std::unordered_set<RouterID> router_id_fetch_sources;
+    std::unordered_set<RouterID> rid_sources;
+
+    std::unordered_set<RouterID> fail_sources;
 
     // process responses once all are received (or failed/timed out)
-    std::unordered_map<RouterID, std::vector<RouterID>> router_id_fetch_responses;
-    bool router_id_fetch_in_progress{false};
+    std::unordered_map<RouterID, std::vector<RouterID>> fetch_rid_responses;
+
+    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false};
+    std::atomic<int> fetch_failures{0};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -135,8 +139,8 @@ namespace llarp
     bool
     rotate_startup_rc_source();
 
-    void
-    store_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
+    bool
+    process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
 
     void
     ingest_rid_fetch_responses(const RemoteRC& source, std::vector<RouterID> ids = {});
@@ -144,14 +148,32 @@ namespace llarp
     bool
     process_fetched_rids();
 
+    void
+    fetch_initial();
+
     bool
-    fetch_initial_rcs(const RouterID& src);
+    fetch_initial_rcs(int n_fails = 0);
+
+    bool
+    fetch_initial_router_ids(int n_fails = 0);
 
     void
-    fetch_rcs(int n_fails = 0, bool initial = false);
+    fetch_rcs();
 
     void
-    fetch_router_ids(int n_fails = 0, bool initial = false);
+    fetch_rcs_result(bool error = false);
+
+    void
+    fetch_router_ids();
+
+    void
+    post_fetch_rcs();
+
+    void
+    post_fetch_rids();
+
+    void
+    fetch_rids_result(const RouterID& target, bool error = false);
 
     void
     select_router_id_sources(std::unordered_set<RouterID> excluded = {});

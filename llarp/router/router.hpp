@@ -55,6 +55,8 @@ namespace llarp
 
   struct Router : std::enable_shared_from_this<Router>
   {
+    friend class NodeDB;
+
     explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
     ~Router();
@@ -121,12 +123,6 @@ namespace llarp
 
     bool needs_initial_fetch{true};
 
-    std::chrono::system_clock::time_point last_rc_gossip{
-        std::chrono::system_clock::time_point::min()};
-    std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
-    std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
-    std::chrono::system_clock::time_point last_routerid_fetch{last_rc_gossip};
-
     // should we be sending padded messages every interval?
     bool send_padding = false;
 
@@ -148,6 +144,13 @@ namespace llarp
 
     bool
     insufficient_peers() const;
+
+   protected:
+    std::chrono::system_clock::time_point last_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
 
    public:
     void
