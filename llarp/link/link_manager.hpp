@@ -227,13 +227,17 @@ namespace llarp
     handle_gossip_rc(oxen::quic::message m);
 
     void
-    fetch_rcs(const RouterID& source, rc_time since, const std::vector<RouterID>& explicit_ids);
+    fetch_rcs(
+        const RouterID& source,
+        std::string payload,
+        std::function<void(oxen::quic::message m)> func);
 
     void
     handle_fetch_rcs(oxen::quic::message m);
 
     void
-    fetch_router_ids(const RouterID& source, std::function<void(oxen::quic::message m)> func = nullptr);
+    fetch_router_ids(
+        const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func);
 
     void
     handle_fetch_router_ids(oxen::quic::message m);
