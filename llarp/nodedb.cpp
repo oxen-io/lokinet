@@ -114,23 +114,52 @@ namespace llarp
     }
   }
 
+  /// Called in normal operation when the relay we fetched RCs from gives either a "bad"
+  /// response or a timeout.  Attempts to switch to a new relay as our RC source, using
+  /// existing connections if possible, and respecting pinned edges.
   void
   NodeDB::rotate_rc_source()
   {
     auto conn_count = router.link_manager().get_num_connected();
+
+    // This function makes no sense to be called if we have no connections...
     if (conn_count == 0)
-    {
-      // not connected to any nodes yet, so no sensible source
-      return;
-    }
+      throw std::runtime_error{"Called rotate_rc_source with no connections, does not make sense!"};
+
+    // We should not be in this function if client_known_routers isn't populated
+    if (client_known_routers.size() <= 1)
+      throw std::runtime_error{"Cannot rotate RC source without RC source(s) to rotate to!"};
+
     RemoteRC new_source{};
     router.link_manager().get_random_connected(new_source);
     if (conn_count == 1)
     {
-      // only one connection, use it
-      rc_fetch_source = new_source.router_id();
+      // if we only have one connection, it must be current rc fetch source
+      assert(new_source.router_id() == rc_fetch_source);
+
+      if (pinned_edges.size() == 1)
+      {
+        // only one pinned edge set, use it even though it gave unsatisfactory RCs
+        assert(rc_fetch_source == *(pinned_edges.begin()));
+        log::warning(
+            logcat,
+            "Single pinned edge {} gave bad RC response; still using it despite this.",
+            rc_fetch_source);
+        return;
+      }
+
+      // only one connection, choose a new relay to connect to for rc fetching
+
+      RouterID r = rc_fetch_source;
+      while (r == rc_fetch_source)
+      {
+        std::sample(client_known_routers.begin(), client_known_routers.end(), &r, 1, csrng);
+      }
+      rc_fetch_source = std::move(r);
+      return;
     }
 
+    // choose one of our other existing connections to use as the RC fetch source
     while (new_source.router_id() == rc_fetch_source)
     {
       router.link_manager().get_random_connected(new_source);
