@@ -195,6 +195,12 @@ namespace llarp
     age(llarp_time_t now) const;
 
     bool
+    is_stale(llarp_time_t now) const;
+
+    bool
+    is_outdated(llarp_time_t now) const;
+
+    bool
     other_is_newer(const RouterContact& other) const
     {
       return _timestamp < other._timestamp;

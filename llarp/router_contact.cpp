@@ -249,6 +249,18 @@ namespace llarp
   }
 
   bool
+  RouterContact::is_stale(llarp_time_t now) const
+  {
+    return age(now) >= _timestamp.time_since_epoch() + STALE_AGE;
+  }
+
+  bool
+  RouterContact::is_outdated(llarp_time_t now) const
+  {
+    return age(now) >= _timestamp.time_since_epoch() + OUTDATED_AGE;
+  }
+
+  bool
   RouterContact::expires_within_delta(llarp_time_t now, llarp_time_t dlt) const
   {
     return time_to_expiry(now) <= dlt;
