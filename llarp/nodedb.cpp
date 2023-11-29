@@ -47,13 +47,11 @@ namespace llarp
     }
   }
 
-  constexpr auto FlushInterval = 5min;
-
   NodeDB::NodeDB(fs::path root, std::function<void(std::function<void()>)> diskCaller, Router* r)
       : _router{*r}
       , _root{std::move(root)}
       , _disk(std::move(diskCaller))
-      , _next_flush_time{time_now_ms() + FlushInterval}
+      , _next_flush_time{time_now_ms() + FLUSH_INTERVAL}
   {
     EnsureSkiplist(_root);
   }
@@ -67,7 +65,7 @@ namespace llarp
     if (now > _next_flush_time)
     {
       _router.loop()->call([this]() {
-        _next_flush_time += FlushInterval;
+        _next_flush_time += FLUSH_INTERVAL;
         // make copy of all rcs
         std::vector<RemoteRC> copy;
 
@@ -189,7 +187,6 @@ namespace llarp
     fetch_source = new_source.router_id();
   }
 
-  // TODO: trust model
   bool
   NodeDB::process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp)
   {
@@ -213,7 +210,6 @@ namespace llarp
     fetch_rid_responses[source] = std::move(ids);
   }
 
-  // TODO: trust model
   bool
   NodeDB::process_fetched_rids()
   {
