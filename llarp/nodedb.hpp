@@ -75,7 +75,7 @@ namespace llarp
     // logs the RID's that resulted in an error during RID fetching
     std::unordered_set<RouterID> fail_sources;
     // stores all RID fetch responses for greedy comprehensive processing
-    std::unordered_map<RouterID, std::vector<RouterID>> fetch_rid_responses;
+    std::unordered_map<RouterID, std::unordered_set<RouterID>> fetch_rid_responses;
     // tracks fetch failures from the RC node performing the initial RC fetch and mediating
     // the 12 RID requests to the 12 sources, NOT failures from the 12 sources themselves
     std::atomic<int> fetch_failures{0};
@@ -155,7 +155,7 @@ namespace llarp
     process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
 
     void
-    ingest_rid_fetch_responses(const RouterID& source, std::vector<RouterID> ids = {});
+    ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> ids = {});
 
     bool
     process_fetched_rids();

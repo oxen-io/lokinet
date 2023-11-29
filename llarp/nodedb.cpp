@@ -205,7 +205,7 @@ namespace llarp
   }
 
   void
-  NodeDB::ingest_rid_fetch_responses(const RouterID& source, std::vector<RouterID> ids)
+  NodeDB::ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> ids)
   {
     fetch_rid_responses[source] = std::move(ids);
   }
@@ -383,7 +383,7 @@ namespace llarp
                         "Failed to verify signature for fetch RouterIDs response."};
                 });
 
-                std::vector<RouterID> router_ids;
+                std::unordered_set<RouterID> router_ids;
 
                 for (const auto& s : router_id_strings)
                 {
@@ -395,7 +395,7 @@ namespace llarp
                     return;
                   }
 
-                  router_ids.emplace_back(s.data());
+                  router_ids.emplace(s.data());
                 }
 
                 ingest_rid_fetch_responses(src, std::move(router_ids));
@@ -627,7 +627,7 @@ namespace llarp
                       "Failed to verify signature for fetch RouterIDs response."};
               });
 
-              std::vector<RouterID> router_ids;
+              std::unordered_set<RouterID> router_ids;
 
               for (const auto& s : router_id_strings)
               {
@@ -641,7 +641,7 @@ namespace llarp
                   return;
                 }
 
-                router_ids.emplace_back(s.data());
+                router_ids.emplace(s.data());
               }
 
               ingest_rid_fetch_responses(target, std::move(router_ids));
