@@ -47,6 +47,7 @@ namespace llarp
     get_path_by_pubkey(RouterID pk) const;
 
     std::unordered_map<RouterID, RemoteRC> bootstraps;
+    std::vector<RouterID> bootstrap_order;
 
     // Router lists for snodes
     // whitelist = active routers
@@ -80,12 +81,39 @@ namespace llarp
     std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false};
     std::atomic<int> fetch_failures{0};
 
+    bool _bootstrapped{true};
+
     bool
     want_rc(const RouterID& rid) const;
+
+    /// Check if we need to bootstrap, and set that in motion if so
+    ///
+    /// For clients, this is called after loading the db (on startup)
+    /// after bootstrap success, a client will only call this again if the number
+    /// of non-stale RCs goes below ROUTER_ID_SOURCE_COUNT + 1, as this means we're
+    /// no longer confident we know enough active relays.
+    ///
+    /// For relays, this is called when receiving whitelist updates from oxend.
+    void
+    check_bootstrap_state();
+
+    /// Bootstrap from scratch, i.e. from one of `bootstraps`
+    /// If the index given is zero, shuffle the map so we try them in a random order.
+    /// If the index given is nonzero, advance an iterator that many places and try.
+    /// If the iterator advances to ::end(), we've failed to bootstrap from all of
+    /// them and need to inform Router to shut down.
+    void
+    bootstrap(size_t index = 0);
 
    public:
     void
     set_bootstrap_routers(const std::set<RemoteRC>& rcs);
+
+    bool
+    bootstrapped() const
+    {
+      return _bootstrapped;
+    }
 
     const std::unordered_set<RouterID>&
     whitelist() const

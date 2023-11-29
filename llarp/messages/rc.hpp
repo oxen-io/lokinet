@@ -8,7 +8,7 @@ namespace llarp::RCFetchMessage
       messages::serialize_response({{messages::STATUS_KEY, "Invalid relay ID requested"}});
 
   inline static std::string
-  serialize(std::chrono::system_clock::time_point since, const std::vector<RouterID>& explicit_ids)
+  serialize(std::chrono::system_clock::time_point since, const std::vector<RouterID>& explicit_ids = {})
   {
     oxenc::bt_dict_producer btdp;
 

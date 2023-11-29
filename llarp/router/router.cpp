@@ -794,6 +794,8 @@ namespace llarp
     return status;
   }
 
+  // TODO (Tom): rearrange so anything we want to do regardless of network state
+  // always happens, and the rest only happens if we're bootstrapped.
   void
   Router::Tick()
   {
@@ -1080,9 +1082,6 @@ namespace llarp
       return false;
     }
 
-    log::info(logcat, "Loading NodeDB from disk...");
-    _node_db->load_from_disk();
-
     _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
 
     for (const auto& rc : bootstrap_rc_list)
@@ -1091,6 +1090,9 @@ namespace llarp
       _contacts->rc_nodes()->PutNode(rc);
       log::info(logcat, "Added bootstrap node (rid: {})", rc.router_id());
     }
+
+    log::info(logcat, "Loading NodeDB from disk...");
+    _node_db->load_from_disk();
 
     log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_loaded());
 

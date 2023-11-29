@@ -107,13 +107,112 @@ namespace llarp
   }
 
   void
+  NodeDB::check_bootstrap_state()
+  {
+    size_t active_count{0};
+    size_t stale_count{0};
+
+    auto now = time_now_ms();
+    for (const auto& [rid, rc] : known_rcs)
+    {
+      if (not rc.is_outdated(now))
+        active_count++;
+      else 
+        stale_count++;
+
+      if (active_count > ROUTER_ID_SOURCE_COUNT)
+        break;
+    }
+
+    if (active_count > ROUTER_ID_SOURCE_COUNT)
+    {
+      log::info(logcat, "We appear to be bootstrapped.");
+      _bootstrapped = true;
+      return;
+    }
+    _bootstrapped = false;
+    if (stale_count > ROUTER_ID_SOURCE_COUNT)
+    {
+      log::info(logcat, "We need to soft-bootstrap from stale RCs.");
+      // TODO: initiate soft-bootstrap
+      return;
+    }
+
+    log::info(logcat, "We need to bootstrap from scratch.");
+    bootstrap();
+  }
+
+  void
+  NodeDB::bootstrap(size_t index)
+  {
+    // if we're here, our RC state is unusable; clear it
+    known_rcs.clear();
+    last_rc_update_times.clear();
+
+    // bootstrapping has failed completely, inform Router to exit.
+    if (index >= bootstrap_order.size())
+    {
+      log::error(logcat, "Bootstrapping has failed from all bootstraps; exiting.");
+      _router.Stop();
+      return;
+    }
+    const auto& rid = bootstrap_order[index];
+
+    _router.link_manager().send_control_message(
+        rid,
+        "fetch_rcs",
+        RCFetchMessage::serialize(rc_time::min()),
+        [this, src = rid, index](oxen::quic::message m) {
+        // TODO (Tom): DRY this out with the other invocations of fetch_rcs in here
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+            if (not m)
+            {
+              auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
+              log::info(logcat, "RC fetch to {} returned error: {}", src, reason);
+            }
+            else
+            {
+              auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
+              auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
+
+              std::vector<RemoteRC> rcs;
+
+              while (not btlc.is_finished())
+              {
+                rcs.emplace_back(btlc.consume_dict_consumer());
+              }
+
+              // TODO (Tom): add flag to mark these as coming from a bootstrap, rather
+              // than an arbitrary relay.  A relay will still check that the RCs
+              // match its registered relays lists; a client will just trust them.
+              if (process_fetched_rcs(src, std::move(rcs), timestamp))
+                return;
+            }
+          }
+          catch (const std::exception& e)
+          {
+            log::info(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
+          }
+          // failure, try next bootstrap
+          log::warning(logcat, "Failed to bootstrap from {}, trying next.", src);
+          bootstrap(index + 1);
+        });
+  }
+
+  void
   NodeDB::set_bootstrap_routers(const std::set<RemoteRC>& rcs)
   {
     bootstraps.clear();  // this function really shouldn't be called more than once, but...
     for (const auto& rc : rcs)
     {
       bootstraps.emplace(rc.router_id(), rc);
+      bootstrap_order.push_back(rc.router_id());
     }
+
+    // so we use bootstraps in a random order
+    std::shuffle(bootstrap_order.begin(), bootstrap_order.end(), llarp::csrng);
   }
 
   bool
@@ -806,6 +905,8 @@ namespace llarp
       }
       itr++;
     }
+
+    check_bootstrap_state();
   }
 
   std::optional<RouterID>
@@ -900,6 +1001,12 @@ namespace llarp
       for (const auto& fpath : purge)
         fs::remove(fpath);
     }
+
+    // (client-only) after loading RCs, check if we're in a usable state
+    // relay will do this after set_router_whitelist, as it gets its RouterID list
+    // from oxend and needs that before it can decide.
+    if (not _router.is_service_node())
+      check_bootstrap_state();
   }
 
   void
