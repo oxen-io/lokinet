@@ -160,16 +160,12 @@ namespace llarp
           [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
     });
 
-    for (auto& method : direct_requests)
+    for (auto& [method, callback] : direct_requests)
     {
       s->register_command(
-          std::string{method.first}, [this, func = method.second](oxen::quic::message m) {
+          std::string{method}, [this, func = callback](oxen::quic::message m) {
             _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
-              auto body = msg.body_str();
-              auto respond = [m = std::move(msg)](std::string response) mutable {
-                m.respond(std::move(response), not m);
-              };
-              std::invoke(func, this, body, std::move(respond));
+              std::invoke(func, this, std::move(msg));
             });
           });
     }

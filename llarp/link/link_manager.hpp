@@ -345,13 +345,12 @@ namespace llarp
 
     // these requests are direct, i.e. not over a path;
     // the rest are relay->relay
-    // TODO: new RC fetch endpoint (which will be both client->relay and relay->relay)
     std::unordered_map<
         std::string_view,
-        void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
+        void (LinkManager::*)(oxen::quic::message m)>
         direct_requests = {
-            {"publish_intro"sv, &LinkManager::handle_publish_intro},
-            {"find_intro"sv, &LinkManager::handle_find_intro}};
+            {"fetch_rcs"sv, &LinkManager::handle_fetch_rcs},
+            {"fetch_router_ids"sv, &LinkManager::handle_fetch_router_ids}};
 
     // Path relaying
     void
