@@ -1272,10 +1272,6 @@ namespace llarp
     llarp::sys::service_manager->stopping();
     log::debug(logcat, "stopping exit context");
     _exit_context.Stop();
-    llarp::sys::service_manager->stopping();
-    log::debug(logcat, "final upstream pump");
-    llarp::sys::service_manager->stopping();
-    log::debug(logcat, "final links pump");
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
 

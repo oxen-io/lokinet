@@ -449,26 +449,11 @@ namespace llarp
       oxenc::bt_dict_consumer btdc{m.body()};
 
       btdc.required("explicit_ids");
-      auto explicit_ids = btdc.consume_list<std::vector<std::string>>();
+      auto explicit_ids = btdc.consume_list<std::vector<ustring>>();
 
       auto since_time = rc_time{std::chrono::seconds{btdc.require<int64_t>("since")}};
 
       std::unordered_set<RouterID> explicit_relays;
-
-      // Initial fetch: give me all the RC's
-      if (explicit_ids.empty())
-      {
-        // TODO: this
-      }
-
-      if (explicit_ids.size() > (rcs.size() / 4))
-      {
-        log::info(
-            link_cat, "Remote requested too many relay IDs (greater than 1/4 of what we have).");
-        m.respond(RCFetchMessage::INVALID_REQUEST, true);
-        return;
-      }
-
       for (auto& sv : explicit_ids)
       {
         if (sv.size() != RouterID::SIZE)
@@ -477,7 +462,7 @@ namespace llarp
           return;
         }
 
-        explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
+        explicit_relays.emplace(sv.data());
       }
 
       oxenc::bt_dict_producer btdp;
