@@ -395,6 +395,129 @@ namespace llarp
     });
   }
 
+  bool
+  LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
+  {
+    return ep.have_conn(remote, client_only);
+  }
+
+  bool
+  LinkManager::have_client_connection_to(const RouterID& remote) const
+  {
+    return ep.have_conn(remote, true);
+  }
+
+  void
+  LinkManager::deregister_peer(RouterID remote)
+  {
+    if (auto rv = ep.deregister_peer(remote); rv)
+    {
+      persisting_conns.erase(remote);
+      log::info(logcat, "Peer {} successfully de-registered", remote);
+    }
+    else
+      log::warning(logcat, "Peer {} not found for de-registration!", remote);
+  }
+
+  void
+  LinkManager::stop()
+  {
+    if (is_stopping)
+    {
+      return;
+    }
+
+    LogInfo("stopping links");
+    is_stopping = true;
+
+    quic.reset();
+  }
+
+  void
+  LinkManager::set_conn_persist(const RouterID& remote, llarp_time_t until)
+  {
+    if (is_stopping)
+      return;
+
+    persisting_conns[remote] = std::max(until, persisting_conns[remote]);
+    if (have_client_connection_to(remote))
+    {
+      // mark this as a client so we don't try to back connect
+      clients.Upsert(remote);
+    }
+  }
+
+  size_t
+  LinkManager::get_num_connected(bool clients_only) const
+  {
+    return ep.num_connected(clients_only);
+  }
+
+  size_t
+  LinkManager::get_num_connected_clients() const
+  {
+    return get_num_connected(true);
+  }
+
+  bool
+  LinkManager::get_random_connected(RemoteRC& router) const
+  {
+    return ep.get_random_connection(router);
+  }
+
+  // TODO: this?  perhaps no longer necessary in the same way?
+  void
+  LinkManager::check_persisting_conns(llarp_time_t)
+  {
+    if (is_stopping)
+      return;
+  }
+
+  // TODO: this
+  util::StatusObject
+  LinkManager::extract_status() const
+  {
+    return {};
+  }
+
+  void
+  LinkManager::init()
+  {
+    is_stopping = false;
+    node_db = _router.node_db();
+  }
+
+  void
+  LinkManager::connect_to_random(int num_conns)
+  {
+    std::set<RouterID> exclude;
+    auto remainder = num_conns;
+
+    do
+    {
+      auto filter = [exclude](const auto& rc) -> bool {
+        return exclude.count(rc.router_id()) == 0;
+      };
+
+      if (auto maybe_other = node_db->GetRandom(filter))
+      {
+        exclude.insert(maybe_other->router_id());
+
+        if (not node_db->is_connection_allowed(maybe_other->router_id()))
+          continue;
+
+        connect_to(*maybe_other);
+        --remainder;
+      }
+    } while (remainder > 0);
+  }
+
+  void
+  LinkManager::recv_data_message(oxen::quic::dgram_interface&, bstring)
+  {
+    // TODO: this
+  }
+
   void
   LinkManager::gossip_rc(const RouterID& rc_rid, std::string serialized_rc)
   {
@@ -573,129 +696,6 @@ namespace llarp
     {
       log::info(link_cat, "Error fulfilling fetch RouterIDs request: {}", e.what());
     }
-  }
-
-  bool
-  LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
-  {
-    return ep.have_conn(remote, client_only);
-  }
-
-  bool
-  LinkManager::have_client_connection_to(const RouterID& remote) const
-  {
-    return ep.have_conn(remote, true);
-  }
-
-  void
-  LinkManager::deregister_peer(RouterID remote)
-  {
-    if (auto rv = ep.deregister_peer(remote); rv)
-    {
-      persisting_conns.erase(remote);
-      log::info(logcat, "Peer {} successfully de-registered", remote);
-    }
-    else
-      log::warning(logcat, "Peer {} not found for de-registration!", remote);
-  }
-
-  void
-  LinkManager::stop()
-  {
-    if (is_stopping)
-    {
-      return;
-    }
-
-    LogInfo("stopping links");
-    is_stopping = true;
-
-    quic.reset();
-  }
-
-  void
-  LinkManager::set_conn_persist(const RouterID& remote, llarp_time_t until)
-  {
-    if (is_stopping)
-      return;
-
-    persisting_conns[remote] = std::max(until, persisting_conns[remote]);
-    if (have_client_connection_to(remote))
-    {
-      // mark this as a client so we don't try to back connect
-      clients.Upsert(remote);
-    }
-  }
-
-  size_t
-  LinkManager::get_num_connected(bool clients_only) const
-  {
-    return ep.num_connected(clients_only);
-  }
-
-  size_t
-  LinkManager::get_num_connected_clients() const
-  {
-    return get_num_connected(true);
-  }
-
-  bool
-  LinkManager::get_random_connected(RemoteRC& router) const
-  {
-    return ep.get_random_connection(router);
-  }
-
-  // TODO: this?  perhaps no longer necessary in the same way?
-  void
-  LinkManager::check_persisting_conns(llarp_time_t)
-  {
-    if (is_stopping)
-      return;
-  }
-
-  // TODO: this
-  util::StatusObject
-  LinkManager::extract_status() const
-  {
-    return {};
-  }
-
-  void
-  LinkManager::init()
-  {
-    is_stopping = false;
-    node_db = _router.node_db();
-  }
-
-  void
-  LinkManager::connect_to_random(int num_conns)
-  {
-    std::set<RouterID> exclude;
-    auto remainder = num_conns;
-
-    do
-    {
-      auto filter = [exclude](const auto& rc) -> bool {
-        return exclude.count(rc.router_id()) == 0;
-      };
-
-      if (auto maybe_other = node_db->GetRandom(filter))
-      {
-        exclude.insert(maybe_other->router_id());
-
-        if (not node_db->is_connection_allowed(maybe_other->router_id()))
-          continue;
-
-        connect_to(*maybe_other);
-        --remainder;
-      }
-    } while (remainder > 0);
-  }
-
-  void
-  LinkManager::recv_data_message(oxen::quic::dgram_interface&, bstring)
-  {
-    // TODO: this
   }
 
   void

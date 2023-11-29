@@ -28,15 +28,62 @@ namespace llarp
   inline constexpr size_t MAX_RID_ERRORS{ROUTER_ID_SOURCE_COUNT - MIN_RID_FETCHES};
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
 
+  inline constexpr auto FLUSH_INTERVAL{5min};
+
   class NodeDB
   {
-    std::unordered_map<RouterID, RemoteRC> known_rcs;
-
     Router& _router;
     const fs::path _root;
     const std::function<void(std::function<void()>)> _disk;
 
     llarp_time_t _next_flush_time;
+
+    /******** RouterID/RouterContacts ********/
+
+    /** RouterID mappings
+        Both the following are populated in NodeDB startup with RouterID's stored on disk.
+        - active_client_routers: meant to persist between lokinet sessions, and is only
+          populated during startup and RouterID fetching. This is meant to represent the
+          client instance's perspective of the network and which RouterID's are "active"
+        - known_rcs: populated during startup and when RC's are updated both during gossip
+          and periodic RC fetching
+    */
+    std::unordered_set<RouterID> active_client_routers;
+    std::unordered_map<RouterID, RemoteRC> known_rcs;
+
+    /** RouterID lists
+        - white: active routers
+        - gray: fully funded, but decommissioned routers
+        - green: registered, but not fully-staked routers
+    */
+    std::unordered_set<RouterID> router_whitelist;
+    std::unordered_set<RouterID> router_greylist;
+    std::unordered_set<RouterID> router_greenlist;
+
+    // All registered relays (service nodes)
+    std::unordered_set<RouterID> registered_routers;
+    // timing
+    std::unordered_map<RouterID, rc_time> last_rc_update_times;
+    rc_time last_rc_update_relay_timestamp;
+    // only ever use to specific edges as path first-hops
+    std::unordered_set<RouterID> pinned_edges;
+    // source of "truth" for RC updating. This relay will also mediate requests to the
+    // 12 selected active RID's for RID fetching
+    RouterID fetch_source;
+    // set of 12 randomly selected RID's from the set of active client routers
+    std::unordered_set<RouterID> rid_sources;
+    // logs the RID's that resulted in an error during RID fetching
+    std::unordered_set<RouterID> fail_sources;
+    // stores all RID fetch responses for greedy comprehensive processing
+    std::unordered_map<RouterID, std::vector<RouterID>> fetch_rid_responses;
+    // tracks fetch failures from the RC node performing the initial RC fetch and mediating
+    // the 12 RID requests to the 12 sources, NOT failures from the 12 sources themselves
+    std::atomic<int> fetch_failures{0};
+
+    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false};
+
+    bool
+    want_rc(const RouterID& rid) const;
 
     /// asynchronously remove the files for a set of rcs on disk given their public ident key
     void
@@ -47,41 +94,6 @@ namespace llarp
     get_path_by_pubkey(RouterID pk) const;
 
     std::unordered_map<RouterID, RemoteRC> bootstraps;
-
-    // Router lists for snodes
-    // whitelist = active routers
-    std::unordered_set<RouterID> router_whitelist;
-    // greylist = fully funded, but decommissioned routers
-    std::unordered_set<RouterID> router_greylist;
-    // greenlist = registered but not fully-staked routers
-    std::unordered_set<RouterID> router_greenlist;
-    // all registered relays (snodes)
-    std::unordered_set<RouterID> registered_routers;
-    std::unordered_map<RouterID, rc_time> last_rc_update_times;
-
-    // Client list of active RouterID's
-    std::unordered_set<RouterID> active_client_routers;
-
-    // only ever use to specific edges as path first-hops
-    std::unordered_set<RouterID> pinned_edges;
-
-    // rc update info: we only set this upon a SUCCESSFUL fetching
-    RouterID fetch_source;
-
-    rc_time last_rc_update_relay_timestamp;
-
-    std::unordered_set<RouterID> rid_sources;
-
-    std::unordered_set<RouterID> fail_sources;
-
-    // process responses once all are received (or failed/timed out)
-    std::unordered_map<RouterID, std::vector<RouterID>> fetch_rid_responses;
-
-    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false};
-    std::atomic<int> fetch_failures{0};
-
-    bool
-    want_rc(const RouterID& rid) const;
 
    public:
     void
