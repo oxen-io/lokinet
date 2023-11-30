@@ -25,6 +25,24 @@ namespace llarp
     return true;
   }
 
+  bool
+  BootstrapList::contains(const RouterID& rid)
+  {
+    for (const auto& it : *this)
+    {
+      if (it.router_id() == rid)
+        return true;
+    }
+
+    return false;
+  }
+
+  bool
+  BootstrapList::contains(const RemoteRC& rc)
+  {
+    return count(rc);
+  }
+
   std::string_view
   BootstrapList::bt_encode() const
   {

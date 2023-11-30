@@ -20,7 +20,6 @@ namespace llarp
 {
   namespace messages
   {
-
     inline std::string
     serialize_response(oxenc::bt_dict supplement = {})
     {

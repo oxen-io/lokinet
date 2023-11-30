@@ -2,8 +2,7 @@
 
 #include "crypto/types.hpp"
 #include "dht/kademlia.hpp"
-#include "messages/rc.hpp"
-#include "messages/router_id.hpp"
+#include "messages/fetch.hpp"
 #include "router_contact.hpp"
 #include "util/time.hpp"
 
@@ -105,86 +104,13 @@ namespace llarp
   }
 
   void
-  NodeDB::set_bootstrap_routers(const std::set<RemoteRC>& rcs)
+  NodeDB::set_bootstrap_routers(std::unique_ptr<BootstrapList> from_router)
   {
-    bootstraps.clear();  // this function really shouldn't be called more than once, but...
-    for (const auto& rc : rcs)
-    {
-      bootstraps.emplace(rc.router_id(), rc);
-    }
-  }
+    // TODO: if this needs to be called more than once (ex: drastic failures), then
+    // change this assert to a bootstraps.clear() call
+    assert(_bootstraps->empty());
 
-  bool
-  NodeDB::rotate_startup_rc_source()
-  {
-    if (active_client_routers.size() < 13)
-    {
-      // do something here
-      return false;
-    }
-
-    RouterID temp = fetch_source;
-
-    while (temp == fetch_source)
-      std::sample(active_client_routers.begin(), active_client_routers.end(), &temp, 1, csrng);
-
-    fetch_source = std::move(temp);
-    return true;
-  }
-
-  /// Called in normal operation when the relay we fetched RCs from gives either a "bad"
-  /// response or a timeout.  Attempts to switch to a new relay as our RC source, using
-  /// existing connections if possible, and respecting pinned edges.
-  void
-  NodeDB::rotate_rc_source()
-  {
-    auto conn_count = _router.link_manager().get_num_connected();
-
-    // This function makes no sense to be called if we have no connections...
-    if (conn_count == 0)
-      throw std::runtime_error{"Called rotate_rc_source with no connections, does not make sense!"};
-
-    // We should not be in this function if client_known_routers isn't populated
-    if (active_client_routers.size() <= 1)
-      throw std::runtime_error{"Cannot rotate RC source without RC source(s) to rotate to!"};
-
-    RemoteRC new_source{};
-    _router.link_manager().get_random_connected(new_source);
-
-    if (conn_count == 1)
-    {
-      // if we only have one connection, it must be current rc fetch source
-      assert(new_source.router_id() == fetch_source);
-
-      if (pinned_edges.size() == 1)
-      {
-        // only one pinned edge set, use it even though it gave unsatisfactory RCs
-        assert(fetch_source == *(pinned_edges.begin()));
-        log::warning(
-            logcat,
-            "Single pinned edge {} gave bad RC response; still using it despite this.",
-            fetch_source);
-        return;
-      }
-
-      // only one connection, choose a new relay to connect to for rc fetching
-      RouterID r = fetch_source;
-
-      while (r == fetch_source)
-      {
-        std::sample(active_client_routers.begin(), active_client_routers.end(), &r, 1, csrng);
-      }
-      fetch_source = std::move(r);
-      return;
-    }
-
-    // choose one of our other existing connections to use as the RC fetch source
-    while (new_source.router_id() == fetch_source)
-    {
-      _router.link_manager().get_random_connected(new_source);
-    }
-
-    fetch_source = new_source.router_id();
+    _bootstraps = std::move(from_router);
   }
 
   bool
@@ -207,12 +133,33 @@ namespace llarp
   void
   NodeDB::ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> ids)
   {
+    if (ids.empty())
+      fail_sources.insert(source);
+
     fetch_rid_responses[source] = std::move(ids);
   }
 
+  /** We only call into this function after ensuring two conditions:
+        1) We have received at least 8 of 12 responses from the queried RouterID sources
+        2) Of those reponses, less than 4 were errors of any sorts
+
+      Logically, this function performs the following basic analysis of the returned RIDs.
+  */
   bool
   NodeDB::process_fetched_rids()
   {
+    std::unordered_set<RouterID> union_set;
+
+    for (const auto& [rid, responses] : fetch_rid_responses)
+    {
+      std::merge(
+          union_set.begin(),
+          union_set.end(),
+          responses.begin(),
+          responses.end(),
+          std::inserter(union_set, union_set.begin()));
+    }
+
     for (const auto& [rid, responses] : fetch_rid_responses)
     {
       // TODO: empty == failure, handle that case
@@ -228,256 +175,26 @@ namespace llarp
   void
   NodeDB::fetch_initial()
   {
-    int num_fails = 0;
-
-    // fetch_initial_{rcs,router_ids} return false when num_fails == 0
-    if (fetch_initial_rcs(num_fails))
-    {
-      _router.last_rc_fetch = llarp::time_point_now();
-
-      if (fetch_initial_router_ids(num_fails))
-      {
-        _router.last_rid_fetch = llarp::time_point_now();
-        return;
-      }
-    }
-
-    // failure case
-    // TODO: use bootstrap here!
-  }
-
-  bool
-  NodeDB::fetch_initial_rcs(int n_fails)
-  {
-    int num_failures = n_fails;
-    is_fetching_rcs = true;
-    std::vector<RouterID> needed;
-    const auto now = time_point_now();
-
-    for (const auto& [rid, rc] : known_rcs)
-    {
-      if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
-        needed.push_back(rid);
-    }
-
-    RouterID src =
+    // Set fetch source as random selection of known active client routers
+    fetch_source =
         *std::next(active_client_routers.begin(), csrng() % active_client_routers.size());
 
-    while (num_failures < MAX_FETCH_ATTEMPTS)
-    {
-      auto success = std::make_shared<std::promise<bool>>();
-      auto f = success->get_future();
-
-      _router.link_manager().fetch_rcs(
-          src,
-          RCFetchMessage::serialize(last_rc_update_relay_timestamp, needed),
-          [this, src, p = std::move(success)](oxen::quic::message m) mutable {
-            if (m.timed_out)
-            {
-              log::info(logcat, "RC fetch to {} timed out", src);
-              p->set_value(false);
-              return;
-            }
-            try
-            {
-              oxenc::bt_dict_consumer btdc{m.body()};
-              if (not m)
-              {
-                auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
-                log::info(logcat, "RC fetch to {} returned error: {}", src, reason);
-                p->set_value(false);
-                return;
-              }
-
-              auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
-              auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
-
-              std::vector<RemoteRC> rcs;
-
-              while (not btlc.is_finished())
-              {
-                rcs.emplace_back(btlc.consume_dict_consumer());
-              }
-
-              process_fetched_rcs(src, std::move(rcs), timestamp);
-              p->set_value(true);
-            }
-            catch (const std::exception& e)
-            {
-              log::info(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
-              p->set_value(false);
-              return;
-            }
-          });
-
-      if (f.get())
-      {
-        log::debug(logcat, "Successfully fetched RC's from {}", src);
-        fetch_source = src;
-        return true;
-      }
-
-      ++num_failures;
-      log::debug(
-          logcat,
-          "Unable to fetch RC's from {}; rotating RC source ({}/{} attempts)",
-          src,
-          num_failures,
-          MAX_FETCH_ATTEMPTS);
-
-      src = *std::next(active_client_routers.begin(), csrng() % active_client_routers.size());
-    }
-
-    return false;
-  }
-
-  bool
-  NodeDB::fetch_initial_router_ids(int n_fails)
-  {
-    assert(not is_fetching_rids);
-
-    int num_failures = n_fails;
-    select_router_id_sources();
-
-    is_fetching_rids = true;
-    fetch_rid_responses.clear();
-
-    RouterID src =
-        *std::next(active_client_routers.begin(), csrng() % active_client_routers.size());
-
-    std::unordered_set<RouterID> fails;
-
-    while (num_failures < MAX_FETCH_ATTEMPTS)
-    {
-      auto success = std::make_shared<std::promise<int>>();
-      auto f = success->get_future();
-      fails.clear();
-
-      for (const auto& target : rid_sources)
-      {
-        _router.link_manager().fetch_router_ids(
-            src,
-            RouterIDFetch::serialize(target),
-            [this, src, target, p = std::move(success)](oxen::quic::message m) mutable {
-              if (not m)
-              {
-                log::info(link_cat, "RID fetch from {} via {} timed out", src, target);
-
-                ingest_rid_fetch_responses(src);
-                p->set_value(-1);
-                return;
-              }
-
-              try
-              {
-                oxenc::bt_dict_consumer btdc{m.body()};
-
-                btdc.required("routers");
-                auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
-
-                btdc.require_signature("signature", [&src](ustring_view msg, ustring_view sig) {
-                  if (sig.size() != 64)
-                    throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                  if (not crypto::verify(src, msg, sig))
-                    throw std::runtime_error{
-                        "Failed to verify signature for fetch RouterIDs response."};
-                });
-
-                std::unordered_set<RouterID> router_ids;
-
-                for (const auto& s : router_id_strings)
-                {
-                  if (s.size() != RouterID::SIZE)
-                  {
-                    log::warning(
-                        link_cat, "RID fetch from {} via {} returned bad RouterID", target, src);
-                    p->set_value(0);
-                    return;
-                  }
-
-                  router_ids.emplace(s.data());
-                }
-
-                ingest_rid_fetch_responses(src, std::move(router_ids));
-                return;
-              }
-              catch (const std::exception& e)
-              {
-                log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
-                p->set_value(0);
-              }
-
-              ingest_rid_fetch_responses(src);  // empty response == failure
-            });
-
-        switch (f.get())
-        {
-          case 1:
-            log::debug(logcat, "Successfully fetched RID's from {} via {}", target, src);
-            continue;
-          case 0:
-            // RC node relayed our fetch routerID request, but the request failed at the target
-            log::debug(logcat, "Unsuccessfully fetched RID's from {} via {}", target, src);
-            fails.insert(target);
-            continue;
-          default:
-            // RC node failed to relay our routerID request; re-select RC node and continue
-            log::debug(logcat, "RC source {} failed to mediate RID fetching from {}", src, target);
-            src = *std::next(active_client_routers.begin(), csrng() % active_client_routers.size());
-            ++num_failures;
-            fetch_rcs();
-            continue;
-        }
-      }
-
-      auto n_fails = fails.size();
-
-      if (n_fails <= MAX_RID_ERRORS)
-      {
-        log::debug(
-            logcat,
-            "RID fetching was successful ({}/{} acceptable errors)",
-            fails.size(),
-            MAX_RID_ERRORS);
-        fetch_source = src;
-
-        // this is where the trust model will do verification based on the similarity of the sets
-        if (process_fetched_rids())
-        {
-          log::debug(logcat, "Accumulated RID's accepted by trust model");
-          return true;
-        }
-
-        log::debug(
-            logcat, "Accumulated RID's rejected by trust model, reselecting all RID sources...");
-        select_router_id_sources(rid_sources);
-        ++num_failures;
-        continue;
-      }
-
-      // we had 4 or more failed requests, so we will need to rotate our rid sources
-      log::debug(
-          logcat, "RID fetching found {} failures; reselecting failed RID sources...", n_fails);
-      ++num_failures;
-      select_router_id_sources(fails);
-    }
-
-    return false;
+    fetch_rcs(true);
   }
 
   void
-  NodeDB::fetch_rcs()
+  NodeDB::fetch_rcs(bool initial)
   {
     auto& num_failures = fetch_failures;
 
     // base case; this function is called recursively
     if (num_failures > MAX_FETCH_ATTEMPTS)
     {
-      fetch_rcs_result(true);
+      fetch_rcs_result(initial, true);
       return;
     }
 
-    is_fetching_rcs = true;
+    is_fetching_rcs = true;  // TOTHINK: do these booleans do anything?
 
     std::vector<RouterID> needed;
     const auto now = time_point_now();
@@ -493,21 +210,22 @@ namespace llarp
     _router.link_manager().fetch_rcs(
         src,
         RCFetchMessage::serialize(last_rc_update_relay_timestamp, needed),
-        [this, src](oxen::quic::message m) mutable {
+        [this, src, initial](oxen::quic::message m) mutable {
           if (m.timed_out)
           {
             log::info(logcat, "RC fetch to {} timed out", src);
-            fetch_rcs_result(true);
+            fetch_rcs_result(initial, true);
             return;
           }
           try
           {
             oxenc::bt_dict_consumer btdc{m.body()};
+
             if (not m)
             {
               auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
               log::info(logcat, "RC fetch to {} returned error: {}", src, reason);
-              fetch_rcs_result(true);
+              fetch_rcs_result(initial, true);
               return;
             }
 
@@ -517,75 +235,34 @@ namespace llarp
             std::vector<RemoteRC> rcs;
 
             while (not btlc.is_finished())
-            {
               rcs.emplace_back(btlc.consume_dict_consumer());
-            }
 
             // if process_fetched_rcs returns false, then the trust model rejected the fetched RC's
-            fetch_rcs_result(not process_fetched_rcs(src, std::move(rcs), timestamp));
+            fetch_rcs_result(initial, not process_fetched_rcs(src, std::move(rcs), timestamp));
           }
           catch (const std::exception& e)
           {
             log::info(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
-            fetch_rcs_result(true);
+            fetch_rcs_result(initial, true);
             return;
           }
         });
   }
 
   void
-  NodeDB::fetch_rcs_result(bool error)
-  {
-    if (error)
-    {
-      ++fetch_failures;
-
-      if (fetch_failures > MAX_FETCH_ATTEMPTS)
-      {
-        log::info(
-            logcat,
-            "Failed {} attempts to fetch RC's from {}; reverting to bootstrap...",
-            MAX_FETCH_ATTEMPTS,
-            fetch_source);
-        // TODO: revert to bootstrap
-        // set rc_fetch_source to bootstrap and try again!
-      }
-      else
-        // find new non-bootstrap RC fetch source and try again buddy
-        fetch_source = std::next(known_rcs.begin(), csrng() % known_rcs.size())->first;
-
-      fetch_rcs();
-    }
-    else
-    {
-      log::debug(logcat, "Successfully fetched RC's from {}", fetch_source);
-      post_fetch_rcs();
-    }
-  }
-
-  void
-  NodeDB::post_fetch_rcs()
-  {
-    is_fetching_rcs = false;
-    _router.last_rc_fetch = llarp::time_point_now();
-  }
-
-  // TODO: differentiate between errors from the relay node vs errors from the target nodes
-  void
-  NodeDB::fetch_router_ids()
+  NodeDB::fetch_rids(bool initial)
   {
     // base case; this function is called recursively
     if (fetch_failures > MAX_FETCH_ATTEMPTS)
     {
-      fetch_rids_result();
+      fetch_rids_result(initial);
       return;
     }
 
     if (rid_sources.empty())
       select_router_id_sources();
 
-    // if we *still* don't have fetch sources, we can't exactly fetch...
-    if (rid_sources.empty())
+    if (not initial and rid_sources.empty())
     {
       log::error(logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
       return;
@@ -600,15 +277,13 @@ namespace llarp
     {
       _router.link_manager().fetch_router_ids(
           src,
-          RouterIDFetch::serialize(target),
-          [this, src, target](oxen::quic::message m) mutable {
-            if (m.timed_out)
+          FetchRIDMessage::serialize(target),
+          [this, src, target, initial](oxen::quic::message m) mutable {
+            if (not m)
             {
               log::info(link_cat, "RID fetch from {} via {} timed out", src, target);
-
-              ++fetch_failures;
-              ingest_rid_fetch_responses(src);
-              fetch_rids_result();
+              ingest_rid_fetch_responses(target);
+              fetch_rids_result(initial);
               return;
             }
 
@@ -636,8 +311,7 @@ namespace llarp
                   log::warning(
                       link_cat, "RID fetch from {} via {} returned bad RouterID", target, src);
                   ingest_rid_fetch_responses(target);
-                  fail_sources.insert(target);
-                  fetch_rids_result();
+                  fetch_rids_result(initial);
                   return;
                 }
 
@@ -645,22 +319,54 @@ namespace llarp
               }
 
               ingest_rid_fetch_responses(target, std::move(router_ids));
-              fetch_rids_result();  // success
+              fetch_rids_result(initial);  // success
               return;
             }
             catch (const std::exception& e)
             {
               log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
               ingest_rid_fetch_responses(target);
-              fail_sources.insert(target);
-              fetch_rids_result();
+              fetch_rids_result(initial);
             }
           });
     }
   }
 
   void
-  NodeDB::fetch_rids_result()
+  NodeDB::fetch_rcs_result(bool initial, bool error)
+  {
+    if (error)
+    {
+      ++fetch_failures;
+
+      if (fetch_failures > MAX_FETCH_ATTEMPTS)
+      {
+        log::info(
+            logcat,
+            "Failed {} attempts to fetch RC's from {}; reverting to bootstrap...",
+            MAX_FETCH_ATTEMPTS,
+            fetch_source);
+
+        fallback_to_bootstrap();
+        return;
+      }
+
+      // find new non-bootstrap RC fetch source and try again buddy
+      fetch_source = (initial)
+          ? *std::next(active_client_routers.begin(), csrng() % active_client_routers.size())
+          : std::next(known_rcs.begin(), csrng() % known_rcs.size())->first;
+
+      fetch_rcs(initial);
+    }
+    else
+    {
+      log::debug(logcat, "Successfully fetched RC's from {}", fetch_source);
+      post_fetch_rcs(initial);
+    }
+  }
+
+  void
+  NodeDB::fetch_rids_result(bool initial)
   {
     if (fetch_failures > MAX_FETCH_ATTEMPTS)
     {
@@ -670,17 +376,15 @@ namespace llarp
           MAX_FETCH_ATTEMPTS,
           fetch_source);
 
-      // TODO: revert rc_source to bootstrap, start over
-
-      fetch_router_ids();
+      fallback_to_bootstrap();
       return;
     }
 
     auto n_responses = fetch_rid_responses.size();
 
-    if (n_responses < MIN_RID_FETCHES)
+    if (n_responses < ROUTER_ID_SOURCE_COUNT)
     {
-      log::debug(logcat, "Received {}/{} fetch RID requests", n_responses, 12);
+      log::debug(logcat, "Received {}/{} fetch RID requests", n_responses, ROUTER_ID_SOURCE_COUNT);
       return;
     }
 
@@ -695,7 +399,7 @@ namespace llarp
       if (process_fetched_rids())
       {
         log::debug(logcat, "Accumulated RID's accepted by trust model");
-        post_fetch_rids();
+        post_fetch_rids(initial);
         return;
       }
 
@@ -713,17 +417,100 @@ namespace llarp
       select_router_id_sources(fail_sources);
     }
 
-    fetch_router_ids();
+    fetch_rids(true);
   }
 
   void
-  NodeDB::post_fetch_rids()
+  NodeDB::post_fetch_rcs(bool initial)
+  {
+    is_fetching_rcs = false;
+    _router.last_rc_fetch = llarp::time_point_now();
+
+    if (initial)
+      fetch_rids(initial);
+  }
+
+  void
+  NodeDB::post_fetch_rids(bool initial)
   {
     is_fetching_rids = false;
     fetch_rid_responses.clear();
     fail_sources.clear();
     fetch_failures = 0;
     _router.last_rid_fetch = llarp::time_point_now();
+
+    if (initial)
+      _router.initial_fetch_completed();
+  }
+
+  void
+  NodeDB::fallback_to_bootstrap()
+  {
+    if (bootstrap_failures >= MAX_BOOTSTRAP_FETCH_ATTEMPTS)
+    {
+      log::info(logcat, "Current bootstrap failed... cycling to next bootstrap...");
+
+      bootstrap_failures = 0;
+      auto [rc, is_front] = _bootstraps->next();
+
+      // Base case: if we have returned to the front of the bootstrap list, we're in a
+      // bad spot
+      if (using_bootstrap_fallback && is_front)
+      {
+        auto err = fmt::format("ERROR: ALL BOOTSTRAPS ARE BAD");
+        log::error(logcat, err);
+        throw std::runtime_error{err};
+      }
+
+      using_bootstrap_fallback = true;
+      fetch_source = rc.router_id();
+    }
+
+    _router.link_manager().fetch_bootstrap_rcs(
+        fetch_source,
+        BootstrapFetchMessage::serialize(BOOTSTRAP_SOURCE_COUNT),
+        [this](oxen::quic::message m) mutable {
+          if (not m)
+          {
+            ++bootstrap_failures;
+            fallback_to_bootstrap();
+            return;
+          }
+
+          std::unordered_set<RouterID> rids;
+
+          try
+          {
+            oxenc::bt_dict_consumer btdc{m.body()};
+
+            {
+              auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
+
+              while (not btlc.is_finished())
+              {
+                auto rc = RemoteRC{btlc.consume_dict_consumer()};
+                rids.emplace(rc.router_id());
+              }
+            }
+          }
+          catch (const std::exception& e)
+          {
+            log::info(
+                logcat,
+                "Failed to parse BootstrapRC fetch response from {}: {}",
+                fetch_source,
+                e.what());
+            ++bootstrap_failures;
+            fallback_to_bootstrap();
+            return;
+          }
+
+          rid_sources.swap(rids);
+          // if this result is bad, we won't try this bootstrap again
+          bootstrap_failures = MAX_BOOTSTRAP_FETCH_ATTEMPTS;
+          using_bootstrap_fallback = false;
+          fetch_initial();
+        });
   }
 
   void
@@ -809,7 +596,8 @@ namespace llarp
   bool
   NodeDB::is_connection_allowed(const RouterID& remote) const
   {
-    if (pinned_edges.size() && pinned_edges.count(remote) == 0 && bootstraps.count(remote) == 0)
+    if (_pinned_edges.size() && _pinned_edges.count(remote) == 0
+        && not _bootstraps->contains(remote))
     {
       return false;
     }
@@ -823,7 +611,7 @@ namespace llarp
   bool
   NodeDB::is_first_hop_allowed(const RouterID& remote) const
   {
-    if (pinned_edges.size() && pinned_edges.count(remote) == 0)
+    if (_pinned_edges.size() && _pinned_edges.count(remote) == 0)
       return false;
     return true;
   }

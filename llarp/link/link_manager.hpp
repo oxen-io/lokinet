@@ -242,6 +242,15 @@ namespace llarp
     void
     handle_fetch_router_ids(oxen::quic::message m);
 
+    void
+    fetch_bootstrap_rcs(
+        const RouterID& source,
+        std::string payload,
+        std::function<void(oxen::quic::message m)> func);
+
+    void
+    handle_fetch_bootstrap_rcs(oxen::quic::message m);
+
     bool
     have_connection_to(const RouterID& remote, bool client_only = false) const;
 

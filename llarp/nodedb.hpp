@@ -27,6 +27,8 @@ namespace llarp
   inline constexpr size_t MIN_ACTIVE_RIDS{24};
   inline constexpr size_t MAX_RID_ERRORS{ROUTER_ID_SOURCE_COUNT - MIN_RID_FETCHES};
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
+  inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{3};
+  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
 
   inline constexpr auto FLUSH_INTERVAL{5min};
 
@@ -66,21 +68,27 @@ namespace llarp
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
     rc_time last_rc_update_relay_timestamp;
     // only ever use to specific edges as path first-hops
-    std::unordered_set<RouterID> pinned_edges;
+    std::unordered_set<RouterID> _pinned_edges;
     // source of "truth" for RC updating. This relay will also mediate requests to the
     // 12 selected active RID's for RID fetching
     RouterID fetch_source;
-    // set of 12 randomly selected RID's from the set of active client routers
-    std::unordered_set<RouterID> rid_sources;
+    // set of 12 randomly selected RID's from the client's set of routers
+    std::unordered_set<RouterID> rid_sources{};
     // logs the RID's that resulted in an error during RID fetching
-    std::unordered_set<RouterID> fail_sources;
+    std::unordered_set<RouterID> fail_sources{};
     // stores all RID fetch responses for greedy comprehensive processing
     std::unordered_map<RouterID, std::unordered_set<RouterID>> fetch_rid_responses;
-    // tracks fetch failures from the RC node performing the initial RC fetch and mediating
-    // the 12 RID requests to the 12 sources, NOT failures from the 12 sources themselves
-    std::atomic<int> fetch_failures{0};
+    /** Failure counters:
+        - fetch_failures: tracks errors fetching RC's from the RC node and requesting RID's
+          from the 12 RID sources. Errors in the individual RID sets are NOT counted towards
+          this, their performance as a group is evaluated wholistically
+        - bootstrap_failures: tracks errors fetching both RC's from bootstrasps and RID requests
+          they mediate. This is a different counter as we only bootstrap in problematic cases
+    */
+    std::atomic<int> fetch_failures{0}, bootstrap_failures{0};
 
-    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false};
+    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false},
+        using_bootstrap_fallback{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -93,63 +101,14 @@ namespace llarp
     fs::path
     get_path_by_pubkey(RouterID pk) const;
 
-    std::unordered_map<RouterID, RemoteRC> bootstraps;
+    std::unique_ptr<BootstrapList> _bootstraps;
 
    public:
-    void
-    set_bootstrap_routers(const std::set<RemoteRC>& rcs);
+    explicit NodeDB(
+        fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
 
-    const std::unordered_set<RouterID>&
-    whitelist() const
-    {
-      return router_whitelist;
-    }
-
-    const std::unordered_set<RouterID>&
-    greylist() const
-    {
-      return router_greylist;
-    }
-
-    const std::unordered_set<RouterID>&
-    get_registered_routers() const
-    {
-      return registered_routers;
-    }
-
-    const std::unordered_map<RouterID, RemoteRC>&
-    get_rcs() const
-    {
-      return known_rcs;
-    }
-
-    const std::unordered_map<RouterID, rc_time>&
-    get_last_rc_update_times() const
-    {
-      return last_rc_update_times;
-    }
-
-    /// If we receive a bad set of RCs from our current RC source relay, we consider
-    /// that relay to be a bad source of RCs and we randomly choose a new one.
-    ///
-    /// When using a new RC fetch relay, we first re-fetch the full RC list and, if
-    /// that aligns with our RouterID list, we go back to periodic updates from that relay.
-    ///
-    /// This will respect edge-pinning and attempt to use a relay we already have
-    /// a connection with.
-    void
-    rotate_rc_source();
-
-    /// This function is called during startup and initial fetching. When a lokinet client
-    /// instance performs its initial RC/RID fetching, it may need to randomly select a
-    /// node from its list of stale RC's to relay its requests. If there is a failure in
-    /// mediating these request, the client will randomly select another RC source
-    ///
-    /// Returns:
-    ///   true - a new startup RC source was selected
-    ///   false - a new startup RC source was NOT selected
-    bool
-    rotate_startup_rc_source();
+    /// in memory nodedb
+    NodeDB();
 
     bool
     process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
@@ -163,32 +122,50 @@ namespace llarp
     void
     fetch_initial();
 
-    bool
-    fetch_initial_rcs(int n_fails = 0);
-
-    bool
-    fetch_initial_router_ids(int n_fails = 0);
-
+    //  RouterContact fetching
     void
-    fetch_rcs();
-
+    fetch_rcs(bool initial = false);
     void
-    fetch_rcs_result(bool error = false);
-
+    post_fetch_rcs(bool initial = false);
     void
-    fetch_router_ids();
+    fetch_rcs_result(bool initial = false, bool error = false);
 
+    //  RouterID fetching
     void
-    post_fetch_rcs();
+    fetch_rids(bool initial = false);
+    void
+    post_fetch_rids(bool initial = false);
+    void
+    fetch_rids_result(bool initial = false);
 
+    //  Bootstrap fallback
     void
-    post_fetch_rids();
-
-    void
-    fetch_rids_result();
+    fallback_to_bootstrap();
 
     void
     select_router_id_sources(std::unordered_set<RouterID> excluded = {});
+
+    // /// If we receive a bad set of RCs from our current RC source relay, we consider
+    // /// that relay to be a bad source of RCs and we randomly choose a new one.
+    // ///
+    // /// When using a new RC fetch relay, we first re-fetch the full RC list and, if
+    // /// that aligns with our RouterID list, we go back to periodic updates from that relay.
+    // ///
+    // /// This will respect edge-pinning and attempt to use a relay we already have
+    // /// a connection with.
+    // void
+    // rotate_rc_source();
+
+    // /// This function is called during startup and initial fetching. When a lokinet client
+    // /// instance performs its initial RC/RID fetching, it may need to randomly select a
+    // /// node from its list of stale RC's to relay its requests. If there is a failure in
+    // /// mediating these request, the client will randomly select another RC source
+    // ///
+    // /// Returns:
+    // ///   true - a new startup RC source was selected
+    // ///   false - a new startup RC source was NOT selected
+    // bool
+    // rotate_startup_rc_source();
 
     void
     set_router_whitelist(
@@ -226,17 +203,50 @@ namespace llarp
     bool
     is_first_hop_allowed(const RouterID& remote) const;
 
-    const std::unordered_set<RouterID>&
-    get_pinned_edges() const
+    std::unordered_set<RouterID>&
+    pinned_edges()
     {
-      return pinned_edges;
+      return _pinned_edges;
     }
 
-    explicit NodeDB(
-        fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
+    std::unique_ptr<BootstrapList>&
+    bootstrap_list()
+    {
+      return _bootstraps;
+    }
 
-    /// in memory nodedb
-    NodeDB();
+    void
+    set_bootstrap_routers(std::unique_ptr<BootstrapList> from_router);
+
+    const std::unordered_set<RouterID>&
+    whitelist() const
+    {
+      return router_whitelist;
+    }
+
+    const std::unordered_set<RouterID>&
+    greylist() const
+    {
+      return router_greylist;
+    }
+
+    const std::unordered_set<RouterID>&
+    get_registered_routers() const
+    {
+      return registered_routers;
+    }
+
+    const std::unordered_map<RouterID, RemoteRC>&
+    get_rcs() const
+    {
+      return known_rcs;
+    }
+
+    const std::unordered_map<RouterID, rc_time>&
+    get_last_rc_update_times() const
+    {
+      return last_rc_update_times;
+    }
 
     /// load all known_rcs from disk syncrhonously
     void

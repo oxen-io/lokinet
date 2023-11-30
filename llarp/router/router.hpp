@@ -63,8 +63,6 @@ namespace llarp
 
    private:
     std::shared_ptr<RoutePoker> _route_poker;
-    /// bootstrap RCs
-    BootstrapList bootstrap_rc_list;
     std::chrono::steady_clock::time_point _next_explore_at;
     llarp_time_t last_pump = 0s;
     // transient iwp encryption key
@@ -121,8 +119,6 @@ namespace llarp
     fs::path _profile_file;
     LinkManager _link_manager{*this};
 
-    bool needs_initial_fetch{true};
-
     // should we be sending padded messages every interval?
     bool send_padding = false;
 
@@ -146,6 +142,8 @@ namespace llarp
     insufficient_peers() const;
 
    protected:
+    bool _needs_initial_fetch{true};
+
     std::chrono::system_clock::time_point last_rc_gossip{
         std::chrono::system_clock::time_point::min()};
     std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
@@ -153,6 +151,18 @@ namespace llarp
     std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
 
    public:
+    bool
+    needs_initial_fetch() const
+    {
+      return _needs_initial_fetch;
+    }
+
+    void
+    initial_fetch_completed()
+    {
+      _needs_initial_fetch = false;
+    }
+
     void
     for_each_connection(std::function<void(link::Connection&)> func);
 
