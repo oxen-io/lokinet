@@ -178,7 +178,7 @@ lokinet_add_library(lokinet-nodedb
 set(BOOTSTRAP_FALLBACKS)
 foreach(bs IN ITEMS MAINNET TESTNET)
   if(BOOTSTRAP_FALLBACK_${bs})
-    message(STATUS "Building with ${bs} fallback boostrap path \"${BOOTSTRAP_FALLBACK_${bs}}\"")
+    message(STATUS "Building with ${bs} fallback bootstrap path \"${BOOTSTRAP_FALLBACK_${bs}}\"")
     file(READ "${BOOTSTRAP_FALLBACK_${bs}}" bs_data HEX)
     if(bs STREQUAL TESTNET)
       set(network "gamma")

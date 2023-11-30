@@ -464,19 +464,21 @@ namespace llarp
   bool
   Router::appears_decommed() const
   {
-    return have_snode_whitelist() and node_db()->greylist().count(pubkey());
+    return _is_service_node and have_snode_whitelist() and node_db()->greylist().count(pubkey());
   }
 
   bool
   Router::appears_funded() const
   {
-    return have_snode_whitelist() and node_db()->is_connection_allowed(pubkey());
+    return _is_service_node and have_snode_whitelist()
+        and node_db()->is_connection_allowed(pubkey());
   }
 
   bool
   Router::appears_registered() const
   {
-    return have_snode_whitelist() and node_db()->get_registered_routers().count(pubkey());
+    return _is_service_node and have_snode_whitelist()
+        and node_db()->get_registered_routers().count(pubkey());
   }
 
   bool
@@ -573,8 +575,6 @@ namespace llarp
     auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys
-    std::unordered_set<RouterID> strictConnectPubkeys;
-
     if (not networkConfig.strict_connect.empty())
     {
       const auto& val = networkConfig.strict_connect;
@@ -586,7 +586,7 @@ namespace llarp
         throw std::runtime_error(
             "Must specify more than one strict-connect router if using strict-connect");
 
-      strictConnectPubkeys.insert(val.begin(), val.end());
+      _node_db->pinned_edges().insert(val.begin(), val.end());
       log::debug(logcat, "{} strict-connect routers configured", val.size());
     }
 
@@ -599,29 +599,31 @@ namespace llarp
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
     // TODO: use constant
     fs::path defaultBootstrapFile = conf.router.data_dir / "bootstrap.signed";
+
     if (configRouters.empty() and conf.bootstrap.routers.empty())
     {
       if (fs::exists(defaultBootstrapFile))
         configRouters.push_back(defaultBootstrapFile);
     }
 
-    bootstrap_rc_list.clear();
+    auto _bootstrap_rc_list = std::make_unique<BootstrapList>();
+
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
-      bootstrap_rc_list.read_from_file(router);
+      _bootstrap_rc_list->read_from_file(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
     {
-      bootstrap_rc_list.emplace(rc);
+      _bootstrap_rc_list->emplace(rc);
     }
 
-    if (bootstrap_rc_list.empty() and not conf.bootstrap.seednode)
+    if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
     {
       auto fallbacks = llarp::load_bootstrap_fallbacks();
 
-      if (bootstrap_rc_list.empty() and not conf.bootstrap.seednode)
+      if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
       {
         // empty after trying fallback, if set
         log::error(
@@ -636,10 +638,10 @@ namespace llarp
 
     // in case someone has an old bootstrap file and is trying to use a bootstrap
     // that no longer exists
-    for (auto it = bootstrap_rc_list.begin(); it != bootstrap_rc_list.end();)
+    for (auto it = _bootstrap_rc_list->begin(); it != _bootstrap_rc_list->end();)
     {
       if (it->is_obsolete_bootstrap())
-        log::warning(logcat, "ignoring obsolete boostrap RC: {}", it->router_id());
+        log::warning(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
       else if (not it->verify())
         log::warning(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
       else
@@ -649,15 +651,15 @@ namespace llarp
       }
 
       // we are in one of the above error cases that we warned about:
-      it = bootstrap_rc_list.erase(it);
+      it = _bootstrap_rc_list->erase(it);
     }
 
-    node_db()->set_bootstrap_routers(bootstrap_rc_list);
+    node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
 
     if (conf.bootstrap.seednode)
       LogInfo("we are a seed node");
     else
-      LogInfo("Loaded ", bootstrap_rc_list.size(), " bootstrap routers");
+      LogInfo("Loaded ", _bootstrap_rc_list->size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _link_manager.init();
@@ -703,9 +705,10 @@ namespace llarp
   bool
   Router::IsBootstrapNode(const RouterID r) const
   {
+    const auto& b = _node_db->bootstrap_list();
     return std::count_if(
-               bootstrap_rc_list.begin(),
-               bootstrap_rc_list.end(),
+               b->begin(),
+               b->end(),
                [r](const RemoteRC& rc) -> bool { return rc.router_id() == r; })
         > 0;
   }
@@ -725,7 +728,7 @@ namespace llarp
         logcat,
         "{} RCs loaded with {} bootstrap peers and {} router connections!",
         node_db()->num_loaded(),
-        bootstrap_rc_list.size(),
+        _node_db->bootstrap_list()->size(),
         NumberOfConnectedRouters());
 
     if (is_service_node())
@@ -851,7 +854,7 @@ namespace llarp
     }
     else
     {
-      if (needs_initial_fetch)
+      if (_needs_initial_fetch)
       {
         node_db()->fetch_initial();
       }
@@ -861,14 +864,12 @@ namespace llarp
         if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
         {
           node_db()->fetch_rcs();
-          last_rc_fetch = now_timepoint;
         }
 
         // (client-only) periodically fetch updated RouterID list
         if (now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
         {
-          node_db()->fetch_router_ids();
-          last_rid_fetch = now_timepoint;
+          node_db()->fetch_rids();
         }
       }
     }
@@ -946,8 +947,9 @@ namespace llarp
     size_t connected = NumberOfConnectedRouters();
 
     size_t connectToNum = _link_manager.min_connected_routers;
-    const auto& pinned_edges = _node_db->get_pinned_edges();
+    const auto& pinned_edges = _node_db->pinned_edges();
     const auto pinned_count = pinned_edges.size();
+
     if (pinned_count > 0 && connectToNum > pinned_count)
     {
       connectToNum = pinned_count;
@@ -1085,7 +1087,7 @@ namespace llarp
 
     _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
 
-    for (const auto& rc : bootstrap_rc_list)
+    for (const auto& rc : *_node_db->bootstrap_list())
     {
       node_db()->put_rc(rc);
       _contacts->rc_nodes()->PutNode(rc);
