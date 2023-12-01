@@ -2,6 +2,7 @@
 
 #include "router_contact.hpp"
 
+#include <llarp/crypto/crypto.hpp>
 #include <llarp/util/fs.hpp>
 
 #include <set>
@@ -12,6 +13,7 @@ namespace llarp
   struct BootstrapList final : public std::set<RemoteRC>
   {
     size_t index;
+    std::set<RemoteRC>::iterator current;
 
     bool
     bt_decode(std::string_view buf);
@@ -27,15 +29,25 @@ namespace llarp
 
     // returns a reference to the next index and a boolean that equals true if
     // this is the front of the set
-    std::pair<const RemoteRC&, bool>
+    const RemoteRC&
     next()
     {
-      ++index %= this->size();
-      return std::make_pair(*std::next(this->begin(), index), index == 0);
+      ++current;
+
+      if (current == this->end())
+        current = this->begin();
+
+      return *current;
     }
 
     bool
     contains(const RemoteRC& rc);
+
+    void
+    randomize()
+    {
+      current = std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
+    }
 
     void
     clear_list()

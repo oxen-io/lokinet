@@ -12,9 +12,9 @@
 
 #include <algorithm>
 #include <atomic>
+#include <map>
 #include <optional>
 #include <set>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -22,13 +22,24 @@ namespace llarp
 {
   struct Router;
 
-  inline constexpr size_t ROUTER_ID_SOURCE_COUNT{12};
-  inline constexpr size_t MIN_RID_FETCHES{8};
-  inline constexpr size_t MIN_ACTIVE_RIDS{24};
-  inline constexpr size_t MAX_RID_ERRORS{ROUTER_ID_SOURCE_COUNT - MIN_RID_FETCHES};
-  inline constexpr int MAX_FETCH_ATTEMPTS{10};
-  inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{3};
+  inline constexpr size_t RID_SOURCE_COUNT{12};
   inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
+
+  inline constexpr size_t MIN_ACTIVE_RIDS{24};
+
+  inline constexpr size_t MAX_RID_ERRORS{4};
+
+  // when fetching rids, each returned rid must appear this number of times across
+  inline constexpr int MIN_RID_FETCH_FREQ{6};
+  // when fetching rids, the total number of accepted returned rids should be above this number
+  inline constexpr int MIN_RID_FETCH_TOTAL{};
+  // when fetching rids, the ratio of accepted:rejected rids must be above this ratio
+  inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
+
+  inline constexpr int MAX_FETCH_ATTEMPTS{10};
+  inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{5};
+
+  inline constexpr auto REBOOTSTRAP_INTERVAL{1min};
 
   inline constexpr auto FLUSH_INTERVAL{5min};
 
@@ -44,14 +55,18 @@ namespace llarp
 
     /** RouterID mappings
         Both the following are populated in NodeDB startup with RouterID's stored on disk.
-        - active_client_routers: meant to persist between lokinet sessions, and is only
+        - known_rids: meant to persist between lokinet sessions, and is only
           populated during startup and RouterID fetching. This is meant to represent the
-          client instance's perspective of the network and which RouterID's are "active"
+          client instance's most recent perspective of the network, and record which RouterID's
+          were recently "active" and connected to
         - known_rcs: populated during startup and when RC's are updated both during gossip
           and periodic RC fetching
+        - rc_lookup: holds all the same rc's as known_rcs, but can be used to look them up by
+          their rid. Deleting an rid key deletes the corresponding rc in known_rcs
     */
-    std::unordered_set<RouterID> active_client_routers;
-    std::unordered_map<RouterID, RemoteRC> known_rcs;
+    std::unordered_set<RouterID> known_rids;
+    std::unordered_set<RemoteRC> known_rcs;
+    std::unordered_map<RouterID, const RemoteRC&> rc_lookup;
 
     /** RouterID lists
         - white: active routers
@@ -64,10 +79,9 @@ namespace llarp
 
     // All registered relays (service nodes)
     std::unordered_set<RouterID> registered_routers;
-    // timing
+    // timing (note: Router holds the variables for last rc and rid request times)
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
-    rc_time last_rc_update_relay_timestamp;
-    // only ever use to specific edges as path first-hops
+    // if populated from a config file, lists specific exclusively used as path first-hops
     std::unordered_set<RouterID> _pinned_edges;
     // source of "truth" for RC updating. This relay will also mediate requests to the
     // 12 selected active RID's for RID fetching
@@ -76,8 +90,11 @@ namespace llarp
     std::unordered_set<RouterID> rid_sources{};
     // logs the RID's that resulted in an error during RID fetching
     std::unordered_set<RouterID> fail_sources{};
+    // tracks the number of times each rid appears in the above responses
+    std::unordered_map<RouterID, int> fetch_counters{};
     // stores all RID fetch responses for greedy comprehensive processing
-    std::unordered_map<RouterID, std::unordered_set<RouterID>> fetch_rid_responses;
+    // std::unordered_map<RouterID, std::unordered_set<RouterID>> fetch_rid_responses;
+
     /** Failure counters:
         - fetch_failures: tracks errors fetching RC's from the RC node and requesting RID's
           from the 12 RID sources. Errors in the individual RID sets are NOT counted towards
@@ -142,30 +159,11 @@ namespace llarp
     void
     fallback_to_bootstrap();
 
+    // Populate rid_sources with random sample from known_rids. A set of rids is passed
+    // if only specific RID's need to be re-selected; to re-select all, pass the member
+    // variable ::known_rids
     void
-    select_router_id_sources(std::unordered_set<RouterID> excluded = {});
-
-    // /// If we receive a bad set of RCs from our current RC source relay, we consider
-    // /// that relay to be a bad source of RCs and we randomly choose a new one.
-    // ///
-    // /// When using a new RC fetch relay, we first re-fetch the full RC list and, if
-    // /// that aligns with our RouterID list, we go back to periodic updates from that relay.
-    // ///
-    // /// This will respect edge-pinning and attempt to use a relay we already have
-    // /// a connection with.
-    // void
-    // rotate_rc_source();
-
-    // /// This function is called during startup and initial fetching. When a lokinet client
-    // /// instance performs its initial RC/RID fetching, it may need to randomly select a
-    // /// node from its list of stale RC's to relay its requests. If there is a failure in
-    // /// mediating these request, the client will randomly select another RC source
-    // ///
-    // /// Returns:
-    // ///   true - a new startup RC source was selected
-    // ///   false - a new startup RC source was NOT selected
-    // bool
-    // rotate_startup_rc_source();
+    reselect_router_id_sources(std::unordered_set<RouterID> specific);
 
     void
     set_router_whitelist(
@@ -236,11 +234,17 @@ namespace llarp
       return registered_routers;
     }
 
-    const std::unordered_map<RouterID, RemoteRC>&
+    const std::unordered_set<RemoteRC>&
     get_rcs() const
     {
       return known_rcs;
     }
+
+    // const std::unordered_map<RouterID, RemoteRC>&
+    // get_rcs() const
+    // {
+    //   return known_rcs;
+    // }
 
     const std::unordered_map<RouterID, rc_time>&
     get_last_rc_update_times() const
@@ -284,21 +288,47 @@ namespace llarp
     std::optional<RemoteRC>
     GetRandom(Filter visit) const
     {
-      return _router.loop()->call_get([visit]() -> std::optional<RemoteRC> {
-        std::vector<const decltype(known_rcs)::value_type*> known_rcs;
+      return _router.loop()->call_get([visit, this]() mutable -> std::optional<RemoteRC> {
+        std::vector<RemoteRC> rcs{known_rcs.begin(), known_rcs.end()};
+
+        std::shuffle(rcs.begin(), rcs.end(), llarp::csrng);
+
         for (const auto& entry : known_rcs)
-          known_rcs.push_back(entry);
-
-        std::shuffle(known_rcs.begin(), known_rcs.end(), llarp::csrng);
-
-        for (const auto entry : known_rcs)
         {
-          if (visit(entry->second))
-            return entry->second;
+          if (visit(entry))
+            return entry;
         }
 
         return std::nullopt;
       });
+    }
+
+    // Updates `current` to not contain any of the elements of `replace` and resamples (up to
+    // `target_size`) from population to refill it.
+    template <typename T, typename RNG>
+    void
+    replace_subset(
+        std::unordered_set<T>& current,
+        const std::unordered_set<T>& replace,
+        std::unordered_set<T> population,
+        size_t target_size,
+        RNG&& rng)
+    {
+      // Remove the ones we are replacing from current:
+      current.erase(replace.begin(), replace.end());
+
+      // Remove ones we are replacing, and ones we already have, from the population so that we
+      // won't reselect them:
+      population.erase(replace.begin(), replace.end());
+      population.erase(current.begin(), current.end());
+
+      if (current.size() < target_size)
+        std::sample(
+            population.begin(),
+            population.end(),
+            std::inserter(current, current.end()),
+            target_size - current.size(),
+            rng);
     }
 
     /// visit all known_rcs
@@ -308,7 +338,7 @@ namespace llarp
     {
       _router.loop()->call([this, visit]() {
         for (const auto& item : known_rcs)
-          visit(item.second);
+          visit(item);
       });
     }
 
@@ -323,17 +353,18 @@ namespace llarp
     {
       _router.loop()->call([this, visit]() {
         std::unordered_set<RouterID> removed;
-        auto itr = known_rcs.begin();
-        while (itr != known_rcs.end())
+
+        for (auto itr = rc_lookup.begin(); itr != rc_lookup.end();)
         {
           if (visit(itr->second))
           {
-            removed.insert(itr->second.router_id());
-            itr = known_rcs.erase(itr);
+            removed.insert(itr->first);
+            itr = rc_lookup.erase(itr);
           }
           else
             ++itr;
         }
+
         if (not removed.empty())
           remove_many_from_disk_async(std::move(removed));
       });

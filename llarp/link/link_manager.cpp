@@ -587,7 +587,7 @@ namespace llarp
 
       while (i < quantity)
       {
-        auto& next_rc = std::next(rcs.begin(), csrng() % rc_size)->second;
+        auto& next_rc = *std::next(rcs.begin(), csrng() % rc_size);
 
         if (next_rc.is_expired(now))
           continue;
@@ -664,7 +664,7 @@ namespace llarp
       if (since_time != decltype(since_time)::min())
         since_time -= 5s;
 
-      for (const auto& [_, rc] : rcs)
+      for (const auto& rc : rcs)
       {
         if (last_time.at(rc.router_id()) > since_time or explicit_relays.count(rc.router_id()))
           sublist.append_encoded(rc.view());
