@@ -358,8 +358,28 @@ namespace std
   template <>
   struct hash<llarp::RouterContact>
   {
-    size_t
+    virtual size_t
     operator()(const llarp::RouterContact& r) const
+    {
+      return std::hash<llarp::PubKey>{}(r.router_id());
+    }
+  };
+
+  template <>
+  struct hash<llarp::RemoteRC> final : public hash<llarp::RouterContact>
+  {
+    size_t
+    operator()(const llarp::RouterContact& r) const override
+    {
+      return std::hash<llarp::PubKey>{}(r.router_id());
+    }
+  };
+
+  template <>
+  struct hash<llarp::LocalRC> final : public hash<llarp::RouterContact>
+  {
+    size_t
+    operator()(const llarp::RouterContact& r) const override
     {
       return std::hash<llarp::PubKey>{}(r.router_id());
     }
