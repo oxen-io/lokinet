@@ -492,23 +492,20 @@ namespace llarp
     std::set<RouterID> exclude;
     auto remainder = num_conns;
 
-    do
+    auto filter = [exclude](const RemoteRC& rc) -> bool {
+      return exclude.count(rc.router_id()) == 0;
+    };
+
+    if (auto maybe = node_db->get_n_random_rcs_conditional(remainder, filter))
     {
-      auto filter = [exclude](const auto& rc) -> bool {
-        return exclude.count(rc.router_id()) == 0;
-      };
+      std::vector<RemoteRC>& rcs = *maybe;
 
-      if (auto maybe_other = node_db->GetRandom(filter))
-      {
-        exclude.insert(maybe_other->router_id());
-
-        if (not node_db->is_connection_allowed(maybe_other->router_id()))
-          continue;
-
-        connect_to(*maybe_other);
-        --remainder;
-      }
-    } while (remainder > 0);
+      for (const auto& rc : rcs)
+        connect_to(rc);
+    }
+    else
+      log::warning(
+          logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
   }
 
   void

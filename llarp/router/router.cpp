@@ -193,6 +193,18 @@ namespace llarp
     return stats;
   }
 
+  bool
+  Router::needs_initial_fetch() const
+  {
+    return _node_db->needs_initial_fetch();
+  }
+
+  bool
+  Router::needs_rebootstrap() const
+  {
+    return _node_db->needs_rebootstrap();
+  }
+
   void
   Router::Freeze()
   {
@@ -235,10 +247,11 @@ namespace llarp
       return node_db()->get_random_whitelist_router();
     }
 
-    if (auto maybe = node_db()->GetRandom([](const auto&) -> bool { return true; }))
+    if (auto maybe = node_db()->get_random_rc())
     {
       return maybe->router_id();
     }
+
     return std::nullopt;
   }
 
@@ -854,9 +867,13 @@ namespace llarp
     }
     else
     {
-      if (_needs_initial_fetch)
+      if (needs_initial_fetch())
       {
         node_db()->fetch_initial();
+      }
+      else if (needs_rebootstrap() and next_bootstrap_attempt > now_timepoint)
+      {
+        node_db()->fallback_to_bootstrap();
       }
       else
       {

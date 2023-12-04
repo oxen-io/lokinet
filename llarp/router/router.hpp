@@ -142,26 +142,21 @@ namespace llarp
     insufficient_peers() const;
 
    protected:
-    bool _needs_initial_fetch{true};
+    // bool _needs_initial_fetch{true};
 
     std::chrono::system_clock::time_point last_rc_gossip{
         std::chrono::system_clock::time_point::min()};
     std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
     std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
     std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
 
    public:
     bool
-    needs_initial_fetch() const
-    {
-      return _needs_initial_fetch;
-    }
+    needs_initial_fetch() const;
 
-    void
-    initial_fetch_completed()
-    {
-      _needs_initial_fetch = false;
-    }
+    bool
+    needs_rebootstrap() const;
 
     void
     for_each_connection(std::function<void(link::Connection&)> func);

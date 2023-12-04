@@ -244,13 +244,13 @@ namespace llarp
     std::optional<std::vector<RemoteRC>>
     Builder::GetHopsForBuild()
     {
-      auto filter = [r = router](const auto& rc) -> bool {
+      auto filter = [r = router](const RemoteRC& rc) -> bool {
         return not r->router_profiling().IsBadForPath(rc.router_id(), 1);
       };
-      if (const auto maybe = router->node_db()->GetRandom(filter))
-      {
+
+      if (auto maybe = router->node_db()->get_random_rc_conditional(filter))
         return GetHopsAlignedToForBuild(maybe->router_id());
-      }
+
       return std::nullopt;
     }
 
@@ -359,6 +359,7 @@ namespace llarp
 
             if (r->router_profiling().IsBadForPath(rid, 1))
               return false;
+
             for (const auto& hop : hopsSet)
             {
               if (hop.router_id() == rid)
@@ -373,7 +374,7 @@ namespace llarp
             return rc.router_id() != endpointRC.router_id();
           };
 
-          if (const auto maybe = router->node_db()->GetRandom(filter))
+          if (auto maybe = router->node_db()->get_random_rc_conditional(filter))
             hops.emplace_back(*maybe);
           else
             return std::nullopt;

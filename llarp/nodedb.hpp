@@ -22,24 +22,38 @@ namespace llarp
 {
   struct Router;
 
-  inline constexpr size_t RID_SOURCE_COUNT{12};
-  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
-
-  inline constexpr size_t MIN_ACTIVE_RIDS{24};
-
-  inline constexpr size_t MAX_RID_ERRORS{4};
-
-  // when fetching rids, each returned rid must appear this number of times across
-  inline constexpr int MIN_RID_FETCH_FREQ{6};
-  // when fetching rids, the total number of accepted returned rids should be above this number
-  inline constexpr int MIN_RID_FETCH_TOTAL{};
-  // when fetching rids, the ratio of accepted:rejected rids must be above this ratio
-  inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
-
+  /*  RC Fetch Constants  */
+  // max number of attempts we make in non-bootstrap fetch requests
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
-  inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{5};
+  // the total number of returned rcs that are held locally should be at least this
+  inline constexpr size_t MIN_GOOD_RC_FETCH_TOTAL{};
+  // the ratio of returned rcs found locally to to total returned should be above this ratio
+  inline constexpr double MIN_GOOD_RC_FETCH_THRESHOLD{};
+  // the ratio of returned rcs that are found locally to total held locally should above this ratio
+  inline constexpr double LOCAL_RC_ALIGNMENT_THRESHOLD{};
 
-  inline constexpr auto REBOOTSTRAP_INTERVAL{1min};
+  /*  RID Fetch Constants  */
+  inline constexpr size_t MIN_ACTIVE_RIDS{24};
+  // the number of rid sources that we make rid fetch requests to
+  inline constexpr size_t RID_SOURCE_COUNT{12};
+  // upper limit on how many rid fetch requests to rid sources can fail
+  inline constexpr size_t MAX_RID_ERRORS{4};
+  // each returned rid must appear this number of times across all responses
+  inline constexpr int MIN_RID_FETCH_FREQ{6};
+  // the total number of accepted returned rids should be above this number
+  inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
+  // the ratio of accepted:rejected rids must be above this ratio
+  inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
+  // if we are not bootstrapping, the ratio of accepted:local rids must be above this ratio
+  inline constexpr double LOCAL_RID_ALIGNMENT_THRESHOLD{};
+
+  /*  Bootstrap Constants  */
+  // the number of rc's we query the bootstrap for
+  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
+  // the maximum number of fetch requests we make across all bootstraps
+  inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{5};
+  // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
+  inline constexpr auto BOOTSTRAP_COOLDOWN{1min};
 
   inline constexpr auto FLUSH_INTERVAL{5min};
 
@@ -66,7 +80,7 @@ namespace llarp
     */
     std::unordered_set<RouterID> known_rids;
     std::unordered_set<RemoteRC> known_rcs;
-    std::unordered_map<RouterID, const RemoteRC&> rc_lookup;
+    std::unordered_map<RouterID, const RemoteRC&> rc_lookup;  // TODO: look into this again
 
     /** RouterID lists
         - white: active routers
@@ -92,8 +106,6 @@ namespace llarp
     std::unordered_set<RouterID> fail_sources{};
     // tracks the number of times each rid appears in the above responses
     std::unordered_map<RouterID, int> fetch_counters{};
-    // stores all RID fetch responses for greedy comprehensive processing
-    // std::unordered_map<RouterID, std::unordered_set<RouterID>> fetch_rid_responses;
 
     /** Failure counters:
         - fetch_failures: tracks errors fetching RC's from the RC node and requesting RID's
@@ -104,8 +116,8 @@ namespace llarp
     */
     std::atomic<int> fetch_failures{0}, bootstrap_failures{0};
 
-    std::atomic<bool> is_fetching_rids{false}, is_fetching_rcs{false},
-        using_bootstrap_fallback{false};
+    std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false},
+        _needs_initial_fetch{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -128,7 +140,22 @@ namespace llarp
     NodeDB();
 
     bool
-    process_fetched_rcs(RouterID source, std::vector<RemoteRC> rcs, rc_time timestamp);
+    needs_initial_fetch() const
+    {
+      return _needs_initial_fetch;
+    }
+
+    bool
+    needs_rebootstrap() const
+    {
+      return _needs_rebootstrap;
+    }
+
+    bool
+    ingest_fetched_rcs(std::vector<RemoteRC> rcs, rc_time timestamp);
+
+    bool
+    process_fetched_rcs(std::vector<RemoteRC>& rcs);
 
     void
     ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> ids = {});
@@ -158,6 +185,8 @@ namespace llarp
     //  Bootstrap fallback
     void
     fallback_to_bootstrap();
+    void
+    bootstrap_cooldown();
 
     // Populate rid_sources with random sample from known_rids. A set of rids is passed
     // if only specific RID's need to be re-selected; to re-select all, pass the member
@@ -284,6 +313,29 @@ namespace llarp
     std::optional<RemoteRC>
     get_rc(RouterID pk) const;
 
+    std::optional<RemoteRC>
+    get_random_rc() const;
+
+    std::optional<std::vector<RemoteRC>>
+    get_n_random_rcs(size_t n) const;
+
+    /** The following random conditional functions utilize a simple implementation of reservoir
+        sampling to return either 1 or n random RC's using only one pass through the set of RC's.
+
+        Pseudocode:
+          - begin iterating through the set
+            - load the first n (or 1) that pass hook(n) into a list Selected[]
+            - for all that pass the hook, increment i, tracking the number seen thus far
+            - generate a random integer x from 0 to i
+              - x < n ? Selected[x] = current : continue;
+    */
+
+    std::optional<RemoteRC>
+    get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const;
+
+    std::optional<std::vector<RemoteRC>>
+    get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook) const;
+
     template <typename Filter>
     std::optional<RemoteRC>
     GetRandom(Filter visit) const
@@ -359,6 +411,7 @@ namespace llarp
           if (visit(itr->second))
           {
             removed.insert(itr->first);
+            known_rcs.erase(itr->second);
             itr = rc_lookup.erase(itr);
           }
           else
