@@ -28,6 +28,9 @@ namespace llarp
   struct LinkManager;
   class NodeDB;
 
+  using conn_open_hook = oxen::quic::connection_established_callback;
+  using conn_closed_hook = oxen::quic::connection_closed_callback;
+
   namespace link
   {
     struct Connection;
@@ -261,10 +264,13 @@ namespace llarp
     deregister_peer(RouterID remote);
 
     void
-    connect_to(const RouterID& router);
+    test_reachability(const RouterID& rid, conn_open_hook, conn_closed_hook);
 
     void
-    connect_to(const RemoteRC& rc);
+    connect_to(const RouterID& router, conn_open_hook = nullptr);
+
+    void
+    connect_to(const RemoteRC& rc, conn_open_hook = nullptr, conn_closed_hook = nullptr);
 
     void
     close_connection(RouterID rid);

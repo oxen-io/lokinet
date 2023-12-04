@@ -78,7 +78,6 @@ namespace llarp
     llarp::LogTrace("Router::PumpLL() end");
   }
 
-  // TOFIX: this
   util::StatusObject
   Router::ExtractStatus() const
   {
@@ -91,8 +90,7 @@ namespace llarp
         {"contacts", _contacts->ExtractStatus()},
         {"services", _hidden_service_context.ExtractStatus()},
         {"exit", _exit_context.ExtractStatus()},
-        {"links", _link_manager.extract_status()},
-        /* {"outboundMessages", _outboundMessageHandler.ExtractStatus()} */};
+        {"links", _link_manager.extract_status()}};
   }
 
   // TODO: investigate changes needed for libquic integration
@@ -417,6 +415,7 @@ namespace llarp
       throw std::runtime_error("KeyManager failed to initialize");
 
     log::debug(logcat, "Initializing from configuration");
+
     if (!from_config(conf))
       throw std::runtime_error("FromConfig() failed");
 
@@ -461,14 +460,6 @@ namespace llarp
   }
 
   bool
-  Router::ParseRoutingMessageBuffer(
-      const llarp_buffer_t&, path::AbstractHopHandler&, const PathID_t&)
-  {
-    // TODO: will go away with the removal of flush upstream/downstream
-    return false;
-  }
-
-  bool
   Router::have_snode_whitelist() const
   {
     return whitelist_received;
@@ -497,7 +488,7 @@ namespace llarp
   bool
   Router::can_test_routers() const
   {
-    return appears_funded();
+    return appears_funded() and not _testing_disabled;
   }
 
   bool
@@ -542,18 +533,22 @@ namespace llarp
     // Set netid before anything else
     log::debug(logcat, "Network ID set to {}", conf.router.net_id);
 
-    if (!conf.router.net_id.empty()
-        && strcmp(conf.router.net_id.c_str(), llarp::LOKINET_DEFAULT_NETID) != 0)
+    const auto& netid = conf.router.net_id;
+
+    if (not netid.empty() and netid != llarp::LOKINET_DEFAULT_NETID)
     {
-      const auto& netid = conf.router.net_id;
-      llarp::LogWarn(
-          "!!!! you have manually set netid to be '",
+      log::critical(
+          logcat,
+          "Network ID set to {}, which is not {}! Lokinet will attempt to run on the specified "
+          "network",
           netid,
-          "' which does not equal '",
-          llarp::LOKINET_DEFAULT_NETID,
-          "' you will run as a different network, good luck "
-          "and don't forget: something something traffic shape "
-          "correlation!!");
+          llarp::LOKINET_DEFAULT_NETID);
+
+      _testnet = netid == llarp::LOKINET_TESTNET_NETID;
+      _testing_disabled = conf.lokid.disable_testing;
+
+      if (_testing_disabled and not _testnet)
+        throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
     }
 
     // Router config
@@ -582,6 +577,8 @@ namespace llarp
     }
     else
       log::debug(logcat, "No explicit public address given; will auto-detect during link setup");
+
+    _local_addr = conf.links.addr;
 
     RouterContact::BLOCK_BOGONS = conf.router.block_bogons;
 
@@ -1060,7 +1057,9 @@ namespace llarp
     if (is_running || is_stopping)
       return false;
 
-    router_contact = LocalRC::make(identity(), public_ip());
+    // TODO: look at _ourAddress
+
+    router_contact = LocalRC::make(identity(), local_addr());
 
     if (is_service_node() and not router_contact.is_public_router())
     {
@@ -1133,7 +1132,9 @@ namespace llarp
         // yet when we expect to have one.
         if (not can_test_routers())
           return;
+
         auto tests = router_testing.get_failing();
+
         if (auto maybe = router_testing.next_random(this))
         {
           tests.emplace_back(*maybe, 0);
@@ -1154,51 +1155,30 @@ namespace llarp
 
           // try to make a session to this random router
           // this will do a dht lookup if needed
-          _link_manager.connect_to(router);
-
-          /*
-           * TODO: container of pending snode test routers to be queried on
-           *       connection success/failure, then do this stuff there.
-          _outboundSessionMaker.CreateSessionTo(
-              router, [previous_fails = fails, this](const auto& router, const auto result) {
-                auto rpc = RpcClient();
-
-                if (result != SessionResult::Establish)
+          _link_manager.test_reachability(
+              router,
+              [this, rid = router, previous = fails](oxen::quic::connection_interface& conn) {
+                log::info(
+                    logcat,
+                    "Successful SN reachability test to {}{}",
+                    rid,
+                    previous ? "after {} previous failures"_format(previous) : "");
+                router_testing.remove_node_from_failing(rid);
+                _rpc_client->InformConnection(rid, true);
+                conn.close_connection();
+              },
+              [this, rid = router, previous = fails](
+                  oxen::quic::connection_interface&, uint64_t ec) {
+                if (ec != 0)
                 {
-                  // failed connection mark it as so
-                  m_routerTesting.add_failing_node(router, previous_fails);
-                  LogInfo(
-                      "FAILED SN connection test to ",
-                      router,
-                      " (",
-                      previous_fails + 1,
-                      " consecutive failures) result=",
-                      result);
-                }
-                else
-                {
-                  m_routerTesting.remove_node_from_failing(router);
-                  if (previous_fails > 0)
-                  {
-                    LogInfo(
-                        "Successful SN connection test to ",
-                        router,
-                        " after ",
-                        previous_fails,
-                        " failures");
-                  }
-                  else
-                  {
-                    LogDebug("Successful SN connection test to ", router);
-                  }
-                }
-                if (rpc)
-                {
-                  // inform as needed
-                  rpc->InformConnection(router, result == SessionResult::Establish);
+                  log::info(
+                      logcat,
+                      "Unsuccessful SN reachability test to {} after {} previous failures",
+                      rid,
+                      previous);
+                  router_testing.add_failing_node(rid, previous);
                 }
               });
-          */
         }
       });
     }
@@ -1358,7 +1338,7 @@ namespace llarp
   }
 
   oxen::quic::Address
-  Router::public_ip() const
+  Router::local_addr() const
   {
     return _local_addr;
   }

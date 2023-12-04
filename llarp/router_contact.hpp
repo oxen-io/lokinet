@@ -33,7 +33,7 @@ namespace llarp
   /// "6" -- optional 18 byte IPv6 address & port: 16 byte raw IPv6 address followed by 2 bytes
   ///        of port in network order.
   /// "i" -- optional network ID string of up to 8 bytes; this is omitted for the default network
-  ///        ID ("lokinet") but included for others (such as "gamma" for testnet).
+  ///        ID ("lokinet") but included for others (such as "testnet" for testnet).
   /// "p" -- 32-byte router pubkey
   /// "t" -- timestamp when this RC record was created (which also implicitly determines when it
   ///        goes stale and when it expires).

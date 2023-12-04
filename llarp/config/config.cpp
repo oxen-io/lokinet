@@ -61,8 +61,8 @@ namespace llarp
         "netid",
         Default{llarp::LOKINET_DEFAULT_NETID},
         Comment{
-            "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID
-                + "' for mainnet, 'gamma' for testnet.",
+            "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID + "' for mainnet, "s
+                + llarp::LOKINET_TESTNET_NETID + "for testnet."s,
         },
         [this](std::string arg) {
           if (arg.size() > NETID_SIZE)
@@ -1007,7 +1007,7 @@ namespace llarp
         },
         [this, parse_addr_for_link](const std::string& arg) {
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = a;
+            addr = *a;
           else
             addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
 
@@ -1021,7 +1021,8 @@ namespace llarp
         MultiValue,
         Hidden,
         Comment{
-            "********** DEPRECATED **********",
+            "********** THIS PARAMETER IS DEPRECATED -- USE 'LISTEN' INSTEAD **********",
+            "",
             "Note: the new API dictates the lokinet bind address through the 'listen' config",
             "parameter. Only ONE address will be read (no more lists of inbounds). Any address",
             "passed to `listen` will supersede the",
@@ -1046,7 +1047,7 @@ namespace llarp
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = a;
+            addr = *a;
           else
             addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
@@ -1096,7 +1097,7 @@ namespace llarp
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = a;
+            addr = *a;
           else
             addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
@@ -1221,17 +1222,16 @@ namespace llarp
   LokidConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
-
-    conf.define_option<bool>("lokid", "enabled", RelayOnly, Deprecated);
-
-    conf.define_option<std::string>("lokid", "jsonrpc", RelayOnly, [](std::string arg) {
-      if (arg.empty())
-        return;
-      throw std::invalid_argument(
-          "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc config "
-          "option instead with oxend's lmq-local-control address -- typically a value such as "
-          "rpc=ipc:///var/lib/oxen/oxend.sock or rpc=ipc:///home/snode/.oxen/oxend.sock");
-    });
+    conf.define_option<bool>(
+        "lokid",
+        "disable-testing",
+        Default{true},
+        Hidden,
+        RelayOnly,
+        Comment{
+            "Development option: set to true to disable reachability testing when using ",
+            "testnet"},
+        assignment_acceptor(disable_testing));
 
     conf.define_option<std::string>(
         "lokid",
@@ -1250,6 +1250,15 @@ namespace llarp
         [this](std::string arg) { rpc_addr = oxenmq::address(arg); });
 
     // Deprecated options:
+    conf.define_option<std::string>("lokid", "jsonrpc", RelayOnly, Deprecated, [](std::string arg) {
+      if (arg.empty())
+        return;
+      throw std::invalid_argument(
+          "the [lokid]:jsonrpc option is no longer supported; please use the [lokid]:rpc config "
+          "option instead with oxend's lmq-local-control address -- typically a value such as "
+          "rpc=ipc:///var/lib/oxen/oxend.sock or rpc=ipc:///home/snode/.oxen/oxend.sock");
+    });
+    conf.define_option<bool>("lokid", "enabled", RelayOnly, Deprecated);
     conf.define_option<std::string>("lokid", "username", Deprecated);
     conf.define_option<std::string>("lokid", "password", Deprecated);
     conf.define_option<std::string>("lokid", "service-node-seed", Deprecated);
