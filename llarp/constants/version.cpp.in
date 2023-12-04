@@ -10,5 +10,6 @@ namespace llarp
 
   const char* const LOKINET_RELEASE_MOTTO = "@RELEASE_MOTTO@";
   const char* const LOKINET_DEFAULT_NETID = "lokinet";
+  const char* const LOKINET_TESTNET_NETID = "testnet";
   // clang-format on
 }  // namespace llarp

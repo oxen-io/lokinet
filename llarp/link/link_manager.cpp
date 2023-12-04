@@ -185,7 +185,7 @@ namespace llarp
             - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
     */
     auto ep = quic->endpoint(
-        _router.public_ip(),
+        _router.local_addr(),
         [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
         [this](oxen::quic::connection_interface& ci, uint64_t ec) {
           return on_conn_closed(ci, ec);
@@ -298,20 +298,29 @@ namespace llarp
   }
 
   void
-  LinkManager::connect_to(const RouterID& rid)
+  LinkManager::test_reachability(
+      const RouterID& rid, conn_open_hook on_open, conn_closed_hook on_close)
   {
-    auto rc = node_db->get_rc(rid);
-    if (rc)
+    if (auto rc = node_db->get_rc(rid))
     {
-      connect_to(*rc);
+      connect_to(*rc, std::move(on_open), std::move(on_close));
     }
     else
-      log::warning(quic_cat, "Do something intelligent here for error handling");
+      log::warning(quic_cat, "Could not find RouterContact for connection to rid:{}", rid);
+  }
+
+  void
+  LinkManager::connect_to(const RouterID& rid, conn_open_hook hook)
+  {
+    if (auto rc = node_db->get_rc(rid))
+      connect_to(*rc, std::move(hook));
+    else
+      log::warning(quic_cat, "Could not find RouterContact for connection to rid:{}", rid);
   }
 
   // This function assumes the RC has already had its signature verified and connection is allowed.
   void
-  LinkManager::connect_to(const RemoteRC& rc)
+  LinkManager::connect_to(const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
   {
     if (auto conn = ep.get_conn(rc.router_id()); conn)
     {
@@ -325,7 +334,10 @@ namespace llarp
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
     if (auto rv = ep.establish_connection(
-            oxen::quic::RemoteAddress{rc.router_id().ToView(), remote_addr}, rc);
+            oxen::quic::RemoteAddress{rc.router_id().ToView(), remote_addr},
+            rc,
+            std::move(on_open),
+            std::move(on_close));
         rv)
     {
       log::info(quic_cat, "Connection to {} successfully established!", remote_addr);

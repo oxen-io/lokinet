@@ -46,10 +46,8 @@ int
 main(int argc, char* argv[])
 {
   const std::unordered_map<std::string, std::string> bootstrap_urls = {
-      {"mainnet", "https://seed.lokinet.org/lokinet.signed"},
       {"lokinet", "https://seed.lokinet.org/lokinet.signed"},
-      {"testnet", "https://seed.lokinet.org/testnet.signed"},
-      {"gamma", "https://seed.lokinet.org/testnet.signed"}};
+      {"testnet", "https://seed.lokinet.org/testnet.signed"}};
 
   std::string bootstrap_url = bootstrap_urls.at("lokinet");
   fs::path outputfile{llarp::GetDefaultBootstrap()};

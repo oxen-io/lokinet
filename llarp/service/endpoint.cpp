@@ -1398,7 +1398,7 @@ namespace llarp::service
 
     while (not _inbound_queue.empty())
     {
-      // succ it out
+      // suck it out
       queue.emplace(std::move(*_inbound_queue.popFront()));
     }
 

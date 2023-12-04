@@ -86,6 +86,11 @@ namespace llarp
     int _outbound_udp_socket = -1;
     bool _is_service_node = false;
 
+    bool _testnet = false;
+    bool _testing_disabled = false;
+
+    consensus::reachability_testing router_testing;
+
     std::optional<SockAddr> _ourAddress;
     oxen::quic::Address _local_addr;
 
@@ -123,8 +128,6 @@ namespace llarp
     bool send_padding = false;
 
     service::Context _hidden_service_context;
-
-    consensus::reachability_testing router_testing;
 
     bool
     should_report_stats(llarp_time_t now) const;
@@ -273,7 +276,7 @@ namespace llarp
     }
 
     oxen::quic::Address
-    public_ip() const;
+    local_addr() const;
 
     util::StatusObject
     ExtractStatus() const;
@@ -475,13 +478,6 @@ namespace llarp
     {
       return llarp::time_now_ms();
     }
-
-    /// parse a routing message in a buffer and handle it with a handler if
-    /// successful parsing return true on parse and handle success otherwise
-    /// return false
-    bool
-    ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, path::AbstractHopHandler& p, const PathID_t& rxid);
 
     void
     ConnectToRandomRouters(int N);

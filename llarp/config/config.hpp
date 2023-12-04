@@ -173,7 +173,7 @@ namespace llarp
     std::optional<net::ipaddr_t> public_addr;
     std::optional<net::port_t> public_port;
 
-    std::optional<oxen::quic::Address> addr;
+    oxen::quic::Address addr;
     bool using_new_api = false;
 
     void
@@ -202,6 +202,7 @@ namespace llarp
   {
     fs::path id_keyfile;
     oxenmq::address rpc_addr;
+    bool disable_testing = true;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
