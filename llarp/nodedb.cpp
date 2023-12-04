@@ -56,6 +56,83 @@ namespace llarp
     fetch_counters.clear();
   }
 
+  std::optional<RemoteRC>
+  NodeDB::get_random_rc() const
+  {
+    std::optional<RemoteRC> rand = std::nullopt;
+
+    std::sample(known_rcs.begin(), known_rcs.end(), &*rand, 1, csrng);
+    return rand;
+  }
+
+  std::optional<std::vector<RemoteRC>>
+  NodeDB::get_n_random_rcs(size_t n) const
+  {
+    std::vector<RemoteRC> rand{};
+
+    std::sample(known_rcs.begin(), known_rcs.end(), std::back_inserter(rand), n, csrng);
+    return rand.empty() ? std::nullopt : std::make_optional(rand);
+  }
+
+  std::optional<RemoteRC>
+  NodeDB::get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const
+  {
+    std::optional<RemoteRC> rand = get_random_rc();
+
+    if (rand and hook(*rand))
+      return rand;
+
+    size_t i = 0;
+
+    for (const auto& rc : known_rcs)
+    {
+      if (not hook(rc))
+        continue;
+
+      if (++i <= 1)
+      {
+        rand = rc;
+        continue;
+      }
+
+      size_t x = csrng() % (i + 1);
+      if (x <= 1)
+        rand = rc;
+    }
+
+    return rand;
+  }
+
+  std::optional<std::vector<RemoteRC>>
+  NodeDB::get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook) const
+  {
+    std::vector<RemoteRC> selected;
+    selected.reserve(n);
+
+    size_t i = 0;
+
+    for (const auto& rc : known_rcs)
+    {
+      // ignore any RC's that do not pass the condition
+      if (not hook(rc))
+        continue;
+
+      // load the first n RC's that pass the condition into selected
+      if (++i <= n)
+      {
+        selected.push_back(rc);
+        continue;
+      }
+
+      // replace selections with decreasing probability per iteration
+      size_t x = csrng() % (i + 1);
+      if (x < n)
+        selected[x] = rc;
+    }
+
+    return selected.size() == n ? std::make_optional(selected) : std::nullopt;
+  }
+
   void
   NodeDB::Tick(llarp_time_t now)
   {
@@ -116,25 +193,43 @@ namespace llarp
   }
 
   bool
-  NodeDB::process_fetched_rcs(RouterID, std::vector<RemoteRC> rcs, rc_time timestamp)
+  NodeDB::process_fetched_rcs(std::vector<RemoteRC>& rcs)
   {
-    std::unordered_set<RemoteRC> union_set;
+    std::unordered_set<RemoteRC> inter_set;
 
+    std::set_intersection(
+        known_rcs.begin(),
+        known_rcs.end(),
+        rcs.begin(),
+        rcs.end(),
+        std::inserter(inter_set, inter_set.begin()));
+
+    // the total number of rcs received
+    const auto num_received = static_cast<double>(rcs.size());
+    // the number of returned "good" rcs (that are also found locally)
+    const auto inter_size = inter_set.size();
+    // the number of rcs currently held locally
+    const auto local_count = static_cast<double>(known_rcs.size());
+
+    const auto fetch_threshold = (double)inter_size / num_received;
+    const auto local_alignment = (double)inter_size / local_count;
+
+    /** We are checking 3 things here:
+        1) The number of "good" rcs is above MIN_GOOD_RC_FETCH_TOTAL
+        2) The ratio of "good" rcs to total received is above MIN_GOOD_RC_FETCH_THRESHOLD
+        3) The ratio of received and found locally to total found locally is above
+           LOCAL_RC_ALIGNMENT_THRESHOLD
+    */
+    return inter_size > MIN_GOOD_RC_FETCH_TOTAL and fetch_threshold > MIN_GOOD_RC_FETCH_THRESHOLD
+        and local_alignment > LOCAL_RC_ALIGNMENT_THRESHOLD;
+  }
+
+  bool
+  NodeDB::ingest_fetched_rcs(std::vector<RemoteRC> rcs, rc_time timestamp)
+  {
     // if we are not bootstrapping, we should check the rc's against the ones we currently hold
-    // if (not using_bootstrap_fallback)
-    // {
-    //   const auto local_count = static_cast<double>(known_rcs.size());
-    //   const auto& recv_count = rcs.size();
-
-    //   std::set_intersection(
-    //       known_rcs.begin(),
-    //       known_rcs.end(),
-    //       rcs.begin(),
-    //       rcs.end(),
-    //       std::inserter(union_set, union_set.begin()));
-
-    //   const auto union_size = static_cast<double>(union_set.size());
-    // }
+    if (not _using_bootstrap_fallback)
+    {}
 
     for (auto& rc : rcs)
       put_rc_if_newer(std::move(rc), timestamp);
@@ -174,7 +269,7 @@ namespace llarp
   bool
   NodeDB::process_fetched_rids()
   {
-    std::unordered_set<RouterID> union_set;
+    std::unordered_set<RouterID> union_set, intersection_set;
 
     for (const auto& [rid, count] : fetch_counters)
     {
@@ -182,10 +277,39 @@ namespace llarp
         union_set.insert(rid);
     }
 
-    const auto num_rids = static_cast<double>(known_rids.size());
-    const auto union_size = static_cast<double>(union_set.size());
+    // get the intersection of accepted rids and local rids
+    std::set_intersection(
+        known_rids.begin(),
+        known_rids.end(),
+        union_set.begin(),
+        union_set.end(),
+        std::inserter(intersection_set, intersection_set.begin()));
 
-    return (union_size / num_rids) > GOOD_RID_FETCH_THRESHOLD and union_size > MIN_RID_FETCH_TOTAL;
+    // the total number of rids received
+    const auto num_received = (double)fetch_counters.size();
+    // the total number of received AND accepted rids
+    const auto union_size = union_set.size();
+    // the number of rids currently held locally
+    const auto local_count = (double)known_rids.size();
+    // the number of accepted rids that are also found locally
+    const auto inter_size = (double)intersection_set.size();
+
+    const auto fetch_threshold = (double)union_size / num_received;
+    const auto local_alignment = (double)inter_size / local_count;
+
+    /** We are checking 2, potentially 3 things here:
+        1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
+           This tells us how well the rid source's sets of rids "agree" with one another
+        2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
+           receiving a sufficient amount to make a comparison of any sorts
+        3) If we are not bootstrapping, then the ratio of received/accepted found locally to
+           the total number locally held is above LOCAL_RID_ALIGNMENT_THRESHOLD. This gives us
+           an estimate of how "aligned" the rid source's set of rid's is to ours
+    */
+    return (fetch_threshold > GOOD_RID_FETCH_THRESHOLD) and (union_size > MIN_GOOD_RID_FETCH_TOTAL)
+            and (not _using_bootstrap_fallback)
+        ? local_alignment > LOCAL_RID_ALIGNMENT_THRESHOLD
+        : true;
   }
 
   void
@@ -214,8 +338,6 @@ namespace llarp
       fetch_rcs_result(initial, true);
       return;
     }
-
-    is_fetching_rcs = true;  // DISCUSS: do these booleans do anything?
 
     std::vector<RouterID> needed;
     const auto now = time_point_now();
@@ -259,7 +381,7 @@ namespace llarp
               rcs.emplace_back(btlc.consume_dict_consumer());
 
             // if process_fetched_rcs returns false, then the trust model rejected the fetched RC's
-            fetch_rcs_result(initial, not process_fetched_rcs(src, std::move(rcs), timestamp));
+            fetch_rcs_result(initial, not ingest_fetched_rcs(std::move(rcs), timestamp));
           }
           catch (const std::exception& e)
           {
@@ -288,12 +410,11 @@ namespace llarp
     if (not initial and rid_sources.empty())
     {
       log::error(logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
+      fallback_to_bootstrap();
       return;
     }
 
-    is_fetching_rids = true;
     fetch_counters.clear();
-    // fetch_rid_responses.clear();
 
     RouterID& src = fetch_source;
 
@@ -361,15 +482,15 @@ namespace llarp
   {
     if (error)
     {
-      auto& fail_count = (using_bootstrap_fallback) ? bootstrap_failures : fetch_failures;
+      auto& fail_count = (_using_bootstrap_fallback) ? bootstrap_failures : fetch_failures;
       auto& THRESHOLD =
-          (using_bootstrap_fallback) ? MAX_BOOTSTRAP_FETCH_ATTEMPTS : MAX_FETCH_ATTEMPTS;
+          (_using_bootstrap_fallback) ? MAX_BOOTSTRAP_FETCH_ATTEMPTS : MAX_FETCH_ATTEMPTS;
 
       // This catches three different failure cases;
       //  1) bootstrap fetching and over failure threshold
       //  2) bootstrap fetching and more failures to go
       //  3) standard fetching and over threshold
-      if (++fail_count >= THRESHOLD || using_bootstrap_fallback)
+      if (++fail_count >= THRESHOLD || _using_bootstrap_fallback)
       {
         log::info(
             logcat,
@@ -454,7 +575,6 @@ namespace llarp
   void
   NodeDB::post_fetch_rcs(bool initial)
   {
-    is_fetching_rcs = false;
     _router.last_rc_fetch = llarp::time_point_now();
 
     if (initial)
@@ -464,15 +584,14 @@ namespace llarp
   void
   NodeDB::post_fetch_rids(bool initial)
   {
-    is_fetching_rids = false;
-    // fetch_rid_responses.clear();
     fail_sources.clear();
     fetch_failures = 0;
     _router.last_rid_fetch = llarp::time_point_now();
     fetch_counters.clear();
+    _needs_rebootstrap = false;
 
     if (initial)
-      _router.initial_fetch_completed();
+      _needs_initial_fetch = false;
   }
 
   void
@@ -480,37 +599,33 @@ namespace llarp
   {
     auto at_max_failures = bootstrap_failures >= MAX_BOOTSTRAP_FETCH_ATTEMPTS;
 
-    // base case: we have failed to query a bootstrap relay 3 times, or we received a
-    // sample of the network, but the sample was unusable or unreachable (immediately
-    // counts as 3 strikes)
-    // We will also enter this if we are on our first fallback to bootstrap so we can
-    // set the fetch_source (by checking not using_bootstrap_fallback)
-    if (at_max_failures || not using_bootstrap_fallback)
+    // base case: we have failed to query all bootstraps, or we received a sample of
+    // the network, but the sample was unusable or unreachable. We will also enter this
+    // if we are on our first fallback to bootstrap so we can set the fetch_source (by
+    // checking not using_bootstrap_fallback)
+    if (at_max_failures || not _using_bootstrap_fallback)
     {
-      if (at_max_failures)
-        log::error(logcat, "All bootstraps failed... reattempting in {}...", REBOOTSTRAP_INTERVAL);
-
       bootstrap_failures = 0;
-      auto rc = _bootstraps->next();
 
       // Fail case: if we have returned to the front of the bootstrap list, we're in a
       // bad spot; we are unable to do anything
-      if (using_bootstrap_fallback)
+      if (_using_bootstrap_fallback)
       {
-        auto err = fmt::format("ERROR: ALL BOOTSTRAPS ARE BAD");
+        auto err = fmt::format(
+            "ERROR: ALL BOOTSTRAPS ARE BAD... REATTEMPTING IN {}...", BOOTSTRAP_COOLDOWN);
         log::error(logcat, err);
 
-        /*
-          TODO:
-            trigger bootstrap cooldown timer in router
-        */
+        bootstrap_cooldown();
+        return;
       }
 
+      auto rc = _bootstraps->next();
       fetch_source = rc.router_id();
     }
 
     // By passing the last conditional, we ensure this is set to true
-    using_bootstrap_fallback = true;
+    _using_bootstrap_fallback = true;
+    _needs_rebootstrap = false;
 
     _router.link_manager().fetch_bootstrap_rcs(
         fetch_source,
@@ -582,6 +697,13 @@ namespace llarp
             fallback_to_bootstrap();
           }
         });
+  }
+
+  void
+  NodeDB::bootstrap_cooldown()
+  {
+    _needs_rebootstrap = true;
+    _router.next_bootstrap_attempt = llarp::time_point_now() + BOOTSTRAP_COOLDOWN;
   }
 
   void
@@ -759,6 +881,7 @@ namespace llarp
       if (cutoff_time > itr->second.timestamp())
       {
         log::info(logcat, "Pruning RC for {}, as it is too old to keep.", itr->first);
+        known_rcs.erase(itr->second);
         rc_lookup.erase(itr);
         continue;
       }
@@ -774,6 +897,7 @@ namespace llarp
     if (not want_rc(rid))
       return false;
 
+    known_rcs.erase(rc);
     rc_lookup.erase(rid);
 
     auto [itr, b] = known_rcs.emplace(std::move(rc));
@@ -823,7 +947,7 @@ namespace llarp
   NodeDB::find_closest_to(llarp::dht::Key_t location) const
   {
     return _router.loop()->call_get([this, location]() -> RemoteRC {
-      RemoteRC rc;
+      RemoteRC rc{};
       const llarp::dht::XorMetric compare(location);
 
       VisitAll([&rc, compare](const auto& otherRC) {

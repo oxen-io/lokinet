@@ -697,14 +697,16 @@ namespace llarp::service
   {
     std::unordered_set<RouterID> exclude;
     ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
-    const auto maybe =
-        router()->node_db()->GetRandom([exclude, r = router()](const RemoteRC& rc) -> bool {
-          const auto& rid = rc.router_id();
-          return exclude.count(rid) == 0 and not r->router_profiling().IsBadForPath(rid);
-        });
-    if (not maybe.has_value())
-      return std::nullopt;
-    return GetHopsForBuildWithEndpoint(maybe->router_id());
+
+    auto hook = [exclude, r = router()](const RemoteRC& rc) -> bool {
+      const auto& rid = rc.router_id();
+      return not(exclude.count(rid) || r->router_profiling().IsBadForPath(rid));
+    };
+
+    if (auto maybe = router()->node_db()->get_random_rc_conditional(hook))
+      return GetHopsForBuildWithEndpoint(maybe->router_id());
+
+    return std::nullopt;
   }
 
   std::optional<std::vector<RemoteRC>>
