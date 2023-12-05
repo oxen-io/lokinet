@@ -193,61 +193,65 @@ namespace llarp
   }
 
   bool
-  NodeDB::process_fetched_rcs(std::vector<RemoteRC>& rcs)
+  NodeDB::process_fetched_rcs(std::set<RemoteRC>& rcs)
   {
-    std::unordered_set<RemoteRC> inter_set;
+    std::set<RemoteRC> confirmed_set, unconfirmed_set;
 
+    // the intersection of local RC's and received RC's is our confirmed set
     std::set_intersection(
         known_rcs.begin(),
         known_rcs.end(),
         rcs.begin(),
         rcs.end(),
-        std::inserter(inter_set, inter_set.begin()));
+        std::inserter(confirmed_set, confirmed_set.begin()));
+
+    // the intersection of the confirmed set and received RC's is our unconfirmed set
+    std::set_intersection(
+        rcs.begin(),
+        rcs.end(),
+        confirmed_set.begin(),
+        confirmed_set.end(),
+        std::inserter(unconfirmed_set, unconfirmed_set.begin()));
 
     // the total number of rcs received
     const auto num_received = static_cast<double>(rcs.size());
     // the number of returned "good" rcs (that are also found locally)
-    const auto inter_size = inter_set.size();
-    // the number of rcs currently held locally
-    const auto local_count = static_cast<double>(known_rcs.size());
+    const auto inter_size = confirmed_set.size();
 
     const auto fetch_threshold = (double)inter_size / num_received;
-    const auto local_alignment = (double)inter_size / local_count;
 
-    /** We are checking 3 things here:
+    /** We are checking 2 things here:
         1) The number of "good" rcs is above MIN_GOOD_RC_FETCH_TOTAL
         2) The ratio of "good" rcs to total received is above MIN_GOOD_RC_FETCH_THRESHOLD
-        3) The ratio of received and found locally to total found locally is above
-           LOCAL_RC_ALIGNMENT_THRESHOLD
     */
-    return inter_size > MIN_GOOD_RC_FETCH_TOTAL and fetch_threshold > MIN_GOOD_RC_FETCH_THRESHOLD
-        and local_alignment > LOCAL_RC_ALIGNMENT_THRESHOLD;
+    bool success = false;
+    if (success =
+            inter_size > MIN_GOOD_RC_FETCH_TOTAL and fetch_threshold > MIN_GOOD_RC_FETCH_THRESHOLD;
+        success)
+    {
+      // set rcs to be intersection set
+      rcs = std::move(confirmed_set);
+
+      process_results(std::move(unconfirmed_set), unconfirmed_rcs, known_rcs);
+    }
+
+    return success;
   }
 
   bool
-  NodeDB::ingest_fetched_rcs(std::vector<RemoteRC> rcs, rc_time timestamp)
+  NodeDB::ingest_fetched_rcs(std::set<RemoteRC> rcs, rc_time timestamp)
   {
     // if we are not bootstrapping, we should check the rc's against the ones we currently hold
     if (not _using_bootstrap_fallback)
-    {}
+    {
+      if (not process_fetched_rcs(rcs))
+        return false;
+    }
 
     for (auto& rc : rcs)
       put_rc_if_newer(std::move(rc), timestamp);
 
     return true;
-  }
-
-  void
-  NodeDB::ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> rids)
-  {
-    if (rids.empty())
-    {
-      fail_sources.insert(source);
-      return;
-    }
-
-    for (const auto& rid : rids)
-      fetch_counters[rid] += 1;
   }
 
   /** We only call into this function after ensuring two conditions:
@@ -269,12 +273,14 @@ namespace llarp
   bool
   NodeDB::process_fetched_rids()
   {
-    std::unordered_set<RouterID> union_set, intersection_set;
+    std::set<RouterID> union_set, confirmed_set, unconfirmed_set;
 
     for (const auto& [rid, count] : fetch_counters)
     {
       if (count > MIN_RID_FETCH_FREQ)
         union_set.insert(rid);
+      else
+        unconfirmed_set.insert(rid);
     }
 
     // get the intersection of accepted rids and local rids
@@ -283,33 +289,45 @@ namespace llarp
         known_rids.end(),
         union_set.begin(),
         union_set.end(),
-        std::inserter(intersection_set, intersection_set.begin()));
+        std::inserter(confirmed_set, confirmed_set.begin()));
 
     // the total number of rids received
     const auto num_received = (double)fetch_counters.size();
     // the total number of received AND accepted rids
     const auto union_size = union_set.size();
-    // the number of rids currently held locally
-    const auto local_count = (double)known_rids.size();
-    // the number of accepted rids that are also found locally
-    const auto inter_size = (double)intersection_set.size();
 
     const auto fetch_threshold = (double)union_size / num_received;
-    const auto local_alignment = (double)inter_size / local_count;
 
     /** We are checking 2, potentially 3 things here:
         1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
            This tells us how well the rid source's sets of rids "agree" with one another
         2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
            receiving a sufficient amount to make a comparison of any sorts
-        3) If we are not bootstrapping, then the ratio of received/accepted found locally to
-           the total number locally held is above LOCAL_RID_ALIGNMENT_THRESHOLD. This gives us
-           an estimate of how "aligned" the rid source's set of rid's is to ours
     */
-    return (fetch_threshold > GOOD_RID_FETCH_THRESHOLD) and (union_size > MIN_GOOD_RID_FETCH_TOTAL)
-            and (not _using_bootstrap_fallback)
-        ? local_alignment > LOCAL_RID_ALIGNMENT_THRESHOLD
-        : true;
+    bool success = false;
+    if (success = (fetch_threshold > GOOD_RID_FETCH_THRESHOLD)
+            and (union_size > MIN_GOOD_RID_FETCH_TOTAL);
+        success)
+    {
+      process_results(std::move(unconfirmed_set), unconfirmed_rids, known_rids);
+
+      known_rids.merge(confirmed_set);
+    }
+
+    return success;
+  }
+
+  void
+  NodeDB::ingest_rid_fetch_responses(const RouterID& source, std::set<RouterID> rids)
+  {
+    if (rids.empty())
+    {
+      fail_sources.insert(source);
+      return;
+    }
+
+    for (const auto& rid : rids)
+      fetch_counters[rid] += 1;
   }
 
   void
@@ -375,10 +393,10 @@ namespace llarp
             auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
             auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
 
-            std::vector<RemoteRC> rcs;
+            std::set<RemoteRC> rcs;
 
             while (not btlc.is_finished())
-              rcs.emplace_back(btlc.consume_dict_consumer());
+              rcs.emplace(btlc.consume_dict_consumer());
 
             // if process_fetched_rcs returns false, then the trust model rejected the fetched RC's
             fetch_rcs_result(initial, not ingest_fetched_rcs(std::move(rcs), timestamp));
@@ -447,7 +465,7 @@ namespace llarp
                       "Failed to verify signature for fetch RouterIDs response."};
               });
 
-              std::unordered_set<RouterID> router_ids;
+              std::set<RouterID> router_ids;
 
               for (const auto& s : router_id_strings)
               {
@@ -644,7 +662,7 @@ namespace llarp
             return;
           }
 
-          std::unordered_set<RouterID> rids;
+          std::set<RouterID> rids;
 
           try
           {
@@ -707,7 +725,7 @@ namespace llarp
   }
 
   void
-  NodeDB::reselect_router_id_sources(std::unordered_set<RouterID> specific)
+  NodeDB::reselect_router_id_sources(std::set<RouterID> specific)
   {
     replace_subset(rid_sources, specific, known_rids, RID_SOURCE_COUNT, csrng);
   }

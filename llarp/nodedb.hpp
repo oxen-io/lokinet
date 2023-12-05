@@ -29,8 +29,6 @@ namespace llarp
   inline constexpr size_t MIN_GOOD_RC_FETCH_TOTAL{};
   // the ratio of returned rcs found locally to to total returned should be above this ratio
   inline constexpr double MIN_GOOD_RC_FETCH_THRESHOLD{};
-  // the ratio of returned rcs that are found locally to total held locally should above this ratio
-  inline constexpr double LOCAL_RC_ALIGNMENT_THRESHOLD{};
 
   /*  RID Fetch Constants  */
   inline constexpr size_t MIN_ACTIVE_RIDS{24};
@@ -39,14 +37,11 @@ namespace llarp
   // upper limit on how many rid fetch requests to rid sources can fail
   inline constexpr size_t MAX_RID_ERRORS{4};
   // each returned rid must appear this number of times across all responses
-  inline constexpr int MIN_RID_FETCH_FREQ{6};
+  inline constexpr int MIN_RID_FETCH_FREQ{RID_SOURCE_COUNT - MAX_RID_ERRORS - 1};
   // the total number of accepted returned rids should be above this number
   inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
   // the ratio of accepted:rejected rids must be above this ratio
   inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
-  // if we are not bootstrapping, the ratio of accepted:local rids must be above this ratio
-  inline constexpr double LOCAL_RID_ALIGNMENT_THRESHOLD{};
-
   /*  Bootstrap Constants  */
   // the number of rc's we query the bootstrap for
   inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
@@ -55,7 +50,52 @@ namespace llarp
   // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
   inline constexpr auto BOOTSTRAP_COOLDOWN{1min};
 
+  /*  Other Constants  */
+  // the maximum number of RC/RID fetches that can pass w/o an unconfirmed rc/rid appearing
+  inline constexpr int MAX_CONFIRMATION_ATTEMPTS{5};
+  // threshold amount of verifications to promote an unconfirmed rc/rid
+  inline constexpr int CONFIRMATION_THRESHOLD{3};
+
   inline constexpr auto FLUSH_INTERVAL{5min};
+
+  template <
+      typename ID_t,
+      std::enable_if_t<std::is_same_v<ID_t, RouterID> || std::is_same_v<ID_t, RemoteRC>, int> = 0>
+  struct Unconfirmed
+  {
+    const ID_t id;
+    int attempts = 0;
+    int verifications = 0;
+
+    Unconfirmed() = delete;
+    Unconfirmed(const ID_t& obj) : id{obj}
+    {}
+    Unconfirmed(ID_t&& obj) : id{std::move(obj)}
+    {}
+
+    int
+    strikes() const
+    {
+      return attempts;
+    }
+
+    operator bool() const
+    {
+      return verifications == CONFIRMATION_THRESHOLD;
+    }
+
+    bool
+    operator==(const Unconfirmed& other) const
+    {
+      return id == other.id;
+    }
+
+    bool
+    operator<(const Unconfirmed& other) const
+    {
+      return id < other.id;
+    }
+  };
 
   class NodeDB
   {
@@ -73,14 +113,22 @@ namespace llarp
           populated during startup and RouterID fetching. This is meant to represent the
           client instance's most recent perspective of the network, and record which RouterID's
           were recently "active" and connected to
+        - unconfirmed_rids: holds new rids returned in fetch requests to be verified by subsequent
+          fetch requests
         - known_rcs: populated during startup and when RC's are updated both during gossip
           and periodic RC fetching
+        - unconfirmed_rcs: holds new rcs to be verified by subsequent fetch requests, similar to
+          the unknown_rids container
         - rc_lookup: holds all the same rc's as known_rcs, but can be used to look them up by
-          their rid. Deleting an rid key deletes the corresponding rc in known_rcs
+          their rid
     */
-    std::unordered_set<RouterID> known_rids;
-    std::unordered_set<RemoteRC> known_rcs;
-    std::unordered_map<RouterID, const RemoteRC&> rc_lookup;  // TODO: look into this again
+    std::set<RouterID> known_rids;
+    std::set<Unconfirmed<RouterID>> unconfirmed_rids;
+
+    std::set<RemoteRC> known_rcs;
+    std::set<Unconfirmed<RemoteRC>> unconfirmed_rcs;
+
+    std::map<RouterID, const RemoteRC&> rc_lookup;
 
     /** RouterID lists
         - white: active routers
@@ -92,18 +140,18 @@ namespace llarp
     std::unordered_set<RouterID> router_greenlist;
 
     // All registered relays (service nodes)
-    std::unordered_set<RouterID> registered_routers;
+    std::set<RouterID> registered_routers;
     // timing (note: Router holds the variables for last rc and rid request times)
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
     // if populated from a config file, lists specific exclusively used as path first-hops
-    std::unordered_set<RouterID> _pinned_edges;
+    std::set<RouterID> _pinned_edges;
     // source of "truth" for RC updating. This relay will also mediate requests to the
     // 12 selected active RID's for RID fetching
     RouterID fetch_source;
     // set of 12 randomly selected RID's from the client's set of routers
-    std::unordered_set<RouterID> rid_sources{};
+    std::set<RouterID> rid_sources{};
     // logs the RID's that resulted in an error during RID fetching
-    std::unordered_set<RouterID> fail_sources{};
+    std::set<RouterID> fail_sources{};
     // tracks the number of times each rid appears in the above responses
     std::unordered_map<RouterID, int> fetch_counters{};
 
@@ -152,13 +200,13 @@ namespace llarp
     }
 
     bool
-    ingest_fetched_rcs(std::vector<RemoteRC> rcs, rc_time timestamp);
+    ingest_fetched_rcs(std::set<RemoteRC> rcs, rc_time timestamp);
 
     bool
-    process_fetched_rcs(std::vector<RemoteRC>& rcs);
+    process_fetched_rcs(std::set<RemoteRC>& rcs);
 
     void
-    ingest_rid_fetch_responses(const RouterID& source, std::unordered_set<RouterID> ids = {});
+    ingest_rid_fetch_responses(const RouterID& source, std::set<RouterID> ids = {});
 
     bool
     process_fetched_rids();
@@ -182,7 +230,7 @@ namespace llarp
     void
     fetch_rids_result(bool initial = false);
 
-    //  Bootstrap fallback
+    //  Bootstrap fallback fetching
     void
     fallback_to_bootstrap();
     void
@@ -192,7 +240,7 @@ namespace llarp
     // if only specific RID's need to be re-selected; to re-select all, pass the member
     // variable ::known_rids
     void
-    reselect_router_id_sources(std::unordered_set<RouterID> specific);
+    reselect_router_id_sources(std::set<RouterID> specific);
 
     void
     set_router_whitelist(
@@ -230,7 +278,7 @@ namespace llarp
     bool
     is_first_hop_allowed(const RouterID& remote) const;
 
-    std::unordered_set<RouterID>&
+    std::set<RouterID>&
     pinned_edges()
     {
       return _pinned_edges;
@@ -257,13 +305,13 @@ namespace llarp
       return router_greylist;
     }
 
-    const std::unordered_set<RouterID>&
+    const std::set<RouterID>&
     get_registered_routers() const
     {
       return registered_routers;
     }
 
-    const std::unordered_set<RemoteRC>&
+    const std::set<RemoteRC>&
     get_rcs() const
     {
       return known_rcs;
@@ -336,33 +384,14 @@ namespace llarp
     std::optional<std::vector<RemoteRC>>
     get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook) const;
 
-    template <typename Filter>
-    std::optional<RemoteRC>
-    GetRandom(Filter visit) const
-    {
-      return _router.loop()->call_get([visit, this]() mutable -> std::optional<RemoteRC> {
-        std::vector<RemoteRC> rcs{known_rcs.begin(), known_rcs.end()};
-
-        std::shuffle(rcs.begin(), rcs.end(), llarp::csrng);
-
-        for (const auto& entry : known_rcs)
-        {
-          if (visit(entry))
-            return entry;
-        }
-
-        return std::nullopt;
-      });
-    }
-
     // Updates `current` to not contain any of the elements of `replace` and resamples (up to
     // `target_size`) from population to refill it.
     template <typename T, typename RNG>
     void
     replace_subset(
-        std::unordered_set<T>& current,
-        const std::unordered_set<T>& replace,
-        std::unordered_set<T> population,
+        std::set<T>& current,
+        const std::set<T>& replace,
+        std::set<T> population,
         size_t target_size,
         RNG&& rng)
     {
@@ -423,6 +452,52 @@ namespace llarp
       });
     }
 
+    template <
+        typename ID_t,
+        std::enable_if_t<std::is_same_v<ID_t, RouterID> || std::is_same_v<ID_t, RemoteRC>, int> = 0>
+    void
+    process_results(
+        std::set<ID_t> unconfirmed, std::set<Unconfirmed<ID_t>>& container, std::set<ID_t>& known)
+    {
+      // before we add the unconfirmed set, we check to see if our local set of unconfirmed
+      // rcs/rids appeared in the latest unconfirmed set; if so, we will increment their number
+      // of verifications and reset the attempts counter. Once appearing in 3 different requests,
+      // the rc/rid will be "verified" and promoted to the known_{rcs,rids} container
+      for (auto itr = container.begin(); itr != container.end();)
+      {
+        auto& id = itr->id;
+        auto& count = const_cast<int&>(itr->attempts);
+        auto& verifications = const_cast<int&>(itr->verifications);
+
+        if (auto found = unconfirmed.find(id); found != unconfirmed.end())
+        {
+          if (++verifications >= CONFIRMATION_THRESHOLD)
+          {
+            if constexpr (std::is_same_v<ID_t, RemoteRC>)
+              put_rc_if_newer(id);
+            else
+              known.emplace(id);
+            itr = container.erase(itr);
+          }
+          else
+          {
+            // reset attempt counter and continue
+            count = 0;
+            ++itr;
+          }
+
+          unconfirmed.erase(found);
+        }
+
+        itr = (++count >= MAX_CONFIRMATION_ATTEMPTS) ? container.erase(itr) : ++itr;
+      }
+
+      for (auto& id : unconfirmed)
+      {
+        container.emplace(std::move(id));
+      }
+    }
+
     /// remove rcs that are older than we want to keep.  For relays, this is when
     /// they  become "outdated" (i.e. 12hrs).  Clients will hang on to them until
     /// they are fully "expired" (i.e. 30 days), as the client may go offline for
@@ -441,3 +516,14 @@ namespace llarp
     put_rc_if_newer(RemoteRC rc, rc_time now = time_point_now());
   };
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::Unconfirmed<llarp::RemoteRC>> : public hash<llarp::RemoteRC>
+  {};
+
+  template <>
+  struct hash<llarp::Unconfirmed<llarp::RouterID>> : hash<llarp::RouterID>
+  {};
+}  // namespace std
