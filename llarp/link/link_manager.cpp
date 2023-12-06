@@ -622,18 +622,17 @@ namespace llarp
     // this handler should not be registered for clients
     assert(_router.is_service_node());
 
-    const auto& rcs = node_db->get_rcs();
-    const auto now = time_point_now();
-
-    std::vector<std::string> explicit_ids;
+    std::set<RouterID> explicit_ids;
     rc_time since_time;
 
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
 
-      btdc.required("explicit_ids");
-      explicit_ids = btdc.consume_list<std::vector<std::string>>();
+      auto btlc = btdc.require<oxenc::bt_list_consumer>("explicit_ids");
+
+      while (not btlc.is_finished())
+        explicit_ids.emplace(btlc.consume<ustring_view>().data());
 
       since_time = rc_time{std::chrono::seconds{btdc.require<int64_t>("since")}};
     }
@@ -644,24 +643,8 @@ namespace llarp
       return;
     }
 
-    // Initial fetch: give me all the RC's
-    if (explicit_ids.empty())
-    {
-      // TODO: this
-    }
-
-    std::unordered_set<RouterID> explicit_relays;
-
-    for (auto& sv : explicit_ids)
-    {
-      if (sv.size() != RouterID::SIZE)
-      {
-        m.respond(RCFetchMessage::INVALID_REQUEST, true);
-        return;
-      }
-
-      explicit_relays.emplace(reinterpret_cast<const byte_t*>(sv.data()));
-    }
+    const auto& rcs = node_db->get_rcs();
+    const auto now = time_point_now();
 
     oxenc::bt_dict_producer btdp;
     const auto& last_time = node_db->get_last_rc_update_times();
@@ -673,10 +656,22 @@ namespace llarp
       if (since_time != decltype(since_time)::min())
         since_time -= 5s;
 
-      for (const auto& rc : rcs)
+      // Initial fetch: give me all the RC's
+      if (explicit_ids.empty())
       {
-        if (last_time.at(rc.router_id()) > since_time or explicit_relays.count(rc.router_id()))
-          sublist.append_encoded(rc.view());
+        for (const auto& rc : rcs)
+        {
+          if (last_time.at(rc.router_id()) > since_time)
+            sublist.append_encoded(rc.view());
+        }
+      }
+      else
+      {
+        for (const auto& rid : explicit_ids)
+        {
+          if (auto maybe_rc = node_db->get_rc_by_rid(rid))
+            sublist.append_encoded(maybe_rc->view());
+        }
       }
     }
 
@@ -695,56 +690,57 @@ namespace llarp
   void
   LinkManager::handle_fetch_router_ids(oxen::quic::message m)
   {
+    RouterID source;
+    RouterID local = router().local_rid();
+
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
 
-      auto source = btdc.require<std::string_view>("source");
-
-      // if bad request, silently fail
-      if (source.size() != RouterID::SIZE)
-        return;
-
-      const auto source_rid = RouterID{reinterpret_cast<const byte_t*>(source.data())};
-      const auto our_rid = RouterID{router().pubkey()};
-
-      if (source_rid == our_rid)
-      {
-        oxenc::bt_dict_producer btdp;
-        {
-          auto btlp = btdp.append_list("routers");
-          for (const auto& relay : node_db->whitelist())
-          {
-            btlp.append(relay.ToView());
-          }
-        }
-        btdp.append_signature("signature", [this](ustring_view to_sign) {
-          std::array<unsigned char, 64> sig;
-
-          if (!crypto::sign(const_cast<unsigned char*>(sig.data()), _router.identity(), to_sign))
-            throw std::runtime_error{"Failed to sign fetch RouterIDs response"};
-
-          return sig;
-        });
-        m.respond(std::move(btdp).str());
-        return;
-      }
-
-      send_control_message(
-          source_rid,
-          "fetch_router_ids"s,
-          m.body_str(),
-          [source_rid = std::move(source_rid),
-           orig_mess = std::move(m)](oxen::quic::message m) mutable {
-            if (not m.timed_out)
-              orig_mess.respond(m.body_str(), not m);
-            // on timeout, just silently drop (as original requester will just time out anyway)
-          });
+      source.from_string(btdc.require<std::string_view>("source"));
     }
     catch (const std::exception& e)
     {
       log::info(link_cat, "Error fulfilling fetch RouterIDs request: {}", e.what());
     }
+
+    // if bad request, silently fail
+    if (source.size() != RouterID::SIZE)
+      return;
+
+    if (source != local)
+    {
+      send_control_message(
+          source,
+          "fetch_router_ids"s,
+          m.body_str(),
+          [source_rid = std::move(source), original = std::move(m)](oxen::quic::message m) mutable {
+            original.respond(m.body_str(), not m);
+          });
+      return;
+    }
+
+    oxenc::bt_dict_producer btdp;
+
+    {
+      auto btlp = btdp.append_list("routers");
+
+      const auto& known_rcs = node_db->get_known_rcs();
+
+      for (const auto& rc : known_rcs)
+        btlp.append_encoded(rc.view());
+    }
+
+    btdp.append_signature("signature", [this](ustring_view to_sign) {
+      std::array<unsigned char, 64> sig;
+
+      if (!crypto::sign(const_cast<unsigned char*>(sig.data()), _router.identity(), to_sign))
+        throw std::runtime_error{"Failed to sign fetch RouterIDs response"};
+
+      return sig;
+    });
+
+    m.respond(std::move(btdp).str());
   }
 
   void

@@ -1026,7 +1026,7 @@ namespace llarp
     return _link_manager.get_random_connected(result);
   }
 
-  const std::unordered_set<RouterID>&
+  const std::set<RouterID>&
   Router::get_whitelist() const
   {
     return _node_db->whitelist();

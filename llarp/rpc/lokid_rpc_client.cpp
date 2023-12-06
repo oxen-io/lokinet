@@ -269,6 +269,7 @@ namespace llarp::rpc
                   keymap = std::move(keymap),
                   router = std::move(router)]() mutable {
         m_KeyMap = std::move(keymap);
+
         router->set_router_whitelist(active, decomm, unfunded);
       });
     }

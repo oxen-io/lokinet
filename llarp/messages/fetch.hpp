@@ -4,7 +4,7 @@
 
 namespace llarp
 {
-  namespace RCFetchMessage
+  namespace FetchRCMessage
   {
     inline const auto INVALID_REQUEST =
         messages::serialize_response({{messages::STATUS_KEY, "Invalid relay ID requested"}});
@@ -33,7 +33,7 @@ namespace llarp
 
       return std::move(btdp).str();
     }
-  }  // namespace RCFetchMessage
+  }  // namespace FetchRCMessage
 
   namespace BootstrapFetchMessage
   {

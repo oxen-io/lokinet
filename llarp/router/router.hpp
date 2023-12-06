@@ -155,6 +155,12 @@ namespace llarp
     std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
 
    public:
+    RouterID
+    local_rid() const
+    {
+      return RouterID{pubkey()};
+    }
+
     bool
     needs_initial_fetch() const;
 
@@ -284,7 +290,7 @@ namespace llarp
     util::StatusObject
     ExtractSummaryStatus() const;
 
-    const std::unordered_set<RouterID>&
+    const std::set<RouterID>&
     get_whitelist() const;
 
     void

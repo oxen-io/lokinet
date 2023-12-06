@@ -322,7 +322,7 @@ namespace llarp::rpc
       return;
     }
 
-    if (not routerID.FromString(lookupsnode.request.routerID))
+    if (not routerID.from_string(lookupsnode.request.routerID))
     {
       SetJSONError("Invalid remote: " + lookupsnode.request.routerID, lookupsnode.response);
       return;
