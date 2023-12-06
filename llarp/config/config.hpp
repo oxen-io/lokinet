@@ -173,7 +173,7 @@ namespace llarp
     std::optional<net::ipaddr_t> public_addr;
     std::optional<net::port_t> public_port;
 
-    oxen::quic::Address addr;
+    oxen::quic::Address addr{""s, DEFAULT_LISTEN_PORT};
     bool using_new_api = false;
 
     void

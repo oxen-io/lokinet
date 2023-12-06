@@ -61,8 +61,8 @@ namespace llarp
         "netid",
         Default{llarp::LOKINET_DEFAULT_NETID},
         Comment{
-            "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID + "' for mainnet, "s
-                + llarp::LOKINET_TESTNET_NETID + "for testnet."s,
+            "Network ID; this is '"s + llarp::LOKINET_DEFAULT_NETID + "' for mainnet, '"s
+                + llarp::LOKINET_TESTNET_NETID + "' for testnet."s,
         },
         [this](std::string arg) {
           if (arg.size() > NETID_SIZE)
@@ -290,7 +290,7 @@ namespace llarp
         MultiValue,
         [this](std::string value) {
           RouterID router;
-          if (not router.FromString(value))
+          if (not router.from_string(value))
             throw std::invalid_argument{"bad snode value: " + value};
           if (not strict_connect.insert(router).second)
             throw std::invalid_argument{"duplicate strict connect snode: " + value};
@@ -710,7 +710,7 @@ namespace llarp
         },
         [this](std::string arg) {
           RouterID id;
-          if (not id.FromString(arg))
+          if (not id.from_string(arg))
             throw std::invalid_argument{fmt::format("Invalid RouterID: {}", arg)};
 
           auto itr = snode_blacklist.emplace(std::move(id));
@@ -923,6 +923,7 @@ namespace llarp
           SockAddr pubaddr{arg};
           public_addr = pubaddr.getIP();
         });
+
     conf.define_option<uint16_t>(
         "bind",
         "public-port",
@@ -980,10 +981,7 @@ namespace llarp
     conf.define_option<std::string>(
         "bind",
         "listen",
-        Required,
         Comment{
-            "********** NEW API OPTION (see note) **********",
-            "",
             "IP and/or port for lokinet to bind to for inbound/outbound connections.",
             "",
             "If IP is omitted then lokinet will search for a local network interface with a",
@@ -1009,7 +1007,7 @@ namespace llarp
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
             addr = *a;
           else
-            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
+            throw std::invalid_argument{"Could not parse listen address!"};
 
           using_new_api = true;
         });
@@ -1020,86 +1018,25 @@ namespace llarp
         RelayOnly,
         MultiValue,
         Hidden,
-        Comment{
-            "********** THIS PARAMETER IS DEPRECATED -- USE 'LISTEN' INSTEAD **********",
-            "",
-            "Note: the new API dictates the lokinet bind address through the 'listen' config",
-            "parameter. Only ONE address will be read (no more lists of inbounds). Any address",
-            "passed to `listen` will supersede the",
-            "",
-            "IP and/or port to listen on for incoming connections.",
-            "",
-            "If IP is omitted then lokinet will search for a local network interface with a",
-            "public IP address and use that IP (and will exit with an error if no such IP is found",
-            "on the system).  If port is omitted then lokinet defaults to 1090.",
-            "",
-            "Examples:",
-            "    inbound=15.5.29.5:443",
-            "    inbound=10.0.2.2",
-            "    inbound=:1234",
-            "",
-            "Using a private range IP address (like the second example entry) will require using",
-            "the public-ip= and public-port= to specify the public IP address at which this",
-            "router can be reached.",
-        },
         [this, parse_addr_for_link](const std::string& arg) {
           if (using_new_api)
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
             addr = *a;
-          else
-            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
 
     conf.define_option<std::string>(
         "bind",
         "outbound",
         MultiValue,
-        params.is_relay ? Comment{
-            "********** THIS PARAMETER IS DEPRECATED -- USE 'LISTEN' INSTEAD **********",
-            "",
-            "IP and/or port to use for outbound socket connections to other lokinet routers.",
-            "",
-            "If no outbound bind IP is configured, or the 0.0.0.0 wildcard IP is given, then",
-            "lokinet will bind to the same IP being used for inbound connections (either an",
-            "explicit inbound= provided IP, or the default).  If no port is given, or port is",
-            "given as 0, then a random high port will be used.",
-            "",
-            "If using multiple inbound= addresses then you *must* provide an explicit oubound= IP.",
-            "",
-            "Examples:",
-            "    outbound=1.2.3.4:5678",
-            "    outbound=:9000",
-            "    outbound=8.9.10.11",
-            "",
-            "The second example binds on the default incoming IP using port 9000; the third",
-            "example binds on the given IP address using a random high port.",
-        } : Comment{
-            "********** DEPRECATED **********",
-            "",
-            "IP and/or port to use for outbound socket connections to lokinet routers.",
-            "",
-            "If no outbound bind IP is configured then lokinet will use a wildcard IP address",
-            "(equivalent to specifying 0.0.0.0).  If no port is given then a random high port",
-            "will be used.",
-            "",
-            "Examples:",
-            "    outbound=1.2.3.4:5678",
-            "    outbound=:9000",
-            "    outbound=8.9.10.11",
-            "",
-            "The second example binds on the wildcard address using port 9000; the third example",
-            "binds on the given IP address using a random high port.",
-        },
+        Hidden,
         [this, parse_addr_for_link](const std::string& arg) {
           if (using_new_api)
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
             addr = *a;
-          else
-            addr = oxen::quic::Address{""s, DEFAULT_LISTEN_PORT};
         });
 
     conf.add_undeclared_handler(
@@ -1250,7 +1187,7 @@ namespace llarp
         [this](std::string arg) { rpc_addr = oxenmq::address(arg); });
 
     // Deprecated options:
-    conf.define_option<std::string>("lokid", "jsonrpc", RelayOnly, Deprecated, [](std::string arg) {
+    conf.define_option<std::string>("lokid", "jsonrpc", RelayOnly, Hidden, [](std::string arg) {
       if (arg.empty())
         return;
       throw std::invalid_argument(

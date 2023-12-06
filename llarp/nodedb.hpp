@@ -130,7 +130,7 @@ namespace llarp
 
     std::map<RouterID, const RemoteRC&> rc_lookup;
 
-    /** RouterID lists
+    /** RouterID lists    // TODO: get rid of all these, replace with better decom/not staked sets
         - white: active routers
         - gray: fully funded, but decommissioned routers
         - green: registered, but not fully-staked routers
@@ -186,6 +186,21 @@ namespace llarp
 
     /// in memory nodedb
     NodeDB();
+
+    const std::set<RouterID>&
+    get_known_rids() const
+    {
+      return known_rids;
+    }
+
+    const std::set<RemoteRC>&
+    get_known_rcs() const
+    {
+      return known_rcs;
+    }
+
+    std::optional<RemoteRC>
+    get_rc_by_rid(const RouterID& rid);
 
     bool
     needs_initial_fetch() const
@@ -270,7 +285,7 @@ namespace llarp
     bool
     is_path_allowed(const RouterID& remote) const
     {
-      return router_whitelist.count(remote);
+      return known_rids.count(remote);
     }
 
     // if pinned edges were specified, the remote must be in that set, else any remote
@@ -293,10 +308,10 @@ namespace llarp
     void
     set_bootstrap_routers(std::unique_ptr<BootstrapList> from_router);
 
-    const std::unordered_set<RouterID>&
+    const std::set<RouterID>&
     whitelist() const
     {
-      return router_whitelist;
+      return known_rids;
     }
 
     const std::unordered_set<RouterID>&

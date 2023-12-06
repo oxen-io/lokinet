@@ -57,6 +57,15 @@ namespace llarp
   }
 
   std::optional<RemoteRC>
+  NodeDB::get_rc_by_rid(const RouterID& rid)
+  {
+    if (auto itr = rc_lookup.find(rid); itr != rc_lookup.end())
+      return itr->second;
+
+    return std::nullopt;
+  }
+
+  std::optional<RemoteRC>
   NodeDB::get_random_rc() const
   {
     std::optional<RemoteRC> rand = std::nullopt;
@@ -178,7 +187,8 @@ namespace llarp
   {
     if (not _router.is_service_node())
       return true;
-    return registered_routers.count(rid);
+
+    return known_rids.count(rid);
   }
 
   void
@@ -358,6 +368,7 @@ namespace llarp
     }
 
     std::vector<RouterID> needed;
+
     const auto now = time_point_now();
 
     for (const auto& [rid, rc] : rc_lookup)
@@ -370,7 +381,7 @@ namespace llarp
 
     _router.link_manager().fetch_rcs(
         src,
-        RCFetchMessage::serialize(_router.last_rc_fetch, needed),
+        FetchRCMessage::serialize(_router.last_rc_fetch, needed),
         [this, src, initial](oxen::quic::message m) mutable {
           if (m.timed_out)
           {
@@ -730,6 +741,7 @@ namespace llarp
     replace_subset(rid_sources, specific, known_rids, RID_SOURCE_COUNT, csrng);
   }
 
+  // TODO: nuke all this shit
   void
   NodeDB::set_router_whitelist(
       const std::vector<RouterID>& whitelist,
@@ -744,6 +756,9 @@ namespace llarp
     registered_routers.insert(greylist.begin(), greylist.end());
     registered_routers.insert(greenlist.begin(), greenlist.end());
 
+    for (const auto& rid : whitelist)
+      known_rids.insert(rid);
+
     router_whitelist.clear();
     router_whitelist.insert(whitelist.begin(), whitelist.end());
     router_greylist.clear();
@@ -752,19 +767,16 @@ namespace llarp
     router_greenlist.insert(greenlist.begin(), greenlist.end());
 
     log::info(
-        logcat, "lokinet service node list now has ", router_whitelist.size(), " active routers");
+        logcat, "lokinet service node list now has ", known_rids.size(), " active router RIDs");
   }
 
   std::optional<RouterID>
   NodeDB::get_random_whitelist_router() const
   {
-    const auto sz = router_whitelist.size();
-    if (sz == 0)
-      return std::nullopt;
-    auto itr = router_whitelist.begin();
-    if (sz > 1)
-      std::advance(itr, randint() % sz);
-    return *itr;
+    if (auto rc = get_random_rc())
+      return rc->router_id();
+
+    return std::nullopt;
   }
 
   bool
@@ -777,7 +789,7 @@ namespace llarp
     if (not _router.is_service_node())
       return true;
 
-    return router_whitelist.count(remote) or router_greylist.count(remote);
+    return known_rids.count(remote) or router_greylist.count(remote);
   }
 
   bool

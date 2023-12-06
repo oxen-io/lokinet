@@ -82,29 +82,34 @@ namespace llarp::consensus
 
     // Pull the next element off the queue, but skip ourself, any that are no longer registered, and
     // any that are currently known to be failing (those are queued for testing separately).
-    RouterID my_pk{router->pubkey()};
+    auto local_pk = router->local_rid();
+
     while (!testing_queue.empty())
     {
       auto& pk = testing_queue.back();
       std::optional<RouterID> sn;
-      if (pk != my_pk && !failing.count(pk))
+
+      if (pk != local_pk && !failing.count(pk))
         sn = pk;
+
       testing_queue.pop_back();
+
       if (sn)
         return sn;
     }
+
     if (!requeue)
       return std::nullopt;
 
     // FIXME: when a *new* node comes online we need to inject it into a random position in the SN
     // list with probability (L/N) [L = current list size, N = potential list size]
     //
-    // (FIXME: put this FIXME in a better place ;-) )
 
     // We exhausted the queue so repopulate it and try again
 
     testing_queue.clear();
-    const auto all = router->get_whitelist();
+    const auto& all = router->get_whitelist();
+
     testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
 
     std::shuffle(testing_queue.begin(), testing_queue.end(), llarp::csrng);

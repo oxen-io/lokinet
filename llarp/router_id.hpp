@@ -31,7 +31,7 @@ namespace llarp
     ShortString() const;
 
     bool
-    FromString(std::string_view str);
+    from_string(std::string_view str);
 
     RouterID&
     operator=(const byte_t* ptr)
@@ -49,7 +49,6 @@ namespace llarp
 
   template <>
   constexpr inline bool IsToStringFormattable<RouterID> = true;
-
 }  // namespace llarp
 
 namespace std

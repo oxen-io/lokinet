@@ -535,7 +535,7 @@ namespace llarp::handlers
       if (auto saddr = service::Address(); saddr.FromString(name))
         ReplyToLokiDNSWhenReady(saddr, msg, isV6);
 
-      if (auto rid = RouterID(); rid.FromString(name))
+      if (auto rid = RouterID(); rid.from_string(name))
         ReplyToSNodeDNSWhenReady(rid, msg, isV6);
     };
 
@@ -568,7 +568,7 @@ namespace llarp::handlers
         if (not qname)
           return false;
         RouterID addr;
-        if (not addr.FromString(*qname))
+        if (not addr.from_string(*qname))
           return false;
         auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
         return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
@@ -604,7 +604,7 @@ namespace llarp::handlers
     if (msg.questions[0].qtype == dns::qTypeTXT)
     {
       RouterID snode;
-      if (snode.FromString(qname))
+      if (snode.from_string(qname))
       {
         if (auto rc = router()->node_db()->get_rc(snode))
           msg.AddTXTReply(std::string{rc->view()});
