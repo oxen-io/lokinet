@@ -13,19 +13,19 @@ namespace llarp::exit
   Context::Tick(llarp_time_t now)
   {
     {
-      auto itr = m_Exits.begin();
-      while (itr != m_Exits.end())
+      auto itr = _exits.begin();
+      while (itr != _exits.end())
       {
         itr->second->Tick(now);
         ++itr;
       }
     }
     {
-      auto itr = m_Closed.begin();
-      while (itr != m_Closed.end())
+      auto itr = _closed.begin();
+      while (itr != _closed.end())
       {
         if ((*itr)->ShouldRemove())
-          itr = m_Closed.erase(itr);
+          itr = _closed.erase(itr);
         else
           ++itr;
       }
@@ -33,14 +33,14 @@ namespace llarp::exit
   }
 
   void
-  Context::Stop()
+  Context::stop()
   {
-    auto itr = m_Exits.begin();
-    while (itr != m_Exits.end())
+    auto itr = _exits.begin();
+    while (itr != _exits.end())
     {
       itr->second->Stop();
-      m_Closed.emplace_back(std::move(itr->second));
-      itr = m_Exits.erase(itr);
+      _closed.emplace_back(std::move(itr->second));
+      itr = _exits.erase(itr);
     }
   }
 
@@ -48,8 +48,8 @@ namespace llarp::exit
   Context::ExtractStatus() const
   {
     util::StatusObject obj{};
-    auto itr = m_Exits.begin();
-    while (itr != m_Exits.end())
+    auto itr = _exits.begin();
+    while (itr != _exits.end())
     {
       obj[itr->first] = itr->second->ExtractStatus();
       ++itr;
@@ -58,10 +58,10 @@ namespace llarp::exit
   }
 
   void
-  Context::CalculateExitTraffic(TrafficStats& stats)
+  Context::calculate_exit_traffic(TrafficStats& stats)
   {
-    auto itr = m_Exits.begin();
-    while (itr != m_Exits.end())
+    auto itr = _exits.begin();
+    while (itr != _exits.end())
     {
       itr->second->CalculateTrafficStats(stats);
       ++itr;
@@ -69,10 +69,10 @@ namespace llarp::exit
   }
 
   exit::Endpoint*
-  Context::FindEndpointForPath(const PathID_t& path) const
+  Context::find_endpoint_for_path(const PathID_t& path) const
   {
-    auto itr = m_Exits.begin();
-    while (itr != m_Exits.end())
+    auto itr = _exits.begin();
+    while (itr != _exits.end())
     {
       auto ep = itr->second->FindEndpointByPath(path);
       if (ep)
@@ -83,10 +83,10 @@ namespace llarp::exit
   }
 
   bool
-  Context::ObtainNewExit(const PubKey& pk, const PathID_t& path, bool permitInternet)
+  Context::obtain_new_exit(const PubKey& pk, const PathID_t& path, bool permitInternet)
   {
-    auto itr = m_Exits.begin();
-    while (itr != m_Exits.end())
+    auto itr = _exits.begin();
+    while (itr != _exits.end())
     {
       if (itr->second->AllocateNewExit(pk, path, permitInternet))
         return true;
@@ -96,9 +96,9 @@ namespace llarp::exit
   }
 
   std::shared_ptr<handlers::ExitEndpoint>
-  Context::GetExitEndpoint(std::string name) const
+  Context::get_exit_endpoint(std::string name) const
   {
-    if (auto itr = m_Exits.find(name); itr != m_Exits.end())
+    if (auto itr = _exits.find(name); itr != _exits.end())
     {
       return itr->second;
     }
@@ -106,10 +106,10 @@ namespace llarp::exit
   }
 
   void
-  Context::AddExitEndpoint(
+  Context::add_exit_endpoint(
       const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
   {
-    if (m_Exits.find(name) != m_Exits.end())
+    if (_exits.find(name) != _exits.end())
       throw std::invalid_argument{fmt::format("An exit with name {} already exists", name)};
 
     auto endpoint = std::make_unique<handlers::ExitEndpoint>(name, router);
@@ -119,7 +119,7 @@ namespace llarp::exit
     if (!endpoint->Start())
       throw std::runtime_error{fmt::format("Failed to start endpoint {}", name)};
 
-    m_Exits.emplace(name, std::move(endpoint));
+    _exits.emplace(name, std::move(endpoint));
   }
 
 }  // namespace llarp::exit

@@ -224,7 +224,7 @@ namespace llarp
         const auto& rid = rc.router_id();
 
 #ifndef TESTNET
-        if (router->IsBootstrapNode(rid))
+        if (router->is_bootstrap_node(rid))
           return;
 #endif
         if (exclude.count(rid))

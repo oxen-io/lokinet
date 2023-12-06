@@ -76,7 +76,7 @@ namespace llarp::rpc
   {
     if (r.is_service_node())
     {
-      return r.exitContext().GetExitEndpoint(name);
+      return r.exitContext().get_exit_endpoint(name);
     }
 
     return r.hidden_service_context().GetEndpointByName(name);
@@ -329,7 +329,7 @@ namespace llarp::rpc
     }
 
     m_Router.loop()->call([&]() {
-      auto endpoint = m_Router.exitContext().GetExitEndpoint("default");
+      auto endpoint = m_Router.exitContext().get_exit_endpoint("default");
 
       if (endpoint == nullptr)
       {

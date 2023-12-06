@@ -102,7 +102,7 @@ namespace llarp
   {
     util::StatusObject obj{
         {"lastUpdated", _timestamp.time_since_epoch().count()},
-        {"publicRouter", is_public_router()},
+        {"publicRouter", is_public_addressable()},
         {"identity", _router_id.ToString()},
         {"address", _addr.to_string()}};
 
@@ -221,10 +221,11 @@ namespace llarp
   }
 
   bool
-  RouterContact::is_public_router() const
+  RouterContact::is_public_addressable() const
   {
     if (_router_version.empty())
       return false;
+
     return _addr.is_addressable();
   }
 

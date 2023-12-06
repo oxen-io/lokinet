@@ -77,6 +77,7 @@ namespace llarp
     else
     {
       RemoteRC rc;
+
       if (not rc.read(fpath))
       {
         throw std::runtime_error{

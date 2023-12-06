@@ -178,7 +178,7 @@ namespace llarp
     fs::path
     get_path_by_pubkey(RouterID pk) const;
 
-    std::unique_ptr<BootstrapList> _bootstraps;
+    std::unique_ptr<BootstrapList> _bootstraps{};
 
    public:
     explicit NodeDB(
@@ -299,10 +299,28 @@ namespace llarp
       return _pinned_edges;
     }
 
-    std::unique_ptr<BootstrapList>&
+    size_t
+    num_bootstraps() const
+    {
+      return _bootstraps ? _bootstraps->size() : 0;
+    }
+
+    bool
+    has_bootstraps() const
+    {
+      return _bootstraps ? _bootstraps->empty() : false;
+    }
+
+    const BootstrapList&
+    bootstrap_list() const
+    {
+      return *_bootstraps;
+    }
+
+    BootstrapList&
     bootstrap_list()
     {
-      return _bootstraps;
+      return *_bootstraps;
     }
 
     void
@@ -354,7 +372,7 @@ namespace llarp
 
     /// the number of RCs that are loaded from disk
     size_t
-    num_loaded() const;
+    num_rcs() const;
 
     /// do periodic tasks like flush to disk and expiration
     void

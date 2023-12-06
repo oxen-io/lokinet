@@ -18,37 +18,37 @@ namespace llarp::exit
     Tick(llarp_time_t now);
 
     void
-    ClearAllEndpoints();
+    clear_all_endpoints();
 
     util::StatusObject
     ExtractStatus() const;
 
     /// send close to all exit sessions and remove all sessions
     void
-    Stop();
+    stop();
 
     void
-    AddExitEndpoint(
+    add_exit_endpoint(
         const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
     bool
-    ObtainNewExit(const PubKey& remote, const PathID_t& path, bool permitInternet);
+    obtain_new_exit(const PubKey& remote, const PathID_t& path, bool permitInternet);
 
     exit::Endpoint*
-    FindEndpointForPath(const PathID_t& path) const;
+    find_endpoint_for_path(const PathID_t& path) const;
 
     /// calculate (pk, tx, rx) for all exit traffic
     using TrafficStats = std::unordered_map<PubKey, std::pair<uint64_t, uint64_t>>;
 
     void
-    CalculateExitTraffic(TrafficStats& stats);
+    calculate_exit_traffic(TrafficStats& stats);
 
     std::shared_ptr<handlers::ExitEndpoint>
-    GetExitEndpoint(std::string name) const;
+    get_exit_endpoint(std::string name) const;
 
    private:
     Router* router;
-    std::unordered_map<std::string, std::shared_ptr<handlers::ExitEndpoint>> m_Exits;
-    std::list<std::shared_ptr<handlers::ExitEndpoint>> m_Closed;
+    std::unordered_map<std::string, std::shared_ptr<handlers::ExitEndpoint>> _exits;
+    std::list<std::shared_ptr<handlers::ExitEndpoint>> _closed;
   };
 }  // namespace llarp::exit

@@ -516,7 +516,7 @@ namespace llarp::service
     const auto& keyfile = _state->key_file;
     if (!keyfile.empty())
     {
-      _identity.EnsureKeys(keyfile, router()->key_manager()->needBackup());
+      _identity.EnsureKeys(keyfile, router()->key_manager()->needs_backup());
     }
     else
     {
@@ -1310,7 +1310,7 @@ namespace llarp::service
     // TODO: if all requests fail, call callback with failure?
     for (const auto& path : paths)
     {
-      path->find_intro(location, false, 0, [this, hook, got_it](std::string resp) mutable {
+      path->find_intro(location, false, 0, [hook, got_it, this](std::string resp) mutable {
         // asking many, use only first successful
         if (*got_it)
           return;
@@ -1335,7 +1335,7 @@ namespace llarp::service
         }
 
         service::EncryptedIntroSet enc{introset};
-        router()->contacts()->services()->PutNode(std::move(enc));
+        router()->contacts().put_intro(std::move(enc));
 
         // TODO: finish this
         /*

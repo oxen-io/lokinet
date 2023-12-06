@@ -13,39 +13,24 @@ namespace llarp::path
   {}
 
   void
-  PathContext::AllowTransit()
+  PathContext::allow_transit()
   {
     m_AllowTransit = true;
   }
 
   bool
-  PathContext::AllowingTransit() const
+  PathContext::is_transit_allowed() const
   {
     return m_AllowTransit;
   }
 
   bool
-  PathContext::CheckPathLimitHitByIP(const IpAddress& ip)
+  PathContext::check_path_limit_hit_by_ip(const IpAddress& ip)
   {
 #ifdef TESTNET
     return false;
 #else
     IpAddress remote = ip;
-    // null out the port -- we don't care about it for path limiting purposes
-    remote.setPort(0);
-    // try inserting remote address by ip into decaying hash set
-    // if it cannot insert it has hit a limit
-    return not path_limits.Insert(remote);
-#endif
-  }
-
-  bool
-  PathContext::CheckPathLimitHitByIP(const std::string& ip)
-  {
-#ifdef TESTNET
-    return false;
-#else
-    IpAddress remote{ip};
     // null out the port -- we don't care about it for path limiting purposes
     remote.setPort(0);
     // try inserting remote address by ip into decaying hash set
@@ -102,7 +87,7 @@ namespace llarp::path
   }
 
   bool
-  PathContext::HasTransitHop(const TransitHopInfo& info)
+  PathContext::has_transit_hop(const TransitHopInfo& info)
   {
     TransitHopID downstream{info.downstream, info.rxID};
     if (transit_hops.count(downstream))
@@ -125,7 +110,7 @@ namespace llarp::path
   }
 
   Path_ptr
-  PathContext::GetPath(const PathID_t& path_id)
+  PathContext::get_path(const PathID_t& path_id)
   {
     if (auto itr = own_paths.find(path_id); itr != own_paths.end())
       return itr->second;
@@ -186,7 +171,7 @@ namespace llarp::path
   }
 
   void
-  PathContext::PutTransitHop(std::shared_ptr<TransitHop> hop)
+  PathContext::put_transit_hop(std::shared_ptr<TransitHop> hop)
   {
     TransitHopID downstream{hop->info.downstream, hop->info.rxID};
     TransitHopID upstream{hop->info.upstream, hop->info.txID};

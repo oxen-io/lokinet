@@ -29,7 +29,7 @@ namespace llarp
     /// @param filepath is the name of the original file to backup.
     /// @return true if the file could be moved or didn't exist, false otherwise
     static bool
-    backupFileByMoving(const fs::path& filepath);
+    copy_backup_keyfile(const fs::path& filepath);
 
     /// Constructor
     KeyManager();
@@ -52,37 +52,37 @@ namespace llarp
     /// @param rc (out) will be modified to contian the RouterContact
     /// @return true on success, false otherwise
     bool
-    getRouterContact(llarp::RouterContact& rc) const;
+    gen_rc(llarp::RouterContact& rc) const;
 
     /// Return whether or not we need to backup keys as we load them
     bool
-    needBackup() const
+    needs_backup() const
     {
-      return m_needBackup;
+      return backup_keys;
     }
 
-    llarp::SecretKey identityKey;
-    llarp::SecretKey encryptionKey;
-    llarp::SecretKey transportKey;
+    llarp::SecretKey identity_key;
+    llarp::SecretKey encryption_key;
+    llarp::SecretKey transport_key;
 
-    fs::path m_rcPath;
-    fs::path m_idKeyPath;
-    fs::path m_encKeyPath;
-    fs::path m_transportKeyPath;
+    fs::path rc_path;
+    fs::path idkey_path;
+    fs::path enckey_path;
+    fs::path transkey_path;
 
    private:
-    std::atomic_bool m_initialized;
-    std::atomic_bool m_needBackup;
+    std::atomic_bool is_initialized;
+    std::atomic_bool backup_keys;
 
     /// Backup each key file (by copying, e.g. foo -> foo.bak)
     bool
-    backupKeyFilesByMoving() const;
+    copy_backup_keyfiles() const;
 
     /// Load the key at a given filepath or create it
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(
+    keygen(
         fs::path filepath,
         llarp::SecretKey& key,
         std::function<void(llarp::SecretKey& key)> keygen);

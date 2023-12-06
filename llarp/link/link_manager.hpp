@@ -30,6 +30,8 @@ namespace llarp
 
   using conn_open_hook = oxen::quic::connection_established_callback;
   using conn_closed_hook = oxen::quic::connection_closed_callback;
+  using stream_open_hook = oxen::quic::stream_open_callback;
+  using stream_closed_hook = oxen::quic::stream_close_callback;
 
   namespace link
   {
@@ -141,7 +143,8 @@ namespace llarp
   struct LinkManager
   {
    public:
-    explicit LinkManager(Router& r);
+    static std::unique_ptr<LinkManager>
+    make(Router& r);
 
     bool
     send_control_message(
@@ -160,6 +163,8 @@ namespace llarp
     }
 
    private:
+    explicit LinkManager(Router& r);
+
     bool
     send_control_message_impl(
         const RouterID& remote,
@@ -310,11 +315,8 @@ namespace llarp
     void
     connect_to_random(int num_conns);
 
-    // TODO: tune these (maybe even remove max?) now that we're switching to quic
-    /// always maintain this many connections to other routers
-    size_t min_connected_routers = 4;
-    /// hard upperbound limit on the number of router to router connections
-    size_t max_connected_routers = 6;
+    /// always maintain this many client connections to other routers
+    int client_router_connections = 4;
 
    private:
     // DHT messages

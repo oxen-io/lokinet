@@ -91,8 +91,8 @@ namespace llarp
 
     consensus::reachability_testing router_testing;
 
-    std::optional<SockAddr> _ourAddress;
-    oxen::quic::Address _local_addr;
+    std::optional<oxen::quic::Address> _public_address;  // public addr for relays
+    oxen::quic::Address _listen_addr;
 
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpn;
@@ -122,7 +122,9 @@ namespace llarp
     oxenmq::address rpc_addr;
     Profiling _router_profiling;
     fs::path _profile_file;
-    LinkManager _link_manager{*this};
+
+    std::unique_ptr<LinkManager> _link_manager;
+    int client_router_connections;
 
     // should we be sending padded messages every interval?
     bool send_padding = false;
@@ -155,6 +157,12 @@ namespace llarp
     std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
 
    public:
+    int
+    required_num_client_conns() const
+    {
+      return client_router_connections;
+    }
+
     RouterID
     local_rid() const
     {
@@ -176,10 +184,16 @@ namespace llarp
     void
     connect_to(const RemoteRC& rc);
 
-    Contacts*
+    const Contacts&
     contacts() const
     {
-      return _contacts.get();
+      return *_contacts;
+    }
+
+    Contacts&
+    contacts()
+    {
+      return *_contacts;
     }
 
     std::shared_ptr<Config>
@@ -212,10 +226,16 @@ namespace llarp
     LinkManager&
     link_manager()
     {
-      return _link_manager;
+      return *_link_manager;
     }
 
-    inline int
+    const LinkManager&
+    link_manager() const
+    {
+      return *_link_manager;
+    }
+
+    int
     outbound_udp_socket() const
     {
       return _outbound_udp_socket;
@@ -282,7 +302,7 @@ namespace llarp
     }
 
     oxen::quic::Address
-    local_addr() const;
+    listen_addr() const;
 
     util::StatusObject
     ExtractStatus() const;
@@ -473,7 +493,7 @@ namespace llarp
         std::string body,
         std::function<void(oxen::quic::message m)> func = nullptr);
 
-    bool IsBootstrapNode(RouterID) const;
+    bool is_bootstrap_node(RouterID) const;
 
     /// call internal router ticker
     void
@@ -490,11 +510,11 @@ namespace llarp
 
     /// count the number of unique service nodes connected via pubkey
     size_t
-    NumberOfConnectedRouters() const;
+    num_router_connections() const;
 
     /// count the number of unique clients connected by pubkey
     size_t
-    NumberOfConnectedClients() const;
+    num_client_connections() const;
 
     bool
     GetRandomConnectedRouter(RemoteRC& result) const;
