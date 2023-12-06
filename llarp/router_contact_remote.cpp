@@ -89,7 +89,7 @@ namespace llarp
     }
     catch (const std::exception& e)
     {
-      log::error(logcat, "Failed to read or validate RC from {}: {}", fname, e.what());
+      log::warning(logcat, "Failed to read or validate RC from {}: {}", fname, e.what());
       return false;
     }
 

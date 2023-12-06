@@ -22,7 +22,8 @@ namespace llarp
   {
     _router_id = llarp::seckey_to_pubkey(_secret_key);
     _addr = std::move(local);
-    _addr6.emplace(&_addr.in6());
+    if (_addr.is_ipv6())
+      _addr6.emplace(&_addr.in6());
     resign();
   }
 
@@ -123,8 +124,6 @@ namespace llarp
     static_assert(llarp::LOKINET_VERSION.size() == 3);
     btdp.append(
         "v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
-
-    bt_sign(btdp);
   }
 
   void

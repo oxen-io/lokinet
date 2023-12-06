@@ -35,6 +35,7 @@ namespace llarp
   using ConfigMap = llarp::ConfigParser::ConfigMap;
 
   inline static constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
+  constexpr int CLIENT_ROUTER_CONNECTIONS = 4;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
   /// Small struct to gather all parameters needed for config generation to reduce the number of
@@ -57,8 +58,7 @@ namespace llarp
 
   struct RouterConfig
   {
-    size_t min_connected_routers = 0;
-    size_t max_connected_routers = 0;
+    int client_router_connections{CLIENT_ROUTER_CONNECTIONS};
 
     std::string net_id;
 

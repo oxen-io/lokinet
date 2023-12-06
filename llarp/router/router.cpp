@@ -45,7 +45,7 @@ namespace llarp
       , _disk_thread{_lmq->add_tagged_thread("disk")}
       , _rpc_server{nullptr}
       , _randomStartDelay{platform::is_simulation ? std::chrono::milliseconds{(llarp::randint() % 1250) + 2000} : 0s}
-      , _link_manager{*this}
+      // , _link_manager{*this}
       , _hidden_service_context{this}
   {
     _key_manager = std::make_shared<KeyManager>();
@@ -59,9 +59,7 @@ namespace llarp
   }
 
   Router::~Router()
-  {
-    _contacts.reset();
-  }
+  {}
 
   // TODO: investigate changes needed for libquic integration
   //       still needed at all?
@@ -86,11 +84,10 @@ namespace llarp
 
     return util::StatusObject{
         {"running", true},
-        {"numNodesKnown", _node_db->num_loaded()},
-        {"contacts", _contacts->ExtractStatus()},
+        {"numNodesKnown", _node_db->num_rcs()},
         {"services", _hidden_service_context.ExtractStatus()},
         {"exit", _exit_context.ExtractStatus()},
-        {"links", _link_manager.extract_status()}};
+        {"links", _link_manager->extract_status()}};
   }
 
   // TODO: investigate changes needed for libquic integration
@@ -102,7 +99,7 @@ namespace llarp
 
     auto services = _hidden_service_context.ExtractStatus();
 
-    auto link_types = _link_manager.extract_status();
+    auto link_types = _link_manager->extract_status();
 
     uint64_t tx_rate = 0;
     uint64_t rx_rate = 0;
@@ -175,7 +172,7 @@ namespace llarp
         {"uptime", to_json(Uptime())},
         {"numPathsBuilt", pathsCount},
         {"numPeersConnected", peers},
-        {"numRoutersKnown", _node_db->num_loaded()},
+        {"numRoutersKnown", _node_db->num_rcs()},
         {"ratio", ratio},
         {"txRate", tx_rate},
         {"rxRate", rx_rate},
@@ -227,14 +224,14 @@ namespace llarp
 
     loop()->call([this, &peer_pubkeys]() {
       for (auto& pk : peer_pubkeys)
-        _link_manager.close_connection(pk);
+        _link_manager->close_connection(pk);
     });
   }
 
   void
   Router::persist_connection_until(const RouterID& remote, llarp_time_t until)
   {
-    _link_manager.set_conn_persist(remote, until);
+    _link_manager->set_conn_persist(remote, until);
   }
 
   std::optional<RouterID>
@@ -262,19 +259,19 @@ namespace llarp
   void
   Router::connect_to(const RouterID& rid)
   {
-    _link_manager.connect_to(rid);
+    _link_manager->connect_to(rid);
   }
 
   void
   Router::connect_to(const RemoteRC& rc)
   {
-    _link_manager.connect_to(rc);
+    _link_manager->connect_to(rc);
   }
 
   bool
   Router::send_data_message(const RouterID& remote, std::string payload)
   {
-    return _link_manager.send_data_message(remote, std::move(payload));
+    return _link_manager->send_data_message(remote, std::move(payload));
   }
 
   bool
@@ -284,20 +281,20 @@ namespace llarp
       std::string body,
       std::function<void(oxen::quic::message m)> func)
   {
-    return _link_manager.send_control_message(
+    return _link_manager->send_control_message(
         remote, std::move(ep), std::move(body), std::move(func));
   }
 
   void
   Router::for_each_connection(std::function<void(link::Connection&)> func)
   {
-    return _link_manager.for_each_connection(func);
+    return _link_manager->for_each_connection(func);
   }
 
   bool
   Router::EnsureIdentity()
   {
-    _encryption = _key_manager->encryptionKey;
+    _encryption = _key_manager->encryption_key;
 
     if (is_service_node())
     {
@@ -340,13 +337,19 @@ namespace llarp
     }
     else
     {
-      _identity = _key_manager->identityKey;
+      _identity = _key_manager->identity_key;
     }
 
     if (_identity.IsZero())
+    {
+      log::critical(logcat, "FUCK @ line:{}", __LINE__);
       return false;
+    }
     if (_encryption.IsZero())
+    {
+      log::critical(logcat, "FUCK @ line:{}", __LINE__);
       return false;
+    }
 
     return true;
   }
@@ -435,7 +438,7 @@ namespace llarp
   Router::insufficient_peers() const
   {
     constexpr int KnownPeerWarningThreshold = 5;
-    return node_db()->num_loaded() < KnownPeerWarningThreshold;
+    return node_db()->num_rcs() < KnownPeerWarningThreshold;
   }
 
   std::optional<std::string>
@@ -509,21 +512,22 @@ namespace llarp
   }
 
   size_t
-  Router::NumberOfConnectedRouters() const
+  Router::num_router_connections() const
   {
-    return _link_manager.get_num_connected();
+    return _link_manager->get_num_connected();
   }
 
   size_t
-  Router::NumberOfConnectedClients() const
+  Router::num_client_connections() const
   {
-    return _link_manager.get_num_connected_clients();
+    return _link_manager->get_num_connected_clients();
   }
 
   void
   Router::save_rc()
   {
     _node_db->put_rc(router_contact.view());
+    log::info(logcat, "Saving RC file to {}", our_rc_file);
     queue_disk_io([&]() { router_contact.write(our_rc_file); });
   }
 
@@ -552,13 +556,14 @@ namespace llarp
     }
 
     // Router config
-    _link_manager.max_connected_routers = conf.router.max_connected_routers;
-    _link_manager.min_connected_routers = conf.router.min_connected_routers;
+    client_router_connections = conf.router.client_router_connections;
 
-    encryption_keyfile = _key_manager->m_encKeyPath;
-    our_rc_file = _key_manager->m_rcPath;
-    transport_keyfile = _key_manager->m_transportKeyPath;
-    identity_keyfile = _key_manager->m_idKeyPath;
+    encryption_keyfile = _key_manager->enckey_path;
+    our_rc_file = _key_manager->rc_path;
+    transport_keyfile = _key_manager->transkey_path;
+    identity_keyfile = _key_manager->idkey_path;
+
+    std::optional<SockAddr> _ourAddress;
 
     if (auto maybe_ip = conf.links.public_addr)
       _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
@@ -574,11 +579,22 @@ namespace llarp
       else
         throw std::runtime_error{"public ip provided without public port"};
       log::debug(logcat, "Using {} for our public address", *_ourAddress);
+
+      _public_address = oxen::quic::Address{static_cast<const sockaddr*>(*_ourAddress)};
+      log::critical(logcat, "PUBLIC ADDR: {}", *_public_address);
     }
     else
-      log::debug(logcat, "No explicit public address given; will auto-detect during link setup");
+    {
+      log::debug(logcat, "No explicit public address given; inferring now...");
 
-    _local_addr = conf.links.addr;
+      if (auto maybe_addr = net().GetBestNetIF())
+      {
+        _public_address = oxen::quic::Address{static_cast<const sockaddr*>(*maybe_addr)};
+        log::critical(logcat, "PUBLIC ADDR: {}", *_public_address);
+      }
+    }
+
+    _listen_addr = conf.links.addr;
 
     RouterContact::BLOCK_BOGONS = conf.router.block_bogons;
 
@@ -618,6 +634,26 @@ namespace llarp
 
     auto _bootstrap_rc_list = std::make_unique<BootstrapList>();
 
+    auto clear_bad_rcs = [&]() mutable {
+      // in case someone has an old bootstrap file and is trying to use a bootstrap
+      // that no longer exists
+      for (auto it = _bootstrap_rc_list->begin(); it != _bootstrap_rc_list->end();)
+      {
+        if (it->is_obsolete_bootstrap())
+          log::warning(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
+        else if (not it->verify())
+          log::warning(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
+        else
+        {
+          ++it;
+          continue;
+        }
+
+        // we are in one of the above error cases that we warned about:
+        it = _bootstrap_rc_list->erase(it);
+      }
+    };
+
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
@@ -629,11 +665,18 @@ namespace llarp
       _bootstrap_rc_list->emplace(rc);
     }
 
+    clear_bad_rcs();
+
     if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
     {
       auto fallbacks = llarp::load_bootstrap_fallbacks();
 
-      if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
+      if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
+      {
+        _bootstrap_rc_list->merge(itr->second);
+      }
+
+      if (_bootstrap_rc_list->empty())
       {
         // empty after trying fallback, if set
         log::error(
@@ -644,35 +687,15 @@ namespace llarp
 
         throw std::runtime_error("No bootstrap nodes available.");
       }
+
+      log::info(
+          logcat, "Loaded {} default fallback bootstrap routers!", _bootstrap_rc_list->size());
+      clear_bad_rcs();
+      node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
     }
-
-    // in case someone has an old bootstrap file and is trying to use a bootstrap
-    // that no longer exists
-    for (auto it = _bootstrap_rc_list->begin(); it != _bootstrap_rc_list->end();)
-    {
-      if (it->is_obsolete_bootstrap())
-        log::warning(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
-      else if (not it->verify())
-        log::warning(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
-      else
-      {
-        ++it;
-        continue;
-      }
-
-      // we are in one of the above error cases that we warned about:
-      it = _bootstrap_rc_list->erase(it);
-    }
-
-    node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
 
     if (conf.bootstrap.seednode)
-      LogInfo("we are a seed node");
-    else
-      LogInfo("Loaded ", _bootstrap_rc_list->size(), " bootstrap routers");
-
-    // Init components after relevant config settings loaded
-    _link_manager.init();
+      log::critical(logcat, "We are a bootstrap seed node!");
 
     // TODO: RC refactor here
     if (_is_service_node)
@@ -713,14 +736,18 @@ namespace llarp
   }
 
   bool
-  Router::IsBootstrapNode(const RouterID r) const
+  Router::is_bootstrap_node(const RouterID r) const
   {
-    const auto& b = _node_db->bootstrap_list();
-    return std::count_if(
-               b->begin(),
-               b->end(),
-               [r](const RemoteRC& rc) -> bool { return rc.router_id() == r; })
-        > 0;
+    if (_node_db->has_bootstraps())
+    {
+      const auto& b = _node_db->bootstrap_list();
+      return std::count_if(
+                 b.begin(),
+                 b.end(),
+                 [r](const RemoteRC& rc) -> bool { return rc.router_id() == r; })
+          > 0;
+    }
+    return false;
   }
 
   bool
@@ -737,16 +764,16 @@ namespace llarp
     log::info(
         logcat,
         "{} RCs loaded with {} bootstrap peers and {} router connections!",
-        node_db()->num_loaded(),
-        _node_db->bootstrap_list()->size(),
-        NumberOfConnectedRouters());
+        _node_db->num_rcs(),
+        _node_db->num_bootstraps(),
+        num_router_connections());
 
     if (is_service_node())
     {
       log::info(
           logcat,
           "Local service node has {} client connections since last RC update ({} to expiry)",
-          NumberOfConnectedClients(),
+          num_client_connections(),
           router_contact.age(now),
           router_contact.time_to_expiry(now));
     }
@@ -766,9 +793,9 @@ namespace llarp
       fmt::format_to(
           out,
           " snode | known/svc/clients: {}/{}/{}",
-          node_db()->num_loaded(),
-          NumberOfConnectedRouters(),
-          NumberOfConnectedClients());
+          node_db()->num_rcs(),
+          num_router_connections(),
+          num_client_connections());
       fmt::format_to(
           out,
           " | {} active paths | block {} ",
@@ -784,10 +811,7 @@ namespace llarp
     else
     {
       fmt::format_to(
-          out,
-          " client | known/connected: {}/{}",
-          node_db()->num_loaded(),
-          NumberOfConnectedRouters());
+          out, " client | known/connected: {}/{}", node_db()->num_rcs(), num_router_connections());
 
       if (auto ep = hidden_service_context().GetDefault())
       {
@@ -850,7 +874,7 @@ namespace llarp
 
         auto view = router_contact.view();
 
-        _link_manager.gossip_rc(
+        _link_manager->gossip_rc(
             pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
 
         last_rc_gossip = now_timepoint;
@@ -891,14 +915,14 @@ namespace llarp
     // remove RCs for nodes that are no longer allowed by network policy
     node_db()->RemoveIf([&](const RemoteRC& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
-      if (IsBootstrapNode(rc.router_id()))
+      if (is_bootstrap_node(rc.router_id()))
       {
         log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
         return false;
       }
       // if for some reason we stored an RC that isn't a valid router
       // purge this entry
-      if (not rc.is_public_router())
+      if (not rc.is_public_addressable())
       {
         log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
@@ -956,11 +980,11 @@ namespace llarp
     }
     */
 
-    _link_manager.check_persisting_conns(now);
+    _link_manager->check_persisting_conns(now);
 
-    size_t connected = NumberOfConnectedRouters();
+    size_t connected = num_router_connections();
 
-    size_t connectToNum = _link_manager.min_connected_routers;
+    size_t connectToNum = _link_manager->client_router_connections;
     const auto& pinned_edges = _node_db->pinned_edges();
     const auto pinned_count = pinned_edges.size();
 
@@ -989,7 +1013,7 @@ namespace llarp
         log::error(
             logcat,
             "We appear to be an active service node, but have only {} known peers.",
-            node_db()->num_loaded());
+            node_db()->num_rcs());
         _next_decomm_warning = now + DecommissionWarnInterval;
       }
     }
@@ -1000,7 +1024,7 @@ namespace llarp
     {
       size_t dlt = connectToNum - connected;
       LogDebug("connecting to ", dlt, " random routers to keep alive");
-      _link_manager.connect_to_random(dlt);
+      _link_manager->connect_to_random(dlt);
     }
 
     _hidden_service_context.Tick(now);
@@ -1023,7 +1047,7 @@ namespace llarp
   bool
   Router::GetRandomConnectedRouter(RemoteRC& result) const
   {
-    return _link_manager.get_random_connected(result);
+    return _link_manager->get_random_connected(result);
   }
 
   const std::set<RouterID>&
@@ -1054,16 +1078,22 @@ namespace llarp
   bool
   Router::Run()
   {
+    log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
+
     if (is_running || is_stopping)
       return false;
 
-    // TODO: look at _ourAddress
+    router_contact = LocalRC::make(
+        identity(), _is_service_node and _public_address ? *_public_address : _listen_addr);
 
-    router_contact = LocalRC::make(identity(), local_addr());
+    _link_manager = LinkManager::make(*this);
 
-    if (is_service_node() and not router_contact.is_public_router())
+    // Init components after relevant config settings loaded
+    _link_manager->init();
+
+    if (is_service_node())
     {
-      if (not router_contact.is_public_router())
+      if (not router_contact.is_public_addressable())
       {
         log::error(logcat, "Router is configured as relay but has no reachable addresses!");
         return false;
@@ -1101,16 +1131,19 @@ namespace llarp
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
 
-    _contacts = std::make_shared<Contacts>(llarp::dht::Key_t(pubkey()), *this);
+    log::info(logcat, "Creating Introset Contacts...");
+    _contacts = std::make_unique<Contacts>(*this);
 
-    for (const auto& rc : *_node_db->bootstrap_list())
+    if (_node_db->has_bootstraps())
     {
-      node_db()->put_rc(rc);
-      _contacts->rc_nodes()->PutNode(rc);
-      log::info(logcat, "Added bootstrap node (rid: {})", rc.router_id());
-    }
+      for (const auto& rc : _node_db->bootstrap_list())
+      {
+        node_db()->put_rc(rc);
+        log::info(logcat, "Added bootstrap node (rid: {})", rc.router_id());
+      }
 
-    log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_loaded());
+      log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_rcs());
+    }
 
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
 
@@ -1155,7 +1188,7 @@ namespace llarp
 
           // try to make a session to this random router
           // this will do a dht lookup if needed
-          _link_manager.test_reachability(
+          _link_manager->test_reachability(
               router,
               [this, rid = router, previous = fails](oxen::quic::connection_interface& conn) {
                 log::info(
@@ -1224,7 +1257,7 @@ namespace llarp
   void
   Router::StopLinks()
   {
-    _link_manager.stop();
+    _link_manager->stop();
   }
 
   void
@@ -1241,7 +1274,7 @@ namespace llarp
     LogWarn("stopping router hard");
     llarp::sys::service_manager->stopping();
     hidden_service_context().StopAll();
-    _exit_context.Stop();
+    _exit_context.stop();
     StopLinks();
     Close();
   }
@@ -1261,27 +1294,27 @@ namespace llarp
     }
 
     is_stopping.store(true);
+
     if (auto level = log::get_level_default();
         level > log::Level::info and level != log::Level::off)
       log::reset_level(log::Level::info);
-    log::info(logcat, "stopping");
+
+    log::info(logcat, "stopping service manager...");
     llarp::sys::service_manager->stopping();
-    log::debug(logcat, "stopping hidden service context");
+
+    log::debug(logcat, "stopping hidden service context...");
     hidden_service_context().StopAll();
-    llarp::sys::service_manager->stopping();
-    log::debug(logcat, "stopping exit context");
-    _exit_context.Stop();
-    llarp::sys::service_manager->stopping();
-    log::debug(logcat, "final upstream pump");
-    llarp::sys::service_manager->stopping();
-    log::debug(logcat, "final links pump");
+
+    log::debug(logcat, "stopping exit context...");
+    _exit_context.stop();
+
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
   }
 
   bool
   Router::HasSessionTo(const RouterID& remote) const
   {
-    return _link_manager.have_connection_to(remote);
+    return _link_manager->have_connection_to(remote);
   }
 
   std::string
@@ -1300,19 +1333,20 @@ namespace llarp
   Router::ConnectToRandomRouters(int _want)
   {
     const size_t want = _want;
-    auto connected = NumberOfConnectedRouters();
+    auto connected = num_router_connections();
+
     if (connected >= want)
       return;
-    _link_manager.connect_to_random(want);
+
+    _link_manager->connect_to_random(want);
   }
 
   bool
   Router::init_service_node()
   {
-    LogInfo("accepting transit traffic");
-    paths.AllowTransit();
-    _contacts->set_transit_allowed(true);
-    _exit_context.AddExitEndpoint("default", _config->network, _config->dns);
+    log::info(logcat, "Router accepting transit traffic...");
+    paths.allow_transit();
+    _exit_context.add_exit_endpoint("default", _config->network, _config->dns);
     return true;
   }
 
@@ -1338,9 +1372,9 @@ namespace llarp
   }
 
   oxen::quic::Address
-  Router::local_addr() const
+  Router::listen_addr() const
   {
-    return _local_addr;
+    return _listen_addr;
   }
 
   void

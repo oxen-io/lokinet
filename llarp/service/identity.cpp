@@ -97,7 +97,7 @@ namespace llarp::service
 
     if (exists and needBackup)
     {
-      KeyManager::backupFileByMoving(fname);
+      KeyManager::copy_backup_keyfile(fname);
       exists = false;
     }
 

@@ -19,14 +19,7 @@
 
 namespace llarp
 {
-  // constants for config file default values
-  constexpr int DefaultMinConnectionsForRouter = 6;
-  constexpr int DefaultMaxConnectionsForRouter = 60;
-
-  constexpr int DefaultMinConnectionsForClient = 4;
-  constexpr int DefaultMaxConnectionsForClient = 6;
-
-  constexpr int DefaultPublicPort = 1090;
+  constexpr int DEFAULT_PUBLIC_PORT = 1090;
 
   using namespace config;
   namespace
@@ -72,38 +65,44 @@ namespace llarp
           net_id = std::move(arg);
         });
 
-    int minConnections =
-        (params.is_relay ? DefaultMinConnectionsForRouter : DefaultMinConnectionsForClient);
+    conf.define_option<int>(
+        "router",
+        "relay-connections",
+        Default{CLIENT_ROUTER_CONNECTIONS},
+        ClientOnly,
+        Comment{
+            "Minimum number of routers lokinet client will attempt to maintain connections to.",
+        },
+        [=](int arg) {
+          if (arg < CLIENT_ROUTER_CONNECTIONS)
+            throw std::invalid_argument{
+                fmt::format("Client relay connections must be >= {}", CLIENT_ROUTER_CONNECTIONS)};
+
+          client_router_connections = arg;
+        });
+
     conf.define_option<int>(
         "router",
         "min-connections",
-        Default{minConnections},
+        Deprecated,
         Comment{
             "Minimum number of routers lokinet will attempt to maintain connections to.",
         },
-        [=](int arg) {
-          if (arg < minConnections)
-            throw std::invalid_argument{
-                fmt::format("min-connections must be >= {}", minConnections)};
-
-          min_connected_routers = arg;
+        [=](int) {
+          log::warning(
+              logcat, "Router min-connections is deprecated; use relay-connections for clients");
         });
 
-    int maxConnections =
-        (params.is_relay ? DefaultMaxConnectionsForRouter : DefaultMaxConnectionsForClient);
     conf.define_option<int>(
         "router",
         "max-connections",
-        Default{maxConnections},
+        Deprecated,
         Comment{
             "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
         },
-        [=](int arg) {
-          if (arg < maxConnections)
-            throw std::invalid_argument{
-                fmt::format("max-connections must be >= {}", maxConnections)};
-
-          max_connected_routers = arg;
+        [=](int) {
+          log::warning(
+              logcat, "Router max-connections is deprecated; use relay-connections for clients");
         });
 
     conf.define_option<std::string>("router", "nickname", Deprecated);
@@ -159,7 +158,7 @@ namespace llarp
         "router",
         "public-port",
         RelayOnly,
-        Default{DefaultPublicPort},
+        Default{DEFAULT_PUBLIC_PORT},
         Comment{
             "When specifying public-ip=, this specifies the public UDP port at which this lokinet",
             "router is reachable. Required when public-ip is used.",
@@ -1162,7 +1161,7 @@ namespace llarp
     conf.define_option<bool>(
         "lokid",
         "disable-testing",
-        Default{true},
+        Default{false},
         Hidden,
         RelayOnly,
         Comment{

@@ -43,7 +43,7 @@ testnet_tmp
 vsproject/
 .vs
 
-daemon.ini
+*.ini
 
 
 .gradle/

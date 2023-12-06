@@ -176,7 +176,7 @@ namespace llarp
     decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
-    is_public_router() const;
+    is_public_addressable() const;
 
     /// does this RC expire soon? default delta is 1 minute
     bool

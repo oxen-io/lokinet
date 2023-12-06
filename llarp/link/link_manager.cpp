@@ -183,9 +183,11 @@ namespace llarp
           - connection close callback
           - stream constructor callback
             - will return a BTRequestStream on the first call to get_new_stream<BTRequestStream>
+            - bt stream construction contains a stream close callback that shuts down the connection
+              if the btstream closes unexpectedly
     */
     auto ep = quic->endpoint(
-        _router.local_addr(),
+        _router.listen_addr(),
         [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
         [this](oxen::quic::connection_interface& ci, uint64_t ec) {
           return on_conn_closed(ci, ec);
@@ -198,7 +200,14 @@ namespace llarp
             std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
           if (id && id == 0)
           {
-            auto s = std::make_shared<oxen::quic::BTRequestStream>(c, e);
+            auto s = std::make_shared<oxen::quic::BTRequestStream>(
+                c, e, [](oxen::quic::Stream& s, uint64_t error_code) {
+                  log::warning(
+                      logcat,
+                      "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
+                      error_code);
+                  s.conn.close_connection(error_code);
+                });
             register_commands(s);
             return s;
           }
@@ -215,6 +224,13 @@ namespace llarp
             {reinterpret_cast<const char*>(_router.identity().toPublic().data()), size_t{32}})}
       , ep{startup_endpoint(), *this}
   {}
+
+  std::unique_ptr<LinkManager>
+  LinkManager::make(Router& r)
+  {
+    std::unique_ptr<LinkManager> p{new LinkManager(r)};
+    return p;
+  }
 
   bool
   LinkManager::send_control_message(
@@ -496,6 +512,7 @@ namespace llarp
   {
     is_stopping = false;
     node_db = _router.node_db();
+    client_router_connections = _router.required_num_client_conns();
   }
 
   void
@@ -898,7 +915,7 @@ namespace llarp
             "Received PublishIntroMessage in which we are peer index {}.. storing introset",
             relay_order);
 
-        _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
+        _router.contacts().put_intro(std::move(enc));
         respond(serialize_response({{messages::STATUS_KEY, ""}}));
       }
       else
@@ -936,7 +953,7 @@ namespace llarp
     {
       log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
-      _router.contacts()->services()->PutNode(dht::ISNode{std::move(enc)});
+      _router.contacts().put_intro(std::move(enc));
       respond(serialize_response({{messages::STATUS_KEY, ""}}));
     }
     else
@@ -1064,7 +1081,7 @@ namespace llarp
     }
     else
     {
-      if (auto maybe_intro = _router.contacts()->get_introset_by_location(addr))
+      if (auto maybe_intro = _router.contacts().get_introset_by_location(addr))
         respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
       else
       {
@@ -1102,7 +1119,7 @@ namespace llarp
     if (m)
     {
       service::EncryptedIntroSet enc{payload};
-      _router.contacts()->services()->PutNode(std::move(enc));
+      _router.contacts().put_intro(std::move(enc));
     }
     else
     {
@@ -1114,7 +1131,7 @@ namespace llarp
   void
   LinkManager::handle_path_build(oxen::quic::message m, const RouterID& from)
   {
-    if (!_router.path_context().AllowingTransit())
+    if (!_router.path_context().is_transit_allowed())
     {
       log::warning(link_cat, "got path build request when not permitting transit");
       m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::NO_TRANSIT}}), true);
@@ -1200,7 +1217,7 @@ namespace llarp
 
       hop->info.upstream.from_string(upstream);
 
-      if (_router.path_context().HasTransitHop(hop->info))
+      if (_router.path_context().has_transit_hop(hop->info))
       {
         log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
         m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
@@ -1237,7 +1254,7 @@ namespace llarp
       {
         hop->terminal_hop = true;
         // we are terminal hop and everything is okay
-        _router.path_context().PutTransitHop(hop);
+        _router.path_context().put_transit_hop(hop);
         m.respond(messages::OK_RESPONSE, false);
         return;
       }
@@ -1270,7 +1287,7 @@ namespace llarp
                   link_cat,
                   "Upstream returned successful path build response; giving hop info to Router, "
                   "then relaying response");
-              _router.path_context().PutTransitHop(hop);
+              _router.path_context().put_transit_hop(hop);
             }
             if (m.timed_out)
               log::info(link_cat, "Upstream timed out on path build; relaying timeout");
@@ -1380,7 +1397,7 @@ namespace llarp
 
     auto success =
         (crypto::verify(pubkey, to_usv(dict_data), sig)
-         and _router.exitContext().ObtainNewExit(PubKey{pubkey.data()}, rx_id, flag != 0));
+         and _router.exitContext().obtain_new_exit(PubKey{pubkey.data()}, rx_id, flag != 0));
 
     m.respond(
         ObtainExitMessage::sign_and_serialize_response(_router.identity(), tx_id), not success);
@@ -1417,7 +1434,7 @@ namespace llarp
       throw;
     }
 
-    auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
+    auto path_ptr = _router.path_context().get_path(PathID_t{to_usv(tx_id).data()});
 
     if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
       path_ptr->enable_exit_traffic();
@@ -1449,7 +1466,8 @@ namespace llarp
     auto transit_hop =
         _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
 
-    if (auto exit_ep = _router.exitContext().FindEndpointForPath(PathID_t{to_usv(path_id).data()}))
+    if (auto exit_ep =
+            _router.exitContext().find_endpoint_for_path(PathID_t{to_usv(path_id).data()}))
     {
       if (crypto::verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
       {
@@ -1495,7 +1513,7 @@ namespace llarp
       return;
     }
 
-    auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
+    auto path_ptr = _router.path_context().get_path(PathID_t{to_usv(tx_id).data()});
 
     if (crypto::verify(_router.pubkey(), to_usv(dict_data), sig))
     {
@@ -1536,7 +1554,7 @@ namespace llarp
 
     const auto rx_id = transit_hop->info.rxID;
 
-    if (auto exit_ep = router().exitContext().FindEndpointForPath(rx_id))
+    if (auto exit_ep = router().exitContext().find_endpoint_for_path(rx_id))
     {
       if (crypto::verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
       {
@@ -1580,7 +1598,7 @@ namespace llarp
       return;
     }
 
-    auto path_ptr = _router.path_context().GetPath(PathID_t{to_usv(tx_id).data()});
+    auto path_ptr = _router.path_context().get_path(PathID_t{to_usv(tx_id).data()});
 
     if (path_ptr->SupportsAnyRoles(path::ePathRoleExit | path::ePathRoleSVC)
         and crypto::verify(_router.pubkey(), to_usv(dict_data), sig))

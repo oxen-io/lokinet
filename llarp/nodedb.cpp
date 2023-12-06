@@ -766,8 +766,7 @@ namespace llarp
     router_greenlist.clear();
     router_greenlist.insert(greenlist.begin(), greenlist.end());
 
-    log::info(
-        logcat, "lokinet service node list now has ", known_rids.size(), " active router RIDs");
+    log::info(logcat, "lokinet service node list now has {} active router RIDs", known_rids.size());
   }
 
   std::optional<RouterID>
@@ -843,7 +842,7 @@ namespace llarp
 
         const auto& rid = rc.router_id();
 
-        auto [itr, b] = known_rcs.emplace(std::move(rc));
+        auto [itr, b] = known_rcs.insert(std::move(rc));
         rc_lookup.emplace(rid, *itr);
         known_rids.insert(rid);
 
@@ -930,7 +929,7 @@ namespace llarp
     known_rcs.erase(rc);
     rc_lookup.erase(rid);
 
-    auto [itr, b] = known_rcs.emplace(std::move(rc));
+    auto [itr, b] = known_rcs.insert(std::move(rc));
     rc_lookup.emplace(rid, *itr);
     known_rids.insert(rid);
 
@@ -939,9 +938,9 @@ namespace llarp
   }
 
   size_t
-  NodeDB::num_loaded() const
+  NodeDB::num_rcs() const
   {
-    return _router.loop()->call_get([this]() { return known_rcs.size(); });
+    return known_rcs.size();
   }
 
   bool

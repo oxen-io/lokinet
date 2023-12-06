@@ -10,20 +10,20 @@
 
 namespace llarp
 {
-  KeyManager::KeyManager() : m_initialized(false), m_needBackup(false)
+  KeyManager::KeyManager() : is_initialized(false), backup_keys(false)
   {}
 
   bool
-  KeyManager::initialize(const llarp::Config& config, bool genIfAbsent, bool isSNode)
+  KeyManager::initialize(const llarp::Config& config, bool gen_if_absent, bool is_snode)
   {
-    if (m_initialized)
+    if (is_initialized)
       return false;
 
-    if (not isSNode)
+    if (not is_snode)
     {
-      crypto::identity_keygen(identityKey);
-      crypto::encryption_keygen(encryptionKey);
-      crypto::encryption_keygen(transportKey);
+      crypto::identity_keygen(identity_key);
+      crypto::encryption_keygen(encryption_key);
+      crypto::encryption_keygen(transport_key);
       return true;
     }
 
@@ -46,80 +46,87 @@ namespace llarp
       }
     };
 
-    m_rcPath = deriveFile(our_rc_filename, config.router.rc_file);
-    m_idKeyPath = deriveFile(our_identity_filename, config.router.idkey_file);
-    m_encKeyPath = deriveFile(our_enc_key_filename, config.router.enckey_file);
-    m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.transkey_file);
+    rc_path = deriveFile(our_rc_filename, config.router.rc_file);
+    idkey_path = deriveFile(our_identity_filename, config.router.idkey_file);
+    enckey_path = deriveFile(our_enc_key_filename, config.router.enckey_file);
+    transkey_path = deriveFile(our_transport_key_filename, config.router.transkey_file);
 
     RemoteRC rc;
-    bool exists = rc.read(m_rcPath);
-    if (not exists and not genIfAbsent)
-    {
-      LogError("Could not read RouterContact at path ", m_rcPath);
-      return false;
-    }
 
-    // we need to back up keys if our self.signed doesn't appear to have a
-    // valid signature
-    m_needBackup = (isSNode and not rc.verify());
-
-    // if our RC file can't be verified, assume it is out of date (e.g. uses
-    // older encryption) and needs to be regenerated. before doing so, backup
-    // files that will be overwritten
-    if (exists and m_needBackup)
+    if (auto exists = rc.read(rc_path); not exists)
     {
-      if (!genIfAbsent)
+      if (not gen_if_absent)
       {
-        LogError("Our RouterContact ", m_rcPath, " is invalid or out of date");
+        log::error(logcat, "Could not read RC at path {}", rc_path);
         return false;
       }
-      else
+    }
+    else
+    {
+      if (backup_keys = (is_snode and not rc.verify()); backup_keys)
       {
-        LogWarn(
-            "Our RouterContact ",
-            m_rcPath,
-            " seems out of date, backing up and regenerating private keys");
+        auto err = "RC (path:{}) is invalid or out of date"_format(rc_path);
 
-        if (!backupKeyFilesByMoving())
+        if (not gen_if_absent)
         {
-          LogError(
-              "Could not mv some key files, please ensure key files"
-              " are backed up if needed and remove");
+          log::error(logcat, err);
+          return false;
+        }
+
+        log::warning(logcat, "{}; backing up and regenerating private keys...", err);
+
+        if (not copy_backup_keyfiles())
+        {
+          log::error(logcat, "Failed to copy-backup key files");
           return false;
         }
       }
     }
 
-    if (not config.router.is_relay)
+    // load encryption key
+    auto enckey_gen = [](llarp::SecretKey& key) { llarp::crypto::encryption_keygen(key); };
+    if (not keygen(enckey_path, encryption_key, enckey_gen))
     {
-      // load identity key or create if needed
-      auto identityKeygen = [](llarp::SecretKey& key) {
-        // TODO: handle generating from service node seed
-        llarp::crypto::identity_keygen(key);
-      };
-      if (not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
-        return false;
+      log::critical(
+          logcat, "KeyManager::keygen failed to generate encryption key line:{}", __LINE__);
+      return false;
     }
 
-    // load encryption key
-    auto encryptionKeygen = [](llarp::SecretKey& key) { llarp::crypto::encryption_keygen(key); };
-    if (not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
-      return false;
-
     // TODO: transport key (currently done in LinkLayer)
-    auto transportKeygen = [](llarp::SecretKey& key) {
+    auto transkey_gen = [](llarp::SecretKey& key) {
       key.Zero();
       crypto::encryption_keygen(key);
     };
-    if (not loadOrCreateKey(m_transportKeyPath, transportKey, transportKeygen))
-      return false;
 
-    m_initialized = true;
+    if (not keygen(transkey_path, transport_key, transkey_gen))
+    {
+      log::critical(
+          logcat, "KeyManager::keygen failed to generate transport key line:{}", __LINE__);
+      return false;
+    }
+
+    if (not config.router.is_relay)
+    {
+      // load identity key or create if needed
+      auto idkey_gen = [](llarp::SecretKey& key) {
+        // TODO: handle generating from service node seed
+        llarp::crypto::identity_keygen(key);
+      };
+
+      if (not keygen(idkey_path, identity_key, idkey_gen))
+      {
+        log::critical(
+            logcat, "KeyManager::keygen failed to generate identity key line:{}", __LINE__);
+        return false;
+      }
+    }
+
+    is_initialized = true;
     return true;
   }
 
   bool
-  KeyManager::backupFileByMoving(const fs::path& filepath)
+  KeyManager::copy_backup_keyfile(const fs::path& filepath)
   {
     auto findFreeBackupFilename = [](const fs::path& filepath) {
       for (int i = 0; i < 9; i++)
@@ -136,6 +143,7 @@ namespace llarp
 
     std::error_code ec;
     bool exists = fs::exists(filepath, ec);
+
     if (ec)
     {
       LogError("Could not determine status of file ", filepath, ": ", ec.message());
@@ -168,13 +176,13 @@ namespace llarp
   }
 
   bool
-  KeyManager::backupKeyFilesByMoving() const
+  KeyManager::copy_backup_keyfiles() const
   {
-    std::vector<fs::path> files = {m_rcPath, m_idKeyPath, m_encKeyPath, m_transportKeyPath};
+    std::vector<fs::path> files = {rc_path, idkey_path, enckey_path, transkey_path};
 
     for (auto& filepath : files)
     {
-      if (not backupFileByMoving(filepath))
+      if (not copy_backup_keyfile(filepath))
         return false;
     }
 
@@ -182,7 +190,7 @@ namespace llarp
   }
 
   bool
-  KeyManager::loadOrCreateKey(
+  KeyManager::keygen(
       fs::path path, llarp::SecretKey& key, std::function<void(llarp::SecretKey& key)> keygen)
   {
     if (not fs::exists(path))
