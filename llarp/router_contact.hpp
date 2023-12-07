@@ -312,7 +312,9 @@ namespace llarp
    public:
     RemoteRC() = default;
     RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
-    {}
+    {
+      _payload = {reinterpret_cast<const unsigned char*>(data.data()), data.size()};
+    }
     RemoteRC(ustring_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
     {
       _payload = data;

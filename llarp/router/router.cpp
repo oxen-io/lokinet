@@ -563,38 +563,39 @@ namespace llarp
     transport_keyfile = _key_manager->transkey_path;
     identity_keyfile = _key_manager->idkey_path;
 
-    std::optional<SockAddr> _ourAddress;
+    std::optional<std::string> paddr = (conf.router.public_ip) ? conf.router.public_ip
+        : (conf.links.public_addr)                             ? conf.links.public_addr
+                                                               : std::nullopt;
+    std::optional<uint16_t> pport = (conf.router.public_port) ? conf.router.public_port
+        : (conf.links.public_port)                            ? conf.links.public_port
+                                                              : std::nullopt;
 
-    if (auto maybe_ip = conf.links.public_addr)
-      _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
-    else if (auto maybe_ip = conf.router.public_ip)
-      _ourAddress = var::visit([](auto&& ip) { return SockAddr{ip}; }, *maybe_ip);
+    if (pport.has_value() and not paddr.has_value())
+      throw std::runtime_error{"If public-port is specified, public-addr must be as well!"};
 
-    if (_ourAddress)
+    if (conf.links.listen_addr)
     {
-      if (auto maybe_port = conf.links.public_port)
-        _ourAddress->setPort(*maybe_port);
-      else if (auto maybe_port = conf.router.public_port)
-        _ourAddress->setPort(*maybe_port);
-      else
-        throw std::runtime_error{"public ip provided without public port"};
-      log::debug(logcat, "Using {} for our public address", *_ourAddress);
-
-      _public_address = oxen::quic::Address{static_cast<const sockaddr*>(*_ourAddress)};
-      log::critical(logcat, "PUBLIC ADDR: {}", *_public_address);
+      _listen_address = *conf.links.listen_addr;
     }
     else
     {
-      log::debug(logcat, "No explicit public address given; inferring now...");
+      if (paddr or pport)
+        throw std::runtime_error{"Must specify [bind]:listen in config with public ip/addr!"};
 
       if (auto maybe_addr = net().GetBestNetIF())
       {
-        _public_address = oxen::quic::Address{static_cast<const sockaddr*>(*maybe_addr)};
-        log::critical(logcat, "PUBLIC ADDR: {}", *_public_address);
+        _listen_address = oxen::quic::Address{static_cast<const sockaddr*>(*maybe_addr)};
+        _listen_address.set_port(DEFAULT_LISTEN_PORT);
       }
+      else
+        throw std::runtime_error{"Could not find net interface on current platform!"};
     }
 
-    _listen_addr = conf.links.addr;
+    _public_address = (not paddr and not pport)
+        ? _listen_address
+        : oxen::quic::Address{*paddr, pport ? *pport : DEFAULT_LISTEN_PORT};
+
+    log::critical(logcat, "listen_addr:{} \t public_addr:{}", _listen_address, _public_address);
 
     RouterContact::BLOCK_BOGONS = conf.router.block_bogons;
 
@@ -886,29 +887,27 @@ namespace llarp
         next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
     }
+
+    if (needs_initial_fetch())
+    {
+      node_db()->fetch_initial();
+    }
+    else if (needs_rebootstrap() and next_bootstrap_attempt > now_timepoint)
+    {
+      node_db()->fallback_to_bootstrap();
+    }
     else
     {
-      if (needs_initial_fetch())
+      // (client-only) periodically fetch updated RCs
+      if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
       {
-        node_db()->fetch_initial();
+        node_db()->fetch_rcs();
       }
-      else if (needs_rebootstrap() and next_bootstrap_attempt > now_timepoint)
-      {
-        node_db()->fallback_to_bootstrap();
-      }
-      else
-      {
-        // (client-only) periodically fetch updated RCs
-        if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
-        {
-          node_db()->fetch_rcs();
-        }
 
-        // (client-only) periodically fetch updated RouterID list
-        if (now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
-        {
-          node_db()->fetch_rids();
-        }
+      // (client-only) periodically fetch updated RouterID list
+      if (now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
+      {
+        node_db()->fetch_rids();
       }
     }
 
@@ -1084,7 +1083,7 @@ namespace llarp
       return false;
 
     router_contact = LocalRC::make(
-        identity(), _is_service_node and _public_address ? *_public_address : _listen_addr);
+        identity(), _is_service_node and _public_address ? *_public_address : _listen_address);
 
     _link_manager = LinkManager::make(*this);
 
@@ -1374,7 +1373,7 @@ namespace llarp
   oxen::quic::Address
   Router::listen_addr() const
   {
-    return _listen_addr;
+    return _listen_address;
   }
 
   void

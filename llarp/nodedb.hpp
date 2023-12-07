@@ -165,7 +165,7 @@ namespace llarp
     std::atomic<int> fetch_failures{0}, bootstrap_failures{0};
 
     std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false},
-        _needs_initial_fetch{false};
+        _needs_initial_fetch{true};
 
     bool
     want_rc(const RouterID& rid) const;

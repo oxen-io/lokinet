@@ -34,8 +34,9 @@ namespace llarp
   using SectionValues = llarp::ConfigParser::SectionValues;
   using ConfigMap = llarp::ConfigParser::ConfigMap;
 
-  inline static constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
-  constexpr int CLIENT_ROUTER_CONNECTIONS = 4;
+  inline const std::string QUAD_ZERO{"0.0.0.0"};
+  inline constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
+  inline constexpr int CLIENT_ROUTER_CONNECTIONS = 4;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
   /// Small struct to gather all parameters needed for config generation to reduce the number of
@@ -77,10 +78,9 @@ namespace llarp
     std::string transkey_file;
 
     bool is_relay = false;
-    /// deprecated
-    std::optional<net::ipaddr_t> public_ip;
-    /// deprecated
-    std::optional<net::port_t> public_port;
+
+    std::optional<std::string> public_ip;
+    std::optional<uint16_t> public_port;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -170,10 +170,14 @@ namespace llarp
 
   struct LinksConfig
   {
-    std::optional<net::ipaddr_t> public_addr;
-    std::optional<net::port_t> public_port;
+    // DEPRECATED -- use [Router]:public_addr
+    std::optional<std::string> public_addr;
+    // DEPRECATED -- use [Router]:public_port
+    std::optional<uint16_t> public_port;
 
-    oxen::quic::Address addr{""s, DEFAULT_LISTEN_PORT};
+    std::optional<oxen::quic::Address> listen_addr;
+
+    bool using_user_value = false;
     bool using_new_api = false;
 
     void

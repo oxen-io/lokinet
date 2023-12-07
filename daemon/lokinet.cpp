@@ -593,7 +593,7 @@ namespace
         exit_code.set_value(1);
         return;
       }
-      catch (std::exception& ex)
+      catch (const std::exception& ex)
       {
         llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
         exit_code.set_value(1);
@@ -604,9 +604,9 @@ namespace
       auto result = ctx->Run(opts);
       exit_code.set_value(result);
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
-      llarp::LogError("Fatal: caught exception while running: ", e.what());
+      llarp::LogError("Fatal: caught exception while running: {}", e.what());
       exit_code.set_exception(std::current_exception());
     }
     catch (...)
