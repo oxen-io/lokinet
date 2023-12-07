@@ -79,7 +79,7 @@ namespace llarp
       return sig;
     });
 
-    _payload = btdp.view<unsigned char>();
+    _payload = ustring{btdp.view<unsigned char>()};
   }
 
   void

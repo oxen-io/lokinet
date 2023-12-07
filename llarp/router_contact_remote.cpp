@@ -75,11 +75,11 @@ namespace llarp
   RemoteRC::read(const fs::path& fname)
   {
     ustring buf;
-    buf.reserve(MAX_RC_SIZE);
+    buf.resize(MAX_RC_SIZE);
 
     try
     {
-      util::file_to_buffer(fname, buf.data(), MAX_RC_SIZE);
+      util::file_to_buffer(fname, buf.data(), buf.size());
 
       oxenc::bt_dict_consumer btdc{buf};
       bt_load(btdc);

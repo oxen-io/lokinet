@@ -92,7 +92,7 @@ namespace llarp
     consensus::reachability_testing router_testing;
 
     std::optional<oxen::quic::Address> _public_address;  // public addr for relays
-    oxen::quic::Address _listen_addr;
+    oxen::quic::Address _listen_address;
 
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpn;

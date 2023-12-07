@@ -19,8 +19,6 @@
 
 namespace llarp
 {
-  constexpr int DEFAULT_PUBLIC_PORT = 1090;
-
   using namespace config;
   namespace
   {
@@ -134,19 +132,7 @@ namespace llarp
             "this setting specifies the public IP at which this router is reachable. When",
             "provided the public-port option must also be specified.",
         },
-        [this, net = params.Net_ptr()](std::string arg) {
-          if (arg.empty())
-            return;
-          nuint32_t addr{};
-          if (not addr.FromString(arg))
-            throw std::invalid_argument{fmt::format("{} is not a valid IPv4 address", arg)};
-
-          if (net->IsBogonIP(addr))
-            throw std::invalid_argument{
-                fmt::format("{} is not a publicly routable ip address", addr)};
-
-          public_ip = addr;
-        });
+        [this](std::string arg) { public_ip = std::move(arg); });
 
     conf.define_option<std::string>("router", "public-address", Hidden, [](std::string) {
       throw std::invalid_argument{
@@ -154,19 +140,18 @@ namespace llarp
           "[router]:public-port instead"};
     });
 
-    conf.define_option<int>(
+    conf.define_option<uint16_t>(
         "router",
         "public-port",
         RelayOnly,
-        Default{DEFAULT_PUBLIC_PORT},
         Comment{
             "When specifying public-ip=, this specifies the public UDP port at which this lokinet",
             "router is reachable. Required when public-ip is used.",
         },
-        [this](int arg) {
+        [this](uint16_t arg) {
           if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
             throw std::invalid_argument("public-port must be >= 0 and <= 65536");
-          public_port = ToNet(huint16_t{static_cast<uint16_t>(arg)});
+          public_port = arg;
         });
 
     conf.define_option<int>(
@@ -912,27 +897,38 @@ namespace llarp
     conf.define_option<std::string>(
         "bind",
         "public-ip",
+        Hidden,
         RelayOnly,
         Comment{
             "The IP address to advertise to the network instead of the incoming= or auto-detected",
             "IP.  This is typically required only when incoming= is used to listen on an internal",
             "private range IP address that received traffic forwarded from the public IP.",
         },
-        [this](std::string_view arg) {
-          SockAddr pubaddr{arg};
-          public_addr = pubaddr.getIP();
+        [this](std::string arg) {
+          public_addr = std::move(arg);
+          log::warning(
+              logcat,
+              "Using deprecated option; pass this value to [Router]:public-ip instead PLEASE");
         });
 
     conf.define_option<uint16_t>(
         "bind",
         "public-port",
+        Hidden,
         RelayOnly,
         Comment{
             "The port to advertise to the network instead of the incoming= (or default) port.",
             "This is typically required only when incoming= is used to listen on an internal",
             "private range IP address/port that received traffic forwarded from the public IP.",
         },
-        [this](uint16_t arg) { public_port = net::port_t::from_host(arg); });
+        [this](uint16_t arg) {
+          if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
+            throw std::invalid_argument("public-port must be >= 0 and <= 65536");
+          public_port = arg;
+          log::warning(
+              logcat,
+              "Using deprecated option; pass this value to [Router]:public-port instead PLEASE");
+        });
 
     auto parse_addr_for_link = [net_ptr](const std::string& arg) {
       std::optional<oxen::quic::Address> maybe = std::nullopt;
@@ -1004,11 +1000,13 @@ namespace llarp
         },
         [this, parse_addr_for_link](const std::string& arg) {
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = *a;
+          {
+            listen_addr = *a;
+            using_user_value = true;
+            using_new_api = true;
+          }
           else
             throw std::invalid_argument{"Could not parse listen address!"};
-
-          using_new_api = true;
         });
 
     conf.define_option<std::string>(
@@ -1022,21 +1020,17 @@ namespace llarp
             throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
           if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = *a;
+          {
+            log::warning(
+                logcat,
+                "Loaded address from deprecated [inbound] options; update your config to use "
+                "[bind]:listen instead PLEASE");
+            listen_addr = *a;
+            using_user_value = true;
+          }
         });
 
-    conf.define_option<std::string>(
-        "bind",
-        "outbound",
-        MultiValue,
-        Hidden,
-        [this, parse_addr_for_link](const std::string& arg) {
-          if (using_new_api)
-            throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
-
-          if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
-            addr = *a;
-        });
+    conf.define_option<std::string>("bind", "outbound", MultiValue, Deprecated, Hidden);
 
     conf.add_undeclared_handler(
         "bind", [this](std::string_view, std::string_view key, std::string_view val) {
@@ -1055,7 +1049,11 @@ namespace llarp
           // special case: wildcard for outbound
           if (key == "*")
           {
-            addr = oxen::quic::Address{port};
+            log::warning(
+                logcat,
+                "Wildcat address referencing port {} is referencing deprecated outbound config "
+                "options; use [bind]:listen instead",
+                port);
             return;
           }
 
@@ -1074,16 +1072,17 @@ namespace llarp
                 e.what())};
           }
 
-          if (temp.is_addressable())
+          if (not temp.is_addressable())
           {
-            addr = std::move(temp);
-            return;
+            throw std::runtime_error{fmt::format(
+                "Invalid address: {}; stop using this deprecated handler, update your config to "
+                "use "
+                "[bind]:listen instead PLEASE",
+                temp)};
           }
 
-          throw std::runtime_error{fmt::format(
-              "Invalid address: {}; stop using this deprecated handler, update your config to use "
-              "[bind]:listen instead PLEASE",
-              temp)};
+          listen_addr = std::move(temp);
+          using_user_value = true;
         });
   }
 
