@@ -57,8 +57,7 @@ namespace llarp
       throw std::runtime_error("Cannot call Setup() on context without a Config");
 
     if (opts.showBanner)
-      llarp::LogInfo(
-          fmt::format("{} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO));
+      llarp::LogInfo(fmt::format("{}", llarp::LOKINET_VERSION_FULL));
 
     if (!loop)
     {

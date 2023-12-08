@@ -548,8 +548,7 @@ namespace
   static void
   run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
   {
-    llarp::log::info(
-        logcat, "starting up {} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO);
+    llarp::log::info(logcat, "starting up {}", llarp::LOKINET_VERSION_FULL);
     try
     {
       std::shared_ptr<llarp::Config> conf;

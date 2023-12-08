@@ -10,7 +10,6 @@ namespace llarp
   extern const char* const LOKINET_VERSION_TAG;
   extern const char* const LOKINET_VERSION_FULL;
 
-  extern const char* const LOKINET_RELEASE_MOTTO;
   extern const char* const LOKINET_DEFAULT_NETID;
   extern const char* const LOKINET_TESTNET_NETID;
 }  // namespace llarp
