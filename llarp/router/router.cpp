@@ -446,7 +446,7 @@ namespace llarp
   {
     // If we're in the white or gray list then we *should* be establishing connections to other
     // routers, so if we have almost no peers then something is almost certainly wrong.
-    if (appears_funded() and insufficient_peers())
+    if (appears_funded() and insufficient_peers() and not _testing_disabled)
       return "too few peer connections; lokinet is not adequately connected to the network";
     return std::nullopt;
   }
