@@ -981,7 +981,7 @@ namespace llarp
 
       // mark peers as de-registered
       for (auto& peer : close_peers)
-        _link_manager.deregister_peer(peer);
+        _link_manager.close_connection(peer);
     }
     */
 

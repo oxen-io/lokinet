@@ -51,27 +51,6 @@ namespace llarp
       return false;
     }
 
-    bool
-    Endpoint::deregister_peer(RouterID _rid)
-    {
-      if (auto itr = conns.find(_rid); itr != conns.end())
-      {
-        auto& c = itr->second;
-        auto& _scid = c->conn->scid();
-
-        link_manager._router.loop()->call([this, scid = _scid, rid = _rid]() {
-          endpoint->close_connection(scid);
-
-          conns.erase(rid);
-          connid_map.erase(scid);
-        });
-
-        return true;
-      }
-
-      return false;
-    }
-
     size_t
     Endpoint::num_connected(bool clients_only) const
     {
@@ -111,18 +90,15 @@ namespace llarp
     void
     Endpoint::close_connection(RouterID _rid)
     {
-      if (auto itr = conns.find(_rid); itr != conns.end())
-      {
-        auto& c = itr->second;
-        auto& _scid = c->conn->scid();
+      assert(link_manager._router.loop()->inEventLoop());
+      auto itr = conns.find(_rid);
+      if (itr != conns.end())
+        return;
 
-        link_manager._router.loop()->call([this, scid = _scid, rid = _rid]() {
-          endpoint->close_connection(scid);
-
-          conns.erase(rid);
-          connid_map.erase(scid);
-        });
-      }
+      auto& conn = *itr->second->conn;
+      conn.close_connection();
+      connid_map.erase(conn.scid());
+      conns.erase(itr);
     }
 
   }  // namespace link
@@ -462,18 +438,6 @@ namespace llarp
   LinkManager::have_client_connection_to(const RouterID& remote) const
   {
     return ep.have_conn(remote, true);
-  }
-
-  void
-  LinkManager::deregister_peer(RouterID remote)
-  {
-    if (auto rv = ep.deregister_peer(remote); rv)
-    {
-      persisting_conns.erase(remote);
-      log::info(logcat, "Peer {} successfully de-registered", remote);
-    }
-    else
-      log::warning(logcat, "Peer {} not found for de-registration!", remote);
   }
 
   void

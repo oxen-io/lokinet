@@ -61,9 +61,6 @@ namespace llarp
       bool
       have_conn(const RouterID& remote, bool client_only) const;
 
-      bool
-      deregister_peer(RouterID remote);
-
       size_t
       num_connected(bool clients_only) const;
 
@@ -267,9 +264,6 @@ namespace llarp
 
     bool
     have_client_connection_to(const RouterID& remote) const;
-
-    void
-    deregister_peer(RouterID remote);
 
     void
     test_reachability(const RouterID& rid, conn_open_hook, conn_closed_hook);
