@@ -8,7 +8,6 @@ namespace llarp
   const char* const LOKINET_VERSION_TAG   = "@VERSIONTAG@";
   const char* const LOKINET_VERSION_FULL  = "lokinet-@lokinet_VERSION_MAJOR@.@lokinet_VERSION_MINOR@.@lokinet_VERSION_PATCH@-@LOKINET_VERSION_TAG@";
 
-  const char* const LOKINET_RELEASE_MOTTO = "@RELEASE_MOTTO@";
   const char* const LOKINET_DEFAULT_NETID = "lokinet";
   const char* const LOKINET_TESTNET_NETID = "testnet";
   // clang-format on
