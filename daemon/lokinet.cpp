@@ -125,7 +125,7 @@ namespace
 
     if (!GetModuleFileName(nullptr, szPath.data(), MAX_PATH))
     {
-      llarp::LogError("Cannot install service ", GetLastError());
+      llarp::log::error(logcat, "Cannot install service {}", GetLastError());
       return;
     }
 
@@ -137,7 +137,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -159,12 +159,12 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("CreateService failed ", GetLastError());
+      llarp::log::error(logcat, "CreateService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
     else
-      llarp::LogInfo("Service installed successfully");
+      llarp::log::info(logcat, "Service installed successfully");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -189,7 +189,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -201,7 +201,7 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("OpenService failed ", GetLastError());
+      llarp::log::error(logcat, "OpenService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
@@ -214,10 +214,10 @@ namespace
             SERVICE_CONFIG_DESCRIPTION,  // change: description
             &sd))                        // new description
     {
-      llarp::LogError("ChangeServiceConfig2 failed");
+      llarp::log::error(logcat, "ChangeServiceConfig2 failed");
     }
     else
-      llarp::LogInfo("Service description updated successfully.");
+      llarp::log::info(log_cat, "Service description updated successfully.");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -237,7 +237,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -249,7 +249,7 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("OpenService failed ", GetLastError());
+      llarp::log::error(logcat, "OpenService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
@@ -257,10 +257,10 @@ namespace
     // Delete the service.
     if (!DeleteService(schService))
     {
-      llarp::LogError("DeleteService failed ", GetLastError());
+      llarp::log::error(logcat, "DeleteService failed {}", GetLastError());
     }
     else
-      llarp::LogInfo("Service deleted successfully\n");
+      llarp::log::info(logcat, "Service deleted successfully");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -337,7 +337,7 @@ namespace
 
     if (svc->handle == nullptr)
     {
-      llarp::LogError("failed to register daemon control handler");
+      llarp::log::error(logcat, "failed to register daemon control handler");
       return;
     }
 
@@ -454,7 +454,7 @@ namespace
         }
         catch (std::exception& ex)
         {
-          llarp::LogError("cannot generate config at ", *configFile, ": ", ex.what());
+          llarp::log::error(logcat, "cannot generate config at {}: {}", *configFile, ex.what());
           return 1;
         }
       }
@@ -464,13 +464,13 @@ namespace
         {
           if (!fs::exists(*configFile))
           {
-            llarp::LogError("Config file not found ", *configFile);
+            llarp::log::error(logcat, "Config file not found {}", *configFile);
             return 1;
           }
         }
         catch (std::exception& ex)
         {
-          llarp::LogError("cannot check if ", *configFile, " exists: ", ex.what());
+          llarp::log::error(logcat, "cannot check if ", *configFile, " exists: ", ex.what());
           return 1;
         }
       }
@@ -487,7 +487,7 @@ namespace
       }
       catch (std::exception& ex)
       {
-        llarp::LogError("cannot ensure config: ", ex.what());
+        llarp::log::error(logcat, "cannot ensure config: {}", ex.what());
         return 1;
       }
       configFile = llarp::GetDefaultConfigPath();
@@ -548,14 +548,14 @@ namespace
   static void
   run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
   {
-    llarp::LogInfo(fmt::format(
-        "starting up {} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO));
+    llarp::log::info(
+        logcat, "starting up {} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO);
     try
     {
       std::shared_ptr<llarp::Config> conf;
       if (confFile)
       {
-        llarp::LogInfo("Using config file: ", *confFile);
+        llarp::log::info(logcat, "Using config file: {}", *confFile);
         conf = std::make_shared<llarp::Config>(confFile->parent_path());
       }
       else
@@ -564,7 +564,7 @@ namespace
       }
       if (not conf->load(confFile, opts.isSNode))
       {
-        llarp::LogError("failed to parse configuration");
+        llarp::log::error(logcat, "failed to parse configuration");
         exit_code.set_value(1);
         return;
       }
@@ -589,13 +589,13 @@ namespace
       }
       catch (llarp::util::bind_socket_error& ex)
       {
-        llarp::LogError(fmt::format("{}, is lokinet already running? 🤔", ex.what()));
+        llarp::log::error(logcat, "{}; is lokinet already running?", ex.what());
         exit_code.set_value(1);
         return;
       }
       catch (const std::exception& ex)
       {
-        llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
+        llarp::log::error(logcat, "failed to start up lokinet: {}", ex.what());
         exit_code.set_value(1);
         return;
       }
@@ -606,12 +606,12 @@ namespace
     }
     catch (const std::exception& e)
     {
-      llarp::LogError("Fatal: caught exception while running: {}", e.what());
+      llarp::log::error(logcat, "Fatal: caught exception while running: {}", e.what());
       exit_code.set_exception(std::current_exception());
     }
     catch (...)
     {
-      llarp::LogError("Fatal: caught non-standard exception while running");
+      llarp::log::error(logcat, "Fatal: caught non-standard exception while running");
       exit_code.set_exception(std::current_exception());
     }
   }
