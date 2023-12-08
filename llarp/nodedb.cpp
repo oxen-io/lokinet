@@ -368,7 +368,6 @@ namespace llarp
     }
 
     std::vector<RouterID> needed;
-
     const auto now = time_point_now();
 
     for (const auto& [rid, rc] : rc_lookup)
