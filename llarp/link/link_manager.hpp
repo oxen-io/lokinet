@@ -181,6 +181,9 @@ namespace llarp
 
     // holds any messages we attempt to send while connections are establishing
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
+    // when establishing a connection, the rid of the remote is placed here to be cross-
+    // checked by the tls verification callback
+    std::set<RouterID> rids_pending_verification;
 
     util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
 
@@ -252,7 +255,7 @@ namespace llarp
 
     void
     fetch_bootstrap_rcs(
-        const RouterID& source,
+        const RemoteRC& source,
         std::string payload,
         std::function<void(oxen::quic::message m)> func);
 

@@ -85,5 +85,7 @@ namespace llarp
       }
       insert(rc);
     }
+
+    _curr = begin();
   }
 }  // namespace llarp

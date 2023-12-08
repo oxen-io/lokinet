@@ -12,8 +12,13 @@ namespace llarp
 {
   struct BootstrapList final : public std::set<RemoteRC>
   {
-    size_t index;
-    std::set<RemoteRC>::iterator current;
+    std::set<RemoteRC>::iterator _curr;
+
+    const RemoteRC&
+    current()
+    {
+      return *_curr;
+    }
 
     bool
     bt_decode(std::string_view buf);
@@ -32,12 +37,12 @@ namespace llarp
     const RemoteRC&
     next()
     {
-      ++current;
+      ++_curr;
 
-      if (current == this->end())
-        current = this->begin();
+      if (_curr == this->end())
+        _curr = this->begin();
 
-      return *current;
+      return *_curr;
     }
 
     bool
@@ -46,7 +51,8 @@ namespace llarp
     void
     randomize()
     {
-      current = std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
+      if (size() > 1)
+        _curr = std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
     }
 
     void

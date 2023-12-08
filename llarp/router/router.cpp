@@ -670,6 +670,8 @@ namespace llarp
 
     if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
     {
+      log::warning(logcat, "Warning: bootstrap list is empty and we are not a seed node");
+
       auto fallbacks = llarp::load_bootstrap_fallbacks();
 
       if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
@@ -692,8 +694,11 @@ namespace llarp
       log::info(
           logcat, "Loaded {} default fallback bootstrap routers!", _bootstrap_rc_list->size());
       clear_bad_rcs();
-      node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
     }
+
+    log::critical(logcat, "We have {} bootstrap routers!", _bootstrap_rc_list->size());
+
+    node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
 
     if (conf.bootstrap.seednode)
       log::critical(logcat, "We are a bootstrap seed node!");
@@ -890,7 +895,8 @@ namespace llarp
 
     if (needs_initial_fetch())
     {
-      node_db()->fetch_initial();
+      if (not _config->bootstrap.seednode)
+        node_db()->fetch_initial();
     }
     else if (needs_rebootstrap() and next_bootstrap_attempt > now_timepoint)
     {

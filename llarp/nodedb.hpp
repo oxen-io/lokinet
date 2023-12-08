@@ -135,9 +135,9 @@ namespace llarp
         - gray: fully funded, but decommissioned routers
         - green: registered, but not fully-staked routers
     */
-    std::unordered_set<RouterID> router_whitelist;
-    std::unordered_set<RouterID> router_greylist;
-    std::unordered_set<RouterID> router_greenlist;
+    std::set<RouterID> router_whitelist{};
+    std::set<RouterID> router_greylist{};
+    std::set<RouterID> router_greenlist{};
 
     // All registered relays (service nodes)
     std::set<RouterID> registered_routers;
@@ -165,7 +165,7 @@ namespace llarp
     std::atomic<int> fetch_failures{0}, bootstrap_failures{0};
 
     std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false},
-        _needs_initial_fetch{true};
+        _needs_initial_fetch{true}, _initial_completed{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -332,7 +332,7 @@ namespace llarp
       return known_rids;
     }
 
-    const std::unordered_set<RouterID>&
+    const std::set<RouterID>&
     greylist() const
     {
       return router_greylist;

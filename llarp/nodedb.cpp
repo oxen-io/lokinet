@@ -196,7 +196,8 @@ namespace llarp
   {
     // TODO: if this needs to be called more than once (ex: drastic failures), then
     // change this assert to a bootstraps.clear() call
-    assert(_bootstraps->empty());
+    if (_bootstraps)
+      assert(_bootstraps->empty());
 
     _bootstraps = std::move(from_router);
     _bootstraps->randomize();
@@ -343,8 +344,9 @@ namespace llarp
   void
   NodeDB::fetch_initial()
   {
-    if (known_rids.empty())
+    if (known_rcs.empty())
     {
+      log::critical(logcat, "No RC's held locally... BOOTSTRAP TIME");
       fallback_to_bootstrap();
     }
     else
@@ -605,6 +607,14 @@ namespace llarp
   {
     _router.last_rc_fetch = llarp::time_point_now();
 
+    if (_router.is_service_node())
+    {
+      _needs_rebootstrap = false;
+      fail_sources.clear();
+      fetch_failures = 0;
+      return;
+    }
+
     if (initial)
       fetch_rids(initial);
   }
@@ -619,7 +629,10 @@ namespace llarp
     _needs_rebootstrap = false;
 
     if (initial)
+    {
       _needs_initial_fetch = false;
+      _initial_completed = true;
+    }
   }
 
   void
@@ -656,7 +669,7 @@ namespace llarp
     _needs_rebootstrap = false;
 
     _router.link_manager().fetch_bootstrap_rcs(
-        fetch_source,
+        _bootstraps->current(),
         BootstrapFetchMessage::serialize(BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
           if (not m)
@@ -754,9 +767,6 @@ namespace llarp
     registered_routers.insert(whitelist.begin(), whitelist.end());
     registered_routers.insert(greylist.begin(), greylist.end());
     registered_routers.insert(greenlist.begin(), greenlist.end());
-
-    for (const auto& rid : whitelist)
-      known_rids.insert(rid);
 
     router_whitelist.clear();
     router_whitelist.insert(whitelist.begin(), whitelist.end());
