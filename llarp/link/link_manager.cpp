@@ -356,10 +356,10 @@ namespace llarp
             std::move(on_close));
         rv)
     {
-      log::info(quic_cat, "Connection to {} successfully established!", remote_addr);
+      log::info(quic_cat, "Begun establishing connection to {}", remote_addr);
       return;
     }
-    log::warning(quic_cat, "Connection to {} successfully established!", remote_addr);
+    log::warning(quic_cat, "Failed to begin establishing connection to {}", remote_addr);
   }
 
   // TODO: should we add routes here now that Router::SessionOpen is gone?
@@ -369,6 +369,12 @@ namespace llarp
     _router.loop()->call([this, &conn_interface = ci]() {
       const auto& scid = conn_interface.scid();
       const auto& rid = ep.connid_map[scid];
+
+      log::critical(
+          logcat,
+          "SERVICE NODE (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
+          _router.local_rid(),
+          rid);
 
       // check to see if this connection was established while we were attempting to queue
       // messages to the remote

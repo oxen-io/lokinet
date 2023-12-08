@@ -526,7 +526,7 @@ namespace llarp
   void
   Router::save_rc()
   {
-    _node_db->put_rc(router_contact.view());
+    // _node_db->put_rc(router_contact.view());
     log::info(logcat, "Saving RC file to {}", our_rc_file);
     queue_disk_io([&]() { router_contact.write(our_rc_file); });
   }
