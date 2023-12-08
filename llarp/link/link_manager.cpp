@@ -193,26 +193,43 @@ namespace llarp
           return on_conn_closed(ci, ec);
         },
         [this](oxen::quic::dgram_interface& di, bstring dgram) { recv_data_message(di, dgram); });
-    ep->listen(
-        tls_creds,
-        [&](oxen::quic::Connection& c,
-            oxen::quic::Endpoint& e,
-            std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
-          if (id && id == 0)
-          {
-            auto s = std::make_shared<oxen::quic::BTRequestStream>(
-                c, e, [](oxen::quic::Stream& s, uint64_t error_code) {
-                  log::warning(
-                      logcat,
-                      "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
-                      error_code);
-                  s.conn.close_connection(error_code);
-                });
-            register_commands(s);
-            return s;
-          }
-          return std::make_shared<oxen::quic::Stream>(c, e);
-        });
+    tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view&) {
+      bool result = false;
+      RouterID other{key.data()};
+      if (auto itr = rids_pending_verification.find(other); itr != rids_pending_verification.end())
+      {
+        rids_pending_verification.erase(itr);
+        result = true;
+      }
+      if (_router.node_db()->has_rc(other))
+        result = true;
+
+      log::critical(logcat, "{}uccessfully verified connection to {}!", result ? "S" : "Un", other);
+      return result;
+    });
+    if (_router.is_service_node())
+    {
+      ep->listen(
+          tls_creds,
+          [&](oxen::quic::Connection& c,
+              oxen::quic::Endpoint& e,
+              std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
+            if (id && id == 0)
+            {
+              auto s = std::make_shared<oxen::quic::BTRequestStream>(
+                  c, e, [](oxen::quic::Stream& s, uint64_t error_code) {
+                    log::warning(
+                        logcat,
+                        "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
+                        error_code);
+                    s.conn.close_connection(error_code);
+                  });
+              register_commands(s);
+              return s;
+            }
+            return std::make_shared<oxen::quic::Stream>(c, e);
+          });
+    }
     return ep;
   }
 
@@ -346,6 +363,9 @@ namespace llarp
     }
 
     const auto& remote_addr = rc.addr();
+    const auto& rid = rc.router_id();
+
+    rids_pending_verification.insert(rid);
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
@@ -415,6 +435,10 @@ namespace llarp
       {
         const auto& rid = c_itr->second;
 
+        if (auto maybe = rids_pending_verification.find(rid);
+            maybe != rids_pending_verification.end())
+          rids_pending_verification.erase(maybe);
+        // in case this didn't clear earlier, do it now
         if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
           pending_conn_msg_queue.erase(p_itr);
 
@@ -582,9 +606,16 @@ namespace llarp
 
   void
   LinkManager::fetch_bootstrap_rcs(
-      const RouterID& source, std::string payload, std::function<void(oxen::quic::message m)> func)
+      const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
-    send_control_message(source, "bfetch_rcs", std::move(payload), std::move(func));
+    _router.loop()->call([this, source, payload, f = std::move(func)]() {
+      auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, f);
+
+      auto [itr, b] = pending_conn_msg_queue.emplace(source.router_id(), MessageQueue());
+      itr->second.push_back(std::move(pending));
+
+      connect_to(source);
+    });
   }
 
   void
