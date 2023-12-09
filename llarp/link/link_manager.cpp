@@ -192,7 +192,7 @@ namespace llarp
               std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
             if (id && id == 0)
             {
-              auto s = std::make_shared<oxen::quic::BTRequestStream>(
+              auto s = e.make_shared<oxen::quic::BTRequestStream>(
                   c, e, [](oxen::quic::Stream& s, uint64_t error_code) {
                     log::warning(
                         logcat,
@@ -203,7 +203,7 @@ namespace llarp
               register_commands(s);
               return s;
             }
-            return std::make_shared<oxen::quic::Stream>(c, e);
+            return nullptr;
           });
     }
     return ep;
