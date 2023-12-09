@@ -595,8 +595,6 @@ namespace llarp
         ? _listen_address
         : oxen::quic::Address{*paddr, pport ? *pport : DEFAULT_LISTEN_PORT};
 
-    log::critical(logcat, "listen_addr:{} \t public_addr:{}", _listen_address, _public_address);
-
     RouterContact::BLOCK_BOGONS = conf.router.block_bogons;
 
     auto& networkConfig = conf.network;
