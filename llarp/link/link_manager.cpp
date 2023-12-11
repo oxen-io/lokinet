@@ -135,7 +135,7 @@ namespace llarp
           [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
     });
 
-    s->register_command("bfetc_rcs"s, [this, rid](oxen::quic::message m) {
+    s->register_command("bfetch_rcs"s, [this, rid](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
     });
@@ -385,7 +385,7 @@ namespace llarp
     ep.connid_map.emplace(scid, rid);
     auto [itr, b] = ep.conns.emplace(rid, nullptr);
 
-    auto control_stream = ci.template get_new_stream<oxen::quic::BTRequestStream>();
+    auto control_stream = ci.get_stream<oxen::quic::BTRequestStream>(0);
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
     log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
   }
