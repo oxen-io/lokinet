@@ -654,7 +654,9 @@ namespace llarp
     {
       oxenc::bt_dict_consumer btdc{m.body()};
       btdc.required("local");
-      remote = RemoteRC{btdc.consume_dict_consumer()};
+      auto rc_dict = btdc.consume_dict_data();
+      log::critical(logcat, "incoming dict data: {}", oxenc::to_hex(rc_dict));
+      remote = RemoteRC{oxenc::bt_dict_consumer{rc_dict}};
       quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
