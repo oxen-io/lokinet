@@ -656,7 +656,7 @@ namespace llarp
       btdc.required("local");
       auto rc_dict = btdc.consume_dict_data();
       log::critical(logcat, "incoming dict data: {}", oxenc::to_hex(rc_dict));
-      remote = RemoteRC{oxenc::bt_dict_consumer{rc_dict}};
+      remote = RemoteRC{rc_dict};
       quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
@@ -808,10 +808,10 @@ namespace llarp
     {
       auto btlp = btdp.append_list("routers");
 
-      const auto& known_rcs = node_db->get_known_rcs();
+      const auto& known_rids = node_db->get_known_rids();
 
-      for (const auto& rc : known_rcs)
-        btlp.append_encoded(rc.view());
+      for (const auto& rid : known_rids)
+        btlp.append(rid.ToView());
     }
 
     btdp.append_signature("signature", [this](ustring_view to_sign) {
