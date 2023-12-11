@@ -512,7 +512,7 @@ namespace llarp
   {
     if (error)
     {
-      auto& fail_count = (_using_bootstrap_fallback) ? bootstrap_failures : fetch_failures;
+      auto& fail_count = (_using_bootstrap_fallback) ? bootstrap_attempts : fetch_failures;
       auto& THRESHOLD =
           (_using_bootstrap_fallback) ? MAX_BOOTSTRAP_FETCH_ATTEMPTS : MAX_FETCH_ATTEMPTS;
 
@@ -638,7 +638,7 @@ namespace llarp
   void
   NodeDB::fallback_to_bootstrap()
   {
-    auto at_max_failures = bootstrap_failures >= MAX_BOOTSTRAP_FETCH_ATTEMPTS;
+    auto at_max_failures = bootstrap_attempts >= MAX_BOOTSTRAP_FETCH_ATTEMPTS;
 
     // base case: we have failed to query all bootstraps, or we received a sample of
     // the network, but the sample was unusable or unreachable. We will also enter this
@@ -646,7 +646,7 @@ namespace llarp
     // checking not using_bootstrap_fallback)
     if (at_max_failures || not _using_bootstrap_fallback)
     {
-      bootstrap_failures = 0;
+      bootstrap_attempts = 0;
 
       // Fail case: if we have returned to the front of the bootstrap list, we're in a
       // bad spot; we are unable to do anything
@@ -667,6 +667,7 @@ namespace llarp
     // By passing the last conditional, we ensure this is set to true
     _using_bootstrap_fallback = true;
     _needs_rebootstrap = false;
+    ++bootstrap_attempts;
 
     _router.link_manager().fetch_bootstrap_rcs(
         _bootstraps->current(),
@@ -675,12 +676,12 @@ namespace llarp
         [this](oxen::quic::message m) mutable {
           if (not m)
           {
-            ++bootstrap_failures;
+            // ++bootstrap_attempts;
             log::warning(
                 logcat,
                 "BootstrapRC fetch request to {} failed (error {}/{})",
                 fetch_source,
-                bootstrap_failures,
+                bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS);
             fallback_to_bootstrap();
             return;
@@ -704,12 +705,12 @@ namespace llarp
           }
           catch (const std::exception& e)
           {
-            ++bootstrap_failures;
+            // ++bootstrap_attempts;
             log::warning(
                 logcat,
                 "Failed to parse BootstrapRC fetch response from {} (error {}/{}): {}",
                 fetch_source,
-                bootstrap_failures,
+                bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS,
                 e.what());
             fallback_to_bootstrap();
@@ -719,7 +720,7 @@ namespace llarp
           // We set this to the max allowable value because if this result is bad, we won't
           // try this bootstrap again. If this result is undersized, we roll right into the
           // next call to fallback_to_bootstrap() and hit the base case, rotating sources
-          bootstrap_failures = MAX_BOOTSTRAP_FETCH_ATTEMPTS;
+          // bootstrap_attempts = MAX_BOOTSTRAP_FETCH_ATTEMPTS;
 
           if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
           {
@@ -728,13 +729,13 @@ namespace llarp
           }
           else
           {
-            ++bootstrap_failures;
+            // ++bootstrap_attempts;
             log::warning(
                 logcat,
                 "BootstrapRC fetch response from {} returned insufficient number of RC's (error "
                 "{}/{})",
                 fetch_source,
-                bootstrap_failures,
+                bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS);
             fallback_to_bootstrap();
           }
