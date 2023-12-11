@@ -135,6 +135,11 @@ namespace llarp
           [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
     });
 
+    s->register_command("bfetc_rcs"s, [this, rid](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
+    });
+
     for (auto& method : direct_requests)
     {
       s->register_command(
