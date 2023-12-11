@@ -63,8 +63,8 @@ namespace llarp
 
     auto pubkey = data.require<std::string_view>("p");
     if (pubkey.size() != 32)
-        throw std::runtime_error{
-            "Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
+      throw std::runtime_error{
+          "Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
     std::memcpy(_router_id.data(), pubkey.data(), 32);
 
     // auto pk = data.require<std::string_view>("p");

@@ -646,7 +646,6 @@ namespace llarp
     assert(_router.is_service_node());
     log::critical(logcat, "Handling fetch bootstrap fetch request...");
 
-    const auto& rcs = node_db->get_rcs();
     RemoteRC remote;
     size_t quantity;
 
@@ -668,7 +667,16 @@ namespace llarp
 
     node_db->put_rc(remote);
 
-    auto rc_size = rcs.size();
+    auto& bootstraps = node_db->bootstrap_list();
+    auto count = bootstraps.size();
+
+    if (count == 0)
+    {
+      log::error(logcat, "No bootstraps locally to send!");
+      m.respond(messages::ERROR_RESPONSE, true);
+      return;
+    }
+
     auto now = llarp::time_now_ms();
     size_t i = 0;
 
@@ -679,7 +687,7 @@ namespace llarp
 
       while (i < quantity)
       {
-        auto& next_rc = *std::next(rcs.begin(), csrng() % rc_size);
+        auto& next_rc = bootstraps.next();
 
         if (next_rc.is_expired(now))
           continue;

@@ -44,7 +44,7 @@ namespace llarp
   inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
   /*  Bootstrap Constants  */
   // the number of rc's we query the bootstrap for
-  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{50};
+  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{10};
   // the maximum number of fetch requests we make across all bootstraps
   inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{5};
   // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
