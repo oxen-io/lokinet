@@ -254,7 +254,7 @@ namespace llarp
     if (func)
     {
       func = [this, f = std::move(func)](oxen::quic::message m) mutable {
-        _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(msg); });
+        _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
       };
     }
 
