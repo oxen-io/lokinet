@@ -670,7 +670,8 @@ namespace llarp
 
     _router.link_manager().fetch_bootstrap_rcs(
         _bootstraps->current(),
-        BootstrapFetchMessage::serialize(BOOTSTRAP_SOURCE_COUNT),
+        BootstrapFetchMessage::serialize(
+            _router.router_contact.to_remote(), BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
           if (not m)
           {

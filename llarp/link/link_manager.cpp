@@ -175,6 +175,7 @@ namespace llarp
 
       if (auto itr = rids_pending_verification.find(other); itr != rids_pending_verification.end())
       {
+        verified_rids[other] = itr->second;
         rids_pending_verification.erase(itr);
         result = true;
       }
@@ -351,7 +352,7 @@ namespace llarp
     const auto& remote_addr = rc.addr();
     const auto& rid = rc.router_id();
 
-    rids_pending_verification.insert(rid);
+    rids_pending_verification[rid] = rc;
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
@@ -368,13 +369,34 @@ namespace llarp
     log::warning(quic_cat, "Failed to begin establishing connection to {}", remote_addr);
   }
 
+  void
+  LinkManager::on_inbound_conn(oxen::quic::connection_interface& ci)
+  {
+    const auto& scid = ci.scid();
+    RouterID rid{ci.remote_key()};
+
+    const auto& rc = verified_rids[rid];
+    ep.connid_map.emplace(scid, rid);
+    auto [itr, b] = ep.conns.emplace(rid, nullptr);
+
+    auto control_stream = ci.get_new_stream<oxen::quic::BTRequestStream>();
+    itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
+    log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
+  }
+
   // TODO: should we add routes here now that Router::SessionOpen is gone?
   void
   LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
   {
     _router.loop()->call([this, &conn_interface = ci]() {
-      const auto& scid = conn_interface.scid();
-      const auto& rid = ep.connid_map[scid];
+      const auto rid = RouterID{conn_interface.remote_key()};
+      const auto& remote = conn_interface.remote();
+
+      if (conn_interface.is_inbound())
+      {
+        log::critical(logcat, "Inbound connection fom {} (remote:{})", rid, remote);
+        on_inbound_conn(conn_interface);
+      }
 
       log::critical(
           logcat,
@@ -599,12 +621,15 @@ namespace llarp
     assert(_router.is_service_node());
 
     const auto& rcs = node_db->get_rcs();
+    RemoteRC remote;
     size_t quantity;
 
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
       quantity = btdc.require<size_t>("quantity");
+      btdc.required("local");
+      remote = RemoteRC{btdc.consume_dict_consumer()};
     }
     catch (const std::exception& e)
     {
@@ -612,6 +637,8 @@ namespace llarp
       m.respond(messages::ERROR_RESPONSE, true);
       return;
     }
+
+    node_db->put_rc(remote);
 
     auto rc_size = rcs.size();
     auto now = llarp::time_now_ms();

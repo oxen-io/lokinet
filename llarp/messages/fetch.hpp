@@ -37,10 +37,12 @@ namespace llarp
 
   namespace BootstrapFetchMessage
   {
+    // the LocalRC is converted to a RemoteRC type to send to the bootstrap seed
     inline static std::string
-    serialize(size_t quantity)
+    serialize(const RemoteRC& local_rc, size_t quantity)
     {
       oxenc::bt_dict_producer btdp;
+      btdp.append_encoded("local", local_rc.view());
       btdp.append("quantity", quantity);
       return std::move(btdp).str();
     }

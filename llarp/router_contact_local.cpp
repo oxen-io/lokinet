@@ -27,6 +27,12 @@ namespace llarp
     resign();
   }
 
+  RemoteRC
+  LocalRC::to_remote()
+  {
+    return RemoteRC{view()};
+  }
+
   LocalRC::LocalRC(std::string payload, const SecretKey sk) : _secret_key{std::move(sk)}
   {
     _router_id = llarp::seckey_to_pubkey(_secret_key);

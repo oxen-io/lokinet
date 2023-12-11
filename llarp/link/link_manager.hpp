@@ -180,7 +180,10 @@ namespace llarp
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
     // when establishing a connection, the rid of the remote is placed here to be cross-
     // checked by the tls verification callback
-    std::set<RouterID> rids_pending_verification;
+    std::map<RouterID, RemoteRC> rids_pending_verification;
+    // in the interim of verifying an inbound connection and the creation of its link::Connection
+    // object, we store the rid and rc here
+    std::map<RouterID, RemoteRC> verified_rids;
 
     util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
 
@@ -202,6 +205,9 @@ namespace llarp
 
     void
     recv_control_message(oxen::quic::message msg);
+
+    void
+    on_inbound_conn(oxen::quic::connection_interface& ci);
 
     void
     on_conn_open(oxen::quic::connection_interface& ci);

@@ -18,7 +18,7 @@ namespace llarp::link
     bool remote_is_relay{true};
 
     Connection(
-        std::shared_ptr<oxen::quic::connection_interface>& c,
+        const std::shared_ptr<oxen::quic::connection_interface>& c,
         std::shared_ptr<oxen::quic::BTRequestStream>& s,
         const RemoteRC& rc);
   };
