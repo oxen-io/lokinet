@@ -4,7 +4,7 @@
 namespace llarp
 {
   // clang-format off
-  const std::array<uint16_t, 3> LOKINET_VERSION{{@lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
+  const std::array<uint8_t, 3> LOKINET_VERSION{{@lokinet_VERSION_MAJOR@, @lokinet_VERSION_MINOR@, @lokinet_VERSION_PATCH@}};
   const char* const LOKINET_VERSION_TAG   = "@VERSIONTAG@";
   const char* const LOKINET_VERSION_FULL  = "lokinet-@lokinet_VERSION_MAJOR@.@lokinet_VERSION_MINOR@.@lokinet_VERSION_PATCH@-@LOKINET_VERSION_TAG@";
 
