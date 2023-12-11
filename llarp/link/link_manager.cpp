@@ -391,8 +391,10 @@ namespace llarp
           logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
       s.conn.close_connection(error_code);
     });
+
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
     log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
+    node_db->put_rc(rc);
   }
 
   // TODO: should we add routes here now that Router::SessionOpen is gone?
@@ -620,14 +622,13 @@ namespace llarp
       const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
     _router.loop()->call([this, source, payload, f = std::move(func)]() {
-
       if (auto conn = ep.get_conn(source); conn)
       {
         log::critical(logcat, "Dispatched bootstrap fetch request!");
         conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(f));
         return;
       }
-      
+
       log::critical(logcat, "Queuing bootstrap fetch request");
       auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, f);
 

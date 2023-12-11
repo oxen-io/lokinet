@@ -894,6 +894,8 @@ namespace llarp
 
         next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
+
+      report_stats();
     }
 
     if (needs_initial_fetch())
@@ -901,7 +903,7 @@ namespace llarp
       if (not _config->bootstrap.seednode)
         node_db()->fetch_initial();
     }
-    else if (needs_rebootstrap() and next_bootstrap_attempt > now_timepoint)
+    else if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
     {
       node_db()->fallback_to_bootstrap();
     }
