@@ -61,12 +61,14 @@ namespace llarp
           "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
               ACTIVE_NETID, netid)};
 
-    auto pk = data.require<std::string_view>("p");
+    _router_id.from_string(data.require<std::string_view>("p"));
 
-    if (pk.size() != RouterID::SIZE)
-      throw std::runtime_error{"Invalid RC: router id has invalid size {}"_format(pk.size())};
+    // auto pk = data.require<std::string_view>("p");
 
-    std::memcpy(_router_id.data(), pk.data(), RouterID::SIZE);
+    // if (pk.size() != RouterID::SIZE)
+    //   throw std::runtime_error{"Invalid RC: router id has invalid size {}"_format(pk.size())};
+
+    // std::memcpy(_router_id.data(), pk.data(), RouterID::SIZE);
 
     _timestamp = rc_time{std::chrono::seconds{data.require<int64_t>("t")}};
 
