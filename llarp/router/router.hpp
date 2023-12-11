@@ -88,6 +88,7 @@ namespace llarp
 
     bool _testnet = false;
     bool _testing_disabled = false;
+    bool _bootstrap_seed = false;
 
     consensus::reachability_testing router_testing;
 
@@ -157,6 +158,12 @@ namespace llarp
     std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
 
    public:
+    bool
+    is_bootstrap_seed() const
+    {
+      return _bootstrap_seed;
+    }
+
     int
     required_num_client_conns() const
     {
