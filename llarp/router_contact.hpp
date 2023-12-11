@@ -314,6 +314,7 @@ namespace llarp
     void
     bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
 
+    explicit RemoteRC(oxenc::bt_dict_consumer btdc);
    public:
     RemoteRC() = default;
     explicit RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
@@ -324,7 +325,6 @@ namespace llarp
     {
       _payload = data;
     }
-    explicit RemoteRC(oxenc::bt_dict_consumer btdc);
     ~RemoteRC() = default;
 
     std::string_view
