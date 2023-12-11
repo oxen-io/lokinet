@@ -21,6 +21,9 @@ namespace llarp
     RouterID(const Data& data) : PubKey(data)
     {}
 
+    RouterID(ustring_view data) : PubKey(data.data())
+    {}
+
     util::StatusObject
     ExtractStatus() const;
 

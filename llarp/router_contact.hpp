@@ -207,6 +207,8 @@ namespace llarp
     bt_load(oxenc::bt_dict_consumer& data);
   };
 
+  struct RemoteRC;
+
   /// Extension of RouterContact used to store a local "RC," and inserts a RouterContact by
   /// re-parsing and sending it out. This sub-class contains a pubkey and all the other attributes
   /// required for signing and serialization
@@ -235,6 +237,9 @@ namespace llarp
     LocalRC() = default;
     explicit LocalRC(std::string payload, const SecretKey sk);
     ~LocalRC() = default;
+
+    RemoteRC
+    to_remote();
 
     void
     resign();
