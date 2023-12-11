@@ -214,7 +214,8 @@ namespace llarp
               register_commands(s);
               return s;
             }
-            return nullptr;
+
+            return e.make_shared<oxen::quic::Stream>(c, e);
           });
     }
     return ep;
@@ -379,7 +380,7 @@ namespace llarp
     ep.connid_map.emplace(scid, rid);
     auto [itr, b] = ep.conns.emplace(rid, nullptr);
 
-    auto control_stream = ci.get_new_stream<oxen::quic::BTRequestStream>();
+    auto control_stream = ci.template get_new_stream<oxen::quic::BTRequestStream>();
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
     log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
   }
@@ -605,6 +606,7 @@ namespace llarp
       const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
     _router.loop()->call([this, source, payload, f = std::move(func)]() {
+      log::critical(logcat, "Queuing bootstrap fetch request");
       auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, f);
 
       auto [itr, b] = pending_conn_msg_queue.emplace(source.router_id(), MessageQueue());
