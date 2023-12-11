@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+
 #include <llarp/util/logging/buffer.hpp>
 
 namespace llarp

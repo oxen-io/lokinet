@@ -47,8 +47,12 @@ namespace llarp
         throw std::runtime_error{err};
       }
 
-      log::error(log::Cat("FIXME"), "ABOUT TO VERIFY THIS: {}, WITH SIG {}, SIGNED BY {}",
-              oxenc::to_hex(msg), oxenc::to_hex(sig), router_id().ToHex());
+      log::error(
+          log::Cat("FIXME"),
+          "ABOUT TO VERIFY THIS: {}, WITH SIG {}, SIGNED BY {}",
+          oxenc::to_hex(msg),
+          oxenc::to_hex(sig),
+          router_id().ToHex());
 
       if (not crypto::verify(router_id(), msg, sig))
         throw std::runtime_error{"Failed to verify RemoteRC signature"};
