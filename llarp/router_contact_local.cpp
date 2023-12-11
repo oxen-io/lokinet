@@ -55,13 +55,13 @@ namespace llarp
 
         if (net->IsBogon(addr().in4()) and BLOCK_BOGONS)
         {
-          auto err = "Unable to verify expired RemoteRC!";
+          auto err = "Unable to verify expired LocalRC!";
           log::info(logcat, err);
           throw std::runtime_error{err};
         }
 
         if (not crypto::verify(router_id(), msg, sig))
-          throw std::runtime_error{"Failed to verify RemoteRC"};
+          throw std::runtime_error{"Failed to verify LocalRC"};
       });
     }
     catch (const std::exception& e)
