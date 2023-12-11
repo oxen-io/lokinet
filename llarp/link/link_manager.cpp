@@ -419,6 +419,7 @@ namespace llarp
       // messages to the remote
       if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
       {
+        log::critical(logcat, "Clearing pending queue for RID:{}", rid);
         auto& que = itr->second;
 
         while (not que.empty())
@@ -428,6 +429,7 @@ namespace llarp
           if (m.is_control)
           {
             auto& msg = reinterpret_cast<PendingControlMessage&>(m);
+            log::critical(logcat, "Dispatching {} request!", msg.endpoint);
             ep.conns[rid]->control_stream->command(msg.endpoint, msg.body, msg.func);
           }
           else
@@ -438,7 +440,9 @@ namespace llarp
 
           que.pop_front();
         }
+        return;
       }
+      log::warning(logcat, "No pending queue to clear for RID:{}", rid);
     });
   };
 
@@ -616,6 +620,14 @@ namespace llarp
       const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
     _router.loop()->call([this, source, payload, f = std::move(func)]() {
+
+      if (auto conn = ep.get_conn(source); conn)
+      {
+        log::critical(logcat, "Dispatched bootstrap fetch request!");
+        conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(f));
+        return;
+      }
+      
       log::critical(logcat, "Queuing bootstrap fetch request");
       auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, f);
 
@@ -631,6 +643,7 @@ namespace llarp
   {
     // this handler should not be registered for clients
     assert(_router.is_service_node());
+    log::critical(logcat, "Handling fetch bootstrap fetch request...");
 
     const auto& rcs = node_db->get_rcs();
     RemoteRC remote;
@@ -639,9 +652,9 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      quantity = btdc.require<size_t>("quantity");
       btdc.required("local");
       remote = RemoteRC{btdc.consume_dict_consumer()};
+      quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
     {
