@@ -33,6 +33,9 @@ namespace llarp
     std::string
     ShortString() const;
 
+    // FIXME: this is deceptively named: it parses something base32z formatted with .snode on the
+    // end, so should probably be called "from_snode_address" or "from_base32z" or something that
+    // doesn't sound exactly like the other (different) from_strings of its base classes.
     bool
     from_string(std::string_view str);
 

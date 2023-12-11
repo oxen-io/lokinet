@@ -61,7 +61,11 @@ namespace llarp
           "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
               ACTIVE_NETID, netid)};
 
-    _router_id.from_string(data.require<std::string_view>("p"));
+    auto pubkey = data.require<std::string_view>("p");
+    if (pubkey.size() != 32)
+        throw std::runtime_error{
+            "Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
+    std::memcpy(_router_id.data(), pubkey.data(), 32);
 
     // auto pk = data.require<std::string_view>("p");
 
