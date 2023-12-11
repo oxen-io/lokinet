@@ -44,7 +44,7 @@ namespace llarp
     {
       oxenc::bt_dict_producer btdp;
       btdp.append_encoded("local", oxen::quic::to_sv(local_rc.view()));
-      log::critical(logcat, "Serializing localRC: {}", buffer_printer{local_rc.view()});
+      log::critical(logcat, "Serializing localRC: {}", oxenc::to_hex(local_rc.view()));
       btdp.append("quantity", quantity);
       return std::move(btdp).str();
     }
