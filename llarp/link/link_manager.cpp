@@ -385,7 +385,12 @@ namespace llarp
     ep.connid_map.emplace(scid, rid);
     auto [itr, b] = ep.conns.emplace(rid, nullptr);
 
-    auto control_stream = ci.get_stream<oxen::quic::BTRequestStream>(0);
+    auto control_stream = ci.queue_stream<oxen::quic::BTRequestStream>([](oxen::quic::Stream& s,
+                                                                          uint64_t error_code) {
+      log::warning(
+          logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
+      s.conn.close_connection(error_code);
+    });
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
     log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
   }
