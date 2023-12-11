@@ -30,6 +30,7 @@ namespace llarp
   RemoteRC
   LocalRC::to_remote()
   {
+    resign();
     return RemoteRC{view()};
   }
 
