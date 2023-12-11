@@ -666,7 +666,12 @@ namespace llarp
 
     clear_bad_rcs();
 
-    if (_bootstrap_rc_list->empty() and not conf.bootstrap.seednode)
+    _bootstrap_seed = conf.bootstrap.seednode;
+
+    if (_bootstrap_seed)
+      log::critical(logcat, "We are a bootstrap seed node!");
+
+    if (_bootstrap_rc_list->empty() and not _bootstrap_seed)
     {
       log::warning(logcat, "Warning: bootstrap list is empty and we are not a seed node");
 
@@ -697,9 +702,6 @@ namespace llarp
     log::critical(logcat, "We have {} bootstrap routers!", _bootstrap_rc_list->size());
 
     node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
-
-    if (conf.bootstrap.seednode)
-      log::critical(logcat, "We are a bootstrap seed node!");
 
     // TODO: RC refactor here
     if (_is_service_node)
@@ -765,7 +767,8 @@ namespace llarp
   Router::report_stats()
   {
     const auto now = llarp::time_now_ms();
-    log::info(
+
+    log::critical(
         logcat,
         "{} RCs loaded with {} bootstrap peers and {} router connections!",
         _node_db->num_rcs(),
@@ -774,15 +777,17 @@ namespace llarp
 
     if (is_service_node())
     {
-      log::info(
+      log::critical(
           logcat,
           "Local service node has {} client connections since last RC update ({} to expiry)",
           num_client_connections(),
           router_contact.age(now),
           router_contact.time_to_expiry(now));
     }
+
     if (_last_stats_report > 0s)
       log::info(logcat, "Last reported stats time {}", now - _last_stats_report);
+
     _last_stats_report = now;
   }
 

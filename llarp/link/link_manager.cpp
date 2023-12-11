@@ -172,15 +172,25 @@ namespace llarp
     tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view&) {
       bool result = false;
       RouterID other{key.data()};
+
       if (auto itr = rids_pending_verification.find(other); itr != rids_pending_verification.end())
       {
         rids_pending_verification.erase(itr);
         result = true;
       }
+
       if (_router.node_db()->has_rc(other))
         result = true;
 
-      log::critical(logcat, "{}uccessfully verified connection to {}!", result ? "S" : "Un", other);
+      // TODO: discuss pubkey verification for bootstraps connecting to seed node
+      if (_router.is_bootstrap_seed())
+      {
+        log::warning(logcat, "Allowing connection -- we are bootstrap seed");
+        result = true;
+      }
+
+      log::critical(
+          logcat, "{}uccessfully verified connection to {}!", result ? "S" : "Uns", other);
       return result;
     });
     if (_router.is_service_node())
@@ -405,7 +415,7 @@ namespace llarp
     _router.loop()->call([this, &conn_interface = ci, error_code = ec]() {
       const auto& scid = conn_interface.scid();
 
-      log::debug(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
+      log::critical(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
 
       if (const auto& c_itr = ep.connid_map.find(scid); c_itr != ep.connid_map.end())
       {
@@ -423,7 +433,7 @@ namespace llarp
 
         ep.connid_map.erase(c_itr);
 
-        log::debug(quic_cat, "Quic connection CID:{} purged successfully", scid);
+        log::critical(quic_cat, "Quic connection CID:{} purged successfully", scid);
       }
     });
   }
