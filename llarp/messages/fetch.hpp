@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include <llarp/util/logging/buffer.hpp>
 
 namespace llarp
 {
@@ -39,10 +40,11 @@ namespace llarp
   {
     // the LocalRC is converted to a RemoteRC type to send to the bootstrap seed
     inline static std::string
-    serialize(const RemoteRC& local_rc, size_t quantity)
+    serialize(const LocalRC& local_rc, size_t quantity)
     {
       oxenc::bt_dict_producer btdp;
-      btdp.append_encoded("local", local_rc.view());
+      btdp.append_encoded("local", oxen::quic::to_sv(local_rc.view()));
+      log::critical(logcat, "Serializing localRC: {}", buffer_printer{local_rc.view()});
       btdp.append("quantity", quantity);
       return std::move(btdp).str();
     }

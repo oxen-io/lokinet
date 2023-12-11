@@ -408,7 +408,7 @@ namespace llarp
             std::set<RemoteRC> rcs;
 
             while (not btlc.is_finished())
-              rcs.emplace(btlc.consume_dict_consumer());
+              rcs.emplace(btlc.consume_dict_data());
 
             // if process_fetched_rcs returns false, then the trust model rejected the fetched RC's
             fetch_rcs_result(initial, not ingest_fetched_rcs(std::move(rcs), timestamp));
@@ -672,7 +672,7 @@ namespace llarp
     _router.link_manager().fetch_bootstrap_rcs(
         _bootstraps->current(),
         BootstrapFetchMessage::serialize(
-            _router.router_contact.to_remote(), BOOTSTRAP_SOURCE_COUNT),
+            _router.router_contact, BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
           if (not m)
           {
@@ -698,7 +698,7 @@ namespace llarp
 
               while (not btlc.is_finished())
               {
-                auto rc = RemoteRC{btlc.consume_dict_consumer()};
+                auto rc = RemoteRC{btlc.consume_dict_data()};
                 rids.emplace(rc.router_id());
               }
             }

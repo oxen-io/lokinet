@@ -14,7 +14,7 @@ namespace llarp
       oxenc::bt_list_consumer btlc{buf};
 
       while (not btlc.is_finished())
-        emplace(btlc.consume_dict_consumer());
+        emplace(btlc.consume_dict_data());
     }
     catch (...)
     {
