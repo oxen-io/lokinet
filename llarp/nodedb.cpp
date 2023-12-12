@@ -192,7 +192,7 @@ namespace llarp
   }
 
   void
-  NodeDB::set_bootstrap_routers(BootstrapList from_router)
+  NodeDB::set_bootstrap_routers(BootstrapList& from_router)
   {
     _bootstraps.merge(from_router);
     _bootstraps.randomize();
@@ -339,9 +339,9 @@ namespace llarp
   void
   NodeDB::fetch_initial()
   {
-    if (known_rcs.empty())
+    if (known_rids.empty())
     {
-      log::critical(logcat, "No RC's held locally... BOOTSTRAP TIME");
+      log::critical(logcat, "No RouterID's held locally... BOOTSTRAP TIME");
       fallback_to_bootstrap();
     }
     else
@@ -658,20 +658,21 @@ namespace llarp
         bootstrap_cooldown();
         return;
       }
-
-      auto rc = (_using_bootstrap_fallback) ? _bootstraps.next() : _bootstraps.current();
-      fetch_source = rc.router_id();
     }
+
+    auto& rc = (_using_bootstrap_fallback) ? _bootstraps.next() : _bootstraps.current();
+    fetch_source = rc.router_id();
 
     // By passing the last conditional, we ensure this is set to true
     _using_bootstrap_fallback = true;
     _needs_rebootstrap = false;
     ++bootstrap_attempts;
 
-    log::critical(logcat, "Dispatching BootstrapRC fetch request to {}", _bootstraps.current().view());
+    log::critical(
+        logcat, "Dispatching BootstrapRC fetch request to {}", _bootstraps.current().view());
 
     _router.link_manager().fetch_bootstrap_rcs(
-        _bootstraps.current(),
+        rc,
         BootstrapFetchMessage::serialize(_router.router_contact, BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
           if (not m)
@@ -823,7 +824,7 @@ namespace llarp
       put_rc(rc);
     }
 
-    log::critical(logcat, "NodeDB populated with {} routers", num_rcs());
+    log::critical(logcat, "NodeDB stored {} bootstrap routers", _bootstraps.size());
   }
 
   void

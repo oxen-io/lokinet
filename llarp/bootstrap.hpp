@@ -37,6 +37,9 @@ namespace llarp
     const RemoteRC&
     next()
     {
+      if (size() < 2)
+        return *_curr;
+
       ++_curr;
 
       if (_curr == this->end())

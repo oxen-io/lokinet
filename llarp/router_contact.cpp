@@ -17,52 +17,43 @@ namespace llarp
     if (int rc_ver = data.require<uint8_t>(""); rc_ver != RC_VERSION)
       throw std::runtime_error{"Invalid RC: do not know how to parse v{} RCs"_format(rc_ver)};
 
-    auto addr_key = data.key();
-    bool addr_set = false;
+    auto ipv4_port = data.require<std::string_view>("4");
 
-    if (addr_key == "4")
+    if (ipv4_port.size() != 6)
+      throw std::runtime_error{
+          "Invalid RC address: expected 6-byte IPv4 IP/port, got {}"_format(ipv4_port.size())};
+
+    sockaddr_in s4;
+    s4.sin_family = AF_INET;
+
+    std::memcpy(&s4.sin_addr.s_addr, ipv4_port.data(), 4);
+    std::memcpy(&s4.sin_port, ipv4_port.data() + 4, 2);
+
+    _addr = oxen::quic::Address{&s4};
+
+    if (!_addr.is_public())
+      throw std::runtime_error{"Invalid RC: IPv4 address is not a publicly routable IP"};
+
+    if (auto ipv6_port = data.maybe<std::string_view>("6"))
     {
-      auto ipv4_port = data.consume<std::string_view>();
-
-      if (ipv4_port.size() != 6)
+      if (ipv6_port->size() != 18)
         throw std::runtime_error{
-            "Invalid RC address: expected 6-byte IPv4 IP/port, got {}"_format(ipv4_port.size())};
-
-      sockaddr_in s4;
-      s4.sin_family = AF_INET;
-
-      std::memcpy(&s4.sin_addr.s_addr, ipv4_port.data(), 4);
-      std::memcpy(&s4.sin_port, ipv4_port.data() + 4, 2);
-
-      _addr = oxen::quic::Address{&s4};
-      // advance in case ipv4 and ipv6 are included
-      addr_key = data.key();
-      addr_set = true;
-    }
-    if (addr_key == "6")
-    {
-      auto ipv6_port = data.consume<std::string_view>();
-
-      if (ipv6_port.size() != 18)
-        throw std::runtime_error{
-            "Invalid RC address: expected 18-byte IPv6 IP/port, got {}"_format(ipv6_port.size())};
+            "Invalid RC address: expected 18-byte IPv6 IP/port, got {}"_format(ipv6_port->size())};
 
       sockaddr_in6 s6{};
       s6.sin6_family = AF_INET6;
 
-      std::memcpy(&s6.sin6_addr.s6_addr, ipv6_port.data(), 16);
-      std::memcpy(&s6.sin6_port, ipv6_port.data() + 16, 2);
+      std::memcpy(&s6.sin6_addr.s6_addr, ipv6_port->data(), 16);
+      std::memcpy(&s6.sin6_port, ipv6_port->data() + 16, 2);
 
       _addr6.emplace(&s6);
-
       if (!_addr6->is_public())
         throw std::runtime_error{"Invalid RC: IPv6 address is not a publicly routable IP"};
     }
     else
+    {
       _addr6.reset();
-
-    if (not addr_set)
-      throw std::runtime_error{"Invalid RC: could not discern ipv4 vs ipv6 in payload"};
+    }
 
     auto netid = data.maybe<std::string_view>("i").value_or(llarp::LOKINET_DEFAULT_NETID);
 
