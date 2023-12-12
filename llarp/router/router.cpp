@@ -631,13 +631,14 @@ namespace llarp
         configRouters.push_back(defaultBootstrapFile);
     }
 
-    BootstrapList _bootstrap_rc_list;
+    // BootstrapList _bootstrap_rc_list;
+    auto& node_bstrap = _node_db->bootstrap_list();
 
     auto clear_bad_rcs = [&]() mutable {
       log::critical(logcat, "Clearing bad RCs...");
       // in case someone has an old bootstrap file and is trying to use a bootstrap
       // that no longer exists
-      for (auto it = _bootstrap_rc_list.begin(); it != _bootstrap_rc_list.end();)
+      for (auto it = node_bstrap.begin(); it != node_bstrap.end();)
       {
         if (it->is_obsolete_bootstrap())
           log::critical(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
@@ -650,19 +651,22 @@ namespace llarp
         }
 
         // we are in one of the above error cases that we warned about:
-        it = _bootstrap_rc_list.erase(it);
+        it = node_bstrap.erase(it);
       }
     };
+
 
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
-      _bootstrap_rc_list.read_from_file(router);
+      node_bstrap.read_from_file(router);
+      // _bootstrap_rc_list.read_from_file(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
     {
-      _bootstrap_rc_list.emplace(rc);
+      // _bootstrap_rc_list.emplace(rc);
+      node_bstrap.emplace(rc);
     }
 
     _bootstrap_seed = conf.bootstrap.seednode;
@@ -670,7 +674,7 @@ namespace llarp
     if (_bootstrap_seed)
       log::critical(logcat, "We are a bootstrap seed node!");
 
-    if (_bootstrap_rc_list.empty() and not _bootstrap_seed)
+    if (node_bstrap.empty() and not _bootstrap_seed)
     {
       log::warning(logcat, "Warning: bootstrap list is empty and we are not a seed node");
 
@@ -678,10 +682,11 @@ namespace llarp
 
       if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
       {
-        _bootstrap_rc_list.merge(itr->second);
+        // _bootstrap_rc_list.merge(itr->second);
+        node_bstrap.merge(itr->second);
       }
 
-      if (_bootstrap_rc_list.empty())
+      if (node_bstrap.empty())
       {
         // empty after trying fallback, if set
         log::error(
@@ -694,19 +699,19 @@ namespace llarp
       }
 
       log::critical(
-          logcat, "Loaded {} default fallback bootstrap routers!", _bootstrap_rc_list.size());
+          logcat, "Loaded {} default fallback bootstrap routers!", node_bstrap.size());
     }
 
     clear_bad_rcs();
-    log::critical(logcat, "We have {} bootstrap routers!", _bootstrap_rc_list.size());
+    log::critical(logcat, "We have {} bootstrap routers!", node_bstrap.size());
 
-    node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
+    // node_db()->set_bootstrap_routers(_bootstrap_rc_list);
 
     // TODO: RC refactor here
-    if (_is_service_node)
-      init_inbounds();
-    else
-      init_outbounds();
+    // if (_is_service_node)
+    //   init_inbounds();
+    // else
+    //   init_outbounds();
 
     // profiling
     _profile_file = conf.router.data_dir / "profiles.dat";
@@ -1117,7 +1122,7 @@ namespace llarp
       }
 
       log::info(logcat, "Router initialized as service node!");
-      const RouterID us = pubkey();
+
       // relays do not use profiling
       router_profiling().Disable();
     }
@@ -1140,6 +1145,8 @@ namespace llarp
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
     _node_db->store_bootstraps();
+
+    oxen::log::flush();
 
     log::info(logcat, "Creating Introset Contacts...");
     _contacts = std::make_unique<Contacts>(*this);

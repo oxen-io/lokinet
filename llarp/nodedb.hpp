@@ -346,7 +346,7 @@ namespace llarp
     }
 
     void
-    set_bootstrap_routers(BootstrapList from_router);
+    set_bootstrap_routers(BootstrapList& from_router);
 
     const std::set<RouterID>&
     whitelist() const

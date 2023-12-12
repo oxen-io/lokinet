@@ -55,7 +55,7 @@ namespace llarp::net
     {
       std::optional<sockaddr*> found;
 
-      iter_all([this, &found, af](auto i) {
+      iter_all([this, &found, af](ifaddrs* i) {
         if (found)
           return;
         if (i and i->ifa_addr and i->ifa_addr->sa_family == af)

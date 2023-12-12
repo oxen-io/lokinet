@@ -352,6 +352,7 @@ namespace llarp
   {
     if (auto conn = ep.get_conn(rc.router_id()); conn)
     {
+      log::error(logcat, "We should not be here!");
       // TODO: should implement some connection failed logic, but not the same logic that
       // would be executed for another failure case
       return;
@@ -628,13 +629,13 @@ namespace llarp
     _router.loop()->call([this, source, payload, f = std::move(func)]() {
       if (auto conn = ep.get_conn(source); conn)
       {
-        log::critical(logcat, "Dispatched bootstrap fetch request!");
         conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(f));
+        log::critical(logcat, "Dispatched bootstrap fetch request!");
         return;
       }
 
-      log::critical(logcat, "Queuing bootstrap fetch request");
-      auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, f);
+      log::critical(logcat, "Queuing bootstrap fetch request to {}", source.router_id());
+      auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, std::move(f));
 
       auto [itr, b] = pending_conn_msg_queue.emplace(source.router_id(), MessageQueue());
       itr->second.push_back(std::move(pending));
