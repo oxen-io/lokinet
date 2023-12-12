@@ -72,8 +72,16 @@ namespace llarp
       {
         auto itr = conns.begin();
         std::advance(itr, randint() % size);
-        router = itr->second->remote_rc;
-        return true;
+
+        RouterID rid{itr->second->conn->remote_key()};
+        
+        if (auto maybe = link_manager.node_db->get_rc(rid))
+        {
+          router = *maybe;
+          return true;
+        }
+
+        return false;
       }
 
       log::warning(quic_cat, "Error: failed to fetch random connection");
@@ -143,7 +151,7 @@ namespace llarp
     for (auto& method : direct_requests)
     {
       s->register_command(
-          std::string{method.first}, [this, func = method.second](oxen::quic::message m) {
+          std::string{method.first}, [this, func = std::move(method.second)](oxen::quic::message m) {
             _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
               auto body = msg.body_str();
               auto respond = [m = std::move(msg)](std::string response) mutable {
@@ -178,23 +186,22 @@ namespace llarp
       bool result = false;
       RouterID other{key.data()};
 
-      // if (auto itr = rids_pending_verification.find(other); itr !=
-      // rids_pending_verification.end())
-      // {
-      //   verified_rids[other] = itr->second;
-      //   rids_pending_verification.erase(itr);
-      //   result = true;
-      // }
-
-      if (_router.node_db()->has_rc(other))
-        result = true;
-
-      // TODO: discuss pubkey verification for bootstraps connecting to seed node
       if (_router.is_bootstrap_seed())
       {
-        log::warning(logcat, "Allowing connection -- we are bootstrap seed");
-        result = true;
+        if (node_db->whitelist().count(other))
+        {
+          auto [it, b] = node_db->seeds().emplace(other);
+          result &= b;
+        }
+        log::critical(
+            logcat,
+            "Bootstrap seed node was {} to confirm fetch requester is white-listed; saving RID",
+            result ? "able" : "unable");
+        return result;
       }
+
+      if (node_db->has_rc(other))
+        result = true;
 
       log::critical(
           logcat, "{}uccessfully verified connection to {}!", result ? "S" : "Uns", other);
@@ -383,8 +390,6 @@ namespace llarp
   {
     const auto& scid = ci.scid();
     RouterID rid{ci.remote_key()};
-
-    const auto& rc = verified_rids[rid];
     ep.connid_map.emplace(scid, rid);
     auto [itr, b] = ep.conns.emplace(rid, nullptr);
 
@@ -395,11 +400,9 @@ namespace llarp
       s.conn.close_connection(error_code);
     });
     log::critical(logcat, "Opened BTStream ID:{}", control_stream->stream_id());
-    register_commands(control_stream);
 
-    itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
-    log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
-    node_db->put_rc(rc);
+    itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream);
+    log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
   }
 
   // TODO: should we add routes here now that Router::SessionOpen is gone?
@@ -628,13 +631,11 @@ namespace llarp
       const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
     _router.loop()->call([this, source, payload, f = std::move(func)]() mutable {
-      
       if (f)
       {
         f = [this, func = std::move(f)](oxen::quic::message m) mutable {
-          _router.loop()->call([f = std::move(func), msg = std::move(m)]() mutable {
-            f(std::move(msg));
-          });
+          _router.loop()->call(
+              [f = std::move(func), msg = std::move(m)]() mutable { f(std::move(msg)); });
         };
       }
 
@@ -682,14 +683,23 @@ namespace llarp
     }
 
     auto is_seed = _router.is_bootstrap_seed();
+    auto& rid = remote.router_id();
+
+    // TODO: if we are not the seed, how do we check the requester
+    if (is_seed)
+    {
+      // we already insert the 
+      auto& seeds = node_db->seeds();
+      
+      if (auto itr = seeds.find(rid); itr != seeds.end())
+      {
+        log::critical(logcat, "Bootstrap seed confirmed RID:{} is white-listed seeds; approving fetch request and saving RC!", rid);
+        node_db->put_rc(remote);
+      }
+    }
 
     auto& src = is_seed ? node_db->bootstrap_seeds() : node_db->get_known_rcs();
     auto count = src.size();
-    
-    if (is_seed)
-      node_db->bootstrap_seeds().insert(remote);
-    else
-      node_db->put_rc(remote);
 
     if (count == 0)
     {
@@ -715,7 +725,6 @@ namespace llarp
           break;
       }
     }
-
 
     m.respond(std::move(btdp).str());
   }

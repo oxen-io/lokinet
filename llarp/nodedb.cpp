@@ -779,12 +779,16 @@ namespace llarp
     router_greenlist.clear();
     router_greenlist.insert(greenlist.begin(), greenlist.end());
 
-    log::info(logcat, "lokinet service node list now has {} active router RIDs", known_rids.size());
+    log::info(
+        logcat,
+        "lokinet service node whitelist now has {} active router RIDs",
+        router_whitelist.size());
   }
 
   std::optional<RouterID>
   NodeDB::get_random_whitelist_router() const
   {
+    // TODO: this should be checking whitelist not known_rcs
     if (auto rc = get_random_rc())
       return rc->router_id();
 

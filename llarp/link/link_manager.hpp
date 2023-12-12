@@ -425,7 +425,7 @@ namespace llarp
             });
 
         link_manager.register_commands(control_stream);
-        itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, rc);
+        itr->second = std::make_shared<link::Connection>(conn_interface, control_stream);
 
         return true;
       }
