@@ -684,6 +684,11 @@ namespace llarp
 
     auto& src = is_seed ? node_db->bootstrap_seeds() : node_db->get_known_rcs();
     auto count = src.size();
+    
+    if (is_seed)
+      node_db->bootstrap_seeds().insert(remote);
+    else
+      node_db->put_rc(remote);
 
     if (count == 0)
     {
@@ -710,10 +715,6 @@ namespace llarp
       }
     }
 
-    if (is_seed)
-      node_db->bootstrap_seeds().insert(remote);
-    else
-      node_db->put_rc(remote);
 
     m.respond(std::move(btdp).str());
   }
