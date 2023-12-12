@@ -12,7 +12,7 @@ namespace llarp
 {
   struct BootstrapList final : public std::set<RemoteRC>
   {
-    std::set<RemoteRC>::iterator _curr;
+    std::set<RemoteRC>::iterator _curr = begin();
 
     const RemoteRC&
     current()
@@ -30,7 +30,7 @@ namespace llarp
     read_from_file(const fs::path& fpath);
 
     bool
-    contains(const RouterID& rid);
+    contains(const RouterID& rid) const;
 
     // returns a reference to the next index and a boolean that equals true if
     // this is the front of the set
@@ -46,7 +46,7 @@ namespace llarp
     }
 
     bool
-    contains(const RemoteRC& rc);
+    contains(const RemoteRC& rc) const;
 
     void
     randomize()

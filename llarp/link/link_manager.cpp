@@ -178,12 +178,13 @@ namespace llarp
       bool result = false;
       RouterID other{key.data()};
 
-      if (auto itr = rids_pending_verification.find(other); itr != rids_pending_verification.end())
-      {
-        verified_rids[other] = itr->second;
-        rids_pending_verification.erase(itr);
-        result = true;
-      }
+      // if (auto itr = rids_pending_verification.find(other); itr !=
+      // rids_pending_verification.end())
+      // {
+      //   verified_rids[other] = itr->second;
+      //   rids_pending_verification.erase(itr);
+      //   result = true;
+      // }
 
       if (_router.node_db()->has_rc(other))
         result = true;
@@ -254,7 +255,8 @@ namespace llarp
     if (func)
     {
       func = [this, f = std::move(func)](oxen::quic::message m) mutable {
-        _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
+        _router.loop()->call(
+            [func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
       };
     }
 
@@ -358,12 +360,12 @@ namespace llarp
     const auto& remote_addr = rc.addr();
     const auto& rid = rc.router_id();
 
-    rids_pending_verification[rid] = rc;
+    // rids_pending_verification[rid] = rc;
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
     if (auto rv = ep.establish_connection(
-            oxen::quic::RemoteAddress{rc.router_id().ToView(), remote_addr},
+            oxen::quic::RemoteAddress{rid.ToView(), remote_addr},
             rc,
             std::move(on_open),
             std::move(on_close));
@@ -391,6 +393,7 @@ namespace llarp
           logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
       s.conn.close_connection(error_code);
     });
+    register_commands(control_stream);
 
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
     log::critical(logcat, "Successfully configured inbound connection fom {}; storing RC...", rid);
@@ -460,9 +463,10 @@ namespace llarp
       {
         const auto& rid = c_itr->second;
 
-        if (auto maybe = rids_pending_verification.find(rid);
-            maybe != rids_pending_verification.end())
-          rids_pending_verification.erase(maybe);
+        // if (auto maybe = rids_pending_verification.find(rid);
+        //     maybe != rids_pending_verification.end())
+        //   rids_pending_verification.erase(maybe);
+
         // in case this didn't clear earlier, do it now
         if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
           pending_conn_msg_queue.erase(p_itr);
@@ -665,14 +669,14 @@ namespace llarp
       return;
     }
 
-    node_db->put_rc(remote);
+    auto is_seed = _router.is_bootstrap_seed();
 
-    auto& bootstraps = node_db->bootstrap_list();
-    auto count = bootstraps.size();
+    auto& src = is_seed ? node_db->bootstrap_seeds() : node_db->get_known_rcs();
+    auto count = src.size();
 
     if (count == 0)
     {
-      log::error(logcat, "No bootstraps locally to send!");
+      log::error(logcat, "No {} locally to send!", is_seed ? "bootstrap seeds" : "known RCs");
       m.respond(messages::ERROR_RESPONSE, true);
       return;
     }
@@ -685,17 +689,20 @@ namespace llarp
     {
       auto sublist = btdp.append_list("rcs");
 
-      while (i < quantity)
+      for (const auto& rc : src)
       {
-        auto& next_rc = bootstraps.next();
+        if (not rc.is_expired(now))
+          sublist.append_encoded(rc.view());
 
-        if (next_rc.is_expired(now))
-          continue;
-
-        sublist.append_encoded(next_rc.view());
-        ++i;
+        if (++i >= quantity)
+          break;
       }
     }
+
+    if (is_seed)
+      node_db->bootstrap_seeds().insert(remote);
+    else
+      node_db->put_rc(remote);
 
     m.respond(std::move(btdp).str());
   }

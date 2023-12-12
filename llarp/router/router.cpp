@@ -631,17 +631,18 @@ namespace llarp
         configRouters.push_back(defaultBootstrapFile);
     }
 
-    auto _bootstrap_rc_list = std::make_unique<BootstrapList>();
+    BootstrapList _bootstrap_rc_list;
 
     auto clear_bad_rcs = [&]() mutable {
+      log::critical(logcat, "Clearing bad RCs...");
       // in case someone has an old bootstrap file and is trying to use a bootstrap
       // that no longer exists
-      for (auto it = _bootstrap_rc_list->begin(); it != _bootstrap_rc_list->end();)
+      for (auto it = _bootstrap_rc_list.begin(); it != _bootstrap_rc_list.end();)
       {
         if (it->is_obsolete_bootstrap())
-          log::warning(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
+          log::critical(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
         else if (not it->verify())
-          log::warning(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
+          log::critical(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
         else
         {
           ++it;
@@ -649,29 +650,27 @@ namespace llarp
         }
 
         // we are in one of the above error cases that we warned about:
-        it = _bootstrap_rc_list->erase(it);
+        it = _bootstrap_rc_list.erase(it);
       }
     };
 
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
-      _bootstrap_rc_list->read_from_file(router);
+      _bootstrap_rc_list.read_from_file(router);
     }
 
     for (const auto& rc : conf.bootstrap.routers)
     {
-      _bootstrap_rc_list->emplace(rc);
+      _bootstrap_rc_list.emplace(rc);
     }
-
-    clear_bad_rcs();
 
     _bootstrap_seed = conf.bootstrap.seednode;
 
     if (_bootstrap_seed)
       log::critical(logcat, "We are a bootstrap seed node!");
 
-    if (_bootstrap_rc_list->empty() and not _bootstrap_seed)
+    if (_bootstrap_rc_list.empty() and not _bootstrap_seed)
     {
       log::warning(logcat, "Warning: bootstrap list is empty and we are not a seed node");
 
@@ -679,10 +678,10 @@ namespace llarp
 
       if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
       {
-        _bootstrap_rc_list->merge(itr->second);
+        _bootstrap_rc_list.merge(itr->second);
       }
 
-      if (_bootstrap_rc_list->empty())
+      if (_bootstrap_rc_list.empty())
       {
         // empty after trying fallback, if set
         log::error(
@@ -694,12 +693,12 @@ namespace llarp
         throw std::runtime_error("No bootstrap nodes available.");
       }
 
-      log::info(
-          logcat, "Loaded {} default fallback bootstrap routers!", _bootstrap_rc_list->size());
-      clear_bad_rcs();
+      log::critical(
+          logcat, "Loaded {} default fallback bootstrap routers!", _bootstrap_rc_list.size());
     }
 
-    log::critical(logcat, "We have {} bootstrap routers!", _bootstrap_rc_list->size());
+    clear_bad_rcs();
+    log::critical(logcat, "We have {} bootstrap routers!", _bootstrap_rc_list.size());
 
     node_db()->set_bootstrap_routers(std::move(_bootstrap_rc_list));
 
@@ -1140,20 +1139,10 @@ namespace llarp
 
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
+    _node_db->store_bootstraps();
 
     log::info(logcat, "Creating Introset Contacts...");
     _contacts = std::make_unique<Contacts>(*this);
-
-    if (_node_db->has_bootstraps())
-    {
-      for (const auto& rc : _node_db->bootstrap_list())
-      {
-        node_db()->put_rc(rc);
-        log::info(logcat, "Added bootstrap node (rid: {})", rc.router_id());
-      }
-
-      log::info(logcat, "Router populated NodeDB with {} routers", _node_db->num_rcs());
-    }
 
     _loop->call_every(ROUTER_TICK_INTERVAL, weak_from_this(), [this] { Tick(); });
 
@@ -1163,7 +1152,7 @@ namespace llarp
 
     _started_at = now();
 
-    if (is_service_node())
+    if (is_service_node() and not _testing_disabled)
     {
       // do service node testing if we are in service node whitelist mode
       _loop->call_every(consensus::REACHABILITY_TESTING_TIMER_INTERVAL, weak_from_this(), [this] {
@@ -1225,6 +1214,7 @@ namespace llarp
         }
       });
     }
+
     llarp::sys::service_manager->ready();
     return is_running;
   }
