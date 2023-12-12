@@ -404,8 +404,6 @@ namespace llarp
     {
       try
       {
-        std::this_thread::sleep_for(5s);
-        oxen::log::flush();
         log::critical(logcat, "Establishing connection to {}", remote);
 
         auto conn_interface =

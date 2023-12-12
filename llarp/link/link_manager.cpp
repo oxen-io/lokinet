@@ -118,24 +118,24 @@ namespace llarp
   LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
   {
     assert(ep.connid_map.count(s->conn_id()));
-    const RouterID& rid = ep.connid_map[s->conn_id()];
+    const RouterID& router_id = ep.connid_map[s->conn_id()];
 
-    s->register_command("path_build"s, [this, rid](oxen::quic::message m) {
+    s->register_command("path_build"s, [this, rid = router_id](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
     });
 
-    s->register_command("path_control"s, [this, rid](oxen::quic::message m) {
+    s->register_command("path_control"s, [this, rid = router_id](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
     });
 
-    s->register_command("gossip_rc"s, [this, rid](oxen::quic::message m) {
+    s->register_command("gossip_rc"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
     });
 
-    s->register_command("bfetch_rcs"s, [this, rid](oxen::quic::message m) {
+    s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
     });
@@ -394,6 +394,7 @@ namespace llarp
           logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
       s.conn.close_connection(error_code);
     });
+    log::critical(logcat, "Opened BTStream ID:{}", control_stream->stream_id());
     register_commands(control_stream);
 
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream, rc);
