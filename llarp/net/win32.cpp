@@ -129,8 +129,8 @@ namespace llarp::net
       return "lokitun0";
     }
 
-    std::optional<sockaddr*>
-    GetBestNetIF(int) const override
+    std::optional<oxen::quic::Address>
+    get_best_public_address(bool, uint16_t) const override
     {
       // TODO: implement me ?
       return std::nullopt;

@@ -582,11 +582,8 @@ namespace llarp
       if (paddr or pport)
         throw std::runtime_error{"Must specify [bind]:listen in config with public ip/addr!"};
 
-      if (auto maybe_addr = net().GetBestNetIF())
-      {
-        _listen_address = oxen::quic::Address{static_cast<const sockaddr*>(*maybe_addr)};
-        _listen_address.set_port(DEFAULT_LISTEN_PORT);
-      }
+      if (auto maybe_addr = net().get_best_public_address(true, DEFAULT_LISTEN_PORT))
+        _listen_address = std::move(*maybe_addr);
       else
         throw std::runtime_error{"Could not find net interface on current platform!"};
     }
