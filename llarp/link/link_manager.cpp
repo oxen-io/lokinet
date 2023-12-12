@@ -626,7 +626,17 @@ namespace llarp
   LinkManager::fetch_bootstrap_rcs(
       const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
-    _router.loop()->call([this, source, payload, f = std::move(func)]() {
+    _router.loop()->call([this, source, payload, f = std::move(func)]() mutable {
+      
+      if (f)
+      {
+        f = [this, func = std::move(f)](oxen::quic::message m) mutable {
+          _router.loop()->call([f = std::move(func), msg = std::move(m)]() mutable {
+            f(std::move(msg));
+          });
+        };
+      }
+
       if (auto conn = ep.get_conn(source); conn)
       {
         conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(f));
