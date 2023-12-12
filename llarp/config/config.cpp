@@ -961,14 +961,10 @@ namespace llarp
           throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
       }
       if (not maybe)
-      {
         // infer public address
-        if (auto maybe_ifname = net_ptr->GetBestNetIF())
-          maybe = oxen::quic::Address{*maybe_ifname};
-      }
-
-      if (maybe && maybe->port() == 0)
-        maybe = oxen::quic::Address{maybe->host(), DEFAULT_LISTEN_PORT};
+        maybe = net_ptr->get_best_public_address(true, DEFAULT_LISTEN_PORT);
+      else if (maybe && maybe->port() == 0)
+        maybe->set_port(DEFAULT_LISTEN_PORT);
 
       return maybe;
     };

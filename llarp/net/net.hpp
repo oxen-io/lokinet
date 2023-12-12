@@ -10,6 +10,8 @@
 #include <llarp/util/bits.hpp>
 #include <llarp/util/mem.hpp>
 
+#include <quic/address.hpp>
+
 #include <cstdlib>  // for itoa
 #include <functional>
 #include <vector>
@@ -121,8 +123,10 @@ namespace llarp
         return var::visit([](auto&& ip) { return not ip.n; }, ip);
       }
 
-      virtual std::optional<sockaddr*>
-      GetBestNetIF(int af = AF_INET) const = 0;
+      // Attempts to guess a good default public network address from the system's public IP
+      // addresses; the returned Address (if set) will have its port set to the given value.
+      virtual std::optional<oxen::quic::Address>
+      get_best_public_address(bool ipv4, uint16_t port) const = 0;
 
       virtual std::optional<IPRange>
       FindFreeRange() const = 0;
