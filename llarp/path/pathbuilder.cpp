@@ -220,8 +220,7 @@ namespace llarp
     {
       std::optional<RemoteRC> found = std::nullopt;
       router->for_each_connection([&](link::Connection& conn) {
-        const auto& rc = conn.remote_rc;
-        const auto& rid = rc.router_id();
+        RouterID rid{conn.conn->remote_key()};
 
 #ifndef TESTNET
         if (router->is_bootstrap_node(rid))
@@ -236,7 +235,7 @@ namespace llarp
         if (router->router_profiling().IsBadForPath(rid))
           return;
 
-        found = rc;
+        found = router->node_db()->get_rc(rid);
       });
       return found;
     }

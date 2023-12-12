@@ -134,6 +134,7 @@ namespace llarp
     std::map<RouterID, const RemoteRC&> rc_lookup;
 
     std::set<RemoteRC> _bootstrap_seeds;
+    std::set<RouterID> _seeds;
     BootstrapList _bootstraps{};
 
     /** RouterID lists    // TODO: get rid of all these, replace with better decom/not staked sets
@@ -190,6 +191,12 @@ namespace llarp
 
     /// in memory nodedb
     NodeDB();
+
+    std::set<RouterID>&
+    seeds()
+    {
+      return _seeds;
+    }
 
     const std::set<RouterID>&
     get_known_rids() const

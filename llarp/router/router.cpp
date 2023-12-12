@@ -219,7 +219,7 @@ namespace llarp
     std::unordered_set<RouterID> peer_pubkeys;
 
     for_each_connection([&peer_pubkeys](link::Connection& conn) {
-      peer_pubkeys.emplace(conn.remote_rc.router_id());
+      peer_pubkeys.emplace(conn.conn->remote_key());
     });
 
     loop()->call([this, &peer_pubkeys]() {
@@ -652,7 +652,6 @@ namespace llarp
       }
     };
 
-
     for (const auto& router : configRouters)
     {
       log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
@@ -695,8 +694,7 @@ namespace llarp
         throw std::runtime_error("No bootstrap nodes available.");
       }
 
-      log::critical(
-          logcat, "Loaded {} default fallback bootstrap routers!", node_bstrap.size());
+      log::critical(logcat, "Loaded {} default fallback bootstrap routers!", node_bstrap.size());
     }
 
     clear_bad_rcs();
