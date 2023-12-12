@@ -121,6 +121,9 @@ namespace llarp
           the unknown_rids container
         - rc_lookup: holds all the same rc's as known_rcs, but can be used to look them up by
           their rid
+        - bootstrap_seeds: if we are the seed node, we insert the rc's of bootstrap fetch requests
+          senders into this container to "introduce" them to each other
+        - _bootstraps: the standard container for bootstrap RemoteRCs
     */
     std::set<RouterID> known_rids;
     std::set<Unconfirmed<RouterID>> unconfirmed_rids;
@@ -129,6 +132,9 @@ namespace llarp
     std::set<Unconfirmed<RemoteRC>> unconfirmed_rcs;
 
     std::map<RouterID, const RemoteRC&> rc_lookup;
+
+    std::set<RemoteRC> _bootstrap_seeds;
+    BootstrapList _bootstraps{};
 
     /** RouterID lists    // TODO: get rid of all these, replace with better decom/not staked sets
         - white: active routers
@@ -178,8 +184,6 @@ namespace llarp
     fs::path
     get_path_by_pubkey(RouterID pk) const;
 
-    std::unique_ptr<BootstrapList> _bootstraps{};
-
    public:
     explicit NodeDB(
         fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
@@ -213,6 +217,9 @@ namespace llarp
     {
       return _needs_rebootstrap;
     }
+
+    void
+    ingest_bootstrap_seed();
 
     bool
     ingest_fetched_rcs(std::set<RemoteRC> rcs, rc_time timestamp);
@@ -299,32 +306,47 @@ namespace llarp
       return _pinned_edges;
     }
 
+    void
+    store_bootstraps();
+
     size_t
     num_bootstraps() const
     {
-      return _bootstraps ? _bootstraps->size() : 0;
+      return _bootstraps.size();
     }
 
     bool
     has_bootstraps() const
     {
-      return _bootstraps ? _bootstraps->empty() : false;
+      return _bootstraps.empty();
     }
 
     const BootstrapList&
     bootstrap_list() const
     {
-      return *_bootstraps;
+      return _bootstraps;
     }
 
     BootstrapList&
     bootstrap_list()
     {
-      return *_bootstraps;
+      return _bootstraps;
+    }
+
+    const std::set<RemoteRC>&
+    bootstrap_seeds() const
+    {
+      return _bootstrap_seeds;
+    }
+
+    std::set<RemoteRC>&
+    bootstrap_seeds()
+    {
+      return _bootstrap_seeds;
     }
 
     void
-    set_bootstrap_routers(std::unique_ptr<BootstrapList> from_router);
+    set_bootstrap_routers(BootstrapList from_router);
 
     const std::set<RouterID>&
     whitelist() const

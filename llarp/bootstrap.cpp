@@ -26,7 +26,7 @@ namespace llarp
   }
 
   bool
-  BootstrapList::contains(const RouterID& rid)
+  BootstrapList::contains(const RouterID& rid) const
   {
     for (const auto& it : *this)
     {
@@ -38,7 +38,7 @@ namespace llarp
   }
 
   bool
-  BootstrapList::contains(const RemoteRC& rc)
+  BootstrapList::contains(const RemoteRC& rc) const
   {
     return count(rc);
   }

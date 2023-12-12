@@ -181,7 +181,7 @@ namespace llarp
     // when establishing a connection, the rid of the remote is placed here to be cross-
     // checked by the tls verification callback
     std::map<RouterID, RemoteRC> rids_pending_verification;
-    // in the interim of verifying an inbound connection and the creation of its link::Connection
+    // in the interim of verifying an outbound connection and the creation of its link::Connection
     // object, we store the rid and rc here
     std::map<RouterID, RemoteRC> verified_rids;
 
@@ -354,18 +354,9 @@ namespace llarp
             {"find_name"sv, &LinkManager::handle_find_name},
             {"publish_intro"sv, &LinkManager::handle_publish_intro},
             {"find_intro"sv, &LinkManager::handle_find_intro}};
-    /*
-    {"path_confirm", &LinkManager::handle_path_confirm},
-    {"path_latency", &LinkManager::handle_path_latency},
-    {"update_exit", &LinkManager::handle_update_exit},
-    {"obtain_exit", &LinkManager::handle_obtain_exit},
-    {"close_exit", &LinkManager::handle_close_exit},
-    {"convo_intro", &LinkManager::handle_convo_intro}};
-    */
 
     // these requests are direct, i.e. not over a path;
     // the rest are relay->relay
-    // TODO: new RC fetch endpoint (which will be both client->relay and relay->relay)
     std::unordered_map<
         std::string_view,
         void (LinkManager::*)(std::string_view body, std::function<void(std::string)> respond)>
@@ -431,6 +422,7 @@ namespace llarp
               s.conn.close_connection(error_code);
             });
 
+        link_manager.register_commands(control_stream);
         itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, rc);
 
         return true;

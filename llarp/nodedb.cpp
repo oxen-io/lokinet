@@ -192,15 +192,10 @@ namespace llarp
   }
 
   void
-  NodeDB::set_bootstrap_routers(std::unique_ptr<BootstrapList> from_router)
+  NodeDB::set_bootstrap_routers(BootstrapList from_router)
   {
-    // TODO: if this needs to be called more than once (ex: drastic failures), then
-    // change this assert to a bootstraps.clear() call
-    if (_bootstraps)
-      assert(_bootstraps->empty());
-
-    _bootstraps = std::move(from_router);
-    _bootstraps->randomize();
+    _bootstraps.merge(from_router);
+    _bootstraps.randomize();
   }
 
   bool
@@ -610,6 +605,8 @@ namespace llarp
     if (_router.is_service_node())
     {
       _needs_rebootstrap = false;
+      _needs_initial_fetch = false;
+      _using_bootstrap_fallback = false;
       fail_sources.clear();
       fetch_failures = 0;
       return;
@@ -627,6 +624,7 @@ namespace llarp
     _router.last_rid_fetch = llarp::time_point_now();
     fetch_counters.clear();
     _needs_rebootstrap = false;
+    _using_bootstrap_fallback = false;
 
     if (initial)
     {
@@ -638,6 +636,7 @@ namespace llarp
   void
   NodeDB::fallback_to_bootstrap()
   {
+    log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
     auto at_max_failures = bootstrap_attempts >= MAX_BOOTSTRAP_FETCH_ATTEMPTS;
 
     // base case: we have failed to query all bootstraps, or we received a sample of
@@ -660,7 +659,7 @@ namespace llarp
         return;
       }
 
-      auto rc = _bootstraps->next();
+      auto rc = (_using_bootstrap_fallback) ? _bootstraps.next() : _bootstraps.current();
       fetch_source = rc.router_id();
     }
 
@@ -669,8 +668,10 @@ namespace llarp
     _needs_rebootstrap = false;
     ++bootstrap_attempts;
 
+    log::critical(logcat, "Dispatching BootstrapRC fetch request to {}", _bootstraps.current().view());
+
     _router.link_manager().fetch_bootstrap_rcs(
-        _bootstraps->current(),
+        _bootstraps.current(),
         BootstrapFetchMessage::serialize(_router.router_contact, BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
           if (not m)
@@ -723,7 +724,7 @@ namespace llarp
 
           if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
           {
-            known_rids.swap(rids);
+            known_rids.merge(rids);
             fetch_initial();
           }
           else
@@ -745,6 +746,7 @@ namespace llarp
   NodeDB::bootstrap_cooldown()
   {
     _needs_rebootstrap = true;
+    _using_bootstrap_fallback = false;
     _router.next_bootstrap_attempt = llarp::time_point_now() + BOOTSTRAP_COOLDOWN;
   }
 
@@ -792,7 +794,7 @@ namespace llarp
   NodeDB::is_connection_allowed(const RouterID& remote) const
   {
     if (_pinned_edges.size() && _pinned_edges.count(remote) == 0
-        && not _bootstraps->contains(remote))
+        && not _bootstraps.contains(remote))
       return false;
 
     if (not _router.is_service_node())
@@ -808,6 +810,20 @@ namespace llarp
       return false;
 
     return true;
+  }
+
+  void
+  NodeDB::store_bootstraps()
+  {
+    if (_bootstraps.empty())
+      return;
+
+    for (const auto& rc : _bootstraps)
+    {
+      put_rc(rc);
+    }
+
+    log::critical(logcat, "NodeDB populated with {} routers", num_rcs());
   }
 
   void

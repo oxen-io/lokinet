@@ -16,7 +16,6 @@ namespace llarp
     try
     {
       bt_load(btdc);
-
       bt_verify(btdc, /*reject_expired=*/true);
     }
     catch (const std::exception& e)
