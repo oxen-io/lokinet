@@ -254,8 +254,8 @@ namespace llarp
         return false;
     }
 
-    for (auto& rc : rcs)
-      put_rc_if_newer(std::move(rc), timestamp);
+    while (!rcs.empty())
+      put_rc_if_newer(std::move(rcs.extract(rcs.begin()).value()), timestamp);
 
     return true;
   }
