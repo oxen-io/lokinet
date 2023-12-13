@@ -513,9 +513,9 @@ namespace llarp
             path->EnterState(path::ePathEstablished);
             return;
           }
-          if (m.timed_out)
+          if (not m)
           {
-            log::warning(path_cat, "Path build timed out");
+            log::warning(path_cat, "Path build request failed!");
           }
           else
           {

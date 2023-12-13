@@ -48,8 +48,11 @@ namespace llarp
 
       // for outgoing packets, we route via RouterID; map RouterID->Connection
       // for incoming packets, we get a ConnectionID; map ConnectionID->RouterID
-      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> conns;
+      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> active_conns;
       std::unordered_map<oxen::quic::ConnectionID, RouterID> connid_map;
+
+      // for pending connections, cleared in LinkManager::on_conn_open
+      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> pending_conns;
 
       // TODO: see which of these is actually useful and delete the other
       std::shared_ptr<link::Connection>
@@ -395,16 +398,18 @@ namespace llarp
     {
       try
       {
-        log::critical(logcat, "Establishing connection to {}", remote);
+        const auto& rid = rc.router_id();
+        log::critical(logcat, "Establishing connection to RID:{}", rid);
 
         auto conn_interface =
             endpoint->connect(remote, link_manager.tls_creds, std::forward<Opt>(opts)...);
 
-        // emplace immediately for connection open callback to find scid
-        connid_map.emplace(conn_interface->scid(), rc.router_id());
-        auto [itr, b] = conns.emplace(rc.router_id(), nullptr);
+        // add to pending conns
+        auto [itr, b] = pending_conns.emplace(rid, nullptr);
 
-        log::critical(logcat, "Establishing connection to {}...", rc.router_id());
+        // emplace immediately for connection open callback to find scid
+        // connid_map.emplace(conn_interface->scid(), rc.router_id());
+        // auto [itr, b] = conns.emplace(rc.router_id(), nullptr);
 
         auto control_stream = conn_interface->template get_new_stream<oxen::quic::BTRequestStream>(
             [](oxen::quic::Stream& s, uint64_t error_code) {
@@ -418,6 +423,7 @@ namespace llarp
         link_manager.register_commands(control_stream);
         itr->second = std::make_shared<link::Connection>(conn_interface, control_stream);
 
+        log::critical(logcat, "Connection to RID:{} added to pending connections...", rid);
         return true;
       }
       catch (...)

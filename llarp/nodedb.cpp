@@ -379,16 +379,16 @@ namespace llarp
         src,
         FetchRCMessage::serialize(_router.last_rc_fetch, needed),
         [this, src, initial](oxen::quic::message m) mutable {
-          if (m.timed_out)
+          if (not m)
           {
-            log::info(logcat, "RC fetch to {} timed out", src);
+            log::info(logcat, "RC fetch to {} failed!", src);
             fetch_rcs_result(initial, true);
             return;
           }
           try
           {
             oxenc::bt_dict_consumer btdc{m.body()};
-
+            // TODO: fix this shit after removing ::timed_out from message type
             if (not m)
             {
               auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
@@ -689,7 +689,8 @@ namespace llarp
             return;
           }
 
-          std::set<RouterID> rids;
+          // std::set<RouterID> rids;
+          size_t num = 0;
 
           try
           {
@@ -701,7 +702,8 @@ namespace llarp
               while (not btlc.is_finished())
               {
                 auto rc = RemoteRC{btlc.consume_dict_data()};
-                rids.emplace(rc.router_id());
+                put_rc(rc);
+                ++num;
               }
             }
           }
@@ -724,23 +726,30 @@ namespace llarp
           // next call to fallback_to_bootstrap() and hit the base case, rotating sources
           // bootstrap_attempts = MAX_BOOTSTRAP_FETCH_ATTEMPTS;
 
-          if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
-          {
-            known_rids.merge(rids);
-            fetch_initial();
-          }
-          else
-          {
-            // ++bootstrap_attempts;
-            log::warning(
-                logcat,
-                "BootstrapRC fetch response from {} returned insufficient number of RC's (error "
-                "{}/{})",
-                fetch_source,
-                bootstrap_attempts,
-                MAX_BOOTSTRAP_FETCH_ATTEMPTS);
-            fallback_to_bootstrap();
-          }
+          // const auto& num = rids.size();
+
+          log::critical(logcat, "BootstrapRC fetch response from {} returned {}/{} needed RCs", fetch_source, num, BOOTSTRAP_SOURCE_COUNT);
+          // known_rids.merge(rids);
+          fetch_initial();
+
+          // FIXME: when moving to testnet, uncomment this
+          // if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
+          // {
+          //   known_rids.merge(rids);
+          //   fetch_initial();
+          // }
+          // else
+          // {
+          //   // ++bootstrap_attempts;
+          //   log::warning(
+          //       logcat,
+          //       "BootstrapRC fetch response from {} returned insufficient number of RC's (error "
+          //       "{}/{})",
+          //       fetch_source,
+          //       bootstrap_attempts,
+          //       MAX_BOOTSTRAP_FETCH_ATTEMPTS);
+          //   fallback_to_bootstrap();
+          // }
         });
   }
 
@@ -955,9 +964,6 @@ namespace llarp
   {
     const auto& rid = rc.router_id();
 
-    if (not want_rc(rid))
-      return false;
-
     known_rcs.erase(rc);
     rc_lookup.erase(rid);
 
@@ -973,6 +979,12 @@ namespace llarp
   NodeDB::num_rcs() const
   {
     return known_rcs.size();
+  }
+
+  size_t
+  NodeDB::num_rids() const
+  {
+    return known_rids.size();
   }
 
   bool

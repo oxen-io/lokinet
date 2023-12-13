@@ -118,7 +118,7 @@ namespace llarp::path
           if ((not self) or (not response_cb))
             return;
 
-          if (m.timed_out)
+          if (not m)
           {
             response_cb(messages::TIMEOUT_RESPONSE);
             return;

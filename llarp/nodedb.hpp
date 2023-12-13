@@ -403,6 +403,9 @@ namespace llarp
     size_t
     num_rcs() const;
 
+    size_t
+    num_rids() const;
+
     /// do periodic tasks like flush to disk and expiration
     void
     Tick(llarp_time_t now);

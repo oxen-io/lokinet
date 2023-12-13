@@ -768,8 +768,9 @@ namespace llarp
 
     log::critical(
         logcat,
-        "{} RCs loaded with {} bootstrap peers and {} router connections!",
+        "{} RCs loaded with {} RIDs, {} bootstrap peers, and {} router connections!",
         _node_db->num_rcs(),
+        _node_db->num_rids(),
         _node_db->num_bootstraps(),
         num_router_connections());
 
@@ -1138,7 +1139,7 @@ namespace llarp
 
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
-    _node_db->store_bootstraps();
+    // _node_db->store_bootstraps();
 
     oxen::log::flush();
 
