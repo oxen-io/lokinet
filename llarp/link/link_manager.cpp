@@ -126,7 +126,7 @@ namespace llarp
   LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
   {
     log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
-    const RouterID& router_id {s->conn.remote_key()};
+    const RouterID& router_id{s->conn.remote_key()};
 
     log::critical(logcat, "Registering commands (RID:{})", router_id);
 
@@ -209,7 +209,7 @@ namespace llarp
 
       if (_router.is_bootstrap_seed())
       {
-        // FIXME: remove "|| true", this is just for local testing! 
+        // FIXME: remove "|| true", this is just for local testing!
         if (node_db->whitelist().count(other) || true)
         {
           log::critical(logcat, "Saving bootstrap seed requester...");
@@ -218,8 +218,10 @@ namespace llarp
         }
         log::critical(
             logcat,
-            "Bootstrap seed node was {} to confirm fetch requester is white-listed; {}successfully saved RID",
-            result ? "able" : "unable", result ? "" : "un");
+            "Bootstrap seed node was {} to confirm fetch requester is white-listed; {}successfully "
+            "saved RID",
+            result ? "able" : "unable",
+            result ? "" : "un");
         return result;
       }
 
@@ -236,7 +238,6 @@ namespace llarp
           [&](oxen::quic::Connection& c,
               oxen::quic::Endpoint& e,
               std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
-
             if (id && *id == 0)
             {
               log::critical(logcat, "Stream constructor constructing BTStream (ID:{})", id);
@@ -378,7 +379,6 @@ namespace llarp
     });
   }
 
-
   bool
   LinkManager::send_control_message(
       const RouterID& remote,
@@ -421,23 +421,24 @@ namespace llarp
                           body = std::move(body),
                           f = std::move(func)]() {
       auto pending = PendingMessage(std::move(body), std::move(endpoint), std::move(f));
-      
+
       if (auto it1 = ep.pending_conns.find(remote); it1 != ep.pending_conns.end())
       {
         if (auto it2 = pending_conn_msg_queue.find(remote); it2 != pending_conn_msg_queue.end())
         {
           it2->second.push_back(std::move(pending));
-          log::critical(logcat, "Connection (RID:{}) is pending; message appended to send queue!", remote);
+          log::critical(
+              logcat, "Connection (RID:{}) is pending; message appended to send queue!", remote);
         }
       }
       else
       {
-        log::critical(logcat, "Connection (RID:{}) not found in pending conns; creating send queue!", remote);
+        log::critical(
+            logcat, "Connection (RID:{}) not found in pending conns; creating send queue!", remote);
         auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
         itr->second.push_back(std::move(pending));
         connect_to(remote);
       }
-
     });
 
     return false;
