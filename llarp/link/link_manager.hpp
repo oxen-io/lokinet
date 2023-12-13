@@ -213,7 +213,7 @@ namespace llarp
     startup_endpoint();
 
     void
-    register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s);
+    register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& rid);
 
    public:
     const link::Endpoint&
@@ -416,7 +416,7 @@ namespace llarp
               s.conn.close_connection(error_code);
             });
 
-        link_manager.register_commands(control_stream);
+        link_manager.register_commands(control_stream, rid);
         itr->second = std::make_shared<link::Connection>(conn_interface, control_stream);
 
         log::critical(logcat, "Connection to RID:{} added to pending connections...", rid);

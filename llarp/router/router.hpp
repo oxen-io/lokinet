@@ -48,7 +48,7 @@ namespace llarp
   static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
 
-  static const std::chrono::seconds RC_UPDATE_INTERVAL = 5min;
+  static const std::chrono::seconds RC_UPDATE_INTERVAL = 4min;
   static const std::chrono::seconds ROUTERID_UPDATE_INTERVAL = 1h;
 
   struct Contacts;
@@ -105,7 +105,6 @@ namespace llarp
     std::shared_ptr<NodeDB> _node_db;
     llarp_time_t _started_at;
     const oxenmq::TaggedThreadID _disk_thread;
-    // oxen::quic::Network _net;  // DISCUSS: we don't use this anywhere..?
 
     llarp_time_t _last_stats_report = 0s;
     llarp_time_t _next_decomm_warning = time_now_ms() + 15s;

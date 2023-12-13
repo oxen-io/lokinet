@@ -776,7 +776,7 @@ namespace llarp
 
     if (is_service_node())
     {
-      log::critical(
+      log::info(
           logcat,
           "Local service node has {} client connections since last RC update ({} to expiry)",
           num_client_connections(),
@@ -911,11 +911,12 @@ namespace llarp
       // (client-only) periodically fetch updated RCs
       if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
       {
+        log::critical(logcat, "Time to fetch RCs!");
         node_db()->fetch_rcs();
       }
 
       // (client-only) periodically fetch updated RouterID list
-      if (now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
+      if (not is_snode and now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
       {
         node_db()->fetch_rids();
       }
