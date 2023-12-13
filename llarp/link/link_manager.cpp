@@ -123,12 +123,9 @@ namespace llarp
   }
 
   void
-  LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s)
+  LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id)
   {
     log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
-    const RouterID& router_id{s->conn.remote_key()};
-
-    log::critical(logcat, "Registering commands (RID:{})", router_id);
 
     s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
@@ -249,7 +246,7 @@ namespace llarp
                         error_code);
                     s.conn.close_connection(error_code);
                   });
-              register_commands(s);
+              // register_commands(s);
               return s;
             }
 
@@ -280,7 +277,7 @@ namespace llarp
 
     log::critical(logcat, "Queued BTStream to be opened ID:{}", control_stream->stream_id());
     assert(control_stream->stream_id() == 0);
-    // register_commands(control_stream);
+    register_commands(control_stream, rid);
 
     itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream);
     log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
@@ -368,6 +365,9 @@ namespace llarp
         // in case this didn't clear earlier, do it now
         if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
           pending_conn_msg_queue.erase(p_itr);
+
+        if (auto c_itr = ep.pending_conns.find(rid); c_itr != ep.pending_conns.end())
+          ep.pending_conns.erase(c_itr);
 
         if (auto m_itr = ep.active_conns.find(rid); m_itr != ep.active_conns.end())
           ep.active_conns.erase(m_itr);
@@ -714,7 +714,7 @@ namespace llarp
       oxenc::bt_dict_consumer btdc{m.body()};
       btdc.required("local");
       auto rc_dict = btdc.consume_dict_data();
-      log::critical(logcat, "incoming dict data: {}", oxenc::to_hex(rc_dict));
+      // log::critical(logcat, "incoming dict data: {}", oxenc::to_hex(rc_dict));
       remote = RemoteRC{rc_dict};
       quantity = btdc.require<size_t>("quantity");
     }
