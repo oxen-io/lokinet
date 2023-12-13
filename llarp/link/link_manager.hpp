@@ -407,10 +407,6 @@ namespace llarp
         // add to pending conns
         auto [itr, b] = pending_conns.emplace(rid, nullptr);
 
-        // emplace immediately for connection open callback to find scid
-        // connid_map.emplace(conn_interface->scid(), rc.router_id());
-        // auto [itr, b] = conns.emplace(rc.router_id(), nullptr);
-
         auto control_stream = conn_interface->template get_new_stream<oxen::quic::BTRequestStream>(
             [](oxen::quic::Stream& s, uint64_t error_code) {
               log::warning(
