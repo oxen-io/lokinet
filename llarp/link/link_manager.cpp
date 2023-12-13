@@ -135,13 +135,6 @@ namespace llarp
           [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
     });
 
-    // s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
-    //   _router.loop()->call(
-    //       [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
-    // });
-
-    log::critical(logcat, "Registered `bfetch_rcs` (RID:{})", router_id);
-
     s->register_command("path_build"s, [this, rid = router_id](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });

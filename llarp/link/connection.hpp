@@ -11,7 +11,6 @@ namespace llarp::link
   {
     std::shared_ptr<oxen::quic::connection_interface> conn;
     std::shared_ptr<oxen::quic::BTRequestStream> control_stream;
-    // std::optional<RemoteRC> remote_rc;
 
     // one side of a connection will be responsible for some things, e.g. heartbeat
     bool inbound{false};
