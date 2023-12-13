@@ -97,7 +97,7 @@ namespace llarp::rpc
       return;  // bail
     }
 
-    LogDebug("new block at height ", m_BlockHeight);
+    log::trace(logcat, "new block at height {}", m_BlockHeight);
     // don't upadate on block notification if an update is pending
     if (not m_UpdatingList)
       UpdateServiceNodeList();
@@ -138,7 +138,7 @@ namespace llarp::rpc
                 throw std::runtime_error{"get_service_nodes did not return 'OK' status"};
               if (auto it = json.find("unchanged");
                   it != json.end() and it->is_boolean() and it->get<bool>())
-                LogDebug("service node list unchanged");
+                log::trace(logcat, "service node list unchanged");
               else
               {
                 self->HandleNewServiceNodeList(json.at("service_node_states"));
