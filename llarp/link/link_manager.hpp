@@ -109,27 +109,18 @@ namespace llarp
   struct PendingMessage
   {
     std::string body;
+    std::optional<std::string> endpoint = std::nullopt;
+    std::function<void(oxen::quic::message)> func = nullptr;
+
     RouterID rid;
-    bool is_control{false};
+    bool is_control = false;
 
-    PendingMessage(std::string b, bool control = false) : body{std::move(b)}, is_control{control}
+    PendingMessage(std::string b) : body{std::move(b)}
     {}
-  };
 
-  struct PendingDataMessage : PendingMessage
-  {
-    PendingDataMessage(std::string b) : PendingMessage(b)
-    {}
-  };
-
-  struct PendingControlMessage : PendingMessage
-  {
-    std::string endpoint;
-    std::function<void(oxen::quic::message)> func;
-
-    PendingControlMessage(
-        std::string b, std::string e, std::function<void(oxen::quic::message)> f = nullptr)
-        : PendingMessage(b, true), endpoint{std::move(e)}, func{std::move(f)}
+    PendingMessage(
+        std::string b, std::string ep, std::function<void(oxen::quic::message)> f = nullptr)
+        : body{std::move(b)}, endpoint{std::move(ep)}, func{std::move(f)}, is_control{true}
     {}
   };
 

@@ -218,9 +218,8 @@ namespace llarp
 
     std::unordered_set<RouterID> peer_pubkeys;
 
-    for_each_connection([&peer_pubkeys](link::Connection& conn) {
-      peer_pubkeys.emplace(conn.conn->remote_key());
-    });
+    for_each_connection(
+        [&peer_pubkeys](link::Connection& conn) { peer_pubkeys.emplace(conn.conn->remote_key()); });
 
     loop()->call([this, &peer_pubkeys]() {
       for (auto& pk : peer_pubkeys)

@@ -74,7 +74,7 @@ namespace llarp
         std::advance(itr, randint() % size);
 
         RouterID rid{itr->second->conn->remote_key()};
-        
+
         if (auto maybe = link_manager.node_db->get_rc(rid))
         {
           router = *maybe;
@@ -151,7 +151,8 @@ namespace llarp
     for (auto& method : direct_requests)
     {
       s->register_command(
-          std::string{method.first}, [this, func = std::move(method.second)](oxen::quic::message m) {
+          std::string{method.first},
+          [this, func = std::move(method.second)](oxen::quic::message m) {
             _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
               auto body = msg.body_str();
               auto respond = [m = std::move(msg)](std::string response) mutable {
@@ -291,7 +292,7 @@ namespace llarp
                           endpoint = std::move(endpoint),
                           body = std::move(body),
                           f = std::move(func)]() {
-      auto pending = PendingControlMessage(std::move(body), std::move(endpoint), f);
+      auto pending = PendingMessage(std::move(body), std::move(endpoint), std::move(f));
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
@@ -315,7 +316,7 @@ namespace llarp
     }
 
     _router.loop()->call([this, body = std::move(body), remote]() {
-      auto pending = PendingDataMessage(body);
+      auto pending = PendingMessage(std::move(body));
 
       auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
       itr->second.push_back(std::move(pending));
@@ -434,17 +435,16 @@ namespace llarp
 
         while (not que.empty())
         {
-          auto& m = que.front();
+          auto& msg = que.front();
 
-          if (m.is_control)
+          if (msg.is_control)
           {
-            auto& msg = reinterpret_cast<PendingControlMessage&>(m);
-            log::critical(logcat, "Dispatching {} request!", msg.endpoint);
-            ep.conns[rid]->control_stream->command(msg.endpoint, msg.body, msg.func);
+            log::critical(logcat, "Dispatching {} request!", *msg.endpoint);
+            ep.conns[rid]->control_stream->command(
+                std::move(*msg.endpoint), std::move(msg.body), std::move(msg.func));
           }
           else
           {
-            auto& msg = reinterpret_cast<PendingDataMessage&>(m);
             conn_interface.send_datagram(std::move(msg.body));
           }
 
@@ -647,7 +647,7 @@ namespace llarp
       }
 
       log::critical(logcat, "Queuing bootstrap fetch request to {}", source.router_id());
-      auto pending = PendingControlMessage(std::move(payload), "bfetch_rcs"s, std::move(f));
+      auto pending = PendingMessage(std::move(payload), "bfetch_rcs"s, std::move(f));
 
       auto [itr, b] = pending_conn_msg_queue.emplace(source.router_id(), MessageQueue());
       itr->second.push_back(std::move(pending));
@@ -688,12 +688,16 @@ namespace llarp
     // TODO: if we are not the seed, how do we check the requester
     if (is_seed)
     {
-      // we already insert the 
+      // we already insert the
       auto& seeds = node_db->seeds();
-      
+
       if (auto itr = seeds.find(rid); itr != seeds.end())
       {
-        log::critical(logcat, "Bootstrap seed confirmed RID:{} is white-listed seeds; approving fetch request and saving RC!", rid);
+        log::critical(
+            logcat,
+            "Bootstrap seed confirmed RID:{} is white-listed seeds; approving fetch request and "
+            "saving RC!",
+            rid);
         node_db->put_rc(remote);
       }
     }

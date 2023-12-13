@@ -668,13 +668,14 @@ namespace llarp
     _needs_rebootstrap = false;
     ++bootstrap_attempts;
 
-    log::critical(
-        logcat, "Dispatching BootstrapRC fetch request to {}", _bootstraps.current().view());
+    log::critical(logcat, "Dispatching BootstrapRC fetch request to {}", fetch_source);
 
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
         BootstrapFetchMessage::serialize(_router.router_contact, BOOTSTRAP_SOURCE_COUNT),
         [this](oxen::quic::message m) mutable {
+          log::critical(logcat, "Received response to BootstrapRC fetch request...");
+
           if (not m)
           {
             // ++bootstrap_attempts;
