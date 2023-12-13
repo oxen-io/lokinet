@@ -1139,7 +1139,7 @@ namespace llarp
 
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
-    // _node_db->store_bootstraps();
+    _node_db->store_bootstraps();
 
     oxen::log::flush();
 
