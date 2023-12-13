@@ -23,6 +23,7 @@ namespace llarp
   struct Router;
 
   /*  RC Fetch Constants  */
+  inline constexpr size_t MIN_ACTIVE_RCS{6};
   // max number of attempts we make in non-bootstrap fetch requests
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
   // the total number of returned rcs that are held locally should be at least this

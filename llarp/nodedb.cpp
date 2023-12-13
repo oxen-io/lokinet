@@ -339,9 +339,11 @@ namespace llarp
   void
   NodeDB::fetch_initial()
   {
-    if (known_rids.empty())
+    auto sz = num_rcs();
+
+    if (num_rcs() < MIN_ACTIVE_RCS)
     {
-      log::critical(logcat, "No RouterID's held locally... BOOTSTRAP TIME");
+      log::critical(logcat, "{}/{} RCs held locally... BOOTSTRAP TIME", sz, MIN_ACTIVE_RCS);
       fallback_to_bootstrap();
     }
     else
@@ -728,7 +730,12 @@ namespace llarp
 
           // const auto& num = rids.size();
 
-          log::critical(logcat, "BootstrapRC fetch response from {} returned {}/{} needed RCs", fetch_source, num, BOOTSTRAP_SOURCE_COUNT);
+          log::critical(
+              logcat,
+              "BootstrapRC fetch response from {} returned {}/{} needed RCs",
+              fetch_source,
+              num,
+              BOOTSTRAP_SOURCE_COUNT);
           // known_rids.merge(rids);
           fetch_initial();
 
@@ -963,6 +970,9 @@ namespace llarp
   NodeDB::put_rc(RemoteRC rc, rc_time now)
   {
     const auto& rid = rc.router_id();
+
+    if (rid == _router.local_rid())
+      return false;
 
     known_rcs.erase(rc);
     rc_lookup.erase(rid);

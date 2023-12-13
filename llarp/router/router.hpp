@@ -159,6 +159,12 @@ namespace llarp
 
    public:
     bool
+    testnet() const
+    {
+      return _testnet;
+    }
+
+    bool
     is_bootstrap_seed() const
     {
       return _bootstrap_seed;
