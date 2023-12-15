@@ -168,12 +168,6 @@ namespace llarp
     {}
 
     bool
-    BDecode(llarp_buffer_t* buf);
-
-    bool
-    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
-
-    bool
     is_public_addressable() const;
 
     /// does this RC expire soon? default delta is 1 minute
@@ -200,6 +194,9 @@ namespace llarp
 
     bool
     is_obsolete_bootstrap() const;
+
+    void
+    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
 
     void
     bt_load(oxenc::bt_dict_consumer& data);
@@ -233,7 +230,6 @@ namespace llarp
 
    public:
     LocalRC() = default;
-    explicit LocalRC(std::string payload, const SecretKey sk);
     ~LocalRC() = default;
 
     RemoteRC
@@ -309,9 +305,6 @@ namespace llarp
   struct RemoteRC final : public RouterContact
   {
    private:
-    void
-    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
-
     explicit RemoteRC(oxenc::bt_dict_consumer btdc);
 
    public:

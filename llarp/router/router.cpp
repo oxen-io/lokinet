@@ -476,7 +476,7 @@ namespace llarp
   Router::appears_registered() const
   {
     return _is_service_node and have_snode_whitelist()
-        and node_db()->get_registered_routers().count(pubkey());
+        and node_db()->registered_routers().count(pubkey());
   }
 
   bool
@@ -866,17 +866,11 @@ namespace llarp
       {
         log::critical(logcat, "Regenerating and gossiping RC...");
 
-<<<<<<< Updated upstream
         router_contact.resign();
         save_rc();
-=======
-        auto view = router_contact.view();
->>>>>>> Stashed changes
 
         _link_manager->gossip_rc(
-            router_contact.router_id(),
-            router_contact.router_id(),
-            std::string{oxen::quic::to_sv(router_contact.view())});
+            local_rid(), local_rid(), std::string{oxen::quic::to_sv(router_contact.view())});
 
         last_rc_gossip = now_timepoint;
 

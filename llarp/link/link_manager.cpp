@@ -230,15 +230,16 @@ namespace llarp
 
       if (_router.is_bootstrap_seed())
       {
-        if (node_db->whitelist().count(other))
+        if (node_db->registered_routers().count(other))
         {
           log::critical(logcat, "Saving bootstrap seed requester...");
-          auto [it, b] = node_db->seeds().emplace(other);
-          result |= b;
+          auto [it, b] = node_db->seeds().insert(other);
+          result &= b;
         }
+
         log::critical(
             logcat,
-            "Bootstrap seed node was {} to confirm remote is white-listed; {}successfully "
+            "Bootstrap seed node was {} to confirm remote is registered; {}successfully "
             "saved RID",
             result ? "able" : "unable",
             result ? "" : "un");
@@ -323,6 +324,8 @@ namespace llarp
       }
       else
       {
+        log::critical(logcat, "Searching for RID:{} in pending conns...", rid);
+
         if (auto itr = ep.pending_conns.find(rid); itr != ep.pending_conns.end())
         {
           ep.connid_map.emplace(scid, rid);

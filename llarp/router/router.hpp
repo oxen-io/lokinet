@@ -187,10 +187,10 @@ namespace llarp
       return client_router_connections;
     }
 
-    RouterID
+    const RouterID&
     local_rid() const
     {
-      return RouterID{pubkey()};
+      return router_contact.router_id();
     }
 
     bool

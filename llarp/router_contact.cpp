@@ -12,12 +12,42 @@
 namespace llarp
 {
   void
-  RouterContact::bt_load(oxenc::bt_dict_consumer& data)
+  RouterContact::bt_verify(oxenc::bt_dict_consumer& btdc, bool reject_expired) const
   {
-    if (int rc_ver = data.require<uint8_t>(""); rc_ver != RC_VERSION)
+    btdc.require_signature("~", [this, reject_expired](ustring_view msg, ustring_view sig) {
+      if (sig.size() != 64)
+        throw std::runtime_error{"Invalid signature: not 64 bytes"};
+
+      if (reject_expired and is_expired(time_now_ms()))
+        throw std::runtime_error{"Rejecting expired RemoteRC!"};
+
+      // TODO: revisit if this is needed; detail from previous implementation
+      const auto* net = net::Platform::Default_ptr();
+
+      if (net->IsBogon(addr().in4()) and BLOCK_BOGONS)
+      {
+        auto err = "Unable to verify expired RemoteRC address!";
+        log::info(logcat, err);
+        throw std::runtime_error{err};
+      }
+
+      if (not crypto::verify(router_id(), msg, sig))
+        throw std::runtime_error{"Failed to verify RemoteRC signature"};
+    });
+
+    if (not btdc.is_finished())
+      throw std::runtime_error{"RouterContact has some fucked up shit at the end"};
+
+    btdc.finish();
+  }
+
+  void
+  RouterContact::bt_load(oxenc::bt_dict_consumer& btdc)
+  {
+    if (int rc_ver = btdc.require<uint8_t>(""); rc_ver != RC_VERSION)
       throw std::runtime_error{"Invalid RC: do not know how to parse v{} RCs"_format(rc_ver)};
 
-    auto ipv4_port = data.require<std::string_view>("4");
+    auto ipv4_port = btdc.require<std::string_view>("4");
 
     if (ipv4_port.size() != 6)
       throw std::runtime_error{
@@ -34,7 +64,7 @@ namespace llarp
     if (!_addr.is_public())
       throw std::runtime_error{"Invalid RC: IPv4 address is not a publicly routable IP"};
 
-    if (auto ipv6_port = data.maybe<std::string_view>("6"))
+    if (auto ipv6_port = btdc.maybe<std::string_view>("6"))
     {
       if (ipv6_port->size() != 18)
         throw std::runtime_error{
@@ -55,22 +85,22 @@ namespace llarp
       _addr6.reset();
     }
 
-    auto netid = data.maybe<std::string_view>("i").value_or(llarp::LOKINET_DEFAULT_NETID);
+    auto netid = btdc.maybe<std::string_view>("i").value_or(llarp::LOKINET_DEFAULT_NETID);
 
     if (netid != ACTIVE_NETID)
       throw std::runtime_error{
           "Invalid RC netid: expected {}, got {}; this is an RC for a different network!"_format(
               ACTIVE_NETID, netid)};
 
-    auto pubkey = data.require<std::string_view>("p");
+    auto pubkey = btdc.require<std::string_view>("p");
     if (pubkey.size() != 32)
       throw std::runtime_error{
           "Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
     std::memcpy(_router_id.data(), pubkey.data(), 32);
 
-    _timestamp = rc_time{std::chrono::seconds{data.require<uint64_t>("t")}};
+    _timestamp = rc_time{std::chrono::seconds{btdc.require<uint64_t>("t")}};
 
-    auto ver = data.require<ustring_view>("v");
+    auto ver = btdc.require<ustring_view>("v");
 
     if (ver.size() != 3)
       throw std::runtime_error{
@@ -118,106 +148,6 @@ namespace llarp
     // obj["srvRecords"] = srv;
 
     return obj;
-  }
-
-  bool
-  RouterContact::BDecode(llarp_buffer_t* buf)
-  {
-    // TODO: unfuck all of this
-
-    (void)buf;
-
-    // clear();
-
-    // if (*buf->cur == 'd')  // old format
-    // {
-    //   return DecodeVersion_0(buf);
-    // }
-    // else if (*buf->cur != 'l')  // if not dict, should be new format and start with list
-    // {
-    //   return false;
-    // }
-
-    // try
-    // {
-    //   std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->size_left());
-    //   oxenc::bt_list_consumer btlist(buf_view);
-
-    //   uint64_t outer_version = btlist.consume_integer<uint64_t>();
-
-    //   if (outer_version == 1)
-    //   {
-    //     bool decode_result = DecodeVersion_1(btlist);
-
-    //     // advance the llarp_buffer_t since lokimq serialization is unaware of it.
-    //     // FIXME: this is broken (current_buffer got dropped), but the whole thing is getting
-    //     // replaced.
-    //     // buf->cur += btlist.
-    //     //    current_buffer().data() - buf_view.data() + 1;
-
-    //     return decode_result;
-    //   }
-    //   else
-    //   {
-    //     log::warning(logcat, "Received RouterContact with unkown version ({})", outer_version);
-    //     return false;
-    //   }
-    // }
-    // catch (const std::exception& e)
-    // {
-    //   log::debug(logcat, "RouterContact::BDecode failed: {}", e.what());
-    // }
-
-    return false;
-  }
-
-  bool
-  RouterContact::decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf)
-  {
-    bool read = false;
-    (void)key;
-
-    // TOFIX: fuck everything about llarp_buffer_t
-
-    // if (!BEncodeMaybeReadDictEntry("a", addr, read, key, buf))
-    //   return false;
-
-    // if (!BEncodeMaybeReadDictEntry("i", netID, read, key, buf))
-    //   return false;
-
-    // if (!BEncodeMaybeReadDictEntry("k", _router_id, read, key, buf))
-    //   return false;
-
-    // if (key.startswith("r"))
-    // {
-    //   RouterVersion r;
-    //   if (not r.BDecode(buf))
-    //     return false;
-    //   routerVersion = r;
-    //   return true;
-    // }
-
-    // if (not BEncodeMaybeReadDictList("s", srvRecords, read, key, buf))
-    //   return false;
-
-    // if (!BEncodeMaybeReadDictEntry("p", enckey, read, key, buf))
-    //   return false;
-
-    // if (!BEncodeMaybeReadDictInt("u", _timestamp, read, key, buf))
-    //   return false;
-
-    // if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
-    //   return false;
-
-    // if (key.startswith("x") and serializeExit)
-    // {
-    //   return bencode_discard(buf);
-    // }
-
-    // if (!BEncodeMaybeReadDictEntry("z", signature, read, key, buf))
-    //   return false;
-
-    return read or bencode_discard(buf);
   }
 
   bool
