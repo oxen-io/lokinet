@@ -723,6 +723,7 @@ namespace llarp
                 bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS,
                 e.what());
+            log::critical(logcat, "DEBUG FIXME THIS IS WHAT I GOT: {}", oxenc::to_hex(m.body()));
             fallback_to_bootstrap();
             return;
           }
