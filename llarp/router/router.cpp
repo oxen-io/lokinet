@@ -58,12 +58,8 @@ namespace llarp
     loop_wakeup = _loop->make_waker([this]() { PumpLL(); });
   }
 
-  Router::~Router()
-  {}
-
   // TODO: investigate changes needed for libquic integration
   //       still needed at all?
-
   // TODO: No. The answer is No.
   // TONUKE: EVERYTHING ABOUT THIS
   void
@@ -237,14 +233,10 @@ namespace llarp
   Router::GetRandomGoodRouter()
   {
     if (is_service_node())
-    {
       return node_db()->get_random_whitelist_router();
-    }
 
     if (auto maybe = node_db()->get_random_rc())
-    {
       return maybe->router_id();
-    }
 
     return std::nullopt;
   }
@@ -742,23 +734,13 @@ namespace llarp
   bool
   Router::is_bootstrap_node(const RouterID r) const
   {
-    if (_node_db->has_bootstraps())
-    {
-      const auto& b = _node_db->bootstrap_list();
-      return std::count_if(
-                 b.begin(),
-                 b.end(),
-                 [r](const RemoteRC& rc) -> bool { return rc.router_id() == r; })
-          > 0;
-    }
-    return false;
+    return _node_db->has_bootstraps() ? _node_db->bootstrap_list().contains(r) : false;
   }
 
   bool
   Router::should_report_stats(llarp_time_t now) const
   {
-    static constexpr auto ReportStatsInterval = 1h;
-    return now - _last_stats_report > ReportStatsInterval;
+    return now - _last_stats_report > REPORT_STATS_INTERVAL;
   }
 
   void
@@ -766,22 +748,28 @@ namespace llarp
   {
     const auto now = llarp::time_now_ms();
 
-    log::critical(
-        logcat,
-        "{} RCs loaded with {} RIDs, {} bootstrap peers, and {} router connections!",
-        _node_db->num_rcs(),
-        _node_db->num_rids(),
-        _node_db->num_bootstraps(),
-        num_router_connections());
-
     if (is_service_node())
     {
-      log::info(
+      log::critical(
           logcat,
-          "Local service node has {} client connections since last RC update ({} to expiry)",
+          "Local Service Node has {} RCs, {} RIDs, {} bootstrap peers, {} router "
+          "connections, and {} client connections since last RC update ({} to expiry)",
+          _node_db->num_rcs(),
+          _node_db->num_rids(),
+          _node_db->num_bootstraps(),
+          num_router_connections(),
           num_client_connections(),
-          router_contact.age(now),
           router_contact.time_to_expiry(now));
+    }
+    else
+    {
+      log::critical(
+          logcat,
+          "{} RCs loaded with {} RIDs, {} bootstrap peers, and {} router connections!",
+          _node_db->num_rcs(),
+          _node_db->num_rids(),
+          _node_db->num_bootstraps(),
+          num_router_connections());
     }
 
     if (_last_stats_report > 0s)
@@ -844,12 +832,18 @@ namespace llarp
   {
     if (is_stopping)
       return;
-    // LogDebug("tick router");
+
+    const bool is_snode = is_service_node();
+    const bool is_decommed = appears_decommed();
+
     const auto now = llarp::time_now_ms();
-    if (const auto delta = now - _last_tick; _last_tick != 0s and delta > TimeskipDetectedDuration)
+    auto now_timepoint = std::chrono::system_clock::time_point(now);
+
+    if (const auto delta = now - _last_tick;
+        _last_tick != 0s and delta > NETWORK_RESET_SKIP_INTERVAL)
     {
       // we detected a time skip into the futre, thaw the network
-      LogWarn("Timeskip of ", ToString(delta), " detected. Resetting network state");
+      log::warning(logcat, "Timeskip of {} detected, resetting network state!", delta.count());
       Thaw();
     }
 
@@ -864,18 +858,13 @@ namespace llarp
       report_stats();
     }
 
-    const bool is_snode = is_service_node();
-    const bool is_decommed = appears_decommed();
-
     // (relay-only) if we have fetched the relay list from oxend and
     // we are registered and funded, we want to gossip our RC periodically
-    auto now_timepoint = std::chrono::system_clock::time_point(now);
-
     if (is_snode)
     {
-      if (appears_funded() and now_timepoint > next_rc_gossip)
+      if (now_timepoint > next_rc_gossip)
       {
-        log::info(logcat, "regenerating and gossiping RC");
+        log::critical(logcat, "Regenerating and gossiping RC...");
 
         router_contact.resign();
         save_rc();
@@ -887,11 +876,15 @@ namespace llarp
 
         last_rc_gossip = now_timepoint;
 
-        // 1min to 5min before "stale time" is next gossip time
+        // TESTNET: 1 to 2 minutes before testnet gossip interval
         auto random_delta =
             std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
+        // 1min to 5min before "stale time" is next gossip time
+        // auto random_delta =
+        //     std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
 
-        next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
+        next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - random_delta;
+        // next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
 
       report_stats();
@@ -900,13 +893,13 @@ namespace llarp
     if (needs_initial_fetch())
     {
       if (not _config->bootstrap.seednode)
-        node_db()->fetch_initial();
+        node_db()->fetch_initial(is_service_node());
     }
     else if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
     {
       node_db()->fallback_to_bootstrap();
     }
-    else
+    else if (not is_snode)
     {
       // (client-only) periodically fetch updated RCs
       if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
@@ -916,8 +909,9 @@ namespace llarp
       }
 
       // (client-only) periodically fetch updated RouterID list
-      if (not is_snode and now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
+      if (now_timepoint - last_rid_fetch > ROUTERID_UPDATE_INTERVAL)
       {
+        log::critical(logcat, "Time to fetch RIDs!");
         node_db()->fetch_rids();
       }
     }
@@ -1005,7 +999,6 @@ namespace llarp
 
     if (is_snode and now >= _next_decomm_warning)
     {
-      constexpr auto DecommissionWarnInterval = 5min;
       if (auto registered = appears_registered(), funded = appears_funded();
           not(registered and funded and not is_decommed))
       {
@@ -1016,7 +1009,7 @@ namespace llarp
             not registered    ? "deregistered"
                 : is_decommed ? "decommissioned"
                               : "not fully staked");
-        _next_decomm_warning = now + DecommissionWarnInterval;
+        _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
       }
       else if (insufficient_peers())
       {
@@ -1024,7 +1017,7 @@ namespace llarp
             logcat,
             "We appear to be an active service node, but have only {} known peers.",
             node_db()->num_rcs());
-        _next_decomm_warning = now + DecommissionWarnInterval;
+        _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
       }
     }
 
@@ -1033,7 +1026,7 @@ namespace llarp
     if (connected < connectToNum and (appears_funded() or not is_snode))
     {
       size_t dlt = connectToNum - connected;
-      LogDebug("connecting to ", dlt, " random routers to keep alive");
+      log::debug(logcat, "Connecting to {} random routers to keep alive", dlt);
       _link_manager->connect_to_random(dlt);
     }
 

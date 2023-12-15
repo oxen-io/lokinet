@@ -337,14 +337,19 @@ namespace llarp
   }
 
   void
-  NodeDB::fetch_initial()
+  NodeDB::fetch_initial(bool is_snode)
   {
     auto sz = num_rcs();
 
-    if (num_rcs() < MIN_ACTIVE_RCS)
+    if (sz < MIN_ACTIVE_RCS)
     {
       log::critical(logcat, "{}/{} RCs held locally... BOOTSTRAP TIME", sz, MIN_ACTIVE_RCS);
       fallback_to_bootstrap();
+    }
+    else if (is_snode)
+    {
+      // service nodes who have sufficient local RC's can bypass initial fetching
+      _needs_initial_fetch = false;
     }
     else
     {
@@ -675,7 +680,7 @@ namespace llarp
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
         BootstrapFetchMessage::serialize(_router.router_contact, BOOTSTRAP_SOURCE_COUNT),
-        [this](oxen::quic::message m) mutable {
+        [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
           if (not m)
@@ -736,8 +741,19 @@ namespace llarp
               fetch_source,
               num,
               BOOTSTRAP_SOURCE_COUNT);
-          // known_rids.merge(rids);
-          fetch_initial();
+
+          if (not is_snode)
+          {
+            log::critical(
+                logcat,
+                "Client completed processing BootstrapRC fetch; proceeding to initial fetch");
+            fetch_initial();
+          }
+          else
+          {
+            log::critical(logcat, "Service node completed processing BootstrapRC fetch!");
+            post_snode_bootstrap();
+          }
 
           // FIXME: when moving to testnet, uncomment this
           // if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
@@ -758,6 +774,14 @@ namespace llarp
           //   fallback_to_bootstrap();
           // }
         });
+  }
+
+  void
+  NodeDB::post_snode_bootstrap()
+  {
+    _needs_rebootstrap = false;
+    _using_bootstrap_fallback = false;
+    _needs_initial_fetch = false;
   }
 
   void
@@ -805,22 +829,21 @@ namespace llarp
   std::optional<RouterID>
   NodeDB::get_random_whitelist_router() const
   {
-    // TODO: this should be checking whitelist not known_rcs
-    if (auto rc = get_random_rc())
-      return rc->router_id();
+    std::optional<RouterID> rand = std::nullopt;
 
-    return std::nullopt;
+    std::sample(router_whitelist.begin(), router_whitelist.end(), &*rand, 1, csrng);
+    return rand;
   }
 
   bool
   NodeDB::is_connection_allowed(const RouterID& remote) const
   {
-    if (_pinned_edges.size() && _pinned_edges.count(remote) == 0
-        && not _bootstraps.contains(remote))
-      return false;
-
     if (not _router.is_service_node())
-      return true;
+    {
+      if (_pinned_edges.size() && _pinned_edges.count(remote) == 0
+          && not _bootstraps.contains(remote))
+        return false;
+    }
 
     return known_rids.count(remote) or router_greylist.count(remote);
   }

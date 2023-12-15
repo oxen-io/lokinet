@@ -232,8 +232,8 @@ namespace llarp
       return;
     }
 
-    // NOTE: this potentially involves multiple memory allocations,
-    //       reimplement without split() if it is performance bottleneck
+    // TOFIX: This potentially involves multiple memory allocations,
+    // reimplement without split() if it is performance bottleneck
     auto splits = split(str, ":");
 
     // TODO: having ":port" at the end makes this ambiguous with IPv6

@@ -27,6 +27,9 @@ namespace llarp
       if (auto itr = active_conns.find(rc.router_id()); itr != active_conns.end())
         return itr->second;
 
+      // if (auto itr = pending_conns.find(rc.router_id()); itr != pending_conns.end())
+      //   return itr->second;
+
       return nullptr;
     }
 
@@ -36,6 +39,9 @@ namespace llarp
       if (auto itr = active_conns.find(rid); itr != active_conns.end())
         return itr->second;
 
+      // if (auto itr = pending_conns.find(rid); itr != pending_conns.end())
+      //   return itr->second;
+
       return nullptr;
     }
 
@@ -43,6 +49,12 @@ namespace llarp
     Endpoint::have_conn(const RouterID& remote, bool client_only) const
     {
       if (auto itr = active_conns.find(remote); itr != active_conns.end())
+      {
+        if (not(itr->second->remote_is_relay and client_only))
+          return true;
+      }
+
+      if (auto itr = pending_conns.find(remote); itr != pending_conns.end())
       {
         if (not(itr->second->remote_is_relay and client_only))
           return true;
@@ -99,14 +111,21 @@ namespace llarp
     Endpoint::close_connection(RouterID _rid)
     {
       assert(link_manager._router.loop()->inEventLoop());
-      auto itr = active_conns.find(_rid);
-      if (itr != active_conns.end())
-        return;
 
-      auto& conn = *itr->second->conn;
-      conn.close_connection();
-      connid_map.erase(conn.scid());
-      active_conns.erase(itr);
+      // deletion from pending_conns, pending_conn_msg_queue, active_conns, etc is taken care
+      // of by LinkManager::on_conn_closed
+      if (auto itr = active_conns.find(_rid); itr != active_conns.end())
+      {
+        auto& conn = *itr->second->conn;
+        conn.close_connection();
+      }
+      else if (auto itr = pending_conns.find(_rid); itr != pending_conns.end())
+      {
+        auto& conn = *itr->second->conn;
+        conn.close_connection();
+      }
+      else
+        return;
     }
 
   }  // namespace link
@@ -123,7 +142,8 @@ namespace llarp
   }
 
   void
-  LinkManager::register_commands(std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id)
+  LinkManager::register_commands(
+      std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id)
   {
     log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -206,8 +226,7 @@ namespace llarp
 
       if (_router.is_bootstrap_seed())
       {
-        // FIXME: remove "|| true", this is just for local testing!
-        if (node_db->whitelist().count(other) || true)
+        if (node_db->whitelist().count(other))
         {
           log::critical(logcat, "Saving bootstrap seed requester...");
           auto [it, b] = node_db->seeds().emplace(other);
@@ -232,6 +251,7 @@ namespace llarp
     {
       ep->listen(
           tls_creds,
+          ROUTER_KEEP_ALIVE,
           [&](oxen::quic::Connection& c,
               oxen::quic::Endpoint& e,
               std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
@@ -304,6 +324,8 @@ namespace llarp
           ep.connid_map.emplace(scid, rid);
           auto [it, b] = ep.active_conns.emplace(rid, nullptr);
           it->second = std::move(itr->second);
+          ep.pending_conns.erase(itr);
+
           log::critical(logcat, "Connection to RID:{} moved from pending to active conns!", rid);
         }
         else
@@ -340,43 +362,46 @@ namespace llarp
 
           que.pop_front();
         }
-        return;
       }
-      log::warning(logcat, "No pending queue to clear for RID:{}", rid);
+
+      log::warning(logcat, "Pending queue empty for RID:{}", rid);
     });
   };
 
   void
   LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
   {
-    _router.loop()->call([this, &conn_interface = ci, error_code = ec]() {
-      const auto& scid = conn_interface.scid();
+    _router.loop()->call(
+        [this, scid = ci.scid(), _rid = RouterID{ci.remote_key()}, error_code = ec]() {
+          log::critical(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
 
-      log::critical(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
+          // a pending connection would not be in the connid_map
+          if (auto v_itr = ep.pending_conns.find(_rid); v_itr != ep.pending_conns.end())
+          {
+            ep.pending_conns.erase(v_itr);
 
-      if (const auto& c_itr = ep.connid_map.find(scid); c_itr != ep.connid_map.end())
-      {
-        const auto& rid = c_itr->second;
+            // in case this didn't clear earlier, do it now
+            if (auto p_itr = pending_conn_msg_queue.find(_rid);
+                p_itr != pending_conn_msg_queue.end())
+              pending_conn_msg_queue.erase(p_itr);
 
-        // if (auto maybe = rids_pending_verification.find(rid);
-        //     maybe != rids_pending_verification.end())
-        //   rids_pending_verification.erase(maybe);
+            log::critical(quic_cat, "Pending quic connection CID:{} purged successfully", scid);
+          }
+          else if (const auto& c_itr = ep.connid_map.find(scid); c_itr != ep.connid_map.end())
+          {
+            const auto& rid = c_itr->second;
+            assert(_rid == rid);  // this should hold true
 
-        // in case this didn't clear earlier, do it now
-        if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
-          pending_conn_msg_queue.erase(p_itr);
+            if (auto m_itr = ep.active_conns.find(rid); m_itr != ep.active_conns.end())
+              ep.active_conns.erase(m_itr);
 
-        if (auto c_itr = ep.pending_conns.find(rid); c_itr != ep.pending_conns.end())
-          ep.pending_conns.erase(c_itr);
+            ep.connid_map.erase(c_itr);
 
-        if (auto m_itr = ep.active_conns.find(rid); m_itr != ep.active_conns.end())
-          ep.active_conns.erase(m_itr);
-
-        ep.connid_map.erase(c_itr);
-
-        log::critical(quic_cat, "Quic connection CID:{} purged successfully", scid);
-      }
-    });
+            log::critical(quic_cat, "Quic connection CID:{} purged successfully", scid);
+          }
+          else
+            log::critical(quic_cat, "Nothing to purge for quic connection CID:{}", scid);
+        });
   }
 
   bool
@@ -583,6 +608,12 @@ namespace llarp
   LinkManager::get_random_connected(RemoteRC& router) const
   {
     return ep.get_random_connection(router);
+  }
+
+  bool
+  LinkManager::is_service_node() const
+  {
+    return _router.is_service_node();
   }
 
   // TODO: this?  perhaps no longer necessary in the same way?
