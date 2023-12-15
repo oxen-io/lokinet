@@ -114,24 +114,24 @@ namespace llarp
     void
     Endpoint::close_connection(RouterID _rid)
     {
-      assert(link_manager._router.loop()->inEventLoop());
-
-      // deletion from pending_conns, pending_conn_msg_queue, active_conns, etc is taken care
-      // of by LinkManager::on_conn_closed
-      if (auto itr = active_conns.find(_rid); itr != active_conns.end())
-      {
-        auto& conn = *itr->second->conn;
-        conn.close_connection();
-      }
-      else if (auto itr = pending_conns.find(_rid); itr != pending_conns.end())
-      {
-        auto& conn = *itr->second->conn;
-        conn.close_connection();
-      }
-      else
-        return;
+      // assert(link_manager._router.loop()->inEventLoop());
+      link_manager._router.loop()->call([this, rid = _rid](){
+        // deletion from pending_conns, pending_conn_msg_queue, active_conns, etc is taken care
+        // of by LinkManager::on_conn_closed
+        if (auto itr = active_conns.find(rid); itr != active_conns.end())
+        {
+          auto& conn = *itr->second->conn;
+          conn.close_connection();
+        }
+        else if (auto itr = pending_conns.find(rid); itr != pending_conns.end())
+        {
+          auto& conn = *itr->second->conn;
+          conn.close_connection();
+        }
+        else
+          return;
+      });
     }
-
   }  // namespace link
 
   using messages::serialize_response;
