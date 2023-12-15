@@ -187,7 +187,7 @@ namespace llarp
 
     /// get filename of an RC file given its public ident key
     fs::path
-    get_path_by_pubkey(RouterID pk) const;
+    get_path_by_pubkey(const RouterID& pk) const;
 
    public:
     explicit NodeDB(

@@ -12,6 +12,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/service/name.hpp>
 #include <llarp/util/file.hpp>
+#include <llarp/util/fs.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 
@@ -1377,22 +1378,19 @@ namespace llarp
     const auto overridesDir = GetOverridesDir(data_dir);
     if (fs::exists(overridesDir))
     {
-      util::IterDir(overridesDir, [&](const fs::path& overrideFile) {
-        if (overrideFile.extension() == ".ini")
-        {
-          ConfigParser parser;
-          if (not parser.load_file(overrideFile))
-            throw std::runtime_error{"cannot load '" + overrideFile.u8string() + "'"};
+      for (const auto& f : fs::directory_iterator{overridesDir})
+      {
+        if (not f.is_regular_file() or f.path().extension() != ".ini")
+          continue;
+        ConfigParser parser;
+        if (not parser.load_file(f.path()))
+          throw std::runtime_error{"cannot load '" + f.path().u8string() + "'"};
 
-          parser.iter_all_sections([&](std::string_view section, const SectionValues& values) {
-            for (const auto& pair : values)
-            {
-              conf.add_config_value(section, pair.first, pair.second);
-            }
-          });
-        }
-        return true;
-      });
+        parser.iter_all_sections([&](std::string_view section, const SectionValues& values) {
+          for (const auto& [k, v] : values)
+            conf.add_config_value(section, k, v);
+        });
+      }
     }
   }
 

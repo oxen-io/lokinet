@@ -25,7 +25,7 @@ namespace llarp::util
   template <
       typename Char,
       std::enable_if_t<sizeof(Char) == 1 and not std::is_same_v<Char, char>, int> = 1>
-  inline size_t
+  size_t
   file_to_buffer(const fs::path& filename, Char* buffer, size_t buffer_size)
   {
     return file_to_buffer(filename, reinterpret_cast<char*>(buffer), buffer_size);
@@ -38,7 +38,7 @@ namespace llarp::util
 
   /// Same as above, but works via char-like buffer
   template <typename Char, std::enable_if_t<sizeof(Char) == 1, int> = 0>
-  inline void
+  void
   buffer_to_file(const fs::path& filename, const Char* buffer, size_t buffer_size)
   {
     return buffer_to_file(
@@ -71,33 +71,6 @@ namespace llarp::util
     if (EnsurePrivateFile(pathname))
       return {};
     return std::make_optional<T>(pathname, mode);
-  }
-
-  template <typename PathVisitor>
-  static void
-  IterDir(const fs::path& path, PathVisitor visit)
-  {
-    DIR* d = opendir(path.string().c_str());
-    if (d == nullptr)
-      return;
-    struct dirent* ent = nullptr;
-    std::set<fs::path> entries;
-    do
-    {
-      ent = readdir(d);
-      if (not ent)
-        break;
-      if (ent->d_name[0] == '.')
-        continue;
-      entries.emplace(path / fs::path{ent->d_name});
-    } while (ent);
-    closedir(d);
-
-    for (const auto& p : entries)
-    {
-      if (not visit(p))
-        return;
-    }
   }
 
 }  // namespace llarp::util
