@@ -67,7 +67,10 @@ namespace llarp
       get_conn(const RouterID&) const;
 
       bool
-      have_conn(const RouterID& remote, bool client_only) const;
+      have_client_conn(const RouterID& remote) const;
+
+      bool
+      have_conn(const RouterID& remote) const;
 
       size_t
       num_connected(bool clients_only) const;
@@ -265,7 +268,7 @@ namespace llarp
     handle_fetch_bootstrap_rcs(oxen::quic::message m);
 
     bool
-    have_connection_to(const RouterID& remote, bool client_only = false) const;
+    have_connection_to(const RouterID& remote) const;
 
     bool
     have_client_connection_to(const RouterID& remote) const;
@@ -318,7 +321,7 @@ namespace llarp
     // check if we already have a connection to any of the random set, as making
     // that thread safe would be slow...I think.
     void
-    connect_to_random(int num_conns);
+    connect_to_random(int num_conns, bool client_only = false);
 
     /// always maintain this many client connections to other routers
     int client_router_connections = 4;

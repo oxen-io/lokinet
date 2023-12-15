@@ -46,21 +46,25 @@ namespace llarp
     }
 
     bool
-    Endpoint::have_conn(const RouterID& remote, bool client_only) const
+    Endpoint::have_client_conn(const RouterID& remote) const
     {
       if (auto itr = active_conns.find(remote); itr != active_conns.end())
       {
-        if (not(itr->second->remote_is_relay and client_only))
-          return true;
+        return not itr->second->remote_is_relay;
       }
 
       if (auto itr = pending_conns.find(remote); itr != pending_conns.end())
       {
-        if (not(itr->second->remote_is_relay and client_only))
-          return true;
+        return not itr->second->remote_is_relay;
       }
 
       return false;
+    }
+
+    bool
+    Endpoint::have_conn(const RouterID& remote) const
+    {
+      return active_conns.count(remote) or pending_conns.count(remote);
     }
 
     size_t
@@ -535,8 +539,6 @@ namespace llarp
     const auto& remote_addr = rc.addr();
     const auto& rid = rc.router_id();
 
-    // rids_pending_verification[rid] = rc;
-
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
     if (auto rv = ep.establish_connection(
@@ -553,15 +555,15 @@ namespace llarp
   }
 
   bool
-  LinkManager::have_connection_to(const RouterID& remote, bool client_only) const
+  LinkManager::have_connection_to(const RouterID& remote) const
   {
-    return ep.have_conn(remote, client_only);
+    return ep.have_conn(remote);
   }
 
   bool
   LinkManager::have_client_connection_to(const RouterID& remote) const
   {
-    return ep.have_conn(remote, true);
+    return ep.have_client_conn(remote);
   }
 
   void
@@ -636,20 +638,17 @@ namespace llarp
   {
     is_stopping = false;
     node_db = _router.node_db();
-    client_router_connections = _router.required_num_client_conns();
   }
 
   void
-  LinkManager::connect_to_random(int num_conns)
+  LinkManager::connect_to_random(int num_conns, bool client_only)
   {
-    std::set<RouterID> exclude;
-    auto remainder = num_conns;
-
-    auto filter = [exclude](const RemoteRC& rc) -> bool {
-      return exclude.count(rc.router_id()) == 0;
+    auto filter = [this, client_only](const RemoteRC& rc) -> bool {
+      return client_only ? not ep.have_client_conn(rc.router_id())
+                         : not ep.have_conn(rc.router_id());
     };
 
-    if (auto maybe = node_db->get_n_random_rcs_conditional(remainder, filter))
+    if (auto maybe = node_db->get_n_random_rcs_conditional(num_conns, filter))
     {
       std::vector<RemoteRC>& rcs = *maybe;
 
@@ -696,6 +695,8 @@ namespace llarp
   void
   LinkManager::handle_gossip_rc(oxen::quic::message m)
   {
+    log::critical(logcat, "Handling GossipRC request...");
+
     // RemoteRC constructor wraps deserialization in a try/catch
     RemoteRC rc;
     RouterID src, sender;
@@ -864,7 +865,6 @@ namespace llarp
     }
 
     const auto& rcs = node_db->get_rcs();
-    const auto now = time_point_now();
 
     oxenc::bt_dict_producer btdp;
     const auto& last_time = node_db->get_last_rc_update_times();
@@ -894,8 +894,6 @@ namespace llarp
         }
       }
     }
-
-    btdp.append("time", now.time_since_epoch().count());
 
     m.respond(std::move(btdp).str());
   }

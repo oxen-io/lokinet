@@ -986,48 +986,64 @@ namespace llarp
 
     _link_manager->check_persisting_conns(now);
 
-    size_t connected = num_router_connections();
+    auto num_conns = num_router_connections();
 
-    size_t connectToNum = _link_manager->client_router_connections;
-    const auto& pinned_edges = _node_db->pinned_edges();
-    const auto pinned_count = pinned_edges.size();
+    const auto& num_rcs = node_db()->num_rcs();
 
-    if (pinned_count > 0 && connectToNum > pinned_count)
+    if (is_snode)
     {
-      connectToNum = pinned_count;
-    }
-
-    if (is_snode and now >= _next_decomm_warning)
-    {
-      if (auto registered = appears_registered(), funded = appears_funded();
-          not(registered and funded and not is_decommed))
+      if (now >= _next_decomm_warning)
       {
-        // complain about being deregistered/decommed/unfunded
-        log::error(
-            logcat,
-            "We are running as a service node but we seem to be {}",
-            not registered    ? "deregistered"
-                : is_decommed ? "decommissioned"
-                              : "not fully staked");
-        _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
+        if (auto registered = appears_registered(), funded = appears_funded();
+            not(registered and funded and not is_decommed))
+        {
+          // complain about being deregistered/decommed/unfunded
+          log::error(
+              logcat,
+              "We are running as a service node but we seem to be {}",
+              not registered    ? "deregistered"
+                  : is_decommed ? "decommissioned"
+                                : "not fully staked");
+          _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
+        }
+        else if (insufficient_peers())
+        {
+          log::error(
+              logcat,
+              "We appear to be an active service node, but have only {} known peers.",
+              node_db()->num_rcs());
+          _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
+        }
       }
-      else if (insufficient_peers())
-      {
-        log::error(
-            logcat,
-            "We appear to be an active service node, but have only {} known peers.",
-            node_db()->num_rcs());
-        _next_decomm_warning = now + DECOMM_WARNING_INTERVAL;
-      }
-    }
 
-    // if we need more sessions to routers and we are not a service node kicked from the network or
-    // we are a client we shall connect out to others
-    if (connected < connectToNum and (appears_funded() or not is_snode))
+      if (num_conns < num_rcs)
+      {
+        log::critical(
+            logcat,
+            "Service Node connecting to {} random routers to achieve full mesh",
+            FULL_MESH_ITERATION);
+        _link_manager->connect_to_random(FULL_MESH_ITERATION);
+      }
+      else
+        log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
+    }
+    else
     {
-      size_t dlt = connectToNum - connected;
-      log::debug(logcat, "Connecting to {} random routers to keep alive", dlt);
-      _link_manager->connect_to_random(dlt);
+      size_t min_client_conns = _link_manager->client_router_connections;
+      const auto& pinned_edges = _node_db->pinned_edges();
+      const auto pinned_count = pinned_edges.size();
+
+      if (pinned_count > 0 && min_client_conns > pinned_count)
+        min_client_conns = pinned_count;
+
+      // if we need more sessions to routers and we are not a service node kicked from the network
+      // or we are a client we shall connect out to others
+      if (num_conns < min_client_conns)
+      {
+        size_t needed = min_client_conns - num_conns;
+        log::critical(logcat, "Client connecting to {} random routers to keep alive", needed);
+        _link_manager->connect_to_random(needed);
+      }
     }
 
     _hidden_service_context.Tick(now);

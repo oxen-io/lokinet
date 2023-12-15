@@ -245,7 +245,7 @@ namespace llarp
   }
 
   bool
-  NodeDB::ingest_fetched_rcs(std::set<RemoteRC> rcs, rc_time timestamp)
+  NodeDB::ingest_fetched_rcs(std::set<RemoteRC> rcs)
   {
     // if we are not bootstrapping, we should check the rc's against the ones we currently hold
     if (not _using_bootstrap_fallback)
@@ -255,7 +255,7 @@ namespace llarp
     }
 
     while (!rcs.empty())
-      put_rc_if_newer(std::move(rcs.extract(rcs.begin()).value()), timestamp);
+      put_rc_if_newer(std::move(rcs.extract(rcs.begin()).value()));
 
     return true;
   }
@@ -405,7 +405,6 @@ namespace llarp
             }
 
             auto btlc = btdc.require<oxenc::bt_list_consumer>("rcs"sv);
-            auto timestamp = rc_time{std::chrono::seconds{btdc.require<int64_t>("time"sv)}};
 
             std::set<RemoteRC> rcs;
 
@@ -413,7 +412,7 @@ namespace llarp
               rcs.emplace(btlc.consume_dict_data());
 
             // if process_fetched_rcs returns false, then the trust model rejected the fetched RC's
-            fetch_rcs_result(initial, not ingest_fetched_rcs(std::move(rcs), timestamp));
+            fetch_rcs_result(initial, not ingest_fetched_rcs(std::move(rcs)));
           }
           catch (const std::exception& e)
           {
@@ -957,7 +956,16 @@ namespace llarp
   }
 
   std::optional<RemoteRC>
-  NodeDB::get_rc(RouterID pk) const
+  NodeDB::get_rc(const RemoteRC& pk) const
+  {
+    if (auto itr = known_rcs.find(pk); itr != known_rcs.end())
+      return *itr;
+
+    return std::nullopt;
+  }
+
+  std::optional<RemoteRC>
+  NodeDB::get_rc(const RouterID& pk) const
   {
     if (auto itr = rc_lookup.find(pk); itr != rc_lookup.end())
       return itr->second;
@@ -1036,10 +1044,13 @@ namespace llarp
   }
 
   bool
-  NodeDB::put_rc_if_newer(RemoteRC rc, rc_time now)
+  NodeDB::put_rc_if_newer(RemoteRC rc)
   {
-    if (not has_rc(rc))
-      return put_rc(std::move(rc), now);
+    if (auto maybe = get_rc(rc))
+    {
+      if (maybe->other_is_newer(rc))
+        return put_rc(rc);
+    }
 
     return false;
   }
