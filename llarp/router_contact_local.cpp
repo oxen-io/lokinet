@@ -34,43 +34,6 @@ namespace llarp
     return RemoteRC{view()};
   }
 
-  LocalRC::LocalRC(std::string payload, const SecretKey sk) : _secret_key{std::move(sk)}
-  {
-    _router_id = llarp::seckey_to_pubkey(_secret_key);
-
-    try
-    {
-      oxenc::bt_dict_consumer btdc{payload};
-      bt_load(btdc);
-
-      btdc.require_signature("~", [this](ustring_view msg, ustring_view sig) {
-        if (sig.size() != 64)
-          throw std::runtime_error{"Invalid signature: not 64 bytes"};
-
-        if (is_expired(time_now_ms()))
-          throw std::runtime_error{"Unable to verify expired RemoteRC!"};
-
-        // TODO: revisit if this is needed; detail from previous implementation
-        const auto* net = net::Platform::Default_ptr();
-
-        if (net->IsBogon(addr().in4()) and BLOCK_BOGONS)
-        {
-          auto err = "Unable to verify expired LocalRC!";
-          log::info(logcat, err);
-          throw std::runtime_error{err};
-        }
-
-        if (not crypto::verify(router_id(), msg, sig))
-          throw std::runtime_error{"Failed to verify LocalRC"};
-      });
-    }
-    catch (const std::exception& e)
-    {
-      log::warning(logcat, "Failed to parse LocalRC: {}", e.what());
-      throw;
-    }
-  }
-
   void
   LocalRC::bt_sign(oxenc::bt_dict_producer& btdp)
   {

@@ -150,7 +150,7 @@ namespace llarp
     std::set<RouterID> router_greenlist{};
 
     // All registered relays (service nodes)
-    std::set<RouterID> registered_routers;
+    std::set<RouterID> _registered_routers;
     // timing (note: Router holds the variables for last rc and rid request times)
     std::unordered_map<RouterID, rc_time> last_rc_update_times;
     // if populated from a config file, lists specific exclusively used as path first-hops
@@ -372,10 +372,16 @@ namespace llarp
       return router_greylist;
     }
 
-    const std::set<RouterID>&
-    get_registered_routers() const
+    std::set<RouterID>&
+    registered_routers()
     {
-      return registered_routers;
+      return _registered_routers;
+    }
+
+    const std::set<RouterID>&
+    registered_routers() const
+    {
+      return _registered_routers;
     }
 
     const std::set<RemoteRC>&

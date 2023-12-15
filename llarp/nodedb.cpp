@@ -808,10 +808,10 @@ namespace llarp
     if (whitelist.empty())
       return;
 
-    registered_routers.clear();
-    registered_routers.insert(whitelist.begin(), whitelist.end());
-    registered_routers.insert(greylist.begin(), greylist.end());
-    registered_routers.insert(greenlist.begin(), greenlist.end());
+    _registered_routers.clear();
+    _registered_routers.insert(whitelist.begin(), whitelist.end());
+    _registered_routers.insert(greylist.begin(), greylist.end());
+    _registered_routers.insert(greenlist.begin(), greenlist.end());
 
     router_whitelist.clear();
     router_whitelist.insert(whitelist.begin(), whitelist.end());
@@ -820,10 +820,8 @@ namespace llarp
     router_greenlist.clear();
     router_greenlist.insert(greenlist.begin(), greenlist.end());
 
-    log::info(
-        logcat,
-        "lokinet service node whitelist now has {} active router RIDs",
-        router_whitelist.size());
+    log::critical(
+        logcat, "Service node whitelist now has {} active router RIDs", router_whitelist.size());
   }
 
   std::optional<RouterID>
