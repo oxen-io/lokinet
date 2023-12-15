@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <utility>
 
-static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
 namespace llarp
@@ -31,19 +30,6 @@ namespace llarp
 
     if (not fs::is_directory(nodedbDir))
       throw std::runtime_error{fmt::format("nodedb {} is not a directory", nodedbDir)};
-
-    for (const char& ch : skiplist_subdirs)
-    {
-      // this seems to be a problem on all targets
-      // perhaps cpp17::fs is just as screwed-up
-      // attempting to create a folder with no name
-      // what does this mean...?
-      if (!ch)
-        continue;
-
-      fs::path sub = nodedbDir / std::string(&ch, 1);
-      fs::create_directory(sub);
-    }
   }
 
   NodeDB::NodeDB(fs::path root, std::function<void(std::function<void()>)> diskCaller, Router* r)
@@ -169,17 +155,9 @@ namespace llarp
   }
 
   fs::path
-  NodeDB::get_path_by_pubkey(RouterID pubkey) const
+  NodeDB::get_path_by_pubkey(const RouterID& pubkey) const
   {
-    std::string hexString = oxenc::to_hex(pubkey.begin(), pubkey.end());
-    std::string skiplistDir;
-
-    const llarp::RouterID r{pubkey};
-    std::string fname = r.ToString();
-
-    skiplistDir += hexString[0];
-    fname += RC_FILE_EXT;
-    return _root / skiplistDir / fname;
+    return _root / (pubkey.ToString() + RC_FILE_EXT);
   }
 
   bool
@@ -875,48 +853,26 @@ namespace llarp
     if (_root.empty())
       return;
 
-    std::set<fs::path> purge;
+    std::vector<fs::path> purge;
 
     const auto now = time_now_ms();
 
-    for (const char& ch : skiplist_subdirs)
+    for (const auto& f : fs::directory_iterator{_root})
     {
-      if (!ch)
+      if (not f.is_regular_file() or f.path().extension() != RC_FILE_EXT)
         continue;
 
-      std::string p;
-      p += ch;
-      fs::path sub = _root / p;
+      RemoteRC rc{};
 
-      llarp::util::IterDir(sub, [&](const fs::path& f) -> bool {
-        // skip files that are not suffixed with .signed
-        if (not(fs::is_regular_file(f) and f.extension() == RC_FILE_EXT))
-          return true;
+      if (not rc.read(f) or rc.is_expired(now))
+        // try loading it, purge it if it is junk or expired
+        purge.push_back(f);
 
-        RemoteRC rc{};
+      const auto& rid = rc.router_id();
 
-        if (not rc.read(f))
-        {
-          // try loading it, purge it if it is junk
-          purge.emplace(f);
-          return true;
-        }
-
-        if (rc.is_expired(now))
-        {
-          // rc expired dont load it and purge it later
-          purge.emplace(f);
-          return true;
-        }
-
-        const auto& rid = rc.router_id();
-
-        auto [itr, b] = known_rcs.insert(std::move(rc));
-        rc_lookup.emplace(rid, *itr);
-        known_rids.insert(rid);
-
-        return true;
-      });
+      auto [itr, b] = known_rcs.insert(std::move(rc));
+      rc_lookup.emplace(rid, *itr);
+      known_rids.insert(rid);
     }
 
     if (not purge.empty())
