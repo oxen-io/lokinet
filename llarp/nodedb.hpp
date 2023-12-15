@@ -22,6 +22,8 @@ namespace llarp
 {
   struct Router;
 
+  // TESTNET: the following constants have been shortened for testing purposes
+
   /*  RC Fetch Constants  */
   inline constexpr size_t MIN_ACTIVE_RCS{6};
   // max number of attempts we make in non-bootstrap fetch requests
@@ -242,7 +244,7 @@ namespace llarp
     process_fetched_rids();
 
     void
-    fetch_initial();
+    fetch_initial(bool is_snode = false);
 
     //  RouterContact fetching
     void
@@ -263,6 +265,8 @@ namespace llarp
     //  Bootstrap fallback fetching
     void
     fallback_to_bootstrap();
+    void
+    post_snode_bootstrap();
     void
     bootstrap_cooldown();
 

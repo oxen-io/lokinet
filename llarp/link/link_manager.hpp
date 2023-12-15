@@ -33,6 +33,11 @@ namespace llarp
   using stream_open_hook = oxen::quic::stream_open_callback;
   using stream_closed_hook = oxen::quic::stream_close_callback;
 
+  using keep_alive = oxen::quic::opt::keep_alive;
+
+  inline const keep_alive ROUTER_KEEP_ALIVE{10s};
+  inline const keep_alive CLIENT_KEEP_ALIVE{0s};
+
   namespace link
   {
     struct Connection;
@@ -292,6 +297,9 @@ namespace llarp
     bool
     get_random_connected(RemoteRC& router) const;
 
+    bool
+    is_service_node() const;
+
     void
     check_persisting_conns(llarp_time_t now);
 
@@ -401,8 +409,13 @@ namespace llarp
         const auto& rid = rc.router_id();
         log::critical(logcat, "Establishing connection to RID:{}", rid);
 
-        auto conn_interface =
-            endpoint->connect(remote, link_manager.tls_creds, std::forward<Opt>(opts)...);
+        bool is_snode = link_manager.is_service_node();
+
+        auto conn_interface = endpoint->connect(
+            remote,
+            link_manager.tls_creds,
+            is_snode ? ROUTER_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
+            std::forward<Opt>(opts)...);
 
         // add to pending conns
         auto [itr, b] = pending_conns.emplace(rid, nullptr);

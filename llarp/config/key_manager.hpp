@@ -34,10 +34,8 @@ namespace llarp
     /// Constructor
     KeyManager();
 
-    /// Initializes keys using the provided config, loading from disk
-    ///
-    /// NOTE: Must be called prior to obtaining any keys.
-    /// NOTE: blocks on I/O
+    /// Initializes keys using the provided config, loading from disk. Must be called
+    /// prior to obtaining any keys and blocks on I/O
     ///
     /// @param config should be a prepared config object
     /// @param genIfAbsent determines whether or not we will create files if they

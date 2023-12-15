@@ -40,16 +40,27 @@
 namespace llarp
 {
   /// number of routers to publish to
-  static constexpr size_t INTROSET_RELAY_REDUNDANCY = 2;
+  inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
 
   /// number of dht locations handled per relay
-  static constexpr size_t INTROSET_REQS_PER_RELAY = 2;
+  inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
 
-  static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
-      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
+  inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{
+      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
-  static const std::chrono::seconds RC_UPDATE_INTERVAL = 4min;
-  static const std::chrono::seconds ROUTERID_UPDATE_INTERVAL = 1h;
+  // TESTNET: these constants are shortened for testing purposes
+  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{4min};
+  inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{4min};
+
+  inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
+
+  // DISCUSS: ask tom and jason about this
+  // how big of a time skip before we reset network state
+  inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
+
+  inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{1h};
+
+  inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
 
   struct Contacts;
 
@@ -59,7 +70,7 @@ namespace llarp
 
     explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
-    ~Router();
+    ~Router() = default;
 
    private:
     std::shared_ptr<RoutePoker> _route_poker;

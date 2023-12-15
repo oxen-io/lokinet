@@ -182,7 +182,7 @@ namespace llarp
   {
     if (router)
     {
-      llarp::log::debug(logcat, "Handling SIGINT");
+      llarp::log::error(logcat, "Handling SIGINT");
       /// async stop router on sigint
       router->Stop();
     }

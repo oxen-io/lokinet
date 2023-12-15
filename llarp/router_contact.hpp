@@ -53,8 +53,6 @@ namespace llarp
 
     static inline constexpr size_t MAX_RC_SIZE = 1024;
 
-    /// Timespans for RCs:
-
     /// How long (from its signing time) before an RC is considered "stale".  Relays republish
     /// their RCs slightly more frequently than this so that ideally this won't happen.
     static constexpr auto STALE_AGE = 6h;
