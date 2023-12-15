@@ -992,7 +992,7 @@ namespace llarp
   bool
   NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
   {
-    if (not router_whitelist.count(rc.router_id()))
+    if (not registered_routers().count(rc.router_id()))
       return put_rc_if_newer(rc);
 
     return false;

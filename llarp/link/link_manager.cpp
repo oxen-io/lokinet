@@ -115,7 +115,7 @@ namespace llarp
     Endpoint::close_connection(RouterID _rid)
     {
       // assert(link_manager._router.loop()->inEventLoop());
-      link_manager._router.loop()->call([this, rid = _rid](){
+      link_manager._router.loop()->call([this, rid = _rid]() {
         // deletion from pending_conns, pending_conn_msg_queue, active_conns, etc is taken care
         // of by LinkManager::on_conn_closed
         if (auto itr = active_conns.find(rid); itr != active_conns.end())
@@ -233,35 +233,14 @@ namespace llarp
           logcat,
           "{} node was {} to confirm remote (RID:{}) is registered; allowing connection!",
           router().is_bootstrap_seed() ? "Bootstrap seed node" : "Service node",
-          other,
-          result ? "able" : "unable");
+          result ? "able" : "unable",
+          other);
 
       return result;
     });
     if (_router.is_service_node())
     {
-      ep->listen(
-          tls_creds,
-          ROUTER_KEEP_ALIVE/* ,
-          [&](oxen::quic::Connection& c,
-              oxen::quic::Endpoint& e,
-              std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
-            if (id && *id == 0)
-            {
-              auto s = e.make_shared<oxen::quic::BTRequestStream>(
-                  c, e, [](oxen::quic::Stream& s, uint64_t error_code) {
-                    log::warning(
-                        logcat,
-                        "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
-                        error_code);
-                    s.conn.close_connection(error_code);
-                  });
-              // register_commands(s);
-              return s;
-            }
-
-            return e.make_shared<oxen::quic::Stream>(c, e);
-          } */);
+      ep->listen(tls_creds, ROUTER_KEEP_ALIVE);
     }
     return ep;
   }
@@ -276,8 +255,9 @@ namespace llarp
 
     log::critical(logcat, "Queueing BTStream to be opened...");
 
-    auto control_stream = ci.queue_stream<oxen::quic::BTRequestStream>([this, rid = rid](oxen::quic::Stream&,
-                                                                          uint64_t error_code) {
+    auto control_stream = ci.queue_stream<oxen::quic::BTRequestStream>([this, rid = rid](
+                                                                           oxen::quic::Stream&,
+                                                                           uint64_t error_code) {
       log::warning(
           logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
       ep.close_connection(rid);
@@ -630,8 +610,12 @@ namespace llarp
   LinkManager::connect_to_random(int num_conns, bool client_only)
   {
     auto filter = [this, client_only](const RemoteRC& rc) -> bool {
-      return client_only ? not ep.have_client_conn(rc.router_id())
-                         : not ep.have_conn(rc.router_id());
+      auto res =
+          client_only ? not ep.have_client_conn(rc.router_id()) : not ep.have_conn(rc.router_id());
+
+      log::critical(logcat, "RID:{} {}", rc.router_id(), res ? "ACCEPTED" : "REJECTED");
+
+      return res;
     };
 
     if (auto maybe = node_db->get_n_random_rcs_conditional(num_conns, filter))
@@ -824,7 +808,7 @@ namespace llarp
   {
     // this handler should not be registered for service nodes
     assert(not _router.is_service_node());
-    
+
     send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
   }
 

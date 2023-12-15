@@ -45,7 +45,7 @@ namespace llarp
   inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
   // the ratio of accepted:rejected rids must be above this ratio
   inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
-  
+
   /*  Bootstrap Constants  */
   // the number of rc's we query the bootstrap for; service nodes pass 0, which means
   // gimme all dat RCs
