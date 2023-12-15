@@ -59,7 +59,8 @@ namespace llarp
 
     try
     {
-      util::file_to_buffer(fname, buf.data(), buf.size());
+      auto nread = util::file_to_buffer(fname, buf.data(), buf.size());
+      buf.resize(nread);
 
       oxenc::bt_dict_consumer btdc{buf};
       bt_load(btdc);

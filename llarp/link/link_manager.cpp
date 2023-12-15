@@ -238,7 +238,7 @@ namespace llarp
         }
         log::critical(
             logcat,
-            "Bootstrap seed node was {} to confirm fetch requester is white-listed; {}successfully "
+            "Bootstrap seed node was {} to confirm remote is white-listed; {}successfully "
             "saved RID",
             result ? "able" : "unable",
             result ? "" : "un");
