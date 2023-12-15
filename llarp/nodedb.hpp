@@ -232,7 +232,7 @@ namespace llarp
     ingest_bootstrap_seed();
 
     bool
-    ingest_fetched_rcs(std::set<RemoteRC> rcs, rc_time timestamp);
+    ingest_fetched_rcs(std::set<RemoteRC> rcs);
 
     bool
     process_fetched_rcs(std::set<RemoteRC>& rcs);
@@ -432,7 +432,10 @@ namespace llarp
 
     /// maybe get an rc by its ident pubkey
     std::optional<RemoteRC>
-    get_rc(RouterID pk) const;
+    get_rc(const RouterID& pk) const;
+
+    std::optional<RemoteRC>
+    get_rc(const RemoteRC& pk) const;
 
     std::optional<RemoteRC>
     get_random_rc() const;
@@ -586,7 +589,7 @@ namespace llarp
     /// put this rc into the cache if it is not there or is newer than the one there already
     /// returns true if the rc was inserted
     bool
-    put_rc_if_newer(RemoteRC rc, rc_time now = time_point_now());
+    put_rc_if_newer(RemoteRC rc);
 
     bool
     verify_store_gossip_rc(const RemoteRC& rc);
