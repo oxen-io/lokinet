@@ -425,7 +425,10 @@ namespace llarp
 
     /// return true if we have an rc by its ident pubkey
     bool
-    has_rc(RouterID pk) const;
+    has_rc(const RouterID& pk) const;
+
+    bool
+    has_rc(const RemoteRC& rc) const;
 
     /// maybe get an rc by its ident pubkey
     std::optional<RemoteRC>
@@ -584,6 +587,9 @@ namespace llarp
     /// returns true if the rc was inserted
     bool
     put_rc_if_newer(RemoteRC rc, rc_time now = time_point_now());
+
+    bool
+    verify_store_gossip_rc(const RemoteRC& rc);
   };
 }  // namespace llarp
 

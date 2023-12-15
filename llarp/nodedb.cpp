@@ -945,7 +945,13 @@ namespace llarp
   }
 
   bool
-  NodeDB::has_rc(RouterID pk) const
+  NodeDB::has_rc(const RemoteRC& rc) const
+  {
+    return known_rcs.count(rc);
+  }
+
+  bool
+  NodeDB::has_rc(const RouterID& pk) const
   {
     return rc_lookup.count(pk);
   }
@@ -1021,10 +1027,18 @@ namespace llarp
   }
 
   bool
+  NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
+  {
+    if (not router_whitelist.count(rc.router_id()))
+      return put_rc_if_newer(rc);
+
+    return false;
+  }
+
+  bool
   NodeDB::put_rc_if_newer(RemoteRC rc, rc_time now)
   {
-    if (auto itr = rc_lookup.find(rc.router_id());
-        itr == rc_lookup.end() or itr->second.other_is_newer(rc))
+    if (not has_rc(rc))
       return put_rc(std::move(rc), now);
 
     return false;

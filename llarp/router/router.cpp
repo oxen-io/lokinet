@@ -869,10 +869,10 @@ namespace llarp
         router_contact.resign();
         save_rc();
 
-        auto view = router_contact.view();
-
         _link_manager->gossip_rc(
-            pubkey(), std::string{reinterpret_cast<const char*>(view.data()), view.size()});
+            router_contact.router_id(),
+            router_contact.router_id(),
+            std::string{oxen::quic::to_sv(router_contact.view())});
 
         last_rc_gossip = now_timepoint;
 

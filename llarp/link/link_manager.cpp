@@ -668,20 +668,28 @@ namespace llarp
   }
 
   void
-  LinkManager::gossip_rc(const RouterID& rc_rid, std::string serialized_rc)
+  LinkManager::gossip_rc(
+      const RouterID& gossip_src, const RouterID& last_sender, std::string serialized_rc)
   {
     for (auto& [rid, conn] : ep.active_conns)
     {
-      // don't send back to the owner...
-      if (rid == rc_rid)
+      // don't send back to the gossip source or the last sender
+      if (rid == gossip_src or rid == last_sender)
         continue;
+
       // don't gossip RCs to clients
       if (not conn->remote_is_relay)
         continue;
 
-      send_control_message(rid, "gossip_rc", serialized_rc, [](oxen::quic::message) mutable {
-        log::critical(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
-      });
+      log::critical(logcat, "Dispatching gossip_rc to {}", rid);
+
+      send_control_message(
+          rid,
+          "gossip_rc"s,
+          GossipRCMessage::serialize(gossip_src, last_sender, serialized_rc),
+          [](oxen::quic::message) mutable {
+            log::critical(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
+          });
     }
   }
 
@@ -689,15 +697,31 @@ namespace llarp
   LinkManager::handle_gossip_rc(oxen::quic::message m)
   {
     // RemoteRC constructor wraps deserialization in a try/catch
-    RemoteRC rc{m.body()};
+    RemoteRC rc;
+    RouterID src, sender;
 
-    if (node_db->put_rc_if_newer(rc))
+    try
     {
-      log::info(link_cat, "Received updated RC, forwarding to relay peers.");
-      gossip_rc(rc.router_id(), m.body_str());
+      oxenc::bt_dict_consumer btdc{m.body()};
+
+      btdc.required("rc");
+      rc = RemoteRC{btdc.consume_dict_data()};
+      src.from_string(btdc.require<std::string>("sender"));
+      sender.from_string(btdc.require<std::string>("src"));
+    }
+    catch (const std::exception& e)
+    {
+      log::info(link_cat, "Exception handling GossipRC request: {}", e.what());
+      return;
+    }
+
+    if (node_db->verify_store_gossip_rc(rc))
+    {
+      log::critical(link_cat, "Received updated RC, forwarding to relay peers.");
+      gossip_rc(src, _router.local_rid(), std::string{rc.view()});
     }
     else
-      log::debug(link_cat, "Received known or old RC, not storing or forwarding.");
+      log::critical(link_cat, "Received known or old RC, not storing or forwarding.");
   }
 
   void
@@ -744,9 +768,7 @@ namespace llarp
     {
       oxenc::bt_dict_consumer btdc{m.body()};
       btdc.required("local");
-      auto rc_dict = btdc.consume_dict_data();
-      // log::critical(logcat, "incoming dict data: {}", oxenc::to_hex(rc_dict));
-      remote = RemoteRC{rc_dict};
+      remote = RemoteRC{btdc.consume_dict_data()};
       quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
