@@ -225,38 +225,24 @@ namespace llarp
         },
         [this](oxen::quic::dgram_interface& di, bstring dgram) { recv_data_message(di, dgram); });
     tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view&) {
-      bool result = true;
       RouterID other{key.data()};
 
-      if (_router.is_bootstrap_seed())
-      {
-        if (node_db->registered_routers().count(other))
-        {
-          log::critical(logcat, "Saving bootstrap seed requester...");
-          auto [it, b] = node_db->seeds().insert(other);
-          result &= b;
-        }
-
-        log::critical(
-            logcat,
-            "Bootstrap seed node was {} to confirm remote is registered; {}successfully "
-            "saved RID",
-            result ? "able" : "unable",
-            result ? "" : "un");
-        return result;
-      }
-
-      result = node_db->has_rc(other);
+      bool result = node_db->registered_routers().count(other);
 
       log::critical(
-          logcat, "{}uccessfully verified connection to {}!", result ? "S" : "Uns", other);
+          logcat,
+          "{} node was {} to confirm remote (RID:{}) is registered; allowing connection!",
+          router().is_bootstrap_seed() ? "Bootstrap seed node" : "Service node",
+          other,
+          result ? "able" : "unable");
+
       return result;
     });
     if (_router.is_service_node())
     {
       ep->listen(
           tls_creds,
-          ROUTER_KEEP_ALIVE,
+          ROUTER_KEEP_ALIVE/* ,
           [&](oxen::quic::Connection& c,
               oxen::quic::Endpoint& e,
               std::optional<int64_t> id) -> std::shared_ptr<oxen::quic::Stream> {
@@ -278,7 +264,7 @@ namespace llarp
             log::critical(logcat, "Stream constructor constructing Stream (ID:{})!", id);
 
             return e.make_shared<oxen::quic::Stream>(c, e);
-          });
+          } */);
     }
     return ep;
   }
@@ -293,11 +279,11 @@ namespace llarp
 
     log::critical(logcat, "Queueing BTStream to be opened...");
 
-    auto control_stream = ci.queue_stream<oxen::quic::BTRequestStream>([](oxen::quic::Stream& s,
+    auto control_stream = ci.queue_stream<oxen::quic::BTRequestStream>([this, rid = rid](oxen::quic::Stream&,
                                                                           uint64_t error_code) {
       log::warning(
           logcat, "BTRequestStream closed unexpectedly (ec:{}); closing connection...", error_code);
-      s.conn.close_connection(error_code);
+      ep.close_connection(rid);
     });
 
     log::critical(logcat, "Queued BTStream to be opened ID:{}", control_stream->stream_id());
@@ -789,13 +775,13 @@ namespace llarp
     if (is_seed)
     {
       // we already insert the
-      auto& seeds = node_db->seeds();
+      auto& registered = node_db->registered_routers();
 
-      if (auto itr = seeds.find(rid); itr != seeds.end())
+      if (auto itr = registered.find(rid); itr != registered.end())
       {
         log::critical(
             logcat,
-            "Bootstrap seed confirmed RID:{} is white-listed seeds; approving fetch request and "
+            "Bootstrap seed confirmed RID:{} is registered; approving fetch request and "
             "saving RC!",
             rid);
         node_db->put_rc(remote);
@@ -805,12 +791,9 @@ namespace llarp
     auto& src = node_db->get_known_rcs();
     auto count = src.size();
 
-    if (count == 0)
-    {
-      log::error(logcat, "No known RCs locally to send!");
-      m.respond(messages::ERROR_RESPONSE, true);
-      return;
-    }
+    // if quantity is 0, then the service node requesting this wants all the RC's; otherwise,
+    // send the amount requested in the message
+    quantity = quantity == 0 ? count : quantity;
 
     auto now = llarp::time_now_ms();
     size_t i = 0;
@@ -820,13 +803,18 @@ namespace llarp
     {
       auto sublist = btdp.append_list("rcs");
 
-      for (const auto& rc : src)
+      if (count == 0)
+        log::error(logcat, "No known RCs locally to send!");
+      else
       {
-        if (not rc.is_expired(now))
-          sublist.append_encoded(rc.view());
+        for (const auto& rc : src)
+        {
+          if (not rc.is_expired(now))
+            sublist.append_encoded(rc.view());
 
-        if (++i >= quantity)
-          break;
+          if (++i >= quantity)
+            break;
+        }
       }
     }
 
@@ -837,6 +825,9 @@ namespace llarp
   LinkManager::fetch_rcs(
       const RouterID& source, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
+    // this handler should not be registered for service nodes
+    assert(not _router.is_service_node());
+    
     send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
   }
 
