@@ -429,8 +429,11 @@ namespace llarp
     std::optional<RemoteRC>
     get_random_rc() const;
 
+    // Get `n` random RCs from all RCs we know about.  If `exact` is true then we require n matches
+    // (and otherwise return nullopt); otherwise we return whatever we found, or nullopt if we find
+    // nothing at all.
     std::optional<std::vector<RemoteRC>>
-    get_n_random_rcs(size_t n) const;
+    get_n_random_rcs(size_t n, bool exact = false) const;
 
     /** The following random conditional functions utilize a simple implementation of reservoir
         sampling to return either 1 or n random RC's using only one pass through the set of RC's.
@@ -447,7 +450,7 @@ namespace llarp
     get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const;
 
     std::optional<std::vector<RemoteRC>>
-    get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook) const;
+    get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook, bool exact = false) const;
 
     // Updates `current` to not contain any of the elements of `replace` and resamples (up to
     // `target_size`) from population to refill it.

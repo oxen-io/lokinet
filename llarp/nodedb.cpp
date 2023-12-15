@@ -61,14 +61,16 @@ namespace llarp
   }
 
   std::optional<std::vector<RemoteRC>>
-  NodeDB::get_n_random_rcs(size_t n) const
+  NodeDB::get_n_random_rcs(size_t n, bool exact) const
   {
-    std::vector<RemoteRC> rand{};
+    auto rand = std::make_optional<std::vector<RemoteRC>>();
+    rand->reserve(n);
 
-    std::sample(known_rcs.begin(), known_rcs.end(), std::back_inserter(rand), n, csrng);
-    return rand.empty() ? std::nullopt : std::make_optional(rand);
+    std::sample(known_rcs.begin(), known_rcs.end(), std::back_inserter(*rand), n, csrng);
+    if (rand->size() < (exact ? n : 1))
+      rand.reset();
+    return rand;
   }
-
   std::optional<RemoteRC>
   NodeDB::get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const
   {
@@ -99,10 +101,11 @@ namespace llarp
   }
 
   std::optional<std::vector<RemoteRC>>
-  NodeDB::get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook) const
+  NodeDB::get_n_random_rcs_conditional(
+      size_t n, std::function<bool(RemoteRC)> hook, bool exact) const
   {
-    std::vector<RemoteRC> selected;
-    selected.reserve(n);
+    auto selected = std::make_optional<std::vector<RemoteRC>>();
+    selected->reserve(n);
 
     size_t i = 0;
 
@@ -115,17 +118,19 @@ namespace llarp
       // load the first n RC's that pass the condition into selected
       if (++i <= n)
       {
-        selected.push_back(rc);
+        selected->push_back(rc);
         continue;
       }
 
       // replace selections with decreasing probability per iteration
       size_t x = csrng() % (i + 1);
       if (x < n)
-        selected[x] = rc;
+        (*selected)[x] = rc;
     }
 
-    return selected.size() == n ? std::make_optional(selected) : std::nullopt;
+    if (selected->size() < (exact ? n : 1))
+      selected.reset();
+    return selected;
   }
 
   void
