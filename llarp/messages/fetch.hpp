@@ -6,6 +6,28 @@
 
 namespace llarp
 {
+  namespace GossipRCMessage
+  {
+    inline static std::string
+    serialize(const RouterID& gossip_src, const RouterID& last_sender, std::string rc)
+    {
+      oxenc::bt_dict_producer btdp;
+
+      try
+      {
+        btdp.append_encoded("rc", rc);
+        btdp.append("sender", last_sender.ToView());
+        btdp.append("src", gossip_src.ToView());
+      }
+      catch (...)
+      {
+        log::error(link_cat, "Error: GossipRCMessage failed to bt encode contents");
+      }
+
+      return std::move(btdp).str();
+    }
+  }  // namespace GossipRCMessage
+
   namespace FetchRCMessage
   {
     inline const auto INVALID_REQUEST =
