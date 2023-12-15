@@ -45,9 +45,12 @@ namespace llarp
   inline constexpr size_t MIN_GOOD_RID_FETCH_TOTAL{};
   // the ratio of accepted:rejected rids must be above this ratio
   inline constexpr double GOOD_RID_FETCH_THRESHOLD{};
+  
   /*  Bootstrap Constants  */
-  // the number of rc's we query the bootstrap for
-  inline constexpr size_t BOOTSTRAP_SOURCE_COUNT{10};
+  // the number of rc's we query the bootstrap for; service nodes pass 0, which means
+  // gimme all dat RCs
+  inline constexpr size_t SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT{0};
+  inline constexpr size_t CLIENT_BOOTSTRAP_SOURCE_COUNT{10};
   // the maximum number of fetch requests we make across all bootstraps
   inline constexpr int MAX_BOOTSTRAP_FETCH_ATTEMPTS{5};
   // if all bootstraps fail, router will trigger re-bootstrapping after this cooldown
@@ -136,8 +139,6 @@ namespace llarp
 
     std::map<RouterID, const RemoteRC&> rc_lookup;
 
-    std::set<RemoteRC> _bootstrap_seeds;
-    std::set<RouterID> _seeds;
     BootstrapList _bootstraps{};
 
     /** RouterID lists    // TODO: get rid of all these, replace with better decom/not staked sets
@@ -194,12 +195,6 @@ namespace llarp
 
     /// in memory nodedb
     NodeDB();
-
-    std::set<RouterID>&
-    seeds()
-    {
-      return _seeds;
-    }
 
     const std::set<RouterID>&
     get_known_rids() const
@@ -343,18 +338,6 @@ namespace llarp
     bootstrap_list()
     {
       return _bootstraps;
-    }
-
-    const std::set<RemoteRC>&
-    bootstrap_seeds() const
-    {
-      return _bootstrap_seeds;
-    }
-
-    std::set<RemoteRC>&
-    bootstrap_seeds()
-    {
-      return _bootstrap_seeds;
     }
 
     void

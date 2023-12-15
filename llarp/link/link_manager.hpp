@@ -424,12 +424,12 @@ namespace llarp
         auto [itr, b] = pending_conns.emplace(rid, nullptr);
 
         auto control_stream = conn_interface->template get_new_stream<oxen::quic::BTRequestStream>(
-            [](oxen::quic::Stream& s, uint64_t error_code) {
+            [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
               log::warning(
                   logcat,
                   "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
                   error_code);
-              s.conn.close_connection(error_code);
+              close_connection(rid);
             });
 
         link_manager.register_commands(control_stream, rid);
