@@ -866,8 +866,12 @@ namespace llarp
       {
         log::critical(logcat, "Regenerating and gossiping RC...");
 
+<<<<<<< Updated upstream
         router_contact.resign();
         save_rc();
+=======
+        auto view = router_contact.view();
+>>>>>>> Stashed changes
 
         _link_manager->gossip_rc(
             router_contact.router_id(),
