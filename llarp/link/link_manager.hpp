@@ -72,6 +72,9 @@ namespace llarp
       bool
       have_conn(const RouterID& remote) const;
 
+      std::pair<size_t, size_t>
+      num_in_out() const;
+
       size_t
       num_connected(bool clients_only) const;
 
@@ -290,6 +293,9 @@ namespace llarp
 
     void
     set_conn_persist(const RouterID& remote, llarp_time_t until);
+
+    std::pair<size_t, size_t>
+    num_in_out() const;
 
     size_t
     get_num_connected(bool clients_only = false) const;

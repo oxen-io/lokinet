@@ -49,7 +49,7 @@ namespace llarp
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
   // TESTNET: these constants are shortened for testing purposes
-  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{4min};
+  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{10min};
   inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{4min};
   // as we advance towards full mesh, we try to connect to this number per tick
   inline constexpr int FULL_MESH_ITERATION{1};
