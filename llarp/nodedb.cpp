@@ -916,15 +916,6 @@ namespace llarp
   }
 
   std::optional<RemoteRC>
-  NodeDB::get_rc(const RemoteRC& pk) const
-  {
-    if (auto itr = known_rcs.find(pk); itr != known_rcs.end())
-      return *itr;
-
-    return std::nullopt;
-  }
-
-  std::optional<RemoteRC>
   NodeDB::get_rc(const RouterID& pk) const
   {
     if (auto itr = rc_lookup.find(pk); itr != rc_lookup.end())
@@ -997,7 +988,7 @@ namespace llarp
   bool
   NodeDB::verify_store_gossip_rc(const RemoteRC& rc)
   {
-    if (not registered_routers().count(rc.router_id()))
+    if (registered_routers().count(rc.router_id()))
       return put_rc_if_newer(rc);
 
     return false;
@@ -1006,13 +997,15 @@ namespace llarp
   bool
   NodeDB::put_rc_if_newer(RemoteRC rc)
   {
-    if (auto maybe = get_rc(rc))
+    if (auto maybe = get_rc(rc.router_id()))
     {
       if (maybe->other_is_newer(rc))
         return put_rc(rc);
+
+      return false;
     }
 
-    return false;
+    return put_rc(rc);
   }
 
   void

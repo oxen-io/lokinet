@@ -750,14 +750,18 @@ namespace llarp
 
     if (is_service_node())
     {
+      auto [in, out] = _link_manager->num_in_out();
+
       log::critical(
           logcat,
-          "Local Service Node has {} RCs, {} RIDs, {} bootstrap peers, {} router "
+          "Local Service Node has {} RCs, {} RIDs, {} bootstrap peers, {}:{} (inbound:outbound) "
+          "router "
           "connections, and {} client connections since last RC update ({} to expiry)",
           _node_db->num_rcs(),
           _node_db->num_rids(),
           _node_db->num_bootstraps(),
-          num_router_connections(),
+          in,
+          out,
           num_client_connections(),
           router_contact.time_to_expiry(now));
     }
@@ -874,7 +878,7 @@ namespace llarp
 
         last_rc_gossip = now_timepoint;
 
-        // TESTNET: 1 to 2 minutes before testnet gossip interval
+        // TESTNET: 1 to 4 minutes before testnet gossip interval
         auto random_delta =
             std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
         // 1min to 5min before "stale time" is next gossip time

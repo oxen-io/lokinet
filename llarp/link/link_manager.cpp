@@ -67,6 +67,22 @@ namespace llarp
       return active_conns.count(remote) or pending_conns.count(remote);
     }
 
+    std::pair<size_t, size_t>
+    Endpoint::num_in_out() const
+    {
+      size_t in{0}, out{0};
+
+      for (const auto& c : active_conns)
+      {
+        if (c.second->inbound)
+          ++in;
+        else
+          ++out;
+      }
+
+      return {in, out};
+    }
+
     size_t
     Endpoint::num_connected(bool clients_only) const
     {
@@ -494,16 +510,17 @@ namespace llarp
   void
   LinkManager::connect_to(const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
   {
-    if (auto conn = ep.get_conn(rc.router_id()); conn)
+    const auto& rid = rc.router_id();
+
+    if (ep.have_conn(rid))
     {
-      log::error(logcat, "We should not be here!");
+      log::warning(logcat, "We already have a connection to {}!", rid);
       // TODO: should implement some connection failed logic, but not the same logic that
       // would be executed for another failure case
       return;
     }
 
     const auto& remote_addr = rc.addr();
-    const auto& rid = rc.router_id();
 
     // TODO: confirm remote end is using the expected pubkey (RouterID).
     // TODO: ALPN for "client" vs "relay" (could just be set on endpoint creation)
@@ -560,6 +577,12 @@ namespace llarp
     }
   }
 
+  std::pair<size_t, size_t>
+  LinkManager::num_in_out() const
+  {
+    return ep.num_in_out();
+  }
+
   size_t
   LinkManager::get_num_connected(bool clients_only) const
   {
@@ -613,7 +636,7 @@ namespace llarp
       auto res =
           client_only ? not ep.have_client_conn(rc.router_id()) : not ep.have_conn(rc.router_id());
 
-      log::critical(logcat, "RID:{} {}", rc.router_id(), res ? "ACCEPTED" : "REJECTED");
+      log::debug(logcat, "RID:{} {}", rc.router_id(), res ? "ACCEPTED" : "REJECTED");
 
       return res;
     };
@@ -640,6 +663,8 @@ namespace llarp
   LinkManager::gossip_rc(
       const RouterID& gossip_src, const RouterID& last_sender, std::string serialized_rc)
   {
+    int count = 0;
+
     for (auto& [rid, conn] : ep.active_conns)
     {
       // don't send back to the gossip source or the last sender
@@ -650,8 +675,6 @@ namespace llarp
       if (not conn->remote_is_relay)
         continue;
 
-      log::critical(logcat, "Dispatching gossip_rc to {}", rid);
-
       send_control_message(
           rid,
           "gossip_rc"s,
@@ -659,7 +682,10 @@ namespace llarp
           [](oxen::quic::message) mutable {
             log::critical(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
           });
+      ++count;
     }
+
+    log::critical(logcat, "Dispatched {} GossipRC requests!", count);
   }
 
   void

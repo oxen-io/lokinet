@@ -424,9 +424,6 @@ namespace llarp
     get_rc(const RouterID& pk) const;
 
     std::optional<RemoteRC>
-    get_rc(const RemoteRC& pk) const;
-
-    std::optional<RemoteRC>
     get_random_rc() const;
 
     // Get `n` random RCs from all RCs we know about.  If `exact` is true then we require n matches
@@ -450,7 +447,8 @@ namespace llarp
     get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const;
 
     std::optional<std::vector<RemoteRC>>
-    get_n_random_rcs_conditional(size_t n, std::function<bool(RemoteRC)> hook, bool exact = false) const;
+    get_n_random_rcs_conditional(
+        size_t n, std::function<bool(RemoteRC)> hook, bool exact = false) const;
 
     // Updates `current` to not contain any of the elements of `replace` and resamples (up to
     // `target_size`) from population to refill it.
