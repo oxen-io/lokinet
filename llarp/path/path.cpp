@@ -44,7 +44,7 @@ namespace llarp::path
     intro.router = hops[hsz - 1].rc.router_id();
     intro.path_id = hops[hsz - 1].txID;
     if (auto parent = m_PathSet.lock())
-      EnterState(ePathBuilding, parent->Now());
+      EnterState(BUILDING, parent->Now());
   }
 
   bool
@@ -118,7 +118,7 @@ namespace llarp::path
           if ((not self) or (not response_cb))
             return;
 
-          if (not m)
+          if (m.timed_out)
           {
             response_cb(messages::TIMEOUT_RESPONSE);
             return;
@@ -186,7 +186,7 @@ namespace llarp::path
   {
     if (Expired(llarp::time_now_ms()))
       return false;
-    return intro.latency > 0s && _status == ePathEstablished;
+    return intro.latency > 0s && _status == ESTABLISHED;
   }
 
   bool
@@ -227,12 +227,12 @@ namespace llarp::path
     if (now == 0s)
       now = router.now();
 
-    if (st == ePathFailed)
+    if (st == FAILED)
     {
       _status = st;
       return;
     }
-    if (st == ePathExpired && _status == ePathBuilding)
+    if (st == EXPIRED && _status == BUILDING)
     {
       _status = st;
       if (auto parent = m_PathSet.lock())
@@ -240,16 +240,16 @@ namespace llarp::path
         parent->HandlePathBuildTimeout(shared_from_this());
       }
     }
-    else if (st == ePathBuilding)
+    else if (st == BUILDING)
     {
       LogInfo("path ", name(), " is building");
       buildStarted = now;
     }
-    else if (st == ePathEstablished && _status == ePathBuilding)
+    else if (st == ESTABLISHED && _status == BUILDING)
     {
       LogInfo("path ", name(), " is built, took ", ToString(now - buildStarted));
     }
-    else if (st == ePathTimeout && _status == ePathEstablished)
+    else if (st == TIMEOUT && _status == ESTABLISHED)
     {
       LogInfo("path ", name(), " died");
       _status = st;
@@ -258,11 +258,11 @@ namespace llarp::path
         parent->HandlePathDied(shared_from_this());
       }
     }
-    else if (st == ePathEstablished && _status == ePathTimeout)
+    else if (st == ESTABLISHED && _status == TIMEOUT)
     {
       LogInfo("path ", name(), " reanimated");
     }
-    else if (st == ePathIgnore)
+    else if (st == IGNORE)
     {
       LogInfo("path ", name(), " ignored");
     }
@@ -309,22 +309,22 @@ namespace llarp::path
 
     switch (_status)
     {
-      case ePathBuilding:
+      case BUILDING:
         obj["status"] = "building";
         break;
-      case ePathEstablished:
+      case ESTABLISHED:
         obj["status"] = "established";
         break;
-      case ePathTimeout:
+      case TIMEOUT:
         obj["status"] = "timeout";
         break;
-      case ePathExpired:
+      case EXPIRED:
         obj["status"] = "expired";
         break;
-      case ePathFailed:
+      case FAILED:
         obj["status"] = "failed";
         break;
-      case ePathIgnore:
+      case IGNORE:
         obj["status"] = "ignored";
         break;
       default:
@@ -385,7 +385,7 @@ namespace llarp::path
     m_RXRate = 0;
     m_TXRate = 0;
 
-    if (_status == ePathBuilding)
+    if (_status == BUILDING)
     {
       if (buildStarted == 0s)
         return;
@@ -396,13 +396,13 @@ namespace llarp::path
         {
           LogWarn(name(), " waited for ", ToString(dlt), " and no path was built");
           r->router_profiling().MarkPathFail(this);
-          EnterState(ePathExpired, now);
+          EnterState(EXPIRED, now);
           return;
         }
       }
     }
     // check to see if this path is dead
-    if (_status == ePathEstablished)
+    if (_status == ESTABLISHED)
     {
       auto dlt = now - m_LastLatencyTestTime;
       if (dlt > path::LATENCY_INTERVAL && m_LastLatencyTestID == 0)
@@ -420,13 +420,13 @@ namespace llarp::path
       {
         LogWarn(name(), " waited for ", ToString(dlt), " and path looks dead");
         r->router_profiling().MarkPathFail(this);
-        EnterState(ePathTimeout, now);
+        EnterState(TIMEOUT, now);
       }
     }
-    if (_status == ePathIgnore and now - m_LastRecvMessage >= path::ALIVE_TIMEOUT)
+    if (_status == IGNORE and now - m_LastRecvMessage >= path::ALIVE_TIMEOUT)
     {
       // clean up this path as we dont use it anymore
-      EnterState(ePathExpired, now);
+      EnterState(EXPIRED, now);
     }
   }
 
@@ -436,15 +436,15 @@ namespace llarp::path
   bool
   Path::Expired(llarp_time_t now) const
   {
-    if (_status == ePathFailed)
+    if (_status == FAILED)
       return true;
-    if (_status == ePathBuilding)
+    if (_status == BUILDING)
       return false;
-    if (_status == ePathTimeout)
+    if (_status == TIMEOUT)
     {
       return now >= m_LastRecvMessage + PathReanimationTimeout;
     }
-    if (_status == ePathEstablished or _status == ePathIgnore)
+    if (_status == ESTABLISHED or _status == IGNORE)
     {
       return now >= ExpireTime();
     }

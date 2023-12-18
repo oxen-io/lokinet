@@ -146,9 +146,9 @@ namespace llarp
         - gray: fully funded, but decommissioned routers
         - green: registered, but not fully-staked routers
     */
-    std::set<RouterID> router_whitelist{};
-    std::set<RouterID> router_greylist{};
-    std::set<RouterID> router_greenlist{};
+    std::set<RouterID> _router_whitelist{};
+    std::set<RouterID> _router_greylist{};
+    std::set<RouterID> _router_greenlist{};
 
     // All registered relays (service nodes)
     std::set<RouterID> _registered_routers;
@@ -346,13 +346,13 @@ namespace llarp
     const std::set<RouterID>&
     whitelist() const
     {
-      return known_rids;
+      return _router_whitelist;
     }
 
     const std::set<RouterID>&
     greylist() const
     {
-      return router_greylist;
+      return _router_greylist;
     }
 
     std::set<RouterID>&

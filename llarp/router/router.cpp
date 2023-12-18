@@ -873,8 +873,7 @@ namespace llarp
         router_contact.resign();
         save_rc();
 
-        _link_manager->gossip_rc(
-            local_rid(), local_rid(), std::string{oxen::quic::to_sv(router_contact.view())});
+        _link_manager->gossip_rc(local_rid(), router_contact.to_remote());
 
         last_rc_gossip = now_timepoint;
 

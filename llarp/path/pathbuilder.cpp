@@ -261,7 +261,7 @@ namespace llarp
       const auto now = Now();
       for (auto& item : m_Paths)
       {
-        item.second->EnterState(ePathIgnore, now);
+        item.second->EnterState(IGNORE, now);
       }
       return true;
     }
@@ -275,7 +275,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      return IsStopped() and NumInStatus(ePathEstablished) == 0;
+      return IsStopped() and NumInStatus(ESTABLISHED) == 0;
     }
 
     bool
@@ -505,40 +505,40 @@ namespace llarp
       // be worth doing sooner rather than later.  Leaving some TODOs below where fail
       // and success live.
       auto response_cb = [path](oxen::quic::message m) {
+        if (m)
+        {
+          // TODO: inform success (what this means needs revisiting, badly)
+          path->EnterState(path::ESTABLISHED);
+          return;
+        }
+
         try
         {
-          if (m)
+          // TODO: inform failure (what this means needs revisiting, badly)
+          if (m.timed_out)
           {
-            // TODO: inform success (what this means needs revisiting, badly)
-            path->EnterState(path::ePathEstablished);
-            return;
-          }
-          if (not m)
-          {
-            log::warning(path_cat, "Path build request failed!");
+            log::warning(path_cat, "Path build request timed out!");
+            path->EnterState(path::TIMEOUT);
           }
           else
           {
             oxenc::bt_dict_consumer d{m.body()};
             auto status = d.require<std::string_view>(messages::STATUS_KEY);
             log::warning(path_cat, "Path build returned failure status: {}", status);
+            path->EnterState(path::FAILED);
           }
         }
         catch (const std::exception& e)
         {
-          log::warning(path_cat, "Failed parsing path build response.");
+          log::warning(path_cat, "Exception caught parsing path build response: {}", e.what());
         }
-
-        // TODO: inform failure (what this means needs revisiting, badly)
-        path->EnterState(path::ePathFailed);
       };
 
       if (not router->send_control_message(
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
         log::warning(path_cat, "Error sending path_build control message");
-        // TODO: inform failure (what this means needs revisiting, badly)
-        path->EnterState(path::ePathFailed, router->now());
+        path->EnterState(path::FAILED, router->now());
       }
     }
 

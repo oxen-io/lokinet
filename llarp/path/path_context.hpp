@@ -122,7 +122,7 @@ namespace llarp::path
 
     /// current number of paths we created in status
     uint64_t
-    CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
+    CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ESTABLISHED);
 
     Router*
     router() const

@@ -214,7 +214,7 @@ namespace llarp::exit
   BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p, const PathID_t& path, uint64_t s)
   {
     llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
-    p->EnterState(path::ePathIgnore, router->now());
+    p->EnterState(path::IGNORE, router->now());
     return true;
   }
 
@@ -238,7 +238,7 @@ namespace llarp::exit
   {
     if (BuildCooldownHit(now))
       return false;
-    if (IsReady() and NumInStatus(path::ePathBuilding) < numDesiredPaths)
+    if (IsReady() and NumInStatus(path::BUILDING) < numDesiredPaths)
       return path::Builder::UrgentBuild(now);
     return false;
   }

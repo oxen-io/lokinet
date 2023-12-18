@@ -24,6 +24,11 @@ namespace llarp
   using bstring = std::basic_string<std::byte>;
   using bstring_view = std::basic_string_view<std::byte>;
 
+  inline ustring operator""_us(const char* str, size_t len) noexcept
+  {
+    return {reinterpret_cast<const unsigned char*>(str), len};
+  }
+
   // Helper function to switch between string_view and ustring_view
   inline ustring_view
   to_usv(std::string_view v)
