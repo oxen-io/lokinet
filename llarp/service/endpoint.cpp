@@ -299,7 +299,7 @@ namespace llarp::service
     // expire convotags
     EndpointUtil::ExpireConvoSessions(now, Sessions());
 
-    if (NumInStatus(path::ePathEstablished) > 1)
+    if (NumInStatus(path::ESTABLISHED) > 1)
     {
       for (const auto& item : _startup_ons_mappings)
       {
@@ -1539,7 +1539,7 @@ namespace llarp::service
     if (BuildCooldownHit(now))
       return false;
     const auto requiredPaths = std::max(numDesiredPaths, path::MIN_INTRO_PATHS);
-    if (NumInStatus(path::ePathBuilding) >= requiredPaths)
+    if (NumInStatus(path::BUILDING) >= requiredPaths)
       return false;
     return NumPathsExistingAt(now + (path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
         < requiredPaths;

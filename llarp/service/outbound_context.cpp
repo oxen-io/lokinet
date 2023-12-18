@@ -143,7 +143,7 @@ namespace llarp::service
     {
       // ignore new path if we are marked dead
       LogInfo(Name(), " marked bad, ignoring new path");
-      p->EnterState(path::ePathIgnore, Now());
+      p->EnterState(path::IGNORE, Now());
     }
     else if (p->Endpoint() == next_intro.router)
     {
@@ -375,7 +375,7 @@ namespace llarp::service
     if (marked_bad or path::Builder::BuildCooldownHit(now))
       return false;
 
-    if (NumInStatus(path::ePathBuilding) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
+    if (NumInStatus(path::BUILDING) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
       return false;
 
     size_t numValidPaths = 0;

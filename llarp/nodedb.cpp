@@ -369,21 +369,21 @@ namespace llarp
         src,
         FetchRCMessage::serialize(_router.last_rc_fetch, needed),
         [this, src, initial](oxen::quic::message m) mutable {
-          if (not m)
+          if (m.timed_out)
           {
-            log::info(logcat, "RC fetch to {} failed!", src);
-            fetch_rcs_result(initial, true);
+            log::info(logcat, "RC fetch to {} timed out!", src);
+            fetch_rcs_result(initial, m.timed_out);
             return;
           }
           try
           {
             oxenc::bt_dict_consumer btdc{m.body()};
-            // TODO: fix this shit after removing ::timed_out from message type
-            if (not m)
+            // TODO: can this just combine with the above failure case...?
+            if (m.is_error())
             {
               auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
               log::info(logcat, "RC fetch to {} returned error: {}", src, reason);
-              fetch_rcs_result(initial, true);
+              fetch_rcs_result(initial, m.is_error());
               return;
             }
 
@@ -438,9 +438,11 @@ namespace llarp
           src,
           FetchRIDMessage::serialize(target),
           [this, src, target, initial](oxen::quic::message m) mutable {
-            if (not m)
+            if (m.is_error())
             {
-              log::info(link_cat, "RID fetch from {} via {} timed out", src, target);
+              auto err = "RID fetch from {} via {} {}"_format(
+                  src, target, m.timed_out ? "timed out" : "failed");
+              log::info(link_cat, err);
               ingest_rid_fetch_responses(target);
               fetch_rids_result(initial);
               return;
@@ -796,15 +798,18 @@ namespace llarp
     _registered_routers.insert(greylist.begin(), greylist.end());
     _registered_routers.insert(greenlist.begin(), greenlist.end());
 
-    router_whitelist.clear();
-    router_whitelist.insert(whitelist.begin(), whitelist.end());
-    router_greylist.clear();
-    router_greylist.insert(greylist.begin(), greylist.end());
-    router_greenlist.clear();
-    router_greenlist.insert(greenlist.begin(), greenlist.end());
+    _router_whitelist.clear();
+    _router_whitelist.insert(whitelist.begin(), whitelist.end());
+    _router_greylist.clear();
+    _router_greylist.insert(greylist.begin(), greylist.end());
+    _router_greenlist.clear();
+    _router_greenlist.insert(greenlist.begin(), greenlist.end());
 
     log::critical(
-        logcat, "Service node whitelist now has {} active router RIDs", router_whitelist.size());
+        logcat,
+        "Oxend provided {}:{} (whitelist:registered)",
+        _router_whitelist.size(),
+        _registered_routers.size());
   }
 
   std::optional<RouterID>
@@ -812,7 +817,7 @@ namespace llarp
   {
     std::optional<RouterID> rand = std::nullopt;
 
-    std::sample(router_whitelist.begin(), router_whitelist.end(), &*rand, 1, csrng);
+    std::sample(_router_whitelist.begin(), _router_whitelist.end(), &*rand, 1, csrng);
     return rand;
   }
 
@@ -826,7 +831,7 @@ namespace llarp
         return false;
     }
 
-    return known_rids.count(remote) or router_greylist.count(remote);
+    return known_rids.count(remote) or _router_greylist.count(remote);
   }
 
   bool

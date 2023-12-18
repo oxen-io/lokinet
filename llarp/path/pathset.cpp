@@ -13,10 +13,10 @@ namespace llarp::path
   PathSet::ShouldBuildMore(llarp_time_t now) const
   {
     (void)now;
-    const auto building = NumInStatus(ePathBuilding);
+    const auto building = NumInStatus(BUILDING);
     if (building >= numDesiredPaths)
       return false;
-    const auto established = NumInStatus(ePathEstablished);
+    const auto established = NumInStatus(ESTABLISHED);
     return established < numDesiredPaths;
   }
 
@@ -255,7 +255,7 @@ namespace llarp::path
     auto itr = m_Paths.begin();
     while (itr != m_Paths.end())
     {
-      if (itr->second->Status() == ePathEstablished && itr->second->SupportsAnyRoles(roles))
+      if (itr->second->Status() == ESTABLISHED && itr->second->SupportsAnyRoles(roles))
         ++count;
       ++itr;
     }

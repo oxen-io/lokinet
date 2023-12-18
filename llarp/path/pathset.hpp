@@ -47,12 +47,12 @@ namespace llarp
     /// status of a path
     enum PathStatus
     {
-      ePathBuilding,
-      ePathEstablished,
-      ePathTimeout,
-      ePathFailed,
-      ePathIgnore,
-      ePathExpired
+      BUILDING,
+      ESTABLISHED,
+      TIMEOUT,
+      FAILED,
+      IGNORE,
+      EXPIRED
     };
 
     /// Stats about all our path builds

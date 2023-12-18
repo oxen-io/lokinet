@@ -9,15 +9,14 @@ namespace llarp
   namespace GossipRCMessage
   {
     inline static std::string
-    serialize(const RouterID& gossip_src, const RouterID& last_sender, std::string rc)
+    serialize(const RouterID& last_sender, const RemoteRC& rc)
     {
       oxenc::bt_dict_producer btdp;
 
       try
       {
-        btdp.append_encoded("rc", rc);
+        btdp.append_encoded("rc", rc.view());
         btdp.append("sender", last_sender.ToView());
-        btdp.append("src", gossip_src.ToView());
       }
       catch (...)
       {

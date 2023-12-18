@@ -34,9 +34,23 @@ namespace llarp
   using stream_closed_hook = oxen::quic::stream_close_callback;
 
   using keep_alive = oxen::quic::opt::keep_alive;
+  using inbound_alpns = oxen::quic::opt::inbound_alpns;
+  using outbound_alpns = oxen::quic::opt::outbound_alpns;
 
   inline const keep_alive ROUTER_KEEP_ALIVE{10s};
   inline const keep_alive CLIENT_KEEP_ALIVE{0s};
+
+  namespace alpns
+  {
+    inline const auto SN_ALPNS = "SERVICE_NODE"_us;
+    inline const auto C_ALPNS = "CLIENT"_us;
+
+    inline const inbound_alpns SERVICE_INBOUND{{SN_ALPNS, C_ALPNS}};
+    inline const outbound_alpns SERVICE_OUTBOUND{{SN_ALPNS}};
+
+    inline const inbound_alpns CLIENT_INBOUND{};
+    inline const outbound_alpns CLIENT_OUTBOUND{{C_ALPNS}};
+  }  // namespace alpns
 
   namespace link
   {
@@ -44,17 +58,18 @@ namespace llarp
 
     struct Endpoint
     {
-      Endpoint(std::shared_ptr<oxen::quic::Endpoint> ep, LinkManager& lm)
-          : endpoint{std::move(ep)}, link_manager{lm}
-      {}
+      Endpoint(std::shared_ptr<oxen::quic::Endpoint> ep, LinkManager& lm);
 
       std::shared_ptr<oxen::quic::Endpoint> endpoint;
       LinkManager& link_manager;
 
       // for outgoing packets, we route via RouterID; map RouterID->Connection
       // for incoming packets, we get a ConnectionID; map ConnectionID->RouterID
-      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> active_conns;
-      std::unordered_map<oxen::quic::ConnectionID, RouterID> connid_map;
+      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> service_conns;
+      std::unordered_map<oxen::quic::ConnectionID, RouterID> service_connid_map;
+
+      std::unordered_map<RouterID, std::shared_ptr<link::Connection>> client_conns;
+      std::unordered_map<oxen::quic::ConnectionID, RouterID> client_connid_map;
 
       // for pending connections, cleared in LinkManager::on_conn_open
       std::unordered_map<RouterID, std::shared_ptr<link::Connection>> pending_conns;
@@ -93,6 +108,7 @@ namespace llarp
       close_connection(RouterID rid);
 
      private:
+      const bool _is_service_node;
     };
   }  // namespace link
 
@@ -198,6 +214,8 @@ namespace llarp
 
     Router& _router;
 
+    const bool _is_service_node;
+
     // FIXME: Lokinet currently expects to be able to kill all network functionality before
     // finishing other shutdown things, including destroying this class, and that is all in
     // Network's destructor, so we need to be able to destroy it before this class.
@@ -228,7 +246,7 @@ namespace llarp
 
    public:
     const link::Endpoint&
-    endpoint()
+    endpoint() const
     {
       return ep;
     }
@@ -240,7 +258,7 @@ namespace llarp
     }
 
     void
-    gossip_rc(const RouterID& gossip_src, const RouterID& last_sender, std::string serialized_rc);
+    gossip_rc(const RouterID& last_sender, const RemoteRC& rc);
 
     void
     handle_gossip_rc(oxen::quic::message m);
@@ -429,7 +447,7 @@ namespace llarp
         // add to pending conns
         auto [itr, b] = pending_conns.emplace(rid, nullptr);
 
-        auto control_stream = conn_interface->template get_new_stream<oxen::quic::BTRequestStream>(
+        auto control_stream = conn_interface->template open_stream<oxen::quic::BTRequestStream>(
             [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
               log::warning(
                   logcat,
