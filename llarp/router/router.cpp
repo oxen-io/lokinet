@@ -847,7 +847,7 @@ namespace llarp
         _last_tick != 0s and delta > NETWORK_RESET_SKIP_INTERVAL)
     {
       // we detected a time skip into the futre, thaw the network
-      log::warning(logcat, "Timeskip of {} detected, resetting network state!", delta.count());
+      log::error(logcat, "Timeskip of {} detected, resetting network state!", delta.count());
       Thaw();
     }
 
@@ -877,28 +877,28 @@ namespace llarp
 
         last_rc_gossip = now_timepoint;
 
-        // TESTNET: 1 to 4 minutes before testnet gossip interval
-        auto random_delta =
+        // TESTNET: 1 to 5 minutes before testnet gossip interval
+        auto delta =
             std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
         // 1min to 5min before "stale time" is next gossip time
         // auto random_delta =
         //     std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
 
-        next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - random_delta;
+        next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - delta;
         // next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
 
       report_stats();
     }
 
-    if (needs_initial_fetch())
+    if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
+    {
+      node_db()->fallback_to_bootstrap();
+    }
+    else if (needs_initial_fetch())
     {
       if (not _config->bootstrap.seednode)
         node_db()->fetch_initial(is_service_node());
-    }
-    else if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
-    {
-      node_db()->fallback_to_bootstrap();
     }
     else if (not is_snode)
     {
@@ -918,13 +918,14 @@ namespace llarp
     }
 
     // remove RCs for nodes that are no longer allowed by network policy
-    node_db()->RemoveIf([&](const RemoteRC& rc) -> bool {
+    node_db()->remove_if([&](const RemoteRC& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
       if (is_bootstrap_node(rc.router_id()))
       {
         log::trace(logcat, "Not removing {}: is bootstrap node", rc.router_id());
         return false;
       }
+
       // if for some reason we stored an RC that isn't a valid router
       // purge this entry
       if (not rc.is_public_addressable())
@@ -932,12 +933,14 @@ namespace llarp
         log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
         return true;
       }
-      /// clear out a fully expired RC
+
+      // clear out a fully expired RC
       if (rc.is_expired(now))
       {
         log::debug(logcat, "Removing {}: RC is expired", rc.router_id());
         return true;
       }
+
       // clients have no notion of a whilelist
       // we short circuit logic here so we dont remove
       // routers that are not whitelisted for first hops
@@ -964,26 +967,6 @@ namespace llarp
       }
       return false;
     });
-
-    /* TODO: this behavior seems incorrect, but fixing it will require discussion
-     *
-    if (not is_snode or not whitelist_received)
-    {
-      // find all deregistered relays
-      std::unordered_set<RouterID> close_peers;
-
-      for_each_connection([this, &close_peers](link::Connection& conn) {
-        const auto& pk = conn.remote_rc.router_id();
-
-        if (conn.remote_is_relay and not _rc_lookup_handler.is_session_allowed(pk))
-          close_peers.insert(pk);
-      });
-
-      // mark peers as de-registered
-      for (auto& peer : close_peers)
-        _link_manager.close_connection(peer);
-    }
-    */
 
     _link_manager->check_persisting_conns(now);
 
@@ -1062,12 +1045,6 @@ namespace llarp
 
     // update tick timestamp
     _last_tick = llarp::time_now_ms();
-  }
-
-  bool
-  Router::GetRandomConnectedRouter(RemoteRC& result) const
-  {
-    return _link_manager->get_random_connected(result);
   }
 
   const std::set<RouterID>&
@@ -1322,12 +1299,6 @@ namespace llarp
     _exit_context.stop();
 
     _loop->call_later(200ms, [this] { AfterStopIssued(); });
-  }
-
-  bool
-  Router::HasSessionTo(const RouterID& remote) const
-  {
-    return _link_manager->have_connection_to(remote);
   }
 
   std::string

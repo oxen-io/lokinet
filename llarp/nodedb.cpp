@@ -287,7 +287,7 @@ namespace llarp
 
     const auto fetch_threshold = (double)union_size / num_received;
 
-    /** We are checking 2, potentially 3 things here:
+    /** We are checking 2 things here:
         1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
            This tells us how well the rid source's sets of rids "agree" with one another
         2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
@@ -790,6 +790,13 @@ namespace llarp
       const std::vector<RouterID>& greylist,
       const std::vector<RouterID>& greenlist)
   {
+    log::critical(
+        logcat,
+        "Oxend provided {}/{}/{} (white/gray/green) routers",
+        whitelist.size(),
+        greylist.size(),
+        greenlist.size());
+
     if (whitelist.empty())
       return;
 
@@ -807,7 +814,7 @@ namespace llarp
 
     log::critical(
         logcat,
-        "Oxend provided {}:{} (whitelist:registered)",
+        "Service node holding {}:{} (whitelist:registered) after oxend integration",
         _router_whitelist.size(),
         _registered_routers.size());
   }
@@ -1039,7 +1046,7 @@ namespace llarp
       RemoteRC rc{};
       const llarp::dht::XorMetric compare(location);
 
-      VisitAll([&rc, compare](const auto& otherRC) {
+      visit_all([&rc, compare](const auto& otherRC) {
         const auto& rid = rc.router_id();
 
         if (rid.IsZero() || compare(dht::Key_t{otherRC.router_id()}, dht::Key_t{rid}))
