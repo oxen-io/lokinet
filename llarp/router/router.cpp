@@ -764,6 +764,9 @@ namespace llarp
           out,
           num_client_connections(),
           router_contact.time_to_expiry(now));
+
+      if (num_router_connections() >= _node_db->num_rcs())
+        log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
     }
     else
     {
@@ -780,6 +783,8 @@ namespace llarp
       log::info(logcat, "Last reported stats time {}", now - _last_stats_report);
 
     _last_stats_report = now;
+
+    oxen::log::flush();
   }
 
   std::string
@@ -880,15 +885,11 @@ namespace llarp
         // TESTNET: 1 to 5 minutes before testnet gossip interval
         auto delta =
             std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
-        // 1min to 5min before "stale time" is next gossip time
-        // auto random_delta =
-        //     std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
 
         next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - delta;
-        // next_rc_gossip = now_timepoint + RouterContact::STALE_AGE - random_delta;
       }
 
-      report_stats();
+      // report_stats();
     }
 
     if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
@@ -1008,8 +1009,6 @@ namespace llarp
             FULL_MESH_ITERATION);
         _link_manager->connect_to_random(FULL_MESH_ITERATION);
       }
-      else
-        log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
     }
     else
     {
@@ -1128,8 +1127,6 @@ namespace llarp
     log::info(logcat, "Loading NodeDB from disk...");
     _node_db->load_from_disk();
     _node_db->store_bootstraps();
-
-    oxen::log::flush();
 
     log::info(logcat, "Creating Introset Contacts...");
     _contacts = std::make_unique<Contacts>(*this);

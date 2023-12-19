@@ -59,7 +59,7 @@ namespace llarp
   // how big of a time skip before we reset network state
   inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
 
-  inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{1h};
+  inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{10s};
 
   inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
 
