@@ -3,9 +3,10 @@
 namespace llarp::link
 {
   Connection::Connection(
-      const std::shared_ptr<oxen::quic::connection_interface>& c,
-      std::shared_ptr<oxen::quic::BTRequestStream>& s)
-      : conn{c}, control_stream{s}, inbound{conn->is_inbound()}
+      std::shared_ptr<oxen::quic::connection_interface> c,
+      std::shared_ptr<oxen::quic::BTRequestStream> s,
+      bool is_relay)
+      : conn{std::move(c)}, control_stream{std::move(s)}, remote_is_relay{is_relay}
   {}
 
 }  // namespace llarp::link

@@ -540,12 +540,6 @@ namespace llarp
     size_t
     num_client_connections() const;
 
-    bool
-    GetRandomConnectedRouter(RemoteRC& result) const;
-
-    bool
-    HasSessionTo(const RouterID& remote) const;
-
     std::string
     ShortName() const;
 

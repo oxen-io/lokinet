@@ -481,7 +481,7 @@ namespace llarp
     /// visit all known_rcs
     template <typename Visit>
     void
-    VisitAll(Visit visit) const
+    visit_all(Visit visit) const
     {
       _router.loop()->call([this, visit]() {
         for (const auto& item : known_rcs)
@@ -496,7 +496,7 @@ namespace llarp
     /// remove an entry given a filter that inspects the rc
     template <typename Filter>
     void
-    RemoveIf(Filter visit)
+    remove_if(Filter visit)
     {
       _router.loop()->call([this, visit]() {
         std::unordered_set<RouterID> removed;

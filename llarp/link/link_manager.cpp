@@ -28,13 +28,10 @@ namespace llarp
     {}
 
     std::shared_ptr<link::Connection>
-    Endpoint::get_conn(const RemoteRC& rc) const
+    Endpoint::get_service_conn(const RouterID& rid) const
     {
-      if (auto itr = service_conns.find(rc.router_id()); itr != service_conns.end())
+      if (auto itr = service_conns.find(rid); itr != service_conns.end())
         return itr->second;
-
-      // if (auto itr = pending_conns.find(rc.router_id()); itr != pending_conns.end())
-      //   return itr->second;
 
       return nullptr;
     }
@@ -45,32 +42,31 @@ namespace llarp
       if (auto itr = service_conns.find(rid); itr != service_conns.end())
         return itr->second;
 
-      // if (auto itr = pending_conns.find(rid); itr != pending_conns.end())
-      //   return itr->second;
+      if (_is_service_node)
+      {
+        if (auto itr = client_conns.find(rid); itr != client_conns.end())
+          return itr->second;
+      }
 
       return nullptr;
     }
 
     bool
-    Endpoint::have_client_conn(const RouterID& remote) const
+    Endpoint::have_conn(const RouterID& remote) const
     {
-      if (auto itr = service_conns.find(remote); itr != service_conns.end())
-      {
-        return not itr->second->remote_is_relay;
-      }
-
-      if (auto itr = pending_conns.find(remote); itr != pending_conns.end())
-      {
-        return not itr->second->remote_is_relay;
-      }
-
-      return false;
+      return have_service_conn(remote) or have_client_conn(remote);
     }
 
     bool
-    Endpoint::have_conn(const RouterID& remote) const
+    Endpoint::have_client_conn(const RouterID& remote) const
     {
-      return service_conns.count(remote) or pending_conns.count(remote);
+      return client_conns.count(remote);
+    }
+
+    bool
+    Endpoint::have_service_conn(const RouterID& remote) const
+    {
+      return service_conns.count(remote);
     }
 
     std::pair<size_t, size_t>
@@ -80,7 +76,15 @@ namespace llarp
 
       for (const auto& c : service_conns)
       {
-        if (c.second->inbound)
+        if (c.second->is_inbound())
+          ++in;
+        else
+          ++out;
+      }
+
+      for (const auto& c : client_conns)
+      {
+        if (c.second->is_inbound())
           ++in;
         else
           ++out;
@@ -92,38 +96,7 @@ namespace llarp
     size_t
     Endpoint::num_connected(bool clients_only) const
     {
-      size_t count = 0;
-
-      for (const auto& c : service_conns)
-      {
-        if (not(c.second->remote_is_relay and clients_only))
-          count += 1;
-      }
-
-      return count;
-    }
-
-    bool
-    Endpoint::get_random_connection(RemoteRC& router) const
-    {
-      if (const auto size = service_conns.size(); size)
-      {
-        auto itr = service_conns.begin();
-        std::advance(itr, randint() % size);
-
-        RouterID rid{itr->second->conn->remote_key()};
-
-        if (auto maybe = link_manager.node_db->get_rc(rid))
-        {
-          router = *maybe;
-          return true;
-        }
-
-        return false;
-      }
-
-      log::warning(quic_cat, "Error: failed to fetch random connection");
-      return false;
+      return clients_only ? client_conns.size() : client_conns.size() + service_conns.size();
     }
 
     void
@@ -131,27 +104,35 @@ namespace llarp
     {
       for (const auto& [rid, conn] : service_conns)
         func(*conn);
+
+      if (_is_service_node)
+      {
+        for (const auto& [rid, conn] : client_conns)
+          func(*conn);
+      }
     }
 
     void
     Endpoint::close_connection(RouterID _rid)
     {
-      // assert(link_manager._router.loop()->inEventLoop());
       link_manager._router.loop()->call([this, rid = _rid]() {
-        // deletion from pending_conns, pending_conn_msg_queue, active_conns, etc is taken care
-        // of by LinkManager::on_conn_closed
         if (auto itr = service_conns.find(rid); itr != service_conns.end())
         {
+          log::critical(logcat, "Closing connection to relay RID:{}", rid);
           auto& conn = *itr->second->conn;
           conn.close_connection();
         }
-        else if (auto itr = pending_conns.find(rid); itr != pending_conns.end())
+        else if (_is_service_node)
         {
-          auto& conn = *itr->second->conn;
-          conn.close_connection();
+          if (auto itr = client_conns.find(rid); itr != client_conns.end())
+          {
+            log::critical(logcat, "Closing connection to client RID:{}", rid);
+            auto& conn = *itr->second->conn;
+            conn.close_connection();
+          }
         }
         else
-          return;
+          log::critical(logcat, "Could not find connection to RID:{} to close!", rid);
       });
     }
   }  // namespace link
@@ -169,9 +150,9 @@ namespace llarp
 
   void
   LinkManager::register_commands(
-      std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id)
+      std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id, bool)
   {
-    log::critical(logcat, "{} called", __PRETTY_FUNCTION__);
+    log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
     s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
@@ -240,7 +221,7 @@ namespace llarp
             - bt stream construction contains a stream close callback that shuts down the connection
               if the btstream closes unexpectedly
     */
-    auto ep = quic->endpoint(
+    auto e = quic->endpoint(
         _router.listen_addr(),
         [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
         [this](oxen::quic::connection_interface& ci, uint64_t ec) {
@@ -250,18 +231,20 @@ namespace llarp
         is_service_node() ? alpns::SERVICE_INBOUND : alpns::CLIENT_INBOUND,
         is_service_node() ? alpns::SERVICE_OUTBOUND : alpns::CLIENT_OUTBOUND);
 
+    // While only service nodes accept inbound connections, clients must have this key verify
+    // callback set. It will reject any attempted inbound connection to a lokinet client prior to
+    // handshake completion
     tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view& alpn) {
-      auto is_snode = is_service_node();
-
       RouterID other{key.data()};
-
       auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
+      auto is_snode = is_service_node();
 
       if (is_snode)
       {
         if (alpn == alpns::C_ALPNS)
         {
           log::critical(logcat, "{} node accepting client connection (remote ID:{})!", us, other);
+          ep.client_conns.emplace(other, nullptr);
           return true;
         }
         if (alpn == alpns::SN_ALPNS)
@@ -271,10 +254,14 @@ namespace llarp
 
           log::critical(
               logcat,
-              "{} node was {} to confirm remote (RID:{}) is registered; allowing connection!",
+              "{} node was {} to confirm remote (RID:{}) is registered; {} connection!",
               us,
               result ? "able" : "unable",
-              other);
+              other,
+              result ? "allowing" : "rejecting");
+
+          if (result)
+            ep.service_conns.emplace(other, nullptr);
 
           return result;
         }
@@ -283,81 +270,76 @@ namespace llarp
         return false;
       }
 
+      // TESTNET: change this to an error message later; just because someone tries to erroneously
+      // connect to a local lokinet client doesn't mean we should kill the program?
       throw std::runtime_error{"Clients should not be validating inbound connections!"};
     });
     if (_router.is_service_node())
     {
-      ep->listen(tls_creds, ROUTER_KEEP_ALIVE);
+      e->listen(tls_creds, ROUTER_KEEP_ALIVE);
     }
-    return ep;
+    return e;
+  }
+
+  std::shared_ptr<oxen::quic::BTRequestStream>
+  LinkManager::make_control(oxen::quic::connection_interface& ci, const RouterID& rid)
+  {
+    auto control_stream = ci.queue_incoming_stream<oxen::quic::BTRequestStream>(
+        [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
+          log::warning(
+              logcat,
+              "BTRequestStream closed unexpectedly (ec:{}); closing inbound connection...",
+              error_code);
+          ep.close_connection(rid);
+        });
+
+    log::critical(logcat, "Queued BTStream to be opened (ID:{})", control_stream->stream_id());
+    assert(control_stream->stream_id() == 0);
+    register_commands(control_stream, rid);
+
+    return control_stream;
   }
 
   void
   LinkManager::on_inbound_conn(oxen::quic::connection_interface& ci)
   {
-    const auto& scid = ci.scid();
+    assert(_is_service_node);
     RouterID rid{ci.remote_key()};
-    ep.service_connid_map.emplace(scid, rid);
-    auto [itr, b] = ep.service_conns.emplace(rid, nullptr);
 
-    log::critical(logcat, "Queueing BTStream to be opened...");
+    if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
+    {
+      log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
+      it->second = std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid));
+    }
+    else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
+    {
+      log::critical(logcat, "Configuring inbound connection from client RID:{}", rid);
+      it->second =
+          std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid), false);
+    }
+    else
+    {
+      log::critical(
+          logcat,
+          "ERROR: connection accepted from RID:{} that was not logged in key verification!",
+          rid);
+    }
 
-    auto control_stream = ci.queue_incoming_stream<oxen::quic::BTRequestStream>(
-        [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
-          log::warning(
-              logcat,
-              "BTRequestStream closed unexpectedly (ec:{}); closing connection...",
-              error_code);
-          ep.close_connection(rid);
-        });
-
-    log::critical(logcat, "Queued BTStream to be opened ID:{}", control_stream->stream_id());
-    assert(control_stream->stream_id() == 0);
-    register_commands(control_stream, rid);
-
-    itr->second = std::make_shared<link::Connection>(ci.shared_from_this(), control_stream);
     log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
   }
 
-  // TODO: should we add routes here now that Router::SessionOpen is gone?
   void
-  LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
+  LinkManager::on_outbound_conn(oxen::quic::connection_interface& ci)
   {
-    _router.loop()->call([this, &conn_interface = ci]() {
-      const auto rid = RouterID{conn_interface.remote_key()};
-      const auto& remote = conn_interface.remote();
-      const auto& scid = conn_interface.scid();
+    RouterID rid{ci.remote_key()};
 
-      if (conn_interface.is_inbound())
-      {
-        log::critical(logcat, "Inbound connection fom {} (remote:{})", rid, remote);
-        on_inbound_conn(conn_interface);
-      }
-      else
-      {
-        log::critical(logcat, "Searching for RID:{} in pending conns...", rid);
+    if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
+    {
+      log::critical(logcat, "Fetched configured outbound connection to relay RID:{}", rid);
 
-        if (auto itr = ep.pending_conns.find(rid); itr != ep.pending_conns.end())
-        {
-          ep.service_connid_map.emplace(scid, rid);
-          auto [it, b] = ep.service_conns.emplace(rid, nullptr);
-          it->second = std::move(itr->second);
-          ep.pending_conns.erase(itr);
+      auto& conn = it->second->conn;
+      auto& str = it->second->control_stream;
 
-          log::critical(logcat, "Connection to RID:{} moved from pending to active conns!", rid);
-        }
-        else
-          throw std::runtime_error{"Could not find newly established connection in pending conns!"};
-      }
-
-      log::critical(
-          logcat,
-          "SERVICE NODE (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-          _router.local_rid(),
-          rid);
-
-      // check to see if this connection was established while we were attempting to queue
-      // messages to the remote
       if (auto itr = pending_conn_msg_queue.find(rid); itr != pending_conn_msg_queue.end())
       {
         log::critical(logcat, "Clearing pending queue for RID:{}", rid);
@@ -370,12 +352,12 @@ namespace llarp
           if (msg.is_control)
           {
             log::critical(logcat, "Dispatching {} request!", *msg.endpoint);
-            ep.service_conns[rid]->control_stream->command(
-                std::move(*msg.endpoint), std::move(msg.body), std::move(msg.func));
+            str->command(std::move(*msg.endpoint), std::move(msg.body), std::move(msg.func));
           }
           else
           {
-            conn_interface.send_datagram(std::move(msg.body));
+            log::critical(logcat, "DIspatching data message: {}", msg.body);
+            conn->send_datagram(std::move(msg.body));
           }
 
           que.pop_front();
@@ -383,6 +365,40 @@ namespace llarp
       }
 
       log::warning(logcat, "Pending queue empty for RID:{}", rid);
+    }
+    else
+    {
+      log::critical(
+          logcat,
+          "ERROR: connection established to RID:{} that was not logged in key verifrication!",
+          rid);
+    }
+  }
+
+  // TODO: should we add routes here now that Router::SessionOpen is gone?
+  void
+  LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
+  {
+    _router.loop()->call([this, &conn_interface = ci]() {
+      const auto rid = RouterID{conn_interface.remote_key()};
+      const auto& remote = conn_interface.remote();
+
+      if (conn_interface.is_inbound())
+      {
+        log::critical(logcat, "Inbound connection fom {} (remote:{})", rid, remote);
+        on_inbound_conn(conn_interface);
+      }
+      else
+      {
+        log::critical(logcat, "Outbound connection fom {} (remote:{})", rid, remote);
+        on_outbound_conn(conn_interface);
+      }
+
+      log::critical(
+          logcat,
+          "SERVICE NODE (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
+          _router.local_rid(),
+          rid);
     });
   };
 
@@ -390,33 +406,22 @@ namespace llarp
   LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
   {
     _router.loop()->call(
-        [this, scid = ci.scid(), _rid = RouterID{ci.remote_key()}, error_code = ec]() {
-          log::critical(quic_cat, "Purging quic connection CID:{} (ec: {})", scid, error_code);
+        [this, scid = ci.scid(), rid = RouterID{ci.remote_key()}, error_code = ec]() {
+          log::critical(quic_cat, "Purging quic connection CID:{} (ec:{})", scid, error_code);
 
-          // a pending connection would not be in the connid_map
-          if (auto v_itr = ep.pending_conns.find(_rid); v_itr != ep.pending_conns.end())
+          // in case this didn't clear earlier, do it now
+          if (auto p_itr = pending_conn_msg_queue.find(rid); p_itr != pending_conn_msg_queue.end())
+            pending_conn_msg_queue.erase(p_itr);
+
+          if (auto s_itr = ep.service_conns.find(rid); s_itr != ep.service_conns.end())
           {
-            ep.pending_conns.erase(v_itr);
-
-            // in case this didn't clear earlier, do it now
-            if (auto p_itr = pending_conn_msg_queue.find(_rid);
-                p_itr != pending_conn_msg_queue.end())
-              pending_conn_msg_queue.erase(p_itr);
-
-            log::critical(quic_cat, "Pending quic connection CID:{} purged successfully", scid);
+            log::critical(quic_cat, "Quic connection to relay RID:{} purged successfully", rid);
+            ep.service_conns.erase(s_itr);
           }
-          else if (const auto& c_itr = ep.service_connid_map.find(scid);
-                   c_itr != ep.service_connid_map.end())
+          else if (auto c_itr = ep.client_conns.find(rid); c_itr != ep.client_conns.end())
           {
-            const auto& rid = c_itr->second;
-            assert(_rid == rid);  // this should hold true
-
-            if (auto m_itr = ep.service_conns.find(rid); m_itr != ep.service_conns.end())
-              ep.service_conns.erase(m_itr);
-
-            ep.service_connid_map.erase(c_itr);
-
-            log::critical(quic_cat, "Quic connection CID:{} purged successfully", scid);
+            log::critical(quic_cat, "Quic connection to client RID:{} purged successfully", rid);
+            ep.client_conns.erase(c_itr);
           }
           else
             log::critical(quic_cat, "Nothing to purge for quic connection CID:{}", scid);
@@ -466,19 +471,15 @@ namespace llarp
                           f = std::move(func)]() {
       auto pending = PendingMessage(std::move(body), std::move(endpoint), std::move(f));
 
-      if (auto it1 = ep.pending_conns.find(remote); it1 != ep.pending_conns.end())
+      if (auto it = pending_conn_msg_queue.find(remote); it != pending_conn_msg_queue.end())
       {
-        if (auto it2 = pending_conn_msg_queue.find(remote); it2 != pending_conn_msg_queue.end())
-        {
-          it2->second.push_back(std::move(pending));
-          log::critical(
-              logcat, "Connection (RID:{}) is pending; message appended to send queue!", remote);
-        }
+        it->second.push_back(std::move(pending));
+        log::critical(
+            logcat, "Connection to RID:{} is pending; message appended to send queue!", remote);
       }
       else
       {
-        log::critical(
-            logcat, "Connection (RID:{}) not found in pending conns; creating send queue!", remote);
+        log::critical(logcat, "Connection to RID:{} is pending; creating send queue!", remote);
         auto [itr, b] = pending_conn_msg_queue.emplace(remote, MessageQueue());
         itr->second.push_back(std::move(pending));
         connect_to(remote);
@@ -494,7 +495,7 @@ namespace llarp
     if (is_stopping)
       return false;
 
-    if (auto conn = ep.get_conn(remote); conn)
+    if (auto conn = ep.get_service_conn(remote); conn)
     {
       conn->conn->send_datagram(std::move(body));
       return true;
@@ -539,13 +540,12 @@ namespace llarp
       log::warning(quic_cat, "Could not find RouterContact for connection to rid:{}", rid);
   }
 
-  // This function assumes the RC has already had its signature verified and connection is allowed.
   void
   LinkManager::connect_to(const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
   {
     const auto& rid = rc.router_id();
 
-    if (ep.have_conn(rid))
+    if (ep.have_service_conn(rid))
     {
       log::warning(logcat, "We already have a connection to {}!", rid);
       // TODO: should implement some connection failed logic, but not the same logic that
@@ -574,6 +574,12 @@ namespace llarp
   LinkManager::have_connection_to(const RouterID& remote) const
   {
     return ep.have_conn(remote);
+  }
+
+  bool
+  LinkManager::have_service_connection_to(const RouterID& remote) const
+  {
+    return ep.have_service_conn(remote);
   }
 
   bool
@@ -629,12 +635,6 @@ namespace llarp
   }
 
   bool
-  LinkManager::get_random_connected(RemoteRC& router) const
-  {
-    return ep.get_random_connection(router);
-  }
-
-  bool
   LinkManager::is_service_node() const
   {
     return _is_service_node;
@@ -666,10 +666,10 @@ namespace llarp
   LinkManager::connect_to_random(int num_conns, bool client_only)
   {
     auto filter = [this, client_only](const RemoteRC& rc) -> bool {
-      auto res =
-          client_only ? not ep.have_client_conn(rc.router_id()) : not ep.have_conn(rc.router_id());
+      const auto& rid = rc.router_id();
+      auto res = client_only ? not ep.have_client_conn(rid) : not ep.have_conn(rid);
 
-      log::debug(logcat, "RID:{} {}", rc.router_id(), res ? "ACCEPTED" : "REJECTED");
+      log::debug(logcat, "RID:{} {}", rid, res ? "ACCEPTED" : "REJECTED");
 
       return res;
     };
@@ -766,17 +766,19 @@ namespace llarp
         };
       }
 
-      if (auto conn = ep.get_conn(source); conn)
+      const auto& rid = source.router_id();
+
+      if (auto conn = ep.get_service_conn(rid); conn)
       {
         conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(f));
         log::critical(logcat, "Dispatched bootstrap fetch request!");
         return;
       }
 
-      log::critical(logcat, "Queuing bootstrap fetch request to {}", source.router_id());
+      log::critical(logcat, "Queuing bootstrap fetch request to {}", rid);
       auto pending = PendingMessage(std::move(payload), "bfetch_rcs"s, std::move(f));
 
-      auto [itr, b] = pending_conn_msg_queue.emplace(source.router_id(), MessageQueue());
+      auto [itr, b] = pending_conn_msg_queue.emplace(rid, MessageQueue());
       itr->second.push_back(std::move(pending));
 
       connect_to(source);
