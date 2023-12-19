@@ -933,39 +933,24 @@ namespace llarp
 
     auto parse_addr_for_link = [net_ptr](const std::string& arg) {
       std::optional<oxen::quic::Address> maybe = std::nullopt;
-      std::string_view arg_v;
+      std::string_view arg_v{arg}, host;
+      uint16_t p{DEFAULT_LISTEN_PORT};
 
-      // explicitly provided value
-      if (not arg.empty())
+      if (auto pos = arg_v.find(':'); pos != arg_v.npos)
       {
-        arg_v = std::string_view{arg};
+        host = arg_v.substr(0, pos);
+
+        if (not llarp::parse_int<uint16_t>(arg_v.substr(pos + 1), p))
+          throw std::invalid_argument{"Failed to parse port in arg:{}"_format(arg)};
       }
 
-      if (arg_v[0] == ':')
-      {
-        uint16_t res;
-        if (auto rv = llarp::parse_int<uint16_t>(arg_v.substr(1), res); not rv)
-          res = DEFAULT_LISTEN_PORT;
+      if (host.empty())
+        maybe = net_ptr->get_best_public_address(true, p);
+      else
+        maybe = oxen::quic::Address{std::string{host}, p};
 
-        maybe = oxen::quic::Address{""s, res};
-      }
-      else if (auto pos = arg_v.find(':'); pos != arg_v.npos)
-      {
-        auto h = arg_v.substr(0, pos);
-        uint16_t p;
-        if (auto rv = llarp::parse_int<uint16_t>(arg_v.substr(pos + 1), p); not rv)
-          p = DEFAULT_LISTEN_PORT;
-
-        maybe = oxen::quic::Address{std::string{h}, p};
-
-        if (maybe->is_loopback())
-          throw std::invalid_argument{fmt::format("{} is a loopback address", arg)};
-      }
-      if (not maybe)
-        // infer public address
-        maybe = net_ptr->get_best_public_address(true, DEFAULT_LISTEN_PORT);
-      else if (maybe && maybe->port() == 0)
-        maybe->set_port(DEFAULT_LISTEN_PORT);
+      if (maybe and maybe->is_loopback())
+        throw std::invalid_argument{"{} is a loopback address"_format(arg)};
 
       return maybe;
     };
