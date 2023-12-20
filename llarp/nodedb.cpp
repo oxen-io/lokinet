@@ -653,12 +653,18 @@ namespace llarp
 
     log::critical(logcat, "Dispatching BootstrapRC fetch request to {}", fetch_source);
 
-    auto num_needed = _router.is_service_node() ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT
+    auto is_snode = _router.is_service_node();
+
+    auto num_needed = is_snode ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT
                                                 : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
-        BootstrapFetchMessage::serialize(_router.router_contact, num_needed),
+        BootstrapFetchMessage::serialize(
+            is_snode ?
+            std::make_optional(_router.router_contact) :
+            std::nullopt, 
+            num_needed),
         [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 

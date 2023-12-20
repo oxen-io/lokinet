@@ -792,14 +792,17 @@ namespace llarp
     assert(_router.is_service_node());
     log::critical(logcat, "Handling fetch bootstrap fetch request...");
 
-    RemoteRC remote;
+    std::optional<RemoteRC> remote;
     size_t quantity;
 
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-      btdc.required("local");
-      remote = RemoteRC{btdc.consume_dict_data()};
+      if (btdc.skip_until("local"))
+        remote.emplace(btdc.consume_dict_data());
+      
+      // btdc.required("local");
+      // remote = RemoteRC{btdc.consume_dict_data()};
       quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
@@ -808,26 +811,29 @@ namespace llarp
       m.respond(messages::ERROR_RESPONSE, true);
       return;
     }
-
-    auto is_seed = _router.is_bootstrap_seed();
-    auto& rid = remote.router_id();
-
-    // TODO: if we are not the seed, how do we check the requester
-    if (is_seed)
+    
+    if (remote)
     {
-      // we already insert the
-      auto& registered = node_db->registered_routers();
+      auto is_snode = _router.is_service_node();
+      auto& rid = remote->router_id();
 
-      if (auto itr = registered.find(rid); itr != registered.end())
+      if (is_snode)
       {
-        log::critical(
-            logcat,
-            "Bootstrap seed confirmed RID:{} is registered; approving fetch request and "
-            "saving RC!",
-            rid);
-        node_db->verify_gossip_bfetch_rc(remote);
+        // we already insert the
+        auto& registered = node_db->registered_routers();
+
+        if (auto itr = registered.find(rid); itr != registered.end())
+        {
+          log::critical(
+              logcat,
+              "Bootstrap node confirmed RID:{} is registered; approving fetch request and "
+              "saving RC!",
+              rid);
+          node_db->verify_gossip_bfetch_rc(*remote);
+        }
       }
     }
+
 
     auto& src = node_db->get_known_rcs();
     auto count = src.size();
