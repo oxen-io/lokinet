@@ -176,7 +176,7 @@ namespace llarp
     std::atomic<int> fetch_failures{0}, bootstrap_attempts{0};
 
     std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false},
-        _needs_initial_fetch{true}, _initial_completed{false};
+        _needs_initial_fetch{true}, _fetching_initial{false}, _initial_completed{false};
 
     bool
     want_rc(const RouterID& rid) const;
@@ -210,6 +210,18 @@ namespace llarp
 
     std::optional<RemoteRC>
     get_rc_by_rid(const RouterID& rid);
+
+    bool
+    is_initial_fetching() const
+    {
+      return _fetching_initial;
+    }
+
+    bool
+    initial_fetch_completed() const
+    {
+      return _initial_completed;
+    }
 
     bool
     needs_initial_fetch() const

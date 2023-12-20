@@ -336,6 +336,7 @@ namespace llarp
     }
     else
     {
+      _fetching_initial = true;
       // Set fetch source as random selection of known active client routers
       fetch_source = *std::next(known_rids.begin(), csrng() % known_rids.size());
       fetch_rcs(true);
@@ -357,13 +358,27 @@ namespace llarp
     std::vector<RouterID> needed;
     const auto now = time_point_now();
 
-    for (const auto& [rid, rc] : rc_lookup)
+    if (not initial)
     {
-      if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
-        needed.push_back(rid);
+      for (const auto& [rid, rc] : rc_lookup)
+      {
+        if (now - rc.timestamp() > RouterContact::OUTDATED_AGE)
+          needed.push_back(rid);
+      }
     }
 
     RouterID& src = fetch_source;
+    log::critical(
+        logcat,
+        "Sending{} FetchRCs request to {} for {} RCs",
+        initial ? " initial" : "",
+        src,
+        initial ? "all of the" : std::to_string(needed.size()));
+
+    if (initial)
+      _router.next_initial_fetch_attempt = now + INITIAL_ATTEMPT_INTERVAL;
+
+    _router.last_rc_fetch = now;
 
     _router.link_manager().fetch_rcs(
         src,
@@ -371,7 +386,7 @@ namespace llarp
         [this, src, initial](oxen::quic::message m) mutable {
           if (m.timed_out)
           {
-            log::info(logcat, "RC fetch to {} timed out!", src);
+            log::critical(logcat, "RC fetch to {} timed out!", src);
             fetch_rcs_result(initial, m.timed_out);
             return;
           }
@@ -382,7 +397,7 @@ namespace llarp
             if (m.is_error())
             {
               auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
-              log::info(logcat, "RC fetch to {} returned error: {}", src, reason);
+              log::critical(logcat, "RC fetch to {} returned error: {}", src, reason);
               fetch_rcs_result(initial, m.is_error());
               return;
             }
@@ -399,7 +414,7 @@ namespace llarp
           }
           catch (const std::exception& e)
           {
-            log::info(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
+            log::critical(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
             fetch_rcs_result(initial, true);
             return;
           }
@@ -431,9 +446,11 @@ namespace llarp
     fetch_counters.clear();
 
     RouterID& src = fetch_source;
+    _router.last_rid_fetch = llarp::time_point_now();
 
     for (const auto& target : rid_sources)
     {
+      log::critical(logcat, "Sending FetchRIDs request to {} via {}", target, src);
       _router.link_manager().fetch_router_ids(
           src,
           FetchRIDMessage::serialize(target),
@@ -442,7 +459,7 @@ namespace llarp
             {
               auto err = "RID fetch from {} via {} {}"_format(
                   src, target, m.timed_out ? "timed out" : "failed");
-              log::info(link_cat, err);
+              log::critical(link_cat, err);
               ingest_rid_fetch_responses(target);
               fetch_rids_result(initial);
               return;
@@ -469,7 +486,7 @@ namespace llarp
               {
                 if (s.size() != RouterID::SIZE)
                 {
-                  log::warning(
+                  log::critical(
                       link_cat, "RID fetch from {} via {} returned bad RouterID", target, src);
                   ingest_rid_fetch_responses(target);
                   fetch_rids_result(initial);
@@ -485,7 +502,7 @@ namespace llarp
             }
             catch (const std::exception& e)
             {
-              log::info(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
+              log::critical(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
               ingest_rid_fetch_responses(target);
               fetch_rids_result(initial);
             }
@@ -500,7 +517,7 @@ namespace llarp
     {
       if (++fetch_failures >= MAX_FETCH_ATTEMPTS)
       {
-        log::info(
+        log::critical(
             logcat,
             "RC fetching from {} reached failure threshold ({}); falling back to bootstrap...",
             fetch_source,
@@ -509,6 +526,9 @@ namespace llarp
         fallback_to_bootstrap();
         return;
       }
+
+      if (initial)
+        _needs_initial_fetch = true;
 
       // If we have passed the last last conditional, then it means we are not bootstrapping
       // and the current fetch_source has more attempts before being rotated. As a result, we
@@ -520,7 +540,7 @@ namespace llarp
     }
     else
     {
-      log::debug(logcat, "Successfully fetched RC's from {}", fetch_source);
+      log::critical(logcat, "Successfully fetched RC's from {}", fetch_source);
       post_fetch_rcs(initial);
     }
   }
@@ -530,7 +550,7 @@ namespace llarp
   {
     if (fetch_failures >= MAX_FETCH_ATTEMPTS)
     {
-      log::info(
+      log::critical(
           logcat,
           "Failed {} attempts to fetch RID's from {}; reverting to bootstrap...",
           MAX_FETCH_ATTEMPTS,
@@ -544,7 +564,7 @@ namespace llarp
 
     if (n_responses < RID_SOURCE_COUNT)
     {
-      log::debug(logcat, "Received {}/{} fetch RID requests", n_responses, RID_SOURCE_COUNT);
+      log::critical(logcat, "Received {}/{} fetch RID requests", n_responses, RID_SOURCE_COUNT);
       return;
     }
 
@@ -552,18 +572,18 @@ namespace llarp
 
     if (n_fails <= MAX_RID_ERRORS)
     {
-      log::debug(
+      log::critical(
           logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
 
       // this is where the trust model will do verification based on the similarity of the sets
       if (process_fetched_rids())
       {
-        log::debug(logcat, "Accumulated RID's accepted by trust model");
+        log::critical(logcat, "Accumulated RID's accepted by trust model");
         post_fetch_rids(initial);
         return;
       }
 
-      log::debug(
+      log::critical(
           logcat, "Accumulated RID's rejected by trust model, reselecting all RID sources...");
       reselect_router_id_sources(rid_sources);
       ++fetch_failures;
@@ -571,29 +591,24 @@ namespace llarp
     else
     {
       // we had 4 or more failed requests, so we will need to rotate our rid sources
-      log::debug(
+      log::critical(
           logcat, "RID fetching found {} failures; reselecting failed RID sources...", n_fails);
       ++fetch_failures;
       reselect_router_id_sources(fail_sources);
     }
 
-    fetch_rids(true);
+    fetch_rids(initial);
   }
 
+  // This function is only called after a successful FetchRC request
   void
   NodeDB::post_fetch_rcs(bool initial)
   {
-    _router.last_rc_fetch = llarp::time_point_now();
-
-    if (_router.is_service_node())
-    {
-      _needs_rebootstrap = false;
-      _needs_initial_fetch = false;
-      _using_bootstrap_fallback = false;
-      fail_sources.clear();
-      fetch_failures = 0;
-      return;
-    }
+    _needs_rebootstrap = false;
+    _needs_initial_fetch = false;
+    _using_bootstrap_fallback = false;
+    fail_sources.clear();
+    fetch_failures = 0;
 
     if (initial)
       fetch_rids(initial);
@@ -604,7 +619,6 @@ namespace llarp
   {
     fail_sources.clear();
     fetch_failures = 0;
-    _router.last_rid_fetch = llarp::time_point_now();
     fetch_counters.clear();
     _needs_rebootstrap = false;
     _using_bootstrap_fallback = false;
@@ -612,6 +626,7 @@ namespace llarp
     if (initial)
     {
       _needs_initial_fetch = false;
+      _fetching_initial = false;
       _initial_completed = true;
     }
   }
@@ -655,16 +670,13 @@ namespace llarp
 
     auto is_snode = _router.is_service_node();
 
-    auto num_needed = is_snode ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT
-                                                : CLIENT_BOOTSTRAP_SOURCE_COUNT;
+    auto num_needed =
+        is_snode ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
         BootstrapFetchMessage::serialize(
-            is_snode ?
-            std::make_optional(_router.router_contact) :
-            std::nullopt, 
-            num_needed),
+            is_snode ? std::make_optional(_router.router_contact) : std::nullopt, num_needed),
         [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
@@ -706,7 +718,6 @@ namespace llarp
                 bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS,
                 e.what());
-            log::critical(logcat, "DEBUG FIXME THIS IS WHAT I GOT: {}", oxenc::to_hex(m.body()));
             fallback_to_bootstrap();
             return;
           }
@@ -853,8 +864,11 @@ namespace llarp
       RemoteRC rc{};
 
       if (not rc.read(f) or rc.is_expired(now))
+      {
         // try loading it, purge it if it is junk or expired
         purge.push_back(f);
+        continue;
+      }
 
       const auto& rid = rc.router_id();
 

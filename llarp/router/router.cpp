@@ -391,6 +391,9 @@ namespace llarp
     else
       llarp::logRingBuffer = nullptr;
 
+    // TESTNET:
+    oxen::log::set_level("quic", oxen::log::Level::critical);
+
     log::debug(logcat, "Configuring router");
 
     _is_service_node = conf.router.is_relay;
@@ -417,9 +420,7 @@ namespace llarp
         logcat, _is_service_node ? "Running as a relay (service node)" : "Running as a client");
 
     if (_is_service_node)
-    {
       _rpc_client->ConnectAsync(rpc_addr);
-    }
 
     log::debug(logcat, "Initializing key manager");
     if (not _key_manager->initialize(conf, true, isSNode))
@@ -522,7 +523,7 @@ namespace llarp
   size_t
   Router::num_router_connections() const
   {
-    return _link_manager->get_num_connected();
+    return _link_manager->get_num_connected_routers();
   }
 
   size_t
@@ -661,35 +662,28 @@ namespace llarp
   {
     const auto now = llarp::time_now_ms();
 
-    if (is_service_node())
-    {
-      auto [in, out] = _link_manager->num_in_out();
+    auto [in, out] = _link_manager->num_in_out();
+    auto num_bootstraps = _node_db->num_bootstraps();
+    auto num_rids = _node_db->num_rids();
+    auto num_rcs = _node_db->num_rcs();
+    auto num_router_conns = num_router_connections();
 
-      log::critical(
-          logcat,
-          "Local Service Node has {} RCs, {} RIDs, {} bootstrap peers, {}:{} (inbound:outbound) "
-          "router "
-          "connections, and {} client connections since last RC update ({} to expiry)",
-          _node_db->num_rcs(),
-          _node_db->num_rids(),
-          _node_db->num_bootstraps(),
-          in,
-          out,
-          num_client_connections(),
-          router_contact.time_to_expiry(now));
+    log::critical(
+        logcat,
+        "Local {} has {} RCs, {} RIDs, {} bootstrap peers, {}:{} (inbound:outbound) "
+        "conns ({} router, {} client)",
+        is_service_node() ? "Service Node" : "Client",
+        num_rcs,
+        num_rids,
+        num_bootstraps,
+        in,
+        out,
+        num_router_conns,
+        num_client_connections());
 
-      if (num_router_connections() >= _node_db->num_rcs())
-        log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
-    }
-    else
+    if (is_service_node() and num_router_connections() >= num_rcs)
     {
-      log::critical(
-          logcat,
-          "{} RCs loaded with {} RIDs, {} bootstrap peers, and {} router connections!",
-          _node_db->num_rcs(),
-          _node_db->num_rids(),
-          _node_db->num_bootstraps(),
-          num_router_connections());
+      log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
     }
 
     if (_last_stats_report > 0s)
@@ -758,6 +752,16 @@ namespace llarp
     const bool is_snode = is_service_node();
     const bool is_decommed = appears_decommed();
 
+    const auto& local = local_rid();
+
+    if (is_snode and not node_db()->registered_routers().count(local))
+    {
+      log::critical(logcat, "We are NOT registered router, figure it out!");
+      // update tick timestamp
+      _last_tick = llarp::time_now_ms();
+      return;
+    }
+
     const auto now = llarp::time_now_ms();
     auto now_timepoint = std::chrono::system_clock::time_point(now);
 
@@ -801,20 +805,18 @@ namespace llarp
 
         next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - delta;
       }
-
-      // report_stats();
     }
 
     if (needs_rebootstrap() and now_timepoint > next_bootstrap_attempt)
     {
       node_db()->fallback_to_bootstrap();
     }
-    else if (needs_initial_fetch())
+    else if (needs_initial_fetch() and now_timepoint > next_initial_fetch_attempt)
     {
       if (not _config->bootstrap.seednode)
         node_db()->fetch_initial(is_service_node());
     }
-    else if (not is_snode)
+    else if (not is_snode and node_db()->initial_fetch_completed())
     {
       // (client-only) periodically fetch updated RCs
       if (now_timepoint - last_rc_fetch > RC_UPDATE_INTERVAL)
@@ -884,9 +886,8 @@ namespace llarp
 
     _link_manager->check_persisting_conns(now);
 
-    auto num_conns = num_router_connections();
-
-    const auto& num_rcs = node_db()->num_rcs();
+    auto num_router_conns = num_router_connections();
+    auto num_rcs = node_db()->num_rcs();
 
     if (is_snode)
     {
@@ -914,7 +915,7 @@ namespace llarp
         }
       }
 
-      if (num_conns < num_rcs)
+      if (num_router_conns < num_rcs)
       {
         log::critical(
             logcat,
@@ -925,7 +926,7 @@ namespace llarp
     }
     else
     {
-      size_t min_client_conns = _link_manager->client_router_connections;
+      size_t min_client_conns = MIN_CLIENT_ROUTER_CONNS;
       const auto& pinned_edges = _node_db->pinned_edges();
       const auto pinned_count = pinned_edges.size();
 
@@ -934,16 +935,18 @@ namespace llarp
 
       // if we need more sessions to routers and we are not a service node kicked from the network
       // or we are a client we shall connect out to others
-      if (num_conns < min_client_conns)
+      if (num_router_conns < min_client_conns)
       {
-        size_t needed = min_client_conns - num_conns;
+        size_t needed = min_client_conns - num_router_conns;
         log::critical(logcat, "Client connecting to {} random routers to keep alive", needed);
         _link_manager->connect_to_random(needed);
       }
       else
       {
-        _hidden_service_context.Tick(now);
-        _exit_context.Tick(now);
+        // log::critical(
+        //     logcat, "Client skipping hidden service exit tick or whatever the fuck that means");
+        // _hidden_service_context.Tick(now);
+        // _exit_context.Tick(now);
       }
     }
 

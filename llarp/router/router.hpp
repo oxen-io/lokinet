@@ -50,7 +50,8 @@ namespace llarp
 
   // TESTNET: these constants are shortened for testing purposes
   inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{10min};
-  inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{4min};
+  inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
+  inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
   // as we advance towards full mesh, we try to connect to this number per tick
   inline constexpr int FULL_MESH_ITERATION{1};
   inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
@@ -159,11 +160,10 @@ namespace llarp
     insufficient_peers() const;
 
    protected:
-    // bool _needs_initial_fetch{true};
-
     std::chrono::system_clock::time_point last_rc_gossip{
         std::chrono::system_clock::time_point::min()};
     std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
+    std::chrono::system_clock::time_point next_initial_fetch_attempt{last_rc_gossip};
     std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
     std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
     std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};

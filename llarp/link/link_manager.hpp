@@ -40,6 +40,9 @@ namespace llarp
   inline const keep_alive ROUTER_KEEP_ALIVE{10s};
   inline const keep_alive CLIENT_KEEP_ALIVE{10s};
 
+  inline constexpr int MIN_CLIENT_ROUTER_CONNS{4};
+  inline constexpr int MAX_CLIENT_ROUTER_CONNS{6};
+
   namespace alpns
   {
     inline const auto SN_ALPNS = "SERVICE_NODE"_us;
@@ -93,7 +96,10 @@ namespace llarp
       num_in_out() const;
 
       size_t
-      num_connected(bool clients_only) const;
+      num_client_conns() const;
+
+      size_t
+      num_router_conns() const;
 
       template <typename... Opt>
       bool
@@ -198,12 +204,6 @@ namespace llarp
 
     // holds any messages we attempt to send while connections are establishing
     std::unordered_map<RouterID, MessageQueue> pending_conn_msg_queue;
-    // when establishing a connection, the rid of the remote is placed here to be cross-
-    // checked by the tls verification callback
-    std::map<RouterID, RemoteRC> rids_pending_verification;
-    // in the interim of verifying an outbound connection and the creation of its link::Connection
-    // object, we store the rid and rc here
-    std::map<RouterID, RemoteRC> verified_rids;
 
     util::DecayingHashSet<RouterID> clients{path::DEFAULT_LIFETIME};
 
@@ -327,7 +327,7 @@ namespace llarp
     num_in_out() const;
 
     size_t
-    get_num_connected(bool clients_only = false) const;
+    get_num_connected_routers() const;
 
     size_t
     get_num_connected_clients() const;
@@ -434,18 +434,17 @@ namespace llarp
       try
       {
         const auto& rid = rc.router_id();
-        log::critical(logcat, "Establishing connection to RID:{}", rid);
+        const auto& is_snode = _is_service_node;
 
-        bool is_snode = link_manager.is_service_node();
+        log::critical(logcat, "Establishing connection to RID:{}", rid);
+        // add to service conns
+        auto [itr, b] = service_conns.emplace(rid, nullptr);
 
         auto conn_interface = endpoint->connect(
             remote,
             link_manager.tls_creds,
             is_snode ? ROUTER_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
             std::forward<Opt>(opts)...);
-
-        // add to service conns
-        auto [itr, b] = service_conns.emplace(rid, nullptr);
 
         auto control_stream = conn_interface->template open_stream<oxen::quic::BTRequestStream>(
             [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
@@ -456,8 +455,6 @@ namespace llarp
               close_connection(rid);
             });
 
-        log::critical(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
-        assert(control_stream->stream_id() == 0);
         if (is_snode)
           link_manager.register_commands(control_stream, rid);
         else
