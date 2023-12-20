@@ -659,8 +659,7 @@ namespace llarp
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
         BootstrapFetchMessage::serialize(_router.router_contact, num_needed),
-        [this, is_snode = _router.is_service_node(), num_needed = num_needed](
-            oxen::quic::message m) mutable {
+        [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
           if (not m)
@@ -711,7 +710,7 @@ namespace llarp
               "BootstrapRC fetch response from {} returned {}/{} needed RCs",
               fetch_source,
               num,
-              num_needed);
+              MIN_ACTIVE_RCS);
 
           if (not is_snode)
           {
@@ -970,6 +969,21 @@ namespace llarp
       return put_rc_if_newer(rc);
 
     return false;
+  }
+
+  void
+  NodeDB::verify_gossip_bfetch_rc(const RemoteRC& rc)
+  {
+    if (auto maybe = get_rc(rc.router_id()))
+    {
+      if (maybe->other_is_newer(rc))
+        put_rc(rc);
+    }
+    else
+    {
+      if (put_rc(rc))
+        _router.link_manager().gossip_rc(_router.local_rid(), rc);
+    }
   }
 
   bool
