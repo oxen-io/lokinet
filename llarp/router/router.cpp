@@ -372,8 +372,6 @@ namespace llarp
       log::critical(logcat, err);
     }
 
-    // Do logging config as early as possible to get the configured log level applied
-
     // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
     auto log_type = conf.logging.type;
 
@@ -942,10 +940,12 @@ namespace llarp
         log::critical(logcat, "Client connecting to {} random routers to keep alive", needed);
         _link_manager->connect_to_random(needed);
       }
+      else
+      {
+        _hidden_service_context.Tick(now);
+        _exit_context.Tick(now);
+      }
     }
-
-    _hidden_service_context.Tick(now);
-    _exit_context.Tick(now);
 
     // save profiles
     if (router_profiling().ShouldSave(now) and _config->network.save_profiles)
