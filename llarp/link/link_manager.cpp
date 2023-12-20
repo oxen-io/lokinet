@@ -825,7 +825,7 @@ namespace llarp
             "Bootstrap seed confirmed RID:{} is registered; approving fetch request and "
             "saving RC!",
             rid);
-        node_db->put_rc(remote);
+        node_db->verify_gossip_bfetch_rc(remote);
       }
     }
 
