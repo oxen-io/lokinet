@@ -38,7 +38,7 @@ namespace llarp
   using outbound_alpns = oxen::quic::opt::outbound_alpns;
 
   inline const keep_alive ROUTER_KEEP_ALIVE{10s};
-  inline const keep_alive CLIENT_KEEP_ALIVE{0s};
+  inline const keep_alive CLIENT_KEEP_ALIVE{10s};
 
   namespace alpns
   {
@@ -422,11 +422,6 @@ namespace llarp
     void handle_obtain_exit_response(oxen::quic::message);
     void handle_update_exit_response(oxen::quic::message);
     void handle_close_exit_response(oxen::quic::message);
-
-    /**
-      Clients register 0 endpoints
-        - nobody is making requests to clients
-    */
   };
 
   namespace link
@@ -463,7 +458,10 @@ namespace llarp
 
         log::critical(logcat, "Opened BTStream (ID:{})", control_stream->stream_id());
         assert(control_stream->stream_id() == 0);
-        link_manager.register_commands(control_stream, rid);
+        if (is_snode)
+          link_manager.register_commands(control_stream, rid);
+        else
+          log::critical(logcat, "Client NOT registering BTStream commands!");
         itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, true);
 
         log::critical(logcat, "Outbound connection to RID:{} added to service conns...", rid);

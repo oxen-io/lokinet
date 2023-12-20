@@ -276,7 +276,7 @@ namespace llarp
     });
     if (_router.is_service_node())
     {
-      e->listen(tls_creds, ROUTER_KEEP_ALIVE);
+      e->listen(tls_creds);
     }
     return e;
   }
