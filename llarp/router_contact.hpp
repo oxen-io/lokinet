@@ -195,6 +195,9 @@ namespace llarp
     bool
     is_obsolete_bootstrap() const;
 
+    static bool
+    is_obsolete(const RouterContact& rc);
+
     void
     bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
 
@@ -304,9 +307,6 @@ namespace llarp
   /// the data in the constructor, eliminating the need for a ::verify method/
   struct RemoteRC final : public RouterContact
   {
-   private:
-    explicit RemoteRC(oxenc::bt_dict_consumer btdc);
-
    public:
     RemoteRC() = default;
     explicit RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
@@ -317,6 +317,7 @@ namespace llarp
     {
       _payload = data;
     }
+    explicit RemoteRC(oxenc::bt_dict_consumer btdc);
     ~RemoteRC() = default;
 
     std::string_view

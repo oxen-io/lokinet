@@ -423,13 +423,10 @@ namespace llarp
     void handle_update_exit_response(oxen::quic::message);
     void handle_close_exit_response(oxen::quic::message);
 
-    std::unordered_map<std::string, void (LinkManager::*)(oxen::quic::message)> rpc_responses = {
-        {"find_name", &LinkManager::handle_find_name_response},
-        {"publish_intro", &LinkManager::handle_publish_intro_response},
-        {"find_intro", &LinkManager::handle_find_intro_response},
-        {"update_exit", &LinkManager::handle_update_exit_response},
-        {"obtain_exit", &LinkManager::handle_obtain_exit_response},
-        {"close_exit", &LinkManager::handle_close_exit_response}};
+    /**
+      Clients register 0 endpoints
+        - nobody is making requests to clients
+    */
   };
 
   namespace link

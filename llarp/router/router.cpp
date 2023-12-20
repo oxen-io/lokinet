@@ -353,6 +353,25 @@ namespace llarp
     _config = std::move(c);
     auto& conf = *_config;
 
+    const auto& netid = conf.router.net_id;
+
+    if (not netid.empty() and netid != llarp::LOKINET_DEFAULT_NETID)
+    {
+      _testnet = netid == llarp::LOKINET_TESTNET_NETID;
+      _testing_disabled = conf.lokid.disable_testing;
+
+      RouterContact::ACTIVE_NETID = netid;
+
+      if (_testing_disabled and not _testnet)
+        throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
+
+      auto err = "Lokinet network ID set to {}, NOT mainnet! {}"_format(
+          netid,
+          _testnet ? "Please ensure your local instance is configured to operate on testnet"
+                   : "Local lokinet instance will attempt to run on the specified network");
+      log::critical(logcat, err);
+    }
+
     // Do logging config as early as possible to get the configured log level applied
 
     // Backwards compat: before 0.9.10 we used `type=file` with `file=|-|stdout` for print mode
@@ -528,24 +547,6 @@ namespace llarp
     // Set netid before anything else
     log::debug(logcat, "Network ID set to {}", conf.router.net_id);
 
-    const auto& netid = conf.router.net_id;
-
-    if (not netid.empty() and netid != llarp::LOKINET_DEFAULT_NETID)
-    {
-      log::critical(
-          logcat,
-          "Network ID set to {}, which is not {}! Lokinet will attempt to run on the specified "
-          "network",
-          netid,
-          llarp::LOKINET_DEFAULT_NETID);
-
-      _testnet = netid == llarp::LOKINET_TESTNET_NETID;
-      _testing_disabled = conf.lokid.disable_testing;
-
-      if (_testing_disabled and not _testnet)
-        throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
-    }
-
     // Router config
     client_router_connections = conf.router.client_router_connections;
 
@@ -603,101 +604,15 @@ namespace llarp
       log::debug(logcat, "{} strict-connect routers configured", val.size());
     }
 
-    std::vector<fs::path> configRouters = conf.connect.routers;
-
-    configRouters.insert(
-        configRouters.end(), conf.bootstrap.files.begin(), conf.bootstrap.files.end());
-
-    // if our conf had no bootstrap files specified, try the default location of
-    // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    // TODO: use constant
-    fs::path defaultBootstrapFile = conf.router.data_dir / "bootstrap.signed";
-
-    if (configRouters.empty() and conf.bootstrap.routers.empty())
-    {
-      if (fs::exists(defaultBootstrapFile))
-        configRouters.push_back(defaultBootstrapFile);
-    }
-
-    // BootstrapList _bootstrap_rc_list;
-    auto& node_bstrap = _node_db->bootstrap_list();
-
-    auto clear_bad_rcs = [&]() mutable {
-      log::critical(logcat, "Clearing bad RCs...");
-      // in case someone has an old bootstrap file and is trying to use a bootstrap
-      // that no longer exists
-      for (auto it = node_bstrap.begin(); it != node_bstrap.end();)
-      {
-        if (it->is_obsolete_bootstrap())
-          log::critical(logcat, "ignoring obsolete bootstrap RC: {}", it->router_id());
-        else if (not it->verify())
-          log::critical(logcat, "ignoring invalid bootstrap RC: {}", it->router_id());
-        else
-        {
-          ++it;
-          continue;
-        }
-
-        // we are in one of the above error cases that we warned about:
-        it = node_bstrap.erase(it);
-      }
-    };
-
-    for (const auto& router : configRouters)
-    {
-      log::debug(logcat, "Loading bootstrap router list from {}", defaultBootstrapFile);
-      node_bstrap.read_from_file(router);
-      // _bootstrap_rc_list.read_from_file(router);
-    }
-
-    for (const auto& rc : conf.bootstrap.routers)
-    {
-      // _bootstrap_rc_list.emplace(rc);
-      node_bstrap.emplace(rc);
-    }
-
     _bootstrap_seed = conf.bootstrap.seednode;
 
-    if (_bootstrap_seed)
-      log::critical(logcat, "We are a bootstrap seed node!");
+    std::vector<fs::path> bootstrap_paths{std::move(conf.bootstrap.files)};
 
-    if (node_bstrap.empty() and not _bootstrap_seed)
-    {
-      log::warning(logcat, "Warning: bootstrap list is empty and we are not a seed node");
+    fs::path default_bootstrap = conf.router.data_dir / "bootstrap.signed";
 
-      auto fallbacks = llarp::load_bootstrap_fallbacks();
+    auto& bootstrap = _node_db->bootstrap_list();
 
-      if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
-      {
-        // _bootstrap_rc_list.merge(itr->second);
-        node_bstrap.merge(itr->second);
-      }
-
-      if (node_bstrap.empty())
-      {
-        // empty after trying fallback, if set
-        log::error(
-            logcat,
-            "No bootstrap routers were loaded.  The default bootstrap file {} does not exist, and "
-            "loading fallback bootstrap RCs failed.",
-            defaultBootstrapFile);
-
-        throw std::runtime_error("No bootstrap nodes available.");
-      }
-
-      log::critical(logcat, "Loaded {} default fallback bootstrap routers!", node_bstrap.size());
-    }
-
-    clear_bad_rcs();
-    log::critical(logcat, "We have {} bootstrap routers!", node_bstrap.size());
-
-    // node_db()->set_bootstrap_routers(_bootstrap_rc_list);
-
-    // TODO: RC refactor here
-    // if (_is_service_node)
-    //   init_inbounds();
-    // else
-    //   init_outbounds();
+    bootstrap.populate_bootstraps(bootstrap_paths, default_bootstrap, not _bootstrap_seed);
 
     // profiling
     _profile_file = conf.router.data_dir / "profiles.dat";

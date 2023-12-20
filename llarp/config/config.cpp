@@ -1069,26 +1069,6 @@ namespace llarp
   }
 
   void
-  ConnectConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    conf.add_undeclared_handler(
-        "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
-          fs::path file{value.begin(), value.end()};
-          if (not fs::exists(file))
-            throw std::runtime_error{fmt::format(
-                "Specified bootstrap file {} specified in [{}]:{} does not exist",
-                value,
-                section,
-                name)};
-
-          routers.emplace_back(std::move(file));
-          return true;
-        });
-  }
-
-  void
   ApiConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     constexpr std::array DefaultRPCBind{
@@ -1204,14 +1184,12 @@ namespace llarp
         },
         [this](std::string arg) {
           if (arg.empty())
-          {
             throw std::invalid_argument("cannot use empty filename as bootstrap");
-          }
+
           files.emplace_back(std::move(arg));
+
           if (not fs::exists(files.back()))
-          {
             throw std::invalid_argument("file does not exist: " + arg);
-          }
         });
   }
 
@@ -1460,7 +1438,6 @@ namespace llarp
     router.define_config_options(conf, params);
     network.define_config_options(conf, params);
     paths.define_config_options(conf, params);
-    connect.define_config_options(conf, params);
     dns.define_config_options(conf, params);
     links.define_config_options(conf, params);
     api.define_config_options(conf, params);

@@ -36,7 +36,7 @@ namespace llarp
     });
 
     if (not btdc.is_finished())
-      throw std::runtime_error{"RouterContact has some fucked up shit at the end"};
+      throw std::runtime_error{"RemoteRC has some fucked up shit at the end"};
 
     btdc.finish();
   }
@@ -185,7 +185,7 @@ namespace llarp
     return time_to_expiry(now) <= dlt;
   }
 
-  static constexpr std::array obsolete_bootstraps = {
+  static const std::set<std::string_view> obsolete_bootstraps{
       "7a16ac0b85290bcf69b2f3b52456d7e989ac8913b4afbb980614e249a3723218"sv,
       "e6b3a6fe5e32c379b64212c72232d65b0b88ddf9bbaed4997409d329f8519e0b"sv,
   };
@@ -199,5 +199,13 @@ namespace llarp
         return true;
     }
     return false;
+  }
+
+  bool
+  RouterContact::is_obsolete(const RouterContact& rc)
+  {
+    const auto& hex = rc._router_id.ToHex();
+
+    return obsolete_bootstraps.count(hex);
   }
 }  // namespace llarp

@@ -25,6 +25,7 @@ namespace llarp
   // TESTNET: the following constants have been shortened for testing purposes
 
   /*  RC Fetch Constants  */
+  // fallback to bootstrap if we have less than this many RCs
   inline constexpr size_t MIN_ACTIVE_RCS{6};
   // max number of attempts we make in non-bootstrap fetch requests
   inline constexpr int MAX_FETCH_ATTEMPTS{10};
@@ -34,11 +35,10 @@ namespace llarp
   inline constexpr double MIN_GOOD_RC_FETCH_THRESHOLD{};
 
   /*  RID Fetch Constants  */
-  inline constexpr size_t MIN_ACTIVE_RIDS{24};
   // the number of rid sources that we make rid fetch requests to
-  inline constexpr size_t RID_SOURCE_COUNT{12};
+  inline constexpr size_t RID_SOURCE_COUNT{8};
   // upper limit on how many rid fetch requests to rid sources can fail
-  inline constexpr size_t MAX_RID_ERRORS{4};
+  inline constexpr size_t MAX_RID_ERRORS{2};
   // each returned rid must appear this number of times across all responses
   inline constexpr int MIN_RID_FETCH_FREQ{RID_SOURCE_COUNT - MAX_RID_ERRORS - 1};
   // the total number of accepted returned rids should be above this number

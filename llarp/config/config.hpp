@@ -184,14 +184,6 @@ namespace llarp
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct ConnectConfig
-  {
-    std::vector<fs::path> routers;
-
-    void
-    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
   // TODO: remove oxenmq from this header
   struct ApiConfig
   {
@@ -215,7 +207,6 @@ namespace llarp
   struct BootstrapConfig
   {
     std::vector<fs::path> files;
-    BootstrapList routers;
     bool seednode;
 
     void
@@ -245,7 +236,6 @@ namespace llarp
     RouterConfig router;
     NetworkConfig network;
     PeerSelectionConfig paths;
-    ConnectConfig connect;
     DnsConfig dns;
     LinksConfig links;
     ApiConfig api;
