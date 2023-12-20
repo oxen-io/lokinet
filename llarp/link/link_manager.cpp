@@ -94,9 +94,15 @@ namespace llarp
     }
 
     size_t
-    Endpoint::num_connected(bool clients_only) const
+    Endpoint::num_client_conns() const
     {
-      return clients_only ? client_conns.size() : client_conns.size() + service_conns.size();
+      return client_conns.size();
+    }
+
+    size_t
+    Endpoint::num_router_conns() const
+    {
+      return service_conns.size();
     }
 
     void
@@ -157,6 +163,16 @@ namespace llarp
     s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
+    });
+
+    s->register_command("fetch_rcs"s, [this](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
+    });
+
+    s->register_command("fetch_rids"s, [this](oxen::quic::message m) {
+      _router.loop()->call(
+          [this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
     });
 
     s->register_command("path_build"s, [this, rid = router_id](oxen::quic::message m) {
@@ -351,7 +367,8 @@ namespace llarp
 
           if (msg.is_control)
           {
-            log::critical(logcat, "Dispatching {} request!", *msg.endpoint);
+            log::critical(
+                logcat, "Dispatching {} request (stream ID: {})!", *msg.endpoint, str->stream_id());
             str->command(std::move(*msg.endpoint), std::move(msg.body), std::move(msg.func));
           }
           else
@@ -379,26 +396,27 @@ namespace llarp
   void
   LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
   {
-    _router.loop()->call([this, &conn_interface = ci]() {
+    _router.loop()->call([this, &conn_interface = ci, is_snode = _is_service_node]() {
       const auto rid = RouterID{conn_interface.remote_key()};
       const auto& remote = conn_interface.remote();
 
+      log::critical(
+          logcat,
+          "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
+          is_snode ? "SERVICE NODE" : "CLIENT",
+          _router.local_rid(),
+          rid);
+
       if (conn_interface.is_inbound())
       {
-        log::critical(logcat, "Inbound connection fom {} (remote:{})", rid, remote);
+        log::critical(logcat, "Inbound connection from {} (remote:{})", rid, remote);
         on_inbound_conn(conn_interface);
       }
       else
       {
-        log::critical(logcat, "Outbound connection fom {} (remote:{})", rid, remote);
+        log::critical(logcat, "Outbound connection from {} (remote:{})", rid, remote);
         on_outbound_conn(conn_interface);
       }
-
-      log::critical(
-          logcat,
-          "SERVICE NODE (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-          _router.local_rid(),
-          rid);
     });
   };
 
@@ -623,15 +641,15 @@ namespace llarp
   }
 
   size_t
-  LinkManager::get_num_connected(bool clients_only) const
+  LinkManager::get_num_connected_routers() const
   {
-    return ep.num_connected(clients_only);
+    return ep.num_router_conns();
   }
 
   size_t
   LinkManager::get_num_connected_clients() const
   {
-    return get_num_connected(true);
+    return ep.num_client_conns();
   }
 
   bool
@@ -702,10 +720,6 @@ namespace llarp
     {
       // don't send back to the gossip source or the last sender
       if (rid == gossip_src or rid == last_sender)
-        continue;
-
-      // don't gossip RCs to clients
-      if (not conn->remote_is_relay)
         continue;
 
       send_control_message(
@@ -800,9 +814,7 @@ namespace llarp
       oxenc::bt_dict_consumer btdc{m.body()};
       if (btdc.skip_until("local"))
         remote.emplace(btdc.consume_dict_data());
-      
-      // btdc.required("local");
-      // remote = RemoteRC{btdc.consume_dict_data()};
+
       quantity = btdc.require<size_t>("quantity");
     }
     catch (const std::exception& e)
@@ -811,7 +823,7 @@ namespace llarp
       m.respond(messages::ERROR_RESPONSE, true);
       return;
     }
-    
+
     if (remote)
     {
       auto is_snode = _router.is_service_node();
@@ -833,7 +845,6 @@ namespace llarp
         }
       }
     }
-
 
     auto& src = node_db->get_known_rcs();
     auto count = src.size();
@@ -865,7 +876,7 @@ namespace llarp
       }
     }
 
-    m.respond(std::move(btdp).str());
+    m.respond(std::move(btdp).str(), count == 0);
   }
 
   void
@@ -881,6 +892,7 @@ namespace llarp
   void
   LinkManager::handle_fetch_rcs(oxen::quic::message m)
   {
+    log::critical(logcat, "Handling FetchRC request...");
     // this handler should not be registered for clients
     assert(_router.is_service_node());
 
@@ -900,7 +912,7 @@ namespace llarp
     }
     catch (const std::exception& e)
     {
-      log::info(link_cat, "Exception handling RC Fetch request: {}", e.what());
+      log::critical(link_cat, "Exception handling RC Fetch request: {}", e.what());
       m.respond(messages::ERROR_RESPONSE, true);
       return;
     }
@@ -908,7 +920,7 @@ namespace llarp
     const auto& rcs = node_db->get_rcs();
 
     oxenc::bt_dict_producer btdp;
-    const auto& last_time = node_db->get_last_rc_update_times();
+    // const auto& last_time = node_db->get_last_rc_update_times();
 
     {
       auto sublist = btdp.append_list("rcs");
@@ -920,19 +932,24 @@ namespace llarp
       // Initial fetch: give me all the RC's
       if (explicit_ids.empty())
       {
+        log::critical(logcat, "Returning ALL locally held RCs for initial FetchRC request...");
         for (const auto& rc : rcs)
         {
-          if (last_time.at(rc.router_id()) > since_time)
-            sublist.append_encoded(rc.view());
+          sublist.append_encoded(rc.view());
         }
       }
       else
       {
+        int count = 0;
         for (const auto& rid : explicit_ids)
         {
           if (auto maybe_rc = node_db->get_rc_by_rid(rid))
+          {
             sublist.append_encoded(maybe_rc->view());
+            ++count;
+          }
         }
+        log::critical(logcat, "Returning {} RCs for FetchRC request...", count);
       }
     }
 
@@ -949,6 +966,8 @@ namespace llarp
   void
   LinkManager::handle_fetch_router_ids(oxen::quic::message m)
   {
+    log::critical(logcat, "Handling FetchRIDs request...");
+
     RouterID source;
     RouterID local = router().local_rid();
 
@@ -960,7 +979,9 @@ namespace llarp
     }
     catch (const std::exception& e)
     {
-      log::info(link_cat, "Error fulfilling fetch RouterIDs request: {}", e.what());
+      log::critical(link_cat, "Error fulfilling FetchRIDs request: {}", e.what());
+      m.respond(messages::ERROR_RESPONSE, true);
+      return;
     }
 
     // if bad request, silently fail
@@ -969,6 +990,7 @@ namespace llarp
 
     if (source != local)
     {
+      log::critical(logcat, "Relaying FetchRID request to intended target RID:{}", source);
       send_control_message(
           source,
           "fetch_router_ids"s,
@@ -999,6 +1021,7 @@ namespace llarp
       return sig;
     });
 
+    log::critical(logcat, "Returning ALL locally held RIDs to FetchRIDs request!");
     m.respond(std::move(btdp).str());
   }
 

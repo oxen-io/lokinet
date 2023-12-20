@@ -66,7 +66,6 @@ namespace llarp
     }
 
     router = makeRouter(loop);
-
     nodedb = makeNodeDB();
 
     if (!router->Configure(config, opts.isSNode, nodedb))

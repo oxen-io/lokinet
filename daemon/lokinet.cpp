@@ -442,6 +442,9 @@ namespace
       cli.exit(e);
     };
 
+    // TESTNET:
+    oxen::log::set_level("quic", oxen::log::Level::critical);
+
     if (configFile.has_value())
     {
       // when we have an explicit filepath

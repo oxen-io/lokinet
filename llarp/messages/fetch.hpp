@@ -65,13 +65,15 @@ namespace llarp
     serialize(std::optional<LocalRC> local_rc, size_t quantity)
     {
       oxenc::bt_dict_producer btdp;
-      
+
       if (local_rc)
+      {
+        log::critical(logcat, "Serializing localRC: {}", oxenc::to_hex(local_rc->view()));
         btdp.append_encoded("local", oxen::quic::to_sv(local_rc->view()));
-      
-      log::critical(logcat, "Serializing localRC: {}", oxenc::to_hex(local_rc->view()));
+      }
+
       btdp.append("quantity", quantity);
-      
+
       return std::move(btdp).str();
     }
 
