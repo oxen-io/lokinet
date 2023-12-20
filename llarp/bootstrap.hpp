@@ -23,10 +23,19 @@ namespace llarp
     bool
     bt_decode(std::string_view buf);
 
+    bool
+    bt_decode(oxenc::bt_list_consumer btlc);
+
+    bool
+    bt_decode(oxenc::bt_dict_consumer btdc);
+
     std::string_view
     bt_encode() const;
 
     void
+    populate_bootstraps(std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks);
+
+    bool
     read_from_file(const fs::path& fpath);
 
     bool

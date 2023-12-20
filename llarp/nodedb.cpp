@@ -498,21 +498,13 @@ namespace llarp
   {
     if (error)
     {
-      auto& fail_count = (_using_bootstrap_fallback) ? bootstrap_attempts : fetch_failures;
-      auto& THRESHOLD =
-          (_using_bootstrap_fallback) ? MAX_BOOTSTRAP_FETCH_ATTEMPTS : MAX_FETCH_ATTEMPTS;
-
-      // This catches three different failure cases;
-      //  1) bootstrap fetching and over failure threshold
-      //  2) bootstrap fetching and more failures to go
-      //  3) standard fetching and over threshold
-      if (++fail_count >= THRESHOLD || _using_bootstrap_fallback)
+      if (++fetch_failures >= MAX_FETCH_ATTEMPTS)
       {
         log::info(
             logcat,
             "RC fetching from {} reached failure threshold ({}); falling back to bootstrap...",
             fetch_source,
-            THRESHOLD);
+            MAX_FETCH_ATTEMPTS);
 
         fallback_to_bootstrap();
         return;
@@ -536,7 +528,7 @@ namespace llarp
   void
   NodeDB::fetch_rids_result(bool initial)
   {
-    if (fetch_failures > MAX_FETCH_ATTEMPTS)
+    if (fetch_failures >= MAX_FETCH_ATTEMPTS)
     {
       log::info(
           logcat,
@@ -661,15 +653,18 @@ namespace llarp
 
     log::critical(logcat, "Dispatching BootstrapRC fetch request to {}", fetch_source);
 
+    auto num_needed = _router.is_service_node() ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT
+                                                : CLIENT_BOOTSTRAP_SOURCE_COUNT;
+
     _router.link_manager().fetch_bootstrap_rcs(
         rc,
-        BootstrapFetchMessage::serialize(_router.router_contact, CLIENT_BOOTSTRAP_SOURCE_COUNT),
-        [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
+        BootstrapFetchMessage::serialize(_router.router_contact, num_needed),
+        [this, is_snode = _router.is_service_node(), num_needed = num_needed](
+            oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
           if (not m)
           {
-            // ++bootstrap_attempts;
             log::warning(
                 logcat,
                 "BootstrapRC fetch request to {} failed (error {}/{})",
@@ -680,7 +675,6 @@ namespace llarp
             return;
           }
 
-          // std::set<RouterID> rids;
           size_t num = 0;
 
           try
@@ -700,7 +694,6 @@ namespace llarp
           }
           catch (const std::exception& e)
           {
-            // ++bootstrap_attempts;
             log::warning(
                 logcat,
                 "Failed to parse BootstrapRC fetch response from {} (error {}/{}): {}",
@@ -713,19 +706,12 @@ namespace llarp
             return;
           }
 
-          // We set this to the max allowable value because if this result is bad, we won't
-          // try this bootstrap again. If this result is undersized, we roll right into the
-          // next call to fallback_to_bootstrap() and hit the base case, rotating sources
-          // bootstrap_attempts = MAX_BOOTSTRAP_FETCH_ATTEMPTS;
-
-          // const auto& num = rids.size();
-
           log::critical(
               logcat,
               "BootstrapRC fetch response from {} returned {}/{} needed RCs",
               fetch_source,
               num,
-              CLIENT_BOOTSTRAP_SOURCE_COUNT);
+              num_needed);
 
           if (not is_snode)
           {
@@ -739,25 +725,6 @@ namespace llarp
             log::critical(logcat, "Service node completed processing BootstrapRC fetch!");
             post_snode_bootstrap();
           }
-
-          // FIXME: when moving to testnet, uncomment this
-          // if (rids.size() == BOOTSTRAP_SOURCE_COUNT)
-          // {
-          //   known_rids.merge(rids);
-          //   fetch_initial();
-          // }
-          // else
-          // {
-          //   // ++bootstrap_attempts;
-          //   log::warning(
-          //       logcat,
-          //       "BootstrapRC fetch response from {} returned insufficient number of RC's (error "
-          //       "{}/{})",
-          //       fetch_source,
-          //       bootstrap_attempts,
-          //       MAX_BOOTSTRAP_FETCH_ATTEMPTS);
-          //   fallback_to_bootstrap();
-          // }
         });
   }
 
@@ -783,7 +750,6 @@ namespace llarp
     replace_subset(rid_sources, specific, known_rids, RID_SOURCE_COUNT, csrng);
   }
 
-  // TODO: nuke all this shit
   void
   NodeDB::set_router_whitelist(
       const std::vector<RouterID>& whitelist,
