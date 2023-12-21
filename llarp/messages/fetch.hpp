@@ -105,9 +105,18 @@ namespace llarp
     inline static std::string
     serialize(const RouterID& source)
     {
-      // serialize_response is a bit weird here, and perhaps could have a sister function
-      // with the same purpose but as a request, but...it works.
-      return messages::serialize_response({{"source", source.ToView()}});
+      oxenc::bt_dict_producer btdp;
+
+      try
+      {
+        btdp.append("source", source.ToView());
+      }
+      catch (...)
+      {
+        log::error(link_cat, "Error: FetchRIDMessage failed to bt encode contents!");
+      }
+
+      return std::move(btdp).str();
     }
   }  // namespace FetchRIDMessage
 
