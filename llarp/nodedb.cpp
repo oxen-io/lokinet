@@ -233,8 +233,13 @@ namespace llarp
     // if we are not bootstrapping, we should check the rc's against the ones we currently hold
     if (not _using_bootstrap_fallback)
     {
-      if (not process_fetched_rcs(rcs))
-        return false;
+      log::critical(logcat, "Checking returned RCs against locally held...");
+
+      auto success = process_fetched_rcs(rcs);
+
+      log::critical(
+          logcat, "RCs returned by FetchRC {} by trust model", success ? "approved" : "rejected");
+      return success;
     }
 
     while (!rcs.empty())
@@ -383,10 +388,10 @@ namespace llarp
     _router.link_manager().fetch_rcs(
         src,
         FetchRCMessage::serialize(_router.last_rc_fetch, needed),
-        [this, src, initial](oxen::quic::message m) mutable {
+        [this, source = src, initial](oxen::quic::message m) mutable {
           if (m.timed_out)
           {
-            log::critical(logcat, "RC fetch to {} timed out!", src);
+            log::critical(logcat, "RC fetch to {} timed out!", source);
             fetch_rcs_result(initial, m.timed_out);
             return;
           }
@@ -397,7 +402,7 @@ namespace llarp
             if (m.is_error())
             {
               auto reason = btdc.require<std::string_view>(messages::STATUS_KEY);
-              log::critical(logcat, "RC fetch to {} returned error: {}", src, reason);
+              log::critical(logcat, "RC fetch to {} returned error: {}", source, reason);
               fetch_rcs_result(initial, m.is_error());
               return;
             }
@@ -414,7 +419,8 @@ namespace llarp
           }
           catch (const std::exception& e)
           {
-            log::critical(logcat, "Failed to parse RC fetch response from {}: {}", src, e.what());
+            log::critical(
+                logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
             fetch_rcs_result(initial, true);
             return;
           }
@@ -454,11 +460,11 @@ namespace llarp
       _router.link_manager().fetch_router_ids(
           src,
           FetchRIDMessage::serialize(target),
-          [this, src, target, initial](oxen::quic::message m) mutable {
+          [this, source = src, target, initial](oxen::quic::message m) mutable {
             if (m.is_error())
             {
               auto err = "RID fetch from {} via {} {}"_format(
-                  src, target, m.timed_out ? "timed out" : "failed");
+                  target, source, m.timed_out ? "timed out" : "failed");
               log::critical(link_cat, err);
               ingest_rid_fetch_responses(target);
               fetch_rids_result(initial);
@@ -472,10 +478,10 @@ namespace llarp
               btdc.required("routers");
               auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
 
-              btdc.require_signature("signature", [&src](ustring_view msg, ustring_view sig) {
+              btdc.require_signature("signature", [&source](ustring_view msg, ustring_view sig) {
                 if (sig.size() != 64)
                   throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                if (not crypto::verify(src, msg, sig))
+                if (not crypto::verify(source, msg, sig))
                   throw std::runtime_error{
                       "Failed to verify signature for fetch RouterIDs response."};
               });
@@ -487,7 +493,7 @@ namespace llarp
                 if (s.size() != RouterID::SIZE)
                 {
                   log::critical(
-                      link_cat, "RID fetch from {} via {} returned bad RouterID", target, src);
+                      link_cat, "RID fetch from {} via {} returned bad RouterID", target, source);
                   ingest_rid_fetch_responses(target);
                   fetch_rids_result(initial);
                   return;
@@ -677,7 +683,8 @@ namespace llarp
         rc,
         BootstrapFetchMessage::serialize(
             is_snode ? std::make_optional(_router.router_contact) : std::nullopt, num_needed),
-        [this, is_snode = _router.is_service_node()](oxen::quic::message m) mutable {
+        [this, is_snode = _router.is_service_node(), src = rc.router_id()](
+            oxen::quic::message m) mutable {
           log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
           if (not m)
@@ -685,7 +692,7 @@ namespace llarp
             log::warning(
                 logcat,
                 "BootstrapRC fetch request to {} failed (error {}/{})",
-                fetch_source,
+                src,
                 bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS);
             fallback_to_bootstrap();
@@ -714,7 +721,7 @@ namespace llarp
             log::warning(
                 logcat,
                 "Failed to parse BootstrapRC fetch response from {} (error {}/{}): {}",
-                fetch_source,
+                src,
                 bootstrap_attempts,
                 MAX_BOOTSTRAP_FETCH_ATTEMPTS,
                 e.what());
@@ -725,7 +732,7 @@ namespace llarp
           log::critical(
               logcat,
               "BootstrapRC fetch response from {} returned {}/{} needed RCs",
-              fetch_source,
+              src,
               num,
               MIN_ACTIVE_RCS);
 

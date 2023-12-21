@@ -960,7 +960,7 @@ namespace llarp
   LinkManager::fetch_router_ids(
       const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func)
   {
-    send_control_message(via, "fetch_router_ids"s, std::move(payload), std::move(func));
+    send_control_message(via, "fetch_rids"s, std::move(payload), std::move(func));
   }
 
   void
@@ -974,8 +974,7 @@ namespace llarp
     try
     {
       oxenc::bt_dict_consumer btdc{m.body()};
-
-      source.from_string(btdc.require<std::string_view>("source"));
+      source = RouterID{btdc.require<ustring_view>("source")};
     }
     catch (const std::exception& e)
     {
@@ -993,7 +992,7 @@ namespace llarp
       log::critical(logcat, "Relaying FetchRID request to intended target RID:{}", source);
       send_control_message(
           source,
-          "fetch_router_ids"s,
+          "fetch_rids"s,
           m.body_str(),
           [source_rid = std::move(source), original = std::move(m)](oxen::quic::message m) mutable {
             original.respond(m.body_str(), m.is_error());
