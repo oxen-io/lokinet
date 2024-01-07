@@ -202,12 +202,6 @@ namespace llarp
     void
     for_each_connection(std::function<void(link::Connection&)> func);
 
-    void
-    connect_to(const RouterID& rid);
-
-    void
-    connect_to(const RemoteRC& rc);
-
     const Contacts&
     contacts() const
     {

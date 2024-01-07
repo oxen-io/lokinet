@@ -246,38 +246,38 @@ namespace llarp::exit
   bool
   BaseSession::FlushUpstream()
   {
-    auto now = router->now();
-    auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
-    if (path)
-    {
-      // for (auto& [i, queue] : m_Upstream)
-      // {
-      //   while (queue.size())
-      //   {
-      //     auto& msg = queue.front();
-      //     msg.sequence_number = path->NextSeqNo();
-      //     path->SendRoutingMessage(msg, router);
-      //     queue.pop_front();
-      //   }
-      // }
-    }
-    else
-    {
-      // if (m_Upstream.size())
-      //   llarp::LogWarn("no path for exit session");
-      // // discard upstream
-      // for (auto& [i, queue] : m_Upstream)
-      //   queue.clear();
-      // m_Upstream.clear();
+    // auto now = router->now();
+    // auto path = PickEstablishedPath(llarp::path::ePathRoleExit);
+    // if (path)
+    // {
+    //   for (auto& [i, queue] : m_Upstream)
+    //   {
+    //     while (queue.size())
+    //     {
+    //       auto& msg = queue.front();
+    //       msg.sequence_number = path->NextSeqNo();
+    //       path->SendRoutingMessage(msg, router);
+    //       queue.pop_front();
+    //     }
+    //   }
+    // }
+    // else
+    // {
+    //   if (m_Upstream.size())
+    //     llarp::LogWarn("no path for exit session");
+    //   // discard upstream
+    //   for (auto& [i, queue] : m_Upstream)
+    //     queue.clear();
+    //   m_Upstream.clear();
 
-      if (numHops == 1)
-      {
-        if (const auto maybe = router->node_db()->get_rc(exit_router); maybe.has_value())
-          router->connect_to(*maybe);
-      }
-      else if (UrgentBuild(now))
-        BuildOneAlignedTo(exit_router);
-    }
+    //   if (numHops == 1)
+    //   {
+    //     if (const auto maybe = router->node_db()->get_rc(exit_router); maybe.has_value())
+    //       router->connect_to(*maybe);
+    //   }
+    //   else if (UrgentBuild(now))
+    //     BuildOneAlignedTo(exit_router);
+    // }
     return true;
   }
 

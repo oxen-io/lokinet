@@ -247,18 +247,6 @@ namespace llarp
     loop_wakeup->Trigger();
   }
 
-  void
-  Router::connect_to(const RouterID& rid)
-  {
-    _link_manager->connect_to(rid);
-  }
-
-  void
-  Router::connect_to(const RemoteRC& rc)
-  {
-    _link_manager->connect_to(rc);
-  }
-
   bool
   Router::send_data_message(const RouterID& remote, std::string payload)
   {
