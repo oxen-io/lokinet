@@ -62,28 +62,25 @@ namespace llarp::path
     ExpirePaths(llarp_time_t now);
 
     void
-    AllowTransit();
+    allow_transit();
 
     void
-    RejectTransit();
+    reject_transit();
 
     bool
-    CheckPathLimitHitByIP(const IpAddress& ip);
+    check_path_limit_hit_by_ip(const IpAddress& ip);
 
     bool
-    CheckPathLimitHitByIP(const std::string& ip);
+    is_transit_allowed() const;
 
     bool
-    AllowingTransit() const;
-
-    bool
-    HasTransitHop(const TransitHopInfo& info);
+    has_transit_hop(const TransitHopInfo& info);
 
     void
-    PutTransitHop(std::shared_ptr<TransitHop> hop);
+    put_transit_hop(std::shared_ptr<TransitHop> hop);
 
     Path_ptr
-    GetPath(const PathID_t& path_id);
+    get_path(const PathID_t& path_id);
 
     bool
     TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
@@ -125,7 +122,7 @@ namespace llarp::path
 
     /// current number of paths we created in status
     uint64_t
-    CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ePathEstablished);
+    CurrentOwnedPaths(path::PathStatus status = path::PathStatus::ESTABLISHED);
 
     Router*
     router() const

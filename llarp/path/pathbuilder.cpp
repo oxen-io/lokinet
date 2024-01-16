@@ -220,11 +220,10 @@ namespace llarp
     {
       std::optional<RemoteRC> found = std::nullopt;
       router->for_each_connection([&](link::Connection& conn) {
-        const auto& rc = conn.remote_rc;
-        const auto& rid = rc.router_id();
+        RouterID rid{conn.conn->remote_key()};
 
 #ifndef TESTNET
-        if (router->IsBootstrapNode(rid))
+        if (router->is_bootstrap_node(rid))
           return;
 #endif
         if (exclude.count(rid))
@@ -236,7 +235,7 @@ namespace llarp
         if (router->router_profiling().IsBadForPath(rid))
           return;
 
-        found = rc;
+        found = router->node_db()->get_rc(rid);
       });
       return found;
     }
@@ -244,13 +243,13 @@ namespace llarp
     std::optional<std::vector<RemoteRC>>
     Builder::GetHopsForBuild()
     {
-      auto filter = [r = router](const auto& rc) -> bool {
+      auto filter = [r = router](const RemoteRC& rc) -> bool {
         return not r->router_profiling().IsBadForPath(rc.router_id(), 1);
       };
-      if (const auto maybe = router->node_db()->GetRandom(filter))
-      {
+
+      if (auto maybe = router->node_db()->get_random_rc_conditional(filter))
         return GetHopsAlignedToForBuild(maybe->router_id());
-      }
+
       return std::nullopt;
     }
 
@@ -262,7 +261,7 @@ namespace llarp
       const auto now = Now();
       for (auto& item : m_Paths)
       {
-        item.second->EnterState(ePathIgnore, now);
+        item.second->EnterState(IGNORE, now);
       }
       return true;
     }
@@ -276,7 +275,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      return IsStopped() and NumInStatus(ePathEstablished) == 0;
+      return IsStopped() and NumInStatus(ESTABLISHED) == 0;
     }
 
     bool
@@ -359,6 +358,7 @@ namespace llarp
 
             if (r->router_profiling().IsBadForPath(rid, 1))
               return false;
+
             for (const auto& hop : hopsSet)
             {
               if (hop.router_id() == rid)
@@ -373,7 +373,7 @@ namespace llarp
             return rc.router_id() != endpointRC.router_id();
           };
 
-          if (const auto maybe = router->node_db()->GetRandom(filter))
+          if (auto maybe = router->node_db()->get_random_rc_conditional(filter))
             hops.emplace_back(*maybe);
           else
             return std::nullopt;
@@ -505,40 +505,40 @@ namespace llarp
       // be worth doing sooner rather than later.  Leaving some TODOs below where fail
       // and success live.
       auto response_cb = [path](oxen::quic::message m) {
+        if (m)
+        {
+          // TODO: inform success (what this means needs revisiting, badly)
+          path->EnterState(path::ESTABLISHED);
+          return;
+        }
+
         try
         {
-          if (m)
-          {
-            // TODO: inform success (what this means needs revisiting, badly)
-            path->EnterState(path::ePathEstablished);
-            return;
-          }
+          // TODO: inform failure (what this means needs revisiting, badly)
           if (m.timed_out)
           {
-            log::warning(path_cat, "Path build timed out");
+            log::warning(path_cat, "Path build request timed out!");
+            path->EnterState(path::TIMEOUT);
           }
           else
           {
             oxenc::bt_dict_consumer d{m.body()};
             auto status = d.require<std::string_view>(messages::STATUS_KEY);
             log::warning(path_cat, "Path build returned failure status: {}", status);
+            path->EnterState(path::FAILED);
           }
         }
         catch (const std::exception& e)
         {
-          log::warning(path_cat, "Failed parsing path build response.");
+          log::warning(path_cat, "Exception caught parsing path build response: {}", e.what());
         }
-
-        // TODO: inform failure (what this means needs revisiting, badly)
-        path->EnterState(path::ePathFailed);
       };
 
       if (not router->send_control_message(
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
         log::warning(path_cat, "Error sending path_build control message");
-        // TODO: inform failure (what this means needs revisiting, badly)
-        path->EnterState(path::ePathFailed, router->now());
+        path->EnterState(path::FAILED, router->now());
       }
     }
 

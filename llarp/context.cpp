@@ -57,8 +57,7 @@ namespace llarp
       throw std::runtime_error("Cannot call Setup() on context without a Config");
 
     if (opts.showBanner)
-      llarp::LogInfo(
-          fmt::format("{} {}", llarp::LOKINET_VERSION_FULL, llarp::LOKINET_RELEASE_MOTTO));
+      llarp::LogInfo(fmt::format("{}", llarp::LOKINET_VERSION_FULL));
 
     if (!loop)
     {
@@ -67,7 +66,6 @@ namespace llarp
     }
 
     router = makeRouter(loop);
-
     nodedb = makeNodeDB();
 
     if (!router->Configure(config, opts.isSNode, nodedb))
@@ -183,7 +181,7 @@ namespace llarp
   {
     if (router)
     {
-      llarp::log::debug(logcat, "Handling SIGINT");
+      llarp::log::error(logcat, "Handling SIGINT");
       /// async stop router on sigint
       router->Stop();
     }

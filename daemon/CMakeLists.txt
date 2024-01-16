@@ -83,7 +83,7 @@ endforeach()
 target_link_libraries(lokinet PRIVATE CLI11)
 target_link_libraries(lokinet-vpn PRIVATE CLI11)
 
-if(SETCAP)
+if(WITH_SETCAP)
   install(CODE "execute_process(COMMAND ${SETCAP} cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
 endif()
 

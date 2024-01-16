@@ -9,12 +9,27 @@ namespace llarp
   bool
   BootstrapList::bt_decode(std::string_view buf)
   {
+    const auto& f = buf.front();
+
+    switch (f)
+    {
+      case 'l':
+        return bt_decode(oxenc::bt_list_consumer{buf});
+      case 'd':
+        return bt_decode(oxenc::bt_dict_consumer{buf});
+      default:
+        log::critical(logcat, "Unable to parse bootstrap as bt list or dict!");
+        return false;
+    }
+  }
+
+  bool
+  BootstrapList::bt_decode(oxenc::bt_list_consumer btlc)
+  {
     try
     {
-      oxenc::bt_list_consumer btlc{buf};
-
       while (not btlc.is_finished())
-        emplace(btlc.consume_dict_consumer());
+        emplace(btlc.consume_dict_data());
     }
     catch (...)
     {
@@ -22,7 +37,43 @@ namespace llarp
       return false;
     }
 
+    _curr = begin();
     return true;
+  }
+
+  bool
+  BootstrapList::bt_decode(oxenc::bt_dict_consumer btdc)
+  {
+    try
+    {
+      emplace(btdc);
+    }
+    catch (const std::exception& e)
+    {
+      log::warning(logcat, "Unable to decode bootstrap RemoteRC: {}", e.what());
+      return false;
+    }
+
+    _curr = begin();
+    return true;
+  }
+
+  bool
+  BootstrapList::contains(const RouterID& rid) const
+  {
+    for (const auto& it : *this)
+    {
+      if (it.router_id() == rid)
+        return true;
+    }
+
+    return false;
+  }
+
+  bool
+  BootstrapList::contains(const RemoteRC& rc) const
+  {
+    return count(rc);
   }
 
   std::string_view
@@ -37,34 +88,82 @@ namespace llarp
   }
 
   void
+  BootstrapList::populate_bootstraps(
+      std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks)
+  {
+    for (const auto& f : paths)
+    {
+      // TESTNET: TODO: revise fucked config
+      log::debug(logcat, "Loading BootstrapRC from file at path:{}", f);
+      if (not read_from_file(f))
+        throw std::invalid_argument{"User-provided BootstrapRC is invalid!"};
+    }
+
+    if (empty())
+    {
+      log::debug(
+          logcat,
+          "BootstrapRC list empty; looking for default BootstrapRC from file at path:{}",
+          def);
+      read_from_file(def);
+    }
+
+    for (auto itr = begin(); itr != end(); ++itr)
+    {
+      if (RouterContact::is_obsolete(*itr))  // can move this into ::read_from_file
+      {
+        log::critical(logcat, "Deleting obsolete BootstrapRC (rid:{})", itr->router_id());
+        itr = erase(itr);
+        continue;
+      }
+    }
+
+    if (empty() and load_fallbacks)
+    {
+      log::critical(logcat, "BootstrapRC list empty; loading fallbacks...");
+      auto fallbacks = llarp::load_bootstrap_fallbacks();
+
+      if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
+      {
+        log::critical(
+            logcat, "Loading {} default fallback bootstrap router(s)!", itr->second.size());
+        merge(itr->second);
+      }
+
+      if (empty())
+      {
+        log::error(
+            logcat,
+            "No Bootstrap routers were loaded.  The default Bootstrap file {} does not exist, and "
+            "loading fallback Bootstrap RCs failed.",
+            def);
+
+        throw std::runtime_error("No Bootstrap nodes available.");
+      }
+    }
+
+    log::critical(logcat, "We have {} Bootstrap router(s)!", size());
+    _curr = begin();
+  }
+
+  bool
   BootstrapList::read_from_file(const fs::path& fpath)
   {
-    bool isListFile = false;
+    bool result = false;
 
-    if (std::ifstream inf(fpath.c_str(), std::ios::binary); inf.is_open())
+    if (not fs::exists(fpath))
     {
-      const char ch = inf.get();
-      isListFile = ch == 'l';
+      log::critical(logcat, "Bootstrap RC file non-existant at path:{}", fpath);
+      return result;
     }
 
-    if (isListFile)
-    {
-      auto content = util::file_to_string(fpath);
+    auto content = util::file_to_string(fpath);
+    result = bt_decode(content);
 
-      if (not bt_decode(content))
-      {
-        throw std::runtime_error{fmt::format("failed to read bootstrap list file '{}'", fpath)};
-      }
-    }
-    else
-    {
-      RemoteRC rc;
-      if (not rc.read(fpath))
-      {
-        throw std::runtime_error{
-            fmt::format("failed to decode bootstrap RC, file='{}', rc={}", fpath, rc.to_string())};
-      }
-      insert(rc);
-    }
+    log::critical(
+        logcat, "{}uccessfully loaded BootstrapRC file at path:{}", result ? "S" : "Un", fpath);
+
+    _curr = begin();
+    return result;
   }
 }  // namespace llarp

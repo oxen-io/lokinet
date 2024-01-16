@@ -79,7 +79,7 @@ namespace llarp::service
   {
     RouterID router{};
     service::Address addr{};
-    if (router.FromString(lokinet_addr))
+    if (router.from_string(lokinet_addr))
       return router;
     if (addr.FromString(lokinet_addr))
       return addr;

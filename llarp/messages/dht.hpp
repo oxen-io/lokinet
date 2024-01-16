@@ -34,6 +34,7 @@ namespace llarp
   {
     inline auto NOT_FOUND = "NOT FOUND"sv;
 
+    // NOT USED
     inline static std::string
     serialize(dht::Key_t name_hash)
     {

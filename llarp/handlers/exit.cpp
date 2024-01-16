@@ -281,7 +281,7 @@ namespace llarp::handlers
       }
       // forward dns for snode
       RouterID r;
-      if (r.FromString(msg.questions[0].Name()))
+      if (r.from_string(msg.questions[0].Name()))
       {
         huint128_t ip;
         PubKey pubKey(r);

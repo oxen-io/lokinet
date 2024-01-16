@@ -11,16 +11,19 @@ namespace llarp::link
   {
     std::shared_ptr<oxen::quic::connection_interface> conn;
     std::shared_ptr<oxen::quic::BTRequestStream> control_stream;
-    RemoteRC remote_rc;
 
-    // one side of a connection will be responsible for some things, e.g. heartbeat
-    bool inbound{false};
     bool remote_is_relay{true};
 
+    bool
+    is_inbound() const
+    {
+      return conn->is_inbound();
+    }
+
     Connection(
-        std::shared_ptr<oxen::quic::connection_interface>& c,
-        std::shared_ptr<oxen::quic::BTRequestStream>& s,
-        const RemoteRC& rc);
+        std::shared_ptr<oxen::quic::connection_interface> c,
+        std::shared_ptr<oxen::quic::BTRequestStream> s,
+        bool is_relay = true);
   };
 }  // namespace llarp::link
 

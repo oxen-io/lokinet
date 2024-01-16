@@ -37,41 +37,45 @@
 #include <unordered_map>
 #include <vector>
 
-/*
-  TONUKE:
-    - hidden_service_context
-
-  TODO:
-    - router should hold DHT nodes container? in either a class or a map
-    -
-*/
-
 namespace llarp
 {
   /// number of routers to publish to
-  static constexpr size_t INTROSET_RELAY_REDUNDANCY = 2;
+  inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
 
   /// number of dht locations handled per relay
-  static constexpr size_t INTROSET_REQS_PER_RELAY = 2;
+  inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
 
-  static constexpr size_t INTROSET_STORAGE_REDUNDANCY =
-      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY);
+  inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{
+      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
-  static const std::chrono::seconds RC_UPDATE_INTERVAL = 5min;
-  static const std::chrono::seconds ROUTERID_UPDATE_INTERVAL = 1h;
+  // TESTNET: these constants are shortened for testing purposes
+  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{10min};
+  inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
+  inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
+  // as we advance towards full mesh, we try to connect to this number per tick
+  inline constexpr int FULL_MESH_ITERATION{1};
+  inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
+
+  // DISCUSS: ask tom and jason about this
+  // how big of a time skip before we reset network state
+  inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
+
+  inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{10s};
+
+  inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
 
   struct Contacts;
 
   struct Router : std::enable_shared_from_this<Router>
   {
+    friend class NodeDB;
+
     explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
 
-    ~Router();
+    ~Router() = default;
 
    private:
     std::shared_ptr<RoutePoker> _route_poker;
-    /// bootstrap RCs
-    BootstrapList bootstrap_rc_list;
     std::chrono::steady_clock::time_point _next_explore_at;
     llarp_time_t last_pump = 0s;
     // transient iwp encryption key
@@ -95,8 +99,14 @@ namespace llarp
     int _outbound_udp_socket = -1;
     bool _is_service_node = false;
 
-    std::optional<SockAddr> _ourAddress;
-    oxen::quic::Address _local_addr;
+    bool _testnet = false;
+    bool _testing_disabled = false;
+    bool _bootstrap_seed = false;
+
+    consensus::reachability_testing router_testing;
+
+    std::optional<oxen::quic::Address> _public_address;  // public addr for relays
+    oxen::quic::Address _listen_address;
 
     EventLoop_ptr _loop;
     std::shared_ptr<vpn::Platform> _vpn;
@@ -108,7 +118,6 @@ namespace llarp
     std::shared_ptr<NodeDB> _node_db;
     llarp_time_t _started_at;
     const oxenmq::TaggedThreadID _disk_thread;
-    oxen::quic::Network _net;
 
     llarp_time_t _last_stats_report = 0s;
     llarp_time_t _next_decomm_warning = time_now_ms() + 15s;
@@ -126,23 +135,14 @@ namespace llarp
     oxenmq::address rpc_addr;
     Profiling _router_profiling;
     fs::path _profile_file;
-    LinkManager _link_manager{*this};
-    std::chrono::system_clock::time_point last_rc_gossip{
-        std::chrono::system_clock::time_point::min()};
-    std::chrono::system_clock::time_point next_rc_gossip{
-        std::chrono::system_clock::time_point::min()};
 
-    std::chrono::system_clock::time_point last_rc_fetch{
-        std::chrono::system_clock::time_point::min()};
-    std::chrono::system_clock::time_point last_routerid_fetch{
-        std::chrono::system_clock::time_point::min()};
+    std::unique_ptr<LinkManager> _link_manager;
+    int client_router_connections;
 
     // should we be sending padded messages every interval?
     bool send_padding = false;
 
     service::Context _hidden_service_context;
-
-    consensus::reachability_testing router_testing;
 
     bool
     should_report_stats(llarp_time_t now) const;
@@ -159,20 +159,59 @@ namespace llarp
     bool
     insufficient_peers() const;
 
+   protected:
+    std::chrono::system_clock::time_point last_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
+    std::chrono::system_clock::time_point next_initial_fetch_attempt{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
+
    public:
+    bool
+    testnet() const
+    {
+      return _testnet;
+    }
+
+    bool
+    is_bootstrap_seed() const
+    {
+      return _bootstrap_seed;
+    }
+
+    int
+    required_num_client_conns() const
+    {
+      return client_router_connections;
+    }
+
+    const RouterID&
+    local_rid() const
+    {
+      return router_contact.router_id();
+    }
+
+    bool
+    needs_initial_fetch() const;
+
+    bool
+    needs_rebootstrap() const;
+
     void
     for_each_connection(std::function<void(link::Connection&)> func);
 
-    void
-    connect_to(const RouterID& rid);
-
-    void
-    connect_to(const RemoteRC& rc);
-
-    Contacts*
+    const Contacts&
     contacts() const
     {
-      return _contacts.get();
+      return *_contacts;
+    }
+
+    Contacts&
+    contacts()
+    {
+      return *_contacts;
     }
 
     std::shared_ptr<Config>
@@ -205,10 +244,16 @@ namespace llarp
     LinkManager&
     link_manager()
     {
-      return _link_manager;
+      return *_link_manager;
     }
 
-    inline int
+    const LinkManager&
+    link_manager() const
+    {
+      return *_link_manager;
+    }
+
+    int
     outbound_udp_socket() const
     {
       return _outbound_udp_socket;
@@ -275,7 +320,7 @@ namespace llarp
     }
 
     oxen::quic::Address
-    public_ip() const;
+    listen_addr() const;
 
     util::StatusObject
     ExtractStatus() const;
@@ -283,7 +328,7 @@ namespace llarp
     util::StatusObject
     ExtractSummaryStatus() const;
 
-    const std::unordered_set<RouterID>&
+    const std::set<RouterID>&
     get_whitelist() const;
 
     void
@@ -369,10 +414,10 @@ namespace llarp
     status_line();
 
     void
-    InitInboundLinks();
+    init_inbounds();
 
     void
-    InitOutboundLinks();
+    init_outbounds();
 
     std::optional<RouterID>
     GetRandomGoodRouter();
@@ -466,7 +511,7 @@ namespace llarp
         std::string body,
         std::function<void(oxen::quic::message m)> func = nullptr);
 
-    bool IsBootstrapNode(RouterID) const;
+    bool is_bootstrap_node(RouterID) const;
 
     /// call internal router ticker
     void
@@ -478,29 +523,16 @@ namespace llarp
       return llarp::time_now_ms();
     }
 
-    /// parse a routing message in a buffer and handle it with a handler if
-    /// successful parsing return true on parse and handle success otherwise
-    /// return false
-    bool
-    ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, path::AbstractHopHandler& p, const PathID_t& rxid);
-
     void
     ConnectToRandomRouters(int N);
 
     /// count the number of unique service nodes connected via pubkey
     size_t
-    NumberOfConnectedRouters() const;
+    num_router_connections() const;
 
     /// count the number of unique clients connected by pubkey
     size_t
-    NumberOfConnectedClients() const;
-
-    bool
-    GetRandomConnectedRouter(RemoteRC& result) const;
-
-    bool
-    HasSessionTo(const RouterID& remote) const;
+    num_client_connections() const;
 
     std::string
     ShortName() const;

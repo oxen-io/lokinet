@@ -34,7 +34,9 @@ namespace llarp
   using SectionValues = llarp::ConfigParser::SectionValues;
   using ConfigMap = llarp::ConfigParser::ConfigMap;
 
-  inline static constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
+  inline const std::string QUAD_ZERO{"0.0.0.0"};
+  inline constexpr uint16_t DEFAULT_LISTEN_PORT{1090};
+  inline constexpr int CLIENT_ROUTER_CONNECTIONS = 4;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
   /// Small struct to gather all parameters needed for config generation to reduce the number of
@@ -57,8 +59,7 @@ namespace llarp
 
   struct RouterConfig
   {
-    size_t min_connected_routers = 0;
-    size_t max_connected_routers = 0;
+    int client_router_connections{CLIENT_ROUTER_CONNECTIONS};
 
     std::string net_id;
 
@@ -77,10 +78,9 @@ namespace llarp
     std::string transkey_file;
 
     bool is_relay = false;
-    /// deprecated
-    std::optional<net::ipaddr_t> public_ip;
-    /// deprecated
-    std::optional<net::port_t> public_port;
+
+    std::optional<std::string> public_ip;
+    std::optional<uint16_t> public_port;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -170,19 +170,15 @@ namespace llarp
 
   struct LinksConfig
   {
-    std::optional<net::ipaddr_t> public_addr;
-    std::optional<net::port_t> public_port;
+    // DEPRECATED -- use [Router]:public_addr
+    std::optional<std::string> public_addr;
+    // DEPRECATED -- use [Router]:public_port
+    std::optional<uint16_t> public_port;
 
-    std::optional<oxen::quic::Address> addr;
+    std::optional<oxen::quic::Address> listen_addr;
+
+    bool using_user_value = false;
     bool using_new_api = false;
-
-    void
-    define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
-  struct ConnectConfig
-  {
-    std::vector<fs::path> routers;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -202,6 +198,7 @@ namespace llarp
   {
     fs::path id_keyfile;
     oxenmq::address rpc_addr;
+    bool disable_testing = true;
 
     void
     define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -210,7 +207,6 @@ namespace llarp
   struct BootstrapConfig
   {
     std::vector<fs::path> files;
-    BootstrapList routers;
     bool seednode;
 
     void
@@ -240,7 +236,6 @@ namespace llarp
     RouterConfig router;
     NetworkConfig network;
     PeerSelectionConfig paths;
-    ConnectConfig connect;
     DnsConfig dns;
     LinksConfig links;
     ApiConfig api;

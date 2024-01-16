@@ -178,7 +178,7 @@ namespace llarp
       EgresPacketRouter()
       {
         return nullptr;
-      };
+      }
 
       virtual vpn::NetworkInterface*
       GetVPNInterface()

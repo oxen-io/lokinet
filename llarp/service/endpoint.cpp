@@ -299,7 +299,7 @@ namespace llarp::service
     // expire convotags
     EndpointUtil::ExpireConvoSessions(now, Sessions());
 
-    if (NumInStatus(path::ePathEstablished) > 1)
+    if (NumInStatus(path::ESTABLISHED) > 1)
     {
       for (const auto& item : _startup_ons_mappings)
       {
@@ -516,7 +516,7 @@ namespace llarp::service
     const auto& keyfile = _state->key_file;
     if (!keyfile.empty())
     {
-      _identity.EnsureKeys(keyfile, router()->key_manager()->needBackup());
+      _identity.EnsureKeys(keyfile, router()->key_manager()->needs_backup());
     }
     else
     {
@@ -697,14 +697,16 @@ namespace llarp::service
   {
     std::unordered_set<RouterID> exclude;
     ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
-    const auto maybe =
-        router()->node_db()->GetRandom([exclude, r = router()](const RemoteRC& rc) -> bool {
-          const auto& rid = rc.router_id();
-          return exclude.count(rid) == 0 and not r->router_profiling().IsBadForPath(rid);
-        });
-    if (not maybe.has_value())
-      return std::nullopt;
-    return GetHopsForBuildWithEndpoint(maybe->router_id());
+
+    auto hook = [exclude, r = router()](const RemoteRC& rc) -> bool {
+      const auto& rid = rc.router_id();
+      return not(exclude.count(rid) || r->router_profiling().IsBadForPath(rid));
+    };
+
+    if (auto maybe = router()->node_db()->get_random_rc_conditional(hook))
+      return GetHopsForBuildWithEndpoint(maybe->router_id());
+
+    return std::nullopt;
   }
 
   std::optional<std::vector<RemoteRC>>
@@ -1308,7 +1310,7 @@ namespace llarp::service
     // TODO: if all requests fail, call callback with failure?
     for (const auto& path : paths)
     {
-      path->find_intro(location, false, 0, [this, hook, got_it](std::string resp) mutable {
+      path->find_intro(location, false, 0, [hook, got_it, this](std::string resp) mutable {
         // asking many, use only first successful
         if (*got_it)
           return;
@@ -1333,7 +1335,7 @@ namespace llarp::service
         }
 
         service::EncryptedIntroSet enc{introset};
-        router()->contacts()->services()->PutNode(std::move(enc));
+        router()->contacts().put_intro(std::move(enc));
 
         // TODO: finish this
         /*
@@ -1396,7 +1398,7 @@ namespace llarp::service
 
     while (not _inbound_queue.empty())
     {
-      // succ it out
+      // suck it out
       queue.emplace(std::move(*_inbound_queue.popFront()));
     }
 
@@ -1537,7 +1539,7 @@ namespace llarp::service
     if (BuildCooldownHit(now))
       return false;
     const auto requiredPaths = std::max(numDesiredPaths, path::MIN_INTRO_PATHS);
-    if (NumInStatus(path::ePathBuilding) >= requiredPaths)
+    if (NumInStatus(path::BUILDING) >= requiredPaths)
       return false;
     return NumPathsExistingAt(now + (path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
         < requiredPaths;

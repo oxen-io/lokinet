@@ -10,6 +10,8 @@
 #include <ifaddrs.h>
 #endif
 
+#include <quic/address.hpp>
+
 #include <list>
 
 namespace llarp::net
@@ -50,19 +52,21 @@ namespace llarp::net
       return ifname;
     }
 
-    std::optional<sockaddr*>
-    GetBestNetIF(int af) const override
+    std::optional<oxen::quic::Address>
+    get_best_public_address(bool ipv4, uint16_t port) const override
     {
-      std::optional<sockaddr*> found;
+      std::optional<oxen::quic::Address> found;
 
-      iter_all([this, &found, af](auto i) {
+      iter_all([&found, ipv4, port](ifaddrs* i) {
         if (found)
           return;
-        if (i and i->ifa_addr and i->ifa_addr->sa_family == af)
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == (ipv4 ? AF_INET : AF_INET6))
         {
-          if (not IsBogon(*i->ifa_addr))
+          oxen::quic::Address a{i->ifa_addr};
+          if (a.is_public_ip())
           {
-            found = i->ifa_addr;
+            a.set_port(port);
+            found = std::move(a);
           }
         }
       });

@@ -32,9 +32,11 @@ namespace llarp
     std::string
     ToString() const;
 
+    // FIXME: this is deceptively named: it should be "from_hex" since that's what it does.
     bool
     FromString(const std::string& str);
 
+    // FIXME: this is deceptively named: it should be "from_hex" since that's what it does.
     static PubKey
     from_string(const std::string& s);
 

@@ -9,6 +9,7 @@
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
+#include <llarp/util/time.hpp>
 
 #include <nlohmann/json.hpp>
 #include <oxenc/bt_producer.h>
@@ -21,8 +22,6 @@ namespace llarp
 {
   static auto logcat = log::Cat("RC");
 
-  using rc_time = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
-
   static inline constexpr size_t NETID_SIZE{8};
 
   /// On the wire we encode the data as a dict containing:
@@ -34,7 +33,7 @@ namespace llarp
   /// "6" -- optional 18 byte IPv6 address & port: 16 byte raw IPv6 address followed by 2 bytes
   ///        of port in network order.
   /// "i" -- optional network ID string of up to 8 bytes; this is omitted for the default network
-  ///        ID ("lokinet") but included for others (such as "gamma" for testnet).
+  ///        ID ("lokinet") but included for others (such as "testnet" for testnet).
   /// "p" -- 32-byte router pubkey
   /// "t" -- timestamp when this RC record was created (which also implicitly determines when it
   ///        goes stale and when it expires).
@@ -53,8 +52,6 @@ namespace llarp
     static inline std::string ACTIVE_NETID{LOKINET_DEFAULT_NETID};
 
     static inline constexpr size_t MAX_RC_SIZE = 1024;
-
-    /// Timespans for RCs:
 
     /// How long (from its signing time) before an RC is considered "stale".  Relays republish
     /// their RCs slightly more frequently than this so that ideally this won't happen.
@@ -171,13 +168,7 @@ namespace llarp
     {}
 
     bool
-    BDecode(llarp_buffer_t* buf);
-
-    bool
-    decode_key(const llarp_buffer_t& k, llarp_buffer_t* buf);
-
-    bool
-    is_public_router() const;
+    is_public_addressable() const;
 
     /// does this RC expire soon? default delta is 1 minute
     bool
@@ -204,9 +195,17 @@ namespace llarp
     bool
     is_obsolete_bootstrap() const;
 
+    static bool
+    is_obsolete(const RouterContact& rc);
+
+    void
+    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
+
     void
     bt_load(oxenc::bt_dict_consumer& data);
   };
+
+  struct RemoteRC;
 
   /// Extension of RouterContact used to store a local "RC," and inserts a RouterContact by
   /// re-parsing and sending it out. This sub-class contains a pubkey and all the other attributes
@@ -234,8 +233,10 @@ namespace llarp
 
    public:
     LocalRC() = default;
-    explicit LocalRC(std::string payload, const SecretKey sk);
     ~LocalRC() = default;
+
+    RemoteRC
+    to_remote();
 
     void
     resign();
@@ -298,8 +299,7 @@ namespace llarp
     void
     set_systime_timestamp()
     {
-      set_timestamp(
-          std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
+      set_timestamp(time_point_now());
     }
   };
 
@@ -307,15 +307,13 @@ namespace llarp
   /// the data in the constructor, eliminating the need for a ::verify method/
   struct RemoteRC final : public RouterContact
   {
-   private:
-    void
-    bt_verify(oxenc::bt_dict_consumer& data, bool reject_expired = false) const;
-
    public:
     RemoteRC() = default;
-    RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
-    {}
-    RemoteRC(ustring_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
+    explicit RemoteRC(std::string_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
+    {
+      _payload = {reinterpret_cast<const unsigned char*>(data.data()), data.size()};
+    }
+    explicit RemoteRC(ustring_view data) : RemoteRC{oxenc::bt_dict_consumer{data}}
     {
       _payload = data;
     }
@@ -360,10 +358,18 @@ namespace std
   template <>
   struct hash<llarp::RouterContact>
   {
-    size_t
+    virtual size_t
     operator()(const llarp::RouterContact& r) const
     {
       return std::hash<llarp::PubKey>{}(r.router_id());
     }
   };
+
+  template <>
+  struct hash<llarp::RemoteRC> : public hash<llarp::RouterContact>
+  {};
+
+  template <>
+  struct hash<llarp::LocalRC> final : public hash<llarp::RouterContact>
+  {};
 }  // namespace std
