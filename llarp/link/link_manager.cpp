@@ -160,39 +160,39 @@ namespace llarp
   {
     log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
-    s->register_command("bfetch_rcs"s, [this](oxen::quic::message m) {
+    s->register_handler("bfetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
     });
 
-    s->register_command("fetch_rcs"s, [this](oxen::quic::message m) {
+    s->register_handler("fetch_rcs"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
     });
 
-    s->register_command("fetch_rids"s, [this](oxen::quic::message m) {
+    s->register_handler("fetch_rids"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
     });
 
-    s->register_command("path_build"s, [this, rid = router_id](oxen::quic::message m) {
+    s->register_handler("path_build"s, [this, rid = router_id](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
     });
 
-    s->register_command("path_control"s, [this, rid = router_id](oxen::quic::message m) {
+    s->register_handler("path_control"s, [this, rid = router_id](oxen::quic::message m) {
       _router.loop()->call(
           [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
     });
 
-    s->register_command("gossip_rc"s, [this](oxen::quic::message m) {
+    s->register_handler("gossip_rc"s, [this](oxen::quic::message m) {
       _router.loop()->call(
           [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
     });
 
     for (auto& method : direct_requests)
     {
-      s->register_command(
+      s->register_handler(
           std::string{method.first},
           [this, func = std::move(method.second)](oxen::quic::message m) {
             _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
@@ -394,8 +394,8 @@ namespace llarp
   LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
   {
     _router.loop()->call(
-        [this, scid = ci.scid(), rid = RouterID{ci.remote_key()}, error_code = ec]() {
-          log::critical(quic_cat, "Purging quic connection CID:{} (ec:{})", scid, error_code);
+        [this, ref_id = ci.reference_id(), rid = RouterID{ci.remote_key()}, error_code = ec]() {
+          log::critical(quic_cat, "Purging quic connection {} (ec:{})", ref_id, error_code);
 
           if (auto s_itr = ep.service_conns.find(rid); s_itr != ep.service_conns.end())
           {
@@ -408,7 +408,7 @@ namespace llarp
             ep.client_conns.erase(c_itr);
           }
           else
-            log::critical(quic_cat, "Nothing to purge for quic connection CID:{}", scid);
+            log::critical(quic_cat, "Nothing to purge for quic connection {}", ref_id);
         });
   }
 
@@ -1369,8 +1369,8 @@ namespace llarp
       }
 
       oxenc::bt_dict_consumer frame_info{payload_list.front()};
-      auto hash = frame_info.require<ustring>("HASH");
       auto frame = frame_info.require<ustring>("FRAME");
+      auto hash = frame_info.require<ustring>("HASH");
 
       oxenc::bt_dict_consumer hop_dict{frame};
       auto hop_payload = hop_dict.require<ustring>("ENCRYPTED");
