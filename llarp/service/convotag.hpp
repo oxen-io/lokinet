@@ -1,9 +1,8 @@
 #pragma once
 
-#include <llarp/util/aligned.hpp>
-#include <llarp/net/net_int.hpp>
-
 #include <llarp/net/net.hpp>
+#include <llarp/net/net_int.hpp>
+#include <llarp/util/aligned.hpp>
 
 namespace llarp::service
 {

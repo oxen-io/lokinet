@@ -1,11 +1,11 @@
 #pragma once
+#include <llarp/util/fs.hpp>
+
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/functional.h>
 
 #include <unordered_map>
-
-#include <llarp/util/fs.hpp>
 
 namespace py = pybind11;
 
@@ -21,7 +21,7 @@ namespace llarp
   CryptoTypes_Init(py::module& mod);
 
   void
-  AbstractRouter_Init(py::module& mod);
+  Router_Init(py::module& mod);
 
   void
   RouterID_Init(py::module& mod);

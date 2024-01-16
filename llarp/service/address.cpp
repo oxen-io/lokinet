@@ -1,6 +1,9 @@
 #include "address.hpp"
+
 #include <llarp/crypto/crypto.hpp>
+
 #include <oxenc/base32z.h>
+
 #include <algorithm>
 
 namespace llarp::service
@@ -67,16 +70,16 @@ namespace llarp::service
   Address::ToKey() const
   {
     PubKey k;
-    CryptoManager::instance()->derive_subkey(k, PubKey(data()), 1);
+    crypto::derive_subkey(k, PubKey(data()), 1);
     return dht::Key_t{k.as_array()};
   }
 
   std::optional<std::variant<Address, RouterID>>
-  ParseAddress(std::string_view lokinet_addr)
+  parse_address(std::string_view lokinet_addr)
   {
     RouterID router{};
     service::Address addr{};
-    if (router.FromString(lokinet_addr))
+    if (router.from_string(lokinet_addr))
       return router;
     if (addr.FromString(lokinet_addr))
       return addr;

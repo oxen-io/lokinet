@@ -1,17 +1,14 @@
 #pragma once
 
 #include <llarp/constants/path.hpp>
-#include <llarp/path/ihophandler.hpp>
+#include <llarp/path/abstracthophandler.hpp>
 #include <llarp/path/path_types.hpp>
-#include <llarp/routing/handler.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/util/compare_ptr.hpp>
 #include <llarp/util/thread/queue.hpp>
 
 namespace llarp
 {
-  struct LR_CommitRecord;
-
   namespace dht
   {
     struct GotIntroMessage;
@@ -22,7 +19,7 @@ namespace llarp
     struct TransitHopInfo
     {
       TransitHopInfo() = default;
-      TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
+      TransitHopInfo(const RouterID& down);
 
       PathID_t txID, rxID;
       RouterID upstream;
@@ -52,20 +49,35 @@ namespace llarp
           < std::tie(rhs.txID, rhs.rxID, rhs.upstream, rhs.downstream);
     }
 
-    struct TransitHop : public IHopHandler,
-                        public routing::IMessageHandler,
-                        std::enable_shared_from_this<TransitHop>
+    struct TransitHop : public AbstractHopHandler, std::enable_shared_from_this<TransitHop>
     {
       TransitHop();
 
       TransitHopInfo info;
       SharedSecret pathKey;
-      ShortHash nonceXOR;
+      SymmNonce nonceXOR;
       llarp_time_t started = 0s;
       // 10 minutes default
-      llarp_time_t lifetime = default_lifetime;
+      llarp_time_t lifetime = DEFAULT_LIFETIME;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
+      bool terminal_hop{false};
+
+      // If randomize is given, first randomizes `nonce`
+      //
+      // Does xchacha20 on `data` in-place with `nonce` and `pathKey`, then
+      // mutates `nonce` = `nonce` ^ `nonceXOR` in-place.
+      void
+      onion(ustring& data, SymmNonce& nonce, bool randomize = false) const;
+
+      void
+      onion(std::string& data, SymmNonce& nonce, bool randomize = false) const;
+
+      std::string
+      onion_and_payload(
+          std::string& payload,
+          PathID_t next_id,
+          std::optional<SymmNonce> nonce = std::nullopt) const;
 
       PathID_t
       RXID() const override
@@ -99,10 +111,6 @@ namespace llarp
         return m_LastActivity;
       }
 
-      bool
-      HandleLRSM(
-          uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
-
       std::string
       ToString() const;
 
@@ -115,95 +123,29 @@ namespace llarp
         return now >= ExpireTime() - dlt;
       }
 
-      // send routing message when end of path
+      // TODO: should this be a separate method indicating directionality?
+      //       Most control messages won't make sense to be sent to a client,
+      //       so perhaps control messages from a terminal relay to a client (rather than
+      //       the other way around) should be their own message type.
+      //
+      /// sends a control request along a path
+      ///
+      /// performs the necessary onion encryption before sending.
+      /// func will be called when a timeout occurs or a response is received.
+      /// if a response is received, onion decryption is performed before func is called.
+      ///
+      /// func is called with a bt-encoded response string (if applicable), and
+      /// a timeout flag (if set, response string will be empty)
       bool
-      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
-
-      // handle routing message when end of path
-      bool
-      HandleRoutingMessage(const routing::IMessage& msg, AbstractRouter* r);
-
-      bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandlePathConfirmMessage(AbstractRouter* r);
-
-      bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, AbstractRouter* r) override;
-      bool
-      HandlePathTransferMessage(
-          const routing::PathTransferMessage& msg, AbstractRouter* r) override;
-      bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleUpdateExitVerifyMessage(
-          const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleTransferTrafficMessage(
-          const routing::TransferTrafficMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r) override;
-      bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
-
-      bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame& /*frame*/) override
-      {
-        /// TODO: implement me
-        LogWarn("Got hidden service data on transit hop");
-        return false;
-      }
-
-      bool
-      HandleGotIntroMessage(const dht::GotIntroMessage& msg);
-
-      bool
-      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
+      send_path_control_message(
+          std::string method, std::string body, std::function<void(std::string)> func) override;
 
       void
-      FlushUpstream(AbstractRouter* r) override;
-
-      void
-      FlushDownstream(AbstractRouter* r) override;
-
-      void
-      QueueDestroySelf(AbstractRouter* r);
-
-     protected:
-      void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
-
-      void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
-
-      void
-      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
-
-      void
-      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
+      QueueDestroySelf(Router* r);
 
      private:
       void
       SetSelfDestruct();
-
-      std::set<std::shared_ptr<TransitHop>, ComparePtr<std::shared_ptr<TransitHop>>> m_FlushOthers;
-      thread::Queue<RelayUpstreamMessage> m_UpstreamGather;
-      thread::Queue<RelayDownstreamMessage> m_DownstreamGather;
-      std::atomic<uint32_t> m_UpstreamWorkCounter;
-      std::atomic<uint32_t> m_DownstreamWorkCounter;
     };
   }  // namespace path
 

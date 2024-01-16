@@ -1,26 +1,21 @@
 #include "rpc_server.hpp"
-#include "llarp/rpc/rpc_request_definitions.hpp"
+
 #include "rpc_request.hpp"
-#include "llarp/service/address.hpp"
-#include <cmath>
-#include <exception>
-#include <llarp/router/route_poker.hpp>
+
 #include <llarp/config/config.hpp>
 #include <llarp/config/ini.hpp>
-#include <llarp/constants/platform.hpp>
 #include <llarp/constants/version.hpp>
-#include <nlohmann/json.hpp>
+#include <llarp/dns/dns.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/net/ip_range.hpp>
-#include <llarp/quic/tunnel.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/rpc/rpc_request_definitions.hpp>
 #include <llarp/service/context.hpp>
-#include <llarp/service/outbound_context.hpp>
-#include <llarp/service/auth.hpp>
-#include <llarp/service/name.hpp>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/dns/dns.hpp>
+
+#include <nlohmann/json.hpp>
+
+#include <exception>
 #include <vector>
-#include <oxenmq/fmt.h>
 
 namespace llarp::rpc
 {
@@ -77,14 +72,14 @@ namespace llarp::rpc
   }
 
   std::shared_ptr<EndpointBase>
-  GetEndpointByName(AbstractRouter& r, std::string name)
+  GetEndpointByName(Router& r, std::string name)
   {
-    if (r.IsServiceNode())
+    if (r.is_service_node())
     {
-      return r.exitContext().GetExitEndpoint(name);
+      return r.exitContext().get_exit_endpoint(name);
     }
 
-    return r.hiddenServiceContext().GetEndpointByName(name);
+    return r.hidden_service_context().GetEndpointByName(name);
   }
 
   template <typename RPC>
@@ -99,11 +94,11 @@ namespace llarp::rpc
     regs.emplace(RPC::name, std::move(cback));
   }
 
-  RPCServer::RPCServer(LMQ_ptr lmq, AbstractRouter& r)
+  RPCServer::RPCServer(LMQ_ptr lmq, Router& r)
       : m_LMQ{std::move(lmq)}, m_Router(r), log_subs{*m_LMQ, llarp::logRingBuffer}
   {
     // copied logic loop as placeholder
-    for (const auto& addr : r.GetConfig()->api.m_rpcBindAddresses)
+    for (const auto& addr : r.config()->api.rpc_bind_addrs)
     {
       m_LMQ->listen_plain(addr.zmq_address());
       LogInfo("Bound RPC server to ", addr.full_address());
@@ -159,7 +154,7 @@ namespace llarp::rpc
   RPCServer::invoke(Version& version)
   {
     util::StatusObject result{
-        {"version", llarp::VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
+        {"version", llarp::LOKINET_VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
 
     SetJSONResponse(result, version.response);
   }
@@ -214,7 +209,8 @@ namespace llarp::rpc
 
     if (quicconnect.request.closeID)
     {
-      quic->forget(quicconnect.request.closeID);
+      // TODO:
+      // quic->forget(quicconnect.request.closeID);
       SetJSONResponse("OK", quicconnect.response);
       return;
     }
@@ -223,12 +219,13 @@ namespace llarp::rpc
 
     try
     {
-      auto [addr, id] = quic->open(
-          quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
+      // TODO:
+      // auto [addr, id] = quic->open(
+      //     quicconnect.request.remoteHost, quicconnect.request.port, [](auto&&) {}, laddr);
 
       util::StatusObject status;
-      status["addr"] = addr.ToString();
-      status["id"] = id;
+      // status["addr"] = addr.ToString();
+      // status["id"] = id;
 
       SetJSONResponse(status, quicconnect.response);
     }
@@ -269,7 +266,8 @@ namespace llarp::rpc
 
     if (quiclistener.request.closeID)
     {
-      quic->forget(quiclistener.request.closeID);
+      // TODO:
+      // quic->forget(quiclistener.request.closeID);
       SetJSONResponse("OK", quiclistener.response);
       return;
     }
@@ -280,7 +278,8 @@ namespace llarp::rpc
       try
       {
         SockAddr addr{quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
-        id = quic->listen(addr);
+        // TODO:
+        // id = quic->listen(addr);
       }
       catch (std::exception& e)
       {
@@ -310,7 +309,7 @@ namespace llarp::rpc
   void
   RPCServer::invoke(LookupSnode& lookupsnode)
   {
-    if (not m_Router.IsServiceNode())
+    if (not m_Router.is_service_node())
     {
       SetJSONError("Not supported", lookupsnode.response);
       return;
@@ -323,14 +322,14 @@ namespace llarp::rpc
       return;
     }
 
-    if (not routerID.FromString(lookupsnode.request.routerID))
+    if (not routerID.from_string(lookupsnode.request.routerID))
     {
       SetJSONError("Invalid remote: " + lookupsnode.request.routerID, lookupsnode.response);
       return;
     }
 
     m_Router.loop()->call([&]() {
-      auto endpoint = m_Router.exitContext().GetExitEndpoint("default");
+      auto endpoint = m_Router.exitContext().get_exit_endpoint("default");
 
       if (endpoint == nullptr)
       {
@@ -360,7 +359,7 @@ namespace llarp::rpc
     // steal replier from exit RPC endpoint
     exit_request.replier.emplace(mapexit.move());
 
-    m_Router.hiddenServiceContext().GetDefault()->map_exit(
+    m_Router.hidden_service_context().GetDefault()->map_exit(
         mapexit.request.address,
         mapexit.request.token,
         mapexit.request.ip_range,
@@ -375,13 +374,13 @@ namespace llarp::rpc
   void
   RPCServer::invoke(ListExits& listexits)
   {
-    if (not m_Router.hiddenServiceContext().hasEndpoints())
+    if (not m_Router.hidden_service_context().hasEndpoints())
     {
       SetJSONError("No mapped endpoints found", listexits.response);
       return;
     }
 
-    auto status = m_Router.hiddenServiceContext().GetDefault()->ExtractStatus()["exitMap"];
+    auto status = m_Router.hidden_service_context().GetDefault()->ExtractStatus()["exitMap"];
 
     SetJSONResponse((status.empty()) ? "No exits" : status, listexits.response);
   }
@@ -392,7 +391,7 @@ namespace llarp::rpc
     try
     {
       for (auto& ip : unmapexit.request.ip_range)
-        m_Router.hiddenServiceContext().GetDefault()->UnmapExitRange(ip);
+        m_Router.hidden_service_context().GetDefault()->UnmapExitRange(ip);
     }
     catch (std::exception& e)
     {
@@ -413,7 +412,7 @@ namespace llarp::rpc
   {
     MapExit map_request;
     UnmapExit unmap_request;
-    auto endpoint = m_Router.hiddenServiceContext().GetDefault();
+    auto endpoint = m_Router.hidden_service_context().GetDefault();
     auto current_exits = endpoint->ExtractStatus()["exitMap"];
 
     if (current_exits.empty())
@@ -567,10 +566,10 @@ namespace llarp::rpc
 
         auto parser = ConfigParser();
 
-        if (parser.LoadNewFromStr(config.request.ini))
+        if (parser.load_new_from_str(config.request.ini))
         {
-          parser.Filename(conf_d / (config.request.filename));
-          parser.SaveNew();
+          parser.set_filename(conf_d / (config.request.filename));
+          parser.save_new();
         }
       }
       catch (std::exception& e)
@@ -596,7 +595,8 @@ namespace llarp::rpc
 
     if (endpoint == "unsubscribe")
     {
-      log::info(logcat, "New logs unsubscribe request from conn {}@{}", m.conn, m.remote);
+      log::info(
+          logcat, "New logs unsubscribe request from conn {}@{}", m.conn.to_string(), m.remote);
       log_subs.unsubscribe(m.conn);
       m.send_reply("OK");
       return;
@@ -606,13 +606,18 @@ namespace llarp::rpc
 
     if (is_new)
     {
-      log::info(logcat, "New logs subscription request from conn {}@{}", m.conn, m.remote);
+      log::info(
+          logcat, "New logs subscription request from conn {}@{}", m.conn.to_string(), m.remote);
       m.send_reply("OK");
       log_subs.send_all(m.conn, endpoint);
     }
     else
     {
-      log::debug(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn, m.remote);
+      log::debug(
+          logcat,
+          "Renewed logs subscription request from conn id {}@{}",
+          m.conn.to_string(),
+          m.remote);
       m.send_reply("ALREADY");
     }
   }

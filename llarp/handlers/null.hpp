@@ -1,10 +1,10 @@
 #pragma once
 
+#include <llarp/ev/ev.hpp>
+#include <llarp/link/tunnel.hpp>
+#include <llarp/router/router.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/protocol_type.hpp>
-#include <llarp/quic/tunnel.hpp>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/ev/ev.hpp>
 #include <llarp/vpn/egres_packet_router.hpp>
 
 namespace llarp::handlers
@@ -12,7 +12,7 @@ namespace llarp::handlers
   struct NullEndpoint final : public llarp::service::Endpoint,
                               public std::enable_shared_from_this<NullEndpoint>
   {
-    NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
+    NullEndpoint(Router* r, llarp::service::Context* parent)
         : llarp::service::Endpoint{r, parent}
         , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
           var::visit(
@@ -25,7 +25,7 @@ namespace llarp::handlers
       r->loop()->add_ticker([this] { Pump(Now()); });
     }
 
-    virtual bool
+    bool
     HandleInboundPacket(
         const service::ConvoTag tag,
         const llarp_buffer_t& buf,
@@ -50,11 +50,9 @@ namespace llarp::handlers
           m_PacketRouter->HandleIPPacketFrom(std::move(*from), std::move(pkt));
           return true;
         }
-        else
-        {
-          LogWarn("did not handle packet, no endpoint with convotag T=", tag);
-          return false;
-        }
+
+        LogWarn("did not handle packet, no endpoint with convotag T=", tag);
+        return false;
       }
       if (t != service::ProtocolType::QUIC)
         return false;
@@ -70,9 +68,12 @@ namespace llarp::handlers
         LogWarn("invalid incoming quic packet, dropping");
         return false;
       }
-      quic->receive_packet(tag, buf);
+      // TODO:
+      // quic->receive_packet(tag, buf);
       return true;
     }
+
+    void send_packet_to_remote(std::string) override{};
 
     std::string
     GetIfName() const override
@@ -97,9 +98,6 @@ namespace llarp::handlers
     {
       return false;
     }
-
-    void
-    SendPacketToRemote(const llarp_buffer_t&, service::ProtocolType) override{};
 
     huint128_t
     ObtainIPForAddr(std::variant<service::Address, RouterID>) override

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "serialize.hpp"
-#include "rr.hpp"
 #include "question.hpp"
+#include "rr.hpp"
+#include "serialize.hpp"
 
 namespace llarp
 {

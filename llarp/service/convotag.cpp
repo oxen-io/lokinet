@@ -1,5 +1,4 @@
 #include "convotag.hpp"
-#include <llarp/net/ip.hpp>
 
 namespace llarp::service
 {

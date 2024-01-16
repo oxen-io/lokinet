@@ -14,6 +14,8 @@ if_nametoindex(const char* __ifname) __THROW;
 #endif
 #endif
 
+#include <string>
+
 namespace llarp::net
 {
   /// get the name of the loopback interface

@@ -1,13 +1,10 @@
 #include "ev.hpp"
-#include <llarp/util/mem.hpp>
-#include <llarp/util/str.hpp>
-
-#include <cstddef>
-#include <cstring>
-#include <string_view>
 
 #include "libuv.hpp"
+
 #include <llarp/net/net.hpp>
+
+#include <cstddef>
 
 namespace llarp
 {

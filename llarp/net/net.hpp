@@ -1,27 +1,29 @@
 #pragma once
 
-#include "uint128.hpp"
-#include "address_info.hpp"
-#include "ip_address.hpp"
-#include "net_int.hpp"
-#include "net.h"
-#include "ip_range.hpp"
-#include <llarp/util/mem.hpp>
-#include <llarp/util/bits.hpp>
-
 #include "interface_info.hpp"
+#include "ip_address.hpp"
+#include "ip_range.hpp"
+#include "net.h"
+#include "net_int.hpp"
+#include "uint128.hpp"
 
-#include <functional>
+#include <llarp/util/bits.hpp>
+#include <llarp/util/mem.hpp>
+
+#include <quic/address.hpp>
+
 #include <cstdlib>  // for itoa
+#include <functional>
 #include <vector>
 
 // for addrinfo
 #ifndef _WIN32
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #else
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 #endif
@@ -121,20 +123,10 @@ namespace llarp
         return var::visit([](auto&& ip) { return not ip.n; }, ip);
       }
 
-      virtual std::optional<std::string>
-      GetBestNetIF(int af = AF_INET) const = 0;
-
-      inline std::optional<SockAddr>
-      MaybeInferPublicAddr(port_t default_port, int af = AF_INET) const
-      {
-        std::optional<SockAddr> maybe_addr;
-        if (auto maybe_ifname = GetBestNetIF(af))
-          maybe_addr = GetInterfaceAddr(*maybe_ifname, af);
-
-        if (maybe_addr)
-          maybe_addr->setPort(default_port);
-        return maybe_addr;
-      }
+      // Attempts to guess a good default public network address from the system's public IP
+      // addresses; the returned Address (if set) will have its port set to the given value.
+      virtual std::optional<oxen::quic::Address>
+      get_best_public_address(bool ipv4, uint16_t port) const = 0;
 
       virtual std::optional<IPRange>
       FindFreeRange() const = 0;

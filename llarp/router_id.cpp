@@ -1,4 +1,5 @@
 #include "router_id.hpp"
+
 #include <oxenc/base32z.h>
 
 namespace llarp
@@ -28,7 +29,7 @@ namespace llarp
   }
 
   bool
-  RouterID::FromString(std::string_view str)
+  RouterID::from_string(std::string_view str)
   {
     auto pos = str.find(SNODE_TLD);
     if (pos != str.size() - SNODE_TLD.size())

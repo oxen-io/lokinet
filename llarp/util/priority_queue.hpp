@@ -9,5 +9,4 @@ namespace llarp::util
   template <typename T, typename Container = std::vector<T>>
   using ascending_priority_queue =
       std::priority_queue<T, Container, std::greater<typename Container::value_type>>;
-
 }  // namespace llarp::util

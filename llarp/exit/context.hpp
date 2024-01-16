@@ -1,56 +1,54 @@
 #pragma once
 #include "policy.hpp"
+
 #include <llarp/handlers/exit.hpp>
 
 #include <string>
 #include <unordered_map>
 
-namespace llarp
+namespace llarp::exit
 {
-  namespace exit
+  /// owner of all the exit endpoints
+  struct Context
   {
-    /// owner of all the exit endpoints
-    struct Context
-    {
-      Context(AbstractRouter* r);
-      ~Context();
+    Context(Router* r);
+    ~Context();
 
-      void
-      Tick(llarp_time_t now);
+    void
+    Tick(llarp_time_t now);
 
-      void
-      ClearAllEndpoints();
+    void
+    clear_all_endpoints();
 
-      util::StatusObject
-      ExtractStatus() const;
+    util::StatusObject
+    ExtractStatus() const;
 
-      /// send close to all exit sessions and remove all sessions
-      void
-      Stop();
+    /// send close to all exit sessions and remove all sessions
+    void
+    stop();
 
-      void
-      AddExitEndpoint(
-          const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
+    void
+    add_exit_endpoint(
+        const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
-      bool
-      ObtainNewExit(const PubKey& remote, const PathID_t& path, bool permitInternet);
+    bool
+    obtain_new_exit(const PubKey& remote, const PathID_t& path, bool permitInternet);
 
-      exit::Endpoint*
-      FindEndpointForPath(const PathID_t& path) const;
+    exit::Endpoint*
+    find_endpoint_for_path(const PathID_t& path) const;
 
-      /// calculate (pk, tx, rx) for all exit traffic
-      using TrafficStats = std::unordered_map<PubKey, std::pair<uint64_t, uint64_t>>;
+    /// calculate (pk, tx, rx) for all exit traffic
+    using TrafficStats = std::unordered_map<PubKey, std::pair<uint64_t, uint64_t>>;
 
-      void
-      CalculateExitTraffic(TrafficStats& stats);
+    void
+    calculate_exit_traffic(TrafficStats& stats);
 
-      std::shared_ptr<handlers::ExitEndpoint>
-      GetExitEndpoint(std::string name) const;
+    std::shared_ptr<handlers::ExitEndpoint>
+    get_exit_endpoint(std::string name) const;
 
-     private:
-      AbstractRouter* m_Router;
-      std::unordered_map<std::string, std::shared_ptr<handlers::ExitEndpoint>> m_Exits;
-      std::list<std::shared_ptr<handlers::ExitEndpoint>> m_Closed;
-    };
-  }  // namespace exit
-}  // namespace llarp
+   private:
+    Router* router;
+    std::unordered_map<std::string, std::shared_ptr<handlers::ExitEndpoint>> _exits;
+    std::list<std::shared_ptr<handlers::ExitEndpoint>> _closed;
+  };
+}  // namespace llarp::exit

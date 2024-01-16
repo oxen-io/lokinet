@@ -1,68 +1,74 @@
 #pragma once
 
-#include <unordered_map>
-#include <string>
+#include <llarp/net/net_int.hpp>
+
+#include <quic.hpp>
+
 #include <memory>
 #include <optional>
-#include <llarp/net/net_int.hpp>
+#include <string>
+#include <unordered_map>
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 
   struct RoutePoker : public std::enable_shared_from_this<RoutePoker>
   {
-    void
-    AddRoute(net::ipv4addr_t ip);
+    RoutePoker(Router& r) : router{r}
+    {}
 
     void
-    DelRoute(net::ipv4addr_t ip);
+    add_route(oxen::quic::Address ip);
 
     void
-    Start(AbstractRouter* router);
+    delete_route(oxen::quic::Address ip);
+
+    void
+    start();
 
     ~RoutePoker();
 
     /// explicitly put routes up
     void
-    Up();
+    put_up();
 
     /// explicitly put routes down
     void
-    Down();
+    put_down();
 
     /// set dns resolver
     /// pass in if we are using exit node mode right now  as a bool
     void
-    SetDNSMode(bool using_exit_mode) const;
+    set_dns_mode(bool using_exit_mode) const;
 
    private:
     void
-    Update();
+    update();
 
     bool
-    IsEnabled() const;
+    is_enabled() const;
 
     void
-    DeleteAllRoutes();
+    delete_all_routes();
 
     void
-    DisableAllRoutes();
+    disable_all_routes();
 
     void
-    RefreshAllRoutes();
+    refresh_all_routes();
 
     void
-    EnableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway);
+    enable_route(oxen::quic::Address ip, oxen::quic::Address gateway);
 
     void
-    DisableRoute(net::ipv4addr_t ip, net::ipv4addr_t gateway);
+    disable_route(oxen::quic::Address ip, oxen::quic::Address gateway);
 
-    std::unordered_map<net::ipv4addr_t, net::ipv4addr_t> m_PokedRoutes;
+    std::unordered_map<oxen::quic::Address, oxen::quic::Address> poked_routes;
 
-    std::optional<net::ipv4addr_t> m_CurrentGateway;
+    std::optional<oxen::quic::Address> current_gateway;
 
-    AbstractRouter* m_Router = nullptr;
-    bool m_up{false};
+    Router& router;
+    bool is_up{false};
   };
 }  // namespace llarp

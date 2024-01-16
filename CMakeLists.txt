@@ -1,12 +1,18 @@
 cmake_minimum_required(VERSION 3.13...3.24)  # 3.13 is buster's version
 
+# Cmake 3.24+ breaks extraction timestamps by default, hurray, but the option to not break
+# timestamps fails in cmake <3.24, extra hurray!
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    cmake_policy(SET CMP0135 OLD)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 option(BUILD_DAEMON "build lokinet daemon and associated utils" ON)
-
+option(GRAPH_DEPENDENCIES "Produce graphviz representation of cmake dependencies" OFF)
 
 set(LANGS C CXX)
 if(APPLE AND BUILD_DAEMON)
@@ -34,8 +40,6 @@ if(APPLE)
     # should be reset to 0 when the lokinet version increments.
     set(LOKINET_APPLE_BUILD 5)
 endif()
-
-set(RELEASE_MOTTO "Our Lord And Savior" CACHE STRING "Release motto")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -70,14 +74,20 @@ include(cmake/enable_lto.cmake)
 option(CROSS_PLATFORM "cross compiler platform" "Linux")
 option(CROSS_PREFIX "toolchain cross compiler prefix" "")
 
+option(BUILD_SHARED_LIBS "Build shared library" OFF)
 option(BUILD_STATIC_DEPS "Download, build, and statically link against core dependencies" OFF)
 option(STATIC_LINK "link statically against dependencies" ${BUILD_STATIC_DEPS})
 if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
   message(FATAL_ERROR "Option BUILD_STATIC_DEPS requires STATIC_LINK to be enabled as well")
 endif()
+
+if(BUILD_STATIC_DEPS AND BUILD_SHARED_LIBS)
+  message(FATAL_ERROR "Incompatible options: BUILD_STATIC_DEPS cannot be used with BUILD_SHARED_LIBS")
+endif()
+
 if(BUILD_STATIC_DEPS)
   set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-  include(StaticBuild)
+  include(cmake/StaticBuild.cmake)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -90,21 +100,15 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_definitions(-DLOKINET_DEBUG)
 endif()
 
-option(WARN_DEPRECATED "show deprecation warnings" ${debug})
-
-if(BUILD_STATIC_DEPS AND STATIC_LINK)
-  message(STATUS "we are building static deps so we won't build shared libs")
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
-endif()
+option(WARN_DEPRECATED "show deprecation warnings" OFF)
 
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -130,7 +134,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(cmake/unix.cmake)
 include(cmake/check_for_std_optional.cmake)
-include(cmake/check_for_std_filesystem.cmake)
+#include(cmake/check_for_std_filesystem.cmake)
 
 if(NOT WIN32)
   if(IOS OR ANDROID)
@@ -187,11 +191,7 @@ set(warning_flags -Wall -Wextra -Wno-unknown-pragmas -Wno-unused-function -Werro
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   list(APPEND warning_flags -Wno-unknown-warning-option)
 endif()
-if(WARN_DEPRECATED)
-  list(APPEND warning_flags -Wdeprecated-declarations)
-else()
-  list(APPEND warning_flags -Wno-deprecated-declarations)
-endif()
+list(APPEND warning_flags -Wno-deprecated-declarations)
 
 # If we blindly add these directly as compile_options then they get passed to swiftc on Apple and
 # break, so we use a generate expression to set them only for C++/C/ObjC
@@ -261,23 +261,26 @@ pkg_check_modules(SD libsystemd IMPORTED_TARGET)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-# Base interface target where we set up global link libraries, definitions, includes, etc.
-add_library(base_libs INTERFACE)
+add_subdirectory(external)
+
+# interface library for setting common includes, linkage and flags
+add_library(lokinet-base INTERFACE)
+target_include_directories(lokinet-base INTERFACE . include)
+target_link_libraries(lokinet-base INTERFACE quic nlohmann_json::nlohmann_json)
 
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
-  target_link_libraries(base_libs INTERFACE PkgConfig::SD)
-  target_compile_definitions(base_libs INTERFACE WITH_SYSTEMD)
+  target_link_libraries(lokinet-base INTERFACE PkgConfig::SD)
+  target_compile_definitions(lokinet-base INTERFACE WITH_SYSTEMD)
 endif()
 
-add_subdirectory(external)
 
 if(USE_JEMALLOC AND NOT STATIC_LINK)
   pkg_check_modules(JEMALLOC jemalloc IMPORTED_TARGET)
   if(JEMALLOC_FOUND)
-    target_link_libraries(base_libs INTERFACE PkgConfig::JEMALLOC)
+    target_link_libraries(lokinet-base INTERFACE PkgConfig::JEMALLOC)
   else()
     message(STATUS "jemalloc not found, not linking to jemalloc")
   endif()
@@ -287,8 +290,8 @@ endif()
 
 
 if(ANDROID)
-  target_link_libraries(base_libs INTERFACE log)
-  target_compile_definitions(base_libs INTERFACE ANDROID)
+  target_link_libraries(lokinet-base INTERFACE log)
+  target_compile_definitions(lokinet-base INTERFACE ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif()
 

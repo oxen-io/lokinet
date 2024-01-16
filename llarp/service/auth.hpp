@@ -1,46 +1,55 @@
 #pragma once
+#include "address.hpp"
+
+#include <llarp/crypto/types.hpp>
+
+#include <functional>
 #include <optional>
 #include <string>
-#include <functional>
-#include "address.hpp"
-#include "handler.hpp"
-#include <llarp/crypto/types.hpp>
+
+namespace llarp
+{
+  struct Router;
+}
 
 namespace llarp::service
 {
   /// authentication status code
-  enum class AuthResultCode : uint64_t
+  enum class AuthCode : uint64_t
   {
     /// explicitly accepted
-    eAuthAccepted = 0,
+    ACCEPTED = 0,
     /// explicitly rejected
-    eAuthRejected = 1,
+    REJECTED = 1,
     /// attempt failed
-    eAuthFailed = 2,
+    FAILED = 2,
     /// attempt rate limited
-    eAuthRateLimit = 3,
+    RATE_LIMIT = 3,
     /// need mo munny
-    eAuthPaymentRequired = 4
+    PAYMENT_REQUIRED = 4
   };
 
   /// turn an auth result code into an int
   uint64_t
-  AuthResultCodeAsInt(AuthResultCode code);
+  auth_code_to_int(AuthCode code);
 
   /// may turn an int into an auth result code
-  std::optional<AuthResultCode>
-  AuthResultCodeFromInt(uint64_t code);
+  std::optional<AuthCode>
+  int_to_auth_code(uint64_t code);
 
   /// auth result object with code and reason
   struct AuthResult
   {
-    AuthResultCode code;
+    AuthCode code;
     std::string reason;
   };
 
+  struct ProtocolMessage;
+  struct ConvoTag;
+
   /// maybe get auth result from string
-  std::optional<AuthResultCode>
-  ParseAuthResultCode(std::string data);
+  std::optional<AuthCode>
+  parse_auth_code(std::string data);
 
   struct IAuthPolicy
   {
@@ -49,12 +58,12 @@ namespace llarp::service
     /// asynchronously determine if we accept new convotag from remote service, call hook with
     /// result later
     virtual void
-    AuthenticateAsync(
-        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) = 0;
+    authenticate_async(
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) = 0;
 
     /// return true if we are asynchronously processing authentication on this convotag
     virtual bool
-    AsyncAuthPending(ConvoTag tag) const = 0;
+    auth_async_pending(ConvoTag tag) const = 0;
   };
 
   /// info needed by clients in order to authenticate to a remote endpoint
@@ -67,34 +76,34 @@ namespace llarp::service
   enum class AuthType
   {
     /// no authentication
-    eAuthTypeNone,
+    NONE,
     /// manual whitelist
-    eAuthTypeWhitelist,
+    WHITELIST,
     /// LMQ server
-    eAuthTypeLMQ,
+    OMQ,
     /// static file
-    eAuthTypeFile,
+    FILE,
   };
 
   /// how to interpret an file for auth
   enum class AuthFileType
   {
-    eAuthFilePlain,
-    eAuthFileHashes,
+    PLAIN,
+    HASHES,
   };
 
   /// get an auth type from a string
   /// throws std::invalid_argument if arg is invalid
   AuthType
-  ParseAuthType(std::string arg);
+  parse_auth_type(std::string arg);
 
   /// get an auth file type from a string
   /// throws std::invalid_argument if arg is invalid
   AuthFileType
-  ParseAuthFileType(std::string arg);
+  parse_auth_file_type(std::string arg);
 
   /// make an IAuthPolicy that reads out of a static file
   std::shared_ptr<IAuthPolicy>
-  MakeFileAuthPolicy(AbstractRouter*, std::set<fs::path> files, AuthFileType fileType);
+  make_file_auth_policy(Router*, std::set<fs::path> files, AuthFileType fileType);
 
 }  // namespace llarp::service

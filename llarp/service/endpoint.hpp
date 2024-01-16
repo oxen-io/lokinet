@@ -1,35 +1,27 @@
 #pragma once
-#include <llarp/dht/messages/gotrouter.hpp>
+#include <llarp/dns/server.hpp>
+#include <llarp/endpoint_base.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/session.hpp>
 #include <llarp/net/ip_range_map.hpp>
 #include <llarp/net/net.hpp>
-#include <llarp/path/path.hpp>
 #include <llarp/path/pathbuilder.hpp>
-#include <llarp/util/compare_ptr.hpp>
-
-// --- begin kitchen sink headers ----
 #include <llarp/service/address.hpp>
-#include <llarp/service/handler.hpp>
+#include <llarp/service/auth.hpp>
+#include <llarp/service/endpoint_types.hpp>
 #include <llarp/service/identity.hpp>
 #include <llarp/service/pendingbuffer.hpp>
 #include <llarp/service/protocol.hpp>
-#include <llarp/service/sendcontext.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/service/session.hpp>
-#include <llarp/service/lookup.hpp>
-#include <llarp/service/endpoint_types.hpp>
-#include <llarp/endpoint_base.hpp>
-#include <llarp/service/auth.hpp>
-// ----- end kitchen sink headers -----
+#include <llarp/util/compare_ptr.hpp>
+#include <llarp/vpn/egres_packet_router.hpp>
+
+#include <oxenc/variant.h>
 
 #include <optional>
 #include <unordered_map>
 #include <variant>
-#include <oxenc/variant.h>
-
-#include <llarp/vpn/egres_packet_router.hpp>
-#include <llarp/dns/server.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -46,12 +38,13 @@ namespace llarp
   namespace service
   {
     struct AsyncKeyExchange;
+
     struct Context;
     struct EndpointState;
     struct OutboundContext;
 
     /// minimum interval for publishing introsets
-    inline constexpr auto IntrosetPublishInterval = path::intro_path_spread / 2;
+    inline constexpr auto IntrosetPublishInterval = path::INTRO_PATH_SPREAD / 2;
 
     /// how agressively should we retry publishing introset on failure
     inline constexpr auto IntrosetPublishRetryCooldown = 1s;
@@ -60,24 +53,32 @@ namespace llarp
     inline constexpr auto IntrosetLookupCooldown = 250ms;
 
     /// number of unique snodes we want to talk to do to ons lookups
-    inline constexpr size_t MIN_ENDPOINTS_FOR_LNS_LOOKUP = 2;
+    inline constexpr size_t MIN_ONS_LOOKUP_ENDPOINTS = 2;
 
-    struct Endpoint : public path::Builder,
-                      public ILookupHolder,
-                      public IDataHandler,
-                      public EndpointBase
+    inline constexpr size_t MAX_ONS_LOOKUP_ENDPOINTS = 7;
+
+    // TODO: delete this, it is copied from the late llarp/service/handler.hpp
+    struct RecvDataEvent
     {
-      Endpoint(AbstractRouter* r, Context* parent);
+      path::Path_ptr fromPath;
+      PathID_t pathid;
+      std::shared_ptr<ProtocolMessage> msg;
+    };
+
+    struct Endpoint : public path::Builder, public EndpointBase
+    // public std::enable_shared_from_this<Endpoint>
+    {
+      Endpoint(Router* r, Context* parent);
       ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void.
       /// really should be ReadyForInboundTraffic() but the diff is HUGE and we need to rewrite this
       /// component anyways.
       bool
-      IsReady() const;
+      is_ready() const;
 
       void
-      QueueRecvData(RecvDataEvent ev) override;
+      QueueRecvData(RecvDataEvent ev);
 
       /// return true if our introset has expired intros
       bool
@@ -89,9 +90,6 @@ namespace llarp
 
       virtual util::StatusObject
       ExtractStatus() const;
-
-      void
-      SetHandler(IDataHandler* h);
 
       virtual bool
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf);
@@ -146,8 +144,8 @@ namespace llarp
       const EventLoop_ptr&
       Loop() override;
 
-      AbstractRouter*
-      Router();
+      Router*
+      router();
 
       virtual bool
       LoadKeyFile();
@@ -180,7 +178,7 @@ namespace llarp
       EgresPacketRouter()
       {
         return nullptr;
-      };
+      }
 
       virtual vpn::NetworkInterface*
       GetVPNInterface()
@@ -189,23 +187,10 @@ namespace llarp
       }
 
       bool
-      PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
+      publish_introset(const EncryptedIntroSet& i);
 
       bool
-      PublishIntroSetVia(
-          const EncryptedIntroSet& i, AbstractRouter* r, path::Path_ptr p, uint64_t relayOrder);
-
-      bool
-      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage> msg) override;
-
-      bool
-      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage> msg) override;
-
-      bool
-      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg) override;
-
-      bool
-      HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrame& msg);
+      HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrameMessage& msg);
 
       void
       SetEndpointAuth(std::shared_ptr<IAuthPolicy> policy);
@@ -230,7 +215,7 @@ namespace llarp
 
       bool
       HandleDataMessage(
-          path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) override;
+          path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg);
 
       /// handle packet io from service node or hidden service to frontend
       virtual bool
@@ -244,20 +229,11 @@ namespace llarp
       bool
       ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg);
 
-      /// ensure that we know a router, looks up if it doesn't
+      // "find name"
       void
-      EnsureRouterIsKnown(const RouterID& router);
+      lookup_name(std::string name, std::function<void(std::string, bool)> func = nullptr) override;
 
-      /// lookup a router via closest path
-      bool
-      LookupRouterAnon(RouterID router, RouterLookupHandler handler);
-
-      void
-      LookupNameAsync(
-          std::string name,
-          std::function<void(std::optional<std::variant<Address, RouterID>>)> resultHandler)
-          override;
-
+      // "find introset?"
       void
       LookupServiceAsync(
           std::string name,
@@ -275,7 +251,7 @@ namespace llarp
       const Identity&
       GetIdentity() const
       {
-        return m_Identity;
+        return _identity;
       }
 
       void
@@ -295,9 +271,6 @@ namespace llarp
           std::function<void(bool, std::string)> result);
 
       void
-      PutLookup(IServiceLookup* lookup, uint64_t txid) override;
-
-      void
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
@@ -312,16 +285,10 @@ namespace llarp
       RemoveAllConvoTagsFor(service::Address remote);
 
       bool
-      WantsOutboundSession(const Address&) const override;
+      WantsOutboundSession(const Address&) const;
 
       /// this MUST be called if you want to call EnsurePathTo on the given address
-      void MarkAddressOutbound(AddressVariant_t) override;
-
-      bool
-      ShouldBundleRC() const override
-      {
-        return false;
-      }
+      void MarkAddressOutbound(service::Address) override;
 
       void
       BlacklistSNode(const RouterID snode) override;
@@ -331,7 +298,7 @@ namespace llarp
       GetEndpointWithConvoTag(ConvoTag t) const override;
 
       bool
-      HasConvoTag(const ConvoTag& t) const override;
+      HasConvoTag(const ConvoTag& t) const;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -349,10 +316,6 @@ namespace llarp
           std::function<void(std::optional<ConvoTag>)> hook,
           llarp_time_t timeout) override;
 
-      // passed a sendto context when we have a path established otherwise
-      // nullptr if the path was not made before the timeout
-      using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
-
       static constexpr auto DefaultPathEnsureTimeout = 2s;
 
       /// return false if we have already called this function before for this
@@ -360,17 +323,17 @@ namespace llarp
       bool
       EnsurePathToService(
           const Address remote,
-          PathEnsureHook h,
+          std::function<void(Address, OutboundContext*)> h,
           llarp_time_t timeoutMS = DefaultPathEnsureTimeout);
-
-      using SNodeEnsureHook = std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)>;
 
       void
       InformPathToService(const Address remote, OutboundContext* ctx);
 
       /// ensure a path to a service node by public key
       bool
-      EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);
+      EnsurePathToSNode(
+          const RouterID remote,
+          std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)> h);
 
       /// return true if this endpoint is trying to lookup this router right now
       bool
@@ -383,45 +346,46 @@ namespace llarp
       HasFlowToService(const Address remote) const;
 
       void
-      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound) override;
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info, bool inbound);
 
       bool
-      HasInboundConvo(const Address& addr) const override;
+      HasInboundConvo(const Address& addr) const;
 
       bool
-      HasOutboundConvo(const Address& addr) const override;
+      HasOutboundConvo(const Address& addr) const;
 
       bool
-      GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const override;
-      void
-      PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) override;
-
-      bool
-      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const override;
+      GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const;
 
       void
-      PutIntroFor(const ConvoTag& remote, const Introduction& intro) override;
+      PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret);
 
       bool
-      GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
+      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const;
 
       void
-      RemoveConvoTag(const ConvoTag& remote) override;
-
-      void
-      ConvoTagTX(const ConvoTag& remote) override;
-
-      void
-      ConvoTagRX(const ConvoTag& remote) override;
-
-      void
-      PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro) override;
+      PutIntroFor(const ConvoTag& remote, const Introduction& intro);
 
       bool
-      GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const override;
+      GetIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      void
+      RemoveConvoTag(const ConvoTag& remote);
+
+      void
+      ConvoTagTX(const ConvoTag& remote);
+
+      void
+      ConvoTagRX(const ConvoTag& remote);
+
+      void
+      PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro);
 
       bool
-      GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const override;
+      GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      bool
+      GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const;
 
       void
       PutNewOutboundContext(const IntroSet& introset, llarp_time_t timeLeftToAlign);
@@ -436,26 +400,19 @@ namespace llarp
       bool
       HasExit() const;
 
-      std::optional<std::vector<RouterContact>>
+      std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() override;
 
-      std::optional<std::vector<RouterContact>>
+      std::optional<std::vector<RemoteRC>>
       GetHopsForBuildWithEndpoint(RouterID endpoint);
-
-      virtual void
-      PathBuildStarted(path::Path_ptr path) override;
-
-      virtual void
-      IntroSetPublishFail();
-      virtual void
-      IntroSetPublished();
 
       void
       AsyncProcessAuthMessage(
-          std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
+          std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook);
 
       void
-      SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+      SendAuthResult(
+          path::Path_ptr path, PathID_t replyPath, ConvoTag tag, std::string result, bool success);
 
       uint64_t
       GenTXID();
@@ -469,29 +426,14 @@ namespace llarp
       // Looks up the ConvoTag and, if it exists, calls SendToOrQueue to send it to a remote client
       // or a snode (or nothing, if the convo tag is unknown).
       bool
-      SendToOrQueue(ConvoTag tag, const llarp_buffer_t& payload, ProtocolType t) override;
-
-      // Send a to (or queues for sending) to either an address or router id
-      bool
-      SendToOrQueue(
-          const std::variant<Address, RouterID>& addr,
-          const llarp_buffer_t& payload,
-          ProtocolType t);
-
-      // Sends to (or queues for sending) to a remote client
-      bool
-      SendToOrQueue(const Address& addr, const llarp_buffer_t& payload, ProtocolType t);
-
-      // Sends to (or queues for sending) to a router
-      bool
-      SendToOrQueue(const RouterID& addr, const llarp_buffer_t& payload, ProtocolType t);
+      send_to(ConvoTag tag, std::string payload) override;
 
       std::optional<AuthInfo>
       MaybeGetAuthInfoForEndpoint(service::Address addr);
 
       /// Returns a pointer to the quic::Tunnel object handling quic connections for this endpoint.
       /// Returns nullptr if quic is not supported.
-      quic::TunnelManager*
+      link::TunnelManager*
       GetQUICTunnel() override;
 
      protected:
@@ -502,7 +444,7 @@ namespace llarp
       SupportsV6() const = 0;
 
       void
-      RegenAndPublishIntroSet();
+      regen_and_publish_introset();
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
@@ -511,17 +453,6 @@ namespace llarp
       PrefetchServicesByTag(const Tag& tag);
 
      private:
-      void
-      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
-
-      bool
-      OnLookup(
-          const service::Address& addr,
-          std::optional<IntroSet> i,
-          const RouterID& endpoint,
-          llarp_time_t timeLeft,
-          uint64_t relayOrder);
-
       bool
       DoNetworkIsolation(bool failed);
 
@@ -546,29 +477,29 @@ namespace llarp
      protected:
       bool
       ReadyToDoLookup(size_t num_paths) const;
-      path::Path::UniqueEndpointSet_t
+
+      auto
       GetUniqueEndpointsForLookup() const;
 
-      IDataHandler* m_DataHandler = nullptr;
-      Identity m_Identity;
-      net::IPRangeMap<service::Address> m_ExitMap;
-      bool m_PublishIntroSet = true;
-      std::unique_ptr<EndpointState> m_state;
-      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
-      std::unordered_map<Address, AuthInfo> m_RemoteAuthInfos;
-      std::unique_ptr<quic::TunnelManager> m_quic;
+      Identity _identity;
+      net::IPRangeMap<service::Address> _exit_map;
+      bool _publish_introset = true;
+      std::unique_ptr<EndpointState> _state;
+      std::shared_ptr<IAuthPolicy> _auth_policy;
+      std::unordered_map<Address, AuthInfo> _remote_auth_infos;
+      std::unique_ptr<link::TunnelManager> _tunnel_manager;
 
-      /// (lns name, optional exit range, optional auth info) for looking up on startup
+      /// (ons name, optional exit range, optional auth info) for looking up on startup
       std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>
-          m_StartupLNSMappings;
+          _startup_ons_mappings;
 
-      RecvPacketQueue_t m_InboundTrafficQueue;
+      RecvPacketQueue_t _inbound_queue;
 
      public:
-      SendMessageQueue_t m_SendQueue;
+      SendMessageEventQueue _send_queue;
 
      private:
-      llarp_time_t m_LastIntrosetRegenAttempt = 0s;
+      llarp_time_t _last_introset_regen_attempt = 0s;
 
      protected:
       void
@@ -576,18 +507,20 @@ namespace llarp
 
       friend struct EndpointUtil;
 
-      // clang-format off
-      const IntroSet& introSet() const;
-      IntroSet&       introSet();
+      const IntroSet&
+      intro_set() const;
+      IntroSet&
+      intro_set();
 
-      using ConvoMap = std::unordered_map<ConvoTag, Session>;
-      const ConvoMap& Sessions() const;
-      ConvoMap&       Sessions();
-      // clang-format on
-      thread::Queue<RecvDataEvent> m_RecvQueue;
+      const std::unordered_map<ConvoTag, Session>&
+      Sessions() const;
+      std::unordered_map<ConvoTag, Session>&
+      Sessions();
+
+      thread::Queue<RecvDataEvent> _recv_event_queue;
 
       /// for rate limiting introset lookups
-      util::DecayingHashSet<Address> m_IntrosetLookupFilter;
+      util::DecayingHashSet<Address> _introset_lookup_filter;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

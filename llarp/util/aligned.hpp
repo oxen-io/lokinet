@@ -1,11 +1,13 @@
 #pragma once
 
 #include "bencode.h"
-#include <llarp/util/logging.hpp>
+
 #include <llarp/util/formattable.hpp>
+#include <llarp/util/logging.hpp>
 
 #include <oxenc/hex.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <iomanip>
@@ -13,7 +15,6 @@
 #include <memory>
 #include <numeric>
 #include <type_traits>
-#include <algorithm>
 
 extern "C"
 {
@@ -42,8 +43,6 @@ namespace llarp
 
     static constexpr size_t SIZE = sz;
 
-    using Data = std::array<byte_t, SIZE>;
-
     virtual ~AlignedBuffer() = default;
 
     AlignedBuffer()
@@ -56,15 +55,15 @@ namespace llarp
       *this = data;
     }
 
-    explicit AlignedBuffer(const Data& buf)
+    explicit AlignedBuffer(const std::array<byte_t, SIZE>& buf)
     {
-      m_data = buf;
+      _data = buf;
     }
 
     AlignedBuffer&
     operator=(const byte_t* data)
     {
-      std::memcpy(m_data.data(), data, sz);
+      std::memcpy(_data.data(), data, sz);
       return *this;
     }
 
@@ -81,37 +80,37 @@ namespace llarp
     bool
     operator==(const AlignedBuffer& other) const
     {
-      return m_data == other.m_data;
+      return _data == other._data;
     }
 
     bool
     operator!=(const AlignedBuffer& other) const
     {
-      return m_data != other.m_data;
+      return _data != other._data;
     }
 
     bool
     operator<(const AlignedBuffer& other) const
     {
-      return m_data < other.m_data;
+      return _data < other._data;
     }
 
     bool
     operator>(const AlignedBuffer& other) const
     {
-      return m_data > other.m_data;
+      return _data > other._data;
     }
 
     bool
     operator<=(const AlignedBuffer& other) const
     {
-      return m_data <= other.m_data;
+      return _data <= other._data;
     }
 
     bool
     operator>=(const AlignedBuffer& other) const
     {
-      return m_data >= other.m_data;
+      return _data >= other._data;
     }
 
     AlignedBuffer
@@ -128,7 +127,7 @@ namespace llarp
       // Mutate in place instead.
       for (size_t i = 0; i < sz; ++i)
       {
-        m_data[i] ^= other.m_data[i];
+        _data[i] ^= other._data[i];
       }
       return *this;
     }
@@ -137,14 +136,14 @@ namespace llarp
     operator[](size_t idx)
     {
       assert(idx < SIZE);
-      return m_data[idx];
+      return _data[idx];
     }
 
     const byte_t&
     operator[](size_t idx) const
     {
       assert(idx < SIZE);
-      return m_data[idx];
+      return _data[idx];
     }
 
     static constexpr size_t
@@ -156,31 +155,31 @@ namespace llarp
     void
     Fill(byte_t f)
     {
-      m_data.fill(f);
+      _data.fill(f);
     }
 
-    Data&
+    std::array<byte_t, SIZE>&
     as_array()
     {
-      return m_data;
+      return _data;
     }
 
-    const Data&
+    const std::array<byte_t, SIZE>&
     as_array() const
     {
-      return m_data;
+      return _data;
     }
 
     byte_t*
     data()
     {
-      return m_data.data();
+      return _data.data();
     }
 
     const byte_t*
     data() const
     {
-      return m_data.data();
+      return _data.data();
     }
 
     bool
@@ -198,7 +197,7 @@ namespace llarp
     void
     Zero()
     {
-      m_data.fill(0);
+      _data.fill(0);
     }
 
     virtual void
@@ -207,28 +206,28 @@ namespace llarp
       randombytes(data(), SIZE);
     }
 
-    typename Data::iterator
+    typename std::array<byte_t, SIZE>::iterator
     begin()
     {
-      return m_data.begin();
+      return _data.begin();
     }
 
-    typename Data::iterator
+    typename std::array<byte_t, SIZE>::iterator
     end()
     {
-      return m_data.end();
+      return _data.end();
     }
 
-    typename Data::const_iterator
+    typename std::array<byte_t, SIZE>::const_iterator
     begin() const
     {
-      return m_data.cbegin();
+      return _data.cbegin();
     }
 
-    typename Data::const_iterator
+    typename std::array<byte_t, SIZE>::const_iterator
     end() const
     {
-      return m_data.cend();
+      return _data.cend();
     }
 
     bool
@@ -244,9 +243,28 @@ namespace llarp
     }
 
     bool
-    BEncode(llarp_buffer_t* buf) const
+    from_string(std::string_view b)
+    {
+      if (b.size() != sz)
+      {
+        log::error(util_cat, "Error: buffer size mismatch in aligned buffer!");
+        return false;
+      }
+
+      std::memcpy(_data.data(), b.data(), b.size());
+      return true;
+    }
+
+    bool
+    bt_encode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, data(), sz);
+    }
+
+    std::string
+    bt_encode() const
+    {
+      return {reinterpret_cast<const char*>(data()), sz};
     }
 
     bool
@@ -288,7 +306,7 @@ namespace llarp
     }
 
    private:
-    Data m_data;
+    std::array<byte_t, SIZE> _data;
   };
 
   namespace detail

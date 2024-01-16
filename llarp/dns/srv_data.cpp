@@ -1,12 +1,10 @@
 #include "srv_data.hpp"
-#include <llarp/util/str.hpp>
-#include <llarp/util/logging.hpp>
 
-#include <limits>
+#include <llarp/util/bencode.h>
+#include <llarp/util/str.hpp>
+#include <llarp/util/types.hpp>
 
 #include <oxenc/bt_serialize.h>
-#include "llarp/util/bencode.h"
-#include "llarp/util/types.hpp"
 
 namespace llarp::dns
 {
@@ -105,11 +103,10 @@ namespace llarp::dns
     return IsValid();
   }
 
-  bool
-  SRVData::BEncode(llarp_buffer_t* buf) const
+  std::string
+  SRVData::bt_encode() const
   {
-    const std::string data = oxenc::bt_serialize(toTuple());
-    return buf->write(data.begin(), data.end());
+    return oxenc::bt_serialize(toTuple());
   }
 
   bool

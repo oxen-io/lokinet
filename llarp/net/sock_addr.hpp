@@ -1,24 +1,26 @@
 #pragma once
 
 #ifndef _WIN32
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #else
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 #endif
 
-#include <string_view>
-#include <string>
 #include "net_int.hpp"
-#include <oxenc/variant.h>
+
 #include <llarp/util/formattable.hpp>
+
+#include <oxenc/variant.h>
+
+#include <string>
+#include <string_view>
 
 namespace llarp
 {
-  struct AddressInfo;
-
   /// A simple SockAddr wrapper which provides a sockaddr_in (IPv4). Memory management is handled
   /// in constructor and destructor (if needed) and copying is disabled.
   struct SockAddr
@@ -38,8 +40,6 @@ namespace llarp
     // String ctors
     SockAddr(std::string_view addr);
     SockAddr(std::string_view addr, huint16_t port);  // port is in native (host) order
-
-    SockAddr(const AddressInfo&);
 
     SockAddr(const SockAddr&);
     SockAddr&
@@ -177,10 +177,21 @@ namespace llarp
     huint32_t
     asIPv4() const;
 
+    const sockaddr_in*
+    in()
+    {
+      return &addr4;
+    }
+    const sockaddr_in6*
+    in6()
+    {
+      return &addr6;
+    }
+
    private:
     bool m_empty = true;
-    sockaddr_in6 m_addr;
-    sockaddr_in m_addr4;
+    sockaddr_in6 addr6;
+    sockaddr_in addr4;
 
     void
     init();

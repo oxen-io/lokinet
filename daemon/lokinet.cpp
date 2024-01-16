@@ -1,28 +1,33 @@
-#include <llarp/config/config.hpp>  // for ensure_config
-#include <llarp/constants/version.hpp>
 #include <llarp.hpp>
-#include <llarp/util/lokinet_init.h>
+#include <llarp/config/config.hpp>  // for ensure_config
+#include <llarp/constants/files.hpp>
+#include <llarp/constants/platform.hpp>
+#include <llarp/constants/version.hpp>
+#include <llarp/ev/ev.hpp>
 #include <llarp/util/exceptions.hpp>
-#include <llarp/util/fs.hpp>
-#include <llarp/util/str.hpp>
+#include <llarp/util/logging.hpp>
+#include <llarp/util/lokinet_init.h>
+#include <llarp/util/thread/threading.hpp>
+
+#include <CLI/CLI.hpp>
+#include <fmt/core.h>
+#include <oxen/log.hpp>
+
+#include <csignal>
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <utility>
 
 #ifdef _WIN32
 #include <llarp/win32/service_manager.hpp>
-#include <dbghelp.h>
 #else
 #include <llarp/util/service_manager.hpp>
 #endif
-
-#include <csignal>
-
-#include <string>
-#include <iostream>
-#include <thread>
-#include <future>
-
-#include <CLI/App.hpp>
-#include <CLI/Formatter.hpp>
-#include <CLI/Config.hpp>
 
 namespace
 {
@@ -120,7 +125,7 @@ namespace
 
     if (!GetModuleFileName(nullptr, szPath.data(), MAX_PATH))
     {
-      llarp::LogError("Cannot install service ", GetLastError());
+      llarp::log::error(logcat, "Cannot install service {}", GetLastError());
       return;
     }
 
@@ -132,7 +137,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -154,12 +159,12 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("CreateService failed ", GetLastError());
+      llarp::log::error(logcat, "CreateService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
     else
-      llarp::LogInfo("Service installed successfully");
+      llarp::log::info(logcat, "Service installed successfully");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -184,7 +189,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -196,7 +201,7 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("OpenService failed ", GetLastError());
+      llarp::log::error(logcat, "OpenService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
@@ -209,10 +214,10 @@ namespace
             SERVICE_CONFIG_DESCRIPTION,  // change: description
             &sd))                        // new description
     {
-      llarp::LogError("ChangeServiceConfig2 failed");
+      llarp::log::error(logcat, "ChangeServiceConfig2 failed");
     }
     else
-      llarp::LogInfo("Service description updated successfully.");
+      llarp::log::info(log_cat, "Service description updated successfully.");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -232,7 +237,7 @@ namespace
 
     if (nullptr == schSCManager)
     {
-      llarp::LogError("OpenSCManager failed ", GetLastError());
+      llarp::log::error(logcat, "OpenSCManager failed {}", GetLastError());
       return;
     }
 
@@ -244,7 +249,7 @@ namespace
 
     if (schService == nullptr)
     {
-      llarp::LogError("OpenService failed ", GetLastError());
+      llarp::log::error(logcat, "OpenService failed {}", GetLastError());
       CloseServiceHandle(schSCManager);
       return;
     }
@@ -252,10 +257,10 @@ namespace
     // Delete the service.
     if (!DeleteService(schService))
     {
-      llarp::LogError("DeleteService failed ", GetLastError());
+      llarp::log::error(logcat, "DeleteService failed {}", GetLastError());
     }
     else
-      llarp::LogInfo("Service deleted successfully\n");
+      llarp::log::info(logcat, "Service deleted successfully");
 
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
@@ -269,9 +274,9 @@ namespace
     const auto flags =
         (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
-    std::stringstream ss;
-    ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
-    const std::string fname = ss.str();
+    const std::string fname =
+        fmt::format("C:\\ProgramData\\lokinet\\crash-{}.dump", llarp::time_now_ms().count());
+
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;
     GetLocalTime(&stLocalTime);
@@ -332,7 +337,7 @@ namespace
 
     if (svc->handle == nullptr)
     {
-      llarp::LogError("failed to register daemon control handler");
+      llarp::log::error(logcat, "failed to register daemon control handler");
       return;
     }
 
@@ -350,9 +355,6 @@ namespace
   int
   lokinet_main(int argc, char** argv)
   {
-    if (auto result = Lokinet_INIT())
-      return result;
-
     llarp::RuntimeOptions opts;
     opts.showBanner = false;
 
@@ -401,7 +403,7 @@ namespace
     {
       if (options.version)
       {
-        std::cout << llarp::VERSION_FULL << std::endl;
+        std::cout << llarp::LOKINET_VERSION_FULL << std::endl;
         return 0;
       }
 
@@ -440,6 +442,9 @@ namespace
       cli.exit(e);
     };
 
+    // TESTNET:
+    oxen::log::set_level("quic", oxen::log::Level::critical);
+
     if (configFile.has_value())
     {
       // when we have an explicit filepath
@@ -448,11 +453,11 @@ namespace
       {
         try
         {
-          llarp::ensureConfig(basedir, *configFile, options.overwrite, opts.isSNode);
+          llarp::ensure_config(basedir, *configFile, options.overwrite, opts.isSNode);
         }
         catch (std::exception& ex)
         {
-          llarp::LogError("cannot generate config at ", *configFile, ": ", ex.what());
+          llarp::log::error(logcat, "cannot generate config at {}: {}", *configFile, ex.what());
           return 1;
         }
       }
@@ -462,13 +467,13 @@ namespace
         {
           if (!fs::exists(*configFile))
           {
-            llarp::LogError("Config file not found ", *configFile);
+            llarp::log::error(logcat, "Config file not found {}", *configFile);
             return 1;
           }
         }
         catch (std::exception& ex)
         {
-          llarp::LogError("cannot check if ", *configFile, " exists: ", ex.what());
+          llarp::log::error(logcat, "cannot check if ", *configFile, " exists: ", ex.what());
           return 1;
         }
       }
@@ -477,7 +482,7 @@ namespace
     {
       try
       {
-        llarp::ensureConfig(
+        llarp::ensure_config(
             llarp::GetDefaultDataDir(),
             llarp::GetDefaultConfigPath(),
             options.overwrite,
@@ -485,7 +490,7 @@ namespace
       }
       catch (std::exception& ex)
       {
-        llarp::LogError("cannot ensure config: ", ex.what());
+        llarp::log::error(logcat, "cannot ensure config: {}", ex.what());
         return 1;
       }
       configFile = llarp::GetDefaultConfigPath();
@@ -507,30 +512,8 @@ namespace
       if (ctx and ctx->IsUp() and not ctx->LooksAlive())
       {
         auto deadlock_cat = llarp::log::Cat("deadlock");
-        for (const auto& wtf :
-             {"you have been visited by the mascott of the deadlocked router.",
-              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-              "file a bug report now or be cursed with this "
-              "annoying image in your syslog for all time."})
-        {
-          llarp::log::critical(deadlock_cat, wtf);
-          llarp::log::flush();
-        }
+        llarp::log::critical(deadlock_cat, "Router is deadlocked!");
+        llarp::log::flush();
         llarp::sys::service_manager->failed();
         std::abort();
       }
@@ -568,28 +551,28 @@ namespace
   static void
   run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
   {
-    llarp::LogInfo(fmt::format("starting up {} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
+    llarp::log::info(logcat, "starting up {}", llarp::LOKINET_VERSION_FULL);
     try
     {
       std::shared_ptr<llarp::Config> conf;
       if (confFile)
       {
-        llarp::LogInfo("Using config file: ", *confFile);
+        llarp::log::info(logcat, "Using config file: {}", *confFile);
         conf = std::make_shared<llarp::Config>(confFile->parent_path());
       }
       else
       {
         conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
       }
-      if (not conf->Load(confFile, opts.isSNode))
+      if (not conf->load(confFile, opts.isSNode))
       {
-        llarp::LogError("failed to parse configuration");
+        llarp::log::error(logcat, "failed to parse configuration");
         exit_code.set_value(1);
         return;
       }
 
       // change cwd to dataDir to support relative paths in config
-      fs::current_path(conf->router.m_dataDir);
+      fs::current_path(conf->router.data_dir);
 
       ctx = std::make_shared<llarp::Context>();
       ctx->Configure(std::move(conf));
@@ -608,13 +591,13 @@ namespace
       }
       catch (llarp::util::bind_socket_error& ex)
       {
-        llarp::LogError(fmt::format("{}, is lokinet already running? 🤔", ex.what()));
+        llarp::log::error(logcat, "{}; is lokinet already running?", ex.what());
         exit_code.set_value(1);
         return;
       }
-      catch (std::exception& ex)
+      catch (const std::exception& ex)
       {
-        llarp::LogError(fmt::format("failed to start up lokinet: {}", ex.what()));
+        llarp::log::error(logcat, "failed to start up lokinet: {}", ex.what());
         exit_code.set_value(1);
         return;
       }
@@ -623,14 +606,14 @@ namespace
       auto result = ctx->Run(opts);
       exit_code.set_value(result);
     }
-    catch (std::exception& e)
+    catch (const std::exception& e)
     {
-      llarp::LogError("Fatal: caught exception while running: ", e.what());
+      llarp::log::error(logcat, "Fatal: caught exception while running: {}", e.what());
       exit_code.set_exception(std::current_exception());
     }
     catch (...)
     {
-      llarp::LogError("Fatal: caught non-standard exception while running");
+      llarp::log::error(logcat, "Fatal: caught non-standard exception while running");
       exit_code.set_exception(std::current_exception());
     }
   }
@@ -651,6 +634,17 @@ main(int argc, char* argv[])
 #ifndef _WIN32
   return lokinet_main(argc, argv);
 #else
+  if (auto hntdll = GetModuleHandle("ntdll.dll"))
+  {
+    if (GetProcAddress(hntdll, "wine_get_version"))
+    {
+      static const char* text = "Don't run lokinet in wine, aborting startup";
+      static const char* title = "Lokinet Wine Error";
+      MessageBoxA(NULL, text, title, MB_ICONHAND);
+      std::abort();
+    }
+  }
+
   SERVICE_TABLE_ENTRY DispatchTable[] = {
       {strdup("lokinet"), (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
 

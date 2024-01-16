@@ -1,9 +1,9 @@
 
 #include "reachability_testing.hpp"
-#include <chrono>
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp/util/logging.hpp>
+
 #include <llarp/crypto/crypto.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
 
 using std::chrono::steady_clock;
 
@@ -72,42 +72,47 @@ namespace llarp::consensus
   }
 
   std::optional<RouterID>
-  reachability_testing::next_random(AbstractRouter* router, const time_point_t& now, bool requeue)
+  reachability_testing::next_random(Router* router, const time_point_t& now, bool requeue)
   {
     if (next_general_test > now)
       return std::nullopt;
-    CSRNG rng;
-    next_general_test =
-        now + std::chrono::duration_cast<time_point_t::duration>(fseconds(TESTING_INTERVAL(rng)));
+    next_general_test = now
+        + std::chrono::duration_cast<time_point_t::duration>(
+                            fseconds(TESTING_INTERVAL(llarp::csrng)));
 
     // Pull the next element off the queue, but skip ourself, any that are no longer registered, and
     // any that are currently known to be failing (those are queued for testing separately).
-    RouterID my_pk{router->pubkey()};
+    auto local_pk = router->local_rid();
+
     while (!testing_queue.empty())
     {
       auto& pk = testing_queue.back();
       std::optional<RouterID> sn;
-      if (pk != my_pk && !failing.count(pk))
+
+      if (pk != local_pk && !failing.count(pk))
         sn = pk;
+
       testing_queue.pop_back();
+
       if (sn)
         return sn;
     }
+
     if (!requeue)
       return std::nullopt;
 
     // FIXME: when a *new* node comes online we need to inject it into a random position in the SN
     // list with probability (L/N) [L = current list size, N = potential list size]
     //
-    // (FIXME: put this FIXME in a better place ;-) )
 
     // We exhausted the queue so repopulate it and try again
 
     testing_queue.clear();
-    const auto all = router->GetRouterWhitelist();
+    const auto& all = router->get_whitelist();
+
     testing_queue.insert(testing_queue.begin(), all.begin(), all.end());
 
-    std::shuffle(testing_queue.begin(), testing_queue.end(), rng);
+    std::shuffle(testing_queue.begin(), testing_queue.end(), llarp::csrng);
 
     // Recurse with the rebuilt list, but don't let it try rebuilding again
     return next_random(router, now, false);
@@ -138,9 +143,8 @@ namespace llarp::consensus
 
     if (previous_failures < 0)
       previous_failures = 0;
-    CSRNG rng;
     auto next_test_in = duration_cast<time_point_t::duration>(
-        previous_failures * TESTING_BACKOFF + fseconds{TESTING_INTERVAL(rng)});
+        previous_failures * TESTING_BACKOFF + fseconds{TESTING_INTERVAL(llarp::csrng)});
     if (next_test_in > TESTING_BACKOFF_MAX)
       next_test_in = TESTING_BACKOFF_MAX;
 

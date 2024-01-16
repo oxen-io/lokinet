@@ -1,6 +1,5 @@
 #include "time.hpp"
-#include <chrono>
-#include <iomanip>
+
 #include "types.hpp"
 
 namespace llarp
@@ -33,6 +32,12 @@ namespace llarp
   {
     return std::chrono::duration_cast<Duration_t>(
         std::chrono::steady_clock::now() - started_at_steady);
+  }
+
+  rc_time
+  time_point_now()
+  {
+    return std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
   }
 
   Duration_t

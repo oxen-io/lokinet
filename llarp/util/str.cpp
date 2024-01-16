@@ -1,58 +1,18 @@
 #include "str.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstring>
-#include <cassert>
 #include <string>
-#include <set>
 
 #ifdef _WIN32
-#include <windows.h>
-#include <stringapiset.h>
 #include <llarp/win32/exception.hpp>
+
+#include <windows.h>
+
+#include <stringapiset.h>
 #endif
 
 namespace llarp
 {
-  bool
-  CaselessLessThan::operator()(std::string_view lhs, std::string_view rhs) const
-  {
-    const size_t s = std::min(lhs.size(), rhs.size());
-    for (size_t i = 0; i < s; ++i)
-    {
-      auto l = std::tolower(lhs[i]);
-      auto r = std::tolower(rhs[i]);
-
-      if (l < r)
-      {
-        return true;
-      }
-      if (l > r)
-      {
-        return false;
-      }
-    }
-
-    return lhs.size() < rhs.size();
-  }
-
-  bool
-  IsFalseValue(std::string_view str)
-  {
-    static const std::set<std::string_view, CaselessLessThan> vals{"no", "false", "0", "off"};
-
-    return vals.count(str) > 0;
-  }
-
-  bool
-  IsTrueValue(std::string_view str)
-  {
-    static const std::set<std::string_view, CaselessLessThan> vals{"yes", "true", "1", "on"};
-
-    return vals.count(str) > 0;
-  }
-
   constexpr static char whitespace[] = " \t\n\r\f\v";
 
   std::string_view
@@ -127,22 +87,6 @@ namespace llarp
     return results;
   }
 
-  void
-  trim(std::string_view& s)
-  {
-    constexpr auto simple_whitespace = " \t\r\n"sv;
-    auto pos = s.find_first_not_of(simple_whitespace);
-    if (pos == std::string_view::npos)
-    {  // whole string is whitespace
-      s.remove_prefix(s.size());
-      return;
-    }
-    s.remove_prefix(pos);
-    pos = s.find_last_not_of(simple_whitespace);
-    assert(pos != std::string_view::npos);
-    s.remove_suffix(s.size() - (pos + 1));
-  }
-
   std::string
   lowercase_ascii_string(std::string src)
   {
@@ -150,28 +94,6 @@ namespace llarp
       if (ch >= 'A' && ch <= 'Z')
         ch = ch + ('a' - 'A');
     return src;
-  }
-
-  std::string
-  friendly_duration(std::chrono::nanoseconds dur)
-  {
-    const double dsecs = std::chrono::duration<double>(dur).count();
-    return fmt::format(
-        dur >= 24h        ? "{0}d{1}h{2}m{3}s"
-            : dur >= 1h   ? "{1}h{2}m{3}s"
-            : dur >= 1min ? "{2}m{3}s"
-            : dur >= 1s   ? "{4:.3f}s"
-            : dur >= 1ms  ? "{5:.3f}s"
-            : dur >= 1us  ? u8"{6:.3f}µs"
-                          : "{7}ns",
-        dur / 24h,
-        dur / 1h,
-        dur / 1min,
-        dur / 1s,
-        dsecs,
-        dsecs * 1'000,
-        dsecs * 1'000'000,
-        dur.count());
   }
 
   std::wstring
@@ -191,5 +113,4 @@ namespace llarp
 #endif
     return buf;
   }
-
 }  // namespace llarp

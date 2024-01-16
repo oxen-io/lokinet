@@ -1,19 +1,18 @@
-#include "net.hpp"
-
-#include "net_if.hpp"
-#include <stdexcept>
-#include <llarp/constants/platform.hpp>
-
 #include "ip.hpp"
 #include "ip_range.hpp"
+#include "net.hpp"
+#include "net_if.hpp"
+
+#include <llarp/constants/platform.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
+#include <llarp/win32/exception.hpp>
 
 #include <iphlpapi.h>
-#include <llarp/win32/exception.hpp>
 
 #include <cstdio>
 #include <list>
+#include <stdexcept>
 #include <type_traits>
 
 namespace llarp::net
@@ -130,8 +129,8 @@ namespace llarp::net
       return "lokitun0";
     }
 
-    std::optional<std::string>
-    GetBestNetIF(int) const override
+    std::optional<oxen::quic::Address>
+    get_best_public_address(bool, uint16_t) const override
     {
       // TODO: implement me ?
       return std::nullopt;

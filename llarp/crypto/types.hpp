@@ -1,10 +1,10 @@
 #pragma once
 
 #include "constants.hpp"
-#include <llarp/router_id.hpp>
+
 #include <llarp/util/aligned.hpp>
-#include <llarp/util/types.hpp>
 #include <llarp/util/fs.hpp>
+#include <llarp/util/types.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -14,14 +14,16 @@ namespace llarp
   using SharedSecret = AlignedBuffer<SHAREDKEYSIZE>;
   using KeyExchangeNonce = AlignedBuffer<32>;
 
-  struct PubKey final : public AlignedBuffer<PUBKEYSIZE>
+  struct RouterID;
+
+  struct PubKey : public AlignedBuffer<PUBKEYSIZE>
   {
     PubKey() = default;
 
     explicit PubKey(const byte_t* ptr) : AlignedBuffer<SIZE>(ptr)
     {}
 
-    explicit PubKey(const Data& data) : AlignedBuffer<SIZE>(data)
+    explicit PubKey(const std::array<byte_t, SIZE>& data) : AlignedBuffer<SIZE>(data)
     {}
 
     explicit PubKey(const AlignedBuffer<SIZE>& other) : AlignedBuffer<SIZE>(other)
@@ -30,39 +32,20 @@ namespace llarp
     std::string
     ToString() const;
 
+    // FIXME: this is deceptively named: it should be "from_hex" since that's what it does.
     bool
     FromString(const std::string& str);
 
-    operator RouterID() const
-    {
-      return {as_array()};
-    }
+    // FIXME: this is deceptively named: it should be "from_hex" since that's what it does.
+    static PubKey
+    from_string(const std::string& s);
 
     PubKey&
-    operator=(const byte_t* ptr)
-    {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
+    operator=(const byte_t* ptr);
   };
 
-  inline bool
-  operator==(const PubKey& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
-
-  inline bool
-  operator==(const PubKey& lhs, const RouterID& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
-
-  inline bool
-  operator==(const RouterID& lhs, const PubKey& rhs)
-  {
-    return lhs.as_array() == rhs.as_array();
-  }
+  bool
+  operator==(const PubKey& lhs, const PubKey& rhs);
 
   struct PrivateKey;
 
@@ -157,73 +140,34 @@ namespace llarp
     toPublic(PubKey& pubkey) const;
   };
 
-  /// IdentitySecret is a secret key from a service node secret seed
-  struct IdentitySecret final : public AlignedBuffer<32>
-  {
-    IdentitySecret() : AlignedBuffer<32>()
-    {}
-
-    /// no copy constructor
-    explicit IdentitySecret(const IdentitySecret&) = delete;
-    // no byte data constructor
-    explicit IdentitySecret(const byte_t*) = delete;
-
-    /// load service node seed from file
-    bool
-    LoadFromFile(const fs::path& fname);
-
-    std::string_view
-    ToString() const
-    {
-      return "[IdentitySecret]";
-    }
-  };
-
   template <>
   constexpr inline bool IsToStringFormattable<PubKey> = true;
   template <>
   constexpr inline bool IsToStringFormattable<SecretKey> = true;
   template <>
   constexpr inline bool IsToStringFormattable<PrivateKey> = true;
-  template <>
-  constexpr inline bool IsToStringFormattable<IdentitySecret> = true;
 
   using ShortHash = AlignedBuffer<SHORTHASHSIZE>;
   using LongHash = AlignedBuffer<HASHSIZE>;
 
   struct Signature final : public AlignedBuffer<SIGSIZE>
   {
-    byte_t*
-    Hi();
-
-    const byte_t*
-    Hi() const;
-
-    byte_t*
-    Lo();
-
-    const byte_t*
-    Lo() const;
+    //
   };
 
   using TunnelNonce = AlignedBuffer<TUNNONCESIZE>;
   using SymmNonce = AlignedBuffer<NONCESIZE>;
-  using SymmKey = AlignedBuffer<32>;
+  using SymmKey = AlignedBuffer<32>;  // not used
 
   using PQCipherBlock = AlignedBuffer<PQ_CIPHERTEXTSIZE + 1>;
   using PQPubKey = AlignedBuffer<PQ_PUBKEYSIZE>;
   using PQKeyPair = AlignedBuffer<PQ_KEYPAIRSIZE>;
 
   /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
-
-  /// TKE(result, publickey, secretkey, nonce)
-  using transport_dh_func =
-      std::function<bool(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&)>;
+  using path_dh_func = bool (*)(SharedSecret&, const PubKey&, const SecretKey&, const TunnelNonce&);
 
   /// SH(result, body)
-  using shorthash_func = std::function<bool(ShortHash&, const llarp_buffer_t&)>;
+  using shorthash_func = bool (*)(ShortHash&, const llarp_buffer_t&);
 }  // namespace llarp
 
 namespace std

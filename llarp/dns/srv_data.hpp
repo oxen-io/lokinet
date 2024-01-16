@@ -1,12 +1,13 @@
 #pragma once
 
+#include "dns.hpp"
 #include "name.hpp"
 #include "serialize.hpp"
 
-#include <tuple>
-#include <string_view>
+#include <llarp/util/status.hpp>
 
-#include "llarp/util/status.hpp"
+#include <string_view>
+#include <tuple>
 
 namespace llarp::dns
 {
@@ -57,8 +58,8 @@ namespace llarp::dns
       return toTupleRef() == other.toTupleRef();
     }
 
-    bool
-    BEncode(llarp_buffer_t*) const;
+    std::string
+    bt_encode() const;
 
     bool
     BDecode(llarp_buffer_t*);

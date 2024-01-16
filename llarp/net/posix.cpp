@@ -1,14 +1,8 @@
+#include "ip_range.hpp"
 #include "net.hpp"
 #include "net_if.hpp"
+
 #include <stdexcept>
-#include <llarp/constants/platform.hpp>
-
-#include <arpa/inet.h>
-
-#include "ip.hpp"
-#include "ip_range.hpp"
-#include <llarp/util/logging.hpp>
-#include <llarp/util/str.hpp>
 
 #ifdef ANDROID
 #include <llarp/android/ifaddrs.h>
@@ -16,9 +10,9 @@
 #include <ifaddrs.h>
 #endif
 
-#include <cstdio>
+#include <quic/address.hpp>
+
 #include <list>
-#include <type_traits>
 
 namespace llarp::net
 {
@@ -58,18 +52,21 @@ namespace llarp::net
       return ifname;
     }
 
-    std::optional<std::string>
-    GetBestNetIF(int af) const override
+    std::optional<oxen::quic::Address>
+    get_best_public_address(bool ipv4, uint16_t port) const override
     {
-      std::optional<std::string> found;
-      iter_all([this, &found, af](auto i) {
+      std::optional<oxen::quic::Address> found;
+
+      iter_all([&found, ipv4, port](ifaddrs* i) {
         if (found)
           return;
-        if (i and i->ifa_addr and i->ifa_addr->sa_family == af)
+        if (i and i->ifa_addr and i->ifa_addr->sa_family == (ipv4 ? AF_INET : AF_INET6))
         {
-          if (not IsBogon(*i->ifa_addr))
+          oxen::quic::Address a{i->ifa_addr};
+          if (a.is_public_ip())
           {
-            found = i->ifa_name;
+            a.set_port(port);
+            found = std::move(a);
           }
         }
       });

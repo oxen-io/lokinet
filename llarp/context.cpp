@@ -1,24 +1,16 @@
-#include <llarp.hpp>
-#include "constants/version.hpp"
-#include "constants/evloop.hpp"
-
-#include "config/config.hpp"
-#include "crypto/crypto_libsodium.hpp"
-#include "dht/context.hpp"
-#include "ev/ev.hpp"
-#include <memory>
 #include "nodedb.hpp"
-#include "router/router.hpp"
-#include "service/context.hpp"
-#include "util/logging.hpp"
 
+#include <llarp.hpp>
+#include <llarp/config/config.hpp>
+#include <llarp/constants/version.hpp>
+#include <llarp/crypto/crypto.hpp>
+#include <llarp/ev/ev.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/service_manager.hpp>
 
-#include <CLI/App.hpp>
-#include <CLI/Formatter.hpp>
-#include <CLI/Config.hpp>
-
 #include <csignal>
+#include <memory>
 #include <stdexcept>
 
 #if (__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
@@ -27,8 +19,6 @@
 
 namespace llarp
 {
-  static auto logcat = llarp::log::Cat("llarp-context");
-
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
@@ -67,19 +57,15 @@ namespace llarp
       throw std::runtime_error("Cannot call Setup() on context without a Config");
 
     if (opts.showBanner)
-      llarp::LogInfo(fmt::format("{} {}", llarp::VERSION_FULL, llarp::RELEASE_MOTTO));
+      llarp::LogInfo(fmt::format("{}", llarp::LOKINET_VERSION_FULL));
 
     if (!loop)
     {
-      auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
+      auto jobQueueSize = std::max(event_loop_queue_size, config->router.job_que_size);
       loop = EventLoop::create(jobQueueSize);
     }
 
-    crypto = std::make_shared<sodium::CryptoLibSodium>();
-    cryptoManager = std::make_shared<CryptoManager>(crypto.get());
-
     router = makeRouter(loop);
-
     nodedb = makeNodeDB();
 
     if (!router->Configure(config, opts.isSNode, nodedb))
@@ -90,14 +76,15 @@ namespace llarp
   Context::makeNodeDB()
   {
     return std::make_shared<NodeDB>(
-        nodedb_dirname, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
+        nodedb_dirname,
+        [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); },
+        router.get());
   }
 
-  std::shared_ptr<AbstractRouter>
+  std::shared_ptr<Router>
   Context::makeRouter(const EventLoop_ptr& loop)
   {
-    return std::static_pointer_cast<AbstractRouter>(
-        std::make_shared<Router>(loop, makeVPNPlatform()));
+    return std::make_shared<Router>(loop, makeVPNPlatform());
   }
 
   std::shared_ptr<vpn::Platform>
@@ -172,7 +159,7 @@ namespace llarp
 #ifndef _WIN32
     if (sig == SIGUSR1)
     {
-      if (router and not router->IsServiceNode())
+      if (router and not router->is_service_node())
       {
         LogInfo("SIGUSR1: resetting network state");
         router->Thaw();
@@ -194,7 +181,7 @@ namespace llarp
   {
     if (router)
     {
-      llarp::log::debug(logcat, "Handling SIGINT");
+      llarp::log::error(logcat, "Handling SIGINT");
       /// async stop router on sigint
       router->Stop();
     }

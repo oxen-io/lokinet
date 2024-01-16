@@ -8,8 +8,8 @@ extern "C"
 {
 #endif
 
-#include <unistd.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <uv.h>
 
   // Port (on localhost) for our DNS trampoline for bouncing DNS requests through the exit route

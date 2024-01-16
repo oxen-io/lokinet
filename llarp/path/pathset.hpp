@@ -1,10 +1,11 @@
 #pragma once
 
 #include "path_types.hpp"
-#include <llarp/service/protocol_type.hpp>
+
+#include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/intro_set.hpp>
+#include <llarp/service/protocol_type.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/thread/threading.hpp>
 #include <llarp/util/time.hpp>
@@ -30,6 +31,7 @@ namespace std
 
 namespace llarp
 {
+  struct Router;
   struct RouterContact;
   class NodeDB;
 
@@ -45,12 +47,12 @@ namespace llarp
     /// status of a path
     enum PathStatus
     {
-      ePathBuilding,
-      ePathEstablished,
-      ePathTimeout,
-      ePathFailed,
-      ePathIgnore,
-      ePathExpired
+      BUILDING,
+      ESTABLISHED,
+      TIMEOUT,
+      FAILED,
+      IGNORE,
+      EXPIRED
     };
 
     /// Stats about all our path builds
@@ -120,7 +122,7 @@ namespace llarp
 
       /// manual build on these hops
       virtual void
-      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) = 0;
+      Build(std::vector<RemoteRC> hops, PathRole roles = ePathRoleAny) = 0;
 
       /// tick owned paths
       virtual void
@@ -139,7 +141,7 @@ namespace llarp
       virtual void
       HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
 
-      virtual void
+      void
       PathBuildStarted(Path_ptr path);
 
       /// a path died now what?
@@ -156,7 +158,7 @@ namespace llarp
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
-      ExpirePaths(llarp_time_t now, AbstractRouter* router);
+      ExpirePaths(llarp_time_t now, Router* router);
 
       /// get the number of paths in this status
       size_t
@@ -209,33 +211,6 @@ namespace llarp
       virtual void
       BlacklistSNode(const RouterID) = 0;
 
-      /// override me in subtype
-      virtual bool
-      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
-      {
-        return false;
-      }
-
-      /// override me in subtype
-      virtual bool
-      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
-      {
-        return false;
-      }
-
-      /// override me in subtype
-      virtual bool
-      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
-      {
-        return false;
-      }
-
-      virtual routing::IMessageHandler*
-      GetDHTHandler()
-      {
-        return nullptr;
-      }
-
       Path_ptr
       GetEstablishedPathClosestTo(
           RouterID router,
@@ -267,12 +242,6 @@ namespace llarp
       GetCurrentIntroductionsWithFilter(
           std::function<bool(const service::Introduction&)> filter) const;
 
-      virtual bool
-      PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)
-      {
-        return false;
-      }
-
       /// reset all cooldown timers
       virtual void
       ResetInternalState() = 0;
@@ -281,9 +250,9 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
-      SendPacketToRemote(const llarp_buffer_t& pkt, service::ProtocolType t) = 0;
+      send_packet_to_remote(std::string buf) = 0;
 
-      virtual std::optional<std::vector<RouterContact>>
+      virtual std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() = 0;
 
       void
@@ -299,10 +268,10 @@ namespace llarp
       }
 
       void
-      UpstreamFlush(AbstractRouter* r);
+      UpstreamFlush(Router* r);
 
       void
-      DownstreamFlush(AbstractRouter* r);
+      DownstreamFlush(Router* r);
 
       size_t numDesiredPaths;
 
@@ -310,7 +279,7 @@ namespace llarp
       BuildStats m_BuildStats;
 
       void
-      TickPaths(AbstractRouter* r);
+      TickPaths(Router* r);
 
       using Mtx_t = util::NullMutex;
       using Lock_t = util::NullLock;

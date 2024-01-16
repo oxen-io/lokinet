@@ -1,11 +1,13 @@
 #pragma once
 
-#include <stdio.h>
+#include "common.hpp"
+#include "platform.hpp"
+
+#include <llarp.hpp>
+
 #include <unistd.h>
 
-#include "platform.hpp"
-#include "common.hpp"
-#include <llarp.hpp>
+#include <cstdio>
 
 namespace llarp::vpn
 {
@@ -53,49 +55,49 @@ namespace llarp::vpn
     }
   };
 
-  class AndroidRouteManager : public IRouteManager
+  class AndroidRouteManager : public AbstractRouteManager
   {
-    void AddRoute(net::ipaddr_t, net::ipaddr_t) override{};
+    void add_route(oxen::quic::Address, oxen::quic::Address) override{};
 
-    void DelRoute(net::ipaddr_t, net::ipaddr_t) override{};
-
-    void
-    AddDefaultRouteViaInterface(NetworkInterface&) override{};
+    void delete_route(oxen::quic::Address, oxen::quic::Address) override{};
 
     void
-    DelDefaultRouteViaInterface(NetworkInterface&) override{};
+    add_default_route_via_interface(NetworkInterface&) override{};
 
     void
-    AddRouteViaInterface(NetworkInterface&, IPRange) override{};
+    delete_default_route_via_interface(NetworkInterface&) override{};
 
     void
-    DelRouteViaInterface(NetworkInterface&, IPRange) override{};
+    add_route_via_interface(NetworkInterface&, IPRange) override{};
 
-    std::vector<net::ipaddr_t>
-    GetGatewaysNotOnInterface(NetworkInterface&) override
+    void
+    delete_route_via_interface(NetworkInterface&, IPRange) override{};
+
+    std::vector<oxen::quic::Address>
+    get_non_interface_gateways(NetworkInterface&) override
     {
-      return std::vector<net::ipaddr_t>{};
+      return std::vector<oxen::quic::Address>{};
     };
   };
 
   class AndroidPlatform : public Platform
   {
     const int fd;
-    AndroidRouteManager _routeManager{};
+    AndroidRouteManager _route_manager{};
 
    public:
     AndroidPlatform(llarp::Context* ctx) : fd{ctx->androidFD}
     {}
 
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
+    ObtainInterface(InterfaceInfo info, Router*) override
     {
       return std::make_shared<AndroidInterface>(std::move(info), fd);
     }
-    IRouteManager&
+    AbstractRouteManager&
     RouteManager() override
     {
-      return _routeManager;
+      return _route_manager;
     }
   };
 

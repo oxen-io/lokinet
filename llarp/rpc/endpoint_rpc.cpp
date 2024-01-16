@@ -1,4 +1,5 @@
 #include "endpoint_rpc.hpp"
+
 #include <llarp/service/endpoint.hpp>
 
 namespace llarp::rpc
@@ -36,34 +37,34 @@ namespace llarp::rpc
   }
 
   bool
-  EndpointAuthRPC::AsyncAuthPending(service::ConvoTag tag) const
+  EndpointAuthRPC::auth_async_pending(service::ConvoTag tag) const
   {
     return m_PendingAuths.count(tag) > 0;
   }
 
   void
-  EndpointAuthRPC::AuthenticateAsync(
+  EndpointAuthRPC::authenticate_async(
       std::shared_ptr<llarp::service::ProtocolMessage> msg,
-      std::function<void(service::AuthResult)> hook)
+      std::function<void(std::string, bool)> hook)
   {
     service::ConvoTag tag = msg->tag;
     m_PendingAuths.insert(tag);
     const auto from = msg->sender.Addr();
-    auto reply = m_Endpoint->Loop()->make_caller([this, tag, hook](service::AuthResult result) {
+    auto reply = m_Endpoint->Loop()->make_caller([this, tag, hook](std::string code, bool success) {
       m_PendingAuths.erase(tag);
-      hook(result);
+      hook(code, success);
     });
     if (m_AuthWhitelist.count(from))
     {
       // explicitly whitelisted source
-      reply(service::AuthResult{service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
+      reply("explicitly whitelisted", true);
       return;
     }
 
     if (msg->proto != llarp::service::ProtocolType::Auth)
     {
       // not an auth message, reject
-      reply(service::AuthResult{service::AuthResultCode::eAuthRejected, "protocol error"});
+      reply("protocol error", false);
       return;
     }
 
@@ -71,7 +72,7 @@ namespace llarp::rpc
 
     if (m_AuthStaticTokens.count(payload))
     {
-      reply(service::AuthResult{service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
+      reply("explicitly whitelisted", true);
       return;
     }
 
@@ -80,13 +81,12 @@ namespace llarp::rpc
       if (m_AuthStaticTokens.empty())
       {
         // we don't have a connection to the backend so it's failed
-        reply(service::AuthResult{
-            service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
+        reply("remote has no connection to auth backend", false);
       }
       else
       {
         // static auth mode
-        reply(service::AuthResult{service::AuthResultCode::eAuthRejected, "access not permitted"});
+        reply("access not permitted", true);
       }
       return;
     }
@@ -99,14 +99,15 @@ namespace llarp::rpc
         m_AuthMethod,
         [self = shared_from_this(), reply = std::move(reply)](
             bool success, std::vector<std::string> data) {
-          service::AuthResult result{service::AuthResultCode::eAuthFailed, "no reason given"};
+          service::AuthResult result{service::AuthCode::FAILED, "no reason given"};
+
           if (success and not data.empty())
           {
-            if (const auto maybe = service::ParseAuthResultCode(data[0]))
+            if (const auto maybe = service::parse_auth_code(data[0]))
             {
               result.code = *maybe;
             }
-            if (result.code == service::AuthResultCode::eAuthAccepted)
+            if (result.code == service::AuthCode::ACCEPTED)
             {
               result.reason = "OK";
             }
@@ -115,7 +116,8 @@ namespace llarp::rpc
               result.reason = data[1];
             }
           }
-          reply(result);
+
+          reply(result.reason, success);
         },
         metainfo,
         payload);

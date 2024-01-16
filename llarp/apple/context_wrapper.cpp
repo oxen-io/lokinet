@@ -1,17 +1,22 @@
-#include <cstdint>
-#include <cstring>
-#include <cassert>
-#include <llarp/net/ip_packet.hpp>
+#include "context_wrapper.h"
+
+#include "context.hpp"
+#include "vpn_interface.hpp"
+
 #include <llarp/config/config.hpp>
 #include <llarp/constants/apple.hpp>
+#include <llarp/ev/libuv.hpp>
+#include <llarp/net/ip_packet.hpp>
 #include <llarp/util/fs.hpp>
-#include <uvw/loop.h>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/logging/buffer.hpp>
 #include <llarp/util/logging/callback_sink.hpp>
-#include "vpn_interface.hpp"
-#include "context_wrapper.h"
-#include "context.hpp"
+
+// #include <uvw/loop.h>
+
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 
 namespace
 {
@@ -47,12 +52,12 @@ llarp_apple_init(llarp_apple_config* appleconf)
     auto config = std::make_shared<llarp::Config>(config_dir);
     fs::path config_path = config_dir / "lokinet.ini";
     if (!fs::exists(config_path))
-      llarp::ensureConfig(config_dir, config_path, /*overwrite=*/false, /*asRouter=*/false);
-    config->Load(config_path);
+      llarp::ensure_config(config_dir, config_path, /*overwrite=*/false, /*asRouter=*/false);
+    config->load(config_path);
 
     // If no range is specified then go look for a free one, set that in the config, and then return
     // it to the caller via the char* parameters.
-    auto& range = config->network.m_ifaddr;
+    auto& range = config->network.if_addr;
     if (!range.addr.h)
     {
       if (auto maybe = llarp::net::Platform::Default_ptr()->FindFreeRange())
@@ -79,7 +84,7 @@ llarp_apple_init(llarp_apple_config* appleconf)
     appleconf->tunnel_ipv6_prefix = 48;
 
     appleconf->upstream_dns[0] = '\0';
-    for (auto& upstream : config->dns.m_upstreamDNS)
+    for (auto& upstream : config->dns.upstream_dns)
     {
       if (upstream.isIPv4())
       {

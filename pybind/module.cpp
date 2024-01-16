@@ -1,11 +1,12 @@
 #include "common.hpp"
+
 #include <llarp/util/logging.hpp>
 
 PYBIND11_MODULE(pyllarp, m)
 {
   tooling::RouterHive_Init(m);
   tooling::RouterEvent_Init(m);
-  llarp::AbstractRouter_Init(m);
+  llarp::Router_Init(m);
   tooling::HiveRouter_Init(m);
   llarp::PeerDb_Init(m);
   llarp::PeerStats_Init(m);

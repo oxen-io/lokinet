@@ -5,84 +5,93 @@
 #include <llarp/util/bencode.hpp>
 #include <llarp/util/status.hpp>
 
+#include <oxenc/bt.h>
+
 #include <iostream>
 
-namespace llarp
+namespace
 {
-  namespace service
+  static auto intro_cat = llarp::log::Cat("lokinet.intro");
+}  // namespace
+
+namespace llarp::service
+{
+  struct Introduction
   {
-    struct Introduction
+    RouterID router;
+    PathID_t path_id;
+    llarp_time_t latency = 0s;
+    llarp_time_t expiry = 0s;
+    uint64_t version = llarp::constants::proto_version;
+
+    Introduction() = default;
+    Introduction(std::string buf);
+
+    util::StatusObject
+    ExtractStatus() const;
+
+    bool
+    IsExpired(llarp_time_t now) const
     {
-      RouterID router;
-      PathID_t pathID;
-      llarp_time_t latency = 0s;
-      llarp_time_t expiresAt = 0s;
-      uint64_t version = llarp::constants::proto_version;
+      return now >= expiry;
+    }
 
-      util::StatusObject
-      ExtractStatus() const;
-
-      bool
-      IsExpired(llarp_time_t now) const
-      {
-        return now >= expiresAt;
-      }
-
-      bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 30s) const
-      {
-        return IsExpired(now + dlt);
-      }
-
-      std::string
-      ToString() const;
-
-      bool
-      BEncode(llarp_buffer_t* buf) const;
-
-      bool
-      BDecode(llarp_buffer_t* buf)
-      {
-        return bencode_decode_dict(*this, buf);
-      }
-
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
-
-      void
-      Clear();
-
-      bool
-      operator<(const Introduction& other) const
-      {
-        return std::tie(expiresAt, pathID, router, version, latency)
-            < std::tie(other.expiresAt, other.pathID, other.router, other.version, other.latency);
-      }
-
-      bool
-      operator==(const Introduction& other) const
-      {
-        return pathID == other.pathID && router == other.router;
-      }
-
-      bool
-      operator!=(const Introduction& other) const
-      {
-        return pathID != other.pathID || router != other.router;
-      }
-    };
-
-    /// comparator for introset timestamp
-    struct CompareIntroTimestamp
+    bool
+    ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 30s) const
     {
-      bool
-      operator()(const Introduction& left, const Introduction& right) const
-      {
-        return left.expiresAt > right.expiresAt;
-      }
-    };
-  }  // namespace service
-}  // namespace llarp
+      return IsExpired(now + dlt);
+    }
+
+    std::string
+    ToString() const;
+
+    void
+    bt_encode(oxenc::bt_list_producer& btlp) const;
+    void
+    bt_encode(oxenc::bt_dict_producer& subdict) const;
+
+    bool
+    BDecode(llarp_buffer_t* buf)
+    {
+      return bencode_decode_dict(*this, buf);
+    }
+
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
+
+    void
+    Clear();
+
+    bool
+    operator<(const Introduction& other) const
+    {
+      return std::tie(expiry, path_id, router, version, latency)
+          < std::tie(other.expiry, other.path_id, other.router, other.version, other.latency);
+    }
+
+    bool
+    operator==(const Introduction& other) const
+    {
+      return path_id == other.path_id && router == other.router;
+    }
+
+    bool
+    operator!=(const Introduction& other) const
+    {
+      return path_id != other.path_id || router != other.router;
+    }
+  };
+
+  /// comparator for introset timestamp
+  struct CompareIntroTimestamp
+  {
+    bool
+    operator()(const Introduction& left, const Introduction& right) const
+    {
+      return left.expiry > right.expiry;
+    }
+  };
+}  // namespace llarp::service
 
 template <>
 constexpr inline bool llarp::IsToStringFormattable<llarp::service::Introduction> = true;
@@ -95,7 +104,7 @@ namespace std
     size_t
     operator()(const llarp::service::Introduction& i) const
     {
-      return std::hash<llarp::PubKey>{}(i.router) ^ std::hash<llarp::PathID_t>{}(i.pathID);
+      return std::hash<llarp::PubKey>{}(i.router) ^ std::hash<llarp::PathID_t>{}(i.path_id);
     }
   };
 }  // namespace std

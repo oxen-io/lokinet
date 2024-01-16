@@ -1,428 +1,474 @@
 #pragma once
 
-#include "abstractrouter.hpp"
+#include "route_poker.hpp"
 
 #include <llarp/bootstrap.hpp>
 #include <llarp/config/config.hpp>
 #include <llarp/config/key_manager.hpp>
+#include <llarp/consensus/reachability_testing.hpp>
 #include <llarp/constants/link_layer.hpp>
 #include <llarp/crypto/types.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/link/link_manager.hpp>
-#include <llarp/link/server.hpp>
-#include <llarp/messages/link_message_parser.hpp>
-#include <llarp/nodedb.hpp>
 #include <llarp/path/path_context.hpp>
-#include <llarp/peerstats/peer_db.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
-#include "outbound_message_handler.hpp"
-#include "outbound_session_maker.hpp"
-#include "rc_gossiper.hpp"
-#include "rc_lookup_handler.hpp"
-#include "route_poker.hpp"
-#include <llarp/routing/handler.hpp>
-#include <llarp/routing/message_parser.hpp>
 #include <llarp/rpc/lokid_rpc_client.hpp>
 #include <llarp/rpc/rpc_server.hpp>
 #include <llarp/service/context.hpp>
-#include <stdexcept>
 #include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 #include <llarp/util/mem.hpp>
+#include <llarp/util/service_manager.hpp>
 #include <llarp/util/status.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/time.hpp>
-#include <llarp/util/service_manager.hpp>
+
+#include <oxenmq/address.h>
 
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
-#include <oxenmq/address.h>
-
 namespace llarp
 {
-  struct Router : public AbstractRouter
+  /// number of routers to publish to
+  inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
+
+  /// number of dht locations handled per relay
+  inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
+
+  inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{
+      (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
+
+  // TESTNET: these constants are shortened for testing purposes
+  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{10min};
+  inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
+  inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
+  // as we advance towards full mesh, we try to connect to this number per tick
+  inline constexpr int FULL_MESH_ITERATION{1};
+  inline constexpr std::chrono::milliseconds ROUTERID_UPDATE_INTERVAL{1h};
+
+  // DISCUSS: ask tom and jason about this
+  // how big of a time skip before we reset network state
+  inline constexpr std::chrono::milliseconds NETWORK_RESET_SKIP_INTERVAL{1min};
+
+  inline constexpr std::chrono::milliseconds REPORT_STATS_INTERVAL{10s};
+
+  inline constexpr std::chrono::milliseconds DECOMM_WARNING_INTERVAL{5min};
+
+  struct Contacts;
+
+  struct Router : std::enable_shared_from_this<Router>
   {
-    llarp_time_t _lastPump = 0s;
-    bool ready;
+    friend class NodeDB;
+
+    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
+
+    ~Router() = default;
+
+   private:
+    std::shared_ptr<RoutePoker> _route_poker;
+    std::chrono::steady_clock::time_point _next_explore_at;
+    llarp_time_t last_pump = 0s;
     // transient iwp encryption key
     fs::path transport_keyfile;
-
     // long term identity key
-    fs::path ident_keyfile;
-
+    fs::path identity_keyfile;
     fs::path encryption_keyfile;
-
     // path to write our self signed rc to
     fs::path our_rc_file;
-
     // use file based logging?
-    bool m_UseFileLogging = false;
-
+    bool use_file_logging = false;
     // our router contact
-    RouterContact _rc;
+    LocalRC router_contact;
+    std::shared_ptr<oxenmq::OxenMQ> _lmq;
+    path::BuildLimiter _pathbuild_limiter;
+    std::shared_ptr<EventLoopWakeup> loop_wakeup;
 
-    /// should we obey the service node whitelist?
-    bool whitelistRouters = false;
+    std::atomic<bool> is_stopping;
+    std::atomic<bool> is_running;
 
-    LMQ_ptr m_lmq;
+    int _outbound_udp_socket = -1;
+    bool _is_service_node = false;
 
-    path::BuildLimiter m_PathBuildLimiter;
+    bool _testnet = false;
+    bool _testing_disabled = false;
+    bool _bootstrap_seed = false;
 
-    std::shared_ptr<EventLoopWakeup> m_Pump;
+    consensus::reachability_testing router_testing;
+
+    std::optional<oxen::quic::Address> _public_address;  // public addr for relays
+    oxen::quic::Address _listen_address;
+
+    EventLoop_ptr _loop;
+    std::shared_ptr<vpn::Platform> _vpn;
+    path::PathContext paths;
+    exit::Context _exit_context;
+    SecretKey _identity;
+    SecretKey _encryption;
+    std::shared_ptr<Contacts> _contacts;
+    std::shared_ptr<NodeDB> _node_db;
+    llarp_time_t _started_at;
+    const oxenmq::TaggedThreadID _disk_thread;
+
+    llarp_time_t _last_stats_report = 0s;
+    llarp_time_t _next_decomm_warning = time_now_ms() + 15s;
+    std::shared_ptr<llarp::KeyManager> _key_manager;
+    std::shared_ptr<Config> _config;
+    uint32_t _path_build_count = 0;
+
+    std::unique_ptr<rpc::RPCServer> _rpc_server;
+
+    const llarp_time_t _randomStartDelay;
+
+    std::shared_ptr<rpc::LokidRpcClient> _rpc_client;
+    bool whitelist_received{false};
+
+    oxenmq::address rpc_addr;
+    Profiling _router_profiling;
+    fs::path _profile_file;
+
+    std::unique_ptr<LinkManager> _link_manager;
+    int client_router_connections;
+
+    // should we be sending padded messages every interval?
+    bool send_padding = false;
+
+    service::Context _hidden_service_context;
+
+    bool
+    should_report_stats(llarp_time_t now) const;
+
+    void
+    report_stats();
+
+    void
+    save_rc();
+
+    bool
+    from_config(const Config& conf);
+
+    bool
+    insufficient_peers() const;
+
+   protected:
+    std::chrono::system_clock::time_point last_rc_gossip{
+        std::chrono::system_clock::time_point::min()};
+    std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
+    std::chrono::system_clock::time_point next_initial_fetch_attempt{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point last_rid_fetch{last_rc_gossip};
+    std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
+
+   public:
+    bool
+    testnet() const
+    {
+      return _testnet;
+    }
+
+    bool
+    is_bootstrap_seed() const
+    {
+      return _bootstrap_seed;
+    }
+
+    int
+    required_num_client_conns() const
+    {
+      return client_router_connections;
+    }
+
+    const RouterID&
+    local_rid() const
+    {
+      return router_contact.router_id();
+    }
+
+    bool
+    needs_initial_fetch() const;
+
+    bool
+    needs_rebootstrap() const;
+
+    void
+    for_each_connection(std::function<void(link::Connection&)> func);
+
+    const Contacts&
+    contacts() const
+    {
+      return *_contacts;
+    }
+
+    Contacts&
+    contacts()
+    {
+      return *_contacts;
+    }
+
+    std::shared_ptr<Config>
+    config() const
+    {
+      return _config;
+    }
 
     path::BuildLimiter&
-    pathBuildLimiter() override
+    pathbuild_limiter()
     {
-      return m_PathBuildLimiter;
+      return _pathbuild_limiter;
     }
 
     const llarp::net::Platform&
-    Net() const override;
+    net() const;
 
-    const LMQ_ptr&
-    lmq() const override
+    const std::shared_ptr<oxenmq::OxenMQ>&
+    lmq() const
     {
-      return m_lmq;
+      return _lmq;
     }
 
     const std::shared_ptr<rpc::LokidRpcClient>&
-    RpcClient() const override
+    rpc_client() const
     {
-      return m_lokidRpcClient;
+      return _rpc_client;
     }
 
-    llarp_dht_context*
-    dht() const override
+    LinkManager&
+    link_manager()
     {
-      return _dht;
+      return *_link_manager;
     }
 
-    std::optional<std::variant<nuint32_t, nuint128_t>>
-    OurPublicIP() const override;
-
-    util::StatusObject
-    ExtractStatus() const override;
-
-    util::StatusObject
-    ExtractSummaryStatus() const override;
-
-    const std::shared_ptr<NodeDB>&
-    nodedb() const override
+    const LinkManager&
+    link_manager() const
     {
-      return _nodedb;
+      return *_link_manager;
     }
 
-    const path::PathContext&
-    pathContext() const override
+    int
+    outbound_udp_socket() const
     {
-      return paths;
-    }
-
-    path::PathContext&
-    pathContext() override
-    {
-      return paths;
-    }
-
-    const RouterContact&
-    rc() const override
-    {
-      return _rc;
-    }
-
-    void
-    ModifyOurRC(std::function<std::optional<RouterContact>(RouterContact)> modify) override;
-
-    void
-    SetRouterWhitelist(
-        const std::vector<RouterID>& whitelist,
-        const std::vector<RouterID>& greylist,
-        const std::vector<RouterID>& unfunded) override;
-
-    std::unordered_set<RouterID>
-    GetRouterWhitelist() const override
-    {
-      return _rcLookupHandler.Whitelist();
+      return _outbound_udp_socket;
     }
 
     exit::Context&
-    exitContext() override
+    exitContext()
     {
-      return _exitContext;
+      return _exit_context;
     }
 
     const std::shared_ptr<KeyManager>&
-    keyManager() const override
+    key_manager() const
     {
-      return m_keyManager;
+      return _key_manager;
     }
 
     const SecretKey&
-    identity() const override
+    identity() const
     {
       return _identity;
     }
 
     const SecretKey&
-    encryption() const override
+    encryption() const
     {
       return _encryption;
     }
 
     Profiling&
-    routerProfiling() override
+    router_profiling()
     {
-      return _routerProfiling;
+      return _router_profiling;
     }
 
     const EventLoop_ptr&
-    loop() const override
+    loop() const
     {
       return _loop;
     }
 
     vpn::Platform*
-    GetVPNPlatform() const override
+    vpn_platform() const
     {
-      return _vpnPlatform.get();
+      return _vpn.get();
     }
 
-    void
-    QueueWork(std::function<void(void)> func) override;
+    const std::shared_ptr<NodeDB>&
+    node_db() const
+    {
+      return _node_db;
+    }
+
+    path::PathContext&
+    path_context()
+    {
+      return paths;
+    }
+
+    const LocalRC&
+    rc() const
+    {
+      return router_contact;
+    }
+
+    oxen::quic::Address
+    listen_addr() const;
+
+    util::StatusObject
+    ExtractStatus() const;
+
+    util::StatusObject
+    ExtractSummaryStatus() const;
+
+    const std::set<RouterID>&
+    get_whitelist() const;
 
     void
-    QueueDiskIO(std::function<void(void)> func) override;
+    set_router_whitelist(
+        const std::vector<RouterID>& whitelist,
+        const std::vector<RouterID>& greylist,
+        const std::vector<RouterID>& unfunded);
+
+    void
+    queue_work(std::function<void(void)> func);
+
+    void
+    queue_disk_io(std::function<void(void)> func);
+
+    /// Return true if we are operating as a service node and have received a service node whitelist
+    bool
+    have_snode_whitelist() const;
 
     /// return true if we look like we are a decommissioned service node
     bool
-    LooksDecommissioned() const;
+    appears_decommed() const;
 
     /// return true if we look like we are a registered, fully-staked service node (either active or
     /// decommissioned).  This condition determines when we are allowed to (and attempt to) connect
     /// to other peers when running as a service node.
     bool
-    LooksFunded() const;
+    appears_funded() const;
 
     /// return true if we a registered service node; not that this only requires a partial stake,
     /// and does not imply that this service node is *active* or fully funded.
     bool
-    LooksRegistered() const;
+    appears_registered() const;
 
     /// return true if we look like we are allowed and able to test other routers
     bool
-    ShouldTestOtherRouters() const;
-
-    std::optional<SockAddr> _ourAddress;
-
-    EventLoop_ptr _loop;
-    std::shared_ptr<vpn::Platform> _vpnPlatform;
-    path::PathContext paths;
-    exit::Context _exitContext;
-    SecretKey _identity;
-    SecretKey _encryption;
-    llarp_dht_context* _dht = nullptr;
-    std::shared_ptr<NodeDB> _nodedb;
-    llarp_time_t _startedAt;
-    const oxenmq::TaggedThreadID m_DiskThread;
+    can_test_routers() const;
 
     llarp_time_t
-    Uptime() const override;
-
-    bool
-    Sign(Signature& sig, const llarp_buffer_t& buf) const override;
-
-    /// how often do we resign our RC? milliseconds.
-    // TODO: make configurable
-    llarp_time_t rcRegenInterval = 1h;
-
-    // should we be sending padded messages every interval?
-    bool sendPadding = false;
-
-    LinkMessageParser inbound_link_msg_parser;
-    routing::InboundMessageParser inbound_routing_msg_parser;
-
-    service::Context _hiddenServiceContext;
+    Uptime() const;
 
     service::Context&
-    hiddenServiceContext() override
+    hidden_service_context()
     {
-      return _hiddenServiceContext;
+      return _hidden_service_context;
     }
 
     const service::Context&
-    hiddenServiceContext() const override
+    hidden_service_context() const
     {
-      return _hiddenServiceContext;
+      return _hidden_service_context;
     }
 
-    llarp_time_t _lastTick = 0s;
+    llarp_time_t _last_tick = 0s;
 
-    std::function<void(void)> _onDown;
+    std::function<void(void)> _router_close_cb;
 
     void
-    SetDownHook(std::function<void(void)> hook) override
+    set_router_close_cb(std::function<void(void)> hook)
     {
-      _onDown = hook;
+      _router_close_cb = hook;
     }
 
     bool
-    LooksAlive() const override
+    LooksAlive() const
     {
-      const llarp_time_t now = Now();
-      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+      const llarp_time_t current = now();
+      return current <= _last_tick || (current - _last_tick) <= llarp_time_t{30000};
     }
-
-    /// bootstrap RCs
-    BootstrapList bootstrapRCList;
 
     const std::shared_ptr<RoutePoker>&
-    routePoker() const override
+    route_poker() const
     {
-      return m_RoutePoker;
+      return _route_poker;
     }
 
-    std::shared_ptr<RoutePoker> m_RoutePoker;
-
     void
-    TriggerPump() override;
+    TriggerPump();
 
     void
     PumpLL();
 
-    std::unique_ptr<rpc::RPCServer> m_RPCServer;
-
-    const llarp_time_t _randomStartDelay;
-
-    std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
-
-    oxenmq::address lokidRPCAddr;
-    Profiling _routerProfiling;
-    fs::path _profilesFile;
-    OutboundMessageHandler _outboundMessageHandler;
-    OutboundSessionMaker _outboundSessionMaker;
-    LinkManager _linkManager;
-    RCLookupHandler _rcLookupHandler;
-    RCGossiper _rcGossiper;
-
     std::string
-    status_line() override;
-
-    using Clock_t = std::chrono::steady_clock;
-    using TimePoint_t = Clock_t::time_point;
-
-    TimePoint_t m_NextExploreAt;
-
-    IOutboundMessageHandler&
-    outboundMessageHandler() override
-    {
-      return _outboundMessageHandler;
-    }
-
-    IOutboundSessionMaker&
-    outboundSessionMaker() override
-    {
-      return _outboundSessionMaker;
-    }
-
-    ILinkManager&
-    linkManager() override
-    {
-      return _linkManager;
-    }
-
-    I_RCLookupHandler&
-    rcLookupHandler() override
-    {
-      return _rcLookupHandler;
-    }
-
-    std::shared_ptr<PeerDb>
-    peerDb() override
-    {
-      return m_peerDb;
-    }
-
-    inline int
-    OutboundUDPSocket() const override
-    {
-      return m_OutboundUDPSocket;
-    }
+    status_line();
 
     void
-    GossipRCIfNeeded(const RouterContact rc) override;
-
-    explicit Router(EventLoop_ptr loop, std::shared_ptr<vpn::Platform> vpnPlatform);
-
-    ~Router() override;
-
-    bool
-    HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
+    init_inbounds();
 
     void
-    InitInboundLinks();
+    init_outbounds();
 
-    void
-    InitOutboundLinks();
-
-    bool
-    GetRandomGoodRouter(RouterID& r) override;
+    std::optional<RouterID>
+    GetRandomGoodRouter();
 
     /// initialize us as a service node
     /// return true on success
     bool
-    InitServiceNode();
+    init_service_node();
 
     bool
-    IsRunning() const override;
+    IsRunning() const;
 
     /// return true if we are running in service node mode
     bool
-    IsServiceNode() const override;
+    is_service_node() const;
 
     std::optional<std::string>
-    OxendErrorState() const override;
+    OxendErrorState() const;
 
     void
     Close();
 
     bool
-    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb) override;
+    Configure(std::shared_ptr<Config> conf, bool isSNode, std::shared_ptr<NodeDB> nodedb);
 
     bool
-    StartRpcServer() override;
+    StartRpcServer();
 
     void
-    Freeze() override;
+    Freeze();
 
     void
-    Thaw() override;
+    Thaw();
 
     bool
-    Run() override;
+    Run();
 
     /// stop running the router logic gracefully
     void
-    Stop() override;
+    Stop();
 
     /// non graceful stop router
     void
-    Die() override;
+    Die();
 
     /// close all sessions and shutdown all links
     void
     StopLinks();
 
     void
-    PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
+    persist_connection_until(const RouterID& remote, llarp_time_t until);
 
     bool
     EnsureIdentity();
@@ -431,176 +477,73 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    SessionToRouterAllowed(const RouterID& router) const override;
-    bool
-    PathToRouterAllowed(const RouterID& router) const override;
-
-    void
-    HandleSaveRC() const;
+    SessionToRouterAllowed(const RouterID& router) const;
 
     bool
-    SaveRC();
+    PathToRouterAllowed(const RouterID& router) const;
 
     /// return true if we are a client with an exit configured
     bool
-    HasClientExit() const override;
+    HasClientExit() const;
 
     const byte_t*
-    pubkey() const override
+    pubkey() const
     {
-      return seckey_topublic(_identity);
+      return seckey_to_pubkey(_identity);
     }
-
-    void
-    try_connect(fs::path rcfile);
-
-    bool
-    TryConnectAsync(RouterContact rc, uint16_t tries) override;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
     /// returns true on successful queue
     /// NOT threadsafe
     /// MUST be called in the logic thread
+    // bool
+    // SendToOrQueue(
+    //     const RouterID& remote, const AbstractLinkMessage& msg, SendStatusHandler handler);
+
     bool
-    SendToOrQueue(
-        const RouterID& remote, const ILinkMessage& msg, SendStatusHandler handler) override;
+    send_data_message(const RouterID& remote, std::string payload);
 
-    void
-    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
-        const override;
-
-    void
-    ForEachPeer(std::function<void(ILinkSession*)> visit);
-
-    bool IsBootstrapNode(RouterID) const override;
-
-    /// check if newRc matches oldRC and update local rc for this remote contact
-    /// if valid
-    /// returns true on valid and updated
-    /// returns false otherwise
     bool
-    CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC) override;
+    send_control_message(
+        const RouterID& remote,
+        std::string endpoint,
+        std::string body,
+        std::function<void(oxen::quic::message m)> func = nullptr);
 
-    /// called by link when a remote session has no more sessions open
-    void
-    SessionClosed(RouterID remote) override;
-
-    /// called by link when an unestablished connection times out
-    void
-    ConnectionTimedOut(ILinkSession* session);
-
-    /// called by link when session is fully established
-    bool
-    ConnectionEstablished(ILinkSession* session, bool inbound);
+    bool is_bootstrap_node(RouterID) const;
 
     /// call internal router ticker
     void
     Tick();
 
     llarp_time_t
-    Now() const override
+    now() const
     {
       return llarp::time_now_ms();
     }
 
-    /// parse a routing message in a buffer and handle it with a handler if
-    /// successful parsing return true on parse and handle success otherwise
-    /// return false
-    bool
-    ParseRoutingMessageBuffer(
-        const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid) override;
-
     void
-    ConnectToRandomRouters(int N) override;
+    ConnectToRandomRouters(int N);
 
     /// count the number of unique service nodes connected via pubkey
     size_t
-    NumberOfConnectedRouters() const override;
+    num_router_connections() const;
 
     /// count the number of unique clients connected by pubkey
     size_t
-    NumberOfConnectedClients() const override;
-
-    bool
-    GetRandomConnectedRouter(RouterContact& result) const override;
-
-    void
-    HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results) override;
-
-    void
-    LookupRouter(RouterID remote, RouterLookupHandler resultHandler) override;
-
-    bool
-    HasSessionTo(const RouterID& remote) const override;
+    num_client_connections() const;
 
     std::string
-    ShortName() const override;
+    ShortName() const;
 
     uint32_t
-    NextPathBuildNumber() override;
+    NextPathBuildNumber();
 
     void
     AfterStopLinks();
 
     void
     AfterStopIssued();
-
-    std::shared_ptr<Config> m_Config;
-
-    std::shared_ptr<Config>
-    GetConfig() const override
-    {
-      return m_Config;
-    }
-
-    int m_OutboundUDPSocket = -1;
-
-   private:
-    std::atomic<bool> _stopping;
-    std::atomic<bool> _running;
-
-    bool m_isServiceNode = false;
-
-    // Delay warning about being decommed/dereged until we've had enough time to sync up with oxend
-    static constexpr auto DECOMM_WARNING_STARTUP_DELAY = 15s;
-
-    llarp_time_t m_LastStatsReport = 0s;
-    llarp_time_t m_NextDecommissionWarn = time_now_ms() + DECOMM_WARNING_STARTUP_DELAY;
-    std::shared_ptr<llarp::KeyManager> m_keyManager;
-    std::shared_ptr<PeerDb> m_peerDb;
-
-    uint32_t path_build_count = 0;
-
-    consensus::reachability_testing m_routerTesting;
-
-    bool
-    ShouldReportStats(llarp_time_t now) const;
-
-    void
-    ReportStats();
-
-    bool
-    UpdateOurRC(bool rotateKeys = false);
-
-    bool
-    FromConfig(const Config& conf);
-
-    void
-    MessageSent(const RouterID& remote, SendStatus status);
-
-    bool
-    TooFewPeers() const;
-
-   protected:
-    virtual void
-    HandleRouterEvent(tooling::RouterEventPtr event) const override;
-
-    virtual bool
-    disableGossipingRC_TestingOnly()
-    {
-      return false;
-    };
   };
-
 }  // namespace llarp

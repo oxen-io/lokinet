@@ -1,11 +1,14 @@
 #pragma once
 
 #include "rpc_request_definitions.hpp"
-#include <string_view>
+
 #include <llarp/config/config.hpp>
-#include <oxenmq/oxenmq.h>
-#include <oxenmq/address.h>
+
 #include <oxen/log/omq_logger.hpp>
+#include <oxenmq/address.h>
+#include <oxenmq/oxenmq.h>
+
+#include <string_view>
 
 namespace llarp::rpc
 {

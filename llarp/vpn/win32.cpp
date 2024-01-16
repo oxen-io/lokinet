@@ -1,6 +1,8 @@
 #include "win32.hpp"
+
 #include <llarp/win32/windivert.hpp>
 #include <llarp/win32/wintun.hpp>
+
 #include <fmt/core.h>
 
 namespace llarp::win32
@@ -16,24 +18,24 @@ namespace llarp::win32
   }  // namespace
 
   void
-  VPNPlatform::Route(std::string ip, std::string gw, std::string cmd)
+  VPNPlatform::make_route(std::string ip, std::string gw, std::string cmd)
   {
     llarp::win32::Exec(
         "route.exe", fmt::format("{} {} MASK 255.255.255.255 {} METRIC {}", cmd, ip, gw, m_Metric));
   }
 
   void
-  VPNPlatform::DefaultRouteViaInterface(NetworkInterface& vpn, std::string cmd)
+  VPNPlatform::default_route_via_interface(NetworkInterface& vpn, std::string cmd)
   {
     // route hole for loopback bacause god is dead on windows
     llarp::win32::Exec("route.exe", fmt::format("{} 127.0.0.0 MASK 255.0.0.0 0.0.0.0", cmd));
     // set up ipv4 routes
-    RouteViaInterface(vpn, "0.0.0.0", "128.0.0.0", cmd);
-    RouteViaInterface(vpn, "128.0.0.0", "128.0.0.0", cmd);
+    route_via_interface(vpn, "0.0.0.0", "128.0.0.0", cmd);
+    route_via_interface(vpn, "128.0.0.0", "128.0.0.0", cmd);
   }
 
   void
-  VPNPlatform::RouteViaInterface(
+  VPNPlatform::route_via_interface(
       NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
   {
     const auto& info = vpn.Info();
@@ -46,72 +48,79 @@ namespace llarp::win32
   }
 
   void
-  VPNPlatform::AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway)
+  VPNPlatform::add_route(oxen::quic::Address ip, oxen::quic::Address gateway)
   {
-    Route(ip_to_string(ip), ip_to_string(gateway), "ADD");
+    make_route(ip.to_string(), gateway.to_string(), "ADD");
   }
 
   void
-  VPNPlatform::DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway)
+  VPNPlatform::delete_route(oxen::quic::Address ip, oxen::quic::Address gateway)
   {
-    Route(ip_to_string(ip), ip_to_string(gateway), "DELETE");
+    make_route(ip.to_string(), gateway.to_string(), "DELETE");
   }
 
   void
-  VPNPlatform::AddRouteViaInterface(NetworkInterface& vpn, IPRange range)
+  VPNPlatform::add_route_via_interface(NetworkInterface& vpn, IPRange range)
   {
-    RouteViaInterface(vpn, range.BaseAddressString(), range.NetmaskString(), "ADD");
+    route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "ADD");
   }
 
   void
-  VPNPlatform::DelRouteViaInterface(NetworkInterface& vpn, IPRange range)
+  VPNPlatform::delete_route_via_interface(NetworkInterface& vpn, IPRange range)
   {
-    RouteViaInterface(vpn, range.BaseAddressString(), range.NetmaskString(), "DELETE");
+    route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "DELETE");
   }
 
-  std::vector<net::ipaddr_t>
-  VPNPlatform::GetGatewaysNotOnInterface(NetworkInterface& vpn)
+  std::vector<oxen::quic::Address>
+  VPNPlatform::get_non_interface_gateways(NetworkInterface& vpn)
   {
-    std::set<net::ipaddr_t> gateways;
+    std::set<oxen::quic::Address> gateways;
 
     const auto ifaddr = vpn.Info()[0];
     for (const auto& iface : Net().AllNetworkInterfaces())
     {
       if (not iface.gateway)
         continue;
+
+      bool b = true;
+
       for (const auto& range : iface.addrs)
       {
         if (not range.Contains(ifaddr))
-          gateways.emplace(*iface.gateway);
+          b = false;
       }
+      // TODO: FIXME
+      if (b)
+        throw std::runtime_error{"FIXME ALREADY"};
+      // gateways.emplace(*iface.gateway);
     }
     return {gateways.begin(), gateways.end()};
   }
 
   void
-  VPNPlatform::AddDefaultRouteViaInterface(NetworkInterface& vpn)
+  VPNPlatform::add_default_route_via_interface(NetworkInterface& vpn)
   {
     // kill ipv6
     llarp::win32::Exec(
         "WindowsPowerShell\\v1.0\\powershell.exe",
         "-Command (Disable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
 
-    DefaultRouteViaInterface(vpn, "ADD");
+    default_route_via_interface(vpn, "ADD");
   }
 
   void
-  VPNPlatform::DelDefaultRouteViaInterface(NetworkInterface& vpn)
+  VPNPlatform::delete_default_route_via_interface(NetworkInterface& vpn)
   {
     // restore ipv6
     llarp::win32::Exec(
         "WindowsPowerShell\\v1.0\\powershell.exe",
         "-Command (Enable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
 
-    DefaultRouteViaInterface(vpn, "DELETE");
+    default_route_via_interface(vpn, "DELETE");
   }
 
   std::shared_ptr<NetworkInterface>
-  VPNPlatform::ObtainInterface(InterfaceInfo info, AbstractRouter* router)
+  VPNPlatform::ObtainInterface(InterfaceInfo info, Router* router)
   {
     return wintun::make_interface(std::move(info), router);
   }

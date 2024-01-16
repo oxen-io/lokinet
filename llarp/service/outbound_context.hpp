@@ -1,183 +1,181 @@
 #pragma once
 
 #include <llarp/path/pathbuilder.hpp>
-#include "sendcontext.hpp"
+#include <llarp/service/auth.hpp>
+#include <llarp/service/convotag.hpp>
 #include <llarp/util/status.hpp>
 
 #include <unordered_map>
 #include <unordered_set>
 
-namespace llarp
+namespace llarp::service
 {
-  namespace service
+  struct AsyncKeyExchange;
+
+  struct Endpoint;
+
+  /// context needed to initiate an outbound hidden service session
+  struct OutboundContext : public llarp::path::Builder,
+                           public std::enable_shared_from_this<OutboundContext>
   {
-    struct AsyncKeyExchange;
-    struct Endpoint;
+   private:
+    Endpoint& ep;
 
-    /// context needed to initiate an outbound hidden service session
-    struct OutboundContext : public path::Builder,
-                             public SendContext,
-                             public std::enable_shared_from_this<OutboundContext>
+    IntroSet current_intro;
+    Introduction next_intro;
+
+    const dht::Key_t location;
+    const Address addr;
+
+    ServiceInfo remote_identity;
+    Introduction remote_intro;
+
+    ConvoTag current_tag;
+
+    uint64_t update_introset_tx = 0;
+    uint16_t lookup_fails = 0;
+    uint16_t build_fails = 0;
+
+    bool got_inbound_traffic = false;
+    bool generated_convo_intro = false;
+    bool sent_convo_intro = false;
+    bool marked_bad = false;
+
+    const std::chrono::milliseconds created_at;
+    std::chrono::milliseconds last_send = 0ms;
+    std::chrono::milliseconds send_timeout = path::BUILD_TIMEOUT;
+    std::chrono::milliseconds connect_timeout = send_timeout * 2;
+    std::chrono::milliseconds last_shift = 0ms;
+    std::chrono::milliseconds last_inbound_traffic = 0ms;
+    std::chrono::milliseconds last_introset_update = 0ms;
+    std::chrono::milliseconds last_keep_alive = 0ms;
+
+    void
+    gen_intro_async_impl(
+        std::string payload, std::function<void(std::string, bool)> func = nullptr);
+
+   public:
+    OutboundContext(const IntroSet& introSet, Endpoint* parent);
+
+    ~OutboundContext() override;
+
+    ConvoTag
+    get_current_tag() const
     {
-      OutboundContext(const IntroSet& introSet, Endpoint* parent);
+      return current_tag;
+    }
 
-      ~OutboundContext() override;
+    void
+    gen_intro_async(std::string payload);
 
-      void
-      Tick(llarp_time_t now) override;
+    void
+    encrypt_and_send(std::string buf);
 
-      util::StatusObject
-      ExtractStatus() const;
+    /// for exits
+    void
+    send_packet_to_remote(std::string buf) override;
 
-      void
-      BlacklistSNode(const RouterID) override{};
+    void
+    send_auth_async(std::function<void(std::string, bool)> resultHandler);
 
-      bool
-      ShouldBundleRC() const override;
+    void
+    Tick(llarp_time_t now) override;
 
-      path::PathSet_ptr
-      GetSelf() override
-      {
-        return shared_from_this();
-      }
+    util::StatusObject
+    ExtractStatus() const;
 
-      std::weak_ptr<path::PathSet>
-      GetWeak() override
-      {
-        return weak_from_this();
-      }
+    void
+    BlacklistSNode(const RouterID) override{};
 
-      Address
-      Addr() const;
+    path::PathSet_ptr
+    GetSelf() override
+    {
+      return shared_from_this();
+    }
 
-      bool
-      Stop() override;
+    std::weak_ptr<path::PathSet>
+    GetWeak() override
+    {
+      return weak_from_this();
+    }
 
-      bool
-      HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
+    Address
+    Addr() const;
 
-      void
-      HandlePathDied(path::Path_ptr p) override;
+    bool
+    Stop() override;
 
-      /// set to true if we are updating the remote introset right now
-      bool updatingIntroSet;
+    void
+    HandlePathDied(path::Path_ptr p) override;
 
-      /// update the current selected intro to be a new best introduction
-      /// return true if we have changed intros
-      bool
-      ShiftIntroduction(bool rebuild = true) override;
+    /// set to true if we are updating the remote introset right now
+    bool updatingIntroSet;
 
-      /// shift the intro off the current router it is using
-      void
-      ShiftIntroRouter(const RouterID remote) override;
+    /// update the current selected intro to be a new best introduction
+    /// return true if we have changed intros
+    bool
+    ShiftIntroduction(bool rebuild = true);
 
-      /// mark the current remote intro as bad
-      void
-      MarkCurrentIntroBad(llarp_time_t now) override;
+    /// shift the intro off the current router it is using
+    void
+    ShiftIntroRouter(const RouterID remote = RouterID{});
 
-      void
-      MarkIntroBad(const Introduction& marked, llarp_time_t now);
+    /// return true if we are ready to send
+    bool
+    ReadyToSend() const;
 
-      /// return true if we are ready to send
-      bool
-      ReadyToSend() const;
+    bool
+    ShouldBuildMore(std::chrono::milliseconds now) const override;
 
-      void
-      AddReadyHook(std::function<void(OutboundContext*)> readyHook, llarp_time_t timeout);
+    /// pump internal state
+    /// return true to mark as dead
+    bool
+    Pump(std::chrono::milliseconds now);
 
-      /// for exits
-      void
-      SendPacketToRemote(const llarp_buffer_t&, ProtocolType t) override;
+    /// return true if it's safe to remove ourselves
+    bool
+    IsDone(std::chrono::milliseconds now) const;
 
-      bool
-      ShouldBuildMore(llarp_time_t now) const override;
+    bool
+    CheckPathIsDead(path::Path_ptr p, std::chrono::milliseconds dlt);
 
-      /// pump internal state
-      /// return true to mark as dead
-      bool
-      Pump(llarp_time_t now);
+    /// issues a lookup to find the current intro set of the remote service
+    void
+    UpdateIntroSet();
 
-      /// return true if it's safe to remove ourselves
-      bool
-      IsDone(llarp_time_t now) const;
+    void
+    HandlePathBuilt(path::Path_ptr path) override;
 
-      bool
-      CheckPathIsDead(path::Path_ptr p, llarp_time_t dlt);
+    void
+    HandlePathBuildTimeout(path::Path_ptr path) override;
 
-      void
-      AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) override;
+    void
+    HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
 
-      /// issues a lookup to find the current intro set of the remote service
-      void
-      UpdateIntroSet() override;
+    std::optional<std::vector<RemoteRC>>
+    GetHopsForBuild() override;
 
-      void
-      HandlePathBuilt(path::Path_ptr path) override;
+    std::string
+    Name() const override;
 
-      void
-      HandlePathBuildTimeout(path::Path_ptr path) override;
+    void
+    KeepAlive();
 
-      void
-      HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
+    bool
+    ShouldKeepAlive(std::chrono::milliseconds now) const;
 
-      std::optional<std::vector<RouterContact>>
-      GetHopsForBuild() override;
+    const IntroSet&
+    GetCurrentIntroSet() const
+    {
+      return current_intro;
+    }
 
-      bool
-      HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);
+    std::chrono::milliseconds
+    RTT() const;
 
-      std::string
-      Name() const override;
-
-      void
-      KeepAlive();
-
-      bool
-      ShouldKeepAlive(llarp_time_t now) const;
-
-      const IntroSet&
-      GetCurrentIntroSet() const
-      {
-        return currentIntroSet;
-      }
-
-      llarp_time_t
-      RTT() const;
-
-      bool
-      OnIntroSetUpdate(
-          const Address& addr,
-          std::optional<IntroSet> i,
-          const RouterID& endpoint,
-          llarp_time_t,
-          uint64_t relayOrder);
-
-     private:
-      /// swap remoteIntro with next intro
-      void
-      SwapIntros();
-
-      bool
-      IntroGenerated() const override;
-      bool
-      IntroSent() const override;
-
-      const dht::Key_t location;
-      const Address addr;
-      uint64_t m_UpdateIntrosetTX = 0;
-      IntroSet currentIntroSet;
-      Introduction m_NextIntro;
-      llarp_time_t lastShift = 0s;
-      uint16_t m_LookupFails = 0;
-      uint16_t m_BuildFails = 0;
-      llarp_time_t m_LastInboundTraffic = 0s;
-      bool m_GotInboundTraffic = false;
-      bool generatedIntro = false;
-      bool sentIntro = false;
-      std::vector<std::function<void(OutboundContext*)>> m_ReadyHooks;
-      llarp_time_t m_LastIntrosetUpdateAt = 0s;
-      llarp_time_t m_LastKeepAliveAt = 0s;
-    };
-  }  // namespace service
-
-}  // namespace llarp
+   private:
+    /// swap remoteIntro with next intro
+    void
+    swap_intros();
+  };
+}  // namespace llarp::service

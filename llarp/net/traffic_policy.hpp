@@ -1,8 +1,11 @@
 #pragma once
 
-#include "ip_range.hpp"
 #include "ip_packet.hpp"
-#include "llarp/util/status.hpp"
+#include "ip_range.hpp"
+
+#include <llarp/util/status.hpp>
+
+#include <oxenc/bt.h>
 
 #include <set>
 
@@ -16,8 +19,10 @@ namespace llarp::net
     /// the layer 3 port if applicable
     std::optional<nuint16_t> port;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    ProtocolInfo(std::string buf);
+
+    void
+    bt_encode(oxenc::bt_list_producer& btlp) const;
 
     bool
     BDecode(llarp_buffer_t* buf);
@@ -50,8 +55,10 @@ namespace llarp::net
     /// protocols that are explicity allowed
     std::set<ProtocolInfo> protocols;
 
-    bool
-    BEncode(llarp_buffer_t* buf) const;
+    void
+    bt_encode(oxenc::bt_dict_producer& btdp) const;
+    void
+    bt_decode(oxenc::bt_dict_consumer& btdc);
 
     bool
     BDecode(llarp_buffer_t* buf);

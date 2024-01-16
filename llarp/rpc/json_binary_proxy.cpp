@@ -1,6 +1,7 @@
 #include "json_binary_proxy.hpp"
-#include <oxenc/hex.h>
+
 #include <oxenc/base64.h>
+#include <oxenc/hex.h>
 
 namespace llarp::rpc
 {

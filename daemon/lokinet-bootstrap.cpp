@@ -1,21 +1,12 @@
-#include <cpr/cpr.h>
 #include <llarp/constants/files.hpp>
 #include <llarp/constants/version.hpp>
-#include <llarp/util/buffer.hpp>
 #include <llarp/util/fs.hpp>
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
+#include <cpr/cpr.h>
 
+#include <iostream>
 #include <unordered_map>
 #include <unordered_set>
-
-#ifndef _WIN32
-#include <openssl/x509.h>
-#endif
-
-#include <sstream>
 
 #ifndef _WIN32
 #include <openssl/x509.h>
@@ -55,10 +46,8 @@ int
 main(int argc, char* argv[])
 {
   const std::unordered_map<std::string, std::string> bootstrap_urls = {
-      {"mainnet", "https://seed.lokinet.org/lokinet.signed"},
       {"lokinet", "https://seed.lokinet.org/lokinet.signed"},
-      {"testnet", "https://seed.lokinet.org/testnet.signed"},
-      {"gamma", "https://seed.lokinet.org/testnet.signed"}};
+      {"testnet", "https://seed.lokinet.org/testnet.signed"}};
 
   std::string bootstrap_url = bootstrap_urls.at("lokinet");
   fs::path outputfile{llarp::GetDefaultBootstrap()};
@@ -95,16 +84,16 @@ main(int argc, char* argv[])
 #else
       cpr::Get(
           cpr::Url{bootstrap_url},
-          cpr::Header{{"User-Agent", std::string{llarp::VERSION_FULL}}},
+          cpr::Header{{"User-Agent", std::string{llarp::LOKINET_VERSION_FULL}}},
           cpr::Ssl(cpr::ssl::CaPath{X509_get_default_cert_dir()}));
 #endif
   if (resp.status_code != 200)
   {
     return fail("failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
   }
-  std::stringstream ss;
-  ss << resp.text;
-  std::string data{ss.str()};
+
+  const auto& data = resp.text;
+
   if (data[0] == 'l' or data[0] == 'd')
   {
     try

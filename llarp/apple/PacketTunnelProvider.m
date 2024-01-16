@@ -1,7 +1,8 @@
-#include <Foundation/Foundation.h>
-#include <NetworkExtension/NetworkExtension.h>
 #include "context_wrapper.h"
 #include "DNSTrampoline.h"
+
+#include <Foundation/Foundation.h>
+#include <NetworkExtension/NetworkExtension.h>
 
 #define LLARP_APPLE_PACKET_BUF_SIZE 64
 

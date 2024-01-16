@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
-
-#include <ostream>
 #include <llarp/util/formattable.hpp>
+
+#include <cstdint>
+#include <ostream>
 
 namespace llarp::service
 {

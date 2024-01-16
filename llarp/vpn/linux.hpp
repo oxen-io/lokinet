@@ -1,27 +1,26 @@
 #pragma once
 
+#include "common.hpp"
 #include "platform.hpp"
-#include <unistd.h>
+
+#include <llarp.hpp>
+#include <llarp/net/net.hpp>
+#include <llarp/router/router.hpp>
+#include <llarp/util/fs.hpp>
+#include <llarp/util/str.hpp>
+
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
+#include <linux/rtnetlink.h>
+#include <net/if.h>
+#include <oxenc/endian.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <fcntl.h>
-#include "common.hpp"
-#include <net/if.h>
-#include <linux/if_tun.h>
+#include <unistd.h>
 
 #include <cstring>
-#include <arpa/inet.h>
-#include <linux/rtnetlink.h>
-#include <llarp/net/net.hpp>
-#include <llarp/util/str.hpp>
 #include <exception>
-
-#include <oxenc/endian.h>
-
-#include <llarp/router/abstractrouter.hpp>
-#include <llarp.hpp>
-
-#include <llarp/util/fs.hpp>
 
 namespace llarp::vpn
 {
@@ -132,7 +131,7 @@ namespace llarp::vpn
     }
   };
 
-  class LinuxRouteManager : public IRouteManager
+  class LinuxRouteManager : public AbstractRouteManager
   {
     const int fd;
 
@@ -179,6 +178,15 @@ namespace llarp::vpn
       unsigned char bitlen;
       unsigned char data[sizeof(struct in6_addr)];
 
+      _inet_addr(oxen::quic::Address& addr)
+      {
+        const auto& v4 = addr.is_ipv4();
+
+        family = (v4) ? AF_INET : AF_INET6;
+        bitlen = (v4) ? 32 : 128;
+        std::memcpy(data, addr.host().data(), (v4) ? 4 : 16);
+      }
+
       _inet_addr(net::ipv4addr_t addr, size_t bits = 32)
       {
         family = AF_INET;
@@ -195,7 +203,7 @@ namespace llarp::vpn
     };
 
     void
-    Blackhole(int cmd, int flags, int af)
+    make_blackhole(int cmd, int flags, int af)
     {
       NLRequest nl_request{};
       /* Initialize request structure */
@@ -221,7 +229,7 @@ namespace llarp::vpn
     }
 
     void
-    Route(
+    make_route(
         int cmd,
         int flags,
         const _inet_addr& dst,
@@ -286,7 +294,7 @@ namespace llarp::vpn
     }
 
     void
-    DefaultRouteViaInterface(NetworkInterface& vpn, int cmd, int flags)
+    default_route_via_interface(NetworkInterface& vpn, int cmd, int flags)
     {
       const auto& info = vpn.Info();
 
@@ -298,8 +306,8 @@ namespace llarp::vpn
       const _inet_addr lower{ToNet(ipaddr_ipv4_bits(0, 0, 0, 0)), 1};
       const _inet_addr upper{ToNet(ipaddr_ipv4_bits(128, 0, 0, 0)), 1};
 
-      Route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, info.index);
-      Route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, info.index);
+      make_route(cmd, flags, lower, gateway, GatewayMode::eLowerDefault, info.index);
+      make_route(cmd, flags, upper, gateway, GatewayMode::eUpperDefault, info.index);
 
       if (const auto maybe6 = Net().GetInterfaceIPv6Address(info.ifname))
       {
@@ -307,13 +315,13 @@ namespace llarp::vpn
         for (const std::string str : {"::", "4000::", "8000::", "c000::"})
         {
           const _inet_addr hole6{net::ipv6addr_t::from_string(str), 2};
-          Route(cmd, flags, hole6, gateway6, GatewayMode::eUpperDefault, info.index);
+          make_route(cmd, flags, hole6, gateway6, GatewayMode::eUpperDefault, info.index);
         }
       }
     }
 
     void
-    RouteViaInterface(int cmd, int flags, NetworkInterface& vpn, IPRange range)
+    route_via_interface(int cmd, int flags, NetworkInterface& vpn, IPRange range)
     {
       const auto& info = vpn.Info();
       if (range.IsV4())
@@ -328,7 +336,7 @@ namespace llarp::vpn
             ToNet(net::TruncateV6(range.addr)),
             bits::count_bits(net::TruncateV6(range.netmask_bits))};
 
-        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
+        make_route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
       }
       else
       {
@@ -337,17 +345,14 @@ namespace llarp::vpn
           throw std::runtime_error{"we dont have our own network interface?"};
         const _inet_addr gateway{ToNet(*maybe), 128};
         const _inet_addr addr{ToNet(range.addr), bits::count_bits(range.netmask_bits)};
-        Route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
+        make_route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
       }
     }
 
     void
-    Route(int cmd, int flags, net::ipaddr_t ip, net::ipaddr_t gateway)
+    make_route(int cmd, int flags, oxen::quic::Address ip, oxen::quic::Address gateway)
     {
-      auto _ip = var::visit([](auto&& i) { return _inet_addr{i}; }, ip);
-      auto _gw = var::visit([](auto&& i) { return _inet_addr{i}; }, gateway);
-
-      Route(cmd, flags, _ip, _gw, GatewayMode::eFirstHop, 0);
+      make_route(cmd, flags, _inet_addr{ip}, _inet_addr{gateway}, GatewayMode::eFirstHop, 0);
     }
 
    public:
@@ -363,46 +368,47 @@ namespace llarp::vpn
     }
 
     void
-    AddRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override
+    add_route(oxen::quic::Address ip, oxen::quic::Address gateway) override
     {
-      Route(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ip, gateway);
+      make_route(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, ip, gateway);
     }
 
     void
-    DelRoute(net::ipaddr_t ip, net::ipaddr_t gateway) override
+    delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) override
     {
-      Route(RTM_DELROUTE, 0, ip, gateway);
+      make_route(RTM_DELROUTE, 0, ip, gateway);
     }
 
     void
-    AddDefaultRouteViaInterface(NetworkInterface& vpn) override
+    add_default_route_via_interface(NetworkInterface& vpn) override
     {
-      DefaultRouteViaInterface(vpn, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL);
+      default_route_via_interface(vpn, RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL);
     }
 
     void
-    DelDefaultRouteViaInterface(NetworkInterface& vpn) override
+    delete_default_route_via_interface(NetworkInterface& vpn) override
     {
-      DefaultRouteViaInterface(vpn, RTM_DELROUTE, 0);
+      default_route_via_interface(vpn, RTM_DELROUTE, 0);
     }
 
     void
-    AddRouteViaInterface(NetworkInterface& vpn, IPRange range) override
+    add_route_via_interface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn, range);
+      route_via_interface(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, vpn, range);
     }
 
     void
-    DelRouteViaInterface(NetworkInterface& vpn, IPRange range) override
+    delete_route_via_interface(NetworkInterface& vpn, IPRange range) override
     {
-      RouteViaInterface(RTM_DELROUTE, 0, vpn, range);
+      route_via_interface(RTM_DELROUTE, 0, vpn, range);
     }
 
-    std::vector<net::ipaddr_t>
-    GetGatewaysNotOnInterface(NetworkInterface& vpn) override
+    std::vector<oxen::quic::Address>
+    get_non_interface_gateways(NetworkInterface& vpn) override
     {
       const auto& ifname = vpn.Info().ifname;
-      std::vector<net::ipaddr_t> gateways{};
+      std::vector<oxen::quic::Address> gateways{};
+
       std::ifstream inf{"/proc/net/route"};
       for (std::string line; std::getline(inf, line);)
       {
@@ -412,9 +418,10 @@ namespace llarp::vpn
           const auto& ip = parts[2];
           if ((ip.size() == sizeof(uint32_t) * 2) and oxenc::is_hex(ip))
           {
-            huint32_t x{};
-            oxenc::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
-            gateways.emplace_back(net::ipv4addr_t::from_host(x.h));
+            std::string buf;
+            oxenc::from_hex(ip.begin(), ip.end(), buf.data());
+            oxen::quic::Address addr{buf, 0};
+            gateways.push_back(std::move(addr));
           }
         }
       }
@@ -422,17 +429,17 @@ namespace llarp::vpn
     }
 
     void
-    AddBlackhole() override
+    add_blackhole() override
     {
-      Blackhole(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET);
-      Blackhole(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET6);
+      make_blackhole(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET);
+      make_blackhole(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, AF_INET6);
     }
 
     void
-    DelBlackhole() override
+    delete_blackhole() override
     {
-      Blackhole(RTM_DELROUTE, 0, AF_INET);
-      Blackhole(RTM_DELROUTE, 0, AF_INET6);
+      make_blackhole(RTM_DELROUTE, 0, AF_INET);
+      make_blackhole(RTM_DELROUTE, 0, AF_INET6);
     }
   };
 
@@ -442,12 +449,12 @@ namespace llarp::vpn
 
    public:
     std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, AbstractRouter*) override
+    ObtainInterface(InterfaceInfo info, Router*) override
     {
       return std::make_shared<LinuxInterface>(std::move(info));
     };
 
-    IRouteManager&
+    AbstractRouteManager&
     RouteManager() override
     {
       return _routeManager;

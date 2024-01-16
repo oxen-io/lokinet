@@ -1,14 +1,13 @@
 #include "sock_addr.hpp"
-#include "ip_range.hpp"
-#include "address_info.hpp"
-#include "ip.hpp"
-#include "net_bits.hpp"
-#include "net.hpp"
-#include <llarp/util/str.hpp>
-#include <llarp/util/logging.hpp>
-#include <llarp/util/mem.hpp>
 
-#include <charconv>
+#include "ip.hpp"
+#include "ip_range.hpp"
+#include "net.hpp"
+#include "net_bits.hpp"
+
+#include <llarp/util/mem.hpp>
+#include <llarp/util/str.hpp>
+
 #include <stdexcept>
 
 namespace llarp
@@ -19,16 +18,16 @@ namespace llarp
   void
   SockAddr::init()
   {
-    llarp::Zero(&m_addr, sizeof(m_addr));
-    m_addr.sin6_family = AF_INET6;
-    llarp::Zero(&m_addr4, sizeof(m_addr4));
-    m_addr4.sin_family = AF_INET;
+    llarp::Zero(&addr6, sizeof(addr6));
+    addr6.sin6_family = AF_INET6;
+    llarp::Zero(&addr4, sizeof(addr4));
+    addr4.sin_family = AF_INET;
   }
 
   void
   SockAddr::applyIPv4MapBytes()
   {
-    std::memcpy(m_addr.sin6_addr.s6_addr, ipv4_map_prefix.data(), ipv4_map_prefix.size());
+    std::memcpy(addr6.sin6_addr.s6_addr, ipv4_map_prefix.data(), ipv4_map_prefix.size());
   }
 
   SockAddr::SockAddr()
@@ -79,11 +78,6 @@ namespace llarp
     fromString(addr, false);
   }
 
-  SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
-  {
-    setPort(huint16_t{info.port});
-  }
-
   SockAddr::SockAddr(const SockAddr& other)
   {
     *this = other;
@@ -92,7 +86,7 @@ namespace llarp
   SockAddr&
   SockAddr::operator=(const SockAddr& other)
   {
-    *this = other.m_addr;
+    *this = other.addr6;
     return *this;
   }
 
@@ -127,10 +121,10 @@ namespace llarp
     applyIPv4MapBytes();
 
     // avoid byte order conversion (this is NBO -> NBO)
-    memcpy(m_addr.sin6_addr.s6_addr + 12, &other.sin_addr.s_addr, sizeof(in_addr));
-    m_addr.sin6_port = other.sin_port;
-    m_addr4.sin_addr.s_addr = other.sin_addr.s_addr;
-    m_addr4.sin_port = other.sin_port;
+    memcpy(addr6.sin6_addr.s6_addr + 12, &other.sin_addr.s_addr, sizeof(in_addr));
+    addr6.sin6_port = other.sin_port;
+    addr4.sin_addr.s_addr = other.sin_addr.s_addr;
+    addr4.sin_port = other.sin_port;
     m_empty = false;
 
     return *this;
@@ -146,7 +140,7 @@ namespace llarp
   {
     init();
 
-    memcpy(&m_addr, &other, sizeof(sockaddr_in6));
+    memcpy(&addr6, &other, sizeof(sockaddr_in6));
     if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(
@@ -154,7 +148,7 @@ namespace llarp
           other.sin6_addr.s6_addr[13],
           other.sin6_addr.s6_addr[14],
           other.sin6_addr.s6_addr[15]);
-      m_addr4.sin_port = m_addr.sin6_port;
+      addr4.sin_port = addr6.sin6_port;
     }
     m_empty = false;
 
@@ -170,11 +164,11 @@ namespace llarp
   SockAddr::operator=(const in6_addr& other)
   {
     init();
-    memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
+    memcpy(&addr6.sin6_addr.s6_addr, &other.s6_addr, sizeof(addr6.sin6_addr.s6_addr));
     if (IPRange::V4MappedRange().Contains(asIPv6()))
     {
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
-      m_addr4.sin_port = m_addr.sin6_port;
+      addr4.sin_port = addr6.sin6_port;
     }
     m_empty = false;
 
@@ -183,48 +177,48 @@ namespace llarp
 
   SockAddr::operator const sockaddr*() const
   {
-    return isIPv4() ? reinterpret_cast<const sockaddr*>(&m_addr4)
-                    : reinterpret_cast<const sockaddr*>(&m_addr);
+    return isIPv4() ? reinterpret_cast<const sockaddr*>(&addr4)
+                    : reinterpret_cast<const sockaddr*>(&addr6);
   }
 
   SockAddr::operator const sockaddr_in*() const
   {
-    return &m_addr4;
+    return &addr4;
   }
 
   SockAddr::operator const sockaddr_in6*() const
   {
-    return &m_addr;
+    return &addr6;
   }
 
   size_t
   SockAddr::sockaddr_len() const
   {
-    return isIPv6() ? sizeof(m_addr) : sizeof(m_addr4);
+    return isIPv6() ? sizeof(addr6) : sizeof(addr4);
   }
 
   bool
   SockAddr::operator<(const SockAddr& other) const
   {
-    return m_addr < other.m_addr;
+    return addr6 < other.addr6;
   }
 
   bool
   SockAddr::operator==(const SockAddr& other) const
   {
-    return m_addr == other.m_addr;
+    return addr6 == other.addr6;
   }
 
   huint128_t
   SockAddr::asIPv6() const
   {
-    return net::In6ToHUInt(m_addr.sin6_addr);
+    return net::In6ToHUInt(addr6.sin6_addr);
   }
 
   huint32_t
   SockAddr::asIPv4() const
   {
-    const nuint32_t n{m_addr4.sin_addr.s_addr};
+    const nuint32_t n{addr4.sin_addr.s_addr};
     return ToHost(n);
   }
 
@@ -238,8 +232,8 @@ namespace llarp
       return;
     }
 
-    // NOTE: this potentially involves multiple memory allocations,
-    //       reimplement without split() if it is performance bottleneck
+    // TOFIX: This potentially involves multiple memory allocations,
+    // reimplement without split() if it is performance bottleneck
     auto splits = split(str, ":");
 
     // TODO: having ":port" at the end makes this ambiguous with IPv6
@@ -247,7 +241,7 @@ namespace llarp
     if (splits.size() > 2)
     {
       std::string data{str};
-      if (inet_pton(AF_INET6, data.c_str(), m_addr.sin6_addr.s6_addr) == -1)
+      if (inet_pton(AF_INET6, data.c_str(), addr6.sin6_addr.s6_addr) == -1)
         throw std::runtime_error{"invalid ip6 address: " + data};
       return;
     }
@@ -296,11 +290,11 @@ namespace llarp
     if (isIPv4())
     {
       // IPv4 mapped addrs
-      inet_ntop(AF_INET, &m_addr4.sin_addr.s_addr, buf.data(), buf.size());
+      inet_ntop(AF_INET, &addr4.sin_addr.s_addr, buf.data(), buf.size());
       return buf.data();
     }
 
-    inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf.data(), buf.size());
+    inet_ntop(AF_INET6, &addr6.sin6_addr.s6_addr, buf.data(), buf.size());
     if (not ipv6_brackets)
       return buf.data();
 
@@ -327,7 +321,7 @@ namespace llarp
   nuint32_t
   SockAddr::getIPv4() const
   {
-    return {m_addr4.sin_addr.s_addr};
+    return {addr4.sin_addr.s_addr};
   }
 
   nuint128_t
@@ -337,7 +331,7 @@ namespace llarp
     // Explicit cast to void* here to avoid non-trivial type copying warnings (technically this
     // isn't trivial because of the zeroing default constructor, but it's trivial enough that this
     // copy is safe).
-    std::memcpy(static_cast<void*>(&a), &m_addr.sin6_addr, 16);
+    std::memcpy(static_cast<void*>(&a), &addr6.sin6_addr, 16);
     return a;
   }
 
@@ -352,13 +346,13 @@ namespace llarp
   void
   SockAddr::setIPv4(nuint32_t ip)
   {
-    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
-    llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
+    uint8_t* ip6 = addr6.sin6_addr.s6_addr;
+    llarp::Zero(ip6, sizeof(addr6.sin6_addr.s6_addr));
 
     applyIPv4MapBytes();
 
     std::memcpy(ip6 + 12, &ip, 4);
-    m_addr4.sin_addr.s_addr = ip.n;
+    addr4.sin_addr.s_addr = ip.n;
     m_empty = false;
   }
 
@@ -371,8 +365,8 @@ namespace llarp
   void
   SockAddr::setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
   {
-    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
-    llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
+    uint8_t* ip6 = addr6.sin6_addr.s6_addr;
+    llarp::Zero(ip6, sizeof(addr6.sin6_addr.s6_addr));
 
     applyIPv4MapBytes();
 
@@ -381,7 +375,7 @@ namespace llarp
     ip6[14] = c;
     ip6[15] = d;
     const auto ip = ipaddr_ipv4_bits(a, b, c, d);
-    m_addr4.sin_addr.s_addr = htonl(ip.h);
+    addr4.sin_addr.s_addr = htonl(ip.h);
     m_empty = false;
   }
 
@@ -394,23 +388,23 @@ namespace llarp
   void
   SockAddr::setIPv6(nuint128_t ip)
   {
-    std::memcpy(&m_addr.sin6_addr, &ip, sizeof(m_addr.sin6_addr));
+    std::memcpy(&addr6.sin6_addr, &ip, sizeof(addr6.sin6_addr));
     if (isIPv4())
     {
       setIPv4(
-          m_addr.sin6_addr.s6_addr[12],
-          m_addr.sin6_addr.s6_addr[13],
-          m_addr.sin6_addr.s6_addr[14],
-          m_addr.sin6_addr.s6_addr[15]);
-      m_addr4.sin_port = m_addr.sin6_port;
+          addr6.sin6_addr.s6_addr[12],
+          addr6.sin6_addr.s6_addr[13],
+          addr6.sin6_addr.s6_addr[14],
+          addr6.sin6_addr.s6_addr[15]);
+      addr4.sin_port = addr6.sin6_port;
     }
   }
 
   void
   SockAddr::setPort(nuint16_t port)
   {
-    m_addr.sin6_port = port.n;
-    m_addr4.sin_port = port.n;
+    addr6.sin6_port = port.n;
+    addr4.sin_port = port.n;
   }
 
   void
@@ -422,7 +416,7 @@ namespace llarp
   net::port_t
   SockAddr::port() const
   {
-    return net::port_t{m_addr.sin6_port};
+    return net::port_t{addr6.sin6_port};
   }
 
 }  // namespace llarp

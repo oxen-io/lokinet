@@ -1,15 +1,22 @@
 #pragma once
 
 #include "types.hpp"
-#include <nlohmann/json.hpp>
-#include <iostream>
-#include <fmt/format.h>
+
 #include <fmt/chrono.h>
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
+
+#include <iostream>
 
 using namespace std::chrono_literals;
 
 namespace llarp
 {
+  using rc_time = std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds>;
+
+  rc_time
+  time_point_now();
+
   /// get time right now as milliseconds, this is monotonic
   Duration_t
   time_now_ms();

@@ -1,5 +1,5 @@
-#include "ev.hpp"
 #include "../util/buffer.hpp"
+#include "ev.hpp"
 
 namespace llarp
 {

@@ -2,8 +2,7 @@
 
 #include <llarp/crypto/types.hpp>
 #include <llarp/net/ip_packet.hpp>
-#include <llarp/path/ihophandler.hpp>
-#include <llarp/routing/transfer_traffic_message.hpp>
+#include <llarp/path/abstracthophandler.hpp>
 #include <llarp/service/protocol_type.hpp>
 #include <llarp/util/time.hpp>
 
@@ -66,9 +65,9 @@ namespace llarp
 
       /// queue outbound traffic
       /// does ip rewrite here
-      bool
-      QueueOutboundTraffic(
-          PathID_t txid, std::vector<byte_t> data, uint64_t counter, service::ProtocolType t);
+      // bool
+      // QueueOutboundTraffic(
+      //     PathID_t txid, std::vector<byte_t> data, uint64_t counter, service::ProtocolType t);
 
       /// update local path id and cascade information to parent
       /// return true if success
@@ -78,66 +77,49 @@ namespace llarp
       llarp::path::HopHandler_ptr
       GetCurrentPath() const
       {
-        return m_CurrentPath;
+        return current_path;
       }
 
       const llarp::PubKey&
       PubKey() const
       {
-        return m_remoteSignKey;
+        return remote_signkey;
+      }
+
+      RouterID
+      router_id() const
+      {
+        return remote_signkey.data();
       }
 
       uint64_t
       TxRate() const
       {
-        return m_TxRate;
+        return tx_rate;
       }
 
       uint64_t
       RxRate() const
       {
-        return m_RxRate;
+        return rx_rate;
       }
 
       huint128_t
       LocalIP() const
       {
-        return m_IP;
+        return IP;
       }
 
       const llarp_time_t createdAt;
 
      private:
-      llarp::handlers::ExitEndpoint* m_Parent;
-      llarp::PubKey m_remoteSignKey;
-      llarp::path::HopHandler_ptr m_CurrentPath;
-      llarp::huint128_t m_IP;
-      uint64_t m_TxRate, m_RxRate;
-      llarp_time_t m_LastActive;
-      bool m_RewriteSource;
-      using InboundTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
-      using TieredQueue = std::map<uint8_t, InboundTrafficQueue_t>;
-      // maps number of fragments the message will fit in to the queue for it
-      TieredQueue m_DownstreamQueues;
-
-      struct UpstreamBuffer
-      {
-        UpstreamBuffer(llarp::net::IPPacket p, uint64_t c) : pkt{std::move(p)}, counter(c)
-        {}
-
-        llarp::net::IPPacket pkt;
-        uint64_t counter;
-
-        bool
-        operator<(const UpstreamBuffer& other) const
-        {
-          return counter < other.counter;
-        }
-      };
-
-      using UpstreamQueue_t = std::priority_queue<UpstreamBuffer>;
-      UpstreamQueue_t m_UpstreamQueue;
-      uint64_t m_Counter;
+      llarp::handlers::ExitEndpoint* parent;
+      llarp::PubKey remote_signkey;
+      llarp::path::HopHandler_ptr current_path;
+      llarp::huint128_t IP;
+      uint64_t tx_rate, rx_rate;
+      llarp_time_t last_active;
+      bool rewrite_source;
     };
   }  // namespace exit
 }  // namespace llarp

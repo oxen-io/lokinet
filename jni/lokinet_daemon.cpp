@@ -1,8 +1,9 @@
-#include "network_loki_lokinet_LokinetDaemon.h"
 #include "lokinet_jni_common.hpp"
+#include "network_loki_lokinet_LokinetDaemon.h"
+
 #include <llarp.hpp>
 #include <llarp/config/config.hpp>
-#include <llarp/router/abstractrouter.hpp>
+#include <llarp/router/router.hpp>
 
 extern "C"
 {
@@ -85,7 +86,7 @@ extern "C"
   Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
   {
     if (auto ptr = GetImpl<llarp::Context>(env, self); ptr and ptr->router)
-      return ptr->router->OutboundUDPSocket();
+      return ptr->router->outbound_socket();
     return -1;
   }
 

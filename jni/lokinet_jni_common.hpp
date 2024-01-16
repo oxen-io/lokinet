@@ -1,8 +1,9 @@
 #pragma once
 
 #include <jni.h>
-#include <string_view>
+
 #include <functional>
+#include <string_view>
 
 /// visit string as native bytes
 /// jvm uses some unholy encoding internally so we convert it to utf-8

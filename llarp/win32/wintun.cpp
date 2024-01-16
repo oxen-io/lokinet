@@ -3,18 +3,21 @@ extern "C"
 #include <wintun.h>
 }
 
-#include <iphlpapi.h>
-#include "wintun.hpp"
-#include "exception.hpp"
 #include "dll.hpp"
+#include "exception.hpp"
 #include "guid.hpp"
-#include <unordered_set>
-#include <map>
-#include <llarp/router/abstractrouter.hpp>
+#include "wintun.hpp"
+
+#include <llarp/router/router.hpp>
+#include <llarp/util/logging.hpp>
 #include <llarp/util/str.hpp>
 #include <llarp/util/thread/queue.hpp>
-#include <llarp/util/logging.hpp>
 #include <llarp/vpn/platform.hpp>
+
+#include <iphlpapi.h>
+
+#include <map>
+#include <unordered_set>
 
 namespace llarp::win32
 {
@@ -273,7 +276,7 @@ namespace llarp::win32
 
     class WintunInterface : public vpn::NetworkInterface
     {
-      AbstractRouter* const _router;
+      Router* const _router;
       std::shared_ptr<WintunAdapter> _adapter;
       std::shared_ptr<WintunSession> _session;
       thread::Queue<net::IPPacket> _recv_queue;
@@ -284,7 +287,7 @@ namespace llarp::win32
       static inline constexpr size_t packet_queue_length = 1024;
 
      public:
-      WintunInterface(vpn::InterfaceInfo info, AbstractRouter* router)
+      WintunInterface(vpn::InterfaceInfo info, Router* router)
           : vpn::NetworkInterface{std::move(info)}
           , _router{router}
           , _adapter{std::make_shared<WintunAdapter>(m_Info.ifname)}
@@ -385,7 +388,7 @@ namespace llarp::win32
   namespace wintun
   {
     std::shared_ptr<vpn::NetworkInterface>
-    make_interface(const llarp::vpn::InterfaceInfo& info, llarp::AbstractRouter* r)
+    make_interface(const llarp::vpn::InterfaceInfo& info, llarp::Router* r)
     {
       WintunInitialize();
       return std::static_pointer_cast<vpn::NetworkInterface>(

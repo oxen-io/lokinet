@@ -1,7 +1,9 @@
 
 #include "vpn_interface.hpp"
+
 #include "context.hpp"
-#include <llarp/router/abstractrouter.hpp>
+
+#include <llarp/router/router.hpp>
 
 namespace llarp::apple
 {
@@ -9,7 +11,7 @@ namespace llarp::apple
       Context& ctx,
       packet_write_callback packet_writer,
       on_readable_callback on_readable,
-      AbstractRouter* router)
+      Router* router)
       : vpn::NetworkInterface{{}}
       , m_PacketWriter{std::move(packet_writer)}
       , m_OnReadable{std::move(on_readable)}

@@ -1,9 +1,9 @@
 #pragma once
+#include <oxen/log/format.hpp>
+
+#include <chrono>
 #include <cstdint>
 #include <string>
-#include <chrono>
-
-#include "oxen/log/format.hpp"
 
 using byte_t = uint8_t;
 using llarp_proto_version_t = std::uint8_t;

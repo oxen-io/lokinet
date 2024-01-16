@@ -2,25 +2,27 @@
 
 // for addrinfo
 #ifndef _WIN32
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #else
 #include <winsock2.h>
+
 #include <ws2tcpip.h>
+
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
 #include "net.h"
+#include "uint128.hpp"
+
+#include <llarp/util/formattable.hpp>
+
+#include <oxenc/variant.h>
 
 #include <cstdlib>  // for itoa
 #include <iostream>
 #include <vector>
-
-#include <llarp/util/formattable.hpp>
-#include <oxenc/variant.h>
-
-#include "uint128.hpp"
 
 namespace llarp
 {
@@ -256,25 +258,27 @@ namespace llarp
   template <>
   inline constexpr bool IsToStringFormattable<net::port_t> = true;
 
-  using nuint16_t [[deprecated("use llarp::net::port_t instead")]] = llarp::net::port_t;
-  using nuint32_t [[deprecated("use llarp::net::ipv4addr_t instead")]] = llarp::net::ipv4addr_t;
-  using nuint128_t [[deprecated("use llarp::net::ipv6addr_t instead")]] = llarp::net::ipv6addr_t;
+  using nuint16_t /* [[deprecated("use llarp::net::port_t instead")]] */ = llarp::net::port_t;
+  using nuint32_t /* [[deprecated("use llarp::net::ipv4addr_t instead")]] */ =
+      llarp::net::ipv4addr_t;
+  using nuint128_t /* [[deprecated("use llarp::net::ipv6addr_t instead")]] */ =
+      llarp::net::ipv6addr_t;
 
   template <typename UInt_t>
-  [[deprecated("use llarp::net::ToNet instead")]] inline llarp::nuint_t<UInt_t>
+  /*   [[deprecated("use llarp::net::ToNet instead")]] */ inline llarp::nuint_t<UInt_t>
   ToNet(llarp::huint_t<UInt_t> x)
   {
     return llarp::net::ToNet(x);
   }
 
   template <typename UInt_t>
-  [[deprecated("use llarp::net::ToHost instead")]] inline llarp::huint_t<UInt_t>
+  /*   [[deprecated("use llarp::net::ToHost instead")]] */ inline llarp::huint_t<UInt_t>
   ToHost(llarp::nuint_t<UInt_t> x)
   {
     return llarp::net::ToHost(x);
   }
 
-  [[deprecated("use llarp::net::ToHost instead")]] inline net::ipv4addr_t
+  /*   [[deprecated("use llarp::net::ToHost instead")]] */ inline net::ipv4addr_t
   xhtonl(huint32_t x)
   {
     return ToNet(x);

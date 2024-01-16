@@ -1,6 +1,6 @@
-#include <common.hpp>
-
 #include <llarp/router_id.hpp>
+
+#include <common.hpp>
 
 namespace llarp
 {

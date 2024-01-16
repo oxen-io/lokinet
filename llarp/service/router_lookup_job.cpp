@@ -1,15 +1,13 @@
 #include "router_lookup_job.hpp"
 
 #include "endpoint.hpp"
+
 #include <utility>
 
-namespace llarp
+namespace llarp::service
 {
-  namespace service
-  {
-    RouterLookupJob::RouterLookupJob(Endpoint* p, RouterLookupHandler h)
-        : handler(std::move(h)), txid(p->GenTXID()), started(p->Now())
-    {}
+  RouterLookupJob::RouterLookupJob(Endpoint* p, RouterLookupHandler h)
+      : handler(std::move(h)), txid(p->GenTXID()), started(p->Now())
+  {}
 
-  }  // namespace service
-}  // namespace llarp
+}  // namespace llarp::service

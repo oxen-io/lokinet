@@ -1,7 +1,8 @@
 #pragma once
 #include <windows.h>
-#include <string>
+
 #include <stdexcept>
+#include <string>
 
 namespace llarp::win32
 {

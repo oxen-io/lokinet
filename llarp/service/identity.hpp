@@ -1,70 +1,70 @@
 #pragma once
 
-#include <llarp/config/key_manager.hpp>
-#include <llarp/constants/proto.hpp>
-#include <llarp/crypto/types.hpp>
-#include <memory>
 #include "info.hpp"
 #include "intro_set.hpp"
 #include "vanity.hpp"
+
+#include <llarp/config/key_manager.hpp>
+#include <llarp/constants/proto.hpp>
+#include <llarp/crypto/types.hpp>
 #include <llarp/util/buffer.hpp>
 
+#include <memory>
 #include <tuple>
 
-namespace llarp
+namespace llarp::service
 {
-  namespace service
+  // private keys
+  struct Identity
   {
-    // private keys
-    struct Identity
-    {
-      SecretKey enckey;
-      SecretKey signkey;
-      PrivateKey derivedSignKey;
-      PQKeyPair pq;
-      uint64_t version = llarp::constants::proto_version;
-      VanityNonce vanity;
+    SecretKey enckey;
+    SecretKey signkey;
+    PrivateKey derivedSignKey;
+    PQKeyPair pq;
+    uint64_t version = llarp::constants::proto_version;
+    VanityNonce vanity;
 
-      // public service info
-      ServiceInfo pub;
+    // public service info
+    ServiceInfo pub;
 
-      // regenerate secret keys
-      void
-      RegenerateKeys();
+    // regenerate secret keys
+    void
+    RegenerateKeys();
 
-      bool
-      BEncode(llarp_buffer_t* buf) const;
+    std::string
+    bt_encode() const;
 
-      /// @param needBackup determines whether existing keys will be cycled
-      void
-      EnsureKeys(fs::path fpath, bool needBackup);
+    void bt_decode(std::string);
 
-      bool
-      KeyExchange(
-          path_dh_func dh,
-          SharedSecret& sharedkey,
-          const ServiceInfo& other,
-          const KeyExchangeNonce& N) const;
+    /// @param needBackup determines whether existing keys will be cycled
+    void
+    EnsureKeys(fs::path fpath, bool needBackup);
 
-      bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
+    bool
+    KeyExchange(
+        path_dh_func dh,
+        SharedSecret& sharedkey,
+        const ServiceInfo& other,
+        const KeyExchangeNonce& N) const;
 
-      std::optional<EncryptedIntroSet>
-      EncryptAndSignIntroSet(const IntroSet& i, llarp_time_t now) const;
+    bool
+    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
-      bool
-      Sign(Signature& sig, const llarp_buffer_t& buf) const;
+    std::optional<EncryptedIntroSet>
+    encrypt_and_sign_introset(const IntroSet& i, llarp_time_t now) const;
 
-      /// zero out all secret key members
-      void
-      Clear();
-    };
+    bool
+    Sign(Signature& sig, uint8_t* buf, size_t size) const;
 
-    inline bool
-    operator==(const Identity& lhs, const Identity& rhs)
-    {
-      return std::tie(lhs.enckey, lhs.signkey, lhs.pq, lhs.version, lhs.vanity)
-          == std::tie(rhs.enckey, rhs.signkey, rhs.pq, rhs.version, rhs.vanity);
-    }
-  }  // namespace service
-}  // namespace llarp
+    /// zero out all secret key members
+    void
+    Clear();
+  };
+
+  inline bool
+  operator==(const Identity& lhs, const Identity& rhs)
+  {
+    return std::tie(lhs.enckey, lhs.signkey, lhs.pq, lhs.version, lhs.vanity)
+        == std::tie(rhs.enckey, rhs.signkey, rhs.pq, rhs.version, rhs.vanity);
+  }
+}  // namespace llarp::service

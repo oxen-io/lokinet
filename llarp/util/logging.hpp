@@ -2,18 +2,22 @@
 
 // Header for making actual log statements such as llarp::log::Info and so on work.
 
-#include <string>
-#include <string_view>
-#include <array>
-
 #include <oxen/log.hpp>
 #include <oxen/log/ring_buffer_sink.hpp>
-#include "oxen/log/internal.hpp"
+
+#include <array>
+#include <string>
+#include <string_view>
 
 namespace llarp
 {
   namespace log = oxen::log;
 }
+
+namespace
+{
+  static auto util_cat = llarp::log::Cat("lokinet.util");
+}  // namespace
 
 // Not ready to pollute these deprecation warnings everywhere yet
 #if 0

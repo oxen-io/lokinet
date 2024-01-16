@@ -1,7 +1,9 @@
 #include "route_manager.hpp"
+
+#include <llarp.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
-#include <llarp.hpp>
+
 #include <memory>
 
 namespace llarp::apple
@@ -19,7 +21,7 @@ namespace llarp::apple
     }
 
     std::shared_ptr<llarp::handlers::TunEndpoint> tun;
-    router->hiddenServiceContext().ForEachService([&tun](const auto& /*name*/, const auto ep) {
+    router->hidden_service_context().ForEachService([&tun](const auto& /*name*/, const auto ep) {
       tun = std::dynamic_pointer_cast<llarp::handlers::TunEndpoint>(ep);
       return !tun;
     });
@@ -33,13 +35,13 @@ namespace llarp::apple
     if (enable)
       tun->ReconfigureDNS({SockAddr{127, 0, 0, 1, {dns_trampoline_port}}});
     else
-      tun->ReconfigureDNS(router->GetConfig()->dns.m_upstreamDNS);
+      tun->ReconfigureDNS(router->config()->dns.upstream_dns);
 
     trampoline_active = enable;
   }
 
   void
-  RouteManager::AddDefaultRouteViaInterface(vpn::NetworkInterface&)
+  RouteManager::add_default_route_via_interface(vpn::NetworkInterface&)
   {
     check_trampoline(true);
     if (callback_context and route_callbacks.add_default_route)
@@ -47,7 +49,7 @@ namespace llarp::apple
   }
 
   void
-  RouteManager::DelDefaultRouteViaInterface(vpn::NetworkInterface&)
+  RouteManager::delete_default_route_via_interface(vpn::NetworkInterface&)
   {
     check_trampoline(false);
     if (callback_context and route_callbacks.del_default_route)
@@ -55,7 +57,7 @@ namespace llarp::apple
   }
 
   void
-  RouteManager::AddRouteViaInterface(vpn::NetworkInterface&, IPRange range)
+  RouteManager::add_route_via_interface(vpn::NetworkInterface&, IPRange range)
   {
     check_trampoline(true);
     if (callback_context)
@@ -78,7 +80,7 @@ namespace llarp::apple
   }
 
   void
-  RouteManager::DelRouteViaInterface(vpn::NetworkInterface&, IPRange range)
+  RouteManager::delete_route_via_interface(vpn::NetworkInterface&, IPRange range)
   {
     check_trampoline(false);
     if (callback_context)

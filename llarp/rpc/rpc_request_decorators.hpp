@@ -2,12 +2,15 @@
 
 #include "json_binary_proxy.hpp"
 #include "json_bt.hpp"
-#include <nlohmann/json_fwd.hpp>
-#include <string_view>
+
 #include <llarp/config/config.hpp>
-#include <oxenmq/oxenmq.h>
-#include <oxenmq/address.h>
+
+#include <nlohmann/json_fwd.hpp>
 #include <oxen/log/omq_logger.hpp>
+#include <oxenmq/address.h>
+#include <oxenmq/oxenmq.h>
+
+#include <string_view>
 
 namespace tools
 {

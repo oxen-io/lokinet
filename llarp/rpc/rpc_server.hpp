@@ -1,19 +1,22 @@
 #pragma once
 
-#include "rpc_request_definitions.hpp"
 #include "json_bt.hpp"
+#include "rpc_request_definitions.hpp"
+
+#include <llarp/config/config.hpp>
+
 #include <nlohmann/json_fwd.hpp>
+#include <oxen/log/omq_logger.hpp>
+#include <oxenmq/address.h>
+#include <oxenmq/message.h>
+#include <oxenmq/oxenmq.h>
+
 #include <stdexcept>
 #include <string_view>
-#include <llarp/config/config.hpp>
-#include <oxenmq/oxenmq.h>
-#include <oxenmq/message.h>
-#include <oxenmq/address.h>
-#include <oxen/log/omq_logger.hpp>
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
 }  // namespace llarp
 
 namespace
@@ -81,7 +84,7 @@ namespace llarp::rpc
   class RPCServer
   {
    public:
-    explicit RPCServer(LMQ_ptr, AbstractRouter&);
+    explicit RPCServer(LMQ_ptr, Router&);
     ~RPCServer() = default;
 
     void
@@ -118,7 +121,7 @@ namespace llarp::rpc
     invoke(Config& config);
 
     LMQ_ptr m_LMQ;
-    AbstractRouter& m_Router;
+    Router& m_Router;
     oxen::log::PubsubLogger log_subs;
   };
 

@@ -1,16 +1,22 @@
 #include "ip_range.hpp"
 
-#include "oxenc/bt_serialize.h"
+#include <llarp/util/bencode.h>
 
-#include "llarp/util/bencode.h"
+#include <oxenc/bt_serialize.h>
 
 namespace llarp
 {
-  bool
-  IPRange::BEncode(llarp_buffer_t* buf) const
+  void
+  IPRange::bt_encode(oxenc::bt_list_producer& btlp) const
   {
-    const auto str = oxenc::bt_serialize(ToString());
-    return buf->write(str.begin(), str.end());
+    try
+    {
+      btlp.append(ToString());
+    }
+    catch (...)
+    {
+      log::critical(net_cat, "Error: IPRange failed to bt encode contents");
+    }
   }
 
   bool

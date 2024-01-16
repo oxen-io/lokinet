@@ -1,21 +1,20 @@
 #include "server.hpp"
-#include <llarp/constants/platform.hpp>
+
+#include "nm_platform.hpp"
+#include "sd_platform.hpp"
+
 #include <llarp/constants/apple.hpp>
-#include "dns.hpp"
-#include <iterator>
-#include <llarp/crypto/crypto.hpp>
-#include <array>
-#include <stdexcept>
-#include <utility>
+#include <llarp/constants/platform.hpp>
 #include <llarp/ev/udp_handle.hpp>
-#include <optional>
-#include <memory>
+
+#include <oxen/log.hpp>
 #include <unbound.h>
 #include <uvw.hpp>
 
-#include "oxen/log.hpp"
-#include "sd_platform.hpp"
-#include "nm_platform.hpp"
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <utility>
 
 namespace llarp::dns
 {
@@ -234,13 +233,13 @@ namespace llarp::dns
         bool is_apple_tramp = false;
 
         // set up forward dns
-        for (const auto& dns : conf.m_upstreamDNS)
+        for (const auto& dns : conf.upstream_dns)
         {
           AddUpstreamResolver(dns);
           is_apple_tramp = is_apple_tramp or ConfigureAppleTrampoline(dns);
         }
 
-        if (auto maybe_addr = conf.m_QueryBind; maybe_addr and not is_apple_tramp)
+        if (auto maybe_addr = conf.query_bind; maybe_addr and not is_apple_tramp)
         {
           SockAddr addr{*maybe_addr};
           std::string host{addr.hostString()};
@@ -357,11 +356,11 @@ namespace llarp::dns
 
         SetOpt("do-tcp:", "no");
 
-        for (const auto& [k, v] : conf.m_ExtraOpts)
+        for (const auto& [k, v] : conf.extra_opts)
           SetOpt(k, v);
 
         // add host files
-        for (const auto& file : conf.m_hostfiles)
+        for (const auto& file : conf.hostfiles)
         {
           const auto str = file.u8string();
           if (auto ret = ub_ctx_hosts(m_ctx, str.c_str()))
@@ -448,7 +447,7 @@ namespace llarp::dns
       {
         Down();
         if (replace_upstream)
-          m_conf.m_upstreamDNS = std::move(*replace_upstream);
+          m_conf.upstream_dns = std::move(*replace_upstream);
         Up(m_conf);
       }
 
@@ -591,7 +590,7 @@ namespace llarp::dns
   Server::Start()
   {
     // set up udp sockets
-    for (const auto& addr : m_Config.m_bind)
+    for (const auto& addr : m_Config.bind_addr)
     {
       if (auto ptr = MakePacketSourceOn(addr, m_Config))
         AddPacketSource(std::move(ptr));
@@ -623,7 +622,7 @@ namespace llarp::dns
   std::shared_ptr<Resolver_Base>
   Server::MakeDefaultResolver()
   {
-    if (m_Config.m_upstreamDNS.empty())
+    if (m_Config.upstream_dns.empty())
     {
       log::info(
           logcat,

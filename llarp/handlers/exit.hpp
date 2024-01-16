@@ -1,13 +1,15 @@
 #pragma once
 
-#include <llarp/exit/endpoint.hpp>
 #include "tun.hpp"
+
 #include <llarp/dns/server.hpp>
+#include <llarp/exit/endpoint.hpp>
+
 #include <unordered_map>
 
 namespace llarp
 {
-  struct AbstractRouter;
+  struct Router;
   namespace handlers
   {
     struct ExitEndpoint : public dns::Resolver_Base, public EndpointBase
@@ -31,7 +33,7 @@ namespace llarp
           const SockAddr& to,
           const SockAddr& from) override;
 
-      ExitEndpoint(std::string name, AbstractRouter* r);
+      ExitEndpoint(std::string name, Router* r);
       ~ExitEndpoint() override;
 
       std::optional<AddressVariant_t>
@@ -47,9 +49,7 @@ namespace llarp
           llarp_time_t timeout) override;
 
       void
-      LookupNameAsync(
-          std::string name,
-          std::function<void(std::optional<AddressVariant_t>)> resultHandler) override;
+      lookup_name(std::string name, std::function<void(std::string, bool)> func) override;
 
       const EventLoop_ptr&
       Loop() override;
@@ -60,11 +60,10 @@ namespace llarp
       void
       SRVRecordsChanged() override;
 
-      void MarkAddressOutbound(AddressVariant_t) override{};
+      void MarkAddressOutbound(service::Address) override{};
 
       bool
-      SendToOrQueue(
-          service::ConvoTag tag, const llarp_buffer_t& payload, service::ProtocolType t) override;
+      send_to(service::ConvoTag tag, std::string payload) override;
 
       void
       Tick(llarp_time_t now);
@@ -112,7 +111,7 @@ namespace llarp
       void
       OnInetPacket(net::IPPacket buf);
 
-      AbstractRouter*
+      Router*
       GetRouter();
 
       llarp_time_t
@@ -122,7 +121,7 @@ namespace llarp
       void
       CalculateTrafficStats(Stats& stats)
       {
-        for (auto& [pubkey, endpoint] : m_ActiveExits)
+        for (auto& [pubkey, endpoint] : active_exits)
         {
           stats[pubkey].first += endpoint->TxRate();
           stats[pubkey].second += endpoint->RxRate();
@@ -165,14 +164,14 @@ namespace llarp
       void
       Flush();
 
-      quic::TunnelManager*
+      link::TunnelManager*
       GetQUICTunnel() override;
 
       huint128_t
       GetIPForIdent(const PubKey pk);
       /// async obtain snode session and call callback when it's ready to send
       void
-      ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb);
+      ObtainSNodeSession(const RouterID& rid, exit::SessionReadyFunc obtain_cb);
 
      private:
       huint128_t
@@ -192,54 +191,52 @@ namespace llarp
       void
       KickIdentOffExit(const PubKey& pk);
 
-      AbstractRouter* m_Router;
-      std::shared_ptr<dns::Server> m_Resolver;
-      bool m_ShouldInitTun;
-      std::string m_Name;
-      bool m_PermitExit;
-      std::unordered_map<PathID_t, PubKey> m_Paths;
+      Router* router;
+      std::shared_ptr<dns::Server> resolver;
+      bool should_init_tun;
+      std::string name;
+      bool permit_exit;
+      std::unordered_map<PathID_t, PubKey> paths;
 
-      std::unordered_map<PubKey, exit::Endpoint*> m_ChosenExits;
+      std::unordered_map<PubKey, exit::Endpoint*> chosen_exits;
 
-      std::unordered_multimap<PubKey, std::unique_ptr<exit::Endpoint>> m_ActiveExits;
+      std::unordered_multimap<PubKey, std::unique_ptr<exit::Endpoint>> active_exits;
 
-      using KeyMap_t = std::unordered_map<PubKey, huint128_t>;
-
-      KeyMap_t m_KeyToIP;
+      std::unordered_map<PubKey, huint128_t> key_to_IP;
 
       using SNodes_t = std::set<PubKey>;
       /// set of pubkeys we treat as snodes
-      SNodes_t m_SNodeKeys;
+      SNodes_t snode_keys;
 
       using SNodeSessions_t = std::unordered_map<RouterID, std::shared_ptr<exit::SNodeSession>>;
       /// snode sessions we are talking to directly
-      SNodeSessions_t m_SNodeSessions;
+      SNodeSessions_t snode_sessions;
 
-      std::unordered_map<huint128_t, PubKey> m_IPToKey;
+      std::unordered_map<huint128_t, PubKey> ip_to_key;
 
-      huint128_t m_IfAddr;
-      huint128_t m_HigestAddr;
+      huint128_t if_addr;
+      huint128_t highest_addr;
 
-      huint128_t m_NextAddr;
-      IPRange m_OurRange;
-      std::string m_ifname;
+      huint128_t next_addr;
+      IPRange ip_range;
+      std::string if_name;
 
-      std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
+      std::unordered_map<huint128_t, llarp_time_t> ip_activity;
 
-      std::shared_ptr<vpn::NetworkInterface> m_NetIf;
+      std::shared_ptr<vpn::NetworkInterface> if_net;
 
-      SockAddr m_LocalResolverAddr;
-      std::vector<SockAddr> m_UpstreamResolvers;
+      SockAddr resolver_addr;
+      std::vector<SockAddr> upstream_resolvers;
 
-      std::shared_ptr<quic::TunnelManager> m_QUIC;
+      // std::shared_ptr<link::TunnelManager> tunnel_manager;
 
       using PacketQueue_t = std::
           priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;
 
       /// internet to llarp packet queue
-      PacketQueue_t m_InetToNetwork;
-      bool m_UseV6;
-      DnsConfig m_DNSConf;
+      PacketQueue_t inet_to_network;
+      bool use_ipv6;
+      DnsConfig dns_conf;
     };
   }  // namespace handlers
 }  // namespace llarp

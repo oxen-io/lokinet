@@ -1,6 +1,7 @@
 #pragma once
-#include <llarp/crypto/types.hpp>
 #include "address.hpp"
+
+#include <llarp/crypto/types.hpp>
 
 namespace llarp::service
 {
@@ -15,6 +16,6 @@ namespace llarp::service
 
   /// check if an lns name complies with the registration rules
   bool
-  NameIsValid(std::string_view name);
+  is_valid_name(std::string_view name);
 
 }  // namespace llarp::service
