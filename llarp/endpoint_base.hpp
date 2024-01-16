@@ -73,11 +73,6 @@ namespace llarp
       uint16_t remotePort;
     };
 
-    /// maybe get quic mapping info given its stream id
-    /// returns std::nullopt if we have no stream given that id
-    std::optional<QUICMappingInfo>
-    GetQUICMappingInfoByID(int stream_id) const;
-
     /// add an srv record to this endpoint's descriptor
     void
     PutSRVRecord(dns::SRVData srv);
