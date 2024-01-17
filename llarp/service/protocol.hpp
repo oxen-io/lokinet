@@ -60,7 +60,8 @@ namespace llarp
       put_buffer(std::string buf);
 
       static void
-      ProcessAsync(path::Path_ptr p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
+      ProcessAsync(
+          std::shared_ptr<path::Path> p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
 
       bool
       operator>(const ProtocolMessage& other) const
@@ -111,7 +112,7 @@ namespace llarp
       bool
       AsyncDecryptAndVerify(
           EventLoop_ptr loop,
-          path::Path_ptr fromPath,
+          std::shared_ptr<path::Path> fromPath,
           const Identity& localIdent,
           Endpoint* handler,
           std::function<void(std::shared_ptr<ProtocolMessage>)> hook = nullptr) const;

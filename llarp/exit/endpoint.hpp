@@ -25,7 +25,7 @@ namespace llarp
 
       explicit Endpoint(
           const llarp::PubKey& remoteIdent,
-          const llarp::path::HopHandler_ptr& path,
+          const std::shared_ptr<llarp::path::AbstractHopHandler>& path,
           bool rewriteIP,
           huint128_t ip,
           llarp::handlers::ExitEndpoint* parent);
@@ -74,7 +74,7 @@ namespace llarp
       bool
       UpdateLocalPath(const llarp::PathID_t& nextPath);
 
-      llarp::path::HopHandler_ptr
+      std::shared_ptr<llarp::path::AbstractHopHandler>
       GetCurrentPath() const
       {
         return current_path;
@@ -115,7 +115,7 @@ namespace llarp
      private:
       llarp::handlers::ExitEndpoint* parent;
       llarp::PubKey remote_signkey;
-      llarp::path::HopHandler_ptr current_path;
+      std::shared_ptr<llarp::path::AbstractHopHandler> current_path;
       llarp::huint128_t IP;
       uint64_t tx_rate, rx_rate;
       llarp_time_t last_active;

@@ -17,7 +17,7 @@ namespace llarp::exit
       size_t numpaths,
       size_t hoplen,
       EndpointBase* parent)
-      : llarp::path::Builder{r, numpaths, hoplen}
+      : llarp::path::PathBuilder{r, numpaths, hoplen}
       , exit_router{routerId}
       , packet_write_func{std::move(writepkt)}
       , _last_use{r->now()}
@@ -30,7 +30,7 @@ namespace llarp::exit
   BaseSession::~BaseSession() = default;
 
   void
-  BaseSession::HandlePathDied(path::Path_ptr p)
+  BaseSession::HandlePathDied(std::shared_ptr<path::Path> p)
   {
     p->Rebuild();
   }
@@ -38,7 +38,7 @@ namespace llarp::exit
   util::StatusObject
   BaseSession::ExtractStatus() const
   {
-    auto obj = path::Builder::ExtractStatus();
+    auto obj = path::PathBuilder::ExtractStatus();
     obj["lastExitUse"] = to_json(_last_use);
     auto pub = exit_key.toPublic();
     obj["exitIdentity"] = pub.ToString();
@@ -57,9 +57,9 @@ namespace llarp::exit
   {
     if (BuildCooldownHit(now))
       return false;
-    const size_t expect = (1 + (numDesiredPaths / 2));
+    const size_t expect = (1 + (num_paths_desired / 2));
     // check 30 seconds into the future and see if we need more paths
-    const llarp_time_t future = now + 30s + buildIntervalLimit;
+    const llarp_time_t future = now + 30s + build_interval_limit;
     return NumPathsExistingAt(future) < expect;
   }
 
@@ -72,7 +72,7 @@ namespace llarp::exit
   std::optional<std::vector<RemoteRC>>
   BaseSession::GetHopsForBuild()
   {
-    if (numHops == 1)
+    if (num_hops == 1)
     {
       if (auto maybe = router->node_db()->get_rc(exit_router))
         return std::vector<RemoteRC>{*maybe};
@@ -83,15 +83,15 @@ namespace llarp::exit
   }
 
   bool
-  BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
+  BaseSession::CheckPathDead(std::shared_ptr<path::Path>, llarp_time_t dlt)
   {
     return dlt >= path::ALIVE_TIMEOUT;
   }
 
   void
-  BaseSession::HandlePathBuilt(llarp::path::Path_ptr p)
+  BaseSession::HandlePathBuilt(std::shared_ptr<path::Path> p)
   {
-    path::Builder::HandlePathBuilt(p);
+    path::PathBuilder::HandlePathBuilt(p);
     // p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
     // p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
     // p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
@@ -108,16 +108,16 @@ namespace llarp::exit
   void
   BaseSession::AddReadyHook(SessionReadyFunc func)
   {
-    m_PendingCallbacks.emplace_back(func);
+    _pending_callbacks.emplace_back(func);
   }
 
   bool
-  BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
+  BaseSession::HandleGotExit(std::shared_ptr<path::Path> p, llarp_time_t b)
   {
     if (b == 0s)
     {
       llarp::LogInfo("obtained an exit via ", p->Endpoint());
-      m_CurrentPath = p->RXID();
+      _current_path = p->RXID();
       CallPendingCallbacks(true);
     }
     return true;
@@ -126,27 +126,27 @@ namespace llarp::exit
   void
   BaseSession::CallPendingCallbacks(bool success)
   {
-    if (m_PendingCallbacks.empty())
+    if (_pending_callbacks.empty())
       return;
 
     if (success)
     {
       auto self = shared_from_this();
-      for (auto& f : m_PendingCallbacks)
+      for (auto& f : _pending_callbacks)
         f(self);
     }
     else
     {
-      for (auto& f : m_PendingCallbacks)
+      for (auto& f : _pending_callbacks)
         f(nullptr);
     }
-    m_PendingCallbacks.clear();
+    _pending_callbacks.clear();
   }
 
   void
   BaseSession::ResetInternalState()
   {
-    auto sendExitClose = [&](const llarp::path::Path_ptr p) {
+    auto sendExitClose = [&](const std::shared_ptr<path::Path> p) {
       const static auto roles = llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
       if (p->SupportsAnyRoles(roles))
       {
@@ -159,14 +159,14 @@ namespace llarp::exit
     };
 
     ForEachPath(sendExitClose);
-    path::Builder::ResetInternalState();
+    path::PathBuilder::ResetInternalState();
   }
 
   bool
   BaseSession::Stop()
   {
     CallPendingCallbacks(false);
-    auto sendExitClose = [&](const path::Path_ptr p) {
+    auto sendExitClose = [&](const std::shared_ptr<path::Path> p) {
       if (p->SupportsAnyRoles(path::ePathRoleExit))
       {
         LogInfo(p->name(), " closing exit path");
@@ -180,12 +180,12 @@ namespace llarp::exit
     };
     ForEachPath(sendExitClose);
     router->path_context().RemovePathSet(shared_from_this());
-    return path::Builder::Stop();
+    return path::PathBuilder::Stop();
   }
 
   bool
   BaseSession::HandleTraffic(
-      llarp::path::Path_ptr, const llarp_buffer_t&, uint64_t, service::ProtocolType)
+      std::shared_ptr<path::Path>, const llarp_buffer_t&, uint64_t, service::ProtocolType)
   {
     // const service::ConvoTag tag{path->RXID().as_array()};
 
@@ -211,26 +211,26 @@ namespace llarp::exit
   }
 
   bool
-  BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p, const PathID_t& path, uint64_t s)
+  BaseSession::HandleTrafficDrop(std::shared_ptr<path::Path> p, const PathID_t& path, uint64_t s)
   {
     llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
-    p->EnterState(path::IGNORE, router->now());
+    p->EnterState(path::PathStatus::IGNORE, router->now());
     return true;
   }
 
   bool
   BaseSession::IsReady() const
   {
-    if (m_CurrentPath.IsZero())
+    if (_current_path.IsZero())
       return false;
-    const size_t expect = (1 + (numDesiredPaths / 2));
+    const size_t expect = (1 + (num_paths_desired / 2));
     return AvailablePaths(llarp::path::ePathRoleExit) >= expect;
   }
 
   bool
   BaseSession::IsExpired(llarp_time_t now) const
   {
-    return now > _last_use && now - _last_use > LifeSpan;
+    return now > _last_use && now - _last_use > path::DEFAULT_LIFETIME;
   }
 
   bool
@@ -238,8 +238,8 @@ namespace llarp::exit
   {
     if (BuildCooldownHit(now))
       return false;
-    if (IsReady() and NumInStatus(path::BUILDING) < numDesiredPaths)
-      return path::Builder::UrgentBuild(now);
+    if (IsReady() and NumInStatus(path::PathStatus::BUILDING) < num_paths_desired)
+      return path::PathBuilder::UrgentBuild(now);
     return false;
   }
 

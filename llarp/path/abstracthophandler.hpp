@@ -59,6 +59,7 @@ namespace llarp
       virtual llarp_time_t
       LastRemoteActivityAt() const = 0;
 
+      // TODO: remove this method after all commented out uses are deleted
       uint64_t
       NextSeqNo()
       {
@@ -69,6 +70,6 @@ namespace llarp
       uint64_t m_SequenceNum = 0;
     };
 
-    using HopHandler_ptr = std::shared_ptr<AbstractHopHandler>;
+    // using HopHandler_ptr = std::shared_ptr<AbstractHopHandler>;
   }  // namespace path
 }  // namespace llarp

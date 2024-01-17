@@ -12,7 +12,8 @@ namespace llarp::service
   static auto logcat = log::Cat("service");
   namespace
   {
-    using EndpointConstructor = std::function<service::Endpoint_ptr(Router*, service::Context*)>;
+    using EndpointConstructor =
+        std::function<std::shared_ptr<Endpoint>(Router*, service::Context*)>;
     using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
     static EndpointConstructors endpointConstructors = {
@@ -159,7 +160,7 @@ namespace llarp::service
     return true;
   }
 
-  Endpoint_ptr
+  std::shared_ptr<Endpoint>
   Context::GetEndpointByName(const std::string& name) const
   {
     auto itr = m_Endpoints.find(name);

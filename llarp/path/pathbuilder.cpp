@@ -26,23 +26,23 @@ namespace llarp
     bool
     BuildLimiter::Attempt(const RouterID& router)
     {
-      return m_EdgeLimiter.Insert(router);
+      return _edge_limiter.Insert(router);
     }
 
     void
     BuildLimiter::Decay(llarp_time_t now)
     {
-      m_EdgeLimiter.Decay(now);
+      _edge_limiter.Decay(now);
     }
 
     bool
     BuildLimiter::Limited(const RouterID& router) const
     {
-      return m_EdgeLimiter.Contains(router);
+      return _edge_limiter.Contains(router);
     }
 
-    Builder::Builder(Router* p_router, size_t pathNum, size_t hops)
-        : path::PathSet{pathNum}, _run{true}, router{p_router}, numHops{hops}
+    PathBuilder::PathBuilder(Router* p_router, size_t pathNum, size_t hops)
+        : path::PathSet{pathNum}, _run{true}, router{p_router}, num_hops{hops}
     {}
 
     /* - For each hop:
@@ -78,7 +78,7 @@ namespace llarp
      */
 
     void
-    Builder::setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
+    PathBuilder::setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
     {
       // generate key
       crypto::encryption_keygen(hop.commkey);
@@ -100,7 +100,7 @@ namespace llarp
     }
 
     std::string
-    Builder::create_hop_info_frame(const path::PathHopConfig& hop)
+    PathBuilder::create_hop_info_frame(const path::PathHopConfig& hop)
     {
       std::string hop_info;
 
@@ -173,14 +173,14 @@ namespace llarp
     }
 
     void
-    Builder::ResetInternalState()
+    PathBuilder::ResetInternalState()
     {
-      buildIntervalLimit = PATH_BUILD_RATE;
-      lastBuild = 0s;
+      build_interval_limit = PATH_BUILD_RATE;
+      _last_build = 0s;
     }
 
     void
-    Builder::Tick(llarp_time_t now)
+    PathBuilder::Tick(llarp_time_t now)
     {
       PathSet::Tick(now);
       now = llarp::time_now_ms();
@@ -190,33 +190,33 @@ namespace llarp
       if (ShouldBuildMore(now))
         BuildOne();
       TickPaths(router);
-      if (m_BuildStats.attempts > 50)
+      if (build_stats.attempts > 50)
       {
-        if (m_BuildStats.SuccessRatio() <= BuildStats::MinGoodRatio && now - m_LastWarn > 5s)
+        if (build_stats.SuccessRatio() <= BuildStats::MinGoodRatio && now - last_warn_time > 5s)
         {
-          LogWarn(Name(), " has a low path build success. ", m_BuildStats);
-          m_LastWarn = now;
+          LogWarn(Name(), " has a low path build success. ", build_stats);
+          last_warn_time = now;
         }
       }
     }
 
     util::StatusObject
-    Builder::ExtractStatus() const
+    PathBuilder::ExtractStatus() const
     {
       util::StatusObject obj{
-          {"buildStats", m_BuildStats.ExtractStatus()},
-          {"numHops", uint64_t{numHops}},
-          {"numPaths", uint64_t{numDesiredPaths}}};
+          {"buildStats", build_stats.ExtractStatus()},
+          {"numHops", uint64_t{num_hops}},
+          {"numPaths", uint64_t{num_paths_desired}}};
       std::transform(
-          m_Paths.begin(),
-          m_Paths.end(),
+          _paths.begin(),
+          _paths.end(),
           std::back_inserter(obj["paths"]),
           [](const auto& item) -> util::StatusObject { return item.second->ExtractStatus(); });
       return obj;
     }
 
     std::optional<RemoteRC>
-    Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
+    PathBuilder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RemoteRC> found = std::nullopt;
       router->for_each_connection([&](link::Connection& conn) {
@@ -241,7 +241,7 @@ namespace llarp
     }
 
     std::optional<std::vector<RemoteRC>>
-    Builder::GetHopsForBuild()
+    PathBuilder::GetHopsForBuild()
     {
       auto filter = [r = router](const RemoteRC& rc) -> bool {
         return not r->router_profiling().IsBadForPath(rc.router_id(), 1);
@@ -254,44 +254,44 @@ namespace llarp
     }
 
     bool
-    Builder::Stop()
+    PathBuilder::Stop()
     {
       _run = false;
       // tell all our paths that they are to be ignored
       const auto now = Now();
-      for (auto& item : m_Paths)
+      for (auto& item : _paths)
       {
-        item.second->EnterState(IGNORE, now);
+        item.second->EnterState(PathStatus::IGNORE, now);
       }
       return true;
     }
 
     bool
-    Builder::IsStopped() const
+    PathBuilder::IsStopped() const
     {
       return !_run.load();
     }
 
     bool
-    Builder::ShouldRemove() const
+    PathBuilder::ShouldRemove() const
     {
-      return IsStopped() and NumInStatus(ESTABLISHED) == 0;
+      return IsStopped() and NumInStatus(PathStatus::ESTABLISHED) == 0;
     }
 
     bool
-    Builder::BuildCooldownHit(RouterID edge) const
+    PathBuilder::BuildCooldownHit(RouterID edge) const
     {
       return router->pathbuild_limiter().Limited(edge);
     }
 
     bool
-    Builder::BuildCooldownHit(llarp_time_t now) const
+    PathBuilder::BuildCooldownHit(llarp_time_t now) const
     {
-      return now < lastBuild + buildIntervalLimit;
+      return now < _last_build + build_interval_limit;
     }
 
     bool
-    Builder::ShouldBuildMore(llarp_time_t now) const
+    PathBuilder::ShouldBuildMore(llarp_time_t now) const
     {
       if (IsStopped())
         return false;
@@ -301,20 +301,20 @@ namespace llarp
     }
 
     void
-    Builder::BuildOne(PathRole roles)
+    PathBuilder::BuildOne(PathRole roles)
     {
       if (const auto maybe = GetHopsForBuild())
         Build(*maybe, roles);
     }
 
     bool
-    Builder::UrgentBuild(llarp_time_t) const
+    PathBuilder::UrgentBuild(llarp_time_t) const
     {
-      return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
+      return build_interval_limit > MIN_PATH_BUILD_INTERVAL * 4;
     }
 
     std::optional<std::vector<RemoteRC>>
-    Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
+    PathBuilder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
       const auto pathConfig = router->config()->paths;
 
@@ -337,9 +337,9 @@ namespace llarp
       else
         return std::nullopt;
 
-      for (size_t idx = hops.size(); idx < numHops; ++idx)
+      for (size_t idx = hops.size(); idx < num_hops; ++idx)
       {
-        if (idx + 1 == numHops)
+        if (idx + 1 == num_hops)
         {
           hops.emplace_back(endpointRC);
         }
@@ -383,7 +383,7 @@ namespace llarp
     }
 
     bool
-    Builder::BuildOneAlignedTo(const RouterID remote)
+    PathBuilder::BuildOneAlignedTo(const RouterID remote)
     {
       if (const auto maybe = GetHopsAlignedToForBuild(remote); maybe.has_value())
       {
@@ -395,13 +395,13 @@ namespace llarp
     }
 
     llarp_time_t
-    Builder::Now() const
+    PathBuilder::Now() const
     {
       return router->now();
     }
 
     void
-    Builder::Build(std::vector<RemoteRC> hops, PathRole roles)
+    PathBuilder::Build(std::vector<RemoteRC> hops, PathRole roles)
     {
       if (IsStopped())
       {
@@ -409,7 +409,7 @@ namespace llarp
         return;
       }
 
-      lastBuild = llarp::time_now_ms();
+      _last_build = llarp::time_now_ms();
       const auto& edge = hops[0].router_id();
 
       if (not router->pathbuild_limiter().Attempt(edge))
@@ -425,7 +425,7 @@ namespace llarp
           std::make_shared<path::Path>(router, hops, GetWeak(), roles, std::move(path_shortName));
 
       log::info(
-          path_cat, "{} building path -> {} : {}", Name(), path->ShortName(), path->HopsString());
+          path_cat, "{} building path -> {} : {}", Name(), path->short_name(), path->HopsString());
 
       oxenc::bt_list_producer frames;
       std::vector<std::string> frame_str(path::MAX_LEN);
@@ -508,7 +508,7 @@ namespace llarp
         if (m)
         {
           // TODO: inform success (what this means needs revisiting, badly)
-          path->EnterState(path::ESTABLISHED);
+          path->EnterState(path::PathStatus::ESTABLISHED);
           return;
         }
 
@@ -518,14 +518,14 @@ namespace llarp
           if (m.timed_out)
           {
             log::warning(path_cat, "Path build request timed out!");
-            path->EnterState(path::TIMEOUT);
+            path->EnterState(path::PathStatus::TIMEOUT);
           }
           else
           {
             oxenc::bt_dict_consumer d{m.body()};
             auto status = d.require<std::string_view>(messages::STATUS_KEY);
             log::warning(path_cat, "Path build returned failure status: {}", status);
-            path->EnterState(path::FAILED);
+            path->EnterState(path::PathStatus::FAILED);
           }
         }
         catch (const std::exception& e)
@@ -538,38 +538,38 @@ namespace llarp
               path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
       {
         log::warning(path_cat, "Error sending path_build control message");
-        path->EnterState(path::FAILED, router->now());
+        path->EnterState(path::PathStatus::FAILED, router->now());
       }
     }
 
     void
-    Builder::HandlePathBuilt(Path_ptr p)
+    PathBuilder::HandlePathBuilt(std::shared_ptr<Path> p)
     {
-      buildIntervalLimit = PATH_BUILD_RATE;
+      build_interval_limit = PATH_BUILD_RATE;
       router->router_profiling().MarkPathSuccess(p.get());
 
       LogInfo(p->name(), " built latency=", ToString(p->intro.latency));
-      m_BuildStats.success++;
+      build_stats.success++;
     }
 
     void
-    Builder::HandlePathBuildFailedAt(Path_ptr p, RouterID edge)
+    PathBuilder::HandlePathBuildFailedAt(std::shared_ptr<Path> p, RouterID edge)
     {
       PathSet::HandlePathBuildFailedAt(p, edge);
       DoPathBuildBackoff();
     }
 
     void
-    Builder::DoPathBuildBackoff()
+    PathBuilder::DoPathBuildBackoff()
     {
       static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
       // linear backoff
-      buildIntervalLimit = std::min(PATH_BUILD_RATE + buildIntervalLimit, MaxBuildInterval);
-      LogWarn(Name(), " build interval is now ", ToString(buildIntervalLimit));
+      build_interval_limit = std::min(PATH_BUILD_RATE + build_interval_limit, MaxBuildInterval);
+      LogWarn(Name(), " build interval is now ", ToString(build_interval_limit));
     }
 
     void
-    Builder::HandlePathBuildTimeout(Path_ptr p)
+    PathBuilder::HandlePathBuildTimeout(std::shared_ptr<Path> p)
     {
       router->router_profiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
@@ -577,7 +577,7 @@ namespace llarp
     }
 
     void
-    Builder::ManualRebuild(size_t num, PathRole roles)
+    PathBuilder::ManualRebuild(size_t num, PathRole roles)
     {
       LogDebug(Name(), " manual rebuild ", num);
       while (num--)

@@ -6,50 +6,50 @@
 
 namespace llarp::path
 {
-  PathSet::PathSet(size_t num) : numDesiredPaths(num)
+  PathSet::PathSet(size_t num) : num_paths_desired(num)
   {}
 
   bool
   PathSet::ShouldBuildMore(llarp_time_t now) const
   {
     (void)now;
-    const auto building = NumInStatus(BUILDING);
-    if (building >= numDesiredPaths)
+    const auto building = NumInStatus(PathStatus::BUILDING);
+    if (building >= num_paths_desired)
       return false;
-    const auto established = NumInStatus(ESTABLISHED);
-    return established < numDesiredPaths;
+    const auto established = NumInStatus(PathStatus::ESTABLISHED);
+    return established < num_paths_desired;
   }
 
-  bool
-  PathSet::ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const
-  {
-    Lock_t l(m_PathsMutex);
-    const size_t required = MinRequiredForRoles(roles);
-    size_t has = 0;
-    for (const auto& item : m_Paths)
-    {
-      if (item.second->SupportsAnyRoles(roles))
-      {
-        if (!item.second->ExpiresSoon(now))
-          ++has;
-      }
-    }
-    return has < required;
-  }
+  // bool
+  // PathSet::ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const
+  // {
+  //   Lock_t l(paths_mutex);
+  //   const size_t required = MinRequiredForRoles(roles);
+  //   size_t has = 0;
+  //   for (const auto& item : _paths)
+  //   {
+  //     if (item.second->SupportsAnyRoles(roles))
+  //     {
+  //       if (!item.second->ExpiresSoon(now))
+  //         ++has;
+  //     }
+  //   }
+  //   return has < required;
+  // }
 
-  size_t
-  PathSet::MinRequiredForRoles(PathRole roles) const
-  {
-    (void)roles;
-    return 0;
-  }
+  // size_t
+  // PathSet::MinRequiredForRoles(PathRole roles) const
+  // {
+  //   (void)roles;
+  //   return 0;
+  // }
 
   size_t
   PathSet::NumPathsExistingAt(llarp_time_t futureTime) const
   {
     size_t num = 0;
-    Lock_t l(m_PathsMutex);
-    for (const auto& item : m_Paths)
+    Lock_t l(paths_mutex);
+    for (const auto& item : _paths)
     {
       if (item.second->IsReady() && !item.second->Expired(futureTime))
         ++num;
@@ -61,8 +61,8 @@ namespace llarp::path
   PathSet::TickPaths(Router* r)
   {
     const auto now = llarp::time_now_ms();
-    Lock_t l{m_PathsMutex};
-    for (auto& item : m_Paths)
+    Lock_t l{paths_mutex};
+    for (auto& item : _paths)
     {
       item.second->Tick(now, r);
     }
@@ -72,17 +72,17 @@ namespace llarp::path
   PathSet::Tick(llarp_time_t)
   {
     std::unordered_set<RouterID> endpoints;
-    for (auto& item : m_Paths)
+    for (auto& item : _paths)
     {
       endpoints.emplace(item.second->Endpoint());
     }
 
-    m_PathCache.clear();
+    path_cache.clear();
     for (const auto& ep : endpoints)
     {
       if (auto path = GetPathByRouter(ep))
       {
-        m_PathCache[ep] = path->weak_from_this();
+        path_cache[ep] = path->weak_from_this();
       }
     }
   }
@@ -90,11 +90,11 @@ namespace llarp::path
   void
   PathSet::ExpirePaths(llarp_time_t now, [[maybe_unused]] Router* router)
   {
-    Lock_t l(m_PathsMutex);
-    if (m_Paths.size() == 0)
+    Lock_t l(paths_mutex);
+    if (_paths.size() == 0)
       return;
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->Expired(now))
       {
@@ -103,23 +103,23 @@ namespace llarp::path
         // router->outboundMessageHandler().RemovePath(std::move(txid));
         PathID_t rxid = itr->second->RXID();
         // router->outboundMessageHandler().RemovePath(std::move(rxid));
-        itr = m_Paths.erase(itr);
+        itr = _paths.erase(itr);
       }
       else
         ++itr;
     }
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetEstablishedPathClosestTo(
       RouterID id, std::unordered_set<RouterID> excluding, PathRole roles) const
   {
-    Lock_t l{m_PathsMutex};
-    Path_ptr path = nullptr;
+    Lock_t l{paths_mutex};
+    std::shared_ptr<Path> path = nullptr;
     AlignedBuffer<32> dist;
     AlignedBuffer<32> to = id;
     dist.Fill(0xff);
-    for (const auto& item : m_Paths)
+    for (const auto& item : _paths)
     {
       if (!item.second->IsReady())
         continue;
@@ -137,13 +137,13 @@ namespace llarp::path
     return path;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetNewestPathByRouter(RouterID id, PathRole roles) const
   {
-    Lock_t l(m_PathsMutex);
-    Path_ptr chosen = nullptr;
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l(paths_mutex);
+    std::shared_ptr<Path> chosen = nullptr;
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
       {
@@ -162,20 +162,20 @@ namespace llarp::path
     return chosen;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetPathByRouter(RouterID id, PathRole roles) const
   {
-    Lock_t l(m_PathsMutex);
-    Path_ptr chosen = nullptr;
+    Lock_t l(paths_mutex);
+    std::shared_ptr<Path> chosen = nullptr;
     if (roles == ePathRoleAny)
     {
-      if (auto itr = m_PathCache.find(id); itr != m_PathCache.end())
+      if (auto itr = path_cache.find(id); itr != path_cache.end())
       {
         return itr->second.lock();
       }
     }
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
       {
@@ -195,13 +195,13 @@ namespace llarp::path
     return chosen;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetRandomPathByRouter(RouterID id, PathRole roles) const
   {
-    Lock_t l(m_PathsMutex);
-    std::vector<Path_ptr> chosen;
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l(paths_mutex);
+    std::vector<std::shared_ptr<Path>> chosen;
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
       {
@@ -217,12 +217,12 @@ namespace llarp::path
     return chosen[std::uniform_int_distribution<size_t>{0, chosen.size() - 1}(llarp::csrng)];
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetByEndpointWithID(RouterID ep, PathID_t id) const
   {
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l(paths_mutex);
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->is_endpoint(ep, id))
       {
@@ -233,12 +233,12 @@ namespace llarp::path
     return nullptr;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetPathByID(PathID_t id) const
   {
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l(paths_mutex);
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->RXID() == id)
         return itr->second;
@@ -250,12 +250,12 @@ namespace llarp::path
   size_t
   PathSet::AvailablePaths(PathRole roles) const
   {
-    Lock_t l(m_PathsMutex);
+    Lock_t l(paths_mutex);
     size_t count = 0;
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
-      if (itr->second->Status() == ESTABLISHED && itr->second->SupportsAnyRoles(roles))
+      if (itr->second->Status() == PathStatus::ESTABLISHED && itr->second->SupportsAnyRoles(roles))
         ++count;
       ++itr;
     }
@@ -265,10 +265,10 @@ namespace llarp::path
   size_t
   PathSet::NumInStatus(PathStatus st) const
   {
-    Lock_t l(m_PathsMutex);
+    Lock_t l(paths_mutex);
     size_t count = 0;
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->Status() == st)
         ++count;
@@ -278,12 +278,12 @@ namespace llarp::path
   }
 
   void
-  PathSet::AddPath(Path_ptr path)
+  PathSet::AddPath(std::shared_ptr<Path> path)
   {
-    Lock_t l(m_PathsMutex);
+    Lock_t l(paths_mutex);
     const auto upstream = path->upstream();  // RouterID
     const auto RXID = path->RXID();          // PathID
-    if (not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
+    if (not _paths.emplace(std::make_pair(upstream, RXID), path).second)
     {
       LogError(
           Name(),
@@ -294,12 +294,12 @@ namespace llarp::path
     }
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::GetByUpstream(RouterID remote, PathID_t rxid) const
   {
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.find({remote, rxid});
-    if (itr == m_Paths.end())
+    Lock_t l(paths_mutex);
+    auto itr = _paths.find({remote, rxid});
+    if (itr == _paths.end())
       return nullptr;
     return itr->second;
   }
@@ -309,9 +309,9 @@ namespace llarp::path
       std::function<bool(const service::Introduction&)> filter) const
   {
     std::set<service::Introduction> intros;
-    Lock_t l{m_PathsMutex};
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l{paths_mutex};
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() and filter(itr->second->intro))
       {
@@ -325,30 +325,30 @@ namespace llarp::path
   }
 
   void
-  PathSet::HandlePathBuildTimeout(Path_ptr p)
+  PathSet::HandlePathBuildTimeout(std::shared_ptr<Path> p)
   {
-    LogWarn(Name(), " path build ", p->ShortName(), " timed out");
-    m_BuildStats.timeouts++;
+    LogWarn(Name(), " path build ", p->short_name(), " timed out");
+    build_stats.timeouts++;
   }
 
   void
-  PathSet::HandlePathBuildFailedAt(Path_ptr p, RouterID hop)
+  PathSet::HandlePathBuildFailedAt(std::shared_ptr<Path> p, RouterID hop)
   {
-    LogWarn(Name(), " path build ", p->ShortName(), " failed at ", hop);
-    m_BuildStats.fails++;
+    LogWarn(Name(), " path build ", p->short_name(), " failed at ", hop);
+    build_stats.fails++;
   }
 
   void
-  PathSet::HandlePathDied(Path_ptr p)
+  PathSet::HandlePathDied(std::shared_ptr<Path> p)
   {
-    LogWarn(Name(), " path ", p->ShortName(), " died");
+    LogWarn(Name(), " path ", p->short_name(), " died");
   }
 
   void
-  PathSet::PathBuildStarted(Path_ptr p)
+  PathSet::PathBuildStarted(std::shared_ptr<Path> p)
   {
-    LogInfo(Name(), " path build ", p->ShortName(), " started");
-    m_BuildStats.attempts++;
+    LogInfo(Name(), " path build ", p->short_name(), " started");
+    build_stats.attempts++;
   }
 
   util::StatusObject
@@ -383,9 +383,9 @@ namespace llarp::path
   {
     intro.Clear();
     bool found = false;
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    Lock_t l(paths_mutex);
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->intro.expiry > intro.expiry)
       {
@@ -397,13 +397,13 @@ namespace llarp::path
     return found;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::PickRandomEstablishedPath(PathRole roles) const
   {
-    std::vector<Path_ptr> established;
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    std::vector<std::shared_ptr<Path>> established;
+    Lock_t l(paths_mutex);
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         established.push_back(itr->second);
@@ -418,19 +418,19 @@ namespace llarp::path
     return nullptr;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathSet::PickEstablishedPath(PathRole roles) const
   {
-    std::vector<Path_ptr> established;
-    Lock_t l(m_PathsMutex);
-    auto itr = m_Paths.begin();
-    while (itr != m_Paths.end())
+    std::vector<std::shared_ptr<Path>> established;
+    Lock_t l(paths_mutex);
+    auto itr = _paths.begin();
+    while (itr != _paths.end())
     {
       if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         established.push_back(itr->second);
       ++itr;
     }
-    Path_ptr chosen = nullptr;
+    std::shared_ptr<Path> chosen = nullptr;
     llarp_time_t minLatency = 30s;
     for (const auto& path : established)
     {

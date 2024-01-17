@@ -16,7 +16,7 @@ namespace llarp
 {
   // clang-format off
   namespace exit { struct BaseSession; }
-  namespace path { struct Path; using Path_ptr = std::shared_ptr< Path >; }
+  namespace path { struct Path; }
   namespace routing { struct PathTransferMessage; }
   // clang-format on
 
@@ -27,7 +27,7 @@ namespace llarp
 
     using Msg_ptr = std::shared_ptr<routing::PathTransferMessage>;
 
-    using SendEvent = std::pair<Msg_ptr, path::Path_ptr>;
+    using SendEvent = std::pair<Msg_ptr, std::shared_ptr<path::Path>>;
     using SendMessageEventQueue = thread::Queue<SendEvent>;
 
     using PendingBufferDeque = std::deque<PendingBuffer>;

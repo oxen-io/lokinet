@@ -50,7 +50,7 @@ namespace llarp::handlers
         const SockAddr& to,
         const SockAddr& from) override;
 
-    path::PathSet_ptr
+    std::shared_ptr<path::PathSet>
     GetSelf() override
     {
       return shared_from_this();

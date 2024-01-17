@@ -15,7 +15,7 @@ namespace llarp::service
   struct Endpoint;
 
   /// context needed to initiate an outbound hidden service session
-  struct OutboundContext : public llarp::path::Builder,
+  struct OutboundContext : public llarp::path::PathBuilder,
                            public std::enable_shared_from_this<OutboundContext>
   {
    private:
@@ -87,7 +87,7 @@ namespace llarp::service
     void
     BlacklistSNode(const RouterID) override{};
 
-    path::PathSet_ptr
+    std::shared_ptr<path::PathSet>
     GetSelf() override
     {
       return shared_from_this();
@@ -106,7 +106,7 @@ namespace llarp::service
     Stop() override;
 
     void
-    HandlePathDied(path::Path_ptr p) override;
+    HandlePathDied(std::shared_ptr<path::Path> p) override;
 
     /// set to true if we are updating the remote introset right now
     bool updatingIntroSet;
@@ -137,20 +137,20 @@ namespace llarp::service
     IsDone(std::chrono::milliseconds now) const;
 
     bool
-    CheckPathIsDead(path::Path_ptr p, std::chrono::milliseconds dlt);
+    CheckPathIsDead(std::shared_ptr<path::Path> p, std::chrono::milliseconds dlt);
 
     /// issues a lookup to find the current intro set of the remote service
     void
     UpdateIntroSet();
 
     void
-    HandlePathBuilt(path::Path_ptr path) override;
+    HandlePathBuilt(std::shared_ptr<path::Path> path) override;
 
     void
-    HandlePathBuildTimeout(path::Path_ptr path) override;
+    HandlePathBuildTimeout(std::shared_ptr<path::Path> path) override;
 
     void
-    HandlePathBuildFailedAt(path::Path_ptr path, RouterID hop) override;
+    HandlePathBuildFailedAt(std::shared_ptr<path::Path> path, RouterID hop) override;
 
     std::optional<std::vector<RemoteRC>>
     GetHopsForBuild() override;

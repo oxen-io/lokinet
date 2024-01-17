@@ -9,11 +9,6 @@
 
 namespace llarp
 {
-  namespace dht
-  {
-    struct GotIntroMessage;
-  }
-
   namespace path
   {
     struct TransitHopInfo
@@ -60,7 +55,7 @@ namespace llarp
       // 10 minutes default
       llarp_time_t lifetime = DEFAULT_LIFETIME;
       llarp_proto_version_t version;
-      llarp_time_t m_LastActivity = 0s;
+      llarp_time_t last_activity = 0s;
       bool terminal_hop{false};
 
       // If randomize is given, first randomizes `nonce`
@@ -108,7 +103,7 @@ namespace llarp
       llarp_time_t
       LastRemoteActivityAt() const override
       {
-        return m_LastActivity;
+        return last_activity;
       }
 
       std::string

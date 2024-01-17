@@ -35,17 +35,10 @@ namespace llarp
   struct RouterContact;
   class NodeDB;
 
-  namespace dht
-  {
-    struct GotIntroMessage;
-    struct GotRouterMessage;
-    struct GotNameMessage;
-  }  // namespace dht
-
   namespace path
   {
     /// status of a path
-    enum PathStatus
+    enum class PathStatus
     {
       BUILDING,
       ESTABLISHED,
@@ -76,41 +69,36 @@ namespace llarp
     };
 
     /// the role of this path can fulfill
+    enum class Path_Role
+    {
+      ANY = 0,
+      EXIT = 1 << 1,
+      SERVICE = 1 << 2
+    };
+
     using PathRole = int;
 
     /// capable of any role
     constexpr PathRole ePathRoleAny = 0;
-    /// outbound hs traffic capable
-    constexpr PathRole ePathRoleOutboundHS = (1 << 0);
-    /// inbound hs traffic capable
-    constexpr PathRole ePathRoleInboundHS = (1 << 1);
     /// exit traffic capable
-    constexpr PathRole ePathRoleExit = (1 << 2);
+    constexpr PathRole ePathRoleExit = (1 << 1);
     /// service node capable
-    constexpr PathRole ePathRoleSVC = (1 << 3);
-    /// dht message capable
-    constexpr PathRole ePathRoleDHT = (1 << 4);
+    constexpr PathRole ePathRoleSVC = (1 << 2);
 
     // forward declare
     struct Path;
-
-    using Path_ptr = std::shared_ptr<Path>;
-
-    struct PathSet;
-
-    using PathSet_ptr = std::shared_ptr<PathSet>;
 
     /// a set of paths owned by an entity
     struct PathSet
     {
       /// maximum number of paths a path set can maintain
-      static constexpr size_t max_paths = 32;
+      // static constexpr size_t max_paths = 32;
       /// construct
       /// @params numDesiredPaths the number of paths to maintain
       PathSet(size_t numDesiredPaths);
 
       /// get a shared_ptr of ourself
-      virtual PathSet_ptr
+      virtual std::shared_ptr<PathSet>
       GetSelf() = 0;
 
       /// get a weak_ptr of ourself
@@ -133,28 +121,28 @@ namespace llarp
       NumPathsExistingAt(llarp_time_t futureTime) const;
 
       virtual void
-      HandlePathBuilt(Path_ptr path) = 0;
+      HandlePathBuilt(std::shared_ptr<Path> path) = 0;
 
       virtual void
-      HandlePathBuildTimeout(Path_ptr path);
+      HandlePathBuildTimeout(std::shared_ptr<Path> path);
 
       virtual void
-      HandlePathBuildFailedAt(Path_ptr path, RouterID hop);
+      HandlePathBuildFailedAt(std::shared_ptr<Path> path, RouterID hop);
 
       void
-      PathBuildStarted(Path_ptr path);
+      PathBuildStarted(std::shared_ptr<Path> path);
 
       /// a path died now what?
       virtual void
-      HandlePathDied(Path_ptr path);
+      HandlePathDied(std::shared_ptr<Path> path);
 
       bool
       GetNewestIntro(service::Introduction& intro) const;
 
       void
-      AddPath(Path_ptr path);
+      AddPath(std::shared_ptr<Path> path);
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
@@ -194,12 +182,12 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const;
 
       /// return true if we need another path with the given path roles
-      virtual bool
-      ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const;
+      // virtual bool
+      // ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const;
 
       /// return the minimum number of paths we want for given roles
-      virtual size_t
-      MinRequiredForRoles(PathRole roles) const;
+      // virtual size_t
+      // MinRequiredForRoles(PathRole roles) const;
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool
@@ -211,31 +199,31 @@ namespace llarp
       virtual void
       BlacklistSNode(const RouterID) = 0;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetEstablishedPathClosestTo(
           RouterID router,
           std::unordered_set<RouterID> excluding = {},
           PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       PickEstablishedPath(PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetNewestPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetRandomPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetPathByID(PathID_t id) const;
 
-      Path_ptr
+      std::shared_ptr<Path>
       GetByEndpointWithID(RouterID router, PathID_t id) const;
 
       std::optional<std::set<service::Introduction>>
@@ -256,11 +244,11 @@ namespace llarp
       GetHopsForBuild() = 0;
 
       void
-      ForEachPath(std::function<void(const Path_ptr&)> visit) const
+      ForEachPath(std::function<void(const std::shared_ptr<Path>&)> visit) const
       {
-        Lock_t lock(m_PathsMutex);
-        auto itr = m_Paths.begin();
-        while (itr != m_Paths.end())
+        Lock_t lock(paths_mutex);
+        auto itr = _paths.begin();
+        while (itr != _paths.end())
         {
           visit(itr->second);
           ++itr;
@@ -273,22 +261,22 @@ namespace llarp
       void
       DownstreamFlush(Router* r);
 
-      size_t numDesiredPaths;
+      size_t num_paths_desired;
 
      protected:
-      BuildStats m_BuildStats;
+      BuildStats build_stats;
 
       void
       TickPaths(Router* r);
 
       using Mtx_t = util::NullMutex;
       using Lock_t = util::NullLock;
-      using PathMap_t = std::unordered_map<std::pair<RouterID, PathID_t>, Path_ptr>;
-      mutable Mtx_t m_PathsMutex;
-      PathMap_t m_Paths;
+      mutable Mtx_t paths_mutex;
+
+      std::unordered_map<std::pair<RouterID, PathID_t>, std::shared_ptr<Path>> _paths;
 
      private:
-      std::unordered_map<RouterID, std::weak_ptr<path::Path>> m_PathCache;
+      std::unordered_map<RouterID, std::weak_ptr<path::Path>> path_cache;
     };
 
   }  // namespace path

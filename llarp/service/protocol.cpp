@@ -29,7 +29,7 @@ namespace llarp::service
 
   void
   ProtocolMessage::ProcessAsync(
-      path::Path_ptr path, PathID_t from, std::shared_ptr<ProtocolMessage> self)
+      std::shared_ptr<path::Path> path, PathID_t from, std::shared_ptr<ProtocolMessage> self)
   {
     if (!self->handler->HandleDataMessage(path, from, self))
       LogWarn("failed to handle data message from ", path->name());
@@ -225,7 +225,7 @@ namespace llarp::service
 
   struct AsyncFrameDecrypt
   {
-    path::Path_ptr path;
+    std::shared_ptr<path::Path> path;
     EventLoop_ptr loop;
     std::shared_ptr<ProtocolMessage> msg;
     const Identity& m_LocalIdentity;
@@ -322,7 +322,7 @@ namespace llarp::service
       crypto::shorthash(shared_key, tmp.data(), tmp.size());
 
       std::shared_ptr<ProtocolMessage> msg = std::move(self->msg);
-      path::Path_ptr path = std::move(self->path);
+      std::shared_ptr<path::Path> path = std::move(self->path);
       const PathID_t from = self->frame.path_id;
       msg->handler = self->handler;
       self->handler->AsyncProcessAuthMessage(
@@ -367,7 +367,7 @@ namespace llarp::service
   bool
   ProtocolFrameMessage::AsyncDecryptAndVerify(
       EventLoop_ptr loop,
-      path::Path_ptr recvPath,
+      std::shared_ptr<path::Path> recvPath,
       const Identity& localIdent,
       Endpoint* handler,
       std::function<void(std::shared_ptr<ProtocolMessage>)> hook) const

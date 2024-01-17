@@ -42,19 +42,21 @@ namespace llarp::service
   };
 
   template <typename Endpoint_t>
-  static std::unordered_set<path::Path_ptr, path::Endpoint_Hash, path::endpoint_comparator>
-  GetManyPathsWithUniqueEndpoints(
-      Endpoint_t* ep,
-      size_t N,
-      std::optional<dht::Key_t> maybeLocation = std::nullopt,
-      size_t tries = 10)
+  static std::
+      unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator>
+      GetManyPathsWithUniqueEndpoints(
+          Endpoint_t* ep,
+          size_t N,
+          std::optional<dht::Key_t> maybeLocation = std::nullopt,
+          size_t tries = 10)
   {
     std::unordered_set<RouterID> exclude;
-    path::UniqueEndpointSet_t paths;
+    std::unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator>
+        paths;
     do
     {
       --tries;
-      path::Path_ptr path;
+      std::shared_ptr<path::Path> path;
       if (maybeLocation)
       {
         path = ep->GetEstablishedPathClosestTo(RouterID{maybeLocation->as_array()}, exclude);

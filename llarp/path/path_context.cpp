@@ -79,7 +79,7 @@ namespace llarp::path
   }
 
   void
-  PathContext::AddOwnPath(PathSet_ptr set, Path_ptr path)
+  PathContext::AddOwnPath(std::shared_ptr<PathSet> set, std::shared_ptr<Path> path)
   {
     set->AddPath(path);
     own_paths[path->TXID()] = path;
@@ -109,7 +109,7 @@ namespace llarp::path
     return nullptr;
   }
 
-  Path_ptr
+  std::shared_ptr<Path>
   PathContext::get_path(const PathID_t& path_id)
   {
     if (auto itr = own_paths.find(path_id); itr != own_paths.end())
@@ -124,12 +124,12 @@ namespace llarp::path
     return transit_hops.count({otherRouter, path_id});
   }
 
-  PathSet_ptr
+  std::shared_ptr<PathSet>
   PathContext::GetLocalPathSet(const PathID_t& id)
   {
     if (auto itr = own_paths.find(id); itr != own_paths.end())
     {
-      if (auto parent = itr->second->m_PathSet.lock())
+      if (auto parent = itr->second->path_set.lock())
         return parent;
     }
     return nullptr;
@@ -217,6 +217,6 @@ namespace llarp::path
   }
 
   void
-  PathContext::RemovePathSet(PathSet_ptr)
+  PathContext::RemovePathSet(std::shared_ptr<PathSet>)
   {}
 }  // namespace llarp::path

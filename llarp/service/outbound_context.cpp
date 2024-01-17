@@ -17,7 +17,7 @@ namespace llarp::service
   OutboundContext::Stop()
   {
     marked_bad = true;
-    return path::Builder::Stop();
+    return path::PathBuilder::Stop();
   }
 
   bool
@@ -30,7 +30,7 @@ namespace llarp::service
   constexpr auto OutboundContextNumPaths = 4;
 
   OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
-      : path::Builder{parent->router(), OutboundContextNumPaths, parent->numHops}
+      : path::PathBuilder{parent->router(), OutboundContextNumPaths, parent->num_hops}
       , ep{*parent}
       , current_intro{introset}
       , location{current_intro.address_keys.Addr().ToKey()}
@@ -108,27 +108,27 @@ namespace llarp::service
   }
 
   void
-  OutboundContext::HandlePathBuildTimeout(path::Path_ptr p)
+  OutboundContext::HandlePathBuildTimeout(std::shared_ptr<path::Path> p)
   {
     ShiftIntroRouter(p->Endpoint());
-    path::Builder::HandlePathBuildTimeout(p);
+    path::PathBuilder::HandlePathBuildTimeout(p);
   }
 
   void
-  OutboundContext::HandlePathBuildFailedAt(path::Path_ptr p, RouterID hop)
+  OutboundContext::HandlePathBuildFailedAt(std::shared_ptr<path::Path> p, RouterID hop)
   {
     if (p->Endpoint() == hop)
     {
       // shift intro when we fail at the pivot
       ShiftIntroRouter(p->Endpoint());
     }
-    path::Builder::HandlePathBuildFailedAt(p, hop);
+    path::PathBuilder::HandlePathBuildFailedAt(p, hop);
   }
 
   void
-  OutboundContext::HandlePathBuilt(path::Path_ptr p)
+  OutboundContext::HandlePathBuilt(std::shared_ptr<path::Path> p)
   {
-    path::Builder::HandlePathBuilt(p);
+    path::PathBuilder::HandlePathBuilt(p);
     // p->SetDataHandler([self = weak_from_this()](auto path, auto frame) {
     //   if (auto ptr = self.lock())
     //     return ptr->HandleHiddenServiceFrame(path, frame);
@@ -143,7 +143,7 @@ namespace llarp::service
     {
       // ignore new path if we are marked dead
       LogInfo(Name(), " marked bad, ignoring new path");
-      p->EnterState(path::IGNORE, Now());
+      p->EnterState(path::PathStatus::IGNORE, Now());
     }
     else if (p->Endpoint() == next_intro.router)
     {
@@ -236,7 +236,7 @@ namespace llarp::service
   util::StatusObject
   OutboundContext::ExtractStatus() const
   {
-    auto obj = path::Builder::ExtractStatus();
+    auto obj = path::PathBuilder::ExtractStatus();
     obj["current_tag"] = current_tag.ToHex();
     obj["remote_intro"] = remote_intro.ExtractStatus();
     obj["session_created"] = to_json(created_at);
@@ -372,25 +372,27 @@ namespace llarp::service
   bool
   OutboundContext::ShouldBuildMore(std::chrono::milliseconds now) const
   {
-    if (marked_bad or path::Builder::BuildCooldownHit(now))
+    if (marked_bad or path::PathBuilder::BuildCooldownHit(now))
       return false;
 
-    if (NumInStatus(path::BUILDING) >= std::max(numDesiredPaths / size_t{2}, size_t{1}))
+    if (NumInStatus(path::PathStatus::BUILDING)
+        >= std::max(num_paths_desired / size_t{2}, size_t{1}))
       return false;
 
     size_t numValidPaths = 0;
     bool havePathToNextIntro = false;
-    ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](path::Path_ptr path) {
-      if (not path->IsReady())
-        return;
-      if (not path->intro.ExpiresSoon(now, path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
-      {
-        numValidPaths++;
-        if (path->intro.router == next_intro.router)
-          havePathToNextIntro = true;
-      }
-    });
-    return numValidPaths < numDesiredPaths or not havePathToNextIntro;
+    ForEachPath(
+        [now, this, &havePathToNextIntro, &numValidPaths](std::shared_ptr<path::Path> path) {
+          if (not path->IsReady())
+            return;
+          if (not path->intro.ExpiresSoon(now, path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
+          {
+            numValidPaths++;
+            if (path->intro.router == next_intro.router)
+              havePathToNextIntro = true;
+          }
+        });
+    return numValidPaths < num_paths_desired or not havePathToNextIntro;
   }
 
   bool
@@ -468,7 +470,7 @@ namespace llarp::service
   }
 
   void
-  OutboundContext::HandlePathDied(path::Path_ptr path)
+  OutboundContext::HandlePathDied(std::shared_ptr<path::Path> path)
   {
     // unconditionally update introset
     UpdateIntroSet();
@@ -478,7 +480,7 @@ namespace llarp::service
     {
       // figure out how many paths to this router we have
       size_t num = 0;
-      ForEachPath([&](const path::Path_ptr& p) {
+      ForEachPath([&](const std::shared_ptr<path::Path>& p) {
         if (p->Endpoint() == endpoint && p->IsReady())
           ++num;
       });
@@ -509,7 +511,7 @@ namespace llarp::service
   void
   OutboundContext::Tick(llarp_time_t now)
   {
-    path::Builder::Tick(now);
+    path::PathBuilder::Tick(now);
 
     if (ShouldKeepAlive(now))
       KeepAlive();

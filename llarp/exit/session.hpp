@@ -21,18 +21,12 @@ namespace llarp
   {
     struct BaseSession;
 
-    using BaseSession_ptr = std::shared_ptr<BaseSession>;
-
-    using SessionReadyFunc = std::function<void(BaseSession_ptr)>;
-
-    static constexpr auto LifeSpan = path::DEFAULT_LIFETIME;
+    using SessionReadyFunc = std::function<void(std::shared_ptr<BaseSession>)>;
 
     /// a persisting exit session with an exit router
-    struct BaseSession : public llarp::path::Builder,
+    struct BaseSession : public llarp::path::PathBuilder,
                          public std::enable_shared_from_this<BaseSession>
     {
-      static constexpr size_t MaxUpstreamQueueLength = 256;
-
       BaseSession(
           const llarp::RouterID& exitRouter,
           std::function<bool(const llarp_buffer_t&)> writepkt,
@@ -67,10 +61,10 @@ namespace llarp
       bool UrgentBuild(llarp_time_t) const override;
 
       void
-      HandlePathDied(llarp::path::Path_ptr p) override;
+      HandlePathDied(std::shared_ptr<path::Path> p) override;
 
       bool
-      CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
+      CheckPathDead(std::shared_ptr<path::Path> p, llarp_time_t dlt);
 
       std::optional<std::vector<RemoteRC>>
       GetHopsForBuild() override;
@@ -79,7 +73,7 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       void
-      HandlePathBuilt(llarp::path::Path_ptr p) override;
+      HandlePathBuilt(std::shared_ptr<path::Path> p) override;
 
       /// flush upstream to exit via paths
       bool
@@ -111,9 +105,9 @@ namespace llarp
       std::optional<PathID_t>
       CurrentPath() const
       {
-        if (m_CurrentPath.IsZero())
+        if (_current_path.IsZero())
           return std::nullopt;
-        return m_CurrentPath;
+        return _current_path;
       }
 
       bool
@@ -131,14 +125,14 @@ namespace llarp
       std::function<bool(const llarp_buffer_t&)> packet_write_func;
 
       bool
-      HandleTrafficDrop(llarp::path::Path_ptr p, const llarp::PathID_t& path, uint64_t s);
+      HandleTrafficDrop(std::shared_ptr<path::Path> p, const llarp::PathID_t& path, uint64_t s);
 
       bool
-      HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
+      HandleGotExit(std::shared_ptr<path::Path> p, llarp_time_t b);
 
       bool
       HandleTraffic(
-          llarp::path::Path_ptr p,
+          std::shared_ptr<path::Path> p,
           const llarp_buffer_t& buf,
           uint64_t seqno,
           service::ProtocolType t);
@@ -146,23 +140,12 @@ namespace llarp
      private:
       std::set<RouterID> snode_blacklist;
 
-      PathID_t m_CurrentPath;
-
-      using DownstreamPkt = std::pair<uint64_t, llarp::net::IPPacket>;
-
-      struct DownstreamPktSorter
-      {
-        bool
-        operator()(const DownstreamPkt& left, const DownstreamPkt& right) const
-        {
-          return left.first < right.first;
-        }
-      };
+      PathID_t _current_path;
 
       // uint64_t _counter;
       llarp_time_t _last_use;
 
-      std::vector<SessionReadyFunc> m_PendingCallbacks;
+      std::vector<SessionReadyFunc> _pending_callbacks;
       // const bool _bundle_RC;
       EndpointBase* const _parent;
 

@@ -15,10 +15,10 @@ namespace llarp::path
       std::weak_ptr<PathSet> pathset,
       PathRole startingRoles,
       std::string shortName)
-      : m_PathSet{std::move(pathset)}
+      : path_set{std::move(pathset)}
       , router{*rtr}
       , _role{startingRoles}
-      , m_shortName{std::move(shortName)}
+      , _short_name{std::move(shortName)}
   {
     hops.resize(h.size());
     size_t hsz = h.size();
@@ -43,8 +43,8 @@ namespace llarp::path
     // initialize parts of the introduction
     intro.router = hops[hsz - 1].rc.router_id();
     intro.path_id = hops[hsz - 1].txID;
-    if (auto parent = m_PathSet.lock())
-      EnterState(BUILDING, parent->Now());
+    if (auto parent = path_set.lock())
+      EnterState(PathStatus::BUILDING, parent->Now());
   }
 
   bool
@@ -186,7 +186,7 @@ namespace llarp::path
   {
     if (Expired(llarp::time_now_ms()))
       return false;
-    return intro.latency > 0s && _status == ESTABLISHED;
+    return intro.latency > 0s && _status == PathStatus::ESTABLISHED;
   }
 
   bool
@@ -202,9 +202,9 @@ namespace llarp::path
   }
 
   const std::string&
-  Path::ShortName() const
+  Path::short_name() const
   {
-    return m_shortName;
+    return _short_name;
   }
 
   std::string
@@ -227,42 +227,42 @@ namespace llarp::path
     if (now == 0s)
       now = router.now();
 
-    if (st == FAILED)
+    if (st == PathStatus::FAILED)
     {
       _status = st;
       return;
     }
-    if (st == EXPIRED && _status == BUILDING)
+    if (st == PathStatus::EXPIRED && _status == PathStatus::BUILDING)
     {
       _status = st;
-      if (auto parent = m_PathSet.lock())
+      if (auto parent = path_set.lock())
       {
         parent->HandlePathBuildTimeout(shared_from_this());
       }
     }
-    else if (st == BUILDING)
+    else if (st == PathStatus::BUILDING)
     {
       LogInfo("path ", name(), " is building");
       buildStarted = now;
     }
-    else if (st == ESTABLISHED && _status == BUILDING)
+    else if (st == PathStatus::ESTABLISHED && _status == PathStatus::BUILDING)
     {
       LogInfo("path ", name(), " is built, took ", ToString(now - buildStarted));
     }
-    else if (st == TIMEOUT && _status == ESTABLISHED)
+    else if (st == PathStatus::TIMEOUT && _status == PathStatus::ESTABLISHED)
     {
       LogInfo("path ", name(), " died");
       _status = st;
-      if (auto parent = m_PathSet.lock())
+      if (auto parent = path_set.lock())
       {
         parent->HandlePathDied(shared_from_this());
       }
     }
-    else if (st == ESTABLISHED && _status == TIMEOUT)
+    else if (st == PathStatus::ESTABLISHED && _status == PathStatus::TIMEOUT)
     {
       LogInfo("path ", name(), " reanimated");
     }
-    else if (st == IGNORE)
+    else if (st == PathStatus::IGNORE)
     {
       LogInfo("path ", name(), " ignored");
     }
@@ -288,15 +288,15 @@ namespace llarp::path
 
     util::StatusObject obj{
         {"intro", intro.ExtractStatus()},
-        {"lastRecvMsg", to_json(m_LastRecvMessage)},
-        {"lastLatencyTest", to_json(m_LastLatencyTestTime)},
+        {"lastRecvMsg", to_json(last_recv_msg)},
+        {"lastLatencyTest", to_json(last_latency_test)},
         {"buildStarted", to_json(buildStarted)},
         {"expired", Expired(now)},
         {"expiresSoon", ExpiresSoon(now)},
         {"expiresAt", to_json(ExpireTime())},
         {"ready", IsReady()},
-        {"txRateCurrent", m_LastTXRate},
-        {"rxRateCurrent", m_LastRXRate},
+        // {"txRateCurrent", m_LastTXRate},
+        // {"rxRateCurrent", m_LastRXRate},
         {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
     std::vector<util::StatusObject> hopsObj;
@@ -309,22 +309,22 @@ namespace llarp::path
 
     switch (_status)
     {
-      case BUILDING:
+      case PathStatus::BUILDING:
         obj["status"] = "building";
         break;
-      case ESTABLISHED:
+      case PathStatus::ESTABLISHED:
         obj["status"] = "established";
         break;
-      case TIMEOUT:
+      case PathStatus::TIMEOUT:
         obj["status"] = "timeout";
         break;
-      case EXPIRED:
+      case PathStatus::EXPIRED:
         obj["status"] = "expired";
         break;
-      case FAILED:
+      case PathStatus::FAILED:
         obj["status"] = "failed";
         break;
-      case IGNORE:
+      case PathStatus::IGNORE:
         obj["status"] = "ignored";
         break;
       default:
@@ -337,14 +337,14 @@ namespace llarp::path
   void
   Path::Rebuild()
   {
-    if (auto parent = m_PathSet.lock())
+    if (auto parent = path_set.lock())
     {
       std::vector<RemoteRC> new_hops;
 
       for (const auto& hop : hops)
         new_hops.emplace_back(hop.rc);
 
-      LogInfo(name(), " rebuilding on ", ShortName());
+      LogInfo(name(), " rebuilding on ", short_name());
       parent->Build(new_hops);
     }
   }
@@ -379,13 +379,13 @@ namespace llarp::path
     if (Expired(now))
       return;
 
-    m_LastRXRate = m_RXRate;
-    m_LastTXRate = m_TXRate;
+    // m_LastRXRate = m_RXRate;
+    // m_LastTXRate = m_TXRate;
 
-    m_RXRate = 0;
-    m_TXRate = 0;
+    // m_RXRate = 0;
+    // m_TXRate = 0;
 
-    if (_status == BUILDING)
+    if (_status == PathStatus::BUILDING)
     {
       if (buildStarted == 0s)
         return;
@@ -396,37 +396,37 @@ namespace llarp::path
         {
           LogWarn(name(), " waited for ", ToString(dlt), " and no path was built");
           r->router_profiling().MarkPathFail(this);
-          EnterState(EXPIRED, now);
+          EnterState(PathStatus::EXPIRED, now);
           return;
         }
       }
     }
     // check to see if this path is dead
-    if (_status == ESTABLISHED)
+    if (_status == PathStatus::ESTABLISHED)
     {
-      auto dlt = now - m_LastLatencyTestTime;
-      if (dlt > path::LATENCY_INTERVAL && m_LastLatencyTestID == 0)
+      auto dlt = now - last_latency_test;
+      if (dlt > path::LATENCY_INTERVAL && last_latency_test_id == 0)
       {
         SendLatencyMessage(r);
         // latency test FEC
         r->loop()->call_later(2s, [self = shared_from_this(), r]() {
-          if (self->m_LastLatencyTestID)
+          if (self->last_latency_test_id)
             self->SendLatencyMessage(r);
         });
         return;
       }
-      dlt = now - m_LastRecvMessage;
+      dlt = now - last_recv_msg;
       if (dlt >= path::ALIVE_TIMEOUT)
       {
         LogWarn(name(), " waited for ", ToString(dlt), " and path looks dead");
         r->router_profiling().MarkPathFail(this);
-        EnterState(TIMEOUT, now);
+        EnterState(PathStatus::TIMEOUT, now);
       }
     }
-    if (_status == IGNORE and now - m_LastRecvMessage >= path::ALIVE_TIMEOUT)
+    if (_status == PathStatus::IGNORE and now - last_recv_msg >= path::ALIVE_TIMEOUT)
     {
       // clean up this path as we dont use it anymore
-      EnterState(EXPIRED, now);
+      EnterState(PathStatus::EXPIRED, now);
     }
   }
 
@@ -436,15 +436,15 @@ namespace llarp::path
   bool
   Path::Expired(llarp_time_t now) const
   {
-    if (_status == FAILED)
+    if (_status == PathStatus::FAILED)
       return true;
-    if (_status == BUILDING)
+    if (_status == PathStatus::BUILDING)
       return false;
-    if (_status == TIMEOUT)
+    if (_status == PathStatus::TIMEOUT)
     {
-      return now >= m_LastRecvMessage + PathReanimationTimeout;
+      return now >= last_recv_msg + PathReanimationTimeout;
     }
-    if (_status == ESTABLISHED or _status == IGNORE)
+    if (_status == PathStatus::ESTABLISHED or _status == PathStatus::IGNORE)
     {
       return now >= ExpireTime();
     }

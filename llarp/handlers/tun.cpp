@@ -505,7 +505,9 @@ namespace llarp::handlers
       return EnsurePathToSNode(
           snode,
           [this, snode, msg, reply, isV6](
-              const RouterID&, exit::BaseSession_ptr s, [[maybe_unused]] service::ConvoTag tag) {
+              const RouterID&,
+              std::shared_ptr<exit::BaseSession> s,
+              [[maybe_unused]] service::ConvoTag tag) {
             SendDNSReply(snode, s, msg, reply, isV6);
           });
     };

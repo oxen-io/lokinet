@@ -10,11 +10,14 @@
 
 namespace llarp::path
 {
+  // maximum number of paths a path-set can maintain
+  inline constexpr size_t MAX_PATHS{32};
+
   /// limiter for path builds
   /// prevents overload and such
   class BuildLimiter
   {
-    util::DecayingHashSet<RouterID> m_EdgeLimiter;
+    util::DecayingHashSet<RouterID> _edge_limiter;
 
    public:
     /// attempt a build
@@ -31,14 +34,17 @@ namespace llarp::path
     Limited(const RouterID& router) const;
   };
 
-  struct Builder : public PathSet
+  struct PathBuilder : public PathSet
   {
    private:
-    llarp_time_t m_LastWarn = 0s;
+    llarp_time_t last_warn_time = 0s;
+    // size_t _num_paths_desired;
 
    protected:
     /// flag for PathSet::Stop()
     std::atomic<bool> _run;
+
+    BuildStats _build_stats;
 
     virtual bool
     UrgentBuild(llarp_time_t now) const;
@@ -59,14 +65,14 @@ namespace llarp::path
 
    public:
     Router* const router;
-    size_t numHops;
-    llarp_time_t lastBuild = 0s;
-    llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+    size_t num_hops;
+    llarp_time_t _last_build = 0s;
+    llarp_time_t build_interval_limit = MIN_PATH_BUILD_INTERVAL;
 
     /// construct
-    Builder(Router* p_router, size_t numDesiredPaths, size_t numHops);
+    PathBuilder(Router* p_router, size_t numDesiredPaths, size_t numHops);
 
-    virtual ~Builder() = default;
+    virtual ~PathBuilder() = default;
 
     util::StatusObject
     ExtractStatus() const;
@@ -91,7 +97,7 @@ namespace llarp::path
     BuildStats
     CurrentBuildStats() const
     {
-      return m_BuildStats;
+      return build_stats;
     }
 
     bool
@@ -132,15 +138,12 @@ namespace llarp::path
     ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
 
     void
-    HandlePathBuilt(Path_ptr p) override;
+    HandlePathBuilt(std::shared_ptr<Path> p) override;
 
     void
-    HandlePathBuildTimeout(Path_ptr p) override;
+    HandlePathBuildTimeout(std::shared_ptr<Path> p) override;
 
     void
-    HandlePathBuildFailedAt(Path_ptr p, RouterID hop) override;
+    HandlePathBuildFailedAt(std::shared_ptr<Path> p, RouterID hop) override;
   };
-
-  using Builder_ptr = std::shared_ptr<Builder>;
-
 }  // namespace llarp::path

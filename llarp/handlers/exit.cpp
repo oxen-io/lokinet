@@ -765,8 +765,9 @@ namespace llarp::handlers
     if (wantInternet && !permit_exit)
       return false;
     // TODO: is this getting a path or a transit hop or...somehow possibly either?
-    // path::HopHandler_ptr handler = router->path_context().GetByUpstream(router->pubkey(), path);
-    path::HopHandler_ptr handler{};
+    // std::shared_ptr<path::AbstractHopHandler> handler =
+    // router->path_context().GetByUpstream(router->pubkey(), path);
+    std::shared_ptr<path::AbstractHopHandler> handler{};
     if (handler == nullptr)
       return false;
     auto ip = GetIPForIdent(pk);

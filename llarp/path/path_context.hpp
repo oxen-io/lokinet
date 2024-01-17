@@ -79,7 +79,7 @@ namespace llarp::path
     void
     put_transit_hop(std::shared_ptr<TransitHop> hop);
 
-    Path_ptr
+    std::shared_ptr<Path>
     get_path(const PathID_t& path_id);
 
     bool
@@ -91,7 +91,7 @@ namespace llarp::path
     std::shared_ptr<TransitHop>
     GetTransitHop(const RouterID&, const PathID_t&);
 
-    PathSet_ptr
+    std::shared_ptr<PathSet>
     GetLocalPathSet(const PathID_t& id);
 
     /// get a set of all paths that we own who's endpoint is r
@@ -102,10 +102,10 @@ namespace llarp::path
     HopIsUs(const RouterID& k) const;
 
     void
-    AddOwnPath(PathSet_ptr set, Path_ptr p);
+    AddOwnPath(std::shared_ptr<PathSet> set, std::shared_ptr<Path> p);
 
     void
-    RemovePathSet(PathSet_ptr set);
+    RemovePathSet(std::shared_ptr<PathSet> set);
 
     const EventLoop_ptr&
     loop();
@@ -134,7 +134,7 @@ namespace llarp::path
     Router* _router;
 
     std::unordered_map<TransitHopID, std::shared_ptr<TransitHop>> transit_hops;
-    std::unordered_map<PathID_t, Path_ptr> own_paths;
+    std::unordered_map<PathID_t, std::shared_ptr<Path>> own_paths;
     bool m_AllowTransit;
     util::DecayingHashSet<IpAddress> path_limits;
   };

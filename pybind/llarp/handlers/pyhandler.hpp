@@ -49,7 +49,7 @@ namespace llarp
         return true;
       }
 
-      path::PathSet_ptr
+      std::shared_ptr<path::PathSet>
       GetSelf() override
       {
         return shared_from_this();

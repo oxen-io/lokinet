@@ -8,7 +8,7 @@ namespace llarp::exit
 {
   Endpoint::Endpoint(
       const llarp::PubKey& remoteIdent,
-      const llarp::path::HopHandler_ptr& beginPath,
+      const std::shared_ptr<llarp::path::AbstractHopHandler>& beginPath,
       bool rewriteIP,
       huint128_t ip,
       llarp::handlers::ExitEndpoint* parent)

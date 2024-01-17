@@ -31,33 +31,15 @@ namespace llarp
     struct TransitHopInfo;
     struct PathHopConfig;
 
-    struct Ptr_hash;
-
     struct Endpoint_Hash;
     struct endpoint_comparator;
-
-    /// unordered set of paths with unique endpoints
-    using UniqueEndpointSet_t = std::unordered_set<Path_ptr, Endpoint_Hash, endpoint_comparator>;
 
     /// A path we made
     struct Path final : public AbstractHopHandler, public std::enable_shared_from_this<Path>
     {
-      using BuildResultHookFunc = std::function<void(Path_ptr)>;
-      using CheckForDeadFunc = std::function<bool(Path_ptr, llarp_time_t)>;
-      using DropHandlerFunc = std::function<bool(Path_ptr, const PathID_t&, uint64_t)>;
-      using HopList = std::vector<PathHopConfig>;
-      // using DataHandlerFunc = std::function<bool(Path_ptr, const
-      // service::ProtocolFrameMessage&)>;
-      using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
-      using ExitClosedFunc = std::function<bool(Path_ptr)>;
-      using ExitTrafficHandlerFunc =
-          std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t, service::ProtocolType)>;
-      /// (path, backoff) backoff is 0 on success
-      using ObtainedExitHandler = std::function<bool(Path_ptr, llarp_time_t)>;
+      std::vector<PathHopConfig> hops;
 
-      HopList hops;
-
-      std::weak_ptr<PathSet> m_PathSet;
+      std::weak_ptr<PathSet> path_set;
 
       service::Introduction intro;
 
@@ -88,7 +70,7 @@ namespace llarp
       void
       MarkActive(llarp_time_t now)
       {
-        m_LastRecvMessage = std::max(now, m_LastRecvMessage);
+        last_recv_msg = std::max(now, last_recv_msg);
       }
 
       /// return true if ALL of the specified roles are supported
@@ -119,7 +101,7 @@ namespace llarp
       }
 
       const std::string&
-      ShortName() const;
+      short_name() const;
 
       std::string
       HopsString() const;
@@ -127,7 +109,7 @@ namespace llarp
       llarp_time_t
       LastRemoteActivityAt() const override
       {
-        return m_LastRecvMessage;
+        return last_recv_msg;
       }
 
       void
@@ -242,20 +224,12 @@ namespace llarp
       InformExitResult(llarp_time_t b);
 
       Router& router;
-      llarp_time_t m_LastRecvMessage = 0s;
-      llarp_time_t m_LastLatencyTestTime = 0s;
-      uint64_t m_LastLatencyTestID = 0;
-      uint64_t m_UpdateExitTX = 0;
-      uint64_t m_CloseExitTX = 0;
-      uint64_t m_ExitObtainTX = 0;
+      llarp_time_t last_recv_msg = 0s;
+      llarp_time_t last_latency_test = 0s;
+      uint64_t last_latency_test_id = 0;
       PathStatus _status;
       PathRole _role;
-      uint64_t m_LastRXRate = 0;
-      uint64_t m_RXRate = 0;
-      uint64_t m_LastTXRate = 0;
-      uint64_t m_TXRate = 0;
-      std::deque<llarp_time_t> m_LatencySamples;
-      const std::string m_shortName;
+      const std::string _short_name;
     };
 
     struct Hash
@@ -275,23 +249,11 @@ namespace llarp
       }
     };
 
-    /// hash for std::shared_ptr<Path>
-    struct Ptr_Hash
-    {
-      size_t
-      operator()(const Path_ptr& p) const
-      {
-        if (p == nullptr)
-          return 0;
-        return Hash{}(*p);
-      }
-    };
-
     /// hash for std::shared_ptr<Path> by path endpoint
     struct Endpoint_Hash
     {
       size_t
-      operator()(const Path_ptr& p) const
+      operator()(const std::shared_ptr<Path>& p) const
       {
         if (p == nullptr)
           return 0;
@@ -303,7 +265,7 @@ namespace llarp
     struct endpoint_comparator
     {
       bool
-      operator()(const Path_ptr& left, const Path_ptr& right) const
+      operator()(const std::shared_ptr<Path>& left, const std::shared_ptr<Path>& right) const
       {
         return left && right && left->Endpoint() == left->Endpoint();
       }

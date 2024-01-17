@@ -31,7 +31,7 @@ namespace llarp::service
   static auto logcat = log::Cat("endpoint");
 
   Endpoint::Endpoint(Router* r, Context* parent)
-      : path::Builder{r, 3, path::DEFAULT_LEN}
+      : path::PathBuilder{r, 3, path::DEFAULT_LEN}
       , context{parent}
       , _inbound_queue{512}
       , _send_queue{512}
@@ -51,10 +51,10 @@ namespace llarp::service
   Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
   {
     if (conf.paths.has_value())
-      numDesiredPaths = *conf.paths;
+      num_paths_desired = *conf.paths;
 
     if (conf.hops.has_value())
-      numHops = *conf.hops;
+      num_hops = *conf.hops;
 
     conf.exit_map.ForEachEntry(
         [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
@@ -257,7 +257,7 @@ namespace llarp::service
   util::StatusObject
   Endpoint::ExtractStatus() const
   {
-    auto obj = path::Builder::ExtractStatus();
+    auto obj = path::PathBuilder::ExtractStatus();
     obj["exitMap"] = _exit_map.ExtractStatus();
     obj["identity"] = _identity.pub.Addr().ToString();
     obj["networkReady"] = ReadyForNetwork();
@@ -276,7 +276,7 @@ namespace llarp::service
   Endpoint::Tick(llarp_time_t)
   {
     const auto now = llarp::time_now_ms();
-    path::Builder::Tick(now);
+    path::PathBuilder::Tick(now);
     // publish descriptors
     if (ShouldPublishDescriptors(now))
     {
@@ -299,7 +299,7 @@ namespace llarp::service
     // expire convotags
     EndpointUtil::ExpireConvoSessions(now, Sessions());
 
-    if (NumInStatus(path::ESTABLISHED) > 1)
+    if (NumInStatus(path::PathStatus::ESTABLISHED) > 1)
     {
       for (const auto& item : _startup_ons_mappings)
       {
@@ -337,7 +337,7 @@ namespace llarp::service
     log::debug(logcat, "Endpoint stopping snode sessions.");
     EndpointUtil::StopSnodeSessions(_state->snode_sessions);
     log::debug(logcat, "Endpoint stopping its path builder.");
-    return path::Builder::Stop();
+    return path::PathBuilder::Stop();
   }
 
   uint64_t
@@ -603,7 +603,7 @@ namespace llarp::service
     intro_set().intros.clear();
     for (auto& intro : intros)
     {
-      if (intro_set().intros.size() < numDesiredPaths)
+      if (intro_set().intros.size() < num_paths_desired)
         intro_set().intros.emplace_back(std::move(intro));
     }
     if (intro_set().intros.empty())
@@ -667,7 +667,7 @@ namespace llarp::service
   void
   Endpoint::ResetInternalState()
   {
-    path::Builder::ResetInternalState();
+    path::PathBuilder::ResetInternalState();
     static auto resetState = [](auto& container, auto getter) {
       std::for_each(container.begin(), container.end(), [getter](auto& item) {
         getter(item)->ResetInternalState();
@@ -712,7 +712,7 @@ namespace llarp::service
   std::optional<std::vector<RemoteRC>>
   Endpoint::GetHopsForBuildWithEndpoint(RouterID endpoint)
   {
-    return path::Builder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());
+    return path::PathBuilder::GetHopsAlignedToForBuild(endpoint, SnodeBlacklist());
   }
 
   constexpr auto MaxOutboundContextPerRemote = 1;
@@ -754,7 +754,8 @@ namespace llarp::service
   auto
   Endpoint::GetUniqueEndpointsForLookup() const
   {
-    path::UniqueEndpointSet_t paths;
+    std::unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator>
+        paths;
 
     ForEachPath([&paths](auto path) {
       if (path and path->IsReady())
@@ -813,7 +814,7 @@ namespace llarp::service
     // }
 
     // pick up to max_unique_lns_endpoints random paths to do lookups from
-    std::vector<path::Path_ptr> chosenpaths;
+    std::vector<std::shared_ptr<path::Path>> chosenpaths;
     chosenpaths.insert(chosenpaths.begin(), paths.begin(), paths.end());
     std::shuffle(chosenpaths.begin(), chosenpaths.end(), llarp::csrng);
     chosenpaths.resize(std::min(paths.size(), MAX_ONS_LOOKUP_ENDPOINTS));
@@ -849,16 +850,16 @@ namespace llarp::service
   }
 
   void
-  Endpoint::HandlePathBuilt(path::Path_ptr p)
+  Endpoint::HandlePathBuilt(std::shared_ptr<path::Path> p)
   {
     // p->SetDataHandler(util::memFn(&Endpoint::HandleHiddenServiceFrame, this));
     // p->SetDropHandler(util::memFn(&Endpoint::HandleDataDrop, this));
     // p->SetDeadChecker(util::memFn(&Endpoint::CheckPathIsDead, this));
-    path::Builder::HandlePathBuilt(p);
+    path::PathBuilder::HandlePathBuilt(p);
   }
 
   bool
-  Endpoint::HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t seq)
+  Endpoint::HandleDataDrop(std::shared_ptr<path::Path> p, const PathID_t& dst, uint64_t seq)
   {
     LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
     return true;
@@ -889,7 +890,7 @@ namespace llarp::service
 
   bool
   Endpoint::HandleDataMessage(
-      path::Path_ptr p, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
+      std::shared_ptr<path::Path> p, const PathID_t from, std::shared_ptr<ProtocolMessage> msg)
   {
     PutSenderFor(msg->tag, msg->sender, true);
     Introduction intro = msg->introReply;
@@ -990,7 +991,11 @@ namespace llarp::service
 
   void
   Endpoint::SendAuthResult(
-      path::Path_ptr path, PathID_t /* replyPath */, ConvoTag tag, std::string result, bool success)
+      std::shared_ptr<path::Path> path,
+      PathID_t /* replyPath */,
+      ConvoTag tag,
+      std::string result,
+      bool success)
   {
     // not applicable because we are not an exit or don't have an endpoint auth policy
     if ((not _state->is_exit_enabled) or _auth_policy == nullptr)
@@ -1054,7 +1059,7 @@ namespace llarp::service
   }
 
   void
-  Endpoint::ResetConvoTag(ConvoTag tag, path::Path_ptr p, PathID_t /* from */)
+  Endpoint::ResetConvoTag(ConvoTag tag, std::shared_ptr<path::Path> p, PathID_t /* from */)
   {
     // send reset convo tag message
     ProtocolFrameMessage f{};
@@ -1072,7 +1077,8 @@ namespace llarp::service
   }
 
   bool
-  Endpoint::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrameMessage& frame)
+  Endpoint::HandleHiddenServiceFrame(
+      std::shared_ptr<path::Path> p, const ProtocolFrameMessage& frame)
   {
     if (frame.flag)
     {
@@ -1096,16 +1102,16 @@ namespace llarp::service
   }
 
   void
-  Endpoint::HandlePathDied(path::Path_ptr p)
+  Endpoint::HandlePathDied(std::shared_ptr<path::Path> p)
   {
     router()->router_profiling().MarkPathTimeout(p.get());
     ManualRebuild(1);
-    path::Builder::HandlePathDied(p);
+    path::PathBuilder::HandlePathDied(p);
     regen_and_publish_introset();
   }
 
   bool
-  Endpoint::CheckPathIsDead(path::Path_ptr, llarp_time_t dlt)
+  Endpoint::CheckPathIsDead(std::shared_ptr<path::Path>, llarp_time_t dlt)
   {
     return dlt > path::ALIVE_TIMEOUT;
   }
@@ -1198,7 +1204,7 @@ namespace llarp::service
   bool
   Endpoint::EnsurePathToSNode(
       const RouterID snode,
-      std::function<void(const RouterID, exit::BaseSession_ptr, ConvoTag)> hook)
+      std::function<void(const RouterID, std::shared_ptr<exit::BaseSession>, ConvoTag)> hook)
   {
     auto& nodeSessions = _state->snode_sessions;
 
@@ -1226,7 +1232,7 @@ namespace llarp::service
           },
           router(),
           1,
-          numHops,
+          num_hops,
           false,
           this);
       _state->snode_sessions[snode] = session;
@@ -1538,8 +1544,8 @@ namespace llarp::service
   {
     if (BuildCooldownHit(now))
       return false;
-    const auto requiredPaths = std::max(numDesiredPaths, path::MIN_INTRO_PATHS);
-    if (NumInStatus(path::BUILDING) >= requiredPaths)
+    const auto requiredPaths = std::max(num_paths_desired, path::MIN_INTRO_PATHS);
+    if (NumInStatus(path::PathStatus::BUILDING) >= requiredPaths)
       return false;
     return NumPathsExistingAt(now + (path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
         < requiredPaths;
