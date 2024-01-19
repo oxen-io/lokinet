@@ -9,8 +9,8 @@
 #include <llarp/service/convotag.hpp>
 #include <llarp/service/protocol_type.hpp>
 
-#include <oxenc/variant.h>
 #include <oxen/quic.hpp>
+#include <oxenc/variant.h>
 
 #include <functional>
 #include <memory>

@@ -2,6 +2,7 @@
 
 #include "crypto/types.hpp"
 #include "dht/kademlia.hpp"
+#include "link/link_manager.hpp"
 #include "messages/fetch.hpp"
 #include "router_contact.hpp"
 #include "util/time.hpp"

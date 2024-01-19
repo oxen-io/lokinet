@@ -5,6 +5,7 @@
 #include <llarp/constants/version.hpp>
 #include <llarp/crypto/crypto.hpp>
 #include <llarp/ev/ev.hpp>
+#include <llarp/link/link_manager.hpp>
 #include <llarp/router/router.hpp>
 #include <llarp/util/logging.hpp>
 #include <llarp/util/service_manager.hpp>

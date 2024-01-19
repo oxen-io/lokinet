@@ -5,6 +5,7 @@
 #include "endpoint_util.hpp"
 #include "protocol_type.hpp"
 
+#include <llarp/messages/common.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
 
@@ -167,7 +168,7 @@ namespace llarp::service
     if (updatingIntroSet or marked_bad or now < last_introset_update + IntrosetUpdateInterval)
       return;
 
-    log::info(link_cat, "{} updating introset", Name());
+    log::info(logcat, "{} updating introset", Name());
     last_introset_update = now;
 
     const auto paths = GetManyPathsWithUniqueEndpoints(&ep, 2, location);
@@ -178,7 +179,7 @@ namespace llarp::service
       path->find_intro(location, false, relayOrder, [this](std::string resp) mutable {
         if (marked_bad)
         {
-          log::info(link_cat, "Outbound context has been marked bad (whatever that means)");
+          log::info(logcat, "Outbound context has been marked bad (whatever that means)");
           return;
         }
 
@@ -192,14 +193,14 @@ namespace llarp::service
           auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
           if (status != "OK"sv)
           {
-            log::info(link_cat, "Error in find intro set response: {}", status);
+            log::info(logcat, "Error in find intro set response: {}", status);
             return;
           }
           introset = btdc.require<std::string>("INTROSET");
         }
         catch (...)
         {
-          log::warning(link_cat, "Failed to parse find name response!");
+          log::warning(logcat, "Failed to parse find name response!");
           throw;
         }
 
@@ -208,12 +209,12 @@ namespace llarp::service
 
         if (intro.time_signed == 0s)
         {
-          log::warning(link_cat, "{} recieved introset with zero timestamp");
+          log::warning(logcat, "{} recieved introset with zero timestamp");
           return;
         }
         if (current_intro.time_signed > intro.time_signed)
         {
-          log::info(link_cat, "{} received outdated introset; dropping", Name());
+          log::info(logcat, "{} received outdated introset; dropping", Name());
           return;
         }
 
@@ -223,7 +224,7 @@ namespace llarp::service
 
         if (intro.IsExpired(llarp::time_now_ms()))
         {
-          log::warning(link_cat, "{} received expired introset", Name());
+          log::warning(logcat, "{} received expired introset", Name());
           return;
         }
 
@@ -605,7 +606,7 @@ namespace llarp::service
 
     if (generated_convo_intro)
     {
-      log::warning(link_cat, "{} has generated an unsent initial handshake; dropping packet");
+      log::warning(logcat, "{} has generated an unsent initial handshake; dropping packet");
       return;
     }
 

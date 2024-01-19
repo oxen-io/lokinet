@@ -444,6 +444,7 @@ namespace
 
     // TESTNET:
     oxen::log::set_level("quic", oxen::log::Level::critical);
+    oxen::log::set_level("quicverbose", oxen::log::Level::debug);
 
     if (configFile.has_value())
     {

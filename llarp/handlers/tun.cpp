@@ -269,12 +269,12 @@ namespace llarp::handlers
     if (conf.is_reachable)
     {
       _publish_introset = true;
-      log::info(link_cat, "TunEndpoint setting to be reachable by default");
+      log::info(logcat, "TunEndpoint setting to be reachable by default");
     }
     else
     {
       _publish_introset = false;
-      log::info(link_cat, "TunEndpoint setting to be not reachable by default");
+      log::info(logcat, "TunEndpoint setting to be not reachable by default");
     }
 
     if (conf.auth_type == service::AuthType::FILE)

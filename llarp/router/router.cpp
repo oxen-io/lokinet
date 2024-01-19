@@ -7,6 +7,7 @@
 #include <llarp/dht/node.hpp>
 #include <llarp/ev/ev.hpp>
 #include <llarp/link/contacts.hpp>
+#include <llarp/link/link_manager.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/net/net.hpp>
 #include <llarp/nodedb.hpp>
@@ -381,6 +382,7 @@ namespace llarp
 
     // TESTNET:
     oxen::log::set_level("quic", oxen::log::Level::critical);
+    oxen::log::set_level("quicverbose", oxen::log::Level::debug);
 
     log::debug(logcat, "Configuring router");
 
@@ -1076,7 +1078,7 @@ namespace llarp
             continue;
           }
 
-          log::debug(logcat, "Establishing session to {} for service node testing", router);
+          log::critical(logcat, "Establishing session to {} for service node testing", router);
 
           // try to make a session to this random router
           // this will do a dht lookup if needed

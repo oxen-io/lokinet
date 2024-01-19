@@ -100,9 +100,9 @@ namespace llarp::exit
     // TODO: add callback here
     if (p->obtain_exit(
             exit_key, std::is_same_v<decltype(p), ExitSession> ? 1 : 0, p->TXID().bt_encode()))
-      log::info(link_cat, "Asking {} for exit", exit_router);
+      log::info(logcat, "Asking {} for exit", exit_router);
     else
-      log::warning(link_cat, "Failed to send exit request");
+      log::warning(logcat, "Failed to send exit request");
   }
 
   void
@@ -150,7 +150,7 @@ namespace llarp::exit
       const static auto roles = llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
       if (p->SupportsAnyRoles(roles))
       {
-        log::info(link_cat, "{} closing exit path", p->name());
+        log::info(logcat, "{} closing exit path", p->name());
         if (p->close_exit(exit_key, p->TXID().bt_encode()))
           p->ClearRoles(roles);
         else
@@ -173,9 +173,9 @@ namespace llarp::exit
         // TODO: add callback here
 
         if (p->close_exit(exit_key, p->TXID().bt_encode()))
-          log::info(link_cat, "");
+          log::info(logcat, "");
         else
-          log::warning(link_cat, "{} failed to send exit close message", p->name());
+          log::warning(logcat, "{} failed to send exit close message", p->name());
       }
     };
     ForEachPath(sendExitClose);

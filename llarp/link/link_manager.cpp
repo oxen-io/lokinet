@@ -60,13 +60,15 @@ namespace llarp
     bool
     Endpoint::have_client_conn(const RouterID& remote) const
     {
-      return client_conns.count(remote);
+      return link_manager.router().loop()->call_get(
+          [this, remote]() { return client_conns.count(remote); });
     }
 
     bool
     Endpoint::have_service_conn(const RouterID& remote) const
     {
-      return service_conns.count(remote);
+      return link_manager.router().loop()->call_get(
+          [this, remote]() { return service_conns.count(remote); });
     }
 
     std::pair<size_t, size_t>
@@ -156,7 +158,7 @@ namespace llarp
 
   void
   LinkManager::register_commands(
-      std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id, bool)
+      const std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& router_id, bool)
   {
     log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -251,44 +253,54 @@ namespace llarp
     // callback set. It will reject any attempted inbound connection to a lokinet client prior to
     // handshake completion
     tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view& alpn) {
-      RouterID other{key.data()};
-      auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
-      auto is_snode = is_service_node();
+      return _router.loop()->call_get([&]() {
+        RouterID other{key.data()};
+        auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
+        auto is_snode = is_service_node();
 
-      if (is_snode)
-      {
-        if (alpn == alpns::C_ALPNS)
+        if (is_snode)
         {
-          log::critical(logcat, "{} node accepting client connection (remote ID:{})!", us, other);
-          ep.client_conns.emplace(other, nullptr);
-          return true;
+          if (alpn == alpns::C_ALPNS)
+          {
+            log::critical(logcat, "{} node accepting client connection (remote ID:{})!", us, other);
+            ep.client_conns.emplace(other, nullptr);
+            return true;
+          }
+          if (alpn == alpns::SN_ALPNS)
+          {
+            // verify as service node!
+            bool result = node_db->registered_routers().count(other);
+
+            log::critical(
+                logcat,
+                "{} node was {} to confirm remote (RID:{}) is registered; {} connection!",
+                us,
+                result ? "able" : "unable",
+                other,
+                result ? "allowing" : "rejecting");
+
+            if (result)
+            {
+              auto [_, b] = ep.service_conns.try_emplace(other, nullptr);
+
+              if (not b)
+                log::critical(
+                    logcat, "{} node rejecting inbound -- already have connection to remote!", us);
+
+              return result and b;
+            }
+
+            return result;
+          }
+
+          log::critical(logcat, "{} node received unknown ALPN; rejecting connection!", us);
+          return false;
         }
-        if (alpn == alpns::SN_ALPNS)
-        {
-          // verify as service node!
-          bool result = node_db->registered_routers().count(other);
 
-          log::critical(
-              logcat,
-              "{} node was {} to confirm remote (RID:{}) is registered; {} connection!",
-              us,
-              result ? "able" : "unable",
-              other,
-              result ? "allowing" : "rejecting");
-
-          if (result)
-            ep.service_conns.emplace(other, nullptr);
-
-          return result;
-        }
-
-        log::critical(logcat, "{} node received unknown ALPN; rejecting connection!", us);
-        return false;
-      }
-
-      // TESTNET: change this to an error message later; just because someone tries to erroneously
-      // connect to a local lokinet client doesn't mean we should kill the program?
-      throw std::runtime_error{"Clients should not be validating inbound connections!"};
+        // TESTNET: change this to an error message later; just because someone tries to erroneously
+        // connect to a local lokinet client doesn't mean we should kill the program?
+        throw std::runtime_error{"Clients should not be validating inbound connections!"};
+      });
     });
     if (_router.is_service_node())
     {
@@ -301,12 +313,12 @@ namespace llarp
   LinkManager::make_control(oxen::quic::connection_interface& ci, const RouterID& rid)
   {
     auto control_stream = ci.queue_incoming_stream<oxen::quic::BTRequestStream>(
-        [this, rid = rid](oxen::quic::Stream&, uint64_t error_code) {
+        [/* this,  */ rid = rid](oxen::quic::Stream&, uint64_t error_code) {
           log::warning(
               logcat,
               "BTRequestStream closed unexpectedly (ec:{}); closing inbound connection...",
               error_code);
-          ep.close_connection(rid);
+          // ep.close_connection(rid);
         });
 
     log::critical(logcat, "Queued BTStream to be opened (ID:{})", control_stream->stream_id());
@@ -325,7 +337,10 @@ namespace llarp
     if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
     {
       log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
-      it->second = std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid));
+
+      if (!it->second)
+        it->second =
+            std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid));
     }
     else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
     {
@@ -357,7 +372,8 @@ namespace llarp
     {
       log::critical(
           logcat,
-          "ERROR: connection established to RID:{} that was not logged in key verifrication!",
+          "ERROR: connection established to RID:{} that was not logged in connection "
+          "establishment!",
           rid);
     }
   }
@@ -384,7 +400,7 @@ namespace llarp
       }
       else
       {
-        log::critical(logcat, "Outbound connection from {} (remote:{})", rid, remote);
+        log::critical(logcat, "Outbound connection to {} (remote:{})", rid, remote);
         on_outbound_conn(conn_interface);
       }
     });

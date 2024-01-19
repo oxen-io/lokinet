@@ -11,7 +11,7 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
-#include <llarp/link/link_manager.hpp>
+// #include <llarp/link/link_manager.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
@@ -37,8 +37,15 @@
 #include <unordered_map>
 #include <vector>
 
+namespace llarp::link
+{
+  struct Connection;
+}
+
 namespace llarp
 {
+  struct LinkManager;
+
   /// number of routers to publish to
   inline constexpr size_t INTROSET_RELAY_REDUNDANCY{2};
 

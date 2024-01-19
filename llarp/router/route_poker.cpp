@@ -2,6 +2,7 @@
 
 #include "router.hpp"
 
+#include <llarp/link/link_manager.hpp>
 #include <llarp/service/context.hpp>
 
 namespace llarp

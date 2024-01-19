@@ -11,6 +11,7 @@
 #include <llarp/dht/key.hpp>
 #include <llarp/link/contacts.hpp>
 #include <llarp/link/tunnel.hpp>
+#include <llarp/messages/common.hpp>
 #include <llarp/net/ip.hpp>
 #include <llarp/net/ip_range.hpp>
 #include <llarp/nodedb.hpp>
@@ -214,7 +215,7 @@ namespace llarp::service
           }
           catch (...)
           {
-            log::warning(link_cat, "Failed to parse find name response!");
+            log::warning(logcat, "Failed to parse find name response!");
             return resultHandler({});
           }
 
@@ -797,7 +798,7 @@ namespace llarp::service
     //   return;
     // }
 
-    log::info(link_cat, "{} looking up ONS name {}", Name(), name);
+    log::info(logcat, "{} looking up ONS name {}", Name(), name);
     auto paths = GetUniqueEndpointsForLookup();
 
     // // not enough paths
@@ -828,14 +829,14 @@ namespace llarp::service
         auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
         if (status != "OK"sv)
         {
-          log::info(link_cat, "Error on ONS lookup: {}", status);
+          log::info(logcat, "Error on ONS lookup: {}", status);
           func(std::string{status}, false);
         }
         name = btdc.require<std::string>("NAME");
       }
       catch (...)
       {
-        log::warning(link_cat, "Failed to parse find name response!");
+        log::warning(logcat, "Failed to parse find name response!");
         func("ERROR"s, false);
       }
 
@@ -844,7 +845,7 @@ namespace llarp::service
 
     for (const auto& path : chosenpaths)
     {
-      log::info(link_cat, "{} lookup {} from {}", Name(), name, path->Endpoint());
+      log::info(logcat, "{} lookup {} from {}", Name(), name, path->Endpoint());
       path->find_name(name, response_cb);
     }
   }
@@ -1329,14 +1330,14 @@ namespace llarp::service
           auto status = btdc.require<std::string_view>(messages::STATUS_KEY);
           if (status != "OK"sv)
           {
-            log::info(link_cat, "Error in find intro set response: {}", status);
+            log::info(logcat, "Error in find intro set response: {}", status);
             return;
           }
           introset = btdc.require<std::string>("INTROSET");
         }
         catch (...)
         {
-          log::warning(link_cat, "Failed to parse find name response!");
+          log::warning(logcat, "Failed to parse find name response!");
           throw;
         }
 
@@ -1369,11 +1370,11 @@ namespace llarp::service
   {
     if (tag.IsZero())
     {
-      log::warning(link_cat, "SendToOrQueue failed: convo tag is zero");
+      log::warning(logcat, "SendToOrQueue failed: convo tag is zero");
       return false;
     }
 
-    log::debug(link_cat, "{} sending {} bytes (Tag: {})", Name(), payload.size(), tag);
+    log::debug(logcat, "{} sending {} bytes (Tag: {})", Name(), payload.size(), tag);
 
     if (auto maybe = GetEndpointWithConvoTag(tag))
     {
@@ -1387,7 +1388,7 @@ namespace llarp::service
       }
     }
 
-    log::debug(link_cat, "SendToOrQueue failed: no endpoint for convo tag {}", tag);
+    log::debug(logcat, "SendToOrQueue failed: no endpoint for convo tag {}", tag);
     return false;
   }
 

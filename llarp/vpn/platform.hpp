@@ -5,8 +5,8 @@
 #include <llarp/net/ip_packet.hpp>
 #include <llarp/net/ip_range.hpp>
 
-#include <oxenc/variant.h>
 #include <oxen/quic.hpp>
+#include <oxenc/variant.h>
 
 #include <set>
 
