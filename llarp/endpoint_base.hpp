@@ -10,7 +10,7 @@
 #include <llarp/service/protocol_type.hpp>
 
 #include <oxenc/variant.h>
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 #include <functional>
 #include <memory>

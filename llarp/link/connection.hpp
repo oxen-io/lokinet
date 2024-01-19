@@ -3,7 +3,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
 
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 namespace llarp::link
 {

@@ -13,7 +13,7 @@
 
 #include <nlohmann/json.hpp>
 #include <oxenc/bt_producer.h>
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 #include <functional>
 #include <vector>

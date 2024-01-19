@@ -10,7 +10,7 @@
 #include <llarp/util/bits.hpp>
 #include <llarp/util/mem.hpp>
 
-#include <quic/address.hpp>
+#include <oxen/quic/address.hpp>
 
 #include <cstdlib>  // for itoa
 #include <functional>

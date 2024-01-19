@@ -2,7 +2,7 @@
 
 #include <llarp/net/net_int.hpp>
 
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 #include <memory>
 #include <optional>

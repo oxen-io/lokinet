@@ -12,7 +12,7 @@
 #include <llarp/util/logging.hpp>
 #include <llarp/util/priority_queue.hpp>
 
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 #include <atomic>
 #include <set>

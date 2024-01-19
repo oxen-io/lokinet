@@ -10,7 +10,7 @@
 #include <ifaddrs.h>
 #endif
 
-#include <quic/address.hpp>
+#include <oxen/quic/address.hpp>
 
 #include <list>
 

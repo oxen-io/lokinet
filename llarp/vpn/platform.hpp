@@ -6,7 +6,7 @@
 #include <llarp/net/ip_range.hpp>
 
 #include <oxenc/variant.h>
-#include <quic.hpp>
+#include <oxen/quic.hpp>
 
 #include <set>
 
