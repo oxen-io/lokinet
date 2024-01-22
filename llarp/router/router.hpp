@@ -11,7 +11,6 @@
 #include <llarp/ev/ev.hpp>
 #include <llarp/exit/context.hpp>
 #include <llarp/handlers/tun.hpp>
-// #include <llarp/link/link_manager.hpp>
 #include <llarp/path/path_context.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router_contact.hpp>
@@ -56,7 +55,7 @@ namespace llarp
       (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
   // TESTNET: these constants are shortened for testing purposes
-  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{10min};
+  inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{15min};
   inline constexpr std::chrono::milliseconds RC_UPDATE_INTERVAL{5min};
   inline constexpr std::chrono::milliseconds INITIAL_ATTEMPT_INTERVAL{30s};
   // as we advance towards full mesh, we try to connect to this number per tick

@@ -128,50 +128,6 @@ namespace llarp
     };
   }  // namespace link
 
-  enum class SessionResult
-  {
-    Establish,
-    Timeout,
-    RouterNotFound,
-    InvalidRouter,
-    NoLink,
-    EstablishFail
-  };
-
-  constexpr std::string_view
-  ToString(SessionResult sr)
-  {
-    return sr == llarp::SessionResult::Establish     ? "success"sv
-        : sr == llarp::SessionResult::Timeout        ? "timeout"sv
-        : sr == llarp::SessionResult::NoLink         ? "no link"sv
-        : sr == llarp::SessionResult::InvalidRouter  ? "invalid router"sv
-        : sr == llarp::SessionResult::RouterNotFound ? "not found"sv
-        : sr == llarp::SessionResult::EstablishFail  ? "establish failed"sv
-                                                     : "???"sv;
-  }
-  template <>
-  constexpr inline bool IsToStringFormattable<SessionResult> = true;
-
-  struct PendingMessage
-  {
-    std::string body;
-    std::optional<std::string> endpoint = std::nullopt;
-    std::function<void(oxen::quic::message)> func = nullptr;
-
-    RouterID rid;
-    bool is_control = false;
-
-    PendingMessage(std::string b) : body{std::move(b)}
-    {}
-
-    PendingMessage(
-        std::string b, std::string ep, std::function<void(oxen::quic::message)> f = nullptr)
-        : body{std::move(b)}, endpoint{std::move(ep)}, func{std::move(f)}, is_control{true}
-    {}
-  };
-
-  using MessageQueue = std::deque<PendingMessage>;
-
   struct Router;
 
   struct LinkManager
@@ -469,12 +425,7 @@ namespace llarp
           std::shared_ptr<oxen::quic::BTRequestStream> control_stream =
               conn_interface->template open_stream<oxen::quic::BTRequestStream>(
                   [rid = rid](oxen::quic::Stream&, uint64_t error_code) {
-                    log::warning(
-                        logcat,
-                        "BTRequestStream closed unexpectedly (ec:{}); closing outbound "
-                        "connection...",
-                        error_code);
-                    // close_connection(rid);
+                    log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                   });
 
           if (is_snode)
@@ -534,11 +485,7 @@ namespace llarp
 
           auto control_stream = conn_interface->template open_stream<oxen::quic::BTRequestStream>(
               [rid = rid](oxen::quic::Stream&, uint64_t error_code) {
-                log::warning(
-                    logcat,
-                    "BTRequestStream closed unexpectedly (ec:{}); closing outbound connection...",
-                    error_code);
-                // close_connection(rid);
+                log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
               });
 
           if (is_snode)

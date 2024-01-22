@@ -381,8 +381,7 @@ namespace llarp
       llarp::logRingBuffer = nullptr;
 
     // TESTNET:
-    oxen::log::set_level("quic", oxen::log::Level::critical);
-    oxen::log::set_level("quicverbose", oxen::log::Level::debug);
+    // oxen::log::set_level("quic", oxen::log::Level::critical);
 
     log::debug(logcat, "Configuring router");
 
@@ -789,9 +788,9 @@ namespace llarp
 
         last_rc_gossip = now_timepoint;
 
-        // TESTNET: 1 to 5 minutes before testnet gossip interval
+        // TESTNET: 0 to 3 minutes before testnet gossip interval
         auto delta =
-            std::chrono::seconds{std::uniform_int_distribution<size_t>{60, 300}(llarp::csrng)};
+            std::chrono::seconds{std::uniform_int_distribution<size_t>{0, 180}(llarp::csrng)};
 
         next_rc_gossip = now_timepoint + TESTNET_GOSSIP_INTERVAL - delta;
       }
