@@ -285,7 +285,10 @@ namespace llarp
                 auto defer_to_incoming = other < router().local_rid();
 
                 if (defer_to_incoming)
+                {
                   itr->second->conn->set_close_quietly();
+                  itr->second = nullptr;
+                }
 
                 log::critical(
                     logcat,
@@ -351,7 +354,7 @@ namespace llarp
     if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
     {
       log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
-
+ 
       it->second = std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid));
     }
     else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
@@ -464,9 +467,12 @@ namespace llarp
 
     if (auto conn = ep.get_conn(remote); conn)
     {
+      log::critical(logcat, "Dispatching {} request to remote:{}", endpoint, remote);
       conn->control_stream->command(std::move(endpoint), std::move(body), std::move(func));
       return true;
     }
+
+    log::critical(logcat, "Queueing message to ");
 
     _router.loop()->call([this,
                           remote,

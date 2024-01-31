@@ -26,8 +26,3 @@ namespace llarp::link
         bool is_relay = true);
   };
 }  // namespace llarp::link
-
-/*
-  TODO:
-    - make control_stream a weak pointer?
-*/

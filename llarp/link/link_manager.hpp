@@ -157,7 +157,7 @@ namespace llarp
 
     friend struct link::Endpoint;
 
-    std::atomic<bool> is_stopping;
+    std::atomic<bool> is_stopping{false};
 
     // sessions to persist -> timestamp to end persist at
     std::unordered_map<RouterID, llarp_time_t> persisting_conns;
