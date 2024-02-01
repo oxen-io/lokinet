@@ -822,7 +822,9 @@ namespace llarp
                 return false;
         }
 
-        return known_rids.count(remote) or _router_greylist.count(remote);
+
+        // TESTNET: make this check an updated registry
+        return known_rids.count(remote) or _registered_routers.count(remote);
     }
 
     bool NodeDB::is_first_hop_allowed(const RouterID& remote) const
