@@ -794,7 +794,7 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            log::info(link_cat, "Exception handling RC Fetch request: {}", e.what());
+            log::critical(link_cat, "Exception handling RC Fetch request (body:{}): {}", m.body(), e.what());
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }

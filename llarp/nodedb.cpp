@@ -691,10 +691,11 @@ namespace llarp
                 {
                     log::warning(
                         logcat,
-                        "BootstrapRC fetch request to {} failed (error {}/{})",
+                        "BootstrapRC fetch request to {} failed (error {}/{}): {}",
                         src,
                         bootstrap_attempts,
-                        MAX_BOOTSTRAP_FETCH_ATTEMPTS);
+                        MAX_BOOTSTRAP_FETCH_ATTEMPTS,
+                        m.body());
                     // fallback_to_bootstrap();
                     return;
                 }
