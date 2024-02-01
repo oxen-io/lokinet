@@ -695,7 +695,7 @@ namespace llarp
                         src,
                         bootstrap_attempts,
                         MAX_BOOTSTRAP_FETCH_ATTEMPTS);
-                    fallback_to_bootstrap();
+                    // fallback_to_bootstrap();
                     return;
                 }
 
@@ -725,7 +725,7 @@ namespace llarp
                         bootstrap_attempts,
                         MAX_BOOTSTRAP_FETCH_ATTEMPTS,
                         e.what());
-                    fallback_to_bootstrap();
+                    // fallback_to_bootstrap();
                     return;
                 }
 
