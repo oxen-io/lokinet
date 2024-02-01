@@ -356,28 +356,33 @@ namespace llarp
         assert(_is_service_node);
         RouterID rid{ci.remote_key()};
 
-        if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
-        {
-            log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
+        auto control = make_control(ci, rid);
 
-            it->second =
-                std::make_shared<link::Connection>(ci.shared_from_this(), make_control(ci, rid));
-        }
-        else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
-        {
-            log::critical(logcat, "Configuring inbound connection from client RID:{}", rid);
-            it->second = std::make_shared<link::Connection>(
-                ci.shared_from_this(), make_control(ci, rid), false);
-        }
-        else
-        {
-            log::critical(
-                logcat,
-                "ERROR: connection accepted from RID:{} that was not logged in key verification!",
-                rid);
-        }
+        _router.loop()->call(
+            [this, ci_ptr = ci.shared_from_this(), bstream = std::move(control), rid]() {
+                if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
+                {
+                    log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
 
-        log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
+                    it->second = std::make_shared<link::Connection>(ci_ptr, std::move(bstream));
+                }
+                else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
+                {
+                    log::critical(logcat, "Configuring inbound connection from client RID:{}", rid);
+                    it->second =
+                        std::make_shared<link::Connection>(ci_ptr, std::move(bstream), false);
+                }
+                else
+                {
+                    log::critical(
+                        logcat,
+                        "ERROR: connection accepted from RID:{} that was not logged in key "
+                        "verification!",
+                        rid);
+                }
+
+                log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
+            });
     }
 
     void LinkManager::on_outbound_conn(oxen::quic::connection_interface& ci)
@@ -401,28 +406,27 @@ namespace llarp
     // TODO: should we add routes here now that Router::SessionOpen is gone?
     void LinkManager::on_conn_open(oxen::quic::connection_interface& ci)
     {
-        _router.loop()->call([this, &conn_interface = ci, is_snode = _is_service_node]() {
-            const auto rid = RouterID{conn_interface.remote_key()};
-            const auto& remote = conn_interface.remote();
+        const auto rid = RouterID{ci.remote_key()};
 
-            log::critical(
-                logcat,
-                "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
-                is_snode ? "SERVICE NODE" : "CLIENT",
-                _router.local_rid(),
-                rid);
+        log::critical(
+            logcat,
+            "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
+            _is_service_node ? "SERVICE NODE" : "CLIENT",
+            _router.local_rid(),
+            rid);
 
-            if (conn_interface.is_inbound())
-            {
-                log::critical(logcat, "Inbound connection from {} (remote:{})", rid, remote);
-                on_inbound_conn(conn_interface);
-            }
-            else
-            {
-                log::critical(logcat, "Outbound connection to {} (remote:{})", rid, remote);
-                on_outbound_conn(conn_interface);
-            }
-        });
+        if (ci.is_inbound())
+        {
+            log::critical(logcat, "Inbound connection from {} (remote:{})", rid);
+            on_inbound_conn(ci);
+        }
+        else
+        {
+            log::critical(logcat, "Outbound connection to {} (remote:{})", rid);
+            on_outbound_conn(ci);
+        }
+        // _router.loop()->call([this, &conn_interface = ci, is_snode = _is_service_node]() {
+        // });
     };
 
     void LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
@@ -752,26 +756,13 @@ namespace llarp
     // TODO: can probably use ::send_control_message instead. Need to discuss the potential
     // difference in calling Endpoint::get_service_conn vs Endpoint::get_conn
     void LinkManager::fetch_bootstrap_rcs(
-        const RemoteRC& source,
-        std::string payload,
-        std::function<void(oxen::quic::message m)> func)
+        const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> f)
     {
-        func = [this, f = std::move(func)](oxen::quic::message m) mutable {
-            _router.loop()->call(
-                [func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
-        };
+        _router.loop()->call([this, source, payload, func = std::move(f)]() {
+            const auto& rid = source.router_id();
 
-        const auto& rid = source.router_id();
-
-        if (auto conn = ep.get_service_conn(rid); conn)
-        {
-            conn->control_stream->command("bfetch_rcs"s, std::move(payload), std::move(func));
-            log::critical(logcat, "Dispatched bootstrap fetch request!");
-            return;
-        }
-
-        _router.loop()->call([this, source, payload, f = std::move(func), rid = rid]() mutable {
-            connect_and_send(rid, "bfetch_rcs"s, std::move(payload), std::move(f));
+            log::critical(logcat, "Dispatching bootstrap fetch request!");
+            send_control_message(rid, "bfetch_rcs"s, std::move(payload), std::move(func));
         });
     }
 
@@ -794,7 +785,8 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            log::critical(link_cat, "Exception handling RC Fetch request (body:{}): {}", m.body(), e.what());
+            log::critical(
+                link_cat, "Exception handling RC Fetch request (body:{}): {}", m.body(), e.what());
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }

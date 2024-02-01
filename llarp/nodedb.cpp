@@ -823,7 +823,6 @@ namespace llarp
                 return false;
         }
 
-
         // TESTNET: make this check an updated registry
         return known_rids.count(remote) or _registered_routers.count(remote);
     }

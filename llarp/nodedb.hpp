@@ -134,7 +134,7 @@ namespace llarp
         std::set<RemoteRC> known_rcs;
         std::set<Unconfirmed<RemoteRC>> unconfirmed_rcs;
 
-        std::map<RouterID, const RemoteRC&> rc_lookup;
+        std::map<RouterID, RemoteRC> rc_lookup;
 
         BootstrapList _bootstraps{};
 
