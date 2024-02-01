@@ -2,6 +2,6 @@
 
 namespace llarp::handlers
 {
-  struct AbstractHandler
-  {};
+    struct AbstractHandler
+    {};
 }  // namespace llarp::handlers

@@ -10,116 +10,102 @@
 
 namespace llarp
 {
-  namespace handlers
-  {
-    // forward declare
-    struct ExitEndpoint;
-  }  // namespace handlers
-
-  namespace exit
-  {
-    /// persistant exit state for 1 identity on the exit node
-    struct Endpoint
+    namespace handlers
     {
-      static constexpr size_t MaxUpstreamQueueSize = 256;
+        // forward declare
+        struct ExitEndpoint;
+    }  // namespace handlers
 
-      explicit Endpoint(
-          const llarp::PubKey& remoteIdent,
-          const std::shared_ptr<llarp::path::AbstractHopHandler>& path,
-          bool rewriteIP,
-          huint128_t ip,
-          llarp::handlers::ExitEndpoint* parent);
+    namespace exit
+    {
+        /// persistant exit state for 1 identity on the exit node
+        struct Endpoint
+        {
+            static constexpr size_t MaxUpstreamQueueSize = 256;
 
-      ~Endpoint();
+            explicit Endpoint(
+                const llarp::PubKey& remoteIdent,
+                const std::shared_ptr<llarp::path::AbstractHopHandler>& path,
+                bool rewriteIP,
+                huint128_t ip,
+                llarp::handlers::ExitEndpoint* parent);
 
-      /// close ourselves
-      void
-      Close();
+            ~Endpoint();
 
-      /// implement istateful
-      util::StatusObject
-      ExtractStatus() const;
+            /// close ourselves
+            void Close();
 
-      /// return true if we are expired right now
-      bool
-      IsExpired(llarp_time_t now) const;
+            /// implement istateful
+            util::StatusObject ExtractStatus() const;
 
-      bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5s) const;
+            /// return true if we are expired right now
+            bool IsExpired(llarp_time_t now) const;
 
-      /// return true if this endpoint looks dead right now
-      bool
-      LooksDead(llarp_time_t now, llarp_time_t timeout = 10s) const;
+            bool ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5s) const;
 
-      /// tick ourself, reset tx/rx rates
-      void
-      Tick(llarp_time_t now);
+            /// return true if this endpoint looks dead right now
+            bool LooksDead(llarp_time_t now, llarp_time_t timeout = 10s) const;
 
-      /// queue traffic from service node / internet to be transmitted
-      bool
-      QueueInboundTraffic(std::vector<byte_t> data, service::ProtocolType t);
+            /// tick ourself, reset tx/rx rates
+            void Tick(llarp_time_t now);
 
-      /// flush inbound and outbound traffic queues
-      bool
-      Flush();
+            /// queue traffic from service node / internet to be transmitted
+            bool QueueInboundTraffic(std::vector<byte_t> data, service::ProtocolType t);
 
-      /// queue outbound traffic
-      /// does ip rewrite here
-      // bool
-      // QueueOutboundTraffic(
-      //     PathID_t txid, std::vector<byte_t> data, uint64_t counter, service::ProtocolType t);
+            /// flush inbound and outbound traffic queues
+            bool Flush();
 
-      /// update local path id and cascade information to parent
-      /// return true if success
-      bool
-      UpdateLocalPath(const llarp::PathID_t& nextPath);
+            /// queue outbound traffic
+            /// does ip rewrite here
+            // bool
+            // QueueOutboundTraffic(
+            //     PathID_t txid, std::vector<byte_t> data, uint64_t counter, service::ProtocolType
+            //     t);
 
-      std::shared_ptr<llarp::path::AbstractHopHandler>
-      GetCurrentPath() const
-      {
-        return current_path;
-      }
+            /// update local path id and cascade information to parent
+            /// return true if success
+            bool UpdateLocalPath(const llarp::PathID_t& nextPath);
 
-      const llarp::PubKey&
-      PubKey() const
-      {
-        return remote_signkey;
-      }
+            std::shared_ptr<llarp::path::AbstractHopHandler> GetCurrentPath() const
+            {
+                return current_path;
+            }
 
-      RouterID
-      router_id() const
-      {
-        return remote_signkey.data();
-      }
+            const llarp::PubKey& PubKey() const
+            {
+                return remote_signkey;
+            }
 
-      uint64_t
-      TxRate() const
-      {
-        return tx_rate;
-      }
+            RouterID router_id() const
+            {
+                return remote_signkey.data();
+            }
 
-      uint64_t
-      RxRate() const
-      {
-        return rx_rate;
-      }
+            uint64_t TxRate() const
+            {
+                return tx_rate;
+            }
 
-      huint128_t
-      LocalIP() const
-      {
-        return IP;
-      }
+            uint64_t RxRate() const
+            {
+                return rx_rate;
+            }
 
-      const llarp_time_t createdAt;
+            huint128_t LocalIP() const
+            {
+                return IP;
+            }
 
-     private:
-      llarp::handlers::ExitEndpoint* parent;
-      llarp::PubKey remote_signkey;
-      std::shared_ptr<llarp::path::AbstractHopHandler> current_path;
-      llarp::huint128_t IP;
-      uint64_t tx_rate, rx_rate;
-      llarp_time_t last_active;
-      bool rewrite_source;
-    };
-  }  // namespace exit
+            const llarp_time_t createdAt;
+
+           private:
+            llarp::handlers::ExitEndpoint* parent;
+            llarp::PubKey remote_signkey;
+            std::shared_ptr<llarp::path::AbstractHopHandler> current_path;
+            llarp::huint128_t IP;
+            uint64_t tx_rate, rx_rate;
+            llarp_time_t last_active;
+            bool rewrite_source;
+        };
+    }  // namespace exit
 }  // namespace llarp

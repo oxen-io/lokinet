@@ -18,139 +18,130 @@ using pid_t = int;
 
 namespace llarp::util
 {
-  /// a mutex that does nothing
-  ///
-  /// this exists to convert mutexes that were initially in use (but may no
-  /// longer be necessary) into no-op placeholders (except in debug mode
-  /// where they complain loudly when they are actually accessed across
-  /// different threads; see below).
-  ///
-  /// the idea is to "turn off" the mutexes and see where they are actually
-  /// needed.
-  struct NullMutex
-  {
+    /// a mutex that does nothing
+    ///
+    /// this exists to convert mutexes that were initially in use (but may no
+    /// longer be necessary) into no-op placeholders (except in debug mode
+    /// where they complain loudly when they are actually accessed across
+    /// different threads; see below).
+    ///
+    /// the idea is to "turn off" the mutexes and see where they are actually
+    /// needed.
+    struct NullMutex
+    {
 #ifdef LOKINET_DEBUG
-    /// in debug mode, we implement lock() to enforce that any lock is only
-    /// used from a single thread. the point of this is to identify locks that
-    /// are actually needed by dying a painful death when used across threads
-    mutable std::optional<std::thread::id> m_id;
-    void
-    lock() const
-    {
-      if (!m_id)
-      {
-        m_id = std::this_thread::get_id();
-      }
-      else if (*m_id != std::this_thread::get_id())
-      {
-        std::cerr << "NullMutex " << this << " was used across threads: locked by "
-                  << std::this_thread::get_id() << " and was previously locked by " << *m_id
-                  << "\n";
-        // if you're encountering this abort() call, you may have discovered a
-        // case where a NullMutex should be reverted to a "real mutex"
-        std::abort();
-      }
-    }
+        /// in debug mode, we implement lock() to enforce that any lock is only
+        /// used from a single thread. the point of this is to identify locks that
+        /// are actually needed by dying a painful death when used across threads
+        mutable std::optional<std::thread::id> m_id;
+        void lock() const
+        {
+            if (!m_id)
+            {
+                m_id = std::this_thread::get_id();
+            }
+            else if (*m_id != std::this_thread::get_id())
+            {
+                std::cerr << "NullMutex " << this << " was used across threads: locked by "
+                          << std::this_thread::get_id() << " and was previously locked by " << *m_id
+                          << "\n";
+                // if you're encountering this abort() call, you may have discovered a
+                // case where a NullMutex should be reverted to a "real mutex"
+                std::abort();
+            }
+        }
 #else
-    void
-    lock() const
-    {}
+        void lock() const
+        {}
 #endif
-    // Does nothing; once locked the mutex belongs to that thread forever
-    void
-    unlock() const
-    {}
-  };
+        // Does nothing; once locked the mutex belongs to that thread forever
+        void unlock() const
+        {}
+    };
 
-  /// a lock that does nothing
-  struct NullLock
-  {
-    NullLock(NullMutex& mtx)
+    /// a lock that does nothing
+    struct NullLock
     {
-      mtx.lock();
-    }
+        NullLock(NullMutex& mtx)
+        {
+            mtx.lock();
+        }
 
-    ~NullLock()
+        ~NullLock()
+        {
+            (void)this;  // trick clang-tidy
+        }
+    };
+
+    /// Default mutex type, supporting shared and exclusive locks.
+    using Mutex = std::shared_timed_mutex;
+
+    /// Basic RAII lock type for the default mutex type.
+    using Lock = std::lock_guard<Mutex>;
+
+    class Semaphore
     {
-      (void)this;  // trick clang-tidy
-    }
-  };
+       private:
+        std::mutex m_mutex;  // protects m_count
+        size_t m_count;
+        std::condition_variable m_cv;
 
-  /// Default mutex type, supporting shared and exclusive locks.
-  using Mutex = std::shared_timed_mutex;
+       public:
+        Semaphore(size_t count) : m_count(count)
+        {}
 
-  /// Basic RAII lock type for the default mutex type.
-  using Lock = std::lock_guard<Mutex>;
+        void notify()
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_count++;
+            }
+            m_cv.notify_one();
+        }
 
-  class Semaphore
-  {
-   private:
-    std::mutex m_mutex;  // protects m_count
-    size_t m_count;
-    std::condition_variable m_cv;
+        void wait()
+        {
+            std::unique_lock lock{m_mutex};
+            m_cv.wait(lock, [this] { return m_count > 0; });
+            m_count--;
+        }
 
-   public:
-    Semaphore(size_t count) : m_count(count)
-    {}
+        bool waitFor(std::chrono::microseconds timeout)
+        {
+            std::unique_lock lock{m_mutex};
+            if (!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
+                return false;
 
-    void
-    notify()
+            m_count--;
+            return true;
+        }
+    };
+
+    void SetThreadName(const std::string& name);
+
+    inline pid_t GetPid()
     {
-      {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_count++;
-      }
-      m_cv.notify_one();
-    }
-
-    void
-    wait()
-    {
-      std::unique_lock lock{m_mutex};
-      m_cv.wait(lock, [this] { return m_count > 0; });
-      m_count--;
-    }
-
-    bool
-    waitFor(std::chrono::microseconds timeout)
-    {
-      std::unique_lock lock{m_mutex};
-      if (!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
-        return false;
-
-      m_count--;
-      return true;
-    }
-  };
-
-  void
-  SetThreadName(const std::string& name);
-
-  inline pid_t
-  GetPid()
-  {
 #ifdef WIN32
-    return _getpid();
+        return _getpid();
 #else
-    return ::getpid();
+        return ::getpid();
 #endif
-  }
-
-  // type for detecting contention on a resource
-  struct ContentionKiller
-  {
-    template <typename F>
-    void
-    TryAccess(F visit) const
-    {
-#if defined(LOKINET_DEBUG)
-      NullLock lock(_access);
-#endif
-      visit();
     }
+
+    // type for detecting contention on a resource
+    struct ContentionKiller
+    {
+        template <typename F>
+        void TryAccess(F visit) const
+        {
 #if defined(LOKINET_DEBUG)
-   private:
-    mutable NullMutex _access;
+            NullLock lock(_access);
 #endif
-  };
+            visit();
+        }
+#if defined(LOKINET_DEBUG)
+       private:
+        mutable NullMutex _access;
+#endif
+    };
 }  // namespace llarp::util

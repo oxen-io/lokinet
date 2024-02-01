@@ -7,141 +7,133 @@
 
 namespace llarp::win32
 {
-  namespace
-  {
-    template <typename T>
-    std::string
-    ip_to_string(T ip)
+    namespace
     {
-      return var::visit([](auto&& ip) { return ip.ToString(); }, ip);
-    }
-  }  // namespace
+        template <typename T>
+        std::string ip_to_string(T ip)
+        {
+            return var::visit([](auto&& ip) { return ip.ToString(); }, ip);
+        }
+    }  // namespace
 
-  void
-  VPNPlatform::make_route(std::string ip, std::string gw, std::string cmd)
-  {
-    llarp::win32::Exec(
-        "route.exe", fmt::format("{} {} MASK 255.255.255.255 {} METRIC {}", cmd, ip, gw, m_Metric));
-  }
-
-  void
-  VPNPlatform::default_route_via_interface(NetworkInterface& vpn, std::string cmd)
-  {
-    // route hole for loopback bacause god is dead on windows
-    llarp::win32::Exec("route.exe", fmt::format("{} 127.0.0.0 MASK 255.0.0.0 0.0.0.0", cmd));
-    // set up ipv4 routes
-    route_via_interface(vpn, "0.0.0.0", "128.0.0.0", cmd);
-    route_via_interface(vpn, "128.0.0.0", "128.0.0.0", cmd);
-  }
-
-  void
-  VPNPlatform::route_via_interface(
-      NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
-  {
-    const auto& info = vpn.Info();
-    auto ifaddr = ip_to_string(info[0]);
-    // this changes the last 1 to a 0 so that it routes over the interface
-    // this is required because windows is idiotic af
-    ifaddr.back()--;
-    llarp::win32::Exec(
-        "route.exe", fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
-  }
-
-  void
-  VPNPlatform::add_route(oxen::quic::Address ip, oxen::quic::Address gateway)
-  {
-    make_route(ip.to_string(), gateway.to_string(), "ADD");
-  }
-
-  void
-  VPNPlatform::delete_route(oxen::quic::Address ip, oxen::quic::Address gateway)
-  {
-    make_route(ip.to_string(), gateway.to_string(), "DELETE");
-  }
-
-  void
-  VPNPlatform::add_route_via_interface(NetworkInterface& vpn, IPRange range)
-  {
-    route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "ADD");
-  }
-
-  void
-  VPNPlatform::delete_route_via_interface(NetworkInterface& vpn, IPRange range)
-  {
-    route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "DELETE");
-  }
-
-  std::vector<oxen::quic::Address>
-  VPNPlatform::get_non_interface_gateways(NetworkInterface& vpn)
-  {
-    std::set<oxen::quic::Address> gateways;
-
-    const auto ifaddr = vpn.Info()[0];
-    for (const auto& iface : Net().AllNetworkInterfaces())
+    void VPNPlatform::make_route(std::string ip, std::string gw, std::string cmd)
     {
-      if (not iface.gateway)
-        continue;
-
-      bool b = true;
-
-      for (const auto& range : iface.addrs)
-      {
-        if (not range.Contains(ifaddr))
-          b = false;
-      }
-      // TODO: FIXME
-      if (b)
-        throw std::runtime_error{"FIXME ALREADY"};
-      // gateways.emplace(*iface.gateway);
+        llarp::win32::Exec(
+            "route.exe",
+            fmt::format("{} {} MASK 255.255.255.255 {} METRIC {}", cmd, ip, gw, m_Metric));
     }
-    return {gateways.begin(), gateways.end()};
-  }
 
-  void
-  VPNPlatform::add_default_route_via_interface(NetworkInterface& vpn)
-  {
-    // kill ipv6
-    llarp::win32::Exec(
-        "WindowsPowerShell\\v1.0\\powershell.exe",
-        "-Command (Disable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
+    void VPNPlatform::default_route_via_interface(NetworkInterface& vpn, std::string cmd)
+    {
+        // route hole for loopback bacause god is dead on windows
+        llarp::win32::Exec("route.exe", fmt::format("{} 127.0.0.0 MASK 255.0.0.0 0.0.0.0", cmd));
+        // set up ipv4 routes
+        route_via_interface(vpn, "0.0.0.0", "128.0.0.0", cmd);
+        route_via_interface(vpn, "128.0.0.0", "128.0.0.0", cmd);
+    }
 
-    default_route_via_interface(vpn, "ADD");
-  }
+    void VPNPlatform::route_via_interface(
+        NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
+    {
+        const auto& info = vpn.Info();
+        auto ifaddr = ip_to_string(info[0]);
+        // this changes the last 1 to a 0 so that it routes over the interface
+        // this is required because windows is idiotic af
+        ifaddr.back()--;
+        llarp::win32::Exec(
+            "route.exe",
+            fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
+    }
 
-  void
-  VPNPlatform::delete_default_route_via_interface(NetworkInterface& vpn)
-  {
-    // restore ipv6
-    llarp::win32::Exec(
-        "WindowsPowerShell\\v1.0\\powershell.exe",
-        "-Command (Enable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
+    void VPNPlatform::add_route(oxen::quic::Address ip, oxen::quic::Address gateway)
+    {
+        make_route(ip.to_string(), gateway.to_string(), "ADD");
+    }
 
-    default_route_via_interface(vpn, "DELETE");
-  }
+    void VPNPlatform::delete_route(oxen::quic::Address ip, oxen::quic::Address gateway)
+    {
+        make_route(ip.to_string(), gateway.to_string(), "DELETE");
+    }
 
-  std::shared_ptr<NetworkInterface>
-  VPNPlatform::ObtainInterface(InterfaceInfo info, Router* router)
-  {
-    return wintun::make_interface(std::move(info), router);
-  }
+    void VPNPlatform::add_route_via_interface(NetworkInterface& vpn, IPRange range)
+    {
+        route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "ADD");
+    }
 
-  std::shared_ptr<I_Packet_IO>
-  VPNPlatform::create_packet_io(
-      unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src)
-  {
-    // we only want do this on all interfaes with windivert
-    if (ifindex)
-      throw std::invalid_argument{
-          "cannot create packet io on explicitly specified interface, not currently supported on "
-          "windows (yet)"};
+    void VPNPlatform::delete_route_via_interface(NetworkInterface& vpn, IPRange range)
+    {
+        route_via_interface(vpn, range.BaseAddressString(), range.NetmaskString(), "DELETE");
+    }
 
-    uint16_t upstream_src_port = dns_upstream_src ? dns_upstream_src->getPort() : 0;
-    std::string udp_filter = upstream_src_port != 0
-        ? fmt::format("( udp.DstPort == 53 and udp.SrcPort != {} )", upstream_src_port)
-        : "udp.DstPort == 53";
+    std::vector<oxen::quic::Address> VPNPlatform::get_non_interface_gateways(NetworkInterface& vpn)
+    {
+        std::set<oxen::quic::Address> gateways;
 
-    auto filter = "outbound and ( " + udp_filter + " or tcp.DstPort == 53 )";
+        const auto ifaddr = vpn.Info()[0];
+        for (const auto& iface : Net().AllNetworkInterfaces())
+        {
+            if (not iface.gateway)
+                continue;
 
-    return WinDivert::make_interceptor(filter, [router = _ctx->router] { router->TriggerPump(); });
-  }
+            bool b = true;
+
+            for (const auto& range : iface.addrs)
+            {
+                if (not range.Contains(ifaddr))
+                    b = false;
+            }
+            // TODO: FIXME
+            if (b)
+                throw std::runtime_error{"FIXME ALREADY"};
+            // gateways.emplace(*iface.gateway);
+        }
+        return {gateways.begin(), gateways.end()};
+    }
+
+    void VPNPlatform::add_default_route_via_interface(NetworkInterface& vpn)
+    {
+        // kill ipv6
+        llarp::win32::Exec(
+            "WindowsPowerShell\\v1.0\\powershell.exe",
+            "-Command (Disable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
+
+        default_route_via_interface(vpn, "ADD");
+    }
+
+    void VPNPlatform::delete_default_route_via_interface(NetworkInterface& vpn)
+    {
+        // restore ipv6
+        llarp::win32::Exec(
+            "WindowsPowerShell\\v1.0\\powershell.exe",
+            "-Command (Enable-NetAdapterBinding -Name \"* \" -ComponentID ms_tcpip6)");
+
+        default_route_via_interface(vpn, "DELETE");
+    }
+
+    std::shared_ptr<NetworkInterface> VPNPlatform::ObtainInterface(
+        InterfaceInfo info, Router* router)
+    {
+        return wintun::make_interface(std::move(info), router);
+    }
+
+    std::shared_ptr<I_Packet_IO> VPNPlatform::create_packet_io(
+        unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src)
+    {
+        // we only want do this on all interfaes with windivert
+        if (ifindex)
+            throw std::invalid_argument{
+                "cannot create packet io on explicitly specified interface, not currently "
+                "supported on "
+                "windows (yet)"};
+
+        uint16_t upstream_src_port = dns_upstream_src ? dns_upstream_src->getPort() : 0;
+        std::string udp_filter = upstream_src_port != 0
+            ? fmt::format("( udp.DstPort == 53 and udp.SrcPort != {} )", upstream_src_port)
+            : "udp.DstPort == 53";
+
+        auto filter = "outbound and ( " + udp_filter + " or tcp.DstPort == 53 )";
+
+        return WinDivert::make_interceptor(
+            filter, [router = _ctx->router] { router->TriggerPump(); });
+    }
 }  // namespace llarp::win32

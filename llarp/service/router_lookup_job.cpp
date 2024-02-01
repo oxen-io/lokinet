@@ -6,8 +6,8 @@
 
 namespace llarp::service
 {
-  RouterLookupJob::RouterLookupJob(Endpoint* p, RouterLookupHandler h)
-      : handler(std::move(h)), txid(p->GenTXID()), started(p->Now())
-  {}
+    RouterLookupJob::RouterLookupJob(Endpoint* p, RouterLookupHandler h)
+        : handler(std::move(h)), txid(p->GenTXID()), started(p->Now())
+    {}
 
 }  // namespace llarp::service

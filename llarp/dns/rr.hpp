@@ -10,40 +10,35 @@
 
 namespace llarp::dns
 {
-  using RRClass_t = uint16_t;
-  using RRType_t = uint16_t;
-  using RR_RData_t = std::vector<byte_t>;
-  using RR_TTL_t = uint32_t;
+    using RRClass_t = uint16_t;
+    using RRType_t = uint16_t;
+    using RR_RData_t = std::vector<byte_t>;
+    using RR_TTL_t = uint32_t;
 
-  struct ResourceRecord : public Serialize
-  {
-    ResourceRecord() = default;
-    ResourceRecord(const ResourceRecord& other);
-    ResourceRecord(ResourceRecord&& other);
+    struct ResourceRecord : public Serialize
+    {
+        ResourceRecord() = default;
+        ResourceRecord(const ResourceRecord& other);
+        ResourceRecord(ResourceRecord&& other);
 
-    explicit ResourceRecord(std::string name, RRType_t type, RR_RData_t rdata);
+        explicit ResourceRecord(std::string name, RRType_t type, RR_RData_t rdata);
 
-    bool
-    Encode(llarp_buffer_t* buf) const override;
+        bool Encode(llarp_buffer_t* buf) const override;
 
-    bool
-    Decode(llarp_buffer_t* buf) override;
+        bool Decode(llarp_buffer_t* buf) override;
 
-    util::StatusObject
-    ToJSON() const override;
+        util::StatusObject ToJSON() const override;
 
-    std::string
-    ToString() const;
+        std::string ToString() const;
 
-    bool
-    HasCNameForTLD(const std::string& tld) const;
+        bool HasCNameForTLD(const std::string& tld) const;
 
-    std::string rr_name;
-    RRType_t rr_type;
-    RRClass_t rr_class;
-    RR_TTL_t ttl;
-    RR_RData_t rData;
-  };
+        std::string rr_name;
+        RRType_t rr_type;
+        RRClass_t rr_class;
+        RR_TTL_t ttl;
+        RR_RData_t rData;
+    };
 }  // namespace llarp::dns
 
 template <>

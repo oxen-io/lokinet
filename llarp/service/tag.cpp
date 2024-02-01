@@ -2,12 +2,11 @@
 
 namespace llarp
 {
-  namespace service
-  {
-    std::string
-    Tag::ToString() const
+    namespace service
     {
-      return std::string(begin(), end());
-    }
-  }  // namespace service
+        std::string Tag::ToString() const
+        {
+            return std::string(begin(), end());
+        }
+    }  // namespace service
 }  // namespace llarp

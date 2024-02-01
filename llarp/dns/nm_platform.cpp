@@ -12,10 +12,9 @@ using namespace std::literals;
 
 namespace llarp::dns::nm
 {
-  void
-  Platform::set_resolver(unsigned int, llarp::SockAddr, bool)
-  {
-    // todo: implement me eventually
-  }
+    void Platform::set_resolver(unsigned int, llarp::SockAddr, bool)
+    {
+        // todo: implement me eventually
+    }
 }  // namespace llarp::dns::nm
 #endif

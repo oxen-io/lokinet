@@ -14,31 +14,29 @@
 
 namespace llarp::vpn
 {
-  const llarp::net::Platform*
-  AbstractRouteManager::Net_ptr() const
-  {
-    return llarp::net::Platform::Default_ptr();
-  }
+    const llarp::net::Platform* AbstractRouteManager::Net_ptr() const
+    {
+        return llarp::net::Platform::Default_ptr();
+    }
 
-  std::shared_ptr<Platform>
-  MakeNativePlatform(llarp::Context* ctx)
-  {
-    (void)ctx;
-    std::shared_ptr<Platform> plat;
+    std::shared_ptr<Platform> MakeNativePlatform(llarp::Context* ctx)
+    {
+        (void)ctx;
+        std::shared_ptr<Platform> plat;
 #ifdef _WIN32
-    plat = std::make_shared<llarp::win32::VPNPlatform>(ctx);
+        plat = std::make_shared<llarp::win32::VPNPlatform>(ctx);
 #endif
 #ifdef __linux__
 #ifdef ANDROID
-    plat = std::make_shared<vpn::AndroidPlatform>(ctx);
+        plat = std::make_shared<vpn::AndroidPlatform>(ctx);
 #else
-    plat = std::make_shared<vpn::LinuxPlatform>();
+        plat = std::make_shared<vpn::LinuxPlatform>();
 #endif
 #endif
 #ifdef __APPLE__
-    throw std::runtime_error{"not supported"};
+        throw std::runtime_error{"not supported"};
 #endif
-    return plat;
-  }
+        return plat;
+    }
 
 }  // namespace llarp::vpn

@@ -9,115 +9,108 @@
 
 namespace llarp::handlers
 {
-  struct NullEndpoint final : public llarp::service::Endpoint,
-                              public std::enable_shared_from_this<NullEndpoint>
-  {
-    NullEndpoint(Router* r, llarp::service::Context* parent)
-        : llarp::service::Endpoint{r, parent}
-        , m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
-          var::visit(
-              [&pkt](auto&& from) {
-                LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes");
-              },
-              from);
-        }}}
+    struct NullEndpoint final : public llarp::service::Endpoint,
+                                public std::enable_shared_from_this<NullEndpoint>
     {
-      r->loop()->add_ticker([this] { Pump(Now()); });
-    }
-
-    bool
-    HandleInboundPacket(
-        const service::ConvoTag tag,
-        const llarp_buffer_t& buf,
-        service::ProtocolType t,
-        uint64_t) override
-    {
-      LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
-      if (t == service::ProtocolType::Control)
-      {
-        return true;
-      }
-      if (t == service::ProtocolType::TrafficV4 or t == service::ProtocolType::TrafficV6)
-      {
-        if (auto from = GetEndpointWithConvoTag(tag))
+        NullEndpoint(Router* r, llarp::service::Context* parent)
+            : llarp::service::Endpoint{r, parent},
+              m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
+                  var::visit(
+                      [&pkt](auto&& from) {
+                          LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes");
+                      },
+                      from);
+              }}}
         {
-          net::IPPacket pkt{};
-          if (not pkt.Load(buf))
-          {
-            LogWarn("invalid ip packet from remote T=", tag);
-            return false;
-          }
-          m_PacketRouter->HandleIPPacketFrom(std::move(*from), std::move(pkt));
-          return true;
+            r->loop()->add_ticker([this] { Pump(Now()); });
         }
 
-        LogWarn("did not handle packet, no endpoint with convotag T=", tag);
-        return false;
-      }
-      if (t != service::ProtocolType::QUIC)
-        return false;
+        bool HandleInboundPacket(
+            const service::ConvoTag tag,
+            const llarp_buffer_t& buf,
+            service::ProtocolType t,
+            uint64_t) override
+        {
+            LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
+            if (t == service::ProtocolType::Control)
+            {
+                return true;
+            }
+            if (t == service::ProtocolType::TrafficV4 or t == service::ProtocolType::TrafficV6)
+            {
+                if (auto from = GetEndpointWithConvoTag(tag))
+                {
+                    net::IPPacket pkt{};
+                    if (not pkt.Load(buf))
+                    {
+                        LogWarn("invalid ip packet from remote T=", tag);
+                        return false;
+                    }
+                    m_PacketRouter->HandleIPPacketFrom(std::move(*from), std::move(pkt));
+                    return true;
+                }
 
-      auto* quic = GetQUICTunnel();
-      if (!quic)
-      {
-        LogWarn("incoming quic packet but this endpoint is not quic capable; dropping");
-        return false;
-      }
-      if (buf.sz < 4)
-      {
-        LogWarn("invalid incoming quic packet, dropping");
-        return false;
-      }
-      // TODO:
-      // quic->receive_packet(tag, buf);
-      return true;
-    }
+                LogWarn("did not handle packet, no endpoint with convotag T=", tag);
+                return false;
+            }
+            if (t != service::ProtocolType::QUIC)
+                return false;
 
-    void send_packet_to_remote(std::string) override{};
+            auto* quic = GetQUICTunnel();
+            if (!quic)
+            {
+                LogWarn("incoming quic packet but this endpoint is not quic capable; dropping");
+                return false;
+            }
+            if (buf.sz < 4)
+            {
+                LogWarn("invalid incoming quic packet, dropping");
+                return false;
+            }
+            // TODO:
+            // quic->receive_packet(tag, buf);
+            return true;
+        }
 
-    std::string
-    GetIfName() const override
-    {
-      return "";
-    }
+        void send_packet_to_remote(std::string) override{};
 
-    std::shared_ptr<path::PathSet>
-    GetSelf() override
-    {
-      return shared_from_this();
-    }
+        std::string GetIfName() const override
+        {
+            return "";
+        }
 
-    std::weak_ptr<path::PathSet>
-    GetWeak() override
-    {
-      return weak_from_this();
-    }
+        std::shared_ptr<path::PathSet> GetSelf() override
+        {
+            return shared_from_this();
+        }
 
-    bool
-    SupportsV6() const override
-    {
-      return false;
-    }
+        std::weak_ptr<path::PathSet> GetWeak() override
+        {
+            return weak_from_this();
+        }
 
-    huint128_t
-    ObtainIPForAddr(std::variant<service::Address, RouterID>) override
-    {
-      return {0};
-    }
+        bool SupportsV6() const override
+        {
+            return false;
+        }
 
-    std::optional<std::variant<service::Address, RouterID>>
-    ObtainAddrForIP(huint128_t) const override
-    {
-      return std::nullopt;
-    }
+        huint128_t ObtainIPForAddr(std::variant<service::Address, RouterID>) override
+        {
+            return {0};
+        }
 
-    vpn::EgresPacketRouter*
-    EgresPacketRouter() override
-    {
-      return m_PacketRouter.get();
-    }
+        std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
+            huint128_t) const override
+        {
+            return std::nullopt;
+        }
 
-   private:
-    std::unique_ptr<vpn::EgresPacketRouter> m_PacketRouter;
-  };
+        vpn::EgresPacketRouter* EgresPacketRouter() override
+        {
+            return m_PacketRouter.get();
+        }
+
+       private:
+        std::unique_ptr<vpn::EgresPacketRouter> m_PacketRouter;
+    };
 }  // namespace llarp::handlers

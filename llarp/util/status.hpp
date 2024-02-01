@@ -4,8 +4,8 @@
 
 namespace llarp
 {
-  namespace util
-  {
-    using StatusObject = nlohmann::json;
-  }  // namespace util
+    namespace util
+    {
+        using StatusObject = nlohmann::json;
+    }  // namespace util
 }  // namespace llarp

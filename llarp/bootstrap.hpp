@@ -10,71 +10,60 @@
 
 namespace llarp
 {
-  struct BootstrapList final : public std::set<RemoteRC>
-  {
-    std::set<RemoteRC>::iterator _curr = begin();
-
-    const RemoteRC&
-    current()
+    struct BootstrapList final : public std::set<RemoteRC>
     {
-      return *_curr;
-    }
+        std::set<RemoteRC>::iterator _curr = begin();
 
-    bool
-    bt_decode(std::string_view buf);
+        const RemoteRC& current()
+        {
+            return *_curr;
+        }
 
-    bool
-    bt_decode(oxenc::bt_list_consumer btlc);
+        bool bt_decode(std::string_view buf);
 
-    bool
-    bt_decode(oxenc::bt_dict_consumer btdc);
+        bool bt_decode(oxenc::bt_list_consumer btlc);
 
-    std::string_view
-    bt_encode() const;
+        bool bt_decode(oxenc::bt_dict_consumer btdc);
 
-    void
-    populate_bootstraps(std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks);
+        std::string_view bt_encode() const;
 
-    bool
-    read_from_file(const fs::path& fpath);
+        void populate_bootstraps(
+            std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks);
 
-    bool
-    contains(const RouterID& rid) const;
+        bool read_from_file(const fs::path& fpath);
 
-    // returns a reference to the next index and a boolean that equals true if
-    // this is the front of the set
-    const RemoteRC&
-    next()
-    {
-      if (size() < 2)
-        return *_curr;
+        bool contains(const RouterID& rid) const;
 
-      ++_curr;
+        // returns a reference to the next index and a boolean that equals true if
+        // this is the front of the set
+        const RemoteRC& next()
+        {
+            if (size() < 2)
+                return *_curr;
 
-      if (_curr == this->end())
-        _curr = this->begin();
+            ++_curr;
 
-      return *_curr;
-    }
+            if (_curr == this->end())
+                _curr = this->begin();
 
-    bool
-    contains(const RemoteRC& rc) const;
+            return *_curr;
+        }
 
-    void
-    randomize()
-    {
-      if (size() > 1)
-        _curr = std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
-    }
+        bool contains(const RemoteRC& rc) const;
 
-    void
-    clear_list()
-    {
-      clear();
-    }
-  };
+        void randomize()
+        {
+            if (size() > 1)
+                _curr =
+                    std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
+        }
 
-  std::unordered_map<std::string, BootstrapList>
-  load_bootstrap_fallbacks();
+        void clear_list()
+        {
+            clear();
+        }
+    };
+
+    std::unordered_map<std::string, BootstrapList> load_bootstrap_fallbacks();
 
 }  // namespace llarp

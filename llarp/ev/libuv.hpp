@@ -12,88 +12,72 @@
 
 namespace llarp::uv
 {
-  class UVWakeup;
-  class UVRepeater;
+    class UVWakeup;
+    class UVRepeater;
 
-  class Loop : public llarp::EventLoop
-  {
-   public:
-    using Callback = std::function<void()>;
-
-    Loop(size_t queue_size);
-
-    virtual void
-    run() override;
-
-    bool
-    running() const override;
-
-    llarp_time_t
-    time_now() const override
+    class Loop : public llarp::EventLoop
     {
-      return m_Impl->now();
-    }
+       public:
+        using Callback = std::function<void()>;
 
-    void
-    call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
+        Loop(size_t queue_size);
 
-    void
-    tick_event_loop();
+        virtual void run() override;
 
-    void
-    stop() override;
+        bool running() const override;
 
-    bool
-    add_ticker(std::function<void(void)> ticker) override;
+        llarp_time_t time_now() const override
+        {
+            return m_Impl->now();
+        }
 
-    bool
-    add_network_interface(
-        std::shared_ptr<llarp::vpn::NetworkInterface> netif,
-        std::function<void(llarp::net::IPPacket)> handler) override;
+        void call_later(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
-    void
-    call_soon(std::function<void(void)> f) override;
+        void tick_event_loop();
 
-    std::shared_ptr<llarp::EventLoopWakeup>
-    make_waker(std::function<void()> callback) override;
+        void stop() override;
 
-    std::shared_ptr<EventLoopRepeater>
-    make_repeater() override;
+        bool add_ticker(std::function<void(void)> ticker) override;
 
-    virtual std::shared_ptr<llarp::UDPHandle>
-    make_udp(UDPReceiveFunc on_recv) override;
+        bool add_network_interface(
+            std::shared_ptr<llarp::vpn::NetworkInterface> netif,
+            std::function<void(llarp::net::IPPacket)> handler) override;
 
-    void
-    FlushLogic();
+        void call_soon(std::function<void(void)> f) override;
 
-    std::shared_ptr<uvw::Loop>
-    MaybeGetUVWLoop() override;
+        std::shared_ptr<llarp::EventLoopWakeup> make_waker(std::function<void()> callback) override;
 
-    bool
-    inEventLoop() const override;
+        std::shared_ptr<EventLoopRepeater> make_repeater() override;
 
-   protected:
-    std::shared_ptr<uvw::Loop> m_Impl;
-    std::optional<std::thread::id> m_EventLoopThreadID;
+        virtual std::shared_ptr<llarp::UDPHandle> make_udp(UDPReceiveFunc on_recv) override;
 
-   private:
-    std::shared_ptr<uvw::AsyncHandle> m_WakeUp;
-    std::atomic<bool> m_Run;
-    using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
-    AtomicQueue_t m_LogicCalls;
+        void FlushLogic();
+
+        std::shared_ptr<uvw::Loop> MaybeGetUVWLoop() override;
+
+        bool inEventLoop() const override;
+
+       protected:
+        std::shared_ptr<uvw::Loop> m_Impl;
+        std::optional<std::thread::id> m_EventLoopThreadID;
+
+       private:
+        std::shared_ptr<uvw::AsyncHandle> m_WakeUp;
+        std::atomic<bool> m_Run;
+        using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
+        AtomicQueue_t m_LogicCalls;
 
 #ifdef LOKINET_DEBUG
-    uint64_t last_time;
-    uint64_t loop_run_count;
+        uint64_t last_time;
+        uint64_t loop_run_count;
 #endif
-    std::atomic<uint32_t> m_nextID;
+        std::atomic<uint32_t> m_nextID;
 
-    std::map<uint32_t, Callback> m_pendingCalls;
+        std::map<uint32_t, Callback> m_pendingCalls;
 
-    std::unordered_map<int, std::shared_ptr<uvw::PollHandle>> m_Polls;
+        std::unordered_map<int, std::shared_ptr<uvw::PollHandle>> m_Polls;
 
-    void
-    wakeup() override;
-  };
+        void wakeup() override;
+    };
 
 }  // namespace llarp::uv

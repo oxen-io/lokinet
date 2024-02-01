@@ -10,10 +10,8 @@ extern "C"
 {
 #endif
 #if _WIN32_WINNT < 0x600
-  const char*
-  inet_ntop(int af, const void* src, char* dst, size_t size);
-  int
-  inet_pton(int af, const char* src, void* dst);
+    const char* inet_ntop(int af, const void* src, char* dst, size_t size);
+    int inet_pton(int af, const char* src, void* dst);
 #endif
 #ifdef __cplusplus
 }
@@ -32,5 +30,4 @@ typedef unsigned int in_addr_t;
 
 #include <sys/types.h>
 
-bool
-llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr);
+bool llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr);

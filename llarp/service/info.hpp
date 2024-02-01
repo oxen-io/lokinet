@@ -12,104 +12,89 @@
 
 namespace
 {
-  static auto info_cat = llarp::log::Cat("lokinet.info");
+    static auto info_cat = llarp::log::Cat("lokinet.info");
 }  // namespace
 
 namespace llarp::service
 {
-  struct ServiceInfo
-  {
-   private:
-    PubKey enckey;
-    PubKey signkey;
-    mutable Address m_CachedAddr;
-
-   public:
-    VanityNonce vanity;
-    uint64_t version = llarp::constants::proto_version;
-
-    void
-    RandomizeVanity()
+    struct ServiceInfo
     {
-      vanity.Randomize();
-    }
+       private:
+        PubKey enckey;
+        PubKey signkey;
+        mutable Address m_CachedAddr;
 
-    bool
-    verify(uint8_t* buf, size_t size, const Signature& sig) const;
+       public:
+        VanityNonce vanity;
+        uint64_t version = llarp::constants::proto_version;
 
-    const PubKey&
-    EncryptionPublicKey() const
-    {
-      if (m_CachedAddr.IsZero())
-      {
-        CalculateAddress(m_CachedAddr.as_array());
-      }
-      return enckey;
-    }
+        void RandomizeVanity()
+        {
+            vanity.Randomize();
+        }
 
-    bool
-    Update(const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
+        bool verify(uint8_t* buf, size_t size, const Signature& sig) const;
 
-    bool
-    operator==(const ServiceInfo& other) const
-    {
-      return enckey == other.enckey && signkey == other.signkey && version == other.version
-          && vanity == other.vanity;
-    }
+        const PubKey& EncryptionPublicKey() const
+        {
+            if (m_CachedAddr.IsZero())
+            {
+                CalculateAddress(m_CachedAddr.as_array());
+            }
+            return enckey;
+        }
 
-    bool
-    operator!=(const ServiceInfo& other) const
-    {
-      return !(*this == other);
-    }
+        bool Update(
+            const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
 
-    bool
-    operator<(const ServiceInfo& other) const
-    {
-      return Addr() < other.Addr();
-    }
+        bool operator==(const ServiceInfo& other) const
+        {
+            return enckey == other.enckey && signkey == other.signkey && version == other.version
+                && vanity == other.vanity;
+        }
 
-    std::string
-    ToString() const;
+        bool operator!=(const ServiceInfo& other) const
+        {
+            return !(*this == other);
+        }
 
-    /// .loki address
-    std::string
-    Name() const;
+        bool operator<(const ServiceInfo& other) const
+        {
+            return Addr() < other.Addr();
+        }
 
-    bool
-    UpdateAddr();
+        std::string ToString() const;
 
-    const Address&
-    Addr() const
-    {
-      if (m_CachedAddr.IsZero())
-      {
-        CalculateAddress(m_CachedAddr.as_array());
-      }
-      return m_CachedAddr;
-    }
+        /// .loki address
+        std::string Name() const;
 
-    /// calculate our address
-    bool
-    CalculateAddress(std::array<byte_t, 32>& data) const;
+        bool UpdateAddr();
 
-    bool
-    BDecode(llarp_buffer_t* buf)
-    {
-      if (not bencode_decode_dict(*this, buf))
-        return false;
-      return UpdateAddr();
-    }
+        const Address& Addr() const
+        {
+            if (m_CachedAddr.IsZero())
+            {
+                CalculateAddress(m_CachedAddr.as_array());
+            }
+            return m_CachedAddr;
+        }
 
-    void
-    bt_decode(oxenc::bt_dict_consumer&);
+        /// calculate our address
+        bool CalculateAddress(std::array<byte_t, 32>& data) const;
 
-    void
-    bt_encode(oxenc::bt_dict_producer& btdp) const;
+        bool BDecode(llarp_buffer_t* buf)
+        {
+            if (not bencode_decode_dict(*this, buf))
+                return false;
+            return UpdateAddr();
+        }
 
-    bool
-    decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
-  };
+        void bt_decode(oxenc::bt_dict_consumer&);
+
+        void bt_encode(oxenc::bt_dict_producer& btdp) const;
+
+        bool decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
+    };
 }  // namespace llarp::service
 
 template <>

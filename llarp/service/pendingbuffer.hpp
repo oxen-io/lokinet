@@ -8,19 +8,18 @@
 
 namespace llarp::service
 {
-  struct PendingBuffer
-  {
-    std::vector<byte_t> payload;
-    ProtocolType protocol;
-
-    inline llarp_buffer_t
-    Buffer()
+    struct PendingBuffer
     {
-      return llarp_buffer_t{payload};
-    }
+        std::vector<byte_t> payload;
+        ProtocolType protocol;
 
-    PendingBuffer(const llarp_buffer_t& buf, ProtocolType t) : payload{buf.copy()}, protocol{t}
-    {}
-  };
+        inline llarp_buffer_t Buffer()
+        {
+            return llarp_buffer_t{payload};
+        }
+
+        PendingBuffer(const llarp_buffer_t& buf, ProtocolType t) : payload{buf.copy()}, protocol{t}
+        {}
+    };
 
 }  // namespace llarp::service

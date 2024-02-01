@@ -13,63 +13,55 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  struct Router;
+    struct Router;
 
-  namespace routing
-  {
-    struct AbstractRoutingMessage;
-  }
-
-  namespace path
-  {
-
-    std::string
-    make_onion_payload(
-        const SymmNonce& nonce, const PathID_t& path_id, const std::string_view& inner_payload);
-    std::string
-    make_onion_payload(
-        const SymmNonce& nonce, const PathID_t& path_id, const ustring_view& inner_payload);
-
-    struct AbstractHopHandler
+    namespace routing
     {
-      virtual ~AbstractHopHandler() = default;
+        struct AbstractRoutingMessage;
+    }
 
-      virtual PathID_t
-      RXID() const = 0;
+    namespace path
+    {
 
-      virtual bool
-      Expired(llarp_time_t now) const = 0;
+        std::string make_onion_payload(
+            const SymmNonce& nonce, const PathID_t& path_id, const std::string_view& inner_payload);
+        std::string make_onion_payload(
+            const SymmNonce& nonce, const PathID_t& path_id, const ustring_view& inner_payload);
 
-      virtual bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
+        struct AbstractHopHandler
+        {
+            virtual ~AbstractHopHandler() = default;
 
-      /// sends a control request along a path
-      ///
-      /// performs the necessary onion encryption before sending.
-      /// func will be called when a timeout occurs or a response is received.
-      /// if a response is received, onion decryption is performed before func is called.
-      ///
-      /// func is called with a bt-encoded response string (if applicable), and
-      /// a timeout flag (if set, response string will be empty)
-      virtual bool
-      send_path_control_message(
-          std::string method, std::string body, std::function<void(std::string)> func) = 0;
+            virtual PathID_t RXID() const = 0;
 
-      /// return timestamp last remote activity happened at
-      virtual llarp_time_t
-      LastRemoteActivityAt() const = 0;
+            virtual bool Expired(llarp_time_t now) const = 0;
 
-      // TODO: remove this method after all commented out uses are deleted
-      uint64_t
-      NextSeqNo()
-      {
-        return m_SequenceNum++;
-      }
+            virtual bool ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
 
-     protected:
-      uint64_t m_SequenceNum = 0;
-    };
+            /// sends a control request along a path
+            ///
+            /// performs the necessary onion encryption before sending.
+            /// func will be called when a timeout occurs or a response is received.
+            /// if a response is received, onion decryption is performed before func is called.
+            ///
+            /// func is called with a bt-encoded response string (if applicable), and
+            /// a timeout flag (if set, response string will be empty)
+            virtual bool send_path_control_message(
+                std::string method, std::string body, std::function<void(std::string)> func) = 0;
 
-    // using HopHandler_ptr = std::shared_ptr<AbstractHopHandler>;
-  }  // namespace path
+            /// return timestamp last remote activity happened at
+            virtual llarp_time_t LastRemoteActivityAt() const = 0;
+
+            // TODO: remove this method after all commented out uses are deleted
+            uint64_t NextSeqNo()
+            {
+                return m_SequenceNum++;
+            }
+
+           protected:
+            uint64_t m_SequenceNum = 0;
+        };
+
+        // using HopHandler_ptr = std::shared_ptr<AbstractHopHandler>;
+    }  // namespace path
 }  // namespace llarp

@@ -4,126 +4,125 @@
 
 namespace llarp
 {
-  namespace PathBuildMessage
-  {
-    inline auto BAD_FRAMES = "BAD_FRAMES"sv;
-    inline auto BAD_CRYPTO = "BAD_CRYPTO"sv;
-    inline auto NO_TRANSIT = "NOT ALLOWING TRANSIT"sv;
-    inline auto BAD_PATHID = "BAD PATH ID"sv;
-    inline auto BAD_LIFETIME = "BAD PATH LIFETIME (TOO LONG)"sv;
-
-    inline static void
-    setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
+    namespace PathBuildMessage
     {
-      // generate key
-      crypto::encryption_keygen(hop.commkey);
+        inline auto BAD_FRAMES = "BAD_FRAMES"sv;
+        inline auto BAD_CRYPTO = "BAD_CRYPTO"sv;
+        inline auto NO_TRANSIT = "NOT ALLOWING TRANSIT"sv;
+        inline auto BAD_PATHID = "BAD PATH ID"sv;
+        inline auto BAD_LIFETIME = "BAD PATH LIFETIME (TOO LONG)"sv;
 
-      hop.nonce.Randomize();
-      // do key exchange
-      if (!crypto::dh_client(hop.shared, hop.rc.router_id(), hop.commkey, hop.nonce))
-      {
-        auto err = fmt::format("Failed to generate shared key for path build!");
-        log::warning(path_cat, err);
-        throw std::runtime_error{std::move(err)};
-      }
-      // generate nonceXOR value self->hop->pathKey
-      ShortHash hash;
-      crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
-      hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+        inline static void setup_hop_keys(path::PathHopConfig& hop, const RouterID& nextHop)
+        {
+            // generate key
+            crypto::encryption_keygen(hop.commkey);
 
-      hop.upstream = nextHop;
-    }
+            hop.nonce.Randomize();
+            // do key exchange
+            if (!crypto::dh_client(hop.shared, hop.rc.router_id(), hop.commkey, hop.nonce))
+            {
+                auto err = fmt::format("Failed to generate shared key for path build!");
+                log::warning(path_cat, err);
+                throw std::runtime_error{std::move(err)};
+            }
+            // generate nonceXOR value self->hop->pathKey
+            ShortHash hash;
+            crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
+            hop.nonceXOR =
+                hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
-    inline static std::string
-    serialize(const path::PathHopConfig& hop)
-    {
-      std::string hop_info;
+            hop.upstream = nextHop;
+        }
 
-      {
-        oxenc::bt_dict_producer btdp;
+        inline static std::string serialize(const path::PathHopConfig& hop)
+        {
+            std::string hop_info;
 
-        btdp.append("COMMKEY", hop.commkey.toPublic().ToView());
-        btdp.append("LIFETIME", path::DEFAULT_LIFETIME.count());
-        btdp.append("NONCE", hop.nonce.ToView());
-        btdp.append("RX", hop.rxID.ToView());
-        btdp.append("TX", hop.txID.ToView());
-        btdp.append("UPSTREAM", hop.upstream.ToView());
+            {
+                oxenc::bt_dict_producer btdp;
 
-        hop_info = std::move(btdp).str();
-      }
+                btdp.append("COMMKEY", hop.commkey.toPublic().ToView());
+                btdp.append("LIFETIME", path::DEFAULT_LIFETIME.count());
+                btdp.append("NONCE", hop.nonce.ToView());
+                btdp.append("RX", hop.rxID.ToView());
+                btdp.append("TX", hop.txID.ToView());
+                btdp.append("UPSTREAM", hop.upstream.ToView());
 
-      SecretKey framekey;
-      crypto::encryption_keygen(framekey);
+                hop_info = std::move(btdp).str();
+            }
 
-      SharedSecret shared;
-      SymmNonce outer_nonce;
-      outer_nonce.Randomize();
+            SecretKey framekey;
+            crypto::encryption_keygen(framekey);
 
-      // derive (outer) shared key
-      if (!crypto::dh_client(shared, hop.rc.router_id(), framekey, outer_nonce))
-      {
-        log::warning(path_cat, "DH client failed during hop info encryption!");
-        throw std::runtime_error{"DH failed during hop info encryption"};
-      }
+            SharedSecret shared;
+            SymmNonce outer_nonce;
+            outer_nonce.Randomize();
 
-      // encrypt hop_info (mutates in-place)
-      if (!crypto::xchacha20(
-              reinterpret_cast<unsigned char*>(hop_info.data()),
-              hop_info.size(),
-              shared,
-              outer_nonce))
-      {
-        log::warning(path_cat, "Hop info encryption failed!");
-        throw std::runtime_error{"Hop info encryption failed"};
-      }
+            // derive (outer) shared key
+            if (!crypto::dh_client(shared, hop.rc.router_id(), framekey, outer_nonce))
+            {
+                log::warning(path_cat, "DH client failed during hop info encryption!");
+                throw std::runtime_error{"DH failed during hop info encryption"};
+            }
 
-      std::string hashed_data;
+            // encrypt hop_info (mutates in-place)
+            if (!crypto::xchacha20(
+                    reinterpret_cast<unsigned char*>(hop_info.data()),
+                    hop_info.size(),
+                    shared,
+                    outer_nonce))
+            {
+                log::warning(path_cat, "Hop info encryption failed!");
+                throw std::runtime_error{"Hop info encryption failed"};
+            }
 
-      {
-        oxenc::bt_dict_producer btdp;
+            std::string hashed_data;
 
-        btdp.append("ENCRYPTED", hop_info);
-        btdp.append("NONCE", outer_nonce.ToView());
-        btdp.append("PUBKEY", framekey.toPublic().ToView());
+            {
+                oxenc::bt_dict_producer btdp;
 
-        hashed_data = std::move(btdp).str();
-      }
+                btdp.append("ENCRYPTED", hop_info);
+                btdp.append("NONCE", outer_nonce.ToView());
+                btdp.append("PUBKEY", framekey.toPublic().ToView());
 
-      std::string hash;
-      hash.reserve(SHORTHASHSIZE);
+                hashed_data = std::move(btdp).str();
+            }
 
-      if (!crypto::hmac(
-              reinterpret_cast<uint8_t*>(hash.data()),
-              reinterpret_cast<uint8_t*>(hashed_data.data()),
-              hashed_data.size(),
-              shared))
-      {
-        log::warning(path_cat, "Failed to generate HMAC for hop info");
-        throw std::runtime_error{"Failed to generate HMAC for hop info"};
-      }
+            std::string hash;
+            hash.reserve(SHORTHASHSIZE);
 
-      oxenc::bt_dict_producer btdp;
+            if (!crypto::hmac(
+                    reinterpret_cast<uint8_t*>(hash.data()),
+                    reinterpret_cast<uint8_t*>(hashed_data.data()),
+                    hashed_data.size(),
+                    shared))
+            {
+                log::warning(path_cat, "Failed to generate HMAC for hop info");
+                throw std::runtime_error{"Failed to generate HMAC for hop info"};
+            }
 
-      btdp.append("FRAME", hashed_data);
-      btdp.append("HASH", hash);
+            oxenc::bt_dict_producer btdp;
 
-      return std::move(btdp).str();
-    }
-  }  // namespace PathBuildMessage
+            btdp.append("FRAME", hashed_data);
+            btdp.append("HASH", hash);
 
-  namespace RelayCommitMessage
-  {}
+            return std::move(btdp).str();
+        }
+    }  // namespace PathBuildMessage
 
-  namespace RelayStatusMessage
-  {}
+    namespace RelayCommitMessage
+    {}
 
-  namespace PathConfirmMessage
-  {}
+    namespace RelayStatusMessage
+    {}
 
-  namespace PathLatencyMessage
-  {}
+    namespace PathConfirmMessage
+    {}
 
-  namespace PathTransferMessage
-  {}
+    namespace PathLatencyMessage
+    {}
+
+    namespace PathTransferMessage
+    {}
 
 }  // namespace llarp

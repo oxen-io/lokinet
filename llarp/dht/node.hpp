@@ -9,58 +9,54 @@
 
 namespace llarp::dht
 {
-  struct RCNode
-  {
-    RouterContact rc;
-    Key_t ID;
-
-    RCNode()
+    struct RCNode
     {
-      ID.Zero();
-    }
+        RouterContact rc;
+        Key_t ID;
 
-    RCNode(const RouterContact& other) : rc(other), ID(other.router_id())
-    {}
+        RCNode()
+        {
+            ID.Zero();
+        }
 
-    util::StatusObject
-    ExtractStatus() const
+        RCNode(const RouterContact& other) : rc(other), ID(other.router_id())
+        {}
+
+        util::StatusObject ExtractStatus() const
+        {
+            return rc.extract_status();
+        }
+
+        bool operator<(const RCNode& other) const
+        {
+            return rc.timestamp() < other.rc.timestamp();
+        }
+    };
+
+    struct ISNode
     {
-      return rc.extract_status();
-    }
+        service::EncryptedIntroSet introset;
 
-    bool
-    operator<(const RCNode& other) const
-    {
-      return rc.timestamp() < other.rc.timestamp();
-    }
-  };
+        Key_t ID;
 
-  struct ISNode
-  {
-    service::EncryptedIntroSet introset;
+        ISNode()
+        {
+            ID.Zero();
+        }
 
-    Key_t ID;
+        ISNode(service::EncryptedIntroSet other) : introset(std::move(other))
+        {
+            ID = Key_t(introset.derivedSigningKey.as_array());
+        }
 
-    ISNode()
-    {
-      ID.Zero();
-    }
+        util::StatusObject ExtractStatus() const
+        {
+            return introset.ExtractStatus();
+        }
 
-    ISNode(service::EncryptedIntroSet other) : introset(std::move(other))
-    {
-      ID = Key_t(introset.derivedSigningKey.as_array());
-    }
-
-    util::StatusObject
-    ExtractStatus() const
-    {
-      return introset.ExtractStatus();
-    }
-
-    bool
-    operator<(const ISNode& other) const
-    {
-      return introset.signedAt < other.introset.signedAt;
-    }
-  };
+        bool operator<(const ISNode& other) const
+        {
+            return introset.signedAt < other.introset.signedAt;
+        }
+    };
 }  // namespace llarp::dht

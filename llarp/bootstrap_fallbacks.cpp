@@ -4,25 +4,24 @@
 
 namespace llarp
 {
-  using namespace std::literals;
+    using namespace std::literals;
 
-  std::unordered_map<std::string, BootstrapList>
-  load_bootstrap_fallbacks()
-  {
-    std::unordered_map<std::string, BootstrapList> fallbacks;
-
-    for (const auto& [network, bootstrap] :
-         std::initializer_list<std::pair<std::string, std::string_view>>{
-             //
-         })
+    std::unordered_map<std::string, BootstrapList> load_bootstrap_fallbacks()
     {
-      if (network != RouterContact::ACTIVE_NETID)
-        continue;
+        std::unordered_map<std::string, BootstrapList> fallbacks;
 
-      auto& bsl = fallbacks[network];
-      bsl.bt_decode(bootstrap);
+        for (const auto& [network, bootstrap] :
+             std::initializer_list<std::pair<std::string, std::string_view>>{
+                 //
+             })
+        {
+            if (network != RouterContact::ACTIVE_NETID)
+                continue;
+
+            auto& bsl = fallbacks[network];
+            bsl.bt_decode(bootstrap);
+        }
+
+        return fallbacks;
     }
-
-    return fallbacks;
-  }
 }  // namespace llarp

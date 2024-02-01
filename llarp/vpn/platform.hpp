@@ -12,158 +12,140 @@
 
 namespace llarp
 {
-  struct Context;
-  struct Router;
+    struct Context;
+    struct Router;
 }  // namespace llarp
 
 namespace llarp::vpn
 {
-  struct InterfaceAddress
-  {
-    constexpr InterfaceAddress(IPRange r, int f = AF_INET) : range{std::move(r)}, fam{f}
-    {}
-    IPRange range;
-    int fam;
-    bool
-    operator<(const InterfaceAddress& other) const
+    struct InterfaceAddress
     {
-      return std::tie(range, fam) < std::tie(other.range, other.fam);
-    }
-  };
+        constexpr InterfaceAddress(IPRange r, int f = AF_INET) : range{std::move(r)}, fam{f}
+        {}
+        IPRange range;
+        int fam;
+        bool operator<(const InterfaceAddress& other) const
+        {
+            return std::tie(range, fam) < std::tie(other.range, other.fam);
+        }
+    };
 
-  struct InterfaceInfo
-  {
-    std::string ifname;
-    unsigned int index;
-    huint32_t dnsaddr;
-    std::vector<InterfaceAddress> addrs;
-
-    /// get address number N
-    inline net::ipaddr_t
-    operator[](size_t idx) const
+    struct InterfaceInfo
     {
-      const auto& range = addrs[idx].range;
-      if (range.IsV4())
-        return ToNet(net::TruncateV6(range.addr));
-      return ToNet(range.addr);
-    }
-  };
+        std::string ifname;
+        unsigned int index;
+        huint32_t dnsaddr;
+        std::vector<InterfaceAddress> addrs;
 
-  /// a vpn network interface
-  class NetworkInterface : public I_Packet_IO
-  {
-   protected:
-    InterfaceInfo m_Info;
+        /// get address number N
+        inline net::ipaddr_t operator[](size_t idx) const
+        {
+            const auto& range = addrs[idx].range;
+            if (range.IsV4())
+                return ToNet(net::TruncateV6(range.addr));
+            return ToNet(range.addr);
+        }
+    };
 
-   public:
-    NetworkInterface(InterfaceInfo info) : m_Info{std::move(info)}
-    {}
-    NetworkInterface(const NetworkInterface&) = delete;
-    NetworkInterface(NetworkInterface&&) = delete;
-
-    const InterfaceInfo&
-    Info() const
+    /// a vpn network interface
+    class NetworkInterface : public I_Packet_IO
     {
-      return m_Info;
-    }
+       protected:
+        InterfaceInfo m_Info;
 
-    /// idempotently wake up the upper layers as needed (platform dependant)
-    virtual void
-    MaybeWakeUpperLayers() const {};
-  };
+       public:
+        NetworkInterface(InterfaceInfo info) : m_Info{std::move(info)}
+        {}
+        NetworkInterface(const NetworkInterface&) = delete;
+        NetworkInterface(NetworkInterface&&) = delete;
 
-  class AbstractRouteManager
-  {
-   public:
-    AbstractRouteManager() = default;
-    AbstractRouteManager(const AbstractRouteManager&) = delete;
-    AbstractRouteManager(AbstractRouteManager&&) = delete;
-    virtual ~AbstractRouteManager() = default;
+        const InterfaceInfo& Info() const
+        {
+            return m_Info;
+        }
 
-    virtual const llarp::net::Platform*
-    Net_ptr() const;
+        /// idempotently wake up the upper layers as needed (platform dependant)
+        virtual void MaybeWakeUpperLayers() const {};
+    };
 
-    inline const llarp::net::Platform&
-    Net() const
+    class AbstractRouteManager
     {
-      return *Net_ptr();
-    }
+       public:
+        AbstractRouteManager() = default;
+        AbstractRouteManager(const AbstractRouteManager&) = delete;
+        AbstractRouteManager(AbstractRouteManager&&) = delete;
+        virtual ~AbstractRouteManager() = default;
 
-    virtual void
-    add_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
+        virtual const llarp::net::Platform* Net_ptr() const;
 
-    virtual void
-    delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
+        inline const llarp::net::Platform& Net() const
+        {
+            return *Net_ptr();
+        }
 
-    virtual void
-    add_default_route_via_interface(NetworkInterface& vpn) = 0;
+        virtual void add_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
 
-    virtual void
-    delete_default_route_via_interface(NetworkInterface& vpn) = 0;
+        virtual void delete_route(oxen::quic::Address ip, oxen::quic::Address gateway) = 0;
 
-    virtual void
-    add_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
+        virtual void add_default_route_via_interface(NetworkInterface& vpn) = 0;
 
-    virtual void
-    delete_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
+        virtual void delete_default_route_via_interface(NetworkInterface& vpn) = 0;
 
-    virtual std::vector<oxen::quic::Address>
-    get_non_interface_gateways(NetworkInterface& vpn) = 0;
+        virtual void add_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
 
-    virtual void
-    add_blackhole(){};
+        virtual void delete_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
 
-    virtual void
-    delete_blackhole(){};
-  };
+        virtual std::vector<oxen::quic::Address> get_non_interface_gateways(
+            NetworkInterface& vpn) = 0;
 
-  /// a vpn platform
-  /// responsible for obtaining vpn interfaces
-  class Platform
-  {
-   protected:
-    /// get a new network interface fully configured given the interface info
-    /// blocks until ready, throws on error
-    virtual std::shared_ptr<NetworkInterface>
-    ObtainInterface(InterfaceInfo info, Router* router) = 0;
+        virtual void add_blackhole(){};
 
-   public:
-    Platform() = default;
-    Platform(const Platform&) = delete;
-    Platform(Platform&&) = delete;
-    virtual ~Platform() = default;
+        virtual void delete_blackhole(){};
+    };
 
-    /// create and start a network interface
-    inline std::shared_ptr<NetworkInterface>
-    CreateInterface(InterfaceInfo info, Router* router)
+    /// a vpn platform
+    /// responsible for obtaining vpn interfaces
+    class Platform
     {
-      if (auto netif = ObtainInterface(std::move(info), router))
-      {
-        netif->Start();
-        return netif;
-      }
-      return nullptr;
-    }
+       protected:
+        /// get a new network interface fully configured given the interface info
+        /// blocks until ready, throws on error
+        virtual std::shared_ptr<NetworkInterface> ObtainInterface(
+            InterfaceInfo info, Router* router) = 0;
 
-    /// get owned ip route manager for managing routing table
-    virtual AbstractRouteManager&
-    RouteManager() = 0;
+       public:
+        Platform() = default;
+        Platform(const Platform&) = delete;
+        Platform(Platform&&) = delete;
+        virtual ~Platform() = default;
 
-    /// create a packet io that will read (and optionally write) packets on a network interface the
-    /// lokinet process does not own
-    /// @param index the interface index of the network interface to use or 0 for all
-    /// interfaces on the system
-    virtual std::shared_ptr<I_Packet_IO>
-    create_packet_io(
-        [[maybe_unused]] unsigned int ifindex,
-        [[maybe_unused]] const std::optional<SockAddr>& dns_upstream_src)
-    {
-      throw std::runtime_error{"raw packet io is unimplemented"};
-    }
-  };
+        /// create and start a network interface
+        inline std::shared_ptr<NetworkInterface> CreateInterface(InterfaceInfo info, Router* router)
+        {
+            if (auto netif = ObtainInterface(std::move(info), router))
+            {
+                netif->Start();
+                return netif;
+            }
+            return nullptr;
+        }
 
-  /// create native vpn platform
-  std::shared_ptr<Platform>
-  MakeNativePlatform(llarp::Context* ctx);
+        /// get owned ip route manager for managing routing table
+        virtual AbstractRouteManager& RouteManager() = 0;
+
+        /// create a packet io that will read (and optionally write) packets on a network interface
+        /// the lokinet process does not own
+        /// @param index the interface index of the network interface to use or 0 for all
+        /// interfaces on the system
+        virtual std::shared_ptr<I_Packet_IO> create_packet_io(
+            [[maybe_unused]] unsigned int ifindex,
+            [[maybe_unused]] const std::optional<SockAddr>& dns_upstream_src)
+        {
+            throw std::runtime_error{"raw packet io is unimplemented"};
+        }
+    };
+
+    /// create native vpn platform
+    std::shared_ptr<Platform> MakeNativePlatform(llarp::Context* ctx);
 
 }  // namespace llarp::vpn
