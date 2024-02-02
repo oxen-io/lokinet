@@ -42,6 +42,11 @@ namespace llarp
         fetch_counters.clear();
     }
 
+    std::tuple<size_t, size_t, size_t> NodeDB::db_stats() const
+    {
+        return {num_rcs(), num_rids(), num_bootstraps()};
+    }
+
     std::optional<RemoteRC> NodeDB::get_rc_by_rid(const RouterID& rid)
     {
         if (auto itr = rc_lookup.find(rid); itr != rc_lookup.end())
@@ -69,8 +74,7 @@ namespace llarp
         return rand;
     }
 
-    std::optional<RemoteRC> NodeDB::get_random_rc_conditional(
-        std::function<bool(RemoteRC)> hook) const
+    std::optional<RemoteRC> NodeDB::get_random_rc_conditional(std::function<bool(RemoteRC)> hook) const
     {
         std::optional<RemoteRC> rand = get_random_rc();
 
@@ -206,9 +210,7 @@ namespace llarp
             2) The ratio of "good" rcs to total received is above MIN_GOOD_RC_FETCH_THRESHOLD
         */
         bool success = false;
-        if (success = inter_size > MIN_GOOD_RC_FETCH_TOTAL
-                and fetch_threshold > MIN_GOOD_RC_FETCH_THRESHOLD;
-            success)
+        if (success = inter_size > MIN_GOOD_RC_FETCH_TOTAL and fetch_threshold > MIN_GOOD_RC_FETCH_THRESHOLD; success)
         {
             // set rcs to be intersection set
             rcs = std::move(confirmed_set);
@@ -228,10 +230,7 @@ namespace llarp
 
             auto success = process_fetched_rcs(rcs);
 
-            log::critical(
-                logcat,
-                "RCs returned by FetchRC {} by trust model",
-                success ? "approved" : "rejected");
+            log::critical(logcat, "RCs returned by FetchRC {} by trust model", success ? "approved" : "rejected");
             return success;
         }
 
@@ -291,9 +290,7 @@ namespace llarp
                receiving a sufficient amount to make a comparison of any sorts
         */
         bool success = false;
-        if (success = (fetch_threshold > GOOD_RID_FETCH_THRESHOLD)
-                and (union_size > MIN_GOOD_RID_FETCH_TOTAL);
-            success)
+        if (success = (fetch_threshold > GOOD_RID_FETCH_THRESHOLD) and (union_size > MIN_GOOD_RID_FETCH_TOTAL); success)
         {
             process_results(std::move(unconfirmed_set), unconfirmed_rids, known_rids);
 
@@ -409,8 +406,7 @@ namespace llarp
                 }
                 catch (const std::exception& e)
                 {
-                    log::critical(
-                        logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
+                    log::critical(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
                     fetch_rcs_result(initial, true);
                     return;
                 }
@@ -433,8 +429,7 @@ namespace llarp
 
         if (not initial and rid_sources.empty())
         {
-            log::error(
-                logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
+            log::error(logcat, "Attempting to fetch RouterIDs, but have no source from which to do so.");
             fallback_to_bootstrap();
             return;
         }
@@ -453,8 +448,8 @@ namespace llarp
                 [this, source = src, target, initial](oxen::quic::message m) mutable {
                     if (m.is_error())
                     {
-                        auto err = "RID fetch from {} via {} {}"_format(
-                            target, source, m.timed_out ? "timed out" : "failed");
+                        auto err =
+                            "RID fetch from {} via {} {}"_format(target, source, m.timed_out ? "timed out" : "failed");
                         log::critical(link_cat, err);
                         ingest_rid_fetch_responses(target);
                         fetch_rids_result(initial);
@@ -468,14 +463,12 @@ namespace llarp
                         btdc.required("routers");
                         auto router_id_strings = btdc.consume_list<std::vector<ustring>>();
 
-                        btdc.require_signature(
-                            "signature", [&source](ustring_view msg, ustring_view sig) {
-                                if (sig.size() != 64)
-                                    throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                                if (not crypto::verify(source, msg, sig))
-                                    throw std::runtime_error{
-                                        "Failed to verify signature for fetch RouterIDs response."};
-                            });
+                        btdc.require_signature("signature", [&source](ustring_view msg, ustring_view sig) {
+                            if (sig.size() != 64)
+                                throw std::runtime_error{"Invalid signature: not 64 bytes"};
+                            if (not crypto::verify(source, msg, sig))
+                                throw std::runtime_error{"Failed to verify signature for fetch RouterIDs response."};
+                        });
 
                         std::set<RouterID> router_ids;
 
@@ -484,10 +477,7 @@ namespace llarp
                             if (s.size() != RouterID::SIZE)
                             {
                                 log::critical(
-                                    link_cat,
-                                    "RID fetch from {} via {} returned bad RouterID",
-                                    target,
-                                    source);
+                                    link_cat, "RID fetch from {} via {} returned bad RouterID", target, source);
                                 ingest_rid_fetch_responses(target);
                                 fetch_rids_result(initial);
                                 return;
@@ -502,8 +492,7 @@ namespace llarp
                     }
                     catch (const std::exception& e)
                     {
-                        log::critical(
-                            link_cat, "Error handling fetch RouterIDs response: {}", e.what());
+                        log::critical(link_cat, "Error handling fetch RouterIDs response: {}", e.what());
                         ingest_rid_fetch_responses(target);
                         fetch_rids_result(initial);
                     }
@@ -534,9 +523,8 @@ namespace llarp
             // If we have passed the last last conditional, then it means we are not bootstrapping
             // and the current fetch_source has more attempts before being rotated. As a result, we
             // find new non-bootstrap RC fetch source and try again buddy
-            fetch_source = (initial)
-                ? *std::next(known_rids.begin(), csrng() % known_rids.size())
-                : std::next(rc_lookup.begin(), csrng() % rc_lookup.size())->first;
+            fetch_source = (initial) ? *std::next(known_rids.begin(), csrng() % known_rids.size())
+                                     : std::next(rc_lookup.begin(), csrng() % rc_lookup.size())->first;
 
             fetch_rcs(initial);
         }
@@ -565,8 +553,7 @@ namespace llarp
 
         if (n_responses < RID_SOURCE_COUNT)
         {
-            log::critical(
-                logcat, "Received {}/{} fetch RID requests", n_responses, RID_SOURCE_COUNT);
+            log::critical(logcat, "Received {}/{} fetch RID requests", n_responses, RID_SOURCE_COUNT);
             return;
         }
 
@@ -574,11 +561,7 @@ namespace llarp
 
         if (n_fails <= MAX_RID_ERRORS)
         {
-            log::critical(
-                logcat,
-                "RID fetching was successful ({}/{} acceptable errors)",
-                n_fails,
-                MAX_RID_ERRORS);
+            log::critical(logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
 
             // this is where the trust model will do verification based on the similarity of the
             // sets
@@ -589,19 +572,14 @@ namespace llarp
                 return;
             }
 
-            log::critical(
-                logcat,
-                "Accumulated RID's rejected by trust model, reselecting all RID sources...");
+            log::critical(logcat, "Accumulated RID's rejected by trust model, reselecting all RID sources...");
             reselect_router_id_sources(rid_sources);
             ++fetch_failures;
         }
         else
         {
             // we had 4 or more failed requests, so we will need to rotate our rid sources
-            log::critical(
-                logcat,
-                "RID fetching found {} failures; reselecting failed RID sources...",
-                n_fails);
+            log::critical(logcat, "RID fetching found {} failures; reselecting failed RID sources...", n_fails);
             ++fetch_failures;
             reselect_router_id_sources(fail_sources);
         }
@@ -655,8 +633,7 @@ namespace llarp
             // bad spot; we are unable to do anything
             if (_using_bootstrap_fallback)
             {
-                auto err = fmt::format(
-                    "ERROR: ALL BOOTSTRAPS ARE BAD... REATTEMPTING IN {}...", BOOTSTRAP_COOLDOWN);
+                auto err = fmt::format("ERROR: ALL BOOTSTRAPS ARE BAD... REATTEMPTING IN {}...", BOOTSTRAP_COOLDOWN);
                 log::error(logcat, err);
 
                 bootstrap_cooldown();
@@ -676,15 +653,13 @@ namespace llarp
 
         auto is_snode = _router.is_service_node();
 
-        auto num_needed =
-            is_snode ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
+        auto num_needed = is_snode ? SERVICE_NODE_BOOTSTRAP_SOURCE_COUNT : CLIENT_BOOTSTRAP_SOURCE_COUNT;
 
         _router.link_manager().fetch_bootstrap_rcs(
             rc,
             BootstrapFetchMessage::serialize(
                 is_snode ? std::make_optional(_router.router_contact) : std::nullopt, num_needed),
-            [this, is_snode = _router.is_service_node(), src = rc.router_id()](
-                oxen::quic::message m) mutable {
+            [this, is_snode = _router.is_service_node(), src = rc.router_id()](oxen::quic::message m) mutable {
                 log::critical(logcat, "Received response to BootstrapRC fetch request...");
 
                 if (not m)
@@ -731,11 +706,7 @@ namespace llarp
                 }
 
                 log::critical(
-                    logcat,
-                    "BootstrapRC fetch response from {} returned {}/{} needed RCs",
-                    src,
-                    num,
-                    MIN_ACTIVE_RCS);
+                    logcat, "BootstrapRC fetch response from {} returned {}/{} needed RCs", src, num, MIN_ACTIVE_RCS);
 
                 if (not is_snode)
                 {
@@ -818,8 +789,7 @@ namespace llarp
     {
         if (not _router.is_service_node())
         {
-            if (_pinned_edges.size() && _pinned_edges.count(remote) == 0
-                && not _bootstraps.contains(remote))
+            if (_pinned_edges.size() && _pinned_edges.count(remote) == 0 && not _bootstraps.contains(remote))
                 return false;
         }
 
@@ -932,8 +902,7 @@ namespace llarp
     {
         auto cutoff_time = time_point_now();
 
-        cutoff_time -=
-            _router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
+        cutoff_time -= _router.is_service_node() ? RouterContact::OUTDATED_AGE : RouterContact::LIFETIME;
 
         for (auto itr = rc_lookup.begin(); itr != rc_lookup.end();)
         {
@@ -1048,8 +1017,7 @@ namespace llarp
         });
     }
 
-    std::vector<RemoteRC> NodeDB::find_many_closest_to(
-        llarp::dht::Key_t location, uint32_t numRouters) const
+    std::vector<RemoteRC> NodeDB::find_many_closest_to(llarp::dht::Key_t location, uint32_t numRouters) const
     {
         return _router.loop()->call_get([this, location, numRouters]() -> std::vector<RemoteRC> {
             std::vector<const RemoteRC*> all;
@@ -1063,11 +1031,9 @@ namespace llarp
 
             auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
 
-            std::partial_sort(
-                all.begin(),
-                it_mid,
-                all.end(),
-                [compare = dht::XorMetric{location}](auto* a, auto* b) { return compare(*a, *b); });
+            std::partial_sort(all.begin(), it_mid, all.end(), [compare = dht::XorMetric{location}](auto* a, auto* b) {
+                return compare(*a, *b);
+            });
 
             std::vector<RemoteRC> closest;
             closest.reserve(numRouters);

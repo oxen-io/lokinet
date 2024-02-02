@@ -22,9 +22,7 @@ namespace llarp
     namespace link
     {
         Endpoint::Endpoint(std::shared_ptr<oxen::quic::Endpoint> ep, LinkManager& lm)
-            : endpoint{std::move(ep)},
-              link_manager{lm},
-              _is_service_node{link_manager.is_service_node()}
+            : endpoint{std::move(ep)}, link_manager{lm}, _is_service_node{link_manager.is_service_node()}
         {}
 
         std::shared_ptr<link::Connection> Endpoint::get_service_conn(const RouterID& rid) const
@@ -56,47 +54,12 @@ namespace llarp
 
         bool Endpoint::have_client_conn(const RouterID& remote) const
         {
-            return link_manager.router().loop()->call_get(
-                [this, remote]() { return client_conns.count(remote); });
+            return link_manager.router().loop()->call_get([this, remote]() { return client_conns.count(remote); });
         }
 
         bool Endpoint::have_service_conn(const RouterID& remote) const
         {
-            return link_manager.router().loop()->call_get(
-                [this, remote]() { return service_conns.count(remote); });
-        }
-
-        std::pair<size_t, size_t> Endpoint::num_in_out() const
-        {
-            size_t in{0}, out{0};
-
-            for (const auto& c : service_conns)
-            {
-                if (c.second->is_inbound())
-                    ++in;
-                else
-                    ++out;
-            }
-
-            for (const auto& c : client_conns)
-            {
-                if (c.second->is_inbound())
-                    ++in;
-                else
-                    ++out;
-            }
-
-            return {in, out};
-        }
-
-        size_t Endpoint::num_client_conns() const
-        {
-            return client_conns.size();
-        }
-
-        size_t Endpoint::num_router_conns() const
-        {
-            return service_conns.size();
+            return link_manager.router().loop()->call_get([this, remote]() { return service_conns.count(remote); });
         }
 
         void Endpoint::for_each_connection(std::function<void(link::Connection&)> func)
@@ -133,7 +96,55 @@ namespace llarp
                     log::critical(logcat, "Could not find connection to RID:{} to close!", rid);
             });
         }
+
+        std::tuple<size_t, size_t, size_t, size_t> Endpoint::connection_stats() const
+        {
+            size_t in{0}, out{0};
+
+            for (const auto& c : service_conns)
+            {
+                if (c.second->is_inbound())
+                    ++in;
+                else
+                    ++out;
+            }
+
+            for (const auto& c : client_conns)
+            {
+                if (c.second->is_inbound())
+                    ++in;
+                else
+                    ++out;
+            }
+
+            return {in, out, service_conns.size(), client_conns.size()};
+        }
+
+        size_t Endpoint::num_client_conns() const
+        {
+            return client_conns.size();
+        }
+
+        size_t Endpoint::num_router_conns() const
+        {
+            return service_conns.size();
+        }
     }  // namespace link
+
+    std::tuple<size_t, size_t, size_t, size_t> LinkManager::connection_stats() const
+    {
+        return ep.connection_stats();
+    }
+
+    size_t LinkManager::get_num_connected_routers() const
+    {
+        return ep.num_router_conns();
+    }
+
+    size_t LinkManager::get_num_connected_clients() const
+    {
+        return ep.num_client_conns();
+    }
 
     using messages::serialize_response;
 
@@ -151,51 +162,42 @@ namespace llarp
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
         s->register_handler("bfetch_rcs"s, [this](oxen::quic::message m) {
-            _router.loop()->call([this, msg = std::move(m)]() mutable {
-                handle_fetch_bootstrap_rcs(std::move(msg));
-            });
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_fetch_bootstrap_rcs(std::move(msg)); });
         });
 
         s->register_handler("fetch_rcs"s, [this](oxen::quic::message m) {
-            _router.loop()->call(
-                [this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_fetch_rcs(std::move(msg)); });
         });
 
         s->register_handler("fetch_rids"s, [this](oxen::quic::message m) {
-            _router.loop()->call(
-                [this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_fetch_router_ids(std::move(msg)); });
         });
 
         s->register_handler("path_build"s, [this, rid = router_id](oxen::quic::message m) {
-            _router.loop()->call([this, &rid, msg = std::move(m)]() mutable {
-                handle_path_build(std::move(msg), rid);
-            });
+            _router.loop()->call(
+                [this, &rid, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
         });
 
         s->register_handler("path_control"s, [this, rid = router_id](oxen::quic::message m) {
-            _router.loop()->call([this, &rid, msg = std::move(m)]() mutable {
-                handle_path_control(std::move(msg), rid);
-            });
+            _router.loop()->call(
+                [this, &rid, msg = std::move(m)]() mutable { handle_path_control(std::move(msg), rid); });
         });
 
         s->register_handler("gossip_rc"s, [this](oxen::quic::message m) {
-            _router.loop()->call(
-                [this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
+            _router.loop()->call([this, msg = std::move(m)]() mutable { handle_gossip_rc(std::move(msg)); });
         });
 
         for (auto& method : direct_requests)
         {
             s->register_handler(
-                std::string{method.first},
-                [this, func = std::move(method.second)](oxen::quic::message m) {
-                    _router.loop()->call(
-                        [this, msg = std::move(m), func = std::move(func)]() mutable {
-                            auto body = msg.body_str();
-                            auto respond = [m = std::move(msg)](std::string response) mutable {
-                                m.respond(std::move(response), m.is_error());
-                            };
-                            std::invoke(func, this, body, std::move(respond));
-                        });
+                std::string{method.first}, [this, func = std::move(method.second)](oxen::quic::message m) {
+                    _router.loop()->call([this, msg = std::move(m), func = std::move(func)]() mutable {
+                        auto body = msg.body_str();
+                        auto respond = [m = std::move(msg)](std::string response) mutable {
+                            m.respond(std::move(response), m.is_error());
+                        };
+                        std::invoke(func, this, body, std::move(respond));
+                    });
                 });
         }
 
@@ -232,20 +234,15 @@ namespace llarp
         auto e = quic->endpoint(
             _router.listen_addr(),
             [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
-            [this](oxen::quic::connection_interface& ci, uint64_t ec) {
-                return on_conn_closed(ci, ec);
-            },
-            [this](oxen::quic::dgram_interface& di, bstring dgram) {
-                recv_data_message(di, dgram);
-            },
+            [this](oxen::quic::connection_interface& ci, uint64_t ec) { return on_conn_closed(ci, ec); },
+            [this](oxen::quic::dgram_interface& di, bstring dgram) { recv_data_message(di, dgram); },
             is_service_node() ? alpns::SERVICE_INBOUND : alpns::CLIENT_INBOUND,
             is_service_node() ? alpns::SERVICE_OUTBOUND : alpns::CLIENT_OUTBOUND);
 
         // While only service nodes accept inbound connections, clients must have this key verify
         // callback set. It will reject any attempted inbound connection to a lokinet client prior
         // to handshake completion
-        tls_creds->set_key_verify_callback([this](
-                                               const ustring_view& key, const ustring_view& alpn) {
+        tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view& alpn) {
             return _router.loop()->call_get([&]() {
                 RouterID other{key.data()};
                 auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
@@ -255,11 +252,7 @@ namespace llarp
                 {
                     if (alpn == alpns::C_ALPNS)
                     {
-                        log::critical(
-                            logcat,
-                            "{} node accepting client connection (remote ID:{})!",
-                            us,
-                            other);
+                        log::critical(logcat, "{} node accepting client connection (remote ID:{})!", us, other);
                         ep.client_conns.emplace(other, nullptr);
                         return true;
                     }
@@ -294,17 +287,13 @@ namespace llarp
                                     "(RID:{}); {}!",
                                     us,
                                     other,
-                                    defer_to_incoming ? "deferring to inbound"
-                                                      : "rejecting in favor of outbound");
+                                    defer_to_incoming ? "deferring to inbound" : "rejecting in favor of outbound");
 
                                 return defer_to_incoming;
                             }
 
                             log::critical(
-                                logcat,
-                                "{} node accepting inbound from registered remote (RID:{})",
-                                us,
-                                other);
+                                logcat, "{} node accepting inbound from registered remote (RID:{})", us, other);
                         }
                         else
                             log::critical(
@@ -318,8 +307,7 @@ namespace llarp
                         return result;
                     }
 
-                    log::critical(
-                        logcat, "{} node received unknown ALPN; rejecting connection!", us);
+                    log::critical(logcat, "{} node received unknown ALPN; rejecting connection!", us);
                     return false;
                 }
 
@@ -358,31 +346,29 @@ namespace llarp
 
         auto control = make_control(ci, rid);
 
-        _router.loop()->call(
-            [this, ci_ptr = ci.shared_from_this(), bstream = std::move(control), rid]() {
-                if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
-                {
-                    log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
+        _router.loop()->call([this, ci_ptr = ci.shared_from_this(), bstream = std::move(control), rid]() {
+            if (auto it = ep.service_conns.find(rid); it != ep.service_conns.end())
+            {
+                log::critical(logcat, "Configuring inbound connection from relay RID:{}", rid);
 
-                    it->second = std::make_shared<link::Connection>(ci_ptr, std::move(bstream));
-                }
-                else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
-                {
-                    log::critical(logcat, "Configuring inbound connection from client RID:{}", rid);
-                    it->second =
-                        std::make_shared<link::Connection>(ci_ptr, std::move(bstream), false);
-                }
-                else
-                {
-                    log::critical(
-                        logcat,
-                        "ERROR: connection accepted from RID:{} that was not logged in key "
-                        "verification!",
-                        rid);
-                }
+                it->second = std::make_shared<link::Connection>(ci_ptr, std::move(bstream));
+            }
+            else if (auto it = ep.client_conns.find(rid); it != ep.client_conns.end())
+            {
+                log::critical(logcat, "Configuring inbound connection from client RID:{}", rid);
+                it->second = std::make_shared<link::Connection>(ci_ptr, std::move(bstream), false);
+            }
+            else
+            {
+                log::critical(
+                    logcat,
+                    "ERROR: connection accepted from RID:{} that was not logged in key "
+                    "verification!",
+                    rid);
+            }
 
-                log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
-            });
+            log::critical(logcat, "Successfully configured inbound connection fom {}...", rid);
+        });
     }
 
     void LinkManager::on_outbound_conn(oxen::quic::connection_interface& ci)
@@ -431,36 +417,30 @@ namespace llarp
 
     void LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
     {
-        _router.loop()->call(
-            [this, ref_id = ci.reference_id(), rid = RouterID{ci.remote_key()}, error_code = ec]() {
-                log::critical(quic_cat, "Purging quic connection {} (ec:{})", ref_id, error_code);
+        _router.loop()->call([this, ref_id = ci.reference_id(), rid = RouterID{ci.remote_key()}, error_code = ec]() {
+            log::critical(quic_cat, "Purging quic connection {} (ec:{})", ref_id, error_code);
 
-                if (auto s_itr = ep.service_conns.find(rid); s_itr != ep.service_conns.end())
-                {
-                    log::critical(
-                        quic_cat, "Quic connection to relay RID:{} purged successfully", rid);
-                    ep.service_conns.erase(s_itr);
-                }
-                else if (auto c_itr = ep.client_conns.find(rid); c_itr != ep.client_conns.end())
-                {
-                    log::critical(
-                        quic_cat, "Quic connection to client RID:{} purged successfully", rid);
-                    ep.client_conns.erase(c_itr);
-                }
-                else
-                    log::critical(quic_cat, "Nothing to purge for quic connection {}", ref_id);
-            });
+            if (auto s_itr = ep.service_conns.find(rid); s_itr != ep.service_conns.end())
+            {
+                log::critical(quic_cat, "Quic connection to relay RID:{} purged successfully", rid);
+                ep.service_conns.erase(s_itr);
+            }
+            else if (auto c_itr = ep.client_conns.find(rid); c_itr != ep.client_conns.end())
+            {
+                log::critical(quic_cat, "Quic connection to client RID:{} purged successfully", rid);
+                ep.client_conns.erase(c_itr);
+            }
+            else
+                log::critical(quic_cat, "Nothing to purge for quic connection {}", ref_id);
+        });
     }
 
     bool LinkManager::send_control_message(
-        const RouterID& remote,
-        std::string endpoint,
-        std::string body,
-        std::function<void(oxen::quic::message m)> func)
+        const RouterID& remote, std::string endpoint, std::string body, std::function<void(oxen::quic::message m)> func)
     {
         // DISCUSS: revisit if this assert makes sense. If so, there's no need to if (func) the
         // next logic block
-        assert(func);  // makes no sense to send control message and ignore response (maybe gossip?)
+        // assert(func);  // makes no sense to send control message and ignore response (maybe gossip?)
 
         if (is_stopping)
             return false;
@@ -468,8 +448,7 @@ namespace llarp
         if (func)
         {
             func = [this, f = std::move(func)](oxen::quic::message m) mutable {
-                _router.loop()->call(
-                    [func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
+                _router.loop()->call([func = std::move(f), msg = std::move(m)]() mutable { func(std::move(msg)); });
             };
         }
 
@@ -482,13 +461,10 @@ namespace llarp
 
         log::critical(logcat, "Queueing message to ");
 
-        _router.loop()->call([this,
-                              remote,
-                              endpoint = std::move(endpoint),
-                              body = std::move(body),
-                              f = std::move(func)]() {
-            connect_and_send(remote, std::move(endpoint), std::move(body), std::move(f));
-        });
+        _router.loop()->call(
+            [this, remote, endpoint = std::move(endpoint), body = std::move(body), f = std::move(func)]() {
+                connect_and_send(remote, std::move(endpoint), std::move(body), std::move(f));
+            });
 
         return false;
     }
@@ -504,9 +480,8 @@ namespace llarp
             return true;
         }
 
-        _router.loop()->call([this, body = std::move(body), remote]() {
-            connect_and_send(remote, std::nullopt, std::move(body));
-        });
+        _router.loop()->call(
+            [this, body = std::move(body), remote]() { connect_and_send(remote, std::nullopt, std::move(body)); });
 
         return false;
     }
@@ -516,8 +491,7 @@ namespace llarp
         return ep.close_connection(rid);
     }
 
-    void LinkManager::test_reachability(
-        const RouterID& rid, conn_open_hook on_open, conn_closed_hook on_close)
+    void LinkManager::test_reachability(const RouterID& rid, conn_open_hook on_open, conn_closed_hook on_close)
     {
         if (auto rc = node_db->get_rc(rid))
         {
@@ -554,14 +528,10 @@ namespace llarp
             log::warning(quic_cat, "Failed to begin establishing connection to {}", remote_addr);
         }
         else
-            log::error(
-                quic_cat,
-                "Error: Could not find RC for connection to rid:{}, message not sent!",
-                router);
+            log::error(quic_cat, "Error: Could not find RC for connection to rid:{}, message not sent!", router);
     }
 
-    void LinkManager::connect_to(
-        const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
+    void LinkManager::connect_to(const RemoteRC& rc, conn_open_hook on_open, conn_closed_hook on_close)
     {
         const auto& rid = rc.router_id();
 
@@ -576,10 +546,7 @@ namespace llarp
         const auto& remote_addr = rc.addr();
 
         if (auto rv = ep.establish_connection(
-                oxen::quic::RemoteAddress{rid.ToView(), remote_addr},
-                rc,
-                std::move(on_open),
-                std::move(on_close));
+                oxen::quic::RemoteAddress{rid.ToView(), remote_addr}, rc, std::move(on_open), std::move(on_close));
             rv)
         {
             log::info(quic_cat, "Begun establishing connection to {}", remote_addr);
@@ -629,21 +596,6 @@ namespace llarp
         }
     }
 
-    std::pair<size_t, size_t> LinkManager::num_in_out() const
-    {
-        return ep.num_in_out();
-    }
-
-    size_t LinkManager::get_num_connected_routers() const
-    {
-        return ep.num_router_conns();
-    }
-
-    size_t LinkManager::get_num_connected_clients() const
-    {
-        return ep.num_client_conns();
-    }
-
     bool LinkManager::is_service_node() const
     {
         return _is_service_node;
@@ -687,8 +639,7 @@ namespace llarp
                 connect_to(rc);
         }
         else
-            log::warning(
-                logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
+            log::warning(logcat, "NodeDB query for {} random RCs for connection returned none", num_conns);
     }
 
     void LinkManager::recv_data_message(oxen::quic::dgram_interface&, bstring)
@@ -709,10 +660,7 @@ namespace llarp
                     continue;
 
                 send_control_message(
-                    rid,
-                    "gossip_rc"s,
-                    GossipRCMessage::serialize(last_sender, rc),
-                    [](oxen::quic::message) mutable {
+                    rid, "gossip_rc"s, GossipRCMessage::serialize(last_sender, rc), [](oxen::quic::message) {
                         log::trace(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
                     });
                 ++count;
@@ -785,8 +733,7 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            log::critical(
-                link_cat, "Exception handling RC Fetch request (body:{}): {}", m.body(), e.what());
+            log::critical(link_cat, "Exception handling RC Fetch request (body:{}): {}", m.body(), e.what());
             m.respond(messages::ERROR_RESPONSE, true);
             return;
         }
@@ -848,9 +795,7 @@ namespace llarp
     }
 
     void LinkManager::fetch_rcs(
-        const RouterID& source,
-        std::string payload,
-        std::function<void(oxen::quic::message m)> func)
+        const RouterID& source, std::string payload, std::function<void(oxen::quic::message m)> func)
     {
         // this handler should not be registered for service nodes
         assert(not _router.is_service_node());
@@ -900,8 +845,7 @@ namespace llarp
             // Initial fetch: give me all the RC's
             if (explicit_ids.empty())
             {
-                log::critical(
-                    logcat, "Returning ALL locally held RCs for initial FetchRC request...");
+                log::critical(logcat, "Returning ALL locally held RCs for initial FetchRC request...");
                 for (const auto& rc : rcs)
                 {
                     sublist.append_encoded(rc.view());
@@ -961,8 +905,7 @@ namespace llarp
                 source,
                 "fetch_rids"s,
                 m.body_str(),
-                [source_rid = std::move(source),
-                 original = std::move(m)](oxen::quic::message m) mutable {
+                [source_rid = std::move(source), original = std::move(m)](oxen::quic::message m) mutable {
                     original.respond(m.body_str(), m.is_error());
                 });
             return;
@@ -992,8 +935,7 @@ namespace llarp
         m.respond(std::move(btdp).str());
     }
 
-    void LinkManager::handle_find_name(
-        std::string_view body, std::function<void(std::string)> respond)
+    void LinkManager::handle_find_name(std::string_view body, std::function<void(std::string)> respond)
     {
         std::string name_hash;
 
@@ -1012,13 +954,11 @@ namespace llarp
 
         _router.rpc_client()->lookup_ons_hash(
             name_hash,
-            [respond = std::move(respond)](
-                [[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
+            [respond = std::move(respond)]([[maybe_unused]] std::optional<service::EncryptedName> maybe) mutable {
                 if (maybe)
                     respond(serialize_response({{"NAME", maybe->ciphertext}}));
                 else
-                    respond(
-                        serialize_response({{messages::STATUS_KEY, FindNameMessage::NOT_FOUND}}));
+                    respond(serialize_response({{messages::STATUS_KEY, FindNameMessage::NOT_FOUND}}));
             });
     }
 
@@ -1065,8 +1005,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_publish_intro(
-        std::string_view body, std::function<void(std::string)> respond)
+    void LinkManager::handle_publish_intro(std::string_view body, std::function<void(std::string)> respond)
     {
         std::string introset, derived_signing_key, payload, sig, nonce;
         uint64_t is_relayed, relay_order;
@@ -1101,32 +1040,24 @@ namespace llarp
 
         if (not service::EncryptedIntroSet::verify(introset, derived_signing_key, sig))
         {
-            log::error(
-                link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
-            respond(serialize_response(
-                {{messages::STATUS_KEY, PublishIntroMessage::INVALID_INTROSET}}));
+            log::error(link_cat, "Received PublishIntroMessage with invalid introset: {}", introset);
+            respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INVALID_INTROSET}}));
             return;
         }
 
         if (now + service::MAX_INTROSET_TIME_DELTA > signed_at + path::DEFAULT_LIFETIME)
         {
-            log::error(
-                link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
+            log::error(link_cat, "Received PublishIntroMessage with expired introset: {}", introset);
             respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::EXPIRED}}));
             return;
         }
 
-        auto closest_rcs =
-            _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
+        auto closest_rcs = _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
 
         if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
         {
-            log::error(
-                link_cat,
-                "Received PublishIntroMessage but only know {} nodes",
-                closest_rcs.size());
-            respond(
-                serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INSUFFICIENT}}));
+            log::error(link_cat, "Received PublishIntroMessage but only know {} nodes", closest_rcs.size());
+            respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INSUFFICIENT}}));
             return;
         }
 
@@ -1136,12 +1067,8 @@ namespace llarp
         {
             if (relay_order >= INTROSET_STORAGE_REDUNDANCY)
             {
-                log::error(
-                    link_cat,
-                    "Received PublishIntroMessage with invalide relay order: {}",
-                    relay_order);
-                respond(serialize_response(
-                    {{messages::STATUS_KEY, PublishIntroMessage::INVALID_ORDER}}));
+                log::error(link_cat, "Received PublishIntroMessage with invalide relay order: {}", relay_order);
+                respond(serialize_response({{messages::STATUS_KEY, PublishIntroMessage::INVALID_ORDER}}));
                 return;
             }
 
@@ -1162,10 +1089,7 @@ namespace llarp
             }
             else
             {
-                log::info(
-                    link_cat,
-                    "Received PublishIntroMessage; propagating to peer index {}",
-                    relay_order);
+                log::info(link_cat, "Received PublishIntroMessage; propagating to peer index {}", relay_order);
 
                 send_control_message(
                     peer_key,
@@ -1195,17 +1119,13 @@ namespace llarp
 
         if (rc_index >= 0)
         {
-            log::info(
-                link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
+            log::info(link_cat, "Received PublishIntroMessage for {} (TXID: {}); we are candidate {}");
 
             _router.contacts().put_intro(std::move(enc));
             respond(serialize_response({{messages::STATUS_KEY, ""}}));
         }
         else
-            log::warning(
-                link_cat,
-                "Received non-relayed PublishIntroMessage from {}; we are not the candidate",
-                addr);
+            log::warning(link_cat, "Received non-relayed PublishIntroMessage from {}; we are not the candidate", addr);
     }
 
     // DISCUSS: I feel like ::handle_publish_intro_response should be the callback that handles the
@@ -1258,8 +1178,7 @@ namespace llarp
         }
     }
 
-    void LinkManager::handle_find_intro(
-        std::string_view body, std::function<void(std::string)> respond)
+    void LinkManager::handle_find_intro(std::string_view body, std::function<void(std::string)> respond)
     {
         ustring location;
         uint64_t relay_order, is_relayed;
@@ -1285,26 +1204,17 @@ namespace llarp
         {
             if (relay_order >= INTROSET_STORAGE_REDUNDANCY)
             {
-                log::warning(
-                    link_cat,
-                    "Received FindIntroMessage with invalid relay order: {}",
-                    relay_order);
-                respond(
-                    serialize_response({{messages::STATUS_KEY, FindIntroMessage::INVALID_ORDER}}));
+                log::warning(link_cat, "Received FindIntroMessage with invalid relay order: {}", relay_order);
+                respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::INVALID_ORDER}}));
                 return;
             }
 
-            auto closest_rcs =
-                _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
+            auto closest_rcs = _router.node_db()->find_many_closest_to(addr, INTROSET_STORAGE_REDUNDANCY);
 
             if (closest_rcs.size() != INTROSET_STORAGE_REDUNDANCY)
             {
-                log::error(
-                    link_cat,
-                    "Received FindIntroMessage but only know {} nodes",
-                    closest_rcs.size());
-                respond(serialize_response(
-                    {{messages::STATUS_KEY, FindIntroMessage::INSUFFICIENT_NODES}}));
+                log::error(link_cat, "Received FindIntroMessage but only know {} nodes", closest_rcs.size());
+                respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::INSUFFICIENT_NODES}}));
                 return;
             }
 
@@ -1325,13 +1235,9 @@ namespace llarp
                             "to initial "
                             "requester");
                     else if (relay_response.timed_out)
-                        log::critical(
-                            link_cat,
-                            "Relayed FindIntroMessage timed out! Notifying initial requester");
+                        log::critical(link_cat, "Relayed FindIntroMessage timed out! Notifying initial requester");
                     else
-                        log::critical(
-                            link_cat,
-                            "Relayed FindIntroMessage failed! Notifying initial requester");
+                        log::critical(link_cat, "Relayed FindIntroMessage failed! Notifying initial requester");
 
                     respond(relay_response.body_str());
                 });
@@ -1342,9 +1248,7 @@ namespace llarp
                 respond(serialize_response({{"INTROSET", maybe_intro->bt_encode()}}));
             else
             {
-                log::warning(
-                    link_cat,
-                    "Received FindIntroMessage with relayed == false and no local introset entry");
+                log::warning(link_cat, "Received FindIntroMessage with relayed == false and no local introset entry");
                 respond(serialize_response({{messages::STATUS_KEY, FindIntroMessage::NOT_FOUND}}));
             }
         }
@@ -1389,8 +1293,7 @@ namespace llarp
         if (!_router.path_context().is_transit_allowed())
         {
             log::warning(link_cat, "got path build request when not permitting transit");
-            m.respond(
-                serialize_response({{messages::STATUS_KEY, PathBuildMessage::NO_TRANSIT}}), true);
+            m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::NO_TRANSIT}}), true);
             return;
         }
 
@@ -1400,9 +1303,7 @@ namespace llarp
             if (payload_list.size() != path::MAX_LEN)
             {
                 log::info(link_cat, "Path build message with wrong number of frames");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_FRAMES}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_FRAMES}}), true);
                 return;
             }
 
@@ -1417,13 +1318,10 @@ namespace llarp
 
             SharedSecret shared;
             // derive shared secret using ephemeral pubkey and our secret key (and nonce)
-            if (!crypto::dh_server(
-                    shared.data(), other_pubkey.data(), _router.pubkey(), outer_nonce.data()))
+            if (!crypto::dh_server(shared.data(), other_pubkey.data(), _router.pubkey(), outer_nonce.data()))
             {
                 log::info(link_cat, "DH server initialization failed during path build");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
                 return;
             }
 
@@ -1432,28 +1330,21 @@ namespace llarp
             if (!crypto::hmac(digest.data(), frame.data(), frame.size(), shared))
             {
                 log::error(link_cat, "HMAC failed on path build request");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
                 return;
             }
             if (!std::equal(digest.begin(), digest.end(), hash.data()))
             {
                 log::info(link_cat, "HMAC mismatch on path build request");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
                 return;
             }
 
             // decrypt frame with our hop info
-            if (!crypto::xchacha20(
-                    hop_payload.data(), hop_payload.size(), shared.data(), outer_nonce.data()))
+            if (!crypto::xchacha20(hop_payload.data(), hop_payload.size(), shared.data(), outer_nonce.data()))
             {
                 log::info(link_cat, "Decrypt failed on path build request");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
                 return;
             }
 
@@ -1477,9 +1368,7 @@ namespace llarp
             if (hop->info.txID.IsZero() || hop->info.rxID.IsZero())
             {
                 log::warning(link_cat, "Invalid PathID; PathIDs must be non-zero");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
                 return;
             }
 
@@ -1488,26 +1377,20 @@ namespace llarp
             if (_router.path_context().has_transit_hop(hop->info))
             {
                 log::warning(link_cat, "Invalid PathID; PathIDs must be unique");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_PATHID}}), true);
                 return;
             }
 
-            if (!crypto::dh_server(
-                    hop->pathKey.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
+            if (!crypto::dh_server(hop->pathKey.data(), other_pubkey.data(), _router.pubkey(), inner_nonce.data()))
             {
                 log::warning(link_cat, "DH failed during path build.");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_CRYPTO}}), true);
                 return;
             }
             // generate hash of hop key for nonce mutation
             ShortHash xor_hash;
             crypto::shorthash(xor_hash, hop->pathKey.data(), hop->pathKey.size());
-            hop->nonceXOR =
-                xor_hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+            hop->nonceXOR = xor_hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
             // set and check path lifetime
             hop->lifetime = 1ms * lifetime;
@@ -1515,9 +1398,7 @@ namespace llarp
             if (hop->lifetime >= path::DEFAULT_LIFETIME)
             {
                 log::warning(link_cat, "Path build attempt with too long of a lifetime.");
-                m.respond(
-                    serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_LIFETIME}}),
-                    true);
+                m.respond(serialize_response({{messages::STATUS_KEY, PathBuildMessage::BAD_LIFETIME}}), true);
                 return;
             }
 
@@ -1543,8 +1424,7 @@ namespace llarp
             // onion round to compute the return value, so we don't care about it.
             for (auto& element : payload_list)
             {
-                crypto::onion(
-                    element.data(), element.size(), hop->pathKey, onion_nonce, onion_nonce);
+                crypto::onion(element.data(), element.size(), hop->pathKey, onion_nonce, onion_nonce);
             }
             // randomize final frame.  could probably paste our frame on the end and onion it with
             // the rest, but it gains nothing over random.
@@ -1568,8 +1448,7 @@ namespace llarp
                     if (m.timed_out)
                         log::info(link_cat, "Upstream timed out on path build; relaying timeout");
                     else
-                        log::info(
-                            link_cat, "Upstream returned path build failure; relaying response");
+                        log::info(link_cat, "Upstream returned path build failure; relaying response");
 
                     m.respond(m.body_str(), m.is_error());
                 });
@@ -1663,8 +1542,7 @@ namespace llarp
         }
 
         RouterID target{pubkey.data()};
-        auto transit_hop =
-            _router.path_context().GetTransitHop(target, PathID_t{to_usv(tx_id).data()});
+        auto transit_hop = _router.path_context().GetTransitHop(target, PathID_t{to_usv(tx_id).data()});
 
         const auto rx_id = transit_hop->info.rxID;
 
@@ -1672,8 +1550,7 @@ namespace llarp
             (crypto::verify(pubkey, to_usv(dict_data), sig)
              and _router.exitContext().obtain_new_exit(PubKey{pubkey.data()}, rx_id, flag != 0));
 
-        m.respond(
-            ObtainExitMessage::sign_and_serialize_response(_router.identity(), tx_id), not success);
+        m.respond(ObtainExitMessage::sign_and_serialize_response(_router.identity(), tx_id), not success);
     }
 
     void LinkManager::handle_obtain_exit_response(oxen::quic::message m)
@@ -1734,21 +1611,15 @@ namespace llarp
             return;
         }
 
-        auto transit_hop =
-            _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
+        auto transit_hop = _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
 
-        if (auto exit_ep =
-                _router.exitContext().find_endpoint_for_path(PathID_t{to_usv(path_id).data()}))
+        if (auto exit_ep = _router.exitContext().find_endpoint_for_path(PathID_t{to_usv(path_id).data()}))
         {
             if (crypto::verify(exit_ep->PubKey().data(), to_usv(dict_data), sig))
             {
                 (exit_ep->UpdateLocalPath(transit_hop->info.rxID))
-                    ? m.respond(
-                        UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
-                    : m.respond(
-                        serialize_response(
-                            {{messages::STATUS_KEY, UpdateExitMessage::UPDATE_FAILED}}),
-                        true);
+                    ? m.respond(UpdateExitMessage::sign_and_serialize_response(_router.identity(), tx_id))
+                    : m.respond(serialize_response({{messages::STATUS_KEY, UpdateExitMessage::UPDATE_FAILED}}), true);
             }
             // If we fail to verify the message, no-op
         }
@@ -1820,8 +1691,7 @@ namespace llarp
             return;
         }
 
-        auto transit_hop =
-            _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
+        auto transit_hop = _router.path_context().GetTransitHop(_router.pubkey(), PathID_t{to_usv(tx_id).data()});
 
         const auto rx_id = transit_hop->info.rxID;
 
@@ -1834,8 +1704,7 @@ namespace llarp
             }
         }
 
-        m.respond(
-            serialize_response({{messages::STATUS_KEY, CloseExitMessage::UPDATE_FAILED}}), true);
+        m.respond(serialize_response({{messages::STATUS_KEY, CloseExitMessage::UPDATE_FAILED}}), true);
     }
 
     void LinkManager::handle_close_exit_response(oxen::quic::message m)
@@ -1971,13 +1840,11 @@ namespace llarp
 
         if (itr == path_requests.end())
         {
-            log::info(
-                link_cat, "Received path control request \"{}\", which has no handler.", method);
+            log::info(link_cat, "Received path control request \"{}\", which has no handler.", method);
             return;
         }
 
-        auto respond = [m = std::move(m),
-                        hop_weak = hop->weak_from_this()](std::string response) mutable {
+        auto respond = [m = std::move(m), hop_weak = hop->weak_from_this()](std::string response) mutable {
             auto hop = hop_weak.lock();
             if (not hop)
                 return;  // transit hop gone, drop response

@@ -173,8 +173,8 @@ namespace llarp
         */
         std::atomic<int> fetch_failures{0}, bootstrap_attempts{0};
 
-        std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false},
-            _needs_initial_fetch{true}, _fetching_initial{false}, _initial_completed{false};
+        std::atomic<bool> _using_bootstrap_fallback{false}, _needs_rebootstrap{false}, _needs_initial_fetch{true},
+            _fetching_initial{false}, _initial_completed{false};
 
         bool want_rc(const RouterID& rid) const;
 
@@ -185,11 +185,13 @@ namespace llarp
         fs::path get_path_by_pubkey(const RouterID& pk) const;
 
        public:
-        explicit NodeDB(
-            fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
+        explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller, Router* r);
 
         /// in memory nodedb
         NodeDB();
+
+        // returns {num_rcs, num_rids, num_bootstraps}
+        std::tuple<size_t, size_t, size_t> db_stats() const;
 
         const std::set<RouterID>& get_known_rids() const
         {
@@ -356,7 +358,7 @@ namespace llarp
         /// explicit save all RCs to disk synchronously
         void save_to_disk() const;
 
-        /// the number of RCs that are loaded from disk
+        /// the number of known RC's currently held
         size_t num_rcs() const;
 
         size_t num_rids() const;
@@ -406,11 +408,7 @@ namespace llarp
         // `target_size`) from population to refill it.
         template <typename T, typename RNG>
         void replace_subset(
-            std::set<T>& current,
-            const std::set<T>& replace,
-            std::set<T> population,
-            size_t target_size,
-            RNG&& rng)
+            std::set<T>& current, const std::set<T>& replace, std::set<T> population, size_t target_size, RNG&& rng)
         {
             // Remove the ones we are replacing from current:
             current.erase(replace.begin(), replace.end());
@@ -468,13 +466,8 @@ namespace llarp
 
         template <
             typename ID_t,
-            std::enable_if_t<
-                std::is_same_v<ID_t, RouterID> || std::is_same_v<ID_t, RemoteRC>,
-                int> = 0>
-        void process_results(
-            std::set<ID_t> unconfirmed,
-            std::set<Unconfirmed<ID_t>>& container,
-            std::set<ID_t>& known)
+            std::enable_if_t<std::is_same_v<ID_t, RouterID> || std::is_same_v<ID_t, RemoteRC>, int> = 0>
+        void process_results(std::set<ID_t> unconfirmed, std::set<Unconfirmed<ID_t>>& container, std::set<ID_t>& known)
         {
             // before we add the unconfirmed set, we check to see if our local set of unconfirmed
             // rcs/rids appeared in the latest unconfirmed set; if so, we will increment their

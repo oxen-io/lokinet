@@ -51,8 +51,7 @@ namespace llarp
     /// number of dht locations handled per relay
     inline constexpr size_t INTROSET_REQS_PER_RELAY{2};
 
-    inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{
-        (INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
+    inline constexpr size_t INTROSET_STORAGE_REDUNDANCY{(INTROSET_RELAY_REDUNDANCY * INTROSET_REQS_PER_RELAY)};
 
     // TESTNET: these constants are shortened for testing purposes
     inline constexpr std::chrono::milliseconds TESTNET_GOSSIP_INTERVAL{15min};
@@ -152,6 +151,8 @@ namespace llarp
 
         bool should_report_stats(llarp_time_t now) const;
 
+        std::string _stats_line();
+
         void report_stats();
 
         void save_rc();
@@ -161,8 +162,7 @@ namespace llarp
         bool insufficient_peers() const;
 
        protected:
-        std::chrono::system_clock::time_point last_rc_gossip{
-            std::chrono::system_clock::time_point::min()};
+        std::chrono::system_clock::time_point last_rc_gossip{std::chrono::system_clock::time_point::min()};
         std::chrono::system_clock::time_point next_rc_gossip{last_rc_gossip};
         std::chrono::system_clock::time_point next_initial_fetch_attempt{last_rc_gossip};
         std::chrono::system_clock::time_point last_rc_fetch{last_rc_gossip};
@@ -170,6 +170,8 @@ namespace llarp
         std::chrono::system_clock::time_point next_bootstrap_attempt{last_rc_gossip};
 
        public:
+        bool fully_meshed() const;
+
         bool testnet() const
         {
             return _testnet;

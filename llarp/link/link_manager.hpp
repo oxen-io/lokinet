@@ -88,15 +88,14 @@ namespace llarp
 
             bool have_service_conn(const RouterID& remote) const;
 
-            std::pair<size_t, size_t> num_in_out() const;
+            std::tuple<size_t, size_t, size_t, size_t> connection_stats() const;
 
             size_t num_client_conns() const;
 
             size_t num_router_conns() const;
 
             template <typename... Opt>
-            bool establish_connection(
-                const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts);
+            bool establish_connection(const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts);
 
             template <typename... Opt>
             bool establish_and_send(
@@ -179,9 +178,7 @@ namespace llarp
         std::shared_ptr<oxen::quic::Endpoint> startup_endpoint();
 
         void register_commands(
-            const std::shared_ptr<oxen::quic::BTRequestStream>& s,
-            const RouterID& rid,
-            bool client_only = false);
+            const std::shared_ptr<oxen::quic::BTRequestStream>& s, const RouterID& rid, bool client_only = false);
 
        public:
         const link::Endpoint& endpoint() const
@@ -198,24 +195,17 @@ namespace llarp
 
         void handle_gossip_rc(oxen::quic::message m);
 
-        void fetch_rcs(
-            const RouterID& source,
-            std::string payload,
-            std::function<void(oxen::quic::message m)> func);
+        void fetch_rcs(const RouterID& source, std::string payload, std::function<void(oxen::quic::message m)> func);
 
         void handle_fetch_rcs(oxen::quic::message m);
 
         void fetch_router_ids(
-            const RouterID& via,
-            std::string payload,
-            std::function<void(oxen::quic::message m)> func);
+            const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func);
 
         void handle_fetch_router_ids(oxen::quic::message m);
 
         void fetch_bootstrap_rcs(
-            const RemoteRC& source,
-            std::string payload,
-            std::function<void(oxen::quic::message m)> func);
+            const RemoteRC& source, std::string payload, std::function<void(oxen::quic::message m)> func);
 
         void handle_fetch_bootstrap_rcs(oxen::quic::message m);
 
@@ -241,7 +231,7 @@ namespace llarp
 
         void set_conn_persist(const RouterID& remote, llarp_time_t until);
 
-        std::pair<size_t, size_t> num_in_out() const;
+        std::tuple<size_t, size_t, size_t, size_t> connection_stats() const;
 
         size_t get_num_connected_routers() const;
 
@@ -269,12 +259,9 @@ namespace llarp
 
        private:
         // DHT messages
-        void handle_find_name(
-            std::string_view body, std::function<void(std::string)> respond);  // relay
-        void handle_find_intro(
-            std::string_view body, std::function<void(std::string)> respond);  // relay
-        void handle_publish_intro(
-            std::string_view body, std::function<void(std::string)> respond);  // relay
+        void handle_find_name(std::string_view body, std::function<void(std::string)> respond);      // relay
+        void handle_find_intro(std::string_view body, std::function<void(std::string)> respond);     // relay
+        void handle_publish_intro(std::string_view body, std::function<void(std::string)> respond);  // relay
 
         // Path messages
         void handle_path_build(oxen::quic::message, const RouterID& from);  // relay
@@ -312,8 +299,7 @@ namespace llarp
         // Path relaying
         void handle_path_control(oxen::quic::message, const RouterID& from);
 
-        void handle_inner_request(
-            oxen::quic::message m, std::string payload, std::shared_ptr<path::TransitHop> hop);
+        void handle_inner_request(oxen::quic::message m, std::string payload, std::shared_ptr<path::TransitHop> hop);
 
         // DHT responses
         void handle_find_name_response(oxen::quic::message);
@@ -355,12 +341,10 @@ namespace llarp
 
                     if (not b)
                     {
-                        log::critical(
-                            logcat,
-                            "ERROR: attempting to establish an already-existing connection");
-                        (is_control) ? itr->second->control_stream->command(
-                            std::move(*ep), std::move(body), std::move(func))
-                                     : itr->second->conn->send_datagram(std::move(body));
+                        log::critical(logcat, "ERROR: attempting to establish an already-existing connection");
+                        (is_control)
+                            ? itr->second->control_stream->command(std::move(*ep), std::move(body), std::move(func))
+                            : itr->second->conn->send_datagram(std::move(body));
                         return true;
                     }
 
@@ -374,10 +358,7 @@ namespace llarp
                     std::shared_ptr<oxen::quic::BTRequestStream> control_stream =
                         conn_interface->template open_stream<oxen::quic::BTRequestStream>(
                             [rid = rid](oxen::quic::Stream&, uint64_t error_code) {
-                                log::warning(
-                                    logcat,
-                                    "BTRequestStream closed unexpectedly (ec:{})",
-                                    error_code);
+                                log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                             });
 
                     if (is_snode)
@@ -392,15 +373,12 @@ namespace llarp
                         is_control ? "control message (ep:{})"_format(ep) : "data message",
                         rid);
 
-                    (is_control)
-                        ? control_stream->command(std::move(*ep), std::move(body), std::move(func))
-                        : conn_interface->send_datagram(std::move(body));
+                    (is_control) ? control_stream->command(std::move(*ep), std::move(body), std::move(func))
+                                 : conn_interface->send_datagram(std::move(body));
 
-                    itr->second =
-                        std::make_shared<link::Connection>(conn_interface, control_stream, true);
+                    itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, true);
 
-                    log::critical(
-                        logcat, "Outbound connection to RID:{} added to service conns...", rid);
+                    log::critical(logcat, "Outbound connection to RID:{} added to service conns...", rid);
                     return true;
                 }
                 catch (...)
@@ -412,8 +390,7 @@ namespace llarp
         }
 
         template <typename... Opt>
-        bool Endpoint::establish_connection(
-            const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts)
+        bool Endpoint::establish_connection(const oxen::quic::RemoteAddress& remote, const RemoteRC& rc, Opt&&... opts)
         {
             return link_manager.router().loop()->call_get([&]() {
                 try
@@ -427,9 +404,7 @@ namespace llarp
 
                     if (not b)
                     {
-                        log::critical(
-                            logcat,
-                            "ERROR: attempting to establish an already-existing connection");
+                        log::critical(logcat, "ERROR: attempting to establish an already-existing connection");
                         return b;
                     }
 
@@ -439,24 +414,18 @@ namespace llarp
                         is_snode ? ROUTER_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
                         std::forward<Opt>(opts)...);
 
-                    auto control_stream =
-                        conn_interface->template open_stream<oxen::quic::BTRequestStream>(
-                            [rid = rid](oxen::quic::Stream&, uint64_t error_code) {
-                                log::warning(
-                                    logcat,
-                                    "BTRequestStream closed unexpectedly (ec:{})",
-                                    error_code);
-                            });
+                    auto control_stream = conn_interface->template open_stream<oxen::quic::BTRequestStream>(
+                        [rid = rid](oxen::quic::Stream&, uint64_t error_code) {
+                            log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
+                        });
 
                     if (is_snode)
                         link_manager.register_commands(control_stream, rid);
                     else
                         log::critical(logcat, "Client NOT registering BTStream commands!");
-                    itr->second =
-                        std::make_shared<link::Connection>(conn_interface, control_stream, true);
+                    itr->second = std::make_shared<link::Connection>(conn_interface, control_stream, true);
 
-                    log::critical(
-                        logcat, "Outbound connection to RID:{} added to service conns...", rid);
+                    log::critical(logcat, "Outbound connection to RID:{} added to service conns...", rid);
                     return true;
                 }
                 catch (...)
