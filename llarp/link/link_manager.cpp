@@ -660,9 +660,9 @@ namespace llarp
                     continue;
 
                 send_control_message(
-                    rid, "gossip_rc"s, GossipRCMessage::serialize(last_sender, rc), [](oxen::quic::message) {
+                    rid, "gossip_rc"s, GossipRCMessage::serialize(last_sender, rc)/* , [](oxen::quic::message) {
                         log::trace(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
-                    });
+                    } */);
                 ++count;
             }
 
@@ -872,12 +872,17 @@ namespace llarp
     void LinkManager::fetch_router_ids(
         const RouterID& via, std::string payload, std::function<void(oxen::quic::message m)> func)
     {
+        // this handler should not be registered for service nodes
+        assert(not _router.is_service_node());
+
         send_control_message(via, "fetch_rids"s, std::move(payload), std::move(func));
     }
 
     void LinkManager::handle_fetch_router_ids(oxen::quic::message m)
     {
         log::critical(logcat, "Handling FetchRIDs request...");
+        // this handler should not be registered for clients
+        assert(_router.is_service_node());
 
         RouterID source;
         RouterID local = router().local_rid();
