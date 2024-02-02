@@ -1001,6 +1001,18 @@ namespace llarp
             router_contact.set_router_id(seckey_to_pubkey(identity()));  // resigns RC
         }
 
+        // TESTNET:
+        auto our_rid = local_rid().ToString();
+        log::critical(logcat, "I am {}", our_rid);
+
+        // if (our_rid == "55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy.snode"sv)
+        // {
+        //     log::critical(logcat, "I am decaf20: upgrading 'quic' to log::debug and 'bparser' to log::trace");
+        //     oxen::log::set_level("bparser", oxen::log::Level::trace);
+        //     oxen::log::set_level("quic", oxen::log::Level::debug);
+        // }
+
+
         log::info(logcat, "Starting hidden service context...");
 
         if (!hidden_service_context().StartAll())
