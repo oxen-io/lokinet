@@ -103,8 +103,7 @@ namespace llarp
            public:
             // Return the difference between the startingValue and the subtractValue
             // around a particular modulo.
-            static int32_t circularDifference(
-                uint32_t startingValue, uint32_t subtractValue, uint32_t modulo);
+            static int32_t circularDifference(uint32_t startingValue, uint32_t subtractValue, uint32_t modulo);
 
             // Return the number of possible generations a circular buffer can hold.
             static uint32_t numGenerations(size_t capacity);
@@ -169,8 +168,7 @@ namespace llarp
             // 1. call reservePopForClear
             // 2. call commitPopIndex, emptying all cells up to the reserved index
             // 3. call abortPushIndexReservation on the index.
-            bool reservePopForClear(
-                uint32_t& generation, uint32_t& index, uint32_t endGeneration, uint32_t endIndex);
+            bool reservePopForClear(uint32_t& generation, uint32_t& index, uint32_t endGeneration, uint32_t endIndex);
 
             void abortPushIndexReservation(uint32_t generation, uint32_t index);
 

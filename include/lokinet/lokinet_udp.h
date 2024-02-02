@@ -27,14 +27,10 @@ extern "C"
 
     /// flow acceptor hook, return 0 success, return nonzero with errno on failure
     typedef int (*lokinet_udp_flow_filter)(
-        void* userdata,
-        const struct lokinet_udp_flowinfo* remote_address,
-        void** flow_userdata,
-        int* timeout_seconds);
+        void* userdata, const struct lokinet_udp_flowinfo* remote_address, void** flow_userdata, int* timeout_seconds);
 
     /// callback to make a new outbound flow
-    typedef void(lokinet_udp_create_flow_func)(
-        void* userdata, void** flow_userdata, int* timeout_seconds);
+    typedef void(lokinet_udp_create_flow_func)(void* userdata, void** flow_userdata, int* timeout_seconds);
 
     /// hook function for handling packets
     typedef void (*lokinet_udp_flow_recv_func)(
@@ -100,10 +96,7 @@ extern "C"
     ///
     /// @returns 0 on success and non zero errno on fail
     int EXPORT lokinet_udp_flow_send(
-        const struct lokinet_udp_flowinfo* remote,
-        const void* ptr,
-        size_t len,
-        struct lokinet_context* ctx);
+        const struct lokinet_udp_flowinfo* remote, const void* ptr, size_t len, struct lokinet_context* ctx);
 
     /// @brief close a bound udp socket
     /// closes all flows immediately

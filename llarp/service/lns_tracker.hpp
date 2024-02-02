@@ -28,8 +28,7 @@ namespace llarp::service
             std::size_t m_ResultsGotten = 0;
             std::size_t m_ResultsNeeded;
 
-            LookupInfo(
-                std::size_t wantResults, std::function<void(std::optional<Addr_t>)> resultHandler)
+            LookupInfo(std::size_t wantResults, std::function<void(std::optional<Addr_t>)> resultHandler)
                 : m_HandleResult{std::move(resultHandler)}, m_ResultsNeeded{wantResults}
             {}
 
@@ -46,8 +45,6 @@ namespace llarp::service
         /// numPeers is the number of peers we asked
         /// resultHandler is a function that we are wrapping that will handle the final result
         std::function<void(std::optional<Addr_t>)> MakeResultHandler(
-            std::string name,
-            std::size_t numPeers,
-            std::function<void(std::optional<Addr_t>)> resultHandler);
+            std::string name, std::size_t numPeers, std::function<void(std::optional<Addr_t>)> resultHandler);
     };
 }  // namespace llarp::service

@@ -81,8 +81,7 @@ namespace llarp
         return btlp.view();
     }
 
-    void BootstrapList::populate_bootstraps(
-        std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks)
+    void BootstrapList::populate_bootstraps(std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks)
     {
         for (const auto& f : paths)
         {
@@ -94,10 +93,7 @@ namespace llarp
 
         if (empty())
         {
-            log::debug(
-                logcat,
-                "BootstrapRC list empty; looking for default BootstrapRC from file at path:{}",
-                def);
+            log::debug(logcat, "BootstrapRC list empty; looking for default BootstrapRC from file at path:{}", def);
             read_from_file(def);
         }
 
@@ -118,8 +114,7 @@ namespace llarp
 
             if (auto itr = fallbacks.find(RouterContact::ACTIVE_NETID); itr != fallbacks.end())
             {
-                log::critical(
-                    logcat, "Loading {} default fallback bootstrap router(s)!", itr->second.size());
+                log::critical(logcat, "Loading {} default fallback bootstrap router(s)!", itr->second.size());
                 merge(itr->second);
             }
 
@@ -153,8 +148,7 @@ namespace llarp
         auto content = util::file_to_string(fpath);
         result = bt_decode(content);
 
-        log::critical(
-            logcat, "{}uccessfully loaded BootstrapRC file at path:{}", result ? "S" : "Un", fpath);
+        log::critical(logcat, "{}uccessfully loaded BootstrapRC file at path:{}", result ? "S" : "Un", fpath);
 
         _curr = begin();
         return result;

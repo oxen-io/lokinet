@@ -95,8 +95,7 @@ namespace llarp::service
 
         virtual std::string GetIfName() const = 0;
 
-        std::optional<ConvoTag> GetBestConvoTagFor(
-            std::variant<Address, RouterID> addr) const override;
+        std::optional<ConvoTag> GetBestConvoTagFor(std::variant<Address, RouterID> addr) const override;
 
         /// get our ifaddr if it is set
         virtual huint128_t GetIfAddr() const
@@ -158,8 +157,7 @@ namespace llarp::service
 
         bool publish_introset(const EncryptedIntroSet& i);
 
-        bool HandleHiddenServiceFrame(
-            std::shared_ptr<path::Path> p, const service::ProtocolFrameMessage& msg);
+        bool HandleHiddenServiceFrame(std::shared_ptr<path::Path> p, const service::ProtocolFrameMessage& msg);
 
         void SetEndpointAuth(std::shared_ptr<IAuthPolicy> policy);
 
@@ -169,8 +167,7 @@ namespace llarp::service
         virtual huint128_t ObtainIPForAddr(std::variant<Address, RouterID>) = 0;
 
         /// get a key for ip address
-        virtual std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-            huint128_t ip) const = 0;
+        virtual std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(huint128_t ip) const = 0;
 
         // virtual bool
         // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;
@@ -180,9 +177,7 @@ namespace llarp::service
         bool HasPendingPathToService(const Address& remote) const;
 
         bool HandleDataMessage(
-            std::shared_ptr<path::Path> path,
-            const PathID_t from,
-            std::shared_ptr<ProtocolMessage> msg);
+            std::shared_ptr<path::Path> path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg);
 
         /// handle packet io from service node or hidden service to frontend
         virtual bool HandleInboundPacket(
@@ -195,8 +190,7 @@ namespace llarp::service
         bool ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg);
 
         // "find name"
-        void lookup_name(
-            std::string name, std::function<void(std::string, bool)> func = nullptr) override;
+        void lookup_name(std::string name, std::function<void(std::string, bool)> func = nullptr) override;
 
         // "find introset?"
         void LookupServiceAsync(
@@ -245,8 +239,7 @@ namespace llarp::service
         void BlacklistSNode(const RouterID snode) override;
 
         /// maybe get an endpoint variant given its convo tag
-        std::optional<std::variant<Address, RouterID>> GetEndpointWithConvoTag(
-            ConvoTag t) const override;
+        std::optional<std::variant<Address, RouterID>> GetEndpointWithConvoTag(ConvoTag t) const override;
 
         bool HasConvoTag(const ConvoTag& t) const;
 
@@ -276,8 +269,7 @@ namespace llarp::service
 
         /// ensure a path to a service node by public key
         bool EnsurePathToSNode(
-            const RouterID remote,
-            std::function<void(const RouterID, std::shared_ptr<exit::BaseSession>, ConvoTag)> h);
+            const RouterID remote, std::function<void(const RouterID, std::shared_ptr<exit::BaseSession>, ConvoTag)> h);
 
         /// return true if this endpoint is trying to lookup this router right now
         bool HasPendingRouterLookup(const RouterID remote) const;
@@ -327,15 +319,10 @@ namespace llarp::service
 
         std::optional<std::vector<RemoteRC>> GetHopsForBuildWithEndpoint(RouterID endpoint);
 
-        void AsyncProcessAuthMessage(
-            std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook);
+        void AsyncProcessAuthMessage(std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook);
 
         void SendAuthResult(
-            std::shared_ptr<path::Path> path,
-            PathID_t replyPath,
-            ConvoTag tag,
-            std::string result,
-            bool success);
+            std::shared_ptr<path::Path> path, PathID_t replyPath, ConvoTag tag, std::string result, bool success);
 
         uint64_t GenTXID();
 

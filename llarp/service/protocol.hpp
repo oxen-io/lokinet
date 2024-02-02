@@ -56,9 +56,7 @@ namespace llarp
             void put_buffer(std::string buf);
 
             static void ProcessAsync(
-                std::shared_ptr<path::Path> p,
-                PathID_t from,
-                std::shared_ptr<ProtocolMessage> self);
+                std::shared_ptr<path::Path> p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
 
             bool operator>(const ProtocolMessage& other) const
             {
@@ -95,10 +93,7 @@ namespace llarp
 
             ProtocolFrameMessage& operator=(const ProtocolFrameMessage& other) = default;
 
-            bool EncryptAndSign(
-                const ProtocolMessage& msg,
-                const SharedSecret& sharedkey,
-                const Identity& localIdent);
+            bool EncryptAndSign(const ProtocolMessage& msg, const SharedSecret& sharedkey, const Identity& localIdent);
 
             bool Sign(const Identity& localIdent);
 

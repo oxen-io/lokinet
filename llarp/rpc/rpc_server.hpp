@@ -61,8 +61,7 @@ namespace llarp::rpc
     {
         /// \param message - a message to send along with the error code (see general description
         /// above).
-        rpc_error(std::string message)
-            : std::runtime_error{"RPC error: " + message}, message{std::move(message)}
+        rpc_error(std::string message) : std::runtime_error{"RPC error: " + message}, message{std::move(message)}
         {}
 
         std::string message;
@@ -129,17 +128,13 @@ namespace llarp::rpc
             catch (const rpc_error& e)
             {
                 log::info(logcat, "RPC request 'rpc.{}' failed with: {}", rpc.name, e.what());
-                SetJSONError(
-                    fmt::format("RPC request 'rpc.{}' failed with: {}", rpc.name, e.what()),
-                    rpc.response);
+                SetJSONError(fmt::format("RPC request 'rpc.{}' failed with: {}", rpc.name, e.what()), rpc.response);
             }
             catch (const std::exception& e)
             {
-                log::info(
-                    logcat, "RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what());
+                log::info(logcat, "RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what());
                 SetJSONError(
-                    fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()),
-                    rpc.response);
+                    fmt::format("RPC request 'rpc.{}' raised an exception: {}", rpc.name, e.what()), rpc.response);
             }
 
             if (rpc.replier.has_value())

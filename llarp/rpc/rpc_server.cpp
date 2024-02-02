@@ -56,8 +56,8 @@ namespace llarp::rpc
     {
         for (auto c : path)
         {
-            if (not((c >= '0' and c <= '9') or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z')
-                    or (c == '_') or (c == '-')))
+            if (not((c >= '0' and c <= '9') or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or (c == '_')
+                    or (c == '-')))
             {
                 return false;
             }
@@ -115,16 +115,14 @@ namespace llarp::rpc
 
     void RPCServer::AddCategories()
     {
-        m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
-            .add_request_command(
-                "logs", [this](oxenmq::Message& msg) { HandleLogsSubRequest(msg); });
+        m_LMQ->add_category("llarp", oxenmq::AuthLevel::none).add_request_command("logs", [this](oxenmq::Message& msg) {
+            HandleLogsSubRequest(msg);
+        });
 
         for (auto& req : rpc_request_map)
         {
             m_LMQ->add_request_command(
-                "llarp",
-                req.first,
-                [name = std::string_view{req.first}, &call = req.second, this](oxenmq::Message& m) {
+                "llarp", req.first, [name = std::string_view{req.first}, &call = req.second, this](oxenmq::Message& m) {
                     call.invoke(m, *this);
                 });
         }
@@ -143,8 +141,7 @@ namespace llarp::rpc
 
     void RPCServer::invoke(Version& version)
     {
-        util::StatusObject result{
-            {"version", llarp::LOKINET_VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
+        util::StatusObject result{{"version", llarp::LOKINET_VERSION_FULL}, {"uptime", to_json(m_Router.Uptime())}};
 
         SetJSONResponse(result, version.response);
     }
@@ -189,8 +186,7 @@ namespace llarp::rpc
         if (not quic)
         {
             SetJSONError(
-                "No quic interface available on endpoint " + quicconnect.request.endpoint,
-                quicconnect.response);
+                "No quic interface available on endpoint " + quicconnect.request.endpoint, quicconnect.response);
             return;
         }
 
@@ -245,8 +241,7 @@ namespace llarp::rpc
         if (not quic)
         {
             SetJSONError(
-                "No quic interface available on endpoint " + quiclistener.request.endpoint,
-                quiclistener.response);
+                "No quic interface available on endpoint " + quiclistener.request.endpoint, quiclistener.response);
             return;
         }
 
@@ -263,8 +258,7 @@ namespace llarp::rpc
             auto id = 0;
             try
             {
-                SockAddr addr{
-                    quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
+                SockAddr addr{quiclistener.request.remoteHost, huint16_t{quiclistener.request.port}};
                 // TODO:
                 // id = quic->listen(addr);
             }
@@ -277,14 +271,13 @@ namespace llarp::rpc
             util::StatusObject result;
             result["id"] = id;
             std::string localAddress;
-            var::visit(
-                [&](auto&& addr) { localAddress = addr.ToString(); }, endpoint->LocalAddress());
+            var::visit([&](auto&& addr) { localAddress = addr.ToString(); }, endpoint->LocalAddress());
             result["addr"] = localAddress + ":" + std::to_string(quiclistener.request.port);
 
             if (not quiclistener.request.srvProto.empty())
             {
-                auto srvData = dns::SRVData::fromTuple(std::make_tuple(
-                    quiclistener.request.srvProto, 1, 1, quiclistener.request.port, ""));
+                auto srvData = dns::SRVData::fromTuple(
+                    std::make_tuple(quiclistener.request.srvProto, 1, 1, quiclistener.request.port, ""));
                 endpoint->PutSRVRecord(std::move(srvData));
             }
 
@@ -440,9 +433,7 @@ namespace llarp::rpc
             map_request.request.address,
             map_request.request.token,
             map_request.request.ip_range,
-            [unmap = std::move(unmap_request),
-             ep = endpoint,
-             old_exit = swapexits.request.exit_addresses[0]](
+            [unmap = std::move(unmap_request), ep = endpoint, old_exit = swapexits.request.exit_addresses[0]](
                 bool success, std::string result) mutable {
                 if (not success)
                     unmap.send_response({{"error"}, std::move(result)});
@@ -472,9 +463,8 @@ namespace llarp::rpc
 
         dns::Message msg{dns::Question{qname, qtype}};
 
-        auto endpoint = (dnsquery.request.endpoint.empty())
-            ? GetEndpointByName(m_Router, "default")
-            : GetEndpointByName(m_Router, dnsquery.request.endpoint);
+        auto endpoint = (dnsquery.request.endpoint.empty()) ? GetEndpointByName(m_Router, "default")
+                                                            : GetEndpointByName(m_Router, dnsquery.request.endpoint);
 
         if (endpoint == nullptr)
         {
@@ -490,8 +480,7 @@ namespace llarp::rpc
                 else
                     SetJSONError("No response from DNS", dnsquery.response);
             });
-            if (not dns->MaybeHandlePacket(
-                    packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
+            if (not dns->MaybeHandlePacket(packet_src, packet_src->dumb, packet_src->dumb, msg.ToBuffer()))
                 SetJSONError("DNS query not accepted by endpoint", dnsquery.response);
         }
         else
@@ -576,11 +565,7 @@ namespace llarp::rpc
 
         if (endpoint == "unsubscribe")
         {
-            log::info(
-                logcat,
-                "New logs unsubscribe request from conn {}@{}",
-                m.conn.to_string(),
-                m.remote);
+            log::info(logcat, "New logs unsubscribe request from conn {}@{}", m.conn.to_string(), m.remote);
             log_subs.unsubscribe(m.conn);
             m.send_reply("OK");
             return;
@@ -590,21 +575,13 @@ namespace llarp::rpc
 
         if (is_new)
         {
-            log::info(
-                logcat,
-                "New logs subscription request from conn {}@{}",
-                m.conn.to_string(),
-                m.remote);
+            log::info(logcat, "New logs subscription request from conn {}@{}", m.conn.to_string(), m.remote);
             m.send_reply("OK");
             log_subs.send_all(m.conn, endpoint);
         }
         else
         {
-            log::debug(
-                logcat,
-                "Renewed logs subscription request from conn id {}@{}",
-                m.conn.to_string(),
-                m.remote);
+            log::debug(logcat, "Renewed logs subscription request from conn id {}@{}", m.conn.to_string(), m.remote);
             m.send_reply("ALREADY");
         }
     }

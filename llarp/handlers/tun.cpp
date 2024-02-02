@@ -52,8 +52,7 @@ namespace llarp::handlers
         llarp::DnsConfig m_Config;
 
        public:
-        explicit DnsInterceptor(
-            std::function<void(net::IPPacket)> reply, net::ipaddr_t our_ip, llarp::DnsConfig conf)
+        explicit DnsInterceptor(std::function<void(net::IPPacket)> reply, net::ipaddr_t our_ip, llarp::DnsConfig conf)
             : m_Reply{std::move(reply)}, m_OurIP{std::move(our_ip)}, m_Config{std::move(conf)}
         {}
 
@@ -131,8 +130,8 @@ namespace llarp::handlers
 
     TunEndpoint::TunEndpoint(Router* r, service::Context* parent) : service::Endpoint{r, parent}
     {
-        m_PacketRouter = std::make_shared<vpn::PacketRouter>(
-            [this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
+        m_PacketRouter =
+            std::make_shared<vpn::PacketRouter>([this](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); });
     }
 
     void TunEndpoint::SetupDNS()
@@ -147,8 +146,7 @@ namespace llarp::handlers
                 auto dns_pkt_src = dns->PacketSource;
                 if (const auto& reply = pkt.reply)
                     dns_pkt_src = std::make_shared<dns::PacketSource_Wrapper>(dns_pkt_src, reply);
-                if (dns->MaybeHandlePacket(
-                        std::move(dns_pkt_src), pkt.dst(), pkt.src(), *pkt.L4OwnedBuffer()))
+                if (dns->MaybeHandlePacket(std::move(dns_pkt_src), pkt.dst(), pkt.src(), *pkt.L4OwnedBuffer()))
                     return;
 
                 HandleGotUserPacket(std::move(pkt));
@@ -178,15 +176,14 @@ namespace llarp::handlers
                 if (platform::is_windows)
                 {
                     auto dns_io = vpn->create_packet_io(0, localaddr);
-                    router()->loop()->add_ticker(
-                        [r = router(), dns_io, handler = m_PacketRouter]() {
-                            net::IPPacket pkt = dns_io->ReadNextPacket();
-                            while (not pkt.empty())
-                            {
-                                handler->HandleIPPacket(std::move(pkt));
-                                pkt = dns_io->ReadNextPacket();
-                            }
-                        });
+                    router()->loop()->add_ticker([r = router(), dns_io, handler = m_PacketRouter]() {
+                        net::IPPacket pkt = dns_io->ReadNextPacket();
+                        while (not pkt.empty())
+                        {
+                            handler->HandleIPPacket(std::move(pkt));
+                            pkt = dns_io->ReadNextPacket();
+                        }
+                    });
                     m_RawDNS = dns_io;
                 }
             }
@@ -270,8 +267,7 @@ namespace llarp::handlers
 
         if (conf.auth_type == service::AuthType::FILE)
         {
-            _auth_policy =
-                service::make_file_auth_policy(router(), conf.auth_files, conf.auth_file_type);
+            _auth_policy = service::make_file_auth_policy(router(), conf.auth_files, conf.auth_file_type);
         }
         else if (conf.auth_type != service::AuthType::NONE)
         {
@@ -282,12 +278,7 @@ namespace llarp::handlers
                 method = *conf.auth_method;
             }
             auto auth = std::make_shared<rpc::EndpointAuthRPC>(
-                url,
-                method,
-                conf.auth_whitelist,
-                conf.auth_static_tokens,
-                router()->lmq(),
-                shared_from_this());
+                url, method, conf.auth_whitelist, conf.auth_static_tokens, router()->lmq(), shared_from_this());
             auth->Start();
             _auth_policy = std::move(auth);
         }
@@ -366,15 +357,10 @@ namespace llarp::handlers
                 {
                     if (shouldLoadFile)
                     {
-                        LogInfo(
-                            Name(),
-                            " address map file ",
-                            file,
-                            " does not exist, so we won't load it");
+                        LogInfo(Name(), " address map file ", file, " does not exist, so we won't load it");
                     }
                     else
-                        LogInfo(
-                            Name(), " address map file ", file, " not loaded because it's stale");
+                        LogInfo(Name(), " address map file ", file, " not loaded because it's stale");
                 }
                 if (not data.empty())
                 {
@@ -441,11 +427,7 @@ namespace llarp::handlers
             }
             else
             {
-                LogInfo(
-                    Name(),
-                    " skipping loading addr map at ",
-                    file,
-                    " as it does not currently exist");
+                LogInfo(Name(), " skipping loading addr map at ", file, " as it does not currently exist");
             }
         }
 
@@ -483,8 +465,7 @@ namespace llarp::handlers
         return msg;
     }
 
-    std::optional<std::variant<service::Address, RouterID>> TunEndpoint::ObtainAddrForIP(
-        huint128_t ip) const
+    std::optional<std::variant<service::Address, RouterID>> TunEndpoint::ObtainAddrForIP(huint128_t ip) const
     {
         auto itr = m_IPToAddr.find(ip);
         if (itr == m_IPToAddr.end())
@@ -495,16 +476,13 @@ namespace llarp::handlers
             return service::Address{itr->second.as_array()};
     }
 
-    bool TunEndpoint::HandleHookedDNSMessage(
-        dns::Message msg, std::function<void(dns::Message)> reply)
+    bool TunEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
         auto ReplyToSNodeDNSWhenReady = [this, reply](RouterID snode, auto msg, bool isV6) -> bool {
             return EnsurePathToSNode(
                 snode,
                 [this, snode, msg, reply, isV6](
-                    const RouterID&,
-                    std::shared_ptr<exit::BaseSession> s,
-                    [[maybe_unused]] service::ConvoTag tag) {
+                    const RouterID&, std::shared_ptr<exit::BaseSession> s, [[maybe_unused]] service::ConvoTag tag) {
                     SendDNSReply(snode, s, msg, reply, isV6);
                 });
         };
@@ -652,25 +630,23 @@ namespace llarp::handlers
         {
             // mx record
             service::Address addr;
-            if (addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
-                || is_random_snode(msg) || is_localhost_loki(msg))
+            if (addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode") || is_random_snode(msg)
+                || is_localhost_loki(msg))
             {
                 msg.AddMXReply(qname, 1);
             }
             else if (service::is_valid_name(ons_name))
             {
-                lookup_name(
-                    ons_name,
-                    [msg, ons_name, reply](std::string name_result, bool success) mutable {
-                        if (success)
-                        {
-                            msg.AddMXReply(name_result, 1);
-                        }
-                        else
-                            msg.AddNXReply();
+                lookup_name(ons_name, [msg, ons_name, reply](std::string name_result, bool success) mutable {
+                    if (success)
+                    {
+                        msg.AddMXReply(name_result, 1);
+                    }
+                    else
+                        msg.AddNXReply();
 
-                        reply(msg);
-                    });
+                    reply(msg);
+                });
 
                 return true;
             }
@@ -694,9 +670,8 @@ namespace llarp::handlers
                 const auto subdomain = msg.questions[0].Subdomains();
                 if (subdomain == "exit" and HasExit())
                 {
-                    _exit_map.ForEachEntry([&msg](const auto&, const auto& exit) {
-                        msg.AddCNAMEReply(exit.ToString(), 1);
-                    });
+                    _exit_map.ForEachEntry(
+                        [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString(), 1); });
                 }
                 else
                 {
@@ -707,8 +682,7 @@ namespace llarp::handlers
             {
                 size_t counter = 0;
                 context->ForEachService(
-                    [&](const std::string&,
-                        const std::shared_ptr<service::Endpoint>& service) -> bool {
+                    [&](const std::string&, const std::shared_ptr<service::Endpoint>& service) -> bool {
                         const service::Address addr = service->GetIdentity().pub.Addr();
                         msg.AddCNAMEReply(addr.ToString(), 1);
                         ++counter;
@@ -736,8 +710,7 @@ namespace llarp::handlers
                 if (auto random = router()->GetRandomGoodRouter())
                 {
                     msg.AddCNAMEReply(random->ToString(), 1);
-                    return ReplyToSNodeDNSWhenReady(
-                        *random, std::make_shared<dns::Message>(msg), isV6);
+                    return ReplyToSNodeDNSWhenReady(*random, std::make_shared<dns::Message>(msg), isV6);
                 }
 
                 msg.AddNXReply();
@@ -752,9 +725,8 @@ namespace llarp::handlers
                     {
                         if (HasExit())
                         {
-                            _exit_map.ForEachEntry([&msg](const auto&, const auto& exit) {
-                                msg.AddCNAMEReply(exit.ToString());
-                            });
+                            _exit_map.ForEachEntry(
+                                [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
                             msg.AddINReply(ip, isV6);
                         }
                         else
@@ -792,8 +764,7 @@ namespace llarp::handlers
                 }
                 else
                 {
-                    return ReplyToSNodeDNSWhenReady(
-                        addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
+                    return ReplyToSNodeDNSWhenReady(addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
                 }
             }
             else if (service::is_valid_name(ons_name))
@@ -850,9 +821,7 @@ namespace llarp::handlers
                 return true;
             }
             LookupServiceAsync(
-                name,
-                srv_for,
-                [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
+                name, srv_for, [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
                     if (records.empty())
                     {
                         msg->AddNXReply();
@@ -918,8 +887,7 @@ namespace llarp::handlers
         auto itr = m_IPToAddr.find(ip);
         if (itr != m_IPToAddr.end())
         {
-            llarp::LogWarn(
-                ip, " already mapped to ", service::Address(itr->second.as_array()).ToString());
+            llarp::LogWarn(ip, " already mapped to ", service::Address(itr->second.as_array()).ToString());
             return false;
         }
         llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
@@ -1007,8 +975,8 @@ namespace llarp::handlers
             return false;
         }
 
-        m_OurIPv6 = llarp::huint128_t{
-            llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(m_OurRange.addr).h}};
+        m_OurIPv6 =
+            llarp::huint128_t{llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(m_OurRange.addr).h}};
 
         if constexpr (not llarp::platform::is_apple)
         {
@@ -1083,8 +1051,7 @@ namespace llarp::handlers
     }
 
     std::optional<service::Address> TunEndpoint::ObtainExitAddressFor(
-        huint128_t ip,
-        std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat)
+        huint128_t ip, std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat)
     {
         // is it already mapped? return the mapping
         if (auto itr = m_ExitIPToExitAddress.find(ip); itr != m_ExitIPToExitAddress.end())
@@ -1099,8 +1066,7 @@ namespace llarp::handlers
         {
             // in the event the exit's range is a bogon range, make sure the ip is located in that
             // range to allow it
-            if ((is_bogon and net.IsBogonRange(entry.first) and entry.first.Contains(ip))
-                or entry.first.Contains(ip))
+            if ((is_bogon and net.IsBogonRange(entry.first) and entry.first.Contains(ip)) or entry.first.Contains(ip))
                 candidates.emplace(entry.second);
         }
         // no candidates? bail.
@@ -1176,8 +1142,7 @@ namespace llarp::handlers
 
             EnsurePathToService(
                 addr,
-                [pkt, extra_cb, this](
-                    service::Address addr, service::OutboundContext* ctx) mutable {
+                [pkt, extra_cb, this](service::Address addr, service::OutboundContext* ctx) mutable {
                     if (ctx)
                     {
                         if (extra_cb)
@@ -1201,8 +1166,7 @@ namespace llarp::handlers
         else
         {
             to = service::Address{itr->second.as_array()};
-            type = _state->is_exit_enabled and src != m_OurIP ? service::ProtocolType::Exit
-                                                              : pkt.ServiceProtocol();
+            type = _state->is_exit_enabled and src != m_OurIP ? service::ProtocolType::Exit : pkt.ServiceProtocol();
         }
 
         // prepare packet for insertion into network
@@ -1235,8 +1199,7 @@ namespace llarp::handlers
                 {
                     var::visit(
                         [this](auto&& addr) {
-                            LogWarn(
-                                Name(), " failed to ensure path to ", addr, " no convo tag found");
+                            LogWarn(Name(), " failed to ensure path to ", addr, " no convo tag found");
                         },
                         to);
                 }
@@ -1248,9 +1211,7 @@ namespace llarp::handlers
                 else
                 {
                     var::visit(
-                        [this](auto&& addr) {
-                            LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed");
-                        },
+                        [this](auto&& addr) { LogWarn(Name(), " failed to send to ", addr, ", SendToOrQueue failed"); },
                         to);
                 }
             },
@@ -1269,10 +1230,7 @@ namespace llarp::handlers
     }
 
     bool TunEndpoint::HandleInboundPacket(
-        const service::ConvoTag tag,
-        const llarp_buffer_t& buf,
-        service::ProtocolType t,
-        uint64_t seqno)
+        const service::ConvoTag tag, const llarp_buffer_t& buf, service::ProtocolType t, uint64_t seqno)
     {
         LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
         if (t == service::ProtocolType::QUIC)
@@ -1376,8 +1334,7 @@ namespace llarp::handlers
         return true;
     }
 
-    bool TunEndpoint::HandleWriteIPPacket(
-        const llarp_buffer_t& b, huint128_t src, huint128_t dst, uint64_t seqno)
+    bool TunEndpoint::HandleWriteIPPacket(const llarp_buffer_t& b, huint128_t src, huint128_t dst, uint64_t seqno)
     {
         ManagedBuffer buf(b);
         WritePacket write;
@@ -1446,11 +1403,7 @@ namespace llarp::handlers
                 m_AddrToIP[ident] = nextIP;
                 m_IPToAddr[nextIP] = ident;
                 m_SNodes[ident] = snode;
-                var::visit(
-                    [&](auto&& remote) {
-                        llarp::LogInfo(Name(), " mapped ", remote, " to ", nextIP);
-                    },
-                    addr);
+                var::visit([&](auto&& remote) { llarp::LogInfo(Name(), " mapped ", remote, " to ", nextIP); }, addr);
                 MarkIPActive(nextIP);
                 return nextIP;
             }

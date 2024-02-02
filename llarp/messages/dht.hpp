@@ -10,8 +10,7 @@ namespace llarp
         inline auto INVALID_ORDER = "INVALID ORDER"sv;
         inline auto INSUFFICIENT_NODES = "INSUFFICIENT NODES"sv;
 
-        inline static std::string serialize(
-            const dht::Key_t& location, bool is_relayed, uint64_t order)
+        inline static std::string serialize(const dht::Key_t& location, bool is_relayed, uint64_t order)
         {
             oxenc::bt_dict_producer btdp;
 
@@ -75,8 +74,7 @@ namespace llarp
         inline auto INSUFFICIENT = "INSUFFICIENT NODES"sv;
         inline auto INVALID_ORDER = "INVALID ORDER"sv;
 
-        inline static std::string serialize(
-            std::string introset, uint64_t relay_order, uint64_t is_relayed)
+        inline static std::string serialize(std::string introset, uint64_t relay_order, uint64_t is_relayed)
         {
             oxenc::bt_dict_producer btdp;
 

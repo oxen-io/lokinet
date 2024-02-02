@@ -244,8 +244,7 @@ namespace llarp::path
         auto itr = _paths.begin();
         while (itr != _paths.end())
         {
-            if (itr->second->Status() == PathStatus::ESTABLISHED
-                && itr->second->SupportsAnyRoles(roles))
+            if (itr->second->Status() == PathStatus::ESTABLISHED && itr->second->SupportsAnyRoles(roles))
                 ++count;
             ++itr;
         }
@@ -273,12 +272,7 @@ namespace llarp::path
         const auto RXID = path->RXID();          // PathID
         if (not _paths.emplace(std::make_pair(upstream, RXID), path).second)
         {
-            LogError(
-                Name(),
-                " failed to add own path, duplicate info wtf? upstream=",
-                upstream,
-                " rxid=",
-                RXID);
+            LogError(Name(), " failed to add own path, duplicate info wtf? upstream=", upstream, " rxid=", RXID);
         }
     }
 

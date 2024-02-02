@@ -27,8 +27,7 @@ namespace llarp
     {};
 
     template <typename T>
-    struct is_scoped_enum<T, true>
-        : std::bool_constant<!std::is_convertible_v<T, std::underlying_type_t<T>>>
+    struct is_scoped_enum<T, true> : std::bool_constant<!std::is_convertible_v<T, std::underlying_type_t<T>>>
     {};
 
     template <typename T>
@@ -64,8 +63,7 @@ namespace fmt
 namespace fmt
 {
     template <typename T>
-    struct formatter<T, char, std::enable_if_t<llarp::IsToStringFormattable<T>>>
-        : formatter<std::string_view>
+    struct formatter<T, char, std::enable_if_t<llarp::IsToStringFormattable<T>>> : formatter<std::string_view>
     {
         template <typename FormatContext>
         auto format(const T& val, FormatContext& ctx) const

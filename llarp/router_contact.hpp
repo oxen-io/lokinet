@@ -137,9 +137,8 @@ namespace llarp
 
         bool operator==(const RouterContact& other) const
         {
-            return _router_id == other._router_id and _addr == other._addr
-                and _addr6 == other._addr6 and _timestamp == other._timestamp
-                and _router_version == other._router_version;
+            return _router_id == other._router_id and _addr == other._addr and _addr6 == other._addr6
+                and _timestamp == other._timestamp and _router_version == other._router_version;
         }
 
         bool operator<(const RouterContact& other) const
@@ -226,9 +225,9 @@ namespace llarp
 
         bool operator==(const LocalRC& other) const
         {
-            return _router_id == other._router_id and _addr == other._addr
-                and _addr6 == other._addr6 and _timestamp == other._timestamp
-                and _router_version == other._router_version and _signature == other._signature;
+            return _router_id == other._router_id and _addr == other._addr and _addr6 == other._addr6
+                and _timestamp == other._timestamp and _router_version == other._router_version
+                and _signature == other._signature;
         }
 
         /// Mutators for the private member attributes. Calling on the mutators

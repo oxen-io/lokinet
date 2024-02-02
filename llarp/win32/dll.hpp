@@ -27,8 +27,7 @@ namespace llarp::win32
     // Loads a DLL and extracts function pointers from it.  Takes the dll name and pairs of
     // name/function pointer arguments.  Throws on failure.
     template <typename Func, typename... More>
-    void load_dll_functions(
-        const std::string& dll, const std::string& fname, Func*& f, More&&... funcs)
+    void load_dll_functions(const std::string& dll, const std::string& fname, Func*& f, More&&... funcs)
     {
         detail::load_funcs(detail::load_dll(dll), fname, f, std::forward<More>(funcs)...);
     }

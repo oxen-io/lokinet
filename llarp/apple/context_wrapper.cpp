@@ -69,17 +69,14 @@ void* llarp_apple_init(llarp_apple_config* appleconf)
         if (addr.size() > 15 || mask.size() > 15)
             throw std::runtime_error{"Unexpected non-IPv4 tunnel range configured"};
         std::strncpy(appleconf->tunnel_ipv4_ip, addr.c_str(), sizeof(appleconf->tunnel_ipv4_ip));
-        std::strncpy(
-            appleconf->tunnel_ipv4_netmask, mask.c_str(), sizeof(appleconf->tunnel_ipv4_netmask));
+        std::strncpy(appleconf->tunnel_ipv4_netmask, mask.c_str(), sizeof(appleconf->tunnel_ipv4_netmask));
 
         // TODO: in the future we want to do this properly with our pubkey (see issue #1705), but
         // that's going to take a bit more work because we currently can't *get* the (usually)
         // ephemeral pubkey at this stage of lokinet configuration.  So for now we just stick our
         // IPv4 address into it until #1705 gets implemented.
-        llarp::huint128_t ipv6{
-            llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(range.addr).h}};
-        std::strncpy(
-            appleconf->tunnel_ipv6_ip, ipv6.ToString().c_str(), sizeof(appleconf->tunnel_ipv6_ip));
+        llarp::huint128_t ipv6{llarp::uint128_t{0xfd2e'6c6f'6b69'0000, llarp::net::TruncateV6(range.addr).h}};
+        std::strncpy(appleconf->tunnel_ipv6_ip, ipv6.ToString().c_str(), sizeof(appleconf->tunnel_ipv6_ip));
         appleconf->tunnel_ipv6_prefix = 48;
 
         appleconf->upstream_dns[0] = '\0';
@@ -95,9 +92,7 @@ void* llarp_apple_init(llarp_apple_config* appleconf)
 
 #ifdef MACOS_SYSTEM_EXTENSION
         std::strncpy(
-            appleconf->dns_bind_ip,
-            config->dns.m_bind.front().hostString().c_str(),
-            sizeof(appleconf->dns_bind_ip));
+            appleconf->dns_bind_ip, config->dns.m_bind.front().hostString().c_str(), sizeof(appleconf->dns_bind_ip));
 #endif
 
         // If no explicit bootstrap then set the system default one included with the app bundle
@@ -126,8 +121,7 @@ int llarp_apple_start(void* lokinet, void* callback_context)
 
     inst->context.callback_context = callback_context;
 
-    inst->context.m_PacketWriter = [inst, callback_context](
-                                       int af_family, void* data, size_t size) {
+    inst->context.m_PacketWriter = [inst, callback_context](int af_family, void* data, size_t size) {
         inst->packet_writer(af_family, data, size, callback_context);
         return true;
     };

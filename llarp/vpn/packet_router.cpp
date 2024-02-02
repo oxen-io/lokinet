@@ -7,8 +7,7 @@ namespace llarp::vpn
         PacketHandlerFunc_t m_BaseHandler;
         std::unordered_map<nuint16_t, PacketHandlerFunc_t> m_LocalPorts;
 
-        explicit UDPPacketHandler(PacketHandlerFunc_t baseHandler)
-            : m_BaseHandler{std::move(baseHandler)}
+        explicit UDPPacketHandler(PacketHandlerFunc_t baseHandler) : m_BaseHandler{std::move(baseHandler)}
         {}
 
         void AddSubHandler(nuint16_t localport, PacketHandlerFunc_t handler) override
@@ -36,8 +35,7 @@ namespace llarp::vpn
     {
         PacketHandlerFunc_t m_BaseHandler;
 
-        explicit GenericLayer4Handler(PacketHandlerFunc_t baseHandler)
-            : m_BaseHandler{std::move(baseHandler)}
+        explicit GenericLayer4Handler(PacketHandlerFunc_t baseHandler) : m_BaseHandler{std::move(baseHandler)}
         {}
 
         void HandleIPPacket(llarp::net::IPPacket pkt) override
@@ -46,8 +44,7 @@ namespace llarp::vpn
         }
     };
 
-    PacketRouter::PacketRouter(PacketHandlerFunc_t baseHandler)
-        : m_BaseHandler{std::move(baseHandler)}
+    PacketRouter::PacketRouter(PacketHandlerFunc_t baseHandler) : m_BaseHandler{std::move(baseHandler)}
     {}
 
     void PacketRouter::HandleIPPacket(llarp::net::IPPacket pkt)

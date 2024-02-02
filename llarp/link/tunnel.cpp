@@ -26,8 +26,7 @@ namespace llarp::quic
             auto peer = client.peer();
             LogTrace(peer.ip, ":", peer.port, " → lokinet ", buffer_printer{data});
             // Steal the buffer from the DataEvent's unique_ptr<char[]>:
-            stream->append_buffer(
-                reinterpret_cast<const std::byte*>(event.data.release()), event.length);
+            stream->append_buffer(reinterpret_cast<const std::byte*>(event.data.release()), event.length);
             if (stream->used() >= tunnel::PAUSE_SIZE)
             {
                 LogDebug(
@@ -39,8 +38,7 @@ namespace llarp::quic
                     auto client = s.data<uvw::TCPHandle>();
                     if (s.used() < tunnel::PAUSE_SIZE)
                     {
-                        LogDebug(
-                            "quic tunnel is no longer congested; resuming tcp connection reading");
+                        LogDebug("quic tunnel is no longer congested; resuming tcp connection reading");
                         client->read();
                         return true;
                     }
@@ -102,9 +100,7 @@ namespace llarp::quic
                 // This fires sometime after we call `close()` to signal that the close is done.
                 if (auto stream = c.data<Stream>())
                 {
-                    LogInfo(
-                        "Local TCP connection closed, closing associated quic stream ",
-                        stream->id());
+                    LogInfo("Local TCP connection closed, closing associated quic stream ", stream->id());
                     stream->close();
                     stream->data(nullptr);
                 }
@@ -259,16 +255,15 @@ namespace llarp::quic
                 return false;
             }
 
-            auto lokinet_addr =
-                var::visit([](auto&& remote) { return remote.ToString(); }, *remote);
+            auto lokinet_addr = var::visit([](auto&& remote) { return remote.ToString(); }, *remote);
             auto tunnel_to = allow_connection(lokinet_addr, port);
             if (not tunnel_to)
                 return false;
             LogInfo("quic stream from ", lokinet_addr, " to ", port, " tunnelling to ", *tunnel_to);
 
             auto tcp = get_loop()->resource<uvw::TCPHandle>();
-            [[maybe_unused]] auto error_handler = tcp->once<uvw::ErrorEvent>(
-                [&stream, to = *tunnel_to](const uvw::ErrorEvent&, uvw::TCPHandle&) {
+            [[maybe_unused]] auto error_handler =
+                tcp->once<uvw::ErrorEvent>([&stream, to = *tunnel_to](const uvw::ErrorEvent&, uvw::TCPHandle&) {
                     LogWarn("Failed to connect to ", to, ", shutting down quic stream");
                     stream.close(tunnel::ERROR_CONNECT);
                 });
@@ -336,8 +331,7 @@ namespace llarp::quic
         incoming_handlers_.erase(id);
     }
 
-    std::optional<SockAddr> TunnelManager::allow_connection(
-        std::string_view lokinet_addr, uint16_t port)
+    std::optional<SockAddr> TunnelManager::allow_connection(std::string_view lokinet_addr, uint16_t port)
     {
         for (auto& [id, handler] : incoming_handlers_)
         {
@@ -359,12 +353,7 @@ namespace llarp::quic
                 return std::nullopt;
             }
         }
-        LogWarn(
-            "Incoming quic connection from ",
-            lokinet_addr,
-            " to ",
-            port,
-            " declined by all handlers");
+        LogWarn("Incoming quic connection from ", lokinet_addr, " to ", port, " declined by all handlers");
         return std::nullopt;
     }
 
@@ -378,10 +367,7 @@ namespace llarp::quic
     // Finds the first unused key in `map`, starting at `start` and wrapping back to 0 if we hit the
     // end.  Requires an unsigned int type for the key.  Requires nullopt if the map is completely
     // full, otherwise returns the free key.
-    template <
-        typename K,
-        typename V,
-        typename = std::enable_if_t<std::is_integral_v<K> && std::is_unsigned_v<K>>>
+    template <typename K, typename V, typename = std::enable_if_t<std::is_integral_v<K> && std::is_unsigned_v<K>>>
     static std::optional<K> find_unused_key(std::map<K, V>& map, K start)
     {
         if (map.size() == std::numeric_limits<K>::max())
@@ -450,37 +436,35 @@ namespace llarp::quic
         // ahead with establishing the quic connection.
         auto tcp_tunnel = get_loop()->resource<uvw::TCPHandle>();
         const char* failed = nullptr;
-        auto err_handler =
-            tcp_tunnel->once<uvw::ErrorEvent>([&failed](auto& evt, auto&) { failed = evt.what(); });
+        auto err_handler = tcp_tunnel->once<uvw::ErrorEvent>([&failed](auto& evt, auto&) { failed = evt.what(); });
         tcp_tunnel->bind(*bind_addr.operator const sockaddr*());
-        tcp_tunnel->on<uvw::ListenEvent>(
-            [this](const uvw::ListenEvent&, uvw::TCPHandle& tcp_tunnel) {
-                auto client = tcp_tunnel.loop().resource<uvw::TCPHandle>();
-                tcp_tunnel.accept(*client);
-                // Freeze the connection (after accepting) because we may need to stall it until a
-                // stream becomes available; flush_pending_incoming will unfreeze it.
-                client->stop();
-                auto pport = tcp_tunnel.data<uint16_t>();
-                if (pport)
+        tcp_tunnel->on<uvw::ListenEvent>([this](const uvw::ListenEvent&, uvw::TCPHandle& tcp_tunnel) {
+            auto client = tcp_tunnel.loop().resource<uvw::TCPHandle>();
+            tcp_tunnel.accept(*client);
+            // Freeze the connection (after accepting) because we may need to stall it until a
+            // stream becomes available; flush_pending_incoming will unfreeze it.
+            client->stop();
+            auto pport = tcp_tunnel.data<uint16_t>();
+            if (pport)
+            {
+                if (auto it = client_tunnels_.find(*pport); it != client_tunnels_.end())
                 {
-                    if (auto it = client_tunnels_.find(*pport); it != client_tunnels_.end())
-                    {
-                        it->second.pending_incoming.emplace(std::move(client));
-                        flush_pending_incoming(it->second);
-                        return;
-                    }
-                    tcp_tunnel.data(nullptr);
+                    it->second.pending_incoming.emplace(std::move(client));
+                    flush_pending_incoming(it->second);
+                    return;
                 }
-                client->close();
-            });
+                tcp_tunnel.data(nullptr);
+            }
+            client->close();
+        });
         tcp_tunnel->listen();
         tcp_tunnel->erase(err_handler);
 
         if (failed)
         {
             tcp_tunnel->close();
-            throw std::runtime_error{fmt::format(
-                "Failed to bind/listen local TCP tunnel socket on {}: {}", bind_addr, failed)};
+            throw std::runtime_error{
+                fmt::format("Failed to bind/listen local TCP tunnel socket on {}: {}", bind_addr, failed)};
         }
 
         auto bound = tcp_tunnel->sock();
@@ -490,8 +474,7 @@ namespace llarp::quic
         if (auto p = find_unused_key(client_tunnels_, next_pseudo_port_))
             pport = *p;
         else
-            throw std::runtime_error{
-                "Unable to open an outgoing quic connection: too many existing connections"};
+            throw std::runtime_error{"Unable to open an outgoing quic connection: too many existing connections"};
         (next_pseudo_port_ = pport)++;
 
         LogInfo("Bound TCP tunnel ", saddr, " for quic client :", pport);
@@ -520,12 +503,9 @@ namespace llarp::quic
             // name, then we have to build a path to that address.
             service_endpoint_.LookupNameAsync(
                 remote_addr,
-                [this,
-                 after_path = std::move(after_path),
-                 pport = pport,
-                 remote_addr = std::move(remote_addr)](auto maybe_remote) {
-                    if (not continue_connecting(
-                            pport, (bool)maybe_remote, "endpoint ONS lookup", remote_addr))
+                [this, after_path = std::move(after_path), pport = pport, remote_addr = std::move(remote_addr)](
+                    auto maybe_remote) {
+                    if (not continue_connecting(pport, (bool)maybe_remote, "endpoint ONS lookup", remote_addr))
                         return;
                     service_endpoint_.MarkAddressOutbound(*maybe_remote);
                     service_endpoint_.EnsurePathTo(*maybe_remote, after_path, open_timeout);
@@ -580,8 +560,7 @@ namespace llarp::quic
         }
     }
 
-    void TunnelManager::make_client(
-        const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row)
+    void TunnelManager::make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row)
     {
         assert(remote.getPort() > 0);
         auto& [pport, tunnel] = row;
@@ -615,12 +594,10 @@ namespace llarp::quic
             {
                 auto str = conn.open_stream(
                     [tcp_client](auto&&... args) {
-                        initial_client_data_handler(
-                            *tcp_client, std::forward<decltype(args)>(args)...);
+                        initial_client_data_handler(*tcp_client, std::forward<decltype(args)>(args)...);
                     },
                     [tcp_client](auto&&... args) {
-                        initial_client_close_handler(
-                            *tcp_client, std::forward<decltype(args)>(args)...);
+                        initial_client_close_handler(*tcp_client, std::forward<decltype(args)>(args)...);
                     });
                 available--;
             }
@@ -685,8 +662,7 @@ namespace llarp::quic
             }
             else
             {
-                LogWarn(
-                    "Incoming quic to a quic::Client without an active quic::Connection; dropping");
+                LogWarn("Incoming quic to a quic::Client without an active quic::Connection; dropping");
                 return;
             }
         }

@@ -16,8 +16,7 @@ namespace llarp::logging
         void* ctx_;
 
        public:
-        explicit CallbackSink(
-            lokinet_logger_func log, lokinet_logger_sync sync = nullptr, void* context = nullptr)
+        explicit CallbackSink(lokinet_logger_func log, lokinet_logger_sync sync = nullptr, void* context = nullptr)
             : log_{log}, sync_{sync}, ctx_{context}
         {}
 

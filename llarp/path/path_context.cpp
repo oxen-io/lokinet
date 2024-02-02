@@ -92,8 +92,7 @@ namespace llarp::path
         return false;
     }
 
-    std::shared_ptr<TransitHop> PathContext::GetTransitHop(
-        const RouterID& rid, const PathID_t& path_id)
+    std::shared_ptr<TransitHop> PathContext::GetTransitHop(const RouterID& rid, const PathID_t& path_id)
     {
         if (auto itr = transit_hops.find({rid, path_id}); itr != transit_hops.end())
             return itr->second;
@@ -109,8 +108,7 @@ namespace llarp::path
         return nullptr;
     }
 
-    bool PathContext::TransitHopPreviousIsRouter(
-        const PathID_t& path_id, const RouterID& otherRouter)
+    bool PathContext::TransitHopPreviousIsRouter(const PathID_t& path_id, const RouterID& otherRouter)
     {
         return transit_hops.count({otherRouter, path_id});
     }

@@ -12,8 +12,7 @@ namespace llarp::service
 
 namespace llarp::rpc
 {
-    struct EndpointAuthRPC : public llarp::service::IAuthPolicy,
-                             public std::enable_shared_from_this<EndpointAuthRPC>
+    struct EndpointAuthRPC : public llarp::service::IAuthPolicy, public std::enable_shared_from_this<EndpointAuthRPC>
     {
         using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
         using Endpoint_ptr = std::shared_ptr<llarp::service::Endpoint>;
@@ -32,8 +31,7 @@ namespace llarp::rpc
         void Start();
 
         void authenticate_async(
-            std::shared_ptr<llarp::service::ProtocolMessage> msg,
-            std::function<void(std::string, bool)> hook) override;
+            std::shared_ptr<llarp::service::ProtocolMessage> msg, std::function<void(std::string, bool)> hook) override;
 
         bool auth_async_pending(service::ConvoTag tag) const override;
 

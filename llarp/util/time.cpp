@@ -27,8 +27,7 @@ namespace llarp
     /// get our uptime in ms
     Duration_t uptime()
     {
-        return std::chrono::duration_cast<Duration_t>(
-            std::chrono::steady_clock::now() - started_at_steady);
+        return std::chrono::duration_cast<Duration_t>(std::chrono::steady_clock::now() - started_at_steady);
     }
 
     rc_time time_point_now()

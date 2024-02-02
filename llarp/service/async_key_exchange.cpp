@@ -26,8 +26,7 @@ namespace llarp::service
           tag(t)
     {}
 
-    void AsyncKeyExchange::Result(
-        std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
+    void AsyncKeyExchange::Result(std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
     {
         // put values
         self->handler->PutSenderFor(self->msg.tag, self->m_remote, false);
@@ -37,8 +36,7 @@ namespace llarp::service
         self->hook(frame);
     }
 
-    void AsyncKeyExchange::Encrypt(
-        std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
+    void AsyncKeyExchange::Encrypt(std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrameMessage> frame)
     {
         (void)self;
         (void)frame;

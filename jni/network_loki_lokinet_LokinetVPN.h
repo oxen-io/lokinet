@@ -48,8 +48,7 @@ extern "C"
      * Method:    WritePkt
      * Signature: (Ljava/nio/ByteBuffer;)Z
      */
-    JNIEXPORT jboolean JNICALL
-    Java_network_loki_lokinet_LokinetVPN_WritePkt(JNIEnv*, jobject, jobject);
+    JNIEXPORT jboolean JNICALL Java_network_loki_lokinet_LokinetVPN_WritePkt(JNIEnv*, jobject, jobject);
 
     /*
      * Class:     network_loki_lokinet_LokinetVPN

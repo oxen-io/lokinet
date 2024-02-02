@@ -7,11 +7,7 @@ NSString* error_domain = @"org.lokinet";
 // Receiving an incoming packet, presumably from libunbound.  NB: this is called from the libuv
 // event loop.
 static void on_request(
-    uv_udp_t* socket,
-    ssize_t nread,
-    const uv_buf_t* buf,
-    const struct sockaddr* addr,
-    unsigned flags)
+    uv_udp_t* socket, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
 {
     (void)flags;
     if (nread < 0)
@@ -98,8 +94,7 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
     int ret = uv_udp_bind(&request_socket, (const struct sockaddr*)&recv_addr, UV_UDP_REUSEADDR);
     if (ret < 0)
     {
-        NSString* errstr =
-            [NSString stringWithFormat:@"Failed to start DNS trampoline: %s", uv_strerror(ret)];
+        NSString* errstr = [NSString stringWithFormat:@"Failed to start DNS trampoline: %s", uv_strerror(ret)];
         NSError* err = [NSError errorWithDomain:error_domain code:ret userInfo:@{@"Error": errstr}];
         NSLog(@"%@", err);
         return completionHandler(err);
@@ -132,13 +127,8 @@ static void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* b
           }
           uv_udp_send_t* uvsend = malloc(sizeof(uv_udp_send_t));
           uvsend->data = (__bridge_retained void*)datagrams;
-          int ret = uv_udp_send(
-              uvsend,
-              &strongSelf->request_socket,
-              buffers,
-              buf_count,
-              &strongSelf->reply_addr,
-              on_sent);
+          int ret =
+              uv_udp_send(uvsend, &strongSelf->request_socket, buffers, buf_count, &strongSelf->reply_addr, on_sent);
           free(buffers);
           if (ret < 0)
               NSLog(@"Error returning DNS responses to unbound: %s", uv_strerror(ret));

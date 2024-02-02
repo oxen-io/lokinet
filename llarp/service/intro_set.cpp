@@ -41,10 +41,7 @@ namespace llarp::service
     util::StatusObject EncryptedIntroSet::ExtractStatus() const
     {
         const auto sz = introsetPayload.size();
-        return {
-            {"location", derivedSigningKey.ToString()},
-            {"signedAt", to_json(signedAt)},
-            {"size", sz}};
+        return {{"location", derivedSigningKey.ToString()}, {"signedAt", to_json(signedAt)}, {"size", sz}};
     }
 
     std::string EncryptedIntroSet::bt_encode() const
@@ -57,9 +54,7 @@ namespace llarp::service
             btdp.append("n", nonce.ToView());
             btdp.append("s", signedAt.count());
             btdp.append(
-                "x",
-                std::string_view{
-                    reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()});
+                "x", std::string_view{reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()});
             btdp.append("z", sig.ToView());
         }
         catch (...)
@@ -117,8 +112,7 @@ namespace llarp::service
     IntroSet EncryptedIntroSet::decrypt(const PubKey& root) const
     {
         SharedSecret k(root);
-        std::string payload{
-            reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
+        std::string payload{reinterpret_cast<const char*>(introsetPayload.data()), introsetPayload.size()};
 
         crypto::xchacha20(reinterpret_cast<uint8_t*>(payload.data()), payload.size(), k, nonce);
 
@@ -153,12 +147,10 @@ namespace llarp::service
         copy.sig.Zero();
 
         auto bte = copy.bt_encode();
-        return crypto::verify(
-            derivedSigningKey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
+        return crypto::verify(derivedSigningKey, reinterpret_cast<uint8_t*>(bte.data()), bte.size(), sig);
     }
 
-    bool EncryptedIntroSet::verify(
-        uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig)
+    bool EncryptedIntroSet::verify(uint8_t* introset, size_t introset_size, uint8_t* key, uint8_t* sig)
     {
         return crypto::verify(key, introset, introset_size, sig);
     }
@@ -261,8 +253,7 @@ namespace llarp::service
 
             byte_t* end = buf->cur;
 
-            std::string_view srvString(
-                reinterpret_cast<const char*>(begin), static_cast<size_t>(end - begin));
+            std::string_view srvString(reinterpret_cast<const char*>(begin), static_cast<size_t>(end - begin));
 
             try
             {
@@ -323,8 +314,7 @@ namespace llarp::service
                 auto sublist = btdc.consume_list_consumer();
                 while (not sublist.is_finished())
                 {
-                    supported_protocols.emplace_back(
-                        ProtocolType{sublist.consume_integer<uint64_t>()});
+                    supported_protocols.emplace_back(ProtocolType{sublist.consume_integer<uint64_t>()});
                 }
             }
 
@@ -437,8 +427,7 @@ namespace llarp::service
         return GetNewestIntroExpiration() < now;
     }
 
-    std::vector<llarp::dns::SRVData> IntroSet::GetMatchingSRVRecords(
-        std::string_view service_proto) const
+    std::vector<llarp::dns::SRVData> IntroSet::GetMatchingSRVRecords(std::string_view service_proto) const
     {
         std::vector<llarp::dns::SRVData> records;
 

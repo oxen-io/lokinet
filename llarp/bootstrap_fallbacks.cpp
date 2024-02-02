@@ -10,8 +10,7 @@ namespace llarp
     {
         std::unordered_map<std::string, BootstrapList> fallbacks;
 
-        for (const auto& [network, bootstrap] :
-             std::initializer_list<std::pair<std::string, std::string_view>>{
+        for (const auto& [network, bootstrap] : std::initializer_list<std::pair<std::string, std::string_view>>{
                  //
              })
         {

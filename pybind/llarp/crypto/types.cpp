@@ -15,9 +15,9 @@ namespace llarp
             .def("LoadFile", &SecretKey::LoadFromFile)
             .def("SaveFile", &SecretKey::SaveToFile)
             .def("ToPublic", &SecretKey::toPublic);
-        py::class_<Signature>(mod, "Signature")
-            .def(py::init<>())
-            .def("__repr__", [](const Signature& sig) { return sig.ToHex(); });
+        py::class_<Signature>(mod, "Signature").def(py::init<>()).def("__repr__", [](const Signature& sig) {
+            return sig.ToHex();
+        });
     }
 
 }  // namespace llarp

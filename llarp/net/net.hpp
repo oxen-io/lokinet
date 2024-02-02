@@ -115,15 +115,13 @@ namespace llarp
 
             // Attempts to guess a good default public network address from the system's public IP
             // addresses; the returned Address (if set) will have its port set to the given value.
-            virtual std::optional<oxen::quic::Address> get_best_public_address(
-                bool ipv4, uint16_t port) const = 0;
+            virtual std::optional<oxen::quic::Address> get_best_public_address(bool ipv4, uint16_t port) const = 0;
 
             virtual std::optional<IPRange> FindFreeRange() const = 0;
 
             virtual std::optional<std::string> FindFreeTun() const = 0;
 
-            virtual std::optional<SockAddr> GetInterfaceAddr(
-                std::string_view ifname, int af = AF_INET) const = 0;
+            virtual std::optional<SockAddr> GetInterfaceAddr(std::string_view ifname, int af = AF_INET) const = 0;
 
             inline std::optional<huint128_t> GetInterfaceIPv6Address(std::string_view ifname) const
             {
@@ -216,11 +214,9 @@ inline bool operator==(const sockaddr& a, const sockaddr& b)
     switch (a.sa_family)
     {
         case AF_INET:
-            return reinterpret_cast<const sockaddr_in&>(a)
-                == reinterpret_cast<const sockaddr_in&>(b);
+            return reinterpret_cast<const sockaddr_in&>(a) == reinterpret_cast<const sockaddr_in&>(b);
         case AF_INET6:
-            return reinterpret_cast<const sockaddr_in6&>(a)
-                == reinterpret_cast<const sockaddr_in6&>(b);
+            return reinterpret_cast<const sockaddr_in6&>(a) == reinterpret_cast<const sockaddr_in6&>(b);
         default:
             return false;
     }

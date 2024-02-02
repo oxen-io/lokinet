@@ -35,8 +35,7 @@ namespace llarp::handlers
         ExitEndpoint(std::string name, Router* r);
         ~ExitEndpoint() override;
 
-        std::optional<AddressVariant_t> GetEndpointWithConvoTag(
-            service::ConvoTag tag) const override;
+        std::optional<AddressVariant_t> GetEndpointWithConvoTag(service::ConvoTag tag) const override;
 
         std::optional<service::ConvoTag> GetBestConvoTagFor(AddressVariant_t addr) const override;
 
@@ -63,8 +62,7 @@ namespace llarp::handlers
 
         std::string Name() const;
 
-        bool VisitEndpointsFor(
-            const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const;
+        bool VisitEndpointsFor(const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const;
 
         util::StatusObject ExtractStatus() const;
 
@@ -75,9 +73,7 @@ namespace llarp::handlers
         bool HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>);
 
         void LookupServiceAsync(
-            std::string name,
-            std::string service,
-            std::function<void(std::vector<dns::SRVData>)> handler) override;
+            std::string name, std::string service, std::function<void(std::vector<dns::SRVData>)> handler) override;
 
         bool AllocateNewExit(const PubKey pk, const PathID_t& path, bool permitInternet);
 
@@ -187,8 +183,8 @@ namespace llarp::handlers
 
         // std::shared_ptr<link::TunnelManager> tunnel_manager;
 
-        using PacketQueue_t = std::
-            priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;
+        using PacketQueue_t =
+            std::priority_queue<net::IPPacket, std::vector<net::IPPacket>, net::IPPacket::CompareOrder>;
 
         /// internet to llarp packet queue
         PacketQueue_t inet_to_network;

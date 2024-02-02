@@ -41,17 +41,15 @@ namespace llarp::rpc
     }
 
     void EndpointAuthRPC::authenticate_async(
-        std::shared_ptr<llarp::service::ProtocolMessage> msg,
-        std::function<void(std::string, bool)> hook)
+        std::shared_ptr<llarp::service::ProtocolMessage> msg, std::function<void(std::string, bool)> hook)
     {
         service::ConvoTag tag = msg->tag;
         m_PendingAuths.insert(tag);
         const auto from = msg->sender.Addr();
-        auto reply =
-            m_Endpoint->Loop()->make_caller([this, tag, hook](std::string code, bool success) {
-                m_PendingAuths.erase(tag);
-                hook(code, success);
-            });
+        auto reply = m_Endpoint->Loop()->make_caller([this, tag, hook](std::string code, bool success) {
+            m_PendingAuths.erase(tag);
+            hook(code, success);
+        });
         if (m_AuthWhitelist.count(from))
         {
             // explicitly whitelisted source
@@ -95,8 +93,7 @@ namespace llarp::rpc
         m_LMQ->request(
             *m_Conn,
             m_AuthMethod,
-            [self = shared_from_this(), reply = std::move(reply)](
-                bool success, std::vector<std::string> data) {
+            [self = shared_from_this(), reply = std::move(reply)](bool success, std::vector<std::string> data) {
                 service::AuthResult result{service::AuthCode::FAILED, "no reason given"};
 
                 if (success and not data.empty())

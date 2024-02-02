@@ -193,10 +193,7 @@ namespace llarp::link
         // bool pport_wrapped_ = false;
 
         bool continue_connecting(
-            uint16_t pseudo_port,
-            bool step_success,
-            std::string_view step_name,
-            std::string_view addr);
+            uint16_t pseudo_port, bool step_success, std::string_view step_name, std::string_view addr);
 
         void make_client(const SockAddr& remote, std::pair<const uint16_t, ClientTunnel>& row);
 

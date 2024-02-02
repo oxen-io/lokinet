@@ -95,8 +95,7 @@ namespace llarp::vpn
 
         virtual void delete_route_via_interface(NetworkInterface& vpn, IPRange range) = 0;
 
-        virtual std::vector<oxen::quic::Address> get_non_interface_gateways(
-            NetworkInterface& vpn) = 0;
+        virtual std::vector<oxen::quic::Address> get_non_interface_gateways(NetworkInterface& vpn) = 0;
 
         virtual void add_blackhole(){};
 
@@ -110,8 +109,7 @@ namespace llarp::vpn
        protected:
         /// get a new network interface fully configured given the interface info
         /// blocks until ready, throws on error
-        virtual std::shared_ptr<NetworkInterface> ObtainInterface(
-            InterfaceInfo info, Router* router) = 0;
+        virtual std::shared_ptr<NetworkInterface> ObtainInterface(InterfaceInfo info, Router* router) = 0;
 
        public:
         Platform() = default;
@@ -138,8 +136,7 @@ namespace llarp::vpn
         /// @param index the interface index of the network interface to use or 0 for all
         /// interfaces on the system
         virtual std::shared_ptr<I_Packet_IO> create_packet_io(
-            [[maybe_unused]] unsigned int ifindex,
-            [[maybe_unused]] const std::optional<SockAddr>& dns_upstream_src)
+            [[maybe_unused]] unsigned int ifindex, [[maybe_unused]] const std::optional<SockAddr>& dns_upstream_src)
         {
             throw std::runtime_error{"raw packet io is unimplemented"};
         }

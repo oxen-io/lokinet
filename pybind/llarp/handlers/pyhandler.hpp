@@ -16,8 +16,7 @@ namespace llarp
                                       public std::enable_shared_from_this<PythonEndpoint>
         {
             PythonEndpoint(std::string name, Context_ptr routerContext)
-                : llarp::service::Endpoint(
-                    routerContext->router.get(), &routerContext->router->hiddenServiceContext()),
+                : llarp::service::Endpoint(routerContext->router.get(), &routerContext->router->hiddenServiceContext()),
                   OurName(std::move(name))
             {}
             const std::string OurName;
@@ -68,8 +67,7 @@ namespace llarp
                 return {0};
             }
 
-            std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-                huint128_t) const override
+            std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(huint128_t) const override
             {
                 return std::nullopt;
             }
@@ -79,13 +77,11 @@ namespace llarp
                 return "";
             }
 
-            using PacketHandler_t =
-                std::function<void(service::Address, std::vector<byte_t>, service::ProtocolType)>;
+            using PacketHandler_t = std::function<void(service::Address, std::vector<byte_t>, service::ProtocolType)>;
 
             PacketHandler_t handlePacket;
 
-            void SendPacket(
-                service::Address remote, std::vector<byte_t> pkt, service::ProtocolType proto)
+            void SendPacket(service::Address remote, std::vector<byte_t> pkt, service::ProtocolType proto)
             {
                 m_router->loop()->call([remote, pkt, proto, self = shared_from_this()]() {
                     self->SendToOrQueue(remote, llarp_buffer_t(pkt), proto);

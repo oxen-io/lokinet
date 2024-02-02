@@ -44,8 +44,7 @@ namespace llarp::service
         }
         catch (...)
         {
-            log::critical(
-                intro_cat, "Error: Introduction failed to populate with bt encoded contents");
+            log::critical(intro_cat, "Error: Introduction failed to populate with bt encoded contents");
         }
     }
 
@@ -92,12 +91,7 @@ namespace llarp::service
     std::string Introduction::ToString() const
     {
         return fmt::format(
-            "[Intro k={} l={} p={} v={} x={}]",
-            RouterID{router},
-            latency.count(),
-            path_id,
-            version,
-            expiry.count());
+            "[Intro k={} l={} p={} v={} x={}]", RouterID{router}, latency.count(), path_id, version, expiry.count());
     }
 
 }  // namespace llarp::service

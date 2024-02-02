@@ -31,8 +31,7 @@ namespace llarp::handlers
         resultHandler({});
     }
 
-    std::optional<EndpointBase::AddressVariant_t> ExitEndpoint::GetEndpointWithConvoTag(
-        service::ConvoTag tag) const
+    std::optional<EndpointBase::AddressVariant_t> ExitEndpoint::GetEndpointWithConvoTag(service::ConvoTag tag) const
     {
         for (const auto& [pathID, pk] : paths)
         {
@@ -94,8 +93,7 @@ namespace llarp::handlers
                 {
                     if (not itr->second->LooksDead(Now()))
                     {
-                        return router->send_data_message(
-                            itr->second->router_id(), std::move(payload));
+                        return router->send_data_message(itr->second->router_id(), std::move(payload));
                     }
                 }
 
@@ -103,9 +101,7 @@ namespace llarp::handlers
                     return false;
 
                 ObtainSNodeSession(
-                    *rid,
-                    [pkt = std::move(payload)](
-                        std::shared_ptr<llarp::exit::BaseSession> session) mutable {
+                    *rid, [pkt = std::move(payload)](std::shared_ptr<llarp::exit::BaseSession> session) mutable {
                         if (session and session->IsReady())
                         {
                             session->send_packet_to_remote(std::move(pkt));
@@ -118,9 +114,7 @@ namespace llarp::handlers
     }
 
     bool ExitEndpoint::EnsurePathTo(
-        AddressVariant_t addr,
-        std::function<void(std::optional<service::ConvoTag>)> hook,
-        llarp_time_t)
+        AddressVariant_t addr, std::function<void(std::optional<service::ConvoTag>)> hook, llarp_time_t)
     {
         if (std::holds_alternative<service::Address>(addr))
             return false;
@@ -128,20 +122,19 @@ namespace llarp::handlers
         {
             if (snode_keys.count(PubKey{*rid}) or router->PathToRouterAllowed(*rid))
             {
-                ObtainSNodeSession(
-                    *rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
-                        if (session and session->IsReady())
+                ObtainSNodeSession(*rid, [hook, routerID = *rid](std::shared_ptr<exit::BaseSession> session) {
+                    if (session and session->IsReady())
+                    {
+                        if (auto path = session->GetPathByRouter(routerID))
                         {
-                            if (auto path = session->GetPathByRouter(routerID))
-                            {
-                                hook(service::ConvoTag{path->RXID().as_array()});
-                            }
-                            else
-                                hook(std::nullopt);
+                            hook(service::ConvoTag{path->RXID().as_array()});
                         }
                         else
                             hook(std::nullopt);
-                    });
+                    }
+                    else
+                        hook(std::nullopt);
+                });
             }
             else
             {
@@ -206,8 +199,7 @@ namespace llarp::handlers
         return true;
     }
 
-    bool ExitEndpoint::HandleHookedDNSMessage(
-        dns::Message msg, std::function<void(dns::Message)> reply)
+    bool ExitEndpoint::HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)> reply)
     {
         if (msg.questions[0].qtype == dns::qTypePTR)
         {
@@ -336,8 +328,7 @@ namespace llarp::handlers
         return router->now();
     }
 
-    bool ExitEndpoint::VisitEndpointsFor(
-        const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const
+    bool ExitEndpoint::VisitEndpointsFor(const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit) const
     {
         for (auto [itr, end] = active_exits.equal_range(pk); itr != end; ++itr)
         {
@@ -383,15 +374,10 @@ namespace llarp::handlers
                     continue;
                 }
             }
-            auto tryFlushingTraffic =
-                [this, buf = std::move(buf), pk](exit::Endpoint* const ep) -> bool {
+            auto tryFlushingTraffic = [this, buf = std::move(buf), pk](exit::Endpoint* const ep) -> bool {
                 if (!ep->QueueInboundTraffic(buf._buf, service::ProtocolType::TrafficV4))
                 {
-                    LogWarn(
-                        Name(),
-                        " dropped inbound traffic for session ",
-                        pk,
-                        " as we are overloaded (probably)");
+                    LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we are overloaded (probably)");
                     // continue iteration
                     return true;
                 }
@@ -401,11 +387,7 @@ namespace llarp::handlers
             if (!VisitEndpointsFor(pk, tryFlushingTraffic))
             {
                 // we may have all dead sessions, wtf now?
-                LogWarn(
-                    Name(),
-                    " dropped inbound traffic for session ",
-                    pk,
-                    " as we have no working endpoints");
+                LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we have no working endpoints");
             }
         }
 
@@ -454,8 +436,7 @@ namespace llarp::handlers
 
             GetRouter()->loop()->add_ticker([this] { Flush(); });
 #ifndef _WIN32
-            resolver = std::make_shared<dns::Server>(
-                router->loop(), dns_conf, if_nametoindex(if_name.c_str()));
+            resolver = std::make_shared<dns::Server>(router->loop(), dns_conf, if_nametoindex(if_name.c_str()));
             resolver->Start();
 
 #endif
@@ -744,8 +725,7 @@ namespace llarp::handlers
             // mark it as such so we don't make an outbound session to them
             snode_keys.emplace(pk.as_array());
         }
-        active_exits.emplace(
-            pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
+        active_exits.emplace(pk, std::make_unique<exit::Endpoint>(pk, handler, !wantInternet, ip, this));
 
         paths[path] = pk;
 

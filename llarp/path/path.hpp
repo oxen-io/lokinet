@@ -143,14 +143,10 @@ namespace llarp
                 uint64_t order = 0,
                 std::function<void(std::string)> func = nullptr);
 
-            bool close_exit(
-                SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
+            bool close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func = nullptr);
 
             bool obtain_exit(
-                SecretKey sk,
-                uint64_t flag,
-                std::string tx_id,
-                std::function<void(std::string)> func = nullptr);
+                SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string)> func = nullptr);
 
             /// sends a control request along a path
             ///
@@ -161,9 +157,7 @@ namespace llarp
             /// func is called with a bt-encoded response string (if applicable), and
             /// a timeout flag (if set, response string will be empty)
             bool send_path_control_message(
-                std::string method,
-                std::string body,
-                std::function<void(std::string)> func = nullptr) override;
+                std::string method, std::string body, std::function<void(std::string)> func = nullptr) override;
 
             bool IsReady() const;
 
@@ -228,8 +222,7 @@ namespace llarp
         /// comparision for equal endpoints
         struct endpoint_comparator
         {
-            bool operator()(
-                const std::shared_ptr<Path>& left, const std::shared_ptr<Path>& right) const
+            bool operator()(const std::shared_ptr<Path>& left, const std::shared_ptr<Path>& right) const
             {
                 return left && right && left->Endpoint() == left->Endpoint();
             }

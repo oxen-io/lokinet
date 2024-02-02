@@ -29,8 +29,7 @@ namespace llarp::win32
 
         void default_route_via_interface(NetworkInterface& vpn, std::string cmd);
 
-        void route_via_interface(
-            NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd);
+        void route_via_interface(NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd);
 
        public:
         VPNPlatform(const VPNPlatform&) = delete;
@@ -55,8 +54,7 @@ namespace llarp::win32
 
         void delete_default_route_via_interface(NetworkInterface& vpn) override;
 
-        std::shared_ptr<NetworkInterface> ObtainInterface(
-            InterfaceInfo info, Router* router) override;
+        std::shared_ptr<NetworkInterface> ObtainInterface(InterfaceInfo info, Router* router) override;
 
         std::shared_ptr<I_Packet_IO> create_packet_io(
             unsigned int ifindex, const std::optional<SockAddr>& dns_upstream_src) override;

@@ -33,8 +33,7 @@ namespace llarp::service
         bool hasEndpoints();
 
         /// function visitor returns false to prematurely break iteration
-        void ForEachService(
-            std::function<bool(const std::string&, const std::shared_ptr<Endpoint>&)> visit) const;
+        void ForEachService(std::function<bool(const std::string&, const std::shared_ptr<Endpoint>&)> visit) const;
 
         /// Pumps the hidden service endpoints, called during Router::PumpLL
         void Pump();

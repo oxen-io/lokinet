@@ -59,9 +59,8 @@ namespace llarp::service
         if (primaryName.size() > MaxPunycodeNameLen)
             return false;
         // check for xn--
-        return (primaryName[2] == '-' and primaryName[3] == '-')
-            ? (primaryName[0] == 'x' and primaryName[1] == 'n')
-            : true;
+        return (primaryName[2] == '-' and primaryName[3] == '-') ? (primaryName[0] == 'x' and primaryName[1] == 'n')
+                                                                 : true;
     }
 
 }  // namespace llarp::service

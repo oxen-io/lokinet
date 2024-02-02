@@ -7,12 +7,7 @@ namespace llarp::path
 {
     std::string TransitHopInfo::ToString() const
     {
-        return fmt::format(
-            "[TransitHopInfo tx={} rx={} upstream={} downstream={}]",
-            txID,
-            rxID,
-            upstream,
-            downstream);
+        return fmt::format("[TransitHopInfo tx={} rx={} upstream={} downstream={}]", txID, rxID, upstream, downstream);
     }
 
     TransitHop::TransitHop() : AbstractHopHandler{}
@@ -29,8 +24,7 @@ namespace llarp::path
     {
         if (randomize)
             nonce.Randomize();
-        nonce = crypto::onion(
-            reinterpret_cast<unsigned char*>(data.data()), data.size(), pathKey, nonce, nonceXOR);
+        nonce = crypto::onion(reinterpret_cast<unsigned char*>(data.data()), data.size(), pathKey, nonce, nonceXOR);
     }
 
     std::string TransitHop::onion_and_payload(
@@ -43,8 +37,7 @@ namespace llarp::path
         return path::make_onion_payload(nref, next_id, payload);
     }
 
-    bool TransitHop::send_path_control_message(
-        std::string, std::string, std::function<void(std::string)>)
+    bool TransitHop::send_path_control_message(std::string, std::string, std::function<void(std::string)>)
     {
         // TODO: if we want terminal/pivot hops to be able to *initiate* a request rather than
         //       simply responding/reacting to the client end's requests, this will need
@@ -107,8 +100,7 @@ namespace llarp::path
 
     std::string TransitHop::ToString() const
     {
-        return fmt::format(
-            "[TransitHop {} started={} lifetime={}", info, started.count(), lifetime.count());
+        return fmt::format("[TransitHop {} started={} lifetime={}", info, started.count(), lifetime.count());
     }
 
     void TransitHop::Stop()

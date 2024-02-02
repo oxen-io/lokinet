@@ -92,11 +92,9 @@ namespace llarp::dht
             }
             if (nodes.size() == N)
             {
-                std::transform(
-                    nodes.begin(),
-                    nodes.end(),
-                    std::inserter(result, result.end()),
-                    [](const auto& a) { return a.first; });
+                std::transform(nodes.begin(), nodes.end(), std::inserter(result, result.end()), [](const auto& a) {
+                    return a.first;
+                });
 
                 return true;
             }
@@ -114,8 +112,7 @@ namespace llarp::dht
             return result.size() == expecting;
         }
 
-        bool FindCloseExcluding(
-            const Key_t& target, Key_t& result, const std::set<Key_t>& exclude) const
+        bool FindCloseExcluding(const Key_t& target, Key_t& result, const std::set<Key_t>& exclude) const
         {
             Key_t maxdist;
             maxdist.Fill(0xff);
@@ -139,10 +136,7 @@ namespace llarp::dht
         }
 
         bool GetManyNearExcluding(
-            const Key_t& target,
-            std::set<Key_t>& result,
-            size_t N,
-            const std::set<Key_t>& exclude) const
+            const Key_t& target, std::set<Key_t>& result, size_t N, const std::set<Key_t>& exclude) const
         {
             std::set<Key_t> s(exclude.begin(), exclude.end());
 

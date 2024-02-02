@@ -6,8 +6,7 @@
 namespace llarp::rpc
 {
 
-    void load_binary_parameter_impl(
-        std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data)
+    void load_binary_parameter_impl(std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data)
     {
         if (allow_raw && bytes.size() == raw_size)
         {
@@ -27,12 +26,9 @@ namespace llarp::rpc
             const size_t b64_padded = (raw_size + 2) / 3 * 4;
             const size_t b64_padding = raw_size % 3 == 1 ? 2 : raw_size % 3 == 2 ? 1 : 0;
             const size_t b64_unpadded = b64_padded - b64_padding;
-            const std::string_view b64_padding_string = b64_padding == 2 ? "=="sv
-                : b64_padding == 1                                       ? "="sv
-                                                                         : ""sv;
+            const std::string_view b64_padding_string = b64_padding == 2 ? "=="sv : b64_padding == 1 ? "="sv : ""sv;
             if (bytes.size() == b64_unpadded
-                || (b64_padding > 0 && bytes.size() == b64_padded
-                    && bytes.substr(b64_unpadded) == b64_padding_string))
+                || (b64_padding > 0 && bytes.size() == b64_padded && bytes.substr(b64_unpadded) == b64_padding_string))
             {
                 if (oxenc::is_base64(bytes))
                 {

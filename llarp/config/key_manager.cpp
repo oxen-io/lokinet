@@ -86,8 +86,7 @@ namespace llarp
         auto enckey_gen = [](llarp::SecretKey& key) { llarp::crypto::encryption_keygen(key); };
         if (not keygen(enckey_path, encryption_key, enckey_gen))
         {
-            log::critical(
-                logcat, "KeyManager::keygen failed to generate encryption key line:{}", __LINE__);
+            log::critical(logcat, "KeyManager::keygen failed to generate encryption key line:{}", __LINE__);
             return false;
         }
 
@@ -99,8 +98,7 @@ namespace llarp
 
         if (not keygen(transkey_path, transport_key, transkey_gen))
         {
-            log::critical(
-                logcat, "KeyManager::keygen failed to generate transport key line:{}", __LINE__);
+            log::critical(logcat, "KeyManager::keygen failed to generate transport key line:{}", __LINE__);
             return false;
         }
 
@@ -114,8 +112,7 @@ namespace llarp
 
             if (not keygen(idkey_path, identity_key, idkey_gen))
             {
-                log::critical(
-                    logcat, "KeyManager::keygen failed to generate identity key line:{}", __LINE__);
+                log::critical(logcat, "KeyManager::keygen failed to generate identity key line:{}", __LINE__);
                 return false;
             }
         }
@@ -186,8 +183,7 @@ namespace llarp
         return true;
     }
 
-    bool KeyManager::keygen(
-        fs::path path, llarp::SecretKey& key, std::function<void(llarp::SecretKey& key)> keygen)
+    bool KeyManager::keygen(fs::path path, llarp::SecretKey& key, std::function<void(llarp::SecretKey& key)> keygen)
     {
         if (not fs::exists(path))
         {

@@ -32,20 +32,18 @@ namespace llarp
         };
     }  // namespace
 
-    void RouterConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void RouterConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         constexpr Default DefaultJobQueueSize{1024 * 8};
         constexpr Default DefaultWorkerThreads{0};
         constexpr Default DefaultBlockBogons{true};
 
-        conf.define_option<int>(
-            "router", "job-queue-size", DefaultJobQueueSize, Hidden, [this](int arg) {
-                if (arg < 1024)
-                    throw std::invalid_argument("job-queue-size must be 1024 or greater");
+        conf.define_option<int>("router", "job-queue-size", DefaultJobQueueSize, Hidden, [this](int arg) {
+            if (arg < 1024)
+                throw std::invalid_argument("job-queue-size must be 1024 or greater");
 
-                job_que_size = arg;
-            });
+            job_que_size = arg;
+        });
 
         conf.define_option<std::string>(
             "router",
@@ -57,8 +55,7 @@ namespace llarp
             },
             [this](std::string arg) {
                 if (arg.size() > NETID_SIZE)
-                    throw std::invalid_argument{
-                        fmt::format("netid is too long, max length is {}", NETID_SIZE)};
+                    throw std::invalid_argument{fmt::format("netid is too long, max length is {}", NETID_SIZE)};
 
                 net_id = std::move(arg);
             });
@@ -73,8 +70,8 @@ namespace llarp
             },
             [=](int arg) {
                 if (arg < CLIENT_ROUTER_CONNECTIONS)
-                    throw std::invalid_argument{fmt::format(
-                        "Client relay connections must be >= {}", CLIENT_ROUTER_CONNECTIONS)};
+                    throw std::invalid_argument{
+                        fmt::format("Client relay connections must be >= {}", CLIENT_ROUTER_CONNECTIONS)};
 
                 client_router_connections = arg;
             });
@@ -87,9 +84,7 @@ namespace llarp
                 "Minimum number of routers lokinet will attempt to maintain connections to.",
             },
             [=](int) {
-                log::warning(
-                    logcat,
-                    "Router min-connections is deprecated; use relay-connections for clients");
+                log::warning(logcat, "Router min-connections is deprecated; use relay-connections for clients");
             });
 
         conf.define_option<int>(
@@ -100,9 +95,7 @@ namespace llarp
                 "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
             },
             [=](int) {
-                log::warning(
-                    logcat,
-                    "Router max-connections is deprecated; use relay-connections for clients");
+                log::warning(logcat, "Router max-connections is deprecated; use relay-connections for clients");
             });
 
         conf.define_option<std::string>("router", "nickname", Deprecated);
@@ -119,8 +112,7 @@ namespace llarp
                 if (arg.empty())
                     throw std::invalid_argument("[router]:data-dir is empty");
                 if (not fs::exists(arg))
-                    throw std::runtime_error{
-                        fmt::format("Specified [router]:data-dir {} does not exist", arg)};
+                    throw std::runtime_error{fmt::format("Specified [router]:data-dir {} does not exist", arg)};
 
                 data_dir = std::move(arg);
             });
@@ -178,14 +170,9 @@ namespace llarp
         // Hidden option because this isn't something that should ever be turned off occasionally
         // when doing dev/testing work.
         conf.define_option<bool>(
-            "router",
-            "block-bogons",
-            DefaultBlockBogons,
-            Hidden,
-            assignment_acceptor(block_bogons));
+            "router", "block-bogons", DefaultBlockBogons, Hidden, assignment_acceptor(block_bogons));
 
-        constexpr auto relative_to_datadir =
-            "An absolute path is used as-is, otherwise relative to 'data-dir'.";
+        constexpr auto relative_to_datadir = "An absolute path is used as-is, otherwise relative to 'data-dir'.";
 
         conf.define_option<std::string>(
             "router",
@@ -244,8 +231,7 @@ namespace llarp
         is_relay = params.is_relay;
     }
 
-    void NetworkConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void NetworkConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         (void)params;
 
@@ -256,22 +242,13 @@ namespace llarp
         static constexpr Default PathsDefault{6};
         static constexpr Default IP6RangeDefault{"fd00::"};
 
-        conf.define_option<std::string>(
-            "network", "type", Default{"tun"}, Hidden, assignment_acceptor(endpoint_type));
+        conf.define_option<std::string>("network", "type", Default{"tun"}, Hidden, assignment_acceptor(endpoint_type));
 
         conf.define_option<bool>(
-            "network",
-            "save-profiles",
-            SaveProfilesDefault,
-            Hidden,
-            assignment_acceptor(save_profiles));
+            "network", "save-profiles", SaveProfilesDefault, Hidden, assignment_acceptor(save_profiles));
 
         conf.define_option<bool>(
-            "network",
-            "profiling",
-            ProfilingValueDefault,
-            Hidden,
-            assignment_acceptor(enable_profiling));
+            "network", "profiling", ProfilingValueDefault, Hidden, assignment_acceptor(enable_profiling));
 
         conf.define_option<std::string>("network", "profiles", Deprecated);
 
@@ -369,8 +346,7 @@ namespace llarp
             },
             [this](fs::path arg) {
                 if (not fs::exists(arg))
-                    throw std::invalid_argument{
-                        fmt::format("cannot load auth file {}: file does not exist", arg)};
+                    throw std::invalid_argument{fmt::format("cannot load auth file {}: file does not exist", arg)};
                 auth_files.emplace(std::move(arg));
             });
         conf.define_option<std::string>(
@@ -381,9 +357,7 @@ namespace llarp
                 "How to interpret the contents of an auth file.",
                 "Possible values: hashes, plaintext",
             },
-            [this](std::string arg) {
-                auth_file_type = service::parse_auth_file_type(std::move(arg));
-            });
+            [this](std::string arg) { auth_file_type = service::parse_auth_file_type(std::move(arg)); });
 
         conf.define_option<std::string>(
             "network",
@@ -511,8 +485,7 @@ namespace llarp
                 }
                 else if (not range.FromString(arg.substr(pos + 1)))
                 {
-                    throw std::invalid_argument(
-                        "[network]:exit-node invalid ip range for exit provided");
+                    throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
                 }
                 if (pos != std::string::npos)
                 {
@@ -527,8 +500,7 @@ namespace llarp
 
                 if (arg != "null" and not exit.FromString(arg))
                 {
-                    throw std::invalid_argument{
-                        fmt::format("[network]:exit-node bad address: {}", arg)};
+                    throw std::invalid_argument{fmt::format("[network]:exit-node bad address: {}", arg)};
                 }
                 exit_map.Insert(range, exit);
             });
@@ -618,8 +590,7 @@ namespace llarp
             [this](std::string arg) {
                 if (not if_addr.FromString(arg))
                 {
-                    throw std::invalid_argument{
-                        fmt::format("[network]:ifaddr invalid value: '{}'", arg)};
+                    throw std::invalid_argument{fmt::format("[network]:ifaddr invalid value: '{}'", arg)};
                 }
             });
 
@@ -647,8 +618,7 @@ namespace llarp
                 }
                 base_ipv6_addr = huint128_t{};
                 if (not base_ipv6_addr->FromString(arg))
-                    throw std::invalid_argument{
-                        fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
+                    throw std::invalid_argument{fmt::format("[network]:ip6-range invalid value: '{}'", arg)};
             });
 
         // TODO: could be useful for snodes in the future, but currently only implemented for
@@ -672,8 +642,7 @@ namespace llarp
                 const auto pos = arg.find(":");
                 if (pos == std::string::npos)
                 {
-                    throw std::invalid_argument{
-                        fmt::format("[endpoint]:mapaddr invalid entry: {}", arg)};
+                    throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid entry: {}", arg)};
                 }
                 std::string addrstr = arg.substr(0, pos);
                 std::string ipstr = arg.substr(pos + 1);
@@ -682,20 +651,17 @@ namespace llarp
                     huint32_t ipv4;
                     if (not ipv4.FromString(ipstr))
                     {
-                        throw std::invalid_argument{
-                            fmt::format("[endpoint]:mapaddr invalid ip: {}", ipstr)};
+                        throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid ip: {}", ipstr)};
                     }
                     ip = net::ExpandV4(ipv4);
                 }
                 if (not addr.FromString(addrstr))
                 {
-                    throw std::invalid_argument{
-                        fmt::format("[endpoint]:mapaddr invalid addresss: {}", addrstr)};
+                    throw std::invalid_argument{fmt::format("[endpoint]:mapaddr invalid addresss: {}", addrstr)};
                 }
                 if (map_addrs.find(ip) != map_addrs.end())
                 {
-                    throw std::invalid_argument{
-                        fmt::format("[endpoint]:mapaddr ip already mapped: {}", ipstr)};
+                    throw std::invalid_argument{fmt::format("[endpoint]:mapaddr ip already mapped: {}", ipstr)};
                 }
                 map_addrs[ip] = addr;
             });
@@ -753,8 +719,7 @@ namespace llarp
             },
             [this](int val) {
                 if (val <= 0)
-                    throw std::invalid_argument{
-                        "invalid path alignment timeout: " + std::to_string(val) + " <= 0"};
+                    throw std::invalid_argument{"invalid path alignment timeout: " + std::to_string(val) + " <= 0"};
                 path_alignment_timeout = std::chrono::seconds{val};
             });
 
@@ -832,8 +797,7 @@ namespace llarp
             "dns",
             "l3-intercept",
             Default{
-                platform::is_windows or platform::is_android
-                or (platform::is_macos and not platform::is_apple_sysex)},
+                platform::is_windows or platform::is_android or (platform::is_macos and not platform::is_apple_sysex)},
             Comment{"Intercept all dns traffic (udp/53) going into our lokinet network interface "
                     "instead of binding a local udp socket"},
             assignment_acceptor(raw));
@@ -872,14 +836,12 @@ namespace llarp
             "dns",
             "add-hosts",
             ClientOnly,
-            Comment{
-                "Add a hosts file to the dns resolver", "For use with client side dns filtering"},
+            Comment{"Add a hosts file to the dns resolver", "For use with client side dns filtering"},
             [=](fs::path path) {
                 if (path.empty())
                     return;
                 if (not fs::exists(path))
-                    throw std::invalid_argument{
-                        fmt::format("cannot add hosts file {} as it does not exist", path)};
+                    throw std::invalid_argument{fmt::format("cannot add hosts file {} as it does not exist", path)};
                 hostfiles.emplace_back(std::move(path));
             });
 
@@ -897,13 +859,10 @@ namespace llarp
 
         // forward the rest to libunbound
         conf.add_undeclared_handler(
-            "dns", [this](auto, std::string_view key, std::string_view val) {
-                extra_opts.emplace(key, val);
-            });
+            "dns", [this](auto, std::string_view key, std::string_view val) { extra_opts.emplace(key, val); });
     }
 
-    void LinksConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void LinksConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         conf.add_section_comments(
             "bind",
@@ -1023,15 +982,9 @@ namespace llarp
             });
 
         conf.define_option<std::string>(
-            "bind",
-            "inbound",
-            RelayOnly,
-            MultiValue,
-            Hidden,
-            [this, parse_addr_for_link](const std::string& arg) {
+            "bind", "inbound", RelayOnly, MultiValue, Hidden, [this, parse_addr_for_link](const std::string& arg) {
                 if (using_new_api)
-                    throw std::runtime_error{
-                        "USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
+                    throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
                 if (auto a = parse_addr_for_link(arg); a and a->is_addressable())
                 {
@@ -1047,63 +1000,60 @@ namespace llarp
 
         conf.define_option<std::string>("bind", "outbound", MultiValue, Deprecated, Hidden);
 
-        conf.add_undeclared_handler(
-            "bind", [this](std::string_view, std::string_view key, std::string_view val) {
-                if (using_new_api)
-                    throw std::runtime_error{
-                        "USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
+        conf.add_undeclared_handler("bind", [this](std::string_view, std::string_view key, std::string_view val) {
+            if (using_new_api)
+                throw std::runtime_error{"USE THE NEW API -- SPECIFY LOCAL ADDRESS UNDER [LISTEN]"};
 
-                log::warning(logcat, "Please update your config to use [bind]:listen instead");
+            log::warning(logcat, "Please update your config to use [bind]:listen instead");
 
-                uint16_t port{0};
+            uint16_t port{0};
 
-                if (auto rv = llarp::parse_int<uint16_t>(val, port); not rv)
-                    throw std::runtime_error{
-                        "Could not parse port; stop using this deprecated handler"};
+            if (auto rv = llarp::parse_int<uint16_t>(val, port); not rv)
+                throw std::runtime_error{"Could not parse port; stop using this deprecated handler"};
 
-                port = port == 0 ? DEFAULT_LISTEN_PORT : port;
+            port = port == 0 ? DEFAULT_LISTEN_PORT : port;
 
-                // special case: wildcard for outbound
-                if (key == "*")
-                {
-                    log::warning(
-                        logcat,
-                        "Wildcat address referencing port {} is referencing deprecated outbound "
-                        "config "
-                        "options; use [bind]:listen instead",
-                        port);
-                    return;
-                }
+            // special case: wildcard for outbound
+            if (key == "*")
+            {
+                log::warning(
+                    logcat,
+                    "Wildcat address referencing port {} is referencing deprecated outbound "
+                    "config "
+                    "options; use [bind]:listen instead",
+                    port);
+                return;
+            }
 
-                oxen::quic::Address temp;
+            oxen::quic::Address temp;
 
-                try
-                {
-                    temp = oxen::quic::Address{std::string{key}, port};
-                }
-                catch (const std::exception& e)
-                {
-                    throw std::runtime_error{fmt::format(
-                        "Could not parse address {}; please update your config to use "
-                        "[bind]:listen "
-                        "instead: {}",
-                        key,
-                        e.what())};
-                }
+            try
+            {
+                temp = oxen::quic::Address{std::string{key}, port};
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error{fmt::format(
+                    "Could not parse address {}; please update your config to use "
+                    "[bind]:listen "
+                    "instead: {}",
+                    key,
+                    e.what())};
+            }
 
-                if (not temp.is_addressable())
-                {
-                    throw std::runtime_error{fmt::format(
-                        "Invalid address: {}; stop using this deprecated handler, update your "
-                        "config to "
-                        "use "
-                        "[bind]:listen instead PLEASE",
-                        temp)};
-                }
+            if (not temp.is_addressable())
+            {
+                throw std::runtime_error{fmt::format(
+                    "Invalid address: {}; stop using this deprecated handler, update your "
+                    "config to "
+                    "use "
+                    "[bind]:listen instead PLEASE",
+                    temp)};
+            }
 
-                listen_addr = std::move(temp);
-                using_user_value = true;
-            });
+            listen_addr = std::move(temp);
+            using_user_value = true;
+        });
     }
 
     void ApiConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
@@ -1152,8 +1102,7 @@ namespace llarp
         // TODO: add pubkey to whitelist
     }
 
-    void LokidConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void LokidConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         (void)params;
         conf.define_option<bool>(
@@ -1162,9 +1111,7 @@ namespace llarp
             Default{false},
             Hidden,
             RelayOnly,
-            Comment{
-                "Development option: set to true to disable reachability testing when using ",
-                "testnet"},
+            Comment{"Development option: set to true to disable reachability testing when using ", "testnet"},
             assignment_acceptor(disable_testing));
 
         conf.define_option<std::string>(
@@ -1200,8 +1147,7 @@ namespace llarp
         conf.define_option<std::string>("lokid", "service-node-seed", Deprecated);
     }
 
-    void BootstrapConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void BootstrapConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         (void)params;
 
@@ -1233,13 +1179,11 @@ namespace llarp
             });
     }
 
-    void LoggingConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void LoggingConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         (void)params;
 
-        constexpr Default DefaultLogType{
-            platform::is_android or platform::is_apple ? "system" : "print"};
+        constexpr Default DefaultLogType{platform::is_android or platform::is_apple ? "system" : "print"};
         constexpr Default DefaultLogFile{""};
 
         const Default DefaultLogLevel{params.is_relay ? "warn" : "info"};
@@ -1283,8 +1227,7 @@ namespace llarp
             });
     }
 
-    void PeerSelectionConfig::define_config_options(
-        ConfigDefinition& conf, const ConfigGenParameters& params)
+    void PeerSelectionConfig::define_config_options(ConfigDefinition& conf, const ConfigGenParameters& params)
     {
         (void)params;
 
@@ -1301,8 +1244,7 @@ namespace llarp
                 }
                 else if (arg > 32 or arg < 4)
                 {
-                    throw std::invalid_argument{
-                        "[paths]:unique-range-size must be between 4 and 32"};
+                    throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
                 }
                 unique_hop_netmask = arg;
             },
@@ -1318,9 +1260,7 @@ namespace llarp
             "exclude-country",
             ClientOnly,
             MultiValue,
-            [=](std::string arg) {
-                m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
-            },
+            [=](std::string arg) { m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg))); },
             Comment{
                 "Exclude a country given its 2 letter country code from being used in path builds.",
                 "For example:",
@@ -1352,8 +1292,7 @@ namespace llarp
         return std::make_unique<ConfigGenParameters_impl>();
     }
 
-    Config::Config(std::optional<fs::path> datadir)
-        : data_dir{datadir ? std::move(*datadir) : fs::current_path()}
+    Config::Config(std::optional<fs::path> datadir) : data_dir{datadir ? std::move(*datadir) : fs::current_path()}
     {}
 
     constexpr auto GetOverridesDir = [](auto datadir) -> fs::path { return datadir / "conf.d"; };
@@ -1385,11 +1324,10 @@ namespace llarp
                 if (not parser.load_file(f.path()))
                     throw std::runtime_error{"cannot load '" + f.path().u8string() + "'"};
 
-                parser.iter_all_sections(
-                    [&](std::string_view section, const SectionValues& values) {
-                        for (const auto& [k, v] : values)
-                            conf.add_config_value(section, k, v);
-                    });
+                parser.iter_all_sections([&](std::string_view section, const SectionValues& values) {
+                    for (const auto& [k, v] : values)
+                        conf.add_config_value(section, k, v);
+                });
             }
         }
     }
@@ -1399,8 +1337,7 @@ namespace llarp
         additional.emplace_back(std::array<std::string, 3>{section, key, val});
     }
 
-    bool Config::load_config_data(
-        std::string_view ini, std::optional<fs::path> filename, bool isRelay)
+    bool Config::load_config_data(std::string_view ini, std::optional<fs::path> filename, bool isRelay)
     {
         auto params = make_gen_params();
         params->is_relay = isRelay;
@@ -1508,11 +1445,7 @@ namespace llarp
             fs::create_directory(parent);
         }
 
-        llarp::LogInfo(
-            "Attempting to create config file for ",
-            (asRouter ? "router" : "client"),
-            " at ",
-            confFile);
+        llarp::LogInfo("Attempting to create config file for ", (asRouter ? "router" : "client"), " at ", confFile);
 
         llarp::Config config{dataDir};
         std::string confStr;
@@ -1528,8 +1461,7 @@ namespace llarp
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error{
-                fmt::format("Failed to write config data to {}: {}", confFile, e.what())};
+            throw std::runtime_error{fmt::format("Failed to write config data to {}: {}", confFile, e.what())};
         }
 
         llarp::LogInfo("Generated new config ", confFile);

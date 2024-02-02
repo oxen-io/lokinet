@@ -91,9 +91,8 @@ namespace std
         {
             const std::hash<std::string> h_str{};
             const std::hash<uint16_t> h_port{};
-            return h_str(data.service_proto) ^ (h_str(data.target) << 3)
-                ^ (h_port(data.priority) << 5) ^ (h_port(data.weight) << 7)
-                ^ (h_port(data.port) << 9);
+            return h_str(data.service_proto) ^ (h_str(data.target) << 3) ^ (h_port(data.priority) << 5)
+                ^ (h_port(data.weight) << 7) ^ (h_port(data.port) << 9);
         }
     };
 }  // namespace std

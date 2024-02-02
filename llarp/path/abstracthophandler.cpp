@@ -10,13 +10,10 @@ namespace llarp::path
         return make_onion_payload(
             nonce,
             path_id,
-            ustring_view{
-                reinterpret_cast<const unsigned char*>(inner_payload.data()),
-                inner_payload.size()});
+            ustring_view{reinterpret_cast<const unsigned char*>(inner_payload.data()), inner_payload.size()});
     }
 
-    std::string make_onion_payload(
-        const SymmNonce& nonce, const PathID_t& path_id, const ustring_view& inner_payload)
+    std::string make_onion_payload(const SymmNonce& nonce, const PathID_t& path_id, const ustring_view& inner_payload)
     {
         oxenc::bt_dict_producer next_dict;
         next_dict.append("NONCE", nonce.ToView());

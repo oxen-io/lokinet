@@ -43,8 +43,7 @@ namespace llarp::util
             else if (*m_id != std::this_thread::get_id())
             {
                 std::cerr << "NullMutex " << this << " was used across threads: locked by "
-                          << std::this_thread::get_id() << " and was previously locked by " << *m_id
-                          << "\n";
+                          << std::this_thread::get_id() << " and was previously locked by " << *m_id << "\n";
                 // if you're encountering this abort() call, you may have discovered a
                 // case where a NullMutex should be reverted to a "real mutex"
                 std::abort();

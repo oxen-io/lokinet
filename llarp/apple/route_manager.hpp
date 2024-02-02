@@ -30,8 +30,7 @@ namespace llarp::apple
 
         void delete_route_via_interface(vpn::NetworkInterface& vpn, IPRange range) override;
 
-        std::vector<oxen::quic::Address> get_non_interface_gateways(
-            vpn::NetworkInterface& /*vpn*/) override
+        std::vector<oxen::quic::Address> get_non_interface_gateways(vpn::NetworkInterface& /*vpn*/) override
         {
             // We can't get this on mac from our sandbox, but we don't actually need it because we
             // ignore the gateway for AddRoute/DelRoute anyway, so just return a zero IP.

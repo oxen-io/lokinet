@@ -24,10 +24,7 @@ namespace llarp::win32
             hash(dat.base, dat.sz);
         }
         GUID guid{};
-        std::copy_n(
-            h.begin(),
-            std::min(sizeof(GUID), sizeof(ShortHash)),
-            reinterpret_cast<uint8_t*>(&guid));
+        std::copy_n(h.begin(), std::min(sizeof(GUID), sizeof(ShortHash)), reinterpret_cast<uint8_t*>(&guid));
         return guid;
     }
 }  // namespace llarp::win32

@@ -29,8 +29,7 @@ namespace
         {
             case WINDIVERT_LAYER_NETWORK:
                 layer_str = "WINDIVERT_LAYER_NETWORK";
-                ifidx_str = "Network: [IfIdx: {}, SubIfIdx: {}]"_format(
-                    addr.Network.IfIdx, addr.Network.SubIfIdx);
+                ifidx_str = "Network: [IfIdx: {}, SubIfIdx: {}]"_format(addr.Network.IfIdx, addr.Network.SubIfIdx);
                 break;
             case WINDIVERT_LAYER_NETWORK_FORWARD:
                 layer_str = "WINDIVERT_LAYER_NETWORK_FORWARD";
@@ -195,8 +194,7 @@ namespace llarp::win32
                     }
 
                     log::critical(logcat, "error receiving packet: {}", err);
-                    throw win32::error{
-                        err, fmt::format("failed to receive packet from windivert (code={})", err)};
+                    throw win32::error{err, fmt::format("failed to receive packet from windivert (code={})", err)};
                 }
                 pkt.resize(sz);
 

@@ -27,8 +27,7 @@ extern "C"
      * Method:    Configure
      * Signature: (Lnetwork/loki/lokinet/LokinetConfig;)Z
      */
-    JNIEXPORT jboolean JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_Configure(JNIEnv*, jobject, jobject);
+    JNIEXPORT jboolean JNICALL Java_network_loki_lokinet_LokinetDaemon_Configure(JNIEnv*, jobject, jobject);
 
     /*
      * Class:     network_loki_lokinet_LokinetDaemon
@@ -70,8 +69,7 @@ extern "C"
      * Method:    DetectFreeRange
      * Signature: ()Ljava/lang/String;
      */
-    JNIEXPORT jstring JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv*, jclass);
+    JNIEXPORT jstring JNICALL Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv*, jclass);
 
     /*
      * Class:     network_loki_lokinet_LokinetDaemon

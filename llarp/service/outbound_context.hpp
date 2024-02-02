@@ -15,8 +15,7 @@ namespace llarp::service
     struct Endpoint;
 
     /// context needed to initiate an outbound hidden service session
-    struct OutboundContext : public llarp::path::PathBuilder,
-                             public std::enable_shared_from_this<OutboundContext>
+    struct OutboundContext : public llarp::path::PathBuilder, public std::enable_shared_from_this<OutboundContext>
     {
        private:
         Endpoint& ep;
@@ -50,8 +49,7 @@ namespace llarp::service
         std::chrono::milliseconds last_introset_update = 0ms;
         std::chrono::milliseconds last_keep_alive = 0ms;
 
-        void gen_intro_async_impl(
-            std::string payload, std::function<void(std::string, bool)> func = nullptr);
+        void gen_intro_async_impl(std::string payload, std::function<void(std::string, bool)> func = nullptr);
 
        public:
         OutboundContext(const IntroSet& introSet, Endpoint* parent);

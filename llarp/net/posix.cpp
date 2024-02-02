@@ -46,13 +46,11 @@ namespace llarp::net
                 }
             });
             if (ifname.empty())
-                throw std::runtime_error{
-                    "we have no ipv4 loopback interface for some ungodly reason"};
+                throw std::runtime_error{"we have no ipv4 loopback interface for some ungodly reason"};
             return ifname;
         }
 
-        std::optional<oxen::quic::Address> get_best_public_address(
-            bool ipv4, uint16_t port) const override
+        std::optional<oxen::quic::Address> get_best_public_address(bool ipv4, uint16_t port) const override
         {
             std::optional<oxen::quic::Address> found;
 
@@ -80,8 +78,7 @@ namespace llarp::net
                 if (i and i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
                 {
                     ipv4addr_t addr{reinterpret_cast<sockaddr_in*>(i->ifa_addr)->sin_addr.s_addr};
-                    ipv4addr_t mask{
-                        reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr};
+                    ipv4addr_t mask{reinterpret_cast<sockaddr_in*>(i->ifa_netmask)->sin_addr.s_addr};
                     currentRanges.emplace_back(IPRange::FromIPv4(addr, mask));
                 }
             });

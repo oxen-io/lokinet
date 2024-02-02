@@ -38,8 +38,7 @@ namespace llarp::rpc
             return j.get<uint64_t>();
         if (j.is_number_integer())
             return j.get<int64_t>();
-        throw std::domain_error{
-            "internal error: encountered some unhandled/invalid type in json-to-bt translation"};
+        throw std::domain_error{"internal error: encountered some unhandled/invalid type in json-to-bt translation"};
     }
 
 }  // namespace llarp::rpc

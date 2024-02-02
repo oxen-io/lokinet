@@ -21,9 +21,7 @@ namespace llarp::util
 
     /// Same, but for some non-char but single-byte char type (e.g. byte_t, std::byte, unsigned
     /// char).
-    template <
-        typename Char,
-        std::enable_if_t<sizeof(Char) == 1 and not std::is_same_v<Char, char>, int> = 1>
+    template <typename Char, std::enable_if_t<sizeof(Char) == 1 and not std::is_same_v<Char, char>, int> = 1>
     size_t file_to_buffer(const fs::path& filename, Char* buffer, size_t buffer_size)
     {
         return file_to_buffer(filename, reinterpret_cast<char*>(buffer), buffer_size);
@@ -37,8 +35,7 @@ namespace llarp::util
     template <typename Char, std::enable_if_t<sizeof(Char) == 1, int> = 0>
     void buffer_to_file(const fs::path& filename, const Char* buffer, size_t buffer_size)
     {
-        return buffer_to_file(
-            filename, std::string_view{reinterpret_cast<const char*>(buffer), buffer_size});
+        return buffer_to_file(filename, std::string_view{reinterpret_cast<const char*>(buffer), buffer_size});
     }
 
     struct FileHash

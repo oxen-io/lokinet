@@ -18,8 +18,7 @@ namespace llarp::service
             ConnectionMap& deadSessions,
             std::unordered_map<ConvoTag, Session>& sessions);
 
-        static void ExpireConvoSessions(
-            llarp_time_t now, std::unordered_map<ConvoTag, Session>& sessions);
+        static void ExpireConvoSessions(llarp_time_t now, std::unordered_map<ConvoTag, Session>& sessions);
 
         static void StopRemoteSessions(ConnectionMap& remoteSessions);
 
@@ -28,34 +27,23 @@ namespace llarp::service
         static bool HasPathToService(const Address& addr, const ConnectionMap& remoteSessions);
 
         static bool GetConvoTagsForService(
-            const std::unordered_map<ConvoTag, Session>& sessions,
-            const Address& addr,
-            std::set<ConvoTag>& tags);
+            const std::unordered_map<ConvoTag, Session>& sessions, const Address& addr, std::set<ConvoTag>& tags);
     };
 
     template <typename Endpoint_t>
-    static std::
-        unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator>
-        GetManyPathsWithUniqueEndpoints(
-            Endpoint_t* ep,
-            size_t N,
-            std::optional<dht::Key_t> maybeLocation = std::nullopt,
-            size_t tries = 10)
+    static std::unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator>
+    GetManyPathsWithUniqueEndpoints(
+        Endpoint_t* ep, size_t N, std::optional<dht::Key_t> maybeLocation = std::nullopt, size_t tries = 10)
     {
         std::unordered_set<RouterID> exclude;
-        std::unordered_set<
-            std::shared_ptr<path::Path>,
-            path::Endpoint_Hash,
-            path::endpoint_comparator>
-            paths;
+        std::unordered_set<std::shared_ptr<path::Path>, path::Endpoint_Hash, path::endpoint_comparator> paths;
         do
         {
             --tries;
             std::shared_ptr<path::Path> path;
             if (maybeLocation)
             {
-                path =
-                    ep->GetEstablishedPathClosestTo(RouterID{maybeLocation->as_array()}, exclude);
+                path = ep->GetEstablishedPathClosestTo(RouterID{maybeLocation->as_array()}, exclude);
             }
             else
             {

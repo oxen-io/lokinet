@@ -28,8 +28,7 @@ void SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
      * that first! */
     /* first, dlsym(2) the new call from system library */
     hThread = NULL;
-    _SetThreadDescription =
-        (p_SetThreadDescription)GetProcAddress(GetModuleHandle("kernel32"), "SetThreadDescription");
+    _SetThreadDescription = (p_SetThreadDescription)GetProcAddress(GetModuleHandle("kernel32"), "SetThreadDescription");
     if (_SetThreadDescription)
     {
         /* grab another reference to the thread */

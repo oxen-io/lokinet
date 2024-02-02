@@ -41,8 +41,8 @@ extern "C"
     /// set stream accepter filter
     /// passes user parameter into stream filter as void *
     /// returns stream id
-    int EXPORT lokinet_inbound_stream_filter(
-        lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* context);
+    int EXPORT
+    lokinet_inbound_stream_filter(lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* context);
 
     /// simple stream acceptor
     /// simple variant of lokinet_inbound_stream_filter that maps port to localhost:port

@@ -145,8 +145,7 @@ namespace llarp::net
         }
         catch (...)
         {
-            log::critical(
-                net_cat, "Error: TrafficPolicy failed to populate with bt encoded contents");
+            log::critical(net_cat, "Error: TrafficPolicy failed to populate with bt encoded contents");
         }
     }
 
@@ -204,17 +203,14 @@ namespace llarp::net
     util::StatusObject TrafficPolicy::ExtractStatus() const
     {
         std::vector<util::StatusObject> rangesStatus;
-        std::transform(
-            ranges.begin(), ranges.end(), std::back_inserter(rangesStatus), [](const auto& range) {
-                return range.ToString();
-            });
+        std::transform(ranges.begin(), ranges.end(), std::back_inserter(rangesStatus), [](const auto& range) {
+            return range.ToString();
+        });
 
         std::vector<util::StatusObject> protosStatus;
-        std::transform(
-            protocols.begin(),
-            protocols.end(),
-            std::back_inserter(protosStatus),
-            [](const auto& proto) { return proto.ExtractStatus(); });
+        std::transform(protocols.begin(), protocols.end(), std::back_inserter(protosStatus), [](const auto& proto) {
+            return proto.ExtractStatus();
+        });
 
         return util::StatusObject{{"ranges", rangesStatus}, {"protocols", protosStatus}};
     }

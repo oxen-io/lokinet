@@ -18,9 +18,7 @@ namespace llarp::win32
 
     void VPNPlatform::make_route(std::string ip, std::string gw, std::string cmd)
     {
-        llarp::win32::Exec(
-            "route.exe",
-            fmt::format("{} {} MASK 255.255.255.255 {} METRIC {}", cmd, ip, gw, m_Metric));
+        llarp::win32::Exec("route.exe", fmt::format("{} {} MASK 255.255.255.255 {} METRIC {}", cmd, ip, gw, m_Metric));
     }
 
     void VPNPlatform::default_route_via_interface(NetworkInterface& vpn, std::string cmd)
@@ -32,17 +30,14 @@ namespace llarp::win32
         route_via_interface(vpn, "128.0.0.0", "128.0.0.0", cmd);
     }
 
-    void VPNPlatform::route_via_interface(
-        NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
+    void VPNPlatform::route_via_interface(NetworkInterface& vpn, std::string addr, std::string mask, std::string cmd)
     {
         const auto& info = vpn.Info();
         auto ifaddr = ip_to_string(info[0]);
         // this changes the last 1 to a 0 so that it routes over the interface
         // this is required because windows is idiotic af
         ifaddr.back()--;
-        llarp::win32::Exec(
-            "route.exe",
-            fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
+        llarp::win32::Exec("route.exe", fmt::format("{} {} MASK {} {} METRIC {}", cmd, addr, mask, ifaddr, m_Metric));
     }
 
     void VPNPlatform::add_route(oxen::quic::Address ip, oxen::quic::Address gateway)
@@ -110,8 +105,7 @@ namespace llarp::win32
         default_route_via_interface(vpn, "DELETE");
     }
 
-    std::shared_ptr<NetworkInterface> VPNPlatform::ObtainInterface(
-        InterfaceInfo info, Router* router)
+    std::shared_ptr<NetworkInterface> VPNPlatform::ObtainInterface(InterfaceInfo info, Router* router)
     {
         return wintun::make_interface(std::move(info), router);
     }
@@ -133,7 +127,6 @@ namespace llarp::win32
 
         auto filter = "outbound and ( " + udp_filter + " or tcp.DstPort == 53 )";
 
-        return WinDivert::make_interceptor(
-            filter, [router = _ctx->router] { router->TriggerPump(); });
+        return WinDivert::make_interceptor(filter, [router = _ctx->router] { router->TriggerPump(); });
     }
 }  // namespace llarp::win32

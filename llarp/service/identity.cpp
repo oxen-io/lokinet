@@ -64,10 +64,7 @@ namespace llarp::service
     }
 
     bool Identity::KeyExchange(
-        path_dh_func dh,
-        SharedSecret& result,
-        const ServiceInfo& other,
-        const KeyExchangeNonce& N) const
+        path_dh_func dh, SharedSecret& result, const ServiceInfo& other, const KeyExchangeNonce& N) const
     {
         return dh(result, other.EncryptionPublicKey(), enckey, N);
     }

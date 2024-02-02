@@ -104,11 +104,9 @@ namespace llarp
 
         virtual link::TunnelManager* GetQUICTunnel() = 0;
 
-        virtual std::optional<AddressVariant_t> GetEndpointWithConvoTag(
-            service::ConvoTag tag) const = 0;
+        virtual std::optional<AddressVariant_t> GetEndpointWithConvoTag(service::ConvoTag tag) const = 0;
 
-        virtual std::optional<service::ConvoTag> GetBestConvoTagFor(
-            AddressVariant_t addr) const = 0;
+        virtual std::optional<service::ConvoTag> GetBestConvoTagFor(AddressVariant_t addr) const = 0;
 
         virtual bool EnsurePathTo(
             AddressVariant_t addr,
@@ -123,9 +121,7 @@ namespace llarp
 
         /// lookup srv records async
         virtual void LookupServiceAsync(
-            std::string name,
-            std::string service,
-            std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
+            std::string name, std::string service, std::function<void(std::vector<dns::SRVData>)> resultHandler) = 0;
 
         virtual void MarkAddressOutbound(service::Address remote) = 0;
     };

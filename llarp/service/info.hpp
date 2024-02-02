@@ -44,8 +44,7 @@ namespace llarp::service
             return enckey;
         }
 
-        bool Update(
-            const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
+        bool Update(const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
 
         bool operator==(const ServiceInfo& other) const
         {

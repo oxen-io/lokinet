@@ -4,8 +4,7 @@
 
 namespace llarp
 {
-    RouterVersion::RouterVersion(const Version_t& router, uint64_t proto)
-        : m_Version(router), m_ProtoVersion(proto)
+    RouterVersion::RouterVersion(const Version_t& router, uint64_t proto) : m_Version(router), m_ProtoVersion(proto)
     {}
 
     bool RouterVersion::IsCompatableWith(const RouterVersion& other) const
@@ -83,8 +82,7 @@ namespace llarp
     std::string RouterVersion::ToString() const
     {
         return std::to_string(m_Version.at(0)) + "." + std::to_string(m_Version.at(1)) + "."
-            + std::to_string(m_Version.at(2)) + " protocol version "
-            + std::to_string(m_ProtoVersion);
+            + std::to_string(m_Version.at(2)) + " protocol version " + std::to_string(m_ProtoVersion);
     }
 
 }  // namespace llarp

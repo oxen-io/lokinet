@@ -37,11 +37,7 @@ namespace llarp
         [[maybe_unused]] T&&... args)
     {
         if (cat_logger)
-            cat_logger->log(
-                log::detail::spdlog_sloc(location),
-                log::Level::trace,
-                fmt,
-                std::forward<T>(args)...);
+            cat_logger->log(log::detail::spdlog_sloc(location), log::Level::trace, fmt, std::forward<T>(args)...);
     }
 
     namespace vpn
@@ -146,19 +142,14 @@ namespace llarp
         {
             auto repeater = make_repeater();
             auto& r = *repeater;  // reference *before* we pass ownership into the lambda below
-            r.start(
-                repeat,
-                [repeater = std::move(repeater),
-                 owner = std::move(owner),
-                 f = std::move(f)]() mutable {
-                    if (auto ptr = owner.lock())
-                        f();
-                    else
-                        repeater
-                            .reset();  // Trigger timer removal on tied object destruction (we
+            r.start(repeat, [repeater = std::move(repeater), owner = std::move(owner), f = std::move(f)]() mutable {
+                if (auto ptr = owner.lock())
+                    f();
+                else
+                    repeater.reset();  // Trigger timer removal on tied object destruction (we
                                        // should be the only thing holding the repeater; ideally it
                                        // would be a unique_ptr, but std::function says nuh-uh).
-                });
+            });
         }
 
         /// Calls a function and synchronously obtains its return value.  If called from within the
@@ -220,8 +211,7 @@ namespace llarp
         }
 
         virtual bool add_network_interface(
-            std::shared_ptr<vpn::NetworkInterface> netif,
-            std::function<void(net::IPPacket)> packetHandler) = 0;
+            std::shared_ptr<vpn::NetworkInterface> netif, std::function<void(net::IPPacket)> packetHandler) = 0;
 
         virtual bool add_ticker(std::function<void(void)> ticker) = 0;
 
@@ -231,8 +221,7 @@ namespace llarp
 
         virtual const net::Platform* Net_ptr() const;
 
-        using UDPReceiveFunc =
-            std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
+        using UDPReceiveFunc = std::function<void(UDPHandle&, SockAddr src, llarp::OwnedBuffer buf)>;
 
         // Constructs a UDP socket that can be used for sending and/or receiving
         virtual std::shared_ptr<UDPHandle> make_udp(UDPReceiveFunc on_recv) = 0;

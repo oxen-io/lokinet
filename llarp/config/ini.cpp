@@ -109,16 +109,14 @@ namespace llarp
 
                 if (k.empty())
                 {
-                    throw std::runtime_error(
-                        fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
+                    throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
                 }
                 LogDebug(_filename, ": [", sectName, "]:", k, "=", v);
                 _config[std::string{sectName}].emplace(k, v);
             }
             else  // malformed?
             {
-                throw std::runtime_error(
-                    fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
+                throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
             }
         }
         return true;
@@ -177,30 +175,26 @@ namespace llarp
 
                 if (k.empty())
                 {
-                    throw std::runtime_error(
-                        fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
+                    throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
                 }
                 LogDebug(_filename, ": [", sectName, "]:", k, "=", v);
                 _config[std::string{sectName}].emplace(k, v);
             }
             else  // malformed?
             {
-                throw std::runtime_error(
-                    fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
+                throw std::runtime_error(fmt::format("{} invalid line ({}): '{}'", _filename, lineno, line));
             }
         }
         return true;
     }
 
-    void ConfigParser::iter_all_sections(
-        std::function<void(std::string_view, const SectionValues&)> visit)
+    void ConfigParser::iter_all_sections(std::function<void(std::string_view, const SectionValues&)> visit)
     {
         for (const auto& item : _config)
             visit(item.first, item.second);
     }
 
-    bool ConfigParser::visit_section(
-        const char* name, std::function<bool(const SectionValues& sect)> visit) const
+    bool ConfigParser::visit_section(const char* name, std::function<bool(const SectionValues& sect)> visit) const
     {
         // m_Config is effectively:
         // unordered_map< string, unordered_multimap< string, string  >>
@@ -212,8 +206,7 @@ namespace llarp
         return visit(itr->second);
     }
 
-    void ConfigParser::add_override(
-        fs::path fpath, std::string section, std::string key, std::string value)
+    void ConfigParser::add_override(fs::path fpath, std::string section, std::string key, std::string value)
     {
         auto& data = _overrides[fpath];
         data[section].emplace(key, value);

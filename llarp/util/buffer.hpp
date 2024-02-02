@@ -56,9 +56,8 @@ namespace llarp
 
         template <
             typename CharT,
-            std::enable_if_t<
-                std::is_convertible_v<CharT, char> || std::is_constructible_v<std::string, CharT>,
-                int> = 0>
+            std::enable_if_t<std::is_convertible_v<CharT, char> || std::is_constructible_v<std::string, CharT>, int> =
+                0>
         llarp_buffer(CharT* c) : _buf{c}, _bview{_buf}, _size{_buf.size()}
         {}
 
@@ -135,23 +134,16 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
 
     /// Construct referencing some 1-byte, trivially copyable (e.g. char, unsigned char, byte_t)
     /// pointer type and a buffer size.
-    template <
-        typename Byte,
-        typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+    template <typename Byte, typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
     llarp_buffer_t(Byte* buf, size_t sz) : base{reinterpret_cast<byte_t*>(buf)}, cur{base}, sz{sz}
     {}
 
     /// initialize llarp_buffer_t from vector or array of byte-like values
-    template <
-        typename Byte,
-        typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+    template <typename Byte, typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
     llarp_buffer_t(std::vector<Byte>& b) : llarp_buffer_t{b.data(), b.size()}
     {}
 
-    template <
-        typename Byte,
-        size_t N,
-        typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
+    template <typename Byte, size_t N, typename = std::enable_if_t<not std::is_const_v<Byte> && is_basic_byte<Byte>>>
     llarp_buffer_t(std::array<Byte, N>& b) : llarp_buffer_t{b.data(), b.size()}
     {}
 
@@ -161,20 +153,16 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
     {}
 
     template <typename Byte, typename = std::enable_if_t<is_basic_byte<Byte>>>
-    llarp_buffer_t(const std::vector<Byte>& b)
-        : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
+    llarp_buffer_t(const std::vector<Byte>& b) : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
     {}
 
     template <typename Byte, size_t N, typename = std::enable_if_t<is_basic_byte<Byte>>>
-    llarp_buffer_t(const std::array<Byte, N>& b)
-        : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
+    llarp_buffer_t(const std::array<Byte, N>& b) : llarp_buffer_t{const_cast<Byte*>(b.data()), b.size()}
     {}
 
     /// Explicitly construct a llarp_buffer_t from anything with a `.data()` and a `.size()`.
     /// Cursed.
-    template <
-        typename T,
-        typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
+    template <typename T, typename = std::void_t<decltype(std::declval<T>().data() + std::declval<T>().size())>>
     explicit llarp_buffer_t(T&& t) : llarp_buffer_t{t.data(), t.size()}
     {}
 
@@ -255,8 +243,7 @@ struct /* [[deprecated("this type is stupid, use something else")]] */ llarp_buf
     /// view.
     bool startswith(std::string_view prefix_str) const
     {
-        llarp::byte_view_t prefix{
-            reinterpret_cast<const byte_t*>(prefix_str.data()), prefix_str.size()};
+        llarp::byte_view_t prefix{reinterpret_cast<const byte_t*>(prefix_str.data()), prefix_str.size()};
         return view_remaining().substr(0, prefix.size()) == prefix;
     }
 
@@ -322,8 +309,7 @@ namespace llarp
         size_t sz;
 
         template <typename T, typename = std::enable_if_t<sizeof(T) == 1>>
-        OwnedBuffer(std::unique_ptr<T[]> buf, size_t sz)
-            : buf{reinterpret_cast<byte_t*>(buf.release())}, sz{sz}
+        OwnedBuffer(std::unique_ptr<T[]> buf, size_t sz) : buf{reinterpret_cast<byte_t*>(buf.release())}, sz{sz}
         {}
 
         // Create a new, uninitialized owned buffer of the given size.

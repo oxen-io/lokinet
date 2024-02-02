@@ -44,8 +44,7 @@ namespace llarp
     ///     auto v = split("-a--b--", "-"); // v is {"", "a", "", "b", "", ""}
     ///     auto v = split("-a--b--", "-", true); // v is {"a", "", "b"}
     ///
-    std::vector<std::string_view> split(
-        std::string_view str, std::string_view delim, bool trim = false);
+    std::vector<std::string_view> split(std::string_view str, std::string_view delim, bool trim = false);
 
     /// Splits a string on any 1 or more of the given delimiter characters and returns a vector of
     /// string_view's pointing into the pieces of the original string.  If delims is empty this
@@ -53,8 +52,7 @@ namespace llarp
     /// string pieces).
     ///
     ///     auto v = split_any("abcdedf", "dcx"); // v is {"ab", "e", "f"}
-    std::vector<std::string_view> split_any(
-        std::string_view str, std::string_view delims, bool trim = false);
+    std::vector<std::string_view> split_any(std::string_view str, std::string_view delims, bool trim = false);
 
     /// Joins [begin, end) with a delimiter and returns the resulting string.  Elements can be
     /// anything that is fmt formattable.

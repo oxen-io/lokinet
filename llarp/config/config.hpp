@@ -274,10 +274,7 @@ namespace llarp
         /// @return true on success, false otherwise
         bool load_default_config(bool isRelay);
 
-        bool load_config_data(
-            std::string_view ini,
-            std::optional<fs::path> fname = std::nullopt,
-            bool isRelay = false);
+        bool load_config_data(std::string_view ini, std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
 
         void load_overrides(ConfigDefinition& conf) const;
 

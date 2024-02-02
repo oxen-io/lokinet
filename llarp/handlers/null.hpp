@@ -9,16 +9,12 @@
 
 namespace llarp::handlers
 {
-    struct NullEndpoint final : public llarp::service::Endpoint,
-                                public std::enable_shared_from_this<NullEndpoint>
+    struct NullEndpoint final : public llarp::service::Endpoint, public std::enable_shared_from_this<NullEndpoint>
     {
         NullEndpoint(Router* r, llarp::service::Context* parent)
-            : llarp::service::Endpoint{r, parent},
-              m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
+            : llarp::service::Endpoint{r, parent}, m_PacketRouter{new vpn::EgresPacketRouter{[](auto from, auto pkt) {
                   var::visit(
-                      [&pkt](auto&& from) {
-                          LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes");
-                      },
+                      [&pkt](auto&& from) { LogError("unhandled traffic from: ", from, " of ", pkt.size(), " bytes"); },
                       from);
               }}}
         {
@@ -26,10 +22,7 @@ namespace llarp::handlers
         }
 
         bool HandleInboundPacket(
-            const service::ConvoTag tag,
-            const llarp_buffer_t& buf,
-            service::ProtocolType t,
-            uint64_t) override
+            const service::ConvoTag tag, const llarp_buffer_t& buf, service::ProtocolType t, uint64_t) override
         {
             LogTrace("Inbound ", t, " packet (", buf.sz, "B) on convo ", tag);
             if (t == service::ProtocolType::Control)
@@ -99,8 +92,7 @@ namespace llarp::handlers
             return {0};
         }
 
-        std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-            huint128_t) const override
+        std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(huint128_t) const override
         {
             return std::nullopt;
         }

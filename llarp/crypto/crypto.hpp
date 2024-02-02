@@ -36,11 +36,7 @@ namespace llarp
         bool dh_client(SharedSecret&, const PubKey&, const SecretKey&, const SymmNonce&);
         /// path dh relay side
         bool dh_server(SharedSecret&, const PubKey&, const SecretKey&, const SymmNonce&);
-        bool dh_server(
-            uint8_t* shared_secret,
-            const uint8_t* other_pk,
-            const uint8_t* local_pk,
-            const uint8_t* nonce);
+        bool dh_server(uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_pk, const uint8_t* nonce);
         /// blake2b 256 bit
         bool shorthash(ShortHash&, uint8_t*, size_t size);
         /// blake2s 256 bit hmac
@@ -61,18 +57,12 @@ namespace llarp
         /// derive sub keys for public keys.  hash is really only intended for
         /// testing ands key_n if given.
         bool derive_subkey(
-            PubKey& derived,
-            const PubKey& root,
-            uint64_t key_n,
-            const AlignedBuffer<32>* hash = nullptr);
+            PubKey& derived, const PubKey& root, uint64_t key_n, const AlignedBuffer<32>* hash = nullptr);
 
         /// derive sub keys for private keys.  hash is really only intended for
         /// testing ands key_n if given.
         bool derive_subkey_private(
-            PrivateKey& derived,
-            const SecretKey& root,
-            uint64_t key_n,
-            const AlignedBuffer<32>* hash = nullptr);
+            PrivateKey& derived, const SecretKey& root, uint64_t key_n, const AlignedBuffer<32>* hash = nullptr);
 
         /// randomize buffer
         void randomize(uint8_t* buf, size_t len);

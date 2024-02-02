@@ -76,8 +76,7 @@ namespace llarp
         struct Comment
         {
             std::vector<std::string> comments;
-            explicit Comment(std::initializer_list<std::string> comments)
-                : comments{std::move(comments)}
+            explicit Comment(std::initializer_list<std::string> comments) : comments{std::move(comments)}
             {}
         };
 
@@ -110,9 +109,9 @@ namespace llarp
         constexpr bool is_default_array<U&> = is_default_array<remove_cvref_t<U>>;
 
         template <typename T, typename Option>
-        constexpr bool is_option = std::is_base_of_v<flag::opt, remove_cvref_t<Option>>
-            or std::is_same_v<Comment, Option> or is_default<Option> or is_default_array<Option>
-            or std::is_invocable_v<remove_cvref_t<Option>, T>;
+        constexpr bool is_option =
+            std::is_base_of_v<flag::opt, remove_cvref_t<Option>> or std::is_same_v<Comment, Option>
+            or is_default<Option> or is_default_array<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
     }  // namespace config
 
     /// A base class for specifying config options and their constraints. The basic to/from string
@@ -195,23 +194,16 @@ namespace llarp
         /// tagged options or an invocable acceptor validate and internalize input (e.g. copy it for
         /// runtime use). The acceptor should throw an exception with a useful message if it is not
         /// acceptable.  Parameters may be passed in any order.
-        template <
-            typename... Options,
-            std::enable_if_t<(config::is_option<T, Options> && ...), int> = 0>
+        template <typename... Options, std::enable_if_t<(config::is_option<T, Options> && ...), int> = 0>
         OptionDefinition(std::string section_, std::string name_, Options&&... opts)
             : OptionDefinitionBase(section_, name_, opts...)
         {
-            constexpr bool has_default =
-                ((config::is_default_array<Options> || config::is_default<Options>) || ...);
+            constexpr bool has_default = ((config::is_default_array<Options> || config::is_default<Options>) || ...);
             constexpr bool has_required =
                 (std::is_same_v<config::remove_cvref_t<Options>, config::flag::REQUIRED> || ...);
-            constexpr bool has_hidden =
-                (std::is_same_v<config::remove_cvref_t<Options>, config::flag::HIDDEN> || ...);
-            static_assert(
-                not(has_default and has_required),
-                "Default{...} and Required are mutually exclusive");
-            static_assert(
-                not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
+            constexpr bool has_hidden = (std::is_same_v<config::remove_cvref_t<Options>, config::flag::HIDDEN> || ...);
+            static_assert(not(has_default and has_required), "Default{...} and Required are mutually exclusive");
+            static_assert(not(has_hidden and has_required), "Hidden and Required are mutually exclusive");
 
             (extract_default(std::forward<Options>(opts)), ...);
             (extract_acceptor(std::forward<Options>(opts)), ...);
@@ -325,8 +317,7 @@ namespace llarp
                 T t;
                 iss >> t;
                 if (iss.fail())
-                    throw std::invalid_argument{
-                        fmt::format("{} is not a valid {}", input, typeid(T).name())};
+                    throw std::invalid_argument{fmt::format("{} is not a valid {}", input, typeid(T).name())};
                 return t;
             }
         }
@@ -357,9 +348,7 @@ namespace llarp
             if (required and parsed_values.empty())
             {
                 throw std::runtime_error{fmt::format(
-                    "cannot call try_accept() on [{}]:{} when required but no value available",
-                    section,
-                    name)};
+                    "cannot call try_accept() on [{}]:{} when required but no value available", section, name)};
             }
 
             if (acceptor)
@@ -395,8 +384,8 @@ namespace llarp
     template <>
     bool OptionDefinition<bool>::from_string(const std::string& input);
 
-    using UndeclaredValueHandler = std::function<void(
-        std::string_view section, std::string_view name, std::string_view value)>;
+    using UndeclaredValueHandler =
+        std::function<void(std::string_view section, std::string_view name, std::string_view value)>;
 
     // map of k:v pairs
     using DefinitionMap = std::unordered_map<std::string, std::unique_ptr<OptionDefinitionBase>>;
@@ -439,8 +428,7 @@ namespace llarp
         template <typename T, typename... Params>
         ConfigDefinition& define_option(Params&&... args)
         {
-            return define_option(
-                std::make_unique<OptionDefinition<T>>(std::forward<Params>(args)...));
+            return define_option(std::make_unique<OptionDefinition<T>>(std::forward<Params>(args)...));
         }
 
         /// Specify a config value for the given section and name. The value should be a valid
@@ -455,8 +443,7 @@ namespace llarp
         /// @param name is the name of the value
         /// @return `*this` for chaining calls
         /// @throws if the option doesn't exist or the provided string isn't parseable
-        ConfigDefinition& add_config_value(
-            std::string_view section, std::string_view name, std::string_view value);
+        ConfigDefinition& add_config_value(std::string_view section, std::string_view name, std::string_view value);
 
         /// Get a config value. If the value hasn't been provided but a default has, the default
         /// will be returned. If no value and no default is provided, an empty optional will be
@@ -473,13 +460,12 @@ namespace llarp
         template <typename T>
         std::optional<T> get_config_value(std::string_view section, std::string_view name)
         {
-            std::unique_ptr<OptionDefinitionBase>& definition =
-                lookup_definition_or_throw(section, name);
+            std::unique_ptr<OptionDefinitionBase>& definition = lookup_definition_or_throw(section, name);
 
             auto derived = dynamic_cast<const OptionDefinition<T>*>(definition.get());
             if (not derived)
-                throw std::invalid_argument{fmt::format(
-                    "{} is the incorrect type for [{}]:{}", typeid(T).name(), section, name)};
+                throw std::invalid_argument{
+                    fmt::format("{} is the incorrect type for [{}]:{}", typeid(T).name(), section, name)};
 
             return derived->getValue();
         }
@@ -562,8 +548,7 @@ namespace llarp
         using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
         void visit_sections(SectionVisitor visitor) const;
 
-        using DefVisitor =
-            std::function<void(const std::string&, const std::unique_ptr<OptionDefinitionBase>&)>;
+        using DefVisitor = std::function<void(const std::string&, const std::unique_ptr<OptionDefinitionBase>&)>;
         void visit_definitions(const std::string& section, DefVisitor visitor) const;
 
         SectionMap definitions;

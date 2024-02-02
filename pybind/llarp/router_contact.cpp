@@ -12,9 +12,7 @@ namespace llarp
             .def(py::init<>())
             .def_property_readonly(
                 "routerID",
-                [](const RouterContact* const rc) -> llarp::RouterID {
-                    return llarp::RouterID(rc->pubkey);
-                })
+                [](const RouterContact* const rc) -> llarp::RouterID { return llarp::RouterID(rc->pubkey); })
             .def_property_readonly(
                 "AsDHTKey",
                 [](const RouterContact* const rc) -> llarp::dht::Key_t {

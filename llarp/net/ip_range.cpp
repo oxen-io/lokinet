@@ -23,8 +23,7 @@ namespace llarp
         const auto* start = buf->cur;
         if (not bencode_discard(buf))
             return false;
-        std::string_view data{
-            reinterpret_cast<const char*>(start), static_cast<size_t>(buf->cur - start)};
+        std::string_view data{reinterpret_cast<const char*>(start), static_cast<size_t>(buf->cur - start)};
         std::string str;
         try
         {

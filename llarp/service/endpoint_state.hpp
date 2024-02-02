@@ -59,9 +59,7 @@ namespace llarp::service
 
         std::unordered_set<Address> m_OutboundSessions;
 
-        util::
-            DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>>
-                nameCache;
+        util::DecayingHashTable<std::string, std::variant<Address, RouterID>, std::hash<std::string>> nameCache;
 
         LNSLookupTracker lnsTracker;
 

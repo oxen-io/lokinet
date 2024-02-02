@@ -32,8 +32,7 @@ namespace llarp::rpc
     template <typename T>
     inline constexpr bool json_is_binary_container<T&&> = json_is_binary_container<T>;
 
-    void load_binary_parameter_impl(
-        std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data);
+    void load_binary_parameter_impl(std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data);
 
     // Loads a binary value from a string_view which may contain hex, base64, and (optionally) raw
     // bytes.
@@ -95,13 +94,10 @@ namespace llarp::rpc
 
         /// Assigns binary data from a string_view over a 1-byte, non-char type (e.g. unsigned char
         /// or uint8_t).
-        template <
-            typename Char,
-            std::enable_if_t<sizeof(Char) == 1 && !std::is_same_v<Char, char>, int> = 0>
+        template <typename Char, std::enable_if_t<sizeof(Char) == 1 && !std::is_same_v<Char, char>, int> = 0>
         nlohmann::json& operator=(std::basic_string_view<Char> binary_data)
         {
-            return *this = std::string_view{
-                       reinterpret_cast<const char*>(binary_data.data()), binary_data.size()};
+            return *this = std::string_view{reinterpret_cast<const char*>(binary_data.data()), binary_data.size()};
         }
 
         /// Takes a trivial, no-padding data structure (e.g. a crypto::hash) as the value and dumps

@@ -7,8 +7,7 @@ namespace llarp::vpn
         EgresPacketHandlerFunc m_BaseHandler;
         std::unordered_map<nuint16_t, EgresPacketHandlerFunc> m_LocalPorts;
 
-        explicit EgresUDPPacketHandler(EgresPacketHandlerFunc baseHandler)
-            : m_BaseHandler{std::move(baseHandler)}
+        explicit EgresUDPPacketHandler(EgresPacketHandlerFunc baseHandler) : m_BaseHandler{std::move(baseHandler)}
         {}
 
         void AddSubHandler(nuint16_t localport, EgresPacketHandlerFunc handler) override
@@ -39,8 +38,7 @@ namespace llarp::vpn
     {
         EgresPacketHandlerFunc m_BaseHandler;
 
-        explicit EgresGenericLayer4Handler(EgresPacketHandlerFunc baseHandler)
-            : m_BaseHandler{std::move(baseHandler)}
+        explicit EgresGenericLayer4Handler(EgresPacketHandlerFunc baseHandler) : m_BaseHandler{std::move(baseHandler)}
         {}
 
         void HandleIPPacketFrom(AddressVariant_t from, net::IPPacket pkt) override
@@ -49,8 +47,7 @@ namespace llarp::vpn
         }
     };
 
-    EgresPacketRouter::EgresPacketRouter(EgresPacketHandlerFunc baseHandler)
-        : m_BaseHandler{std::move(baseHandler)}
+    EgresPacketRouter::EgresPacketRouter(EgresPacketHandlerFunc baseHandler) : m_BaseHandler{std::move(baseHandler)}
     {}
 
     void EgresPacketRouter::HandleIPPacketFrom(AddressVariant_t from, net::IPPacket pkt)
@@ -73,8 +70,7 @@ namespace llarp::vpn
     {
         if (m_IPProtoHandler.find(udp_proto) == m_IPProtoHandler.end())
         {
-            m_IPProtoHandler.emplace(
-                udp_proto, std::make_unique<EgresUDPPacketHandler>(m_BaseHandler));
+            m_IPProtoHandler.emplace(udp_proto, std::make_unique<EgresUDPPacketHandler>(m_BaseHandler));
         }
         m_IPProtoHandler[udp_proto]->AddSubHandler(ToNet(localport), std::move(func));
     }

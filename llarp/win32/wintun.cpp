@@ -99,28 +99,18 @@ namespace llarp::win32
             }
             if (auto err = GetLastError())
             {
-                log::info(
-                    logcat,
-                    "did not open existing adapter '{}': {}",
-                    adapter_name,
-                    error_to_string(err));
+                log::info(logcat, "did not open existing adapter '{}': {}", adapter_name, error_to_string(err));
                 SetLastError(0);
             }
-            const auto guid = llarp::win32::MakeDeterministicGUID(
-                fmt::format("{}|{}", adapter_name, tunnel_name));
+            const auto guid = llarp::win32::MakeDeterministicGUID(fmt::format("{}|{}", adapter_name, tunnel_name));
             log::info(logcat, "creating adapter: '{}' on pool '{}'", adapter_name, tunnel_name);
             auto tunnel_name_wide = to_wide(tunnel_name);
-            if (auto _impl =
-                    create_adapter(adapter_name_wide.c_str(), tunnel_name_wide.c_str(), &guid))
+            if (auto _impl = create_adapter(adapter_name_wide.c_str(), tunnel_name_wide.c_str(), &guid))
             {
                 if (auto v = get_version())
-                    log::info(
-                        logcat, "created adapter (wintun v{}.{})", (v >> 16) & 0xff, v & 0xff);
+                    log::info(logcat, "created adapter (wintun v{}.{})", (v >> 16) & 0xff, v & 0xff);
                 else
-                    log::warning(
-                        logcat,
-                        "failed to query wintun driver version: {}!",
-                        error_to_string(GetLastError()));
+                    log::warning(logcat, "failed to query wintun driver version: {}!", error_to_string(GetLastError()));
                 return _impl;
             }
 
@@ -160,8 +150,7 @@ namespace llarp::win32
                     AddressRow.InterfaceLuid = luid;
 
                     AddressRow.Address.Ipv4.sin_family = AF_INET;
-                    AddressRow.Address.Ipv4.sin_addr.S_un.S_addr =
-                        ToNet(net::TruncateV6(addr.range.addr)).n;
+                    AddressRow.Address.Ipv4.sin_addr.S_un.S_addr = ToNet(net::TruncateV6(addr.range.addr)).n;
                     AddressRow.OnLinkPrefixLength = addr.range.HostmaskBits();
                     AddressRow.DadState = IpDadStatePreferred;
 
@@ -183,10 +172,7 @@ namespace llarp::win32
                 if (auto wintun_ver = get_version())
                     log::info(
                         logcat,
-                        fmt::format(
-                            "wintun version {}.{} loaded",
-                            (wintun_ver >> 16) & 0xff,
-                            wintun_ver & 0xff));
+                        fmt::format("wintun version {}.{} loaded", (wintun_ver >> 16) & 0xff, wintun_ver & 0xff));
                 else
                     throw win32::error{"Failed to load wintun"};
                 if (auto impl = start_session(_handle, WINTUN_MAX_RING_CAPACITY))
@@ -240,8 +226,7 @@ namespace llarp::win32
                     return {nullptr, true};
                 DWORD sz;
                 if (auto* ptr = read_packet(_impl, &sz))
-                    return {
-                        std::unique_ptr<PacketWrapper>{new PacketWrapper{ptr, sz, _impl}}, false};
+                    return {std::unique_ptr<PacketWrapper>{new PacketWrapper{ptr, sz, _impl}}, false};
                 const auto err = GetLastError();
                 if (err == ERROR_NO_MORE_ITEMS or err == ERROR_HANDLE_EOF)
                 {
@@ -378,12 +363,10 @@ namespace llarp::win32
 
     namespace wintun
     {
-        std::shared_ptr<vpn::NetworkInterface> make_interface(
-            const llarp::vpn::InterfaceInfo& info, llarp::Router* r)
+        std::shared_ptr<vpn::NetworkInterface> make_interface(const llarp::vpn::InterfaceInfo& info, llarp::Router* r)
         {
             WintunInitialize();
-            return std::static_pointer_cast<vpn::NetworkInterface>(
-                std::make_shared<WintunInterface>(info, r));
+            return std::static_pointer_cast<vpn::NetworkInterface>(std::make_shared<WintunInterface>(info, r));
         }
     }  // namespace wintun
 

@@ -103,33 +103,23 @@ int main(int argc, char* argv[])
 
     // flags: boolean values in command_line_options struct
     cli.add_flag("-v,--verbose", options.verbose, "Verbose");
-    cli.add_flag(
-        "--add,--up", options.vpnUp, "Map VPN connection to exit node [--up is deprecated]");
-    cli.add_flag(
-        "--remove,--down",
-        options.vpnDown,
-        "Unmap VPN connection to exit node [--down is deprecated]");
+    cli.add_flag("--add,--up", options.vpnUp, "Map VPN connection to exit node [--up is deprecated]");
+    cli.add_flag("--remove,--down", options.vpnDown, "Unmap VPN connection to exit node [--down is deprecated]");
     cli.add_flag("--status", options.printStatus, "Print VPN status and exit");
     cli.add_flag("-k,--kill", options.killDaemon, "Kill lokinet daemon");
 
     // options: string values in command_line_options struct
-    cli.add_option("--exit", options.exitAddress, "Specify exit node address")
-        ->capture_default_str();
+    cli.add_option("--exit", options.exitAddress, "Specify exit node address")->capture_default_str();
     cli.add_option("--endpoint", options.endpoint, "Endpoint to use")->capture_default_str();
-    cli.add_option("--token,--auth", options.token, "Exit auth token to use")
-        ->capture_default_str();
+    cli.add_option("--token,--auth", options.token, "Exit auth token to use")->capture_default_str();
     cli.add_option("--range", options.range, "IP range to map exit to")->capture_default_str();
-    cli.add_option(
-           "--swap", options.swapExits, "Exit addresses to swap mapped connection to [old] [new]")
+    cli.add_option("--swap", options.swapExits, "Exit addresses to swap mapped connection to [old] [new]")
         ->expected(2)
         ->capture_default_str();
 
     // options: oxenmq values in command_line_options struct
     cli.add_option("--rpc", options.rpc, "Specify RPC URL for lokinet")->capture_default_str();
-    cli.add_option(
-           "--log-level",
-           options.logLevel,
-           "Log verbosity level, see log levels for accepted values")
+    cli.add_option("--log-level", options.logLevel, "Log verbosity level, see log levels for accepted values")
         ->type_name("LEVEL")
         ->capture_default_str();
 
@@ -156,8 +146,8 @@ int main(int argc, char* argv[])
         cli.exit(e);
     };
 
-    int numCommands = options.vpnUp + options.vpnDown + options.printStatus + options.killDaemon
-        + (not options.swapExits.empty());
+    int numCommands =
+        options.vpnUp + options.vpnDown + options.printStatus + options.killDaemon + (not options.swapExits.empty());
 
     switch (numCommands)
     {
@@ -166,8 +156,7 @@ int main(int argc, char* argv[])
         case 1:
             break;
         default:
-            return exit_error(
-                3, "Only one of --add/--remove/--swap/--status/--kill may be specified");
+            return exit_error(3, "Only one of --add/--remove/--swap/--status/--kill may be specified");
     }
 
     if (options.vpnUp and options.exitAddress.empty())
@@ -204,8 +193,7 @@ int main(int argc, char* argv[])
         if (not maybe_halt)
             return exit_error("Call to llarp.halt failed");
 
-        if (auto err_it = maybe_halt->find("error");
-            err_it != maybe_halt->end() and not err_it.value().is_null())
+        if (auto err_it = maybe_halt->find("error"); err_it != maybe_halt->end() and not err_it.value().is_null())
         {
             return exit_error("{}", err_it.value().dump());
         }
@@ -220,8 +208,7 @@ int main(int argc, char* argv[])
 
         try
         {
-            const auto& ep =
-                maybe_status->at("result").at("services").at(options.endpoint).at("exitMap");
+            const auto& ep = maybe_status->at("result").at("services").at(options.endpoint).at("exitMap");
 
             if (ep.empty())
             {
@@ -251,8 +238,7 @@ int main(int argc, char* argv[])
         if (not maybe_swap)
             return exit_error("Failed to swap exit node connections");
 
-        if (auto err_it = maybe_swap->find("error");
-            err_it != maybe_swap->end() and not err_it.value().is_null())
+        if (auto err_it = maybe_swap->find("error"); err_it != maybe_swap->end() and not err_it.value().is_null())
         {
             return exit_error("{}", err_it.value().dump());
         }
@@ -269,8 +255,7 @@ int main(int argc, char* argv[])
         if (not maybe_result)
             return exit_error("Could not add exit");
 
-        if (auto err_it = maybe_result->find("error");
-            err_it != maybe_result->end() and not err_it.value().is_null())
+        if (auto err_it = maybe_result->find("error"); err_it != maybe_result->end() and not err_it.value().is_null())
         {
             return exit_error("{}", err_it.value().dump());
         }
@@ -286,8 +271,7 @@ int main(int argc, char* argv[])
         if (not maybe_down)
             return exit_error("Failed to unmap exit node connection");
 
-        if (auto err_it = maybe_down->find("error");
-            err_it != maybe_down->end() and not err_it.value().is_null())
+        if (auto err_it = maybe_down->find("error"); err_it != maybe_down->end() and not err_it.value().is_null())
         {
             return exit_error("{}", err_it.value().dump());
         }

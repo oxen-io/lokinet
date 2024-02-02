@@ -77,8 +77,7 @@ namespace llarp::handlers
 
         bool ShouldHookDNSMessage(const dns::Message& msg) const;
 
-        bool HandleHookedDNSMessage(
-            dns::Message query, std::function<void(dns::Message)> sendreply);
+        bool HandleHookedDNSMessage(dns::Message query, std::function<void(dns::Message)> sendreply);
 
         void TickTun(llarp_time_t now);
 
@@ -106,14 +105,10 @@ namespace llarp::handlers
 
         /// overrides Endpoint
         bool HandleInboundPacket(
-            const service::ConvoTag tag,
-            const llarp_buffer_t& pkt,
-            service::ProtocolType t,
-            uint64_t seqno) override;
+            const service::ConvoTag tag, const llarp_buffer_t& pkt, service::ProtocolType t, uint64_t seqno) override;
 
         /// handle inbound traffic
-        bool HandleWriteIPPacket(
-            const llarp_buffer_t& buf, huint128_t src, huint128_t dst, uint64_t seqno);
+        bool HandleWriteIPPacket(const llarp_buffer_t& buf, huint128_t src, huint128_t dst, uint64_t seqno);
 
         /// we got a packet from the user
         void HandleGotUserPacket(llarp::net::IPPacket pkt);
@@ -150,8 +145,7 @@ namespace llarp::handlers
         bool ShouldAllowTraffic(const net::IPPacket& pkt) const;
 
         /// get a key for ip address
-        std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(
-            huint128_t ip) const override;
+        std::optional<std::variant<service::Address, RouterID>> ObtainAddrForIP(huint128_t ip) const override;
 
         bool HasAddress(const AlignedBuffer<32>& addr) const
         {
@@ -206,8 +200,7 @@ namespace llarp::handlers
         /// return std::nullopt if we cannot route this address to an exit
         std::optional<service::Address> ObtainExitAddressFor(
             huint128_t ip,
-            std::function<service::Address(std::unordered_set<service::Address>)>
-                exitSelectionStrat = nullptr);
+            std::function<service::Address(std::unordered_set<service::Address>)> exitSelectionStrat = nullptr);
 
         template <typename Addr_t, typename Endpoint_t>
         void SendDNSReply(

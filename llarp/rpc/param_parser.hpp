@@ -22,8 +22,7 @@ namespace llarp::rpc
     void check_ascending_names(std::string_view name1, std::string_view name2, const Ignore&...)
     {
         if (!(name2 > name1))
-            throw std::runtime_error{
-                "Internal error: request values must be retrieved in ascending order"};
+            throw std::runtime_error{"Internal error: request values must be retrieved in ascending order"};
     }
 
     // Wrapper around a reference for get_values that is used to indicate that the value is
@@ -147,8 +146,7 @@ namespace llarp::rpc
         typename BTConsumer,
         typename T,
         std::enable_if_t<
-            std::is_same_v<BTConsumer, oxenc::bt_dict_consumer>
-                || std::is_same_v<BTConsumer, oxenc::bt_list_consumer>,
+            std::is_same_v<BTConsumer, oxenc::bt_dict_consumer> || std::is_same_v<BTConsumer, oxenc::bt_list_consumer>,
             int> = 0>
     void load_value(BTConsumer& c, T& target)
     {
@@ -212,8 +210,7 @@ namespace llarp::rpc
         else if constexpr (std::is_unsigned_v<T>)
         {
             if (!current.is_number_unsigned())
-                throw std::domain_error{
-                    "Invalid value for '" + key + "': non-negative value required"};
+                throw std::domain_error{"Invalid value for '" + key + "': non-negative value required"};
             auto i = current.get<uint64_t>();
             if (sizeof(T) < sizeof(uint64_t) && i > std::numeric_limits<T>::max())
                 throw std::domain_error{"Invalid value for '" + key + "': value too large"};
@@ -227,8 +224,7 @@ namespace llarp::rpc
             if (sizeof(T) < sizeof(int64_t))
             {
                 if (i < std::numeric_limits<T>::lowest())
-                    throw std::domain_error{
-                        "Invalid value for '" + key + "': negative value magnitude is too large"};
+                    throw std::domain_error{"Invalid value for '" + key + "': negative value magnitude is too large"};
                 if (i > std::numeric_limits<T>::max())
                     throw std::domain_error{"Invalid value for '" + key + "': value is too large"};
             }
@@ -239,8 +235,7 @@ namespace llarp::rpc
             target = current.get<std::string_view>();
         }
         else if constexpr (
-            llarp::rpc::json_is_binary<T> || is_expandable_list<T> || is_tuple_like<T>
-            || is_unordered_string_map<T>)
+            llarp::rpc::json_is_binary<T> || is_expandable_list<T> || is_tuple_like<T> || is_unordered_string_map<T>)
         {
             try
             {

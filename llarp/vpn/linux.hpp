@@ -36,24 +36,18 @@ namespace llarp::vpn
         const int m_fd;
 
        public:
-        LinuxInterface(InterfaceInfo info)
-            : NetworkInterface{std::move(info)}, m_fd{::open("/dev/net/tun", O_RDWR)}
+        LinuxInterface(InterfaceInfo info) : NetworkInterface{std::move(info)}, m_fd{::open("/dev/net/tun", O_RDWR)}
 
         {
             if (m_fd == -1)
-                throw std::runtime_error(
-                    "cannot open /dev/net/tun " + std::string{strerror(errno)});
+                throw std::runtime_error("cannot open /dev/net/tun " + std::string{strerror(errno)});
 
             ifreq ifr{};
             in6_ifreq ifr6{};
             ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-            std::copy_n(
-                m_Info.ifname.c_str(),
-                std::min(m_Info.ifname.size(), sizeof(ifr.ifr_name)),
-                ifr.ifr_name);
+            std::copy_n(m_Info.ifname.c_str(), std::min(m_Info.ifname.size(), sizeof(ifr.ifr_name)), ifr.ifr_name);
             if (::ioctl(m_fd, TUNSETIFF, &ifr) == -1)
-                throw std::runtime_error(
-                    "cannot set interface name: " + std::string{strerror(errno)});
+                throw std::runtime_error("cannot set interface name: " + std::string{strerror(errno)});
             IOCTL control{AF_INET};
 
             control.ioctl(SIOCGIFFLAGS, &ifr);
@@ -225,13 +219,7 @@ namespace llarp::vpn
             send(fd, &nl_request, sizeof(nl_request), 0);
         }
 
-        void make_route(
-            int cmd,
-            int flags,
-            const _inet_addr& dst,
-            const _inet_addr& gw,
-            GatewayMode mode,
-            int if_idx)
+        void make_route(int cmd, int flags, const _inet_addr& dst, const _inet_addr& gw, GatewayMode mode, int if_idx)
         {
             NLRequest nl_request{};
 
@@ -324,12 +312,10 @@ namespace llarp::vpn
                 if (not maybe)
                     throw std::runtime_error{"we dont have our own network interface?"};
 
-                const auto gateway =
-                    var::visit([](auto&& ip) { return _inet_addr{ip}; }, maybe->getIP());
+                const auto gateway = var::visit([](auto&& ip) { return _inet_addr{ip}; }, maybe->getIP());
 
                 const _inet_addr addr{
-                    ToNet(net::TruncateV6(range.addr)),
-                    bits::count_bits(net::TruncateV6(range.netmask_bits))};
+                    ToNet(net::TruncateV6(range.addr)), bits::count_bits(net::TruncateV6(range.netmask_bits))};
 
                 make_route(cmd, flags, addr, gateway, GatewayMode::eUpperDefault, info.index);
             }

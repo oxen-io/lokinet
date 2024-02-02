@@ -24,8 +24,7 @@ namespace llarp
         using SessionReadyFunc = std::function<void(std::shared_ptr<BaseSession>)>;
 
         /// a persisting exit session with an exit router
-        struct BaseSession : public llarp::path::PathBuilder,
-                             public std::enable_shared_from_this<BaseSession>
+        struct BaseSession : public llarp::path::PathBuilder, public std::enable_shared_from_this<BaseSession>
         {
             BaseSession(
                 const llarp::RouterID& exitRouter,
@@ -104,16 +103,12 @@ namespace llarp
             llarp::SecretKey exit_key;
             std::function<bool(const llarp_buffer_t&)> packet_write_func;
 
-            bool HandleTrafficDrop(
-                std::shared_ptr<path::Path> p, const llarp::PathID_t& path, uint64_t s);
+            bool HandleTrafficDrop(std::shared_ptr<path::Path> p, const llarp::PathID_t& path, uint64_t s);
 
             bool HandleGotExit(std::shared_ptr<path::Path> p, llarp_time_t b);
 
             bool HandleTraffic(
-                std::shared_ptr<path::Path> p,
-                const llarp_buffer_t& buf,
-                uint64_t seqno,
-                service::ProtocolType t);
+                std::shared_ptr<path::Path> p, const llarp_buffer_t& buf, uint64_t seqno, service::ProtocolType t);
 
            private:
             std::set<RouterID> snode_blacklist;

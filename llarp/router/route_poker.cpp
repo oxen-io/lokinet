@@ -152,8 +152,7 @@ namespace llarp
         {
             if (next_gw and current_gateway)
             {
-                log::info(
-                    logcat, "default gateway changed from {} to {}", *current_gateway, *next_gw);
+                log::info(logcat, "default gateway changed from {} to {}", *current_gateway, *next_gw);
                 current_gateway = next_gw;
                 router.Thaw();
                 refresh_all_routes();
@@ -191,8 +190,7 @@ namespace llarp
         {
             if (not is_enabled())
             {
-                log::warning(
-                    logcat, "RoutePoker coming up, but route poking is disabled by config");
+                log::warning(logcat, "RoutePoker coming up, but route poking is disabled by config");
             }
             else if (not current_gateway)
             {
@@ -209,8 +207,7 @@ namespace llarp
                     route.add_blackhole();
 
                 // explicit route pokes for first hops
-                router.for_each_connection(
-                    [this](link::Connection conn) { add_route(conn.conn->remote()); });
+                router.for_each_connection([this](link::Connection conn) { add_route(conn.conn->remote()); });
 
                 add_route(router.link_manager().local());
                 // add default route
@@ -227,8 +224,7 @@ namespace llarp
     void RoutePoker::put_down()
     {
         // unpoke routes for first hops
-        router.for_each_connection(
-            [this](link::Connection conn) { delete_route(conn.conn->remote()); });
+        router.for_each_connection([this](link::Connection conn) { delete_route(conn.conn->remote()); });
         if (is_enabled() and is_up)
         {
             vpn::AbstractRouteManager& route = router.vpn_platform()->RouteManager();

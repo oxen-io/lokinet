@@ -16,8 +16,7 @@ namespace llarp
         return *new LocalRC{secret, local};
     }
 
-    LocalRC::LocalRC(const SecretKey secret, oxen::quic::Address local)
-        : _secret_key{std::move(secret)}
+    LocalRC::LocalRC(const SecretKey secret, oxen::quic::Address local) : _secret_key{std::move(secret)}
     {
         _router_id = llarp::seckey_to_pubkey(_secret_key);
         _addr = std::move(local);
@@ -88,8 +87,7 @@ namespace llarp
         btdp.append("t", _timestamp.time_since_epoch().count());
 
         static_assert(llarp::LOKINET_VERSION.size() == 3);
-        btdp.append(
-            "v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
+        btdp.append("v", std::string_view{reinterpret_cast<const char*>(llarp::LOKINET_VERSION.data()), 3});
     }
 
     void LocalRC::resign()

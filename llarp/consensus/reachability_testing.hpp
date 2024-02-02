@@ -28,8 +28,7 @@ namespace llarp::consensus
         {
             constexpr bool operator()(const T& lhs, const T& rhs) const
             {
-                return std::greater<std::tuple_element_t<N, T>>{}(
-                    std::get<N>(lhs), std::get<N>(rhs));
+                return std::greater<std::tuple_element_t<N, T>>{}(std::get<N>(lhs), std::get<N>(rhs));
             }
         };
 
@@ -101,8 +100,7 @@ namespace llarp::consensus
         // after 10s then back off linearly by an additional 10s up to a max testing interval of
         // 2m30s, until we get a successful response.
         using FailingPK = std::tuple<RouterID, time_point_t, int>;
-        std::priority_queue<FailingPK, std::vector<FailingPK>, detail::nth_greater<FailingPK, 1>>
-            failing_queue;
+        std::priority_queue<FailingPK, std::vector<FailingPK>, detail::nth_greater<FailingPK, 1>> failing_queue;
         std::unordered_set<RouterID> failing;
 
         // Track the last time *this node* was tested by other network nodes; used to detect and

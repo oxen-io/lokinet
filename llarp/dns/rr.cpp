@@ -7,11 +7,7 @@ namespace llarp::dns
     static auto logcat = log::Cat("dns");
 
     ResourceRecord::ResourceRecord(const ResourceRecord& other)
-        : rr_name(other.rr_name),
-          rr_type(other.rr_type),
-          rr_class(other.rr_class),
-          ttl(other.ttl),
-          rData(other.rData)
+        : rr_name(other.rr_name), rr_type(other.rr_type), rr_class(other.rr_class), ttl(other.ttl), rData(other.rData)
     {}
 
     ResourceRecord::ResourceRecord(ResourceRecord&& other)
@@ -23,11 +19,7 @@ namespace llarp::dns
     {}
 
     ResourceRecord::ResourceRecord(std::string name, RRType_t type, RR_RData_t data)
-        : rr_name{std::move(name)},
-          rr_type{type},
-          rr_class{qClassIN},
-          ttl{1},
-          rData{std::move(data)}
+        : rr_name{std::move(name)}, rr_type{type}, rr_class{qClassIN}, ttl{1}, rData{std::move(data)}
     {}
 
     bool ResourceRecord::Encode(llarp_buffer_t* buf) const
@@ -94,12 +86,7 @@ namespace llarp::dns
     std::string ResourceRecord::ToString() const
     {
         return fmt::format(
-            "[RR name={} type={} class={} ttl={} rdata-size={}]",
-            rr_name,
-            rr_type,
-            rr_class,
-            ttl,
-            rData.size());
+            "[RR name={} type={} class={} ttl={} rdata-size={}]", rr_name, rr_type, rr_class, ttl, rData.size());
     }
 
     bool ResourceRecord::HasCNameForTLD(const std::string& tld) const

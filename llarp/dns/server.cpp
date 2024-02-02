@@ -35,17 +35,14 @@ namespace llarp::dns
         SockAddr m_LocalAddr;
 
        public:
-        explicit UDPReader(Server& dns, const EventLoop_ptr& loop, llarp::SockAddr bindaddr)
-            : m_DNS{dns}
+        explicit UDPReader(Server& dns, const EventLoop_ptr& loop, llarp::SockAddr bindaddr) : m_DNS{dns}
         {
             m_udp = loop->make_udp([&](auto&, SockAddr src, llarp::OwnedBuffer buf) {
                 if (src == m_LocalAddr)
                     return;
-                if (not m_DNS.MaybeHandlePacket(
-                        shared_from_this(), m_LocalAddr, src, std::move(buf)))
+                if (not m_DNS.MaybeHandlePacket(shared_from_this(), m_LocalAddr, src, std::move(buf)))
                 {
-                    log::warning(
-                        logcat, "did not handle dns packet from {} to {}", src, m_LocalAddr);
+                    log::warning(logcat, "did not handle dns packet from {} to {}", src, m_LocalAddr);
                 }
             });
             m_udp->listen(bindaddr);
@@ -172,8 +169,7 @@ namespace llarp::dns
 
                 if (auto err = ub_ctx_set_fwd(m_ctx, str.c_str()))
                 {
-                    throw std::runtime_error{
-                        fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
+                    throw std::runtime_error{fmt::format("cannot use {} as upstream dns: {}", str, ub_strerror(err))};
                 }
             }
 
@@ -203,8 +199,7 @@ namespace llarp::dns
 
                 if constexpr (platform::is_apple)
                 {
-                    if (dns.hostString() == "127.0.0.1"
-                        and dns.getPort() == apple::dns_trampoline_port)
+                    if (dns.hostString() == "127.0.0.1" and dns.getPort() == apple::dns_trampoline_port)
                     {
                         // macOS is stupid: the default (0.0.0.0) fails with "send failed: Can't
                         // assign requested address" when unbound tries to connect to the localhost
@@ -251,8 +246,8 @@ namespace llarp::dns
                         if (fd == -1)
 #endif
                         {
-                            throw std::invalid_argument{fmt::format(
-                                "Failed to create UDP socket for unbound: {}", strerror(errno))};
+                            throw std::invalid_argument{
+                                fmt::format("Failed to create UDP socket for unbound: {}", strerror(errno))};
                         }
 
 #ifdef _WIN32
@@ -263,8 +258,8 @@ namespace llarp::dns
                         if (0 != bind(fd, static_cast<const sockaddr*>(addr), addr.sockaddr_len()))
                         {
                             CLOSE(fd);
-                            throw std::invalid_argument{fmt::format(
-                                "Failed to bind UDP socket for unbound: {}", strerror(errno))};
+                            throw std::invalid_argument{
+                                fmt::format("Failed to bind UDP socket for unbound: {}", strerror(errno))};
                         }
                         struct sockaddr_storage sas;
                         auto* sa = reinterpret_cast<struct sockaddr*>(&sas);
@@ -274,8 +269,8 @@ namespace llarp::dns
 #undef CLOSE
                         if (rc != 0)
                         {
-                            throw std::invalid_argument{fmt::format(
-                                "Failed to query UDP port for unbound: {}", strerror(errno))};
+                            throw std::invalid_argument{
+                                fmt::format("Failed to query UDP port for unbound: {}", strerror(errno))};
                         }
                         addr = SockAddr{*sa};
                     }
@@ -308,8 +303,7 @@ namespace llarp::dns
             llarp::DnsConfig m_conf;
 
            public:
-            explicit Resolver(const EventLoop_ptr& loop, llarp::DnsConfig conf)
-                : m_Loop{loop}, m_conf{std::move(conf)}
+            explicit Resolver(const EventLoop_ptr& loop, llarp::DnsConfig conf) : m_Loop{loop}, m_conf{std::move(conf)}
             {
                 Up(m_conf);
             }
@@ -337,8 +331,7 @@ namespace llarp::dns
             void Up(const llarp::DnsConfig& conf)
             {
                 if (m_ctx)
-                    throw std::logic_error{
-                        "Internal error: attempt to Up() dns server multiple times"};
+                    throw std::logic_error{"Internal error: attempt to Up() dns server multiple times"};
 
                 m_ctx = ::ub_ctx_create();
                 // set libunbound settings
@@ -354,8 +347,7 @@ namespace llarp::dns
                     const auto str = file.u8string();
                     if (auto ret = ub_ctx_hosts(m_ctx, str.c_str()))
                     {
-                        throw std::runtime_error{
-                            fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
+                        throw std::runtime_error{fmt::format("Failed to add host file {}: {}", file, ub_strerror(ret))};
                     }
                 }
 
@@ -456,11 +448,7 @@ namespace llarp::dns
                 // no questions, send fail
                 if (query.questions.empty())
                 {
-                    log::info(
-                        logcat,
-                        "dns from {} to {} has empty query questions, sending failure reply",
-                        from,
-                        to);
+                    log::info(logcat, "dns from {} to {} has empty query questions, sending failure reply", from, to);
                     tmp->Cancel();
                     return true;
                 }
@@ -512,18 +500,9 @@ namespace llarp::dns
 #endif
                 const auto& q = query.questions[0];
                 if (auto err = ub_resolve_async(
-                        m_ctx,
-                        q.Name().c_str(),
-                        q.qtype,
-                        q.qclass,
-                        tmp.get(),
-                        &Resolver::Callback,
-                        nullptr))
+                        m_ctx, q.Name().c_str(), q.qtype, q.qclass, tmp.get(), &Resolver::Callback, nullptr))
                 {
-                    log::warning(
-                        logcat,
-                        "failed to send upstream query with libunbound: {}",
-                        ub_strerror(err));
+                    log::warning(logcat, "failed to send upstream query with libunbound: {}", ub_strerror(err));
                     tmp->Cancel();
                 }
                 else
@@ -543,20 +522,18 @@ namespace llarp::dns
             auto parent_ptr = parent.lock();
             if (parent_ptr)
             {
-                parent_ptr->call([self = shared_from_this(),
-                                  parent_ptr = std::move(parent_ptr),
-                                  buf = replyBuf.copy()] {
-                    log::trace(
-                        logcat,
-                        "forwarding dns response from libunbound to userland (resolverAddr: {}, "
-                        "askerAddr: {})",
-                        self->resolverAddr,
-                        self->askerAddr);
-                    self->src->SendTo(
-                        self->askerAddr, self->resolverAddr, OwnedBuffer::copy_from(buf));
-                    // remove query
-                    parent_ptr->RemovePending(self);
-                });
+                parent_ptr->call(
+                    [self = shared_from_this(), parent_ptr = std::move(parent_ptr), buf = replyBuf.copy()] {
+                        log::trace(
+                            logcat,
+                            "forwarding dns response from libunbound to userland (resolverAddr: {}, "
+                            "askerAddr: {})",
+                            self->resolverAddr,
+                            self->askerAddr);
+                        self->src->SendTo(self->askerAddr, self->resolverAddr, OwnedBuffer::copy_from(buf));
+                        // remove query
+                        parent_ptr->RemovePending(self);
+                    });
             }
             else
                 log::error(logcat, "no parent");
@@ -600,8 +577,7 @@ namespace llarp::dns
         return plat;
     }
 
-    std::shared_ptr<PacketSource_Base> Server::MakePacketSourceOn(
-        const llarp::SockAddr& addr, const llarp::DnsConfig&)
+    std::shared_ptr<PacketSource_Base> Server::MakePacketSourceOn(const llarp::SockAddr& addr, const llarp::DnsConfig&)
     {
         return std::make_shared<UDPReader>(*this, m_Loop, addr);
     }
@@ -691,10 +667,7 @@ namespace llarp::dns
     }
 
     bool Server::MaybeHandlePacket(
-        std::shared_ptr<PacketSource_Base> ptr,
-        const SockAddr& to,
-        const SockAddr& from,
-        llarp::OwnedBuffer buf)
+        std::shared_ptr<PacketSource_Base> ptr, const SockAddr& to, const SockAddr& from, llarp::OwnedBuffer buf)
     {
         // dont process to prevent feedback loop
         if (ptr->WouldLoop(to, from))
@@ -706,8 +679,7 @@ namespace llarp::dns
         auto maybe = MaybeParseDNSMessage(buf);
         if (not maybe)
         {
-            log::warning(
-                logcat, "invalid dns message format from {} to dns listener on {}", from, to);
+            log::warning(logcat, "invalid dns message format from {} to dns listener on {}", from, to);
             return false;
         }
 
@@ -734,20 +706,10 @@ namespace llarp::dns
         {
             if (auto res_ptr = resolver.lock())
             {
-                log::trace(
-                    logcat,
-                    "check resolver {} for dns from {} to {}",
-                    res_ptr->ResolverName(),
-                    from,
-                    to);
+                log::trace(logcat, "check resolver {} for dns from {} to {}", res_ptr->ResolverName(), from, to);
                 if (res_ptr->MaybeHookDNS(ptr, msg, to, from))
                 {
-                    log::trace(
-                        logcat,
-                        "resolver {} handling dns from {} to {}",
-                        res_ptr->ResolverName(),
-                        from,
-                        to);
+                    log::trace(logcat, "resolver {} handling dns from {} to {}", res_ptr->ResolverName(), from, to);
                     return true;
                 }
             }

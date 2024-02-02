@@ -67,8 +67,7 @@ bool bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
     {
         return false;
     }
-    return buff->write(
-        reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data) + sz);
+    return buff->write(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data) + sz);
 }
 
 bool bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)

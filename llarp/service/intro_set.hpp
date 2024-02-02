@@ -70,8 +70,7 @@ namespace llarp::service
 
         bool IsExpired(llarp_time_t now) const;
 
-        std::vector<llarp::dns::SRVData> GetMatchingSRVRecords(
-            std::string_view service_proto) const;
+        std::vector<llarp::dns::SRVData> GetMatchingSRVRecords(std::string_view service_proto) const;
 
         std::string bt_encode() const;
 
@@ -183,8 +182,7 @@ namespace llarp::service
         return !(lhs == rhs);
     }
 
-    using EncryptedIntroSetLookupHandler =
-        std::function<void(const std::vector<EncryptedIntroSet>&)>;
+    using EncryptedIntroSetLookupHandler = std::function<void(const std::vector<EncryptedIntroSet>&)>;
     using IntroSetLookupHandler = std::function<void(const std::vector<IntroSet>&)>;
 
 }  // namespace llarp::service

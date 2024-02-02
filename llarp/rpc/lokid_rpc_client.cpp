@@ -41,8 +41,7 @@ namespace llarp::rpc
             .add_command("block", [this](oxenmq::Message& m) { HandleNewBlock(m); });
 
         // TODO: proper auth here
-        auto lokidCategory =
-            m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
+        auto lokidCategory = m_lokiMQ->add_category("lokid", oxenmq::Access{oxenmq::AuthLevel::none});
         m_UpdatingList = false;
     }
 
@@ -131,16 +130,13 @@ namespace llarp::rpc
                     {
                         auto json = nlohmann::json::parse(std::move(data[1]));
                         if (json.at("status") != "OK")
-                            throw std::runtime_error{
-                                "get_service_nodes did not return 'OK' status"};
-                        if (auto it = json.find("unchanged");
-                            it != json.end() and it->is_boolean() and it->get<bool>())
+                            throw std::runtime_error{"get_service_nodes did not return 'OK' status"};
+                        if (auto it = json.find("unchanged"); it != json.end() and it->is_boolean() and it->get<bool>())
                             log::trace(logcat, "service node list unchanged");
                         else
                         {
                             self->HandleNewServiceNodeList(json.at("service_node_states"));
-                            if (auto it = json.find("block_hash");
-                                it != json.end() and it->is_string())
+                            if (auto it = json.find("block_hash"); it != json.end() and it->is_string())
                                 self->m_LastUpdateHash = it->get<std::string>();
                             else
                                 self->m_LastUpdateHash.clear();
@@ -218,8 +214,7 @@ namespace llarp::rpc
         std::unordered_map<RouterID, PubKey> keymap;
         std::vector<RouterID> activeNodeList, decommNodeList, unfundedNodeList;
         if (not j.is_array())
-            throw std::runtime_error{
-                "Invalid service node list: expected array of service node states"};
+            throw std::runtime_error{"Invalid service node list: expected array of service node states"};
 
         for (auto& snode : j)
         {
@@ -240,15 +235,11 @@ namespace llarp::rpc
 
             RouterID rid;
             PubKey pk;
-            if (not rid.FromHex(ed_itr->get<std::string_view>())
-                or not pk.FromHex(svc_itr->get<std::string_view>()))
+            if (not rid.FromHex(ed_itr->get<std::string_view>()) or not pk.FromHex(svc_itr->get<std::string_view>()))
                 continue;
 
             keymap[rid] = pk;
-            (active       ? activeNodeList
-                 : funded ? decommNodeList
-                          : unfundedNodeList)
-                .push_back(std::move(rid));
+            (active ? activeNodeList : funded ? decommNodeList : unfundedNodeList).push_back(std::move(rid));
         }
 
         if (activeNodeList.empty())
@@ -345,8 +336,7 @@ namespace llarp::rpc
     }
 
     void LokidRpcClient::lookup_ons_hash(
-        std::string namehash,
-        std::function<void(std::optional<service::EncryptedName>)> resultHandler)
+        std::string namehash, std::function<void(std::optional<service::EncryptedName>)> resultHandler)
     {
         LogDebug("Looking Up LNS NameHash ", namehash);
         const nlohmann::json req{{"type", 2}, {"name_hash", oxenc::to_hex(namehash)}};
@@ -360,15 +350,12 @@ namespace llarp::rpc
                     {
                         service::EncryptedName result;
                         const auto j = nlohmann::json::parse(data[1]);
-                        result.ciphertext =
-                            oxenc::from_hex(j["encrypted_value"].get<std::string>());
+                        result.ciphertext = oxenc::from_hex(j["encrypted_value"].get<std::string>());
                         const auto nonce = oxenc::from_hex(j["nonce"].get<std::string>());
                         if (nonce.size() != result.nonce.size())
                         {
-                            throw std::invalid_argument{fmt::format(
-                                "nonce size mismatch: {} != {}",
-                                nonce.size(),
-                                result.nonce.size())};
+                            throw std::invalid_argument{
+                                fmt::format("nonce size mismatch: {} != {}", nonce.size(), result.nonce.size())};
                         }
 
                         std::copy_n(nonce.data(), nonce.size(), result.nonce.data());
@@ -381,9 +368,7 @@ namespace llarp::rpc
                 }
                 if (auto r = m_Router.lock())
                 {
-                    r->loop()->call([resultHandler, maybe = std::move(maybe)]() {
-                        resultHandler(std::move(maybe));
-                    });
+                    r->loop()->call([resultHandler, maybe = std::move(maybe)]() { resultHandler(std::move(maybe)); });
                 }
             },
             req.dump());

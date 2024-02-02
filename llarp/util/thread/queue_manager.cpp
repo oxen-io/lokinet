@@ -104,8 +104,7 @@ namespace llarp
             return m_capacity;
         }
 
-        int32_t QueueManager::circularDifference(
-            uint32_t startingValue, uint32_t subtractValue, uint32_t modulo)
+        int32_t QueueManager::circularDifference(uint32_t startingValue, uint32_t subtractValue, uint32_t modulo)
         {
             assert(modulo <= (static_cast<uint32_t>(std::numeric_limits<int32_t>::max()) + 1));
             assert(startingValue < modulo);
@@ -128,8 +127,7 @@ namespace llarp
         {
             assert(capacity != 0);
 
-            return static_cast<uint32_t>(
-                std::min(NUM_COMBINED_INDEXES / capacity, NUM_ELEMENT_GENERATIONS));
+            return static_cast<uint32_t>(std::min(NUM_COMBINED_INDEXES / capacity, NUM_ELEMENT_GENERATIONS));
         }
 
         QueueManager::QueueManager(size_t capacity)
@@ -333,8 +331,7 @@ namespace llarp
                     continue;
                 }
 
-                popIndex().compare_exchange_strong(
-                    loadedPopIndex, nextCombinedIndex(loadedPopIndex));
+                popIndex().compare_exchange_strong(loadedPopIndex, nextCombinedIndex(loadedPopIndex));
             }
 
             popIndex().compare_exchange_strong(loadedPopIndex, nextCombinedIndex(loadedPopIndex));
@@ -403,19 +400,14 @@ namespace llarp
 
             for (;;)
             {
-                uint32_t endCombinedIndex =
-                    (endGeneration * static_cast<uint32_t>(m_capacity)) + endIndex;
+                uint32_t endCombinedIndex = (endGeneration * static_cast<uint32_t>(m_capacity)) + endIndex;
 
-                if (circularDifference(
-                        endCombinedIndex, loadedCombinedIndex, m_maxCombinedIndex + 1)
-                    == 0)
+                if (circularDifference(endCombinedIndex, loadedCombinedIndex, m_maxCombinedIndex + 1) == 0)
                 {
                     return false;
                 }
 
-                assert(
-                    0 < circularDifference(
-                        endCombinedIndex, loadedCombinedIndex, m_maxCombinedIndex + 1));
+                assert(0 < circularDifference(endCombinedIndex, loadedCombinedIndex, m_maxCombinedIndex + 1));
 
                 auto currIdx = static_cast<uint32_t>(loadedCombinedIndex % m_capacity);
                 auto currGen = static_cast<uint32_t>(loadedCombinedIndex / m_capacity);
@@ -463,8 +455,7 @@ namespace llarp
             assert(generation <= m_maxGeneration);
             assert(index < m_capacity);
             assert(
-                static_cast<uint32_t>((generation * m_capacity) + index)
-                == popIndex().load(std::memory_order_relaxed));
+                static_cast<uint32_t>((generation * m_capacity) + index) == popIndex().load(std::memory_order_relaxed));
             assert(decodeStateFromElementState(m_states[index]) == ElementState::Writing);
             assert(generation == decodeGenerationFromElementState(m_states[index]));
 
@@ -496,9 +487,7 @@ namespace llarp
                 {
                     // We've raced between getting push and pop indexes, in this case, it
                     // means the queue is empty.
-                    assert(
-                        0 > circularDifference(
-                            combinedPushIndex, combinedPopIndex, m_maxCombinedIndex + 1));
+                    assert(0 > circularDifference(combinedPushIndex, combinedPopIndex, m_maxCombinedIndex + 1));
 
                     return 0;
                 }
@@ -508,9 +497,7 @@ namespace llarp
 
             if (difference < -static_cast<int32_t>(m_maxCombinedIndex / 2))
             {
-                assert(
-                    0 < circularDifference(
-                        combinedPushIndex, combinedPopIndex, m_maxCombinedIndex + 1));
+                assert(0 < circularDifference(combinedPushIndex, combinedPopIndex, m_maxCombinedIndex + 1));
 
                 difference += m_maxCombinedIndex + 1;
                 return std::min(static_cast<size_t>(difference), m_capacity);

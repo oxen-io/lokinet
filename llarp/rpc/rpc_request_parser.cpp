@@ -64,12 +64,7 @@ namespace llarp::rpc
 
     void parse_request(SwapExits& swapexits, rpc_input input)
     {
-        get_values(
-            input,
-            "exit_addresses",
-            swapexits.request.exit_addresses,
-            "token",
-            swapexits.request.token);
+        get_values(input, "exit_addresses", swapexits.request.exit_addresses, "token", swapexits.request.token);
     }
 
     void parse_request(DNSQuery& dnsquery, rpc_input input)
@@ -86,14 +81,7 @@ namespace llarp::rpc
 
     void parse_request(Config& config, rpc_input input)
     {
-        get_values(
-            input,
-            "delete",
-            config.request.del,
-            "filename",
-            config.request.filename,
-            "ini",
-            config.request.ini);
+        get_values(input, "delete", config.request.del, "filename", config.request.filename, "ini", config.request.ini);
     }
 
 }  // namespace llarp::rpc

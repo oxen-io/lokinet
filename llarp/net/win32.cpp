@@ -34,8 +34,7 @@ namespace llarp::net
             {
                 ptr = std::make_unique<byte_t[]>(sz);
                 addr = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(ptr.get());
-                err = GetAdaptersAddresses(
-                    af, GAA_FLAG_INCLUDE_GATEWAYS | GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &sz);
+                err = GetAdaptersAddresses(af, GAA_FLAG_INCLUDE_GATEWAYS | GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &sz);
             } while (err == ERROR_BUFFER_OVERFLOW and ++tries < 4);
 
             if (err != ERROR_SUCCESS)
@@ -83,10 +82,7 @@ namespace llarp::net
                         return;
 
                     LogDebug(fmt::format(
-                        "visit adapter looking for '{}': '{}' idx={}",
-                        ip,
-                        adapter->AdapterName,
-                        adapter->IfIndex));
+                        "visit adapter looking for '{}': '{}' idx={}", ip, adapter->AdapterName, adapter->IfIndex));
                     if (adapter_has_ip(adapter, ip))
                     {
                         found = adapter->IfIndex;
@@ -96,8 +92,7 @@ namespace llarp::net
             return found;
         }
 
-        std::optional<llarp::SockAddr> GetInterfaceAddr(
-            std::string_view name, int af) const override
+        std::optional<llarp::SockAddr> GetInterfaceAddr(std::string_view name, int af) const override
         {
             std::optional<SockAddr> found;
             iter_adapters([name = std::string{name}, af, &found, this](auto* a) {
@@ -138,8 +133,7 @@ namespace llarp::net
                     SockAddr saddr{*addr->Address.lpSockaddr};
                     currentRanges.emplace_back(
                         saddr.asIPv6(),
-                        ipaddr_netmask_bits(
-                            addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
+                        ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
                 }
             });
 
@@ -171,8 +165,7 @@ namespace llarp::net
                             SockAddr saddr{*addr->Address.lpSockaddr};
                             cur.addrs.emplace_back(
                                 saddr.asIPv6(),
-                                ipaddr_netmask_bits(
-                                    addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
+                                ipaddr_netmask_bits(addr->OnLinkPrefixLength, addr->Address.lpSockaddr->sa_family));
                         }
                         if (auto* addr = a->FirstGatewayAddress)
                         {

@@ -60,8 +60,7 @@ namespace
     // operational function definitions
     int lokinet_main(int, char**);
     void handle_signal(int sig);
-    static void run_main_context(
-        std::optional<fs::path> confFile, const llarp::RuntimeOptions opts);
+    static void run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts);
 
     // variable declarations
     static auto logcat = llarp::log::Cat("main");
@@ -75,8 +74,7 @@ namespace
         if (ctx)
             ctx->loop->call([sig] { ctx->HandleSignal(sig); });
         else
-            std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!"
-                      << std::endl;
+            std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
     }
 
     // Windows specific code
@@ -260,8 +258,7 @@ namespace
         const auto flags =
             (MINIDUMP_TYPE)(MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo);
 
-        const std::string fname =
-            fmt::format("C:\\ProgramData\\lokinet\\crash-{}.dump", llarp::time_now_ms().count());
+        const std::string fname = fmt::format("C:\\ProgramData\\lokinet\\crash-{}.dump", llarp::time_now_ms().count());
 
         HANDLE hDumpFile;
         SYSTEMTIME stLocalTime;
@@ -269,19 +266,12 @@ namespace
         MINIDUMP_EXCEPTION_INFORMATION ExpParam{};
 
         hDumpFile = CreateFile(
-            fname.c_str(),
-            GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_WRITE | FILE_SHARE_READ,
-            0,
-            CREATE_ALWAYS,
-            0,
-            0);
+            fname.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
 
         ExpParam.ExceptionPointers = pExceptionPointers;
         ExpParam.ClientPointers = TRUE;
 
-        MiniDumpWriteDump(
-            GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, flags, &ExpParam, NULL, NULL);
+        MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, flags, &ExpParam, NULL, NULL);
 
         return 1;
     }
@@ -295,8 +285,7 @@ namespace
             case SERVICE_CONTROL_STOP:
                 // tell service we are stopping
                 llarp::log::debug(logcat, "Windows service controller gave SERVICE_CONTROL_STOP");
-                llarp::sys::service_manager->system_changed_our_state(
-                    llarp::sys::ServiceState::Stopping);
+                llarp::sys::service_manager->system_changed_our_state(llarp::sys::ServiceState::Stopping);
                 handle_signal(SIGINT);
                 return;
 
@@ -359,15 +348,11 @@ namespace
         // flags: boolean values in command_line_options struct
         cli.add_flag("--version", options.version, "Lokinet version");
         cli.add_flag("-g,--generate", options.generate, "Generate default configuration and exit");
-        cli.add_flag(
-            "-r,--router",
-            options.router,
-            "Run lokinet in routing mode instead of client-only mode");
+        cli.add_flag("-r,--router", options.router, "Run lokinet in routing mode instead of client-only mode");
         cli.add_flag("-f,--force", options.overwrite, "Force writing config even if file exists");
 
         // options: string
-        cli.add_option(
-               "config,--config", options.configPath, "Path to lokinet.ini configuration file")
+        cli.add_option("config,--config", options.configPath, "Path to lokinet.ini configuration file")
             ->capture_default_str();
 
         if constexpr (llarp::platform::is_windows)
@@ -442,8 +427,7 @@ namespace
                 }
                 catch (std::exception& ex)
                 {
-                    llarp::log::error(
-                        logcat, "cannot generate config at {}: {}", *configFile, ex.what());
+                    llarp::log::error(logcat, "cannot generate config at {}: {}", *configFile, ex.what());
                     return 1;
                 }
             }
@@ -459,8 +443,7 @@ namespace
                 }
                 catch (std::exception& ex)
                 {
-                    llarp::log::error(
-                        logcat, "cannot check if ", *configFile, " exists: ", ex.what());
+                    llarp::log::error(logcat, "cannot check if ", *configFile, " exists: ", ex.what());
                     return 1;
                 }
             }
@@ -470,10 +453,7 @@ namespace
             try
             {
                 llarp::ensure_config(
-                    llarp::GetDefaultDataDir(),
-                    llarp::GetDefaultConfigPath(),
-                    options.overwrite,
-                    opts.isSNode);
+                    llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), options.overwrite, opts.isSNode);
             }
             catch (std::exception& ex)
             {
@@ -648,8 +628,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        llarp::log::critical(
-            logcat, "Error launching service: {}", std::system_category().message(error));
+        llarp::log::critical(logcat, "Error launching service: {}", std::system_category().message(error));
         return 1;
     }
 #endif

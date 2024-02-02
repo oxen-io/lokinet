@@ -13,8 +13,7 @@ extern "C"
      * Method:    Obtain
      * Signature: (Ljava/lang/String;)Ljava/nio/ByteBuffer;
      */
-    JNIEXPORT jobject JNICALL
-    Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv*, jclass, jstring);
+    JNIEXPORT jobject JNICALL Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv*, jclass, jstring);
 
     /*
      * Class:     network_loki_lokinet_LokinetConfig
@@ -42,8 +41,8 @@ extern "C"
      * Method:    AddDefaultValue
      * Signature: (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
      */
-    JNIEXPORT void JNICALL Java_network_loki_lokinet_LokinetConfig_AddDefaultValue(
-        JNIEnv*, jobject, jstring, jstring, jstring);
+    JNIEXPORT void JNICALL
+    Java_network_loki_lokinet_LokinetConfig_AddDefaultValue(JNIEnv*, jobject, jstring, jstring, jstring);
 
 #ifdef __cplusplus
 }

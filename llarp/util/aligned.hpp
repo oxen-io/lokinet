@@ -282,8 +282,7 @@ namespace llarp
     }  // namespace detail
     // True if T is or is derived from AlignedBuffer<N> for any N
     template <typename T>
-    constexpr inline bool is_aligned_buffer =
-        decltype(detail::is_aligned_buffer_impl(static_cast<T*>(nullptr)))::value;
+    constexpr inline bool is_aligned_buffer = decltype(detail::is_aligned_buffer_impl(static_cast<T*>(nullptr)))::value;
 
 }  // namespace llarp
 
@@ -291,10 +290,7 @@ namespace fmt
 {
     // Any AlignedBuffer<N> (or subclass) gets hex formatted when output:
     template <typename T>
-    struct formatter<
-        T,
-        char,
-        std::enable_if_t<llarp::is_aligned_buffer<T> && !llarp::IsToStringFormattable<T>>>
+    struct formatter<T, char, std::enable_if_t<llarp::is_aligned_buffer<T> && !llarp::IsToStringFormattable<T>>>
         : formatter<std::string_view>
     {
         template <typename FormatContext>

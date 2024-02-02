@@ -134,11 +134,7 @@ namespace llarp::net
         static constexpr size_t MinSize = 20;
 
         [[deprecated("deprecated because of llarp_buffer_t")]] static IPPacket UDP(
-            nuint32_t srcaddr,
-            nuint16_t srcport,
-            nuint32_t dstaddr,
-            nuint16_t dstport,
-            const llarp_buffer_t& data)
+            nuint32_t srcaddr, nuint16_t srcport, nuint32_t dstaddr, nuint16_t dstport, const llarp_buffer_t& data)
         {
             return make_udp(srcaddr, srcport, dstaddr, dstport, data.copy());
         }
@@ -326,8 +322,7 @@ namespace llarp::net
 
         void UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 
-        void UpdateIPv6Address(
-            huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel = std::nullopt);
+        void UpdateIPv6Address(huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel = std::nullopt);
 
         /// set addresses to zero and recacluate checksums
         void ZeroAddresses(std::optional<nuint32_t> flowlabel = std::nullopt);

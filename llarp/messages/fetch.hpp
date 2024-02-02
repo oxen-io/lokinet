@@ -96,8 +96,7 @@ namespace llarp
 
     namespace FetchRIDMessage
     {
-        inline constexpr auto INVALID_REQUEST =
-            "Invalid relay ID requested to relay response from."sv;
+        inline constexpr auto INVALID_REQUEST = "Invalid relay ID requested to relay response from."sv;
 
         inline static std::string serialize(const RouterID& source)
         {

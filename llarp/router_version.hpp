@@ -40,8 +40,7 @@ namespace llarp
         /// compare router versions
         bool operator<(const RouterVersion& other) const
         {
-            return std::tie(m_ProtoVersion, m_Version)
-                < std::tie(other.m_ProtoVersion, other.m_Version);
+            return std::tie(m_ProtoVersion, m_Version) < std::tie(other.m_ProtoVersion, other.m_Version);
         }
 
         bool operator!=(const RouterVersion& other) const

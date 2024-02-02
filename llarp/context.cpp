@@ -71,9 +71,7 @@ namespace llarp
     std::shared_ptr<NodeDB> Context::makeNodeDB()
     {
         return std::make_shared<NodeDB>(
-            nodedb_dirname,
-            [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); },
-            router.get());
+            nodedb_dirname, [r = router.get()](auto call) { r->queue_disk_io(std::move(call)); }, router.get());
     }
 
     std::shared_ptr<Router> Context::makeRouter(const EventLoop_ptr& loop)

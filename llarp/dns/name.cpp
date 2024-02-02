@@ -95,8 +95,8 @@ namespace llarp::dns
             auto in_pos = in.data();
             for (size_t i = 0; i < 64; i += 4)
             {
-                if (not(oxenc::is_hex_digit(name[i]) and name[i + 1] == '.'
-                        and oxenc::is_hex_digit(name[i + 2]) and name[i + 3] == '.'))
+                if (not(oxenc::is_hex_digit(name[i]) and name[i + 1] == '.' and oxenc::is_hex_digit(name[i + 2])
+                        and name[i + 3] == '.'))
                     return std::nullopt;
 
                 // Flip the nybbles because the smallest one is first

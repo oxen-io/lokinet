@@ -74,11 +74,7 @@ namespace llarp::service
             itr->second->Tick(now);
             if (itr->second->Pump(now))
             {
-                LogInfo(
-                    "marking session as dead T=",
-                    itr->second->get_current_tag(),
-                    " to ",
-                    itr->second->Addr());
+                LogInfo("marking session as dead T=", itr->second->get_current_tag(), " to ", itr->second->Addr());
                 itr->second->Stop();
                 sessions.erase(itr->second->get_current_tag());
                 deadSessions.emplace(std::move(*itr));
@@ -95,8 +91,7 @@ namespace llarp::service
         }
     }
 
-    void EndpointUtil::ExpireConvoSessions(
-        llarp_time_t now, std::unordered_map<ConvoTag, Session>& sessions)
+    void EndpointUtil::ExpireConvoSessions(llarp_time_t now, std::unordered_map<ConvoTag, Session>& sessions)
     {
         auto itr = sessions.begin();
         while (itr != sessions.end())
@@ -141,9 +136,7 @@ namespace llarp::service
     }
 
     bool EndpointUtil::GetConvoTagsForService(
-        const std::unordered_map<ConvoTag, Session>& sessions,
-        const Address& info,
-        std::set<ConvoTag>& tags)
+        const std::unordered_map<ConvoTag, Session>& sessions, const Address& info, std::set<ConvoTag>& tags)
     {
         bool inserted = false;
         auto itr = sessions.begin();

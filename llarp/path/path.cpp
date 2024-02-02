@@ -15,10 +15,7 @@ namespace llarp::path
         std::weak_ptr<PathSet> pathset,
         PathRole startingRoles,
         std::string shortName)
-        : path_set{std::move(pathset)},
-          router{*rtr},
-          _role{startingRoles},
-          _short_name{std::move(shortName)}
+        : path_set{std::move(pathset)}, router{*rtr}, _role{startingRoles}, _short_name{std::move(shortName)}
     {
         hops.resize(h.size());
         size_t hsz = h.size();
@@ -47,43 +44,31 @@ namespace llarp::path
             EnterState(PathStatus::BUILDING, parent->Now());
     }
 
-    bool Path::obtain_exit(
-        SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string)> func)
+    bool Path::obtain_exit(SecretKey sk, uint64_t flag, std::string tx_id, std::function<void(std::string)> func)
     {
         return send_path_control_message(
-            "obtain_exit",
-            ObtainExitMessage::sign_and_serialize(sk, flag, std::move(tx_id)),
-            std::move(func));
+            "obtain_exit", ObtainExitMessage::sign_and_serialize(sk, flag, std::move(tx_id)), std::move(func));
     }
 
     bool Path::close_exit(SecretKey sk, std::string tx_id, std::function<void(std::string)> func)
     {
         return send_path_control_message(
-            "close_exit",
-            CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)),
-            std::move(func));
+            "close_exit", CloseExitMessage::sign_and_serialize(sk, std::move(tx_id)), std::move(func));
     }
 
     bool Path::find_intro(
-        const dht::Key_t& location,
-        bool is_relayed,
-        uint64_t order,
-        std::function<void(std::string)> func)
+        const dht::Key_t& location, bool is_relayed, uint64_t order, std::function<void(std::string)> func)
     {
         return send_path_control_message(
-            "find_intro",
-            FindIntroMessage::serialize(location, is_relayed, order),
-            std::move(func));
+            "find_intro", FindIntroMessage::serialize(location, is_relayed, order), std::move(func));
     }
 
     bool Path::find_name(std::string name, std::function<void(std::string)> func)
     {
-        return send_path_control_message(
-            "find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
+        return send_path_control_message("find_name", FindNameMessage::serialize(std::move(name)), std::move(func));
     }
 
-    bool Path::send_path_control_message(
-        std::string method, std::string body, std::function<void(std::string)> func)
+    bool Path::send_path_control_message(std::string method, std::string body, std::function<void(std::string)> func)
     {
         oxenc::bt_dict_producer btdp;
         btdp.append("BODY", body);
@@ -98,11 +83,7 @@ namespace llarp::path
         for (const auto& hop : hops)
         {
             nonce = crypto::onion(
-                reinterpret_cast<unsigned char*>(payload.data()),
-                payload.size(),
-                hop.shared,
-                nonce,
-                hop.nonceXOR);
+                reinterpret_cast<unsigned char*>(payload.data()), payload.size(), hop.shared, nonce, hop.nonceXOR);
         }
 
         auto outer_payload = make_onion_payload(nonce, TXID(), payload);
@@ -134,8 +115,7 @@ namespace llarp::path
                 }
                 catch (const std::exception& e)
                 {
-                    log::warning(
-                        path_cat, "Error parsing path control message response: {}", e.what());
+                    log::warning(path_cat, "Error parsing path control message response: {}", e.what());
                     response_cb(messages::ERROR_RESPONSE);
                     return;
                 }
@@ -203,8 +183,7 @@ namespace llarp::path
     std::string Path::HopsString() const
     {
         std::string hops_str;
-        hops_str.reserve(
-            hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
+        hops_str.reserve(hops.size() * 62);  // 52 for the pkey, 6 for .snode, 4 for the ' -> ' joiner
         for (const auto& hop : hops)
         {
             if (!hops.empty())
@@ -291,10 +270,9 @@ namespace llarp::path
 
         std::vector<util::StatusObject> hopsObj;
         std::transform(
-            hops.begin(),
-            hops.end(),
-            std::back_inserter(hopsObj),
-            [](const auto& hop) -> util::StatusObject { return hop.ExtractStatus(); });
+            hops.begin(), hops.end(), std::back_inserter(hopsObj), [](const auto& hop) -> util::StatusObject {
+                return hop.ExtractStatus();
+            });
         obj["hops"] = hopsObj;
 
         switch (_status)

@@ -8,8 +8,7 @@ namespace llarp
     /// get a netmask with the higest numset bits set
     constexpr huint128_t _netmask_ipv6_bits(uint32_t numset)
     {
-        return (128 - numset) ? (huint128_t{1} << numset) | _netmask_ipv6_bits(numset + 1)
-                              : huint128_t{0};
+        return (128 - numset) ? (huint128_t{1} << numset) | _netmask_ipv6_bits(numset + 1) : huint128_t{0};
     }
 
     constexpr huint128_t netmask_ipv6_bits(uint32_t numset)

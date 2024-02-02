@@ -33,8 +33,7 @@ namespace llarp
             }
 
             void lookup_ons_hash(
-                std::string namehash,
-                std::function<void(std::optional<service::EncryptedName>)> resultHandler);
+                std::string namehash, std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 
             /// inform that if connected to a router successfully
             void InformConnection(RouterID router, bool success);

@@ -38,15 +38,11 @@ namespace llarp::service
         void EnsureKeys(fs::path fpath, bool needBackup);
 
         bool KeyExchange(
-            path_dh_func dh,
-            SharedSecret& sharedkey,
-            const ServiceInfo& other,
-            const KeyExchangeNonce& N) const;
+            path_dh_func dh, SharedSecret& sharedkey, const ServiceInfo& other, const KeyExchangeNonce& N) const;
 
         bool decode_key(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
-        std::optional<EncryptedIntroSet> encrypt_and_sign_introset(
-            const IntroSet& i, llarp_time_t now) const;
+        std::optional<EncryptedIntroSet> encrypt_and_sign_introset(const IntroSet& i, llarp_time_t now) const;
 
         bool Sign(Signature& sig, uint8_t* buf, size_t size) const;
 

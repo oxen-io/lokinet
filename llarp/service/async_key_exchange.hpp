@@ -30,12 +30,10 @@ namespace llarp::service
             Endpoint* h,
             const ConvoTag& t);
 
-        static void Result(
-            std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrameMessage> frame);
+        static void Result(std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrameMessage> frame);
 
         /// given protocol message make protocol frame
-        static void Encrypt(
-            std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrameMessage> frame);
+        static void Encrypt(std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrameMessage> frame);
     };
 
 }  // namespace llarp::service

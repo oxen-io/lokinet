@@ -45,8 +45,7 @@ namespace llarp
             explicit Address(const std::array<byte_t, SIZE>& buf) : AlignedBuffer<32>(buf)
             {}
 
-            Address(const Address& other)
-                : AlignedBuffer<32>(other.as_array()), subdomain(other.subdomain)
+            Address(const Address& other) : AlignedBuffer<32>(other.as_array()), subdomain(other.subdomain)
             {}
 
             explicit Address(const AlignedBuffer<32>& other) : AlignedBuffer<32>(other)

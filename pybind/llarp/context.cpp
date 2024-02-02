@@ -30,8 +30,7 @@ namespace llarp
                     std::vector<byte_t> buf;
                     buf.resize(pkt.size());
                     std::copy_n(pkt.c_str(), pkt.size(), buf.data());
-                    return ep
-                        and ep->SendToOrQueue(to, std::move(buf), service::ProtocolType::Control);
+                    return ep and ep->SendToOrQueue(to, std::move(buf), service::ProtocolType::Control);
                 })
             .def(
                 "AddEndpoint",

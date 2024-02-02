@@ -90,8 +90,7 @@ namespace llarp::exit
         // p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
 
         // TODO: add callback here
-        if (p->obtain_exit(
-                exit_key, std::is_same_v<decltype(p), ExitSession> ? 1 : 0, p->TXID().bt_encode()))
+        if (p->obtain_exit(exit_key, std::is_same_v<decltype(p), ExitSession> ? 1 : 0, p->TXID().bt_encode()))
             log::info(logcat, "Asking {} for exit", exit_router);
         else
             log::warning(logcat, "Failed to send exit request");
@@ -170,8 +169,7 @@ namespace llarp::exit
         return path::PathBuilder::Stop();
     }
 
-    bool BaseSession::HandleTraffic(
-        std::shared_ptr<path::Path>, const llarp_buffer_t&, uint64_t, service::ProtocolType)
+    bool BaseSession::HandleTraffic(std::shared_ptr<path::Path>, const llarp_buffer_t&, uint64_t, service::ProtocolType)
     {
         // const service::ConvoTag tag{path->RXID().as_array()};
 
@@ -196,8 +194,7 @@ namespace llarp::exit
         return false;
     }
 
-    bool BaseSession::HandleTrafficDrop(
-        std::shared_ptr<path::Path> p, const PathID_t& path, uint64_t s)
+    bool BaseSession::HandleTrafficDrop(std::shared_ptr<path::Path> p, const PathID_t& path, uint64_t s)
     {
         llarp::LogError("dropped traffic on exit ", exit_router, " S=", s, " P=", path);
         p->EnterState(path::PathStatus::IGNORE, router->now());

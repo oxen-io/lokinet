@@ -30,8 +30,7 @@ namespace llarp::rpc
             {
                 m.send_reply(nlohmann::json{
                     {"error",
-                     "Bad Request: RPC requests must have at most one data part (received {})"_format(
-                         m.data.size())}}
+                     "Bad Request: RPC requests must have at most one data part (received {})"_format(m.data.size())}}
                                  .dump());
                 return;
             }
@@ -55,8 +54,7 @@ namespace llarp::rpc
             }
             catch (const std::exception& e)
             {
-                m.send_reply(
-                    nlohmann::json{{"Failed to parse request parameters: "s + e.what()}}.dump());
+                m.send_reply(nlohmann::json{{"Failed to parse request parameters: "s + e.what()}}.dump());
                 return;
             }
 

@@ -68,8 +68,7 @@ namespace tooling
             .def_readonly("txid", &FindRouterEvent::txid)
             .def_readonly("version", &FindRouterEvent::version);
 
-        py::class_<FindRouterReceivedEvent, FindRouterEvent, RouterEvent>(
-            mod, "FindRouterReceivedEvent");
+        py::class_<FindRouterReceivedEvent, FindRouterEvent, RouterEvent>(mod, "FindRouterReceivedEvent");
 
         py::class_<FindRouterSentEvent, FindRouterEvent, RouterEvent>(mod, "FindRouterSentEvent");
 

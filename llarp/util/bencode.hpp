@@ -29,8 +29,7 @@ namespace llarp
     template <typename Obj_t>
     bool BEncodeWriteDictString(const char* k, const Obj_t& str, llarp_buffer_t* buf)
     {
-        return bencode_write_bytestring(buf, k, 1)
-            && bencode_write_bytestring(buf, str.data(), str.size());
+        return bencode_write_bytestring(buf, k, 1) && bencode_write_bytestring(buf, str.data(), str.size());
     }
 
     template <typename Obj_t>
@@ -87,8 +86,7 @@ namespace llarp
     }
 
     template <typename Int_t>
-    bool BEncodeMaybeReadDictInt(
-        const char* k, Int_t& i, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
+    bool BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
         if (key.startswith(k))
         {
@@ -109,12 +107,7 @@ namespace llarp
     /// expected version
     template <typename Item_t>
     bool BEncodeMaybeVerifyVersion(
-        const char* k,
-        Item_t& item,
-        uint64_t expect,
-        bool& read,
-        const llarp_buffer_t& key,
-        llarp_buffer_t* buf)
+        const char* k, Item_t& item, uint64_t expect, bool& read, const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
         if (key.startswith(k))
         {
@@ -306,8 +299,7 @@ namespace llarp
     template <typename List_t>
     bool BEncodeWriteDictList(const char* k, List_t& list, llarp_buffer_t* buf)
     {
-        return bencode_write_bytestring(buf, k, 1)
-            && BEncodeWriteList(list.begin(), list.end(), buf);
+        return bencode_write_bytestring(buf, k, 1) && BEncodeWriteList(list.begin(), list.end(), buf);
     }
 
     template <size_t bufsz, typename T>

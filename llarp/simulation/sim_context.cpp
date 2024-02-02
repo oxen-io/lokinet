@@ -17,8 +17,7 @@ namespace llarp
             auto itr = m_Nodes.find(name);
             if (itr == m_Nodes.end())
             {
-                itr = m_Nodes.emplace(name, std::make_shared<llarp::Context>(shared_from_this()))
-                          .first;
+                itr = m_Nodes.emplace(name, std::make_shared<llarp::Context>(shared_from_this())).first;
             }
             return itr->second;
         }

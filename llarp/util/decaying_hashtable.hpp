@@ -9,8 +9,7 @@ namespace llarp::util
     template <typename Key_t, typename Value_t, typename Hash_t = std::hash<Key_t>>
     struct DecayingHashTable
     {
-        DecayingHashTable(std::chrono::milliseconds cacheInterval = 1h)
-            : m_CacheInterval(cacheInterval)
+        DecayingHashTable(std::chrono::milliseconds cacheInterval = 1h) : m_CacheInterval(cacheInterval)
         {}
 
         void Decay(llarp_time_t now)
@@ -30,8 +29,7 @@ namespace llarp::util
         {
             if (now == 0s)
                 now = llarp::time_now_ms();
-            return m_Values.try_emplace(std::move(key), std::make_pair(std::move(value), now))
-                .second;
+            return m_Values.try_emplace(std::move(key), std::make_pair(std::move(value), now)).second;
         }
 
         /// get value by key

@@ -19,8 +19,7 @@ namespace llarp::vpn
         AndroidInterface(InterfaceInfo info, int fd) : NetworkInterface{std::move(info)}, m_fd{fd}
         {
             if (m_fd == -1)
-                throw std::runtime_error(
-                    "Error opening AndroidVPN layer FD: " + std::string{strerror(errno)});
+                throw std::runtime_error("Error opening AndroidVPN layer FD: " + std::string{strerror(errno)});
         }
 
         virtual ~AndroidInterface()

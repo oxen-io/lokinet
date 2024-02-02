@@ -34,8 +34,7 @@ namespace llarp::win32
         : _si{}, _pi{}, _timeout{static_cast<DWORD>(timeout.count())}
     {
         log::info(logcat, "exec: {}", cmd);
-        if (not CreateProcessA(
-                nullptr, cmd.data(), nullptr, nullptr, false, 0, nullptr, nullptr, &_si, &_pi))
+        if (not CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, false, 0, nullptr, nullptr, &_si, &_pi))
             throw win32::error(GetLastError(), "failed to execute subprocess");
     }
 

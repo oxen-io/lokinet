@@ -21,8 +21,7 @@ namespace
 
 // Not ready to pollute these deprecation warnings everywhere yet
 #if 0
-#define LOKINET_LOG_DEPRECATED(Meth) \
-    [[deprecated("Use formatted log::" #Meth "(cat, fmt, args...) instead")]]
+#define LOKINET_LOG_DEPRECATED(Meth) [[deprecated("Use formatted log::" #Meth "(cat, fmt, args...) instead")]]
 #else
 #define LOKINET_LOG_DEPRECATED(Meth)
 #endif
@@ -46,17 +45,14 @@ namespace llarp
         template <size_t N>
         constexpr std::string_view concat_args_fmt()
         {
-            return std::string_view{
-                concat_args_fmt_impl<std::make_index_sequence<2 * N>>::format.data(), 2 * N};
+            return std::string_view{concat_args_fmt_impl<std::make_index_sequence<2 * N>>::format.data(), 2 * N};
         }
     }  // namespace log_detail
 
     template <typename... T>
     struct LOKINET_LOG_DEPRECATED(Trace) LogTrace : log::trace<T...>
     {
-        LogTrace(
-            T&&... args,
-            const log::slns::source_location& location = log::slns::source_location::current())
+        LogTrace(T&&... args, const log::slns::source_location& location = log::slns::source_location::current())
             : log::trace<T...>::trace{
                 log_detail::legacy_logger,
                 log_detail::concat_args_fmt<sizeof...(T)>(),
@@ -67,9 +63,7 @@ namespace llarp
     template <typename... T>
     struct LOKINET_LOG_DEPRECATED(Debug) LogDebug : log::debug<T...>
     {
-        LogDebug(
-            T&&... args,
-            const log::slns::source_location& location = log::slns::source_location::current())
+        LogDebug(T&&... args, const log::slns::source_location& location = log::slns::source_location::current())
             : log::debug<T...>::debug{
                 log_detail::legacy_logger,
                 log_detail::concat_args_fmt<sizeof...(T)>(),
@@ -80,9 +74,7 @@ namespace llarp
     template <typename... T>
     struct LOKINET_LOG_DEPRECATED(Info) LogInfo : log::info<T...>
     {
-        LogInfo(
-            T&&... args,
-            const log::slns::source_location& location = log::slns::source_location::current())
+        LogInfo(T&&... args, const log::slns::source_location& location = log::slns::source_location::current())
             : log::info<T...>::info{
                 log_detail::legacy_logger,
                 log_detail::concat_args_fmt<sizeof...(T)>(),
@@ -93,9 +85,7 @@ namespace llarp
     template <typename... T>
     struct LOKINET_LOG_DEPRECATED(Warning) LogWarn : log::warning<T...>
     {
-        LogWarn(
-            T&&... args,
-            const log::slns::source_location& location = log::slns::source_location::current())
+        LogWarn(T&&... args, const log::slns::source_location& location = log::slns::source_location::current())
             : log::warning<T...>::warning{
                 log_detail::legacy_logger,
                 log_detail::concat_args_fmt<sizeof...(T)>(),
@@ -106,9 +96,7 @@ namespace llarp
     template <typename... T>
     struct LOKINET_LOG_DEPRECATED(Error) LogError : log::error<T...>
     {
-        LogError(
-            T&&... args,
-            const log::slns::source_location& location = log::slns::source_location::current())
+        LogError(T&&... args, const log::slns::source_location& location = log::slns::source_location::current())
             : log::error<T...>::error{
                 log_detail::legacy_logger,
                 log_detail::concat_args_fmt<sizeof...(T)>(),

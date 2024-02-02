@@ -22,8 +22,7 @@ namespace llarp::uv
         std::shared_ptr<uvw::AsyncHandle> async;
 
        public:
-        UVWakeup(uvw::Loop& loop, std::function<void()> callback)
-            : async{loop.resource<uvw::AsyncHandle>()}
+        UVWakeup(uvw::Loop& loop, std::function<void()> callback) : async{loop.resource<uvw::AsyncHandle>()}
         {
             async->on<uvw::AsyncEvent>([f = std::move(callback)](auto&, auto&) { f(); });
         }
@@ -159,8 +158,7 @@ namespace llarp::uv
             std::make_shared<llarp::uv::UDPHandle>(*m_Impl, std::move(on_recv)));
     }
 
-    static void setup_oneshot_timer(
-        uvw::Loop& loop, llarp_time_t delay, std::function<void()> callback)
+    static void setup_oneshot_timer(uvw::Loop& loop, llarp_time_t delay, std::function<void()> callback)
     {
         auto timer = loop.resource<uvw::TimerHandle>();
         timer->on<uvw::TimerEvent>([f = std::move(callback)](const auto&, auto& timer) {
@@ -222,8 +220,7 @@ namespace llarp::uv
     }
 
     bool Loop::add_network_interface(
-        std::shared_ptr<llarp::vpn::NetworkInterface> netif,
-        std::function<void(llarp::net::IPPacket)> handler)
+        std::shared_ptr<llarp::vpn::NetworkInterface> netif, std::function<void(llarp::net::IPPacket)> handler)
     {
 #ifdef __linux__
         using event_t = uvw::PollEvent;
@@ -239,20 +236,20 @@ namespace llarp::uv
         if (!handle)
             return false;
 
-        handle->on<event_t>([netif = std::move(netif), handler = std::move(handler)](
-                                const event_t&, [[maybe_unused]] auto& handle) {
-            for (auto pkt = netif->ReadNextPacket(); true; pkt = netif->ReadNextPacket())
-            {
-                if (pkt.empty())
-                    return;
-                if (handler)
-                    handler(std::move(pkt));
-                // on windows/apple, vpn packet io does not happen as an io action that wakes up the
-                // event loop thus, we must manually wake up the event loop when we get a packet on
-                // our interface. on linux/android this is a nop
-                netif->MaybeWakeUpperLayers();
-            }
-        });
+        handle->on<event_t>(
+            [netif = std::move(netif), handler = std::move(handler)](const event_t&, [[maybe_unused]] auto& handle) {
+                for (auto pkt = netif->ReadNextPacket(); true; pkt = netif->ReadNextPacket())
+                {
+                    if (pkt.empty())
+                        return;
+                    if (handler)
+                        handler(std::move(pkt));
+                    // on windows/apple, vpn packet io does not happen as an io action that wakes up the
+                    // event loop thus, we must manually wake up the event loop when we get a packet on
+                    // our interface. on linux/android this is a nop
+                    netif->MaybeWakeUpperLayers();
+                }
+            });
 
 #ifdef __linux__
         handle->start(uvw::PollHandle::Event::READABLE);
@@ -295,8 +292,7 @@ namespace llarp::uv
         });
     }
 
-    llarp::uv::UDPHandle::UDPHandle(uvw::Loop& loop, ReceiveFunc rf)
-        : llarp::UDPHandle{std::move(rf)}
+    llarp::uv::UDPHandle::UDPHandle(uvw::Loop& loop, ReceiveFunc rf) : llarp::UDPHandle{std::move(rf)}
     {
         reset_handle(loop);
     }

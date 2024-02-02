@@ -34,8 +34,7 @@ namespace llarp
 
     using namespace std::literals;
 
-    std::vector<std::string_view> split(
-        std::string_view str, const std::string_view delim, bool trim)
+    std::vector<std::string_view> split(std::string_view str, const std::string_view delim, bool trim)
     {
         std::vector<std::string_view> results;
         // Special case for empty delimiter: splits on each character boundary:
@@ -61,14 +60,12 @@ namespace llarp
         return results;
     }
 
-    std::vector<std::string_view> split_any(
-        std::string_view str, const std::string_view delims, bool trim)
+    std::vector<std::string_view> split_any(std::string_view str, const std::string_view delims, bool trim)
     {
         if (delims.empty())
             return split(str, delims, trim);
         std::vector<std::string_view> results;
-        for (size_t pos = str.find_first_of(delims); pos != std::string_view::npos;
-             pos = str.find_first_of(delims))
+        for (size_t pos = str.find_first_of(delims); pos != std::string_view::npos; pos = str.find_first_of(delims))
         {
             if (!trim || !results.empty() || pos > 0)
                 results.push_back(str.substr(0, pos));
@@ -105,8 +102,7 @@ namespace llarp
 
 #else
         // this dumb but probably works (i guess?)
-        std::transform(
-            data.begin(), data.end(), buf.begin(), [](const auto& ch) -> wchar_t { return ch; });
+        std::transform(data.begin(), data.end(), buf.begin(), [](const auto& ch) -> wchar_t { return ch; });
 #endif
         return buf;
     }

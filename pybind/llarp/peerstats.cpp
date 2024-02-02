@@ -10,8 +10,7 @@ namespace llarp
     void PeerDb_Init(py::module& mod)
     {
         using PeerDb_ptr = std::shared_ptr<PeerDb>;
-        py::class_<PeerDb, PeerDb_ptr>(mod, "PeerDb")
-            .def("getCurrentPeerStats", &PeerDb::getCurrentPeerStats);
+        py::class_<PeerDb, PeerDb_ptr>(mod, "PeerDb").def("getCurrentPeerStats", &PeerDb::getCurrentPeerStats);
     }
 
     void PeerStats_Init(py::module& mod)

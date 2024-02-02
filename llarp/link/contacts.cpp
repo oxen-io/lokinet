@@ -12,8 +12,7 @@ namespace llarp
         _introset_nodes = std::make_unique<dht::Bucket<dht::ISNode>>(_local_key, llarp::randint);
     }
 
-    std::optional<service::EncryptedIntroSet> Contacts::get_introset_by_location(
-        const dht::Key_t& key) const
+    std::optional<service::EncryptedIntroSet> Contacts::get_introset_by_location(const dht::Key_t& key) const
     {
         std::optional<service::EncryptedIntroSet> enc = std::nullopt;
 
@@ -27,8 +26,7 @@ namespace llarp
 
     util::StatusObject Contacts::ExtractStatus() const
     {
-        util::StatusObject obj{
-            {"services", _introset_nodes->ExtractStatus()}, {"local_key", _local_key.ToHex()}};
+        util::StatusObject obj{{"services", _introset_nodes->ExtractStatus()}, {"local_key", _local_key.ToHex()}};
         return obj;
     }
 

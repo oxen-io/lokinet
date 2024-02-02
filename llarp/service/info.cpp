@@ -11,8 +11,7 @@ namespace llarp::service
         return crypto::verify(signkey, buf, size, sig);
     }
 
-    bool ServiceInfo::Update(
-        const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce)
+    bool ServiceInfo::Update(const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce)
     {
         signkey = sign;
         enckey = enc;

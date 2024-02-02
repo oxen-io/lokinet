@@ -23,10 +23,7 @@ namespace llarp::exit
         /// send close to all exit sessions and remove all sessions
         void stop();
 
-        void add_exit_endpoint(
-            const std::string& name,
-            const NetworkConfig& networkConfig,
-            const DnsConfig& dnsConfig);
+        void add_exit_endpoint(const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
         bool obtain_new_exit(const PubKey& remote, const PathID_t& path, bool permitInternet);
 

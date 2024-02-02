@@ -264,8 +264,7 @@ namespace llarp::service
             SharedSecret discardme;
             if (not ep.GetCachedSessionKeyFor(current_tag, discardme))
             {
-                LogError(
-                    Name(), " no cached key after sending intro, we are in a fugged state, oh no");
+                LogError(Name(), " no cached key after sending intro, we are in a fugged state, oh no");
                 return true;
             }
         }
@@ -335,9 +334,8 @@ namespace llarp::service
             return true;
         }
         // if we are dead return true so we are removed
-        const bool removeIt = timeout > 0s
-            ? (now >= timeout && now - timeout > send_timeout)
-            : (now >= created_at && now - created_at > connect_timeout);
+        const bool removeIt = timeout > 0s ? (now >= timeout && now - timeout > send_timeout)
+                                           : (now >= created_at && now - created_at > connect_timeout);
         if (removeIt)
         {
             LogInfo(Name(), " session is stale");
@@ -362,14 +360,12 @@ namespace llarp::service
         if (marked_bad or path::PathBuilder::BuildCooldownHit(now))
             return false;
 
-        if (NumInStatus(path::PathStatus::BUILDING)
-            >= std::max(num_paths_desired / size_t{2}, size_t{1}))
+        if (NumInStatus(path::PathStatus::BUILDING) >= std::max(num_paths_desired / size_t{2}, size_t{1}))
             return false;
 
         size_t numValidPaths = 0;
         bool havePathToNextIntro = false;
-        ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](
-                        std::shared_ptr<path::Path> path) {
+        ForEachPath([now, this, &havePathToNextIntro, &numValidPaths](std::shared_ptr<path::Path> path) {
             if (not path->IsReady())
                 return;
             if (not path->intro.ExpiresSoon(now, path::DEFAULT_LIFETIME - path::INTRO_PATH_SPREAD))
@@ -508,15 +504,13 @@ namespace llarp::service
             resultHandler("No auth needed", true);
     }
 
-    void OutboundContext::gen_intro_async_impl(
-        std::string payload, std::function<void(std::string, bool)> func)
+    void OutboundContext::gen_intro_async_impl(std::string payload, std::function<void(std::string, bool)> func)
     {
         auto path = GetPathByRouter(remote_intro.router);
 
         if (path == nullptr)
         {
-            log::warning(
-                logcat, "{} unexpectedly has no path to remote {}", Name(), remote_intro.router);
+            log::warning(logcat, "{} unexpectedly has no path to remote {}", Name(), remote_intro.router);
             return;
         }
 
@@ -524,13 +518,7 @@ namespace llarp::service
         frame->clear();
 
         auto ex = std::make_shared<AsyncKeyExchange>(
-            ep.Loop(),
-            remote_identity,
-            ep.GetIdentity(),
-            current_intro.sntru_pubkey,
-            remote_intro,
-            &ep,
-            current_tag);
+            ep.Loop(), remote_identity, ep.GetIdentity(), current_intro.sntru_pubkey, remote_intro, &ep, current_tag);
 
         if (const auto maybe = ep.MaybeGetAuthInfoForEndpoint(remote_identity.Addr()); not maybe)
             ex->msg.proto = ProtocolType::Auth;
@@ -605,18 +593,13 @@ namespace llarp::service
         if (!path)
         {
             ShiftIntroRouter(remote_intro.router);
-            log::warning(
-                logcat, "{} cannot encrypt and send: no path for intro {}", Name(), remote_intro);
+            log::warning(logcat, "{} cannot encrypt and send: no path for intro {}", Name(), remote_intro);
             return;
         }
 
         if (!ep.GetCachedSessionKeyFor(f->convo_tag, shared))
         {
-            log::warning(
-                logcat,
-                "{} could not send; no cached session keys for tag {}",
-                Name(),
-                f->convo_tag);
+            log::warning(logcat, "{} could not send; no cached session keys for tag {}", Name(), f->convo_tag);
             return;
         }
 

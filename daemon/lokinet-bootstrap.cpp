@@ -42,8 +42,7 @@ bootstrap URLs.
 int main(int argc, char* argv[])
 {
     const std::unordered_map<std::string, std::string> bootstrap_urls = {
-        {"lokinet", "https://seed.lokinet.org/lokinet.signed"},
-        {"testnet", "https://seed.lokinet.org/testnet.signed"}};
+        {"lokinet", "https://seed.lokinet.org/lokinet.signed"}, {"testnet", "https://seed.lokinet.org/testnet.signed"}};
 
     std::string bootstrap_url = bootstrap_urls.at("lokinet");
     fs::path outputfile{llarp::GetDefaultBootstrap()};
@@ -75,8 +74,7 @@ int main(int argc, char* argv[])
     std::cout << "fetching " << bootstrap_url << std::endl;
     cpr::Response resp =
 #ifdef _WIN32
-        cpr::Get(
-            cpr::Url{bootstrap_url}, cpr::Header{{"User-Agent", std::string{llarp::VERSION_FULL}}});
+        cpr::Get(cpr::Url{bootstrap_url}, cpr::Header{{"User-Agent", std::string{llarp::VERSION_FULL}}});
 #else
         cpr::Get(
             cpr::Url{bootstrap_url},
@@ -85,8 +83,7 @@ int main(int argc, char* argv[])
 #endif
     if (resp.status_code != 200)
     {
-        return fail(
-            "failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
+        return fail("failed to fetch '" + bootstrap_url + "' HTTP " + std::to_string(resp.status_code));
     }
 
     const auto& data = resp.text;

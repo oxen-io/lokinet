@@ -9,16 +9,12 @@ namespace llarp::dns
     static auto logcat = log::Cat("dns");
 
     Question::Question(Question&& other)
-        : qname(std::move(other.qname)),
-          qtype(std::move(other.qtype)),
-          qclass(std::move(other.qclass))
+        : qname(std::move(other.qname)), qtype(std::move(other.qtype)), qclass(std::move(other.qclass))
     {}
-    Question::Question(const Question& other)
-        : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
+    Question::Question(const Question& other) : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
     {}
 
-    Question::Question(std::string name, QType_t type)
-        : qname{std::move(name)}, qtype{type}, qclass{qClassIN}
+    Question::Question(std::string name, QType_t type) : qname{std::move(name)}, qtype{type}, qclass{qClassIN}
     {
         if (qname.empty())
             throw std::invalid_argument{"qname cannot be empty"};
@@ -105,8 +101,7 @@ namespace llarp::dns
 
     bool Question::HasTLD(const std::string& tld) const
     {
-        return qname.find(tld) != std::string::npos
-            && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
+        return qname.find(tld) != std::string::npos && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
     }
 
     std::string Question::ToString() const

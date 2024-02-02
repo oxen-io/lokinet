@@ -42,11 +42,7 @@ namespace llarp
     }
 
     static bool dh(
-        uint8_t* out,
-        const uint8_t* client_pk,
-        const uint8_t* server_pk,
-        const uint8_t* themPub,
-        const uint8_t* usSec)
+        uint8_t* out, const uint8_t* client_pk, const uint8_t* server_pk, const uint8_t* themPub, const uint8_t* usSec)
     {
         llarp::SharedSecret shared;
         crypto_generichash_state h;
@@ -63,39 +59,33 @@ namespace llarp
         return true;
     }
 
-    static bool dh_client_priv(
-        llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
+    static bool dh_client_priv(llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
     {
         llarp::SharedSecret dh_result;
 
         if (dh(dh_result, sk.toPublic(), pk, pk.data(), sk))
         {
-            return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32, dh_result.data(), 32)
-                != -1;
+            return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32, dh_result.data(), 32) != -1;
         }
 
         llarp::LogWarn("crypto::dh_client - dh failed");
         return false;
     }
 
-    static bool dh_server_priv(
-        llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
+    static bool dh_server_priv(llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
     {
         llarp::SharedSecret dh_result;
 
         if (dh(dh_result, pk, sk.toPublic(), pk.data(), sk))
         {
-            return crypto_generichash_blake2b(
-                       shared.data(), 32, n.data(), n.size(), dh_result.data(), 32)
-                != -1;
+            return crypto_generichash_blake2b(shared.data(), 32, n.data(), n.size(), dh_result.data(), 32) != -1;
         }
 
         llarp::LogWarn("crypto::dh_server - dh failed");
         return false;
     }
 
-    static bool dh_server_priv(
-        uint8_t* shared, const uint8_t* pk, const uint8_t* sk, const uint8_t* nonce)
+    static bool dh_server_priv(uint8_t* shared, const uint8_t* pk, const uint8_t* sk, const uint8_t* nonce)
     {
         llarp::SharedSecret dh_result;
 
@@ -153,11 +143,7 @@ namespace llarp
 
     // do a round of chacha for and return the nonce xor the given xor_factor
     SymmNonce crypto::onion(
-        unsigned char* buf,
-        size_t size,
-        const SharedSecret& k,
-        const SymmNonce& nonce,
-        const SymmNonce& xor_factor)
+        unsigned char* buf, size_t size, const SharedSecret& k, const SymmNonce& nonce, const SymmNonce& xor_factor)
     {
         if (!crypto::xchacha20(buf, size, k, nonce))
             throw std::runtime_error{"chacha failed during onion step"};
@@ -165,37 +151,30 @@ namespace llarp
         return nonce ^ xor_factor;
     }
 
-    bool crypto::dh_client(
-        llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
+    bool crypto::dh_client(llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
     {
         return dh_client_priv(shared, pk, sk, n);
     }
     /// path dh relay side
-    bool crypto::dh_server(
-        llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
+    bool crypto::dh_server(llarp::SharedSecret& shared, const PubKey& pk, const SecretKey& sk, const SymmNonce& n)
     {
         return dh_server_priv(shared, pk, sk, n);
     }
 
     bool crypto::dh_server(
-        uint8_t* shared_secret,
-        const uint8_t* other_pk,
-        const uint8_t* local_pk,
-        const uint8_t* nonce)
+        uint8_t* shared_secret, const uint8_t* other_pk, const uint8_t* local_pk, const uint8_t* nonce)
     {
         return dh_server_priv(shared_secret, other_pk, local_pk, nonce);
     }
 
     bool crypto::shorthash(ShortHash& result, uint8_t* buf, size_t size)
     {
-        return crypto_generichash_blake2b(result.data(), ShortHash::SIZE, buf, size, nullptr, 0)
-            != -1;
+        return crypto_generichash_blake2b(result.data(), ShortHash::SIZE, buf, size, nullptr, 0) != -1;
     }
 
     bool crypto::hmac(uint8_t* result, uint8_t* buf, size_t size, const SharedSecret& secret)
     {
-        return crypto_generichash_blake2b(result, HMACSIZE, buf, size, secret.data(), HMACSECSIZE)
-            != -1;
+        return crypto_generichash_blake2b(result, HMACSIZE, buf, size, secret.data(), HMACSECSIZE) != -1;
     }
 
     static bool hash(uint8_t* result, const llarp_buffer_t& buff)
@@ -325,19 +304,14 @@ namespace llarp
         // n = H(b)
         // h = make_point(n)
         ShortHash n;
-        return -1
-            != crypto_generichash_blake2b(
-                n.data(), ShortHash::SIZE, buf.data(), buf.size(), nullptr, 0)
+        return -1 != crypto_generichash_blake2b(n.data(), ShortHash::SIZE, buf.data(), buf.size(), nullptr, 0)
             && -1 != crypto_core_ed25519_from_uniform(out.data(), n.data());
     }
 
     static AlignedBuffer<32> zero;
 
     bool crypto::derive_subkey(
-        PubKey& out_pubkey,
-        const PubKey& root_pubkey,
-        uint64_t key_n,
-        const AlignedBuffer<32>* hash)
+        PubKey& out_pubkey, const PubKey& root_pubkey, uint64_t key_n, const AlignedBuffer<32>* hash)
     {
         // scalar h = H( BLIND-STRING || root_pubkey || key_n )
         AlignedBuffer<32> h;
@@ -353,10 +327,7 @@ namespace llarp
     }
 
     bool crypto::derive_subkey_private(
-        PrivateKey& out_key,
-        const SecretKey& root_key,
-        uint64_t key_n,
-        const AlignedBuffer<32>* hash)
+        PrivateKey& out_key, const SecretKey& root_key, uint64_t key_n, const AlignedBuffer<32>* hash)
     {
         // Derives a private subkey from a root key.
         //
@@ -414,9 +385,7 @@ namespace llarp
         std::array<byte_t, 64> buf;
         std::copy(h.begin(), h.end(), buf.begin());
         std::copy(a.signingHash(), a.signingHash() + 32, buf.begin() + 32);
-        return -1
-            != crypto_generichash_blake2b(
-                out_key.signingHash(), 32, buf.data(), buf.size(), nullptr, 0);
+        return -1 != crypto_generichash_blake2b(out_key.signingHash(), 32, buf.data(), buf.size(), nullptr, 0);
 
         return true;
     }
@@ -463,13 +432,11 @@ namespace llarp
         crypto_scalarmult_curve25519_base(d + 32, d);
     }
 
-    bool crypto::pqe_encrypt(
-        PQCipherBlock& ciphertext, SharedSecret& sharedkey, const PQPubKey& pubkey)
+    bool crypto::pqe_encrypt(PQCipherBlock& ciphertext, SharedSecret& sharedkey, const PQPubKey& pubkey)
     {
         return crypto_kem_enc(ciphertext.data(), sharedkey.data(), pubkey.data()) != -1;
     }
-    bool crypto::pqe_decrypt(
-        const PQCipherBlock& ciphertext, SharedSecret& sharedkey, const byte_t* secretkey)
+    bool crypto::pqe_decrypt(const PQCipherBlock& ciphertext, SharedSecret& sharedkey, const byte_t* secretkey)
     {
         return crypto_kem_dec(sharedkey.data(), ciphertext.data(), secretkey) != -1;
     }

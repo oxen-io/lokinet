@@ -20,11 +20,10 @@ namespace llarp::apple
         }
 
         std::shared_ptr<llarp::handlers::TunEndpoint> tun;
-        router->hidden_service_context().ForEachService(
-            [&tun](const auto& /*name*/, const auto ep) {
-                tun = std::dynamic_pointer_cast<llarp::handlers::TunEndpoint>(ep);
-                return !tun;
-            });
+        router->hidden_service_context().ForEachService([&tun](const auto& /*name*/, const auto ep) {
+            tun = std::dynamic_pointer_cast<llarp::handlers::TunEndpoint>(ep);
+            return !tun;
+        });
 
         if (!tun)
         {

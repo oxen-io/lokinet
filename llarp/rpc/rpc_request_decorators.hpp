@@ -48,8 +48,7 @@ namespace llarp::rpc
         //  RPC struct), then endpoint handles sending reply
         void send_response()
         {
-            replier->reply(
-                is_bt() ? oxenc::bt_serialize(json_to_bt(std::move(response))) : response.dump());
+            replier->reply(is_bt() ? oxenc::bt_serialize(json_to_bt(std::move(response))) : response.dump());
         }
 
         void send_response(nlohmann::json _response)
@@ -81,8 +80,7 @@ namespace llarp::rpc
         //    std::string data = "abc";
         //    request.response_hex["foo"]["bar"] = data; // json: "616263", bt: "abc"
         //
-        llarp::rpc::json_binary_proxy response_hex{
-            response, llarp::rpc::json_binary_proxy::fmt::hex};
+        llarp::rpc::json_binary_proxy response_hex{response, llarp::rpc::json_binary_proxy::fmt::hex};
 
         //  Proxy Object:
         //  Encodes binary data as base_64 for json-encoded responses, leaves as binary for
@@ -92,8 +90,7 @@ namespace llarp::rpc
         //      std::string data = "abc"
         //      request.response_b64["foo"]["bar"] = data; json: "YWJj", bt: "abc"
         //
-        llarp::rpc::json_binary_proxy response_b64{
-            response, llarp::rpc::json_binary_proxy::fmt::base64};
+        llarp::rpc::json_binary_proxy response_b64{response, llarp::rpc::json_binary_proxy::fmt::base64};
 
         //  The oxenmq deferred send object into which the response will be sent when the `invoke`
         //  method returns.  If the response needs to happen later (i.e. not immediately after

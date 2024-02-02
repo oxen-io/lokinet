@@ -25,10 +25,8 @@ namespace llarp
                 btdp.append("E", flag);
                 btdp.append("T", tx_id);
 
-                if (not crypto::sign(
-                        reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
-                    throw std::runtime_error{
-                        "Error: ObtainExitMessage failed to sign and serialize contents!"};
+                if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+                    throw std::runtime_error{"Error: ObtainExitMessage failed to sign and serialize contents!"};
             }
 
             btlp.append(sig.data());
@@ -74,10 +72,8 @@ namespace llarp
                 btdp.append("P", path_id);
                 btdp.append("T", tx_id);
 
-                if (not crypto::sign(
-                        reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
-                    throw std::runtime_error{
-                        "Error: UpdateExitMessage failed to sign and serialize contents!"};
+                if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+                    throw std::runtime_error{"Error: UpdateExitMessage failed to sign and serialize contents!"};
             }
 
             btlp.append(sig.data());
@@ -124,10 +120,8 @@ namespace llarp
                 btdp.append("T", tx_id);
                 btdp.append("Y", nonce);
 
-                if (not crypto::sign(
-                        reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
-                    throw std::runtime_error{
-                        "Error: CloseExitMessage failed to sign and serialize contents!"};
+                if (not crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
+                    throw std::runtime_error{"Error: CloseExitMessage failed to sign and serialize contents!"};
             }
 
             btlp.append(sig.data());
@@ -148,8 +142,7 @@ namespace llarp
                 btdp.append("Y", nonce);
 
                 if (crypto::sign(reinterpret_cast<uint8_t*>(sig.data()), sk, to_usv(btdp.view())))
-                    throw std::runtime_error{
-                        "Error: CloseExitMessage response failed to sign and serialize contents!"};
+                    throw std::runtime_error{"Error: CloseExitMessage response failed to sign and serialize contents!"};
             }
 
             btlp.append(sig.data());

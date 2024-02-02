@@ -131,11 +131,10 @@ namespace llarp::service
         {}
 
         void authenticate_async(
-            std::shared_ptr<ProtocolMessage> msg,
-            std::function<void(std::string, bool)> hook) override
+            std::shared_ptr<ProtocolMessage> msg, std::function<void(std::string, bool)> hook) override
         {
-            auto reply = m_Router->loop()->make_caller(
-                [tag = msg->tag, hook, self = shared_from_this()](AuthResult result) {
+            auto reply =
+                m_Router->loop()->make_caller([tag = msg->tag, hook, self = shared_from_this()](AuthResult result) {
                     {
                         util::Lock _lock{self->m_Access};
                         self->m_Pending.erase(tag);
@@ -148,20 +147,19 @@ namespace llarp::service
             }
             if (msg->proto == ProtocolType::Auth)
             {
-                m_Router->queue_disk_io(
-                    [self = shared_from_this(),
-                     auth = AuthInfo{std::string{
-                         reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()}},
-                     reply]() {
-                        try
-                        {
-                            reply(self->check_files(auth));
-                        }
-                        catch (std::exception& ex)
-                        {
-                            reply(AuthResult{AuthCode::FAILED, ex.what()});
-                        }
-                    });
+                m_Router->queue_disk_io([self = shared_from_this(),
+                                         auth = AuthInfo{std::string{
+                                             reinterpret_cast<const char*>(msg->payload.data()), msg->payload.size()}},
+                                         reply]() {
+                    try
+                    {
+                        reply(self->check_files(auth));
+                    }
+                    catch (std::exception& ex)
+                    {
+                        reply(AuthResult{AuthCode::FAILED, ex.what()});
+                    }
+                });
             }
             else
                 reply(AuthResult{AuthCode::REJECTED, "protocol error"});
@@ -173,8 +171,7 @@ namespace llarp::service
         }
     };
 
-    std::shared_ptr<IAuthPolicy> make_file_auth_policy(
-        Router* r, std::set<fs::path> files, AuthFileType filetype)
+    std::shared_ptr<IAuthPolicy> make_file_auth_policy(Router* r, std::set<fs::path> files, AuthFileType filetype)
     {
         return std::make_shared<FileAuthPolicy>(r, std::move(files), filetype);
     }

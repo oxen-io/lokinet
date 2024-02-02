@@ -12,26 +12,14 @@ namespace llarp::service
     static auto logcat = log::Cat("service");
     namespace
     {
-        using EndpointConstructor =
-            std::function<std::shared_ptr<Endpoint>(Router*, service::Context*)>;
+        using EndpointConstructor = std::function<std::shared_ptr<Endpoint>(Router*, service::Context*)>;
         using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
         static EndpointConstructors endpointConstructors = {
-            {"tun",
-             [](Router* r, service::Context* c) {
-                 return std::make_shared<handlers::TunEndpoint>(r, c);
-             }},
-            {"android",
-             [](Router* r, service::Context* c) {
-                 return std::make_shared<handlers::TunEndpoint>(r, c);
-             }},
-            {"ios",
-             [](Router* r, service::Context* c) {
-                 return std::make_shared<handlers::TunEndpoint>(r, c);
-             }},
-            {"null", [](Router* r, service::Context* c) {
-                 return std::make_shared<handlers::NullEndpoint>(r, c);
-             }}};
+            {"tun", [](Router* r, service::Context* c) { return std::make_shared<handlers::TunEndpoint>(r, c); }},
+            {"android", [](Router* r, service::Context* c) { return std::make_shared<handlers::TunEndpoint>(r, c); }},
+            {"ios", [](Router* r, service::Context* c) { return std::make_shared<handlers::TunEndpoint>(r, c); }},
+            {"null", [](Router* r, service::Context* c) { return std::make_shared<handlers::NullEndpoint>(r, c); }}};
 
     }  // namespace
     Context::Context(Router* r) : m_Router(r)
@@ -65,8 +53,7 @@ namespace llarp::service
         return obj;
     }
 
-    void Context::ForEachService(
-        std::function<bool(const std::string&, const std::shared_ptr<Endpoint>&)> visit) const
+    void Context::ForEachService(std::function<bool(const std::string&, const std::shared_ptr<Endpoint>&)> visit) const
     {
         auto itr = m_Endpoints.begin();
         while (itr != m_Endpoints.end())
@@ -179,13 +166,11 @@ namespace llarp::service
         // use factory to create endpoint
         const auto itr = endpointConstructors.find(endpointType);
         if (itr == endpointConstructors.end())
-            throw std::invalid_argument{
-                fmt::format("Endpoint type {} does not exist", endpointType)};
+            throw std::invalid_argument{fmt::format("Endpoint type {} does not exist", endpointType)};
 
         auto service = itr->second(m_Router, this);
         if (not service)
-            throw std::runtime_error{
-                fmt::format("Failed to construct endpoint of type {}", endpointType)};
+            throw std::runtime_error{fmt::format("Failed to construct endpoint of type {}", endpointType)};
 
         // pass conf to service
         service->Configure(conf.network, conf.dns);

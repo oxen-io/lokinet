@@ -63,9 +63,7 @@ namespace llarp
             void onion(std::string& data, SymmNonce& nonce, bool randomize = false) const;
 
             std::string onion_and_payload(
-                std::string& payload,
-                PathID_t next_id,
-                std::optional<SymmNonce> nonce = std::nullopt) const;
+                std::string& payload, PathID_t next_id, std::optional<SymmNonce> nonce = std::nullopt) const;
 
             PathID_t RXID() const override
             {
@@ -116,9 +114,7 @@ namespace llarp
             /// func is called with a bt-encoded response string (if applicable), and
             /// a timeout flag (if set, response string will be empty)
             bool send_path_control_message(
-                std::string method,
-                std::string body,
-                std::function<void(std::string)> func) override;
+                std::string method, std::string body, std::function<void(std::string)> func) override;
 
             void QueueDestroySelf(Router* r);
 

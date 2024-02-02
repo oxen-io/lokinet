@@ -2,11 +2,8 @@
 
 namespace llarp::service
 {
-    std::function<void(std::optional<LNSLookupTracker::Addr_t>)>
-    LNSLookupTracker::MakeResultHandler(
-        std::string name,
-        std::size_t numPeers,
-        std::function<void(std::optional<Addr_t>)> resultHandler)
+    std::function<void(std::optional<LNSLookupTracker::Addr_t>)> LNSLookupTracker::MakeResultHandler(
+        std::string name, std::size_t numPeers, std::function<void(std::optional<Addr_t>)> resultHandler)
     {
         m_PendingLookups.emplace(name, LookupInfo{numPeers, resultHandler});
         return [name, this](std::optional<Addr_t> found) {

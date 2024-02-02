@@ -49,8 +49,7 @@ namespace llarp
         // methods we do not want to inherit onwards from AbstractSerializable
         void bt_encode(oxenc::bt_dict_producer&) const final
         {
-            throw std::runtime_error{
-                "Error: Link messages should not encode directly to a bt list producer!"};
+            throw std::runtime_error{"Error: Link messages should not encode directly to a bt list producer!"};
         }
     };
 }  // namespace llarp

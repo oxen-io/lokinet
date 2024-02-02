@@ -90,8 +90,7 @@ namespace llarp
             // generate nonceXOR value self->hop->pathKey
             ShortHash hash;
             crypto::shorthash(hash, hop.shared.data(), hop.shared.size());
-            hop.nonceXOR =
-                hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
+            hop.nonceXOR = hash.data();  // nonceXOR is 24 bytes, ShortHash is 32; this will truncate
 
             hop.upstream = nextHop;
         }
@@ -128,11 +127,7 @@ namespace llarp
             }
 
             // encrypt hop_info (mutates in-place)
-            if (!crypto::xchacha20(
-                    reinterpret_cast<uint8_t*>(hop_info.data()),
-                    hop_info.size(),
-                    shared,
-                    outer_nonce))
+            if (!crypto::xchacha20(reinterpret_cast<uint8_t*>(hop_info.data()), hop_info.size(), shared, outer_nonce))
             {
                 log::error(path_cat, "Hop info encryption failed!");
                 throw std::runtime_error{"Hop info encrypttion failed"};
@@ -189,8 +184,7 @@ namespace llarp
             TickPaths(router);
             if (build_stats.attempts > 50)
             {
-                if (build_stats.SuccessRatio() <= BuildStats::MinGoodRatio
-                    && now - last_warn_time > 5s)
+                if (build_stats.SuccessRatio() <= BuildStats::MinGoodRatio && now - last_warn_time > 5s)
                 {
                     LogWarn(Name(), " has a low path build success. ", build_stats);
                     last_warn_time = now;
@@ -208,9 +202,7 @@ namespace llarp
                 _paths.begin(),
                 _paths.end(),
                 std::back_inserter(obj["paths"]),
-                [](const auto& item) -> util::StatusObject {
-                    return item.second->ExtractStatus();
-                });
+                [](const auto& item) -> util::StatusObject { return item.second->ExtractStatus(); });
             return obj;
         }
 
@@ -334,8 +326,7 @@ namespace llarp
                 }
                 else
                 {
-                    auto filter = [&hops, r = router, endpointRC, pathConfig, exclude](
-                                      const RemoteRC& rc) -> bool {
+                    auto filter = [&hops, r = router, endpointRC, pathConfig, exclude](const RemoteRC& rc) -> bool {
                         const auto& rid = rc.router_id();
 
                         if (exclude.count(rid))
@@ -407,15 +398,9 @@ namespace llarp
             std::string path_shortName = "[path " + router->ShortName() + "-";
             path_shortName = path_shortName + std::to_string(router->NextPathBuildNumber()) + "]";
 
-            auto path = std::make_shared<path::Path>(
-                router, hops, GetWeak(), roles, std::move(path_shortName));
+            auto path = std::make_shared<path::Path>(router, hops, GetWeak(), roles, std::move(path_shortName));
 
-            log::info(
-                path_cat,
-                "{} building path -> {} : {}",
-                Name(),
-                path->short_name(),
-                path->HopsString());
+            log::info(path_cat, "{} building path -> {} : {}", Name(), path->short_name(), path->HopsString());
 
             oxenc::bt_list_producer frames;
             std::vector<std::string> frame_str(path::MAX_LEN);
@@ -441,8 +426,7 @@ namespace llarp
                 i--;
                 bool lastHop = (i == (n_hops - 1));
 
-                const auto& nextHop =
-                    lastHop ? path_hops[i].rc.router_id() : path_hops[i + 1].rc.router_id();
+                const auto& nextHop = lastHop ? path_hops[i].rc.router_id() : path_hops[i + 1].rc.router_id();
 
                 PathBuildMessage::setup_hop_keys(path_hops[i], nextHop);
                 frame_str[i] = PathBuildMessage::serialize(path_hops[i]);
@@ -520,16 +504,12 @@ namespace llarp
                 }
                 catch (const std::exception& e)
                 {
-                    log::warning(
-                        path_cat, "Exception caught parsing path build response: {}", e.what());
+                    log::warning(path_cat, "Exception caught parsing path build response: {}", e.what());
                 }
             };
 
             if (not router->send_control_message(
-                    path->upstream(),
-                    "path_build",
-                    std::move(frames).str(),
-                    std::move(response_cb)))
+                    path->upstream(), "path_build", std::move(frames).str(), std::move(response_cb)))
             {
                 log::warning(path_cat, "Error sending path_build control message");
                 path->EnterState(path::PathStatus::FAILED, router->now());
@@ -555,8 +535,7 @@ namespace llarp
         {
             static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
             // linear backoff
-            build_interval_limit =
-                std::min(PATH_BUILD_RATE + build_interval_limit, MaxBuildInterval);
+            build_interval_limit = std::min(PATH_BUILD_RATE + build_interval_limit, MaxBuildInterval);
             LogWarn(Name(), " build interval is now ", ToString(build_interval_limit));
         }
 

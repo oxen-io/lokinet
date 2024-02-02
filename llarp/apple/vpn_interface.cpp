@@ -8,10 +8,7 @@
 namespace llarp::apple
 {
     VPNInterface::VPNInterface(
-        Context& ctx,
-        packet_write_callback packet_writer,
-        on_readable_callback on_readable,
-        Router* router)
+        Context& ctx, packet_write_callback packet_writer, on_readable_callback on_readable, Router* router)
         : vpn::NetworkInterface{{}},
           m_PacketWriter{std::move(packet_writer)},
           m_OnReadable{std::move(on_readable)},

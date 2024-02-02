@@ -36,8 +36,7 @@ namespace llarp
             bool operator==(const MessageHeader& other) const
             {
                 return id == other.id && fields == other.fields && qd_count == other.qd_count
-                    && an_count == other.an_count && ns_count == other.ns_count
-                    && ar_count == other.ar_count;
+                    && an_count == other.an_count && ns_count == other.ns_count && ar_count == other.ar_count;
             }
         };
 

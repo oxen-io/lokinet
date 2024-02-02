@@ -19,8 +19,7 @@ namespace llarp::win32
         // mostly yoinked from https://stackoverflow.com/a/45565001
         LPTSTR psz{nullptr};
         const DWORD cchMsg = FormatMessage(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
-                | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER,
             nullptr,
             err,
             MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),

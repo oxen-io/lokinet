@@ -75,15 +75,13 @@ namespace llarp::dns
 
         if (not parse_int(splits[1], priority))
         {
-            log::warning(
-                logcat, "SRV record failed to parse \"{}\" as uint16_t (priority)", splits[1]);
+            log::warning(logcat, "SRV record failed to parse \"{}\" as uint16_t (priority)", splits[1]);
             return false;
         }
 
         if (not parse_int(splits[2], weight))
         {
-            log::warning(
-                logcat, "SRV record failed to parse \"{}\" as uint16_t (weight)", splits[2]);
+            log::warning(logcat, "SRV record failed to parse \"{}\" as uint16_t (weight)", splits[2]);
             return false;
         }
 
@@ -112,8 +110,7 @@ namespace llarp::dns
         if (not bencode_discard(buf))
             return false;
         byte_t* end = buf->cur;
-        std::string_view srvString{
-            reinterpret_cast<char*>(begin), static_cast<std::size_t>(end - begin)};
+        std::string_view srvString{reinterpret_cast<char*>(begin), static_cast<std::size_t>(end - begin)};
         try
         {
             SRVTuple tuple{};
@@ -130,10 +127,6 @@ namespace llarp::dns
     util::StatusObject SRVData::ExtractStatus() const
     {
         return util::StatusObject{
-            {"proto", service_proto},
-            {"priority", priority},
-            {"weight", weight},
-            {"port", port},
-            {"target", target}};
+            {"proto", service_proto}, {"priority", priority}, {"weight", weight}, {"port", port}, {"target", target}};
     }
 }  // namespace llarp::dns

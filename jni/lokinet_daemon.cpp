@@ -15,8 +15,7 @@ extern "C"
         return env->NewDirectByteBuffer(ptr, sizeof(llarp::Context));
     }
 
-    JNIEXPORT void JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_Free(JNIEnv* env, jclass, jobject buf)
+    JNIEXPORT void JNICALL Java_network_loki_lokinet_LokinetDaemon_Free(JNIEnv* env, jclass, jobject buf)
     {
         auto ptr = FromBuffer<llarp::Context>(env, buf);
         delete ptr;
@@ -44,8 +43,7 @@ extern "C"
         return JNI_TRUE;
     }
 
-    JNIEXPORT jint JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_Mainloop(JNIEnv* env, jobject self)
+    JNIEXPORT jint JNICALL Java_network_loki_lokinet_LokinetDaemon_Mainloop(JNIEnv* env, jobject self)
     {
         auto ptr = GetImpl<llarp::Context>(env, self);
         if (ptr == nullptr)
@@ -54,15 +52,13 @@ extern "C"
         return ptr->Run(opts);
     }
 
-    JNIEXPORT jboolean JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_IsRunning(JNIEnv* env, jobject self)
+    JNIEXPORT jboolean JNICALL Java_network_loki_lokinet_LokinetDaemon_IsRunning(JNIEnv* env, jobject self)
     {
         auto ptr = GetImpl<llarp::Context>(env, self);
         return (ptr != nullptr && ptr->IsUp()) ? JNI_TRUE : JNI_FALSE;
     }
 
-    JNIEXPORT jboolean JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_Stop(JNIEnv* env, jobject self)
+    JNIEXPORT jboolean JNICALL Java_network_loki_lokinet_LokinetDaemon_Stop(JNIEnv* env, jobject self)
     {
         auto ptr = GetImpl<llarp::Context>(env, self);
         if (ptr == nullptr)
@@ -74,23 +70,20 @@ extern "C"
         return ptr->IsUp() ? JNI_FALSE : JNI_TRUE;
     }
 
-    JNIEXPORT void JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv* env, jobject self)
+    JNIEXPORT void JNICALL Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv* env, jobject self)
     {
         if (auto ptr = GetImpl<llarp::Context>(env, self))
             ptr->androidFD = GetObjectMemberAsInt<int>(env, self, "m_FD");
     }
 
-    JNIEXPORT jint JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
+    JNIEXPORT jint JNICALL Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
     {
         if (auto ptr = GetImpl<llarp::Context>(env, self); ptr and ptr->router)
             return ptr->router->outbound_socket();
         return -1;
     }
 
-    JNIEXPORT jstring JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv* env, jclass)
+    JNIEXPORT jstring JNICALL Java_network_loki_lokinet_LokinetDaemon_DetectFreeRange(JNIEnv* env, jclass)
     {
         std::string rangestr{};
         if (auto maybe = llarp::net::Platform::Default_ptr()->FindFreeRange())
@@ -100,8 +93,7 @@ extern "C"
         return env->NewStringUTF(rangestr.c_str());
     }
 
-    JNIEXPORT jstring JNICALL
-    Java_network_loki_lokinet_LokinetDaemon_DumpStatus(JNIEnv* env, jobject self)
+    JNIEXPORT jstring JNICALL Java_network_loki_lokinet_LokinetDaemon_DumpStatus(JNIEnv* env, jobject self)
     {
         std::string status{};
         if (auto ptr = GetImpl<llarp::Context>(env, self))

@@ -27,8 +27,8 @@ namespace llarp::net
     void ipv6_header::FlowLabel(llarp::nuint32_t label)
     {
         // the ipv6 flow label is the last 20 bits in the first 32 bits of the header
-        preamble.flowlabel = (htonl(ipv6_flowlabel_mask) & label.n)
-            | (preamble.flowlabel & htonl(~ipv6_flowlabel_mask));
+        preamble.flowlabel =
+            (htonl(ipv6_flowlabel_mask) & label.n) | (preamble.flowlabel & htonl(~ipv6_flowlabel_mask));
     };
 
     std::string IPProtocolName(IPProtocol proto)
@@ -38,8 +38,7 @@ namespace llarp::net
             return ent->p_name;
         }
         throw std::invalid_argument{
-            "cannot determine protocol name for ip proto '"
-            + std::to_string(static_cast<int>(proto)) + "'"};
+            "cannot determine protocol name for ip proto '" + std::to_string(static_cast<int>(proto)) + "'"};
     }
 
     IPProtocol ParseIPProtocol(std::string data)
@@ -135,8 +134,7 @@ namespace llarp::net
         {
             case IPProtocol::TCP:
             case IPProtocol::UDP:
-                return nuint16_t{
-                    *reinterpret_cast<const uint16_t*>(data() + (Header()->ihl * 4) + 2)};
+                return nuint16_t{*reinterpret_cast<const uint16_t*>(data() + (Header()->ihl * 4) + 2)};
             default:
                 return std::nullopt;
         }
@@ -213,14 +211,10 @@ namespace llarp::net
 #define SUB32CS(x) ((uint32_t)((~x) & 0xFFff) + (uint32_t)((~x) >> 16))
 
     static nuint16_t deltaIPv4Checksum(
-        nuint16_t old_sum,
-        nuint32_t old_src_ip,
-        nuint32_t old_dst_ip,
-        nuint32_t new_src_ip,
-        nuint32_t new_dst_ip)
+        nuint16_t old_sum, nuint32_t old_src_ip, nuint32_t old_dst_ip, nuint32_t new_src_ip, nuint32_t new_dst_ip)
     {
-        uint32_t sum = uint32_t(old_sum.n) + ADD32CS(old_src_ip.n) + ADD32CS(old_dst_ip.n)
-            + SUB32CS(new_src_ip.n) + SUB32CS(new_dst_ip.n);
+        uint32_t sum = uint32_t(old_sum.n) + ADD32CS(old_src_ip.n) + ADD32CS(old_dst_ip.n) + SUB32CS(new_src_ip.n)
+            + SUB32CS(new_dst_ip.n);
 
         // only need to do it 2 times to be sure
         // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
@@ -247,8 +241,8 @@ namespace llarp::net
          * that'd suck for 32bit cpus */
 #define ADDN128CS(x) (ADD32CS(x[0]) + ADD32CS(x[1]) + ADD32CS(x[2]) + ADD32CS(x[3]))
 #define SUBN128CS(x) (SUB32CS(x[0]) + SUB32CS(x[1]) + SUB32CS(x[2]) + SUB32CS(x[3]))
-        uint32_t sum = uint32_t(old_sum.n) + ADDN128CS(old_src_ip) + ADDN128CS(old_dst_ip)
-            + SUBN128CS(new_src_ip) + SUBN128CS(new_dst_ip);
+        uint32_t sum = uint32_t(old_sum.n) + ADDN128CS(old_src_ip) + ADDN128CS(old_dst_ip) + SUBN128CS(new_src_ip)
+            + SUBN128CS(new_dst_ip);
 #undef ADDN128CS
 #undef SUBN128CS
 
@@ -312,13 +306,7 @@ namespace llarp::net
     }
 
     static void deltaChecksumIPv4UDP(
-        byte_t* pld,
-        size_t psz,
-        size_t fragoff,
-        nuint32_t oSrcIP,
-        nuint32_t oDstIP,
-        nuint32_t nSrcIP,
-        nuint32_t nDstIP)
+        byte_t* pld, size_t psz, size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP, nuint32_t nSrcIP, nuint32_t nDstIP)
     {
         if (fragoff > 6 || psz < 6 + 2)
             return;
@@ -415,8 +403,7 @@ namespace llarp::net
         hdr->daddr = nDstIP.n;
     }
 
-    void IPPacket::UpdateIPv6Address(
-        huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel)
+    void IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel)
     {
         const size_t ihs = 4 + 4 + 16 + 16;
         const auto sz = size();
@@ -593,8 +580,7 @@ namespace llarp::net
             return std::nullopt;
 
         const uint8_t* ptr = data() + ((hdr->ihl * 4) + l4_HeaderSize);
-        return std::make_pair(
-            reinterpret_cast<const char*>(ptr), std::distance(ptr, data() + size()));
+        return std::make_pair(reinterpret_cast<const char*>(ptr), std::distance(ptr, data() + size()));
     }
 
     namespace
@@ -606,8 +592,7 @@ namespace llarp::net
             net::port_t dstport,
             std::vector<byte_t> udp_data)
         {
-            constexpr auto pkt_overhead =
-                constants::udp_header_bytes + constants::ip_header_min_bytes;
+            constexpr auto pkt_overhead = constants::udp_header_bytes + constants::ip_header_min_bytes;
             net::IPPacket pkt{udp_data.size() + pkt_overhead};
 
             auto* hdr = pkt.Header();
@@ -628,8 +613,7 @@ namespace llarp::net
             ptr += 2;
             std::memcpy(ptr, &dstport.n, 2);
             ptr += 2;
-            oxenc::write_host_as_big(
-                static_cast<uint16_t>(udp_data.size() + constants::udp_header_bytes), ptr);
+            oxenc::write_host_as_big(static_cast<uint16_t>(udp_data.size() + constants::udp_header_bytes), ptr);
             ptr += 2;
             oxenc::write_host_as_big(uint16_t{0}, ptr);  // checksum
             ptr += 2;

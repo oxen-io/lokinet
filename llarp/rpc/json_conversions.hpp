@@ -20,8 +20,7 @@ namespace nlohmann
     template <typename T>
     struct adl_serializer<T, std::enable_if_t<llarp::rpc::json_is_binary<T>>>
     {
-        static_assert(
-            std::is_trivially_copyable_v<T> && std::has_unique_object_representations_v<T>);
+        static_assert(std::is_trivially_copyable_v<T> && std::has_unique_object_representations_v<T>);
 
         static void to_json(json&, const T&)
         {

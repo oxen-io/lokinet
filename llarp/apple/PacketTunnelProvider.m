@@ -22,11 +22,9 @@
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
              completionHandler:(void (^)(NSError* error))completionHandler;
 
-- (void)stopTunnelWithReason:(NEProviderStopReason)reason
-           completionHandler:(void (^)(void))completionHandler;
+- (void)stopTunnelWithReason:(NEProviderStopReason)reason completionHandler:(void (^)(void))completionHandler;
 
-- (void)handleAppMessage:(NSData*)messageData
-       completionHandler:(void (^)(NSData* responseData))completionHandler;
+- (void)handleAppMessage:(NSData*)messageData completionHandler:(void (^)(NSData* responseData))completionHandler;
 
 - (void)readPackets;
 
@@ -61,9 +59,8 @@ static void start_packet_reader(void* ctx)
 static void add_ipv4_route(const char* addr, const char* netmask, void* ctx)
 {
     NSLog(@"Adding IPv4 route %s:%s to packet tunnel", addr, netmask);
-    NEIPv4Route* route =
-        [[NEIPv4Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
-                                             subnetMask:[NSString stringWithUTF8String:netmask]];
+    NEIPv4Route* route = [[NEIPv4Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
+                                                              subnetMask:[NSString stringWithUTF8String:netmask]];
 
     LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
     for (NEIPv4Route* r in t->settings.IPv4Settings.includedRoutes)
@@ -71,8 +68,7 @@ static void add_ipv4_route(const char* addr, const char* netmask, void* ctx)
             [r.destinationSubnetMask isEqualToString:route.destinationSubnetMask])
             return;  // Already in the settings, nothing to add.
 
-    t->settings.IPv4Settings.includedRoutes =
-        [t->settings.IPv4Settings.includedRoutes arrayByAddingObject:route];
+    t->settings.IPv4Settings.includedRoutes = [t->settings.IPv4Settings.includedRoutes arrayByAddingObject:route];
 
     [t updateNetworkSettings];
 }
@@ -80,13 +76,11 @@ static void add_ipv4_route(const char* addr, const char* netmask, void* ctx)
 static void del_ipv4_route(const char* addr, const char* netmask, void* ctx)
 {
     NSLog(@"Removing IPv4 route %s:%s to packet tunnel", addr, netmask);
-    NEIPv4Route* route =
-        [[NEIPv4Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
-                                             subnetMask:[NSString stringWithUTF8String:netmask]];
+    NEIPv4Route* route = [[NEIPv4Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
+                                                              subnetMask:[NSString stringWithUTF8String:netmask]];
 
     LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
-    NSMutableArray<NEIPv4Route*>* routes =
-        [NSMutableArray arrayWithArray:t->settings.IPv4Settings.includedRoutes];
+    NSMutableArray<NEIPv4Route*>* routes = [NSMutableArray arrayWithArray:t->settings.IPv4Settings.includedRoutes];
     for (size_t i = 0; i < routes.count; i++)
     {
         if ([routes[i].destinationAddress isEqualToString:route.destinationAddress] &&
@@ -106,9 +100,8 @@ static void del_ipv4_route(const char* addr, const char* netmask, void* ctx)
 
 static void add_ipv6_route(const char* addr, int prefix, void* ctx)
 {
-    NEIPv6Route* route =
-        [[NEIPv6Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
-                                    networkPrefixLength:[NSNumber numberWithInt:prefix]];
+    NEIPv6Route* route = [[NEIPv6Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
+                                                     networkPrefixLength:[NSNumber numberWithInt:prefix]];
 
     LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
     for (NEIPv6Route* r in t->settings.IPv6Settings.includedRoutes)
@@ -116,26 +109,22 @@ static void add_ipv6_route(const char* addr, int prefix, void* ctx)
             [r.destinationNetworkPrefixLength isEqualToNumber:route.destinationNetworkPrefixLength])
             return;  // Already in the settings, nothing to add.
 
-    t->settings.IPv6Settings.includedRoutes =
-        [t->settings.IPv6Settings.includedRoutes arrayByAddingObject:route];
+    t->settings.IPv6Settings.includedRoutes = [t->settings.IPv6Settings.includedRoutes arrayByAddingObject:route];
 
     [t updateNetworkSettings];
 }
 
 static void del_ipv6_route(const char* addr, int prefix, void* ctx)
 {
-    NEIPv6Route* route =
-        [[NEIPv6Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
-                                    networkPrefixLength:[NSNumber numberWithInt:prefix]];
+    NEIPv6Route* route = [[NEIPv6Route alloc] initWithDestinationAddress:[NSString stringWithUTF8String:addr]
+                                                     networkPrefixLength:[NSNumber numberWithInt:prefix]];
 
     LLARPPacketTunnel* t = (__bridge LLARPPacketTunnel*)ctx;
-    NSMutableArray<NEIPv6Route*>* routes =
-        [NSMutableArray arrayWithArray:t->settings.IPv6Settings.includedRoutes];
+    NSMutableArray<NEIPv6Route*>* routes = [NSMutableArray arrayWithArray:t->settings.IPv6Settings.includedRoutes];
     for (size_t i = 0; i < routes.count; i++)
     {
         if ([routes[i].destinationAddress isEqualToString:route.destinationAddress] &&
-            [routes[i].destinationNetworkPrefixLength
-                isEqualToNumber:route.destinationNetworkPrefixLength])
+            [routes[i].destinationNetworkPrefixLength isEqualToNumber:route.destinationNetworkPrefixLength])
         {
             [routes removeObjectAtIndex:i];
             i--;
@@ -201,8 +190,7 @@ static void del_default_route(void* ctx)
 - (void)startTunnelWithOptions:(NSDictionary<NSString*, NSObject*>*)options
              completionHandler:(void (^)(NSError*))completionHandler
 {
-    NSString* default_bootstrap = [NSBundle.mainBundle pathForResource:@"bootstrap"
-                                                                ofType:@"signed"];
+    NSString* default_bootstrap = [NSBundle.mainBundle pathForResource:@"bootstrap" ofType:@"signed"];
     NSString* home = NSHomeDirectory();
 
     llarp_apple_config conf = {
@@ -223,10 +211,9 @@ static void del_default_route(void* ctx)
     lokinet = llarp_apple_init(&conf);
     if (!lokinet)
     {
-        NSError* init_failure =
-            [NSError errorWithDomain:error_domain
-                                code:500
-                            userInfo:@{@"Error": @"Failed to initialize lokinet"}];
+        NSError* init_failure = [NSError errorWithDomain:error_domain
+                                                    code:500
+                                                userInfo:@{@"Error": @"Failed to initialize lokinet"}];
         NSLog(@"%@", [init_failure localizedDescription]);
         return completionHandler(init_failure);
     }
@@ -265,9 +252,8 @@ static void del_default_route(void* ctx)
 
     NWHostEndpoint* upstreamdns_ep;
     if (strlen(conf.upstream_dns))
-        upstreamdns_ep =
-            [NWHostEndpoint endpointWithHostname:[NSString stringWithUTF8String:conf.upstream_dns]
-                                            port:@(conf.upstream_dns_port).stringValue];
+        upstreamdns_ep = [NWHostEndpoint endpointWithHostname:[NSString stringWithUTF8String:conf.upstream_dns]
+                                                         port:@(conf.upstream_dns_port).stringValue];
 
     NEIPv4Settings* ipv4 = [[NEIPv4Settings alloc] initWithAddresses:@[ip] subnetMasks:@[mask]];
     tun_route4 = [[NEIPv4Route alloc] initWithDestinationAddress:ip subnetMask:mask];
@@ -276,10 +262,8 @@ static void del_default_route(void* ctx)
 
     NSString* ip6 = [NSString stringWithUTF8String:conf.tunnel_ipv6_ip];
     NSNumber* ip6_prefix = [NSNumber numberWithUnsignedInt:conf.tunnel_ipv6_prefix];
-    NEIPv6Settings* ipv6 = [[NEIPv6Settings alloc] initWithAddresses:@[ip6]
-                                                networkPrefixLengths:@[ip6_prefix]];
-    tun_route6 = [[NEIPv6Route alloc] initWithDestinationAddress:ip6
-                                             networkPrefixLength:ip6_prefix];
+    NEIPv6Settings* ipv6 = [[NEIPv6Settings alloc] initWithAddresses:@[ip6] networkPrefixLengths:@[ip6_prefix]];
+    tun_route6 = [[NEIPv6Route alloc] initWithDestinationAddress:ip6 networkPrefixLength:ip6_prefix];
     ipv6.includedRoutes = @[tun_route6];
     settings.IPv6Settings = ipv6;
 
@@ -295,14 +279,12 @@ static void del_default_route(void* ctx)
                    if (!strongSelf)
                        return completionHandler(nil);
 
-                   int start_ret =
-                       llarp_apple_start(strongSelf->lokinet, (__bridge void*)strongSelf);
+                   int start_ret = llarp_apple_start(strongSelf->lokinet, (__bridge void*)strongSelf);
                    if (start_ret != 0)
                    {
-                       NSError* start_failure =
-                           [NSError errorWithDomain:error_domain
-                                               code:start_ret
-                                           userInfo:@{@"Error": @"Failed to start lokinet"}];
+                       NSError* start_failure = [NSError errorWithDomain:error_domain
+                                                                    code:start_ret
+                                                                userInfo:@{@"Error": @"Failed to start lokinet"}];
                        NSLog(@"%@", start_failure);
                        lokinet = nil;
                        return completionHandler(start_failure);
@@ -314,25 +296,22 @@ static void del_default_route(void* ctx)
                        upstreamdns_ep,
                        dns_tramp_ip,
                        dns_trampoline_port);
-                   NWUDPSession* upstreamdns =
-                       [strongSelf createUDPSessionThroughTunnelToEndpoint:upstreamdns_ep
-                                                              fromEndpoint:nil];
+                   NWUDPSession* upstreamdns = [strongSelf createUDPSessionThroughTunnelToEndpoint:upstreamdns_ep
+                                                                                      fromEndpoint:nil];
                    strongSelf->dns_tramp = [LLARPDNSTrampoline alloc];
-                   [strongSelf->dns_tramp
-                       startWithUpstreamDns:upstreamdns
-                                   listenIp:dns_tramp_ip
-                                 listenPort:dns_trampoline_port
-                                     uvLoop:llarp_apple_get_uv_loop(strongSelf->lokinet)
-                          completionHandler:^(NSError* error) {
-                            if (error)
-                                NSLog(@"Error starting dns trampoline: %@", error);
-                            return completionHandler(error);
-                          }];
+                   [strongSelf->dns_tramp startWithUpstreamDns:upstreamdns
+                                                      listenIp:dns_tramp_ip
+                                                    listenPort:dns_trampoline_port
+                                                        uvLoop:llarp_apple_get_uv_loop(strongSelf->lokinet)
+                                             completionHandler:^(NSError* error) {
+                                               if (error)
+                                                   NSLog(@"Error starting dns trampoline: %@", error);
+                                               return completionHandler(error);
+                                             }];
                  }];
 }
 
-- (void)stopTunnelWithReason:(NEProviderStopReason)reason
-           completionHandler:(void (^)(void))completionHandler
+- (void)stopTunnelWithReason:(NEProviderStopReason)reason completionHandler:(void (^)(void))completionHandler
 {
     if (lokinet)
     {
@@ -342,8 +321,7 @@ static void del_default_route(void* ctx)
     completionHandler();
 }
 
-- (void)handleAppMessage:(NSData*)messageData
-       completionHandler:(void (^)(NSData* responseData))completionHandler
+- (void)handleAppMessage:(NSData*)messageData completionHandler:(void (^)(NSData* responseData))completionHandler
 {
     NSData* response = [NSData dataWithBytesNoCopy:"ok" length:3 freeWhenDone:NO];
     completionHandler(response);

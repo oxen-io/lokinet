@@ -171,22 +171,17 @@ namespace llarp
             virtual void BlacklistSNode(const RouterID) = 0;
 
             std::shared_ptr<Path> GetEstablishedPathClosestTo(
-                RouterID router,
-                std::unordered_set<RouterID> excluding = {},
-                PathRole roles = ePathRoleAny) const;
+                RouterID router, std::unordered_set<RouterID> excluding = {}, PathRole roles = ePathRoleAny) const;
 
             std::shared_ptr<Path> PickEstablishedPath(PathRole roles = ePathRoleAny) const;
 
             std::shared_ptr<Path> PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
-            std::shared_ptr<Path> GetPathByRouter(
-                RouterID router, PathRole roles = ePathRoleAny) const;
+            std::shared_ptr<Path> GetPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-            std::shared_ptr<Path> GetNewestPathByRouter(
-                RouterID router, PathRole roles = ePathRoleAny) const;
+            std::shared_ptr<Path> GetNewestPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-            std::shared_ptr<Path> GetRandomPathByRouter(
-                RouterID router, PathRole roles = ePathRoleAny) const;
+            std::shared_ptr<Path> GetRandomPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
             std::shared_ptr<Path> GetPathByID(PathID_t id) const;
 

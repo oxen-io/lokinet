@@ -41,11 +41,7 @@ namespace llarp::consensus
                 else
                 {
                     LogWarn(
-                        "Have not received ",
-                        name,
-                        " pings for a long time: ",
-                        fminutes{elapsed}.count(),
-                        " minutes");
+                        "Have not received ", name, " pings for a long time: ", fminutes{elapsed}.count(), " minutes");
                 }
                 LogWarn(
                     "Please check your ",
@@ -68,14 +64,12 @@ namespace llarp::consensus
         last.last_test = now;
     }
 
-    std::optional<RouterID> reachability_testing::next_random(
-        Router* router, const time_point_t& now, bool requeue)
+    std::optional<RouterID> reachability_testing::next_random(Router* router, const time_point_t& now, bool requeue)
     {
         if (next_general_test > now)
             return std::nullopt;
-        next_general_test = now
-            + std::chrono::duration_cast<time_point_t::duration>(
-                                fseconds(TESTING_INTERVAL(llarp::csrng)));
+        next_general_test =
+            now + std::chrono::duration_cast<time_point_t::duration>(fseconds(TESTING_INTERVAL(llarp::csrng)));
 
         // Pull the next element off the queue, but skip ourself, any that are no longer registered,
         // and any that are currently known to be failing (those are queued for testing separately).

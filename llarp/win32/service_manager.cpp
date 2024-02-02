@@ -56,12 +56,11 @@ namespace llarp::sys
         log::debug(
             logcat,
             "Reporting Windows service status '{}', exit code {}, wait hint {}, dwCP {}, dwCA {}",
-            _status.dwCurrentState == SERVICE_START_PENDING ? "start pending"
-                : _status.dwCurrentState == SERVICE_RUNNING ? "running"
-                : _status.dwCurrentState == SERVICE_STOPPED ? "stopped"
-                : _status.dwCurrentState == SERVICE_STOP_PENDING
-                ? "stop pending"
-                : fmt::format("unknown: {}", _status.dwCurrentState),
+            _status.dwCurrentState == SERVICE_START_PENDING      ? "start pending"
+                : _status.dwCurrentState == SERVICE_RUNNING      ? "running"
+                : _status.dwCurrentState == SERVICE_STOPPED      ? "stopped"
+                : _status.dwCurrentState == SERVICE_STOP_PENDING ? "stop pending"
+                                                                 : fmt::format("unknown: {}", _status.dwCurrentState),
             _status.dwWin32ExitCode,
             _status.dwWaitHint,
             _status.dwCheckPoint,

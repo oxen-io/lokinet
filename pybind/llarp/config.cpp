@@ -68,9 +68,7 @@ namespace llarp
             .def(py::init<>())
             .def(
                 "addOutboundLink",
-                [](LinksConfig& self, std::string _addr) {
-                    self.OutboundLinks.emplace_back(std::move(_addr));
-                })
+                [](LinksConfig& self, std::string _addr) { self.OutboundLinks.emplace_back(std::move(_addr)); })
             .def("addInboundLink", [](LinksConfig& self, std::string _addr) {
                 self.InboundListenAddrs.emplace_back(std::move(_addr));
             });
@@ -87,9 +85,7 @@ namespace llarp
             .def_property(
                 "lokidRPCAddr",
                 [](LokidConfig& self) { return self.lokidRPCAddr.full_address().c_str(); },
-                [](LokidConfig& self, std::string arg) {
-                    self.lokidRPCAddr = oxenmq::address(arg);
-                });
+                [](LokidConfig& self, std::string arg) { self.lokidRPCAddr = oxenmq::address(arg); });
 
         py::class_<BootstrapConfig>(mod, "BootstrapConfig")
             .def(py::init<>())

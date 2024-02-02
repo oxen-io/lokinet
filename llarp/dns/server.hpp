@@ -74,8 +74,7 @@ namespace llarp::dns
 
        public:
         explicit PacketSource_Wrapper(
-            std::weak_ptr<PacketSource_Base> wrapped,
-            std::function<void(net::IPPacket)> write_packet)
+            std::weak_ptr<PacketSource_Base> wrapped, std::function<void(net::IPPacket)> write_packet)
             : m_Wrapped{wrapped}, m_WritePacket{write_packet}
         {}
 
@@ -117,10 +116,7 @@ namespace llarp::dns
 
        public:
         explicit QueryJob(
-            std::shared_ptr<PacketSource_Base> source,
-            const Message& query,
-            const SockAddr& to_,
-            const SockAddr& from_)
+            std::shared_ptr<PacketSource_Base> source, const Message& query, const SockAddr& to_, const SockAddr& from_)
             : QueryJob_Base{query}, src{source}, resolver{to_}, asker{from_}
         {}
 
@@ -248,8 +244,7 @@ namespace llarp::dns
 
        private:
         const unsigned int m_NetIfIndex;
-        std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>>
-            m_OwnedResolvers;
+        std::set<std::shared_ptr<Resolver_Base>, ComparePtr<std::shared_ptr<Resolver_Base>>> m_OwnedResolvers;
         std::set<std::weak_ptr<Resolver_Base>, CompareWeakPtr<Resolver_Base>> m_Resolvers;
 
         std::vector<std::weak_ptr<PacketSource_Base>> m_PacketSources;

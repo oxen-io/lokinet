@@ -38,8 +38,7 @@ namespace llarp
         explicit IPRange(std::string _range)
         {
             if (not FromString(_range))
-                throw std::invalid_argument{
-                    "IP string '{}' cannot be parsed as IP range"_format(_range)};
+                throw std::invalid_argument{"IP string '{}' cannot be parsed as IP range"_format(_range)};
         }
 
         static constexpr IPRange V4MappedRange()
@@ -49,15 +48,12 @@ namespace llarp
 
         static constexpr IPRange FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
         {
-            return IPRange{
-                net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
+            return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
         }
 
         static inline IPRange FromIPv4(net::ipv4addr_t addr, net::ipv4addr_t netmask)
         {
-            return IPRange{
-                net::ExpandV4(llarp::net::ToHost(addr)),
-                netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
+            return IPRange{net::ExpandV4(llarp::net::ToHost(addr)), netmask_ipv6_bits(bits::count_bits(netmask) + 96)};
         }
 
         /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
@@ -118,8 +114,8 @@ namespace llarp
         /// get the highest address on this range
         constexpr huint128_t HighestAddr() const
         {
-            return (addr & netmask_bits)
-                + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h))) - huint128_t{1};
+            return (addr & netmask_bits) + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h)))
+                - huint128_t{1};
         }
 
         bool operator<(const IPRange& other) const

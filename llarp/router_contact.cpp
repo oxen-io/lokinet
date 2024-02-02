@@ -49,8 +49,7 @@ namespace llarp
 
         if (ipv4_port.size() != 6)
             throw std::runtime_error{
-                "Invalid RC address: expected 6-byte IPv4 IP/port, got {}"_format(
-                    ipv4_port.size())};
+                "Invalid RC address: expected 6-byte IPv4 IP/port, got {}"_format(ipv4_port.size())};
 
         sockaddr_in s4;
         s4.sin_family = AF_INET;
@@ -67,8 +66,7 @@ namespace llarp
         {
             if (ipv6_port->size() != 18)
                 throw std::runtime_error{
-                    "Invalid RC address: expected 18-byte IPv6 IP/port, got {}"_format(
-                        ipv6_port->size())};
+                    "Invalid RC address: expected 18-byte IPv6 IP/port, got {}"_format(ipv6_port->size())};
 
             sockaddr_in6 s6{};
             s6.sin6_family = AF_INET6;
@@ -94,8 +92,7 @@ namespace llarp
 
         auto pubkey = btdc.require<std::string_view>("p");
         if (pubkey.size() != 32)
-            throw std::runtime_error{
-                "Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
+            throw std::runtime_error{"Invalid RC pubkey: expected 32 bytes, got {}"_format(pubkey.size())};
         std::memcpy(_router_id.data(), pubkey.data(), 32);
 
         _timestamp = rc_time{std::chrono::seconds{btdc.require<uint64_t>("t")}};
@@ -103,8 +100,7 @@ namespace llarp
         auto ver = btdc.require<ustring_view>("v");
 
         if (ver.size() != 3)
-            throw std::runtime_error{
-                "Invalid RC router version: received {} bytes (!= 3)"_format(ver.size())};
+            throw std::runtime_error{"Invalid RC router version: received {} bytes (!= 3)"_format(ver.size())};
 
         for (int i = 0; i < 3; i++)
             _router_version[i] = ver[i];

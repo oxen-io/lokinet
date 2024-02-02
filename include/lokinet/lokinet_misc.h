@@ -27,8 +27,7 @@ extern "C"
 
     /// set a custom logger function; it is safe (and often desirable) to call this before calling
     /// initializing lokinet via lokinet_context_new.
-    void EXPORT
-    lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* context);
+    void EXPORT lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* context);
 
     /// shortcut for calling `lokinet_set_syncing_logger` with a NULL sync
     void EXPORT lokinet_set_logger(lokinet_logger_func func, void* context);

@@ -35,8 +35,7 @@ namespace llarp
         // - must end in a 1-bit value: 'o' or 'y' (i.e. 10000 or 00000)
         // - must have 51 preceeding base32z chars
         // - thus we get 51*5+1 = 256 bits = 32 bytes of output
-        if (str.size() != 52 || !oxenc::is_base32z(str)
-            || !(str.back() == 'o' || str.back() == 'y'))
+        if (str.size() != 52 || !oxenc::is_base32z(str) || !(str.back() == 'o' || str.back() == 'y'))
             return false;
         oxenc::from_base32z(str.begin(), str.end(), begin());
         return true;

@@ -159,10 +159,7 @@ namespace
             // set flow remote address
             std::string addrstr = var::visit([](auto&& from) { return from.ToString(); }, from);
 
-            std::copy_n(
-                addrstr.data(),
-                std::min(addrstr.size(), sizeof(flow_addr.remote_host)),
-                flow_addr.remote_host);
+            std::copy_n(addrstr.data(), std::min(addrstr.size(), sizeof(flow_addr.remote_host)), flow_addr.remote_host);
             // set socket id
             flow_addr.socket_id = m_SocketID;
             // get source port
@@ -233,8 +230,7 @@ struct lokinet_context
             });
         }
         std::weak_ptr<llarp::service::Endpoint> weak{ep};
-        auto udp = std::make_shared<UDPHandler>(
-            next_socket_id(), exposePort, filter, recv, timeout, user, weak);
+        auto udp = std::make_shared<UDPHandler>(next_socket_id(), exposePort, filter, recv, timeout, user, weak);
         auto id = udp->m_SocketID;
         std::promise<bool> result;
 
@@ -273,11 +269,10 @@ struct lokinet_context
         {
             udp->KillAllFlows();
             // remove packet handler
-            impl->router->loop()->call(
-                [ep = udp->m_Endpoint.lock(), localport = llarp::ToHost(udp->m_LocalPort)]() {
-                    if (auto pkt = ep->EgresPacketRouter())
-                        pkt->RemoveUDPHandler(localport);
-                });
+            impl->router->loop()->call([ep = udp->m_Endpoint.lock(), localport = llarp::ToHost(udp->m_LocalPort)]() {
+                if (auto pkt = ep->EgresPacketRouter())
+                    pkt->RemoveUDPHandler(localport);
+            });
         }
     }
 
@@ -317,10 +312,7 @@ namespace
     void stream_okay(lokinet_stream_result* result, std::string host, int port, int stream_id)
     {
         stream_error(result, 0);
-        std::copy_n(
-            host.c_str(),
-            std::min(host.size(), sizeof(result->local_address) - 1),
-            result->local_address);
+        std::copy_n(host.c_str(), std::min(host.size(), sizeof(result->local_address) - 1), result->local_address);
         result->local_port = port;
         result->stream_id = stream_id;
     }
@@ -451,8 +443,7 @@ extern "C"
         return strdup(addrStr.c_str());
     }
 
-    int EXPORT
-    lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
+    int EXPORT lokinet_add_bootstrap_rc(const char* data, size_t datalen, struct lokinet_context* ctx)
     {
         if (data == nullptr or datalen == 0)
             return -3;
@@ -584,10 +575,7 @@ extern "C"
     }
 
     void EXPORT lokinet_outbound_stream(
-        struct lokinet_stream_result* result,
-        const char* remote,
-        const char* local,
-        struct lokinet_context* ctx)
+        struct lokinet_stream_result* result, const char* remote, const char* local, struct lokinet_context* ctx)
     {
         if (ctx == nullptr)
         {
@@ -633,47 +621,41 @@ extern "C"
                 stream_error(result, EINVAL);
                 return;
             }
-            auto call = [&promise,
-                         ctx,
-                         result,
-                         router = ctx->impl->router,
-                         remotehost,
-                         remoteport,
-                         endpoint,
-                         localAddr]() {
-                auto ep = ctx->endpoint();
-                if (ep == nullptr)
-                {
-                    stream_error(result, ENOTSUP);
+            auto call =
+                [&promise, ctx, result, router = ctx->impl->router, remotehost, remoteport, endpoint, localAddr]() {
+                    auto ep = ctx->endpoint();
+                    if (ep == nullptr)
+                    {
+                        stream_error(result, ENOTSUP);
+                        promise.set_value();
+                        return;
+                    }
+                    auto* quic = ep->GetQUICTunnel();
+                    if (quic == nullptr)
+                    {
+                        stream_error(result, ENOTSUP);
+                        promise.set_value();
+                        return;
+                    }
+                    try
+                    {
+                        auto [addr, id] = quic->open(
+                            remotehost, remoteport, [](auto) {}, localAddr);
+                        auto [host, port] = split_host_port(addr.ToString());
+                        ctx->outbound_stream(id);
+                        stream_okay(result, host, port, id);
+                    }
+                    catch (std::exception& ex)
+                    {
+                        std::cout << ex.what() << std::endl;
+                        stream_error(result, ECANCELED);
+                    }
+                    catch (int err)
+                    {
+                        stream_error(result, err);
+                    }
                     promise.set_value();
-                    return;
-                }
-                auto* quic = ep->GetQUICTunnel();
-                if (quic == nullptr)
-                {
-                    stream_error(result, ENOTSUP);
-                    promise.set_value();
-                    return;
-                }
-                try
-                {
-                    auto [addr, id] = quic->open(
-                        remotehost, remoteport, [](auto) {}, localAddr);
-                    auto [host, port] = split_host_port(addr.ToString());
-                    ctx->outbound_stream(id);
-                    stream_okay(result, host, port, id);
-                }
-                catch (std::exception& ex)
-                {
-                    std::cout << ex.what() << std::endl;
-                    stream_error(result, ECANCELED);
-                }
-                catch (int err)
-                {
-                    stream_error(result, err);
-                }
-                promise.set_value();
-            };
+                };
 
             ctx->impl->CallSafe([call]() {
                 // we dont want the mainloop to die in case setting the value on the promise fails
@@ -689,8 +671,7 @@ extern "C"
         auto future = promise.get_future();
         try
         {
-            if (auto status = future.wait_for(std::chrono::seconds{10});
-                status == std::future_status::ready)
+            if (auto status = future.wait_for(std::chrono::seconds{10}); status == std::future_status::ready)
             {
                 future.get();
             }
@@ -711,8 +692,8 @@ extern "C"
         return lokinet_inbound_stream_filter(&accept_port, (void*)new std::uintptr_t{port}, ctx);
     }
 
-    int EXPORT lokinet_inbound_stream_filter(
-        lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* ctx)
+    int EXPORT
+    lokinet_inbound_stream_filter(lokinet_stream_filter acceptFilter, void* user, struct lokinet_context* ctx)
     {
         if (acceptFilter == nullptr)
         {
@@ -731,9 +712,8 @@ extern "C"
             ctx->impl->CallSafe([ctx, acceptFilter, user, &promise]() {
                 auto ep = ctx->endpoint();
                 auto* quic = ep->GetQUICTunnel();
-                auto id = quic->listen(
-                    [acceptFilter, user](
-                        auto remoteAddr, auto port) -> std::optional<llarp::SockAddr> {
+                auto id =
+                    quic->listen([acceptFilter, user](auto remoteAddr, auto port) -> std::optional<llarp::SockAddr> {
                         std::string remote{remoteAddr};
                         if (auto result = acceptFilter(remote.c_str(), port, user))
                         {
@@ -806,11 +786,8 @@ extern "C"
         {}
     }
 
-    int EXPORT lokinet_srv_lookup(
-        char* host,
-        char* service,
-        struct lokinet_srv_lookup_result* result,
-        struct lokinet_context* ctx)
+    int EXPORT
+    lokinet_srv_lookup(char* host, char* service, struct lokinet_srv_lookup_result* result, struct lokinet_context* ctx)
     {
         if (result == nullptr or ctx == nullptr or host == nullptr or service == nullptr)
             return -1;
@@ -821,8 +798,8 @@ extern "C"
         return result->internal->LookupSRV(host, service, ctx);
     }
 
-    void EXPORT lokinet_for_each_srv_record(
-        struct lokinet_srv_lookup_result* result, lokinet_srv_record_iterator iter, void* user)
+    void EXPORT
+    lokinet_for_each_srv_record(struct lokinet_srv_lookup_result* result, lokinet_srv_record_iterator iter, void* user)
     {
         if (result and result->internal)
         {
@@ -851,15 +828,14 @@ extern "C"
         struct lokinet_udp_bind_result* result,
         struct lokinet_context* ctx)
     {
-        if (filter == nullptr or recv == nullptr or timeout == nullptr or result == nullptr
-            or ctx == nullptr)
+        if (filter == nullptr or recv == nullptr or timeout == nullptr or result == nullptr or ctx == nullptr)
             return EINVAL;
 
         auto lock = ctx->acquire();
         if (auto ep = ctx->endpoint())
         {
-            if (auto maybe = ctx->make_udp_handler(
-                    ep, llarp::net::port_t::from_host(exposedPort), filter, recv, timeout, user))
+            if (auto maybe =
+                    ctx->make_udp_handler(ep, llarp::net::port_t::from_host(exposedPort), filter, recv, timeout, user))
             {
                 result->socket_id = *maybe;
                 return 0;
@@ -877,13 +853,9 @@ extern "C"
     }
 
     int EXPORT lokinet_udp_flow_send(
-        const struct lokinet_udp_flowinfo* remote,
-        const void* ptr,
-        size_t len,
-        struct lokinet_context* ctx)
+        const struct lokinet_udp_flowinfo* remote, const void* ptr, size_t len, struct lokinet_context* ctx)
     {
-        if (remote == nullptr or remote->remote_port == 0 or ptr == nullptr or len == 0
-            or ctx == nullptr)
+        if (remote == nullptr or remote->remote_port == 0 or ptr == nullptr or len == 0 or ctx == nullptr)
             return EINVAL;
         std::shared_ptr<llarp::EndpointBase> ep;
         llarp::nuint16_t srcport{0};
@@ -954,8 +926,7 @@ extern "C"
             {
                 // check for pre existing flow
                 auto lock = ctx->acquire();
-                if (auto itr = ctx->udp_sockets.find(remote->socket_id);
-                    itr != ctx->udp_sockets.end())
+                if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
                 {
                     auto& udp = itr->second;
                     if (udp->m_Flows.count(*maybe))
@@ -973,9 +944,7 @@ extern "C"
                 {
                     ep->MarkAddressOutbound(*addr);
                     auto res = ep->EnsurePathTo(
-                        *addr,
-                        [&gotten](auto result) { gotten.set_value(result.has_value()); },
-                        5s);
+                        *addr, [&gotten](auto result) { gotten.set_value(result.has_value()); }, 5s);
                     if (not res)
                     {
                         gotten.set_value(false);
@@ -989,8 +958,7 @@ extern "C"
                 create_flow(user, &flow_data, &flow_timeoutseconds);
                 {
                     auto lock = ctx->acquire();
-                    if (auto itr = ctx->udp_sockets.find(remote->socket_id);
-                        itr != ctx->udp_sockets.end())
+                    if (auto itr = ctx->udp_sockets.find(remote->socket_id); itr != ctx->udp_sockets.end())
                     {
                         itr->second->AddFlow(*maybe, *remote, flow_data, flow_timeoutseconds);
                         return 0;
@@ -1004,8 +972,7 @@ extern "C"
         return EINVAL;
     }
 
-    void EXPORT
-    lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* user)
+    void EXPORT lokinet_set_syncing_logger(lokinet_logger_func func, lokinet_logger_sync sync, void* user)
     {
         llarp::log::clear_sinks();
         llarp::log::add_sink(std::make_shared<llarp::logging::CallbackSink_mt>(func, sync, user));

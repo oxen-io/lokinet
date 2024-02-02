@@ -74,10 +74,7 @@ namespace llarp
         /// Load the key at a given filepath or create it
         ///
         /// @param keygen is a function that will generate the key if needed
-        static bool keygen(
-            fs::path filepath,
-            llarp::SecretKey& key,
-            std::function<void(llarp::SecretKey& key)> keygen);
+        static bool keygen(fs::path filepath, llarp::SecretKey& key, std::function<void(llarp::SecretKey& key)> keygen);
     };
 
 }  // namespace llarp

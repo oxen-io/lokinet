@@ -27,8 +27,7 @@ namespace llarp
 
         std::string_view bt_encode() const;
 
-        void populate_bootstraps(
-            std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks);
+        void populate_bootstraps(std::vector<fs::path> paths, const fs::path& def, bool load_fallbacks);
 
         bool read_from_file(const fs::path& fpath);
 
@@ -54,8 +53,7 @@ namespace llarp
         void randomize()
         {
             if (size() > 1)
-                _curr =
-                    std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
+                _curr = std::next(begin(), std::uniform_int_distribution<size_t>{0, size() - 1}(csrng));
         }
 
         void clear_list()

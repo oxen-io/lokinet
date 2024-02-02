@@ -170,8 +170,7 @@ namespace llarp
 
     SockAddr::operator const sockaddr*() const
     {
-        return isIPv4() ? reinterpret_cast<const sockaddr*>(&addr4)
-                        : reinterpret_cast<const sockaddr*>(&addr6);
+        return isIPv4() ? reinterpret_cast<const sockaddr*>(&addr4) : reinterpret_cast<const sockaddr*>(&addr6);
     }
 
     SockAddr::operator const sockaddr_in*() const
@@ -250,8 +249,7 @@ namespace llarp
         if (splits.size() == 2)
         {
             if (not allow_port)
-                throw std::runtime_error{
-                    fmt::format("invalid ip address (port not allowed here): {}", str)};
+                throw std::runtime_error{fmt::format("invalid ip address (port not allowed here): {}", str)};
             uint16_t port;
             if (not parse_int(splits[1], port))
                 throw std::runtime_error{fmt::format("{} is not a valid port", splits[1])};
