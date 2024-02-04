@@ -1,3 +1,9 @@
+lokinet (0.9.11-2~ubuntu2310) mantic; urgency=medium
+
+  * Add mantic build
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 04 Feb 2024 19:57:41 -0400
+
 lokinet (0.9.11-2~ubuntu2304) lunar; urgency=medium
 
   * rebuild for lunar
