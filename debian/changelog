@@ -1,6 +1,6 @@
-lokinet (0.9.11-2~ubuntu2310) mantic; urgency=medium
+lokinet (0.9.11-2~ubuntu2404) noble; urgency=medium
 
-  * Add mantic build
+  * Add noble build
 
  -- Jason Rhinelander <jason@imaginary.ca>  Sun, 04 Feb 2024 19:57:41 -0400
 
