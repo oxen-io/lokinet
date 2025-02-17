@@ -1,3 +1,15 @@
+lokinet (0.9.12-2~ubuntu2410) oracular; urgency=medium
+
+  [ Thomas Winget ]
+  * mainnet service node detect and exit bad state
+
+  [ Jason Rhinelander ]
+  * fix broken patch fix
+  * Fix invalid oxend rpc call
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 17 Feb 2025 14:38:35 -0400
+
 lokinet (0.9.12-1~ubuntu202410) oracular; urgency=medium
 
   [ Jason Rhinelander ]
