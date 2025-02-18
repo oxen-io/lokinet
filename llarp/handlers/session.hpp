@@ -70,9 +70,16 @@ namespace llarp
             // policies about traffic that we are willing to carry -- Exit mode only!
             std::optional<net::ExitPolicy> _exit_policy = std::nullopt;
 
-            void _unmap_session(session::BaseSession* s);
+            void unmap_session(NetworkAddress remote, bool using_tun = true);
 
-            void _close_session(std::shared_ptr<session::BaseSession>& s, bool send_close);
+            void close_session(std::shared_ptr<session::BaseSession>& s, bool send_close);
+
+          protected:
+            void rotate_paths() override;
+
+            void drop_oldest_path() override;
+
+            std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
 
           public:
             SessionEndpoint(Router& r);
@@ -121,15 +128,16 @@ namespace llarp
             // This function can be called with the fields to be updated. ClientIntros are always passed, so there
             // is no need to pass them to this function
             template <typename... Opt>
-            void update_and_publish_localcc(intro_set intros, Opt&&... args)
+            void update_and_publish_localcc(Opt&&... args)
             {
+                auto intros = get_current_client_intros();
                 if (intros.empty())
                     return _localcc_update_fail();
                 client_contact.regenerate(std::move(intros), std::forward<Opt>(args)...);
                 _update_and_publish_localcc();
             }
 
-            void update_and_publish_localcc(intro_set intros);
+            void update_and_publish_localcc();
 
             void start_tickers();
 

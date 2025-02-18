@@ -73,6 +73,8 @@ namespace llarp
 
             bool is_linked() const { return not _linked_sessions.empty(); }
 
+            size_t num_links() const { return _linked_sessions.size(); }
+
             bool is_expired(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
             void Tick(std::chrono::milliseconds now);

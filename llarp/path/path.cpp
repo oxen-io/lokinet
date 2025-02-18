@@ -117,16 +117,10 @@ namespace llarp::path
 
     bool Path::operator==(const Path& other) const
     {
-        bool ret = true;
-        size_t len = std::min(hops.size(), other.hops.size()), i = 0;
+        if (hops.size() == other.hops.size())
+            return std::ranges::equal(hops, other.hops);
 
-        while (ret and i < len)
-        {
-            ret &= hops[i] == other.hops[i];
-            ++i;
-        };
-
-        return ret;
+        return false;
     }
 
     bool Path::operator!=(const Path& other) const { return not(*this == other); }
@@ -215,12 +209,12 @@ namespace llarp::path
 
     std::string Path::to_string() const
     {
-        return "Path:[ Active:{} | Session linked:{} | Local RID:{} | Edge TX:{}/RX:{} ]"_format(
+        return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Edge RX:{} | Pivot TX:{} ]"_format(
             detail::bool_alpha(is_ready()),
             detail::bool_alpha(_is_session_path),
             _router.local_rid().short_string(),
-            upstream_txid().to_string(),
-            upstream_rxid().to_string());
+            upstream_rxid(),
+            pivot_txid());
     }
 
     std::string Path::hop_string() const

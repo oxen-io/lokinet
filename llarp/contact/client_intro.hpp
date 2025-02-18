@@ -52,12 +52,12 @@ namespace llarp
         static constexpr bool to_string_formattable = true;
     };
 
-    struct ClientIntroComp
+    struct ClientIntroExpComp
     {
         bool operator()(const ClientIntro& lhs, const ClientIntro& rhs) const { return lhs.expiry > rhs.expiry; }
     };
 
-    using intro_set = std::set<ClientIntro, ClientIntroComp>;
+    using intro_set = std::set<ClientIntro, ClientIntroExpComp>;
 
 }  //  namespace llarp
 

@@ -45,7 +45,22 @@ namespace llarp::path
 
     PathHandler::PathHandler(Router& _r, size_t num_paths, size_t _n_hops)
         : _running{true}, num_paths_desired{num_paths}, _router{_r}, num_hops{_n_hops}
-    {}
+    {
+        _path_rotater = _router.loop()->call_every(PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
+    }
+
+    static constexpr auto path_map_comp = [comp = PathExpComp{}](auto lhs, auto rhs) -> bool {
+        // invert parameters passed so PathExpComp gives us the first to expire, rather than the last
+        return comp(rhs.second, lhs.second);
+    };
+
+    std::shared_ptr<Path> PathHandler::get_oldest_path()
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        Lock_t l{paths_mutex};
+        return std::ranges::min_element(_paths, path_map_comp)->second;
+    }
 
     void PathHandler::add_path(std::shared_ptr<Path> p)
     {
@@ -522,29 +537,6 @@ namespace llarp::path
 
         log::warning(logcat, "Failed to find {} RCs for aligned path to pivot: {}", hops_needed, pivot);
         return std::nullopt;
-
-        // while (hops_needed)
-        // {
-        //     // do this 1 at a time so we can check for IP range overlap
-        //     if (auto maybe_rc = _router.node_db()->get_random_rc_conditional(filter))
-        //     {
-        //         hops.emplace_back(std::move(*maybe_rc));
-        //     }
-        //     else
-        //     {
-        //         log::warning(
-        //             logcat, "Failed to find RC for aligned path! (needed:{}, remaining:{})", num_hops, hops_needed);
-
-        //         return std::nullopt;
-        //     }
-
-        //     --hops_needed;
-        // }
-
-        // // add pivot rc last
-        // hops.emplace_back(std::move(pivot_rc));
-
-        // return hops;
     }
 
     bool PathHandler::build_path_to_random()
@@ -686,19 +678,81 @@ namespace llarp::path
         {
             assert(new_path);
 
-            auto payload = build2(new_path);
-            auto upstream = new_path->upstream_rid();
+            path_build_onepass(
+                std::move(new_path),
+                [this](std::shared_ptr<Path> new_path) { path_build_succeeded(new_path); },
+                [this](std::shared_ptr<Path> new_path, int ec) { return path_build_failed(std::move(new_path), ec); });
+        }
+    }
 
-            if (not build3(std::move(upstream), std::move(payload), [this, new_path](oxen::quic::message m) mutable {
+    void PathHandler::path_build_recursive(
+        intro_set intros,
+        NetworkAddress remote,
+        std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
+        bool keep_path)
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        // we can recurse through this function as we remove the first pivot of the set of introductions every
+        // invocation
+        if (intros.empty())
+        {
+            log::critical(logcat, "Exhausted all pivots associated with remote (rid:{}); failed to make path!", remote);
+            return;
+        }
+
+        auto remote_intro = intros.extract(intros.begin()).value();
+
+        auto& pivot = remote_intro.pivot_rid;
+
+        log::debug(logcat, "Initiating path-build to remote ({}) via pivot {}", remote, pivot.short_string());
+
+        auto maybe_hops = aligned_hops_to_remote(pivot);
+
+        if (not maybe_hops)
+        {
+            log::error(logcat, "Failed to get hops for path-build to pivot {}", pivot.short_string());
+            return path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
+        }
+
+        auto& hops = *maybe_hops;
+        assert(pivot == hops.back().router_id());
+
+        std::shared_ptr<path::Path> new_path;
+
+        if (keep_path)
+        {
+            new_path = build1(hops);
+
+            if (not new_path)
+            {
+                log::warning(logcat, "Aborting recursive path-build in favor of in-progress build...");
+                return;
+            }
+        }
+        else
+        {
+            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak(), true, remote.is_client());
+            log::debug(logcat, "Building path -> {} : {}", new_path->to_string(), new_path->hop_string());
+        }
+
+        assert(new_path);
+
+        auto payload = build2(new_path);
+        auto upstream = new_path->upstream_rid();
+
+        if (build3(
+                std::move(upstream),
+                std::move(payload),
+                [this, new_path, intros, remote_intro, remote, cb, keep_path](oxen::quic::message m) mutable {
                     if (m)
                     {
                         log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
-                        return path_build_succeeded(std::move(new_path));
+                        return cb(std::move(new_path), std::move(remote_intro));
                     }
 
                     try
                     {
-                        // TODO: inform failure (what this means needs revisiting, badly)
                         if (m.timed_out)
                         {
                             log::warning(logcat, "Path build request timed out!");
@@ -716,12 +770,80 @@ namespace llarp::path
                             logcat, "Exception caught parsing path build response: {}; input: {}", e.what(), m.body());
                     }
 
-                    path_build_failed(std::move(new_path), m.timed_out);
+                    if (keep_path)
+                        path_build_failed(new_path);
+
+                    path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
                 }))
-            {
-                log::warning(logcat, "Error sending path_build control message");
-                path_build_failed(new_path);
-            }
+        {
+            log::debug(logcat, "Successfully dispatched path_build message...");
+            return;
+        }
+
+        log::warning(logcat, "Error sending path_build control message");
+
+        if (keep_path)
+        {
+            path_build_failed(new_path);
+            path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
+        }
+    }
+
+    void PathHandler::path_build_onepass(
+        std::shared_ptr<Path> new_path, path_build_success_hook success_cb, path_build_fail_hook fail_cb)
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        auto payload = build2(new_path);
+        auto upstream = new_path->upstream_rid();
+
+        if (not build3(
+                std::move(upstream),
+                std::move(payload),
+                [new_path, success_cb = std::move(success_cb), fail_cb](oxen::quic::message m) mutable {
+                    if (m)
+                    {
+                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
+                        return success_cb(std::move(new_path));
+                    }
+
+                    try
+                    {
+                        if (m.timed_out)
+                        {
+                            log::warning(logcat, "Path build request timed out!");
+                        }
+                        else
+                        {
+                            oxenc::bt_dict_consumer d{m.body()};
+                            auto status = d.require<std::string_view>(messages::STATUS_KEY);
+                            log::warning(logcat, "Path build returned failure status: {}", status);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(
+                            logcat, "Exception caught parsing path build response: {}; input: {}", e.what(), m.body());
+                    }
+
+                    return fail_cb(std::move(new_path), m.timed_out);
+                }))
+        {
+            log::warning(logcat, "Error sending path-build control message");
+            return fail_cb(std::move(new_path), false);
+        }
+    }
+
+    void PathHandler::rotate_paths(
+        std::vector<RemoteRC> hops, std::function<void(std::shared_ptr<Path>)> success_cb, path_build_fail_hook fail_cb)
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (auto new_path = build1(hops))
+        {
+            assert(new_path);
+
+            path_build_onepass(std::move(new_path), std::move(success_cb), std::move(fail_cb));
         }
     }
 

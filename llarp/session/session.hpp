@@ -29,7 +29,7 @@ namespace llarp
         class SessionEndpoint;
     }  // namespace handlers
 
-    using intro_path_map = std::map<ClientIntro, path::PathPtrSet, ClientIntroComp>;
+    using intro_path_map = std::map<ClientIntro, path::PathPtrSet, ClientIntroExpComp>;
 
     /** Snode vs Client Session
         - client to client: shared secret (symmetric key) is negotiated
@@ -171,11 +171,16 @@ namespace llarp
 
             bool update_local_paths();
 
-            void build_and_switch_paths(intro_set&& intros);
+            void build_and_switch_paths(intro_set intros);
 
             void map_path(const std::shared_ptr<path::Path>& p);
 
             void unmap_path(const std::shared_ptr<path::Path>& p);
+
+          protected:
+            void rotate_paths() override;
+
+            void drop_oldest_path() override;
 
           public:
             std::shared_ptr<path::PathHandler> get_self() override { return shared_from_this(); }
@@ -196,7 +201,7 @@ namespace llarp
 
             void path_build_failed(std::shared_ptr<path::Path> p, bool timeout = false) override;
 
-            void send_path_switch(std::shared_ptr<path::Path> _new_path);
+            void send_path_switch(std::shared_ptr<path::Path> new_path);
 
             bool stop(bool send_close = false) override;
 

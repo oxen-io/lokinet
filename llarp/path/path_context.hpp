@@ -56,15 +56,13 @@ namespace llarp::path
 
         std::shared_ptr<Path> get_path(const HopID& hop_id) const;
 
-        std::shared_ptr<TransitHop> get_path_for_transfer(const HopID& topath);
+        // std::shared_ptr<TransitHop> get_path_for_transfer(const HopID& topath);
 
         std::shared_ptr<TransitHop> get_transit_hop(const HopID&) const;
 
-        std::shared_ptr<PathHandler> get_path_handler(const HopID& id);
+        // std::shared_ptr<PathHandler> get_path_handler(const HopID& id);
 
         void add_path(std::shared_ptr<Path> p);
-
-        void drop_path(const HopID& hop_id);
 
         void drop_path(const std::shared_ptr<Path>& p);
 

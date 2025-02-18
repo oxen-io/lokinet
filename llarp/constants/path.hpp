@@ -8,39 +8,34 @@
 namespace llarp::path
 {
     /// maximum path length
-    constexpr std::size_t MAX_LEN = 8;
+    inline constexpr std::size_t MAX_LEN{8};
     /// default path length
-    constexpr std::size_t DEFAULT_LEN = 4;
+    inline constexpr std::size_t DEFAULT_LEN{4};
     /// pad messages to the nearest this many bytes
-    constexpr std::size_t PAD_SIZE = 128;
+    inline constexpr std::size_t PAD_SIZE{128};
+    // default number of paths per PathHandler
+    inline constexpr size_t DEFAULT_PATHS_HELD{4};
     /// default path lifetime in ms;
-    // TESTNET: reduced value
-    constexpr std::chrono::milliseconds DEFAULT_LIFETIME{10min};
+    inline constexpr std::chrono::milliseconds DEFAULT_LIFETIME{20min};
     /// minimum intro lifetime we will advertise
-    constexpr std::chrono::milliseconds MIN_INTRO_LIFETIME = DEFAULT_LIFETIME / 2;
-    /// number of slices of path lifetime to spread intros out via
-    constexpr auto INTRO_SPREAD_SLICES = 4;
-    /// spacing frequency at which we try to build paths for introductions
-    constexpr std::chrono::milliseconds INTRO_PATH_SPREAD = DEFAULT_LIFETIME / INTRO_SPREAD_SLICES;
+    inline constexpr std::chrono::milliseconds MIN_INTRO_LIFETIME{DEFAULT_LIFETIME / 2};
+    /// interval at which we try to build new paths for intros
+    inline constexpr std::chrono::milliseconds PATH_ROTATION_INTERVAL{DEFAULT_LIFETIME / DEFAULT_PATHS_HELD};
     /// how long away from expiration in millseconds do we consider an intro to become stale
-    constexpr std::chrono::milliseconds INTRO_STALE_THRESHOLD = DEFAULT_LIFETIME - INTRO_PATH_SPREAD;
-    /// Minimum paths to keep around for intros; mainly used at startup (the
-    /// spread, above, should be able to maintain more than this number of paths
-    /// normally once things are going).
-    constexpr std::size_t MIN_INTRO_PATHS = 4;
+    inline constexpr std::chrono::milliseconds INTRO_STALE_THRESHOLD{DEFAULT_LIFETIME - PATH_ROTATION_INTERVAL};
     /// after this many ms a path build times out
-    constexpr auto BUILD_TIMEOUT = 10s;
+    inline constexpr auto BUILD_TIMEOUT{10s};
 
-    constexpr auto MIN_PATH_BUILD_INTERVAL{500ms};
+    inline constexpr auto MIN_PATH_BUILD_INTERVAL{500ms};
 
-    constexpr auto PATH_BUILD_RATE{100ms};
+    inline constexpr auto PATH_BUILD_RATE{100ms};
 
     /// measure latency every this interval ms
-    constexpr auto LATENCY_INTERVAL = 20s;
+    inline constexpr std::chrono::milliseconds LATENCY_INTERVAL{20s};
     /// if a path is inactive for this amount of time it's dead
-    constexpr auto ALIVE_TIMEOUT = LATENCY_INTERVAL * 1.5;
+    inline constexpr std::chrono::milliseconds ALIVE_TIMEOUT{LATENCY_INTERVAL * 3 / 2};
 
     /// how big transit hop traffic queues are
-    constexpr std::size_t TRANSIT_HOP_QUEUE_SIZE = 256;
+    inline constexpr std::size_t TRANSIT_HOP_QUEUE_SIZE{256};
 
 }  // namespace llarp::path

@@ -4,6 +4,7 @@
 
 #include <llarp/address/address.hpp>
 #include <llarp/contact/client_intro.hpp>
+#include <llarp/ev/types.hpp>
 #include <llarp/link/types.hpp>
 #include <llarp/util/decaying_hashset.hpp>
 #include <llarp/util/thread/threading.hpp>
@@ -27,17 +28,19 @@ namespace std
 namespace llarp
 {
     struct Router;
+    namespace path
+    {
+        // forward declare
+        struct Path;
+    }  // namespace path
+
+    using path_build_success_hook = std::function<void(std::shared_ptr<path::Path>)>;
+    using path_build_fail_hook = std::function<void(std::shared_ptr<path::Path>, int)>;
 
     namespace path
     {
         // maximum number of paths a path-set can maintain
         inline constexpr size_t MAX_PATHS{32};
-
-        // default number of paths per PathHandler
-        inline constexpr size_t DEFAULT_PATHS_HELD{4};
-
-        // forward declare
-        struct Path;
 
         /// limiter for path builds
         /// prevents overload and such
@@ -85,6 +88,8 @@ namespace llarp
 
             std::unordered_map<RouterID, std::weak_ptr<Path>> path_cache;
 
+            std::shared_ptr<EventTicker> _path_rotater;
+
             void path_build_backoff();
 
           protected:
@@ -111,7 +116,24 @@ namespace llarp
 
             virtual void path_build_succeeded(std::shared_ptr<Path> p);
 
-            void _make_new_path(intro_set intro);
+            // TESTNET: WIP NEW METHODS
+            void path_build_recursive(
+                intro_set intros,
+                NetworkAddress remote,
+                std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
+                bool keep_path);
+
+            void path_build_onepass(
+                std::shared_ptr<Path> new_path, path_build_success_hook success, path_build_fail_hook fail);
+
+            virtual void rotate_paths() = 0;
+
+            void rotate_paths(std::vector<RemoteRC> hops, path_build_success_hook success, path_build_fail_hook fail);
+
+            // virtual void path_rotation_succeeded() = 0;
+
+            std::shared_ptr<Path> get_oldest_path();
+            virtual void drop_oldest_path() = 0;
 
           public:
             Router& _router;
@@ -129,9 +151,6 @@ namespace llarp
 
             /// get a weak_ptr of ourself
             virtual std::weak_ptr<PathHandler> get_weak() = 0;
-
-            /// get the "name" of this path set
-            // virtual std::string name() const = 0;
 
             const Router& router() const { return _router; }
 
@@ -202,7 +221,7 @@ namespace llarp
             // The build logic is segmented into functions designed to be called sequentially.
             //  - pre_build() : This handles all checking of the vector of hops, verifying with buildlimiter, etc
             //  - build1() : This can be re-implemented by inheriting classes that want to pass different parameters to
-            //      the created path. This is useful ßin cases like Outbound Sessions, Paths are constructed with the
+            //      the created path. This is useful in cases like OutboundSessions; Paths are constructed with the
             //      respective is_client and is_exit booleans set. Regardless, the implementation needs to return the
             //      created shared_ptr to be passed by reference to build2(...) and build3(...). The implementation MUST
             //      also check if the upstream rxid is already being used for a current path (very unlikely)

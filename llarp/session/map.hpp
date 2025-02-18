@@ -62,22 +62,9 @@ namespace llarp
             }
         }
 
-        /** Called by owning object to stop all Sessions, then clear the map.
+        /** Called by owning object to clear all Sessions mapped
          */
-        void stop_sessions(bool send_close = false)
-        {
-            Lock_t l{session_mutex};
-
-            if (send_close)
-            {
-                for (auto& [_, s] : _sessions)
-                {
-                    s->stop_session(send_close);
-                }
-            }
-
-            _sessions.clear();
-        }
+        void clear_sessions() { _sessions.clear(); }
 
         /** This functions exactly as std::unordered_map's ::insert_or_assign method. If a key equivalent
             to `remote` already exists in the container, `sesh` is assigned to the mapped type. If the key
