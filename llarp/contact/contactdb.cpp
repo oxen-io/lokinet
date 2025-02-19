@@ -36,7 +36,7 @@ namespace llarp
     {
         _router.loop()->call_later(approximate_time(5s, 5), [&]() {
             purge_ccs();
-            log::debug(logcat, "ContactDB starting purge ticker..");
+            log::trace(logcat, "ContactDB starting purge ticker..");
             _purge_ticker = _router.loop()->call_every(
                 5min, [this]() mutable { purge_ccs(); }, true);
         });
@@ -66,7 +66,7 @@ namespace llarp
         }
 
         if (n)
-            log::info(logcat, "{} expired ClientContacts purged!", n);
+            log::debug(logcat, "{} expired ClientContacts purged!", n);
     }
 
     void ContactDB::put_cc(EncryptedClientContact enc)

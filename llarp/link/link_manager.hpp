@@ -178,7 +178,7 @@ namespace llarp
 
         void fetch_router_ids(const RouterID& via, bt_control_send_hook send_hook);
 
-        void fetch_router_ids(const RouterID& via, std::string payload, bt_control_response_hook func);
+        // void fetch_router_ids(const RouterID& via, std::string payload, bt_control_response_hook func);
 
         void handle_fetch_router_ids(oxen::quic::message);
 
@@ -325,7 +325,7 @@ namespace llarp
                         [this, itr, rid, ep = std::move(ep), body = std::move(body), func = std::move(func)](
                             oxen::quic::connection_interface& ci) mutable {
                             auto& control_stream = itr->second->control_stream;
-                            log::debug(
+                            log::trace(
                                 logcat,
                                 "{} dispatching {} on outbound connection to remote (rid:{})",
                                 _is_service_node ? "Relay" : "Client",
@@ -343,7 +343,7 @@ namespace llarp
                     itr->second =
                         std::make_shared<link::Connection>(std::move(conn_interface), std::move(control_stream));
 
-                    log::info(logcat, "Outbound connection to RID:{} added to service conns...", rid);
+                    log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid);
                     return true;
                 }
                 catch (const std::exception& e)
@@ -388,7 +388,7 @@ namespace llarp
                     itr->second =
                         std::make_shared<link::Connection>(std::move(conn_interface), std::move(control_stream));
 
-                    log::info(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
+                    log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
                     return true;
                 }
                 catch (...)

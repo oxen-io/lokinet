@@ -49,6 +49,16 @@ namespace llarp::session
             };
     }
 
+    BaseSession::~BaseSession()
+    {
+        // TESTNET: downgrade this log
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        deactivate();
+
+        if (_current_path and _current_path->is_linked())
+            _current_path->unlink_session(_tag);
+    }
+
     bool BaseSession::send_path_control_message(std::string method, std::string body, bt_control_response_hook func)
     {
         auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
@@ -209,8 +219,6 @@ namespace llarp::session
             });
     }
 
-    void BaseSession::set_new_tag(const session_tag& tag) { _tag = tag; }
-
     void BaseSession::activate()
     {
         _is_active = true;
@@ -225,7 +233,7 @@ namespace llarp::session
 
     void BaseSession::stop_session(bool send_close, bt_control_response_hook func)
     {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
         deactivate();
 
@@ -245,15 +253,16 @@ namespace llarp::session
         _parent.unmap_session(_remote, _use_tun);
     }
 
+    static void session_close_cb(oxen::quic::message m)
+    {
+        log::debug(logcat, "Remote {} session", m ? "successfully closed" : "failed to close");
+    }
+
     void BaseSession::send_path_close(bt_control_response_hook func)
     {
-        if (not func)
-            func = [remote = _remote](oxen::quic::message m) mutable {
-                log::debug(logcat, "Remote ({}) {} session", remote, m ? "successfully closed" : "failed to close");
-            };
-
         log::debug(logcat, "Dispatching close session message...");
-        send_path_control_message("session_close", CloseSession::serialize(_tag), std::move(func));
+        send_path_control_message(
+            "session_close", CloseSession::serialize(_tag), func ? std::move(func) : session_close_cb);
     }
 
     std::string BaseSession::to_string() const
@@ -294,7 +303,16 @@ namespace llarp::session
         populate_intro_map(std::move(_remote_intros));
     }
 
-    OutboundSession::~OutboundSession() = default;
+    OutboundSession::~OutboundSession()
+    {
+        // TESTNET: downgrade this log
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+    }
+
+    std::shared_ptr<OutboundSession> OutboundSession::upcast(const std::shared_ptr<BaseSession>& b)
+    {
+        return std::static_pointer_cast<session::OutboundSession>(b);
+    }
 
     void OutboundSession::populate_intro_map(const intro_set& _remote_intros)
     {
@@ -475,7 +493,24 @@ namespace llarp::session
 
     void OutboundSession::stop_session(bool send_close, bt_control_response_hook func)
     {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        std::vector<HopID> droplist{};
+        {
+            Lock_t l{paths_mutex};
+            std::ranges::for_each(_paths, [&droplist](auto p) {
+                droplist.emplace_back(p.second->upstream_rxid());
+                droplist.emplace_back(p.second->pivot_txid());
+            });
+            log::critical(logcat, "Session droplist holds {} paths", droplist.size());
+        }
+
+        _router.loop()->call([wparent = _parent.weak_from_this(), droplist = std::move(droplist)]() mutable {
+            if (auto parent = wparent.lock())
+                parent->router().path_context()->drop_paths(std::move(droplist));
+            else
+                log::warning(logcat, "SessionEndpoint died before dropping session paths");
+        });
 
         _running = false;
         BaseSession::stop_session(send_close, std::move(func));
@@ -484,29 +519,10 @@ namespace llarp::session
         path::PathHandler::stop();
     }
 
-    bool OutboundSession::stop(bool send_close)
+    void OutboundSession::stop(bool send_close)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-        _running = false;
-
-        if (send_close)
-        {
-            std::promise<void> prom;
-
-            _router.loop()->call([&]() mutable {
-                send_path_close();
-                prom.set_value();
-            });
-
-            prom.get_future().get();
-            log::debug(logcat, "Dispatched path close message!");
-        }
-
-        intro_path_mapping.clear();
-
-        // base class dtor clears path map and doesn't send path closes
-        return path::PathHandler::stop();
+        stop_session(send_close);
     }
 
     void OutboundSession::build_more(size_t n)
@@ -607,6 +623,7 @@ namespace llarp::session
         path::PathHandler::rotate_paths(
             std::move(*maybe_hops),
             [this](auto new_path) mutable {
+                log::info(logcat, "OutboundSession successfully rotated in new path: {}", new_path->to_string());
                 path_build_succeeded(std::move(new_path));
                 drop_oldest_path();
             },

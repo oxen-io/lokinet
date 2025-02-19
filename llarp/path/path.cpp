@@ -25,7 +25,7 @@ namespace llarp::path
           num_hops{hop_rcs.size()}
     {
         populate_internals(hop_rcs);
-        log::debug(logcat, "Path successfully constructed -> {} : {}", to_string(), hop_string());
+        log::trace(logcat, "Path successfully constructed -> {} : {}", to_string(), hop_string());
     }
 
     void Path::populate_internals(const std::vector<RemoteRC>& hop_rcs)
@@ -103,7 +103,7 @@ namespace llarp::path
     bool Path::is_linked_to(session_tag t) const
     {
         auto ret = _linked_sessions.contains(t);
-        log::debug(logcat, "Session (tag:{}) is {}linked to path {}", t, ret ? "" : "NOT ", name());
+        log::trace(logcat, "Session (tag:{}) is {}linked to path {}", t, ret ? "" : "NOT ", name());
         return ret;
     }
 
@@ -265,7 +265,7 @@ namespace llarp::path
 
     void Path::set_established()
     {
-        log::debug(logcat, "Path marked as successfully established!");
+        log::trace(logcat, "Path marked as successfully established!");
         _established = true;
         intro.expiry = llarp::time_now_ms() + path::DEFAULT_LIFETIME;
     }

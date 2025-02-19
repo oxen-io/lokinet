@@ -415,7 +415,7 @@ namespace llarp::rpc
             {
                 if (auto session = _router.session_endpoint()->get_session(NetworkAddress::from_pubkey(pk, true)))
                 {
-                    session->stop_session(true, [replier = sessionclose.move()](oxen::quic::message m) mutable {
+                    auto hook = [replier = sessionclose.move()](oxen::quic::message m) mutable {
                         nlohmann::json result;
 
                         if (m)
@@ -442,11 +442,18 @@ namespace llarp::rpc
                         log::critical(logcat, "Call to InitiateSession FAILED; reason: {}", status);
                         result.emplace("result", std::move(status));
                         replier.reply(result.dump());
-                    });
+                    };
+
+                    if (session->is_outbound())
+                        session::OutboundSession::upcast(session)->stop_session(true, std::move(hook));
+                    else
+                        session->stop_session(true, std::move(hook));
+
+                    log::info(
+                        logcat, "RPC Server dispatched `session_close` to remote:{}", pk.to_network_address(false));
                 }
 
                 // _router.session_endpoint()->close_session(NetworkAddress::from_pubkey(pk, true));
-                log::info(logcat, "RPC Server dispatched `session_close` to remote:{}", pk.to_network_address(false));
             }
             catch (const std::exception& e)
             {

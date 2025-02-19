@@ -191,7 +191,7 @@ namespace llarp
 
             BuildStats& build_stats() { return _build_stats; }
 
-            virtual bool stop(bool send_close = false);
+            virtual void stop(bool send_close = false);
 
             bool is_stopped() const;
 

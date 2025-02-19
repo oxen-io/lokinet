@@ -80,7 +80,7 @@ namespace llarp::handlers
         path::PathHandler::tick(now);
     }
 
-    bool SessionEndpoint::stop(bool send_close)
+    void SessionEndpoint::stop(bool send_close)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -98,7 +98,6 @@ namespace llarp::handlers
 
             _router.loop()->call([&]() mutable {
                 _sessions.for_each([](std::shared_ptr<session::BaseSession>& s) { s->send_path_close(); });
-
                 prom.set_value();
             });
 
@@ -108,7 +107,7 @@ namespace llarp::handlers
 
         _sessions.clear_sessions();
 
-        return path::PathHandler::stop();
+        path::PathHandler::stop();
     }
 
     void SessionEndpoint::configure()
@@ -132,10 +131,10 @@ namespace llarp::handlers
             client_contact.SRVs = _srv_records;
         }
 
-        if (use_tokens = not net_config.auth_static_tokens.empty(); use_tokens)
+        if (_use_tokens = not net_config.auth_static_tokens.empty(); _use_tokens)
             _static_auth_tokens.merge(net_config.auth_static_tokens);
 
-        if (use_whitelist = not net_config.auth_whitelist.empty(); use_whitelist)
+        if (_use_whitelist = not net_config.auth_whitelist.empty(); _use_whitelist)
             _auth_whitelist.merge(net_config.auth_whitelist);
 
         _if_name = *net_config._if_name;
@@ -143,7 +142,7 @@ namespace llarp::handlers
         _local_addr = *net_config._local_addr;
         _local_base_ip = *net_config._local_base_ip;
 
-        _is_v4 = _local_range.is_ipv4();
+        _ipv6_enabled = net_config.enable_ipv6;
 
         // TESTNET: TODO: check if ipv6 is disabled
         for (auto& [addr, range] : net_config._exit_ranges)
@@ -159,8 +158,9 @@ namespace llarp::handlers
         // always accept ipv4 (currently)
         uint8_t protoflags = meta::to_underlying(protocol_flag::IPV4);
 
-        if (!_is_v4)
+        if (_ipv6_enabled)
             protoflags |= meta::to_underlying(protocol_flag::IPV6);
+
         // if we are a full client, we accept standard and tunneled (QUICTUN) traffic
         if (_router.using_tun_if())
             protoflags |= meta::to_underlying(protocol_flag::QUICTUN);
@@ -192,7 +192,7 @@ namespace llarp::handlers
 
     void SessionEndpoint::rotate_paths()
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         Lock_t l{paths_mutex};
 
@@ -208,6 +208,7 @@ namespace llarp::handlers
             [this](auto new_path) mutable {
                 path_build_succeeded(new_path);
                 drop_oldest_path();
+                log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->to_string());
                 update_and_publish_localcc();
             },
             [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
@@ -240,17 +241,11 @@ namespace llarp::handlers
         size_t count{0};
         log::debug(logcat, "SessionEndpoint building {} paths to random remotes (needed: {})", n, num_paths_desired);
 
-        // TESTNET: ensure one path is built to pivot
-        // RouterID pivot{oxenc::from_base32z("55fxrybf3jtausbnmxpgwcsz9t8qkf5pr8t5f4xyto4omjrkorpy")};
-        // count += build_path_aligned_to_remote(pivot);
-
         while (count < n)
             count += build_path_to_random();
 
         if (count == n)
-        {
             log::debug(logcat, "SessionEndpoint successfully initiated {} path-builds", n);
-        }
         else
             log::warning(logcat, "SessionEndpoint only initiated {} path-builds (needed: {})", count, n);
     }
@@ -270,7 +265,12 @@ namespace llarp::handlers
             _router.loop()->call_later(approximate_time(5s, 5), [&]() {
                 update_and_publish_localcc();
                 _cc_publisher = _router.loop()->call_every(
-                    CC_PUBLISH_INTERVAL, [this]() mutable { update_and_publish_localcc(); }, true);
+                    CC_PUBLISH_INTERVAL,
+                    [/* this */]() mutable {
+                        log::critical(logcat, "TESTNET: Skipping ClientContact publish!");
+                        // update_and_publish_localcc();
+                    },
+                    true);
             });
         }
         else
@@ -523,10 +523,10 @@ namespace llarp::handlers
     {
         bool ret{true};
 
-        if (use_tokens)
+        if (_use_tokens)
             ret &= _static_auth_tokens.contains(*maybe_auth);
 
-        if (use_whitelist)
+        if (_use_whitelist)
             ret &= _auth_whitelist.contains(remote);
 
         return ret;

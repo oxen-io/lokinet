@@ -224,58 +224,58 @@ namespace llarp
 
     void NodeDB::process_fetched_rcs(std::set<RemoteRC> rcs)
     {
-        _router.loop()->call([&]() {
-            std::set<RemoteRC> confirmed_set, unconfirmed_set;
+        // _router.loop()->call([&]() {
+        // });
+        std::set<RemoteRC> confirmed_set, unconfirmed_set;
 
-            // the intersection of local RC's and received RC's is our confirmed set
-            std::set_intersection(
-                known_rcs.begin(),
-                known_rcs.end(),
-                rcs.begin(),
-                rcs.end(),
-                std::inserter(confirmed_set, confirmed_set.begin()));
+        // the intersection of local RC's and received RC's is our confirmed set
+        std::set_intersection(
+            known_rcs.begin(),
+            known_rcs.end(),
+            rcs.begin(),
+            rcs.end(),
+            std::inserter(confirmed_set, confirmed_set.begin()));
 
-            // the intersection of the confirmed set and received RC's is our unconfirmed set
-            std::set_intersection(
-                rcs.begin(),
-                rcs.end(),
-                confirmed_set.begin(),
-                confirmed_set.end(),
-                std::inserter(unconfirmed_set, unconfirmed_set.begin()));
+        // the intersection of the confirmed set and received RC's is our unconfirmed set
+        std::set_intersection(
+            rcs.begin(),
+            rcs.end(),
+            confirmed_set.begin(),
+            confirmed_set.end(),
+            std::inserter(unconfirmed_set, unconfirmed_set.begin()));
 
-            // the total number of rcs received
-            const auto num_received = static_cast<double>(rcs.size());
-            // the number of returned "good" rcs (that are also found locally)
-            const auto inter_size = confirmed_set.size();
+        // the total number of rcs received
+        const auto num_received = static_cast<double>(rcs.size());
+        // the number of returned "good" rcs (that are also found locally)
+        const auto inter_size = confirmed_set.size();
 
-            const auto fetch_threshold = (double)inter_size / num_received;
+        const auto fetch_threshold = (double)inter_size / num_received;
 
-            log::trace(
-                logcat,
-                "Num received: {}, confirmed (intersection) size: {}, fetch_threshold: {}",
-                num_received,
-                inter_size,
-                fetch_threshold);
+        log::trace(
+            logcat,
+            "Num received: {}, confirmed (intersection) size: {}, fetch_threshold: {}",
+            num_received,
+            inter_size,
+            fetch_threshold);
 
-            /** We are checking 2 things here:
-                1) The number of "good" rcs is above MIN_GOOD_RC_FETCH_TOTAL
-                2) The ratio of "good" rcs to total received is above MIN_GOOD_RC_FETCH_THRESHOLD
-            */
-            bool success = (inter_size >= MIN_GOOD_RC_FETCH_TOTAL) and (fetch_threshold >= MIN_GOOD_RC_FETCH_THRESHOLD);
+        /** We are checking 2 things here:
+            1) The number of "good" rcs is above MIN_GOOD_RC_FETCH_TOTAL
+            2) The ratio of "good" rcs to total received is above MIN_GOOD_RC_FETCH_THRESHOLD
+        */
+        bool success = (inter_size >= MIN_GOOD_RC_FETCH_TOTAL) and (fetch_threshold >= MIN_GOOD_RC_FETCH_THRESHOLD);
 
-            if (success)
-            {
-                log::debug(logcat, "Accumulated RC's accepted by trust model");
-                rcs = std::move(confirmed_set);
-                process_results(std::move(unconfirmed_set), unconfirmed_rcs, known_rcs);
-                post_rc_fetch(false);
-            }
-            else
-            {
-                log::warning(logcat, "Accumulated RC's rejected by trust model; reselecting RC fetch source...");
-                cycle_fetch_source();
-            }
-        });
+        if (success)
+        {
+            log::info(logcat, "RC fetch was successful: accumulated RC's accepted by trust model");
+            rcs = std::move(confirmed_set);
+            process_results(std::move(unconfirmed_set), unconfirmed_rcs, known_rcs);
+            post_rc_fetch(false);
+        }
+        else
+        {
+            log::warning(logcat, "Accumulated RC's rejected by trust model; reselecting RC fetch source...");
+            cycle_fetch_source();
+        }
     }
 
     /** We only call into this function after ensuring two conditions:
@@ -296,82 +296,63 @@ namespace llarp
     */
     void NodeDB::process_fetched_rids()
     {
-        _router.loop()->call([&]() {
-            std::set<RouterID> union_set, confirmed_set, unconfirmed_set;
+        // _router.loop()->call([&]() {
+        // });
+        std::set<RouterID> union_set, confirmed_set, unconfirmed_set;
 
-            for (const auto& [rid, count] : rid_result_counters)
-            {
-                log::trace(logcat, "RID: {}, Freq: {}", rid.short_string(), count);
-                if (count >= MIN_RID_FETCH_FREQ)
-                    union_set.insert(rid);
-                else
-                    unconfirmed_set.insert(rid);
-            }
-
-            // get the intersection of accepted rids and local rids
-            std::set_intersection(
-                known_rids.begin(),
-                known_rids.end(),
-                union_set.begin(),
-                union_set.end(),
-                std::inserter(confirmed_set, confirmed_set.begin()));
-
-            // the total number of rids received
-            const auto num_received = (double)(rid_result_counters.size());
-            // the total number of received AND accepted rids
-            const auto union_size = union_set.size();
-
-            const auto fetch_threshold = (double)union_size / num_received;
-
-            bool success = (fetch_threshold >= GOOD_RID_FETCH_THRESHOLD) and (union_size >= MIN_GOOD_RID_FETCH_TOTAL);
-
-            log::trace(
-                logcat,
-                "Num received: {}, union size: {}, known rid size: {}, fetch_threshold: {}, status: {}",
-                num_received,
-                union_size,
-                known_rids.size(),
-                fetch_threshold,
-                success ? "SUCCESS" : "FAIL");
-
-            /** We are checking 2 things here:
-                1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
-                This tells us how well the rid source's sets of rids "agree" with one another
-                2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
-                receiving a sufficient amount to make a comparison of any sorts
-            */
-            if (success)
-            {
-                log::debug(logcat, "Accumulated RID's accepted by trust model");
-                process_results(std::move(unconfirmed_set), unconfirmed_rids, known_rids);
-                known_rids.merge(confirmed_set);
-                post_rid_fetch(false);
-            }
-            else
-            {
-                log::warning(logcat, "Accumulated RID's rejected by trust model; reselecting RID fetch sources...");
-                reselect_router_id_sources(fail_sources);
-            }
-        });
-    }
-
-    void NodeDB::ingest_fetched_rids(const RouterID& source, std::optional<std::set<RouterID>> rids)
-    {
-        log::debug(logcat, "Ingesting {} RID's from {}", rids ? rids->size() : 0, source);
-
-        if (rids)
+        for (const auto& [rid, count] : rid_result_counters)
         {
-            for (const auto& rid : *rids)
-                rid_result_counters[rid] += 1;
+            log::trace(logcat, "RID: {}, Freq: {}", rid.short_string(), count);
+            if (count >= MIN_RID_FETCH_FREQ)
+                union_set.insert(rid);
+            else
+                unconfirmed_set.insert(rid);
+        }
+
+        // get the intersection of accepted rids and local rids
+        std::set_intersection(
+            known_rids.begin(),
+            known_rids.end(),
+            union_set.begin(),
+            union_set.end(),
+            std::inserter(confirmed_set, confirmed_set.begin()));
+
+        // the total number of rids received
+        const auto num_received = (double)(rid_result_counters.size());
+        // the total number of received AND accepted rids
+        const auto union_size = union_set.size();
+
+        const auto fetch_threshold = (double)union_size / num_received;
+
+        bool success = (fetch_threshold >= GOOD_RID_FETCH_THRESHOLD) and (union_size >= MIN_GOOD_RID_FETCH_TOTAL);
+
+        log::trace(
+            logcat,
+            "Num received: {}, union size: {}, known rid size: {}, fetch_threshold: {}, status: {}",
+            num_received,
+            union_size,
+            known_rids.size(),
+            fetch_threshold,
+            success ? "SUCCESS" : "FAIL");
+
+        /** We are checking 2 things here:
+            1) The ratio of received/accepted to total received is above GOOD_RID_FETCH_THRESHOLD.
+            This tells us how well the rid source's sets of rids "agree" with one another
+            2) The total number received is above MIN_RID_FETCH_TOTAL. This ensures that we are
+            receiving a sufficient amount to make a comparison of any sorts
+        */
+        if (success)
+        {
+            log::info(logcat, "RID fetch was successful: accumulated RID's accepted by trust model");
+            process_results(std::move(unconfirmed_set), unconfirmed_rids, known_rids);
+            known_rids.merge(confirmed_set);
+            post_rid_fetch(false);
         }
         else
         {
-            fail_sources.insert(source);
-            fail_counter += 1;
-            log::trace(logcat, "{} marked as a failed fetch source (currently: {})", source, fail_counter);
+            log::warning(logcat, "Accumulated RID's rejected by trust model; reselecting RID fetch sources...");
+            reselect_router_id_sources(fail_sources);
         }
-
-        rid_fetch_result();
     }
 
     std::vector<RouterID> NodeDB::get_expired_rcs()
@@ -407,7 +388,7 @@ namespace llarp
             src, FetchRCMessage::serialize(needed), [this, source = src](oxen::quic::message m) mutable {
                 if (not m)
                 {
-                    log::info(
+                    log::warning(
                         logcat,
                         "RC fetch from {} {}",
                         source,
@@ -447,7 +428,7 @@ namespace llarp
 
         if (result)
         {
-            log::info(logcat, "RC fetching was successful; processing {} returned RCs...", result->size());
+            log::debug(logcat, "RC fetching was successful; processing {} returned RCs...", result->size());
             return process_fetched_rcs(std::move(*result));
         }
 
@@ -492,12 +473,13 @@ namespace llarp
                     "fetch_rids",
                     FetchRIDMessage::serialize(target),
                     [&, source = src, target = target](oxen::quic::message msg) mutable {
+                        // Since we batch send this without going through link_manager, wrap the response handler
+                        // in loop-call from here
                         _router.loop()->call([&, m = std::move(msg)]() mutable {
                             response_counter += 1;
-
                             if (not m)
                             {
-                                log::info(
+                                log::warning(
                                     logcat,
                                     "RID fetch from {} via {} {}",
                                     target,
@@ -539,12 +521,31 @@ namespace llarp
                             }
                         });
                     });
-            });
 
-            fetch_counter += 1;
+                fetch_counter += 1;
+            });
         };
 
         _router.link_manager()->fetch_router_ids(src, std::move(send_hook));
+    }
+
+    void NodeDB::ingest_fetched_rids(const RouterID& source, std::optional<std::set<RouterID>> rids)
+    {
+        log::trace(logcat, "Ingesting {} RID's from {}", rids ? rids->size() : 0, source);
+
+        if (rids)
+        {
+            for (const auto& rid : *rids)
+                rid_result_counters[rid] += 1;
+        }
+        else
+        {
+            fail_sources.insert(source);
+            fail_counter += 1;
+            log::trace(logcat, "{} marked as a failed fetch source (currently: {})", source, fail_counter);
+        }
+
+        rid_fetch_result();
     }
 
     void NodeDB::rid_fetch_result()
@@ -564,11 +565,11 @@ namespace llarp
 
         if (n_fails <= MAX_RID_ERRORS)
         {
-            log::info(logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
+            log::debug(logcat, "RID fetching was successful ({}/{} acceptable errors)", n_fails, MAX_RID_ERRORS);
             return process_fetched_rids();
         }
 
-        log::critical(logcat, "RID fetching found {} failures; reselecting failed RID fetch sources...", n_fails);
+        log::warning(logcat, "RID fetching found {} failures; reselecting failed RID fetch sources...", n_fails);
         reselect_router_id_sources(fail_sources);
     }
 

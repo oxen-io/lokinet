@@ -51,8 +51,8 @@ namespace llarp
             // whitelist for authenticating inbound sessions
             std::unordered_set<NetworkAddress> _auth_whitelist;
 
-            bool use_tokens{false};
-            bool use_whitelist{false};
+            bool _use_tokens{false};
+            bool _use_whitelist{false};
 
             IPRange _local_range;
             oxen::quic::Address _local_addr;
@@ -60,7 +60,7 @@ namespace llarp
             ip_v _next_ip;
             std::string _if_name;
 
-            bool _is_v4;
+            bool _ipv6_enabled{};
 
             std::optional<std::string_view> fetch_auth_token(const NetworkAddress& remote) const;
 
@@ -86,7 +86,7 @@ namespace llarp
 
             void configure();
 
-            bool stop(bool send_close = false) override;
+            void stop(bool send_close = false) override;
 
             void build_more(size_t n = 0) override;
 

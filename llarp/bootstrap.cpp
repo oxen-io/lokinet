@@ -119,8 +119,7 @@ namespace llarp
         // TESTNET: force load fallbacks
         if (/* empty() and  */ load_fallbacks)
         {
-            // log::critical(logcat, "BootstrapRC list empty; loading fallbacks...");
-            log::critical(logcat, "BootstrapRC list force loading fallbacks...");
+            log::info(logcat, "BootstrapRC list force loading fallbacks...");
             auto fallbacks = llarp::load_bootstrap_fallbacks();
 
             if (auto itr = fallbacks.find(RelayContact::ACTIVE_NETID); itr != fallbacks.end())

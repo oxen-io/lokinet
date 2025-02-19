@@ -56,7 +56,7 @@ namespace llarp::path
 
     std::shared_ptr<Path> PathHandler::get_oldest_path()
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         Lock_t l{paths_mutex};
         return std::ranges::min_element(_paths, path_map_comp)->second;
@@ -64,7 +64,7 @@ namespace llarp::path
 
     void PathHandler::add_path(std::shared_ptr<Path> p)
     {
-        log::debug(logcat, "Adding path...");
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l(paths_mutex);
 
         _paths.insert_or_assign(p->upstream_rxid(), p);
@@ -73,6 +73,7 @@ namespace llarp::path
 
     void PathHandler::drop_path(const std::shared_ptr<Path>& p)
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         Lock_t l{paths_mutex};
 
         if (auto itr = _paths.find(p->upstream_rxid()); itr != _paths.end())
@@ -234,9 +235,10 @@ namespace llarp::path
     {
         Lock_t lock{paths_mutex};
 
-        for (const auto& p : _paths)
+        for (const auto& [_, p] : _paths)
         {
-            visit(p.second);
+            if (p)
+                visit(p);
         }
     }
 
@@ -342,14 +344,12 @@ namespace llarp::path
         return _paths.size();
     }
 
-    bool PathHandler::stop(bool)
+    void PathHandler::stop(bool)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         _running = false;
         _paths.clear();
-
-        return true;
     }
 
     bool PathHandler::is_stopped() const { return !_running.load(); }
@@ -601,7 +601,7 @@ namespace llarp::path
             }
         }
 
-        log::trace(logcat, "Building path -> {} : {}", path->to_string(), path->hop_string());
+        log::debug(logcat, "Building path -> {} : {}", path->to_string(), path->hop_string());
 
         return path;
     }
@@ -691,7 +691,7 @@ namespace llarp::path
         std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
         bool keep_path)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         // we can recurse through this function as we remove the first pivot of the set of introductions every
         // invocation
@@ -705,7 +705,7 @@ namespace llarp::path
 
         auto& pivot = remote_intro.pivot_rid;
 
-        log::debug(logcat, "Initiating path-build to remote ({}) via pivot {}", remote, pivot.short_string());
+        log::debug(logcat, "Initiating recursive path-build to remote ({}) via pivot {}", remote, pivot.short_string());
 
         auto maybe_hops = aligned_hops_to_remote(pivot);
 
@@ -755,19 +755,19 @@ namespace llarp::path
                     {
                         if (m.timed_out)
                         {
-                            log::warning(logcat, "Path build request timed out!");
+                            log::warning(logcat, "Path-build request timed out!");
                         }
                         else
                         {
                             oxenc::bt_dict_consumer d{m.body()};
                             auto status = d.require<std::string_view>(messages::STATUS_KEY);
-                            log::warning(logcat, "Path build returned failure status: {}", status);
+                            log::warning(logcat, "Recursive path-build returned failure status: {}", status);
                         }
                     }
                     catch (const std::exception& e)
                     {
                         log::warning(
-                            logcat, "Exception caught parsing path build response: {}; input: {}", e.what(), m.body());
+                            logcat, "Exception caught parsing path_build response: {}; input: {}", e.what(), m.body());
                     }
 
                     if (keep_path)
@@ -792,7 +792,7 @@ namespace llarp::path
     void PathHandler::path_build_onepass(
         std::shared_ptr<Path> new_path, path_build_success_hook success_cb, path_build_fail_hook fail_cb)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         auto payload = build2(new_path);
         auto upstream = new_path->upstream_rid();
@@ -811,25 +811,25 @@ namespace llarp::path
                     {
                         if (m.timed_out)
                         {
-                            log::warning(logcat, "Path build request timed out!");
+                            log::warning(logcat, "Path-build request timed out!");
                         }
                         else
                         {
                             oxenc::bt_dict_consumer d{m.body()};
                             auto status = d.require<std::string_view>(messages::STATUS_KEY);
-                            log::warning(logcat, "Path build returned failure status: {}", status);
+                            log::warning(logcat, "Onepass path-build returned failure status: {}", status);
                         }
                     }
                     catch (const std::exception& e)
                     {
                         log::warning(
-                            logcat, "Exception caught parsing path build response: {}; input: {}", e.what(), m.body());
+                            logcat, "Exception caught parsing path_build response: {}; input: {}", e.what(), m.body());
                     }
 
                     return fail_cb(std::move(new_path), m.timed_out);
                 }))
         {
-            log::warning(logcat, "Error sending path-build control message");
+            log::warning(logcat, "Error sending onepass path_build control message");
             return fail_cb(std::move(new_path), false);
         }
     }
@@ -837,12 +837,13 @@ namespace llarp::path
     void PathHandler::rotate_paths(
         std::vector<RemoteRC> hops, std::function<void(std::shared_ptr<Path>)> success_cb, path_build_fail_hook fail_cb)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         if (auto new_path = build1(hops))
         {
             assert(new_path);
 
+            log::debug(logcat, "Attempting path-rotation to new path...");
             path_build_onepass(std::move(new_path), std::move(success_cb), std::move(fail_cb));
         }
     }

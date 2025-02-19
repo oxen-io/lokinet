@@ -22,12 +22,14 @@ namespace llarp::path
 
     void PathContext::drop_paths(std::vector<HopID> droplist)
     {
+        assert(_r.loop()->in_event_loop());
         for (auto itr = droplist.begin(); itr != droplist.end(); itr = droplist.erase(itr))
             _drop_path(*itr);
     }
 
     void PathContext::expire_hops(std::chrono::milliseconds now)
     {
+        assert(_r.loop()->in_event_loop());
         size_t n = 0;
 
         for (auto itr = _transit_hops.begin(); itr != _transit_hops.end();)
@@ -42,11 +44,12 @@ namespace llarp::path
         }
 
         if (n)
-            log::info(logcat, "{} expired TransitHops purged!", n);
+            log::debug(logcat, "{} expired TransitHops purged!", n);
     }
 
     void PathContext::drop_path(const std::shared_ptr<Path>& path)
     {
+        assert(_r.loop()->in_event_loop());
         _drop_path(path->upstream_rxid());
         _drop_path(path->pivot_txid());
 

@@ -390,7 +390,7 @@ namespace llarp
         {
             _listen_address = conf.links.listen_addr.value_or(DEFAULT_CLIENT_LISTEN_ADDR);
 
-            log::critical(
+            log::info(
                 logcat,
                 "Using {} listen address: {}",
                 conf.links.listen_addr ? "link config" : "default",
@@ -428,7 +428,6 @@ namespace llarp
                 _public_address = std::move(*maybe_addr);
             else
                 log::critical(logcat, "Could not find net interface on current platform!");
-            // throw std::runtime_error{"Could not find net interface on current platform!"};
         }
 
         RelayContact::BLOCK_BOGONS = conf.router.block_bogons;
@@ -514,7 +513,7 @@ namespace llarp
         conf._if_info = if_info;
         _if_name = *if_info.if_name;
 
-        log::info(logcat, "if-name set to {}", _if_name);
+        log::debug(logcat, "if-name set to {}", _if_name);
 
         // set values back in config
         conf._local_ip_range = _local_range;
@@ -621,7 +620,7 @@ namespace llarp
                 if (_testing_disabled and not _testnet)
                     throw std::runtime_error{"Error: reachability testing can only be disabled on testnet!"};
 
-                log::critical(logcat, "Lokinet network ID is {}, NOT mainnet!", netid);
+                log::warning(logcat, "Lokinet network ID is {}, NOT mainnet!", netid);
             }
 
             log::trace(logcat, "Configuring router...");
@@ -765,20 +764,24 @@ namespace llarp
         auto [_rcs, _rids, _bstraps] = _node_db->db_stats();
         auto [_npaths, _nhops] = _path_context->path_ctx_stats();
 
-        return "{} RCs, {} RIDs, {} bstraps, {} paths, {} hops, conns=[{}:{} in:out, {}:{} relay:client]"_format(
-            _rcs, _rids, _bstraps, _npaths, _nhops, _in, _out, _relay, _client);
+        return "RCs:{} | RIDs:{} | bstraps:{} | paths:{} | hops:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]{}"_format(
+            _rcs,
+            _rids,
+            _bstraps,
+            _npaths,
+            _nhops,
+            _in,
+            _out,
+            _relay,
+            _client,
+            _is_service_node ? " | Full Mesh:{}"_format(detail::bool_alpha(_relay == _rcs, "YES", "NO")) : "");
     }
 
     void Router::report_stats()
     {
         const auto now = llarp::time_now_ms();
 
-        log::critical(logcat, "Local {}: {}", is_service_node() ? "Service Node" : "Client", _stats_line());
-
-        if (is_service_node() and is_fully_meshed())
-        {
-            log::critical(logcat, "SERVICE NODE IS FULLY MESHED");
-        }
+        log::critical(logcat, "Local {}: [ {} ]", is_service_node() ? "Service Node" : "Client", _stats_line());
 
         if (_last_stats_report > 0s)
             log::trace(logcat, "Last reported stats time {}", now - _last_stats_report);

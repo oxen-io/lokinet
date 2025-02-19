@@ -665,7 +665,7 @@ namespace llarp
                     std::move(func));
                 rv)
             {
-                log::info(logcat, "Begun establishing connection to {}", remote_addr);
+                log::debug(logcat, "Begun establishing connection to {}", remote_addr);
                 return;
             }
 
@@ -693,7 +693,7 @@ namespace llarp
                 KeyedAddress{rid.to_view(), remote_addr}, rid, std::move(on_open), std::move(on_close));
             rv)
         {
-            log::info(logcat, "Begun establishing connection to {}", remote_addr);
+            log::debug(logcat, "Begun establishing connection to {}", remote_addr);
             return;
         }
         log::warning(logcat, "Failed to begin establishing connection to {}", remote_addr);
@@ -707,7 +707,7 @@ namespace llarp
 
     void LinkManager::close_all_links()
     {
-        log::info(logcat, "Closing all connections...");
+        log::debug(logcat, "Closing all connections...");
 
         std::promise<void> p;
         auto f = p.get_future();
@@ -735,7 +735,6 @@ namespace llarp
         is_stopping = true;
         quic->set_shutdown_immediate();
         quic.reset();
-        // ep.reset();
     }
 
     void LinkManager::set_conn_persist(const RouterID& remote, std::chrono::milliseconds until)
@@ -1034,17 +1033,6 @@ namespace llarp
         });
     }
 
-    [[deprecated]] void LinkManager::fetch_router_ids(
-        const RouterID& via, std::string payload, bt_control_response_hook func)
-    {
-        // this handler should not be registered for service nodes
-        assert(not _router.is_service_node());
-
-        log::trace(logcat, "payload: {}", payload);
-
-        send_control_message(via, "fetch_rids", std::move(payload), std::move(func));
-    }
-
     void LinkManager::handle_fetch_router_ids(oxen::quic::message m)
     {
         log::debug(logcat, "Handling FetchRIDs request...");
@@ -1189,8 +1177,7 @@ namespace llarp
                 _router.contact_db().put_cc(std::move(enc));
 
                 if (session->is_outbound())
-                    std::dynamic_pointer_cast<session::OutboundSession>(session)->update_remote_intros(
-                        std::move(*intro).take_intros());
+                    session::OutboundSession::upcast(session)->update_remote_intros(std::move(*intro).take_intros());
 
                 return m.respond(messages::OK_RESPONSE);
             }
@@ -1214,10 +1201,6 @@ namespace llarp
 
         auto closest_rcs = _router.node_db()->find_many_closest_to(dht_key, path::DEFAULT_PATHS_HELD);
         const auto& closest_peer = closest_rcs.begin()->router_id();
-
-        // TESTNET: testing this method
-        auto other_closest = _router.node_db()->find_closest_to(dht_key).router_id();
-        log::info(logcat, "First-closest and closest are {}EQUAL", closest_peer == other_closest ? "" : "NOT ");
 
         for (const auto& rc : closest_rcs)
         {

@@ -58,7 +58,7 @@ namespace llarp
             for (auto& [_, s] : _sessions)
             {
                 if (s->is_outbound() && s->is_active())
-                    std::dynamic_pointer_cast<session::OutboundSession>(s)->tick(now);
+                    session::OutboundSession::upcast(s)->tick(now);
             }
         }
 

@@ -93,7 +93,7 @@ namespace llarp
                 bool is_outbound,
                 std::optional<shared_kx_data> kx_data = std::nullopt);
 
-            virtual ~BaseSession() = default;
+            virtual ~BaseSession();
 
             bool is_outbound() const { return _is_outbound; }
 
@@ -127,8 +127,6 @@ namespace llarp
 
             const session_tag& tag() const { return _tag; }
 
-            void set_new_tag(const session_tag& tag);
-
             bool is_exit_session() const { return _is_exit_session; }
 
             bool is_active() const { return _is_active; }
@@ -161,6 +159,8 @@ namespace llarp
                 std::optional<shared_kx_data> kx_data = std::nullopt);
 
             ~OutboundSession() override;
+
+            static std::shared_ptr<OutboundSession> upcast(const std::shared_ptr<BaseSession>& b);
 
           private:
             std::chrono::milliseconds _last_use;
@@ -203,7 +203,7 @@ namespace llarp
 
             void send_path_switch(std::shared_ptr<path::Path> new_path);
 
-            bool stop(bool send_close = false) override;
+            void stop(bool send_close = false) override;
 
             void stop_session(bool send_close = false, bt_control_response_hook func = nullptr) override;
 

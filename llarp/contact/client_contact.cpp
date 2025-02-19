@@ -175,7 +175,7 @@ namespace llarp
 
     EncryptedClientContact EncryptedClientContact::deserialize(std::string_view buf)
     {
-        log::info(logcat, "Deserializing EncryptedClientContact...");
+        log::trace(logcat, "Deserializing EncryptedClientContact...");
         return EncryptedClientContact{buf};
     }
 
@@ -271,7 +271,7 @@ namespace llarp
             return false;
         }
 
-        log::info(logcat, "Successfully verified EncryptedClientContact!");
+        log::trace(logcat, "Successfully verified EncryptedClientContact!");
 
         return true;
     }
