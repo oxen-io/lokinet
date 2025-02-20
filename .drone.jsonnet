@@ -1,11 +1,12 @@
 local default_deps_base = [
   'libsystemd-dev',
   'python3-dev',
-  'libuv1-dev',
   'libunbound-dev',
   'nettle-dev',
   'libssl-dev',
   'libevent-dev',
+  'libfmt-dev',
+  'libspdlog-dev',
   'libsqlite3-dev',
   'libcurl4-openssl-dev',
   'libzmq3-dev',
@@ -14,7 +15,7 @@ local default_deps_base = [
 ];
 local default_deps_nocxx = ['libsodium-dev'] + default_deps_base;  // libsodium-dev needs to be >= 1.0.18
 local default_deps = ['g++'] + default_deps_nocxx;
-local docker_base = 'registry.oxen.rocks/lokinet-ci-';
+local docker_base = 'registry.oxen.rocks/';
 
 local submodule_commands = [
   'git fetch --tags',
@@ -287,14 +288,14 @@ local deb_builder(image, distro, distro_branch, arch='amd64', oxen_repo=true) = 
 };
 
 local clang(version) = debian_pipeline(
-  'Debian sid/clang-' + version + ' (amd64)',
+  'Debian sid/clang-' + version + ' [AMD64]',
   docker_base + 'debian-sid-clang',
   deps=['clang-' + version] + default_deps_nocxx,
   cmake_extra='-DCMAKE_C_COMPILER=clang-' + version + ' -DCMAKE_CXX_COMPILER=clang++-' + version + ' '
 );
 
 local full_llvm(version) = debian_pipeline(
-  'Debian sid/llvm-' + version + ' (amd64)',
+  'Debian sid/llvm-' + version + ' [AMD64]',
   docker_base + 'debian-sid-clang',
   deps=['clang-' + version, ' lld-' + version, ' libc++-' + version + '-dev', 'libc++abi-' + version + '-dev']
        + default_deps_nocxx,
@@ -304,12 +305,14 @@ local full_llvm(version) = debian_pipeline(
               std.join(' ', [
                 '-DCMAKE_' + type + '_LINKER_FLAGS=-fuse-ld=lld-' + version
                 for type in ['EXE', 'MODULE', 'SHARED']
-              ])
+              ]) +
+              ' -DOXEN_LOGGING_FORCE_SUBMODULES=ON'
 );
 
 // Macos build
 local mac_builder(name,
                   build_type='Release',
+                  arch='amd64',
                   werror=true,
                   cmake_extra='',
                   local_mirror=true,
@@ -320,7 +323,7 @@ local mac_builder(name,
   kind: 'pipeline',
   type: 'exec',
   name: name,
-  platform: { os: 'darwin', arch: 'amd64' },
+  platform: { os: 'darwin', arch: arch },
   steps: [
     { name: 'submodules', commands: submodule_commands },
     {
@@ -332,10 +335,7 @@ local mac_builder(name,
         // basic system headers.  WTF apple:
         'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
         'ulimit -n 1024',  // because macos sets ulimit to 256 for some reason yeah idk
-        './contrib/mac-configure.sh ' +
-        ci_dep_mirror(local_mirror) +
-        '-DWARN_DEPRECATED=OFF ' +
-        codesign,
+        './contrib/mac-configure.sh ' + ci_dep_mirror(local_mirror) + '-DWARN_DEPRECATED=OFF ' + codesign,
         'cd build-mac',
         // We can't use the 'package' target here because making a .dmg requires an active logged in
         // macos gui to invoke Finder to invoke the partitioning tool to create a partitioned (!)
@@ -394,50 +394,62 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
   //              docker_base + 'docbuilder',
   //              extra_cmds=['UPLOAD_OS=docs ./contrib/ci/drone-static-upload.sh']),
 
-  // Various debian builds
-  debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
-  debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
+  // Debian sid
+  debian_pipeline('Debian sid [AMD64]', docker_base + 'debian-sid'),
+  debian_pipeline('Debian sid/debug [AMD64]', docker_base + 'debian-sid', build_type='Debug'),
+  debian_pipeline('Debian sid [ARM64]', docker_base + 'debian-sid', arch='arm64', jobs=4),
+
   clang(17),
   full_llvm(17),
   clang(19),
-  full_llvm(19),
-  debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable/i386'),
-  debian_pipeline('Debian bullseye (amd64)',
+  //full_llvm(19),
+
+  // Debian 12
+  debian_pipeline('Debian 12 static [AMD64]',
+                  docker_base + 'debian-bookworm',
+                  deps=['g++'],
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON'),
+  debian_pipeline('Debian 12 [ARMHF]', docker_base + 'debian-bookworm/arm32v7', arch='arm64', jobs=4),
+  debian_pipeline('Debian 12 [i386]', docker_base + 'debian-bookworm/i386'),
+
+  // Debian 11
+  debian_pipeline('Debian 11 [AMD64]',
                   docker_base + 'debian-bullseye',
                   extra_setup=debian_backports('bullseye', ['cmake']) + local_gnutls()),
-  debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
-  debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
-  debian_pipeline('Ubuntu focal (amd64)',
+  debian_pipeline('Debian 11 static/debug [AMD64]',
+                  docker_base + 'debian-bullseye',
+                  build_type='Debug',
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON',
+                  extra_setup=debian_backports('bullseye', ['cmake'])),
+
+  // Static debian 11 armhf (upload to builds.lokinet.dev)
+  debian_pipeline('Debian 11 static [ARMHF]',
+                  docker_base + 'debian-bullseye/arm32v7',
+                  arch='arm64',
+                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
+                  extra_setup=debian_backports('bullseye', ['cmake']),
+                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
+                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
+                  extra_cmds=[
+                    './contrib/ci/drone-check-static-libs.sh',
+                    'UPLOAD_OS=linux-armhf ./contrib/ci/drone-static-upload.sh',
+                  ],
+                  allow_fail=true,  // XXX FIXME: build currently fails!
+                  jobs=4),
+
+  // Ubuntu
+  debian_pipeline('Ubuntu latest [AMD64]', docker_base + 'ubuntu-rolling'),
+  debian_pipeline('Ubuntu LTS [AMD64]', docker_base + 'ubuntu-lts'),
+  debian_pipeline('Ubuntu 22.04 [AMD64]', docker_base + 'ubuntu-jammy'),
+  debian_pipeline('Ubuntu 20.04 [AMD64]',
                   docker_base + 'ubuntu-focal',
                   deps=['g++-10'] + default_deps_nocxx,
                   extra_setup=kitware_repo('focal') + local_gnutls(),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
 
-  // ARM builds (ARM64 and armhf)
-  debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', jobs=4),
-  debian_pipeline('Debian stable (armhf)', docker_base + 'debian-stable/arm32v7', arch='arm64', jobs=4),
-
-  // cross compile targets
-  // Aug 11: these are exhibiting some dumb failures in libsodium and external deps, TOFIX later
-  //linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
-  //linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
-
-  // Not currently building successfully:
-  //linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
-
-  // android apk builder
-  // Aug 11: this is also failing in openssl, TOFIX later
-  //apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
-
-  // Windows builds (x64)
-  windows_cross_pipeline('Windows (amd64)',
-                         docker_base + 'debian-bookworm',
-                         extra_cmds=[
-                           './contrib/ci/drone-static-upload.sh',
-                         ]),
-
-  // Static build (on focal) which gets uploaded to builds.lokinet.dev:
-  debian_pipeline('Static (focal amd64)',
+  // Static ubuntu focal amd64 build (upload to builds.lokinet.dev)
+  debian_pipeline('Ubuntu 20.04 static [AMD64]',
                   docker_base + 'ubuntu-focal',
                   deps=['g++-10', 'python3-dev', 'automake', 'libtool'],
                   extra_setup=kitware_repo('focal'),
@@ -453,21 +465,26 @@ local docs_pipeline(name, image, extra_cmds=[], allow_fail=false) = {
                     './contrib/ci/drone-check-static-libs.sh',
                     './contrib/ci/drone-static-upload.sh',
                   ]),
-  // Static armhf build (gets uploaded)
-  debian_pipeline('Static [FIXME] (bullseye armhf)',
-                  docker_base + 'debian-bullseye/arm32v7',
-                  arch='arm64',
-                  deps=['g++', 'python3-dev', 'automake', 'libtool'],
-                  extra_setup=debian_backports('bullseye', ['cmake']),
-                  cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
-                              '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp -Wno-psabi" -DCMAKE_C_FLAGS="-march=armv7-a+fp" ' +
-                              '-DNATIVE_BUILD=OFF -DWITH_SYSTEMD=OFF -DWITH_BOOTSTRAP=OFF',
-                  extra_cmds=[
-                    './contrib/ci/drone-check-static-libs.sh',
-                    'UPLOAD_OS=linux-armhf ./contrib/ci/drone-static-upload.sh',
-                  ],
-                  allow_fail=true,  // XXX FIXME: build currently fails!
-                  jobs=4),
+
+
+  // cross compile targets
+  // Aug 11: these are exhibiting some dumb failures in libsodium and external deps, TOFIX later
+  //linux_cross_pipeline('Cross Compile (arm/arm64)', cross_targets=['arm-linux-gnueabihf', 'aarch64-linux-gnu']),
+  //linux_cross_pipeline('Cross Compile (ppc64le)', cross_targets=['powerpc64le-linux-gnu']),
+
+  // Not currently building successfully:
+  //linux_cross_pipeline('Cross Compile (mips)', cross_targets=['mips-linux-gnu', 'mipsel-linux-gnu']),
+
+  // android apk builder
+  // Aug 11: this is also failing in openssl, TOFIX later
+  //apk_builder('android apk', docker_base + 'flutter', extra_cmds=['UPLOAD_OS=android ./contrib/ci/drone-static-upload.sh']),
+
+  // Windows builds (x64)
+  windows_cross_pipeline('Windows [AMD64]',
+                         docker_base + 'debian-win32-cross',
+                         extra_cmds=[
+                           './contrib/ci/drone-static-upload.sh',
+                         ]),
 
   /*
   // integration tests

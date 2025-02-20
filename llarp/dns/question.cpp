@@ -102,6 +102,6 @@ namespace llarp::dns
 
     std::string Question::to_string() const
     {
-        return "DNSQuestion:[ qname:{} | qtype:{:x} | qclass:{:x} ]"_format(qname, qtype, qclass);
+        return "DNSQuestion:[ qname:{} | qtype:{} | qclass:{} ]"_format(qname, qtype, qclass);
     }
 }  // namespace llarp::dns

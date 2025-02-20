@@ -376,12 +376,17 @@ namespace llarp
         // Router config
         min_client_outbounds = conf.router.client_router_connections;
 
+        // clang-format off
+DISABLE_WARNING_PUSH
+DISABLE_MAYBE_UNINITIALIZED
         std::optional<std::string> paddr = (conf.router.public_ip) ? conf.router.public_ip
             : (conf.links.public_addr)                             ? conf.links.public_addr
                                                                    : std::nullopt;
         std::optional<uint16_t> pport = (conf.router.public_port) ? conf.router.public_port
             : (conf.links.public_port)                            ? conf.links.public_port
                                                                   : std::nullopt;
+DISABLE_WARNING_POP
+        // clang-format on
 
         if (pport.has_value() and not paddr.has_value())
             throw std::runtime_error{"If public-port is specified, public-addr must be as well!"};
