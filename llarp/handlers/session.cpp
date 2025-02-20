@@ -88,8 +88,14 @@ namespace llarp::handlers
 
         if (_cc_publisher)
         {
-            log::trace(logcat, "ClientContact publish ticker stopped!");
             _cc_publisher->stop();
+            log::trace(logcat, "ClientContact publish ticker stopped!");
+        }
+
+        if (_path_rotater)
+        {
+            _path_rotater->stop();
+            log::trace(logcat, "Path rotation ticker stopped!");
         }
 
         if (send_close)
@@ -272,6 +278,10 @@ namespace llarp::handlers
                     },
                     true);
             });
+
+            log::trace(logcat, "Starting path rotation ticker...");
+            _path_rotater =
+                _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
         }
         else
             log::info(logcat, "SessionEndpoint configured to NOT publish ClientContact...");
@@ -473,20 +483,24 @@ namespace llarp::handlers
         _router.loop()->call([this]() mutable {
             log::warning(
                 logcat,
-                "Failed to query enough client introductions from current paths! Building more paths to publish "
-                "introset");
+                "Failed to query enough client intros from current paths! Building more paths to publish contact!");
             return build_more(1);
         });
     }
 
     void SessionEndpoint::update_and_publish_localcc()
     {
-        log::debug(logcat, "Updating and publishing ClientContact...");
-        auto intros = get_current_client_intros();
-        if (intros.empty())
-            return _localcc_update_fail();
-        client_contact.regenerate(std::move(intros));
-        _update_and_publish_localcc();
+        if (should_publish_cc)
+        {
+            log::debug(logcat, "Updating and publishing ClientContact...");
+            auto intros = get_current_client_intros();
+            if (intros.empty())
+                return _localcc_update_fail();
+            client_contact.regenerate(std::move(intros));
+            _update_and_publish_localcc();
+        }
+        else
+            log::warning(logcat, "Local instance not configured to publish ClientContact!");
     }
 
     void SessionEndpoint::_update_and_publish_localcc()

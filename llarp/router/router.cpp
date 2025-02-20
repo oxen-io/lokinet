@@ -763,18 +763,20 @@ namespace llarp
         auto [_in, _out, _relay, _client] = _link_manager->connection_stats();
         auto [_rcs, _rids, _bstraps] = _node_db->db_stats();
         auto [_npaths, _nhops] = _path_context->path_ctx_stats();
+        auto _ccs = _contact_db->num_ccs();
 
-        return "RCs:{} | RIDs:{} | bstraps:{} | paths:{} | hops:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]{}"_format(
+        return "{}RCs:{} | RIDs:{} | CCs:{} | bstraps:{} | paths:{} | hops:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
+            _is_service_node ? "Full Mesh:{} | "_format(detail::bool_alpha(_relay == _rcs, "YES", "NO")) : "",
             _rcs,
             _rids,
+            _ccs,
             _bstraps,
             _npaths,
             _nhops,
             _in,
             _out,
             _relay,
-            _client,
-            _is_service_node ? " | Full Mesh:{}"_format(detail::bool_alpha(_relay == _rcs, "YES", "NO")) : "");
+            _client);
     }
 
     void Router::report_stats()

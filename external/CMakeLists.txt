@@ -26,7 +26,6 @@ if(SUBMODULE_CHECK)
     message(STATUS "Checking submodules")
     check_submodule(CLI11)
     check_submodule(cpr)
-    check_submodule(libevent)
     check_submodule(nlohmann)
     check_submodule(oxen-encoding)
     check_submodule(oxen-libquic)
@@ -51,27 +50,12 @@ macro(system_or_submodule BIGNAME smallname pkgconf subdir)
     message(STATUS "Found system ${smallname} ${${BIGNAME}_VERSION}")
   else()
     message(STATUS "using ${smallname} submodule")
-    add_subdirectory(${subdir})
+    add_subdirectory(${subdir} EXCLUDE_FROM_ALL)
   endif()
   if(NOT TARGET ${smallname}::${smallname})
     add_library(${smallname}::${smallname} ALIAS ${smallname})
   endif()
 endmacro()
-
-# libevent
-set(EVENT__LIBRARY_TYPE "STATIC" CACHE STRING "" FORCE)
-set(EVENT__DISABLE_MBEDTLS ON CACHE BOOL "" FORCE)
-set(EVENT__DISABLE_MBEDTLS ON CACHE BOOL "" FORCE)
-set(EVENT__DISABLE_OPENSSL ON CACHE BOOL "" FORCE)
-set(EVENT__DISABLE_BENCHMARK ON CACHE BOOL "" FORCE)
-set(EVENT__DISABLE_SAMPLES ON CACHE BOOL "" FORCE)
-set(EVENT__DISABLE_TESTS ON CACHE BOOL "" FORCE)
-add_subdirectory(libevent EXCLUDE_FROM_ALL)
-
-add_library(libevent::core ALIAS event_core)
-add_library(libevent::threads ALIAS event_pthreads)
-add_library(libevent::extra ALIAS event_extra)
-
 
 system_or_submodule(OXENC oxenc liboxenc>=1.1.0 oxen-encoding)
 system_or_submodule(OXENMQ oxenmq liboxenmq>=1.2.14 oxen-mq)
@@ -102,9 +86,8 @@ if(WITH_PEERSTATS)
 endif()
 
 
-# we get oxen-logging from libquic; forcing submodule ensures fmt>10.0.0
-set(OXEN_LOGGING_FORCE_SUBMODULES ON CACHE INTERNAL "")
-add_subdirectory(oxen-libquic)
+set(LIBQUIC_BUILD_TESTS OFF CACHE BOOL "")
+system_or_submodule(OXENQUIC quic liboxenquic>=1.2.0 oxen-libquic)
 
 
 # cpr configuration.  Ideally we'd just do this via add_subdirectory, but cpr's cmake requires

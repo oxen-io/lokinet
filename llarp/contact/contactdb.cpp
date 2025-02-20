@@ -44,7 +44,8 @@ namespace llarp
 
     void ContactDB::purge_ccs(std::chrono::milliseconds now)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        assert(_router.loop()->in_event_loop());
 
         if (_router.is_stopping() || not _router.is_running())
         {

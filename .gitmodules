@@ -29,6 +29,3 @@
 [submodule "external/oxen-encoding"]
 	path = external/oxen-encoding
 	url = https://github.com/oxen-io/oxen-encoding.git
-[submodule "external/libevent"]
-	path = external/libevent
-	url = https://github.com/libevent/libevent.git

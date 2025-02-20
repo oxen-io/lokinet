@@ -522,7 +522,7 @@ namespace llarp
             ReachableDefault,
             assignment_acceptor(is_reachable),
             Comment{
-                "Determines whether we will pubish our service's ClientContact to the DHT (client default: TRUE)",
+                "Determines whether we will pubish our service's ClientContact to the network (client default: TRUE)",
             });
 
         conf.define_option<int>(

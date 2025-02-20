@@ -33,7 +33,7 @@ namespace llarp::session
           _remote_pivot_txid{std::move(remote_pivot_txid)},
           _use_tun{use_tun},
           _is_outbound{is_outbound},
-          _is_snode_session{_is_outbound ? !_remote.is_client() : r.is_service_node()},
+          _is_snode_session{_is_outbound ? !_remote.is_client() : _parent.is_snode_service()},
           _is_exit_session{session_keys.has_value() && !_is_snode_session}
     {
         set_new_current_path(std::move(_p));
@@ -299,6 +299,8 @@ namespace llarp::session
         if (_is_exit_session and _is_snode_session)
             throw std::runtime_error{"Cannot create OutboundSession for a remote exit and remote service!"};
 
+        _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
+
         add_path(_current_path);
         populate_intro_map(std::move(_remote_intros));
     }
@@ -494,6 +496,12 @@ namespace llarp::session
     void OutboundSession::stop_session(bool send_close, bt_control_response_hook func)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (_path_rotater)
+        {
+            _path_rotater->stop();
+            log::trace(logcat, "Path rotation ticker stopped!");
+        }
 
         std::vector<HopID> droplist{};
         {

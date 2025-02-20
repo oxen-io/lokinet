@@ -29,7 +29,7 @@ namespace llarp::util
     /// needed.
     struct NullMutex
     {
-#ifdef LOKINET_DEBUG
+#ifndef NDEBUG
         /// in debug mode, we implement lock() to enforce that any lock is only
         /// used from a single thread. the point of this is to identify locks that
         /// are actually needed by dying a painful death when used across threads
@@ -127,12 +127,12 @@ namespace llarp::util
         template <typename F>
         void TryAccess(F visit) const
         {
-#if defined(LOKINET_DEBUG)
+#ifndef NDEBUG
             NullLock lock(_access);
 #endif
             visit();
         }
-#if defined(LOKINET_DEBUG)
+#ifndef NDEBUG
       private:
         mutable NullMutex _access;
 #endif

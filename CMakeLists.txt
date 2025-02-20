@@ -271,6 +271,10 @@ target_include_directories(lokinet-base-internal INTERFACE include/lokinet)
 
 target_link_libraries(lokinet-base-internal INTERFACE lokinet-base-internal_warnings)
 
+if (TARGET lokinet_static_deps)
+  target_link_libraries(lokinet-base-internal INTERFACE lokinet_static_deps)
+endif()
+
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")

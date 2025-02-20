@@ -19,7 +19,6 @@ namespace llarp::controller
 
       private:
         static size_t next_id;
-        // RouterID rid;
 
       public:
         lokinet_instance(omq::ConnectionID c) : ID{++next_id}, cid{std::move(c)} {}
@@ -45,8 +44,6 @@ namespace llarp::controller
         void _initiate(omq::address src, std::string remote);
         void _status(omq::address src);
         void _close(omq::address src, std::string remote);
-
-        // bool _initial_info_request();
 
         bool _omq_connect(const std::vector<std::string>& bind_addrs);
 

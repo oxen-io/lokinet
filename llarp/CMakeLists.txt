@@ -262,10 +262,6 @@ target_link_libraries(lokinet-core
 
 target_link_libraries(lokinet-base 
   INTERFACE 
-  
-  libevent::core
-  libevent::threads
-  libevent::extra
 
   Threads::Threads
 

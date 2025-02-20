@@ -45,9 +45,7 @@ namespace llarp::path
 
     PathHandler::PathHandler(Router& _r, size_t num_paths, size_t _n_hops)
         : _running{true}, num_paths_desired{num_paths}, _router{_r}, num_hops{_n_hops}
-    {
-        _path_rotater = _router.loop()->call_every(PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
-    }
+    {}
 
     static constexpr auto path_map_comp = [comp = PathExpComp{}](auto lhs, auto rhs) -> bool {
         // invert parameters passed so PathExpComp gives us the first to expire, rather than the last

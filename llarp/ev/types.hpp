@@ -2,11 +2,6 @@
 
 #include <oxen/quic.hpp>
 
-extern "C"
-{
-#include <event2/watch.h>
-}
-
 namespace llarp
 {
     using namespace std::chrono_literals;

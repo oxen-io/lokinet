@@ -110,39 +110,6 @@ namespace llarp::controller
                 logcat, "Could not find connection ID to RPC bind {} for `session_close` command", src.full_address());
     }
 
-    // bool rpc_controller::_initial_info_request()
-    // {
-    //     int i = 0;
-    //     std::vector<std::promise<bool>> proms{_binds.size()};
-
-    //     for (auto& [b, instance] : _binds)
-    //     {
-    //         _omq->request(instance.cid, "llarp.status", [&, idx = i](bool success, std::vector<std::string> data) {
-    //             if (success)
-    //             {
-    //                 auto res = nlohmann::json::parse(data[0]);
-    //                 instance.rid = res["instance"]["id"].template get<std::string_view>();
-    //                 log::info(logcat, "rid = {}", instance.rid);
-    //                 proms[idx].set_value(true);
-    //             }
-    //             else
-    //             {
-    //                 log::critical(logcat, "RPC call to query initial router status failed!");
-    //                 proms[idx].set_value(false);
-    //             }
-    //         });
-
-    //         i += 1;
-    //     }
-
-    //     bool ret = true;
-
-    //     for (auto& p : proms)
-    //         ret &= p.get_future().get();
-
-    //     return ret;
-    // }
-
     bool rpc_controller::_omq_connect(const std::vector<std::string>& bind_addrs)
     {
         int i = 0;

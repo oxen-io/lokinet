@@ -48,11 +48,11 @@ set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_HASH SHA512=a71d48aa977ad8941c1609947d8db2679fc7a951e4cd0c3a1127ae026d883c11bd4203cf315de87f95f5031aec459a731aec34e5ce5b667b8d0559b157952541
     CACHE STRING "libzmq source hash")
 
-set(ZLIB_VERSION 1.3 CACHE STRING "zlib version")
+set(ZLIB_VERSION 1.3.1 CACHE STRING "zlib version")
 set(ZLIB_MIRROR ${LOCAL_MIRROR} https://zlib.net
     CACHE STRING "zlib mirror(s)")
 set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.xz)
-set(ZLIB_HASH SHA256=8a9ba2898e1d0d774eca6ba5b4627a11e5588ba85c8851336eb38de4683050a7
+set(ZLIB_HASH SHA256=38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32
   CACHE STRING "zlib source hash")
 
 set(CURL_VERSION 7.86.0 CACHE STRING "curl version")
@@ -89,14 +89,20 @@ function(expand_urls output source_file)
   set(${output} "${expanded}" PARENT_SCOPE)
 endfunction()
 
+
+add_library(lokinet_static_deps INTERFACE)
+
 function(add_static_target target ext_target libname)
   add_library(${target} STATIC IMPORTED GLOBAL)
   add_dependencies(${target} ${ext_target})
+  target_link_libraries(lokinet_static_deps INTERFACE ${target})
   set_target_properties(${target} PROPERTIES
     IMPORTED_LOCATION ${DEPS_DESTDIR}/lib/${libname}
   )
+  if (ARGN)
+    target_link_libraries(${target} INTERFACE ${ARGN})
+  endif()
 endfunction()
-
 
 
 set(cross_host "")
@@ -357,13 +363,9 @@ set_target_properties(libzmq PROPERTIES
 
 
 #
+# Everything that follows is *only* for lokinet-bootstrap (i.e. if adding new deps put them *above* this).
 #
-#
-# Everything that follows is *only* for lokinet-bootstrap (i.e. if adding new deps put them *above*
-# this).
-#
-#
-#
+
 if(NOT WITH_BOOTSTRAP)
   return()
 endif()

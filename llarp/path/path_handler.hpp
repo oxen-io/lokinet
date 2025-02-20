@@ -88,11 +88,11 @@ namespace llarp
 
             std::unordered_map<RouterID, std::weak_ptr<Path>> path_cache;
 
-            std::shared_ptr<EventTicker> _path_rotater;
-
             void path_build_backoff();
 
           protected:
+            std::shared_ptr<EventTicker> _path_rotater;
+
             /// flag for ::Stop()
             std::atomic<bool> _running;
 

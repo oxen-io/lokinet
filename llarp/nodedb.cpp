@@ -112,13 +112,13 @@ namespace llarp
                 _router.link_manager()->connect_to(
                     brc,
                     [this](oxen::quic::connection_interface& ci) {
-                        log::critical(logcat, "Successfully connected to bootstrap node!");
+                        log::info(logcat, "Successfully connected to bootstrap node!");
                         _has_bstrap_connection = true;
                         _is_connecting_bstrap = false;
                         return _router.link_manager()->on_conn_open(ci);
                     },
                     [this](oxen::quic::connection_interface& ci, uint64_t ec) {
-                        log::critical(logcat, "Failed to connect to bootstrap node!");
+                        log::warning(logcat, "Failed to connect to bootstrap node!");
                         _is_connecting_bstrap = false;
                         return _router.link_manager()->on_conn_closed(ci, ec);
                     });
@@ -129,7 +129,7 @@ namespace llarp
 
             if (not _bootstrap_handler->is_iterating())
             {
-                log::critical(
+                log::warning(
                     logcat,
                     "{} has {} of {} minimum RCs; initiating BootstrapRC fetch...",
                     _is_service_node ? "Relay" : "Client",
@@ -166,14 +166,14 @@ namespace llarp
             // purge this entry
             if (not rc.is_public_addressable())
             {
-                log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
+                log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
                 return true;
             }
 
             // clear out a fully expired RC
             if (rc.is_expired(now))
             {
-                log::debug(logcat, "Removing {}: RC is expired", rc.router_id());
+                log::trace(logcat, "Removing {}: RC is expired", rc.router_id());
                 return true;
             }
 
@@ -199,7 +199,7 @@ namespace llarp
             // in the whitelist OR if there is no whitelist don't remove
             if (not is_connection_allowed(rc.router_id()))
             {
-                log::debug(logcat, "Removing {}: not a valid router", rc.router_id());
+                log::trace(logcat, "Removing {}: not a valid router", rc.router_id());
                 return true;
             }
 
@@ -414,7 +414,7 @@ namespace llarp
                     }
                     catch (const std::exception& e)
                     {
-                        log::critical(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
+                        log::warning(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
                     }
                 }
 
@@ -515,7 +515,7 @@ namespace llarp
                                 }
                                 catch (const std::exception& e)
                                 {
-                                    log::critical(logcat, "Error handling fetch RouterIDs response: {}", e.what());
+                                    log::warning(logcat, "Error handling fetch RouterIDs response: {}", e.what());
                                     ingest_fetched_rids(source);
                                 }
                             }
@@ -774,7 +774,7 @@ namespace llarp
 
     void NodeDB::set_router_whitelist(const std::vector<RouterID>& whitelist)
     {
-        log::critical(logcat, "Oxend provided {} whitelisted routers", whitelist.size());
+        log::debug(logcat, "Oxend provided {} whitelisted routers", whitelist.size());
 
         if (whitelist.empty())
             return;
@@ -782,7 +782,7 @@ namespace llarp
         _registered_routers.clear();
         _registered_routers.insert(whitelist.begin(), whitelist.end());
 
-        log::critical(
+        log::info(
             logcat, "Service node holding {} registered relays after oxend integration", _registered_routers.size());
     }
 
@@ -890,7 +890,7 @@ namespace llarp
         if (_root.empty())
             return;
 
-        log::debug(logcat, "Writing NodeDB contents to disk...");
+        log::trace(logcat, "Writing NodeDB contents to disk...");
 
         for (const auto& rc : known_rcs)
             rc.write(get_path_by_pubkey(rc.router_id()));
