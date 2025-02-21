@@ -44,6 +44,35 @@ namespace llarp::handlers
         s->stop_session(send_close);
     }
 
+    bool SessionEndpoint::recv_path_switch(session_tag t, HopID remove_pivot_txid, HopID local_pivot_txid)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (auto s = get_session<session::InboundSession>(t))
+        {
+            // only OutboundSessions send path switch messages
+            assert(s && !s->is_outbound());
+
+            if (auto path = get_path_conditional(
+                    [local_pivot_txid](std::shared_ptr<path::Path> p) { return p->pivot_txid() == local_pivot_txid; }))
+            {
+                log::debug(
+                    logcat,
+                    "Successfully matched path-switch request to InboundSession over path:{}",
+                    path->get()->debug_string());
+                s->set_remote_pivot_tx(remove_pivot_txid);
+                s->set_new_current_path(std::move(*path));
+                return true;
+            }
+
+            log::warning(logcat, "Received path-switch request for unknown local pivot txid: {}", local_pivot_txid);
+        }
+        else
+            log::warning(logcat, "Received path-switch request for unknown session (tag:{})", t);
+
+        return false;
+    }
+
     bool SessionEndpoint::close_session(NetworkAddress remote, bool send_close)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -192,7 +221,8 @@ namespace llarp::handlers
         Lock_t l{paths_mutex};
 
         auto oldest = get_oldest_path();
-        log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
+        // log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
+        log::debug(logcat, "Dropping oldest path: {}", oldest->debug_string());
         drop_path(oldest);
     }
 
@@ -203,21 +233,28 @@ namespace llarp::handlers
         Lock_t l{paths_mutex};
 
         auto maybe_hops = get_hops_to_random();
+
         if (not maybe_hops)
         {
             log::warning(logcat, "Failed to get hops for path-build to random");
             return;
         }
 
-        path::PathHandler::rotate_paths(
-            std::move(*maybe_hops),
-            [this](auto new_path) mutable {
-                path_build_succeeded(new_path);
-                drop_oldest_path();
-                log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->to_string());
-                update_and_publish_localcc();
-            },
-            [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
+        path::PathHandler::rotate_paths(std::move(*maybe_hops));
+
+        // path::PathHandler::rotate_paths(
+        //     std::move(*maybe_hops),
+        //     [this](auto new_path) mutable { path_rotation_succeeded(std::move(new_path)); },
+        //     [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
+    }
+
+    void SessionEndpoint::path_rotation_succeeded(std::shared_ptr<path::Path> new_path)
+    {
+        // log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->to_string());
+        log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->debug_string());
+        path_build_succeeded(std::move(new_path));
+        drop_oldest_path();
+        update_and_publish_localcc();
     }
 
     std::optional<std::vector<RemoteRC>> SessionEndpoint::get_hops_to_random()
@@ -462,18 +499,18 @@ namespace llarp::handlers
         {
             Lock_t l{paths_mutex};
 
-            for (const auto& [_, path] : _paths)
+            for (const auto& [_, p] : _paths)
             {
-                if (not path or not path->is_ready())
+                if (not p or not p->is_active())
                     continue;
 
                 log::debug(
                     logcat,
                     "Querying pivot (rid:{}) for ClientContact lookup target (rid:{})",
-                    path->pivot_rid().short_string(),
+                    p->pivot_rid().short_string(),
                     remote);
 
-                path->find_client_contact(remote_key, response_handler);
+                p->find_client_contact(remote_key, response_handler);
             }
         }
     }
@@ -626,25 +663,31 @@ namespace llarp::handlers
         log::trace(logcat, "Publishing new EncryptedClientContact: {}", ecc.bt_payload());
 
         _sessions.for_each([ecc](std::shared_ptr<session::BaseSession>& s) mutable {
+            // log::debug(
+            //     logcat,
+            //     "Publishing ClientContact on {}bound session (remote:{})",
+            //     detail::bool_alpha(s->is_outbound(), "Out", "In"),
+            //     s->remote());
             log::debug(
                 logcat,
-                "Publishing ClientContact on {}bound session (remote:{})",
+                "Publishing ClientContact on {}bound session: {}",
                 detail::bool_alpha(s->is_outbound(), "Out", "In"),
-                s->remote());
+                s->current_path()->debug_string());
             s->publish_client_contact(ecc, publish_cc_cb);
         });
 
         {
             Lock_t l{paths_mutex};
 
-            for (const auto& [_, path] : _paths)
+            for (const auto& [_, p] : _paths)
             {
                 // If path-build is underway, don't use it
-                if (not path or not path->is_ready())
+                if (not p or not p->is_active())
                     continue;
 
-                log::debug(logcat, "Publishing ClientContact on {}", path->hop_string());
-                ret &= path->publish_client_contact(ecc, publish_cc_cb);
+                // log::debug(logcat, "Publishing ClientContact on {}", path->hop_string());
+                log::debug(logcat, "Publishing ClientContact on {}", p->debug_string());
+                ret &= p->publish_client_contact(ecc, publish_cc_cb);
             }
         }
 

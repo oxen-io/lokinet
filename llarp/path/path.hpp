@@ -44,7 +44,6 @@ namespace llarp
                 Router& rtr,
                 const std::vector<RemoteRC>& routers,
                 std::weak_ptr<PathHandler> parent,
-                bool is_session = false,
                 bool is_client = false);
 
             // hops on constructed path
@@ -62,8 +61,6 @@ namespace llarp
             std::string hop_string() const;
 
             std::chrono::milliseconds LastRemoteActivityAt() const { return last_recv_msg; }
-
-            void set_established();
 
             void link_session(session_tag t);
 
@@ -99,9 +96,7 @@ namespace llarp
 
             std::string make_path_message(std::string payload);
 
-            bool is_established() const { return _established; }
-
-            bool is_ready(std::chrono::milliseconds now = llarp::time_now_ms()) const;
+            bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
             std::shared_ptr<PathHandler> get_parent();
 
@@ -138,13 +133,24 @@ namespace llarp
             std::string to_string() const;
             static constexpr bool to_string_formattable = true;
 
+            // TESTNET: debug
+            std::string debug_string() const;
+
           protected:
+            // Called by SessionEndpoint to indicate the path is successfully built
+            void set_established();
+
+            // Called by SessionEndpoint to check path status for internal management, and is made protected. All
+            // other objects are more concerned with ::is_active() and ::is_linked(), which include expiry status
+            // and session activity
+            bool is_established() const { return _is_established; }
+
             void populate_internals(const std::vector<RemoteRC>& _hops);
 
             /// call obtained exit hooks
             bool InformExitResult(std::chrono::milliseconds b);
 
-            std::atomic<bool> _established{false};
+            std::atomic<bool> _is_established{false};
             std::atomic<bool> _is_linked{false};
 
             Router& _router;
@@ -159,6 +165,10 @@ namespace llarp
             std::chrono::milliseconds last_recv_msg{0s};
             std::chrono::milliseconds last_latency_test{0s};
             uint64_t last_latency_test_id{};
+
+            // TESTNET: debug
+            static size_t next_path_uuid;
+            const size_t path_id;
         };
 
         struct PathExpComp

@@ -71,9 +71,11 @@ namespace llarp
             uint64_t path_fails{};   // path failures post-build
             uint64_t timeouts{};
 
+            std::chrono::milliseconds last_warn_time{0s};
+
             nlohmann::json ExtractStatus() const;
 
-            double SuccessRatio() const;
+            void update(std::chrono::milliseconds now);
 
             std::string to_string() const;
             static constexpr bool to_string_formattable = true;
@@ -84,8 +86,6 @@ namespace llarp
             friend struct Path;
 
           private:
-            std::chrono::milliseconds last_warn_time{0s};
-
             std::unordered_map<RouterID, std::weak_ptr<Path>> path_cache;
 
             void path_build_backoff();
@@ -128,12 +128,19 @@ namespace llarp
 
             virtual void rotate_paths() = 0;
 
+            // TESTNET: may be superfluous compared to the alternate method
             void rotate_paths(std::vector<RemoteRC> hops, path_build_success_hook success, path_build_fail_hook fail);
 
-            // virtual void path_rotation_succeeded() = 0;
+            void rotate_paths(std::vector<RemoteRC> hops);
+
+            virtual void path_rotation_succeeded(std::shared_ptr<Path> new_path) = 0;
 
             std::shared_ptr<Path> get_oldest_path();
+
             virtual void drop_oldest_path() = 0;
+
+            // TESTNET: DEBUG LOGGING METHOD
+            void print_all_paths() const;
 
           public:
             Router& _router;

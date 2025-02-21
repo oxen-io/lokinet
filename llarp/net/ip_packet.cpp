@@ -293,18 +293,17 @@ namespace llarp
             size_t pkt_size = (ICMP_HEADER_SIZE + ip_hdr_sz) * 2;
 
             IPPacket pkt{pkt_size};
-            auto* pkt_header = pkt.header();
 
-            pkt_header->version = 4;
-            pkt_header->header_len = 0x05;
-            pkt_header->service_type = 0;
-            pkt_header->checksum = 0;
-            pkt_header->total_len = ntohs(pkt_size);
-            pkt_header->src = _header->dest;
-            pkt_header->dest = _header->src;
-            pkt_header->protocol = 1;  // ICMP
-            pkt_header->ttl = pkt_header->ttl;
-            pkt_header->frag_off = oxenc::host_to_big(0b0100000000000000);
+            pkt._header->version = 4;
+            pkt._header->header_len = 0x05;
+            pkt._header->service_type = 0;
+            pkt._header->checksum = 0;
+            pkt._header->total_len = ntohs(pkt_size);
+            pkt._header->src = _header->dest;
+            pkt._header->dest = _header->src;
+            pkt._header->protocol = 1;  // ICMP
+            pkt._header->ttl = pkt._header->ttl;
+            pkt._header->frag_off = oxenc::host_to_big(0b0100000000000000);
 
             uint8_t* itr = pkt.data() + ip_hdr_sz;
             uint8_t* icmp_begin = itr;  // type 'destination unreachable'
@@ -327,7 +326,7 @@ namespace llarp
             itr += ip_hdr_sz + ICMP_HEADER_SIZE;
 
             // calculate checksum of ip header
-            pkt_header->checksum = utils::ip_checksum(_buf.data(), ip_hdr_sz);
+            pkt._header->checksum = utils::ip_checksum(_buf.data(), ip_hdr_sz);
 
             // calculate icmp checksum
             *checksum = utils::ip_checksum(icmp_begin, std::distance(icmp_begin, itr));

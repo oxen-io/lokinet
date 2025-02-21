@@ -1788,7 +1788,7 @@ namespace llarp
 
             if (initiator.router_id() == _router.local_rid())
             {
-                log::info(logcat, "Received request to initiate session from local instance; ignoring!");
+                log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
                 return m.respond(InitiateSession::BAD_ADDRESS, true);
             }
 
@@ -1822,6 +1822,8 @@ namespace llarp
         m.respond(messages::ERROR_RESPONSE, true);
     }
 
+    void LinkManager::handle_initiate_session(oxen::quic::message m) { return _handle_initiate_session(std::move(m)); }
+
     void LinkManager::_handle_path_switch(oxen::quic::message m, std::optional<std::string> inner_body)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -1838,11 +1840,9 @@ namespace llarp
                 std::tie(tag, remote_pivot_txid, local_pivot_txid) =
                     SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{m.body()});
 
-            if (auto session = _router.session_endpoint()->get_session<session::OutboundSession>(tag))
-            {
-                session->recv_path_switch(remote_pivot_txid);
+            if (_router.session_endpoint()->recv_path_switch(
+                    tag, std::move(remote_pivot_txid), std::move(local_pivot_txid)))
                 return m.respond(messages::OK_RESPONSE);
-            }
 
             log::warning(logcat, "Received path-switch request for unknown session (tag:{})", tag);
             return m.respond(SessionPathSwitch::BAD_TAG, true);
@@ -1856,8 +1856,6 @@ namespace llarp
     }
 
     void LinkManager::handle_path_switch(oxen::quic::message m) { return _handle_path_switch(std::move(m)); }
-
-    void LinkManager::handle_initiate_session(oxen::quic::message m) { return _handle_initiate_session(std::move(m)); }
 
     void LinkManager::_handle_close_session(oxen::quic::message m, std::optional<std::string> inner_body)
     {

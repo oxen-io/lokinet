@@ -113,7 +113,7 @@ namespace llarp
 
             void recv_path_switch2(HopID new_remote_txid, HopID new_local_txid);
 
-            void recv_path_switch(HopID new_remote_txid);
+            void set_remote_pivot_tx(HopID new_remote_txid);
 
             void publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
 
@@ -171,14 +171,22 @@ namespace llarp
 
             bool update_local_paths();
 
+            void build_and_switch_paths();
+
             void build_and_switch_paths(intro_set intros);
+
+            void switch_to_new_path(std::shared_ptr<path::Path> p, HopID new_pivot_txid);
+
+            bool select_new_current();
 
             void map_path(const std::shared_ptr<path::Path>& p);
 
-            void unmap_path(const std::shared_ptr<path::Path>& p);
+            bool unmap_path(const std::shared_ptr<path::Path>& p);
 
           protected:
             void rotate_paths() override;
+
+            void path_rotation_succeeded(std::shared_ptr<path::Path> new_path) override;
 
             void drop_oldest_path() override;
 
@@ -201,7 +209,7 @@ namespace llarp
 
             void path_build_failed(std::shared_ptr<path::Path> p, bool timeout = false) override;
 
-            void send_path_switch(std::shared_ptr<path::Path> new_path);
+            void send_path_switch();
 
             void stop(bool send_close = false) override;
 

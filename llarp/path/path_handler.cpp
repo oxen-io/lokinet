@@ -30,17 +30,19 @@ namespace llarp::path
             {"success", success}, {"attempts", attempts}, {"timeouts", timeouts}, {"fails", build_fails}};
     }
 
+    void BuildStats::update(std::chrono::milliseconds now)
+    {
+        if (attempts > 50 && attempts >= (success * 4) && now - last_warn_time > 5s)
+        {
+            log::warning(logcat, "Low path build success: {}", *this);
+            last_warn_time = now;
+        }
+    }
+
     std::string BuildStats::to_string() const
     {
         return "Stats:[ success:{} | attempts:{} | timeouts:{} | fails:{} ]"_format(
             success, attempts, timeouts, build_fails);
-    }
-
-    double BuildStats::SuccessRatio() const
-    {
-        if (attempts)
-            return double(success) / double(attempts);
-        return 0.0;
     }
 
     PathHandler::PathHandler(Router& _r, size_t num_paths, size_t _n_hops)
@@ -48,7 +50,7 @@ namespace llarp::path
     {}
 
     static constexpr auto path_map_comp = [comp = PathExpComp{}](auto lhs, auto rhs) -> bool {
-        // invert parameters passed so PathExpComp gives us the first to expire, rather than the last
+        // invert parameters passed so ranges::{min,max}_element use it like operator<
         return comp(rhs.second, lhs.second);
     };
 
@@ -58,6 +60,22 @@ namespace llarp::path
 
         Lock_t l{paths_mutex};
         return std::ranges::min_element(_paths, path_map_comp)->second;
+    }
+
+    void PathHandler::print_all_paths() const
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        Lock_t l(paths_mutex);
+
+        auto log = "\n\tCurrently held path IDs:\n"s;
+
+        for (auto& [_, p] : _paths)
+        {
+            if (p and p->is_established())
+                log += "\t\tID:{}\n"_format(p->path_id);
+        }
+
+        log::critical(logcat, "{}", log);
     }
 
     void PathHandler::add_path(std::shared_ptr<Path> p)
@@ -92,30 +110,13 @@ namespace llarp::path
     std::optional<std::shared_ptr<Path>> PathHandler::get_path_conditional(
         std::function<bool(std::shared_ptr<Path>)> filter)
     {
-        std::optional<std::shared_ptr<Path>> rand = std::nullopt;
-
-        if (rand and filter(*rand))
-            return rand;
-
-        size_t i = 0;
-
-        for (const auto& p : _paths)
+        for (auto& p : _paths)
         {
-            if (not filter(p.second))
-                continue;
-
-            if (++i <= 1)
-            {
-                rand = p.second;
-                continue;
-            }
-
-            size_t x = csrng.boundedrand(i + 1);
-            if (x <= 1)
-                rand = p.second;
+            if (filter(p.second))
+                return p.second;
         }
 
-        return rand;
+        return std::nullopt;
     }
 
     std::optional<std::unordered_set<std::shared_ptr<Path>>> PathHandler::get_n_random_paths(size_t n, bool exact)
@@ -249,7 +250,7 @@ namespace llarp::path
 
         for (const auto& [_, p] : _paths)
         {
-            if (p and p->is_ready(now))
+            if (p and p->is_active(now))
                 intros.emplace(p->intro);
         }
 
@@ -271,15 +272,7 @@ namespace llarp::path
             build_more(n);
 
         tick_paths();
-
-        if (_build_stats.attempts > 50)
-        {
-            if (_build_stats.SuccessRatio() <= BuildStats::THRESHOLD && now - last_warn_time > 5s)
-            {
-                log::warning(logcat, "Low path build success: {}", _build_stats);
-                last_warn_time = now;
-            }
-        }
+        _build_stats.update(now);
     }
 
     nlohmann::json PathHandler::ExtractStatus() const
@@ -328,7 +321,7 @@ namespace llarp::path
 
         for (const auto& [_, p] : _paths)
         {
-            if (p != nullptr and p->is_ready())
+            if (p and p->is_active())
                 n += 1;
         }
 
@@ -599,7 +592,7 @@ namespace llarp::path
             }
         }
 
-        log::debug(logcat, "Building path -> {} : {}", path->to_string(), path->hop_string());
+        log::debug(logcat, "Building path -> {} :{}", path->to_string(), path->hop_string());
 
         return path;
     }
@@ -730,8 +723,8 @@ namespace llarp::path
         }
         else
         {
-            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak(), true, remote.is_client());
-            log::debug(logcat, "Building path -> {} : {}", new_path->to_string(), new_path->hop_string());
+            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak(), remote.is_client());
+            log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
         }
 
         assert(new_path);
@@ -745,7 +738,7 @@ namespace llarp::path
                 [this, new_path, intros, remote_intro, remote, cb, keep_path](oxen::quic::message m) mutable {
                     if (m)
                     {
-                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
+                        log::info(logcat, "PATH ESTABLISHED:{}", new_path->hop_string());
                         return cb(std::move(new_path), std::move(remote_intro));
                     }
 
@@ -801,7 +794,8 @@ namespace llarp::path
                 [new_path, success_cb = std::move(success_cb), fail_cb](oxen::quic::message m) mutable {
                     if (m)
                     {
-                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
+                        // log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
+                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->debug_string());
                         return success_cb(std::move(new_path));
                     }
 
@@ -846,8 +840,26 @@ namespace llarp::path
         }
     }
 
+    void PathHandler::rotate_paths(std::vector<RemoteRC> hops)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (auto new_path = build1(hops))
+        {
+            assert(new_path);
+
+            log::debug(logcat, "Attempting path-rotation to new path...");
+            path_build_onepass(
+                std::move(new_path),
+                [this](auto new_path) mutable { path_rotation_succeeded(std::move(new_path)); },
+                [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
+        }
+    }
+
     void PathHandler::path_build_failed(std::shared_ptr<Path> p, bool timeout)
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
         drop_path(p);
 
         if (timeout)
@@ -863,6 +875,8 @@ namespace llarp::path
 
     void PathHandler::path_build_succeeded(std::shared_ptr<Path> p)
     {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
         p->set_established();
         add_path(p);
         build_interval_limit = PATH_BUILD_RATE;

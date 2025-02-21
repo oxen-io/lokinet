@@ -12,20 +12,17 @@ namespace llarp::path
 {
     static auto logcat = log::Cat("path");
 
-    Path::Path(
-        Router& rtr,
-        const std::vector<RemoteRC>& hop_rcs,
-        std::weak_ptr<PathHandler> _handler,
-        bool is_session,
-        bool is_client)
+    size_t Path::next_path_uuid = 0;
+
+    Path::Path(Router& rtr, const std::vector<RemoteRC>& hop_rcs, std::weak_ptr<PathHandler> _handler, bool is_client)
         : handler{std::move(_handler)},
           _router{rtr},
-          _is_session_path{is_session},
           _is_client{is_client},
-          num_hops{hop_rcs.size()}
+          num_hops{hop_rcs.size()},
+          path_id{++next_path_uuid}
     {
         populate_internals(hop_rcs);
-        log::trace(logcat, "Path successfully constructed -> {} : {}", to_string(), hop_string());
+        log::trace(logcat, "Path successfully constructed -> {} :{}", to_string(), hop_string());
     }
 
     void Path::populate_internals(const std::vector<RemoteRC>& hop_rcs)
@@ -89,13 +86,11 @@ namespace llarp::path
     {
         _linked_sessions.insert(t);
         log::trace(logcat, "Current path has {} linked sessions!", _linked_sessions.size());
-        _is_session_path = true;
     }
 
     bool Path::unlink_session(session_tag t)
     {
         auto n = _linked_sessions.erase(t);
-        _is_session_path = not _linked_sessions.empty();
         log::trace(logcat, "Current path has {} linked sessions!", _linked_sessions.size());
         return n != 0;
     }
@@ -171,7 +166,7 @@ namespace llarp::path
         return _router.send_control_message(upstream_rid(), "path_control", std::move(outer_payload), std::move(func));
     }
 
-    bool Path::is_ready(std::chrono::milliseconds now) const { return _established ? !is_expired(now) : false; }
+    bool Path::is_active(std::chrono::milliseconds now) const { return _is_established ? !is_expired(now) : false; }
 
     std::shared_ptr<PathHandler> Path::get_parent()
     {
@@ -209,12 +204,19 @@ namespace llarp::path
 
     std::string Path::to_string() const
     {
-        return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Edge RX:{} | Pivot TX:{} ]"_format(
-            detail::bool_alpha(is_ready()),
-            detail::bool_alpha(_is_session_path),
+        return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{} ]"_format(
+            detail::bool_alpha(is_active()),
+            detail::bool_alpha(is_linked()),
             _router.local_rid().short_string(),
+            pivot_rid().short_string(),
             upstream_rxid(),
             pivot_txid());
+    }
+
+    std::string Path::debug_string() const
+    {
+        return "Path:[ ID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{} ]{}"_format(
+            path_id, pivot_rid().short_string(), upstream_rxid(), pivot_txid(), hop_string());
     }
 
     std::string Path::hop_string() const
@@ -238,7 +240,7 @@ namespace llarp::path
             {"lastRecvMsg", to_json(last_recv_msg)},
             {"lastLatencyTest", to_json(last_latency_test)},
             {"expired", is_expired(now)},
-            {"ready", is_ready()},
+            {"ready", is_active()},
         };
 
         std::vector<nlohmann::json> hopsObj;
@@ -252,7 +254,7 @@ namespace llarp::path
 
     void Path::Tick(std::chrono::milliseconds now)
     {
-        if (not is_ready())
+        if (not is_active())
             return;
 
         if (is_expired(now))
@@ -266,7 +268,7 @@ namespace llarp::path
     void Path::set_established()
     {
         log::trace(logcat, "Path marked as successfully established!");
-        _established = true;
+        _is_established = true;
         intro.expiry = llarp::time_now_ms() + path::DEFAULT_LIFETIME;
     }
 

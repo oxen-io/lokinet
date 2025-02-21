@@ -79,6 +79,8 @@ namespace llarp
 
             void drop_oldest_path() override;
 
+            void path_rotation_succeeded(std::shared_ptr<path::Path> new_path) override;
+
             std::optional<std::vector<RemoteRC>> get_hops_to_random() override;
 
           public:
@@ -106,6 +108,8 @@ namespace llarp
 
             // get copy of all srv records
             std::set<dns::SRVData> srv_records() const { return {_srv_records.begin(), _srv_records.end()}; }
+
+            bool recv_path_switch(session_tag t, HopID remove_pivot, HopID local_pivot);
 
             template <concepts::SessionType session_t = session::BaseSession>
             std::shared_ptr<session_t> get_session(const session_tag& tag) const

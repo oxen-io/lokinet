@@ -105,7 +105,8 @@ namespace llarp::session
         _current_path->link_session(_tag);
         assert(_current_path->is_linked());
 
-        log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->to_string());
+        // log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->to_string());
+        log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->debug_string());
     }
 
     void BaseSession::recv_path_switch2(HopID new_remote_txid, HopID new_local_txid)
@@ -122,13 +123,16 @@ namespace llarp::session
             return;
 
         // TESTNET: TODO:
+        {
+            //
+        }
     }
 
-    void BaseSession::recv_path_switch(HopID new_remote_txid)
+    void BaseSession::set_remote_pivot_tx(HopID new_remote_txid)
     {
         log::debug(
             logcat,
-            "Received new pivot txID from remote ({}) [ old:{} | new:{} ] ",
+            "Setting new pivot txID for remote ({}) [ old:{} | new:{} ] ",
             _remote,
             _remote_pivot_txid,
             new_remote_txid);
@@ -303,6 +307,12 @@ namespace llarp::session
 
         add_path(_current_path);
         populate_intro_map(std::move(_remote_intros));
+
+        log::debug(
+            logcat,
+            "OutboundSession to remote {} {} created...",
+            _is_snode_session ? "relay" : "client",
+            _is_exit_session ? "exit" : "service");
     }
 
     OutboundSession::~OutboundSession()
@@ -333,18 +343,20 @@ namespace llarp::session
         }
     }
 
-    void OutboundSession::send_path_switch(std::shared_ptr<path::Path> new_path)
+    void OutboundSession::send_path_switch()
     {
-        if (new_path == _current_path)
-        {
-            log::warning(logcat, "Given path is already current path!");
-            return;
-        }
+        // if (new_path == _current_path)
+        // {
+        //     log::warning(logcat, "Given path is already current path!");
+        //     return;
+        // }
 
-        set_new_current_path(std::move(new_path));
-        path_build_succeeded(_current_path);
+        // set_new_current_path(std::move(new_path));
+        // path_build_succeeded(_current_path);
 
-        log::debug(logcat, "Dispatching path-switch request to remote ({})", _remote);
+        // log::debug(logcat, "Dispatching path-switch request to remote ({})", _remote);
+        log::debug(
+            logcat, "Dispatching path-switch request to remote ({}): {}", _remote, _current_path->debug_string());
         send_path_control_message(
             "path_switch",
             SessionPathSwitch::serialize(_tag, _current_path->pivot_txid(), _remote_pivot_txid),
@@ -352,7 +364,22 @@ namespace llarp::session
                 if (m)
                     log::info(logcat, "Session path switch was successful!");
                 else
-                    log::warning(logcat, "Session path switch {}!", m.timed_out ? "timed out" : "failed");
+                {
+                    std::optional<std::string> status = std::nullopt;
+                    try
+                    {
+                        oxenc::bt_dict_consumer btdc{m.body()};
+
+                        if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
+                            status = s;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(logcat, "Exception: {}", e.what());
+                    }
+
+                    log::critical(logcat, "Session path switch FAILED; reason: {}", status.value_or("<none given>"));
+                }
             });
     }
 
@@ -382,6 +409,8 @@ namespace llarp::session
     {
         Lock_t l(paths_mutex);
 
+        bool find_new_current = false;
+
         for (auto it = _paths.begin(); it != _paths.end();)
         {
             bool keep_path = false;
@@ -401,26 +430,56 @@ namespace llarp::session
                 ++it;
             else
             {
-                log::debug(logcat, "Unlinking and dropping path {}", *it->second);
+                // log::debug(logcat, "Unlinking and dropping path {}", *it->second);
+                log::debug(logcat, "Unlinking and dropping path {}", it->second->debug_string());
                 it->second->unlink_session(_tag);
                 _router.path_context()->drop_path(it->second);
+
+                if (it->second == _current_path)
+                {
+                    log::debug(logcat, "Dropped path is current session path");
+                    find_new_current = true;
+                }
+
                 it = _paths.erase(it);
             }
         }
 
-        // If any of our current paths are valid to the new intros, _paths will NOT be empty. Since we
-        // cleared the intro_path_map before populating it again
-        if (not _paths.empty())
-        {
-            for (auto& [intro, pathset] : intro_path_mapping)
-            {
-                if (not pathset.empty() and _current_path != *pathset.begin())
-                    send_path_switch(*pathset.begin());
+        //  If _paths is empty, we need to build a new current to switch to. Otherwise, if we
+        //  had to drop our current path, we need to try to select a new one from the non-empty
+        //  _paths map.
+        return _paths.empty() ? false : find_new_current ? select_new_current() : true;
+    }
 
-                return true;
+    void OutboundSession::switch_to_new_path(std::shared_ptr<path::Path> p, HopID new_pivot_txid)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        set_remote_pivot_tx(std::move(new_pivot_txid));
+        set_new_current_path(std::move(p));
+        send_path_switch();
+    }
+
+    bool OutboundSession::select_new_current()
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        for (auto& [intro, pathset] : intro_path_mapping)
+        {
+            if (pathset.empty())
+                continue;
+
+            for (auto& p : pathset)
+            {
+                if (p != _current_path)
+                {
+                    switch_to_new_path(p, intro.pivot_txid);
+                    return true;
+                }
             }
         }
 
+        log::debug(logcat, "Failed to find valid new current path in intro path mapping...");
         return false;
     }
 
@@ -457,7 +516,7 @@ namespace llarp::session
         log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot_rid());
     }
 
-    void OutboundSession::unmap_path(const std::shared_ptr<path::Path>& p)
+    bool OutboundSession::unmap_path(const std::shared_ptr<path::Path>& p)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -468,11 +527,12 @@ namespace llarp::session
                 p->unlink_session(_tag);
                 pathset.erase(p);
                 log::debug(logcat, "Client intro {} has {} paths to remote pivot", intro, pathset.size());
-                return;
+                return true;
             }
         }
 
         log::warning(logcat, "Could not match currently held intros to path over pivot ({})", p->pivot_rid());
+        return false;
     }
 
     void OutboundSession::path_build_succeeded(std::shared_ptr<path::Path> p)
@@ -554,7 +614,7 @@ namespace llarp::session
             }
 
             auto needed = PATHS_PER_INTRO - pathset.size();
-            for (size_t i = 0; i < needed; ++i)
+            for (size_t i = 0; i < needed && count < n; ++i)
                 count += build_path_aligned_to_remote(intro.pivot_rid);
 
             log::trace(
@@ -574,6 +634,16 @@ namespace llarp::session
             log::warning(logcat, "OutboundSession only initiated {} path-builds (needed: {})", count, n);
     }
 
+    void OutboundSession::build_and_switch_paths()
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        auto intros = get_current_client_intros();
+        assert(not intros.empty());
+
+        return build_and_switch_paths(std::move(intros));
+    }
+
     void OutboundSession::build_and_switch_paths(intro_set intros)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -582,8 +652,8 @@ namespace llarp::session
             intros,
             _remote,
             [this](std::shared_ptr<path::Path> new_path, ClientIntro intro) mutable {
-                _remote_pivot_txid = intro.pivot_txid;
-                return send_path_switch(std::move(new_path));
+                path_build_succeeded(new_path);
+                return switch_to_new_path(std::move(new_path), std::move(intro.pivot_txid));
             },
             true);
     }
@@ -594,23 +664,25 @@ namespace llarp::session
         Lock_t l{paths_mutex};
 
         auto oldest = get_oldest_path();
-        log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
+        // log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
+        log::debug(logcat, "Dropping oldest path: {}", oldest->debug_string());
 
-        bool found = false;
-
-        for (auto& [intro, pathset] : intro_path_mapping)
-        {
-            if (intro.pivot_rid == oldest->pivot_rid())
-            {
-                pathset.erase(oldest);
-                found = true;
-                break;
-            }
-        }
+        bool found = unmap_path(oldest), set_new_current = oldest == _current_path;
 
         log::debug(logcat, "{}uccessfully dropped oldest path from OutboundSession mapping", found ? "S" : "Uns");
 
         drop_path(oldest);
+
+        if (not set_new_current)
+        {
+            log::debug(logcat, "Dropped oldest path; current path is still valid...");
+            return;
+        }
+
+        if (select_new_current())
+            return;
+
+        build_and_switch_paths();
     }
 
     void OutboundSession::rotate_paths()
@@ -618,29 +690,41 @@ namespace llarp::session
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
         Lock_t l{paths_mutex};
-        const auto& rid = _remote.router_id();
 
-        auto maybe_hops = aligned_hops_to_remote(rid);
+        // use the newest intro we have for the remote, and build a path to that pivot
+        const auto& rid = intro_path_mapping.begin()->first.pivot_rid;
 
-        if (not maybe_hops)
+        for (int i = 0; i < 3; ++i)
         {
-            log::warning(logcat, "Failed to get hops for path-build to remote: {}", rid);
-            return;
+            auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+            if (maybe_hops)
+                return path::PathHandler::rotate_paths(std::move(*maybe_hops));
+
+            log::warning(logcat, "Failed attempt #{} to get hops for path-build to remote: {}", i + 1, rid);
         }
 
-        path::PathHandler::rotate_paths(
-            std::move(*maybe_hops),
-            [this](auto new_path) mutable {
-                log::info(logcat, "OutboundSession successfully rotated in new path: {}", new_path->to_string());
-                path_build_succeeded(std::move(new_path));
-                drop_oldest_path();
-            },
-            [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
+        // auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+
+        // if (not maybe_hops)
+        // {
+        //     log::warning(logcat, "Failed to get hops for path-build to remote: {}", rid);
+        //     return;
+        // }
+
+        // path::PathHandler::rotate_paths(std::move(*maybe_hops));
+    }
+
+    void OutboundSession::path_rotation_succeeded(std::shared_ptr<path::Path> new_path)
+    {
+        // log::info(logcat, "OutboundSession successfully rotated in new path: {}", new_path->to_string());
+        log::info(logcat, "OutboundSession successfully rotated in new path: {}", new_path->debug_string());
+        path_build_succeeded(std::move(new_path));
+        drop_oldest_path();
     }
 
     std::shared_ptr<path::Path> OutboundSession::build1(std::vector<RemoteRC>& hops)
     {
-        auto path = std::make_shared<path::Path>(_router, hops, get_weak(), true, _remote.is_client());
+        auto path = std::make_shared<path::Path>(_router, hops, get_weak(), _remote.is_client());
 
         {
             Lock_t l{paths_mutex};
@@ -652,7 +736,7 @@ namespace llarp::session
             }
         }
 
-        log::debug(logcat, "Building path -> {} : {}", path->to_string(), path->hop_string());
+        log::debug(logcat, "Building path -> {} :{}", path->to_string(), path->hop_string());
 
         return path;
     }
@@ -690,6 +774,12 @@ namespace llarp::session
             use_tun,
             false,
             std::move(kx_data)}
-    {}
+    {
+        log::debug(
+            logcat,
+            "InboundSession from remote client to local {} {} created",
+            _is_snode_session ? "relay" : "client",
+            _is_exit_session ? "exit" : "service");
+    }
 
 }  // namespace llarp::session

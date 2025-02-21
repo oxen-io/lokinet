@@ -126,7 +126,7 @@ namespace llarp
     bool ClientContact::is_expired(std::chrono::milliseconds now) const
     {
         // check the last intro to expire
-        return intros.rbegin()->is_expired(now);
+        return intros.begin()->is_expired(now);
     }
 
     EncryptedClientContact ClientContact::encrypt_and_sign() const

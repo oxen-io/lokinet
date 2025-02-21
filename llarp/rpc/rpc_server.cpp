@@ -439,7 +439,7 @@ namespace llarp::rpc
                             status = "Exception: {}"_format(e.what());
                         }
 
-                        log::critical(logcat, "Call to InitiateSession FAILED; reason: {}", status);
+                        log::critical(logcat, "Call to `session_close` FAILED; reason: {}", status);
                         result.emplace("result", std::move(status));
                         replier.reply(result.dump());
                     };
