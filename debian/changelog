@@ -1,3 +1,9 @@
+lokinet (0.9.13-1~deb11) bullseye; urgency=medium
+
+  * rebuild
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 21 Feb 2025 20:38:43 -0400
+
 lokinet (0.9.12-2~deb11) bullseye; urgency=medium
 
   [ Thomas Winget ]
