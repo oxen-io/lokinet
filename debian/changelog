@@ -1,3 +1,9 @@
+lokinet (0.9.13-1~ubuntu2404) noble; urgency=medium
+
+  * rebuild
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 21 Feb 2025 20:38:55 -0400
+
 lokinet (0.9.12-2~ubuntu2404) noble; urgency=medium
 
   [ Thomas Winget ]
