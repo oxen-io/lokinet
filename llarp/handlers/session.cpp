@@ -2,7 +2,7 @@
 
 #include <llarp/contact/contactdb.hpp>
 #include <llarp/messages/dht.hpp>
-#include <llarp/messages/path.hpp>
+#include <llarp/messages/fetch.hpp>
 #include <llarp/messages/session.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router/router.hpp>
@@ -16,7 +16,7 @@ namespace llarp::handlers
     SessionEndpoint::SessionEndpoint(Router& r)
         : path::PathHandler{r, path::DEFAULT_PATHS_HELD, path::DEFAULT_LEN},
           _is_exit_node{_router.is_exit_node()},
-          _is_snode_service{_router.is_service_node()}
+          _is_service_node{_router.is_service_node()}
     {}
 
     const std::shared_ptr<EventLoop>& SessionEndpoint::loop() { return _router.loop(); }
@@ -149,12 +149,9 @@ namespace llarp::handlers
     {
         auto net_config = _router.config()->network;
 
-        _is_exit_node = _router.is_exit_node();
-        _is_snode_service = _router.is_service_node();
-
         if (_is_exit_node)
         {
-            assert(not _is_snode_service);
+            assert(not _is_service_node);
 
             _exit_policy = net_config.traffic_policy;
             client_contact.exit_policy = _exit_policy;
@@ -191,7 +188,7 @@ namespace llarp::handlers
         }
 
         // always accept ipv4 (currently)
-        uint8_t protoflags = meta::to_underlying(protocol_flag::IPV4);
+        protoflags = meta::to_underlying(protocol_flag::IPV4);
 
         if (_ipv6_enabled)
             protoflags |= meta::to_underlying(protocol_flag::IPV6);
@@ -433,6 +430,87 @@ namespace llarp::handlers
         }
     }
 
+    void SessionEndpoint::lookup_relay_contact(RouterID remote, std::function<void(std::optional<RemoteRC>)> func)
+    {
+        if (auto maybe_rc = _router.node_db()->get_rc(remote))
+        {
+            log::debug(logcat, "RelayContact for remote (rid: {}) found locally!", remote);
+            return func(std::move(maybe_rc));
+        }
+
+        log::debug(logcat, "Looking up RelayContact for remote (rid:{})", remote.to_network_address(true));
+
+        auto ignore_remaining = std::make_shared<std::atomic_bool>(false);
+
+        auto response_handler =
+            [this, remote, hook = std::move(func), ignore_remaining](oxen::quic::message m) mutable {
+                if (ignore_remaining->load())
+                {
+                    log::trace(logcat, "Dropping subsequent `fetch_rc` response (success: {})...", not m.is_error());
+                    return;
+                }
+                try
+                {
+                    if (m)
+                    {
+                        log::info(logcat, "Call to FetchRC succeeded!");
+                        auto rcs = FetchRC::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+
+                        if (rcs.empty())
+                        {
+                            log::warning(logcat, "Received empty response from `fetch_rc` request!");
+                            return;
+                        }
+
+                        if (rcs.size() > 1)
+                        {
+                            log::warning(
+                                logcat, "Received more RC's than expected (n:{}) from `fetch_rc` request!", rcs.size());
+                            return;
+                        }
+
+                        log::debug(logcat, "Storing RelayContact for remote rid:{}", remote);
+                        auto rc = rcs.extract(rcs.begin()).value();
+                        _router.node_db()->put_rc(rc);
+                        ignore_remaining->store(true);
+                        return hook(std::move(rc));
+                    }
+
+                    std::optional<std::string> status = std::nullopt;
+                    oxenc::bt_dict_consumer btdc{m.body()};
+
+                    if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
+                        status = s;
+
+                    log::warning(logcat, "Call to FetchRCs FAILED; reason: {}", status.value_or("<none given>"));
+                }
+                catch (const std::exception& e)
+                {
+                    log::warning(logcat, "Exception: {}", e.what());
+                }
+
+                hook(std::nullopt);
+            };
+
+        {
+            Lock_t l{paths_mutex};
+
+            for (const auto& [_, p] : _paths)
+            {
+                if (not p or not p->is_active())
+                    continue;
+
+                log::debug(
+                    logcat,
+                    "Querying pivot (rid:{}) for RelayContact lookup target (rid:{})",
+                    p->pivot_rid().short_string(),
+                    remote);
+
+                p->fetch_relay_contact(remote, response_handler);
+            }
+        }
+    }
+
     void SessionEndpoint::lookup_client_intro(RouterID remote, std::function<void(std::optional<ClientContact>)> func)
     {
         if (auto maybe_intro = _router.contact_db().get_decrypted_cc(remote))
@@ -463,7 +541,6 @@ namespace llarp::handlers
                     if (m)
                     {
                         log::info(logcat, "Call to FindClientContact succeeded!");
-
                         auto enc = FindClientContact::deserialize_response(oxenc::bt_dict_consumer{m.body()});
 
                         if (auto intro = enc.decrypt(remote))
@@ -592,7 +669,7 @@ namespace llarp::handlers
         shared_kx_data kx_data,
         bool use_tun)
     {
-        auto tag = client_contact.generate_session_tag();
+        auto tag = session_tag::make(protoflags);
 
         auto inbound = std::make_shared<session::InboundSession>(
             initiator, std::move(path), *this, std::move(remote_pivot_txid), tag, use_tun, std::move(kx_data));
@@ -739,8 +816,7 @@ namespace llarp::handlers
         NetworkAddress remote,
         ClientIntro remote_intro,
         std::shared_ptr<path::Path> path,
-        on_session_init_hook cb,
-        bool /* is_exit */)
+        on_session_init_hook cb)
     {
         std::string inner_payload;
         shared_kx_data kx_data;
@@ -857,39 +933,45 @@ namespace llarp::handlers
         log::debug(logcat, "message sent...");
     }
 
-    void SessionEndpoint::_make_session_path(
-        intro_set intros, NetworkAddress remote, on_session_init_hook cb, bool is_exit)
+    void SessionEndpoint::_make_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb)
+    {
+        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        path_build_iterative(
+            SESSION_PATH_BUILD_ATTEMPTS,
+            rc,
+            remote,
+            [this, rc, remote, cb](std::shared_ptr<path::Path> p) {
+                log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
+                (void)this;
+                (void)p;
+            },
+            false);
+    }
+
+    void SessionEndpoint::_make_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
         path_build_recursive(
             intros,
             remote,
-            [this, intros, remote, cb, is_exit](
-                std::shared_ptr<path::Path> new_path, ClientIntro remote_intro) mutable {
+            [this, intros, remote, cb](std::shared_ptr<path::Path> new_path, ClientIntro remote_intro) mutable {
                 log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
                 return _make_session(
-                    std::move(intros),
-                    std::move(remote),
-                    std::move(remote_intro),
-                    std::move(new_path),
-                    std::move(cb),
-                    is_exit);
+                    std::move(intros), std::move(remote), std::move(remote_intro), std::move(new_path), std::move(cb));
             },
             false);
     }
 
-    bool SessionEndpoint::_initiate_session(NetworkAddress remote, on_session_init_hook cb, bool is_exit)
+    bool SessionEndpoint::_initiate_client_session(NetworkAddress remote, on_session_init_hook cb)
     {
-        if (is_exit and not remote.is_client())
-            throw std::runtime_error{"Cannot initiate exit session to remote service node!"};
-
         auto counter = std::make_shared<size_t>(num_paths_desired);
 
-        _router.loop()->call([this, remote, handler = std::move(cb), is_exit, counter]() mutable {
+        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
             lookup_client_intro(
                 remote.router_id(),
-                [this, remote, hook = std::move(handler), is_exit, counter](std::optional<ClientContact> cc) mutable {
+                [this, remote, hook = std::move(handler), counter](std::optional<ClientContact> cc) mutable {
                     if (*counter == 0)
                         return;
 
@@ -897,13 +979,63 @@ namespace llarp::handlers
                     {
                         *counter = 0;
                         log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_session_path(std::move(*cc).take_intros(), remote, std::move(hook), is_exit);
+                        _make_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
                     }
                     else if (--*counter == 0)
                         log::warning(
                             logcat,
                             "Failed to initiate session at 'find_cc' (target:{})",
                             remote.router_id().short_string());
+                });
+        });
+
+        return true;
+    }
+
+    bool SessionEndpoint::_initiate_relay_session(NetworkAddress remote, on_session_init_hook cb)
+    {
+        auto counter = std::make_shared<size_t>(num_paths_desired);
+
+        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
+            lookup_relay_contact(
+                remote.router_id(),
+                [this, remote, hook = std::move(handler), counter](std::optional<RemoteRC> rc) mutable {
+                    if (*counter == 0)
+                        return;
+
+                    if (rc)
+                    {
+                        *counter = 0;
+                        log::debug(logcat, "Session initiation returned RC: {}", rc->to_string());
+                        (void)this;
+                    }
+                    else if (--*counter == 0)
+                        log::warning(logcat, "Failed to initiate session at `fetch_rcs` (target:{})", remote);
+                });
+        });
+
+        return true;
+    }
+
+    bool SessionEndpoint::_initiate_session(NetworkAddress remote, on_session_init_hook cb)
+    {
+        auto counter = std::make_shared<size_t>(num_paths_desired);
+
+        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
+            lookup_client_intro(
+                remote.router_id(),
+                [this, remote, hook = std::move(handler), counter](std::optional<ClientContact> cc) mutable {
+                    if (*counter == 0)
+                        return;
+
+                    if (cc)
+                    {
+                        *counter = 0;
+                        log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
+                        _make_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
+                    }
+                    else if (--*counter == 0)
+                        log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);
                 });
         });
 

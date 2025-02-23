@@ -7,8 +7,6 @@
 
 namespace llarp
 {
-    // TESTNET: TODO: revisit this later; if we never need NetworkAddr as a key, just use tag
-
     /** This class will accept any types satisfying the concepts SessionType and NetworkAddrType
             NetworkAddrType: must be inherited from NetworkAddress
             SessionType: must be inherited from BaseSession

@@ -33,7 +33,7 @@ namespace llarp::session
           _remote_pivot_txid{std::move(remote_pivot_txid)},
           _use_tun{use_tun},
           _is_outbound{is_outbound},
-          _is_snode_session{_is_outbound ? !_remote.is_client() : _parent.is_snode_service()},
+          _is_snode_session{_is_outbound ? !_remote.is_client() : _parent.is_service_node()},
           _is_exit_session{session_keys.has_value() && !_is_snode_session}
     {
         set_new_current_path(std::move(_p));
@@ -301,7 +301,7 @@ namespace llarp::session
     {
         // These can both be false but CANNOT both be true
         if (_is_exit_session and _is_snode_session)
-            throw std::runtime_error{"Cannot create OutboundSession for a remote exit and remote service!"};
+            throw std::runtime_error{"Cannot create OutboundSession for a remote exit and remote service node!"};
 
         _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
 
@@ -694,7 +694,7 @@ namespace llarp::session
         // use the newest intro we have for the remote, and build a path to that pivot
         const auto& rid = intro_path_mapping.begin()->first.pivot_rid;
 
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < SESSION_PATH_BUILD_ATTEMPTS; ++i)
         {
             auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
             if (maybe_hops)

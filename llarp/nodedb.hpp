@@ -216,17 +216,6 @@ namespace llarp
 
         std::vector<RouterID> get_expired_rcs();
 
-        // TESTNET: new bootstrap/initial fetch functions
-        void fetch_rcs();
-        void fetch_rids();
-        void bootstrap();
-
-        void post_rid_fetch(bool shutdown = false);
-        void post_rc_fetch(bool shutdown = false);
-
-        void rid_fetch_result();
-        void rc_fetch_result(std::optional<std::set<RemoteRC>> result = std::nullopt);
-        void stop_bootstrap(bool success = true);
         bool is_bootstrapping() const { return _is_bootstrapping; }
         bool needs_bootstrap() const { return _needs_bootstrap; }
         bool bootstrap_completed() const { return not(_is_bootstrapping or _needs_bootstrap); }
@@ -347,7 +336,21 @@ namespace llarp
 
         bool verify_store_gossip_rc(const RemoteRC& rc);
 
+        // public method that can be used in session initiation
+        void fetch_rcs(std::vector<RouterID> needed, bt_control_response_hook func);
+
       private:
+        void fetch_rcs();
+        void fetch_rids();
+        void bootstrap();
+
+        void post_rid_fetch(bool shutdown = false);
+        void post_rc_fetch(bool shutdown = false);
+
+        void rid_fetch_result();
+        void rc_fetch_result(std::optional<std::set<RemoteRC>> result = std::nullopt);
+        void stop_bootstrap(bool success = true);
+
         void cycle_fetch_source();
 
         // Updates `current` to not contain any of the elements of `replace` and resamples (up to

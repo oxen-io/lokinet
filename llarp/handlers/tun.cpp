@@ -267,21 +267,6 @@ namespace llarp::handlers
         }
     }
 
-    /** DISCUSS: Can the auth objects be further simplified?
-        - In the original implementation, the AuthPolicy async logic was for the instance receiving the connection
-            request to execute its aynchronous logic and queue the authentication job
-
-        Static Token Auth:
-        - In the re-designed auth paradigm, static tokens are either independantly coordinated with the exit/service
-            operator
-        - The session initiator will automatically include any static tokens that are either (A) loaded into the
-            config mapping or (B) passed to the lokinet-vpn cli utility
-            - As a result, the session initiator doesn't necessarily need an AuthPolicy object
-
-        RPC Auth:
-        - Why can't the functionality of this be entirely subsumed by the RPCClient?
-            - If the config specifies the auth_type as RPC plus
-    */
     void TunEndpoint::configure()
     {
         return _router.loop()->call_get([&]() {
@@ -1100,91 +1085,11 @@ namespace llarp::handlers
         rewrite_and_send_packet(std::move(pkt), src, dest);
     }
 
-    // handles an inbound packet coming IN from network -> user
-    // bool TunEndpoint::handle_inbound_packet(
-    //     IPPacket pkt, NetworkAddress remote, bool is_exit_session, bool is_outbound_session)
-    // {
-    //     ip_v src, dest;
-
-    //     auto pkt_is_ipv4 = pkt.is_ipv4();
-
-    //     if (is_exit_session and is_outbound_session)
-    //     {
-    //         log::info(logcat, "inbound exit session pkt: {}", pkt.info_line());
-    //         // we are receiving traffic from a session to a remote exit node
-    //         if (pkt_is_ipv4)
-    //         {
-    //             src = pkt.source_ipv4();
-    //             dest = _local_addr.to_ipv4();
-    //         }
-    //         else
-    //         {
-    //             src = pkt.source_ipv6();
-    //             dest = _local_ipv6.to_ipv6();
-    //         }
-
-    //         assert(remote.is_client());
-
-    //         auto maybe_remote = _local_ip_mapping.get_remote_from_local(src);
-
-    //         if (not maybe_remote)
-    //         {
-    //             log::info(logcat, "Could not find mapping of local IP (ip:{}) for session to remote: {}", src,
-    //             remote); return false;
-    //         }
-    //         if (*maybe_remote != remote)
-    //         {
-    //             log::info(
-    //                 logcat,
-    //                 "Internal mapping of local IP (ip:{}, remote:{}) did not match inbound packet from remote: {}",
-    //                 src,
-    //                 *maybe_remote,
-    //                 remote);
-    //             return false;
-    //         }
-    //     }
-    //     else
-    //     {
-    //         if (is_exit_session and not is_outbound_session)
-    //         {
-    //             log::info(logcat, "inbound exit session pkt: {}", pkt.info_line());
-    //             // we are receiving traffic from a session to a local exit node
-    //             if (not _exit_policy->allow_ip_traffic(pkt))
-    //                 return false;
-
-    //             if (pkt_is_ipv4)
-    //                 dest = pkt.dest_ipv4();
-    //             else
-    //                 dest = pkt.dest_ipv6();
-    //         }
-    //         else
-    //         {
-    //             log::info(logcat, "inbound service session pkt: {}", pkt.info_line());
-    //             // we are receiving hidden service traffic
-    //             if (pkt_is_ipv4)
-    //                 dest = _local_addr.to_ipv4();
-    //             else
-    //                 dest = _local_ipv6.to_ipv6();
-    //         }
-
-    //         if (auto maybe_src = obtain_src_for_remote(remote, pkt_is_ipv4))
-    //             src = std::move(*maybe_src);
-    //         else
-    //             return false;
-    //     }
-
-    //     log::trace(logcat, "src:{}, dest:{}", src, dest);
-
-    //     rewrite_and_send_packet(std::move(pkt), src, dest);
-
-    //     return true;
-    // }
-
     void TunEndpoint::start_poller()
     {
         if (not _poller->start())
             throw std::runtime_error{"TUN failed to start FD poller!"};
-        log::debug(logcat, "TUN successfully started FD poller!");
+        log::trace(logcat, "TUN successfully started FD poller!");
     }
 
     bool TunEndpoint::is_allowing_traffic(const IPPacket& pkt) const

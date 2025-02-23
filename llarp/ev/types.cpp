@@ -203,14 +203,14 @@ namespace llarp
     bool LinuxPoller::start()
     {
         auto rv = event_add(ev.get(), nullptr) == 0;
-        log::info(logcat, "Linux poller {} watching FD {}", rv ? "successfully began" : "failed to start", fd);
+        log::debug(logcat, "Linux poller {} watching FD {}", rv ? "successfully began" : "failed to start", fd);
         return rv;
     }
 
     bool LinuxPoller::stop()
     {
         auto rv = event_del(ev.get());
-        log::info(logcat, "Linux poller {} watching FD {}", rv ? "successfully stopped" : "failed to stop", fd);
+        log::debug(logcat, "Linux poller {} watching FD {}", rv ? "successfully stopped" : "failed to stop", fd);
         return rv;
     }
 }  //  namespace llarp

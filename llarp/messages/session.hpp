@@ -24,7 +24,7 @@ namespace llarp
         static auto logcat = llarp::log::Cat("session-init");
 
         inline const auto AUTH_ERROR = messages::serialize_response({{messages::STATUS_KEY, "AUTH ERROR"}});
-        inline const auto BAD_PATH = messages::serialize_response({{messages::STATUS_KEY, "BAD PATH"}});
+        inline const auto BAD_ROUTE = messages::serialize_response({{messages::STATUS_KEY, "BAD ROUTE"}});
         inline const auto BAD_ADDRESS = messages::serialize_response({{messages::STATUS_KEY, "BAD ADDRESS"}});
 
         inline static std::tuple<std::string, shared_kx_data> serialize_encrypt(

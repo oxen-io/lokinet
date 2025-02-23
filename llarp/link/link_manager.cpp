@@ -273,6 +273,7 @@ namespace llarp
 
         if (client_only)
         {
+            // TESTNET: WIP relay sessions
             s->register_handler("session_init"s, [this](oxen::quic::message m) mutable {
                 _router.loop()->call([&, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
             });
@@ -802,6 +803,7 @@ namespace llarp
         _router.save_rc();
     }
 
+    // TESTNET: TODO: use batch sender
     void LinkManager::gossip_rc(const RouterID& last_sender, const RemoteRC& rc)
     {
         int count{};
@@ -816,8 +818,8 @@ namespace llarp
             if (rid == gossip_src or rid == last_sender)
                 continue;
 
-            count += send_control_message(
-                rid, "gossip_rc", GossipRCMessage::serialize(last_sender, rc), [](oxen::quic::message) {
+            count +=
+                send_control_message(rid, "gossip_rc", GossipRC::serialize(last_sender, rc), [](oxen::quic::message) {
                     log::trace(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
                 });
         }
@@ -1058,7 +1060,7 @@ namespace llarp
         {
             log::info(logcat, "Relaying FetchRID request (body: {}) to intended target RID:{}", m.body(), source);
 
-            auto payload = FetchRIDMessage::serialize(source);
+            auto payload = FetchRID::serialize(source);
             send_control_message(
                 source, "fetch_rids", std::move(payload), [original = std::move(m)](oxen::quic::message msg) mutable {
                     original.respond(msg.body(), msg.is_error());
@@ -1456,7 +1458,7 @@ namespace llarp
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        if (!_is_service_node)
+        if (not _is_service_node)
         {
             auto path = _router.path_context()->get_path(hop_id);
 
@@ -1500,7 +1502,7 @@ namespace llarp
             onion_nonce,
             hop->kx.xor_nonce);
 
-        if (not inner_body.has_value())
+        if (not inner_body)
         {
             // if terminal hop, payload should contain a request (e.g. "ons_resolve"); handle and respond.
             if (hop->terminal_hop)
@@ -1577,6 +1579,7 @@ namespace llarp
 
     void LinkManager::handle_path_data_message(bstring data)
     {
+        // not a registered handler, use loop-call
         _router.loop()->call([this, message = std::move(data)]() mutable {
             HopID hop_id;
             std::string payload;
@@ -1593,7 +1596,7 @@ namespace llarp
                 return;
             }
 
-            if (!_is_service_node)
+            if (not _is_service_node)
             {
                 auto path = _router.path_context()->get_path(hop_id);
 
@@ -1615,24 +1618,7 @@ namespace llarp
 
                 log::trace(logcat, "Received path data for local client: {}", buffer_printer{payload});
 
-                try
-                {
-                    auto [tag, data] = PATH::DATA::deserialize_inner(std::move(payload));
-
-                    if (auto session = _router.session_endpoint()->get_session(tag))
-                    {
-                        session->recv_path_data_message(std::move(data));
-                    }
-                    else
-                    {
-                        log::warning(logcat, "Could not find session (tag:{}) to relay path data message!", tag);
-                    }
-                }
-                catch (const std::exception& e)
-                {
-                    log::warning(logcat, "Exception: {}: {}", e.what(), buffer_printer{payload});
-                }
-                return;
+                return handle_path_session_data(std::move(payload));
             }
 
             auto hop = _router.path_context()->get_transit_hop(hop_id);
@@ -1682,6 +1668,12 @@ namespace llarp
 
                 log::trace(logcat, "Inbound path rxid:{}, outbound path txid:{}", hop_id, ihid);
 
+                if (hop_id == ihid)
+                {
+                    log::debug(logcat, "Received path data for local relay: {}", buffer_printer{intermediate});
+                    return handle_path_session_data(std::move(intermediate));
+                }
+
                 auto next_hop = _router.path_context()->get_transit_hop(ihid);
 
                 if (not next_hop)
@@ -1729,6 +1721,27 @@ namespace llarp
         });
     }
 
+    void LinkManager::handle_path_session_data(std::string payload)
+    {
+        try
+        {
+            auto [tag, data] = PATH::DATA::deserialize_inner(std::move(payload));
+
+            if (auto session = _router.session_endpoint()->get_session(tag))
+            {
+                session->recv_path_data_message(std::move(data));
+            }
+            else
+            {
+                log::warning(logcat, "Could not find session (tag:{}) to relay path data message!", tag);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::warning(logcat, "Exception: {}: {}", e.what(), buffer_printer{payload});
+        }
+    }
+
     void LinkManager::handle_path_request(oxen::quic::message m, std::string payload)
     {
         std::string endpoint, body;
@@ -1766,7 +1779,7 @@ namespace llarp
         NetworkAddress initiator;
         HopID remote_pivot_txid;
         HopID local_pivot_txid;
-        bool use_tun;
+        bool use_tun{};
         shared_kx_data kx_data;
         std::optional<std::string> maybe_auth = std::nullopt;
         std::shared_ptr<path::Path> path_ptr;
@@ -1779,45 +1792,64 @@ namespace llarp
             else
                 std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
                     InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, _router.identity());
-
-            if (maybe_auth and not _router.session_endpoint()->validate(initiator, maybe_auth))
-            {
-                log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", initiator);
-                return m.respond(InitiateSession::AUTH_ERROR, true);
-            }
-
-            if (initiator.router_id() == _router.local_rid())
-            {
-                log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
-                return m.respond(InitiateSession::BAD_ADDRESS, true);
-            }
-
-            path_ptr = _router.path_context()->get_path(local_pivot_txid);
-
-            if (not path_ptr)
-            {
-                log::warning(
-                    logcat, "Failed to find local path for new inbound session over pivot: {}", local_pivot_txid);
-                return m.respond(InitiateSession::BAD_PATH, true);
-            }
-
-            if (auto tag = _router.session_endpoint()->prefigure_session(
-                    std::move(initiator),
-                    std::move(remote_pivot_txid),
-                    std::move(path_ptr),
-                    std::move(kx_data),
-                    use_tun))
-            {
-                log::debug(logcat, "InboundSession configured successfully!");
-                return m.respond(InitiateSession::serialize_response(*tag));
-            }
-
-            log::warning(logcat, "Failed to configure InboundSession!");
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}", e.what());
         }
+
+        if (initiator.router_id() == _router.local_rid())
+        {
+            log::warning(logcat, "Received request to initiate session from local instance; ignoring!");
+            return m.respond(InitiateSession::BAD_ADDRESS, true);
+        }
+
+        if (maybe_auth and not _router.session_endpoint()->validate(initiator, maybe_auth))
+        {
+            log::warning(logcat, "Failed to authenticate session initiation request from remote:{}", initiator);
+            return m.respond(InitiateSession::AUTH_ERROR, true);
+        }
+
+        if (not _is_service_node)
+        {
+            path_ptr = _router.path_context()->get_path(local_pivot_txid);
+
+            if (not path_ptr)
+            {
+                log::warning(
+                    logcat, "Failed to find local path for new inbound session over pivot txid: {}", local_pivot_txid);
+                return m.respond(InitiateSession::BAD_ROUTE, true);
+            }
+        }
+        else
+        {
+            auto hop = _router.path_context()->get_transit_hop(local_pivot_txid);
+
+            if (not hop)
+            {
+                log::warning(
+                    logcat, "Received path-request to initiate session with unknown hop (ID: {})", local_pivot_txid);
+                return m.respond(InitiateSession::BAD_ROUTE, true);
+            }
+
+            if (not hop->terminal_hop)
+            {
+                log::warning(
+                    logcat,
+                    "Received path-request to initiate session and we are NOT terminal hop (ID: {})",
+                    local_pivot_txid);
+                return m.respond(InitiateSession::BAD_ROUTE, true);
+            }
+        }
+
+        if (auto tag = _router.session_endpoint()->prefigure_session(
+                std::move(initiator), std::move(remote_pivot_txid), std::move(path_ptr), std::move(kx_data), use_tun))
+        {
+            log::debug(logcat, "InboundSession configured successfully!");
+            return m.respond(InitiateSession::serialize_response(*tag));
+        }
+
+        log::warning(logcat, "Failed to configure InboundSession!");
 
         m.respond(messages::ERROR_RESPONSE, true);
     }
@@ -1906,34 +1938,6 @@ namespace llarp
         {
             log::warning(logcat, "Exception: {}", e.what());
             // m.respond(serialize_response({{messages::STATUS_KEY, "EXCEPTION"}}), true);
-            return;
-        }
-    }
-
-    void LinkManager::handle_path_transfer(oxen::quic::message m)
-    {
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
-            return;
-        }
-    }
-
-    void LinkManager::handle_path_transfer_response(oxen::quic::message m)
-    {
-        try
-        {
-            oxenc::bt_dict_consumer btdc{m.body()};
-        }
-        catch (const std::exception& e)
-        {
-            log::warning(logcat, "Exception: {}", e.what());
-            m.respond(messages::ERROR_RESPONSE, true);
             return;
         }
     }

@@ -24,8 +24,8 @@ namespace llarp
             friend class rpc::RPCServer;
             friend struct session::BaseSession;
 
-            bool _is_exit_node{false};
-            bool _is_snode_service{false};
+            const bool _is_exit_node{false};
+            const bool _is_service_node{false};
 
             std::unordered_set<dns::SRVData> _srv_records;
 
@@ -40,6 +40,7 @@ namespace llarp
             address_map<IPRange, NetworkAddress> _range_map;
 
             ClientContact client_contact;
+            uint8_t protoflags;
 
             std::shared_ptr<EventTicker> _cc_publisher;
 
@@ -102,7 +103,7 @@ namespace llarp
 
             bool is_exit_node() const { return _is_exit_node; }
 
-            bool is_snode_service() const { return _is_snode_service; }
+            bool is_service_node() const { return _is_service_node; }
 
             oxen::quic::Address local_address() const { return _local_addr; }
 
@@ -165,19 +166,16 @@ namespace llarp
             void lookup_remote_srv(
                 std::string name, std::string service, std::function<void(std::vector<dns::SRVData>)> handler);
 
+            void lookup_relay_contact(RouterID remote, std::function<void(std::optional<RemoteRC>)> func);
+
             void lookup_client_intro(RouterID remote, std::function<void(std::optional<ClientContact>)> func);
 
             // resolves any config mappings that parsed ONS addresses to their pubkey network address
             void resolve_ons_mappings();
 
-            bool initiate_remote_service_session(const NetworkAddress& remote, on_session_init_hook cb)
+            bool initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
             {
-                return _initiate_session(remote, std::move(cb), false);
-            }
-
-            bool initiate_remote_exit_session(const NetworkAddress& remote, on_session_init_hook cb)
-            {
-                return _initiate_session(remote, std::move(cb), true);
+                return _initiate_session(remote, std::move(cb));
             }
 
             void tick(std::chrono::milliseconds now) override;
@@ -202,17 +200,22 @@ namespace llarp
 
             void _update_and_publish_localcc();
 
-            bool _initiate_session(NetworkAddress remote, on_session_init_hook cb, bool is_exit = false);
+            bool _initiate_client_session(NetworkAddress remote, on_session_init_hook cb);
 
-            void _make_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb, bool is_exit);
+            bool _initiate_relay_session(NetworkAddress remote, on_session_init_hook cb);
+
+            bool _initiate_session(NetworkAddress remote, on_session_init_hook cb);
+
+            void _make_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb);
+
+            void _make_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb);
 
             void _make_session(
                 intro_set remote_intros,
                 NetworkAddress remote,
                 ClientIntro remote_intro,
                 std::shared_ptr<path::Path> path,
-                on_session_init_hook cb,
-                bool is_exit);
+                on_session_init_hook cb);
         };
 
     }  // namespace handlers

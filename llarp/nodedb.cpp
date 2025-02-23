@@ -370,6 +370,19 @@ namespace llarp
         });
     }
 
+    void NodeDB::fetch_rcs(std::vector<RouterID> needed, bt_control_response_hook func)
+    {
+        if (_router.is_stopping() || not _router.is_running())
+        {
+            log::debug(logcat, "NodeDB unable to continue RC fetch -- router is stopped!");
+            return post_rc_fetch(true);
+        }
+
+        log::debug(
+            logcat, "Dispatching FetchRC's request to {} for {} RCs!", fetch_source.short_string(), needed.size());
+        _router.link_manager()->fetch_rcs(fetch_source, FetchRC::serialize(std::move(needed)), std::move(func));
+    }
+
     void NodeDB::fetch_rcs()
     {
         if (_router.is_stopping() || not _router.is_running())
@@ -378,48 +391,73 @@ namespace llarp
             return post_rc_fetch(true);
         }
 
-        std::vector<RouterID> needed = get_expired_rcs();
-
         cycle_fetch_source();
-        auto& src = fetch_source;
-        log::debug(logcat, "Dispatching FetchRC's request to {} for {} RCs!", src.short_string(), needed.size());
 
-        _router.link_manager()->fetch_rcs(
-            src, FetchRCMessage::serialize(needed), [this, source = src](oxen::quic::message m) mutable {
-                if (not m)
+        return fetch_rcs(get_expired_rcs(), [this, source = fetch_source](oxen::quic::message m) mutable {
+            if (not m)
+            {
+                log::warning(
+                    logcat, "RC fetch from {} {}", source, m.timed_out ? "timed out" : "failed: {}"_format(m.view()));
+            }
+            else
+            {
+                try
                 {
-                    log::warning(
-                        logcat,
-                        "RC fetch from {} {}",
-                        source,
-                        m.timed_out ? "timed out" : "failed: {}"_format(m.view()));
+                    std::set<RemoteRC> rcs = FetchRC::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+
+                    return rc_fetch_result(std::move(rcs));
                 }
-                else
+                catch (const std::exception& e)
                 {
-                    try
-                    {
-                        std::set<RemoteRC> rcs;
-                        oxenc::bt_dict_consumer btdc{m.body()};
-
-                        btdc.required("r");
-
-                        {
-                            auto sublist = btdc.consume_list_consumer();
-
-                            while (not sublist.is_finished())
-                                rcs.emplace(sublist.consume_dict_data());
-                        }
-
-                        return rc_fetch_result(std::move(rcs));
-                    }
-                    catch (const std::exception& e)
-                    {
-                        log::warning(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
-                    }
+                    log::warning(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
                 }
+            }
 
-                rc_fetch_result();
-            });
+            rc_fetch_result();
+        });
+
+        // std::vector<RouterID> needed = get_expired_rcs();
+
+        // cycle_fetch_source();
+        // auto& src = fetch_source;
+        // log::debug(logcat, "Dispatching FetchRC's request to {} for {} RCs!", src.short_string(), needed.size());
+
+        // _router.link_manager()->fetch_rcs(
+        //     src, FetchRCMessage::serialize(needed), [this, source = fetch_source](oxen::quic::message m) mutable {
+        //         if (not m)
+        //         {
+        //             log::warning(
+        //                 logcat,
+        //                 "RC fetch from {} {}",
+        //                 source,
+        //                 m.timed_out ? "timed out" : "failed: {}"_format(m.view()));
+        //         }
+        //         else
+        //         {
+        //             try
+        //             {
+        //                 std::set<RemoteRC> rcs;
+        //                 oxenc::bt_dict_consumer btdc{m.body()};
+
+        //                 btdc.required("r");
+
+        //                 {
+        //                     auto sublist = btdc.consume_list_consumer();
+
+        //                     while (not sublist.is_finished())
+        //                         rcs.emplace(sublist.consume_dict_data());
+        //                 }
+
+        //                 return rc_fetch_result(std::move(rcs));
+        //             }
+        //             catch (const std::exception& e)
+        //             {
+        //                 log::warning(logcat, "Failed to parse RC fetch response from {}: {}", source, e.what());
+        //             }
+        //         }
+
+        //         rc_fetch_result();
+        //     });
     }
 
     void NodeDB::rc_fetch_result(std::optional<std::set<RemoteRC>> result)
@@ -471,7 +509,7 @@ namespace llarp
                 log::trace(logcat, "Sending FetchRIDs request to {} via {}", target, src);
                 control->command(
                     "fetch_rids",
-                    FetchRIDMessage::serialize(target),
+                    FetchRID::serialize(target),
                     [&, source = src, target = target](oxen::quic::message msg) mutable {
                         // Since we batch send this without going through link_manager, wrap the response handler
                         // in loop-call from here
@@ -705,8 +743,7 @@ namespace llarp
 
         _router.link_manager()->fetch_bootstrap_rcs(
             rc,
-            BootstrapFetchMessage::serialize(
-                _is_service_node ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
+            BootstrapFetch::serialize(_is_service_node ? std::make_optional(_router.rc()) : std::nullopt, num_needed),
             [this, src = source](oxen::quic::message m) mutable {
                 log::debug(logcat, "Received response to BootstrapRC fetch request...");
 

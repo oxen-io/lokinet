@@ -43,7 +43,6 @@ namespace llarp::controller
 
         nlohmann::json req;
         req["pk"] = remote;
-        req["x"] = false;
 
         if (auto it = _binds.find(src); it != _binds.end())
             _omq->request(
@@ -108,6 +107,26 @@ namespace llarp::controller
         else
             log::critical(
                 logcat, "Could not find connection ID to RPC bind {} for `session_close` command", src.full_address());
+    }
+
+    void rpc_controller::_halt(omq::address src)
+    {
+        log::info(logcat, "Instructing lokinet instance (bind:{}) to halt", src.full_address());
+
+        if (auto it = _binds.find(src); it != _binds.end())
+        {
+            _omq->request(it->second.cid, "llarp.halt", [&](bool success, std::vector<std::string> data) {
+                if (success)
+                {
+                    auto res = nlohmann::json::parse(data[0]);
+                    log::info(logcat, "RPC call to halt instance succeeded: {}", res.dump());
+                }
+                else
+                    log::critical(logcat, "RPC call to halt instance failed!");
+            });
+        }
+        else
+            log::critical(logcat, "Could not find connection ID to RPC bind {} for `halt` command", src.full_address());
     }
 
     bool rpc_controller::_omq_connect(const std::vector<std::string>& bind_addrs)
@@ -194,6 +213,16 @@ namespace llarp::controller
     {
         if (auto it = _indexes.find(idx); it != _indexes.end())
             _close(it->second, std::move(remote));
+        else
+            log::warning(logcat, "Could not find instance with given index: {}", idx);
+    }
+
+    void rpc_controller::halt(omq::address src) { return _halt(std::move(src)); }
+
+    void rpc_controller::halt(size_t idx)
+    {
+        if (auto it = _indexes.find(idx); it != _indexes.end())
+            _halt(it->second);
         else
             log::warning(logcat, "Could not find instance with given index: {}", idx);
     }

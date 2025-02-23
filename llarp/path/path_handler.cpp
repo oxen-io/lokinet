@@ -732,52 +732,70 @@ namespace llarp::path
         auto payload = build2(new_path);
         auto upstream = new_path->upstream_rid();
 
-        if (build3(
-                std::move(upstream),
-                std::move(payload),
-                [this, new_path, intros, remote_intro, remote, cb, keep_path](oxen::quic::message m) mutable {
-                    if (m)
-                    {
-                        log::info(logcat, "PATH ESTABLISHED:{}", new_path->hop_string());
-                        return cb(std::move(new_path), std::move(remote_intro));
-                    }
+        return path_build_onepass(
+            std::move(new_path),
+            [cb, remote_intro](auto new_path) mutable { return cb(std::move(new_path), std::move(remote_intro)); },
+            [this, intros = std::move(intros), remote = std::move(remote), cb, keep_path](
+                auto new_path, int ec) mutable {
+                if (keep_path)
+                    path_build_failed(new_path, ec);
+                path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
+            });
+    }
 
-                    try
-                    {
-                        if (m.timed_out)
-                        {
-                            log::warning(logcat, "Path-build request timed out!");
-                        }
-                        else
-                        {
-                            oxenc::bt_dict_consumer d{m.body()};
-                            auto status = d.require<std::string_view>(messages::STATUS_KEY);
-                            log::warning(logcat, "Recursive path-build returned failure status: {}", status);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        log::warning(
-                            logcat, "Exception caught parsing path_build response: {}; input: {}", e.what(), m.body());
-                    }
+    void PathHandler::path_build_iterative(
+        int n_tries, RemoteRC rc, NetworkAddress remote, std::function<void(std::shared_ptr<Path>)> cb, bool keep_path)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-                    if (keep_path)
-                        path_build_failed(new_path);
-
-                    path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
-                }))
+        if (n_tries == 0)
         {
-            log::debug(logcat, "Successfully dispatched path_build message...");
+            log::critical(logcat, "Exhausted all attempts to build path to remote (rid:{})!", remote);
             return;
         }
 
-        log::warning(logcat, "Error sending path_build control message");
+        log::debug(logcat, "Initiating iterative path-build (remaining attempts:{}) to pivot {}", n_tries, remote);
+
+        auto maybe_hops = aligned_hops_to_remote(rc.router_id(), {}, false);
+
+        if (not maybe_hops)
+        {
+            log::error(logcat, "Failed to get hops for path-build to pivot {}", remote);
+            return path_build_iterative(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
+        }
+
+        auto& hops = *maybe_hops;
+        assert(rc.router_id() == hops.back().router_id());
+
+        std::shared_ptr<path::Path> new_path;
 
         if (keep_path)
         {
-            path_build_failed(new_path);
-            path_build_recursive(std::move(intros), std::move(remote), std::move(cb), keep_path);
+            new_path = build1(hops);
+
+            if (not new_path)
+            {
+                log::warning(logcat, "Aborting recursive path-build in favor of in-progress build...");
+                return;
+            }
         }
+        else
+        {
+            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak());
+            log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
+        }
+
+        assert(new_path);
+
+        return path_build_onepass(
+            std::move(new_path),
+            [cb](auto new_path) mutable { return cb(std::move(new_path)); },
+            [this, n_tries, rc = std::move(rc), remote = std::move(remote), cb, keep_path](
+                auto new_path, int ec) mutable {
+                if (keep_path)
+                    path_build_failed(new_path, ec);
+                path_build_iterative(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
+            });
     }
 
     void PathHandler::path_build_onepass(
@@ -821,24 +839,25 @@ namespace llarp::path
                     return fail_cb(std::move(new_path), m.timed_out);
                 }))
         {
-            log::warning(logcat, "Error sending onepass path_build control message");
+            log::warning(logcat, "Error sending path_build control message");
             return fail_cb(std::move(new_path), false);
         }
     }
 
-    void PathHandler::rotate_paths(
-        std::vector<RemoteRC> hops, std::function<void(std::shared_ptr<Path>)> success_cb, path_build_fail_hook fail_cb)
-    {
-        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+    // void PathHandler::rotate_paths(
+    //     std::vector<RemoteRC> hops, std::function<void(std::shared_ptr<Path>)> success_cb, path_build_fail_hook
+    //     fail_cb)
+    // {
+    //     log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (auto new_path = build1(hops))
-        {
-            assert(new_path);
+    //     if (auto new_path = build1(hops))
+    //     {
+    //         assert(new_path);
 
-            log::debug(logcat, "Attempting path-rotation to new path...");
-            path_build_onepass(std::move(new_path), std::move(success_cb), std::move(fail_cb));
-        }
-    }
+    //         log::debug(logcat, "Attempting path-rotation to new path...");
+    //         path_build_onepass(std::move(new_path), std::move(success_cb), std::move(fail_cb));
+    //     }
+    // }
 
     void PathHandler::rotate_paths(std::vector<RemoteRC> hops)
     {

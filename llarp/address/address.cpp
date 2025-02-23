@@ -12,10 +12,12 @@ namespace llarp
 
         if (arg.ends_with(TLD::SNODE))
         {
+            arg.remove_suffix(TLD::SNODE.size());
             ret = NetworkAddress{arg, TLD::SNODE};
         }
         else if (arg.ends_with(TLD::LOKI))
         {
+            arg.remove_suffix(TLD::LOKI.size());
             ret = NetworkAddress{arg, TLD::LOKI};
         }
         else
@@ -31,7 +33,7 @@ namespace llarp
 
     NetworkAddress::NetworkAddress(std::string_view arg, std::string_view tld) : _tld{tld}
     {
-        if (not _pubkey.from_string(arg.substr(0, _tld.size())))
+        if (not _pubkey.from_string(oxenc::from_base32z(arg)))
             throw std::invalid_argument{"Invalid pubkey passed to NetworkAddress constructor: {}"_format(arg)};
 
         _is_client = tld == TLD::LOKI;

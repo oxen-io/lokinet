@@ -44,6 +44,7 @@ namespace llarp::controller
         void _initiate(omq::address src, std::string remote);
         void _status(omq::address src);
         void _close(omq::address src, std::string remote);
+        void _halt(omq::address src);
 
         bool _omq_connect(const std::vector<std::string>& bind_addrs);
 
@@ -54,16 +55,16 @@ namespace llarp::controller
 
         void refresh();
 
+        void initiate(omq::address src, std::string remote);
         void initiate(size_t idx, std::string remote);
 
-        void initiate(omq::address src, std::string remote);
-
         void status(omq::address src);
-
         void status(size_t idx);
 
         void close(omq::address src, std::string remote);
-
         void close(size_t idx, std::string remote);
+
+        void halt(omq::address src);
+        void halt(size_t idx);
     };
 }  // namespace llarp::controller

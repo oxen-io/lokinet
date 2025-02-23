@@ -18,6 +18,7 @@ namespace llarp
     using recv_session_dgram_cb = std::function<void(std::vector<uint8_t>)>;
 
     inline constexpr size_t PATHS_PER_INTRO{2};
+    inline constexpr auto SESSION_PATH_BUILD_ATTEMPTS{3};
 
     namespace link
     {

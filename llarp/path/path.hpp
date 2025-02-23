@@ -78,6 +78,8 @@ namespace llarp
 
             bool resolve_sns(std::string_view name, bt_control_response_hook func);
 
+            bool fetch_relay_contact(const RouterID& needed, bt_control_response_hook func);
+
             bool find_client_contact(const hash_key& location, bt_control_response_hook func);
 
             bool publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);

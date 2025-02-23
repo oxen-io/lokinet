@@ -19,9 +19,11 @@ namespace
         Runtime CLI subcommands:
         - list
         - refresh
-        - init
-        - status
-        - close
+        - instance
+            - init
+            - status
+            - close
+            - stop
      */
 
     struct cli_opts
@@ -151,6 +153,15 @@ namespace
                 rpc->close(omq::address{std::move(address)}, std::move(pubkey));
             else
                 rpc->close(index, std::move(pubkey));
+        });
+
+        auto* halt_subcom = instance_subcom->add_subcommand("halt", "Immediately halt lokinet instance");
+
+        halt_subcom->callback([&]() {
+            if (not address.empty())
+                rpc->halt(omq::address{std::move(address)});
+            else
+                rpc->halt(index);
         });
 
         // notify startup successful

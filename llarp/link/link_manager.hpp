@@ -168,24 +168,6 @@ namespace llarp
 
         void regenerate_and_gossip_rc();
 
-        void gossip_rc(const RouterID& last_sender, const RemoteRC& rc);
-
-        void handle_gossip_rc(oxen::quic::message);
-
-        void fetch_rcs(const RouterID& source, std::string payload, bt_control_response_hook func);
-
-        void handle_fetch_rcs(oxen::quic::message);
-
-        void fetch_router_ids(const RouterID& via, bt_control_send_hook send_hook);
-
-        // void fetch_router_ids(const RouterID& via, std::string payload, bt_control_response_hook func);
-
-        void handle_fetch_router_ids(oxen::quic::message);
-
-        void fetch_bootstrap_rcs(const RemoteRC& source, std::string payload, bt_control_response_hook func);
-
-        void handle_fetch_bootstrap_rcs(oxen::quic::message);
-
         bool have_connection_to(const RouterID& remote) const;
 
         bool have_service_connection_to(const RouterID& remote) const;
@@ -239,6 +221,17 @@ namespace llarp
         int client_router_connections = 4;
 
       private:
+        void gossip_rc(const RouterID& last_sender, const RemoteRC& rc);
+        void handle_gossip_rc(oxen::quic::message);
+
+        void fetch_rcs(const RouterID& source, std::string payload, bt_control_response_hook func);
+        void handle_fetch_rcs(oxen::quic::message);
+
+        void fetch_router_ids(const RouterID& via, bt_control_send_hook send_hook);
+        void handle_fetch_router_ids(oxen::quic::message);
+
+        void fetch_bootstrap_rcs(const RemoteRC& source, std::string payload, bt_control_response_hook func);
+        void handle_fetch_bootstrap_rcs(oxen::quic::message);
         // TESTNET: // NEW CLIENT_CONTACT HANDLERS
         void handle_publish_cc(oxen::quic::message);
         void handle_find_cc(oxen::quic::message);
@@ -254,9 +247,8 @@ namespace llarp
         void _handle_path_switch(oxen::quic::message, std::optional<std::string> = std::nullopt);
 
         // Path messages
-        void handle_path_build(oxen::quic::message, const RouterID& from);  // relay
-        void handle_path_latency(oxen::quic::message);                      // relay
-        void handle_path_transfer(oxen::quic::message);                     // relay
+        void handle_path_build(oxen::quic::message, const RouterID& from);
+        void handle_path_latency(oxen::quic::message);
 
         // Sessions
         void handle_initiate_session(oxen::quic::message);
@@ -281,9 +273,10 @@ namespace llarp
         void handle_path_control(oxen::quic::message);
         void handle_path_request(oxen::quic::message, std::string payload);
 
+        void handle_path_session_data(std::string payload);
+
         // Path responses
         void handle_path_latency_response(oxen::quic::message);
-        void handle_path_transfer_response(oxen::quic::message);
     };
 
     namespace link

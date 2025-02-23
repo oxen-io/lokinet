@@ -305,8 +305,7 @@ namespace llarp::rpc
     //    Initiate session to remote instance
     //
     //  Inputs:
-    //    "pk" : remote pubkey
-    //    "x"  : is exit session (boolean)
+    //    "pk" : remote pubkey terminating with `.loki` or `.snode`
     //
     //  Returns:
     //    "ip" : mapped IP address, or error string
@@ -317,7 +316,6 @@ namespace llarp::rpc
         struct request_parameters
         {
             std::string pk;
-            bool x{false};
         } request;
     };
 

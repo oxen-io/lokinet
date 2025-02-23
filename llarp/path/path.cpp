@@ -1,6 +1,7 @@
 #include "path.hpp"
 
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/fetch.hpp>
 #include <llarp/messages/path.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/router/router.hpp>
@@ -119,6 +120,11 @@ namespace llarp::path
     }
 
     bool Path::operator!=(const Path& other) const { return not(*this == other); }
+
+    bool Path::fetch_relay_contact(const RouterID& needed, bt_control_response_hook func)
+    {
+        return send_path_control_message("fetch_rcs", FetchRC::serialize(needed), std::move(func));
+    }
 
     bool Path::find_client_contact(const hash_key& location, bt_control_response_hook func)
     {

@@ -121,7 +121,7 @@ namespace llarp
         }
     }
 
-    session_tag ClientContact::generate_session_tag() const { return session_tag::make(protos & proto_mask); }
+    session_tag ClientContact::generate_session_tag() const { return session_tag::make(protos); }
 
     bool ClientContact::is_expired(std::chrono::milliseconds now) const
     {

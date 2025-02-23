@@ -123,13 +123,22 @@ namespace llarp
                 std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
                 bool keep_path);
 
+            // TESTNET: new method, can be DRYed out
+            void path_build_iterative(
+                int n_tries,
+                RemoteRC rc,
+                NetworkAddress remote,
+                std::function<void(std::shared_ptr<Path>)> cb,
+                bool keep_path);
+
             void path_build_onepass(
                 std::shared_ptr<Path> new_path, path_build_success_hook success, path_build_fail_hook fail);
 
             virtual void rotate_paths() = 0;
 
             // TESTNET: may be superfluous compared to the alternate method
-            void rotate_paths(std::vector<RemoteRC> hops, path_build_success_hook success, path_build_fail_hook fail);
+            // void rotate_paths(std::vector<RemoteRC> hops, path_build_success_hook success, path_build_fail_hook
+            // fail);
 
             void rotate_paths(std::vector<RemoteRC> hops);
 

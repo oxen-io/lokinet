@@ -131,8 +131,10 @@ namespace llarp::rpc
             SetJSONError("Router is not running", halt.response);
             return;
         }
+
+        _router.loop()->call_soon([&]() { _router.stop(); });
+
         SetJSONResponse("OK", halt.response);
-        _router.stop();
     }
 
     void RPCServer::invoke(Version& version)
@@ -303,36 +305,39 @@ namespace llarp::rpc
             return;
         }
 
-        RouterID pk;
-
         if (findcc.request.pk.empty())
         {
             SetJSONError("No pubkey provided!", findcc.response);
             return;
         }
 
-        if (not pk.from_string(oxenc::from_base32z(findcc.request.pk)))
+        auto maybe_netaddr = NetworkAddress::from_network_addr(findcc.request.pk);
+
+        if (not maybe_netaddr)
         {
-            SetJSONError("Invalid pubkey provided: " + findcc.request.pk, findcc.response);
+            SetJSONError("Invalid pubkey provided: {}"_format(findcc.request.pk), findcc.response);
             return;
         }
 
+        auto& netaddr = *maybe_netaddr;
+
         _router.loop()->call([&, replier = findcc.move()]() mutable {
-            _router.session_endpoint()->lookup_client_intro(pk, [&](std::optional<llarp::ClientContact> cc) {
-                nlohmann::json result;
-                if (cc)
-                {
-                    auto cc_str = "{}"_format(*cc);
-                    result.emplace("cc", cc_str);
-                    log::info(logcat, "RPC call to `find_cc` returned successfully: {}", cc_str);
-                }
-                else
-                {
-                    log::warning(logcat, "RPC call to `find_cc` failed!");
-                    result.emplace("cc", "ERROR");
-                }
-                replier.reply(result.dump());
-            });
+            _router.session_endpoint()->lookup_client_intro(
+                netaddr.router_id(), [&](std::optional<llarp::ClientContact> cc) {
+                    nlohmann::json result;
+                    if (cc)
+                    {
+                        auto cc_str = "{}"_format(*cc);
+                        result.emplace("cc", cc_str);
+                        log::info(logcat, "RPC call to `find_cc` returned successfully: {}", cc_str);
+                    }
+                    else
+                    {
+                        log::warning(logcat, "RPC call to `find_cc` failed!");
+                        result.emplace("cc", "ERROR");
+                    }
+                    replier.reply(result.dump());
+                });
         });
     }
 
@@ -340,14 +345,11 @@ namespace llarp::rpc
     {
         log_print_rpc(sessioninit);
 
-        // TESTNET: TODO: remove when relay sessions are streamlined
         if (_router.is_service_node())
         {
             SetJSONError("Not supported", sessioninit.response);
             return;
         }
-
-        RouterID pk;
 
         if (sessioninit.request.pk.empty())
         {
@@ -355,28 +357,30 @@ namespace llarp::rpc
             return;
         }
 
-        if (not pk.from_string(oxenc::from_base32z(sessioninit.request.pk)))
+        auto maybe_netaddr = NetworkAddress::from_network_addr(sessioninit.request.pk);
+
+        if (not maybe_netaddr)
         {
-            SetJSONError("Invalid pubkey provided: " + sessioninit.request.pk, sessioninit.response);
+            SetJSONError("Invalid pubkey provided: {}"_format(sessioninit.request.pk), sessioninit.response);
             return;
         }
+
+        auto& netaddr = *maybe_netaddr;
 
         _router.loop()->call([&]() {
             try
             {
-                log::debug(logcat, "Beginning session init to remote instance: {}", pk.to_network_address(false));
-                _router.session_endpoint()->_initiate_session(
-                    NetworkAddress::from_pubkey(pk, true),
-                    [&, replier = sessioninit.move()](ip_v ip) mutable {
+                log::debug(logcat, "Beginning session init to remote instance: {}", netaddr);
+                _router.session_endpoint()->initiate_remote_session(
+                    netaddr, [&, replier = sessioninit.move()](ip_v ip) mutable {
                         nlohmann::json result;
                         std::string a = std::holds_alternative<ipv4>(ip) ? std::get<ipv4>(ip).to_string()
                                                                          : std::get<ipv6>(ip).to_string();
                         result.emplace("ip", a);
                         log::info(logcat, "RPC call to `session_init` succeeded: {}", a);
                         replier.reply(result.dump());
-                    },
-                    sessioninit.request.x);
-                log::info(logcat, "RPC Server dispatched `session_init` to remote:{}", pk.to_network_address(false));
+                    });
+                log::info(logcat, "RPC Server dispatched `session_init` to remote:{}", netaddr);
             }
             catch (const std::exception& e)
             {
@@ -389,31 +393,26 @@ namespace llarp::rpc
     {
         log_print_rpc(sessionclose);
 
-        // TESTNET: TODO: remove when relay sessions are streamlined
-        if (_router.is_service_node())
-        {
-            SetJSONError("Not supported", sessionclose.response);
-            return;
-        }
-
-        RouterID pk;
-
         if (sessionclose.request.pk.empty())
         {
             SetJSONError("No pubkey provided!", sessionclose.response);
             return;
         }
 
-        if (not pk.from_string(oxenc::from_base32z(sessionclose.request.pk)))
+        auto maybe_netaddr = NetworkAddress::from_network_addr(sessionclose.request.pk);
+
+        if (not maybe_netaddr)
         {
-            SetJSONError("Invalid pubkey provided: " + sessionclose.request.pk, sessionclose.response);
+            SetJSONError("Invalid pubkey provided: {}"_format(sessionclose.request.pk), sessionclose.response);
             return;
         }
+
+        auto& netaddr = *maybe_netaddr;
 
         _router.loop()->call([&]() {
             try
             {
-                if (auto session = _router.session_endpoint()->get_session(NetworkAddress::from_pubkey(pk, true)))
+                if (auto session = _router.session_endpoint()->get_session(netaddr))
                 {
                     auto hook = [replier = sessionclose.move()](oxen::quic::message m) mutable {
                         nlohmann::json result;
@@ -449,11 +448,8 @@ namespace llarp::rpc
                     else
                         session->stop_session(true, std::move(hook));
 
-                    log::info(
-                        logcat, "RPC Server dispatched `session_close` to remote:{}", pk.to_network_address(false));
+                    log::info(logcat, "RPC Server dispatched `session_close` to remote:{}", netaddr);
                 }
-
-                // _router.session_endpoint()->close_session(NetworkAddress::from_pubkey(pk, true));
             }
             catch (const std::exception& e)
             {
