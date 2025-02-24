@@ -132,6 +132,8 @@ namespace llarp
       public:
         intro_set take_intros() && { return std::move(intros); }
 
+        intro_set copy_intros() const { return intros; }
+
         bool operator==(const ClientContact& other) const
         {
             return std::tie(pubkey, intros, SRVs, protos, exit_policy)

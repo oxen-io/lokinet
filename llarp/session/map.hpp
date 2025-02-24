@@ -56,7 +56,7 @@ namespace llarp
             for (auto& [_, s] : _sessions)
             {
                 if (s->is_outbound() && s->is_active())
-                    session::OutboundSession::upcast(s)->tick(now);
+                    session::OutboundClientSession::downcast(s)->tick(now);
             }
         }
 

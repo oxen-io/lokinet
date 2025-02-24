@@ -1178,7 +1178,8 @@ namespace llarp
                 _router.contact_db().put_cc(std::move(enc));
 
                 if (session->is_outbound())
-                    session::OutboundSession::upcast(session)->update_remote_intros(std::move(*intro).take_intros());
+                    session::OutboundClientSession::downcast(session)->update_remote_intros(
+                        std::move(*intro).take_intros());
 
                 return m.respond(messages::OK_RESPONSE);
             }

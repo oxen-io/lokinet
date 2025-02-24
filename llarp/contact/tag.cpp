@@ -16,7 +16,7 @@ namespace llarp
 
     session_tag session_tag::make(uint8_t protos) { return session_tag{static_cast<uint8_t>(protos & proto_mask)}; }
 
-    std::tuple<bool, bool> session_tag::proto_bits() const
+    std::pair<bool, bool> session_tag::proto_bits() const
     {
         auto& p = buf[0];
         return {p & meta::to_underlying(protocol_flag::EXIT), p & meta::to_underlying(protocol_flag::QUICTUN)};

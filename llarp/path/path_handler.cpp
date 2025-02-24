@@ -49,6 +49,13 @@ namespace llarp::path
         : _running{true}, num_paths_desired{num_paths}, _router{_r}, num_hops{_n_hops}
     {}
 
+    void PathHandler::path_rotation_succeeded(std::shared_ptr<Path> new_path)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        path_build_succeeded(std::move(new_path));
+        drop_oldest_path();
+    }
+
     static constexpr auto path_map_comp = [comp = PathExpComp{}](auto lhs, auto rhs) -> bool {
         // invert parameters passed so ranges::{min,max}_element use it like operator<
         return comp(rhs.second, lhs.second);
@@ -60,6 +67,14 @@ namespace llarp::path
 
         Lock_t l{paths_mutex};
         return std::ranges::min_element(_paths, path_map_comp)->second;
+    }
+
+    std::shared_ptr<Path> PathHandler::get_newest_path()
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        Lock_t l{paths_mutex};
+        return std::ranges::max_element(_paths, path_map_comp)->second;
     }
 
     void PathHandler::print_all_paths() const
@@ -241,7 +256,7 @@ namespace llarp::path
         }
     }
 
-    intro_set PathHandler::get_current_client_intros() const
+    intro_set PathHandler::get_local_client_intros() const
     {
         Lock_t lock{paths_mutex};
 
@@ -843,21 +858,6 @@ namespace llarp::path
             return fail_cb(std::move(new_path), false);
         }
     }
-
-    // void PathHandler::rotate_paths(
-    //     std::vector<RemoteRC> hops, std::function<void(std::shared_ptr<Path>)> success_cb, path_build_fail_hook
-    //     fail_cb)
-    // {
-    //     log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
-    //     if (auto new_path = build1(hops))
-    //     {
-    //         assert(new_path);
-
-    //         log::debug(logcat, "Attempting path-rotation to new path...");
-    //         path_build_onepass(std::move(new_path), std::move(success_cb), std::move(fail_cb));
-    //     }
-    // }
 
     void PathHandler::rotate_paths(std::vector<RemoteRC> hops)
     {

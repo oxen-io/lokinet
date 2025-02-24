@@ -19,7 +19,7 @@ namespace llarp
 
     namespace handlers
     {
-        class SessionEndpoint final : public path::PathHandler, public std::enable_shared_from_this<SessionEndpoint>
+        class SessionEndpoint final : public path::PathHandler
         {
             friend class rpc::RPCServer;
             friend struct session::BaseSession;
@@ -135,7 +135,7 @@ namespace llarp
             template <typename... Opt>
             void update_and_publish_localcc(Opt&&... args)
             {
-                auto intros = get_current_client_intros();
+                auto intros = get_local_client_intros();
                 if (intros.empty())
                     return _localcc_update_fail();
                 client_contact.regenerate(std::move(intros), std::forward<Opt>(args)...);

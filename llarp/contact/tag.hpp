@@ -20,7 +20,7 @@ namespace llarp
       public:
         static session_tag make(uint8_t protocol);
 
-        std::tuple<bool, bool> proto_bits() const;
+        std::pair<bool, bool> proto_bits() const;
 
         void read(std::string_view buf);
 

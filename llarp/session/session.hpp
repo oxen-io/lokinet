@@ -112,8 +112,6 @@ namespace llarp
 
             void set_new_current_path(std::shared_ptr<path::Path> _new_path);
 
-            void recv_path_switch2(HopID new_remote_txid, HopID new_local_txid);
-
             void set_remote_pivot_tx(HopID new_remote_txid);
 
             void publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
@@ -145,27 +143,59 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
-        struct OutboundSession final : public llarp::path::PathHandler,
-                                       public BaseSession,
-                                       public std::enable_shared_from_this<OutboundSession>
+        struct OutboundRelaySession : public path::PathHandler, public BaseSession
         {
+            OutboundRelaySession(
+                NetworkAddress _remote,
+                handlers::SessionEndpoint& parent,
+                std::shared_ptr<path::Path> path,
+                session_tag _t,
+                HopID remote_pivot_txid,
+                std::optional<shared_kx_data> kx_data = std::nullopt);
+
+            static std::shared_ptr<OutboundRelaySession> downcast(const std::shared_ptr<BaseSession>& b);
+
+          protected:
+            std::chrono::milliseconds _last_use;
+
+            void rotate_paths() override;
+
+            void drop_oldest_path() override;
+
+            void select_new_current();
+
+            void switch_to_new_path(std::shared_ptr<path::Path> p);
+
           public:
-            OutboundSession(
+            std::shared_ptr<path::PathHandler> get_self() override;
+
+            std::weak_ptr<path::PathHandler> get_weak() override;
+
+            void build_more(size_t n = 0) override;
+
+            void send_path_switch();
+
+            void stop(bool send_close = false) override;
+
+            void stop_session(bool send_close = false, bt_control_response_hook func = nullptr) override;
+        };
+
+        struct OutboundClientSession final : public OutboundRelaySession
+        {
+            OutboundClientSession(
                 NetworkAddress _remote,
                 handlers::SessionEndpoint& parent,
                 std::shared_ptr<path::Path> path,
                 HopID remote_pivot_txid,
                 session_tag _t,
                 intro_set cc,
-                std::optional<shared_kx_data> kx_data = std::nullopt);
+                shared_kx_data kx_data);
 
-            ~OutboundSession() override;
+            ~OutboundClientSession() override;
 
-            static std::shared_ptr<OutboundSession> upcast(const std::shared_ptr<BaseSession>& b);
+            static std::shared_ptr<OutboundClientSession> downcast(const std::shared_ptr<BaseSession>& b);
 
           private:
-            std::chrono::milliseconds _last_use;
-
             intro_path_map intro_path_mapping{};
 
             void populate_intro_map(const intro_set& intros);
@@ -187,46 +217,30 @@ namespace llarp
           protected:
             void rotate_paths() override;
 
-            void path_rotation_succeeded(std::shared_ptr<path::Path> new_path) override;
-
             void drop_oldest_path() override;
 
           public:
-            std::shared_ptr<path::PathHandler> get_self() override { return shared_from_this(); }
+            std::shared_ptr<path::PathHandler> get_self() override;
 
-            std::weak_ptr<path::PathHandler> get_weak() override { return weak_from_this(); }
+            std::weak_ptr<path::PathHandler> get_weak() override;
 
             void update_remote_intros(intro_set&& intros);
 
             void build_more(size_t n = 0) override;
 
-            std::shared_ptr<path::Path> build1(std::vector<RemoteRC>& hops) override;
-
             nlohmann::json ExtractStatus() const;
-
-            void path_died(std::shared_ptr<path::Path> p) override;
 
             void path_build_succeeded(std::shared_ptr<path::Path> p) override;
 
             void path_build_failed(std::shared_ptr<path::Path> p, bool timeout = false) override;
 
-            void send_path_switch();
-
-            void stop(bool send_close = false) override;
+            // void stop(bool send_close = false) override;
 
             void stop_session(bool send_close = false, bt_control_response_hook func = nullptr) override;
 
             bool is_ready() const;
 
             const RouterID& remote_endpoint() const { return _remote.router_id(); }
-
-            std::optional<HopID> current_pivot_txid() const
-            {
-                if (_pivot_txid.is_zero())
-                    return std::nullopt;
-
-                return _pivot_txid;
-            }
 
             bool is_expired(std::chrono::milliseconds now) const;
         };

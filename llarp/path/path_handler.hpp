@@ -81,7 +81,7 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
-        struct PathHandler
+        struct PathHandler : public std::enable_shared_from_this<PathHandler>
         {
             friend struct Path;
 
@@ -116,14 +116,12 @@ namespace llarp
 
             virtual void path_build_succeeded(std::shared_ptr<Path> p);
 
-            // TESTNET: WIP NEW METHODS
             void path_build_recursive(
                 intro_set intros,
                 NetworkAddress remote,
                 std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
                 bool keep_path);
 
-            // TESTNET: new method, can be DRYed out
             void path_build_iterative(
                 int n_tries,
                 RemoteRC rc,
@@ -136,15 +134,13 @@ namespace llarp
 
             virtual void rotate_paths() = 0;
 
-            // TESTNET: may be superfluous compared to the alternate method
-            // void rotate_paths(std::vector<RemoteRC> hops, path_build_success_hook success, path_build_fail_hook
-            // fail);
-
             void rotate_paths(std::vector<RemoteRC> hops);
 
-            virtual void path_rotation_succeeded(std::shared_ptr<Path> new_path) = 0;
+            virtual void path_rotation_succeeded(std::shared_ptr<Path> new_path);
 
             std::shared_ptr<Path> get_oldest_path();
+
+            std::shared_ptr<Path> get_newest_path();
 
             virtual void drop_oldest_path() = 0;
 
@@ -174,7 +170,7 @@ namespace llarp
 
             std::optional<std::shared_ptr<Path>> get_path(HopID id) const;
 
-            intro_set get_current_client_intros() const;
+            intro_set get_local_client_intros() const;
 
             nlohmann::json ExtractStatus() const;
 

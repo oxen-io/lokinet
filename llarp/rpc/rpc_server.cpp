@@ -444,7 +444,7 @@ namespace llarp::rpc
                     };
 
                     if (session->is_outbound())
-                        session::OutboundSession::upcast(session)->stop_session(true, std::move(hook));
+                        session::OutboundClientSession::downcast(session)->stop_session(true, std::move(hook));
                     else
                         session->stop_session(true, std::move(hook));
 

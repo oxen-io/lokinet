@@ -607,7 +607,7 @@ namespace llarp::handlers
         if (should_publish_cc)
         {
             log::debug(logcat, "Updating and publishing ClientContact...");
-            auto intros = get_current_client_intros();
+            auto intros = get_local_client_intros();
             if (intros.empty())
                 return _localcc_update_fail();
             client_contact.regenerate(std::move(intros));
@@ -868,7 +868,7 @@ namespace llarp::handlers
 
                     log::trace(logcat, "Remote client has provided session tag: {}", tag);
 
-                    auto outbound = std::make_shared<session::OutboundSession>(
+                    auto outbound = std::make_shared<session::OutboundClientSession>(
                         remote,
                         *this,
                         std::move(path),
