@@ -453,7 +453,6 @@ namespace llarp::path
         const RouterID& pivot, const std::set<RouterID>& exclude, bool strict)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
         assert(num_hops);
 
         auto hops_needed = num_hops;

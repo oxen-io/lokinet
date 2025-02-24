@@ -656,12 +656,6 @@ namespace llarp::session
         OutboundRelaySession::stop_session(send_close, std::move(func));
     }
 
-    // void OutboundSession::stop(bool send_close)
-    // {
-    //     log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-    //     stop_session(send_close);
-    // }
-
     void OutboundClientSession::build_more(size_t n)
     {
         size_t count{0};

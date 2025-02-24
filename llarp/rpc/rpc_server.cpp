@@ -443,10 +443,7 @@ namespace llarp::rpc
                         replier.reply(result.dump());
                     };
 
-                    if (session->is_outbound())
-                        session::OutboundClientSession::downcast(session)->stop_session(true, std::move(hook));
-                    else
-                        session->stop_session(true, std::move(hook));
+                    session->stop_session(true, std::move(hook));
 
                     log::info(logcat, "RPC Server dispatched `session_close` to remote:{}", netaddr);
                 }

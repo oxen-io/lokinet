@@ -243,6 +243,7 @@ namespace llarp
         // Inner handlers for relayed requests
         void _handle_path_control(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_publish_cc(oxen::quic::message, std::optional<std::string> = std::nullopt);
+        void _handle_fetch_rcs(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_find_cc(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_resolve_sns(oxen::quic::message, std::optional<std::string> = std::nullopt);
         void _handle_initiate_session(oxen::quic::message, std::optional<std::string> = std::nullopt);
@@ -266,6 +267,7 @@ namespace llarp
                 {"path_control"sv, &LinkManager::_handle_path_control},
                 {"publish_cc"sv, &LinkManager::_handle_publish_cc},
                 {"find_cc"sv, &LinkManager::_handle_find_cc},
+                {"fetch_rcs"sv, &LinkManager::_handle_fetch_rcs},
                 {"resolve_sns"sv, &LinkManager::_handle_resolve_sns},
                 {"session_init"sv, &LinkManager::_handle_initiate_session},
                 {"session_close"sv, &LinkManager::_handle_close_session},

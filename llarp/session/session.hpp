@@ -234,8 +234,6 @@ namespace llarp
 
             void path_build_failed(std::shared_ptr<path::Path> p, bool timeout = false) override;
 
-            // void stop(bool send_close = false) override;
-
             void stop_session(bool send_close = false, bt_control_response_hook func = nullptr) override;
 
             bool is_ready() const;

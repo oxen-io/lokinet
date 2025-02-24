@@ -666,7 +666,7 @@ namespace llarp::handlers
         NetworkAddress initiator,
         HopID remote_pivot_txid,
         std::shared_ptr<path::Path> path,
-        shared_kx_data kx_data,
+        std::optional<shared_kx_data> kx_data,
         bool use_tun)
     {
         auto tag = session_tag::make(protoflags);
@@ -781,8 +781,7 @@ namespace llarp::handlers
         return ret;
     }
 
-    /** Session Initiation Message Structure:
-
+    /** Client Session Initiation Message Structure:
         - 'k' : next HopID
         - 'n' : symmetric nonce
         - 'x' : encrypted payload
@@ -811,7 +810,7 @@ namespace llarp::handlers
                                     - 'u' : Authentication field
                                         - bt-encoded dict, values TBD
      */
-    void SessionEndpoint::_make_session(
+    void SessionEndpoint::_make_client_session(
         intro_set intros,
         NetworkAddress remote,
         ClientIntro remote_intro,
@@ -833,8 +832,7 @@ namespace llarp::handlers
 
         log::trace(logcat, "inner payload: {}", buffer_printer{inner_payload});
 
-        auto pivot_payload =
-            ONION::serialize_hop(remote_intro.pivot_txid.to_view(), SymmNonce::make_random(), inner_payload);
+        auto pivot_payload = ONION::serialize_hop(pivot_txid.to_view(), SymmNonce::make_random(), inner_payload);
         log::trace(logcat, "pivot payload: {}", buffer_printer{pivot_payload});
 
         auto intermediate_payload = PATH::CONTROL::serialize("path_control", std::move(pivot_payload));
@@ -852,7 +850,7 @@ namespace llarp::handlers
              session_keys = std::move(kx_data)](oxen::quic::message m) mutable {
                 if (m)
                 {
-                    log::debug(logcat, "Call to InitiateSession succeeded!");
+                    log::debug(logcat, "Call to initiate OutboundClientSession succeeded!");
                     session_tag tag;
 
                     try
@@ -902,7 +900,7 @@ namespace llarp::handlers
                             logcat,
                             "Lokinet TUN failed to map route for session traffic to remote: {}",
                             session->remote());
-                        // TESTNET: TODO: CLOSE THIS BISH HERE
+                        // TESTNET: TODO: CLOSE THIS HERE
                     }
                     else
                     {
@@ -926,14 +924,111 @@ namespace llarp::handlers
                     }
 
                     log::critical(
-                        logcat, "Call to InitiateSession FAILED; reason: {}", status.value_or("<none given>"));
+                        logcat,
+                        "Call to initiate OutboundClientSession FAILED; reason: {}",
+                        status.value_or("<none given>"));
                 }
             });
 
         log::debug(logcat, "message sent...");
     }
 
-    void SessionEndpoint::_make_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb)
+    void SessionEndpoint::_make_relay_session(
+        RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, on_session_init_hook cb)
+    {
+        std::string payload = InitiateSession::serialize(
+            _router.local_rid(),
+            path->pivot_txid(),
+            path->pivot_txid(),
+            fetch_auth_token(remote),
+            _router.using_tun_if());
+
+        log::trace(logcat, "payload: {}", buffer_printer{payload});
+
+        path->send_path_control_message(
+            "session_init",
+            std::move(payload),
+            [this, rc = std::move(rc), remote, path, hook = std::move(cb)](oxen::quic::message m) mutable {
+                if (m)
+                {
+                    log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
+                    session_tag tag;
+
+                    try
+                    {
+                        tag = InitiateSession::deserialize_response(oxenc::bt_dict_consumer{m.body()});
+                    }
+                    catch (const std::exception& e)
+                    {
+                        // TESTNET: TODO: close session here?
+                        log::warning(logcat, "Exception: {}", e.what());
+                        return;
+                    }
+
+                    log::trace(logcat, "Remote relay has provided session tag: {}", tag);
+
+                    auto pivot_txid = path->pivot_txid();
+
+                    auto outbound = std::make_shared<session::OutboundRelaySession>(
+                        remote, *this, std::move(path), std::move(tag), std::move(pivot_txid));
+
+                    auto [session, _] = _sessions.insert_or_assign(std::move(remote), std::move(outbound));
+                    session->activate();
+
+                    log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
+
+                    if (session->using_tun())
+                    {
+                        log::trace(logcat, "Instructing lokinet TUN device to create mapped route...");
+                        if (auto maybe_ip = _router.tun_endpoint()->map_session_to_local_ip(session->remote()))
+                        {
+                            log::info(
+                                logcat,
+                                "TUN device successfully routing session (remote: {}) via local ip: {}",
+                                session->remote(),
+                                std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
+                                                                        : std::get<ipv6>(*maybe_ip).to_string());
+
+                            return hook(*maybe_ip);
+                        }
+
+                        log::critical(
+                            logcat,
+                            "Lokinet TUN failed to map route for session traffic to remote: {}",
+                            session->remote());
+                    }
+                    else
+                    {
+                        log::info(logcat, "Starting TCP listener to route session traffic to backend...");
+                        session->tcp_backend_listen(std::move(hook));
+                    }
+                }
+                else
+                {
+                    std::optional<std::string> status = std::nullopt;
+                    try
+                    {
+                        oxenc::bt_dict_consumer btdc{m.body()};
+
+                        if (auto s = btdc.maybe<std::string>(messages::STATUS_KEY))
+                            status = s;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        log::warning(logcat, "Exception: {}", e.what());
+                    }
+
+                    log::critical(
+                        logcat,
+                        "Call to initiate OutboundRelaySession FAILED; reason: {}",
+                        status.value_or("<none given>"));
+                }
+            });
+
+        log::debug(logcat, "message sent...");
+    }
+
+    void SessionEndpoint::_make_relay_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -941,15 +1036,15 @@ namespace llarp::handlers
             SESSION_PATH_BUILD_ATTEMPTS,
             rc,
             remote,
-            [this, rc, remote, cb](std::shared_ptr<path::Path> p) {
+            [this, rc, remote, cb](std::shared_ptr<path::Path> new_path) {
                 log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
                 (void)this;
-                (void)p;
+                (void)new_path;
             },
             false);
     }
 
-    void SessionEndpoint::_make_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb)
+    void SessionEndpoint::_make_client_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
@@ -958,13 +1053,21 @@ namespace llarp::handlers
             remote,
             [this, intros, remote, cb](std::shared_ptr<path::Path> new_path, ClientIntro remote_intro) mutable {
                 log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
-                return _make_session(
+                return _make_client_session(
                     std::move(intros), std::move(remote), std::move(remote_intro), std::move(new_path), std::move(cb));
             },
             false);
     }
 
-    bool SessionEndpoint::_initiate_client_session(NetworkAddress remote, on_session_init_hook cb)
+    void SessionEndpoint::initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
+    {
+        if (remote.is_client())
+            _initiate_client_session(remote, std::move(cb));
+        else
+            _initiate_relay_session(remote, std::move(cb));
+    }
+
+    void SessionEndpoint::_initiate_client_session(NetworkAddress remote, on_session_init_hook cb)
     {
         auto counter = std::make_shared<size_t>(num_paths_desired);
 
@@ -979,20 +1082,15 @@ namespace llarp::handlers
                     {
                         *counter = 0;
                         log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
+                        _make_client_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
                     }
                     else if (--*counter == 0)
-                        log::warning(
-                            logcat,
-                            "Failed to initiate session at 'find_cc' (target:{})",
-                            remote.router_id().short_string());
+                        log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);
                 });
         });
-
-        return true;
     }
 
-    bool SessionEndpoint::_initiate_relay_session(NetworkAddress remote, on_session_init_hook cb)
+    void SessionEndpoint::_initiate_relay_session(NetworkAddress remote, on_session_init_hook cb)
     {
         auto counter = std::make_shared<size_t>(num_paths_desired);
 
@@ -1007,39 +1105,12 @@ namespace llarp::handlers
                     {
                         *counter = 0;
                         log::debug(logcat, "Session initiation returned RC: {}", rc->to_string());
-                        (void)this;
+                        _make_relay_session_path(std::move(*rc), remote, std::move(hook));
                     }
                     else if (--*counter == 0)
                         log::warning(logcat, "Failed to initiate session at `fetch_rcs` (target:{})", remote);
                 });
         });
-
-        return true;
-    }
-
-    bool SessionEndpoint::_initiate_session(NetworkAddress remote, on_session_init_hook cb)
-    {
-        auto counter = std::make_shared<size_t>(num_paths_desired);
-
-        _router.loop()->call([this, remote, handler = std::move(cb), counter]() mutable {
-            lookup_client_intro(
-                remote.router_id(),
-                [this, remote, hook = std::move(handler), counter](std::optional<ClientContact> cc) mutable {
-                    if (*counter == 0)
-                        return;
-
-                    if (cc)
-                    {
-                        *counter = 0;
-                        log::debug(logcat, "Session initiation returned client contact: {}", cc->to_string());
-                        _make_session_path(std::move(*cc).take_intros(), remote, std::move(hook));
-                    }
-                    else if (--*counter == 0)
-                        log::warning(logcat, "Failed to initiate session at 'find_cc' (target:{})", remote);
-                });
-        });
-
-        return true;
     }
 
     void SessionEndpoint::map_remote_to_local_addr(NetworkAddress remote, oxen::quic::Address local)

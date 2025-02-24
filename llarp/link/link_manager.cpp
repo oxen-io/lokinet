@@ -278,24 +278,23 @@ namespace llarp
             _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_control(std::move(msg)); });
         });
 
+        if (client_only)
+        {
+            log::trace(logcat, "Registered all client-only BTStream commands!");
+            return;
+        }
+
         s->register_handler("path_switch"s, [this](oxen::quic::message m) mutable {
             _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_switch(std::move(msg)); });
         });
 
-        if (client_only)
-        {
-            // TESTNET: WIP relay sessions
-            s->register_handler("session_init"s, [this](oxen::quic::message m) mutable {
-                _router.loop()->call([&, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
-            });
+        s->register_handler("session_init"s, [this](oxen::quic::message m) mutable {
+            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_initiate_session(std::move(msg)); });
+        });
 
-            s->register_handler("session_close"s, [this](oxen::quic::message m) mutable {
-                _router.loop()->call([&, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
-            });
-
-            log::trace(logcat, "Registered all client-only BTStream commands!");
-            return;
-        }
+        s->register_handler("session_close"s, [this](oxen::quic::message m) mutable {
+            _router.loop()->call([&, msg = std::move(m)]() mutable { handle_close_session(std::move(msg)); });
+        });
 
         s->register_handler("path_build"s, [this, rid = remote_rid](oxen::quic::message m) mutable {
             _router.loop()->call([&, msg = std::move(m)]() mutable { handle_path_build(std::move(msg), rid); });
@@ -968,6 +967,55 @@ namespace llarp
         assert(not _router.is_service_node());
 
         send_control_message(source, "fetch_rcs", std::move(payload), std::move(func));
+    }
+
+    void LinkManager::_handle_fetch_rcs(oxen::quic::message m, std::optional<std::string> inner_body)
+    {
+        log::debug(logcat, "Handling FetchRC request...");
+        // this handler should not be registered for clients
+        assert(_router.is_service_node());
+
+        std::set<RouterID> explicit_ids;
+
+        try
+        {
+            auto btdc = inner_body ? oxenc::bt_dict_consumer{*inner_body} : oxenc::bt_dict_consumer{m.body()};
+
+            btdc.required("x");
+
+            {
+                auto sublist = btdc.consume_list_consumer();
+
+                while (not sublist.is_finished())
+                    explicit_ids.emplace(sublist.consume_string_view());
+            }
+        }
+        catch (const std::exception& e)
+        {
+            log::critical(logcat, "Exception handling RC Fetch request: {}", e.what());
+            m.respond(messages::ERROR_RESPONSE, true);
+            return;
+        }
+
+        oxenc::bt_dict_producer btdp;
+
+        {
+            auto sublist = btdp.append_list("r");
+
+            int count = 0;
+            for (const auto& rid : explicit_ids)
+            {
+                if (auto maybe_rc = node_db->get_rc_by_rid(rid))
+                {
+                    sublist.append_encoded(maybe_rc->view());
+                    ++count;
+                }
+            }
+
+            log::info(logcat, "Returning {} RCs for FetchRC request...", count);
+        }
+
+        m.respond(std::move(btdp).str());
     }
 
     void LinkManager::handle_fetch_rcs(oxen::quic::message m)
@@ -1780,18 +1828,24 @@ namespace llarp
         HopID remote_pivot_txid;
         HopID local_pivot_txid;
         bool use_tun{};
-        shared_kx_data kx_data;
+        std::optional<shared_kx_data> kx_data = std::nullopt;
         std::optional<std::string> maybe_auth = std::nullopt;
         std::shared_ptr<path::Path> path_ptr;
 
         try
         {
             if (inner_body)
+            {
+                if (_is_service_node)
+                    std::tie(initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
+                        InitiateSession::deserialize(oxenc::bt_dict_consumer{*inner_body});
+                else
+                    std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
+                        InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, _router.identity());
+            }
+            else  // TESTNET: this route is superfluous almost surely, revisit soon
                 std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
                     InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, _router.identity());
-            else
-                std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
-                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, _router.identity());
         }
         catch (const std::exception& e)
         {

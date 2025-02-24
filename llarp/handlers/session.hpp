@@ -157,7 +157,7 @@ namespace llarp
                 // session_tag tag,
                 HopID remote_pivot_txid,
                 std::shared_ptr<path::Path> path,
-                shared_kx_data kx_data,
+                std::optional<shared_kx_data> kx_data,
                 bool use_tun);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client
@@ -173,10 +173,7 @@ namespace llarp
             // resolves any config mappings that parsed ONS addresses to their pubkey network address
             void resolve_ons_mappings();
 
-            bool initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb)
-            {
-                return _initiate_session(remote, std::move(cb));
-            }
+            void initiate_remote_session(const NetworkAddress& remote, on_session_init_hook cb);
 
             void tick(std::chrono::milliseconds now) override;
 
@@ -200,22 +197,23 @@ namespace llarp
 
             void _update_and_publish_localcc();
 
-            bool _initiate_client_session(NetworkAddress remote, on_session_init_hook cb);
+            void _initiate_client_session(NetworkAddress remote, on_session_init_hook cb);
 
-            bool _initiate_relay_session(NetworkAddress remote, on_session_init_hook cb);
+            void _initiate_relay_session(NetworkAddress remote, on_session_init_hook cb);
 
-            bool _initiate_session(NetworkAddress remote, on_session_init_hook cb);
+            void _make_client_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb);
 
-            void _make_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb);
+            void _make_relay_session_path(RemoteRC rc, NetworkAddress remote, on_session_init_hook cb);
 
-            void _make_session_path(intro_set intros, NetworkAddress remote, on_session_init_hook cb);
-
-            void _make_session(
+            void _make_client_session(
                 intro_set remote_intros,
                 NetworkAddress remote,
                 ClientIntro remote_intro,
                 std::shared_ptr<path::Path> path,
                 on_session_init_hook cb);
+
+            void _make_relay_session(
+                RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, on_session_init_hook cb);
         };
 
     }  // namespace handlers
