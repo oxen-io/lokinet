@@ -35,11 +35,7 @@ namespace llarp
 
     std::chrono::milliseconds time_now_ms()
     {
-        auto t = uptime();
-#ifdef TESTNET_SPEED
-        t /= uint64_t{TESTNET_SPEED};
-#endif
-        return t + time_since_epoch<std::chrono::milliseconds, std::chrono::system_clock>(started_at_system);
+        return uptime() + time_since_epoch<std::chrono::milliseconds, std::chrono::system_clock>(started_at_system);
     }
 
     nlohmann::json to_json(const std::chrono::milliseconds& t) { return to_milliseconds(t); }

@@ -819,7 +819,6 @@ DISABLE_WARNING_POP
         if (not node_db()->registered_routers().count(local))
         {
             log::trace(logcat, "We are NOT a registered router, figure it out!");
-            _last_tick = llarp::time_now_ms();
             return;
         }
 

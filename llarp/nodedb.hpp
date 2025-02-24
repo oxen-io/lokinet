@@ -336,9 +336,6 @@ namespace llarp
 
         bool verify_store_gossip_rc(const RemoteRC& rc);
 
-        // public method that can be used in session initiation
-        void fetch_rcs(std::vector<RouterID> needed, bt_control_response_hook func);
-
       private:
         void fetch_rcs();
         void fetch_rids();

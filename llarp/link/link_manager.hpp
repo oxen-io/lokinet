@@ -93,6 +93,9 @@ namespace llarp
 
             void for_each_connection(std::function<void(const RouterID&, link::Connection&)> func);
 
+            void for_each_service_conn(
+                std::function<void(RouterID, std::shared_ptr<link::Connection>)> func, bool active_only = true);
+
             void close_connection(RouterID rid);
 
             void close_all();

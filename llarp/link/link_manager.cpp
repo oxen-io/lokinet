@@ -81,6 +81,17 @@ namespace llarp
             return link_manager.router().loop()->call_get([this, remote]() { return service_conns.count(remote); });
         }
 
+        void Endpoint::for_each_service_conn(
+            std::function<void(RouterID, std::shared_ptr<link::Connection>)> func, bool active_only)
+        {
+            assert(link_manager.router().loop()->in_event_loop());
+
+            std::ranges::for_each(service_conns.begin(), service_conns.end(), [&](auto c) mutable {
+                if (c.second and (active_only ? c.second->is_active.load() : true))
+                    func(c.first, c.second);
+            });
+        }
+
         void Endpoint::for_each_connection(std::function<void(const RouterID&, link::Connection&)> func)
         {
             link_manager.router().loop()->call([this, func = std::move(func)]() mutable {
@@ -174,8 +185,8 @@ namespace llarp
             return link_manager.router().loop()->call_get([&]() {
                 size_t n{};
 
-                for (const auto& [_, c] : service_conns)
-                    if (c and (active_only ? c->is_active.load() : true))
+                for (const auto& [_, conn] : service_conns)
+                    if (conn and (active_only ? conn->is_active.load() : true))
                         ++n;
 
                 return n;
@@ -328,7 +339,7 @@ namespace llarp
         _router.loop()->call_later(approximate_time(5s, 5), [&]() {
             regenerate_and_gossip_rc();
             _gossip_ticker =
-                _router.loop()->call_every(_router._gossip_interval, [this]() { regenerate_and_gossip_rc(); });
+                _router.loop()->call_every(_router._gossip_interval, [this]() mutable { regenerate_and_gossip_rc(); });
         });
     }
 
@@ -803,28 +814,16 @@ namespace llarp
         _router.save_rc();
     }
 
-    // TESTNET: TODO: use batch sender
     void LinkManager::gossip_rc(const RouterID& last_sender, const RemoteRC& rc)
     {
-        int count{};
-        const auto& gossip_src = rc.router_id();
+        ep->for_each_service_conn(
+            [last_sender = last_sender, gossip_src = rc.router_id(), payload = GossipRC::serialize(last_sender, rc)](
+                RouterID rid, std::shared_ptr<link::Connection> conn) mutable {
+                if (rid == gossip_src or rid == last_sender)
+                    return;
 
-        for (auto& [rid, conn] : ep->service_conns)
-        {
-            if (not conn or not conn->is_active)
-                continue;
-
-            // don't send back to the gossip source or the last sender
-            if (rid == gossip_src or rid == last_sender)
-                continue;
-
-            count +=
-                send_control_message(rid, "gossip_rc", GossipRC::serialize(last_sender, rc), [](oxen::quic::message) {
-                    log::trace(logcat, "PLACEHOLDER FOR GOSSIP RC RESPONSE HANDLER");
-                });
-        }
-
-        log::critical(logcat, "Dispatched {} GossipRC requests!", count);
+                conn->control_stream->command("gossip_rc", payload, [](auto) {});
+            });
     }
 
     void LinkManager::handle_gossip_rc(oxen::quic::message m)
@@ -920,7 +919,7 @@ namespace llarp
                         logcat,
                         "Bootstrap node confirmed RID:{} is registered; approving fetch request and saving RC!",
                         remote_rc.router_id());
-                    _router.loop()->call_soon([&, remote_rc]() { gossip_rc(_router.local_rid(), remote_rc); });
+                    _router.loop()->call_soon([&, remote_rc]() mutable { gossip_rc(_router.local_rid(), remote_rc); });
                 }
                 else
                     log::critical(

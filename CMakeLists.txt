@@ -94,11 +94,11 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-set(debug OFF)
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  set(debug ON)
-  add_definitions(-DLOKINET_DEBUG)
-endif()
+# set(debug OFF)
+# if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+#   set(debug ON)
+#   add_definitions(-DLOKINET_DEBUG)
+# endif()
 
 option(WARN_DEPRECATED "show deprecation warnings" OFF)
 
