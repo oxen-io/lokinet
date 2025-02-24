@@ -1,3 +1,9 @@
+lokinet (0.9.13-2~ubuntu2404) noble; urgency=medium
+
+  * lokinet 0.9.13
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 24 Feb 2025 18:30:50 -0400
+
 lokinet (0.9.13-1~ubuntu2404) noble; urgency=medium
 
   * update oxenc to latest
