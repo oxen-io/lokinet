@@ -110,7 +110,10 @@ namespace llarp
             // get copy of all srv records
             std::set<dns::SRVData> srv_records() const { return {_srv_records.begin(), _srv_records.end()}; }
 
-            bool recv_path_switch(session_tag t, HopID remove_pivot, HopID local_pivot);
+            bool recv_path_switch(
+                session_tag t, HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_path);
+
+            bool recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid);
 
             template <concepts::SessionType session_t = session::BaseSession>
             std::shared_ptr<session_t> get_session(const session_tag& tag) const
@@ -152,11 +155,12 @@ namespace llarp
             // to initiate a session
             bool validate(const NetworkAddress& remote, std::optional<std::string> maybe_auth = std::nullopt);
 
+            std::optional<ip_v> map_session(std::shared_ptr<session::BaseSession>& s);
+
             std::optional<session_tag> prefigure_session(
                 NetworkAddress initiator,
-                // session_tag tag,
                 HopID remote_pivot_txid,
-                std::shared_ptr<path::Path> path,
+                std::shared_ptr<session_path_interface> path,
                 std::optional<shared_kx_data> kx_data,
                 bool use_tun);
 

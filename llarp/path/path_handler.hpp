@@ -122,7 +122,7 @@ namespace llarp
                 std::function<void(std::shared_ptr<Path>, ClientIntro)> cb,
                 bool keep_path);
 
-            void path_build_iterative(
+            void path_build_recursive(
                 int n_tries,
                 RemoteRC rc,
                 NetworkAddress remote,

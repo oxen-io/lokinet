@@ -44,24 +44,43 @@ namespace llarp::handlers
         s->stop_session(send_close);
     }
 
-    bool SessionEndpoint::recv_path_switch(session_tag t, HopID remove_pivot_txid, HopID local_pivot_txid)
+    bool SessionEndpoint::recv_path_switch(
+        session_tag t, HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_path)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        if (auto s = get_session<session::InboundSession>(t))
+        if (auto s = get_session<session::InboundClientSession>(t))
+        {
+            log::debug(
+                logcat,
+                "Successfully matched path-switch request to InboundSession over path:{}",
+                new_path->to_string());
+
+            s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_path));
+        }
+
+        return false;
+    }
+
+    bool SessionEndpoint::recv_path_switch(session_tag t, HopID remote_pivot_txid, HopID local_pivot_txid)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (auto s = get_session<session::InboundClientSession>(t))
         {
             // only OutboundSessions send path switch messages
             assert(s && !s->is_outbound());
 
+            // PathHandler objects key their paths to the upstream rxid, so we use the conditional get_path
             if (auto path = get_path_conditional(
                     [local_pivot_txid](std::shared_ptr<path::Path> p) { return p->pivot_txid() == local_pivot_txid; }))
             {
                 log::debug(
                     logcat,
                     "Successfully matched path-switch request to InboundSession over path:{}",
-                    path->get()->debug_string());
-                s->set_remote_pivot_tx(remove_pivot_txid);
-                s->set_new_current_path(std::move(*path));
+                    (*path)->to_string());
+                s->set_remote_pivot_tx(remote_pivot_txid);
+                s->set_new_current_path_interface(std::move(*path));
                 return true;
             }
 
@@ -117,13 +136,19 @@ namespace llarp::handlers
 
         if (_cc_publisher)
         {
-            _cc_publisher->stop();
+            if (_cc_publisher->is_running())
+                _cc_publisher->stop();
+
+            _cc_publisher.reset();
             log::trace(logcat, "ClientContact publish ticker stopped!");
         }
 
         if (_path_rotater)
         {
-            _path_rotater->stop();
+            if (_path_rotater->is_running())
+                _path_rotater->stop();
+
+            _path_rotater.reset();
             log::trace(logcat, "Path rotation ticker stopped!");
         }
 
@@ -218,8 +243,7 @@ namespace llarp::handlers
         Lock_t l{paths_mutex};
 
         auto oldest = get_oldest_path();
-        // log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
-        log::debug(logcat, "Dropping oldest path: {}", oldest->debug_string());
+        log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
         drop_path(oldest);
     }
 
@@ -238,17 +262,12 @@ namespace llarp::handlers
         }
 
         path::PathHandler::rotate_paths(std::move(*maybe_hops));
-
-        // path::PathHandler::rotate_paths(
-        //     std::move(*maybe_hops),
-        //     [this](auto new_path) mutable { path_rotation_succeeded(std::move(new_path)); },
-        //     [this](auto new_path, int ec) mutable { path_build_failed(std::move(new_path), ec); });
     }
 
     void SessionEndpoint::path_rotation_succeeded(std::shared_ptr<path::Path> new_path)
     {
-        // log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->to_string());
-        log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->debug_string());
+        log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->to_string());
+        // log::info(logcat, "SessionEndpoint successfully rotated in new path: {}", new_path->debug_string());
         path_build_succeeded(std::move(new_path));
         drop_oldest_path();
         update_and_publish_localcc();
@@ -298,7 +317,7 @@ namespace llarp::handlers
 
     void SessionEndpoint::start_tickers()
     {
-        if (should_publish_cc)
+        if (!_is_service_node and should_publish_cc)
         {
             log::trace(logcat, "Starting ClientContact publish ticker...");
 
@@ -662,50 +681,70 @@ namespace llarp::handlers
 
     static constexpr auto success_msg = "SessionEndpoint successfully created and mapped InboundSession object!"sv;
 
+    std::optional<ip_v> SessionEndpoint::map_session(std::shared_ptr<session::BaseSession>& s)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (s->using_tun())
+        {
+            log::trace(logcat, "{} Instructing lokinet TUN device to create mapped route...", success_msg);
+
+            if (auto maybe_ip = _router.tun_endpoint()->map_session_to_local_ip(s->remote()))
+            {
+                log::info(
+                    logcat,
+                    "TUN device successfully routing session (remote: {}) via local ip: {}",
+                    s->remote(),
+                    std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
+                                                            : std::get<ipv6>(*maybe_ip).to_string());
+                return maybe_ip;
+            }
+
+            // TODO: if this fails, we should close the session
+            log::warning(logcat, "TUN device failed to route session (remote: {}) to local ip", s->remote());
+            return std::nullopt;
+        }
+
+        // TESTNET:
+        log::warning(logcat, "INCOMPLETE EMBEDDED ROUTE");
+        // log::info(logcat, "{} Connecting to TCP backend to route session traffic...", success_msg);
+        // session->tcp_backend_connect();
+
+        return std::nullopt;
+    }
+
     std::optional<session_tag> SessionEndpoint::prefigure_session(
         NetworkAddress initiator,
         HopID remote_pivot_txid,
-        std::shared_ptr<path::Path> path,
+        std::shared_ptr<session_path_interface> path,
         std::optional<shared_kx_data> kx_data,
         bool use_tun)
     {
         auto tag = session_tag::make(protoflags);
 
-        auto inbound = std::make_shared<session::InboundSession>(
-            initiator, std::move(path), *this, std::move(remote_pivot_txid), tag, use_tun, std::move(kx_data));
+        std::shared_ptr<session::BaseSession> s = nullptr;
 
-        auto [session, _] = _sessions.insert_or_assign(std::move(initiator), std::move(inbound));
-        session->activate();
-
-        // TESTNET:
-        // instruct the lokinet TUN device to create a mapping from a local IP to this session
-        if (session->using_tun())
+        if (_is_service_node)
         {
-            log::trace(logcat, "{} Instructing lokinet TUN device to create mapped route...", success_msg);
+            auto session = std::make_shared<session::InboundRelaySession>(
+                initiator, std::move(path), *this, std::move(remote_pivot_txid), tag, use_tun, std::move(kx_data));
 
-            if (auto maybe_ip = _router.tun_endpoint()->map_session_to_local_ip(session->remote()))
-            {
-                log::info(
-                    logcat,
-                    "TUN device successfully routing session (remote: {}) via local ip: {}",
-                    session->remote(),
-                    std::holds_alternative<ipv4>(*maybe_ip) ? std::get<ipv4>(*maybe_ip).to_string()
-                                                            : std::get<ipv6>(*maybe_ip).to_string());
-            }
-            else
-            {
-                // TODO: if this fails, we should close the session
-                log::warning(logcat, "TUN device failed to route session (remote: {}) to local ip", session->remote());
-                return std::nullopt;
-            }
+            s = _sessions.insert_or_assign(std::move(initiator), std::move(session)).first;
         }
         else
         {
-            log::info(logcat, "{} Connecting to TCP backend to route session traffic...", success_msg);
-            // session->tcp_backend_connect();
+            auto session = std::make_shared<session::InboundClientSession>(
+                initiator, std::move(path), *this, std::move(remote_pivot_txid), tag, use_tun, std::move(kx_data));
+
+            s = _sessions.insert_or_assign(std::move(initiator), std::move(session)).first;
         }
 
-        return tag;
+        assert(s and s->is_active());
+
+        if (auto maybe_ip = map_session(s))
+            return tag;
+
+        return std::nullopt;
     }
 
     static void publish_cc_cb(oxen::quic::message m)
@@ -740,16 +779,12 @@ namespace llarp::handlers
         log::trace(logcat, "Publishing new EncryptedClientContact: {}", ecc.bt_payload());
 
         _sessions.for_each([ecc](std::shared_ptr<session::BaseSession>& s) mutable {
-            // log::debug(
-            //     logcat,
-            //     "Publishing ClientContact on {}bound session (remote:{})",
-            //     detail::bool_alpha(s->is_outbound(), "Out", "In"),
-            //     s->remote());
             log::debug(
                 logcat,
-                "Publishing ClientContact on {}bound session: {}",
+                "Publishing ClientContact on {}bound session (remote:{})",
                 detail::bool_alpha(s->is_outbound(), "Out", "In"),
-                s->current_path()->debug_string());
+                s->remote());
+
             s->publish_client_contact(ecc, publish_cc_cb);
         });
 
@@ -762,8 +797,7 @@ namespace llarp::handlers
                 if (not p or not p->is_active())
                     continue;
 
-                // log::debug(logcat, "Publishing ClientContact on {}", path->hop_string());
-                log::debug(logcat, "Publishing ClientContact on {}", p->debug_string());
+                log::debug(logcat, "Publishing ClientContact on {}", p->to_string());
                 ret &= p->publish_client_contact(ecc, publish_cc_cb);
             }
         }
@@ -809,7 +843,8 @@ namespace llarp::handlers
                                     - 't' : Use Tun interface (bool)
                                     - 'u' : Authentication field
                                         - bt-encoded dict, values TBD
-     */
+    */
+    // TESTNET: TODO: DRY out the following two functions
     void SessionEndpoint::_make_client_session(
         intro_set intros,
         NetworkAddress remote,
@@ -819,7 +854,8 @@ namespace llarp::handlers
     {
         std::string inner_payload;
         shared_kx_data kx_data;
-        auto pivot_txid = intros.emplace(std::move(remote_intro)).first->pivot_txid;
+        auto pivot_txid = remote_intro.pivot_txid;
+        intros.emplace(std::move(remote_intro));
 
         // internal payload for remote client
         std::tie(inner_payload, kx_data) = InitiateSession::serialize_encrypt(
@@ -829,14 +865,9 @@ namespace llarp::handlers
             pivot_txid,
             fetch_auth_token(remote),
             _router.using_tun_if());
-
         log::trace(logcat, "inner payload: {}", buffer_printer{inner_payload});
 
-        auto pivot_payload = ONION::serialize_hop(pivot_txid.to_view(), SymmNonce::make_random(), inner_payload);
-        log::trace(logcat, "pivot payload: {}", buffer_printer{pivot_payload});
-
-        auto intermediate_payload = PATH::CONTROL::serialize("path_control", std::move(pivot_payload));
-        log::trace(logcat, "intermediate payload: {}", buffer_printer{intermediate_payload});
+        auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), pivot_txid);
 
         path->send_path_control_message(
             "path_control",
@@ -866,7 +897,7 @@ namespace llarp::handlers
 
                     log::trace(logcat, "Remote client has provided session tag: {}", tag);
 
-                    auto outbound = std::make_shared<session::OutboundClientSession>(
+                    auto session = std::make_shared<session::OutboundClientSession>(
                         remote,
                         *this,
                         std::move(path),
@@ -875,12 +906,12 @@ namespace llarp::handlers
                         std::move(remote_intros),
                         std::move(session_keys));
 
-                    auto [session, _] = _sessions.insert_or_assign(std::move(remote), std::move(outbound));
-                    session->activate();
+                    auto [s, _] = _sessions.insert_or_assign(std::move(remote), session);
+                    assert(s->is_active());
 
                     log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
 
-                    // TESTNET:
+                    // TESTNET: use new ::map_session(...) function after finishing embedded hooks
                     if (session->using_tun())
                     {
                         log::trace(logcat, "Instructing lokinet TUN device to create mapped route...");
@@ -948,7 +979,8 @@ namespace llarp::handlers
         path->send_path_control_message(
             "session_init",
             std::move(payload),
-            [this, rc = std::move(rc), remote, path, hook = std::move(cb)](oxen::quic::message m) mutable {
+            [this, rc = std::move(rc), remote, path, hook = std::move(cb), session_keys = path->hops.back().kx](
+                oxen::quic::message m) mutable {
                 if (m)
                 {
                     log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
@@ -969,11 +1001,11 @@ namespace llarp::handlers
 
                     auto pivot_txid = path->pivot_txid();
 
-                    auto outbound = std::make_shared<session::OutboundRelaySession>(
-                        remote, *this, std::move(path), std::move(tag), std::move(pivot_txid));
+                    auto session = std::make_shared<session::OutboundRelaySession>(
+                        remote, *this, std::move(path), std::move(tag), std::move(pivot_txid), std::move(session_keys));
 
-                    auto [session, _] = _sessions.insert_or_assign(std::move(remote), std::move(outbound));
-                    session->activate();
+                    auto [s, _] = _sessions.insert_or_assign(std::move(remote), session);
+                    assert(s->is_active());
 
                     log::trace(logcat, "Outbound session to {} successfully created...", session->remote());
 
@@ -1032,14 +1064,13 @@ namespace llarp::handlers
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        path_build_iterative(
+        path_build_recursive(
             SESSION_PATH_BUILD_ATTEMPTS,
             rc,
             remote,
             [this, rc, remote, cb](std::shared_ptr<path::Path> new_path) {
                 log::info(logcat, "Path build to remote:{} succeeded, initiating session!", remote);
-                (void)this;
-                (void)new_path;
+                _make_relay_session(std::move(rc), std::move(remote), std::move(new_path), std::move(cb));
             },
             false);
     }

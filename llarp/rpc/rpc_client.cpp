@@ -308,7 +308,7 @@ namespace llarp::rpc
         return ftr.get();
     }
 
-    void RPCClient::lookup_ons_hash(
+    void RPCClient::lookup_sns_hash(
         std::string namehash, std::function<void(std::optional<EncryptedSNSRecord>)> resultHandler)
     {
         log::debug(logcat, "Looking Up ONS NameHash {}", namehash);

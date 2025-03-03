@@ -52,9 +52,6 @@ namespace llarp::path
         assert(_r.loop()->in_event_loop());
         _drop_path(path->upstream_rxid());
         _drop_path(path->pivot_txid());
-
-        if (path->is_linked())
-            log::critical(logcat, "Path dropped with {} currently linked sessions!", path->num_links());
     }
 
     std::tuple<size_t, size_t> PathContext::path_ctx_stats() const

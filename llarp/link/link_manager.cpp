@@ -1157,7 +1157,7 @@ namespace llarp
             return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        _router.rpc_client()->lookup_ons_hash(
+        _router.rpc_client()->lookup_sns_hash(
             name_hash, [prev_msg = std::move(m)](std::optional<EncryptedSNSRecord> maybe_enc) mutable {
                 if (maybe_enc)
                 {
@@ -1593,7 +1593,7 @@ namespace llarp
                 }
 
                 if (response)
-                    log::info(logcat, "Path control message returned successfully!");
+                    log::debug(logcat, "Path control message returned successfully!");
                 else if (response.timed_out)
                     log::warning(logcat, "Path control message returned as time out!");
                 else
@@ -1714,13 +1714,13 @@ namespace llarp
                     return;
                 }
 
-                log::trace(logcat, "Inbound path rxid:{}, outbound path txid:{}", hop_id, ihid);
-
                 if (hop_id == ihid)
                 {
                     log::debug(logcat, "Received path data for local relay: {}", buffer_printer{intermediate});
                     return handle_path_session_data(std::move(intermediate));
                 }
+
+                log::trace(logcat, "Inbound path rxid:{}, outbound path txid:{}", hop_id, ihid);
 
                 auto next_hop = _router.path_context()->get_transit_hop(ihid);
 
@@ -1830,7 +1830,6 @@ namespace llarp
         bool use_tun{};
         std::optional<shared_kx_data> kx_data = std::nullopt;
         std::optional<std::string> maybe_auth = std::nullopt;
-        std::shared_ptr<path::Path> path_ptr;
 
         try
         {
@@ -1841,11 +1840,11 @@ namespace llarp
                         InitiateSession::deserialize(oxenc::bt_dict_consumer{*inner_body});
                 else
                     std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
-                        InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, _router.identity());
+                        InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, _router.identity());
             }
-            else  // TESTNET: this route is superfluous almost surely, revisit soon
+            else  // TESTNET: this route is superfluous for this type of request almost surely, revisit soon
                 std::tie(kx_data, initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
-                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{*inner_body}, _router.identity());
+                    InitiateSession::decrypt_deserialize(oxenc::bt_dict_consumer{m.body()}, _router.identity());
         }
         catch (const std::exception& e)
         {
@@ -1864,11 +1863,13 @@ namespace llarp
             return m.respond(InitiateSession::AUTH_ERROR, true);
         }
 
+        std::shared_ptr<session_path_interface> pi = nullptr;
+
         if (not _is_service_node)
         {
-            path_ptr = _router.path_context()->get_path(local_pivot_txid);
+            pi = _router.path_context()->get_path(local_pivot_txid);
 
-            if (not path_ptr)
+            if (not pi)
             {
                 log::warning(
                     logcat, "Failed to find local path for new inbound session over pivot txid: {}", local_pivot_txid);
@@ -1877,6 +1878,12 @@ namespace llarp
         }
         else
         {
+            if (local_pivot_txid != remote_pivot_txid)
+            {
+                log::warning(logcat, "Received misrouted path-request to initiate client<->client session...");
+                return m.respond(InitiateSession::BAD_ROUTE, true);
+            }
+
             auto hop = _router.path_context()->get_transit_hop(local_pivot_txid);
 
             if (not hop)
@@ -1894,10 +1901,15 @@ namespace llarp
                     local_pivot_txid);
                 return m.respond(InitiateSession::BAD_ROUTE, true);
             }
+
+            pi = path::SessionHop::make(hop, _router);
+            kx_data = hop->kx;
         }
 
+        assert(pi);
+
         if (auto tag = _router.session_endpoint()->prefigure_session(
-                std::move(initiator), std::move(remote_pivot_txid), std::move(path_ptr), std::move(kx_data), use_tun))
+                std::move(initiator), std::move(remote_pivot_txid), std::move(pi), std::move(kx_data), use_tun))
         {
             log::debug(logcat, "InboundSession configured successfully!");
             return m.respond(InitiateSession::serialize_response(*tag));
@@ -1925,20 +1937,45 @@ namespace llarp
             else
                 std::tie(tag, remote_pivot_txid, local_pivot_txid) =
                     SessionPathSwitch::deserialize(oxenc::bt_dict_consumer{m.body()});
-
-            if (_router.session_endpoint()->recv_path_switch(
-                    tag, std::move(remote_pivot_txid), std::move(local_pivot_txid)))
-                return m.respond(messages::OK_RESPONSE);
-
-            log::warning(logcat, "Received path-switch request for unknown session (tag:{})", tag);
-            return m.respond(SessionPathSwitch::BAD_TAG, true);
         }
         catch (const std::exception& e)
         {
             log::warning(logcat, "Exception: {}", e.what());
+            return m.respond(messages::ERROR_RESPONSE, true);
         }
 
-        m.respond(messages::ERROR_RESPONSE, true);
+        if (!_is_service_node)
+        {
+            auto path = _router.path_context()->get_path(local_pivot_txid);
+
+            if (not path)
+            {
+                log::warning(
+                    logcat, "Received path-switch request for unknown local path (pivot txid:{})", local_pivot_txid);
+                return m.respond(SessionPathSwitch::BAD_ID, true);
+            }
+
+            if (_router.session_endpoint()->recv_path_switch(tag, std::move(remote_pivot_txid), std::move(path)))
+                return m.respond(messages::OK_RESPONSE);
+        }
+        else
+        {
+            auto hop = _router.path_context()->get_transit_hop(local_pivot_txid);
+
+            if (not hop)
+            {
+                log::warning(
+                    logcat, "Received path-switch request for unknown local hop (pivot txid:{})", local_pivot_txid);
+                return m.respond(SessionPathSwitch::BAD_ID, true);
+            }
+
+            if (_router.session_endpoint()->recv_path_switch(
+                    tag, std::move(remote_pivot_txid), path::SessionHop::make(hop, _router)))
+                return m.respond(messages::OK_RESPONSE);
+        }
+
+        log::warning(logcat, "Received path-switch request for unknown session (tag:{})", tag);
+        return m.respond(SessionPathSwitch::BAD_TAG, true);
     }
 
     void LinkManager::handle_path_switch(oxen::quic::message m) { return _handle_path_switch(std::move(m)); }

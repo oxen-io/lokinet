@@ -41,9 +41,6 @@ namespace llarp
 
     namespace session
     {
-        /** Temporary base class for {Inbound,Outbound}Session objects to aggregate shared logic in relation
-            to tunneled QUIC endpoints
-        */
         struct BaseSession
         {
           protected:
@@ -58,14 +55,14 @@ namespace llarp
             // used for bridging data messages across aligned paths
             HopID _remote_pivot_txid;
 
-            bool _use_tun;
-            bool _is_outbound;
-            bool _is_active{false};
+            const bool _use_tun{};
+            const bool _is_outbound{};
+            const bool _is_snode_session{};
+            const bool _is_exit_session{};
 
-            const bool _is_snode_session{false};
-            const bool _is_exit_session{false};
+            bool _is_active{};
 
-            std::shared_ptr<path::Path> _current_path;
+            std::shared_ptr<session_path_interface> _current_path;
             HopID _pivot_txid;
 
             recv_session_dgram_cb _recv_dgram;
@@ -85,7 +82,7 @@ namespace llarp
           public:
             BaseSession(
                 Router& r,
-                std::shared_ptr<path::Path> _p,
+                std::shared_ptr<session_path_interface> _p,
                 handlers::SessionEndpoint& parent,
                 NetworkAddress remote,
                 HopID remote_pivot_txid,
@@ -98,26 +95,26 @@ namespace llarp
 
             bool is_outbound() const { return _is_outbound; }
 
-            const std::shared_ptr<path::Path>& current_path() const { return _current_path; }
-
             const NetworkAddress& remote() const { return _remote; }
 
             NetworkAddress remote() { return _remote; }
 
-            bool send_path_control_message(std::string method, std::string body, bt_control_response_hook func);
+            virtual bool send_path_control_message(std::string method, std::string body, bt_control_response_hook func);
 
-            bool send_path_data_message(std::string data);
+            virtual bool send_path_data_message(std::string data);
 
             void recv_path_data_message(std::vector<uint8_t> data);
 
-            void set_new_current_path(std::shared_ptr<path::Path> _new_path);
+            void set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path);
 
             void set_remote_pivot_tx(HopID new_remote_txid);
 
             void publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
 
+            // inbound
             void tcp_backend_connect();
 
+            // outbound
             void tcp_backend_listen(on_session_init_hook cb, uint16_t port = 0);
 
             bool using_tun() const { return _use_tun; }
@@ -143,6 +140,7 @@ namespace llarp
             static constexpr bool to_string_formattable = true;
         };
 
+        // Outbound Session to Remote Relay
         struct OutboundRelaySession : public path::PathHandler, public BaseSession
         {
             OutboundRelaySession(
@@ -151,7 +149,7 @@ namespace llarp
                 std::shared_ptr<path::Path> path,
                 session_tag _t,
                 HopID remote_pivot_txid,
-                std::optional<shared_kx_data> kx_data = std::nullopt);
+                shared_kx_data kx_data);
 
             static std::shared_ptr<OutboundRelaySession> downcast(const std::shared_ptr<BaseSession>& b);
 
@@ -166,10 +164,17 @@ namespace llarp
 
             void switch_to_new_path(std::shared_ptr<path::Path> p);
 
+            std::shared_ptr<path::Path> current_path();
+
           public:
             std::shared_ptr<path::PathHandler> get_self() override;
 
             std::weak_ptr<path::PathHandler> get_weak() override;
+
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
+
+            bool send_path_data_message(std::string data) override;
 
             void build_more(size_t n = 0) override;
 
@@ -180,6 +185,7 @@ namespace llarp
             void stop_session(bool send_close = false, bt_control_response_hook func = nullptr) override;
         };
 
+        // Outbound Session to Remote Client
         struct OutboundClientSession final : public OutboundRelaySession
         {
             OutboundClientSession(
@@ -190,8 +196,6 @@ namespace llarp
                 session_tag _t,
                 intro_set cc,
                 shared_kx_data kx_data);
-
-            ~OutboundClientSession() override;
 
             static std::shared_ptr<OutboundClientSession> downcast(const std::shared_ptr<BaseSession>& b);
 
@@ -224,6 +228,11 @@ namespace llarp
 
             std::weak_ptr<path::PathHandler> get_weak() override;
 
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
+
+            bool send_path_data_message(std::string data) override;
+
             void update_remote_intros(intro_set&& intros);
 
             void build_more(size_t n = 0) override;
@@ -243,18 +252,41 @@ namespace llarp
             bool is_expired(std::chrono::milliseconds now) const;
         };
 
-        struct InboundSession final : public BaseSession
+        // Inbound Session to Local Client
+        struct InboundClientSession : public BaseSession
         {
-            InboundSession(
+            InboundClientSession(
                 NetworkAddress _remote,
-                std::shared_ptr<path::Path> _path,
+                std::shared_ptr<session_path_interface> _p,
                 handlers::SessionEndpoint& parent,
                 HopID remote_pivot_txid,
                 session_tag _t,
                 bool use_tun,
                 std::optional<shared_kx_data> kx_data = std::nullopt);
 
-            ~InboundSession() = default;
+            static std::shared_ptr<InboundClientSession> downcast(const std::shared_ptr<BaseSession>& b);
+
+            void recv_path_switch(HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_pi);
+        };
+
+        // Inbound Session to Local Relay
+        struct InboundRelaySession final : public InboundClientSession
+        {
+            InboundRelaySession(
+                NetworkAddress _remote,
+                std::shared_ptr<session_path_interface> _p,
+                handlers::SessionEndpoint& parent,
+                HopID remote_pivot_txid,
+                session_tag _t,
+                bool use_tun,
+                std::optional<shared_kx_data> kx_data = std::nullopt);
+
+            static std::shared_ptr<InboundRelaySession> downcast(const std::shared_ptr<BaseSession>& b);
+
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
+
+            bool send_path_data_message(std::string data) override;
         };
     }  // namespace session
 

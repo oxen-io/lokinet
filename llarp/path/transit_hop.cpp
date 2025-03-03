@@ -82,8 +82,61 @@ namespace llarp::path
 
     std::string TransitHop::to_string() const
     {
-        return "TransitHop:[ terminal:{} | tx:{} | rx:{} | upstream:{} | downstream:{} | expiry:{} ]"_format(
-            terminal_hop, _txid, _rxid, _upstream, _downstream, expiry.count());
+        return "TransitHop:[ Terminal:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
+            detail::bool_alpha(terminal_hop),
+            _txid,
+            _rxid,
+            _upstream.short_string(),
+            _downstream.short_string(),
+            expiry.count());
     }
 
+    SessionHop::SessionHop(std::shared_ptr<TransitHop>& hop, handlers::SessionEndpoint& p)
+        : TransitHop{*hop}, _parent{p}
+    {}
+
+    std::shared_ptr<SessionHop> SessionHop::make(std::shared_ptr<TransitHop> hop, Router& r)
+    {
+        return std::shared_ptr<SessionHop>{new SessionHop{hop, *r.session_endpoint().get()}};
+    }
+
+    void SessionHop::link_session(session_tag t)
+    {
+        _linked_sessions.insert(t);
+        log::trace(logcat, "Current SessionHop has {} linked sessions!", _linked_sessions.size());
+    }
+
+    bool SessionHop::unlink_session(session_tag t)
+    {
+        auto n = _linked_sessions.erase(t);
+        log::trace(logcat, "Current SessionHop has {} linked sessions!", _linked_sessions.size());
+        return n != 0;
+    }
+
+    bool SessionHop::send_path_control_message(std::string method, std::string body, bt_control_response_hook func)
+    {
+        auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
+        return _parent._router.send_control_message(
+            _downstream,
+            "path_control",
+            ONION::serialize_hop(_downstream.to_view(), SymmNonce::make_random(), std::move(inner_payload)),
+            std::move(func));
+    }
+
+    bool SessionHop::send_path_data_message(std::string body)
+    {
+        return _parent._router.send_data_message(
+            _downstream, ONION::serialize_hop(_downstream.to_view(), SymmNonce::make_random(), std::move(body)));
+    }
+
+    std::string SessionHop::to_string() const
+    {
+        return "SessionHop:[ Num Sessions:{} | TX:{} | RX:{} | Upstream:{} | Downstream:{} | Expiry:{} ]"_format(
+            _linked_sessions.size(),
+            _txid,
+            _rxid,
+            _upstream.short_string(),
+            _downstream.short_string(),
+            expiry.count());
+    }
 }  // namespace llarp::path

@@ -353,8 +353,17 @@ namespace llarp::path
     void PathHandler::stop(bool)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-
         _running = false;
+
+        if (_path_rotater)
+        {
+            if (_path_rotater->is_running())
+                _path_rotater->stop();
+
+            _path_rotater.reset();
+            log::trace(logcat, "Path rotation ticker stopped!");
+        }
+
         _paths.clear();
     }
 
@@ -737,7 +746,7 @@ namespace llarp::path
         }
         else
         {
-            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak(), remote.is_client());
+            new_path = std::make_shared<path::Path>(_router, std::move(hops), get_weak());
             log::debug(logcat, "Building path -> {} :{}", new_path->to_string(), new_path->hop_string());
         }
 
@@ -757,7 +766,7 @@ namespace llarp::path
             });
     }
 
-    void PathHandler::path_build_iterative(
+    void PathHandler::path_build_recursive(
         int n_tries, RemoteRC rc, NetworkAddress remote, std::function<void(std::shared_ptr<Path>)> cb, bool keep_path)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
@@ -775,7 +784,7 @@ namespace llarp::path
         if (not maybe_hops)
         {
             log::error(logcat, "Failed to get hops for path-build to pivot {}", remote);
-            return path_build_iterative(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
+            return path_build_recursive(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
         }
 
         auto& hops = *maybe_hops;
@@ -808,7 +817,7 @@ namespace llarp::path
                 auto new_path, int ec) mutable {
                 if (keep_path)
                     path_build_failed(new_path, ec);
-                path_build_iterative(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
+                path_build_recursive(--n_tries, std::move(rc), std::move(remote), std::move(cb), keep_path);
             });
     }
 
@@ -826,8 +835,7 @@ namespace llarp::path
                 [new_path, success_cb = std::move(success_cb), fail_cb](oxen::quic::message m) mutable {
                     if (m)
                     {
-                        // log::info(logcat, "PATH ESTABLISHED: {}", new_path->hop_string());
-                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->debug_string());
+                        log::info(logcat, "PATH ESTABLISHED: {}", new_path->to_string());
                         return success_cb(std::move(new_path));
                     }
 

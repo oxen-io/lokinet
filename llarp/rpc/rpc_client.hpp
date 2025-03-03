@@ -52,7 +52,7 @@ namespace llarp
             /// get what the current block height is according to oxend
             uint64_t block_height() const { return _block_height; }
 
-            void lookup_ons_hash(
+            void lookup_sns_hash(
                 std::string namehash, std::function<void(std::optional<EncryptedSNSRecord>)> resultHandler);
 
             /// inform that if connected to a router successfully

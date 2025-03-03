@@ -563,10 +563,7 @@ namespace llarp
         reselect_router_id_sources(fail_sources);
     }
 
-    bool NodeDB::is_bootstrap_node(const RemoteRC& rc) const
-    {
-        return has_bootstraps() ? _bootstraps.contains(rc) || _bootstraps.contains(rc.router_id()) : false;
-    }
+    bool NodeDB::is_bootstrap_node(const RemoteRC& rc) const { return _bootstraps.contains(rc.router_id()); }
 
     void NodeDB::start_tickers()
     {
@@ -578,7 +575,7 @@ namespace llarp
         _purge_ticker = _router.loop()->call_every(
             PURGE_INTERVAL, [this]() mutable { purge_rcs(); }, not _needs_bootstrap);
         if (not _needs_bootstrap)
-            _router.loop()->call_later(approximate_time(10s, 10), [&]() { purge_rcs(); });
+            _router.loop()->call_later(approximate_time(10s, 5), [&]() { purge_rcs(); });
 
         if (not _is_service_node)
         {

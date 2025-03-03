@@ -17,7 +17,7 @@ namespace llarp::session
 
     BaseSession::BaseSession(
         Router& r,
-        std::shared_ptr<path::Path> _p,
+        std::shared_ptr<session_path_interface> _p,
         handlers::SessionEndpoint& parent,
         NetworkAddress remote,
         HopID remote_pivot_txid,
@@ -33,10 +33,10 @@ namespace llarp::session
           _remote_pivot_txid{std::move(remote_pivot_txid)},
           _use_tun{use_tun},
           _is_outbound{is_outbound},
-          _is_snode_session{_is_outbound ? !_remote.is_client() : _parent.is_service_node()},
+          _is_snode_session{_is_outbound ? !_remote.is_client() : _r.is_service_node()},
           _is_exit_session{_tag.proto_bits().first}
     {
-        set_new_current_path(std::move(_p));
+        set_new_current_path_interface(std::move(_p));
 
         if (_use_tun)
             _recv_dgram = [this](std::vector<uint8_t> data) {
@@ -51,8 +51,7 @@ namespace llarp::session
 
     BaseSession::~BaseSession()
     {
-        // TESTNET: downgrade this log
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
         deactivate();
 
         if (_current_path and _current_path->is_linked())
@@ -62,13 +61,10 @@ namespace llarp::session
     bool BaseSession::send_path_control_message(std::string method, std::string body, bt_control_response_hook func)
     {
         auto inner_payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
+        auto intermediate_payload = PATH::CONTROL::serialize_aligned(std::move(inner_payload), _remote_pivot_txid);
 
-        auto pivot_payload =
-            ONION::serialize_hop(_remote_pivot_txid.to_view(), SymmNonce::make_random(), std::move(inner_payload));
-
-        auto intermediate_payload = PATH::CONTROL::serialize("path_control", std::move(pivot_payload));
-
-        return _current_path->send_path_control_message("path_control", intermediate_payload, std::move(func));
+        return _current_path->send_path_control_message(
+            "path_control", std::move(intermediate_payload), std::move(func));
     }
 
     bool BaseSession::send_path_data_message(std::string data)
@@ -77,10 +73,9 @@ namespace llarp::session
             session_keys->encrypt(data);
 
         auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
-
         auto intermediate_payload = PATH::DATA::serialize_intermediate(std::move(inner_payload), _remote_pivot_txid);
-        return _r.send_data_message(
-            _current_path->upstream_rid(), _current_path->make_path_message(std::move(intermediate_payload)));
+
+        return _current_path->send_path_data_message(std::move(intermediate_payload));
     }
 
     void BaseSession::recv_path_data_message(std::vector<uint8_t> data)
@@ -94,19 +89,18 @@ namespace llarp::session
             throw std::runtime_error{"Session does not have hook to receive datagrams!"};
     }
 
-    void BaseSession::set_new_current_path(std::shared_ptr<path::Path> _new_path)
+    void BaseSession::set_new_current_path_interface(std::shared_ptr<session_path_interface> _new_path)
     {
         if (_current_path)
             _current_path->unlink_session(_tag);
 
         _current_path = std::move(_new_path);
-        _pivot_txid = _current_path->pivot_txid();
+        _pivot_txid = _current_path->terminal_txid();
 
         _current_path->link_session(_tag);
         assert(_current_path->is_linked());
 
-        // log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->to_string());
-        log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->debug_string());
+        log::debug(logcat, "Session to remote ({}) set new current path {}", _remote, _current_path->to_string());
     }
 
     void BaseSession::set_remote_pivot_tx(HopID new_remote_txid)
@@ -143,13 +137,13 @@ namespace llarp::session
 
         _ep->listen(
             _r.quic_tunnel()->creds(),
-            [this](oxen::quic::connection_interface& ci) {
+            [this](oxen::quic::connection_interface& ci) mutable {
                 if (not _ci)
                     _ci = ci.shared_from_this();
                 else
                     log::warning(logcat, "Tunneled QUIC endpoint can only have one connection per remote!");
             },
-            [this, h = _handle](oxen::quic::Stream& s) {
+            [this, h = _handle](oxen::quic::Stream& s) mutable {
                 // On stream creation, the call to ::connect(...) will:
                 //  - create a bufferevent
                 //  - set the recv_data_cb in the Stream to write to that bufferevent
@@ -218,7 +212,7 @@ namespace llarp::session
 
     void BaseSession::stop_session(bool send_close, bt_control_response_hook func)
     {
-        log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         deactivate();
 
@@ -265,7 +259,7 @@ namespace llarp::session
         std::shared_ptr<path::Path> path,
         session_tag _t,
         HopID remote_pivot_txid,
-        std::optional<shared_kx_data> kx_data)
+        shared_kx_data kx_data)
         : PathHandler{parent._router, path::DEFAULT_PATHS_HELD},
           BaseSession(
               _router,
@@ -279,19 +273,35 @@ namespace llarp::session
               std::move(kx_data)),
           _last_use{_router.now()}
     {
-        add_path(_current_path);
+        add_path(current_path());
 
         _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
     }
 
+    std::shared_ptr<path::Path> OutboundRelaySession::current_path()
+    {
+        return std::static_pointer_cast<path::Path>(_current_path);
+    }
+
     std::shared_ptr<OutboundRelaySession> OutboundRelaySession::downcast(const std::shared_ptr<BaseSession>& b)
     {
-        return std::dynamic_pointer_cast<session::OutboundRelaySession>(b);
+        return std::dynamic_pointer_cast<OutboundRelaySession>(b);
     }
 
     std::shared_ptr<path::PathHandler> OutboundRelaySession::get_self() { return shared_from_this(); }
 
     std::weak_ptr<path::PathHandler> OutboundRelaySession::get_weak() { return weak_from_this(); }
+
+    bool OutboundRelaySession::send_path_control_message(
+        std::string method, std::string body, bt_control_response_hook func)
+    {
+        return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
+    }
+
+    bool OutboundRelaySession::send_path_data_message(std::string data)
+    {
+        return _current_path->send_path_data_message(std::move(data));
+    }
 
     void OutboundRelaySession::rotate_paths()
     {
@@ -299,11 +309,12 @@ namespace llarp::session
 
         Lock_t l{paths_mutex};
 
-        auto rid = _current_path->pivot_rid();
+        auto rid = _current_path->terminal_rid();
 
         for (int i = 0; i < SESSION_PATH_BUILD_ATTEMPTS; ++i)
         {
             auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+
             if (maybe_hops)
                 return path::PathHandler::rotate_paths(std::move(*maybe_hops));
 
@@ -322,7 +333,7 @@ namespace llarp::session
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         set_remote_pivot_tx(p->pivot_txid());
-        set_new_current_path(std::move(p));
+        set_new_current_path_interface(std::move(p));
         send_path_switch();
     }
 
@@ -332,8 +343,7 @@ namespace llarp::session
         Lock_t l{paths_mutex};
 
         auto oldest = get_oldest_path();
-        // log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
-        log::debug(logcat, "Dropping oldest path: {}", oldest->debug_string());
+        log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
 
         bool set_new_current = oldest == _current_path;
 
@@ -352,7 +362,7 @@ namespace llarp::session
             logcat, "OutboundRelaySession building {} paths to remote to have a minimum of {}", n, num_paths_desired);
 
         while (count < n)
-            count += build_path_aligned_to_remote(_current_path->pivot_rid());
+            count += build_path_aligned_to_remote(_current_path->terminal_rid());
 
         if (count == n)
             log::debug(logcat, "SessionEndpoint successfully initiated {} path-builds", n);
@@ -362,11 +372,10 @@ namespace llarp::session
 
     void OutboundRelaySession::send_path_switch()
     {
-        log::debug(
-            logcat, "Dispatching path-switch request to remote ({}): {}", _remote, _current_path->debug_string());
+        log::debug(logcat, "Dispatching path-switch request to remote ({}): {}", _remote, _current_path->to_string());
         send_path_control_message(
             "path_switch",
-            SessionPathSwitch::serialize(_tag, _current_path->pivot_txid(), _remote_pivot_txid),
+            SessionPathSwitch::serialize(_tag, _current_path->terminal_txid(), _remote_pivot_txid),
             [](oxen::quic::message m) {
                 if (m)
                     log::info(logcat, "Session path switch was successful!");
@@ -400,9 +409,14 @@ namespace llarp::session
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
 
+        _running = false;
+
         if (_path_rotater)
         {
-            _path_rotater->stop();
+            if (_path_rotater->is_running())
+                _path_rotater->stop();
+
+            _path_rotater.reset();
             log::trace(logcat, "Path rotation ticker stopped!");
         }
 
@@ -413,7 +427,7 @@ namespace llarp::session
                 droplist.emplace_back(p.second->upstream_rxid());
                 droplist.emplace_back(p.second->pivot_txid());
             });
-            log::critical(logcat, "Session droplist holds {} paths", droplist.size());
+            log::debug(logcat, "Session droplist holds {} paths", droplist.size());
         }
 
         _router.loop()->call_soon([wparent = _parent.get_weak(), droplist = std::move(droplist)]() mutable {
@@ -423,7 +437,6 @@ namespace llarp::session
                 log::warning(logcat, "SessionEndpoint died before dropping session paths");
         });
 
-        _running = false;
         BaseSession::stop_session(send_close, std::move(func));
         path::PathHandler::stop();
     }
@@ -445,7 +458,7 @@ namespace llarp::session
 
         _path_rotater = _router.loop()->call_every(path::PATH_ROTATION_INTERVAL, [this]() mutable { rotate_paths(); });
 
-        add_path(_current_path);
+        add_path(current_path());
         populate_intro_map(std::move(_remote_intros));
 
         log::debug(
@@ -455,16 +468,25 @@ namespace llarp::session
             _is_exit_session ? "exit" : "service");
     }
 
-    OutboundClientSession::~OutboundClientSession() { log::trace(logcat, "{} called", __PRETTY_FUNCTION__); }
-
     std::shared_ptr<OutboundClientSession> OutboundClientSession::downcast(const std::shared_ptr<BaseSession>& b)
     {
-        return std::dynamic_pointer_cast<session::OutboundClientSession>(b);
+        return std::dynamic_pointer_cast<OutboundClientSession>(b);
     }
 
     std::shared_ptr<path::PathHandler> OutboundClientSession::get_self() { return shared_from_this(); }
 
     std::weak_ptr<path::PathHandler> OutboundClientSession::get_weak() { return weak_from_this(); }
+
+    bool OutboundClientSession::send_path_control_message(
+        std::string method, std::string body, bt_control_response_hook func)
+    {
+        return BaseSession::send_path_control_message(std::move(method), std::move(body), std::move(func));
+    }
+
+    bool OutboundClientSession::send_path_data_message(std::string data)
+    {
+        return BaseSession::send_path_data_message(std::move(data));
+    }
 
     void OutboundClientSession::populate_intro_map(const intro_set& _remote_intros)
     {
@@ -477,7 +499,7 @@ namespace llarp::session
         {
             log::critical(logcat, "intro: {}", intro);
             if (intro.pivot_txid == _remote_pivot_txid)
-                intro_path_mapping.emplace(intro, path::PathPtrSet{_current_path});
+                intro_path_mapping.emplace(intro, path::PathPtrSet{current_path()});
             else
                 intro_path_mapping.emplace(intro, path::PathPtrSet{});
         }
@@ -531,8 +553,8 @@ namespace llarp::session
             else
             {
                 // log::debug(logcat, "Unlinking and dropping path {}", *it->second);
-                log::debug(logcat, "Unlinking and dropping path {}", it->second->debug_string());
-                it->second->unlink_session(_tag);
+                log::debug(logcat, "Unlinking and dropping path {}", it->second->to_string());
+                // it->second->unlink_session(_tag);
                 _router.path_context()->drop_path(it->second);
 
                 if (it->second == _current_path)
@@ -556,7 +578,7 @@ namespace llarp::session
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
         set_remote_pivot_tx(std::move(new_pivot_txid));
-        set_new_current_path(std::move(p));
+        set_new_current_path_interface(std::move(p));
         send_path_switch();
     }
 
@@ -618,7 +640,7 @@ namespace llarp::session
         {
             if (intro.pivot_rid == p->pivot_rid())
             {
-                p->unlink_session(_tag);
+                // p->unlink_session(_tag);
                 pathset.erase(p);
                 log::debug(logcat, "Client intro {} has {} paths to remote pivot", intro, pathset.size());
                 return true;
@@ -727,8 +749,7 @@ namespace llarp::session
         Lock_t l{paths_mutex};
 
         auto oldest = get_oldest_path();
-        // log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
-        log::debug(logcat, "Dropping oldest path: {}", oldest->debug_string());
+        log::debug(logcat, "Dropping oldest path: {}", oldest->to_string());
 
         bool found = unmap_path(oldest), set_new_current = oldest == _current_path;
 
@@ -760,6 +781,7 @@ namespace llarp::session
         for (int i = 0; i < SESSION_PATH_BUILD_ATTEMPTS; ++i)
         {
             auto maybe_hops = aligned_hops_to_remote(rid, {}, false);
+
             if (maybe_hops)
                 return path::PathHandler::rotate_paths(std::move(*maybe_hops));
 
@@ -782,9 +804,9 @@ namespace llarp::session
         return now > _last_use && now - _last_use > path::DEFAULT_LIFETIME;
     }
 
-    InboundSession::InboundSession(
+    InboundClientSession::InboundClientSession(
         NetworkAddress remote,
-        std::shared_ptr<path::Path> _path,
+        std::shared_ptr<session_path_interface> _p,
         handlers::SessionEndpoint& parent,
         HopID remote_pivot_txid,
         session_tag _t,
@@ -792,7 +814,7 @@ namespace llarp::session
         std::optional<shared_kx_data> kx_data)
         : BaseSession{
             parent._router,
-            std::move(_path),
+            std::move(_p),
             parent,
             std::move(remote),
             std::move(remote_pivot_txid),
@@ -803,9 +825,58 @@ namespace llarp::session
     {
         log::debug(
             logcat,
-            "InboundSession from remote client to local {} {} created",
-            _is_snode_session ? "relay" : "client",
+            "InboundSession from remote client to local client {} created",
             _is_exit_session ? "exit" : "service");
+    }
+
+    std::shared_ptr<InboundClientSession> InboundClientSession::downcast(const std::shared_ptr<BaseSession>& b)
+    {
+        return std::dynamic_pointer_cast<InboundClientSession>(b);
+    }
+
+    void InboundClientSession::recv_path_switch(HopID remote_pivot_txid, std::shared_ptr<session_path_interface> new_pi)
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+        set_remote_pivot_tx(std::move(remote_pivot_txid));
+        set_new_current_path_interface(std::move(new_pi));
+    }
+
+    InboundRelaySession::InboundRelaySession(
+        NetworkAddress remote,
+        std::shared_ptr<session_path_interface> _p,
+        handlers::SessionEndpoint& parent,
+        HopID remote_pivot_txid,
+        session_tag _t,
+        bool use_tun,
+        std::optional<shared_kx_data> kx_data)
+        : InboundClientSession{
+            std::move(remote),
+            std::move(_p),
+            parent,
+            std::move(remote_pivot_txid),
+            std::move(_t),
+            use_tun,
+            std::move(kx_data)}
+    {
+        log::debug(logcat, "InboundSession from remote client to local relay service created");
+    }
+
+    std::shared_ptr<InboundRelaySession> InboundRelaySession::downcast(const std::shared_ptr<BaseSession>& b)
+    {
+        return std::dynamic_pointer_cast<InboundRelaySession>(b);
+    }
+
+    bool InboundRelaySession::send_path_control_message(
+        std::string method, std::string body, bt_control_response_hook func)
+    {
+        return _current_path->send_path_control_message(std::move(method), std::move(body), std::move(func));
+        // auto payload = PATH::CONTROL::serialize(std::move(method), std::move(body));
+        // return _current_path->send_path_control_message("path_control", std::move(payload), std::move(func));
+    }
+
+    bool InboundRelaySession::send_path_data_message(std::string data)
+    {
+        return _current_path->send_path_data_message(std::move(data));
     }
 
 }  // namespace llarp::session

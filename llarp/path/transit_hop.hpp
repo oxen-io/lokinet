@@ -12,6 +12,8 @@ namespace llarp
 
     namespace path
     {
+        struct SessionHop;
+
         struct TransitHop : std::enable_shared_from_this<TransitHop>
         {
             HopID _txid, _rxid;
@@ -75,6 +77,33 @@ namespace llarp
 
             std::string to_string() const;
             static constexpr bool to_string_formattable = true;
+        };
+
+        struct SessionHop final : public TransitHop, public session_path_interface
+        {
+          protected:
+            handlers::SessionEndpoint& _parent;
+            std::unordered_set<session_tag> _linked_sessions;
+
+            SessionHop(std::shared_ptr<TransitHop>& hop, handlers::SessionEndpoint& p);
+
+          public:
+            static std::shared_ptr<SessionHop> make(std::shared_ptr<TransitHop> hop, Router& r);
+
+            void link_session(session_tag t) override;
+            bool unlink_session(session_tag t) override;
+            bool is_linked() const override { return not _linked_sessions.empty(); }
+
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
+            bool send_path_data_message(std::string body) override;
+
+            RouterID terminal_rid() const override { return _rid; }
+            HopID terminal_txid() const override { return _txid; }
+
+            handlers::SessionEndpoint& parent() override { return _parent; }
+
+            std::string to_string() const override;
         };
     }  // namespace path
 }  // namespace llarp

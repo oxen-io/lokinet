@@ -66,6 +66,7 @@ namespace llarp
         auto [_rcs, _rids, _] = _node_db->db_stats();
         auto [_npaths, _nhops] = _path_context->path_ctx_stats();
         auto [_nsessions, _range, _is_exit] = _session_endpoint->session_stats();
+        auto _ccs = _contact_db->num_ccs();
 
         return {
             {"instance",
@@ -76,6 +77,7 @@ namespace llarp
             {"links", {{"inbound", _in}, {"outbound", _out}, {"relay", _relay}, {"client", _client}}},
             {"sessions", {{"active", _nsessions}}},
             {"nodedb", {{"RCs", _rcs}, {"RIDs", _rids}}},
+            {"contactdb", {{"CCs", _ccs}}},
             {"path ctx", {{"paths", _npaths}, {"hops", _nhops}}}};
     }
 
@@ -766,18 +768,19 @@ DISABLE_WARNING_POP
     std::string Router::_stats_line()
     {
         auto [_in, _out, _relay, _client] = _link_manager->connection_stats();
-        auto [_rcs, _rids, _bstraps] = _node_db->db_stats();
+        auto [_rcs, _rids, _] = _node_db->db_stats();
         auto [_npaths, _nhops] = _path_context->path_ctx_stats();
+        auto _nsessions = std::get<0>(_session_endpoint->session_stats());
         auto _ccs = _contact_db->num_ccs();
 
-        return "{}RCs:{} | RIDs:{} | CCs:{} | bstraps:{} | paths:{} | hops:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
+        return "{}RCs:{} | RIDs:{} | CCs:{} | {}:{} | sessions:{} | conns:[ in:{} | out:{} | relay:{} | client:{} ]"_format(
             _is_service_node ? "Full Mesh:{} | "_format(detail::bool_alpha(_relay == _rcs, "YES", "NO")) : "",
             _rcs,
             _rids,
             _ccs,
-            _bstraps,
-            _npaths,
-            _nhops,
+            _is_service_node ? "hops" : "paths",
+            _is_service_node ? _nhops : _npaths,
+            _nsessions,
             _in,
             _out,
             _relay,

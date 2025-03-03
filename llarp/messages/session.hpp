@@ -36,8 +36,6 @@ namespace llarp
         {
             try
             {
-                std::string payload;
-
                 oxenc::bt_dict_producer btdp;
 
                 btdp.append("i", local.to_view());
@@ -49,16 +47,6 @@ namespace llarp
                     btdp.append("u", *auth_token);
 
                 return std::move(btdp).str();
-
-                // auto kx_data = shared_kx_data::generate();
-
-                // kx_data.client_dh(remote);
-                // kx_data.encrypt(payload);
-                // kx_data.generate_xor();
-
-                // auto new_payload = ONION::serialize_hop(kx_data.pubkey.to_view(), kx_data.nonce, std::move(payload));
-
-                // return PATH::CONTROL::serialize("session_init", std::move(new_payload));
             }
             catch (const std::exception& e)
             {
@@ -151,16 +139,7 @@ namespace llarp
 
             try
             {
-                oxenc::bt_dict_consumer btdc{payload};
-
-                NetworkAddress initiator;
-                RouterID init_rid;
-                HopID remote_pivot_txid;
-                HopID local_pivot_txid;
-                bool use_tun;
-                std::optional<std::string> maybe_auth = std::nullopt;
-
-                std::tie(initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth) =
+                auto [initiator, local_pivot_txid, remote_pivot_txid, use_tun, maybe_auth] =
                     deserialize(oxenc::bt_dict_consumer{payload});
 
                 return {
@@ -242,19 +221,18 @@ namespace llarp
         };
     }  // namespace SetSessionTag
 
-    /** Fields for setting a session path:
-     */
+    /** Fields for switching session paths:
+        - 'p' : HopID at the pivot taken from local ClientIntro
+        - 'r' : HopID at the pivot taken from remote's ClientIntro
+        - 't' : session_tag for current session
+    */
     namespace SessionPathSwitch
     {
         static auto logcat = llarp::log::Cat("path-switch");
 
         inline const auto BAD_TAG = messages::serialize_response({{messages::STATUS_KEY, "BAD TAG"}});
+        inline const auto BAD_ID = messages::serialize_response({{messages::STATUS_KEY, "BAD ID"}});
 
-        /** Fields for switching session paths:
-            - 'p' : HopID at the pivot taken from local ClientIntro
-            - 'r' : HopID at the pivot taken from remote's ClientIntro
-            - 't' : session_tag for current session
-         */
         inline static std::string serialize(session_tag t, HopID local_pivot_txid, HopID remote_pivot_txid)
         {
             oxenc::bt_dict_producer btdp;

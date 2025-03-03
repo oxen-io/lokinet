@@ -15,15 +15,19 @@ namespace llarp::path
 
     size_t Path::next_path_uuid = 0;
 
-    Path::Path(Router& rtr, const std::vector<RemoteRC>& hop_rcs, std::weak_ptr<PathHandler> _handler, bool is_client)
-        : handler{std::move(_handler)},
-          _router{rtr},
-          _is_client{is_client},
-          num_hops{hop_rcs.size()},
-          path_id{++next_path_uuid}
+    Path::Path(Router& rtr, const std::vector<RemoteRC>& hop_rcs, std::weak_ptr<PathHandler> _handler)
+        : handler{std::move(_handler)}, _router{rtr}, num_hops{hop_rcs.size()}, path_id{++next_path_uuid}
     {
         populate_internals(hop_rcs);
         log::trace(logcat, "Path successfully constructed -> {} :{}", to_string(), hop_string());
+    }
+
+    Path::~Path()
+    {
+        log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
+
+        if (is_linked())
+            log::warning(logcat, "Path (ID:{}) destructed with {} linked sessions!", path_id, _linked_sessions.size());
     }
 
     void Path::populate_internals(const std::vector<RemoteRC>& hop_rcs)
@@ -96,13 +100,6 @@ namespace llarp::path
         return n != 0;
     }
 
-    bool Path::is_linked_to(session_tag t) const
-    {
-        auto ret = _linked_sessions.contains(t);
-        log::trace(logcat, "Session (tag:{}) is {}linked to path {}", t, ret ? "" : "NOT ", name());
-        return ret;
-    }
-
     bool Path::operator<(const Path& other) const
     {
         auto& first_hop = hops.front();
@@ -160,9 +157,8 @@ namespace llarp::path
 
     bool Path::send_path_data_message(std::string data)
     {
-        auto inner_payload = PATH::DATA::serialize(std::move(data), _router.local_rid());
-        auto outer_payload = make_path_message(std::move(inner_payload));
-        return _router.send_data_message(upstream_rid(), std::move(outer_payload));
+        auto payload = make_path_message(std::move(data));
+        return _router.send_data_message(upstream_rid(), std::move(payload));
     }
 
     bool Path::send_path_control_message(std::string endpoint, std::string body, bt_control_response_hook func)
@@ -210,13 +206,15 @@ namespace llarp::path
 
     std::string Path::to_string() const
     {
-        return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{} ]"_format(
-            detail::bool_alpha(is_active()),
-            detail::bool_alpha(is_linked()),
-            _router.local_rid().short_string(),
-            pivot_rid().short_string(),
-            upstream_rxid(),
-            pivot_txid());
+        return debug_string();
+        // return "Path:[ Active:{} | Session-linked:{} | Local RID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{}
+        // ]"_format(
+        //     detail::bool_alpha(is_active()),
+        //     detail::bool_alpha(is_linked()),
+        //     _router.local_rid().short_string(),
+        //     pivot_rid().short_string(),
+        //     upstream_rxid(),
+        //     pivot_txid());
     }
 
     std::string Path::debug_string() const
@@ -224,6 +222,8 @@ namespace llarp::path
         return "Path:[ ID:{} | Pivot RID:{} | Edge RX:{} | Pivot TX:{} ]{}"_format(
             path_id, pivot_rid().short_string(), upstream_rxid(), pivot_txid(), hop_string());
     }
+
+    handlers::SessionEndpoint& Path::parent() { return *_router.session_endpoint().get(); }
 
     std::string Path::hop_string() const
     {

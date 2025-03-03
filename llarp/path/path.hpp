@@ -33,18 +33,16 @@ namespace llarp
     namespace path
     {
         /// A path we made
-        struct Path : public std::enable_shared_from_this<Path>
+        struct Path final : public session_path_interface, public std::enable_shared_from_this<Path>
         {
             friend struct PathHandler;
             friend class handlers::SessionEndpoint;
             friend struct llarp::Profiling;
             friend struct LinkManager;
 
-            Path(
-                Router& rtr,
-                const std::vector<RemoteRC>& routers,
-                std::weak_ptr<PathHandler> parent,
-                bool is_client = false);
+            Path(Router& rtr, const std::vector<RemoteRC>& routers, std::weak_ptr<PathHandler> parent);
+
+            ~Path();
 
             // hops on constructed path
             std::vector<TransitHop> hops;
@@ -62,13 +60,11 @@ namespace llarp
 
             std::chrono::milliseconds LastRemoteActivityAt() const { return last_recv_msg; }
 
-            void link_session(session_tag t);
+            void link_session(session_tag t) override;
 
-            bool unlink_session(session_tag t);
+            bool unlink_session(session_tag t) override;
 
-            bool is_linked_to(session_tag t) const;
-
-            bool is_linked() const { return not _linked_sessions.empty(); }
+            bool is_linked() const override { return not _linked_sessions.empty(); }
 
             size_t num_links() const { return _linked_sessions.size(); }
 
@@ -84,19 +80,14 @@ namespace llarp
 
             bool publish_client_contact(const EncryptedClientContact& ecc, bt_control_response_hook func);
 
-            /// sends a control request along a path
-            ///
-            /// performs the necessary onion encryption before sending.
-            /// func will be called when a timeout occurs or a response is received.
-            /// if a response is received, onion decryption is performed before func is called.
-            ///
-            /// func is called with a bt-encoded response string (if applicable), and
-            /// a timeout flag (if set, response string will be empty)
-            bool send_path_control_message(std::string method, std::string body, bt_control_response_hook func);
+            bool send_path_control_message(
+                std::string method, std::string body, bt_control_response_hook func) override;
 
-            bool send_path_data_message(std::string body);
+            bool send_path_data_message(std::string body) override;
 
             std::string make_path_message(std::string payload);
+
+            std::string make_path_data_message(std::string payload);
 
             bool is_active(std::chrono::milliseconds now = llarp::time_now_ms()) const;
 
@@ -124,19 +115,23 @@ namespace llarp
 
             std::string name() const;
 
-            bool is_client_path() const { return _is_client; }
-
             bool operator<(const Path& other) const;
 
             bool operator==(const Path& other) const;
 
             bool operator!=(const Path& other) const;
 
-            std::string to_string() const;
+            std::string to_string() const override;
             static constexpr bool to_string_formattable = true;
 
             // TESTNET: debug
             std::string debug_string() const;
+
+            RouterID terminal_rid() const override { return pivot_rid(); }
+
+            HopID terminal_txid() const override { return pivot_txid(); }
+
+            handlers::SessionEndpoint& parent() override;
 
           protected:
             // Called by SessionEndpoint to indicate the path is successfully built
@@ -156,9 +151,6 @@ namespace llarp
             std::atomic<bool> _is_linked{false};
 
             Router& _router;
-
-            bool _is_session_path{false};
-            bool _is_client{false};
 
             const size_t num_hops;
 

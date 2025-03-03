@@ -56,7 +56,7 @@ namespace llarp
             for (auto& [_, s] : _sessions)
             {
                 if (s->is_outbound() && s->is_active())
-                    session::OutboundClientSession::downcast(s)->tick(now);
+                    session::OutboundRelaySession::downcast(s)->tick(now);
             }
         }
 
@@ -80,6 +80,7 @@ namespace llarp
             auto [_1, b1] = _session_lookup.insert_or_assign(tag, remote);
             auto [_2, b2] = _sessions.insert_or_assign(remote, std::move(sesh));
 
+            _2->second->activate();
             return {_2->second, b1 & b2};
         }
 

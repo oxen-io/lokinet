@@ -32,7 +32,7 @@ namespace llarp
         // template <oxenc::string_like K, oxenc::string_like T>
         // inline static std::string serialize_hop(K key, const SymmNonce& nonce, T encrypted)
         inline static std::string serialize_hop(
-            std::string_view key, const SymmNonce& nonce, std::string_view encrypted)
+            std::string_view key, const SymmNonce& nonce, const std::string& encrypted)
         {
             oxenc::bt_dict_producer btdp;
             btdp.append("k", key);
@@ -178,7 +178,7 @@ namespace llarp
                     hop.kx.shared_secret.to_string(),
                     buffer_printer{hop_payload});
 
-                return ONION::serialize_hop(hop.kx.pubkey.to_view(), hop.kx.nonce, hop_payload);
+                return ONION::serialize_hop(hop.kx.pubkey.to_view(), hop.kx.nonce, std::move(hop_payload));
             }
 
             inline static std::shared_ptr<path::TransitHop> deserialize_hop(
@@ -244,6 +244,13 @@ namespace llarp
                 btdp.append("e", endpoint);
                 btdp.append("p", payload);
                 return std::move(btdp).str();
+            }
+
+            inline static std::string serialize_aligned(std::string payload, const HopID& pivot_txid)
+            {
+                auto pivot_payload =
+                    ONION::serialize_hop(pivot_txid.to_view(), SymmNonce::make_random(), std::move(payload));
+                return serialize("path_control", std::move(pivot_payload));
             }
 
             inline static std::tuple<std::string, std::string> deserialize(oxenc::bt_dict_consumer&& btdc)
