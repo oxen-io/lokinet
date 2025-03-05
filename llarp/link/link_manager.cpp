@@ -1084,7 +1084,7 @@ namespace llarp
 
     void LinkManager::handle_fetch_router_ids(oxen::quic::message m)
     {
-        log::debug(logcat, "Handling FetchRIDs request...");
+        log::trace(logcat, "Handling FetchRIDs request...");
         // this handler should not be registered for clients
         assert(_router.is_service_node());
 
@@ -1105,7 +1105,7 @@ namespace llarp
 
         if (source != local)
         {
-            log::info(logcat, "Relaying FetchRID request (body: {}) to intended target RID:{}", m.body(), source);
+            log::trace(logcat, "Relaying FetchRID request (body: {}) to intended target RID:{}", m.body(), source);
 
             auto payload = FetchRID::serialize(source);
             send_control_message(
@@ -1134,7 +1134,7 @@ namespace llarp
             return sig;
         });
 
-        log::info(logcat, "Returning ALL ({}) locally held RIDs to FetchRIDs request!", known_rids.size());
+        log::debug(logcat, "Returning ALL ({}) locally held RIDs to FetchRIDs request!", known_rids.size());
         m.respond(std::move(btdp).str());
     }
 
@@ -1420,7 +1420,7 @@ namespace llarp
                 }
 
                 _router.path_context()->put_transit_hop(std::move(hop));
-                return m.respond(messages::OK_RESPONSE, false);
+                return m.respond(messages::OK_RESPONSE);
             }
 
             // rotate our frame to the back
@@ -1662,9 +1662,9 @@ namespace llarp
                         hop.kx.shared_secret,
                         nonce,
                         hop.kx.xor_nonce);
-                }
 
-                log::trace(logcat, "Received path data for local client: {}", buffer_printer{payload});
+                    log::trace(logcat, "xchacha20 -> {}", buffer_printer{payload});
+                }
 
                 return handle_path_session_data(std::move(payload));
             }
@@ -1689,12 +1689,9 @@ namespace llarp
             std::optional<std::pair<RouterID, HopID>> next_ids = std::nullopt;
             std::string next_payload;
 
-            log::trace(
-                logcat,
-                "We are {} hop for path data: {}: {}",
-                hop->terminal_hop ? "terminal" : "intermediate",
-                hop->to_string(),
-                buffer_printer{payload});
+            log::trace(logcat, "We are {} hop for path data", hop->terminal_hop ? "terminal" : "intermediate");
+
+            log::trace(logcat, "Path data: {}", buffer_printer{payload});
 
             // if terminal hop, pass to the correct path expecting to receive this message
             if (hop->terminal_hop)
@@ -1714,12 +1711,6 @@ namespace llarp
                     return;
                 }
 
-                if (hop_id == ihid)
-                {
-                    log::debug(logcat, "Received path data for local relay: {}", buffer_printer{intermediate});
-                    return handle_path_session_data(std::move(intermediate));
-                }
-
                 log::trace(logcat, "Inbound path rxid:{}, outbound path txid:{}", hop_id, ihid);
 
                 auto next_hop = _router.path_context()->get_transit_hop(ihid);
@@ -1730,10 +1721,15 @@ namespace llarp
                     return;
                 }
 
-                log::trace(logcat, "Bridging path data message to hop: {}", next_hop->to_string());
-
                 next_ids = next_hop->next_id(ihid);
 
+                if (hop_id == next_ids->second)
+                {
+                    log::trace(logcat, "Received path data for local relay: {}", buffer_printer{intermediate});
+                    return handle_path_session_data(std::move(intermediate));
+                }
+
+                log::debug(logcat, "Bridging path data message to hop: {}", next_hop->to_string());
                 onion_nonce ^= next_hop->kx.xor_nonce;
 
                 crypto::onion(
@@ -1828,7 +1824,7 @@ namespace llarp
         HopID remote_pivot_txid;
         HopID local_pivot_txid;
         bool use_tun{};
-        std::optional<shared_kx_data> kx_data = std::nullopt;
+        shared_kx_data kx_data;
         std::optional<std::string> maybe_auth = std::nullopt;
 
         try
@@ -1911,7 +1907,7 @@ namespace llarp
         if (auto tag = _router.session_endpoint()->prefigure_session(
                 std::move(initiator), std::move(remote_pivot_txid), std::move(pi), std::move(kx_data), use_tun))
         {
-            log::debug(logcat, "InboundSession configured successfully!");
+            log::debug(logcat, "InboundSession (tag:{}) configured successfully!", *tag);
             return m.respond(InitiateSession::serialize_response(*tag));
         }
 

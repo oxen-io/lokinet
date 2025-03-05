@@ -50,7 +50,7 @@ namespace llarp
             session_tag _tag;
             NetworkAddress _remote;
 
-            std::optional<shared_kx_data> session_keys{};
+            std::unique_ptr<shared_kx_data> session_keys{};
 
             // used for bridging data messages across aligned paths
             HopID _remote_pivot_txid;
@@ -89,7 +89,7 @@ namespace llarp
                 session_tag _t,
                 bool use_tun,
                 bool is_outbound,
-                std::optional<shared_kx_data> kx_data = std::nullopt);
+                shared_kx_data kx_data);
 
             virtual ~BaseSession();
 
@@ -262,7 +262,7 @@ namespace llarp
                 HopID remote_pivot_txid,
                 session_tag _t,
                 bool use_tun,
-                std::optional<shared_kx_data> kx_data = std::nullopt);
+                shared_kx_data kx_data);
 
             static std::shared_ptr<InboundClientSession> downcast(const std::shared_ptr<BaseSession>& b);
 
@@ -279,7 +279,7 @@ namespace llarp
                 HopID remote_pivot_txid,
                 session_tag _t,
                 bool use_tun,
-                std::optional<shared_kx_data> kx_data = std::nullopt);
+                shared_kx_data kx_data);
 
             static std::shared_ptr<InboundRelaySession> downcast(const std::shared_ptr<BaseSession>& b);
 

@@ -292,9 +292,12 @@ namespace llarp
             auto ip_hdr_sz = _header->header_len * 4;
             size_t pkt_size = (ICMP_HEADER_SIZE + ip_hdr_sz) * 2;
 
+            if (pkt_size < MIN_PACKET_SIZE)
+                return std::nullopt;
+
             IPPacket pkt{pkt_size};
 
-            pkt._header->version = 4;
+            pkt._header->version = 0x04;
             pkt._header->header_len = 0x05;
             pkt._header->service_type = 0;
             pkt._header->checksum = 0;

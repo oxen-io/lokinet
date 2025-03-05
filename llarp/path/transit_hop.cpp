@@ -119,14 +119,18 @@ namespace llarp::path
         return _parent._router.send_control_message(
             _downstream,
             "path_control",
-            ONION::serialize_hop(_downstream.to_view(), SymmNonce::make_random(), std::move(inner_payload)),
+            ONION::serialize_hop(_rxid.to_view(), SymmNonce::make_random(), std::move(inner_payload)),
             std::move(func));
     }
 
     bool SessionHop::send_path_data_message(std::string body)
     {
+        auto nonce = SymmNonce::make_random() ^ kx.xor_nonce;
+        crypto::onion(
+            reinterpret_cast<unsigned char*>(body.data()), body.size(), kx.shared_secret, nonce, kx.xor_nonce);
+
         return _parent._router.send_data_message(
-            _downstream, ONION::serialize_hop(_downstream.to_view(), SymmNonce::make_random(), std::move(body)));
+            _downstream, ONION::serialize_hop(_rxid.to_view(), nonce, std::move(body)));
     }
 
     std::string SessionHop::to_string() const

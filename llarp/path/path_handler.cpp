@@ -615,7 +615,7 @@ namespace llarp::path
             }
         }
 
-        log::debug(logcat, "Building path -> {} :{}", path->to_string(), path->hop_string());
+        log::debug(logcat, "Building -> {}", path->to_string());
 
         return path;
     }
@@ -751,9 +751,6 @@ namespace llarp::path
         }
 
         assert(new_path);
-
-        auto payload = build2(new_path);
-        auto upstream = new_path->upstream_rid();
 
         return path_build_onepass(
             std::move(new_path),

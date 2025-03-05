@@ -57,6 +57,7 @@ namespace llarp::handlers
                 new_path->to_string());
 
             s->recv_path_switch(std::move(remote_pivot_txid), std::move(new_path));
+            return true;
         }
 
         return false;
@@ -717,7 +718,7 @@ namespace llarp::handlers
         NetworkAddress initiator,
         HopID remote_pivot_txid,
         std::shared_ptr<session_path_interface> path,
-        std::optional<shared_kx_data> kx_data,
+        shared_kx_data kx_data,
         bool use_tun)
     {
         auto tag = session_tag::make(protoflags);
@@ -895,7 +896,7 @@ namespace llarp::handlers
                         return;
                     }
 
-                    log::trace(logcat, "Remote client has provided session tag: {}", tag);
+                    log::debug(logcat, "Remote client has provided session tag: {}", tag);
 
                     auto session = std::make_shared<session::OutboundClientSession>(
                         remote,
@@ -967,20 +968,22 @@ namespace llarp::handlers
     void SessionEndpoint::_make_relay_session(
         RemoteRC rc, NetworkAddress remote, std::shared_ptr<path::Path> path, on_session_init_hook cb)
     {
+        auto pivot_txid = path->pivot_txid();
         std::string payload = InitiateSession::serialize(
-            _router.local_rid(),
-            path->pivot_txid(),
-            path->pivot_txid(),
-            fetch_auth_token(remote),
-            _router.using_tun_if());
+            _router.local_rid(), pivot_txid, pivot_txid, fetch_auth_token(remote), _router.using_tun_if());
 
         log::trace(logcat, "payload: {}", buffer_printer{payload});
 
         path->send_path_control_message(
             "session_init",
             std::move(payload),
-            [this, rc = std::move(rc), remote, path, hook = std::move(cb), session_keys = path->hops.back().kx](
-                oxen::quic::message m) mutable {
+            [this,
+             rc = std::move(rc),
+             remote,
+             path,
+             pivot_txid,
+             hook = std::move(cb),
+             session_keys = path->hops.back().kx](oxen::quic::message m) mutable {
                 if (m)
                 {
                     log::debug(logcat, "Call to initiate OutboundRelaySession succeeded!");
@@ -997,9 +1000,7 @@ namespace llarp::handlers
                         return;
                     }
 
-                    log::trace(logcat, "Remote relay has provided session tag: {}", tag);
-
-                    auto pivot_txid = path->pivot_txid();
+                    log::debug(logcat, "Remote relay has provided session tag: {}", tag);
 
                     auto session = std::make_shared<session::OutboundRelaySession>(
                         remote, *this, std::move(path), std::move(tag), std::move(pivot_txid), std::move(session_keys));

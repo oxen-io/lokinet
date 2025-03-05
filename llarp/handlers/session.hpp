@@ -161,7 +161,7 @@ namespace llarp
                 NetworkAddress initiator,
                 HopID remote_pivot_txid,
                 std::shared_ptr<session_path_interface> path,
-                std::optional<shared_kx_data> kx_data,
+                shared_kx_data kx_data,
                 bool use_tun);
 
             // lookup SNS address to return "{pubkey}.loki" hidden service or exit node operated on a remote client
