@@ -28,7 +28,7 @@ namespace llarp
     {
         _signature.clear();
 
-        btdp.append_signature("~", [this](ustring_view to_sign) {
+        btdp.append_signature("~", [this](std::span<const uint8_t> to_sign) {
             std::array<unsigned char, 64> sig;
 
             if (!crypto::sign(sig.data(), _secret_key, to_sign))
@@ -38,7 +38,9 @@ namespace llarp
             return sig;
         });
 
-        _payload = ustring{btdp.view<unsigned char>()};
+        auto v = btdp.view();
+        _payload.resize(v.size());
+        std::memcpy(_payload.data(), v.data(), v.size());
     }
 
     void LocalRC::bt_encode(oxenc::bt_dict_producer& btdp)
@@ -56,7 +58,7 @@ namespace llarp
             std::memcpy(buf.data(), &in4.sin_addr.s_addr, 4);
             std::memcpy(buf.data() + 4, &in4.sin_port, 2);
 
-            btdp.append("4", ustring_view{buf.data(), 6});
+            btdp.append("4", std::span<const uint8_t>{buf.data(), 6});
         }
 
         if (_addr6)
@@ -69,7 +71,7 @@ namespace llarp
             std::memcpy(buf.data(), &in6.sin6_addr.s6_addr, 16);
             std::memcpy(buf.data() + 16, &in6.sin6_port, 2);
 
-            btdp.append("6", ustring_view{buf.data(), 18});
+            btdp.append("6", std::span<const uint8_t>{buf.data(), 18});
         }
 
         if (ACTIVE_NETID != llarp::LOKINET_DEFAULT_NETID)

@@ -21,17 +21,18 @@ namespace llarp
 {
     static auto logcat = llarp::log::Cat("lquic");
 
-    static constexpr auto static_shared_key = "Lokinet static shared secret key"_usp;
+    static constexpr auto static_shared_key = "Lokinet static shared secret key"sv;
 
     static static_secret make_static_secret(const Ed25519SecretKey& sk)
     {
-        ustring secret;
+        std::vector<uint8_t> secret;
         secret.resize(32);
 
         crypto_generichash_blake2b_state st;
-        crypto_generichash_blake2b_init(&st, static_shared_key.data(), static_shared_key.size(), secret.size());
+        crypto_generichash_blake2b_init(
+            &st, reinterpret_cast<const uint8_t*>(static_shared_key.data()), static_shared_key.size(), secret.size());
         crypto_generichash_blake2b_update(&st, sk.data(), sk.size());
-        crypto_generichash_blake2b_final(&st, reinterpret_cast<unsigned char*>(secret.data()), secret.size());
+        crypto_generichash_blake2b_final(&st, secret.data(), secret.size());
 
         return static_secret{std::move(secret)};
     }
@@ -209,24 +210,24 @@ namespace llarp
                         return true;
                     }
 
-                    auto ci = endpoint->connect(
+                    auto conn = endpoint->connect(
                         KeyedAddress{rid.to_view(), rc.addr()},
                         link_manager.tls_creds,
                         _is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
                         [this, itr = std::move(itr), rid, send_hook = std::move(send_hook)](
-                            oxen::quic::connection_interface& ci) mutable {
+                            oxen::quic::Connection& conn) mutable {
                             log::debug(
                                 logcat,
                                 "{} batch dispatching to remote (rid:{})",
                                 _is_service_node ? "Relay" : "Client",
                                 rid.short_string());
                             send_hook(itr->second->control_stream);
-                            link_manager.on_conn_open(ci);
+                            link_manager.on_conn_open(conn);
                         });
 
-                    auto control_stream = link_manager.make_control(ci, rid);
+                    auto control_stream = link_manager.make_control(conn, rid);
 
-                    itr->second = std::make_shared<link::Connection>(std::move(ci), std::move(control_stream));
+                    itr->second = std::make_shared<link::Connection>(std::move(conn), std::move(control_stream));
 
                     log::info(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
                     return true;
@@ -374,9 +375,9 @@ namespace llarp
         auto e = quic->endpoint(
             _router.listen_addr(),
             make_static_secret(_router.identity()),
-            [this](oxen::quic::connection_interface& ci) { return on_conn_open(ci); },
-            [this](oxen::quic::connection_interface& ci, uint64_t ec) { return on_conn_closed(ci, ec); },
-            [this](oxen::quic::dgram_interface&, bstring dgram) { return handle_path_data_message(std::move(dgram)); },
+            [this](oxen::quic::Connection& conn) { return on_conn_open(conn); },
+            [this](oxen::quic::Connection& conn, uint64_t ec) { return on_conn_closed(conn, ec); },
+            [this](oxen::quic::datagram dgram) { return handle_path_data_message(std::move(dgram)); },
             is_service_node() ? alpns::SERVICE_INBOUND : alpns::CLIENT_INBOUND,
             is_service_node() ? alpns::SERVICE_OUTBOUND : alpns::CLIENT_OUTBOUND,
             oxen::quic::opt::enable_datagrams{oxen::quic::Splitting::ACTIVE});
@@ -384,7 +385,7 @@ namespace llarp
         // While only service nodes accept inbound connections, clients must have this key verify
         // callback set. It will reject any attempted inbound connection to a lokinet client prior
         // to handshake completion
-        tls_creds->set_key_verify_callback([this](const ustring_view& key, const ustring_view& alpn) {
+        tls_creds->set_key_verify_callback([this](const std::span<const uint8_t> key, const std::string_view alpn) {
             return _router.loop()->call_get([&]() {
                 RouterID other{key.data()};
                 auto us = router().is_bootstrap_seed() ? "Bootstrap seed node"s : "Service node"s;
@@ -464,13 +465,13 @@ namespace llarp
     }
 
     bt_control_stream LinkManager::make_control(
-        const std::shared_ptr<oxen::quic::connection_interface>& ci, const RouterID& remote)
+        const std::shared_ptr<oxen::quic::Connection>& conn, const RouterID& remote)
     {
         bt_control_stream control_stream;
 
-        if (ci->is_inbound())
+        if (conn->is_inbound())
         {
-            control_stream = ci->template queue_incoming_stream<oxen::quic::BTRequestStream>(
+            control_stream = conn->template queue_incoming_stream<oxen::quic::BTRequestStream>(
                 [](oxen::quic::Stream&, uint64_t error_code) {
                     log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                 });
@@ -481,7 +482,7 @@ namespace llarp
         else
         {
             control_stream =
-                ci->template open_stream<oxen::quic::BTRequestStream>([](oxen::quic::Stream&, uint64_t error_code) {
+                conn->template open_stream<oxen::quic::BTRequestStream>([](oxen::quic::Stream&, uint64_t error_code) {
                     log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                 });
 
@@ -492,24 +493,24 @@ namespace llarp
         return control_stream;
     }
 
-    void LinkManager::on_inbound_conn(std::shared_ptr<oxen::quic::connection_interface> ci)
+    void LinkManager::on_inbound_conn(std::shared_ptr<oxen::quic::Connection> conn)
     {
         assert(_is_service_node);
-        RouterID rid{ci->remote_key()};
+        RouterID rid{conn->remote_key()};
 
-        auto control = make_control(ci, rid);
+        auto control = make_control(conn, rid);
         bool is_client_conn = false;
 
         if (auto it = ep->service_conns.find(rid); it != ep->service_conns.end())
         {
             log::debug(logcat, "Configuring inbound connection from relay RID:{}", rid.short_string());
-            it->second = std::make_shared<link::Connection>(std::move(ci), std::move(control), false, true);
+            it->second = std::make_shared<link::Connection>(std::move(conn), std::move(control), false, true);
         }
         else if (auto it = ep->client_conns.find(rid); it != ep->client_conns.end())
         {
             is_client_conn = true;
             log::debug(logcat, "Configuring inbound connection from client RID:{}", rid.short_string());
-            it->second = std::make_shared<link::Connection>(std::move(ci), std::move(control), false, true);
+            it->second = std::make_shared<link::Connection>(std::move(conn), std::move(control), false, true);
         }
         else
             log::warning(logcat, "Could not find inbound connection corresponding to RID: {}", rid);
@@ -538,48 +539,51 @@ namespace llarp
             "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
             _is_service_node ? "SERVICE NODE" : "CLIENT",
             _router.local_rid().to_network_address(_is_service_node),
-            rid.to_network_address(/*is_relay=*/ true));
+            rid.to_network_address(/*is_relay=*/true));
     }
 
-    void LinkManager::on_conn_open(oxen::quic::connection_interface& _ci)
+    void LinkManager::on_conn_open(oxen::quic::Connection& conn)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
 
-        _router.loop()->call([this, wci = _ci.weak_from_this()]() {
-            auto ci = wci.lock();
+        _router.loop()->call([this, wci = conn.weak_from_this()]() {
+            auto conn = wci.lock();
 
-            if (not ci)
+            if (not conn)
             {
                 log::warning(logcat, "Connection died before connection open callback execution!");
                 return;
             }
 
-            if (ci->is_inbound())
-                on_inbound_conn(std::move(ci));
+            if (conn->is_inbound())
+                on_inbound_conn(std::move(conn));
             else
-                on_outbound_conn(RouterID{ci->remote_key()});
+                on_outbound_conn(RouterID{conn->remote_key()});
         });
     }
 
-    void LinkManager::on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec)
+    void LinkManager::on_conn_closed(oxen::quic::Connection& conn, uint64_t ec)
     {
-        _router.loop()->call(
-            [this, ref_id = ci.reference_id(), rid = RouterID{ci.remote_key()}, error_code = ec, path = ci.path()]() {
-                log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
+        _router.loop()->call([this,
+                              ref_id = conn.reference_id(),
+                              rid = RouterID{conn.remote_key()},
+                              error_code = ec,
+                              path = conn.path()]() {
+            log::debug(logcat, "Purging quic connection {} (ec:{}) path:{}", ref_id, error_code, path);
 
-                if (auto s_itr = ep->service_conns.find(rid); s_itr != ep->service_conns.end())
-                {
-                    log::debug(logcat, "Quic connection to relay RID:{} purged successfully", rid.short_string());
-                    ep->service_conns.erase(s_itr);
-                }
-                else if (auto c_itr = ep->client_conns.find(rid); c_itr != ep->client_conns.end())
-                {
-                    log::debug(logcat, "Quic connection to client RID:{} purged successfully", rid.short_string());
-                    ep->client_conns.erase(c_itr);
-                }
-                else
-                    log::trace(logcat, "Nothing to purge for quic connection {}", ref_id);
-            });
+            if (auto s_itr = ep->service_conns.find(rid); s_itr != ep->service_conns.end())
+            {
+                log::debug(logcat, "Quic connection to relay RID:{} purged successfully", rid.short_string());
+                ep->service_conns.erase(s_itr);
+            }
+            else if (auto c_itr = ep->client_conns.find(rid); c_itr != ep->client_conns.end())
+            {
+                log::debug(logcat, "Quic connection to client RID:{} purged successfully", rid.short_string());
+                ep->client_conns.erase(c_itr);
+            }
+            else
+                log::trace(logcat, "Nothing to purge for quic connection {}", ref_id);
+        });
     }
 
     bool LinkManager::send_control_message(
@@ -621,7 +625,7 @@ namespace llarp
 
         if (auto conn = ep->get_conn(remote); conn)
         {
-            conn->conn->send_datagram(std::move(body));
+            conn->datagrams->send(std::move(body));
             return true;
         }
 
@@ -1125,7 +1129,7 @@ namespace llarp
                 btlp.append(rid.to_view());
         }
 
-        btdp.append_signature("~", [this](ustring_view to_sign) {
+        btdp.append_signature("~", [this](std::span<const uint8_t> to_sign) {
             std::array<unsigned char, 64> sig;
 
             if (!crypto::sign(sig.data(), _router.identity(), to_sign))
@@ -1287,7 +1291,7 @@ namespace llarp
                         : msg.timed_out ? "timed out"
                                         : "failed");
                 log::trace(logcat, "Relayed PublishClientContact response: {}", buffer_printer{msg.body()});
-                prev_msg.respond(msg.body_str(), msg.is_error());
+                prev_msg.respond(msg.body(), msg.is_error());
             });
     }
 
@@ -1371,7 +1375,7 @@ namespace llarp
             else
                 return;
 
-            prev_msg.respond(msg.body_str(), msg.is_error());
+            prev_msg.respond(msg.body(), msg.is_error());
         };
 
         log::info(logcat, "Relaying FindClientContactMessage (key: {}) to {} peers", dht_key, n_closest);
@@ -1472,7 +1476,7 @@ namespace llarp
                         transit_hop->upstream(),
                         m.timed_out ? "time out" : "failure");
 
-                    return prev_message.respond(m.body_str(), m.is_error());
+                    return prev_message.respond(m.body(), m.is_error());
                 });
         }
         catch (const std::exception& e)
@@ -1599,7 +1603,7 @@ namespace llarp
                 else
                     log::warning(logcat, "Path control message returned as error!");
 
-                prev_message.respond(response.body_str(), response.is_error());
+                prev_message.respond(response.body(), response.is_error());
 
                 // TODO: onion encrypt path message responses
                 // HopID hop_id;
@@ -1625,9 +1629,10 @@ namespace llarp
 
     void LinkManager::handle_path_control(oxen::quic::message m) { return _handle_path_control(std::move(m)); }
 
-    void LinkManager::handle_path_data_message(bstring data)
+    void LinkManager::handle_path_data_message(oxen::quic::datagram dgram)
     {
         // not a registered handler, use loop-call
+        auto data = std::move(dgram).extract();
         _router.loop()->call([this, message = std::move(data)]() mutable {
             HopID hop_id;
             std::string payload;
@@ -1636,7 +1641,7 @@ namespace llarp
             try
             {
                 std::tie(hop_id, nonce, payload) =
-                    ONION::deserialize_hop(oxenc::bt_dict_consumer{bstring_view{message}});
+                    ONION::deserialize_hop(oxenc::bt_dict_consumer{std::span<const std::byte>{message}});
             }
             catch (const std::exception& e)
             {

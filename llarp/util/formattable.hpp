@@ -2,8 +2,11 @@
 
 #include "meta.hpp"
 
+#include <fmt/ranges.h>
+#include <fmt/std.h>
 #include <oxen/log/format.hpp>
 #include <oxen/quic/format.hpp>
+#include <oxen/quic/formattable.hpp>
 
 #include <optional>
 
@@ -16,36 +19,21 @@ namespace llarp
     {
         // Types can opt-in to being fmt-formattable by ensuring they have a ::to_string() method defined
         template <typename T>
-        concept to_string_formattable = oxen::quic::concepts::ToStringFormattable<T>;
+        concept to_string_formattable = oxen::quic::ToStringFormattable<T>;
     }  // namespace concepts
 
 }  // namespace llarp
 
-#if !defined(USE_GHC_FILESYSTEM) && FMT_VERSION >= 80102
-
-// Native support in fmt added after fmt 8.1.1
-#include <fmt/std.h>
-
-#else
-
-#include <filesystem>
-
-namespace fs = std::filesystem;
-
 namespace fmt
 {
-    template <>
-    struct formatter<fs::path> : formatter<std::string_view>
+    // Make sure that fmt doesn't interpret our custom formattable types as range formattable, which
+    // results in ambiguous overloads:
+    template <llarp::concepts::to_string_formattable T>
+    struct is_range<T, char>
     {
-        template <typename FormatContext>
-        auto format(const fs::path& p, FormatContext& ctx) const
-        {
-            return formatter<std::string_view>::format(p.string(), ctx);
-        }
+        static constexpr bool value = false;
     };
 }  // namespace fmt
-
-#endif
 
 // fmt added optional support in version 10.0.0
 #if FMT_HAS_INCLUDE(<optional>) && FMT_VERSION <= 100000

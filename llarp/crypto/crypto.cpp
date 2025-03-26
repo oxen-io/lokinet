@@ -168,7 +168,7 @@ namespace llarp
         return crypto_sign_detached(sig, nullptr, buf, size, sk) != -1;
     }
 
-    bool crypto::sign(uint8_t* sig, const Ed25519SecretKey& sk, ustring_view buf)
+    bool crypto::sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf)
     {
         return crypto_sign_detached(sig, nullptr, buf.data(), buf.size(), sk.data()) != -1;
     }
@@ -214,7 +214,7 @@ namespace llarp
         return true;
     }
 
-    bool crypto::verify(const PubKey& pub, ustring_view data, ustring_view sig)
+    bool crypto::verify(const PubKey& pub, std::span<const uint8_t> data, std::span<const uint8_t> sig)
     {
         return (pub.size() == 32 && sig.size() == 64)
             ? crypto_sign_verify_detached(sig.data(), data.data(), data.size(), pub.data()) != -1
@@ -226,7 +226,7 @@ namespace llarp
         return crypto_sign_verify_detached(sig.data(), buf, size, pub.data()) != -1;
     }
 
-    bool crypto::verify(ustring_view pub, ustring_view buf, ustring_view sig)
+    bool crypto::verify(std::span<const uint8_t> pub, std::span<const uint8_t> buf, std::span<const uint8_t> sig)
     {
         return (pub.size() == 32 && sig.size() == 64)
             ? crypto_sign_verify_detached(sig.data(), buf.data(), buf.size(), pub.data()) != -1

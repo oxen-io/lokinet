@@ -146,7 +146,7 @@ namespace llarp
             oxenc::bt_dict_producer btdp;
             enc.bt_encode(btdp);
 
-            btdp.append_signature("~", [&](ustring_view to_sign) {
+            btdp.append_signature("~", [&](std::span<const uint8_t> to_sign) {
                 if (not crypto::sign(enc.sig, derived_privatekey, to_sign.data(), to_sign.size()))
                     throw std::runtime_error{"Failed to sign EncryptedClientContact payload!"};
                 return enc.sig.to_view();
@@ -257,7 +257,7 @@ namespace llarp
         {
             oxenc::bt_dict_consumer btdc{_bt_payload};
 
-            btdc.require_signature("~", [this](ustring_view m, ustring_view s) {
+            btdc.require_signature("~", [this](std::span<const uint8_t> m, std::span<const uint8_t> s) {
                 if (s.size() != 64)
                     throw std::runtime_error{"Invalid signature: not 64 bytes"};
 

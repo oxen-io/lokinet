@@ -24,7 +24,7 @@ namespace llarp
         std::shared_ptr<FDPoller> _p;
 
 #ifdef __linux__
-        _p = _loop->template make_shared<LinuxPoller>(netif->PollFD(), _loop->loop(), std::move(hook));
+        _p = _loop->template make_shared<LinuxPoller>(netif->PollFD(), this->loop(), std::move(hook));
 #else
         //
 #endif

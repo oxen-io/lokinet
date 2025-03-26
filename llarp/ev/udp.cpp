@@ -14,7 +14,7 @@ namespace llarp
     UDPHandle::UDPHandle(const std::shared_ptr<EventLoop>& ev, const oxen::quic::Address& bind, net_pkt_hook cb)
         : _loop{ev}
     {
-        socket = std::make_unique<UDPSocket>(ev->loop().get(), bind, std::move(cb));
+        socket = std::make_unique<UDPSocket>(ev->loop(), bind, std::move(cb));
         _local = socket->address();
     }
 

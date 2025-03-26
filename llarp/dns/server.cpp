@@ -37,8 +37,7 @@ namespace llarp::dns
         explicit UDPReader(Server& dns, const std::shared_ptr<EventLoop>& loop, oxen::quic::Address bind) : _dns{dns}
         {
             _udp = std::make_unique<UDPHandle>(loop, bind, [&](NetworkPacket pkt) {
-
-                auto& src = pkt.path.remote; // "remote" address is packet source, we ("local") are destination
+                auto& src = pkt.path.remote;  // "remote" address is packet source, we ("local") are destination
                 if (src == _local_addr)
                 {
                     log::debug(logcat, "DNS packet received, not handling because we're the packet source", src);

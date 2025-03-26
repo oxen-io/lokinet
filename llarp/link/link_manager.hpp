@@ -14,6 +14,7 @@
 #include <llarp/util/logging.hpp>
 
 #include <oxen/quic/format.hpp>
+#include <oxen/quic/gnutls_crypto.hpp>
 
 #include <atomic>
 #include <set>
@@ -29,8 +30,8 @@ namespace llarp
 
     namespace alpns
     {
-        inline const auto SN_ALPNS = "SERVICE_NODE"_us;
-        inline const auto C_ALPNS = "CLIENT"_us;
+        inline const auto SN_ALPNS = "SERVICE_NODE"s;
+        inline const auto C_ALPNS = "CLIENT"s;
 
         inline const inbound_alpns SERVICE_INBOUND{{SN_ALPNS, C_ALPNS}};
         inline const outbound_alpns SERVICE_OUTBOUND{{SN_ALPNS}};
@@ -149,16 +150,15 @@ namespace llarp
 
         std::atomic<bool> is_stopping;
 
-        bt_control_stream make_control(
-            const std::shared_ptr<oxen::quic::connection_interface>& ci, const RouterID& rid);
+        bt_control_stream make_control(const std::shared_ptr<oxen::quic::Connection>& conn, const RouterID& rid);
 
-        void on_inbound_conn(std::shared_ptr<oxen::quic::connection_interface> ci);
+        void on_inbound_conn(std::shared_ptr<oxen::quic::Connection> conn);
 
         void on_outbound_conn(RouterID id);
 
-        void on_conn_open(oxen::quic::connection_interface& ci);
+        void on_conn_open(oxen::quic::Connection& conn);
 
-        void on_conn_closed(oxen::quic::connection_interface& ci, uint64_t ec);
+        void on_conn_closed(oxen::quic::Connection& conn, uint64_t ec);
 
         std::shared_ptr<oxen::quic::Endpoint> startup_endpoint();
 
@@ -274,7 +274,7 @@ namespace llarp
                 {"path_switch"sv, &LinkManager::_handle_path_switch}};
 
         // Path relaying
-        void handle_path_data_message(bstring dgram);
+        void handle_path_data_message(oxen::quic::datagram dgram);
         void handle_path_control(oxen::quic::message);
         void handle_path_request(oxen::quic::message, std::string payload);
 
@@ -312,16 +312,16 @@ namespace llarp
                         log::debug(logcat, "ERROR: attempting to establish an already-existing connection");
                         (is_control)
                             ? itr->second->control_stream->command(std::move(*ep), std::move(body), std::move(func))
-                            : itr->second->conn->send_datagram(std::move(body));
+                            : itr->second->conn->datagrams()->send(std::move(body));
                         return true;
                     }
 
-                    auto conn_interface = endpoint->connect(
+                    auto conn_ = endpoint->connect(
                         remote,
                         link_manager.tls_creds,
                         _is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
                         [this, itr, rid, ep = std::move(ep), body = std::move(body), func = std::move(func)](
-                            oxen::quic::connection_interface& ci) mutable {
+                            oxen::quic::Connection& conn) mutable {
                             auto& control_stream = itr->second->control_stream;
                             log::trace(
                                 logcat,
@@ -331,15 +331,14 @@ namespace llarp
                                 rid);
 
                             (ep.has_value()) ? control_stream->command(std::move(*ep), std::move(body), std::move(func))
-                                             : ci.send_datagram(std::move(body));
-                            link_manager.on_conn_open(ci);
+                                             : conn.datagrams()->send(std::move(body));
+                            link_manager.on_conn_open(conn);
                         },
                         std::forward<Opt>(opts)...);
 
-                    auto control_stream = link_manager.make_control(conn_interface, rid);
+                    auto control_stream = link_manager.make_control(conn_, rid);
 
-                    itr->second =
-                        std::make_shared<link::Connection>(std::move(conn_interface), std::move(control_stream));
+                    itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
 
                     log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid);
                     return true;
@@ -368,23 +367,22 @@ namespace llarp
                         return b;
                     }
 
-                    auto conn_interface = endpoint->connect(
+                    auto conn_ = endpoint->connect(
                         remote,
                         link_manager.tls_creds,
                         _is_service_node ? RELAY_KEEP_ALIVE : CLIENT_KEEP_ALIVE,
                         std::forward<Opt>(opts)...);
 
-                    log::trace(logcat, "Created outbound connection with path: {}", conn_interface->path());
+                    log::trace(logcat, "Created outbound connection with path: {}", conn_->path());
 
-                    auto control_stream = conn_interface->template open_stream<oxen::quic::BTRequestStream>(
+                    auto control_stream = conn_->template open_stream<oxen::quic::BTRequestStream>(
                         [](oxen::quic::Stream&, uint64_t error_code) {
                             log::warning(logcat, "BTRequestStream closed unexpectedly (ec:{})", error_code);
                         });
 
                     link_manager.register_commands(control_stream, rid, not _is_service_node);
 
-                    itr->second =
-                        std::make_shared<link::Connection>(std::move(conn_interface), std::move(control_stream));
+                    itr->second = std::make_shared<link::Connection>(std::move(conn_), std::move(control_stream));
 
                     log::trace(logcat, "Outbound connection to RID:{} added to service conns...", rid.short_string());
                     return true;

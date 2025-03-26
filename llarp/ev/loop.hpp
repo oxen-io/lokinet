@@ -30,9 +30,9 @@ namespace llarp
 
         void set_close_immediate(bool b) { _close_immediately.store(b); }
 
-        const loop_ptr& loop() const { return _loop->loop(); }
+        loop_ptr loop() const { return _loop->get_event_base(); }
 
-        bool in_event_loop() const { return _loop->in_event_loop(); }
+        bool in_event_loop() const { return _loop->inside(); }
 
         std::shared_ptr<FDPoller> add_network_interface(
             std::shared_ptr<vpn::NetworkInterface> netif, std::function<void()> hook);

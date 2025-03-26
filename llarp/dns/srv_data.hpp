@@ -4,6 +4,8 @@
 #include "name.hpp"
 #include "serialize.hpp"
 
+#include <oxenc/bt_producer.h>
+
 #include <string_view>
 #include <tuple>
 

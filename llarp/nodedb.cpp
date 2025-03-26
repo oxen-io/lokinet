@@ -392,7 +392,7 @@ namespace llarp
                         logcat,
                         "RC fetch from {} {}",
                         source,
-                        m.timed_out ? "timed out" : "failed: {}"_format(m.view()));
+                        m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
                 }
                 else
                 {
@@ -474,7 +474,7 @@ namespace llarp
                                     "RID fetch from {} via {} {}",
                                     target,
                                     source,
-                                    m.timed_out ? "timed out" : "failed: {}"_format(m.view()));
+                                    m.timed_out ? "timed out" : "failed: {}"_format(m.body()));
                                 ingest_fetched_rids(source);
                             }
                             else
@@ -493,13 +493,14 @@ namespace llarp
                                             router_ids.emplace(sublist.consume_string_view());
                                     }
 
-                                    btdc.require_signature("~", [&target](ustring_view msg, ustring_view sig) {
-                                        if (sig.size() != 64)
-                                            throw std::runtime_error{"Invalid signature: not 64 bytes"};
-                                        if (not crypto::verify(target, msg, sig))
-                                            throw std::runtime_error{
-                                                "Failed to verify signature for fetch RouterIDs response."};
-                                    });
+                                    btdc.require_signature(
+                                        "~", [&target](std::span<const uint8_t> msg, std::span<const uint8_t> sig) {
+                                            if (sig.size() != 64)
+                                                throw std::runtime_error{"Invalid signature: not 64 bytes"};
+                                            if (not crypto::verify(target, msg, sig))
+                                                throw std::runtime_error{
+                                                    "Failed to verify signature for fetch RouterIDs response."};
+                                        });
 
                                     ingest_fetched_rids(source, std::move(router_ids));
                                 }

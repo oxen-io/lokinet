@@ -10,12 +10,13 @@ namespace llarp::link
     struct Connection
     {
         Connection(
-            std::shared_ptr<oxen::quic::connection_interface> c,
+            std::shared_ptr<oxen::quic::Connection> c,
             bt_control_stream s,
             bool _is_relay = true,
             bool _is_active = false);
 
-        std::shared_ptr<oxen::quic::connection_interface> conn;
+        std::shared_ptr<oxen::quic::Connection> conn;
+        std::shared_ptr<oxen::quic::Datagrams> datagrams;
         bt_control_stream control_stream;
 
         std::atomic<bool> is_active{false};

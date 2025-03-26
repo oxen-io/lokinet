@@ -93,7 +93,7 @@ namespace llarp
         // s.t. it can be returned upon calls to ::bt_encode.
         //   In a LocalRC, this value will be supplanted any time a mutator is invoked, requiring
         // the re-signing of the payload.
-        ustring _payload;
+        std::vector<uint8_t> _payload;
 
       public:
         /// should we serialize the exit info?
@@ -103,11 +103,7 @@ namespace llarp
 
         nlohmann::json to_json() const { return extract_status(); }
 
-        virtual std::string to_string() const
-        {
-            return "RC:[ '4':{} | 'i':'{}' | 'p':{} | 't':{} | v:{} ]"_format(
-                _addr.to_string(), ACTIVE_NETID, _router_id, _timestamp.time_since_epoch().count(), VERSION);
-        }
+        std::string to_string() const;
 
         bool write(const fs::path& fname) const;
 
@@ -251,12 +247,13 @@ namespace llarp
         explicit RemoteRC(std::string_view data, bool accept_expired = false)
             : RemoteRC{oxenc::bt_dict_consumer{data}, accept_expired}
         {
-            _payload = {reinterpret_cast<const unsigned char*>(data.data()), data.size()};
+            _payload.resize(data.size());
+            std::memcpy(_payload.data(), data.data(), data.size());
         }
-        explicit RemoteRC(ustring_view data, bool accept_expired = false)
+        explicit RemoteRC(std::span<const uint8_t> data, bool accept_expired = false)
             : RemoteRC{oxenc::bt_dict_consumer{data}, accept_expired}
         {
-            _payload = data;
+            _payload = {data.begin(), data.end()};
         }
         ~RemoteRC() = default;
 

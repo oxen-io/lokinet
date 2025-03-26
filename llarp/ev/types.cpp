@@ -2,6 +2,8 @@
 
 #include "loop.hpp"
 
+#include <event2/event.h>
+
 namespace llarp
 {
     static auto logcat = llarp::log::Cat("ev-trigger");
@@ -26,7 +28,7 @@ namespace llarp
         : n{_n}, _cooldown{loop_time_to_timeval(_cooldown)}, f{std::move(task)}
     {
         ev.reset(event_new(
-            _loop.get(),
+            _loop,
             -1,
             0,
             [](evutil_socket_t, short, void* s) {
@@ -64,7 +66,7 @@ namespace llarp
             this));
 
         cv.reset(event_new(
-            _loop.get(),
+            _loop,
             -1,
             0,
             [](evutil_socket_t, short, void* s) {
@@ -173,7 +175,7 @@ namespace llarp
         : FDPoller{_fd, std::move(task)}
     {
         ev.reset(event_new(
-            _loop.get(),
+            _loop,
             fd,
             EV_READ | EV_PERSIST,
             [](evutil_socket_t, short, void* s) {

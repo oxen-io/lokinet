@@ -307,7 +307,8 @@ namespace llarp
                 try
                 {
                     remote.from_string(btdc.require<std::string_view>("i"));
-                    payload = btdc.require<bstring>("p");
+                    auto jank = btdc.require<std::string>("p");
+                    payload = bstring{reinterpret_cast<const std::byte*>(jank.data()), jank.size()};
                     auto sender = NetworkAddress::from_pubkey(remote, true);
 
                     return {std::move(sender), std::move(payload)};

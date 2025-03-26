@@ -300,8 +300,10 @@ namespace llarp::handlers
     {
         log::debug(logcat, "SessionEndpoint building {} paths to random remotes (needed: {})", n, num_paths_desired);
 
-        for (size_t count = 0; count < n; count++) {
-            if (!build_path_to_random()) {
+        for (size_t count = 0; count < n; count++)
+        {
+            if (!build_path_to_random())
+            {
                 log::warning(logcat, "SessionEndpoint only initiated {} path-builds (needed: {})", count, n);
                 return;
             }

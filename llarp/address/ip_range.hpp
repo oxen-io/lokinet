@@ -2,6 +2,7 @@
 
 #include "utils.hpp"
 
+#include <oxenc/bt_producer.h>
 #include <oxenc/bt_serialize.h>
 
 namespace llarp

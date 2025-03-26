@@ -70,7 +70,7 @@ namespace llarp::session
     bool BaseSession::send_path_data_message(std::string data)
     {
         log::debug(logcat, "{} called", __PRETTY_FUNCTION__);
-        session_keys->encrypt(data);
+        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
 
         auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
         auto intermediate_payload = PATH::DATA::serialize_intermediate(std::move(inner_payload), _remote_pivot_txid);
@@ -117,7 +117,8 @@ namespace llarp::session
     void BaseSession::_init_ep()
     {
         _ep = _r.quic_tunnel()->net()->endpoint(
-            LOCALHOST_BLANK, oxen::quic::opt::manual_routing{[this](const oxen::quic::Path&, bstring_view data) {
+            LOCALHOST_BLANK,
+            oxen::quic::opt::manual_routing{[this](const oxen::quic::Path&, std::span<const std::byte> data) {
                 send_path_data_message(std::string{reinterpret_cast<const char*>(data.data()), data.size()});
             }});
     }
@@ -157,16 +158,17 @@ namespace llarp::session
         auto _handle = TCPHandle::make_server(
             _r.loop(),
             [this](struct bufferevent* _bev, evutil_socket_t _fd) mutable {
-                auto s = _ci->open_stream<oxen::quic::Stream>([_bev](oxen::quic::Stream& s, bstring_view data) {
-                    auto rv = bufferevent_write(_bev, data.data(), data.size());
+                auto s = _ci->open_stream<oxen::quic::Stream>(
+                    [_bev](oxen::quic::Stream& s, std::span<const std::byte> data) {
+                        auto rv = bufferevent_write(_bev, data.data(), data.size());
 
-                    log::info(
-                        logcat,
-                        "Stream (id:{}) {} {}B to TCP buffer",
-                        s.stream_id(),
-                        rv < 0 ? "failed to write" : "successfully wrote",
-                        data.size());
-                });
+                        log::info(
+                            logcat,
+                            "Stream (id:{}) {} {}B to TCP buffer",
+                            s.stream_id(),
+                            rv < 0 ? "failed to write" : "successfully wrote",
+                            data.size());
+                    });
 
                 auto tcp_conn = std::make_shared<TCPConnection>(_bev, _fd, std::move(s));
 
@@ -299,7 +301,7 @@ namespace llarp::session
 
         // return BaseSession::send_path_data_message(std::move(data));
         // return _current_path->send_path_data_message(std::move(data));
-        session_keys->encrypt(data);
+        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
 
         auto inner_payload = PATH::DATA::serialize_inner(std::move(data), _tag);
         auto intermediate_payload = PATH::DATA::serialize_intermediate(std::move(inner_payload), _remote_pivot_txid);
@@ -879,7 +881,7 @@ namespace llarp::session
     bool InboundRelaySession::send_path_data_message(std::string data)
     {
         log::trace(logcat, "{} called", __PRETTY_FUNCTION__);
-        session_keys->encrypt(data);
+        session_keys->encrypt(std::span<uint8_t>(reinterpret_cast<uint8_t*>(data.data()), data.size()));
 
         return _current_path->send_path_data_message(PATH::DATA::serialize_inner(std::move(data), _tag));
     }

@@ -3,7 +3,7 @@
 #include "common.hpp"
 #include "mem.h"
 
-#include <oxenc/span.h>
+#include <oxenc/common.h>
 
 #include <algorithm>
 #include <cassert>
@@ -23,9 +23,9 @@ namespace llarp
 {
     using namespace std::literals;
 
-    using cspan = oxenc::const_span<const char>;
-    using uspan = oxenc::const_span<const unsigned char>;
-    using span = oxenc::const_span<const std::byte>;
+    using cspan = std::span<const char>;
+    using uspan = std::span<const unsigned char>;
+    using span = std::span<const std::byte>;
 
     using ustring = std::basic_string<uint8_t>;
     using ustring_view = std::basic_string_view<uint8_t>;

@@ -12,7 +12,7 @@ namespace llarp
     using EventTicker = oxen::quic::Ticker;
 
     // shared_ptr containing the actual libev loop
-    using loop_ptr = std::shared_ptr<::event_base>;
+    using loop_ptr = ::event_base*;
 
     /** EventTrigger
             This class is a parallel implementation of libquic Ticker (typedef'ed as 'EventTicker' above). Rather than

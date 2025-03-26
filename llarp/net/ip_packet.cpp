@@ -306,7 +306,7 @@ namespace llarp
             pkt._header->dest = _header->src;
             pkt._header->protocol = 1;  // ICMP
             pkt._header->ttl = pkt._header->ttl;
-            pkt._header->frag_off = oxenc::host_to_big(0b0100000000000000);
+            pkt._header->frag_off = oxenc::host_to_big<uint16_t>(0b0100000000000000);
 
             uint8_t* itr = pkt.data() + ip_hdr_sz;
             uint8_t* icmp_begin = itr;  // type 'destination unreachable'

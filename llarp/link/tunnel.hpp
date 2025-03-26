@@ -3,6 +3,7 @@
 #include <llarp/ev/tcp.hpp>
 #include <llarp/util/time.hpp>
 
+#include <oxen/quic/gnutls_crypto.hpp>
 #include <oxenc/hex.h>
 
 namespace llarp

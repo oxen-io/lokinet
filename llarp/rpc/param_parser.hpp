@@ -315,7 +315,7 @@ namespace llarp::rpc
             else
             {
                 // A monostate indicates that no parameters field was provided at all
-                get_values(var::get<std::monostate>(in), name, val, std::forward<More>(more)...);
+                get_values(std::get<std::monostate>(in), name, val, std::forward<More>(more)...);
             }
         }
         else if constexpr (std::is_same_v<std::string_view, Input>)

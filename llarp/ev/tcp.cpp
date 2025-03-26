@@ -28,17 +28,20 @@ namespace llarp
 
     static void tcp_read_cb(struct bufferevent *bev, void *user_arg)
     {
-        std::array<uint8_t, 2048> buf{};
+        std::vector<uint8_t> buf{};
+        buf.resize(2048);
 
         // Load data from input buffer to local buffer
+        // FIXME: handle nwrite == 0
         auto nwrite = bufferevent_read(bev, buf.data(), buf.size());
+        buf.resize(nwrite);
 
         log::trace(logcat, "TCP socket received {}B: {}", nwrite, buffer_printer{buf});
 
         auto *conn = reinterpret_cast<TCPConnection *>(user_arg);
         assert(conn);
 
-        conn->stream->send(ustring{(buf.data()), nwrite});
+        conn->stream->send(std::move(buf));
     };
 
     static void tcp_event_cb(struct bufferevent *bev, short what, void *user_arg)
@@ -148,10 +151,9 @@ namespace llarp
         sockaddr_in _addr = _connect->in4();
         _addr.sin_port = htonl(port);
 
-        struct bufferevent *_bev =
-            bufferevent_socket_new(_ev->loop().get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE);
+        struct bufferevent *_bev = bufferevent_socket_new(_ev->loop(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE);
 
-        s->set_stream_data_cb([&](oxen::quic::Stream &, bstring_view data) {
+        s->set_stream_data_cb([&](oxen::quic::Stream &, std::span<const std::byte> data) {
             auto rv = bufferevent_write(_bev, data.data(), data.size());
             log::info(
                 logcat,
@@ -188,7 +190,7 @@ namespace llarp
 
         _tcp_listener = _ev->template shared_ptr<struct evconnlistener>(
             evconnlistener_new_bind(
-                _ev->loop().get(),
+                _ev->loop(),
                 tcp_listen_cb,
                 this,
                 LEV_OPT_CLOSE_ON_FREE | LEV_OPT_THREADSAFE | LEV_OPT_REUSEABLE,

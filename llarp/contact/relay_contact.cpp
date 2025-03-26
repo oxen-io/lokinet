@@ -8,7 +8,7 @@ namespace llarp
 
     void RelayContact::bt_verify(oxenc::bt_dict_consumer& btdc, bool reject_expired) const
     {
-        btdc.require_signature("~", [this, reject_expired](ustring_view msg, ustring_view sig) {
+        btdc.require_signature("~", [this, reject_expired](std::span<const uint8_t> msg, std::span<const uint8_t> sig) {
             if (sig.size() != 64)
                 throw std::runtime_error{"Invalid signature: not 64 bytes"};
 
@@ -89,7 +89,7 @@ namespace llarp
 
         _timestamp = rc_time{std::chrono::seconds{btdc.require<uint64_t>("t")}};
 
-        auto ver = btdc.require<ustring_view>("v");
+        auto ver = btdc.require<std::span<const uint8_t>>("v");
 
         if (ver.size() != 3)
             throw std::runtime_error{"Invalid RC router version: received {} bytes (!= 3)"_format(ver.size())};
@@ -121,6 +121,12 @@ namespace llarp
             {"address", _addr.to_string()}};
 
         return obj;
+    }
+
+    std::string RelayContact::to_string() const
+    {
+        return "RC:[ '4':{} | 'i':'{}' | 'p':{} | 't':{} | v:{} ]"_format(
+            _addr.to_string(), ACTIVE_NETID, _router_id, _timestamp.time_since_epoch().count(), VERSION);
     }
 
     bool RelayContact::is_public_addressable() const

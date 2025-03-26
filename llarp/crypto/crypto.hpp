@@ -50,15 +50,15 @@ namespace llarp
 
         /// ed25519 sign, using pointers
         bool sign(uint8_t* sig, uint8_t* sk, uint8_t* buf, size_t size);
-        bool sign(uint8_t* sig, const Ed25519SecretKey& sk, ustring_view buf);
+        bool sign(uint8_t* sig, const Ed25519SecretKey& sk, std::span<const uint8_t> buf);
 
         /// ed25519 sign (custom with derived keys)
         bool sign(Signature&, const Ed25519PrivateData&, const uint8_t* buf, size_t size);
 
         /// ed25519 verify
-        bool verify(const PubKey&, ustring_view, ustring_view);
+        bool verify(const PubKey&, std::span<const uint8_t>, std::span<const uint8_t>);
         bool verify(const PubKey&, const uint8_t*, size_t, const Signature&);
-        bool verify(ustring_view, ustring_view, ustring_view);
+        bool verify(std::span<const uint8_t>, std::span<const uint8_t>, std::span<const uint8_t>);
 
         /// Used in path-build and session initiation messages. Derives a shared secret key for symmetric DH, encrypting
         /// the given payload in-place. Will throw on failure of either the client DH derivation or the xchacha20

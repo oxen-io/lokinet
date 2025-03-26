@@ -7,17 +7,13 @@
 #include <llarp/util/aligned.hpp>
 #include <llarp/util/buffer.hpp>
 
-#include <oxenc/span.h>
-
 #include <algorithm>
 
 namespace llarp
 {
-    struct RouterID;
-    struct RemoteRC;
-
     using SharedSecret = AlignedBuffer<SHAREDKEYSIZE>;
 
+    struct RemoteRC;
     struct RouterID;
     struct PubKey;
     struct Ed25519PrivateData;
@@ -74,11 +70,11 @@ namespace llarp
         // Returns writeable access to the 32-byte Ed25519 Private Scalar
         std::span<uint8_t> scalar() { return {data(), 32}; }
         // Returns readable access to the 32-byte Ed25519 Private Scalar
-        uspan scalar() const { return {data(), 32}; }
+        std::span<const uint8_t> scalar() const { return {data(), 32}; }
         // Returns writeable access to the 32-byte Ed25519 Signing Hash
         std::span<uint8_t> signing_hash() { return {data() + 32, 32}; }
         // Returns readable access to the 32-byte Ed25519 Signing Hash
-        uspan signing_hash() const { return {data() + 32, 32}; }
+        std::span<const uint8_t> signing_hash() const { return {data() + 32, 32}; }
 
         PubKey to_pubkey() const;
 
@@ -129,12 +125,6 @@ namespace llarp
         void client_dh(const RouterID& remote);
 
         void server_dh(const Ed25519SecretKey& local_sk);
-
-        template <oxenc::string_like T>
-        void encrypt(T& data)
-        {
-            return encrypt(detail::to_uspan(data));
-        }
 
         void encrypt(std::span<uint8_t> data);
 

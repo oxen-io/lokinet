@@ -18,6 +18,8 @@ namespace llarp
 
         RouterID(ustring_view data) : PubKey(data.data()) {}
 
+        RouterID(std::span<const uint8_t> data) : PubKey(data.data()) {}
+
         RouterID(std::string_view data) : RouterID(detail::to_usv(data)) {}
 
         nlohmann::json ExtractStatus() const;
