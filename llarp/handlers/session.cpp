@@ -298,16 +298,15 @@ namespace llarp::handlers
 
     void SessionEndpoint::build_more(size_t n)
     {
-        size_t count{0};
         log::debug(logcat, "SessionEndpoint building {} paths to random remotes (needed: {})", n, num_paths_desired);
 
-        while (count < n)
-            count += build_path_to_random();
-
-        if (count == n)
-            log::debug(logcat, "SessionEndpoint successfully initiated {} path-builds", n);
-        else
-            log::warning(logcat, "SessionEndpoint only initiated {} path-builds (needed: {})", count, n);
+        for (size_t count = 0; count < n; count++) {
+            if (!build_path_to_random()) {
+                log::warning(logcat, "SessionEndpoint only initiated {} path-builds (needed: {})", count, n);
+                return;
+            }
+        }
+        log::debug(logcat, "SessionEndpoint successfully initiated {} path-builds", n);
     }
 
     void SessionEndpoint::srv_records_changed()

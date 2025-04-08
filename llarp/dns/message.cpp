@@ -148,13 +148,15 @@ namespace llarp::dns
     std::vector<uint8_t> Message::to_buffer() const
     {
         std::vector<uint8_t> tmp;
+        tmp.resize(1500);
         llarp_buffer_t buf{tmp};
         if (not Encode(&buf))
             throw std::runtime_error("cannot encode dns message");
+        tmp.resize(buf.cur - buf.base);
         return tmp;
     }
 
-    void Message::add_srv_fail(RR_TTL_t)
+    void Message::add_serv_fail(RR_TTL_t)
     {
         if (questions.size())
         {
@@ -167,6 +169,22 @@ namespace llarp::dns
     }
 
     static constexpr uint16_t reply_flags(uint16_t setbits) { return setbits | flags_QR | flags_AA | flags_RA; }
+
+    void Message::add_IN_reply(uint32_t addr, RR_TTL_t ttl)
+    {
+        // TODO: IPv6 support
+        if (questions.size())
+        {
+            hdr_fields = reply_flags(hdr_fields);
+            auto& rec = answers.emplace_back();
+            rec.rr_name = questions[0].qname;
+            rec.rr_class = qClassIN;
+            rec.ttl = ttl;
+            rec.rr_type = qTypeA;
+            rec.rData.resize(4);
+            oxenc::write_host_as_big(addr, rec.rData.data());
+        }
+    }
 
     void Message::add_reply(std::string name, RR_TTL_t ttl)
     {

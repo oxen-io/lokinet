@@ -537,8 +537,8 @@ namespace llarp
             logcat,
             "{} (RID:{}) ESTABLISHED CONNECTION TO RID:{}",
             _is_service_node ? "SERVICE NODE" : "CLIENT",
-            _router.local_rid().to_network_address(),
-            rid.to_network_address());
+            _router.local_rid().to_network_address(_is_service_node),
+            rid.to_network_address(/*is_relay=*/ true));
     }
 
     void LinkManager::on_conn_open(oxen::quic::connection_interface& _ci)

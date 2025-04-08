@@ -59,8 +59,8 @@ namespace llarp
 
         bool is_empty() const { return _pubkey.is_zero() and _tld.empty(); }
 
-        // Will throw invalid_argument with bad input. Assumes that the network address terminates in either '.loki'
-        // or '.snode'
+        // Assumes that the network address terminates in either '.loki' or '.snode'
+        // returns nullopt if not
         static std::optional<NetworkAddress> from_network_addr(std::string_view arg);
 
         // Assumes that the pubkey passed is NOT terminated in either a '.loki' or '.snode' suffix

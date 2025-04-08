@@ -62,11 +62,13 @@ namespace llarp
 
             void add_nx_reply(RR_TTL_t ttl = 1);
 
-            void add_srv_fail(RR_TTL_t ttl = 30);
+            void add_serv_fail(RR_TTL_t ttl = 30);
 
             void add_mx_reply(std::string name, uint16_t priority, RR_TTL_t ttl = 1);
 
             void add_CNAME_reply(std::string name, RR_TTL_t ttl = 1);
+
+            void add_IN_reply(uint32_t addr, RR_TTL_t ttl = 1);
 
             void add_reply(std::string name, RR_TTL_t ttl = 1);
 

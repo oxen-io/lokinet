@@ -31,10 +31,8 @@ namespace llarp::handlers
             return false;
 
         auto job = std::make_shared<dns::QueryJob>(source, query, to, from);
-        // if (HandleHookedDNSMessage(query, [job](auto msg) { job->SendReply(msg.ToBuffer()); }))
-        //   router().TriggerPump();
-        // else
-        //   job->Cancel();
+        if (!handle_hooked_dns_message(query, [job](auto msg) { job->send_reply(msg.to_buffer()); }))
+          job->cancel();
         return true;
     }
 
@@ -57,7 +55,7 @@ namespace llarp::handlers
         {
             if (data.empty())
                 return;
-            // TOFIX: this
+            // FIXME: this
             (void)to;
             (void)from;
             (void)data;
@@ -391,6 +389,7 @@ namespace llarp::handlers
 
     bool TunEndpoint::handle_hooked_dns_message(dns::Message msg, std::function<void(dns::Message)> reply)
     {
+        log::trace(logcat, "handle_hooked_dns_message");
         (void)msg;
         (void)reply;
         // auto ReplyToSNodeDNSWhenReady = [this, reply](RouterID snode, auto msg, bool isV6) ->
@@ -455,319 +454,378 @@ namespace llarp::handlers
         //       timeout);
         // };
 
-        // if (msg.answers.size() > 0)
-        // {
-        //   const auto& answer = msg.answers[0];
-        //   if (answer.HasCNameForTLD(".snode"))
-        //   {
-        //     llarp_buffer_t buf(answer.rData);
-        //     auto qname = dns::DecodeName(&buf, true);
-        //     if (not qname)
-        //       return false;
-        //     RouterID addr;
-        //     if (not addr.from_snode_address(*qname))
-        //       return false;
-        //     auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
-        //     return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
-        //   }
-        //   else if (answer.HasCNameForTLD(".loki"))
-        //   {
-        //     llarp_buffer_t buf(answer.rData);
-        //     auto qname = dns::DecodeName(&buf, true);
-        //     if (not qname)
-        //       return false;
+        /*
+        if (msg.answers.size() > 0)
+        {
+          const auto& answer = msg.answers[0];
+          if (answer.HasCNameForTLD(".snode"))
+          {
+            llarp_buffer_t buf(answer.rData);
+            auto qname = dns::DecodeName(&buf, true);
+            if (not qname)
+              return false;
+            RouterID addr;
+            if (not addr.from_snode_address(*qname))
+              return false;
+            auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
+            return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
+          }
+          else if (answer.HasCNameForTLD(".loki"))
+          {
+            llarp_buffer_t buf(answer.rData);
+            auto qname = dns::DecodeName(&buf, true);
+            if (not qname)
+              return false;
 
-        //     service::Address addr;
-        //     if (not addr.FromString(*qname))
-        //       return false;
+            service::Address addr;
+            if (not addr.FromString(*qname))
+              return false;
 
-        //     auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
-        //     return ReplyToLokiDNSWhenReady(addr, replyMsg, false);
-        //   }
-        // }
-        // if (msg.questions.size() != 1)
-        // {
-        //   log::warning(logcat, "bad number of dns questions: {}", msg.questions.size());
-        //   return false;
-        // }
-        // std::string qname = msg.questions[0].Name();
-        // const auto nameparts = split(qname, ".");
-        // std::string ons_name;
-        // if (nameparts.size() >= 2 and ends_with(qname, ".loki"))
-        // {
-        //   ons_name = nameparts[nameparts.size() - 2];
-        //   ons_name += ".loki"sv;
-        // }
-        // if (msg.questions[0].qtype == dns::qTypeTXT)
-        // {
-        //   RouterID snode;
-        //   if (snode.from_snode_address(qname))
-        //   {
-        //     if (auto rc = router().node_db()->get_rc(snode))
-        //       msg.AddTXTReply(std::string{rc->view()});
-        //     else
-        //       msg.AddNXReply();
-        //     reply(msg);
+            auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
+            return ReplyToLokiDNSWhenReady(addr, replyMsg, false);
+          }
+        }
+        */
 
-        //     return true;
-        //   }
+        if (msg.questions.size() != 1)
+        {
+          log::debug(logcat, "bad number of dns questions: {}", msg.questions.size());
+          return false;
+        }
 
-        //   if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
-        //   {
-        //     const auto subdomain = msg.questions[0].Subdomains();
-        //     if (subdomain == "exit")
-        //     {
-        //       if (HasExit())
-        //       {
-        //         std::string s;
-        //         _exit_map.ForEachEntry([&s](const auto& range, const auto& exit) {
-        //           fmt::format_to(std::back_inserter(s), "{}={}; ", range, exit);
-        //         });
-        //         msg.AddTXTReply(std::move(s));
-        //       }
-        //       else
-        //       {
-        //         msg.AddNXReply();
-        //       }
-        //     }
-        //     else if (subdomain == "netid")
-        //     {
-        //       msg.AddTXTReply(fmt::format("netid={};", RelayContact::ACTIVE_NETID));
-        //     }
-        //     else
-        //     {
-        //       msg.AddNXReply();
-        //     }
-        //   }
-        //   else
-        //   {
-        //     msg.AddNXReply();
-        //   }
+        std::string our_name = _router.local_rid().to_network_address(_router.is_service_node());
 
-        //   reply(msg);
-        // }
-        // else if (msg.questions[0].qtype == dns::qTypeMX)
-        // {
-        //   // mx record
-        //   service::Address addr;
-        //   if (addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
-        //       || is_random_snode(msg) || is_localhost_loki(msg))
-        //   {
-        //     msg.AddMXReply(qname, 1);
-        //   }
-        //   else if (service::is_valid_name(ons_name))
-        //   {
-        //     lookup_name(
-        //         ons_name, [msg, ons_name, reply](std::string name_result, bool success) mutable {
-        //           if (success)
-        //           {
-        //             msg.AddMXReply(name_result, 1);
-        //           }
-        //           else
-        //             msg.AddNXReply();
+        std::string qname = msg.questions[0].Name();
+        const auto nameparts = split(qname, ".");
+        std::string hostname, tld;
+        if (nameparts.size() >= 2) {
+            hostname = nameparts[nameparts.size() - 2];
+            tld = nameparts[nameparts.size() - 1];
+        }
+        else {
+          log::debug(logcat, "bad DNS request, no TLD or hostname: {}", qname);
+          return false;
+        }
+        bool is_localhost = hostname == "localhost"s && tld == "loki"s;
+        std::string ons_name;
+        if (nameparts.size() >= 2 and ends_with(qname, ".loki"))
+        {
+          ons_name = hostname;
+          ons_name += ".loki"sv;
+        }
+        /*
+        if (msg.questions[0].qtype == dns::qTypeTXT)
+        {
+          RouterID snode;
+          if (snode.from_snode_address(qname))
+          {
+            if (auto rc = router().node_db()->get_rc(snode))
+              msg.AddTXTReply(std::string{rc->view()});
+            else
+              msg.AddNXReply();
+            reply(msg);
 
-        //           reply(msg);
-        //         });
+            return true;
+          }
 
-        //     return true;
-        //   }
-        //   else
-        //     msg.AddNXReply();
-        //   reply(msg);
-        // }
-        // else if (msg.questions[0].qtype == dns::qTypeCNAME)
-        // {
-        //   if (is_random_snode(msg))
-        //   {
-        //     if (auto random = router().GetRandomGoodRouter())
-        //     {
-        //       msg.AddCNAMEReply(random->to_string(), 1);
-        //     }
-        //     else
-        //       msg.AddNXReply();
-        //   }
-        //   else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
-        //   {
-        //     const auto subdomain = msg.questions[0].Subdomains();
-        //     if (subdomain == "exit" and HasExit())
-        //     {
-        //       _exit_map.ForEachEntry(
-        //           [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.to_string(), 1);
-        //           });
-        //     }
-        //     else
-        //     {
-        //       msg.AddNXReply();
-        //     }
-        //   }
-        //   else if (is_localhost_loki(msg))
-        //   {
-        //     size_t counter = 0;
-        //     context->ForEachService(
-        //         [&](const std::string&, const std::shared_ptr<service::Endpoint>& service) ->
-        //         bool {
-        //           const service::Address addr = service->GetIdentity().pub.Addr();
-        //           msg.AddCNAMEReply(addr.to_string(), 1);
-        //           ++counter;
-        //           return true;
-        //         });
-        //     if (counter == 0)
-        //       msg.AddNXReply();
-        //   }
-        //   else
-        //     msg.AddNXReply();
-        //   reply(msg);
-        // }
-        // else if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype ==
-        // dns::qTypeAAAA)
-        // {
-        //   const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
-        //   const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
-        //   llarp::service::Address addr;
-        //   if (isV6 && !SupportsV6())
-        //   {  // empty reply but not a NXDOMAIN so that client can retry IPv4
-        //     msg.AddNSReply("localhost.loki.");
-        //   }
-        //   // on MacOS this is a typeA query
-        //   else if (is_random_snode(msg))
-        //   {
-        //     if (auto random = router().GetRandomGoodRouter())
-        //     {
-        //       msg.AddCNAMEReply(random->to_string(), 1);
-        //       return ReplyToSNodeDNSWhenReady(*random, std::make_shared<dns::Message>(msg),
-        //       isV6);
-        //     }
+          if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+          {
+            const auto subdomain = msg.questions[0].Subdomains();
+            if (subdomain == "exit")
+            {
+              if (HasExit())
+              {
+                std::string s;
+                _exit_map.ForEachEntry([&s](const auto& range, const auto& exit) {
+                  fmt::format_to(std::back_inserter(s), "{}={}; ", range, exit);
+                });
+                msg.AddTXTReply(std::move(s));
+              }
+              else
+              {
+                msg.AddNXReply();
+              }
+            }
+            else if (subdomain == "netid")
+            {
+              msg.AddTXTReply(fmt::format("netid={};", RelayContact::ACTIVE_NETID));
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+          }
+          else
+          {
+            msg.AddNXReply();
+          }
 
-        //     msg.AddNXReply();
-        //   }
-        //   else if (is_localhost_loki(msg))
-        //   {
-        //     const bool lookingForExit = msg.questions[0].Subdomains() == "exit";
-        //     huint128_t ip = GetIfAddr();
-        //     if (ip.h)
-        //     {
-        //       if (lookingForExit)
-        //       {
-        //         if (HasExit())
-        //         {
-        //           _exit_map.ForEachEntry(
-        //               [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.to_string());
-        //               });
-        //           msg.AddINReply(ip, isV6);
-        //         }
-        //         else
-        //         {
-        //           msg.AddNXReply();
-        //         }
-        //       }
-        //       else
-        //       {
-        //         msg.AddCNAMEReply(_identity.pub.Name(), 1);
-        //         msg.AddINReply(ip, isV6);
-        //       }
-        //     }
-        //     else
-        //     {
-        //       msg.AddNXReply();
-        //     }
-        //   }
-        //   else if (addr.FromString(qname, ".loki"))
-        //   {
-        //     if (isV4 && SupportsV6())
-        //     {
-        //       msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
-        //     }
-        //     else
-        //     {
-        //       return ReplyToLokiDNSWhenReady(addr, std::make_shared<dns::Message>(msg), isV6);
-        //     }
-        //   }
-        //   else if (addr.FromString(qname, ".snode"))
-        //   {
-        //     if (isV4 && SupportsV6())
-        //     {
-        //       msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
-        //     }
-        //     else
-        //     {
-        //       return ReplyToSNodeDNSWhenReady(
-        //           addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
-        //     }
-        //   }
-        //   else if (service::is_valid_name(ons_name))
-        //   {
-        //     lookup_name(
-        //         ons_name,
-        //         [msg = std::make_shared<dns::Message>(msg),
-        //          name = Name(),
-        //          ons_name,
-        //          isV6,
-        //          reply,
-        //          ReplyToDNSWhenReady](std::string name_result, bool success) mutable {
-        //           if (not success)
-        //           {
-        //             log::warning(logcat, "{} (ONS name: {}) not resolved", name, ons_name);
-        //             msg->AddNXReply();
-        //             reply(*msg);
-        //           }
+          reply(msg);
+        }
+        else if (msg.questions[0].qtype == dns::qTypeMX)
+        {
+          // mx record
+          service::Address addr;
+          if (addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
+              || is_random_snode(msg) || is_localhost_loki(msg))
+          {
+            msg.AddMXReply(qname, 1);
+          }
+          else if (service::is_valid_name(ons_name))
+          {
+            lookup_name(
+                ons_name, [msg, ons_name, reply](std::string name_result, bool success) mutable {
+                  if (success)
+                  {
+                    msg.AddMXReply(name_result, 1);
+                  }
+                  else
+                    msg.AddNXReply();
 
-        //           ReplyToDNSWhenReady(name_result, msg, isV6);
-        //         });
-        //     return true;
-        //   }
-        //   else
-        //     msg.AddNXReply();
+                  reply(msg);
+                });
 
-        //   reply(msg);
-        // }
-        // else if (msg.questions[0].qtype == dns::qTypePTR)
-        // {
-        //   // reverse dns
-        //   if (auto ip = dns::DecodePTR(msg.questions[0].qname))
-        //   {
-        //     if (auto maybe = ObtainAddrForIP(*ip))
-        //     {
-        //       var::visit([&msg](auto&& result) { msg.AddAReply(result.to_string()); }, *maybe);
-        //       reply(msg);
-        //       return true;
-        //     }
-        //   }
+            return true;
+          }
+          else
+            msg.AddNXReply();
+          reply(msg);
+        }
+        else if (msg.questions[0].qtype == dns::qTypeCNAME)
+        {
+          if (is_random_snode(msg))
+          {
+            if (auto random = router().GetRandomGoodRouter())
+            {
+              msg.AddCNAMEReply(random->to_string(), 1);
+            }
+            else
+              msg.AddNXReply();
+          }
+          else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+          {
+            const auto subdomain = msg.questions[0].Subdomains();
+            if (subdomain == "exit" and HasExit())
+            {
+              _exit_map.ForEachEntry(
+                  [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.to_string(), 1);
+                  });
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+          }
+          else if (is_localhost_loki(msg))
+          {
+            size_t counter = 0;
+            context->ForEachService(
+                [&](const std::string&, const std::shared_ptr<service::Endpoint>& service) ->
+                bool {
+                  const service::Address addr = service->GetIdentity().pub.Addr();
+                  msg.AddCNAMEReply(addr.to_string(), 1);
+                  ++counter;
+                  return true;
+                });
+            if (counter == 0)
+              msg.AddNXReply();
+          }
+          else
+            msg.AddNXReply();
+          reply(msg);
+        }
+        */
+        /*else*/ if (msg.questions[0].qtype == dns::qTypeA || msg.questions[0].qtype ==
+        dns::qTypeAAAA)
+        {
+          const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
+          const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
+          /*
+          if (isV6 && !ipv6_enabled)
+          {  // empty reply but not a NXDOMAIN so that client can retry IPv4
+            msg.AddNSReply("localhost.loki.");
+          }
+          // on MacOS this is a typeA query
+          else if (is_random_snode(msg))
+          {
+            if (auto random = router().GetRandomGoodRouter())
+            {
+              msg.AddCNAMEReply(random->to_string(), 1);
+              return ReplyToSNodeDNSWhenReady(*random, std::make_shared<dns::Message>(msg),
+              isV6);
+            }
 
-        //   msg.AddNXReply();
-        //   reply(msg);
-        //   return true;
-        // }
-        // else if (msg.questions[0].qtype == dns::qTypeSRV)
-        // {
-        //   auto srv_for = msg.questions[0].Subdomains();
-        //   auto name = msg.questions[0].qname;
-        //   if (is_localhost_loki(msg))
-        //   {
-        //     msg.AddSRVReply(intro_set().GetMatchingSRVRecords(srv_for));
-        //     reply(msg);
-        //     return true;
-        //   }
-        //   LookupServiceAsync(
-        //       name,
-        //       srv_for,
-        //       [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
-        //         if (records.empty())
-        //         {
-        //           msg->AddNXReply();
-        //         }
-        //         else
-        //         {
-        //           msg->AddSRVReply(records);
-        //         }
-        //         reply(*msg);
-        //       });
-        //   return true;
-        // }
-        // else
-        // {
-        //   msg.AddNXReply();
-        //   reply(msg);
-        // }
+            msg.AddNXReply();
+          }
+          */
+          /*else*/ if (is_localhost)
+          {
+            // FIXME: the code below checks about if we have a tun bound, and
+            // if we're operating as an exit (if that was requested), and those
+            // concepts need to be revived
+            /*
+            const bool lookingForExit = msg.questions[0].Subdomains() == "exit";
+            huint128_t ip = GetIfAddr();
+            if (ip.h)
+            {
+              if (lookingForExit)
+              {
+                if (HasExit())
+                {
+                  _exit_map.ForEachEntry(
+                      [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.to_string());
+                      });
+                  msg.AddINReply(ip, isV6);
+                }
+                else
+                {
+                  msg.AddNXReply();
+                }
+              }
+              else
+              {
+                msg.AddCNAMEReply(our_name, 1);
+                msg.AddINReply(ip, isV6);
+              }
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+            */
+            
+            msg.add_CNAME_reply(our_name, 1);
+            msg.add_IN_reply(_local_addr.to_ipv4().addr);
+            reply(msg);
+          }
+          else if (auto maybe_netaddr = NetworkAddress::from_network_addr(hostname + "." + tld); maybe_netaddr) {
+            // TODO: handle .snode (if we want, or explicitly don't allow)
+
+            auto& netaddr = *maybe_netaddr;
+            _router.session_endpoint()->lookup_client_intro(
+                netaddr.router_id(), [this, netaddr, hostname, tld, msg=std::move(msg), reply=std::move(reply)](std::optional<llarp::ClientContact> cc) mutable {
+                    if (cc)
+                    {
+                        log::debug(logcat, "client intro for {}.{} found:\n{}", hostname, tld, *cc);
+                        _router.session_endpoint()->initiate_remote_session(
+                            netaddr, [reply=std::move(reply), msg=std::move(msg)](ip_v ip) mutable {
+                                auto& a = std::get<ipv4>(ip);
+                                msg.add_IN_reply(a.addr);
+                                reply(msg);
+                            });
+                        return;
+                    }
+                    else
+                    {
+                        log::debug(logcat, "It appears {}.{} has no contact information available.", hostname, tld);
+                    }
+                    msg.add_nx_reply();
+                    reply(msg);
+                    
+                });
+            return true; // attempting to handle, don't reply NX
+          }
+          /*
+          else if (addr.FromString(qname, ".loki"))
+          {
+            if (isV4 && ipv6_enabled)
+            {
+              msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
+            }
+            else
+            {
+              return ReplyToLokiDNSWhenReady(addr, std::make_shared<dns::Message>(msg), isV6);
+            }
+          }
+          else if (addr.FromString(qname, ".snode"))
+          {
+            if (isV4 && ipv6_enabled)
+            {
+              msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
+            }
+            else
+            {
+              return ReplyToSNodeDNSWhenReady(
+                  addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
+            }
+          }
+          else if (service::is_valid_name(ons_name))
+          {
+            lookup_name(
+                ons_name,
+                [msg = std::make_shared<dns::Message>(msg),
+                 name = Name(),
+                 ons_name,
+                 isV6,
+                 reply,
+                 ReplyToDNSWhenReady](std::string name_result, bool success) mutable {
+                  if (not success)
+                  {
+                    log::warning(logcat, "{} (ONS name: {}) not resolved", name, ons_name);
+                    msg->AddNXReply();
+                    reply(*msg);
+                  }
+
+                  ReplyToDNSWhenReady(name_result, msg, isV6);
+                });
+            return true;
+          }
+          else
+            msg.AddNXReply();
+
+          reply(msg);
+        }
+        else if (msg.questions[0].qtype == dns::qTypePTR)
+        {
+          // reverse dns
+          if (auto ip = dns::DecodePTR(msg.questions[0].qname))
+          {
+            if (auto maybe = ObtainAddrForIP(*ip))
+            {
+              var::visit([&msg](auto&& result) { msg.AddAReply(result.to_string()); }, *maybe);
+              reply(msg);
+              return true;
+            }
+          }
+
+          msg.AddNXReply();
+          reply(msg);
+          return true;
+        }
+        else if (msg.questions[0].qtype == dns::qTypeSRV)
+        {
+          auto srv_for = msg.questions[0].Subdomains();
+          auto name = msg.questions[0].qname;
+          if (is_localhost_loki(msg))
+          {
+            msg.AddSRVReply(intro_set().GetMatchingSRVRecords(srv_for));
+            reply(msg);
+            return true;
+          }
+          LookupServiceAsync(
+              name,
+              srv_for,
+              [reply, msg = std::make_shared<dns::Message>(std::move(msg))](auto records) {
+                if (records.empty())
+                {
+                  msg->AddNXReply();
+                }
+                else
+                {
+                  msg->AddSRVReply(records);
+                }
+                reply(*msg);
+              });
+          return true;
+        }
+        else
+        {
+          msg.AddNXReply();
+          reply(msg);
+        }
+        return true;
+        */
+        }
         return true;
     }
 

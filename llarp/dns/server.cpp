@@ -22,7 +22,7 @@ namespace llarp::dns
     void QueryJob_Base::cancel()
     {
         Message reply{_query};
-        reply.add_srv_fail();
+        reply.add_serv_fail();
         send_reply(reply.to_buffer());
     }
 
@@ -37,20 +37,25 @@ namespace llarp::dns
         explicit UDPReader(Server& dns, const std::shared_ptr<EventLoop>& loop, oxen::quic::Address bind) : _dns{dns}
         {
             _udp = std::make_unique<UDPHandle>(loop, bind, [&](NetworkPacket pkt) {
-                auto& src = pkt.path.local;
 
+                auto& src = pkt.path.remote; // "remote" address is packet source, we ("local") are destination
                 if (src == _local_addr)
+                {
+                    log::debug(logcat, "DNS packet received, not handling because we're the packet source", src);
                     return;
+                }
 
                 if (not _dns.maybe_handle_packet(shared_from_this(), _local_addr, src, IPPacket::from_netpkt(pkt)))
                 {
                     log::warning(logcat, "did not handle dns packet from {} to {}", src, _local_addr);
                 }
+                log::trace(logcat, "Handled DNS packet from {} to {}", src, _local_addr);
             });
 
             if (auto maybe_addr = bound_on())
             {
                 _local_addr = *maybe_addr;
+                log::debug(logcat, "lokinet DNS server bound on {}", _local_addr);
             }
             else
                 throw std::runtime_error{"cannot find which address our dns socket is bound on"};
@@ -420,6 +425,7 @@ namespace llarp::dns
                 const oxen::quic::Address& to,
                 const oxen::quic::Address& from) override
             {
+                log::trace(logcat, "maybe_hook_dns called");
                 auto tmp = std::make_shared<Query>(weak_from_this(), query, source, to, from);
                 // no questions, send fail
                 if (query.questions.empty())
@@ -493,6 +499,7 @@ namespace llarp::dns
 
         void Query::send_reply(std::vector<uint8_t> data)
         {
+            log::trace(logcat, "Query::send_reply called");
             if (_done.test_and_set())
                 return;
 

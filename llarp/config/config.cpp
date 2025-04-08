@@ -1230,7 +1230,6 @@ namespace llarp
 
             if (auto pos = arg_v.find(':'); pos != arg_v.npos)
             {
-                // host = arg_v.substr(0, pos);
                 std::tie(host, p) = detail::parse_addr(arg_v, DEFAULT_LISTEN_PORT);
             }
 
@@ -1243,8 +1242,10 @@ namespace llarp
             else
                 maybe = oxen::quic::Address{host, p};
 
+            /* TODO: fix this and the option below
             if (maybe and maybe->is_loopback())
                 throw std::invalid_argument{"{} is a loopback address"_format(arg)};
+            */
 
             log::trace(logcat, "parsed address: {}", *maybe);
 
