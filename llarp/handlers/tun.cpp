@@ -641,6 +641,8 @@ namespace llarp::handlers
         {
             const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
             const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
+            (void)isV6;
+            (void)isV4;
             /*
             if (isV6 && !ipv6_enabled)
             {  // empty reply but not a NXDOMAIN so that client can retry IPv4
