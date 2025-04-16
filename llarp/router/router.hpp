@@ -85,6 +85,7 @@ namespace llarp
         ~Router() = default;
 
       private:
+        std::shared_ptr<EventLoop> _loop;
         std::chrono::steady_clock::time_point _next_explore_at;
 
         // path to write our self signed rc to
@@ -125,7 +126,6 @@ namespace llarp
         // Only created in full client and relay instances (not embedded clients)
         std::shared_ptr<handlers::TunEndpoint> _tun;
 
-        std::shared_ptr<EventLoop> _loop;
         std::unique_ptr<std::promise<void>> _close_promise;
 
         std::shared_ptr<vpn::Platform> _vpn;
